@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "source_kind": "exact supplied Linux host instructions; no host DWARF claim",
+  "native_symbols": {
+    "get_heap": "_ZN8Platform11GetTempHeapEv",
+    "startup": "_ZN8Platform8TempHeap7StartupEmPh",
+    "shutdown": "_ZN8Platform8TempHeap8ShutdownEv",
+    "allocate": "_ZN8Platform8TempHeap8AllocateEm",
+    "deallocate": "_ZN8Platform8TempHeap10DeAllocateEPKv",
+    "owns": "_ZNK8Platform8TempHeap14OwnsAllocationEPKv"
+  },
+  "startup_abi": "size_t Startup(void *actual_heap, size_t bytes, unsigned char *optional_storage); return is requested bytes, not an allocation-success bool",
+  "size_bytes": 16777216,
+  "optional_storage": null,
+  "heap_scope": "actual process-global Platform::g_TempHeap at VA 0x6eef840, not a per-thread replacement",
+  "lifetime": "original SetupFXSPlatform startup; original TeardownFXSPlatform shuts down PerfEvents, destroys JobManager, then shuts down temp heap",
+  "recovered_boundary": "Modding::Path::GetFileName requests 4*(path_length+1) bytes but passes that byte count as wchar capacity. Actual wcslcpy uses libc wcsncpy and pads the capacity in wchar_t units. Missing original temp arena sends this allocation to a 240-byte standalone fallback block; first invalid write was immediately after that block.",
+  "ranges": {
+    "runapp_default": {
+      "start_va": "0x42b9c43",
+      "bytes": 17,
+      "sha256": "0cb718c2828069c0d7275d03efb9e780a270fb8f21ed53648594dac7bb061fcf"
+    },
+    "override_default": {
+      "start_va": "0x2f8cd60",
+      "bytes": 32,
+      "sha256": "68b53f0808a125b986b0c1eb6ef68580ce5cd03c12f6fbfaa504e1390f61f6d2"
+    },
+    "setup_startup_call": {
+      "start_va": "0x42b4d7f",
+      "bytes": 26,
+      "sha256": "1ecc6ea1441938f914bfe1f80db7272560a3cafe4bad0abe93f8c2ce9fa8aaa3"
+    },
+    "get_global": {
+      "start_va": "0x3c3ee68",
+      "bytes": 8,
+      "sha256": "3364658cbabfe12204dee381ae5ae6bea243a99b68d51b27bc39497a296362e6"
+    },
+    "startup": {
+      "start_va": "0x3c3ee86",
+      "bytes": 132,
+      "sha256": "c066440bba6081c12b1c05391c6a8a675f305fd29864d346d843f3e06e82f3bd"
+    },
+    "shutdown": {
+      "start_va": "0x3c3ef0a",
+      "bytes": 37,
+      "sha256": "21e67d1386846a9a77309221f4ad4d2c6ffcf63ed9d933c84739999782900fc5"
+    },
+    "platform_teardown": {
+      "start_va": "0x42b5260",
+      "bytes": 25,
+      "sha256": "f5e6755d426ae65654e48741ae700a940c1abdcb0611704b03f3d4cfae8fcc7b"
+    },
+    "fallback_allocate": {
+      "start_va": "0x2f4b670",
+      "bytes": 78,
+      "sha256": "0007f66082b2f06035424cc529a9215bf1a3e18920c25adf689f5d630bd9370d"
+    },
+    "filename_buffer": {
+      "start_va": "0x3c28d56",
+      "bytes": 111,
+      "sha256": "871c91bc243ea627f7be0104744c01d34f723fcc9eda90aeea9e78188b01cec1"
+    },
+    "wide_copy": {
+      "start_va": "0x2d74e6c",
+      "bytes": 10,
+      "sha256": "59ba2cd8ed0424b401751e9be1190c1a913b8d4086eebece5c23538bf5bcf043"
+    }
+  },
+  "private_disassembly_sha256": "46567d27da29cfdc31a7e44de70600d85c7533a4f69ab17c690035fe9fce9a15",
+  "limits": "Static contract and separate first-invalid-write evidence. Original Startup/Shutdown with this input still needs controlled native comparison; no global heap/core parity inference.",
+  "first_failing_native_input": "../../../Base/Assets/Scenarios/tutorial/tutorial.civ6map",
+  "observed_requested_bytes": 228,
+  "observed_fallback_allocation_bytes": 240,
+  "observed_wchar_padding_bytes": 912,
+  "observed_original_heap_before_copy": {
+    "base": 0,
+    "capacity": 0
+  },
+  "private_diagnostics_sha256": {
+    "linux-mod-v3-first-filename-copy-gdb.txt": "a54b766b15a3e9808db6a4658b61709ff3dec5dccb19e2301d948780c6277c82",
+    "linux-mod-v3-first-invalid.618868.txt": "feec860f6646935f04b5ee03f90ab1501cad0bd8d85e6ced5ce2b562d6f28d24",
+    "linux-mod-v3-allocator-current-gdb.txt": "7c6bd4f9f998471c2b64b322fc9dd7a94632e6401da59320cad43de0cbf6b8b8"
+  },
+  "instrumentation_limits": "Valgrind 3.22 memcheck uses a distinct debug preload that delegates unrelated tool main calls; its actual Civ6 branch is unchanged. Native posix16-new/default-delete alignment/family categories were recorded and filtered after checking original allocator/free bodies; invalid reads/writes and invalid/double frees remained enabled. No allocator flags or original opcodes changed."
+}
