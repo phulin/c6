@@ -3,6 +3,7 @@
  * All unimplemented operations terminate; this is not a gameplay engine host.
  */
 #include "service_fixture.h"
+#include "../xml-import/imports.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -16,6 +17,9 @@ struct fixture {
 };
 static uintptr_t slots[46];
 static struct fixture engine = {slots, {{0, 0, 0}}, 0};
+static HMODULE original_host_image;
+static uint64_t original_archive_storage[6];
+static int original_archive_constructed;
 static uintptr_t archive_slots[3];
 static uintptr_t *archive_object = archive_slots;
 static HMODULE original_gamecore;
@@ -43,7 +47,7 @@ static _Noreturn void unavailable(unsigned offset) {
      * an arbitrary return value advance original code as fabricated success. */
     ExitProcess(86);
 }
-#define UNSUPPORTED(N) static uintptr_t unsupported_##N(void *self) { (void)self; unavailable((N)*8); }
+#define UNSUPPORTED(N) static uintptr_t unsupported_##N(void *self) { (void)self; fprintf(stderr, "{\"unsupported_caller_rva\":\"0x%llx\"}\n", (unsigned long long)((uintptr_t)__builtin_return_address(0) - (uintptr_t)original_gamecore)); unavailable((N)*8); }
 UNSUPPORTED(0)
 UNSUPPORTED(1)
 UNSUPPORTED(2)
@@ -159,6 +163,10 @@ static void *logging(void *self) {
 }
 static void *archive_factory(void *self) {
     (void)self;
+    if (original_archive_constructed) {
+        trace("GetAutoArchiveFactory_original_registry", 0x110);
+        return original_archive_storage;
+    }
     trace("GetAutoArchiveFactory_empty_registry", 0x110);
     return &archive_object;
 }
@@ -253,6 +261,28 @@ void *bootstrap_service_fixture_create(HMODULE gamecore) {
     engine.registration_count = 0;
     return &engine;
 }
+static void *game_sync_manager(void *self) {
+    typedef void *(*getter_fn)(void *);
+    void *manager = ((getter_fn)((uintptr_t)original_host_image + 0x1c9710))(self);
+    trace(manager ? "GetGameSyncManager_original_nonnull" : "GetGameSyncManager_original_null", 0x108);
+    return manager;
+}
+int bootstrap_service_fixture_prepare_original_host_services(HMODULE original_host) {
+    typedef void *(*constructor_fn)(void *);
+    if ((uintptr_t)original_host != 0x140000000ULL || original_archive_constructed) return 0;
+    if (!bootstrap_bind_original_imports(original_host)) return 0;
+    original_host_image = original_host;
+    /* Original FAutoArchiveFactory ctor is closed, writes the original vptr and
+     * empty-bucket state. Subsequent original methods retain their real typed
+     * registry and argument ownership. No EXE global startup is invoked. */
+    memset(original_archive_storage, 0, sizeof original_archive_storage);
+    if (((constructor_fn)((uintptr_t)original_host + 0xdba4f0))(original_archive_storage) != original_archive_storage)
+        return 0;
+    original_archive_constructed = 1;
+    slots[33] = (uintptr_t)game_sync_manager;
+    trace("original_archive_factory_constructed", 0x110);
+    return 1;
+}
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database) {
     typedef unsigned char (*initialize_fn)(void);
     typedef void *(*create_fn)(const char *, int, void *);
@@ -267,6 +297,9 @@ int bootstrap_service_fixture_prepare_empty_databases(HMODULE database) {
     if (!database_connections[0] || !database_connections[1]) return 0;
     trace("original_database_empty_keepalives_created", 0);
     return 1;
+}
+void *bootstrap_service_fixture_database_connection(int gameplay) {
+    return database_connections[gameplay ? 1 : 0];
 }
 int bootstrap_service_fixture_execute_sql(int gameplay, const char *sql, int length) {
     typedef unsigned char (*execute_fn)(void *, const char *, int);

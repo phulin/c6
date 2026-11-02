@@ -21,7 +21,8 @@
     "RegisterEventParameter": 152,
     "GetGameplayDatabaseUri": 312,
     "GetConfigurationDatabaseUri": 320,
-    "GetAutoArchiveFactory": 272
+    "GetAutoArchiveFactory": 272,
+    "GetGameSyncManager": 264
   },
   "bootstrap_order": [
     "QueryInterface(engine_guid)",
@@ -47,7 +48,14 @@
     },
     "connection_vtable_rva": "0xb8578",
     "Execute_slot": 32,
-    "ExecuteMultiple_slot": 40
+    "ExecuteMultiple_slot": 40,
+    "Query_slot": 24,
+    "ErrorMessage_slot": 280,
+    "query_result_slots": {
+      "Step": 32,
+      "indexed_int64": 288,
+      "text_pointer_not_int64": 240
+    }
   },
   "fixture": {
     "script_vm": false,
@@ -64,7 +72,7 @@
   "reproduce": "python3 tools/analysis/bootstrap_services_evidence.py",
   "private_raw_evidence": "../c6-ghidra/evidence/bootstrap/services/",
   "validation": {
-    "mingw_c11_wall_wextra_werror": "passed",
+    "mingw_c11_wall_wextra_werror": "passed after original-host provider and database getter additions",
     "static_identity_and_constant_extraction": "passed",
     "runtime": "Original Initialize true and original IsInitialized false->true observed in native bootstrap runner; lifecycle cleanup completion tracked separately"
   },
@@ -84,5 +92,26 @@
   "negative_evidence": {
     "nullable_logging": "real original DatabaseLogger ctor fault0x5e3524; fixed with bounded sink",
     "raw_utf8_bom": "actual native ExecuteMultiple rejects raw original BOM source; host BOM removal required"
+  },
+  "original_host_opt_in": {
+    "entry": "bootstrap_service_fixture_prepare_original_host_services",
+    "exe_global_startup": false,
+    "genuine_import_binding": true,
+    "archive_constructor_rva": "0xdba4f0",
+    "archive_storage_bytes": 48,
+    "archive_registration_rva": "0xdbaaf0",
+    "archive_removal_rva": "0xdbae40",
+    "game_sync_getter_rva": "0x1c9710",
+    "game_sync_actual_global_rva": "0x235a868",
+    "game_sync_manager_constructed": false,
+    "startup_service_return_address": "0x639231",
+    "observed_startup_result": {
+      "status": "failed",
+      "fault_module": "Localization_FinalRelease.dll",
+      "fault_module_sha256": "0becd5c425a3d6edc88f5315c01af3dd30dd7cb158271d56f4bba7ff2bb4e056",
+      "fault_rva": "0x14660",
+      "many_native_null_sync_getters_accepted": true,
+      "initialized_game": false
+    }
   }
 }

@@ -6,7 +6,10 @@
 void *bootstrap_service_fixture_create(HMODULE gamecore);
 /* Real DatabaseDLL connections to explicitly empty named-memory fixtures.
  * Caller must gate DatabaseDLL identity before invoking this function. */
+/* Explicit original EXE import binding + original archive ctor. EXE/provider SHA gates required. */
+int bootstrap_service_fixture_prepare_original_host_services(HMODULE original_host);
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database);
+void *bootstrap_service_fixture_database_connection(int gameplay);
 int bootstrap_service_fixture_execute_sql(int gameplay, const char *sql, int length);
 void bootstrap_service_fixture_report(FILE *output);
 #endif
