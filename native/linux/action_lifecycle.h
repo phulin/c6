@@ -6,4 +6,5 @@
 int c6_linux_action_prepare_observe(void *game_module, void *borrowed_context);
 int c6_linux_action_prepare_dispatch(void *game_module, void *borrowed_context, bool execute);
 int c6_linux_action_prepare_registered_dispatch(void *game_module, void *borrowed_context, bool execute);
+int c6_linux_action_prepare_core_component(void *game_module, void *borrowed_context, bool execute);
 #endif

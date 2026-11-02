@@ -8,7 +8,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 
-static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session) {
+static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session,bool core_component) {
     if(!module||!context)return 194;
     void **active=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController21ms_pkActiveControllerE");
     bool (*initialized)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController13IsInitializedEv");
@@ -43,22 +43,31 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
         result=c6_linux_action_execution(module,context);
         if(!result)result=c6_linux_action_observe(module,context);
         if(!result&&dispatch)result=c6_linux_action_dispatch(module,context,execute);
+        if(!result&&core_component){
+            int (*component)(void *,void *,bool)=dlsym(RTLD_DEFAULT,"c6_linux_core_component");
+            result=component?component(module,context,execute):251;
+        }
     }
     fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_enter result %d\n",result);
     uninitialize(controller);
     bound=NULL;get_context(&bound,controller);
     bool clean=!initialized(controller)&&bound==NULL&&!executing(controller);
-    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d dispatch_mode %d requested_execution %d\n",initialized(controller),bound!=NULL,executing(controller),clean,dispatch,execute);
-    trace_result=trace_end(dispatch&&execute?1:0);
+    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d dispatch_mode %d requested_execution %d core_component_mode %d\n",initialized(controller),bound!=NULL,executing(controller),clean,dispatch,execute,core_component);
+    trace_result=trace_end((dispatch||core_component)&&execute?1:0);
     return result?result:!clean?200:trace_result;
 }
 
 int c6_linux_action_prepare_observe(void *module,void *context) {
-    return prepare(module,context,false,false,false);
+    return prepare(module,context,false,false,false,false);
 }
 int c6_linux_action_prepare_dispatch(void *module,void *context,bool execute) {
-    return prepare(module,context,true,execute,false);
+    return prepare(module,context,true,execute,false,false);
 }
 int c6_linux_action_prepare_registered_dispatch(void *module,void *context,bool execute) {
-    return prepare(module,context,true,execute,true);
+    return prepare(module,context,true,execute,true,false);
+}
+/* A separate component experiment admits trusted original command bytes at
+ * the Core ingress. It never claims successful host transport/readiness. */
+int c6_linux_action_prepare_core_component(void *module,void *context,bool execute) {
+    return prepare(module,context,false,execute,false,true);
 }
