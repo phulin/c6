@@ -1,0 +1,88 @@
+{
+  "schema": "c6-bootstrap-services-v1",
+  "status": "bounded_service_contract_not_gameplay",
+  "modules": {
+    "GameCore_XP2_FinalRelease.dll": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+    "CivilizationVI.exe": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+    "DatabaseDLL_FinalRelease.dll": "e6577e873f946224df65c02f6c4bc3b385607e2a82d957b0fd613e01cbe78b0c"
+  },
+  "engine_guid_raw": "c299ce27a878d54191a2567c083e47af",
+  "context_slots": {
+    "Initialize": 40,
+    "Uninitialize_reference_label": 48,
+    "SetEngineInterface": 96,
+    "GetScriptSystemUtility": 104
+  },
+  "engine_slots": {
+    "QueryInterface": 0,
+    "Destroy": 8,
+    "GetScriptSystem": 16,
+    "GetLoggingManager": 24,
+    "RegisterEventParameter": 152,
+    "GetGameplayDatabaseUri": 312,
+    "GetConfigurationDatabaseUri": 320,
+    "GetAutoArchiveFactory": 272
+  },
+  "bootstrap_order": [
+    "QueryInterface(engine_guid)",
+    "GetScriptSystem",
+    "GetLoggingManager",
+    "RegisterEventParameter x16",
+    "Context Initialize conditional logging",
+    "GetConfigurationDatabaseUri",
+    "Database::CreateConnection(uri,0x41,original_logger)",
+    "GetGameplayDatabaseUri",
+    "Database::CreateConnection(uri,0x41,original_logger)",
+    "Scripting::Manager::Initialize",
+    "initialized byte this+0x40 =1"
+  ],
+  "database": {
+    "writable_host_flags": 70,
+    "context_flags": 65,
+    "configuration_uri_format": "file:configuration-%i?mode=memory&cache=shared",
+    "gameplay_uri_format": "file:gameplay-%i?mode=memory&cache=shared",
+    "exports": {
+      "Initialize(void)": "0x1120",
+      "CreateConnection": "0x1020"
+    },
+    "connection_vtable_rva": "0xb8578",
+    "Execute_slot": 32,
+    "ExecuteMultiple_slot": 40
+  },
+  "fixture": {
+    "script_vm": false,
+    "logging_manager": "bounded_stderr_sink",
+    "event_delivery": false,
+    "event_parameter_storage": true,
+    "optional_original_empty_database_keepalives": true,
+    "rules_data": false,
+    "unsupported_required_slot_exit_code": 86,
+    "initialized_game": false,
+    "empty_archive_cleanup": true,
+    "archive_registration": false
+  },
+  "reproduce": "python3 tools/analysis/bootstrap_services_evidence.py",
+  "private_raw_evidence": "../c6-ghidra/evidence/bootstrap/services/",
+  "validation": {
+    "mingw_c11_wall_wextra_werror": "passed",
+    "static_identity_and_constant_extraction": "passed",
+    "runtime": "Original Initialize true and original IsInitialized false->true observed in native bootstrap runner; lifecycle cleanup completion tracked separately"
+  },
+  "reference_attribution": {
+    "author": "cru121",
+    "work": "Civ6-GameCore-reference",
+    "revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+    "license": "CC BY 4.0",
+    "role": "names and initial address leads, subsequently checked against supplied module bytes"
+  },
+  "logging_slots": {
+    "RegisterLog": 64,
+    "EnableLog": 40,
+    "GetLogFile": 80,
+    "LogFile_variadic_narrow_Write": 16
+  },
+  "negative_evidence": {
+    "nullable_logging": "real original DatabaseLogger ctor fault0x5e3524; fixed with bounded sink",
+    "raw_utf8_bom": "actual native ExecuteMultiple rejects raw original BOM source; host BOM removal required"
+  }
+}
