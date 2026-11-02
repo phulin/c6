@@ -116,6 +116,12 @@ This profile uses the genuine callback with constructor-default censorship=false
 
 The measured native result is accepted=true, request kind 2, in-progress=false, progress getter 0, retained type 1, and every retained byte equal. Original Reset plus ClearLastStream returns kind 0 and a null retained stream before Core/configuration teardown. Full provider cleanup also succeeds. [Independent request evidence](../evidence/linux/save-lifecycle-request-native.json) records the raw report hash and exact configuration identity `5810a17a4b2a207299717c952a96ac3288eb4e08c3dcf297e1738b6545123602`. No CheckRequest, Begin, header interpretation or game-body loading is exercised by this request-only profile. It cannot be combined with the activation/session/Core-load flags in its current form.
 
+## Lower Core and action fixture boundaries
+
+The optional lower-Core hooks reuse the activated, original framework-owned context and real saved-session fixture. They do not change the constructor-only callback profile above. The native Core stream Load/Save and read-only actor/registry cases are described in [Linux game loading](linux-game-load.md) and [Linux actions](linux-actions.md); complete-container Request preparation remains a separate profile.
+
+The bounded SkipTurn no-action control now passes with genuine controller/cache initialization, a freshly selected legal actor, its existing one-node queue, repeated native state observations, three byte-identical full Core snapshots and complete cleanup. [Control evidence](../evidence/linux/action-dispatch-control-6.json) retains the exact source/configuration identity and the limited RNG coverage. The first actual original Request attempt returned without queueing or executing a command, so that delivery attempt is a preserved failure. Neither the passing control nor the read-only observers establish an applied action, complete affected-state coverage, Rust gameplay parity or turn support.
+
 ## Reproduction and evidence
 
 The isolated probe builds a separate preload at `target/linux/mod-activation/mod_activation_probe.so`, never the runtime owner's preload. It records source/dependency/module hashes, content/launch identities and a fresh userdata directory. It creates no independent GameCore context. For the passing Base lifecycle:
