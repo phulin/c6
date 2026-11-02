@@ -40,3 +40,19 @@ assert json.loads(r.stdout)['status']=='unsupported'
 r=subprocess.run([sys.executable,str(run.ROOT/'tools/oracle/run.py'),'--dll',str(run.ROOT/'README.md')],input=json.dumps(cases[0])+'\n',capture_output=True,text=True,check=True)
 assert json.loads(r.stdout)['status']=='unavailable' and 'SHA256 mismatch' in json.loads(r.stdout)['message']
 print(f'PASS: {len(cases)} original-DLL cases, {sum(len(c["case"]["steps"]) for c in cases)} method calls; overflow, bounds, logging flag, unsupported action and wrong-DLL gate')
+# Independently constructed original objects must not share seed/counters/locks.
+streams={'protocol_version':1,'expected_engine':identity,'case':{'id':'interleaved-native-streams','initial_state':{'rng':{'seed':1},'rng_streams':{'1':{'seed':2},'4294967295':{'seed':3}}},'steps':[{'op':'rng_get','bound':100,'stream_id':1},{'op':'rng_reset','seed':42,'stream_id':4294967295},{'op':'rng_lock','stream_id':0},{'op':'rng_get','bound':65535,'stream_id':4294967295},{'op':'rng_get','bound':100,'stream_id':0}]}}
+r=subprocess.run([sys.executable,str(run.ROOT/'tools/oracle/run.py')],input=json.dumps(streams)+'\n',capture_output=True,text=True,check=True)
+observed=json.loads(r.stdout)
+assert observed['status']=='ok',observed
+first=observed['steps'][0]['snapshot']
+assert first['rng']['seed']==1 and first['rng']['calls']==0
+assert first['rng_streams']['1']['calls']==1 and first['rng_streams']['4294967295']['seed']==3
+last=observed['steps'][-1]['snapshot']
+assert last['rng']['calls']==1 and last['rng']['lock_count']==1
+assert last['rng_streams']['1']['seed']==first['rng_streams']['1']['seed']
+assert last['rng_streams']['4294967295']['calls']==1 and last['rng_streams']['4294967295']['resets']==2
+streams['case']['steps'].append({'op':'rng_get','bound':1,'stream_id':99})
+r=subprocess.run([sys.executable,str(run.ROOT/'tools/oracle/run.py')],input=json.dumps(streams)+'\n',capture_output=True,text=True,check=True)
+assert json.loads(r.stdout)['status']=='error' and json.loads(r.stdout)['steps']==[]
+print('PASS: interleaved three-instance original-DLL isolation and unknown stream preflight')

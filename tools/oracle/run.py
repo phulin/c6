@@ -90,19 +90,29 @@ def main():
             elif any(step.get('op') not in COVERAGE for step in case['steps']):
                 response.update(status='unsupported', message='Only isolated RNG operations are supported; game actions/end-turn require a real initialized game context')
             else:
-                r = Random()
-                host.c6_construct(C.byref(r))
-                state = case['initial_state'].get('rng', {})
-                for key in FIELDS:
-                    if key in state:
-                        if key == 'synchronous':
-                            if not isinstance(state[key], bool): raise ValueError('synchronous must be boolean')
-                            setattr(r,key,state[key])
-                        else:
-                            setattr(r,key,unsigned(state[key]))
+                initial = case['initial_state']
+                extra = initial.get('rng_streams', {})
+                states = {0: initial.get('rng', {})}
+                for key, state in extra.items():
+                    stream_id = unsigned(int(key))
+                    if stream_id == 0 or str(stream_id) != key:
+                        raise ValueError('rng_streams keys must be canonical nonzero u32 IDs')
+                    states[stream_id] = state
+                objects = {}
+                for stream_id, state in states.items():
+                    r = Random()
+                    host.c6_construct(C.byref(r))
+                    for key in FIELDS:
+                        if key in state:
+                            setattr(r,key,boolean(state[key]) if key == 'synchronous' else unsigned(state[key]))
+                    objects[stream_id] = r
+                for step in case['steps']:
+                    if step['op'].startswith('rng_') and unsigned(step.get('stream_id',0)) not in objects:
+                        raise ValueError('unknown RNG stream ID')
                 for i, step in enumerate(case['steps']):
                     trace = []
                     op = step['op']
+                    r = objects[unsigned(step.get('stream_id',0))] if op.startswith('rng_') else objects[0]
                     if op == 'plot_distance':
                         value = host.c6_plot_distance(signed(step['width']), boolean(step['wrap']),
                             *[signed(step[k]) for k in ('x1','y1','x2','y2')])
@@ -121,7 +131,10 @@ def main():
                         getattr(host,'c6_'+op[4:])(C.byref(r),unsigned(step['seed']))
                     else:
                         getattr(host,'c6_'+op[4:])(C.byref(r))
-                    response['steps'].append({'step_index':i,'snapshot':snapshot(r),'rng_trace':trace})
+                    observed = snapshot(objects[0])
+                    if 'rng_streams' in initial:
+                        observed['rng_streams'] = {str(k): snapshot(v)['rng'] for k,v in objects.items() if k != 0}
+                    response['steps'].append({'step_index':i,'snapshot':observed,'rng_trace':trace})
                 response['status'] = 'ok'
         except (ValueError, KeyError, TypeError) as e:
             response.update(status='error', message=str(e), steps=[])
