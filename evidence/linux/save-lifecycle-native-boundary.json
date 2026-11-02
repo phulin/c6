@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "source_report": "evidence/linux/runtime-filesystem-rules-lifecycle.json",
+  "source_report_sha256": "34c6974ecb3d3eafd8a0270868e8a9d4bb13ef5567e858000b0479b2b6b2ea5f",
+  "configuration_sha256": "eb263077fab2a07218c2467f968e1225689a9c465745ec55a221e3076ff42e9a",
+  "native_fixture": "Original Manager::Unserialize(0,nullptr) without a retained stream",
+  "native_result": 5,
+  "native_result_name": "FAILED_TO_READ",
+  "request_result_unchanged": true,
+  "retained_stream_null": true,
+  "original_cache_local_player": -1,
+  "diagnostic_passed": true,
+  "exit_code": 0,
+  "initialized_game": false,
+  "complete_save_load_executed": false,
+  "action_or_turn_parity": false,
+  "limits": [
+    "Negative serializer boundary; no pending-settings application or player selection",
+    "Requires original hash/configuration-gated host-services and genuine filesystem fixture",
+    "Complete staged loader and full save roundtrip remain unexecuted"
+  ]
+}
