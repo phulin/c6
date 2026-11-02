@@ -1,0 +1,69 @@
+{
+  "schema": "c6-linux-save-normalization-summary-v1",
+  "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "canonical_output_bytes": 80657462,
+  "raw_roundtrip_different_bytes": 89198,
+  "trade": {
+    "different_bytes": 89156,
+    "origins": 179,
+    "edges": 1571,
+    "all_decoded_keyed_values_equal": true,
+    "serialized_order_equal": false,
+    "changed_origin_wire_positions": 54,
+    "origins_with_changed_destination_order": 18,
+    "changed_edge_id_wire_positions": 372,
+    "future_ordered_gameplay_equivalence_proven": false
+  },
+  "gameeffects": {
+    "different_bytes": 42,
+    "team_instance_ids": 14,
+    "context_subject_references": 28,
+    "requirement_records_fully_decoded": 28304,
+    "affected_requirement": "DEFAULT_VICTORY_REQUIREMENT",
+    "requirement_state": 1,
+    "observed_id_delta": 24,
+    "all_changed_reference_values_follow_observed_map_within_decoded_requirement_section": true,
+    "native_core_read_includes_victory_requirement_reconstruction": true,
+    "exact_runtime_allocation_sequence_observed": false,
+    "global_reference_census_complete": false
+  },
+  "rng": {
+    "complete_observed_serialized_record_equal": true,
+    "observed_serialized_instances": 1,
+    "owner": "GameCore::Game::Instance::m_kSyncRandom",
+    "record_bytes": 18,
+    "complete_live_rng_coverage_proven": false
+  },
+  "native_forwarding_trace_preserves_known_save_bytes_and_cleanup": true,
+  "planning_only_exclusions_applied_to_changed_bytes": [],
+  "identity_or_order_canonicalization_applied": false,
+  "complete_state_semantics_proven": false,
+  "full_gameplay_parity": false,
+  "evidence": {
+    "trade": {
+      "path": "evidence/linux/save-normalization-trade-values-1.json",
+      "sha256": "ec1835524c183ad7c48f68426e0461d0b7a02868eebff24dbfd3b6cbaf9dd8b2"
+    },
+    "gameeffects": {
+      "path": "evidence/linux/save-normalization-gameeffects.json",
+      "sha256": "fbca2af7056d56e69330518617bc7e8e26af5446aa8fb5458dd5edd00b0754b6"
+    },
+    "rng": {
+      "path": "evidence/linux/save-normalization-serialized-rng.json",
+      "sha256": "99be43b825f5582f244ddb4839fe5f64b3d899c42e50e5b359c1f732859f92a0"
+    },
+    "owner_map": {
+      "path": "evidence/linux/save-normalization-owner-map-benchmark-2.json",
+      "sha256": "6d1bca8cbb4acbfe586db120d9deb4e50648ba54eee7a69db01f87d038de6254"
+    },
+    "native_benchmark": {
+      "path": "evidence/linux/save-normalization-native-benchmark-2.json",
+      "sha256": "a6f9e5b448898f65932c866014eb7efeb068f65433bd17f0f9c8ee9602855b9c"
+    },
+    "native_captured": {
+      "path": "evidence/linux/save-normalization-native-captured-2.json",
+      "sha256": "d4921e21434bed036fa0a2655dddbe56ae8df44d288928e243e56280520a84f6"
+    }
+  },
+  "next_check": "Observe original Load-stage object allocation/reuse/destruction order to reproduce the +24 ID sequence when required; independently validate ordered Trade callback effects. Native same-input fresh-process serialized baselines remain usable for scoped action differentials; non-byte-idempotent native Load is target behavior to reproduce, not a blanket action-test blocker."
+}

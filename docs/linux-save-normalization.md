@@ -119,3 +119,38 @@ matches between both canonical outputs: seed 872,261,551, call count 922,992,
 reset count 0 and synchronous true. Native Write omits live `m_uiLockCount`.
 This establishes equality of that complete observed serialized RNG record, not
 coverage or equality of every live RNG object, lock state or asynchronous stream.
+
+The [typed GameEffects audit](../evidence/linux/save-normalization-gameeffects.json)
+now accounts for all remaining 42 bytes. Fourteen serialized object-pool IDs for
+Objects::Team change from 87,481–87,494 to 87,505–87,518. Their stable Team keys are
+0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15 and 16. Twenty-eight corresponding
+`contextId`/`subjectId` fields in fourteen `DEFAULT_VICTORY_REQUIREMENT` records
+follow exactly that observed mapping; requirement state remains numeric 1. The
+reader consumes all 28,304 RequirementSystem records and the fourteen Team suffix
+records. It does not claim a global reference census across other object variants,
+ModifierSystem payloads or live state.
+
+Original Instance Read assigns each serialized object's ID before loading it,
+retains temporary strong references, loads requirements/modifiers, releases those
+temporary roots and trims weak object-pool entries. Original Game Read then loads
+VictoryManager, whose read clears its old victory requirements, and later invokes
+its own InitializeGlobalDefeats/InitializePlayer reconstruction. Team MakeObject
+and requirement creation participate in that native lifecycle. These are original
+Core Load operations, rather than an assumption that the omitted external host
+finalizer would remove the difference. The exact allocation, reuse and destruction
+sequence producing the observed +24 still needs a dedicated runtime trace. Final
+object-pool allocator counters are not separately preserved by these save bytes.
+
+[The complete bounded summary](../evidence/linux/save-normalization-summary.json)
+therefore classifies all 89,198 changed bytes without masking them: Trade wire
+ordering and GameEffects object/reference identities. Every exact ID, reference
+and order remains recorded. A bijection or equal keyed graph payloads does not
+prove future behavior, allocation order, tie breaks or global state equivalence.
+No changed field was excluded as AI planning state.
+
+The non-idempotent native Load behavior is a target to reproduce, not a defect to
+patch. Same-source fresh-process native initialization already yields repeatable
+serialized baselines for forthcoming scoped action comparisons. Exact original
+save import must reproduce original reconstruction behavior; exact simulator
+state cloning must independently retain its complete imported state. Neither
+operation is established by a byte-equality expectation on native Save→Load.
