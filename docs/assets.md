@@ -68,8 +68,8 @@ then separately gameplay `01_GameplaySchema.sql`, `02_AddTriggers.sql`, and XP2
 420 gameplay tables with 530 rows authored by the SQL itself, including schema
 navigation metadata. It omits the eight tables described in the base XML schema
 files and **all XML/SQL content loading beyond those seven scripts**. It does
-not supply initialized rules or a playable game. Filename order for configuration
-is a diagnostic choice pending verification against the original host.
+not supply initialized rules or a playable game. Configuration filename ordering has now been recovered statically from the
+original host; complete native XML import comparison remains outstanding.
 
 `02_AddTriggers.sql` creates `Types`/`Kinds` insert triggers calling `Make_Hash`.
 The diagnostic does not substitute an implementation. Later content inserts need
@@ -112,3 +112,65 @@ snapshots. Capture a genuinely initialized `DebugGameplay.sqlite`, matching
 configuration cache, enabled DLC/mod list and complete options from the original
 host, or reproduce and compare its import pipeline, before claiming a rules
 fixture suitable for full-state parity.
+
+
+## Complete base input recipe and original importer
+
+`tools/assets/content_recipe.py` emits the complete base database source sequence
+recovered from the supplied original executable. Reproduce the checked-in
+`evidence/assets/base-content-recipe.json` with:
+
+```sh
+python3 tools/assets/content_recipe.py ../c6-assets \
+  --output /tmp/c6-base-content-recipe.json
+```
+
+The sequence pins 111 inputs: four configuration SQL schema files, 20
+configuration XML data files, five gameplay schema files (two SQL and three XML),
+and 82 gameplay XML data files. It explicitly selects no DLC/mod IDs and labels
+its ruleset `RULESET_STANDARD`; it does not represent the XP2 benchmark's settings.
+The order is suitable for the next original-importer probe. It has not itself
+been executed by this recipe generator and does not initialize a game.
+
+The original configuration builder at EXE RVA `0xbc330` enumerates the schema
+directory recursively, then `*.xml` in the complete data tree recursively. The
+gameplay builder at `0xbf120` enumerates its schema directory without recursion,
+then `*.xml` in the data tree recursively. Both sort schema/content vectors and
+remove schema files from the content vector before loading schema, then content.
+The filename callback `0xc09d0` replaces backslashes with slashes using
+`0x7e91f0`. The comparator at `0x983b40` compares unsigned UTF-16 code units;
+it preserves case. Recursive directory enumeration skips hidden/system entries.
+The supplied source paths contain no such entries. Native enumeration and full
+XML import still require a reproducible comparison before claiming database parity.
+
+The shared dispatcher at `0xbd1f0` selects `.xml` (`0xbd320`) or `.sql`
+(`0xbd2c0`). SQL reaches the original database connection's vtable slot `+0x28`
+with length `-1`. The file buffer reader at `0xbd450` recognizes UTF-8 BOM bytes
+`ef bb bf` and advances its content pointer by three bytes (`0xbd53f`–`0xbd568`).
+This explains why directly executing raw `02_AddTriggers.sql` bytes differs from
+the original file-import path: the native caller must apply the evidenced BOM
+skip after verifying the raw input hash.
+
+The original XML parser lives in the executable rather than a DatabaseDLL
+export. Its outer importer constructor `0xbd160` stores the database pointer at
+`+0`, calls `0x799910` on `this+8`, and calls `0x799d80` on `this+0x50` with the
+database and a true flag. The XML wrapper calls `0x79d3a0` with parser pointer,
+ANSI source filename, BOM-adjusted UTF-8 text, length `-1`, and callback object
+`this+8` as the fifth argument. A zero return becomes success. Calling these
+routines requires their actual allocator, imports, callback objects and globals;
+mapping the executable for its empty-string getter does not initialize them.
+
+Reproduce bounded private disassembly with:
+
+```sh
+python3 tools/assets/loader_evidence.py \
+  ../c6-assets/Base/Binaries/Win64Steam/CivilizationVI.exe \
+  --output-dir ../c6-ghidra/evidence/assets/original-loader
+```
+
+The evidence tool gates the executable hash and refuses raw disassembly output
+inside this public checkout. The private directory includes a range/hash manifest.
+The base recipe does not execute a replacement XML importer. Applying XP2 or any
+other DLC still requires an explicit selected-content identity, original criteria
+and load-order behavior, matching registered SQL functions, and a native database
+comparison.
