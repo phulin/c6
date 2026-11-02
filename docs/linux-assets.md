@@ -1,6 +1,6 @@
 # Linux asset identity and DWARF inventory
 
-The supplied Linux distribution is the preferred source for native type and function research: all three GameCore libraries contain DWARF and full symbol tables. This establishes a much stronger research starting point; it does not establish an initialized game, action/turn parity, or equivalence with the Windows target.
+The supplied Linux distribution is a reference source for names, type layouts and native research: all three GameCore libraries contain DWARF and full symbol tables. Its gameplay layout is older than the supplied Windows XP2 acceptance target. Use Linux evidence to guide investigation, then verify each behavior and affected layout against that Windows DLL. Linux execution does not establish current Windows behavior, an initialized game, or action/turn parity.
 
 `evidence/linux/identity-assets.json` records SHA-256 identities, ELF dependencies, debug section sizes, dynamic symbol counts, interpreter and initialization tags for the supplied top-level ELFs. The supplied Aspyr JSON reports **1.0.12.9, changelist 363760**; the Steam app manifest reports **build 15296837**. These are distribution metadata, not proof of an internal gameplay version. The manifest hash is recorded without copying its Steam account identifier.
 
