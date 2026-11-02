@@ -20,11 +20,25 @@ static void (*utility_destruct)(void *);
 static bool database_started;
 static bool archive_factory_created;
 static bool lua_system_created;
+static bool network_started;
+static bool host_events_registered;
 
 static void *symbol(const char *name) {
     void *address=dlsym(RTLD_DEFAULT,name);
     if(!address) fprintf(stderr,"C6_LINUX_HOST missing_symbol %s\n",name);
     return address;
+}
+
+int c6_linux_register_host_events(void) {
+    if(!application||!application_global||*application_global!=application)return 1;
+    if(host_events_registered)return 0;
+    bool (*register_events)(void *)=symbol("_ZN7Civ6App14RegisterEventsEv");
+    if(!register_events)return 1;
+    fprintf(stderr,"C6_LINUX_HOST register_events_enter\n");
+    bool result=register_events(application);
+    fprintf(stderr,"C6_LINUX_HOST register_events_return %d\n",result);
+    if(result)host_events_registered=true;
+    return result?0:1;
 }
 
 /* Actual AppLuaScriptSystem::Create performs allocation, Havok VM setup and
@@ -158,18 +172,29 @@ void *c6_linux_create_host_engine_utility(void) {
     bool game_ok=game_initialize(game_database,L"c6-no-gameplay-cache.sqlite",game_source);
     fprintf(stderr,"C6_LINUX_HOST gameplay_database_return %d\n",game_ok);
     if(!game_ok) return NULL;
-    void *(*archive_get)(void)=symbol("_ZN19FAutoArchiveFactory11GetInstanceEv");
-    void *(*archive_create)(void)=symbol("_ZN19FAutoArchiveFactory14CreateInstanceEv");
-    if(!archive_get||!archive_create||archive_get()) return NULL;
-    fprintf(stderr,"C6_LINUX_HOST archive_factory_create_enter\n");
-    if(!archive_create()) return NULL;
-    archive_factory_created=true;
-    fprintf(stderr,"C6_LINUX_HOST archive_factory_create_return nonnull\n");
+    if(getenv("C6_HOST_NETWORK")) {
+        int (*initialize_network)(void *)=symbol("c6_linux_network_initialize");
+        if(!initialize_network||initialize_network(application))return NULL;
+        network_started=true;
+    } else {
+        void *(*archive_get)(void)=symbol("_ZN19FAutoArchiveFactory11GetInstanceEv");
+        void *(*archive_create)(void)=symbol("_ZN19FAutoArchiveFactory14CreateInstanceEv");
+        if(!archive_get||!archive_create||archive_get()) return NULL;
+        fprintf(stderr,"C6_LINUX_HOST archive_factory_create_enter\n");
+        if(!archive_create()) return NULL;
+        archive_factory_created=true;
+        fprintf(stderr,"C6_LINUX_HOST archive_factory_create_return nonnull\n");
+    }
     if(getenv("C6_HOST_LUA")&&create_lua_system_and_probe()) return NULL;
     return utility;
 }
 
 int c6_linux_destroy_host_services(void) {
+    if(network_started) {
+        int (*shutdown_network)(void)=symbol("c6_linux_network_shutdown");
+        if(!shutdown_network||shutdown_network())return 1;
+        network_started=false;
+    }
     if(archive_factory_created) {
         void (*archive_free)(void)=symbol("_ZN19FAutoArchiveFactory12FreeInstanceEv");
         if(!archive_free) return 1;
@@ -197,6 +222,7 @@ int c6_linux_destroy_host_services(void) {
         app_destruct(application);
         delete_object(application);
         application=NULL;
+        host_events_registered=false;
         if(database_started) {
             void (*shutdown)(void)=symbol("_ZN8Database8ShutdownEv");
             if(!shutdown) return 1;
