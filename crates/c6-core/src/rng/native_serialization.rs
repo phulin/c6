@@ -138,6 +138,48 @@ mod tests {
         assert_eq!(state, before);
     }
     #[test]
+    fn all_raw_bytes_preserve_records_and_enforce_logical_representability() {
+        for byte in 0..=u8::MAX {
+            let record = SerializedRandomRecord {
+                seed: 37,
+                calls: 8,
+                resets: 19,
+                synchronous_byte: byte,
+            };
+            assert_eq!(
+                SerializedRandomRecord::decode_prefix(&record.encode()),
+                Ok((record, LENGTH))
+            );
+            let mut state = RandomState {
+                seed: 91,
+                calls: 32,
+                resets: 11,
+                lock_count: 0xdeadbeef,
+                synchronous: true,
+            };
+            let before = state;
+            if byte <= 1 {
+                assert_eq!(record.apply_to(&mut state), Ok(()));
+                assert_eq!(
+                    state,
+                    RandomState {
+                        seed: 37,
+                        calls: 8,
+                        resets: 19,
+                        lock_count: before.lock_count,
+                        synchronous: byte == 1
+                    }
+                );
+            } else {
+                assert_eq!(
+                    record.apply_to(&mut state),
+                    Err(Error::UnrepresentableSynchronous { byte })
+                );
+                assert_eq!(state, before);
+            }
+        }
+    }
+    #[test]
     fn ignored_version_lock_preservation_and_exact_consumption() {
         let record = SerializedRandomRecord {
             seed: 37,
