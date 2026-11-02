@@ -32,6 +32,9 @@ METHODS = [
     (0x2D28A00, 0xB0, 'UnitOperation.Execute'),
     (0x2913510, 0xB2, 'Diplomacy.ProcessPending'),
     (0x2911900, 0xA6, 'Diplomacy.ProcessPendingSessionStatement'),
+    (0x29119B0, 0x3A1, 'Diplomacy.ProcessStatement'),
+    (0x2917970, 0x41, 'Diplomacy.Session.Process'),
+    (0x291B9D0, 0x24C, 'Diplomacy.ProposeAction.Process'),
     (0x2B5BD70, 0x9B, 'Player.UpdateEndTurnBlockingState'),
     (0x2B5BE10, 0x52, 'Player.SetEndTurnBlockingState'),
     (0x2D2F360, 0x67, 'Notifications.Update'),
@@ -75,6 +78,10 @@ CALLS = [
     (0x2913590, 0x1F04C20, 'pending_session_statement_loop'),
     (0x291197C, 0x1F48180, 'remove_pending_statement'),
     (0x291199D, 0x1F3CCF0, 'process_removed_statement'),
+    (0x291798B, 0x1F8CAD0, 'session_append_statement_history'),
+    (0x2917998, 0x1EBDB70, 'session_remove_matching_pending_statement'),
+    (0x291BA3A, 0x1EF0400, 'propose_action_calls_diplomatic_response_policy'),
+    (0x291BA51, 0x1E4C710, 'policy_result_sends_gameplay_action'),
 ]
 
 
@@ -131,7 +138,7 @@ def main():
         ],
         rng='No direct RNG call in audited SkipTurn leaf; callbacks/diplomacy not proven RNG-neutral.',
         unresolved=['Native action and deterministic branch restore', 'All reporting/cache subscribers and policy reachability',
-                    'Diplomacy ProcessStatement response decisions and RNG', 'Notification subtype callbacks and complete mutations',
+                    'Complete diplomacy response subtype contracts and RNG; ProposeAction response policy is proven reachable', 'Notification subtype callbacks and complete mutations',
                     'Formation path-cache representation and archive/cache notification ownership'],
         private_evidence='../c6-ghidra/evidence/linux-skip-turn/',
         scope='Bounded static contracts, not full Civ VI state/action/turn parity.')

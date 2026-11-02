@@ -129,6 +129,24 @@
       "sha256": "6fd2f96ae52b08c464dc928bc908bb511d6f8f15294a467a46e609c010316b7e"
     },
     {
+      "address": "0x29119b0",
+      "size": 929,
+      "name": "Diplomacy.ProcessStatement",
+      "sha256": "9a6016bc4772d4ec00bfe6cb2d6cbbe19bcb28765e39b0d1e8a125dabea30015"
+    },
+    {
+      "address": "0x2917970",
+      "size": 65,
+      "name": "Diplomacy.Session.Process",
+      "sha256": "e842ffc4975bb87171168e8d09179025021c1220e9f8300c6eb2eaf12b741445"
+    },
+    {
+      "address": "0x291b9d0",
+      "size": 588,
+      "name": "Diplomacy.ProposeAction.Process",
+      "sha256": "60874ea47dfd4401117f33a454d6750534ed08b993a98cdd4176a52f577b1399"
+    },
+    {
       "address": "0x2b5bd70",
       "size": 155,
       "name": "Player.UpdateEndTurnBlockingState",
@@ -246,6 +264,26 @@
       "address": "0x291199d",
       "target": "0x1f3ccf0",
       "contract": "process_removed_statement"
+    },
+    {
+      "address": "0x291798b",
+      "target": "0x1f8cad0",
+      "contract": "session_append_statement_history"
+    },
+    {
+      "address": "0x2917998",
+      "target": "0x1ebdb70",
+      "contract": "session_remove_matching_pending_statement"
+    },
+    {
+      "address": "0x291ba3a",
+      "target": "0x1ef0400",
+      "contract": "propose_action_calls_diplomatic_response_policy"
+    },
+    {
+      "address": "0x291ba51",
+      "target": "0x1e4c710",
+      "contract": "policy_result_sends_gameplay_action"
     }
   ],
   "virtual_slots": [
@@ -463,7 +501,7 @@
   "unresolved": [
     "Native action and deterministic branch restore",
     "All reporting/cache subscribers and policy reachability",
-    "Diplomacy ProcessStatement response decisions and RNG",
+    "Complete diplomacy response subtype contracts and RNG; ProposeAction response policy is proven reachable",
     "Notification subtype callbacks and complete mutations",
     "Formation path-cache representation and archive/cache notification ownership"
   ],
