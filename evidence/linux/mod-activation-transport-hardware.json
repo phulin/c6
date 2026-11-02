@@ -17,6 +17,7 @@
     "libGameCore_Base.so": "8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6",
     "libGameCore_XP1.so": "431f6e33f0fb5ac081016d14868cff60b3c3c2417acee82e75e23f24c466c80b"
   },
+  "reporter_sha256": "bc55341274ebe33d2abf7d2d329da2dfb6534d87e4a9de7c6809c46214936f52",
   "private_evidence": {
     "directory": "evidence/linux-action-execution/transport-hardware-2",
     "replay_metadata_sha256": "80a703a5600debfbce9a5e3b67d6c048d8a5bbecb98c0d92e640e2c3f3611ab3",
