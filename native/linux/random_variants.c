@@ -24,7 +24,7 @@ static int run(int argc,char **argv,char **envp) {
  unsigned (*pg)(void*)=symbol(RTLD_DEFAULT,"_ZN4Math11RandomPCG324RandEv");
  C6ScopedRandom s[4];C6RandomPCG32 p[4];
  for(unsigned i=0;i<4;i++){sc(&s[i],0);pc(&p[i]);}
- uint64_t op,index,arg,state,inc,retain;
+ uint64_t op,index,arg,state,inc,retain,ordinal=0;
  while(scanf("%"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64,&op,&index,&arg,&state,&inc,&retain)==6){
   if(op>6||index>3||arg>UINT32_MAX||retain>1||(op<=2&&state>UINT32_MAX))return 82;
   if(!retain){s[index].seed=state;p[index].state=state;p[index].increment=inc;}
@@ -38,8 +38,9 @@ static int run(int argc,char **argv,char **envp) {
    if((j!=index||op>2)&&memcmp(&s[j],&before_s[j],sizeof s[j]))return 83;
    if((j!=index||op<=2)&&memcmp(&p[j],&before_p[j],sizeof p[j]))return 84;
   }
-  if(op<=2){if(ss(&s[index])!=s[index].seed)return 85;printf("%u %u 0\n",result,s[index].seed);}
-  else printf("%u %"PRIu64" %"PRIu64"\n",result,p[index].state,p[index].increment);
+  if(op<=2){if(ss(&s[index])!=s[index].seed)return 85;printf("C6_RNG_VARIANT %"PRIu64" %u %u 0\n",ordinal,result,s[index].seed);}
+  else printf("C6_RNG_VARIANT %"PRIu64" %u %"PRIu64" %"PRIu64"\n",ordinal,result,p[index].state,p[index].increment);
+  ordinal++;
  }
  return dlclose(g)?86:0;
 }

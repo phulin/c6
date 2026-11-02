@@ -66,6 +66,8 @@ def main():
                     str(ROOT/SOURCES[0]), '-ldl', '-o', str(probe)], check=True)
     subprocess.run(['cargo', 'build', '-p', 'c6-core', '--example', 'random_variants'], cwd=ROOT, check=True)
     candidate = ROOT/'target/debug/examples/random_variants'
+    subprocess.run(['cargo', 'build', '--release', '-p', 'c6-core', '--example', 'random_variants'], cwd=ROOT, check=True)
+    release_candidate = ROOT/'target/release/examples/random_variants'
     env = {k:v for k,v in os.environ.items() if not k.startswith(('LD_', 'C6_'))}
     env['LD_LIBRARY_PATH'] = f'{args.sysroot.resolve()}/usr/lib/x86_64-linux-gnu:{assets}'
     listing = subprocess.check_output(['ldd', str(assets/'Civ6')], env=env, text=True)
@@ -81,6 +83,7 @@ def main():
                   runtime_dependencies=dependencies, contract=contract,
                   source_sha256={name:digest(ROOT/name) for name in SOURCES},
                   native_adapter_sha256=digest(probe), candidate_sha256=digest(candidate),
+                  release_candidate_sha256=digest(release_candidate),
                   compiler=subprocess.check_output(['cc','--version'], text=True).splitlines()[0],
                   initialized_game=False, rules_database=None, enabled_dlc_mods=None,
                   fields='Original constructors then synthetic raw-state boundaries; retained interleaved objects',
@@ -91,6 +94,9 @@ def main():
     rows = fixtures()
     corpus = ''.join(' '.join(map(str,row))+'\n' for row in rows)
     expected = subprocess.check_output([str(candidate)], input=corpus, text=True).splitlines()
+    release_expected = subprocess.check_output([str(release_candidate)], input=corpus, text=True).splitlines()
+    if release_expected != expected:
+        raise ValueError('debug and release Rust observations differ')
     if len(expected) != len(rows):
         raise ValueError('Rust candidate fixture count differs')
     env.update(LD_PRELOAD=str(probe), C6_RANDOM_GAMECORE=str(assets/'libGameCore_XP2.so'))
@@ -98,13 +104,29 @@ def main():
     native = subprocess.run([str(assets/'Civ6')], input=corpus, text=True, capture_output=True,
                             cwd=work, env=env, timeout=45)
     elapsed = time.monotonic()-started
-    actual = native.stdout.splitlines()
+    # Original host startup may print messages before application main. Preserve
+    # those bytes, and accept only exact machine observation records.
+    stdout_path = args.output.with_suffix('.stdout.txt')
+    stderr_path = args.output.with_suffix('.stderr.txt')
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    stdout_path.write_text(native.stdout)
+    stderr_path.write_text(native.stderr)
+    actual = [line for line in native.stdout.splitlines() if line.startswith('C6_RNG_VARIANT')]
+    startup_output = [line for line in native.stdout.splitlines() if not line.startswith('C6_RNG_VARIANT')]
+    if startup_output != ['Shutdown handler: initalize.']:
+        raise ValueError('unclassified original host startup output')
+    for ordinal, (actual_row, expected_row) in enumerate(zip(actual, expected)):
+        for row in [actual_row, expected_row]:
+            if not re.fullmatch(r'C6_RNG_VARIANT [0-9]+ [0-9]+ [0-9]+ [0-9]+', row) or int(row.split()[1]) != ordinal:
+                raise ValueError('malformed, duplicate or out-of-order observation')
     if native.returncode or len(actual) != len(rows):
         raise ValueError(f'native oracle unavailable: exit={native.returncode} rows={len(actual)}/{len(rows)} stderr={native.stderr[-1000:]}')
     mismatches = [dict(index=i,input=rows[i],native=a,rust=e)
                   for i,(a,e) in enumerate(zip(actual,expected)) if a != e]
     result = dict(configuration=config, configuration_sha256=identity, fixture_count=len(rows),
                   retained_interleaved_steps=1032, native_exit_code=native.returncode,
+                  candidate_builds=['debug', 'release'], candidate_build_outputs_identical=True,
+                  startup_stdout_lines=startup_output,
                   native_process_seconds=elapsed, mismatches=mismatches,
                   input_sha256=hashlib.sha256(corpus.encode()).hexdigest(),
                   native_stdout_sha256=hashlib.sha256(native.stdout.encode()).hexdigest(),

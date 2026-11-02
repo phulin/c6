@@ -5,7 +5,7 @@ use std::io::{self, BufRead};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut scoped = [ScopedRandom::new(0); 4];
     let mut pcg = [RandomPcg32::default(); 4];
-    for line in io::stdin().lock().lines() {
+    for (ordinal, line) in io::stdin().lock().lines().enumerate() {
         let values = line?
             .split_whitespace()
             .map(str::parse::<u64>)
@@ -34,9 +34,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             _ => return Err("unknown operation".into()),
         }
         if op <= 2 {
-            println!("{result} {} 0", scoped[index].seed());
+            println!(
+                "C6_RNG_VARIANT {ordinal} {result} {} 0",
+                scoped[index].seed()
+            );
         } else {
-            println!("{result} {} {}", pcg[index].state, pcg[index].increment);
+            println!(
+                "C6_RNG_VARIANT {ordinal} {result} {} {}",
+                pcg[index].state, pcg[index].increment
+            );
         }
     }
     Ok(())
