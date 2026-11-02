@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "method": "SHA-gated original Linux host static request audit",
+  "checks_passed": true,
+  "direct_calls": [
+    {
+      "call": "0x32481a9",
+      "target": "0x3248250",
+      "contract": "Request_device4_FillLastStream"
+    },
+    {
+      "call": "0x32481b8",
+      "target": "0x2fbff10",
+      "contract": "Request_query_actual_current_state"
+    },
+    {
+      "call": "0x32481cf",
+      "target": "0x3248540",
+      "contract": "Request_automatic_CheckRequest_unless_gameview_active"
+    },
+    {
+      "call": "0x3248265",
+      "target": "0x324ab90",
+      "contract": "FillLastStream_clear_previous_owner"
+    },
+    {
+      "call": "0x32482a3",
+      "target": "0x32520f0",
+      "contract": "FillLastStream_original_GameCoreMemoryIStream_constructor"
+    },
+    {
+      "call": "0x32482d3",
+      "target": "0x3c3d638",
+      "contract": "FillLastStream_allocate_complete_destination_buffer"
+    },
+    {
+      "call": "0x32482fc",
+      "target": "0x2f66ca0",
+      "contract": "FillLastStream_construct_whole_size_read_request"
+    },
+    {
+      "call": "0x324866c",
+      "target": "0x3248af0",
+      "contract": "CheckRequest_DoLoadRequest"
+    },
+    {
+      "call": "0x3248d29",
+      "target": "0x31d1400",
+      "contract": "DoLoadRequest_without_gameview_ControllerUninitialize"
+    },
+    {
+      "call": "0x3248d2e",
+      "target": "0x31dd810",
+      "contract": "DoLoadRequest_without_gameview_ShutdownGame"
+    },
+    {
+      "call": "0x3248d6f",
+      "target": "0x3252080",
+      "contract": "DoLoadRequest_publish_original_load_event"
+    },
+    {
+      "call": "0x324aad0",
+      "target": "0x324a4b0",
+      "contract": "LoadCurrentRequest_OpenFromSource"
+    },
+    {
+      "call": "0x324ab5d",
+      "target": "0x3247990",
+      "contract": "DoLoadGameRequestCallback_Reset"
+    },
+    {
+      "call": "0x2fd16a5",
+      "target": "0x32490a0",
+      "contract": "Begin_query_request_in_progress"
+    },
+    {
+      "call": "0x2fd16d9",
+      "target": "0x2fd1730",
+      "contract": "Begin_subscribe_to_original_events"
+    },
+    {
+      "call": "0x2fd16e1",
+      "target": "0x2fd0fe0",
+      "contract": "Begin_LoadUI"
+    },
+    {
+      "call": "0x2fd16f7",
+      "target": "0x42b9600",
+      "contract": "Begin_SetTickInterval"
+    },
+    {
+      "call": "0x2fd1703",
+      "target": "0x2fdce10",
+      "contract": "Begin_AmbientAudio"
+    },
+    {
+      "call": "0x36b12b3",
+      "target": "0x36b20a0",
+      "contract": "NativeLuaRegister_SINGLE_PLAYER"
+    },
+    {
+      "call": "0x3aaac03",
+      "target": "0x3acf4d0",
+      "contract": "NativeUIManager_constructor_creates_TutorialManager"
+    },
+    {
+      "call": "0x2fdce22",
+      "target": "0x4352160",
+      "contract": "AmbientAudio_original_SendEvent"
+    },
+    {
+      "call": "0x325be71",
+      "target": "0x325b050",
+      "contract": "LocalRead_get_original_save_directory"
+    },
+    {
+      "call": "0x325beb8",
+      "target": "0x39ac7e3",
+      "contract": "LocalRead_strip_to_file_basename"
+    },
+    {
+      "call": "0x325bed2",
+      "target": "0x325c170",
+      "contract": "LocalRead_add_original_save_extension"
+    },
+    {
+      "call": "0x325bf6a",
+      "target": "0x3c53ef2",
+      "contract": "LocalRead_original_FileISynchStream_Open"
+    }
+  ],
+  "byte_contracts": [
+    "RequestLoad_RequestType_LOAD2",
+    "Request_supplied_stream_requires_device4",
+    "FillLastStream_input_seek_zero",
+    "FillLastStream_input_MemoryBuffer_Read_slot40",
+    "FillLastStream_retained_seek_zero",
+    "GetRequestInProgress_checks_progress_flag",
+    "CheckRequest_marks_in_progress",
+    "DoLoadRequest_device4_skips_LeaveGame",
+    "ClearLastStream_original_deleting_destructor",
+    "Begin_saved_censor_flag_from_active_LOAD",
+    "NativeLua_SINGLE_PLAYER_value1",
+    "SetTickInterval_original_global_store_only",
+    "AudioSendEvent_native_uninitialized_guard"
+  ],
+  "supplied_stream_device": 4,
+  "single_player_save_type": 1,
+  "local_storage_device": 1,
+  "benchmark_directory": 2,
+  "supplied_stream_copied_into_original_owned_stream": true,
+  "deferred_request_is_not_in_progress": true,
+  "Begin_requires_actual_in_progress_LOAD_before_LoadCurrentRequest": true,
+  "Begin_UI_audio_tick_prerequisites_required": true,
+  "complete_save_load": false,
+  "action_or_turn_parity": false
+}
