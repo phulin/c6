@@ -203,6 +203,22 @@ mod tests {
         );
     }
     #[test]
+    fn all_raw_state_bytes_are_transportable() {
+        for state_raw in 0..=u8::MAX {
+            let system = RequirementSystem {
+                records: vec![Requirement {
+                    state_raw,
+                    ..record()
+                }],
+            };
+            let bytes = system.encode(Limits::default()).unwrap();
+            assert_eq!(
+                RequirementSystem::decode(&bytes, Limits::default()),
+                Ok(system)
+            );
+        }
+    }
+    #[test]
     fn rejects_every_truncation_and_trailing_bytes() {
         let system = RequirementSystem {
             records: vec![record()],

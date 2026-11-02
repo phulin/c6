@@ -1,0 +1,49 @@
+{
+  "schema": "c6-linux-requirements-codec-v1",
+  "target_gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "codec_sha256": "4fbc883cf55d5745f0aa08fc4ae148e68cb789d0e9e165e816de909314cb0fc6",
+  "native_boundary_evidence": "evidence/linux/save-normalization-gameeffects.json",
+  "native_boundary_evidence_sha256": "fbca2af7056d56e69330518617bc7e8e26af5446aa8fb5458dd5edd00b0754b6",
+  "owner_start": 73741108,
+  "owner_end": 74930233,
+  "fixtures": [
+    {
+      "native_save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "section_sha256": "3f0e9c9476c42e33885e263ae893ec8c1d7f45b8711df4d3c59508f7bb67888e",
+      "exact_roundtrip": true,
+      "all_record_field_boundaries_equal": true,
+      "states_raw": [
+        0,
+        1,
+        4
+      ],
+      "benchmark": {
+        "records": 28304,
+        "bytes": 1189125,
+        "iterations": 200,
+        "decode_ns": 1621637,
+        "encode_ns": 404983
+      }
+    },
+    {
+      "native_save_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "section_sha256": "e701cc1406fb6186583613c921c93584e7f0864d158e2b61c6870042b1105751",
+      "exact_roundtrip": true,
+      "all_record_field_boundaries_equal": true,
+      "states_raw": [
+        0,
+        1,
+        4
+      ],
+      "benchmark": {
+        "records": 28304,
+        "bytes": 1189125,
+        "iterations": 200,
+        "decode_ns": 1574325,
+        "encode_ns": 403268
+      }
+    }
+  ],
+  "scope": "Extracted RequirementSystem v3 records only; no engine execution, lookup, evaluation, allocator or complete state/action/turn parity.",
+  "raw_save_load_different_bytes_retained": 89198
+}
