@@ -86,10 +86,13 @@ def validate(path):
     execute = mode == 'execute'
     require(not config.get('bounded_action_mode') and not config.get('pre_controller_registration') and not config.get('full_save_request'), 'component mixed with original Request/registration profile')
     contract = config['core_component_contract']
-    require(contract['schema'] == 'c6-linux-core-component-static-v1' and contract['checks_passed'], 'component static contract missing')
+    require(contract['schema'] in ('c6-linux-core-component-static-v1', 'c6-linux-core-component-static-v2') and contract['checks_passed'], 'component static contract missing')
+    current_scheduler = contract['schema'] == 'c6-linux-core-component-static-v2'
+    require(current_scheduler or not execute, 'initial scheduling profile cannot accept an execute result')
     require(contract['host_sha256'] == HOST_SHA and contract['gamecore_sha256'] == GAME_SHA, 'component module gates differ')
     require(contract['host_admission_proven'] is False and contract['full_action_acceptance'] == 0 and contract['gameplay_parity'] is False, 'component contract overclaims acceptance')
-    canonical = json.loads((Path(__file__).resolve().parents[2] / 'evidence/linux/core-component-static.json').read_text())
+    canonical_name = 'core-component-static.json' if current_scheduler else 'core-component-static-initial.json'
+    canonical = json.loads((Path(__file__).resolve().parents[2] / 'evidence/linux' / canonical_name).read_text())
     require(contract == canonical, 'component constructor/source contract differs from reviewed checkpoint')
     require(all(config['sources'].get(name) == value for name, value in contract['source_sha256'].items()), 'compiled component source identity differs')
     require(all(name in config['sources'] for name in ('tools/linux/action_execution_trace.c', 'native/linux/action_state.c', 'native/linux/context_stream.c')), 'native guard/observer/stream source identities missing')
@@ -114,6 +117,25 @@ def validate(path):
     singleton = [row for row in rows if row['stage'] != 'actor_candidate']
     stages = {row['stage']: row for row in singleton}
     require(len(stages) == len(singleton), 'duplicate component observation stage')
+    if current_scheduler:
+        released, reacquired = stages['facades_released'], stages['observation_facades_reacquired']
+        require(released['execute'] == execute and released['original_controller_lock_held'] is False and
+                all(released[key] is True for key in ('game', 'player', 'unit_list', 'operations', 'native_parameters_retained')), 'original facade lock release missing')
+        require(reacquired['game'] is True and reacquired['operations'] is True and reacquired['original_controller_lock_held'] is True and
+                reacquired['after_original_worker_quiescence'] == execute, 'symmetric original observation facade reacquisition differs')
+        require(rows.index(released) < rows.index(reacquired) < rows.index(stages['predicate_after']), 'symmetric facade observation ordering differs')
+    if execute:
+        begin, quiet = stages['worker_wait_begin'], stages['worker_quiescent']
+        require(begin['deadline_ms'] == contract['worker_deadline_ms'] == 30000 and begin['original_worker_present'] is True and begin['original_worker_is_current_thread'] is False, 'original worker wait identity/deadline differs')
+        require(quiet['original_is_executing'] is False and all(quiet[key] is True for key in ('original_join_returned', 'original_synchronize_returned', 'original_worker_suspended', 'worker_identity_unchanged')), 'original worker barrier or suspension missing')
+        lines = stderr.splitlines()
+        quiet_position = next(i for i, line in enumerate(lines) if line.startswith('C6_LINUX_CORE_COMPONENT {') and json.loads(line.split(' ', 1)[1])['stage'] == 'worker_quiescent')
+        after_position = next(i for i, line in enumerate(lines) if line.startswith('C6_LINUX_ACTION_STATE {') and json.loads(line.split(' ', 1)[1])['stage'] == 'after_a')
+        save_positions = [i for i, line in enumerate(lines) if line.startswith('C6_LINUX_STREAM save_enter ')]
+        require(len(save_positions) == 5 and quiet_position < after_position < save_positions[2], 'post-state/Save observed before original worker quiescence')
+        require(rows.index(stages['facades_released']) < rows.index(begin) < rows.index(quiet) < rows.index(stages['observation_facades_reacquired']), 'original facade/worker handoff ordering differs')
+    else:
+        require('worker_wait_begin' not in stages and 'worker_quiescent' not in stages, 'control unexpectedly waited/executed worker')
     initial, final, selected = (stages[key] for key in ('before', 'after', 'selected'))
     require(selected['mode'] == mode and selected['native_queue_size'] in (0, 1), 'fresh bounded actor selection missing')
     require(any(all(row.get(k) == selected[k] for k in ('id', 'component_bits', 'owner')) and row['public_can_start'] == row['core_found'] == 1 and row['queue_query_status'] == 0 and row['queue_size'] == selected['native_queue_size'] for row in candidates), 'selected actor lacks genuine legality/lookup proof')
@@ -213,6 +235,7 @@ def validate(path):
                   original_core_saves=saves, outer_original_core_saves=outer,
                   raw_core_difference=raw_difference(component_paths['before'], component_paths['after']),
                   native_cleanup_proven=True, conditional_component_completed=True,
+                  original_worker_quiescence_proven=execute and current_scheduler,
                   host_admission_proven=False, full_action_acceptance=0, gameplay_parity=False,
                   complete_affected_state=False, complete_rng_inventory=False, complete_policy_boundary_coverage=False,
                   complete_cross_process_initial_state_equivalence_proven=False,
@@ -249,7 +272,7 @@ def main():
                 result[name + '_runtime_sha256'] = other['runtime_report_sha256']
                 result[name + '_raw_live_differences'] = raw_differences
                 result[name + '_scope'] = 'Matching original inputs/sources, complete serialized Core streams and explicitly selected typed fields only; raw cross-process bytes remain reported and unmasked. No complete live-state/parameter ownership equivalence claim.'
-    except (ValueError, KeyError, OSError, IndexError, TypeError) as error:
+    except (ValueError, KeyError, OSError, IndexError, TypeError, StopIteration, struct.error) as error:
         result = dict(schema='c6-linux-conditional-core-component-v1', checks_passed=False,
                       runtime_report_sha256=digest(args.runtime_report), reason=str(error),
                       failed_diagnostic=True, host_admission_proven=False, full_action_acceptance=0, gameplay_parity=False)

@@ -7,6 +7,56 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sched.h>
+#include <time.h>
+#include <unistd.h>
+
+#define WORKER_DEADLINE_MS 30000u
+
+/* A timeout can leave native work live. Discard the isolated process before
+ * observations, Save, facade teardown or wrapper Uninitialize can race it. */
+static _Noreturn void worker_failure(const char *reason) {
+    fprintf(stderr,"C6_LINUX_CORE_COMPONENT {\"stage\":\"worker_wait_failed\",\"reason\":\"%s\",\"worker_quiescence_proven\":false,\"post_state_captured\":false,\"full_action_acceptance\":0,\"gameplay_parity\":false}\n",reason);
+    fflush(NULL);
+    _exit(240);
+}
+
+static uint64_t monotonic_ms(void) {
+    struct timespec now;
+    if(clock_gettime(CLOCK_MONOTONIC,&now))worker_failure("monotonic_clock_failed");
+    return (uint64_t)now.tv_sec*1000u+(uint64_t)now.tv_nsec/1000000u;
+}
+
+static void wait_for_original_pass(void **controller,bool (*executing)(void *),
+                                   void (*synchronize)(void *),void (*join)(void *),
+                                   bool (*current_thread)(void *),bool (*suspended)(void *)) {
+    /* Exact original Execute/IsExecuting/Join/Synchronize instructions prove
+     * the borrowed global worker slot is exported controller-static +8. */
+    void *worker=NULL;memcpy(&worker,(const unsigned char *)controller+8,sizeof worker);
+    if(!worker||current_thread(worker))worker_failure("missing_or_current_worker");
+    uint64_t start=monotonic_ms(),polls=0;
+    fprintf(stderr,"C6_LINUX_CORE_COMPONENT {\"stage\":\"worker_wait_begin\",\"deadline_ms\":%u,\"original_worker_present\":true,\"original_worker_is_current_thread\":false}\n",WORKER_DEADLINE_MS);
+    /* Execute sets the original counter before Resume; Run clears it only
+     * after ProcessMessages. Yielding is resource scheduling, not completion. */
+    while(executing(*controller)){
+        if(monotonic_ms()-start>=WORKER_DEADLINE_MS)worker_failure("original_pass_deadline");
+        ++polls;(void)sched_yield();
+    }
+    /* Controller.Synchronize returns early when the counter is already zero.
+     * Direct original Join is required to acquire/release the worker lock and
+     * finish its post-counter tail before observing the native state. */
+    join(worker);synchronize(*controller);
+    /* Run releases its lock before its final original IThread.Suspend. Wait
+     * for that native lifecycle boundary too, so teardown/next wake cannot
+     * outrun suspension. This profile still executes only one command. */
+    while(!suspended(worker)){
+        if(monotonic_ms()-start>=WORKER_DEADLINE_MS)worker_failure("original_suspend_deadline");
+        ++polls;(void)sched_yield();
+    }
+    void *same_worker=NULL;memcpy(&same_worker,(const unsigned char *)controller+8,sizeof same_worker);
+    if(same_worker!=worker||executing(*controller))worker_failure("worker_identity_or_completion_changed");
+    fprintf(stderr,"C6_LINUX_CORE_COMPONENT {\"stage\":\"worker_quiescent\",\"original_is_executing\":false,\"original_join_returned\":true,\"original_synchronize_returned\":true,\"original_worker_suspended\":true,\"worker_identity_unchanged\":true,\"polls\":%llu,\"elapsed_ms\":%llu}\n",(unsigned long long)polls,(unsigned long long)(monotonic_ms()-start));
+}
 
 struct status {int turn,phase,local;bool pending,update,advance,ai,processing;};
 struct api {
@@ -113,10 +163,12 @@ int c6_linux_core_component(void *module,void *context,bool execute) {
     bool (*playback)(void *),(*recording)(void *);
     void *(*default_manager)(void),*(*map_create)(void *,int);void (*map_delete)(void *);
     void **controller;bool (*executing)(void *),(*suspended)(const void *);
+    bool (*has_lock)(const void *);
     bool (*native_loading)(void),(*native_saving)(void);
     int (*request_in_progress)(void);void *(*current_state)(void *);
     void **application;const bool *request_active;const int *request_type;
-    void (*pump)(void *),(*sync)(void *);void *(*network)(void);int (*network_local)(const void *);
+    void (*pump)(void *),(*sync)(void *),(*join)(void *);bool (*worker_current)(void *),(*thread_suspended)(void *);
+    void *(*network)(void);int (*network_local)(const void *);
     CORE(get_player,"_ZN8GameCore7Exports7Context9GetPlayerENS_11PlayerTypesE");
     CORE(get_units,"_ZNK8GameCore7Exports6Player8GetUnitsEv");
     CORE(cached_player,"_ZNK8GameCore7Exports7Context14GetCachePlayerENS_11PlayerTypesE");
@@ -135,7 +187,10 @@ int c6_linux_core_component(void *module,void *context,bool execute) {
     CORE(playback,"_ZN8GameCore7Exports7Context17IsMessagePlaybackEv");CORE(recording,"_ZN8GameCore7Exports7Context18IsMessageRecordingEv");
     HOST(default_manager,"_ZN4Data19TypedVariantManager10GetDefaultEv");HOST(map_create,"_ZN4Data19TypedVariantManager32CreateKeyedTypedVariantContainerENS_21VariantContainerTypesE");HOST(map_delete,"_ZN4Data15TypedVariantMapD0Ev");
     HOST(controller,"_ZN18GameCoreController21ms_pkActiveControllerE");HOST(executing,"_ZN18GameCoreController11IsExecutingEv");HOST(suspended,"_ZNK18GameCoreController25IsGameCoreUpdateSuspendedEv");
+    HOST(has_lock,"_ZNK18GameCoreController7HasLockEv");
     HOST(pump,"_ZN18GameCoreController21ExecuteGameCoreUpdateEv");HOST(sync,"_ZN18GameCoreController11SynchronizeEv");
+    HOST(join,"_ZN14GameCoreThread18JoinOnPassCompleteEv");HOST(worker_current,"_ZN14GameCoreThread15IsCurrentThreadEv");
+    HOST(thread_suspended,"_ZN14GameCoreThread11IsSuspendedEv");
     HOST(native_loading,"_ZN8GameCore10Serializer7Manager16IsLoadInProgressEv");HOST(native_saving,"_ZN8GameCore10Serializer7Manager16IsSaveInProgressEv");
     HOST(request_in_progress,"_ZN8GameCore10Serializer7Manager20GetRequestInProgressEv");
     HOST(current_state,"_ZN7Civ6App19GetCurrentGameStateEv");
@@ -216,10 +271,29 @@ int c6_linux_core_component(void *module,void *context,bool execute) {
         if(sender!=initial.local||identity_owner(&selected_bits)!=initial.local)result=233;
         if(!result){trace_mark(1);result=build_and_queue(module,context,&selected_bits,params,sender,execute);trace_mark(2);}
         component_enqueued=execute&&a.pending(context);
-        if(!result&&execute){
-            if(!a.pending(context))result=229;
-            else{trace_mark(5);pump(*controller);sync(*controller);trace_mark(6);
-                if(executing(*controller)||a.pending(context)||trace_units()!=1)result=230;}
+        if(!result){
+            if(execute&&!a.pending(context))result=229;
+            else{
+                /* Genuine live facade constructors acquire the controller's
+                 * game-core lock. The worker must acquire that same lock in
+                 * EditGame: destroy every acquired facade before Resume.
+                 * Native params/identity and borrowed core refs survive.
+                 * Control performs the same release/reacquisition boundary. */
+                a.release(ops);ops=NULL;a.release(list);list=NULL;
+                a.release(player);player=NULL;a.release(game);game=NULL;
+                bool lock_held=has_lock(*controller);
+                fprintf(stderr,"C6_LINUX_CORE_COMPONENT {\"stage\":\"facades_released\",\"execute\":%s,\"game\":true,\"player\":true,\"unit_list\":true,\"operations\":true,\"native_parameters_retained\":true,\"original_controller_lock_held\":%s}\n",execute?"true":"false",lock_held?"true":"false");
+                if(lock_held){map_delete(params);return 242;}
+                if(execute){trace_mark(5);pump(*controller);wait_for_original_pass(controller,executing,sync,join,worker_current,thread_suspended);trace_mark(6);}
+                game=a.game(context);ops=operations(context);
+                if(!game||!ops){
+                    fprintf(stderr,"C6_LINUX_CORE_COMPONENT observation_facade_reacquisition_failed\n");
+                    map_delete(params);if(ops)a.release(ops);if(game)a.release(game);return 241;
+                }
+                lock_held=has_lock(*controller);
+                fprintf(stderr,"C6_LINUX_CORE_COMPONENT {\"stage\":\"observation_facades_reacquired\",\"game\":true,\"operations\":true,\"after_original_worker_quiescence\":%s,\"original_controller_lock_held\":%s}\n",execute?"true":"false",lock_held?"true":"false");
+                if(!lock_held){map_delete(params);a.release(ops);a.release(game);return 242;}
+                if(execute&&(executing(*controller)||a.pending(context)||trace_units()!=1))result=230;}
         }
         if(!result&&!execute&&(a.pending(context)||trace_units()))result=230;
     }
@@ -238,6 +312,6 @@ int c6_linux_core_component(void *module,void *context,bool execute) {
     bool final_actions=pending_actions(),final_sessions=pending_sessions();
     fprintf(stderr,"C6_LINUX_CORE_COMPONENT {\"stage\":\"diplomacy_after\",\"pending_actions\":%d,\"open_session_map_nonempty\":%d,\"result\":%d,\"component_enqueued\":%s,\"gameplay_parity\":false,\"full_action_acceptance\":0}\n",final_actions,final_sessions,result,component_enqueued?"true":"false");
     if(!result&&(final.turn!=initial.turn||final.phase!=initial.phase||final.local!=initial.local||final.pending||final.update||final.advance||final.ai||final.processing||final_actions||final_sessions))result=231;
-    map_delete(params);a.release(ops);a.release(list);a.release(player);a.release(game);
+    map_delete(params);if(ops)a.release(ops);if(list)a.release(list);if(player)a.release(player);if(game)a.release(game);
     return result;
 }

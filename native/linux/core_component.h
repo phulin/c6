@@ -6,6 +6,9 @@
  * controller/cache and arms the unchanged action trace/policy guards. No live
  * Request is sent. Fresh original MakeRequest/UnitOperation serialization feeds
  * native QueueMessage only in execute mode, followed by original worker+sync.
+ * Original executing/suspended predicates and original worker Join establish
+ * completion before observation. A deadline failure terminates the isolated
+ * process with code240 before post-state/Save/Uninitialize (no cleanup claim).
  * Required C6_CORE_COMPONENT_SNAPSHOT_{BEFORE,AFTER,REPEAT} and
  * C6_CORE_COMPONENT_COMMAND are private exclusive-create artifact paths.
  * Return zero means bounded helper completion, not complete affected-state or
