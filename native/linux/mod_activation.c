@@ -442,6 +442,19 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
         result=snapshot?snapshot(NULL,context):153;
         fprintf(stderr,"C6_LINUX_MOD rules_snapshot_return %d\n",result);
     }
+    if (!result && getenv("C6_MOD_ATTACH_SAVED_SESSION")) {
+        int (*attach)(void)=dlsym(RTLD_DEFAULT,"c6_linux_save_lifecycle_attach_session");
+        int (*guards)(void)=dlsym(RTLD_DEFAULT,"c6_linux_network_check_guards");
+        int (*leave)(void)=dlsym(RTLD_DEFAULT,"c6_linux_network_leave");
+        if (!attach || !guards || !leave) result=155;
+        else {
+            result=attach();
+            if (!result) result=guards();
+            int left=leave();
+            fprintf(stderr,"C6_LINUX_MOD saved_session_control_return result %d leave %d\n",result,left);
+            if (!result) result=left;
+        }
+    }
     if (getenv("C6_MOD_CLEANUP") && context) {
         int cleanup=c6_linux_mod_framework_shutdown();
         if (!cleanup && constructed_client) cleanup=c6_linux_mod_client_fixture_shutdown();

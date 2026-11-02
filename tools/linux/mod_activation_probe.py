@@ -28,6 +28,8 @@ def main():
     parser.add_argument('--update-constructor-callback',action='store_true')
     parser.add_argument('--ui-constructor',action='store_true')
     parser.add_argument('--rules-snapshot-dir',type=Path)
+    parser.add_argument('--network',action='store_true')
+    parser.add_argument('--attach-saved-session',action='store_true')
     parser.add_argument('--localization',action='store_true')
     parser.add_argument('--cleanup',action='store_true')
     parser.add_argument('--client-only',action='store_true')
@@ -38,6 +40,8 @@ def main():
     if args.update_constructor_callback and not all((args.saved_configuration,args.configure,args.localization,args.content_paths,args.art_manager)):
         parser.error('--update-constructor-callback requires saved configuration, configure, localization, content paths and art manager')
     if args.ui_constructor and not args.localization:parser.error('--ui-constructor requires original localization')
+    if args.attach_saved_session and not all((args.network,args.saved_configuration,args.cleanup)):
+        parser.error('--attach-saved-session requires network, saved configuration and cleanup')
     snapshot=args.rules_snapshot_dir.resolve() if args.rules_snapshot_dir else None
     if snapshot and (not args.update_constructor_callback or not snapshot.is_dir() or any(snapshot.iterdir()) or
                      not snapshot.is_relative_to((ROOT.parent/'c6-ghidra').resolve())):
@@ -80,6 +84,8 @@ def main():
              ROOT/'native/linux/host_services.c',ROOT/'native/linux/host_services.h',
              ROOT/'native/linux/temp_heap.c',ROOT/'native/linux/temp_heap.h']
     snapshot_sources=[ROOT/'native/linux/rules_snapshot.c'] if snapshot else []
+    network_sources=[ROOT/'native/linux/network.c'] if args.network else []
+    lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -102,6 +108,7 @@ def main():
               'update_callback_profile':'native LoadGameViewState constructor only; requestNone and constructor-default censorship=false; no saved Request/Begin, not saved-game parity' if args.update_constructor_callback else None,
               'ui_constructor_only':args.ui_constructor,
               'native_rules_snapshot_requested':bool(snapshot),
+              'native_network_requested':args.network,'native_saved_session_control_requested':args.attach_saved_session,
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
               'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
               'source_view':str(view) if view else None,'userdata_policy':'new empty private task directory','userdata_initially_empty':True,'cwd':str(work),
@@ -111,12 +118,16 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*configuration_sources,ROOT/'native/linux/saved_configuration.h']})
     if snapshot_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*snapshot_sources,ROOT/'native/linux/rules_snapshot.h']})
+    if network_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*network_sources,ROOT/'native/linux/network.h']})
+    if lifecycle_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*lifecycle_sources,ROOT/'native/linux/save_lifecycle.h']})
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
@@ -141,6 +152,8 @@ def main():
     if args.update_constructor_callback:env['C6_MOD_UPDATE_CONSTRUCTOR_CALLBACK']='1'
     if args.ui_constructor:env['C6_MOD_UI_CONSTRUCTOR']='1'
     if snapshot:env['C6_RULES_SNAPSHOT_DIR']=str(snapshot)
+    if args.network:env['C6_HOST_NETWORK']='1'
+    if args.attach_saved_session:env['C6_MOD_ATTACH_SAVED_SESSION']='1'
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
