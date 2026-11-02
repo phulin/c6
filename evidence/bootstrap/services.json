@@ -91,7 +91,8 @@
     "GetLogFile": 80,
     "LogFile_variadic_narrow_Write": 16,
     "GetTypeLevel": 56,
-    "SetTypeLevel": 48
+    "SetTypeLevel": 48,
+    "IsEnabled_type": 16
   },
   "negative_evidence": {
     "nullable_logging": "real original DatabaseLogger ctor fault0x5e3524; fixed with bounded sink",
@@ -237,6 +238,42 @@
       "native_group_getter_calls": 2,
       "next_missing_provider": "EXP_JobManager_Wait",
       "return_site_rva": "0x992301",
+      "stream_consumed": 8,
+      "stream_available": 76556938,
+      "complete_load": false
+    }
+  },
+  "logging_enabled_contract": {
+    "receiver": "LoggingManager at GameCore global0xb8aa90",
+    "required_return_site_rva": "0x523809",
+    "caller_function_rva": "0x5237a0",
+    "original_method_rva": "0x15aef0",
+    "windows_slot": 16,
+    "argument_id": "0x10b39140",
+    "return": "AL retained enabled byte or zero for unknown id",
+    "result_forwarded_to": {
+      "slot": 40,
+      "id": "0x7dc77f75"
+    },
+    "combines_global_enable": false,
+    "combines_type_level_or_flags": false,
+    "new_registration_enabled": true,
+    "registration_preserves_disabled": true,
+    "unknown_false_creates_entry": false,
+    "unknown_true_creates_enabled_entry": true,
+    "native_enabled_cases": 9,
+    "native_total_logging_cases": 18,
+    "native_mismatches": 0,
+    "native_child_exit": 0,
+    "evidence": "evidence/bootstrap/services-logging-validation.json",
+    "actual_load_after_fix": {
+      "evidence": "evidence/bootstrap/native-xp2-original-load-log-enabled.json",
+      "manager_query_passed": true,
+      "next_actual_receiver": "ILogFile returned from manager+0x50",
+      "next_actual_slot": 56,
+      "next_return_site_rva": "0x5240b2",
+      "reported_unsupported_offset_was_misleading": true,
+      "adapter_limitation": "old logfile vtable had only four entries; observed +0x38 call exceeded that table",
       "stream_consumed": 8,
       "stream_available": 76556938,
       "complete_load": false

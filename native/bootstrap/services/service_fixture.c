@@ -229,6 +229,13 @@ static void log_enable(void *self, uint32_t id, unsigned char enabled) {
     if (entry) entry->enabled = enabled;
     fprintf(stderr, "{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":%u,\"enabled\":%u}\n", id, enabled);
 }
+static unsigned char log_is_enabled(void *self, uint32_t id) {
+    (void)self;
+    struct log_type *entry = find_log_type(id);
+    unsigned char enabled = entry ? entry->enabled : 0;
+    fprintf(stderr, "{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":%u,\"enabled\":%u}\n", id, enabled);
+    return enabled;
+}
 static void log_set_type_level(void *self, uint32_t id, uint32_t level) {
     (void)self;
     struct log_type *entry = find_log_type(id);
@@ -295,6 +302,7 @@ void *bootstrap_service_fixture_create(HMODULE gamecore) {
     memcpy(slots, unsupported_slots, sizeof slots);
     memcpy(logging_slots, unsupported_slots, sizeof logging_slots);
     memcpy(logfile_slots, unsupported_slots, sizeof logfile_slots);
+    logging_slots[2] = (uintptr_t)log_is_enabled;
     logging_slots[5] = (uintptr_t)log_enable;
     logging_slots[6] = (uintptr_t)log_set_type_level;
     logging_slots[7] = (uintptr_t)log_get_type_level;

@@ -108,3 +108,13 @@ The next Load requirement is engine `+0x158` GetLocalOptions(manager, u32 group_
 
 
 The options probe also constructs an existing main map, then verifies the helper rejects initialization with both complete native global objects unchanged before original cleanup. In the actual Load probe, the two original grouped options calls now return successfully; the next failure is the missing dynamic EXP_JobManager_Wait provider (return site `0x992301`), with the original stream still consumed 8 of 76,556,938 bytes. This next dependency belongs to the job-manager provider, not the options fixture (`evidence/bootstrap/native-xp2-original-load-options.json`).
+
+
+## Per-type logging enable state reached during Load
+
+The later Windows Load boundary at return `0x523809` is another logging-manager call, not the engine utility's GetScriptSystem. Current instructions in AI::UnitEfficiencyManager::CalculateEfficiencies (`0x5237a0`) load the manager from `0xb8aa90`, call its `+0x10` with u32 id `0x10b39140`, then pass the returned AL to the same manager's `+0x28` for id `0x7dc77f75`. The exact Windows provider is LoggingManager::IsEnabled(u32) at EXE `0x15aef0`. It returns the retained per-id enabled byte, or zero when absent, without combining it with the manager's global enable flag, level, or registration flags. Old Linux vtable ordering differs and is not used as this ABI.
+
+The fixture's retained enabled metadata now exposes that missing query at logging `+0x10`. The native LoggingManager comparison has been expanded to 18 cases: the nine level cases plus nine enabled-state checks. Actual native registration creates an enabled entry, disabling then registering again preserves disabled state, an unknown false update does not create an entry, an unknown true update creates an enabled entry, and nonzero-level-created entries are enabled. All 18 comparisons pass with original cleanup, zero mismatches. This remains a bounded diagnostic logging service and does not establish gameplay or full logging-subsystem parity.
+
+
+The integrated Load passes the per-type manager enable query, then calls `+0x38` on an ILogFile returned by manager `+0x50` (return site `0x5240b2`). The old sink adapter allocated only four logfile vtable entries, so that newly reached slot read beyond its table and produced a misleading unsupported offset 24. The actual receiver/slot is established from current instructions, not that trace label. Stream consumption remained 8 bytes. Repairing the logfile table extent and its per-type IsEnabled contract is the next service boundary; this manager-only validation does not claim those file methods.

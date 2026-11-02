@@ -8,6 +8,13 @@ static int compare_level(void *native, uint32_t id, unsigned case_index) {
     printf("{\"case\":%u,\"id\":%u,\"original_level\":%u,\"fixture_level\":%u,\"equal\":%s}\n", case_index, id, expected, actual, expected == actual ? "true" : "false");
     return expected == actual;
 }
+static int compare_enabled(void *native, uint32_t id, unsigned case_index) {
+    typedef unsigned char (*get_fn)(void *, uint32_t);
+    unsigned char expected = ((get_fn)(*(uintptr_t **)native)[2])(native, id);
+    unsigned char actual = log_is_enabled(&logging_object, id);
+    printf("{\"case\":%u,\"id\":%u,\"original_enabled\":%u,\"fixture_enabled\":%u,\"equal\":%s}\n", case_index, id, expected, actual, expected == actual ? "true" : "false");
+    return expected == actual;
+}
 int wmain(int argc, wchar_t **argv) {
     if (argc != 3 || !SetDllDirectoryW(argv[2])) return 2;
     HMODULE original = LoadLibraryExW(argv[1], NULL, DONT_RESOLVE_DLL_REFERENCES);
@@ -41,6 +48,26 @@ int wmain(int argc, wchar_t **argv) {
     native_set(native, UINT32_MAX, UINT32_MAX); log_set_type_level(&logging_object, UINT32_MAX, UINT32_MAX);
     ok &= compare_level(native, UINT32_MAX, index++);
     ok &= compare_level(native, 0x12345678, index++);
+    typedef void (*enable_fn)(void *, uint32_t, unsigned char);
+    enable_fn native_enable = (enable_fn)(*(uintptr_t **)native)[5];
+    ok &= compare_enabled(native, id, index++);
+    native_enable(native, id, 0); log_enable(&logging_object, id, 0);
+    ok &= compare_enabled(native, id, index++);
+    native_register(native, id, L"C6LoggingProbeAgain.log", 5, NULL);
+    log_register(&logging_object, id, L"C6LoggingProbeAgain.log", 5, NULL);
+    ok &= compare_enabled(native, id, index++);
+    native_enable(native, id, 1); log_enable(&logging_object, id, 1);
+    ok &= compare_enabled(native, id, index++);
+    const uint32_t missing_id = 0x10b39140;
+    ok &= compare_enabled(native, missing_id, index++);
+    native_enable(native, missing_id, 0); log_enable(&logging_object, missing_id, 0);
+    ok &= compare_enabled(native, missing_id, index++);
+    native_register(native, missing_id, L"C6LoggingMissing.log", 0, NULL);
+    log_register(&logging_object, missing_id, L"C6LoggingMissing.log", 0, NULL);
+    ok &= compare_enabled(native, missing_id, index++);
+    native_enable(native, 0x12345678, 1); log_enable(&logging_object, 0x12345678, 1);
+    ok &= compare_enabled(native, 0x12345678, index++);
+    ok &= compare_enabled(native, UINT32_MAX, index++);
     ((void (*)(void *))(*(uintptr_t **)native)[1])(native);
     printf("{\"status\":\"%s\",\"cases\":%u,\"original_logging_cleanup\":true,\"gameplay_parity\":false}\n", ok ? "ok" : "mismatch", index);
     return ok ? 0 : 6;

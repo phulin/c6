@@ -27,17 +27,17 @@
       "LaunchPad/vcruntime140.dll": "d89c7b863fc1ac3a179d45d5fe1b9fd35fb6fbd45171ca68d0d68ab1c1ad04fb"
     },
     "sources": {
-      "native/bootstrap/services/logging_probe.c": "19d1dc997ee414b1f50c4ef2baf5b83a74633848c984d54d9ed9cb34e51b2490",
-      "native/bootstrap/services/service_fixture.c": "5a4742038fbeae29eb30e13b07b64c70043c72c2eb346b44ebeae5219e07b028",
+      "native/bootstrap/services/logging_probe.c": "e60b1cf51933debd1f049d547fddf19c75482517f19ba413426a51a1bbd8d685",
+      "native/bootstrap/services/service_fixture.c": "4d984834f545c3a78732e63de86d84aa63d54d52f990ba4fbb0d4aaaaf82c8e5",
       "native/bootstrap/services/service_fixture.h": "efbcf4e9bc5f783531d287c94673d05bd5f11071bee922c7eaf2e4c241221ddb",
       "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
       "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e"
     },
     "compiler": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
-    "host_sha256": "f08da6782eaff903af51b76d24a6334314e252aab959edf38af817946b59a494",
+    "host_sha256": "f2e59c39ca20022c8e9c26820c463abb72bc1fc9dbebaccd1808852e0b6e0e20",
     "wine": "wine-9.0 (Ubuntu 9.0~repack-4build3)"
   },
-  "configuration_sha256": "2f1b4a9592ac44ddfaaf2fa88bec87b4992ac66db112c03cc133282f7739b944",
+  "configuration_sha256": "bf70375d1e5e2f575c4d2dff96781a1b3806a65c64a5ab58fb42a5cbf084acc2",
   "returncode": 0,
   "observations": [
     {
@@ -104,13 +104,76 @@
       "equal": true
     },
     {
+      "case": 9,
+      "id": 3378383812,
+      "original_enabled": 1,
+      "fixture_enabled": 1,
+      "equal": true
+    },
+    {
+      "case": 10,
+      "id": 3378383812,
+      "original_enabled": 0,
+      "fixture_enabled": 0,
+      "equal": true
+    },
+    {
+      "case": 11,
+      "id": 3378383812,
+      "original_enabled": 0,
+      "fixture_enabled": 0,
+      "equal": true
+    },
+    {
+      "case": 12,
+      "id": 3378383812,
+      "original_enabled": 1,
+      "fixture_enabled": 1,
+      "equal": true
+    },
+    {
+      "case": 13,
+      "id": 280203584,
+      "original_enabled": 0,
+      "fixture_enabled": 0,
+      "equal": true
+    },
+    {
+      "case": 14,
+      "id": 280203584,
+      "original_enabled": 0,
+      "fixture_enabled": 0,
+      "equal": true
+    },
+    {
+      "case": 15,
+      "id": 280203584,
+      "original_enabled": 1,
+      "fixture_enabled": 1,
+      "equal": true
+    },
+    {
+      "case": 16,
+      "id": 305419896,
+      "original_enabled": 1,
+      "fixture_enabled": 1,
+      "equal": true
+    },
+    {
+      "case": 17,
+      "id": 4294967295,
+      "original_enabled": 1,
+      "fixture_enabled": 1,
+      "equal": true
+    },
+    {
       "status": "ok",
-      "cases": 9,
+      "cases": 18,
       "original_logging_cleanup": true,
       "gameplay_parity": false
     }
   ],
-  "stderr": "{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":0}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":3378383812}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":0}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":9}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":3378383812}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":9}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":0}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":0,\"level\":0}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":0,\"level\":23}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":4294967295,\"level\":4294967295}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":305419896,\"level\":0}\n",
+  "stderr": "{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":0}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":3378383812}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":0}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":9}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":3378383812}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":9}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":3378383812,\"level\":0}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":0,\"level\":0}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":0,\"level\":23}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":4294967295,\"level\":4294967295}\n{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":305419896,\"level\":0}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":3378383812,\"enabled\":1}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":3378383812,\"enabled\":0}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":3378383812,\"enabled\":0}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":3378383812}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":3378383812,\"enabled\":0}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":3378383812,\"enabled\":1}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":3378383812,\"enabled\":1}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":280203584,\"enabled\":0}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":280203584,\"enabled\":0}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":280203584,\"enabled\":0}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":280203584}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":280203584,\"enabled\":1}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":305419896,\"enabled\":1}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":305419896,\"enabled\":1}\n{\"bootstrap_service\":\"IsLogEnabled_stderr_sink\",\"id\":4294967295,\"enabled\":1}\n",
   "initialized_game": false,
   "gameplay_parity": false
 }
