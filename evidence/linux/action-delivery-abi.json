@@ -172,6 +172,48 @@
       "size": 157,
       "name": "NetGameCoreMessage.constructor",
       "sha256": "ba75825a7fa291a29dee00b17d797c75c96d61bc55a30963e9ddabf6f3a5c9a4"
+    },
+    {
+      "module": "host",
+      "address": "0x39e2046",
+      "size": 44,
+      "name": "FNetMessageFactory.CreateMessage",
+      "sha256": "b57f983ab517a63e3521f91896d33c3720dea9da01c6b901958d014b747be6e8"
+    },
+    {
+      "module": "host",
+      "address": "0x33af980",
+      "size": 47,
+      "name": "Register.NetGameCoreMessage",
+      "sha256": "0f212e2b5360f087a32a4445db498dfe61e6d6b44175500ac01ee420c39152e2"
+    },
+    {
+      "module": "host",
+      "address": "0x33afde0",
+      "size": 55,
+      "name": "NetGameCoreMessage.creator",
+      "sha256": "740a48e2d50140031e6bcfd334054a31f3c9935b71b32e243c8cc707644c419b"
+    },
+    {
+      "module": "host",
+      "address": "0x39f2062",
+      "size": 3156,
+      "name": "FNetSession.MessageReceived",
+      "sha256": "1b3a5a1167e1f84b1465b853b453824b5c35a477aba88d5ba44c384ec7e797cc"
+    },
+    {
+      "module": "host",
+      "address": "0x2c87e70",
+      "size": 12,
+      "name": "Type3.registration_wrapper",
+      "sha256": "9f1ccd53a9c1e9337b6ed86331cae4288dbf6bbd169158e51b64b76182b9ad2b"
+    },
+    {
+      "module": "host",
+      "address": "0x2c87e80",
+      "size": 49,
+      "name": "AppMessages.grouped_initializer",
+      "sha256": "a30d022eae136c6607ae89c1116f3dadd830f4a13764f88b9a2305c113eeb304"
     }
   ],
   "virtual_bindings": [
@@ -426,6 +468,19 @@
     "data_pointer_offset": 64,
     "size_u32_offset": 80
   },
+  "passive_message_factory": {
+    "singleton": "0x653d530",
+    "bucket_pointer_offset": 8,
+    "bucket_count_u32_offset": 16,
+    "node_key_i32_offset": 0,
+    "node_creator_pointer_offset": 8,
+    "node_next_pointer_offset": 16,
+    "expected_key": 3,
+    "expected_creator": "0x33afde0",
+    "init_array_entry": "0x535e160",
+    "initializer": "0x2c87e80"
+  },
+  "message_received_entry": "0x39f2062; receiver RDI, message RSI, bool DL; 0x39f29da is an interior branch",
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
   "update_deferral": "FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains",
