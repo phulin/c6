@@ -62,3 +62,25 @@ Geometry traces are empty. They run against an isolated minimal native object la
 Implement the `Runner` trait, accepting `Request` and returning `Response`, then call `compare(&corpus, &mut original, &mut candidate)`. `RecordingRunner` preserves raw responses, including responses subsequently rejected by validation. `RunError` distinguishes invalid corpus, engine/transport failure, and structured `Divergence` with case ID, step index, JSON pointer, and both values. This API can back evaluation tooling without parsing console output.
 
 To add an operation, first establish pinned native evidence and a callable original function or initialized game context. Add an explicit schema and full snapshot coverage to both adapters, assign coverage labels, and extend deterministic inputs. Keep unsupported game operations refused until the required context and state observation exist. Do not replace the original DLL with a Rust reference implementation and call the result game parity.
+
+## Original Random wire-record serialization
+
+The dedicated serialization suite verifies the original `Random::Write` and normal `Random::Read` stream payload separately from action protocol v1 and the simulator's `C6SN` snapshot envelope:
+
+```sh
+make -C native/oracle
+cargo build -p c6-differential --bins
+python3 fixtures/serialization.py generate
+python3 fixtures/serialization.py replay --trace-dir /tmp/c6-serialization-traces
+python3 -m unittest discover -s fixtures -p 'test_serialization_harness.py'
+```
+
+`generate` explicitly pins the dedicated original adapter identity and the actual `c6-serialization-candidate` executable. `replay` never repins. It compares 801 cases: 528 supported native executions and 273 explicit unsupported-input refusals. Cases include every raw synchronous byte from 0 through 255, arbitrary ignored version words, exact byte output, prefix consumption of 18 bytes, untouched trailing bytes, and preservation of the destination lock counter. All 18 short prefix lengths and every nonzero legacy flag are refused before native execution. These refusals establish the adapter's supported boundary; they do not reproduce native short-read errors or legacy-vector behavior.
+
+The small candidate uses `c6_core::rng::native_serialization::SerializedRandomRecord` for raw byte fidelity. Canonical synchronous bytes zero/one additionally exercise `read_into` against the actual logical `RandomState`. Bytes above one remain raw wire records: the logical boolean application API rejects them atomically rather than silently coercing them. They are not valid imported simulator boolean states.
+
+The dedicated native JSONL contract is documented by `tools/oracle/serialization.py`. Requests contain `id`, `expected_engine`, `op` (`write` or `read`), `state` with raw `synchronous_byte`, and `bytes_hex` for reads. Responses identify the exact engine and case, returning either `bytes_hex` or the complete resulting record state plus `consumed` and `trailing_hex`. The corpus records source evidence and expected supported/refused classification. The replay checks identities, case IDs, response counts, status, and every semantic output field; differing refusal wording is excluded. A mismatch reports the first case and JSON pointer. Optional traces save every request and response for both sides.
+
+The dedicated process guard services stdin and both output streams concurrently, enforces 16 MiB per stream while reading (4 KiB for identity), applies a 30-second deadline, and terminates the child process group on failure. Its tests deliberately exercise excessive stdout, excessive stderr, blocked pipes, inherited pipe handles, missing executables, nonzero exit, and structured byte/state/cursor mismatches. Those tests verify transport and reporting only; the separate 801-case replay establishes the stated original DLL comparison.
+
+Because rebuilding all binaries can legitimately change the prior action candidate's executable SHA, rerun `fixtures/generate.py` explicitly when necessary, then replay that corpus as well. The native action oracle configuration remains independent of serialization.

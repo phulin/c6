@@ -7,7 +7,7 @@
   },
   "candidate": {
     "kind": "rust",
-    "binary_sha256": "8dcc9bd949e156dfb50adb2f0d1202acfde7909d486886974de1c637815217b5",
+    "binary_sha256": "8aba8c67cb579d3eac78c9622b4571dbc702f9e83bf6329f25e5a6488c06ae2d",
     "configuration_sha256": "8945f88ac895adbb60d4fc6afabb035be656e810f61486ec372695c87cd8414d"
   },
   "evidence": {
