@@ -123,9 +123,72 @@
       "size": 160,
       "name": "FNetMessageSync.Update",
       "sha256": "add3e7915c5082841803d285fb868775a075dba1e46b96e4c1cf20c5bac328be"
+    },
+    {
+      "module": "host",
+      "address": "0x3c54386",
+      "size": 5,
+      "name": "MemoryOStream.GetBytes",
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "module": "host",
+      "address": "0x3c5438c",
+      "size": 5,
+      "name": "MemoryOStream.GetOffset",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262"
+    },
+    {
+      "module": "host",
+      "address": "0x2f636c0",
+      "size": 4,
+      "name": "ByteVector.size",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "module": "host",
+      "address": "0x33afb40",
+      "size": 14,
+      "name": "ByteVector.const_index",
+      "sha256": "f9cb6ea9abddfdfb70468af992da37bef4f2d9f8c3a375576095d9c31baac14c"
+    },
+    {
+      "module": "host",
+      "address": "0x2f63d90",
+      "size": 4,
+      "name": "BytePtr64.conversion",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "module": "host",
+      "address": "0x39e021a",
+      "size": 72,
+      "name": "FNetMessage.constructor",
+      "sha256": "821c4cd19d694ce9ee9e067c4404e6f884f1b1114805839519b785b0b1172eb5"
+    },
+    {
+      "module": "host",
+      "address": "0x33af670",
+      "size": 157,
+      "name": "NetGameCoreMessage.constructor",
+      "sha256": "ba75825a7fa291a29dee00b17d797c75c96d61bc55a30963e9ddabf6f3a5c9a4"
     }
   ],
   "virtual_bindings": [
+    {
+      "module": "host",
+      "table": "0x53cc788",
+      "offset": "0x18",
+      "target": "0x3c5438c",
+      "name": "MemoryOStream.length_is_GetOffset"
+    },
+    {
+      "module": "host",
+      "table": "0x53a9ad0",
+      "offset": "0x28",
+      "target": "0x33af7f0",
+      "name": "NetGameCoreMessage.Execute"
+    },
     {
       "module": "host",
       "table": "0x53b5048",
@@ -313,8 +376,56 @@
       "bytes": "80782900",
       "name": "sync_deferral_byte_at_0x29",
       "sha256": "11919c34c8a383a8ac8bd265b8832549f1fd7fce23e3198b18d9985e2de16153"
+    },
+    {
+      "address": "0x39f2d1d",
+      "bytes": "817e1ce8030000",
+      "name": "message_type_i32_at_0x1c",
+      "sha256": "ba2581bc3739827ee095b863ed17ea2cdff42d8266d056577b40630a36f275cc"
+    },
+    {
+      "address": "0x39e0228",
+      "bytes": "89771c",
+      "name": "constructor_message_type_i32_at_0x1c",
+      "sha256": "80b612ae154c536ca34570f7a7fe2b143ea0d5aeb2c5fd7db2fa21f9d81eb636"
+    },
+    {
+      "address": "0x3c54386",
+      "bytes": "488b4708c3",
+      "name": "stream_data_pointer_at_0x8",
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "address": "0x3c5438c",
+      "bytes": "488b4710c3",
+      "name": "stream_length_u64_at_0x10",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262"
+    },
+    {
+      "address": "0x2f636c0",
+      "bytes": "8b4710c3",
+      "name": "vector_size_u32_at_0x10",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "address": "0x2f63d90",
+      "bytes": "488b07c3",
+      "name": "vector_data_pointer_at_0x0",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
     }
   ],
+  "passive_stream_capture": {
+    "data_pointer_offset": 8,
+    "length_u64_offset": 16,
+    "length_source": "original GetOffset via virtual slot0x18"
+  },
+  "passive_net_gamecore_capture": {
+    "vptr": "0x53a9ae0",
+    "type_i32_offset": 28,
+    "expected_type": 3,
+    "data_pointer_offset": 64,
+    "size_u32_offset": 80
+  },
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
   "update_deferral": "FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains",
