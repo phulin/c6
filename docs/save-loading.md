@@ -125,8 +125,8 @@ report the original result and offset through the original GetOffset method; an
 optional passive crash-filter hook reports the original offset field at a fault.
 The original nondeleting destructor runs before the caller frees the input buffer.
 No stream vtable is patched, and native short-read/bulk-read behavior is preserved.
-The adapter compiles under strict MinGW warnings; actual Load execution and result
-are separate runtime evidence, still pending as of this checkpoint.
+The adapter compiles under strict MinGW warnings; the first actual Load has now entered original game-state code, as recorded below.
+A successful Load return remains outstanding.
 
 The original MemoryIStream contract is:
 
@@ -149,6 +149,25 @@ repository using the context database at `+0x58`, starts the index serializer at
 `+0x60`, calls game virtual `+0x18/+0x20`, and creates worldbuilder/tutorial/cache
 objects. These are absent from the narrower Initialize-only fixture.
 
+## First original Load observation
+
+[`native-xp2-original-load.json`](../evidence/bootstrap/native-xp2-original-load.json)
+records genuine StartupGame returning, construction and validation of the original
+borrowed MemoryIStream, and entry into original Context Load. It stops at an
+explicit unsupported logging-manager service `+0x38`, called at GameCore
+`0x95b493` (return address `0x95b496`) in `GameEffects::Instance::Initialize`.
+The receiver comes from original logging-manager global `0xb8aa90`; the call
+passes log ID `0xc95e0bc4` and stores EAX in global `0xb6d7e8`. It follows the
+log-registration call at logger `+0x40`. This identifies a required original
+logging contract; no Save/Load success follows from stopping there.
+
+The initial explicit unsupported-service exit bypasses the crash filter, so that
+checkpoint has neither a Load return code nor a consumed-byte observation.
+`bootstrap_save_probe_report_fault` is also available for explicit unsupported
+service exits to capture the original stream position without replacing its
+methods. The pinned compressed section boundary remains unvalidated by complete
+original consumption.
+
 ## Original Save boundary for subsequent roundtrip work
 
 The actual exported context vtable slot `+0x168` points to Save `0x5916e0`.
@@ -164,9 +183,11 @@ expected to be byte-identical to the old version-4 fixture.
 No Save or roundtrip has executed yet. The original `MemoryOStream` constructor
 `0x9a9f20` initializes its Buffer through `0x991940` with an allocator supplied in
 RDX and capacity in R8. Its Write methods `0x9aa2e0/0x9aa360` grow through
-`0x991b40`, copy through `0x991a00`, and return 1 on growth failure. Recover a
-genuine matching allocator and error/size observations before using this for
-canonical-state comparisons. Repeated native Save/RNG invariance and a fresh
+`0x991b40`, copy through `0x991a00`, and return 1 on growth failure. A genuine allocator provider is the original static object at `0xb60c10`,
+vtable `0x9be528` (allocate `0x364e0`, free `0x36e20`): current Windows caller
+`0x3690a` passes that object and initial capacity 1024 to the output constructor.
+Use that original provider, retaining native allocation/destruction and error/size
+observations, for future canonical-state comparisons. Repeated native Save/RNG invariance and a fresh
 context reload remain future executable checks, not results of this contract.
 
 ## Remaining executable gate
@@ -175,7 +196,7 @@ Feed the private extracted candidate to the actual loaded context only after the
 runtime can complete the genuine existing-game setup with this save's rules and
 configuration. Record the complete stream read trace, return code, consumed byte
 count, state/RNG observations, and original lifecycle outcomes. Confirm the final
-compressed section boundary against that trace. Until then, native load,
+compressed section boundary against that trace. Until then, successful native load,
 configuration semantics, initialized benchmark fixture, and gameplay parity remain
 unvalidated.
 
