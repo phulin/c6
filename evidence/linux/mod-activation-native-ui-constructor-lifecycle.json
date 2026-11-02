@@ -1,0 +1,409 @@
+{
+  "configuration": {
+    "schema": "c6-linux-mod-activation-v1",
+    "assets": {
+      "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "libASL_Interpose.so": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4",
+      "libEOSSDK-Linux-Shipping.so": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42",
+      "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "libc++.so.1": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c",
+      "libc++abi.so.1": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666",
+      "libiconv.so.2": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005",
+      "libsteam_api.so": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0",
+      "libtbb.so.2": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707",
+      "libGameCore_Base.so": "8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6",
+      "libGameCore_XP1.so": "431f6e33f0fb5ac081016d14868cff60b3c3c2417acee82e75e23f24c466c80b"
+    },
+    "base_content_gate_sha256": "1e5827620697319dd6a3606476eaa6284016b4aae1cf6f5f89413536f1b50d64",
+    "update_callback_profile": null,
+    "ui_constructor_only": true,
+    "source_view_manifest_sha256": null,
+    "dlc_descriptors": {
+      "DLC/alexanderscenario/alexanderscenario.modinfo": "7c7917528505b0d01ab1ae5ffdc54cb82c0c66a85f34e214b5a047203ae77809",
+      "DLC/australia/australia.modinfo": "ec60307733a0cbbd527fb7863ef2c88bbfec233adc3e3133e055765480f3a305",
+      "DLC/australiascenario/australiascenario.modinfo": "c88c71a3c9f6e026bbb33ceabf6a5c54be9ade7247bda5a9ef892ae9702271e9",
+      "DLC/aztec_montezuma/aztec_montezuma.modinfo": "d80afe7ef17e9cbd79940e5f2322a07e58679f4e3ba952e9cce953694e3f6562",
+      "DLC/babylon/babylon.modinfo": "61d2c55c03cbe882af06854cc2d4cbfced4b28a6cd30648cb455344b9117b167",
+      "DLC/barbarianclansmode/barbarianclansmode.modinfo": "e74a910b920cb40c10ae9434fbbf75ece42e6f3400b89031eff62ff6198750ad",
+      "DLC/blackdeathscenario/blackdeathscenario.modinfo": "febb9d85bddd2426f73df7ff22995706fcaaddb0668b1f2c9f602a125d0e9acf",
+      "DLC/byzantium_gaul/byzantium_gaul.modinfo": "853513b30625b6d41ca434b2c115a3bf517df8011addcdd8ea0ddc6749e8e720",
+      "DLC/catherinedemedici/catherine_de_medici.modinfo": "24c83ed00f7c4d595207d2f7e726c386bd52c65e797b9970513d9d3e730cc14d",
+      "DLC/civroyalescenario/civroyalescenario.modinfo": "9a69917ec1d26eed33098b53686c68df3977fdec0227c0dbde836ba036e1ef7e",
+      "DLC/ethiopia/ethiopia.modinfo": "d92875238a743f22fb7f243047ae6fb800fee6c5daabb6ec97903c9a9fa09155",
+      "DLC/expansion1/expansion1.modinfo": "940bae66a6fb24917d398eb6346be3c9c53386f91f9caff75670e878a3af24f7",
+      "DLC/expansion2/expansion2.modinfo": "69e8c5cb48d8dbf0d8a322eb68ec3aa0c403ba6f30a002ea2aa60b692384ae7e",
+      "DLC/grancolombia_maya/grancolombia_maya.modinfo": "82f8a01ca8e29b15b5a26274f7e5e01d302372a7dd0e127676b5c884c06bb3e4",
+      "DLC/indonesia_khmer/indonesia_khmer.modinfo": "9165f9edf90368a175aab08d0f6f2946003e6c2ef7b429013a832e54ec456147",
+      "DLC/indonesia_khmerscenario/indonesia_khmerscenario.modinfo": "dba77bbc016cc1280185df173af88a651378c56e2787fa2e0cae739445deb51b",
+      "DLC/kublaikhan_vietnam/kublaikhan_vietnam.modinfo": "830e5b538cd9a3b091e4150a6ae82dce11bca0e9f93ebfd00385d32956a2803b",
+      "DLC/macedonia_persia/macedonia_persia.modinfo": "740906ea21347ced70645f425f5476d25dcbde4586744dbd448f26b1f8a8a667",
+      "DLC/nubia_amanitore/nubia_amanitore.modinfo": "3c614a4468d9833413bc9acc66f7b9591b10b91474877ecfac787da9a716cfd6",
+      "DLC/nubiascenario/nubiascenario.modinfo": "2944ac209cab2555cba965866243da07218ab9f33cf47958262a9e13db336972",
+      "DLC/piratesscenario/piratesscenario.modinfo": "882ce687559042e43fa77f177b2fcc25564f756b4f1b11ca8c1e8fc3c5054392",
+      "DLC/poland_jadwiga/poland_jadwiga.modinfo": "53b8c18a36103b7addf82a456e63e79699e0f61846e5df9e2c206ca71fa5f3f9",
+      "DLC/polandscenario/polandscenario.modinfo": "5aa92ebe0a965a66e993b397fe6c52aab8c6c52de852e2c41113006dc6d9a865",
+      "DLC/portugal/portugal.modinfo": "c1f8e63af1549e51dc09bd1c353ad7595f0bb0bf39523cea99cc130c70a3cfe6",
+      "DLC/scoutcat/scoutcat.modinfo": "bcbb8577cef29c42c6760fe4e2b7e4402ab0fda47f6a7640bd1d766e4ecedacc",
+      "DLC/teddyroosevelt/teddy_roosevelt.modinfo": "fb463c2dfb96836c9113e51e1e8b898945f61a1fbbf25761dcc3c0d3689b0dde",
+      "DLC/treerandomizer/treerandomizer.modinfo": "78f70ffe8d1339b995c243040ebcb308c892a3e4c18c4070bdc2e8d6aeb7febb",
+      "DLC/vikingslandmarks/vikingslandmarks.modinfo": "749522ec87a6b5e79bdb0f405e7c087c47f727d8677bc01d8c2a284a806cabac",
+      "DLC/vikingsscenario/vikingsscenario.modinfo": "9da7e4cae97bd814172df576dcb8e96a67e6712091f1c6be9d9dc8db69b4a3f3",
+      "DLC/warmachinescenario/warmachinescenario.modinfo": "02713221d9f344a2e45d54cbb9a7f9df58f3654aee384fb5fcc92f907a80395e"
+    },
+    "sources": {
+      "native/linux/mod_activation.c": "b107a9de6d8dbdb4918044a847a9667c2d5f5bb37743282866e8fb69ec325e85",
+      "native/linux/mod_activation.h": "af22977f6fd4d7e5d4ac4104a2ec7a57aaab8e307f8d45504ce8dab5e7fc51af",
+      "native/linux/host_services.c": "f958b7afb65c865c061a8164e8686bb05c2bde9bda5b3a66dbc8939b5c22e3cf",
+      "native/linux/host_services.h": "46d086ae47ea1374a42b2a525f58b9dac2433e7026b6ca98731c8de163f10d71",
+      "native/linux/temp_heap.c": "cc7fa312392700f4cd0dbaffd211935c356f8546414bb973a33beb120cd8ad05",
+      "native/linux/temp_heap.h": "a0d6869eeb16871461910cd3df3faeeee7ad8dd660176602baa9dfa5abd2b5fe",
+      "native/linux/localization.c": "b898657a0e88837be77ecdfa89516494ce3e325ddb43bcc6bb1bca4e9e02d89d",
+      "native/linux/localization.h": "85b9807b03d6f751e619120c26a04df474c0925266566aba1a3193bb412de76f",
+      "tools/linux/localization_gate.py": "9c7e3d27ee327671d1d2299e9142da47fce6977dca54314724c27b17e902653f",
+      "native/linux/filesystem.c": "a94142fa66a572807051a0aef09198e69b5cd5bce1c8d954b06080a1c425be40",
+      "native/linux/filesystem.h": "3b8b98247b6b0e8573670615c995d9913819877890e3887f909584d136291fb4"
+    },
+    "configure_requested": false,
+    "content_paths_requested": true,
+    "art_manager_requested": true,
+    "localization_profile": {
+      "files": {
+        "Base/assets/text/en_us/advisortext.xml": "b9b57124dd458bd3138d264b464a254a2aaa4d5ca5616cd02f664f42fe5a3c5c",
+        "Base/assets/text/en_us/ancientrivalsscenario_text.xml": "b5e9add3b49bc1b53973b8a9a1045ef3760534facaec2a6f1a3747f00de9c1c5",
+        "Base/assets/text/en_us/australia_packagetext.xml": "4a5c892b765cac3c0ffb9044597ce1aebdf70ea4277afccb453f3439f17bbe5b",
+        "Base/assets/text/en_us/automation_narration_text.xml": "72c9ffda2323a8f6a18fa4e8b7e284d366bc4a16d81f68ffd17a98fb83d77de7",
+        "Base/assets/text/en_us/aztec_montezuma_configtext.xml": "b9a08694f174722e6cc7901877b57d41a684617b9617634f756e52c5e976464b",
+        "Base/assets/text/en_us/aztec_montezuma_gameplaytext.xml": "29f8bdda1f1072de097f7cd39247517c7b28c643062f748928ca97ed3bb51827",
+        "Base/assets/text/en_us/aztec_montezuma_packagetext.xml": "d28e7ab975b1889e9829b529e115973a8608cbca63e5d76d6a71c115cae7cc83",
+        "Base/assets/text/en_us/balancemaps_configtext.xml": "52fa04a0b87170b9ac71168b7d161bc1f92daba3fedc0c25890d7548d0671415",
+        "Base/assets/text/en_us/benchmarktext.xml": "8f0d3791a5b8be356330a342ddbcdeaa6e3916522990d518ef1827e5d7f0744e",
+        "Base/assets/text/en_us/building_huey_teocalli_text.xml": "1b28ecc1e7acb2cb29de8dafc5cffce759f3d5a2e0e9087d7a558580c860459a",
+        "Base/assets/text/en_us/buildings_text.xml": "3e817bbdcaf01bc5a624d0488aeee98272b2abd90b0f6f015f36f0a7d2ffc2a4",
+        "Base/assets/text/en_us/citizennames_text.xml": "6e9d348df75ba4f1febaeb09f568389c91d62ece9e87ed8e32accfa1208a5219",
+        "Base/assets/text/en_us/citynames_text.xml": "47e1a01a699c5d730c623a5ae22b932dcca00dbf0f8e06e376dcab86f6e9d8d2",
+        "Base/assets/text/en_us/citystatepicker_frontendtext.xml": "95dd68d9ecb77b58025fd7259babec7bdc9e688ff4fbcb52fc9a672e5306c81f",
+        "Base/assets/text/en_us/civics_text.xml": "388d416d31a3dccea5c0cd1782656ba398467d352e2ecd8dcda5f43790e93a37",
+        "Base/assets/text/en_us/civilizations_text.xml": "f9b6603b49b9497e8026bdd956acaa51de1d997a66bcd476a9022cde7cf945bf",
+        "Base/assets/text/en_us/civilopedia_buildings_text.xml": "8f2ce3fba7758131864a6038e0926764d21b3102d3e1ce5b150f6bb5ab694990",
+        "Base/assets/text/en_us/civilopedia_citystates_text.xml": "e96e89f92b047d11774fa1cc782141e2a892983f92e606df26ea8617e34a4e58",
+        "Base/assets/text/en_us/civilopedia_civics_text.xml": "7f93e894426af3786b7fdb01a7f841c0a8309424e6be7711dc7af472b24367d0",
+        "Base/assets/text/en_us/civilopedia_civilizations_text.xml": "f5a8a3e9224abd9e28818eaf31d32d15cea5fc1fcdd1c46e66d0bcbcdb32f79e",
+        "Base/assets/text/en_us/civilopedia_concepts_text.xml": "7a07265e6a33523b8f28122b6b50d74ed02d93e091b1fcfe6b25d4696c2ace5e",
+        "Base/assets/text/en_us/civilopedia_districts_text.xml": "7dd46af174ca13114bef3541b4efe03ea3c371cecac79665111a3281d9a54a9e",
+        "Base/assets/text/en_us/civilopedia_features_text.xml": "0de253315cf7b935c28bbeee995d4221ac3ce140bca8beb5a184d2430656b3dc",
+        "Base/assets/text/en_us/civilopedia_governments_text.xml": "d04ed2ff9d02d2950a73b8d1b96391897f1e263aa14ae324605766c9aa3a7872",
+        "Base/assets/text/en_us/civilopedia_greatpeople_text.xml": "e0ad1969f036ff17afc7a13bd0afead8240516e505c8feccb0dc05b49b3fafac",
+        "Base/assets/text/en_us/civilopedia_improvements_text.xml": "ca8815f7564ab9599a52b96f1717d540d0a63afb581759dd9f2c943ea2aa437e",
+        "Base/assets/text/en_us/civilopedia_leaders_text.xml": "eb1ba7378d909db39c9cc331b8e04ad418e7abdebbe35b6abe1504632474cb14",
+        "Base/assets/text/en_us/civilopedia_promotions_text.xml": "6beb08f324ad3c4ed2aed3d060a12ec202bdb12374a3b95413be2eaf64f436b9",
+        "Base/assets/text/en_us/civilopedia_religions_text.xml": "cbbd058ab9342b316b26e879b2f96e28c7614622c660e8c1124f28eed578ac7f",
+        "Base/assets/text/en_us/civilopedia_resources_text.xml": "e7bce9a15306f3e55bd0745284fc5df249d621e9536ebd21a840e8239843cee5",
+        "Base/assets/text/en_us/civilopedia_search_text.xml": "ee35ac7cf3a0f8269827147eb3c524fd9544d6dbafbf8e76d5b4269963a39489",
+        "Base/assets/text/en_us/civilopedia_technologies_text.xml": "b49f076a3f2d6366649f665838a516e0636a5405caaecbd886a7c443d03875d6",
+        "Base/assets/text/en_us/civilopedia_text.xml": "7181d8d3c17333fbe44bf0add8164cb8de12d0c5b5c0e9a4dea5e051492a2c97",
+        "Base/assets/text/en_us/civilopedia_units_text.xml": "eb63891b1f086ec00bcc810392e0d174ac87544713eaa6725d1c18602417d9af",
+        "Base/assets/text/en_us/civilopedia_wonders_text.xml": "87a17efd58eb55aa8dd95b56c85805afb2232ce81170a73af9da826aaebd4de9",
+        "Base/assets/text/en_us/civroyalescenario_frontendtext.xml": "7fee8f37cc947d869f4c43ed3d21ef8dcdf76873f182132ab6bb7cbdfcf5d5fc",
+        "Base/assets/text/en_us/civroyalescenario_ingametext.xml": "5bcc520a60c84103783f76552400f9d8058c018981f63c2762a2f23fc4e29d45",
+        "Base/assets/text/en_us/civroyalescenario_packagetext.xml": "01abcc51e3c1a19b4e537429d32c6fbc6eeec7e1f880e99e7b1c93305a8f5bd8",
+        "Base/assets/text/en_us/coldwarscenario_text.xml": "bf5497399cb0678757b1920eecd742743339ffd4bbf4c49a62dccba87edd7428",
+        "Base/assets/text/en_us/combat_text.xml": "00817dfe512e43ae72593c4344fe6bc5bfda607290974e1ac4f74d484469c48c",
+        "Base/assets/text/en_us/credits.xml": "d3dc4cb3ba7136c8085385b4c6b5485f5c52890b0d5482ce85b9f3174503db6b",
+        "Base/assets/text/en_us/crossplay_text.xml": "39291455daae68e0bb5145334c638c0ccdfc4326cb758d8eb5d07ed1b79f5e57",
+        "Base/assets/text/en_us/difficulties_text.xml": "027da251dedfce9a537822e81a962e438b67d8ebb51634b30943f63e5d07b11e",
+        "Base/assets/text/en_us/diplomacydeals_text.xml": "08df80e53ad8499b3b5dd56b382bb11e1d1b59a3829c2d8c21b17f06025e810a",
+        "Base/assets/text/en_us/diplomacymodifiers_text.xml": "dcc6bff2c6b996f23496c80246c33d3eb6efbdecd724c7c658353d037a2c64f8",
+        "Base/assets/text/en_us/diplomacynotifications_text.xml": "c53ba52d482b730a8cf8ce4db9c86a48abb43df86b851f620b5ed10ac47d2c9d",
+        "Base/assets/text/en_us/diplomacypanel_text.xml": "0a338f588aee2a67c66609055b305a28589901c0a732100d0675a55b31f3a7f1",
+        "Base/assets/text/en_us/diplomacystatements_common_text.xml": "4d30b3dd4d33e49078b7ebdbed42f19501857dc73540c16b4a1c25eeb78fbd0f",
+        "Base/assets/text/en_us/diplomacystatements_declarefriendship_text.xml": "fb7f54afd6046f0dd8c3dc2d1f105878192ada766eaa8ad1a85b3d2e44474b85",
+        "Base/assets/text/en_us/diplomacystatements_declarewar_text.xml": "20a5d317229ec8b3dc8dde0ed6ebfed6739043157cc86e6f0f7654bc8d1f14f2",
+        "Base/assets/text/en_us/diplomacystatements_defeat_text.xml": "1fb583719b1fc6c0df4f1736f4b3eebd67670346bfa5ee797a4e908efb78a5c5",
+        "Base/assets/text/en_us/diplomacystatements_delegation_text.xml": "76f3a84a88eb522517a37b7c755a78ca11a288d9d9551a5b21dd403b10503a0b",
+        "Base/assets/text/en_us/diplomacystatements_denounce_text.xml": "0babfd34aacbe1f18a3e186007b7b184fecdbe8857c46c4014591af0b546dc71",
+        "Base/assets/text/en_us/diplomacystatements_embassy_text.xml": "35cf356f841705c8d0e411b7034e033b6d6e052dbf5bae7fcdb40089f674be63",
+        "Base/assets/text/en_us/diplomacystatements_firstmeet_text.xml": "252d881832af0d563049f8285145d34c7cfa18b8b45b8fdbdc0d2c1684ada81d",
+        "Base/assets/text/en_us/diplomacystatements_greeting_text.xml": "bb2e93ff46565f88159017710235c04ebe407365e4bc164002642ed870d157ac",
+        "Base/assets/text/en_us/diplomacystatements_kudosandwarnings_text.xml": "89a170dcce1caec1b570617704501c6f335f01148862a2c228596be9147d6983",
+        "Base/assets/text/en_us/diplomacystatements_makealliance_text.xml": "0127f3387f698d2205695e1b4da824a0fc7d53f048b7148e14cfc6c77f68e4b0",
+        "Base/assets/text/en_us/diplomacystatements_makedeal_text.xml": "16f8512bb91cdd95ae31a37027a2ec0211c3359e4bc67a0587df4dfd54409065",
+        "Base/assets/text/en_us/diplomacystatements_makedemand_text.xml": "d91b049a85945ce5481c57954dd2f10e0accbc8ffd82239f2b69e39728e8ada8",
+        "Base/assets/text/en_us/diplomacystatements_makepeace_text.xml": "4878217d8e445245fdbaef6537ecfd846ed76d64e3ee1ad7d0b09ce1f4f604a0",
+        "Base/assets/text/en_us/diplomacystatements_openborders_text.xml": "3d714946d642514c3a372956f4a73449dd300e562f100a2be20839acbf91afd0",
+        "Base/assets/text/en_us/diplomacystatements_warning_text.xml": "c1376333e2b259ffee86a9d711952a9da3fdf8c3728f3542b958eef07a85fcb3",
+        "Base/assets/text/en_us/districts_text.xml": "d35264be76f49a7cd1a4ab63975d18a46cc8808be757e1d98e0e76f54c40c568",
+        "Base/assets/text/en_us/earthmaps_configtext.xml": "74a58b005cf2c00aa6484992109e23fe5845cc8994459f8919b3089b839c335b",
+        "Base/assets/text/en_us/epic_text.xml": "3af1fe868b9bef09a63d0ffa85761d7b07c6ff32ab0279b4c5abf72fa8c73872",
+        "Base/assets/text/en_us/espionage_text.xml": "c404e2a7ba4ff6893a622a63fbabc801defb6b688552e6aef2131e5f988a9873",
+        "Base/assets/text/en_us/expansion1_credits.xml": "4a484a5e02830d3ebed7d6dd8cecc5a9837cc16b7a725134ef5072a490fb441a",
+        "Base/assets/text/en_us/expansion1_packagetext.xml": "d99612d93fe26a9f769efc699f09321c742d2013f649b3c32a40403f3b0e5d89",
+        "Base/assets/text/en_us/expansion2_credits.xml": "a13283ff78dc6c3fffe7137cedbe8544438648deaf489a91e5025a4fe651f984",
+        "Base/assets/text/en_us/expansion2_packagetext.xml": "c4e69830e23a15df60ec151d76e85689caf799a652bf499863e7c5c7ced4341c",
+        "Base/assets/text/en_us/featuresandterrains_text.xml": "57ce1a2880be148d0bb1e032c4c33ea5587c9ac2a549dd8419b71942aade8ddc",
+        "Base/assets/text/en_us/frontend_playbycloud.xml": "cfbeb0733c6cf0bb2f148b3ea5f74bff38f77e2e1d32211528c71f7a124f18d8",
+        "Base/assets/text/en_us/frontendtext.xml": "d9cd9bd95557c57f6cc16de50e726d4b6d11203fc786a7eea02419ab76fca24c",
+        "Base/assets/text/en_us/gamesummaries_text.xml": "a55d08bb007e8c35923a4abac4e9858097c1d589c2bb59a1d862d8952f6e58de",
+        "Base/assets/text/en_us/gossip_text.xml": "147c95158e778407be505fa2a561780e1ff5acd783636ff16b305ac7e42fced9",
+        "Base/assets/text/en_us/grammar_text.xml": "a5d06bc73d8248a8dcc3d9ce7dcb2706031f7ae8cf7498bb2ab71a4b2c366931",
+        "Base/assets/text/en_us/greatpeople_text.xml": "4b14186c906043233f2f9556492cabd0233594a80d60e04f6681d9464b5ca741",
+        "Base/assets/text/en_us/greatworks_text.xml": "45a1d19ea8e92914b1a83f1b35d74fb1e9aeca2f5f15bb90337c2ae2dcec5aaf",
+        "Base/assets/text/en_us/improvements_text.xml": "0b53e5220627b873040cc6ec58e573b6ac232b0415f7cf98e475dc45dfaa63f4",
+        "Base/assets/text/en_us/indonesia_khmer_packagetext.xml": "3dcbcb0a4e502551d9d896768748dec8bac2fa49c5ac5cb20d21107e14e6936c",
+        "Base/assets/text/en_us/ingame_playbycloud.xml": "90bda934e5cb5e0606c83732ee21cccbb6ac314a991588466cebb700f658624c",
+        "Base/assets/text/en_us/ingametext.xml": "b530f63392dae9f91ee8dc7875792464dc599d594288bbcdd997725f0217f148",
+        "Base/assets/text/en_us/leaders_text.xml": "f2f1519b7db1986b5c46b49fd666b715b4b294824ee787ec627a37c2c8d54abf",
+        "Base/assets/text/en_us/macedonia_persia_packagetext.xml": "ee1195f048c737ae370f0843ef65ef986e6680564b7375aa2b44d70a94220c22",
+        "Base/assets/text/en_us/modifiers_text.xml": "135449ea73bc4cd1b83c85eb2e7a1b1a7eb69e876f467101934be53e2e1a675e",
+        "Base/assets/text/en_us/multiplayerfrontendtext.xml": "4fafed7c61e691f4c9a43deb603598b85110195423e4266d4418a46bad11a145",
+        "Base/assets/text/en_us/my2ktext.xml": "bbeff651dc9df75ff29197be9b1a5a54f1ec444694a6cf1e75a0709e0b6ac06e",
+        "Base/assets/text/en_us/napoleonscenario_text.xml": "0e617cb4ec9851c1e171c07692393863bf9d5158c3bc815402a1711abfceb404",
+        "Base/assets/text/en_us/notifications_text.xml": "af2bb71ace407f5411eaa1457d5644615037deb915658df966cbd61e04f52d3d",
+        "Base/assets/text/en_us/nubia_packagetext.xml": "0e7f76074e2b31500e985b854a2968090110da3c73deee25290773bee520369e",
+        "Base/assets/text/en_us/piratesscenario_frontendtext.xml": "8971db820870bbd296bb3d555ec5a25e19e85e8236ef50e11b05e7a11fca185f",
+        "Base/assets/text/en_us/poland_packagetext.xml": "4f76fb717d69131d3c0805d1fb61b824709acd131c072df222238678163e986d",
+        "Base/assets/text/en_us/projects_text.xml": "47dd4558cc08acc2393f951464a8c3412b45adc52600eab16afa991085ec8b84",
+        "Base/assets/text/en_us/promotions_text.xml": "58ff42792e1c579c580213273461886b5393c9ed1c29fdbd6094771d1918c5f6",
+        "Base/assets/text/en_us/quests_text.xml": "8096124fcfb91979abddc513888f9771fe39fc01f75a3baae5fe272b95030b19",
+        "Base/assets/text/en_us/quotes_text.xml": "d8fb5ff5a4c27a291b4c63965b0646a1cfa37c01b564f69a3051fc7592eaa45c",
+        "Base/assets/text/en_us/religion_text.xml": "69208748453c1bd57aea9daabb0b7a96e43c9ceb17b562d185c9846c0c7e8e05",
+        "Base/assets/text/en_us/religiouscombatscenario_text.xml": "848ff497b166d04fa7330d5bbb4fb2c6ca1d0c027fe744432583dd0c5e151b35",
+        "Base/assets/text/en_us/routes_text.xml": "47231af4cac20491ceb3ec3d4d8d1881768d5138941d4878ec1c7da9c905a599",
+        "Base/assets/text/en_us/technologies_text.xml": "206985b93f133e7cbeed768e8b43cea72aac9b9023cfe98a9e22e76d89da3f48",
+        "Base/assets/text/en_us/types_text.xml": "943399d88c96696fc4342ea4bbf6fb69f663e472451a0681d9f1fbfe9f5d0799",
+        "Base/assets/text/en_us/ui_civilopedia_text.xml": "95c7befb4c28cb210777f618015f9414b178897bfe71d231ee1eb1c32348323d",
+        "Base/assets/text/en_us/ui_endgame_text.xml": "2fe42141a67c359325bb9c7ebb3af364254be65506d758962d610cfbc97b25eb",
+        "Base/assets/text/en_us/ui_gamesummaries_text.xml": "4818a1f0642a9c8bef7ea27271e14157089266901f71acd8a3c6ad85b8bd3546",
+        "Base/assets/text/en_us/ui_mods_text.xml": "f3666b054e5459259bea1b3e47f3568d7d158b72d1a4004b4eb6d68fd04779c9",
+        "Base/assets/text/en_us/ui_options_text.xml": "02296f38bfabbe5d03a749c575c0b1b7fb0ee3af8e8ee1a97d39de7a8b258714",
+        "Base/assets/text/en_us/ui_technology_text.xml": "806effe09737a4c037133b5b34c864019c6797366a4a5bf10039f85da3d4dcd7",
+        "Base/assets/text/en_us/unit_abilities_text.xml": "6d0cb036b6d85d2194b9795892a242dbc526128751fd44b781c6f4d40f754093",
+        "Base/assets/text/en_us/unitnames_text.xml": "3b1385b9983c9c1bb84dff223511e5249928332c7d85df8c0c4d82c9c79eea47",
+        "Base/assets/text/en_us/units_text.xml": "76d28909e62655a623d466291da1523ae4a810facb96967cb1df57282cfef7f2",
+        "Base/assets/text/en_us/usersetupwarning_text.xml": "9fc00f6db8902b04c70f80a3167f424e8639b1737b4fc61a353a1a5809e6e25c",
+        "Base/assets/text/en_us/vikings_packagetext.xml": "6436f718b3dea55220f3f7ea46567c3f78d86bb42a198e9065bda555b5023a1e",
+        "Base/assets/text/en_us/wars_text.xml": "571fcaebfa0ad76d14019553be275c7b31dccee2bcc5c262f25fa5f0f8e473a6",
+        "Base/assets/text/en_us/worldbuilder_text.xml": "336aba2b640b8c604ed06fe7107197513224eeaad74a1842b9eb190631181084",
+        "Base/assets/text/icudt56l.dat": "02cfa347cf8e80e3d9ca925a8c3371db9a125c53234f3e1c03fc0eae4705153f",
+        "Base/assets/text/localizationdatabase_data.sql": "e11d855791cc4085f7d574a62d88ec5772b229f1cbf08b712ee04fc70785ac33",
+        "Base/assets/text/localizationdatabase_postprocessing.sql": "f076a044a99e2c094004740fb1f54ebb33fe7706d6a2b7a60746ebb0b13bf2e6",
+        "Base/assets/text/localizationdatabase_schema.sql": "0e4af6b3f6d7bfff42f401149a748c0aff2d98beae16a8976bc06ed657985de7"
+      },
+      "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "locale": "en_US",
+      "schema": "c6-linux-base-english-localization-v1",
+      "source_fixture": "Original LocalizationDatabase Bootstrap over Base English text fixture; no DLC/mod resolver",
+      "required_absent_paths": [
+        "/home/phulin/c6/target/linux-mod-localization/Base/Assets/UI/Text",
+        "/home/phulin/c6/target/linux-mod-localization/Base/Assets/Gameplay/UI/Text",
+        "/home/phulin/c6/target/linux-runtime/userdata/Sid Meier's Civilization VI/Text",
+        "/home/phulin/c6/target/linux-mod-localization/launch/a/b/c6-no-localization-cache.sqlite"
+      ]
+    },
+    "cleanup_requested": true,
+    "client_constructor_requested": true,
+    "client_only": false,
+    "source_view": null,
+    "userdata": "/home/phulin/c6/target/linux/mod-activation/userdata-_ijal_vg",
+    "userdata_initially_empty": true,
+    "cwd": "/home/phulin/c6/target/linux/mod-activation",
+    "runner_sha256": "bd1796aba722145fb55c42be59971c72b585973c294c917862befac713575b56",
+    "original_filesystem_profile": {
+      "launch_host": "/home/phulin/c6/../c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+      "launch_fixture_sha256": "58bc6a073472eabce6666616020cb53a5cc0ea4a87be735eea65471e87a37421",
+      "validated_launch": {
+        "copied_host": {
+          "filename": "Civ6",
+          "sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4"
+        },
+        "directory_skeleton": [
+          "steamassets",
+          "steamassets/base",
+          "steamassets/base/binaries",
+          "steamassets/base/binaries/linux"
+        ],
+        "format": "c6.linux-original-asl-launch-fixture.v3",
+        "limits": [
+          "Source aliases are an input contract; original content is not modified or copied.",
+          "Native ASL initialization and mod activation must be executed and validated separately.",
+          "Exact copied host bytes are unchanged; no binary relocation or opcode patching."
+        ],
+        "mapping": [
+          {
+            "fixture_path": "aspyrassets",
+            "original_path": "aspyrassets"
+          },
+          {
+            "fixture_path": "libGameCore_Base.so",
+            "original_path": "libGameCore_Base.so"
+          },
+          {
+            "fixture_path": "libGameCore_XP1.so",
+            "original_path": "libGameCore_XP1.so"
+          },
+          {
+            "fixture_path": "libGameCore_XP2.so",
+            "original_path": "libGameCore_XP2.so"
+          },
+          {
+            "fixture_path": "steamassets/base/assets",
+            "original_path": "Base/assets"
+          },
+          {
+            "fixture_path": "steamassets/dlc",
+            "original_path": "DLC"
+          }
+        ],
+        "mapping_sha256": "4768b158ee2281c1a2f54f679a06e65137c050286bdf77215b15922c7d92c0f3",
+        "native_authority": {
+          "address": "0x2cae9c0",
+          "assets_path_method": "ASL::ASL_GetAppAssetsPath",
+          "filesystem_initialize": "ASL::ASL_FileInit",
+          "initializer_address": "0x2cc7d98",
+          "rule": "dirname(/proc/self/exe) + /steamassets"
+        },
+        "validated_input_gate_sha256": "8fed3edce78b3c98ba7fe1bc0d8f8b6fd120c1b60fb44f038061ff8ed10cb4f3",
+        "validated_source_inventory_sha256": "4f5f1c64cd98cc6f6b39e2ac2a27a0b47f4292cef18e94732629cd188c7850b6",
+        "validated_native_module_identities": {
+          "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+          "libGameCore_Base.so": "8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6",
+          "libGameCore_XP1.so": "431f6e33f0fb5ac081016d14868cff60b3c3c2417acee82e75e23f24c466c80b",
+          "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
+        },
+        "fixture_manifest_sha256": "58bc6a073472eabce6666616020cb53a5cc0ea4a87be735eea65471e87a37421"
+      },
+      "metadata_gate_sha256": "99ec3ca43e51339d8c0adedf84dd6cb7fd806e6b06f3ccfc8d5f19e9ba8203b5",
+      "full_content_input_gate_sha256": "8fed3edce78b3c98ba7fe1bc0d8f8b6fd120c1b60fb44f038061ff8ed10cb4f3"
+    },
+    "saved_configuration_sha256": null,
+    "preload_sha256": "59161549f0c164e511064ca6413a4f22dfa6219f9c94f0961bd6e9dd4ccb17f9",
+    "runtime_dependencies": {
+      "libASL_Interpose.so": {
+        "path": "/home/phulin/c6-assets-linux/libASL_Interpose.so",
+        "sha256": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4"
+      },
+      "libX11.so.6.4.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libX11.so.6.4.0",
+        "sha256": "c5b5d782bd9cab3420a62df88f5c991507edf3331a89f98464ddbc538c37b879"
+      },
+      "libGL.so.1.7.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGL.so.1.7.0",
+        "sha256": "67f471213576d225d38347a0b6d2a08a231980685301ff6461bd74d3994e5027"
+      },
+      "libopenal.so.1.23.1": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libopenal.so.1.23.1",
+        "sha256": "89bf02dc4e8f13680b3aae45770f9436627841b427693a565c15d4895f4c7331"
+      },
+      "libiconv.so.2": {
+        "path": "/home/phulin/c6-assets-linux/libiconv.so.2",
+        "sha256": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005"
+      },
+      "libpthread.so.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+        "sha256": "90491a21ce44efcf3bd4b65ec82501c091d7ebe7f8d9b341dd01d721001d9ecd"
+      },
+      "librt.so.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+        "sha256": "6d072187d88e092e81561a44c03a4a41397319022c6d43519757cc051c576d82"
+      },
+      "libdl.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+        "sha256": "c2994527172cc23b7fb0f7d611b71e00a37da27af12c2e5e9e0dc1a742886c96"
+      },
+      "libm.so.6": {
+        "path": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+        "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
+      },
+      "libuuid.so.1.3.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0",
+        "sha256": "78d7f4d6f27b7dffc1c84dfe2f83e84aefa6f6ceeffc6ac4bc41f9fbc61cb84e"
+      },
+      "libc.so.6": {
+        "path": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+        "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+      },
+      "ld-linux-x86-64.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+        "sha256": "c20a2dc8917c755f02b94049356320fe1f62ac7d9f8994731f807d9df39302da"
+      },
+      "libgcc_s.so.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+        "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+      },
+      "libasound.so.2.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0",
+        "sha256": "ff4c69ef420f2d0ab92c813d2222d097c6a7eafe3b13952aed069e2bb0204f55"
+      },
+      "libsteam_api.so": {
+        "path": "/home/phulin/c6-assets-linux/libsteam_api.so",
+        "sha256": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0"
+      },
+      "libstdc++.so.6.0.33": {
+        "path": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+        "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+      },
+      "libtbb.so.2": {
+        "path": "/home/phulin/c6-assets-linux/libtbb.so.2",
+        "sha256": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707"
+      },
+      "libEOSSDK-Linux-Shipping.so": {
+        "path": "/home/phulin/c6-assets-linux/libEOSSDK-Linux-Shipping.so",
+        "sha256": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42"
+      },
+      "libresolv.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/libresolv.so.2",
+        "sha256": "1d730ea434da5a5595bc6a961d7a9ace83e03703205df9644044b3dca79c362f"
+      },
+      "libc++.so.1": {
+        "path": "/home/phulin/c6-assets-linux/libc++.so.1",
+        "sha256": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c"
+      },
+      "libc++abi.so.1": {
+        "path": "/home/phulin/c6-assets-linux/libc++abi.so.1",
+        "sha256": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666"
+      },
+      "libxcb.so.1.1.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0",
+        "sha256": "7958a0136b121bdc4c708968569ad152a9ed208ab026e2537b1005dde64ca440"
+      },
+      "libGLdispatch.so.0.0.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0",
+        "sha256": "ca01a91104c8887b3d8e59499b58cbb8f604cc285666b50d9ec888eb0c915182"
+      },
+      "libGLX.so.0.0.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0",
+        "sha256": "16fc8a37eea9210dc83c57eeff5aedc10ab4c6673f2f97e8bb6ee103df657b40"
+      },
+      "libsndio.so.7.2": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libsndio.so.7.2",
+        "sha256": "e7ce0d18eb8dd47edd102d5d08da6032257db0f2c1fbbb56125eb7c5e03db10a"
+      },
+      "libXau.so.6.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXau.so.6.0.0",
+        "sha256": "8040da3f8516c1acfe39f04ff022480cdb273705ba5e7a4ca70bbdb1527cd67a"
+      },
+      "libXdmcp.so.6.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0",
+        "sha256": "667d97d6da16016400ab10de9f83ef4ab209ceb6adf68ff9650225ec13e723b0"
+      },
+      "libbsd.so.0.12.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/libbsd.so.0.12.1",
+        "sha256": "0fd5a235d714063f17285ad16e6286ca79458e2cbba1388e8b6fc921b912cbdb"
+      },
+      "libmd.so.0.1.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libmd.so.0.1.0",
+        "sha256": "4a108e1c28f9150e45d25d2ea3ec886864c18f344272ce0c755d464abc775410"
+      }
+    }
+  },
+  "configuration_sha256": "f1ca58817408a1de9b39aa8d27cc589487a9a6469ae3960c2bb171db0e2b2c06",
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "C6_LINUX_MOD host_main_intercepted\nC6_LINUX_FILESYSTEM initialize_enter\nC6_LINUX_FILESYSTEM initialize_return\nC6_LINUX_FILESYSTEM initialize_repeat_return\nC6_LINUX_MOD original_asset_working_directory result 1 kernel_path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/steamassets/base/binaries/linux\nC6_LINUX_MOD original_relative_modding_sql exists 1 path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/steamassets/base/assets/database/modding.sql\nC6_LINUX_TEMPHEAP before arena_nonnull 0 locks 0 cursor 0 capacity 0 jobs 0\nC6_LINUX_TEMPHEAP startup_enter bytes 16777216 storage_null 1\nC6_LINUX_TEMPHEAP startup_return bytes 16777216 arena_ready 1\nC6_LINUX_TEMPHEAP allocation_probe boundaries 1 aligned_1_17 1 last_release_reset 1 zero_size_release 1\nC6_LINUX_HOST app_construct_enter\nC6_LINUX_HOST arguments_bound argc 1 genuine_crt 1\nC6_LINUX_HOST app_construct_return published\nC6_LINUX_HOST utility_construct_enter\nC6_LINUX_HOST utility_construct_return nonnull\nC6_LINUX_HOST database_initialize_enter\nC6_LINUX_HOST configuration_database_enter\nC6_LINUX_HOST configuration_database_return 1\nC6_LINUX_HOST gameplay_database_enter\nC6_LINUX_HOST gameplay_database_return 1\nC6_LINUX_HOST localization_database_construct_return app_owned 1\nC6_LINUX_HOST archive_factory_create_enter\nC6_LINUX_HOST archive_factory_create_return nonnull\nC6_LINUX_HOST lua_system_create_enter\nC6_LINUX_HOST lua_system_create_return main_state_nonnull\nC6_LINUX_HOST lua_thread_create_enter\nC6_LINUX_HOST lua_thread_create_return state_nonnull\nC6_LINUX_HOST lua_stack_roundtrip_return 1\nC6_LINUX_HOST lua_thread_release_return\nC6_LINUX_LOCALIZATION negative_null_inputs 1 1 dictionary_null 1\nC6_LINUX_LOCALIZATION database_owner original_App\nC6_LINUX_LOCALIZATION database_initialize_enter\nC6_LINUX_LOCALIZATION database_initialize_return 1 cwd_restored 1\nC6_LINUX_LOCALIZATION app_connection_matches 1\nC6_LINUX_LOCALIZATION initialize_enter\nC6_LINUX_LOCALIZATION initialize_return 1 dictionary_nonnull 1\nC6_LINUX_LOCALIZATION lookup_pottery_match 1 length 7\nC6_LINUX_LOCALIZATION invalid_locale_rejected 1 en_US_retained 1\nC6_LINUX_HOST register_events_enter\nC6_LINUX_HOST register_events_return 1\nC6_LINUX_MOD register_application_options_enter\nC6_LINUX_MOD register_application_options_return 1\nC6_LINUX_MOD content_paths_setup_enter\nC6_LINUX_MOD content_paths_setup_return result 1 manager 1\nC6_LINUX_MOD art_manager_setup_enter\nC6_LINUX_MOD art_manager_setup_return result 1 native_allocator_callbacks 1\nC6_LINUX_MOD ui_construct_only_enter\nC6_LINUX_MOD ui_construct_only_return native_published 1 renderer_uninitialized 1\nC6_LINUX_MOD client_construct_only_enter\nC6_LINUX_MOD client_construct_only_return unstarted 1\nC6_LINUX_MOD init_instance_enter\nC6_LINUX_MOD init_instance_return 1 singleton 1 context 1\nC6_LINUX_MOD selected_module_path result 1 path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_Base.so\nC6_LINUX_MOD discovered_mods after_initialize total 35 xp2 1\nC6_LINUX_MOD active_context_module /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_Base.so\nC6_LINUX_MOD framework_destroy_enter\nC6_LINUX_MOD framework_destroy_return singleton 0 context 0\nC6_LINUX_MOD controller_shutdown_return active 0\nC6_LINUX_MOD ui_construct_only_destroy_enter\nC6_LINUX_MOD ui_construct_only_destroy_return unpublished 1\nC6_LINUX_MOD art_manager_shutdown_enter\nC6_LINUX_MOD art_manager_shutdown_return\nC6_LINUX_MOD content_paths_shutdown_return result 1 manager_null 1\nC6_LINUX_MOD client_shutdown_only_enter\nC6_LINUX_MOD client_shutdown_only_return unpublished 1\nC6_LINUX_LOCALIZATION shutdown_return dictionary_null 1\nC6_LINUX_HOST archive_factory_destroy_return\nC6_LINUX_HOST utility_destroy_return\nC6_LINUX_HOST lua_system_destroy_return unpublished\nC6_LINUX_HOST app_destroy_return unpublished\nC6_LINUX_FILESYSTEM shutdown_enter\nC6_LINUX_FILESYSTEM shutdown_return\nC6_LINUX_TEMPHEAP shutdown_before locks 0 cursor 0 jobs_destroyed 0 jobs_remaining 0\nC6_LINUX_TEMPHEAP shutdown_return native_fields_clear 1\nC6_LINUX_MOD cleanup_return 0\nC6_LINUX_MOD boundary_return result 0 borrowed_context 0\n",
+  "framework_boundary_returned": true,
+  "framework_cleanup_proven": true,
+  "client_cleanup_proven": true,
+  "xp2_activation_proven": false,
+  "initialized_game": false,
+  "gameplay_parity": false,
+  "limits": "Original Base bootstrap/configure boundary only; no XP2 action application or initialized-game proof. Teardown is measured only when requested and its marker is present; no independently owned context crosses transitions."
+}

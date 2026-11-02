@@ -8,11 +8,13 @@
 #include <stdint.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <string.h>
 
 static void *constructed_client;
 static void *constructed_framework;
 static void *constructed_content_paths;
 static bool started_art_manager;
+static void *constructed_ui;
 
 static bool events_registered;
 int c6_linux_mod_register_events(void) {
@@ -68,6 +70,60 @@ int c6_linux_mod_client_fixture_shutdown(void) {
     return unpublished?0:125;
 }
 
+static void diagnostic_json_string(const unsigned char *value) {
+    if (!value) {fputs("null",stderr);return;}
+    fputc('"',stderr);
+    for (;*value;value++) {
+        if (*value=='"' || *value=='\\') {fputc('\\',stderr);fputc(*value,stderr);}
+        else if (*value<32) fprintf(stderr,"\\u%04x",*value);
+        else fputc(*value,stderr);
+    }
+    fputc('"',stderr);
+}
+
+static void selection_inventory(void *framework,void *db,const char *phase) {
+    void *(*getters[3])(const void *)={
+        dlsym(RTLD_DEFAULT,"_ZNK19AppModdingFramework14GetEnabledModsEv"),
+        dlsym(RTLD_DEFAULT,"_ZNK19AppModdingFramework13GetActiveModsEv"),
+        dlsym(RTLD_DEFAULT,"_ZNK19AppModdingFramework22GetActiveModComponentsEv")};
+    const char *labels[]={"enabled_mods","active_mods","active_components"};
+    int (*prepare)(void *,const char *,int,void **,const char **)=dlsym(RTLD_DEFAULT,"sqlite3_prepare_v2");
+    int (*step)(void *)=dlsym(RTLD_DEFAULT,"sqlite3_step");
+    const unsigned char *(*text)(void *,int)=dlsym(RTLD_DEFAULT,"sqlite3_column_text");
+    int (*finalize)(void *)=dlsym(RTLD_DEFAULT,"sqlite3_finalize");
+    if (!prepare || !step || !text || !finalize) return;
+    /* Exact native consumers establish vector<ModHandle>/ComponentHandle and
+     * their four-byte elements. Read the getters' begin/end without modifying
+     * containers. Observed order is not claimed to be component execution order. */
+    for (unsigned list=0;list<3;list++) {
+        if (!getters[list]) continue;
+        uintptr_t range[2];
+        memcpy(range,getters[list](framework),sizeof range);
+        if (range[1]<range[0] || (range[1]-range[0])%4 || (range[1]-range[0])/4>10000) continue;
+        size_t count=(range[1]-range[0])/4;
+        fprintf(stderr,"C6_LINUX_MOD selection {\"phase\":\"%s\",\"list\":\"%s\",\"count\":%zu,\"entries\":[",phase,labels[list],count);
+        for (size_t i=0;i<count;i++) {
+            int32_t handle;
+            memcpy(&handle,(const void *)(range[0]+4*i),sizeof handle);
+            char query[384];
+            if (list==2)
+                snprintf(query,sizeof query,"SELECT m.ModId,c.ComponentId,c.ComponentType FROM Components c JOIN Mods m ON m.ModRowId=c.ModRowId WHERE c.ComponentRowId=%d",handle);
+            else snprintf(query,sizeof query,"SELECT ModId FROM Mods WHERE ModRowId=%d",handle);
+            void *statement=NULL;
+            bool found=!prepare(db,query,-1,&statement,NULL) && step(statement)==100;
+            fprintf(stderr,"%s{\"order\":%zu,\"handle\":%d,\"resolved\":%s,\"mod_id\":",i?",":"",i,handle,found?"true":"false");
+            diagnostic_json_string(found?text(statement,0):NULL);
+            if (list==2) {
+                fputs(",\"component_id\":",stderr);diagnostic_json_string(found?text(statement,1):NULL);
+                fputs(",\"component_type\":",stderr);diagnostic_json_string(found?text(statement,2):NULL);
+            }
+            fputc('}',stderr);
+            if (statement) finalize(statement);
+        }
+        fputs("]}\n",stderr);
+    }
+}
+
 static void mod_inventory(void *framework,const char *phase) {
     void *(*core)(void *)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework19GetModdingFrameworkEv");
     void *(*database)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Modding9Framework11GetDatabaseEv");
@@ -91,6 +147,7 @@ static void mod_inventory(void *framework,const char *phase) {
         if (statement) finalize(statement);
     }
     fprintf(stderr,"C6_LINUX_MOD discovered_mods %s total %lld xp2 %lld\n",phase,counts[0],counts[1]);
+    selection_inventory(framework,sqlite(connection),phase);
 }
 
 /* Hash gating is the caller's responsibility: tools/linux/runtime-gate.json.
@@ -150,6 +207,21 @@ int c6_linux_mod_framework_initialize(void **borrowed_context) {
         bool callbacks=*(void **)(allocate+0x20) && *(void **)(release+0x20);
         fprintf(stderr,"C6_LINUX_MOD art_manager_setup_return result %d native_allocator_callbacks %d\n",ready,callbacks);
         if (!ready || !callbacks) return 144;
+    }
+    if (getenv("C6_MOD_UI_CONSTRUCTOR")) {
+        void **published=dlsym(RTLD_DEFAULT,"_ZN7ForgeUI9UIManagerE");
+        void *(*allocate)(size_t)=dlsym(RTLD_DEFAULT,"_Znwm");
+        void (*construct)(void *)=dlsym(RTLD_DEFAULT,"_ZN12AppUIManagerC1Ev");
+        if (!published || *published || !allocate || !construct) return 150;
+        fprintf(stderr,"C6_LINUX_MOD ui_construct_only_enter\n");
+        void *ui=allocate(0x24e00);
+        if (!ui) return 151;
+        construct(ui);
+        /* Original SetupUI 0x2f95a93..aaa: actual C1, then this publication.
+         * Full renderer/StartupDesc/Initialize is intentionally not invoked. */
+        *published=ui;
+        constructed_ui=ui;
+        fprintf(stderr,"C6_LINUX_MOD ui_construct_only_return native_published 1 renderer_uninitialized 1\n");
     }
     if (getenv("C6_MOD_CLIENT_CONSTRUCTOR")) {
         int client_result=client_construct_only();
@@ -254,11 +326,20 @@ int c6_linux_mod_framework_update_constructor_callback(void **borrowed_context) 
 int c6_linux_mod_framework_shutdown(void) {
     void *(*get)(void)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework11GetInstanceEv");
     void (*destroy)(void)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework15DestroyInstanceEv");
+    bool (*unload)(void *)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework14UnloadGameCoreEv");
     void (*controller_shutdown)(void)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController8ShutdownEv");
     void **active=dlsym(RTLD_DEFAULT,"_ZN8GameCore16s_pActiveContextE");
     void **controller=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController21ms_pkActiveControllerE");
-    if (!get || !destroy || !controller_shutdown || !active || !controller ||
+    if (!get || !destroy || !unload || !controller_shutdown || !active || !controller ||
         !constructed_framework || get()!=constructed_framework) return 131;
+    /* Core configuration maps can retain the actual host VariantManager.
+     * Release the native Core while that owner is alive, before D1's original
+     * ShutdownConfiguration. Exact UpdateContent uses this same native unload
+     * boundary. D1 still executes its own later idempotent unload. */
+    fprintf(stderr,"C6_LINUX_MOD framework_unload_before_configuration_destroy_enter\n");
+    bool unloaded=unload(get());
+    fprintf(stderr,"C6_LINUX_MOD framework_unload_before_configuration_destroy_return result %d context_null %d\n",unloaded,*active==NULL);
+    if (!unloaded || *active) return 154;
     fprintf(stderr,"C6_LINUX_MOD framework_destroy_enter\n");
     destroy();
     fprintf(stderr,"C6_LINUX_MOD framework_destroy_return singleton %d context %d\n",get()!=NULL,*active!=NULL);
@@ -266,6 +347,16 @@ int c6_linux_mod_framework_shutdown(void) {
     constructed_framework=NULL;
     controller_shutdown();
     fprintf(stderr,"C6_LINUX_MOD controller_shutdown_return active %d\n",*controller!=NULL);
+    if (!*controller && constructed_ui) {
+        void **published=dlsym(RTLD_DEFAULT,"_ZN7ForgeUI9UIManagerE");
+        void (*destroy)(void *)=dlsym(RTLD_DEFAULT,"_ZN12AppUIManagerD0Ev");
+        if (!published || *published!=constructed_ui || !destroy) return 152;
+        fprintf(stderr,"C6_LINUX_MOD ui_construct_only_destroy_enter\n");
+        destroy(constructed_ui);
+        *published=NULL;
+        constructed_ui=NULL;
+        fprintf(stderr,"C6_LINUX_MOD ui_construct_only_destroy_return unpublished 1\n");
+    }
     if (!*controller && started_art_manager) {
         void (*shutdown)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App18ShutdownArtManagerEv");
         void **app=dlsym(RTLD_DEFAULT,"g_pkApplication");
@@ -346,6 +437,11 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
         result = c6_linux_mod_framework_configure();
     if (!result && getenv("C6_MOD_UPDATE_CONSTRUCTOR_CALLBACK"))
         result = c6_linux_mod_framework_update_constructor_callback(&context);
+    if (!result && getenv("C6_RULES_SNAPSHOT_DIR")) {
+        int (*snapshot)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_rules_snapshot");
+        result=snapshot?snapshot(NULL,context):153;
+        fprintf(stderr,"C6_LINUX_MOD rules_snapshot_return %d\n",result);
+    }
     if (getenv("C6_MOD_CLEANUP") && context) {
         int cleanup=c6_linux_mod_framework_shutdown();
         if (!cleanup && constructed_client) cleanup=c6_linux_mod_client_fixture_shutdown();

@@ -26,6 +26,8 @@ def main():
     parser.add_argument('--content-paths',action='store_true')
     parser.add_argument('--art-manager',action='store_true')
     parser.add_argument('--update-constructor-callback',action='store_true')
+    parser.add_argument('--ui-constructor',action='store_true')
+    parser.add_argument('--rules-snapshot-dir',type=Path)
     parser.add_argument('--localization',action='store_true')
     parser.add_argument('--cleanup',action='store_true')
     parser.add_argument('--client-only',action='store_true')
@@ -35,6 +37,11 @@ def main():
     args=parser.parse_args();assets=args.assets.resolve();view=args.source_view.resolve() if args.source_view else None
     if args.update_constructor_callback and not all((args.saved_configuration,args.configure,args.localization,args.content_paths,args.art_manager)):
         parser.error('--update-constructor-callback requires saved configuration, configure, localization, content paths and art manager')
+    if args.ui_constructor and not args.localization:parser.error('--ui-constructor requires original localization')
+    snapshot=args.rules_snapshot_dir.resolve() if args.rules_snapshot_dir else None
+    if snapshot and (not args.update_constructor_callback or not snapshot.is_dir() or any(snapshot.iterdir()) or
+                     not snapshot.is_relative_to((ROOT.parent/'c6-ghidra').resolve())):
+        parser.error('--rules-snapshot-dir requires update callback and an existing empty private c6-ghidra directory')
     if not view and not args.launch_host:parser.error('--source-view or --launch-host required')
     gate=json.loads((ROOT/'tools/linux/runtime-gate.json').read_text())
     gate.update({'libGameCore_Base.so':'8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6',
@@ -72,6 +79,7 @@ def main():
     sources=[ROOT/'native/linux/mod_activation.c',ROOT/'native/linux/mod_activation.h',
              ROOT/'native/linux/host_services.c',ROOT/'native/linux/host_services.h',
              ROOT/'native/linux/temp_heap.c',ROOT/'native/linux/temp_heap.h']
+    snapshot_sources=[ROOT/'native/linux/rules_snapshot.c'] if snapshot else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -91,20 +99,24 @@ def main():
     userdata=Path(tempfile.mkdtemp(prefix='userdata-',dir=work))
     preload=work/'mod_activation_probe.so'
     identity={'schema':'c6-linux-mod-activation-v1','assets':gate,'base_content_gate_sha256':digest(ROOT/'tools/linux/runtime-content-gate.json'),
-              'update_callback_profile':'native LoadGameViewState constructor only; no saved Request/Begin, not saved-game parity' if args.update_constructor_callback else None,
+              'update_callback_profile':'native LoadGameViewState constructor only; requestNone and constructor-default censorship=false; no saved Request/Begin, not saved-game parity' if args.update_constructor_callback else None,
+              'ui_constructor_only':args.ui_constructor,
+              'native_rules_snapshot_requested':bool(snapshot),
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
               'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
-              'source_view':str(view) if view else None,'userdata':str(userdata),'userdata_initially_empty':True,'cwd':str(work),
+              'source_view':str(view) if view else None,'userdata_policy':'new empty private task directory','userdata_initially_empty':True,'cwd':str(work),
               'runner_sha256':digest(Path(__file__)),'original_filesystem_profile':filesystem_identity,
               'saved_configuration_sha256':digest(args.saved_configuration) if args.saved_configuration else None}
     if configuration_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*configuration_sources,ROOT/'native/linux/saved_configuration.h']})
+    if snapshot_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*snapshot_sources,ROOT/'native/linux/rules_snapshot.h']})
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
@@ -127,6 +139,8 @@ def main():
     if args.content_paths:env['C6_MOD_CONTENT_PATHS']='1'
     if args.art_manager:env['C6_MOD_ART_MANAGER']='1'
     if args.update_constructor_callback:env['C6_MOD_UPDATE_CONSTRUCTOR_CALLBACK']='1'
+    if args.ui_constructor:env['C6_MOD_UI_CONSTRUCTOR']='1'
+    if snapshot:env['C6_RULES_SNAPSHOT_DIR']=str(snapshot)
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -139,10 +153,28 @@ def main():
         decode=lambda x:x.decode(errors='replace') if isinstance(x,bytes) else x or ''
         code,out,err=124,decode(exc.stdout),decode(exc.stderr)
     report={'configuration':identity,'configuration_sha256':configuration_identity,
+            'execution_paths':{'userdata':str(userdata),'native_rules_snapshot_directory':str(snapshot) if snapshot else None},
             'returncode':code,'stdout':out,'stderr':err,'framework_boundary_returned':code==0 and 'boundary_return result 0' in err,
             'framework_cleanup_proven':code==0 and 'cleanup_return 0' in err,'client_cleanup_proven':code==0 and 'client_shutdown_only_return unpublished 1' in err,'xp2_activation_proven':False,'initialized_game':False,'gameplay_parity':False,
-            'limits':'Original Base bootstrap/configure boundary only; no XP2 action application or initialized-game proof. Teardown is measured only when requested and its marker is present; no independently owned context crosses transitions.'}
+            'limits':'Original host content-transition diagnostic only; selected module path and actual active-vtable module are distinct observations. Constructor-state callback is not saved Request/Begin semantics. No initialized-game or gameplay parity proof. Teardown is measured only when requested and its marker is present.'}
+    report['native_activation_selection']={}
+    report['native_backup_events']=[]
+    for line in err.splitlines():
+        if line.startswith('C6_LINUX_MOD selection '):
+            selection=json.loads(line.removeprefix('C6_LINUX_MOD selection '))
+            report['native_activation_selection'].setdefault(selection['phase'],{})[selection['list']]=selection
+        if line.startswith('C6_LINUX_RULES '):
+            report['native_backup_events'].append(json.loads(line.removeprefix('C6_LINUX_RULES ')))
+    report['rules_snapshots']={}
+    if snapshot:
+        for label in ('configuration','gameplay'):
+            path=snapshot/f'{label}.sqlite'
+            if path.is_file():
+                with path.open('rb') as stream:header=stream.read(16).hex()
+                report['rules_snapshots'][label]={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size,
+                    'header_hex':header,'source':'original App-owned connection getter; native Database::Connection::BackupTo'}
     args.output.write_text(json.dumps(report,indent=2)+'\n')
-    print(json.dumps({'output':str(args.output),'returncode':code,'tail':err.splitlines()[-12:]},indent=2))
+    tail=[line for line in err.splitlines() if not line.startswith('C6_LINUX_MOD selection ')][-12:]
+    print(json.dumps({'output':str(args.output),'returncode':code,'tail':tail},indent=2))
 
 if __name__=='__main__':main()
