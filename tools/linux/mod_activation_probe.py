@@ -46,6 +46,7 @@ def main():
     parser.add_argument('--action-trace-directory',type=Path)
     parser.add_argument('--definition-ids',action='store_true')
     parser.add_argument('--unit-definition-ids',action='store_true')
+    parser.add_argument('--operation-registry',action='store_true')
     parser.add_argument('--save-normalization-trace',type=Path)
     parser.add_argument('--request-load-save',type=Path)
     parser.add_argument('--game-save-output',type=Path)
@@ -76,7 +77,9 @@ def main():
             raise SystemExit('complete original save request identity mismatch')
     if args.game_load_observe and not game_input:parser.error('--game-load-observe requires --game-load-stream')
     if args.action_observe and not game_input:parser.error('--action-observe requires --game-load-stream')
-    if (args.definition_ids or args.unit_definition_ids) and (not game_input or action_mode or args.action_observe or args.action_execution_observe or args.action_lifecycle_observe or args.save_normalization_trace):
+    if sum((args.definition_ids,args.unit_definition_ids,args.operation_registry))>1:
+        parser.error('registry observers require separate native fixture profiles')
+    if (args.definition_ids or args.unit_definition_ids or args.operation_registry) and (not game_input or action_mode or args.action_observe or args.action_execution_observe or args.action_lifecycle_observe or args.save_normalization_trace):
         parser.error('definition registry observers require a separate Core load fixture without actor/lifecycle/serialization instrumentation')
     if args.action_execution_observe and not args.action_observe:parser.error('--action-execution-observe requires --action-observe and its Core load fixture')
     action_trace=args.action_trace_directory.resolve() if args.action_trace_directory else None
@@ -220,6 +223,13 @@ def main():
             subprocess.run([sys.executable,str(unit_definition_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
             unit_definition_audit=json.loads(result_path.read_text())
         if unit_definition_audit!=json.loads(unit_definition_audit_paths[-1].read_text()):raise SystemExit('original Unit definition registry contracts differ')
+    operation_registry_audit=None
+    operation_registry_audit_paths=[]
+    if args.operation_registry:
+        from operation_registry_audit import contract
+        operation_registry_audit_paths=[ROOT/'tools/linux/operation_registry_audit.py',ROOT/'evidence/linux/operation-registry-abi.json']
+        operation_registry_audit=contract(assets)[0]
+        if operation_registry_audit!=json.loads(operation_registry_audit_paths[-1].read_text()):raise SystemExit('original operation registry contracts differ')
     content=json.loads((ROOT/'tools/linux/runtime-content-gate.json').read_text())['files']
     if view:
         profile=json.loads((view/'source-view.json').read_text())
@@ -263,6 +273,7 @@ def main():
     dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c'] if action_mode or args.action_lifecycle_observe else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
+    operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -297,6 +308,7 @@ def main():
               'bounded_action_mode':action_mode,'bounded_action_audits':dispatch_audits,
               'lower_core_definition_registry_observer':definition_audit,
               'lower_core_unit_definition_registry_observer':unit_definition_audit,
+              'lower_core_operation_registry_observer':operation_registry_audit,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -328,6 +340,8 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*definition_sources,ROOT/'native/linux/definition_ids.h']})
     if unit_definition_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*unit_definition_sources,ROOT/'native/linux/unit_definition_ids.h']})
+    if operation_registry_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*operation_registry_sources,ROOT/'native/linux/operation_registry.h']})
     if dispatch_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
@@ -336,14 +350,14 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
@@ -381,6 +395,7 @@ def main():
         if args.action_observe:env['C6_ACTION_OBSERVE']='1'
         if args.definition_ids:env['C6_DEFINITION_IDS']='1'
         if args.unit_definition_ids:env['C6_UNIT_DEFINITION_IDS']='1'
+        if args.operation_registry:env['C6_OPERATION_REGISTRY']='1'
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
