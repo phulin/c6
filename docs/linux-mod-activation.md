@@ -93,6 +93,23 @@ This sequence supplies real importer and eligibility code. It has not been repla
 
 The UpdateContent argument is an actual `std::__1::function<void(Database::IDatabaseConnection1*, bool)>` object, passed indirectly in RSI. The original caller at `0x2fd4c7e` constructs it through native helper `0x2fd62d0`, capturing the real LoadGameViewState. Its call body ultimately invokes `App::Censorship::ApplyContentCensoring` with that view state's native `+0x4b1` setting. UpdateContent checks callback presence before invoking it. The adapter does not forge an empty std::function, substitute a C function pointer, invent the view-state flag or bypass censoring. A genuine original caller/object lifecycle is still needed to execute this stage.
 
+## Frozen native XP2 diagnostic exports
+
+Two independent frozen runs have the same configuration identity `4c392cbe97c20bed07617686d03260417dc2abe65aace7ce15988279279b43a6`, identical source/preload/dependency/input identities, identical ordered selection records, and byte-identical original SQLite backups. Both execute actual UpdateContent successfully, observe the active XP2 vtable, back up original App-owned connections through native BackupTo, compare every source/destination table count, and complete all constructed-provider cleanup.
+
+| Native observation | Both runs |
+|---|---:|
+| Enabled mods / active mods | 1 / 1 |
+| Active components, native getter order | 46, all handles resolved |
+| Configuration tables / rows | 78 / 1,865 |
+| Gameplay tables / rows | 428 / 41,700 |
+| Update flags / status | 3 / 0 |
+| Process / complete fixture cleanup result | 0 / 0 |
+
+[Run one](../evidence/linux/mod-activation-native-xp2-export-1.json) and [run two](../evidence/linux/mod-activation-native-xp2-export-2.json) retain ordered original getter records, native backup events, binary/configuration identities and backup hashes. Proprietary databases remain in private `evidence/linux-rules/mod-activation-xp2-constructor-final-{1,2}`. The rules-data owner independently inspects their typed contents and registers a separately named diagnostic profile. The configuration identity excludes only explicitly recorded fresh empty userdata and backup destination paths, which are retained under `execution_paths`; it retains the exact input save hash, source hashes, locale, complete supplied input inventory and all provider/callback choices. The second run uses `--expected-configuration` to refuse source/input/configuration drift.
+
+This profile uses the genuine callback with constructor-default censorship=false and native requestNone, plus a constructed, renderer-uninitialized UI provider. It does not establish saved RequestLoad/Begin semantics, a fully initialized game, actual save-body loading, action/turn parity, or general UI support.
+
 ## Reproduction and evidence
 
 The isolated probe builds a separate preload at `target/linux/mod-activation/mod_activation_probe.so`, never the runtime owner's preload. It records source/dependency/module hashes, content/launch identities and a fresh userdata directory. It creates no independent GameCore context. For the passing Base lifecycle:
