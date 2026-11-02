@@ -1,0 +1,117 @@
+{
+  "schema": "c6-linux-action-independent-forwarding-review-v1",
+  "review_method": "Read-only existing report/trace/live-state/full Save inspection and control result regeneration; no engine execution or rebuild.",
+  "runs": {
+    "control-7": {
+      "runtime_report_sha256": "cd45eb223c5a1713a5eaa1f609a2262e17cf93c17d8c806276b373d7cd139bc9",
+      "configuration_sha256": "01e96c3a21c1009fe638ed61fc7d08407e634fb3a08cb54d4172addb78e695df",
+      "returncode": 0,
+      "trace_sha256": "014bedc9834508440f581a51024edc4a39c3ecd79a39891dfc7f9bd35554f9fe",
+      "trace_event_counts": {
+        "begin": 1,
+        "original_virtual_binding": 1,
+        "original_PLT_binding": 13,
+        "make_request_enter": 47,
+        "make_request_return": 47,
+        "end": 1
+      },
+      "trace_end": {
+        "event": "end",
+        "queued": 0,
+        "received": 0,
+        "unit_executed": 0,
+        "reports": 0
+      },
+      "conversion_results": [
+        {
+          "accepted": true,
+          "operation": 36,
+          "flags": 0,
+          "bAppend": 0,
+          "bFromUser": 0
+        }
+      ],
+      "full_action_saves": {
+        "before": {
+          "filename": "before.bin",
+          "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+          "bytes": 80657462
+        },
+        "after": {
+          "filename": "after.bin",
+          "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+          "bytes": 80657462
+        },
+        "repeat": {
+          "filename": "after-repeat.bin",
+          "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+          "bytes": 80657462
+        }
+      },
+      "full_action_save_hashes_independently_verified": true,
+      "all_four_live_snapshots_identical": true
+    },
+    "execute-2": {
+      "runtime_report_sha256": "ecad215f4c46f3a5e46daca64ee23b43b8e224ce49a8d2b0c3229e29e550a341",
+      "configuration_sha256": "e049e6e294bb4e6c8f2358170e7014f25b5ffe59571d163a26c2659abd0ddef0",
+      "returncode": 229,
+      "trace_sha256": "eb0cd5fe3ae07fc244295a4413ceeb05564a039aa38f2f3402a031850b67cce4",
+      "trace_event_counts": {
+        "begin": 1,
+        "original_virtual_binding": 1,
+        "original_PLT_binding": 13,
+        "make_request_enter": 48,
+        "make_request_return": 48,
+        "broadcast_enter": 2,
+        "broadcast_return": 2,
+        "end": 1
+      },
+      "trace_end": {
+        "event": "end",
+        "queued": 0,
+        "received": 0,
+        "unit_executed": 0,
+        "reports": 0
+      },
+      "conversion_results": [
+        {
+          "accepted": true,
+          "operation": 36,
+          "flags": 0,
+          "bAppend": 0,
+          "bFromUser": 0
+        }
+      ],
+      "full_action_saves": {
+        "before": {
+          "filename": "before.bin",
+          "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+          "bytes": 80657462
+        },
+        "after": {
+          "filename": "after.bin",
+          "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+          "bytes": 80657462
+        },
+        "repeat": {
+          "filename": "after-repeat.bin",
+          "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+          "bytes": 80657462
+        }
+      },
+      "full_action_save_hashes_independently_verified": true,
+      "all_four_live_snapshots_identical": true
+    }
+  },
+  "control_independent_report_regeneration_exact_match": true,
+  "context_member4_to_cache_static3_abi_reviewed": true,
+  "make_request_member4_bool_abi_reviewed": true,
+  "conversion_proven": true,
+  "broadcast_entry_proven": true,
+  "downstream_delivery_gate_unresolved": true,
+  "native_action_executed": false,
+  "complete_policy_boundary_coverage": false,
+  "complete_affected_state": false,
+  "complete_rng_inventory": false,
+  "gameplay_parity": false
+}
