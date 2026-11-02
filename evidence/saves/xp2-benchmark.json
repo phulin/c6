@@ -62,9 +62,18 @@
     ]
   },
   "limits": [
-    "Header values are decoded from hashed keys; enabled/required mod-list semantics and complete configuration identity are not yet established.",
+    "Saved enabled/required collections are established by native key evidence; current content activation and rules-database/configuration identity remain unestablished.",
     "Original context Read was not executed on this extracted stream.",
     "Decompression does not establish game-state semantics, completeness, compatibility, or parity.",
     "Section end pins observed short chunk and sync flush; no zlib checksum/eof authenticates the section."
-  ]
+  ],
+  "saved_mod_identity_evidence": "evidence/assets/xp2-saved-mod-identity.json",
+  "saved_configuration_mod_ids": {
+    "ENABLED_MODS": [
+      "4873eb62-8ccc-4574-b784-dda455e74e68"
+    ],
+    "REQUIRED_MODS": [
+      "4873eb62-8ccc-4574-b784-dda455e74e68"
+    ]
+  }
 }

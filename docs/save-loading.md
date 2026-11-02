@@ -102,9 +102,15 @@ The metadata contains app version `1.0.0.13396 (372737)`,
 `RULESET_EXPANSION_2`, Dido/Phoenicia, Future Era, standard speed, huge map,
 Prince difficulty, and localized Inland Sea text. A nested four-field mod record
 contains GUID `4873eb62-8ccc-4574-b784-dda455e74e68` and version string `1`.
-The hashed outer key is `8427ae5c`; its enabled/required semantics are not yet
-proven. These values do not establish the complete active DLC/mod list, rules
-DB hash, or matching configuration identity. The saved app build is older than
+The hashed outer key `8427ae5c` is the required-mod metadata list. Saved host
+configuration additionally contains explicit `ENABLED_MODS` (`1b8cd1c8`) and
+`REQUIRED_MODS` (`fed47f44`) collections, each containing exactly that XP2 GUID,
+repeated in both configuration copies. The enabled collections start at offsets
+37228 and 84912; required collections at 39778 and 87422. Native host key
+initializers, CRC implementation, accessors, and metadata population establish
+these names; see [the saved-mod identity proof](../evidence/assets/xp2-saved-mod-identity.json).
+This establishes the saved selected-mod collections, not successful current host
+content activation, a rules DB hash, or a reconstructed live configuration. The saved app build is older than
 the supplied target DLL; accepting version 4 statically does not prove backward
 compatibility for every subsystem.
 
