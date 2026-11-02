@@ -1,0 +1,33 @@
+# Real Windows context bootstrap on Linux
+
+`tools/bootstrap/run.py` builds a MinGW x64 Windows executable and runs it with Wine. The original XP2 DLL is loaded by `LoadLibraryW`: Windows imports, TLS, CRT and static initialization run normally. This is separate from the narrow original-code mapper used for RNG and geometry.
+
+The observed checkpoint creates an actual original context, queries both accepted GUIDs and an unknown GUID, destroys the context, repeats three times, and unloads the DLL. It does **not** initialize a game, create units, load saves, perform actions or advance turns. `evidence/bootstrap/native-context-lifetime.json` records the actual run, with `real_context_created: true` and `initialized_game: false`.
+
+Prerequisites on Ubuntu:
+
+```sh
+sudo apt-get install --no-install-recommends wine64 g++-mingw-w64-x86-64-posix
+python3 tools/bootstrap/run.py --output evidence/bootstrap/native-context-lifetime.json
+python3 tools/bootstrap/run.py --initialize --output evidence/bootstrap/native-initialize-boundary.json
+python3 tools/bootstrap/run.py --empty-databases --output evidence/bootstrap/native-initialize-empty-databases.json
+python3 tools/bootstrap/run.py --sql-schema-bootstrap --output evidence/bootstrap/native-original-sql-schema.json
+```
+
+The current initialization diagnostic intentionally exits **86** at the first unsupported required host service. This is a failed boundary observation, never a passing gameplay comparison. Its initial run called original `SetEngineInterface`, captured 16 event parameter registrations, then reached the configuration database URI request from original `Initialize`. A null scripting service, real stderr logging sink and event registration storage are explicit diagnostic fixtures; they do not implement event delivery or a script VM. See [bootstrap-services.md](bootstrap-services.md).
+
+The required local assets are the exact Gathering Storm DLL under `DLC/Expansion2/Binaries/Win64`, original `Base/Binaries/Win64Steam/CivilizationVI.exe`, and the matching Database, Localization and HavokScript DLLs. The runner inventories all four DLLs' static imports and rejects any supplied dependency/runtime asset that differs from the exact allowlist in `tools/bootstrap/config.json`. Windows OS/API-set providers come from Wine; the supplied `LaunchPad` x64 `msvcp140.dll`, `vcruntime140.dll`, `ucrtbase.dll` and CRT API-set DLLs are copied into ignored `target/bootstrap`. No proprietary bytes are committed.
+
+`--empty-databases` calls real `Database::Initialize` and creates real named-memory SQLite keepalive connections through the matching DatabaseDLL. `--sql-schema-bootstrap` additionally executes seven fingerprinted original SQL schema sources through original `IDatabaseConnection1::ExecuteMultiple`. These are schema diagnostics: all XML rules, enabled-content resolution, game configuration, map and players remain absent. The recovered named-memory URI formats are used for generation zero; this does not recreate the original host's generation lifecycle.
+
+One source (`02_AddTriggers.sql`) has a UTF-8 BOM. Passing its raw bytes directly to the original DatabaseDLL fails; explicit BOM removal lets all seven batches succeed. `--sql-schema-bootstrap --raw-sql-bytes` preserves that failing case and returns 15. The source hashes always cover the raw bytes, and the configuration/result explicitly record the decoding transform. Original host text-import behavior is still unverified.
+
+With either the empty or schema-only database fixture and the derived stderr logging sink, original `Initialize` returns true, and original `IsInitialized` changes from false to true. Both modes complete original context destruction and DLL unload with exit zero. Cleanup uses a bounded empty archive registry: no types were registered, absent-type unregistration is recorded, and its consumed string allocation is freed through the original GameCore deallocator. Its context initialized flag is distinct from an initialized gameplay session. Later startup and gameplay services remain outstanding boundaries; no full-engine parity follows from this return value.
+
+Both the Python runner and Windows executable reject the wrong GameCore DLL or original executable SHA-256. The runner's configuration identity includes source hashes, matching dependency/runtime hashes, mode and the explicit absence of a rules/database/DLC fixture. `--expected-configuration HASH` refuses a mismatched configuration before execution. The configuration also includes the compiler and Wine versions. Each result separately records the built host hash; compiler and Wine changes require a fresh result and change the configuration identity. Concurrent replacement of trusted local files after hashing is outside this harness contract.
+
+A previously hidden dependency is the GameCore's dynamic lookup of **host executable exports**, beyond the PE import table. During static initialization it resolves `EXP_GetEmptyBasicString` through `GetProcAddress(GetModuleHandleA(NULL), ...)`. A host without that export crashes inside `LoadLibraryW` (error 998). The adapter exports a trampoline to the unchanged original executable getter at RVA `0x9aee10`, which consists solely of `lea` of its zero-filled empty-string singleton at RVA `0x2d227d8`, followed by `ret`. The runtime checks repeated getter pointer identity, exact sentinel address, both zero header words and the zero terminator before DLL load and after successful DLL teardown. It maps the fingerprinted original executable with `DONT_RESOLVE_DLL_REFERENCES` solely for this proven getter and sentinel storage; the original executable's imports, entry point and CRT initializers do **not** run. This is not a general executable host implementation.
+
+The original executable has stripped relocations at base `0x140000000`; the adapter links at `0x150000000` so the original can occupy its expected range. The GameCore export factory and destroy functions are called through their named exports. Before calling QueryInterface, the adapter verifies the actual context vtable RVA `0xa101e8` and first slot RVA `0x5907a0`. Factory/destroy signatures were derived from the supplied target instructions, including the factory's zero arguments and destroy's context pointer. No synthetic pointer replaces the constructed context, and no original image bytes or vtables are patched.
+
+`native-import-inventory.json` is an inventory-only report. Static dependency availability does not prove the dynamic host-export contract or successful initialization. The current native execution is a bootstrap milestone only; full state/action/turn parity remains outstanding.
