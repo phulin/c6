@@ -10,7 +10,7 @@ Start or reopen the server:
 tools/ghidra/serve.sh
 ```
 
-The local endpoint is `http://127.0.0.1:8765/mcp`. Do not open the same project in a second process. Large program analysis runs asynchronously; whole-program semantic code indexing is disabled by default to keep shutdown practical (set `C6_GHIDRA_CODE_INDEX=1` to enable it); decompilation waits for Ghidra analysis, but does not require semantic indexing to finish. No original DLL is modified.
+The local endpoint is `http://127.0.0.1:8765/mcp`. Do not open the same project in a second process. The launcher defaults to targeted access to saved functions; it leaves the Ghidra full-analysis flag unchanged (`false` until a full run completes). Set `C6_GHIDRA_AUTO_ANALYZE=1` to request whole-project analysis; whole-program semantic code indexing is disabled by default to keep shutdown practical (set `C6_GHIDRA_CODE_INDEX=1` to enable it); decompilation, symbol lookup, bytes, and cross-references work from the saved project. String/semantic search requires completed indexing. No original DLL is modified.
 
 ```sh
 source tools/ghidra/env.sh
@@ -25,3 +25,5 @@ Use `list-tools` for the live tool schemas. Large outputs go into the private ev
 The target FinalRelease SHA-256 is `324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c`; image base `0x180000000`. Release SHA-256 is `acd6cf2f352ae30ddf6f752bd7661165d9a5cf070f5519425ebab9ee0b865521`. Their RVAs and behavior must be established independently.
 
 Official upstream: [Ghidra release](https://github.com/NationalSecurityAgency/ghidra/releases/tag/Ghidra_12.2_build), [PyGhidra MCP](https://github.com/clearbluejar/pyghidra-mcp).
+
+For a closed project, `decompile_project.py` decompiles known addresses directly with PyGhidra and stores pseudo-C plus instruction listings. It refuses concurrent project ownership through the normal Ghidra lock. Target boundaries and annotations persist in the private full-project snapshots.
