@@ -8,6 +8,8 @@ use std::{collections::HashMap, fmt, fs, path::Path};
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
 const LINUX_BASE_MANIFEST: &str = include_str!("../../../evidence/linux/rules-base-snapshot.json");
+const LINUX_XP2_DIAGNOSTIC_MANIFEST: &str =
+    include_str!("../../../evidence/linux/rules-xp2-request-none-snapshot.json");
 const WINDOWS_HISTORICAL_MANIFEST: &str =
     include_str!("../../../evidence/assets/xp2-rules-snapshot.json");
 
@@ -541,7 +543,8 @@ pub struct SourceIdentity {
     pub source_sequence_sha256: String,
     pub language_identity: Value,
 }
-/// Registered exact rules fixture for a separately identified native binary.
+/// Registered exact rules fixture for a native binary and complete input context.
+/// Several profiles may share the same GameCore hash.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RulesProfile {
@@ -549,6 +552,9 @@ pub enum RulesProfile {
     WindowsXp2Historical,
     /// Supplied Linux GameCore with original-native base inputs and no DLC/mod activation.
     LinuxXp2Base,
+    /// Native activated XP2 export with LoadGameViewState constructor/requestNone
+    /// callback policy. This is not a saved Begin or initialized gameplay session.
+    LinuxXp2ActivatedDiagnostic,
 }
 impl RulesProfile {
     pub fn gamecore_sha256(self) -> &'static str {
@@ -556,7 +562,7 @@ impl RulesProfile {
             Self::WindowsXp2Historical => {
                 "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c"
             }
-            Self::LinuxXp2Base => {
+            Self::LinuxXp2Base | Self::LinuxXp2ActivatedDiagnostic => {
                 "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
             }
         }
@@ -577,6 +583,7 @@ fn profile_manifest(profile: RulesProfile) -> Result<Manifest> {
     let text = match profile {
         RulesProfile::WindowsXp2Historical => WINDOWS_HISTORICAL_MANIFEST,
         RulesProfile::LinuxXp2Base => LINUX_BASE_MANIFEST,
+        RulesProfile::LinuxXp2ActivatedDiagnostic => LINUX_XP2_DIAGNOSTIC_MANIFEST,
     };
     let manifest: Manifest = serde_json::from_str(text)?;
     if manifest.source.profile["target_sha256"].as_str() != Some(profile.gamecore_sha256()) {
@@ -621,15 +628,21 @@ pub struct Rules {
 }
 impl Rules {
     pub fn load(directory: impl AsRef<Path>, declared: &SourceIdentity) -> Result<Self> {
-        let profile = match declared.profile["target_sha256"].as_str() {
-            Some(hash) if hash == RulesProfile::LinuxXp2Base.gamecore_sha256() => {
-                RulesProfile::LinuxXp2Base
+        // A module hash alone cannot distinguish base from activated content.
+        // Resolve only an exact complete registered descriptor before any file I/O.
+        let mut selected = None;
+        for profile in [
+            RulesProfile::LinuxXp2Base,
+            RulesProfile::LinuxXp2ActivatedDiagnostic,
+            RulesProfile::WindowsXp2Historical,
+        ] {
+            if declared == &profile.source_identity()? && selected.replace(profile).is_some() {
+                return fail("declared source/profile matches ambiguous registered identities");
             }
-            Some(hash) if hash == RulesProfile::WindowsXp2Historical.gamecore_sha256() => {
-                RulesProfile::WindowsXp2Historical
-            }
-            _ => return fail("declared source/profile has no registered exact binary profile"),
-        };
+        }
+        let profile = selected.ok_or_else(|| {
+            Error("declared source/profile differs from every registered pinned original-native identity".into())
+        })?;
         Self::load_profile(profile, directory, declared)
     }
     /// Explicit profile selection precedes filesystem access. Declared input must

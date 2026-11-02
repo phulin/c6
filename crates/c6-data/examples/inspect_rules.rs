@@ -6,9 +6,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut arguments = std::env::args().skip(1);
     let profile = match arguments.next().as_deref() {
         Some("linux-xp2-base") => RulesProfile::LinuxXp2Base,
+        Some("linux-xp2-activated-diagnostic") => RulesProfile::LinuxXp2ActivatedDiagnostic,
         Some("windows-xp2-historical") => RulesProfile::WindowsXp2Historical,
         _ => {
-            return Err("choose explicit profile: linux-xp2-base or windows-xp2-historical".into())
+            return Err("choose explicit profile: linux-xp2-base, linux-xp2-activated-diagnostic or windows-xp2-historical".into())
         }
     };
     let source = profile.source_identity()?;

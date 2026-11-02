@@ -284,20 +284,21 @@ fn linux_native_exports_match_every_manifest_table() {
     let source = profile.source_identity().unwrap();
     let first = Rules::load_profile(profile, Path::new(&first_path), &source).unwrap();
     let second = Rules::load_profile(profile, Path::new(&second_path), &source).unwrap();
+    let activated = RulesProfile::LinuxXp2ActivatedDiagnostic;
+    assert!(Rules::load_profile(
+        activated,
+        Path::new(&first_path),
+        &activated.source_identity().unwrap()
+    )
+    .is_err());
     assert_eq!(first.profile(), RulesProfile::LinuxXp2Base);
     assert_eq!(first.configuration().tables().len(), 78);
     assert_eq!(first.configuration().fingerprint().row_count, 1280);
     assert_eq!(first.gameplay().tables().len(), 318);
     assert_eq!(first.gameplay().fingerprint().row_count, 23966);
     assert_eq!(first.source(), &source);
-    assert_eq!(
-        first.configuration().fingerprint(),
-        second.configuration().fingerprint()
-    );
-    assert_eq!(
-        first.gameplay().fingerprint(),
-        second.gameplay().fingerprint()
-    );
+    assert_same_native_database(first.configuration(), second.configuration());
+    assert_same_native_database(first.gameplay(), second.gameplay());
     for unit in first.units() {
         let row = first
             .gameplay()
@@ -317,4 +318,151 @@ fn linux_native_exports_match_every_manifest_table() {
             assert_eq!(value, row.integer(name).unwrap());
         }
     }
+}
+
+// Compare retained state directly as well as every independently pinned digest.
+fn assert_same_native_database(first: &Database, second: &Database) {
+    assert_eq!(first.fingerprint(), second.fingerprint());
+    assert_eq!(first.schema().len(), second.schema().len());
+    for (first, second) in first.schema().iter().zip(second.schema()) {
+        assert_eq!(first.values(), second.values());
+    }
+    assert_eq!(first.tables().len(), second.tables().len());
+    for (first, second) in first.tables().iter().zip(second.tables()) {
+        assert_eq!(first.fingerprint(), second.fingerprint());
+        assert_eq!(first.column_metadata(), second.column_metadata());
+        for (first, second) in first.rows().zip(second.rows()) {
+            assert_eq!(first.row_id(), second.row_id());
+            assert_eq!(first.values(), second.values());
+        }
+    }
+}
+
+#[test]
+fn shared_linux_binary_requires_exact_input_profile_before_io() {
+    let profiles = [
+        RulesProfile::LinuxXp2Base,
+        RulesProfile::LinuxXp2ActivatedDiagnostic,
+    ];
+    assert_eq!(profiles[0].gamecore_sha256(), profiles[1].gamecore_sha256());
+    for profile in profiles {
+        let source = profile.source_identity().unwrap();
+        for other in profiles {
+            if other == profile {
+                continue;
+            }
+            assert!(Rules::load_profile(other, "/nonexistent", &source)
+                .unwrap_err()
+                .to_string()
+                .contains("source/profile differs"));
+        }
+        // Keeping the right binary while stripping/changing each remaining
+        // descriptor field must never select another profile or access files.
+        let mut mutations = Vec::new();
+        let mut changed = source.clone();
+        changed.native_configuration_sha256.clear();
+        mutations.push(changed);
+        let mut changed = source.clone();
+        changed.profile["id"] = json!("unregistered-input-context");
+        mutations.push(changed);
+        let mut changed = source.clone();
+        changed.module_identities = json!([]);
+        mutations.push(changed);
+        let mut changed = source.clone();
+        changed.source_sequence_sha256.clear();
+        mutations.push(changed);
+        let mut changed = source;
+        changed.language_identity = json!({"localization": "different"});
+        mutations.push(changed);
+        for changed in mutations {
+            assert!(Rules::load("/nonexistent", &changed)
+                .unwrap_err()
+                .to_string()
+                .contains("source/profile differs"));
+        }
+    }
+}
+
+/// Activated diagnostic content only; not saved-game, action or turn coverage.
+#[test]
+#[ignore = "requires two private Linux activated requestNone exports"]
+fn linux_activated_native_exports_match_every_manifest_table() {
+    let first_path = std::env::var_os("C6_LINUX_XP2_RULES_RUN_1")
+        .expect("C6_LINUX_XP2_RULES_RUN_1 must identify actual Linux activated export");
+    let second_path = std::env::var_os("C6_LINUX_XP2_RULES_RUN_2")
+        .expect("C6_LINUX_XP2_RULES_RUN_2 must identify independent Linux activated export");
+    let profile = RulesProfile::LinuxXp2ActivatedDiagnostic;
+    let source = profile.source_identity().unwrap();
+    let first = Rules::load_profile(profile, Path::new(&first_path), &source).unwrap();
+    // The compatibility entry point must also choose the complete descriptor.
+    let second = Rules::load(Path::new(&second_path), &source).unwrap();
+    assert_eq!(second.profile(), profile);
+    assert_eq!(first.configuration().tables().len(), 78);
+    assert_eq!(first.configuration().fingerprint().row_count, 1865);
+    assert_eq!(first.gameplay().tables().len(), 428);
+    assert_eq!(first.gameplay().fingerprint().row_count, 41700);
+    assert_same_native_database(first.configuration(), second.configuration());
+    assert_same_native_database(first.gameplay(), second.gameplay());
+    for unit in first.units() {
+        let row = first
+            .gameplay()
+            .table("Units")
+            .unwrap()
+            .row_by_id(unit.rules_row_id)
+            .unwrap();
+        assert_eq!(unit.unit_type, row.text("UnitType").unwrap());
+        for (name, value) in [
+            ("Cost", unit.cost),
+            ("BaseMoves", unit.base_moves),
+            ("Combat", unit.combat),
+            ("RangedCombat", unit.ranged_combat),
+            ("Range", unit.range),
+            ("Maintenance", unit.maintenance),
+        ] {
+            assert_eq!(value, row.integer(name).unwrap());
+        }
+    }
+    // Correctly declared base identity must still refuse activated files.
+    let base = RulesProfile::LinuxXp2Base;
+    assert!(Rules::load_profile(
+        base,
+        Path::new(&first_path),
+        &base.source_identity().unwrap()
+    )
+    .is_err());
+
+    // Mutate copies only; original private exports remain untouched.
+    let copied = Fixture::new("");
+    fs::remove_file(&copied.0).unwrap();
+    fs::create_dir(&copied.0).unwrap();
+    for mutation in [
+        "UPDATE Units SET Combat=X'01' WHERE rowid=(SELECT min(rowid) FROM Units)",
+        "UPDATE Units SET rowid=-123456 WHERE rowid=(SELECT min(rowid) FROM Units)",
+        "ALTER TABLE Units ADD COLUMN unregistered_column",
+        "physical-only",
+    ] {
+        for name in ["configuration.sqlite", "gameplay.sqlite"] {
+            fs::copy(Path::new(&first_path).join(name), copied.0.join(name)).unwrap();
+        }
+        let gameplay = copied.0.join("gameplay.sqlite");
+        if mutation == "physical-only" {
+            use std::io::Write;
+            fs::OpenOptions::new()
+                .append(true)
+                .open(&gameplay)
+                .unwrap()
+                .write_all(&[0])
+                .unwrap();
+        } else {
+            Connection::open(&gameplay)
+                .unwrap()
+                .execute_batch(mutation)
+                .unwrap();
+        }
+        assert!(
+            Rules::load_profile(profile, &copied.0, &source).is_err(),
+            "accepted {mutation}"
+        );
+    }
+    fs::remove_dir_all(&copied.0).unwrap();
 }

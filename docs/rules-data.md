@@ -24,10 +24,30 @@ identities, ruleset, enabled DLC/mod selection, source recipe, source-input
 identity and localization. The compatibility field `source_sequence_sha256`
 records the Linux content-gate inventory digest; it does not establish an
 execution sequence. Original Linux Bootstrap remains the order authority.
-`profile.source_identity()` exposes only an available registered descriptor; it does not validate files. The compatibility
-`Rules::load()` selects only by the declared exact GameCore hash and then applies
-the same complete gate. Unknown or unavailable profiles fail before opening files.
+`profile.source_identity()` exposes only an available registered descriptor; it
+does not validate files. The compatibility
+`Rules::load()` resolves only an exact complete registered source descriptor
+before file access. A GameCore hash alone cannot select an input profile: base
+and activated content may use the same binary. It applies the same complete gate.
+Unknown or unavailable profiles fail before opening files.
 There is no generic caller-supplied manifest or platform fallback.
+
+`RulesProfile::LinuxXp2ActivatedDiagnostic` registers the two genuine native
+Linux XP2 exports in
+[`rules-xp2-request-none-snapshot.json`](../evidence/linux/rules-xp2-request-none-snapshot.json),
+source profile `linux-xp2-native-request-none-generated-v1`. Original
+`ConfigureContent` and `UpdateContent` select `RULESET_EXPANSION_2`, with the
+manifest's actual enabled mod, active components, native getter order and
+`en_US` localization. Getter order does not establish component execution order.
+The source identity pins this diagnostic context independently of the base
+profile despite their identical GameCore hashes.
+
+Its native callback uses a genuinely constructed `LoadGameViewState` with
+request `None` and constructor-default censorship `false`; saved `Begin` is
+not called. The genuine UI owner is constructed but graphics initialization is
+not established. These choices are profile limits, not assertions that saved
+`Begin` policy or a complete initialized game would produce identical inputs.
+There is no saved-game, native DefinitionID, action or turn equivalence claim.
 
 `RulesProfile::WindowsXp2Historical` retains the original Windows fixture and
 all 506 historical table fingerprints. The compatibility `xp2_source_identity()`
@@ -120,6 +140,47 @@ capacity and allocator overhead. RSS includes SQLite, validation temporaries,
 the reporting example and allocator overhead. These warm-filesystem measurements
 cover data only, not game startup, state, actions, modifiers or turns.
 
+
+## Linux-native activated diagnostic validation
+
+Rust loaded both private
+`../c6-ghidra/evidence/linux-rules/mod-activation-xp2-constructor-final-{1,2}/`
+exports: 78 configuration tables / 1,865 rows and 428 gameplay tables / 41,700
+rows. All 506 table fingerprints, complete schemas, row identities, typed-cell
+hashes and original file hashes match the independent Python manifest. Direct
+comparison also checks every retained schema value, column metadata value,
+rowid and typed cell between the two Rust loads. Native configuration is
+`4c392cbe97c20bed07617686d03260417dc2abe65aace7ce15988279279b43a6`.
+Semantic hashes are configuration
+`fc975853cdee7c04bf9b1a3a3a1cfe7835599c0a1aecd92d7566dac97d36a266`
+and gameplay
+`a0744270acd16fce0a545034bd8d8d41421aa2b2950efd1cbe9781c0fae6c9b0`.
+
+```sh
+C6_LINUX_XP2_RULES_RUN_1=/absolute/path/to/mod-activation-xp2-constructor-final-1 \
+C6_LINUX_XP2_RULES_RUN_2=/absolute/path/to/mod-activation-xp2-constructor-final-2 \
+  cargo test -p c6-data linux_activated_native_exports -- --ignored
+cargo run --release -p c6-data --example inspect_rules -- \
+  linux-xp2-activated-diagnostic \
+  ../c6-ghidra/evidence/linux-rules/mod-activation-xp2-constructor-final-1 \
+  ../c6-ghidra/evidence/linux-rules/mod-activation-xp2-constructor-final-2
+```
+
+The native tests reject correctly declared base input against activated files
+and activated input against base files. Default tests reject each other
+profile's descriptor before file access and reject mutations of all five
+source-descriptor fields while retaining the module hash. Copies of actual
+activated files reject an INTEGER-to-BLOB change, intrinsic rowid change,
+added column and physical-only trailing byte. Original private files remain
+unchanged. Missing native files fail an explicitly requested native test.
+
+One release measurement loaded the activated pair in 174 ms and averaged
+27.6 ns for one million successful immutable unit lookups. A separate single-load
+reporting process peaked at 43,860 KiB RSS. Retained SQL TEXT/BLOB payloads total
+3,117,180 bytes. Payload excludes numeric fields, indexes, vector capacity and
+allocator overhead; RSS includes SQLite, validation temporaries, the reporting
+process and allocator overhead. These warm-filesystem measurements cover rules
+data only, excluding game startup, state, modifiers, actions and turns.
 
 ## Historical Windows-native validation
 
