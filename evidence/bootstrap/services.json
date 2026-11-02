@@ -309,5 +309,20 @@
       "stream_available": 76556938,
       "complete_load": false
     }
+  },
+  "frozen_network_wip": {
+    "status": "unintegrated_historical_Windows_WIP",
+    "reason": "user selected Linux-only execution",
+    "creator_rva": "0x5fb50",
+    "constructor_rva": "0x2762b0",
+    "native_absent_session_getter_cases": 3,
+    "observed_native_id": 4294967295,
+    "local_player_id_injected": false,
+    "session_created": false,
+    "full_lifecycle_pass": false,
+    "native_child_exit": 5,
+    "native_destructor_fault_rva": "0x2b01af",
+    "evidence": "evidence/bootstrap/services-network-identity-validation.json",
+    "complete_load": false
   }
 }

@@ -10,6 +10,8 @@ void *bootstrap_service_fixture_create(HMODULE gamecore);
 int bootstrap_service_fixture_prepare_original_host_services(HMODULE original_host);
 /* Explicitly empty genuine LocalOptions maps; imports no AppOptions user settings. */
 int bootstrap_service_fixture_prepare_empty_local_options(HMODULE original_host);
+/* Genuine NetworkManager constructor/getter, explicitly without an active session. */
+int bootstrap_service_fixture_prepare_original_sessionless_network(HMODULE original_host);
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database);
 /* Original InitializeDatabase returns true even when prepared writer queries fail.
  * Caller owns authentic phase transaction and must verify affected SQL state. */

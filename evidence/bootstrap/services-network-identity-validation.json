@@ -1,0 +1,69 @@
+{
+  "configuration": {
+    "schema": "c6-original-service-network-identity-v1",
+    "assets": {
+      "Base/Binaries/Win64Steam/CivilizationVI.exe": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+      "Base/Binaries/Win64Steam/DatabaseDLL_FinalRelease.dll": "e6577e873f946224df65c02f6c4bc3b385607e2a82d957b0fd613e01cbe78b0c",
+      "Base/Binaries/Win64Steam/HavokScript_FinalRelease.dll": "9fb4e34afa6666aafb519d6edb9c1e4e9add9cce2cecaa3b1e5bb8f08b168532",
+      "Base/Binaries/Win64Steam/Localization_FinalRelease.dll": "0becd5c425a3d6edc88f5315c01af3dd30dd7cb158271d56f4bba7ff2bb4e056",
+      "DLC/Expansion2/Binaries/Win64/GameCore_XP2_FinalRelease.dll": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+      "LaunchPad/api-ms-win-crt-conio-l1-1-0.dll": "60bd8f0bd64062292eff0f5f1a91347b8d61fbe3f2e9b140112501770eae0b80",
+      "LaunchPad/api-ms-win-crt-convert-l1-1-0.dll": "d09b49f2a30dcc13b7f0de8242fa57d0bdeb22f3b7e6c224be73bc4dd98d3c26",
+      "LaunchPad/api-ms-win-crt-environment-l1-1-0.dll": "37f731e7b1538467288bf1d0e586405b20808d4bad05e47225673661bc8b4a9f",
+      "LaunchPad/api-ms-win-crt-filesystem-l1-1-0.dll": "48c71b2d0af6807f387d97ab22a3ba77b85bdf457f8a4f03ce79d13fbb891328",
+      "LaunchPad/api-ms-win-crt-heap-l1-1-0.dll": "9b9a43b9a32a3d3c3de72b2acca41e051b1e604b45be84985b6a62fb03355e6d",
+      "LaunchPad/api-ms-win-crt-locale-l1-1-0.dll": "1c556505a926fd5f713004e88d7f8d68177d7d40a406f6ed04af7bacd2264979",
+      "LaunchPad/api-ms-win-crt-math-l1-1-0.dll": "3e8828ab7327f26da0687f683944ffc551440a3de1004cc512f04a2f498520f6",
+      "LaunchPad/api-ms-win-crt-multibyte-l1-1-0.dll": "35b247534f9a19755a281e6dc3490f8197dd515f518c6550208b862c43297345",
+      "LaunchPad/api-ms-win-crt-private-l1-1-0.dll": "3105da41b02009383826ed70857de1a8961daeb942e9068d0357cddd939fa154",
+      "LaunchPad/api-ms-win-crt-process-l1-1-0.dll": "75f7b0937a1433ea7e7fa2904b02fd46296b31da822575c0a6bc2038805971ef",
+      "LaunchPad/api-ms-win-crt-runtime-l1-1-0.dll": "d16db68b4020287bb6ce701b71312a9d887874c0d26b9ebd82c3c9b965029562",
+      "LaunchPad/api-ms-win-crt-stdio-l1-1-0.dll": "7c416d52a7e8d6113ff85bf833cae3e11c45d1c2215b061a5bbd47432b2244a5",
+      "LaunchPad/api-ms-win-crt-string-l1-1-0.dll": "fd8a73640a158857dd76173c5d97ceeba190e3c3eabf39446936b24032b54116",
+      "LaunchPad/api-ms-win-crt-time-l1-1-0.dll": "b401edaac4b41da73356de9b3358dc21f8b998a63413c868510dc734b1e4022f",
+      "LaunchPad/api-ms-win-crt-utility-l1-1-0.dll": "97e4c91103c186517fa248772b9204acf08fde05557a19efe28d11fb0932b1f7",
+      "LaunchPad/msvcp140.dll": "517cd3aac2177a357cca6032f07ad7360ee8ca212a02dd6e1301bf6cfade2094",
+      "LaunchPad/ucrtbase.dll": "2ab2a74bcb5bfd8248d232eb3bc56698fb5173b9ff7fc0daf87d8120d0f448d7",
+      "LaunchPad/vcruntime140.dll": "d89c7b863fc1ac3a179d45d5fe1b9fd35fb6fbd45171ca68d0d68ab1c1ad04fb"
+    },
+    "sources": {
+      "native/bootstrap/services/network_identity_probe.c": "87fde8c5f7140c489ac74c279e768525f7094434f101b042f11f1dfd617c02d8",
+      "native/bootstrap/services/service_fixture.c": "57286ba5722559b865e5613e67e575c0f7078c6eb2f09b7e1d39ab6b58c941ba",
+      "native/bootstrap/services/service_fixture.h": "dd8b2047409df1e374f6308f6252548d44a60ca2349f52cec2b591b956dcf0a6",
+      "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
+      "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e"
+    },
+    "compiler": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
+    "host_sha256": "33e7f1b99007f6ee05ab34d2d588ee683f7988dd88f773d54eea858d64f016f3",
+    "wine": "wine-9.0 (Ubuntu 9.0~repack-4build3)"
+  },
+  "configuration_sha256": "6835227790158871e6a99ca949b0b41ee74cead43d49116244cf9134d480a905",
+  "returncode": 5,
+  "observations": [
+    {
+      "case": 0,
+      "native_manager_identity": 4294967295,
+      "native_utility_identity": 4294967295,
+      "session_null": true
+    },
+    {
+      "case": 1,
+      "native_manager_identity": 4294967295,
+      "native_utility_identity": 4294967295,
+      "session_null": true
+    },
+    {
+      "case": 2,
+      "native_manager_identity": 4294967295,
+      "native_utility_identity": 4294967295,
+      "session_null": true
+    }
+  ],
+  "stderr": "{\"bootstrap_service\":\"original_archive_factory_constructed\",\"slot_offset\":272}\n{\"bootstrap_service\":\"original_network_manager_constructed_without_session\",\"slot_offset\":208}\n{\"bootstrap_service\":\"GetNetworkLocalPlayerID_original_sessionless\",\"id\":4294967295}\n{\"bootstrap_service\":\"GetNetworkLocalPlayerID_original_sessionless\",\"id\":4294967295}\n{\"bootstrap_service\":\"GetNetworkLocalPlayerID_original_sessionless\",\"id\":4294967295}\n{\"phase\":\"original_network_destructor\",\"exception\":\"0xc0000005\",\"exe_rva\":\"0x2b01af\",\"rcx\":\"0x1\"}\n",
+  "initialized_game": false,
+  "gameplay_parity": false,
+  "freeze_status": "historical_Windows_WIP_user_selected_Linux_only",
+  "lifecycle_validation": "failed_original_destructor_fault_exe_0x2b01af_child_exit5",
+  "integrated_load_after_provider": false,
+  "further_windows_execution_authorized": false
+}

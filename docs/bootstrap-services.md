@@ -128,3 +128,10 @@ The native oracle now executes 23 comparisons, zero mismatches. In addition to l
 
 
 With these file methods, the actual current-Windows Load advances from 8 bytes to 76,554,523 of 76,556,938 original stream bytes. The next required call is engine utility `+0xd0`, return site `0x63d6cb`, reached through the actual engine global `0xb8aa80`. This is substantially later native deserialization progress, but Load has not returned and neither full game-state equivalence nor successful save restoration is established (`evidence/bootstrap/native-xp2-original-load-log-files.json`).
+
+
+## Frozen Windows WIP: sessionless network identity
+
+Windows execution work stopped when the user selected Linux-only execution. The unintegrated NetworkManager helper/probe is preserved as historical WIP; no further Windows validation was run after that instruction.
+
+The existing native child invoked original creator `0x5fb50`, which allocates 0x380 bytes, calls complete constructor `0x2762b0`, and publishes native singleton `0x22ee8c8`. The actual constructor leaves its session pointer null. Three calls through both original manager getter `0x27ceb0` and original engine-utility getter `0x1c9860` returned UINT32_MAX from the real absent-session branch. No local player id or session object was injected. However, the attempted full original destructor faulted at EXE `0x2b01af`; child exit was five. This is a failed lifecycle observation, not a validated network provider or completed Load. `evidence/bootstrap/services-network-identity-validation.json` retains the exact outputs and configuration, and the helper was not integrated into a successful context run before the Windows stop.

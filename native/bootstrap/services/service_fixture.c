@@ -21,6 +21,7 @@ static HMODULE original_host_image;
 static uint64_t original_archive_storage[6];
 static int original_archive_constructed;
 static int original_local_options_ready;
+static int original_sessionless_network_ready;
 static uintptr_t archive_slots[3];
 static uintptr_t *archive_object = archive_slots;
 static HMODULE original_gamecore;
@@ -382,6 +383,29 @@ int bootstrap_service_fixture_prepare_empty_local_options(HMODULE original_host)
     slots[43] = (uintptr_t)local_options_group;
     slots[44] = (uintptr_t)local_options_all;
     trace("original_local_options_maps_constructed_empty", 0x158);
+    return 1;
+}
+static uint32_t network_local_player_id(void *self) {
+    typedef uint32_t (*getter_fn)(void *);
+    uint32_t id = ((getter_fn)((uintptr_t)original_host_image + 0x1c9860))(self);
+    fprintf(stderr, "{\"bootstrap_service\":\"GetNetworkLocalPlayerID_original_sessionless\",\"id\":%u}\n", id);
+    return id;
+}
+int bootstrap_service_fixture_prepare_original_sessionless_network(HMODULE original_host) {
+    typedef void *(*creator_fn)(void);
+    if (original_host != original_host_image || original_sessionless_network_ready) return 0;
+    void **singleton = (void **)((uintptr_t)original_host + 0x22ee8c8);
+    if (*singleton) return 0;
+    /* Exact original creator5fb50 allocates0x380, calls full ctor2762b0,
+     * then publishes the returned object at the native singleton location. */
+    void *manager = ((creator_fn)((uintptr_t)original_host + 0x5fb50))();
+    if (!manager || *singleton != manager || ((void **)manager)[1] != NULL) return 0;
+    /* This value is returned by the real current-target absent-session branch;
+     * no local player id is manufactured or injected into the manager. */
+    if (((uint32_t (*)(void *))((uintptr_t)original_host + 0x27ceb0))(manager) != UINT32_MAX) return 0;
+    original_sessionless_network_ready = 1;
+    slots[26] = (uintptr_t)network_local_player_id;
+    trace("original_network_manager_constructed_without_session", 0xd0);
     return 1;
 }
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database) {
