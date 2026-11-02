@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "services/service_fixture.h"
+#include "save/save_probe.h"
 
 static const char expected_dll[] = "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c";
 static HMODULE image;
@@ -94,7 +95,7 @@ int wmain(int argc, wchar_t **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
     SetUnhandledExceptionFilter(crashed);
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
-    if (argc != 4 && argc != 5 && argc != 6) { fputs("usage: context_host.exe DLL DEPENDENCY_DIRECTORY ORIGINAL_EXECUTABLE\n", stderr); return 2; }
+    if (argc != 4 && argc != 5 && argc != 6 && argc != 7) { fputs("usage: context_host.exe DLL DEPENDENCY_DIRECTORY ORIGINAL_EXECUTABLE\n", stderr); return 2; }
     if (!hash_matches(argv[1], expected_dll) ||
         !hash_matches(argv[3], "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63")) { puts("{\"status\":\"unavailable\",\"reason\":\"dll_sha256_gate\"}"); return 3; }
     if (!SetDllDirectoryW(argv[2])) return 4;
@@ -130,7 +131,7 @@ int wmain(int argc, wchar_t **argv) {
             if (!engine) return 12;
             phase = "SetEngineInterface";
             ((void (*)(void *, void *))vtable[0x60 / 8])(context, engine);
-            if (wcscmp(argv[4], L"--empty-databases") == 0 || argc == 6) {
+            if (wcscmp(argv[4], L"--empty-databases") == 0 || argc >= 6) {
                 HMODULE database = GetModuleHandleW(L"DatabaseDLL_FinalRelease.dll");
                 wchar_t database_path[32768];
                 if (!database || !GetModuleFileNameW(database, database_path, 32768) ||
@@ -138,7 +139,7 @@ int wmain(int argc, wchar_t **argv) {
                 phase = "prepare_original_database_empty_fixtures";
                 if (!bootstrap_service_fixture_prepare_empty_databases(database)) return 14;
             }
-            if (argc == 6) {
+            if (argc >= 6) {
                 phase = "execute_original_sql_schema_sources";
                 if (!execute_schema_manifest(argv[5], wcscmp(argv[4], L"--raw-sql-databases") != 0)) return 15;
             }
@@ -148,6 +149,21 @@ int wmain(int argc, wchar_t **argv) {
             int initialized = ((unsigned char (*)(void *))vtable[0x28 / 8])(context);
             int after = ((unsigned char (*)(void *))vtable[0x38 / 8])(context);
             printf("{\"phase\":\"Initialize_returned\",\"result\":%s,\"is_initialized_before\":%s,\"is_initialized_after\":%s,\"initialized_game\":false}\n", initialized ? "true" : "false", before ? "true" : "false", after ? "true" : "false");
+            if (wcscmp(argv[4], L"--startup-game") == 0 || wcscmp(argv[4], L"--load-stream") == 0) {
+                void *instance = ((void **)context)[1];
+                void **instance_vtable = *(void ***)instance;
+                if (!initialized || !after || (uintptr_t)vtable[0x40 / 8] - (uintptr_t)image != 0x591870 ||
+                    (uintptr_t)instance_vtable[0x50 / 8] - (uintptr_t)image != 0x46be0) return 16;
+                phase = "StartupGame";
+                puts("{\"phase\":\"StartupGame_begin\",\"original_wrapper_rva\":\"0x591870\",\"original_implementation_rva\":\"0x46be0\",\"fixture\":\"original_sql_only_schema\",\"initialized_game\":false}");
+                ((void (*)(void *))vtable[0x40 / 8])(context);
+                puts("{\"phase\":\"StartupGame_returned\",\"initialized_game\":false}");
+                if (argc == 7) {
+                    phase = "ContextLoad";
+                    int load_result = bootstrap_save_probe(image, context, argv[6]);
+                    if (load_result) return load_result;
+                }
+            }
         }
         phase = "DllDestroyGameContext";
         destroy(context);

@@ -33,6 +33,8 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--inventory-only', action='store_true')
     parser.add_argument('--initialize', action='store_true', help='run explicitly bounded host service diagnostic')
+    parser.add_argument('--load-stream', type=Path, help='after original StartupGame, probe original Load with fingerprinted private extracted stream')
+    parser.add_argument('--startup-game', action='store_true', help='probe original StartupGame with explicit SQL-only schema fixture')
     parser.add_argument('--raw-sql-bytes', action='store_true', help='preserve UTF-8 BOM for reproducible original SQL failure boundary')
     parser.add_argument('--sql-schema-bootstrap', action='store_true', help='execute seven hash-gated original SQL schema files through original DatabaseDLL')
     parser.add_argument('--empty-databases', action='store_true', help='initialize original context with real empty named-memory DatabaseDLL fixtures')
@@ -40,6 +42,14 @@ def main():
     args = parser.parse_args()
     if args.raw_sql_bytes and not args.sql_schema_bootstrap:
         parser.error('--raw-sql-bytes requires --sql-schema-bootstrap')
+    save_stream = None
+    if args.load_stream:
+        args.startup_game = True
+        if args.load_stream.stat().st_size != 76556938 or sha(args.load_stream) != 'a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa':
+            raise SystemExit('save stream SHA256/size mismatch: refusing execution')
+        save_stream = {'sha256': sha(args.load_stream), 'size': args.load_stream.stat().st_size, 'full_save_loader': False}
+    if args.startup_game:
+        args.sql_schema_bootstrap = True
     if args.sql_schema_bootstrap:
         args.empty_databases = True
     if args.empty_databases:
@@ -70,6 +80,8 @@ def main():
         'native/bootstrap/context_host.c',
         'native/bootstrap/services/service_fixture.c',
         'native/bootstrap/services/service_fixture.h',
+        'native/bootstrap/save/save_probe.c',
+        'native/bootstrap/save/save_probe.h',
     )}
     sources['tools/bootstrap/config.json'] = sha(ROOT / 'tools/bootstrap/config.json')
     sources['native/bootstrap/Makefile'] = sha(ROOT / 'native/bootstrap/Makefile')
@@ -86,6 +98,7 @@ def main():
                      'runtime_providers': {str(p.relative_to(args.assets)): sha(p) for p in runtime_files},
                      'wine_dll_overrides': 'msvcp140,vcruntime140,ucrtbase=n',
                      'runtime_imports': external, 'service_fixture': 'bounded_diagnostic' if args.initialize else 'none',
+                     'startup_game_requested': args.startup_game, 'save_stream': save_stream,
                      'sql_schema_sources': sql_sources,
                      'sql_text_transform': ('none' if args.raw_sql_bytes else 'strip_utf8_bom_if_present') if args.sql_schema_bootstrap else None,
                      'rules_database': 'original_sql_only_schema_diagnostic' if args.sql_schema_bootstrap else ('empty_named_memory_diagnostic' if args.empty_databases else None), 'enabled_dlc_mods': None,
@@ -101,11 +114,13 @@ def main():
         env = dict(os.environ, WINEPREFIX=str(ROOT / 'target/bootstrap/wine-prefix'), WINEARCH='win64', WINEDEBUG='-all', WINEDLLOVERRIDES='msvcp140,vcruntime140,ucrtbase=n')
         command = [wine, str(host), windows(dll), windows(deps), windows(original_executable)]
         if args.initialize:
-            command.append('--raw-sql-databases' if args.raw_sql_bytes else ('--empty-databases' if args.empty_databases else '--initialize'))
+            command.append('--load-stream' if args.load_stream else ('--startup-game' if args.startup_game else ('--raw-sql-databases' if args.raw_sql_bytes else ('--empty-databases' if args.empty_databases else '--initialize'))))
         if args.sql_schema_bootstrap:
             manifest = host.parent / 'sql-schema-paths.tsv'
             manifest.write_text(''.join(('1' if '/Gameplay/' in item['path'] or item['path'].startswith('DLC/') else '0') + '\t' + windows(args.assets / item['path']) + '\n' for item in sql_sources), encoding='utf-8')
             command.append(windows(manifest))
+        if args.load_stream:
+            command.append(windows(args.load_stream))
         run = subprocess.run(command, env=env, text=True, capture_output=True, timeout=120)
         observations = [json.loads(line) for line in run.stdout.splitlines() if line.startswith('{')]
         result.update({'host_sha256': sha(host), 'wine_version': wine_version,
