@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "dll_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+  "status": "static-target-contract-not-executed-initialized-game",
+  "request": {
+    "vtable_rva": "0xa101e8", "vtable_byte_slot": "0x208", "entry_rva": "0x5915d0",
+    "abi": "Microsoft x64; RCX context ignored; RDX identity pointer; R8D operation hash; R9 actual parameter bag; void return",
+    "safe_rejection": "Readable identity owner u16 >=64 returns before globals",
+    "valid_owner_precondition": "Initialized player-cache vector, operation definitions/registry, actual parameter bag; context factory alone insufficient"
+  },
+  "handler_start": {
+    "rva": "0x672e10",
+    "direct_unit_reads": [{"offset":"0x128","bytes":2,"role":"identity owner"},{"offset":"0xb0","bytes":4,"role":"identity id"}],
+    "direct_other_reads": ["handler vptr+8 GetHash","real operation manager from component registry"],
+    "direct_write": "fourth argument completion byte=1",
+    "ordered_calls": ["report event 0x3d4006f2 with handler hash and unit identity", "manager virtual+0xc0 SetActivityType(unit,0x047c048b)"],
+    "activity_write": {
+      "rva":"0x41830", "compare_unit_offset":"0x288", "tracked_wrapper_offset":"0x278",
+      "tracked_assignment_rva":"0x2ca0f0", "archive_effect":"May insert variable address into owning archive dirty-variable ordered set before writing value",
+      "event_after_change":"0xe23b112d"
+    },
+    "complete_affected_state_known": false
+  },
+  "reporting": {
+    "rva":"0x5fb890", "enable_byte_rva":"0xb68d41", "unserializing_query_rva":"0x44fd0",
+    "disabled_result":-1,
+    "enabled_calls":["construct/populate actual TypedVariantMap","CacheDispatcher::Send 0x7c670","engine utility virtual+0xa0(eventhash,map)","destroy map"],
+    "variant_keys":{"packed_high32":"0xa1e5a149","unit_identity":"0xf0548bb7","third_argument":"0xd6fcf3e4"},
+    "subscriber_effects_known":false
+  },
+  "genuine_spawn": {
+    "entry_rva":"0x34d350", "base_create_rva":"0x34d020", "placement_rva":"0x3b11b0",
+    "abi":"Microsoft x64; RCX actual PlayerUnits pointer; RDX creation params; R8D x; R9D y; returns unit pointer/null",
+    "caller_evidence_rva":"0x61d110",
+    "dependencies":["initialized players/map/rules and UnitDefinitions","recycled ID pool","unit Initialize 0x3a4040","archive tracking","formations and movement restoration","conditional name generation/game RNG","game/player signal subscribers"],
+    "failure_atomic":false,
+    "executed":false
+  },
+  "limits":["No initialized CanStart/Start or full queue execution","No complete event/observer/RNG state comparison","No gameplay implementation implied by message codec"]
+}

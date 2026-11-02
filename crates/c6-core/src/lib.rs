@@ -1,6 +1,7 @@
 //! Deterministic simulator kernel. Gameplay beyond declared coverage fails closed.
 pub mod codec;
 pub mod geometry;
+pub mod messages;
 pub mod rng;
 use rng::RandomState;
 use std::collections::BTreeMap;

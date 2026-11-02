@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "dll_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
-  "configuration_sha256": "3d5c899700cd13fcc2e4f6509e3ccc683df1e366d7967537a811ea7d151ac2ac",
+  "configuration_sha256": "7128d65f550510a2bc4d9082db6793ac05b84a399c3b0fefea20d325051918d5",
   "host_source_sha256": "20208193955cbf14c3ecce16feeccc6730d421ed77707ac988950c21e0c8f1db",
-  "adapter_source_sha256": "0ad355710ee0c32e51c5fbc1a701ee544ccdd9511fb69bee3517f88cd771b267",
-  "adapter_binary_sha256": "3da9c4323a87c375e000a59e50f0c951ec47fbfe4b22ef5cfdf847b2c7685e36",
+  "adapter_source_sha256": "2988834b4107f09f31c194be079725e6b9572964fc2f1b7db9b58aaef36f0678",
+  "adapter_binary_sha256": "786250581dbd56c096ccfee002fec3ac1abf9b67b2172f9e015e22437165df44",
   "cases": 10125,
   "mismatches": 0,
   "writes_per_body": [
@@ -18,5 +18,6 @@
   ],
   "body_bytes": 24,
   "source_unchanged": true,
-  "scope": "Original UnitOperation::PutInBufferBody with synthetic object and null parameters; no CanStart, Start, queue, message envelope, initialized unit, or gameplay parity tested"
+  "invalid_owner_request_cases": 5,
+  "scope": "Original UnitOperation::PutInBufferBody with synthetic object and null parameters, plus invalid-owner request early return; no CanStart, Start, queue, message envelope, initialized unit, or gameplay parity tested"
 }

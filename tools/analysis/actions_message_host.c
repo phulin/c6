@@ -17,3 +17,11 @@ int c6_action_body(const uint8_t input[80],uint8_t output[24]){
  if(stream.fault||stream.position!=24||stream.calls!=7||memcmp(stream.sizes,expected,sizeof expected)||memcmp(message,input,80))return -1;
  memcpy(output,stream.bytes,24);return 0;
 }
+/* Exercise only the original request's unsigned invalid-owner early return. */
+int c6_action_rejected_request(uint16_t owner){
+ if(owner<64)return -2; /* Valid owners require genuine initialized globals. */
+ uint8_t identity[8]={0};memcpy(identity,&owner,2);
+ uint8_t before[8];memcpy(before,identity,8);
+ ((void(__attribute__((ms_abi))*)(void*,const void*,uint32_t,const void*))(uintptr_t)0x1805915d0ULL)(0,identity,0x2c681908,0);
+ return memcmp(before,identity,8)?-1:0;
+}

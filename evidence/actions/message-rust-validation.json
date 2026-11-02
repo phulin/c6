@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "dll_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+  "configuration_sha256": "7128d65f550510a2bc4d9082db6793ac05b84a399c3b0fefea20d325051918d5",
+  "host_source_sha256": "20208193955cbf14c3ecce16feeccc6730d421ed77707ac988950c21e0c8f1db",
+  "adapter_source_sha256": "2988834b4107f09f31c194be079725e6b9572964fc2f1b7db9b58aaef36f0678",
+  "adapter_binary_sha256": "786250581dbd56c096ccfee002fec3ac1abf9b67b2172f9e015e22437165df44",
+  "cases": 10125,
+  "mismatches": 0,
+  "writes_per_body": [
+    2,
+    2,
+    4,
+    4,
+    4,
+    4,
+    4
+  ],
+  "body_bytes": 24,
+  "source_unchanged": true,
+  "invalid_owner_request_cases": 5,
+  "scope": "Original UnitOperation::PutInBufferBody with synthetic object and null parameters, plus invalid-owner request early return; no CanStart, Start, queue, message envelope, initialized unit, or gameplay parity tested",
+  "rust_candidate_binary_sha256": "dc6eac7e14ad1f2ff01fceedcd24d177ac1079f8af681374b484fb48045aeb46",
+  "rust_codec_source_sha256": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+  "rust_candidate_source_sha256": "25b1e6b8ad21fa76605a0a15dd6c141cfdb157380366e052d5e5567cf9ba7367",
+  "rust_differential_cases": 10125,
+  "rust_mismatches": 0,
+  "rust_decode_fields_checked": true
+}
