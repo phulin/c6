@@ -2,7 +2,7 @@
 
 A Rust foundation for an exact, deterministic, headless Civilization VI simulator. The intended interface is state import, externally supplied actions, turn advancement and state export, with behavior checked against the original GameCore DLL.
 
-The acceptance target is the supplied newer Windows XP2 FinalRelease DLL. The older symbol-rich Linux build is a research reference; its successful native tests do not replace current Windows validation. See [target and version policy](docs/targets.md).
+The supplied Windows XP2 FinalRelease DLL is the existing validated behavioral baseline. The symbol-rich Linux build is a separate execution/research profile; its relative age and currentness remain under audit, and Linux may become the primary execution path. Coverage stays specific to each profile. See [binary profiles and version evidence](docs/targets.md).
 
 **This is an early implementation, not a playable Civilization VI engine.** The Rust library currently reproduces isolated gameplay RNG, coordinate primitives and a unit-operation message-body format. Separate native bootstrap tools execute the original Windows DLL under Wine and have initialized real contexts with original database content. Full player actions, end-turn execution and Civ VI save import are unsupported.
 

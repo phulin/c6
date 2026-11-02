@@ -1,30 +1,24 @@
-# Acceptance target and reference builds
+# Binary profiles and validation scope
 
-The acceptance target is the supplied newer **Windows Gathering Storm XP2 FinalRelease GameCore**, SHA-256:
+Exactness belongs to a fingerprinted binary and configuration profile. The supplied Windows XP2 FinalRelease GameCore is the existing behavioral baseline for the Rust primitives, Windows bootstrap and native rules exports. The supplied symbol-rich Linux XP2 GameCore is a distinct native execution and research profile. Its relative age and currentness have not been established; the provenance/version audit is ongoing. Linux may become the primary execution path after that audit. There is no Windows-only platform requirement.
 
-```text
-324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c
-```
+| Profile | GameCore SHA-256 | Established role |
+| --- | --- | --- |
+| Windows XP2 FinalRelease | `324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c` | Existing original-code baseline for bounded Rust comparisons, rules inputs and Wine bootstrap |
+| Linux XP2 | `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa` | Symbol/DWARF research and genuine native context lifecycle; separate gameplay/version validation required |
 
-The intended result is exact state, legal-action and complete-turn behavior for that binary with pinned rules, DLC/mod selection and configuration. The current Rust implementation and native bootstrap do not yet achieve that result. Running the Rust library on Linux does not change which original game build defines correctness.
+The intended result remains a complete exact state/action/turn library. Neither profile currently provides that result. Native lifecycle success, rules loading and primitive comparisons establish their declared boundaries only. Choosing Linux execution must preserve the full objective rather than silently reducing it to an easier subset.
 
-| Artifact | Role |
-| --- | --- |
-| Supplied newer Windows XP2 FinalRelease DLL | Authoritative original-code acceptance oracle, with its own ABI, layouts and behavior |
-| Supplied Windows host, dependencies, content and benchmark saves | Independently fingerprinted providers and fixtures; a recipe or extracted save stream alone is not a fully restored session |
-| Supplied older Linux XP2 GameCore with symbols/DWARF | Reference for names, type families, ownership, call paths and behavior hypotheses; native checks establish facts about that Linux build only |
-| Pinned cru121 reference | Index connecting symbol-bearing research to current Windows addresses; preserve mapping confidence and verify current target instructions |
+Host executables, dependencies, rules, DLC/mod selection, options and saves also need independent identities. Steam manifest build numbers, including `15296837`, are metadata rather than proof of cross-platform binary or gameplay equivalence. Reference address overlap and platform-specific layouts do not establish release chronology by themselves.
 
-Linux context initialization and teardown are useful research milestones. They do not replace the current Windows oracle or certify current Windows gameplay. The supplied Linux GameCore SHA-256 is `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`; it remains a separate version and platform identity. Steam manifest build numbers, including `15296837`, are installation metadata rather than proof of cross-platform binary or gameplay equivalence.
+## Proven layout difference, unresolved chronology
 
-## Proven version difference
+The supplied Linux `Unit::CombatModifiers` DWARF has a 132-byte layout: all 41 named fields match the pinned reference's Linux layout, and its native `SetFightWhileEmbarked` stores at offset `0x82`. The supplied Windows profile has the documented `NoBarbXPLimit` field at `0x81`, shifting following flags; fresh Windows instructions corroborate the store at `0x81`. The semantic effect name also relies on the reference's effect/reader/database analysis.
 
-The supplied Linux `Unit::CombatModifiers` DWARF has the older 132-byte layout: all 41 named fields match the reference's Linux layout, and its native `SetFightWhileEmbarked` stores at offset `0x82`. The current Windows layout has the documented `NoBarbXPLimit` insertion at `0x81`, shifting following flags; fresh current Windows instructions corroborate the store at `0x81`. The semantic effect name also relies on the reference's effect/reader/database analysis. This is a concrete incompatible layout, not a claim that every mechanic differs or that all other fields match.
+This is evidence of an incompatible layout. It does not prove that Linux is older, noncurrent or behaviorally equivalent elsewhere. Official depot/build provenance and targeted behavior comparisons must answer those separate questions. [Reference-reuse analysis](reference-reuse.md) and [hash-gated contracts](../evidence/linux/reference-reuse-contracts.json) retain the observations; chronological labels in the reference require independent verification. Large DWARF/disassembly artifacts remain private.
 
-[Reference-reuse analysis](reference-reuse.md#gamecore-version-audit-the-supplied-linux-layout-is-older-than-current-windows-here) and [hash-gated contracts](../evidence/linux/reference-reuse-contracts.json) retain the proof and its limits. Large DWARF/disassembly artifacts remain private.
+## Reuse and coverage gate
 
-## Reuse gate
+Use symbols and the pinned cru121 reference to locate likely functions, types and interface owners. Verify the chosen profile's actual receiver, calling convention, field offsets, integer semantics, dependencies and instruction path before implementing a provider or Rust operation. Compare executable behavior and all affected state against that profile's hash-gated native oracle. A matching name, layout, Steam build number or passing test on another profile is insufficient.
 
-Use Linux symbols and the pinned reference to find likely current Windows functions and interface owners. Then verify the actual current Windows receiver, calling convention, field offsets, integer semantics, dependencies and instruction path before implementing a provider or Rust operation. Compare executable behavior and all affected state against the hash-gated current Windows oracle. A matching name, old layout, Steam build number or passing older-Linux test is insufficient.
-
-Record the target module, host/dependencies, rules and fixture identities with each result. Keep unsupported paths explicit. Do not substitute an easier older build for the requested target or expand a bounded passing test into full-game equivalence. Current [rules-data parity](rules-data.md) validates actual Windows-native exported rules inputs; it does not implement the owning gameplay systems.
+Record the profile and all configuration/fixture identities with each result. Preserve existing Windows tests while evaluating Linux; never transfer their coverage claims silently. If profiles prove equivalent for a particular operation, record the comparison and its limits. Keep unsupported paths explicit and do not substitute a mismatched build without saying so. Existing [rules-data parity](rules-data.md) validates the Windows-native exported rules fixture; it does not implement gameplay or establish Linux rules equivalence.

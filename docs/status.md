@@ -1,6 +1,6 @@
 # Implementation status
 
-The acceptance target remains the supplied newer Windows XP2 FinalRelease DLL. The older Linux build is reference-only despite its richer symbols and working native context lifecycle; the proven combat-layout difference prevents treating it as the same game version. [Target policy](targets.md) and [reference-reuse evidence](reference-reuse.md) define this boundary.
+The supplied Windows XP2 FinalRelease DLL remains the existing tested behavioral baseline. Linux has richer symbols and a working native context lifecycle, but its relative age/currentness is unverified. The proven layout difference requires separate profile validation; it does not establish chronology. Linux may become the primary execution path after the provenance/version audit. [Profile policy](targets.md) and [reference-reuse evidence](reference-reuse.md) define the evidence boundary.
 
 As of 2026-11-02, c6 provides a tested Rust kernel for isolated RNG, geometry and action-message transport, a loadable C ABI, and an original Windows DLL bootstrap running under Wine. Genuine native contexts initialize with original database fixtures and complete the context-only lifecycle. With additional genuine script providers, original StartupGame returns and the first original Load enters game-state initialization, where required host-service boundaries are still being resolved. It does not yet provide the requested complete headless Civilization VI simulation. No complete player-action sequence or end turn has been reproduced.
 
