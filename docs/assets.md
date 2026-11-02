@@ -214,9 +214,16 @@ game core. `Expansion2` criteria pass from `GameCoreInUse=Expansion2`;
 `Expansion2AndBeyond` has `any=1`, so that same condition suffices without
 inventing a playable leader set. No other installed DLC is implicitly enabled.
 
-This extension orders actions by declared `LoadOrder`, files by descending
-`Priority`, and equal values by declaration order. Those mod default/tie ordering
-rules still need original-host verification. The candidate explicitly records
+This extension orders actions by declared `LoadOrder` and uses declaration
+order for action ties pending verification of actual component row-ID assignment.
+Native component/settings file queries at RVAs `0x107aea0` and `0x107af40`
+explicitly order files by `Priority DESC, Path ASC`; the recipe follows those
+keys rather than declaration order. The component query is used at `0xb3a83b`.
+The application action sorter (`0x25d0a0`) compares signed LoadOrder first,
+unsigned dependency position second and signed component row ID third.
+The component collector defaults missing LoadOrder to zero (`0xb34a60`).
+Complete component row-ID assignment, dependency ordering and activation still
+need original-host verification. The candidate explicitly records
 `native_mod_load_order_verified=false`; it is not an exact activation recipe.
 It contains only `UpdateDatabase` actions. Scripts, color/icon/art databases,
 UI and other native service activation remain separate requirements. Native

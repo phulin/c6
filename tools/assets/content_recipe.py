@@ -90,7 +90,7 @@ def xp2_declared_recipe(root, base, saved):
                 # The any=1 criterion is true from GameCore alone; no leader guessing.
                 if len(definition) != 1 and definition.get('any') != '1':
                     raise ValueError('unsupported all-of action criterion: ' + criterion)
-            files = sorted(action.findall('File'), key=lambda item: -int(item.get('Priority', '0')))
+            files = sorted(action.findall('File'), key=lambda item: (-int(item.get('Priority', '0')), item.text.strip().encode('utf-8')))
             for item in files:
                 path = (descriptor.parent / item.text.strip()).resolve(strict=True)
                 if not path.is_relative_to(root) or path.suffix.lower() not in ('.xml', '.sql'):
@@ -113,9 +113,12 @@ def xp2_declared_recipe(root, base, saved):
                   descriptor={'path': descriptor.relative_to(root).as_posix(), 'sha256': digest(descriptor)},
                   source_sequence_sha256=identity(steps), steps=steps,
                   native_mod_load_order_verified=False,
+                  native_file_sort_evidence={'component_query_rva': '0x107aea0',
+                                             'setting_query_rva': '0x107af40',
+                                             'order': ['Priority DESC', 'Path ASC']},
                   limits=['Explicit saved XP2-only package selection; no other installed DLC is enabled.',
-                          'Base order recovered statically; mod order uses ascending LoadOrder, descending file Priority, declaration ties.',
-                          'Mod default/tie ordering is an unverified native import candidate, not an exact host activation recipe.',
+                          'Base order and mod file Priority DESC/Path ASC recovered statically; action row-ID tie assignment still unverified.',
+                          'Action LoadOrder/dependency/row-ID ordering is only partially recovered; this remains an import candidate.',
                           'Only UpdateDatabase actions included; script/color/UI/art and other service activation is absent.',
                           'No initialized game, rules database parity, or save compatibility claimed.'])
     return result

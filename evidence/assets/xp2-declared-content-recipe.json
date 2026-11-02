@@ -9,11 +9,19 @@
   "initialized_game": false,
   "limits": [
     "Explicit saved XP2-only package selection; no other installed DLC is enabled.",
-    "Base order recovered statically; mod order uses ascending LoadOrder, descending file Priority, declaration ties.",
-    "Mod default/tie ordering is an unverified native import candidate, not an exact host activation recipe.",
+    "Base order and mod file Priority DESC/Path ASC recovered statically; action row-ID tie assignment still unverified.",
+    "Action LoadOrder/dependency/row-ID ordering is only partially recovered; this remains an import candidate.",
     "Only UpdateDatabase actions included; script/color/UI/art and other service activation is absent.",
     "No initialized game, rules database parity, or save compatibility claimed."
   ],
+  "native_file_sort_evidence": {
+    "component_query_rva": "0x107aea0",
+    "order": [
+      "Priority DESC",
+      "Path ASC"
+    ],
+    "setting_query_rva": "0x107af40"
+  },
   "native_import_executed": false,
   "native_importer": {
     "bom_skip_rva": "0xbd53f",
@@ -29,7 +37,7 @@
   "selected_mod_ids": [
     "4873eb62-8ccc-4574-b784-dda455e74e68"
   ],
-  "source_sequence_sha256": "159a944530d6934d00e2d4eeab8ca83923a2ef06a9c0c26dc145769e06da7fed",
+  "source_sequence_sha256": "ffc41ee26b94edfd79a4833b73e6ad4345b55a0c60640865e6d5210787e173b4",
   "steps": [
     {
       "bytes": 11712,
@@ -262,19 +270,6 @@
     },
     {
       "action_id": "Expansion2Settings",
-      "bytes": 38952,
-      "criterion": null,
-      "database": "configuration",
-      "format": "xml",
-      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Config/Expansion2_Players.xml",
-      "phase": "mod_content",
-      "priority": 0,
-      "sha256": "cbf24570dc32dcbd1b0dab97ae201e8dc28f92355f655b1a04882d0e1e4a54e8",
-      "utf8_bom_skip": false
-    },
-    {
-      "action_id": "Expansion2Settings",
       "bytes": 55349,
       "criterion": null,
       "database": "configuration",
@@ -284,6 +279,19 @@
       "phase": "mod_content",
       "priority": 0,
       "sha256": "88a6ca953f5449272526f5ec1782fc5228421bb2eb87974ab4bf363b5c858432",
+      "utf8_bom_skip": false
+    },
+    {
+      "action_id": "Expansion2Settings",
+      "bytes": 38952,
+      "criterion": null,
+      "database": "configuration",
+      "format": "xml",
+      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
+      "path": "DLC/Expansion2/Config/Expansion2_Players.xml",
+      "phase": "mod_content",
+      "priority": 0,
+      "sha256": "cbf24570dc32dcbd1b0dab97ae201e8dc28f92355f655b1a04882d0e1e4a54e8",
       "utf8_bom_skip": false
     },
     {
@@ -1669,19 +1677,6 @@
     },
     {
       "action_id": "Expansion2CoreContent",
-      "bytes": 32676,
-      "criterion": "Expansion2",
-      "database": "gameplay",
-      "format": "xml",
-      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_Agendas.xml",
-      "phase": "mod_content",
-      "priority": 0,
-      "sha256": "b63fbe12fe88ba876a3341c69b6d9912d8a3b0e4801c77ea6986aabd74b39601",
-      "utf8_bom_skip": false
-    },
-    {
-      "action_id": "Expansion2CoreContent",
       "bytes": 45820,
       "criterion": "Expansion2",
       "database": "gameplay",
@@ -1691,6 +1686,19 @@
       "phase": "mod_content",
       "priority": 0,
       "sha256": "b099cfb8e26d1158aab47a9eb995fd38406c1a4aaab9765d43bdce1640ca0ce1",
+      "utf8_bom_skip": false
+    },
+    {
+      "action_id": "Expansion2CoreContent",
+      "bytes": 32676,
+      "criterion": "Expansion2",
+      "database": "gameplay",
+      "format": "xml",
+      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
+      "path": "DLC/Expansion2/Data/Expansion2_Agendas.xml",
+      "phase": "mod_content",
+      "priority": 0,
+      "sha256": "b63fbe12fe88ba876a3341c69b6d9912d8a3b0e4801c77ea6986aabd74b39601",
       "utf8_bom_skip": false
     },
     {
@@ -2098,6 +2106,32 @@
     },
     {
       "action_id": "Expansion2CoreContent",
+      "bytes": 5058,
+      "criterion": "Expansion2",
+      "database": "gameplay",
+      "format": "xml",
+      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
+      "path": "DLC/Expansion2/Data/Expansion2_Resources.xml",
+      "phase": "mod_content",
+      "priority": 0,
+      "sha256": "0a7f0678983683209408feb57c65e953c9eac08e9534adcebfb93c629f6a8c23",
+      "utf8_bom_skip": false
+    },
+    {
+      "action_id": "Expansion2CoreContent",
+      "bytes": 1337,
+      "criterion": "Expansion2",
+      "database": "gameplay",
+      "format": "xml",
+      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
+      "path": "DLC/Expansion2/Data/Expansion2_Routes.xml",
+      "phase": "mod_content",
+      "priority": 0,
+      "sha256": "a8e20412792c49d2bb34b0daf98cb3bc70e1af6ed79f843beb71aa4dc0157992",
+      "utf8_bom_skip": false
+    },
+    {
+      "action_id": "Expansion2CoreContent",
       "bytes": 20177,
       "criterion": "Expansion2",
       "database": "gameplay",
@@ -2111,15 +2145,15 @@
     },
     {
       "action_id": "Expansion2CoreContent",
-      "bytes": 22595,
+      "bytes": 2629,
       "criterion": "Expansion2",
       "database": "gameplay",
       "format": "xml",
       "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_Units.xml",
+      "path": "DLC/Expansion2/Data/Expansion2_TurnPhases.xml",
       "phase": "mod_content",
       "priority": 0,
-      "sha256": "39f393fb547e734efd2d794c8a45c779902398a77d39ac720c343bf7f4ecd760",
+      "sha256": "6e8c245c0a387ed89b199e6c3b011b5570646650d4adec3083e4047c781af851",
       "utf8_bom_skip": false
     },
     {
@@ -2133,6 +2167,19 @@
       "phase": "mod_content",
       "priority": 0,
       "sha256": "7b3c7391eb98fae5f4c9008ddee6b0fcb4fb48606d828d4114d5f7833b09cbde",
+      "utf8_bom_skip": false
+    },
+    {
+      "action_id": "Expansion2CoreContent",
+      "bytes": 671,
+      "criterion": "Expansion2",
+      "database": "gameplay",
+      "format": "xml",
+      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
+      "path": "DLC/Expansion2/Data/Expansion2_UnitCommands.xml",
+      "phase": "mod_content",
+      "priority": 0,
+      "sha256": "54a5c98d9d0e99fed3681458c2b23b581a03a246d6081d6c9bb9fb9b04d2cb08",
       "utf8_bom_skip": false
     },
     {
@@ -2176,41 +2223,15 @@
     },
     {
       "action_id": "Expansion2CoreContent",
-      "bytes": 5058,
+      "bytes": 22595,
       "criterion": "Expansion2",
       "database": "gameplay",
       "format": "xml",
       "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_Resources.xml",
+      "path": "DLC/Expansion2/Data/Expansion2_Units.xml",
       "phase": "mod_content",
       "priority": 0,
-      "sha256": "0a7f0678983683209408feb57c65e953c9eac08e9534adcebfb93c629f6a8c23",
-      "utf8_bom_skip": false
-    },
-    {
-      "action_id": "Expansion2CoreContent",
-      "bytes": 1337,
-      "criterion": "Expansion2",
-      "database": "gameplay",
-      "format": "xml",
-      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_Routes.xml",
-      "phase": "mod_content",
-      "priority": 0,
-      "sha256": "a8e20412792c49d2bb34b0daf98cb3bc70e1af6ed79f843beb71aa4dc0157992",
-      "utf8_bom_skip": false
-    },
-    {
-      "action_id": "Expansion2CoreContent",
-      "bytes": 2629,
-      "criterion": "Expansion2",
-      "database": "gameplay",
-      "format": "xml",
-      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_TurnPhases.xml",
-      "phase": "mod_content",
-      "priority": 0,
-      "sha256": "6e8c245c0a387ed89b199e6c3b011b5570646650d4adec3083e4047c781af851",
+      "sha256": "39f393fb547e734efd2d794c8a45c779902398a77d39ac720c343bf7f4ecd760",
       "utf8_bom_skip": false
     },
     {
@@ -2224,19 +2245,6 @@
       "phase": "mod_content",
       "priority": 0,
       "sha256": "90246e130a50d1629e373b4809d6c751cd849fb573b91b0f2e7548a4a8c9196c",
-      "utf8_bom_skip": false
-    },
-    {
-      "action_id": "Expansion2CoreContent",
-      "bytes": 671,
-      "criterion": "Expansion2",
-      "database": "gameplay",
-      "format": "xml",
-      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_UnitCommands.xml",
-      "phase": "mod_content",
-      "priority": 0,
-      "sha256": "54a5c98d9d0e99fed3681458c2b23b581a03a246d6081d6c9bb9fb9b04d2cb08",
       "utf8_bom_skip": false
     },
     {
@@ -2319,19 +2327,6 @@
     },
     {
       "action_id": "Expansion2MajorContent",
-      "bytes": 13546,
-      "criterion": "Expansion2AndBeyond",
-      "database": "gameplay",
-      "format": "xml",
-      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
-      "path": "DLC/Expansion2/Data/Expansion2_Units_Major.xml",
-      "phase": "mod_content",
-      "priority": 0,
-      "sha256": "06f4210afaed79bbbb35bbc852d285b2a950b65e4f4db55664b0cdca8c215cd2",
-      "utf8_bom_skip": false
-    },
-    {
-      "action_id": "Expansion2MajorContent",
       "bytes": 16398,
       "criterion": "Expansion2AndBeyond",
       "database": "gameplay",
@@ -2354,6 +2349,19 @@
       "phase": "mod_content",
       "priority": 0,
       "sha256": "95ce89fb97d96c8926f16a7341e6e5dc5dc0f960ded4ae842195e6abaf4a606a",
+      "utf8_bom_skip": false
+    },
+    {
+      "action_id": "Expansion2MajorContent",
+      "bytes": 13546,
+      "criterion": "Expansion2AndBeyond",
+      "database": "gameplay",
+      "format": "xml",
+      "mod_id": "4873eb62-8ccc-4574-b784-dda455e74e68",
+      "path": "DLC/Expansion2/Data/Expansion2_Units_Major.xml",
+      "phase": "mod_content",
+      "priority": 0,
+      "sha256": "06f4210afaed79bbbb35bbc852d285b2a950b65e4f4db55664b0cdca8c215cd2",
       "utf8_bom_skip": false
     }
   ]
