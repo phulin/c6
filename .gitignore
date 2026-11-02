@@ -1,0 +1,5 @@
+/.tools/
+/target/
+/evidence/reference/upstream/
+*.pyc
+__pycache__/

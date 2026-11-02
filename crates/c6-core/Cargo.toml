@@ -1,0 +1,11 @@
+[package]
+name = "c6-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[[bench]]
+name = "rng"
+harness = false
