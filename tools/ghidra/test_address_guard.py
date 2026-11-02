@@ -14,6 +14,11 @@ class AddressIdentity(unittest.TestCase):
     def test_empty_listing_and_containing_function_rejected(self):
         with self.assertRaises(ValueError):require_instruction_start('0x1805fa040','')
         with self.assertRaisesRegex(ValueError,'containing function'):require_function_entry('0x1805fa041','1805fa040')
+    def test_linux_zero_base_and_leading_zero_entries(self):
+        require_instruction_start('0x2d48d60','002d48d60 PUSH RBP')
+        require_function_entry('0x3381860','03381860')
+        with self.assertRaises(ValueError):require_function_entry('0x2d48d61','02d48d60')
+
     def test_symbol_names_retain_upstream_resolution(self):
         require_function_entry('Random::Get','1805fa040')
 

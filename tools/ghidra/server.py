@@ -24,19 +24,22 @@ if os.environ.get('C6_GHIDRA_AUTO_ANALYZE') != '1':
     from pyghidra_mcp.context import PyGhidraContext
     def targeted_analysis(self, *args, **kwargs):
         return None
-    def existing_program(self, binary_name):
-        info = self._lookup_program_info(binary_name)
-        if info is None:
-            raise ValueError(f"Unknown binary {binary_name}; available: {list(self.programs)}")
-        expected=PROGRAM_SHA256.get("/"+info.name.lstrip("/"))
-        if expected is None:
-            raise ValueError(f"Unregistered binary identity for {info.name}; pin its SHA256 before serving tools")
-        actual=str(info.program.getExecutableSHA256()).lower()
-        if actual != expected:
-            raise ValueError(f"Program SHA256 mismatch for {info.name}: {actual}")
-        return info
     PyGhidraContext.analyze_project = targeted_analysis
-    PyGhidraContext.get_program_info = existing_program
+
+# Identity checks apply even when whole-program analysis is explicitly enabled.
+from pyghidra_mcp.context import PyGhidraContext
+def existing_program(self, binary_name):
+    info = self._lookup_program_info(binary_name)
+    if info is None:
+        raise ValueError(f"Unknown binary {binary_name}; available: {list(self.programs)}")
+    expected=PROGRAM_SHA256.get("/"+info.name.lstrip("/"))
+    if expected is None:
+        raise ValueError(f"Unregistered binary identity for {info.name}; pin its SHA256 before serving tools")
+    actual=str(info.program.getExecutableSHA256()).lower()
+    if actual != expected:
+        raise ValueError(f"Program SHA256 mismatch for {info.name}: {actual}")
+    return info
+PyGhidraContext.get_program_info = existing_program
 
 from address_guard import install as install_address_guards
 install_address_guards()

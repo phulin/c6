@@ -3,7 +3,7 @@
 import argparse,hashlib,json
 from pathlib import Path
 import pyghidra
-p=argparse.ArgumentParser(description=__doc__);p.add_argument('plan',type=Path);p.add_argument('--project-dir',type=Path,default=Path('../c6-ghidra/projects'));p.add_argument('--output',type=Path,required=True);a=p.parse_args();plan=json.loads(a.plan.read_text())
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('plan',type=Path);p.add_argument('--project-dir',type=Path,default=Path('../c6-ghidra/projects'));p.add_argument('--project-name',default='c6-linux');p.add_argument('--output',type=Path,required=True);a=p.parse_args();plan=json.loads(a.plan.read_text())
 for path,sha in plan['sources'].items():
  if hashlib.sha256(Path(path).read_bytes()).hexdigest()!=sha:raise SystemExit('Evidence source changed: '+path)
 pyghidra.start()
@@ -11,7 +11,7 @@ from ghidra.base.project import GhidraProject
 from ghidra.program.flatapi import FlatProgramAPI
 from ghidra.program.model.listing import CodeUnit
 from ghidra.program.model.symbol import SourceType
-p=GhidraProject.openProject(str(a.project_dir.resolve()),'c6-xp2',False);report={'plan_sha256':hashlib.sha256(a.plan.read_bytes()).hexdigest(),'programs':[]}
+p=GhidraProject.openProject(str(a.project_dir.resolve()),a.project_name,False);report={'plan_sha256':hashlib.sha256(a.plan.read_bytes()).hexdigest(),'programs':[]}
 try:
  for entry in plan['programs']:
   g=p.openProgram('/',entry['program'],False)
