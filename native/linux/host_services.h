@@ -6,4 +6,6 @@ int c6_linux_destroy_host_services(void);
 /* Fixture sequencing guard; executes genuine App registration once per App. */
 int c6_linux_register_host_events(void);
 int c6_linux_bind_host_arguments(void *application);
+/* Borrowed genuine App-owned database; caller must not destroy or free it. */
+void *c6_linux_get_host_localization_database(void);
 #endif

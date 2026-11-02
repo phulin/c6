@@ -13,6 +13,7 @@
  * otherwise belong to the genuine constructor and original methods. */
 static void *application;
 static void *utility;
+static void *localization_database;
 static void **application_global;
 static void (*delete_object)(void *);
 static void (*app_destruct)(void *);
@@ -28,6 +29,14 @@ static void *symbol(const char *name) {
     void *address=dlsym(RTLD_DEFAULT,name);
     if(!address) fprintf(stderr,"C6_LINUX_HOST missing_symbol %s\n",name);
     return address;
+}
+
+void *c6_linux_get_host_localization_database(void) {
+    if(!application||!application_global||*application_global!=application||
+       !localization_database)return NULL;
+    void *(*get_database)(void *)=symbol("_ZN7Civ6App23GetLocalizationDatabaseEv");
+    if(!get_database||get_database(application)!=localization_database)return NULL;
+    return localization_database;
 }
 
 int c6_linux_bind_host_arguments(void *candidate) {
@@ -194,6 +203,20 @@ void *c6_linux_create_host_engine_utility(void) {
     bool game_ok=game_initialize(game_database,L"c6-no-gameplay-cache.sqlite",game_source);
     fprintf(stderr,"C6_LINUX_HOST gameplay_database_return %d\n",game_ok);
     if(!game_ok) return NULL;
+    void (*localization_construct)(void *)=
+        symbol("_ZN11Application4Data20LocalizationDatabaseC1Ev");
+    void *(*get_localization)(void *)=symbol("_ZN7Civ6App23GetLocalizationDatabaseEv");
+    if(!localization_construct||!get_localization||get_localization(application))return NULL;
+    /* Original Civ6App::SetupDatabase 0x2f91ec9..0x2f91ef7 allocates 0x18,
+     * invokes C1 and publishes this owning pointer. Its genuine Initialize is
+     * performed by the separately gated localization bridge; App D1 owns free. */
+    localization_database=allocate(0x18);
+    if(!localization_database)return NULL;
+    localization_construct(localization_database);
+    *(void **)((char *)application+0x6330)=localization_database;
+    bool published=c6_linux_get_host_localization_database()==localization_database;
+    fprintf(stderr,"C6_LINUX_HOST localization_database_construct_return app_owned %d\n",published);
+    if(!published)return NULL;
     if(getenv("C6_HOST_NETWORK")) {
         int (*initialize_network)(void *)=symbol("c6_linux_network_initialize");
         if(!initialize_network||initialize_network(application))return NULL;
@@ -244,6 +267,7 @@ int c6_linux_destroy_host_services(void) {
         app_destruct(application);
         delete_object(application);
         application=NULL;
+        localization_database=NULL;
         host_events_registered=false;
         host_arguments_bound=false;
         if(database_started) {
