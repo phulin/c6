@@ -25,7 +25,7 @@ The handler ignores the operation, target plot, visible flag and results map aft
 
 The operation hash is `0x2c681908`; the real registry resolves it to a numeric handler ID. The hash must not replace that ID in queue nodes or messages. `Context::RequestUnitOperation` delegates to the cache manager, which checks owner range and the actual cached owner's active turn, constructs the original Request, invokes manager conversion and broadcasts an original UnitOperation with `InsertMode::USE_REQUEST = 0`. It does not directly mutate the live unit.
 
-DWARF identifies Request `bAppend` at `+0x1c`, `bFromUser` at `+0x1d`; both constructors set both false. The inherited parameter conversion reads flags at `+0x18`, a modifier at `+4`, and optional shared parameters, but does not set those two booleans. Therefore the observed public empty-map path starts with both false. Do not assume that an external request is marked `bFromUser` just because the caller is human. Other paths/parameters require their own original request capture.
+DWARF identifies Request `bAppend` at `+0x1c`, `bFromUser` at `+0x1d`; both constructors set both false. The inherited parameter conversion reads `iFlags` at `+0x18`, `eDirective` at `+4`, and optional shared parameters, but does not set those two booleans. Therefore the observed public empty-map path starts with both false. Do not assume that an external request is marked `bFromUser` just because the caller is human. Other paths/parameters require their own original request capture.
 
 `UnitOperation::Execute` at `0x2d28a00` resolves the owner through the real player manager and finds the actual unit. Invalid player or missing unit returns immediately. Otherwise it invokes manager `Add(unit, request, insertMode)`, then **always** processes pending diplomacy and updates that owner's end-turn blocking state. A rejected operation inside `Add` does not skip those final calls. The message returns void.
 
@@ -58,6 +58,8 @@ These are exact Linux offsets from the original object, not portable simulator s
 | Unit CInstance `m_eActivity` | `+0x280` | `+0x290`, enum32 |
 | Unit Instance `m_iOperationTimer` | `+0x518` | `+0x528`, int32 |
 | Unit Instance `m_kOperations` | `+0xc00` | `+0xc10`, 200-byte OperationQueue |
+| Operation `eOperation` / `eDirective` / `iFlags` | none | `+0` / `+4` / `+0x18`, 32-bit each |
+| Operation `pkParameters` | reference ownership | `+8`, 16-byte InstanceRef |
 | Node `iPushTurn` | none | `+0x1c`, int32 |
 | Node pre-operation activity / automation | none | `+0x20` / `+0x24`, enum32 each |
 | StartData `bDelete` / `bAction` | none | `+0` / `+1`, bool each |
