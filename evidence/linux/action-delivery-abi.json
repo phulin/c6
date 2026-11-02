@@ -67,9 +67,107 @@
       "size": 252,
       "name": "NetGameCoreMessage.Execute",
       "sha256": "25657c19fb08579acb8dc79477586b1bef2467c5fac37d483e44d7a4a7b351ac"
+    },
+    {
+      "module": "host",
+      "address": "0x33bd8c0",
+      "size": 69,
+      "name": "Network.Manager.Update(float)",
+      "sha256": "749e3b326c94cc434c32ffebf89f4f183291c4f69d0fcb40f1524afb0b84be6c"
+    },
+    {
+      "module": "host",
+      "address": "0x39e99f4",
+      "size": 4108,
+      "name": "FNetSession.Update(float)",
+      "sha256": "b9fa89e86ae8f288bea52fe40439ee5a18605a909f4b105e19b179a8b2794ea6"
+    },
+    {
+      "module": "host",
+      "address": "0x39e9462",
+      "size": 173,
+      "name": "FNetSession.SendAllMessageChunks",
+      "sha256": "0392606e0bb830588a68532fd5aeaec5d3cd0859ae3c39c1c3d05a3b0541fbe3"
+    },
+    {
+      "module": "host",
+      "address": "0x39ddfee",
+      "size": 92,
+      "name": "FNetAccessENet.Send",
+      "sha256": "49ad117bacc3468ad2ccb2ec51168551e159b86213c379e078b69759d7ec1ddd"
+    },
+    {
+      "module": "host",
+      "address": "0x39de160",
+      "size": 143,
+      "name": "FNetAccessENet.Update",
+      "sha256": "6d59ec62131850287bd2e1a7d1d37470474b9f25b685dce840edbb1cdb817546"
+    },
+    {
+      "module": "host",
+      "address": "0x39f2f32",
+      "size": 16,
+      "name": "FNetSession.ProcessNetwork",
+      "sha256": "d2fa063c94d5ee91fe0abc8fc2f10a4bdaf52ef3d00f948fd4baa89f560d4a50"
+    },
+    {
+      "module": "host",
+      "address": "0x39f2d1a",
+      "size": 45,
+      "name": "FNetSession.HandleMessage",
+      "sha256": "b22448c44c0a89a12b62475650434192a8dd24ef9b46f33c1de2458b96a55520"
+    },
+    {
+      "module": "host",
+      "address": "0x3a23ce6",
+      "size": 160,
+      "name": "FNetMessageSync.Update",
+      "sha256": "add3e7915c5082841803d285fb868775a075dba1e46b96e4c1cf20c5bac328be"
     }
   ],
   "virtual_bindings": [
+    {
+      "module": "host",
+      "table": "0x53b5048",
+      "offset": "0x10",
+      "target": "0x39ddfee",
+      "name": "ENet.Send"
+    },
+    {
+      "module": "host",
+      "table": "0x53b5048",
+      "offset": "0x38",
+      "target": "0x39de160",
+      "name": "ENet.Update"
+    },
+    {
+      "module": "host",
+      "table": "0x53b4280",
+      "offset": "0x10",
+      "target": "0x39ada8c",
+      "name": "ENetEOS.Send"
+    },
+    {
+      "module": "host",
+      "table": "0x53b4280",
+      "offset": "0x38",
+      "target": "0x39ad1fe",
+      "name": "ENetEOS.Update"
+    },
+    {
+      "module": "host",
+      "table": "0x53b71b0",
+      "offset": "0x10",
+      "target": "0x3a06b58",
+      "name": "ENetSteam.Send"
+    },
+    {
+      "module": "host",
+      "table": "0x53b71b0",
+      "offset": "0x38",
+      "target": "0x39de160",
+      "name": "ENetSteam.Update"
+    },
     {
       "module": "gamecore",
       "table": "0x3aff870",
@@ -104,6 +202,27 @@
       "offset": "0x78",
       "target": "0x32b4d00",
       "name": "EngineUtility.SendMessage(stream)"
+    },
+    {
+      "module": "host",
+      "table": "0x53b5600",
+      "offset": "0xd8",
+      "target": "0x39e99f4",
+      "name": "FNetSession.Update(float)"
+    },
+    {
+      "module": "host",
+      "table": "0x53b5600",
+      "offset": "0x238",
+      "target": "0x39f2f32",
+      "name": "FNetSession.ProcessNetwork"
+    },
+    {
+      "module": "host",
+      "table": "0x53b5600",
+      "offset": "0x248",
+      "target": "0x39f2d1a",
+      "name": "FNetSession.HandleMessage"
     },
     {
       "module": "host",
@@ -176,6 +295,30 @@
     "nonempty NetGameCoreMessage payload",
     "nonnull Context"
   ],
+  "field_instructions": [
+    {
+      "address": "0x39de186",
+      "bytes": "49837f4000",
+      "name": "provider_packet_count_u64_at_0x40",
+      "sha256": "5d63f41101bfcc73ba433089c9a2dd150d32ade531de8c4185f1416590dc4dee"
+    },
+    {
+      "address": "0x39de1bb",
+      "bytes": "498b7f08",
+      "name": "provider_callback_pointer_at_0x8",
+      "sha256": "9ff0c9af4ea5bd38441f57441f27c4a604c3567ea2844577dd19a3b84a757543"
+    },
+    {
+      "address": "0x39f29e7",
+      "bytes": "80782900",
+      "name": "sync_deferral_byte_at_0x29",
+      "sha256": "11919c34c8a383a8ac8bd265b8832549f1fd7fce23e3198b18d9985e2de16153"
+    }
+  ],
+  "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
+  "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
+  "update_deferral": "FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains",
+  "session_start_policy_safety": "Not established transitively; LaunchGame broadcasts NetLaunchGame and live callbacks require audit",
   "native_execution": false,
   "action_executed": false,
   "gameplay_parity": false,

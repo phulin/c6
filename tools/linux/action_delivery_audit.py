@@ -7,13 +7,22 @@ import struct
 from pathlib import Path
 from save_lifecycle_audit import Elf, HOST_SHA, GAME_SHA
 
-METHODS = [('gamecore', 0x2c7e2c0, 13, 'Exports.Context.RequestUnitOperation', 'c4f01b05985fc9af021e6220373fa2bc710a31a6f4ccf60abad2f9ada0116dbe'), ('gamecore', 41968032, 212, 'Cache.Unit.Manager.RequestOperation', '218e087b8d1253ca44100a3d5fd016c1452d5b4af9e80f4123620c225b1068ae'), ('gamecore', 47852272, 81, 'Unit.Operations.Manager.MakeRequest', 'df4289c1de49d2ca7ed1a2fa74c6e97fd092f0b296e70c279f14ddd89441b911'), ('gamecore', 47802144, 246, 'Unit.Operations.BaseHandler.MakeRequest', 'f251ebcecbd03408fb08ca8a3d2fcf4f377c6002a1c21457955a62b77f711cd2'), ('gamecore', 47332848, 664, 'Messages.Manager.BroadcastMessage', '26bd66fc177e4f08efd1aa0a47f871be695a253e48fbaf721415e23b8467bead'), ('host', 53169408, 73, 'EngineUtility.SendMessage(stream)', '66519012830a77b9b6afbd6d7b2acc459ef6947e2c4c53bffbc17349e8f69bca'), ('host', 54254544, 29, 'Network.Manager.BroadcastMessage', '1bf7b49e98b7ac064a3aad55944e9a77bcae26d3a0623d03b3189a96b362349f'), ('host', 60721704, 2563, 'FNetSession.BroadcastMessage', '0c887cfa3eed625673c1ba4276851a055026bbca6004f1985242c5537a1c0356'), ('host', 54196208, 252, 'NetGameCoreMessage.Execute', '25657c19fb08579acb8dc79477586b1bef2467c5fac37d483e44d7a4a7b351ac')]
+METHODS = [('gamecore', 46654144, 13, 'Exports.Context.RequestUnitOperation', 'c4f01b05985fc9af021e6220373fa2bc710a31a6f4ccf60abad2f9ada0116dbe'), ('gamecore', 41968032, 212, 'Cache.Unit.Manager.RequestOperation', '218e087b8d1253ca44100a3d5fd016c1452d5b4af9e80f4123620c225b1068ae'), ('gamecore', 47852272, 81, 'Unit.Operations.Manager.MakeRequest', 'df4289c1de49d2ca7ed1a2fa74c6e97fd092f0b296e70c279f14ddd89441b911'), ('gamecore', 47802144, 246, 'Unit.Operations.BaseHandler.MakeRequest', 'f251ebcecbd03408fb08ca8a3d2fcf4f377c6002a1c21457955a62b77f711cd2'), ('gamecore', 47332848, 664, 'Messages.Manager.BroadcastMessage', '26bd66fc177e4f08efd1aa0a47f871be695a253e48fbaf721415e23b8467bead'), ('host', 53169408, 73, 'EngineUtility.SendMessage(stream)', '66519012830a77b9b6afbd6d7b2acc459ef6947e2c4c53bffbc17349e8f69bca'), ('host', 54254544, 29, 'Network.Manager.BroadcastMessage', '1bf7b49e98b7ac064a3aad55944e9a77bcae26d3a0623d03b3189a96b362349f'), ('host', 60721704, 2563, 'FNetSession.BroadcastMessage', '0c887cfa3eed625673c1ba4276851a055026bbca6004f1985242c5537a1c0356'), ('host', 54196208, 252, 'NetGameCoreMessage.Execute', '25657c19fb08579acb8dc79477586b1bef2467c5fac37d483e44d7a4a7b351ac'), ('host', 54253760, 69, 'Network.Manager.Update(float)', '749e3b326c94cc434c32ffebf89f4f183291c4f69d0fcb40f1524afb0b84be6c'), ('host', 60725748, 4108, 'FNetSession.Update(float)', 'b9fa89e86ae8f288bea52fe40439ee5a18605a909f4b105e19b179a8b2794ea6'), ('host', 60724322, 173, 'FNetSession.SendAllMessageChunks', '0392606e0bb830588a68532fd5aeaec5d3cd0859ae3c39c1c3d05a3b0541fbe3'), ('host', 60678126, 92, 'FNetAccessENet.Send', '49ad117bacc3468ad2ccb2ec51168551e159b86213c379e078b69759d7ec1ddd'), ('host', 60678496, 143, 'FNetAccessENet.Update', '6d59ec62131850287bd2e1a7d1d37470474b9f25b685dce840edbb1cdb817546'), ('host', 60763954, 16, 'FNetSession.ProcessNetwork', 'd2fa063c94d5ee91fe0abc8fc2f10a4bdaf52ef3d00f948fd4baa89f560d4a50'), ('host', 60763418, 45, 'FNetSession.HandleMessage', 'b22448c44c0a89a12b62475650434192a8dd24ef9b46f33c1de2458b96a55520'), ('host', 60964070, 160, 'FNetMessageSync.Update', 'add3e7915c5082841803d285fb868775a075dba1e46b96e4c1cf20c5bac328be')]
 SLOTS = [
+    ('host', 0x53b5048, 0x10, 0x39ddfee, 'ENet.Send'),
+    ('host', 0x53b5048, 0x38, 0x39de160, 'ENet.Update'),
+    ('host', 0x53b4280, 0x10, 0x39ada8c, 'ENetEOS.Send'),
+    ('host', 0x53b4280, 0x38, 0x39ad1fe, 'ENetEOS.Update'),
+    ('host', 0x53b71b0, 0x10, 0x3a06b58, 'ENetSteam.Send'),
+    ('host', 0x53b71b0, 0x38, 0x39de160, 'ENetSteam.Update'),
     ('gamecore', 0x3aff870, 0x100, 0x2da2af0, 'Manager.MakeRequest'),
     ('gamecore', 0x3aff870, 0xa0, 0x2da1720, 'Manager.GetHandlerIDFromHash'),
     ('gamecore', 0x3aff870, 0x88, 0x2da1650, 'Manager.GetHandler'),
     ('gamecore', 0x3b00da0, 0x78, 0x2d96720, 'SkipTurn.MakeRequest'),
     ('host', 0x53a6c80, 0x78, 0x32b4d00, 'EngineUtility.SendMessage(stream)'),
+    ('host', 0x53b5600, 0xd8, 0x39e99f4, 'FNetSession.Update(float)'),
+    ('host', 0x53b5600, 0x238, 0x39f2f32, 'FNetSession.ProcessNetwork'),
+    ('host', 0x53b5600, 0x248, 0x39f2d1a, 'FNetSession.HandleMessage'),
     ('host', 0x53b5600, 0xc0, 0x39e8a28, 'FNetSession.BroadcastMessage'),
     ('host', 0x53b5600, 0x280, 0x39d2194, 'FNetSession.GetSyncManager'),
     ('host', 0x53b5600, 0x278, 0x39d218e, 'FNetSession.GetPlayerManager'),
@@ -54,6 +63,12 @@ def main():
             raise ValueError('session getter bytes differ')
     if elves['gamecore'].read(0x2c7e2c0, 13) != bytes.fromhex('4889f789d64889cae9034033ff'):
         raise ValueError('Exports.Context member-to-static forwarding ABI differs')
+    field_instructions = [(0x39de186, '49837f4000', 'provider_packet_count_u64_at_0x40'),
+                          (0x39de1bb, '498b7f08', 'provider_callback_pointer_at_0x8'),
+                          (0x39f29e7, '80782900', 'sync_deferral_byte_at_0x29')]
+    for address, expected, name in field_instructions:
+        if elves['host'].read(address, len(bytes.fromhex(expected))) != bytes.fromhex(expected):
+            raise ValueError('field instruction differs: '+name)
     result = dict(schema='c6-linux-action-delivery-abi-v1', checks_passed=True,
         host_sha256=HOST_SHA, gamecore_sha256=GAME_SHA,
         method='Read-only original Linux bytes and original virtual bindings',
@@ -69,6 +84,11 @@ def main():
         transport_gates=['Network.Manager+8 session nonnull', 'FNetSession.GetSyncManager nonnull',
                          'FNetSession+0x28 nonnull'],
         receive_gates=['Network.IsGameCoreActive', 'nonempty NetGameCoreMessage payload', 'nonnull Context'],
+        field_instructions=[dict(address=hex(v),bytes=b,name=n,sha256=hashlib.sha256(bytes.fromhex(b)).hexdigest()) for v,b,n in field_instructions],
+        local_delivery='FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet',
+        synchronization_deferral='MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero',
+        update_deferral='FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains',
+        session_start_policy_safety='Not established transitively; LaunchGame broadcasts NetLaunchGame and live callbacks require audit',
         native_execution=False, action_executed=False, gameplay_parity=False,
         scope='Static delivery ABI only; runtime failing gate remains unobserved')
     a.output.parent.mkdir(parents=True,exist_ok=True)
