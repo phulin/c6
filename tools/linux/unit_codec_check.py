@@ -79,7 +79,7 @@ def main():
             result = json.loads(subprocess.check_output([str(binary), str(formation_dir), str(args.iterations), str(queue_dir)], cwd=ROOT))
         if result.pop('record_lengths') != [end-start for start, end in ranges]:
             raise ValueError('Rust typed record extents differ from original boundaries')
-        if (result['native_queue_roundtrips'], result['native_queue_unsupported_handlers']) != (954, 308):
+        if (result['native_queue_roundtrips'], result['native_queue_unsupported_handlers']) != (1262, 0):
             raise ValueError('unexpected native queue acceptance/rejection profile')
         if (result['records'], result['bytes'], result['path_nodes'], result['unit_ids'], result['nonempty_paths']) != (1250, 71168, 56, 1262, 8):
             raise ValueError('unexpected pinned native Formation fixture dimensions')
@@ -94,7 +94,7 @@ def main():
                   source_sha256={name: sha((ROOT / name).read_bytes()) for name in sources},
                   rustc=subprocess.check_output(['rustc', '--version'], text=True).strip(),
                   timing_scope='Release mean per Formation record, decode/encode including allocation/drop. No game, rules, action, turn, RNG or original-code performance measurement.',
-                  limits='Current Formation v1 serialized state only. Live evaluating-operation, definition remapping, tracked archive dirtiness, complete Unit state and actions unsupported. Queue codec roundtrips native empty queues and rejects all native nonempty fixtures as unsupported handlers; no attributed nonempty SkipTurn fixture. Raw Save/reload/Save failure remains 89198 unmasked bytes.')
+                  limits='Current Formation v1 serialized state only. Live evaluating-operation, definition remapping, tracked archive dirtiness, complete Unit state and actions unsupported. Queue codec supports nine statically verified handlers and roundtrips all native fixtures across eight observed hashes, including typed MoveTo/trade-route parameters; no attributed nonempty SkipTurn fixture. Other handlers remain unsupported. Raw Save/reload/Save failure remains 89198 unmasked bytes.')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

@@ -1,13 +1,50 @@
 //! Bounded Linux XP2 Unit wire components, not a Unit/save loader or gameplay.
 //!
-//! Current operation queues support only the verified SkipTurn base handler with
-//! absent parameters. Wire operation hashes are distinct from live numeric IDs.
+//! Current operation queues support nine verified handlers and their exact
+//! parameter formats. Wire operation hashes are distinct from live numeric IDs.
 //! Formation version 1 is decoded completely as serialized wire state.
 //! See `docs/linux-unit-archive.md`; unsupported handlers cannot be skipped because
 //! their bodies have no common length. No action transition is implemented here.
 
 /// The original registered SkipTurn operation hash, never a numeric handler ID.
 pub const SKIP_TURN_HASH: u32 = 0x2c681908;
+pub const MOVE_TO_HASH: u32 = 0x580f2f68;
+pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
+pub const ALERT_HASH: u32 = 0xe547bc17;
+pub const FORTIFY_HASH: u32 = 0xd3a6f7e8;
+pub const SPY_SIPHON_FUNDS_HASH: u32 = 0x223eea54;
+pub const SPY_DISRUPT_ROCKETRY_HASH: u32 = 0xc31647e8;
+pub const SPY_GAIN_SOURCES_HASH: u32 = 0xed72b77d;
+pub const SPY_SABOTAGE_PRODUCTION_HASH: u32 = 0x09c1ecc1;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum OperationParameters {
+    None,
+    MoveTo {
+        location: PlotCoord,
+        modifiers: u32,
+    },
+    MakeTradeRoute {
+        modifiers: u32,
+        location0: PlotCoord,
+        location1: PlotCoord,
+        resource_hash: u32,
+    },
+}
+fn parameter_kind(hash: u32) -> Result<u8, Error> {
+    match hash {
+        SKIP_TURN_HASH
+        | ALERT_HASH
+        | FORTIFY_HASH
+        | SPY_SIPHON_FUNDS_HASH
+        | SPY_DISRUPT_ROCKETRY_HASH
+        | SPY_GAIN_SOURCES_HASH
+        | SPY_SABOTAGE_PRODUCTION_HASH => Ok(0),
+        MOVE_TO_HASH => Ok(1),
+        MAKE_TRADE_ROUTE_HASH => Ok(2),
+        _ => Err(Error::UnsupportedHandler(hash)),
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OperationNode {
@@ -17,6 +54,7 @@ pub struct OperationNode {
     pub push_turn: i32,
     pub previous_activity: i32,
     pub previous_automation: i32,
+    pub parameters: OperationParameters,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -48,6 +86,7 @@ pub enum Error {
     Version { expected: i32, actual: i32 },
     UnsupportedHandler(u32),
     UnsupportedParameters(i32),
+    ParameterHandlerMismatch(u32),
     NoncanonicalBool(u8),
 }
 impl std::fmt::Display for Error {
@@ -58,7 +97,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 impl OperationQueue {
-    /// Decode the entire queue component. Only current queue/node versions are supported.
+    /// Decode an entire component. Only current queue/node/parameter versions are supported.
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         let mut r = Reader::new(bytes, limits)?;
         r.version(1)?;
@@ -66,45 +105,71 @@ impl OperationQueue {
         let mut nodes = Vec::with_capacity(count);
         for _ in 0..count {
             let operation_hash = r.u32()?;
-            if operation_hash != SKIP_TURN_HASH {
-                return Err(Error::UnsupportedHandler(operation_hash));
-            }
+            let kind = parameter_kind(operation_hash)?;
             r.version(2)?;
-            let node = OperationNode {
-                operation_hash,
-                directive: r.i32()?,
-                flags: r.i32()?,
-                push_turn: r.i32()?,
-                previous_activity: r.i32()?,
-                previous_automation: r.i32()?,
+            let directive = r.i32()?;
+            let flags = r.i32()?;
+            let push_turn = r.i32()?;
+            let previous_activity = r.i32()?;
+            let previous_automation = r.i32()?;
+            let parameters = match kind {
+                0 => {
+                    let version = r.i32()?;
+                    if version != 0 {
+                        return Err(Error::UnsupportedParameters(version));
+                    }
+                    OperationParameters::None
+                }
+                1 => {
+                    r.version(1)?;
+                    OperationParameters::MoveTo {
+                        location: r.coord()?,
+                        modifiers: r.u32()?,
+                    }
+                }
+                2 => {
+                    r.version(1)?;
+                    OperationParameters::MakeTradeRoute {
+                        modifiers: r.u32()?,
+                        location0: r.coord()?,
+                        location1: r.coord()?,
+                        resource_hash: r.u32()?,
+                    }
+                }
+                _ => unreachable!(),
             };
-            let parameter_version = r.i32()?;
-            if parameter_version != 0 {
-                return Err(Error::UnsupportedParameters(parameter_version));
-            }
-            nodes.push(node);
+            nodes.push(OperationNode {
+                operation_hash,
+                directive,
+                flags,
+                push_turn,
+                previous_activity,
+                previous_automation,
+                parameters,
+            });
         }
         r.finish()?;
         Ok(Self { nodes })
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
-        let length = self
-            .nodes
-            .len()
-            .checked_mul(32)
-            .and_then(|n| n.checked_add(8))
-            .ok_or(Error::ResourceLimit)?;
-        if length > limits.max_bytes
-            || self.nodes.len() > limits.max_items
-            || self.nodes.len() > u32::MAX as usize
-        {
+        if self.nodes.len() > limits.max_items || self.nodes.len() > u32::MAX as usize {
             return Err(Error::ResourceLimit);
         }
-        // Validate before writing any result; unknown handler state is never opaque.
+        let mut length = 8usize;
         for node in &self.nodes {
-            if node.operation_hash != SKIP_TURN_HASH {
-                return Err(Error::UnsupportedHandler(node.operation_hash));
+            let kind = parameter_kind(node.operation_hash)?;
+            let (actual, size) = match &node.parameters {
+                OperationParameters::None => (0, 32),
+                OperationParameters::MoveTo { .. } => (1, 44),
+                OperationParameters::MakeTradeRoute { .. } => (2, 56),
+            };
+            if actual != kind {
+                return Err(Error::ParameterHandlerMismatch(node.operation_hash));
             }
+            length = length.checked_add(size).ok_or(Error::ResourceLimit)?;
+        }
+        if length > limits.max_bytes {
+            return Err(Error::ResourceLimit);
         }
         let mut bytes = Vec::with_capacity(length);
         word(&mut bytes, 1);
@@ -118,9 +183,37 @@ impl OperationQueue {
                 node.push_turn as u32,
                 node.previous_activity as u32,
                 node.previous_automation as u32,
-                0,
             ] {
                 word(&mut bytes, v);
+            }
+            match &node.parameters {
+                OperationParameters::None => word(&mut bytes, 0),
+                OperationParameters::MoveTo {
+                    location,
+                    modifiers,
+                } => {
+                    for v in [1, location.x as u32, location.y as u32, *modifiers] {
+                        word(&mut bytes, v);
+                    }
+                }
+                OperationParameters::MakeTradeRoute {
+                    modifiers,
+                    location0,
+                    location1,
+                    resource_hash,
+                } => {
+                    for v in [
+                        1,
+                        *modifiers,
+                        location0.x as u32,
+                        location0.y as u32,
+                        location1.x as u32,
+                        location1.y as u32,
+                        *resource_hash,
+                    ] {
+                        word(&mut bytes, v);
+                    }
+                }
             }
         }
         Ok(bytes)
@@ -350,6 +443,12 @@ impl<'a> Reader<'a> {
         self.budget -= count;
         Ok(count)
     }
+    fn coord(&mut self) -> Result<PlotCoord, Error> {
+        Ok(PlotCoord {
+            x: self.i32()?,
+            y: self.i32()?,
+        })
+    }
     fn boolean(&mut self) -> Result<bool, Error> {
         match self.take::<1>()?[0] {
             0 => Ok(false),
@@ -508,6 +607,101 @@ mod tests {
         let bytes = empty.encode(limits).unwrap();
         assert_eq!(bytes.len(), 52);
         assert_eq!(Formation::decode(&bytes, limits).unwrap(), empty);
+    }
+    #[test]
+    fn queue_parameter_wire_is_handler_specific_and_preserves_hashes() {
+        let words = [
+            1u32,
+            2,
+            MOVE_TO_HASH,
+            2,
+            0,
+            1,
+            2,
+            3,
+            4,
+            1,
+            0x80000000,
+            0x7fffffff,
+            0xffffffff,
+            MAKE_TRADE_ROUTE_HASH,
+            2,
+            5,
+            6,
+            7,
+            8,
+            9,
+            1,
+            0x80000000,
+            0xffffffff,
+            0,
+            0x80000000,
+            0x7fffffff,
+            0xdeadbeef,
+        ];
+        let bytes: Vec<u8> = words.into_iter().flat_map(u32::to_le_bytes).collect();
+        let state = OperationQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(
+            state.nodes[0].parameters,
+            OperationParameters::MoveTo {
+                location: PlotCoord {
+                    x: i32::MIN,
+                    y: i32::MAX
+                },
+                modifiers: u32::MAX
+            }
+        );
+        assert_eq!(
+            state.nodes[1].parameters,
+            OperationParameters::MakeTradeRoute {
+                modifiers: 0x80000000,
+                location0: PlotCoord { x: -1, y: 0 },
+                location1: PlotCoord {
+                    x: i32::MIN,
+                    y: i32::MAX
+                },
+                resource_hash: 0xdeadbeef
+            }
+        );
+        assert_eq!(state.encode(Limits::default()).unwrap(), bytes);
+        for n in 0..bytes.len() {
+            assert!(OperationQueue::decode(&bytes[..n], Limits::default()).is_err());
+        }
+        for offset in [36, 80] {
+            let mut bad = bytes.clone();
+            bad[offset..offset + 4].copy_from_slice(&2u32.to_le_bytes());
+            assert_eq!(
+                OperationQueue::decode(&bad, Limits::default()),
+                Err(Error::Version {
+                    expected: 1,
+                    actual: 2
+                })
+            );
+        }
+        let mut bad = state.clone();
+        bad.nodes[0].parameters = OperationParameters::None;
+        assert_eq!(
+            bad.encode(Limits::default()),
+            Err(Error::ParameterHandlerMismatch(MOVE_TO_HASH))
+        );
+        bad.nodes[0].operation_hash = 0;
+        assert_eq!(
+            bad.encode(Limits::default()),
+            Err(Error::UnsupportedHandler(0))
+        );
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: 2,
+        };
+        assert_eq!(state.encode(exact).unwrap(), bytes);
+        assert_eq!(OperationQueue::decode(&bytes, exact).unwrap(), state);
+        assert_eq!(
+            state.encode(Limits {
+                max_bytes: bytes.len() - 1,
+                ..exact
+            }),
+            Err(Error::ResourceLimit)
+        );
     }
     #[test]
     fn queue_independent_wire_and_order() {
