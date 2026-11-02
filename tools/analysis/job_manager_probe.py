@@ -24,11 +24,11 @@ def main():
                      'sources': {s: digest(ROOT / s) for s in sources + ['native/bootstrap/job-manager/job_manager.h']},
                      'host_sha256': digest(host), 'full_executable_crt_startup': False,
                      'job_manager_initialized': False, 'native_constructor_rva': '0x985170',
-                     'native_destroy_export_rva': '0x986040', 'native_wait_export_rva': '0x985e20'}
+                     'native_destroy_export_rva': '0x986040', 'native_wait_export_rva': '0x985e20', 'native_free_job_list_export_rva': '0x986050'}
     environment = dict(os.environ, WINEPREFIX=str(ROOT / 'target/bootstrap/wine-prefix'), WINEARCH='win64', WINEDEBUG='-all')
     target = 'Z:' + str(binary.resolve()).replace('/', '\\')
     cases = []
-    for mode, expected_exit in [('native-empty', 0), ('nonempty', 86), ('null', 86), ('wait-nonempty', 86), ('wait-null', 86)]:
+    for mode, expected_exit in [('native-empty', 0), ('nonempty', 86), ('null', 86), ('wait-nonempty', 86), ('wait-null', 86), ('free-nonzero', 86)]:
         command = ['/usr/lib/wine/wine64', str(host), target]
         if mode != 'native-empty':
             command.append(mode)

@@ -35,6 +35,11 @@ int wmain(int argc, wchar_t **argv) {
         EXP_JobManager_Wait(NULL, NULL);
         return 10;
     }
+    if (argc == 3 && !wcscmp(argv[2], L"free-nonzero")) {
+        EXP_JobManager_FreeJobList(1);
+        return 13;
+    }
+    EXP_JobManager_FreeJobList(0);
     /* Arbitrary descriptor canaries are only checking the branch's proven
      * non-access; they do not model a scheduling descriptor's semantics. */
     uint64_t descriptor[2] = {UINT64_C(0xfeedfacecafebeef), UINT64_C(0x1234567890abcdef)};

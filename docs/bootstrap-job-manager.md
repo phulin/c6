@@ -1,10 +1,11 @@
 # Original native job-set cleanup boundary
 
-The bootstrap admits two bounded original executable operations: destroying
-and waiting on an empty job set while the original job-manager singleton is
-absent. It executes the genuine `EXP_JobManager_DestroyJobSet` and
-`EXP_JobManager_Wait` exports; it does not replace those operations with host
-no-ops. This does not initialize the job manager, schedule
+The bootstrap admits three bounded original executable operations: destroying
+and waiting on an empty job set, and freeing an actual zero job-list handle,
+while the original job-manager singleton is absent. It executes the genuine
+`EXP_JobManager_DestroyJobSet`, `EXP_JobManager_Wait`, and
+`EXP_JobManager_FreeJobList` exports; it does not replace those operations with
+host no-ops. This does not initialize the job manager, schedule
 jobs, or establish gameplay or turn equivalence.
 
 The exact executable SHA-256 is
@@ -40,13 +41,24 @@ checks both canary and null descriptors, unchanged descriptor bytes, and all
 16 bytes of the job set. This establishes only that descriptor non-access on
 the empty branch; it does not recover scheduling descriptor semantics.
 
+The original `FreeJobList` export at RVA `0x986050` jumps to `0x9857b0`.
+It receives a handle in RCX. For the actual zero handle, it returns before
+accessing any pool/global memory. The adapter forwards exactly zero to the
+original export, and rejects every nonzero handle before native execution;
+it never substitutes zero for the caller's handle. The standalone positive
+checks this native zero-handle branch and the negative checks rejection of
+handle 1. Actual Load reached this operation with RCX zero after its genuine
+empty-set wait returned (`native-xp2-original-load-wait.json`). Valid nonzero
+handles still require native pool construction and provenance.
+
 The standalone probe fills 80 bytes of aligned storage with poison, calls the
 complete original constructor at RVA `0x985170`, and verifies its original
 vtable and empty embedded set at offset `0x38`. It then calls the adapter and
 checks all 16 bytes affected by the native operation. Thus the admitted positive
-fixture comes from original construction, not an invented empty object. Four
+fixture comes from original construction, not an invented empty object. Five
 negative cases deliberately pass a nonempty synthetic pointer field and null
-to each adapter; all must stop before original execution. The synthetic field is only a rejection
+to both set adapters, plus a nonzero handle to the list adapter; all must stop
+before original execution. The synthetic field is only a rejection
 fixture and is never advanced or freed as native state.
 
 Reproduce with an idle shared Wine prefix:
@@ -71,13 +83,13 @@ not establish original App/provider teardown or job execution. Later actual
 Load required the native empty-set Wait branch; see the runtime owner's
 separately fingerprinted Load evidence for its progress and remaining gaps.
 
-Other requested job hooks remain unavailable. Their bounded dependency audit is:
+Operations on actual work and nonzero handles remain unavailable. Their bounded dependency audit is:
 
 | Export | Native target | Required state beyond admitted empty sets |
 | --- | --- | --- |
 | `AddJob` (`0x986010`) | `0x985490` | Constructs/activates native group through `0x985d70`, allocates native task, and submits through scheduler routines. |
 | `CreateJobList` (`0x986030`) | `0x985550` | Takes synchronized original pool at `0x2d09280`, moves a free record to active list; returns zero if none. |
-| `FreeJobList` (`0x986050`) | `0x9857b0` | Checks handle 1–64 and record availability, takes pool lock and moves/clears an active native record. |
+| `FreeJobList` nonzero handles (`0x986050`) | `0x9857b0` | Checks handle 1–64 and record availability, takes pool lock and moves/clears an active native record. |
 | `PushJobOntoList` (`0x986060`) | `0x985b20` | Activates native group, allocates native task, mutates linked list using handle. |
 | `SpawnList` (`0x986080`) | `0x985bf0` | Converts handle to pool record, drains task list and can submit or run tasks through original scheduler. |
 

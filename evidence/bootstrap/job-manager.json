@@ -3,24 +3,25 @@
     "schema": "c6-original-empty-job-set-probe-v1",
     "original_executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
     "sources": {
-      "native/bootstrap/job-manager/probe.c": "e46f7c93c73baa1c0ce460f8a56864c03ee93b4132072b7fae04ddff98bff387",
-      "native/bootstrap/job-manager/job_manager.c": "b55b70afec3279153f9a3abef75ecc75a0a9161e7cfe1755db58dba4c7bf06c8",
-      "native/bootstrap/job-manager/job_manager.h": "03f998dea659a456bc0be2c0e18c2231d1633262ff53a3afa824395fa267b649"
+      "native/bootstrap/job-manager/probe.c": "17644448c5b509d6925416dcbd223e50bbb1c4f86361712dd5a26a4ade33eace",
+      "native/bootstrap/job-manager/job_manager.c": "4f716cd93ca55562e535efd75f18cc906d5de355247e824c1cc7b9c3efe83c8e",
+      "native/bootstrap/job-manager/job_manager.h": "4637d5b093c6c4d660f22acf5694d8c276f74dafac9fff376a77b81a38b093e3"
     },
-    "host_sha256": "28cfab4d4c3472c36e822439967108015bd7a85e27e4e5240ce46bc88230c8b2",
+    "host_sha256": "c127701a34d9ab4cdef63c335d7d46eac7549dd9ca292f8454797dcef8ac8e77",
     "full_executable_crt_startup": false,
     "job_manager_initialized": false,
     "native_constructor_rva": "0x985170",
     "native_destroy_export_rva": "0x986040",
-    "native_wait_export_rva": "0x985e20"
+    "native_wait_export_rva": "0x985e20",
+    "native_free_job_list_export_rva": "0x986050"
   },
-  "configuration_sha256": "c2e8867d1bd1970d84bd112a963c976aa409fa07b0aab3473ba0c74074a00ccf",
+  "configuration_sha256": "e554f6425826e6396116e508fdbe51983a55def151473d7e16ee9a9b1b1fcb97",
   "cases": [
     {
       "mode": "native-empty",
       "expected_exit_code": 0,
       "child_exit_code": 0,
-      "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n{\"phase\":\"original_wait_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0,\"descriptor_read\":false}\n{\"phase\":\"original_wait_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"original_wait_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0,\"descriptor_read\":false}\n{\"phase\":\"original_wait_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"original_destroy_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0}\n{\"phase\":\"original_destroy_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"native_job_set_probe_complete\",\"manager_initialized\":false,\"job_execution_tested\":false}\n",
+      "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n{\"phase\":\"original_free_zero_job_list_before\",\"handle\":0}\n{\"phase\":\"original_free_zero_job_list_after\",\"original_code_executed\":true}\n{\"phase\":\"original_wait_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0,\"descriptor_read\":false}\n{\"phase\":\"original_wait_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"original_wait_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0,\"descriptor_read\":false}\n{\"phase\":\"original_wait_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"original_destroy_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0}\n{\"phase\":\"original_destroy_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"native_job_set_probe_complete\",\"manager_initialized\":false,\"job_execution_tested\":false}\n",
       "stderr": "",
       "passed": true
     },
@@ -54,6 +55,14 @@
       "child_exit_code": 86,
       "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n",
       "stderr": "{\"phase\":\"unsupported_job_set_wait_boundary\",\"original_wait_executed\":false}\n",
+      "passed": true
+    },
+    {
+      "mode": "free-nonzero",
+      "expected_exit_code": 86,
+      "child_exit_code": 86,
+      "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n",
+      "stderr": "{\"phase\":\"unsupported_job_list_free_boundary\",\"original_free_executed\":false}\n",
       "passed": true
     }
   ],
