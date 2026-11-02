@@ -14,7 +14,12 @@
 static void *trace_module;
 static FILE *trace_log;
 static atomic_bool armed;
-static atomic_uint queued,received,executed,reported;
+static atomic_uint queued,received,executed,reported,phase;
+void c6_linux_action_trace_mark(unsigned value) {
+    atomic_store(&phase,value);
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"phase\",\"value\":%u}\n",value);
+}
+unsigned c6_linux_action_trace_unit_executed(void) {return atomic_load(&executed);}
 static unsigned packet_number;
 static const char *trace_directory;
 
@@ -22,6 +27,13 @@ static _Noreturn void fatal(const char *reason) {
     fprintf(stderr,"C6_LINUX_ACTION_TRACE failing_boundary %s action_acceptance 0\n",reason);
     if(trace_log){fprintf(trace_log,"{\"event\":\"failing_boundary\",\"reason\":\"%s\"}\n",reason);fflush(trace_log);}
     _exit(198);
+}
+static bool probe_owned(const void *pointer) {
+    Dl_info probe={0},target={0};
+    /* fatal is local to this translation unit and cannot be preempted by a
+     * same-named executable export. Compare both live targets and hook values
+     * independently to this actual loaded preload owner. */
+    return dladdr((const void *)fatal,&probe)&&dladdr(pointer,&target)&&probe.dli_fbase==target.dli_fbase;
 }
 static void *original(const char *symbol,void *wrapper,void *caller) {
     void *value=NULL;
@@ -68,20 +80,20 @@ static void packet(const char *kind,int from,const void *stream) {
 bool trace_make_request(const void *,uint32_t,const void *,void *) __asm__("_ZNK8GameCore4Unit10Operations7Manager11MakeRequestENS1_5Types8TypeHashERKN4Data15TypedVariantMapEPNS1_7RequestE");
 bool trace_make_request(const void *manager,uint32_t hash,const void *params,void *request) {
     bool (*call)(const void *,uint32_t,const void *,void *)=original("_ZNK8GameCore4Unit10Operations7Manager11MakeRequestENS1_5Types8TypeHashERKN4Data15TypedVariantMapEPNS1_7RequestE",trace_make_request,__builtin_return_address(0));
-    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"make_request_enter\",\"hash\":%u}\n",hash);
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"make_request_enter\",\"hash\":%u,\"phase\":%u}\n",hash,atomic_load(&phase));
     bool accepted=call(manager,hash,params,request);
     if(atomic_load(&armed)){
         uint32_t operation,flags;memcpy(&operation,request,4);memcpy(&flags,(unsigned char *)request+24,4);
-        fprintf(trace_log,"{\"event\":\"make_request_return\",\"accepted\":%s,\"operation\":%u,\"flags\":%u,\"bAppend\":%u,\"bFromUser\":%u}\n",accepted?"true":"false",operation,flags,((unsigned char *)request)[28],((unsigned char *)request)[29]);
+        fprintf(trace_log,"{\"event\":\"make_request_return\",\"accepted\":%s,\"operation\":%u,\"flags\":%u,\"bAppend\":%u,\"bFromUser\":%u,\"phase\":%u}\n",accepted?"true":"false",operation,flags,((unsigned char *)request)[28],((unsigned char *)request)[29],atomic_load(&phase));
     }
     return accepted;
 }
 void trace_broadcast(void *) __asm__("_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE");
 void trace_broadcast(void *message) {
     void (*call)(void *)=original("_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE",trace_broadcast,__builtin_return_address(0));
-    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"broadcast_enter\"}\n");
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"broadcast_enter\",\"phase\":%u}\n",atomic_load(&phase));
     call(message);
-    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"broadcast_return\"}\n");
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"broadcast_return\",\"phase\":%u}\n",atomic_load(&phase));
 }
 void trace_queue(int,void *) __asm__("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE");
 void trace_queue(int from,void *stream) {
@@ -161,15 +173,19 @@ int c6_linux_action_trace_begin(void *module) {
     char path[4096];int n=snprintf(path,sizeof path,"%s/events.jsonl",trace_directory);
     if(n<0||(size_t)n>=sizeof path)return 204;
     trace_log=fopen(path,"wx");if(!trace_log)return 205;
-    trace_module=module;packet_number=0;
+    trace_module=module;packet_number=0;atomic_store(&phase,0);
     atomic_store(&queued,0);atomic_store(&received,0);atomic_store(&executed,0);atomic_store(&reported,0);
     void **table=dlsym(module,"_ZTVN8GameCore8Messages13UnitOperationE");
-    bool virtual_bound=table&&table[2+0x20/8]==(void *)trace_unit_execute;
+    bool unit_hook_owned=probe_owned((void *)trace_unit_execute);
+    bool unit_target_owned=table&&probe_owned(table[2+0x20/8]);
+    bool virtual_bound=table&&unit_hook_owned&&unit_target_owned&&table[2+0x20/8]==(void *)trace_unit_execute;
     void *(*get_manager)(void)=dlsym(module,"_ZN8GameCore4Unit10Operations7Manager3GetEv");
     void *manager=get_manager?get_manager():NULL;
-    bool make_bound=manager&&(*(void ***)manager)[0x100/8]==(void *)trace_make_request;
-    fprintf(trace_log,"{\"event\":\"begin\",\"UnitOperation_Execute_virtual_interposed\":%s}\n",virtual_bound?"true":"false");
-    fprintf(trace_log,"{\"event\":\"original_virtual_binding\",\"name\":\"UnitManager_MakeRequest\",\"interposed\":%s}\n",make_bound?"true":"false");
+    bool make_hook_owned=probe_owned((void *)trace_make_request);
+    bool make_target_owned=manager&&probe_owned((*(void ***)manager)[0x100/8]);
+    bool make_bound=manager&&make_hook_owned&&make_target_owned&&(*(void ***)manager)[0x100/8]==(void *)trace_make_request;
+    fprintf(trace_log,"{\"event\":\"begin\",\"UnitOperation_Execute_virtual_interposed\":%s,\"hook_owner_preload\":%s,\"target_owner_preload\":%s}\n",virtual_bound?"true":"false",unit_hook_owned?"true":"false",unit_target_owned?"true":"false");
+    fprintf(trace_log,"{\"event\":\"original_virtual_binding\",\"name\":\"UnitManager_MakeRequest\",\"interposed\":%s,\"hook_owner_preload\":%s,\"target_owner_preload\":%s}\n",make_bound?"true":"false",make_hook_owned?"true":"false",make_target_owned?"true":"false");
     Dl_info info;
     void *native_update=dlsym(module,"_ZN8GameCore4Game8Instance6UpdateEv");
     bool slots_bound=native_update&&dladdr(native_update,&info);
@@ -193,8 +209,9 @@ int c6_linux_action_trace_begin(void *module) {
     };
     for(size_t i=0;slots_bound&&i<sizeof bindings/sizeof bindings[0];i++){
         void *bound=*(void **)((uintptr_t)info.dli_fbase+bindings[i].offset);
-        bool match=bound==bindings[i].wrapper;
-        fprintf(trace_log,"{\"event\":\"original_PLT_binding\",\"name\":\"%s\",\"interposed\":%s}\n",bindings[i].name,match?"true":"false");
+        bool hook_owner=probe_owned(bindings[i].wrapper),target_owner=probe_owned(bound);
+        bool match=hook_owner&&target_owner&&bound==bindings[i].wrapper;
+        fprintf(trace_log,"{\"event\":\"original_PLT_binding\",\"name\":\"%s\",\"interposed\":%s,\"hook_owner_preload\":%s,\"target_owner_preload\":%s}\n",bindings[i].name,match?"true":"false",hook_owner?"true":"false",target_owner?"true":"false");
         if(!match)slots_bound=false;
     }
     if(!virtual_bound||!make_bound||!slots_bound){fclose(trace_log);trace_log=NULL;return 206;}
@@ -210,5 +227,5 @@ int c6_linux_action_trace_end(unsigned expected_messages) {
     bool failed=fflush(trace_log)||ferror(trace_log);if(fclose(trace_log))failed=true;
     trace_log=NULL;trace_module=NULL;
     fprintf(stderr,"C6_LINUX_ACTION_TRACE complete queued %u received %u unit_executed %u reports %u\n",q,r,e,p);
-    return failed?208:(q==expected_messages&&r==expected_messages&&e==expected_messages)?0:209;
+    return failed?208:(q==r&&e==expected_messages&&q>=e&&(expected_messages||q==0))?0:209;
 }

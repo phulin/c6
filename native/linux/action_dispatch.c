@@ -19,6 +19,27 @@ static struct status status(struct api *a,void *context,void *game,const char *s
     fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"%s\",\"turn\":%d,\"phase\":%d,\"local\":%d,\"pending\":%d,\"needs_update\":%d,\"needs_advance\":%d,\"ai_processing\":%d,\"turn_processing\":%d}\n",stage,s.turn,s.phase,s.local,s.pending,s.update,s.advance,s.ai,s.processing);
     return s;
 }
+static void transport_state(void *manager,const char *stage) {
+    void *(*get_session)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Network7Manager10GetSessionEv");
+    void *(*get_sync)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK11FNetSession14GetSyncManagerEv");
+    void *session=manager&&get_session?get_session(manager):NULL,*provider=NULL,*callback=NULL,*app_callback=NULL;
+    if(session){memcpy(&provider,(const unsigned char *)session+0x28,8);memcpy(&app_callback,(const unsigned char *)session+0x18,8);}
+    void *sync=session&&get_sync?get_sync(session):NULL;
+    Dl_info info={0};bool known_host=get_sync&&dladdr((void *)get_sync,&info);
+    bool enet_layout=false;uint64_t queued=0;
+    if(provider&&known_host){
+        void **table=*(void ***)provider;
+        /* Host addresses are ELF VAs (first PT_LOAD starts at 0x400000),
+         * so derive the load bias from a byte-pinned native getter rather
+         * than treating dladdr.dli_fbase as zero-based image bias. */
+        uintptr_t bias=(uintptr_t)get_sync-0x39d2194;
+        uintptr_t send=(uintptr_t)table[0x10/8]-bias;
+        uintptr_t update=(uintptr_t)table[0x38/8]-bias;
+        enet_layout=(send==0x39ddfee||send==0x3a06b58)&&update==0x39de160;
+        if(enet_layout){memcpy(&callback,(const unsigned char *)provider+8,8);memcpy(&queued,(const unsigned char *)provider+0x40,8);}
+    }
+    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"%s\",\"session_present\":%d,\"provider_present\":%d,\"provider_enet_layout_proven\":%d,\"provider_callback_present\":%d,\"provider_queue_u64\":%llu,\"session_application_callback_present\":%d,\"sync_present\":%d,\"sync_defer_raw29\":%u}\n",stage,session!=NULL,provider!=NULL,enet_layout,callback!=NULL,(unsigned long long)queued,app_callback!=NULL,sync!=NULL,sync?((const unsigned char *)sync)[0x29]:0);
+}
 int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     if(!module||!context)return 220;
     struct api a={0};
@@ -79,6 +100,9 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     HOST(network,"_ZN7Network7Manager11GetInstanceEv");HOST(network_update,"_ZN7Network7Manager6UpdateEf");
 #undef CORE
 #undef HOST
+    void (*trace_mark)(unsigned)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_mark");
+    unsigned (*trace_units)(void)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_unit_executed");
+    if(!trace_mark||!trace_units)return 221;
     int (*identity_owner)(const void *)=dlsym(module,"_ZNK8GameCore6Player11ComponentID8GetOwnerEv");
     void *(*get_session)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Network7Manager10GetSessionEv");
     void *(*get_sync)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK11FNetSession14GetSyncManagerEv");
@@ -151,19 +175,39 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
         void *send=dlsym(RTLD_DEFAULT,"_ZN8GameCore13EngineUtility11SendMessageERN13Serialization13MemoryOStreamE");
         bool utility_bound=utility&&send&&(*(void ***)utility)[0x78/8]==send;
         fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"delivery_prerequisites\",\"identity_owner\":%d,\"network_present\":%d,\"session_present\":%d,\"session_sync_present\":%d,\"session_transport_28_present\":%d,\"engine_utility_present\":%d,\"engine_utility_original_slot_bound\":%d}\n",identity_owner(&selected_bits),net!=NULL,session!=NULL,session&&get_sync(session)!=NULL,transport!=NULL,utility!=NULL,utility_bound);
+        transport_state(net,"transport_before_request");
+        trace_mark(1);
         fprintf(stderr,"C6_LINUX_ACTION_DISPATCH request_enter\n");
         request_issued=true;
         request(context,&selected_bits,UINT32_C(0x2c681908),params);
-        bool delivered=a.pending(context);
-        fprintf(stderr,"C6_LINUX_ACTION_DISPATCH request_return pending %d\n",delivered);
-        if(!delivered){void *native_network=network();if(native_network)network_update(native_network,0.0f);delivered=a.pending(context);fprintf(stderr,"C6_LINUX_ACTION_DISPATCH network_update_zero_return pending %d\n",delivered);}
-        if(!delivered)result=229;
-        else {
-            fprintf(stderr,"C6_LINUX_ACTION_DISPATCH native_worker_enter\n");pump(*controller);sync(*controller);
-            fprintf(stderr,"C6_LINUX_ACTION_DISPATCH native_worker_return executing %d pending %d\n",executing(*controller),a.pending(context));
-            if(executing(*controller)||a.pending(context))result=230;
+        trace_mark(2);
+        transport_state(net,"transport_after_request");
+        fprintf(stderr,"C6_LINUX_ACTION_DISPATCH request_return pending %d\n",a.pending(context));
+        /* The real session performs a multi-stage loopback exchange. A pending
+         * protocol message is not necessarily the requested UnitOperation.
+         * Bound resource use; never manufacture progress or completion flags. */
+        for(unsigned pass=0;pass<8&&!result&&!trace_units();++pass){
+            if(!a.pending(context)){
+                void *native_network=network();
+                if(!native_network){result=229;break;}
+                char stage[80];snprintf(stage,sizeof stage,"transport_before_network_update_%u",pass);
+                transport_state(native_network,stage);
+                fprintf(stderr,"C6_LINUX_ACTION_DISPATCH network_update_zero_enter pass %u\n",pass);
+                trace_mark(3);network_update(native_network,0.0f);trace_mark(4);
+                snprintf(stage,sizeof stage,"transport_after_network_update_%u",pass);transport_state(native_network,stage);
+                fprintf(stderr,"C6_LINUX_ACTION_DISPATCH network_update_zero_return pass %u pending %d\n",pass,a.pending(context));
+            }
+            if(a.pending(context)){
+                fprintf(stderr,"C6_LINUX_ACTION_DISPATCH native_worker_enter pass %u\n",pass);
+                trace_mark(5);pump(*controller);sync(*controller);trace_mark(6);
+                fprintf(stderr,"C6_LINUX_ACTION_DISPATCH native_worker_return pass %u executing %d pending %d\n",pass,executing(*controller),a.pending(context));
+                if(executing(*controller)||a.pending(context))result=230;
+            }
+            fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"protocol_pass\",\"pass\":%u,\"unit_executed\":%u,\"pending\":%d}\n",pass,trace_units(),a.pending(context));
         }
+        if(!result&&trace_units()!=1)result=229;
     }
+    trace_mark(7);
     if(unit){
         unit=find(unit_container,selected_id);
         bool allowed=unit&&can_start(ops,&selected_bits,UINT32_C(0x2c681908),params,false,NULL);

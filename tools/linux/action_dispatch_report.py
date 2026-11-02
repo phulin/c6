@@ -36,7 +36,7 @@ def main():
     prefix = 'C6_LINUX_ACTION_DISPATCH '
     rows = [json.loads(line[len(prefix):]) for line in stderr.splitlines() if line.startswith(prefix + '{')]
     candidates = [row for row in rows if row['stage'] == 'actor_candidate']
-    singleton_rows = [row for row in rows if row['stage'] != 'actor_candidate']
+    singleton_rows = [row for row in rows if row['stage'] not in ('actor_candidate', 'protocol_pass')]
     stages = {row['stage']: row for row in singleton_rows}
     require(len(stages) == len(singleton_rows), 'duplicate dispatch stage')
     initial, final, selected = (stages[key] for key in ('before', 'after', 'selected'))
@@ -75,21 +75,23 @@ def main():
     if len(bindings) == 13:
         require(any(row['event'] == 'original_virtual_binding' and row['name'] == 'UnitManager_MakeRequest' and row['interposed'] for row in trace), 'original MakeRequest virtual observation not bound')
     end = trace[-1]
-    require(end['event'] == 'end' and all(end[key] == int(execute) for key in ('queued', 'received', 'unit_executed')), 'genuine request delivery or execution count differs')
+    require(end['event'] == 'end' and end['queued'] == end['received'] and end['unit_executed'] == int(execute) and (end['queued'] >= 1 if execute else end['queued'] == 0), 'genuine request delivery or execution count differs')
     require(sum(row['event'] == 'unit_execute_enter' for row in trace) == int(execute) and sum(row['event'] == 'unit_execute_return' for row in trace) == int(execute), 'original UnitOperation enter/return imbalance')
     if not execute:
         require(end['reports'] == 0, 'no-action control emitted armed reporting events')
     packets = {}
     for kind in ('queue', 'receive'):
         events = [row for row in trace if row['event'] == kind]
-        require(len(events) == int(execute), 'packet trace count differs: ' + kind)
+        require(len(events) == end['queued'], 'packet trace count differs: ' + kind)
+        if events:
+            packets[kind] = []
         for event in events:
             path = trace_path.parent / f"{event['packet']:03d}-{kind}.bin"
             require(path.is_file(), 'original packet bytes missing: ' + str(path))
             require(path.stat().st_size == event['bytes'] and 0 <= event['offset'] <= event['bytes'], 'packet capture size/offset differs')
-            packets[kind] = dict(bytes=path.stat().st_size, sha256=digest(path), event=event)
+            packets[kind].append(dict(bytes=path.stat().st_size, sha256=digest(path), event=event))
     if execute:
-        require(packets['queue']['sha256'] == packets['receive']['sha256'] and packets['queue']['bytes'] == packets['receive']['bytes'], 'original queue/receive packet bytes differ')
+        require([(row['sha256'], row['bytes']) for row in packets['queue']] == [(row['sha256'], row['bytes']) for row in packets['receive']], 'original queue/receive packet bytes differ')
     saves = {}
     for key, name in run['execution_paths']['action_snapshots'].items():
         path = Path(name)
