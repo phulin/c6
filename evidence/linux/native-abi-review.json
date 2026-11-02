@@ -187,6 +187,54 @@
       "status": "unresolved"
     }
   ],
+  "followup_argument_boundary": {
+    "argument_cases": {
+      "adapter_source_sha256": "53d3ac732ea625e87bd0262e257ddd2dedf099af725122820e26318a4b78dd46",
+      "original_native_execution": false,
+      "supplied_buffers_unchanged_on_refusal": true,
+      "synthetic_argument_cases_passed": 16
+    },
+    "cases": [
+      "Unknown private App refuses before symbol lookup/getter and leaves both buffers unchanged",
+      "Wrong candidate App refuses before symbol lookup/getter and leaves both buffers unchanged",
+      "Missing published-App owner refuses before symbol lookup/getter and leaves both buffers unchanged",
+      "Published App differs from fixture App: refuses before symbol lookup/getter and leaves both buffers unchanged",
+      "CRT getter error refuses without binding or mutation",
+      "argc other than1 refuses without binding or mutation",
+      "NULL argv refuses without binding or mutation",
+      "NULL argv0 refuses without binding or mutation",
+      "Non-NULL argv1 refuses without binding or mutation",
+      "Missing CRT getter refuses without binding or mutation",
+      "First valid binding writes only actual argc/argv at original offsets0x30/0x38",
+      "Identical repeated binding succeeds without mutation",
+      "Changed native argc refuses without restoring it",
+      "Changed native argv refuses without restoring it",
+      "Changed CRT argv pointer refuses without rewriting native fields",
+      "Wrong App after binding refuses before symbol lookup/getter without mutation"
+    ],
+    "combined_regression_counts": {
+      "aggregate_return_vectors": 7,
+      "argument_binding_cases": 16,
+      "network_receiver_guards": 3,
+      "static_anchors": 13
+    },
+    "crt_capture_review": "Both actual host and mod probe entrypoints store their received CRT argc/argv; helper resolves that getter and does not synthesize an argv array.",
+    "crt_capture_sources": {
+      "native/linux/host_probe.c": "bdaf0feef18e3fd9f666623914906f77bdb2109d1252491747fd3df8bfd56bc9",
+      "native/linux/mod_activation.c": "b585126c0f72a2012ad0af4138bc4b2789d85ff7be4a20af7a12a2fa56d18341"
+    },
+    "header_sha256": "84dc47b7c6fc25a67004f55d0481793641efd1e85c9233698e1dacb52c9d0bc9",
+    "limits": "Test App storage and CRT getter are synthetic buffers/callbacks used solely for adapter nonmutation regression. No native initialized-game or argument execution claim.",
+    "native_field_store_anchor": {
+      "address": "0x42b9aa3",
+      "bytes": 8,
+      "name": "run_app_argument_stores",
+      "sha256": "298c72ca11e4b1209260e10c1f011969e6bb18eec147c27ae55304c0d0e30c65"
+    },
+    "operation": "c6_linux_bind_host_arguments",
+    "scope": "Synthetic review of actual adapter helper and exact original argc/argv store bytes, no original game code executed.",
+    "source_sha256": "53d3ac732ea625e87bd0262e257ddd2dedf099af725122820e26318a4b78dd46"
+  },
   "format": "c6.linux-native-abi-review.v1",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "limits": [

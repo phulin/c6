@@ -29,6 +29,7 @@ ANCHORS = [
     ('client_allocate_and_construct', 0x31a1770, 73, 'e5b7da3cda7bd8d201047a59272c7a012623a66eaee5e45f911cbb179316924b'),
     ('host_game_success_comparison', 0x33be07b, 7, '04d064e0207fcc46dcd04c14eeb65e02b649804fe075df7ed3a9349a8f165d40'),
     ('host_game_integer_return', 0x33be0e6, 2, '1eafaf1e83618c9f051be8d0fdbd78cbbc1b668268d564392da9d6c25fc7b8f9'),
+    ('run_app_argument_stores', 0x42b9aa3, 8, '298c72ca11e4b1209260e10c1f011969e6bb18eec147c27ae55304c0d0e30c65'),
 ]
 
 
@@ -115,6 +116,7 @@ static void *published_app=fixture_app;
 static void *fixture_get_manager(void) { return &replacement_manager; }
 static void *fixture_get_session(void *self) { (void)self; abort(); }
 int c6_linux_register_host_events(void) { abort(); }
+int c6_linux_bind_host_arguments(void *candidate) { (void)candidate; abort(); }
 void *c6_review_dlsym(void *handle,const char *name) {
     (void)handle;
     if(!strcmp(name,"g_pkApplication"))return &published_app;
@@ -143,6 +145,91 @@ int main(void) {
                 'original_native_execution': False}
 
 
+def argument_binding():
+    shim = r'''
+#define _GNU_SOURCE
+#define dlsym c6_review_dlsym
+#include "native/linux/host_services.c"
+#undef dlsym
+#include <stddef.h>
+#include <string.h>
+static union { max_align_t alignment; unsigned char bytes[0x6800]; } valid, wrong;
+static void *published;
+static char program[]="actual-fixture-argv0";
+static char *good_argv[]={program,NULL};
+static char *other_argv[]={program,NULL};
+static char *bad_argv[]={program,program,NULL};
+static char *empty_argv[]={NULL,NULL};
+static int supplied_argc=1, supplied_status, getter_calls, lookups;
+static bool getter_available=true;
+static char **supplied_argv=good_argv;
+static int fixture_arguments(int *argc,char ***argv) {
+    ++getter_calls;*argc=supplied_argc;*argv=supplied_argv;return supplied_status;
+}
+void *c6_review_dlsym(void *handle,const char *name) {
+    (void)handle;++lookups;
+    if(getter_available&&!strcmp(name,"c6_linux_main_arguments"))return fixture_arguments;
+    return NULL;
+}
+static void reset(void) {
+    memset(valid.bytes,0xa5,sizeof valid.bytes);memset(wrong.bytes,0x5a,sizeof wrong.bytes);
+    application=valid.bytes;published=application;application_global=&published;
+    host_arguments_bound=false;supplied_argc=1;supplied_status=0;
+    supplied_argv=good_argv;getter_available=true;getter_calls=lookups=0;
+}
+static bool refusal(void *candidate,bool early) {
+    unsigned char before_valid[sizeof valid.bytes],before_wrong[sizeof wrong.bytes];
+    memcpy(before_valid,valid.bytes,sizeof before_valid);
+    memcpy(before_wrong,wrong.bytes,sizeof before_wrong);
+    int calls=getter_calls, searches=lookups;
+    int result=c6_linux_bind_host_arguments(candidate);
+    return result==1&&!memcmp(before_valid,valid.bytes,sizeof before_valid)&&
+        !memcmp(before_wrong,wrong.bytes,sizeof before_wrong)&&
+        (!early||(calls==getter_calls&&searches==lookups));
+}
+int main(void) {
+    reset();application=NULL;
+    if(!refusal(wrong.bytes,true))return 1;
+    reset();if(!refusal(wrong.bytes,true))return 2;
+    reset();application_global=NULL;if(!refusal(valid.bytes,true))return 3;
+    reset();published=wrong.bytes;if(!refusal(valid.bytes,true))return 4;
+    reset();supplied_status=1;if(!refusal(valid.bytes,false)||host_arguments_bound)return 5;
+    reset();supplied_argc=2;if(!refusal(valid.bytes,false)||host_arguments_bound)return 6;
+    reset();supplied_argv=NULL;if(!refusal(valid.bytes,false)||host_arguments_bound)return 7;
+    reset();supplied_argv=empty_argv;if(!refusal(valid.bytes,false)||host_arguments_bound)return 8;
+    reset();supplied_argv=bad_argv;if(!refusal(valid.bytes,false)||host_arguments_bound)return 9;
+    reset();getter_available=false;if(!refusal(valid.bytes,false)||getter_calls||host_arguments_bound)return 10;
+    reset();
+    unsigned char expected[sizeof valid.bytes];memcpy(expected,valid.bytes,sizeof expected);
+    memcpy(expected+0x30,&supplied_argc,sizeof supplied_argc);
+    memcpy(expected+0x38,&supplied_argv,sizeof supplied_argv);
+    if(c6_linux_bind_host_arguments(valid.bytes)||!host_arguments_bound||getter_calls!=1||
+       memcmp(expected,valid.bytes,sizeof expected))return 11;
+    if(c6_linux_bind_host_arguments(valid.bytes)||getter_calls!=2||
+       memcmp(expected,valid.bytes,sizeof expected))return 12;
+    *(int *)(valid.bytes+0x30)=2;
+    if(!refusal(valid.bytes,false))return 13;
+    *(int *)(valid.bytes+0x30)=1;*(char ***)(valid.bytes+0x38)=other_argv;
+    if(!refusal(valid.bytes,false))return 14;
+    *(char ***)(valid.bytes+0x38)=good_argv;supplied_argv=other_argv;
+    if(!refusal(valid.bytes,false))return 15;
+    if(!refusal(wrong.bytes,true))return 16;
+    return 0;
+}
+'''
+    with tempfile.TemporaryDirectory(prefix='c6-arguments-abi-review-') as temp:
+        source = Path(temp) / 'review.c'
+        binary = Path(temp) / 'review'
+        source.write_text(shim)
+        subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT),
+                        str(source), '-ldl', '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], capture_output=True, text=True, check=True)
+        return {'synthetic_argument_cases_passed': 16,
+                'adapter_source_sha256': digest(ROOT / 'native/linux/host_services.c'),
+                'supplied_buffers_unchanged_on_refusal': True,
+                'original_native_execution': False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', type=Path, default=ROOT.parent / 'c6-assets-linux/Civ6')
@@ -150,11 +237,13 @@ def main():
     args = parser.parse_args()
     result = {'format': 'c6.linux-native-abi-review-check.v1', 'host_sha256': HOST,
               'native_static_anchors': anchors(args.host), 'synthetic_adapter_check': adapter_decode(),
-              'synthetic_network_guards': network_guards()}
+              'synthetic_network_guards': network_guards(),
+              'synthetic_argument_binding': argument_binding()}
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
     print(json.dumps({'static_anchors_passed': len(result['native_static_anchors']),
                       'synthetic_vectors_passed': result['synthetic_adapter_check']['synthetic_return_vectors_passed'],
-                      'synthetic_receiver_guards_passed': result['synthetic_network_guards']['synthetic_receiver_guards_passed']}))
+                      'synthetic_receiver_guards_passed': result['synthetic_network_guards']['synthetic_receiver_guards_passed'],
+                      'synthetic_argument_cases_passed': result['synthetic_argument_binding']['synthetic_argument_cases_passed']}))
 
 
 if __name__ == '__main__':
