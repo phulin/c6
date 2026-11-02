@@ -2,6 +2,8 @@
 
 A Rust foundation for an exact, deterministic, headless Civilization VI simulator. The intended interface is state import, externally supplied actions, turn advancement and state export, with behavior checked against the original GameCore DLL.
 
+The acceptance target is the supplied newer Windows XP2 FinalRelease DLL. The older symbol-rich Linux build is a research reference; its successful native tests do not replace current Windows validation. See [target and version policy](docs/targets.md).
+
 **This is an early implementation, not a playable Civilization VI engine.** The Rust library currently reproduces isolated gameplay RNG, coordinate primitives and a unit-operation message-body format. Separate native bootstrap tools execute the original Windows DLL under Wine and have initialized real contexts with original database content. Full player actions, end-turn execution and Civ VI save import are unsupported.
 
 | Area | Current support |
@@ -13,8 +15,8 @@ A Rust foundation for an exact, deterministic, headless Civilization VI simulato
 | External loading | Rust API and versioned C shared-library API in [`include/c6.h`](include/c6.h) |
 | Action-message transport | Exact null-parameter unit-operation body codec; no action legality or execution |
 | Original-DLL testing | Isolated Linux x86-64 oracles and identity-pinned differential corpora; separate whole-DLL Wine bootstrap |
-| Native context bootstrap | Context lifecycle and original StartupGame return with genuine database, localization and script providers; complete startup teardown remains unresolved |
-| Native rules artifacts | Original configuration/gameplay SQLite exports reproduced identically across independent builds |
+| Native context bootstrap | Original StartupGame, context destruction and unload complete with verified providers and empty-only job-set cleanup |
+| Native rules artifacts | Repeatable original Windows configuration/gameplay exports; immutable `c6-data` Rust loader verifies every pinned table and typed row |
 | Native save probe | Original Load entered using the original borrowed MemoryIStream; no successful Load return or full-state capture |
 | World, players, units, cities, combat and economy | Unsupported |
 | Legal gameplay actions and complete turn progression | Unsupported |
@@ -38,7 +40,7 @@ On Linux, the resulting loadable library is `target/release/libc6_ffi.so`. With 
 bash tools/check/c_abi_smoke.sh
 ```
 
-The workspace separates the dependency-free simulation kernel (`c6-core`), shared-library boundary (`c6-ffi`) and process-based validation (`c6-differential`). JSON belongs to the test transport, not the action hot path. See [architecture and state format](docs/architecture.md).
+The workspace separates the dependency-free simulation kernel (`c6-core`), immutable original-rules input (`c6-data`), shared-library boundary (`c6-ffi`) and process-based validation (`c6-differential`). JSON belongs to the test transport, not the action hot path. See [architecture and state format](docs/architecture.md).
 
 ## Compare with original machine code
 
@@ -63,7 +65,7 @@ The generator records input cases and the actual candidate executable identity; 
 
 A separate Wine/MinGW path loads the complete original GameCore DLL with `LoadLibraryW`, running its imports, TLS and static initialization. It creates genuine contexts and has completed original `Initialize`, the `IsInitialized` transition, destruction and DLL unload with real DatabaseDLL connections and declared original Base/XP2 SQL/XML content. Original host XML-import and hashing code supply the database fixtures, and the original embedded GameCore database phase contributes generated effect/type records; a separate original LocalizationDLL fixture resolves English text.
 
-These are native context/data milestones. They do not provide a playable session, complete save load or a Rust gameplay implementation. Original StartupGame now returns with genuine App/database, HavokScript and ScriptSystem providers. The first original Load enters GameEffects initialization and stops at an unsupported logging-manager service; it has no Load return or consumed-byte observation. Startup teardown also requires a missing original job-manager host export. A context initialized flag alone does not establish game readiness. Use the current commands, asset requirements and observations in [native runtime](docs/bootstrap-runtime.md), [integration checks](docs/bootstrap-validation.md), [host services](docs/bootstrap-services.md) and [save loading](docs/save-loading.md). The [native rules snapshots](docs/rules-snapshot.md) preserve actual configuration/gameplay SQLite exports, reproduced byte-for-byte across independent builds. All executed modules and content inputs are fingerprinted; proprietary assets remain local.
+These are native context/data milestones. They do not provide a playable session, complete save load or a Rust gameplay implementation. Original StartupGame returns and context destruction/unload complete with genuine App/database/script providers and verified empty-only job-set cleanup. Load has entered original game-state code and records native stream progress, but has not returned successfully; the latest required service boundary is retained in the runtime evidence. A context initialized flag alone does not establish game readiness. Use the current commands, asset requirements and observations in [native runtime](docs/bootstrap-runtime.md), [integration checks](docs/bootstrap-validation.md), [host services](docs/bootstrap-services.md) and [save loading](docs/save-loading.md). The [native rules snapshots](docs/rules-snapshot.md) preserve actual Windows configuration/gameplay SQLite exports, reproduced byte-for-byte across independent builds. The immutable [Rust rules loader](docs/rules-data.md) matches their complete pinned schema and typed rows; these are rules inputs, not implemented gameplay. All executed modules and content inputs are fingerprinted; proprietary assets remain local.
 
 The Rust [action-message codec](docs/actions.md) is checked against original serialization instructions. It encodes a request body, not a legal gameplay action. An initialized player, unit, registry and complete affected-state capture are still required before implementing SkipTurn.
 
