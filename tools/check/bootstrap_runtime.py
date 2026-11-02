@@ -33,6 +33,18 @@ def inventory(arguments, directory, name):
     identity = hashlib.sha256(json.dumps(result['configuration'], sort_keys=True,
                              separators=(',', ':')).encode()).hexdigest()
     require(identity == result['configuration_sha256'], 'configuration digest mismatch')
+    configuration = result['configuration']
+    require(configuration.get('wine_version') and configuration.get('compiler_version'),
+            'runtime/compiler identity missing')
+    for name, expected in configuration['sources'].items():
+        require(hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected,
+                f'source identity mismatch: {name}')
+    gate = json.loads((ROOT / 'tools/bootstrap/config.json').read_text())['expected_assets']
+    for dependency in configuration['dependencies']:
+        require(gate.get(dependency['path']) == dependency['sha256'], 'dependency allowlist mismatch')
+    require(configuration['runtime_providers'] ==
+            {name: digest for name, digest in gate.items() if name.startswith('LaunchPad/')},
+            'runtime provider allowlist mismatch')
     return identity
 
 
@@ -54,7 +66,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--assets', type=Path, default=ROOT.parent / 'c6-assets')
     parser.add_argument('--diagnostics', action='store_true',
-                        help='also exercise fail-stop initialization and current database diagnostics')
+                        help='also exercise initialization, database lifecycle and original SQL failure boundaries')
     args = parser.parse_args()
     base = ['--assets', str(args.assets)]
     with tempfile.TemporaryDirectory(prefix='c6-bootstrap-check-') as temporary:
@@ -91,7 +103,24 @@ def main():
             items = [json.loads(line) for line in run.stdout.splitlines() if line.startswith('{')]
             require(len(items) == 1 and items[0].get('status') == 'unavailable',
                     'native image mismatch did not fail before loader activity')
-        print('identity gates: configuration, native target DLL and native original host rejected')
+        # Symlink the trusted asset set and replace a single dependency/provider.
+        # The Python gate must reject these before compilation or original execution.
+        gate = json.loads((ROOT / 'tools/bootstrap/config.json').read_text())['expected_assets']
+        gated_assets = directory / 'gated-assets'
+        for name in gate:
+            link = gated_assets / name
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to((args.assets / name).resolve())
+        for name in ('Base/Binaries/Win64Steam/DatabaseDLL_FinalRelease.dll', 'LaunchPad/msvcp140.dll'):
+            link = gated_assets / name
+            link.unlink()
+            link.write_bytes(b'incorrect bootstrap asset\n')
+            rejected = invoke(['--assets', str(gated_assets), '--inventory-only'], 1)
+            require('bootstrap asset SHA256 mismatch: refusing execution: ' + name in rejected.stderr,
+                    'changed dependency/runtime provider was not rejected')
+            link.unlink()
+            link.symlink_to((args.assets / name).resolve())
+        print('identity gates: configuration, native images, supplied dependency and CRT provider rejected')
         if args.diagnostics:
             for mode in ('--initialize', '--empty-databases', '--sql-schema-bootstrap'):
                 arguments = [*base, mode]
@@ -99,21 +128,41 @@ def main():
                 require(diagnostic_identity != identity, 'diagnostic mode identity aliases lifetime mode')
                 output = directory / f'{mode[2:]}.json'
                 result = invoke([*arguments, '--expected-configuration', diagnostic_identity,
-                                 '--output', str(output)], 86, output)
+                                 '--output', str(output)], 86 if mode == '--initialize' else 0, output)
                 items = observations(result)
-                require(not any(item.get('status') == 'ok' for item in items),
-                        'unsupported diagnostic reported completed lifetime')
-                require('unsupported' in result['stderr'], 'diagnostic did not identify unsupported boundary')
                 require(any(item.get('registered_parameters') == 16 for item in items),
                         'event declaration observation missing')
                 returned = [item for item in items if item.get('phase') == 'Initialize_returned']
                 if mode == '--initialize':
-                    require(not returned and 'missing_configuration_database_fixture' in result['stderr'],
+                    require('unsupported' in result['stderr'] and not returned and
+                            'missing_configuration_database_fixture' in result['stderr'],
                             'missing fixture must stop before Initialize returns')
                 else:
-                    require(len(returned) == 1 and returned[0].get('result') is True,
-                            'database diagnostic must observe a successful original Initialize return')
-                print(f'{mode}: explicit unsupported boundary; initialized gameplay remains false')
+                    require(len(returned) == 1 and returned[0].get('result') is True and
+                            returned[0].get('is_initialized_before') is False and
+                            returned[0].get('is_initialized_after') is True and
+                            result.get('context_initialized') is True,
+                            'database diagnostic must observe original Initialize and IsInitialized transition')
+                    require([item['cycle'] for item in items if item.get('phase') == 'context_queries'] == [0, 1, 2]
+                            and items[-1].get('status') == 'ok', 'database lifecycle did not complete')
+                    if mode == '--sql-schema-bootstrap':
+                        sql = [item for item in items if item.get('phase') == 'original_database_sql']
+                        require([item['source_index'] for item in sql] == list(range(7)) and
+                                all(item.get('success') is True for item in sql), 'original schemas did not execute')
+                print(f'{mode}: expected native boundary; initialized gameplay remains false')
+            raw = [*base, '--sql-schema-bootstrap', '--raw-sql-bytes']
+            raw_identity = inventory(raw, directory, 'raw-sql')
+            output = directory / 'raw-sql.json'
+            result = invoke([*raw, '--expected-configuration', raw_identity, '--output', str(output)], 15, output)
+            items = observations(result)
+            sql = [item for item in items if item.get('phase') == 'original_database_sql']
+            require([item['source_index'] for item in sql] == list(range(6)) and
+                    all(item.get('success') is True for item in sql[:5]) and
+                    sql[-1].get('success') is False and sql[-1].get('utf8_bom_removed') is False,
+                    'original raw-BOM SQL failure boundary changed')
+            require(not any(item.get('phase') == 'Initialize_returned' or item.get('status') == 'ok'
+                            for item in items), 'raw SQL failure continued to initialization/completion')
+            print('raw SQL bytes: original source 5 failure preserved before Initialize')
     return 0
 
 
