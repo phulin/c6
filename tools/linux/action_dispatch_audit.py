@@ -255,7 +255,7 @@ def main():
     if game.relocated_pointer(0x3aecf50+16+0xb0)!=0x2c867e0:raise ValueError('native network AI-processing predicate differs')
     report=dict(schema='c6-linux-skip-dispatch-abi-v1',host_sha256=HOST_SHA,gamecore_sha256=GAME_SHA,checks_passed=True,
                 providers=[dict(module=m,symbol=s,address=hex(a),size=z,sha256=d)for m,s,a,z,d in METHODS],
-                selection='first actual native legal SKIP_TURN actor with empty original queue in original iterator order',
+                selection='first actual native legal SKIP_TURN actor with at most one original queued operation in original iterator order',
                 request_parameters='original factory empty TypedVariantMap; bAppend=false,bFromUser=false',
                 delivery='original RequestUnitOperation and actual Network provider; no direct fabricated QueueMessage',
                 drain='original threaded ExecuteGameCoreUpdate plus Synchronize',native_execution=False,gameplay_parity=False)

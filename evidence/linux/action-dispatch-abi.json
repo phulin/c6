@@ -369,7 +369,7 @@
       "sha256": "0d969ff2852c1f80a836c7eb5bb91445c1af01c4302ebb98bfb6f3b4db0a5fff"
     }
   ],
-  "selection": "first actual native legal SKIP_TURN actor with empty original queue in original iterator order",
+  "selection": "first actual native legal SKIP_TURN actor with at most one original queued operation in original iterator order",
   "request_parameters": "original factory empty TypedVariantMap; bAppend=false,bFromUser=false",
   "delivery": "original RequestUnitOperation and actual Network provider; no direct fabricated QueueMessage",
   "drain": "original threaded ExecuteGameCoreUpdate plus Synchronize",

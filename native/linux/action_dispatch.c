@@ -119,7 +119,7 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     if(!control_ready){if(player)a.release(player);a.release(game);return 232;}
     void *list=get_units(player),*ops=operations(context),*params=map_create(default_manager(),2);
     if(!player||!list||!ops||!params){if(params)map_delete(params);if(ops)a.release(ops);if(list)a.release(list);if(player)a.release(player);a.release(game);return 227;}
-    uint64_t selected_bits=0;unsigned selected_id=0,seen=0,total=count(list);const void *unit=NULL;
+    uint64_t selected_bits=0;unsigned selected_id=0,selected_queued=0,seen=0,total=count(list);const void *unit=NULL;
     for(void *it=begin(list),*stop=end(list);it!=stop;it=next(list,it)){
         if(seen++>=total)break;
         void *facade=get(list,it);if(!facade)break;
@@ -128,13 +128,13 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
         bool allowed=can_start(ops,&bits,UINT32_C(0x2c681908),params,false,NULL);
         int code=allowed&&candidate?c6_linux_action_unit_queue_size(module,candidate,&queued):0;
         fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"actor_candidate\",\"owner\":%d,\"id\":%u,\"component_bits\":\"%016llx\",\"public_can_start\":%d,\"core_found\":%d,\"queue_query_status\":%d,\"queue_size\":%u}\n",who,id,(unsigned long long)bits,allowed,candidate!=NULL,code,queued);
-        if(allowed&&candidate&&!code&&queued==0){selected_id=id;identity(&selected_bits,facade);unit=candidate;a.release(facade);break;}
+        if(allowed&&candidate&&!code&&queued<=1){selected_queued=queued;selected_id=id;identity(&selected_bits,facade);unit=candidate;a.release(facade);break;}
         a.release(facade);
     }
     bool request_issued=false;
     int result=unit?0:228;
     if(!result){
-        fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"selected\",\"mode\":\"%s\",\"owner\":%d,\"id\":%u,\"component_bits\":\"%016llx\",\"operation\":\"SKIP_TURN\",\"hash\":\"2c681908\",\"native_queue_size\":0,\"bAppend\":false,\"bFromUser\":false}\n",execute?"execute":"control",initial.local,selected_id,(unsigned long long)selected_bits);
+        fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"selected\",\"mode\":\"%s\",\"owner\":%d,\"id\":%u,\"component_bits\":\"%016llx\",\"operation\":\"SKIP_TURN\",\"hash\":\"2c681908\",\"native_queue_size\":%u,\"bAppend\":false,\"bFromUser\":false}\n",execute?"execute":"control",initial.local,selected_id,(unsigned long long)selected_bits,selected_queued);
         result=c6_linux_action_state_capture(module,unit,"before_a");
         if(!result)result=c6_linux_action_state_capture(module,unit,"before_b");
         if(!result)result=c6_linux_context_save(module,context,before);
