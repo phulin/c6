@@ -68,3 +68,34 @@ rebuilding as a concrete ordering lead. A keyed comparison of all actual edge,
 vertex, route, yield and path values is still required, together with iteration
 and tie-break use evidence. Neither logical equality nor harmless encoding order
 has been established from these owner ranges.
+
+The reviewed fixture decoder
+[save_normalization_trade.py](../tools/linux/save_normalization_trade.py) now
+compares every serialized Trade graph field, checks original origin/destination
+index invariants and rejects duplicate outer origins or edge keys. It retains
+empty origin buckets and all original wire sequences. Both graphs contain 179
+origins, 1,571 uniquely identified edges and totalEdgesCreated 1,571. No keyed
+edge payload or origin membership changes. All 89,156 Trade-region byte differences
+are therefore record-order differences in these fixtures: 54 outer origin wire
+positions, destination order for 18 origins and 372 edge-ID wire positions change.
+[The typed result](../evidence/linux/save-normalization-trade-values-1.json)
+anchors the complete private values and both native traces. These ordering changes
+remain recorded state; no future action or ordered-callback equivalence is claimed.
+
+The current little-endian native wire contract for a typed codec is:
+
+| Record | Fields in original serialization order |
+| --- | --- |
+| Graph v1 | i32 version, i32 totalEdgesCreated, i32 originCount; each origin Vertex, i32 destinationCount; each destination Vertex, Edge |
+| Vertex v1 | i32 version; i32 sign-extended native i16 type; i32 data1; i32 data2 |
+| ComponentID | i16 owner; i16 component type; u32 ID |
+| Route v4 | i32 version, i32 ID, i32 startTurn, trader ComponentID, u32 resource type hash, i32 resource quantity, origin/destination City ComponentIDs, origin/destination Yield arrays |
+| Yield array | u32 count; pairs of u32 yield type hash and i32 FixedPoint8 raw value; six definitions in this fixture |
+| Edge v3 | i32 version, i32 ID, mostRecentRoute, u8 hasActiveRoute, i32 routesStarted/completed, u32 path count and ordered i32 path elements, i32 pathTraversalIndex, u8 pathTraversalGoingForward, from/to Vertices |
+
+Native bool fields are one byte; the decoder accepts only zero or one. Vertex type
+values are NO_VERTEX=-1, CITY=0, UNIT=1 and PLOT=2. Fixed-point values remain raw
+integers. Route's live `m_bFinalizing` is omitted from this wire format. The graph's
+reconstructed indices, their runtime iteration order, jobs and sync/archive state
+are not made complete merely by decoding these records. This codec contract is
+separate from loading a complete Civ VI save or advancing gameplay.
