@@ -165,15 +165,25 @@ int c6_linux_context_save(void *game,void *context,const char *path){
     void *buffer=malloc(SAVE_CAPACITY),*stream=native_allocate(NATIVE_STREAM_SIZE);
     if(!buffer||!stream)return 72;
     output_construct(stream,buffer,SAVE_CAPACITY);
+    int (*trace_end)(void *)=NULL;
+    if(getenv("C6_SAVE_NORMALIZATION_TRACE")) {
+        int (*trace_begin)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_save_normalization_begin");
+        trace_end=dlsym(RTLD_DEFAULT,"c6_linux_save_normalization_end");
+        int traced=trace_begin&&trace_end?trace_begin(game,stream):75;
+        fprintf(stderr,"C6_LINUX_STREAM normalization_begin_return %d\n",traced);
+        if(traced){output_destruct(stream);free(buffer);return traced;}
+    }
     fprintf(stderr,"C6_LINUX_STREAM save_enter capacity %u\n",SAVE_CAPACITY);
     int result=save(context,stream);size_t size=output_offset(stream);
     fprintf(stderr,"C6_LINUX_STREAM save_return result %d size %zu\n",result,size);
+    int trace_result=trace_end?trace_end(stream):0;
+    if(trace_end)fprintf(stderr,"C6_LINUX_STREAM normalization_end_return %d\n",trace_result);
     int status=73;
-    if(result==0 && size<=SAVE_CAPACITY){
+    if(result==0 && !trace_result && size<=SAVE_CAPACITY){
         FILE *file=fopen(path,"wbx");
         if(file){int written=fwrite(buffer,1,size,file)==size;int closed=fclose(file)==0;
             status=written&&closed?0:74;}
     }
     output_destruct(stream);free(buffer);
-    return status;
+    return trace_result?trace_result:status;
 }
