@@ -1,0 +1,376 @@
+{
+  "schema": "c6-linux-trade-serialization-contracts-v1",
+  "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "scope": "Exact-target static wire/lookup contracts; native typed fixture comparison is separate",
+  "methods": {
+    "graph_write": {
+      "address": "0x2bf7fe0",
+      "bytes": 366,
+      "symbols": [
+        "_ZN13SerializationlsERNS_7OStreamERKN8GameCore5Trade5GraphE"
+      ],
+      "sha256": "5d32e9ce336c6e67055898e05f0d552521a23c91fc63b08826c51872005187bf"
+    },
+    "graph_read": {
+      "address": "0x2bf8210",
+      "bytes": 424,
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore5Trade5GraphE"
+      ],
+      "sha256": "d6e1922f68badbcbd55cf5b5b7dc74081d7e6d4f5d8cd5b7824586cd824b5f12"
+    },
+    "route_write": {
+      "address": "0x2c113f0",
+      "bytes": 177,
+      "symbols": [
+        "_ZN13SerializationlsERNS_7OStreamERKN8GameCore5Trade5RouteE"
+      ],
+      "sha256": "aedc72581c3b113e376aa934b24aa55b22827b5f75728a881c3a16d3e2831730"
+    },
+    "route_read": {
+      "address": "0x2c114b0",
+      "bytes": 540,
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore5Trade5RouteE"
+      ],
+      "sha256": "c896f7bdf98b13eb4d62daba7ff722b7fed1dd3e82809c5a1be8de803a15b73c"
+    },
+    "manager_write": {
+      "address": "0x2c050b0",
+      "bytes": 66,
+      "symbols": [
+        "_ZN13SerializationlsERNS_7OStreamERKN8GameCore5Trade7ManagerE"
+      ],
+      "sha256": "5089a4cc7deb17c743f8bafdcca90746f4fa63eaa9b9af33ae8e0854aadb6c9f"
+    },
+    "manager_read": {
+      "address": "0x2c05100",
+      "bytes": 64,
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore5Trade7ManagerE"
+      ],
+      "sha256": "355a90dfd03cd45e5a0e539d0aa109c5ce24ad94ce7a75bba746ae473aa995db"
+    },
+    "manager_initialize": {
+      "address": "0x2c05590",
+      "bytes": 68,
+      "symbols": [
+        "_ZN8GameCore5Trade7Manager10InitializeEPNS_4Game9IInstanceE"
+      ],
+      "sha256": "934d1724a2a386212a8f31ef3c0142fb6d0080aed44ecc5f81552b841fde5173"
+    },
+    "edge_write": {
+      "address": "0x2bf8150",
+      "bytes": 189,
+      "symbols": [
+        "_ZNK8GameCore5Trade4Edge5WriteERN13Serialization7OStreamE"
+      ],
+      "sha256": "f530b5f32c820cebc085015213b06822037dfedb5e71c47507440903de555bed"
+    },
+    "edge_read": {
+      "address": "0x2bf83c0",
+      "bytes": 275,
+      "symbols": [
+        "_ZN8GameCore5Trade4Edge4ReadERN13Serialization7IStreamE"
+      ],
+      "sha256": "477949b03f77421eb3f8afdc8d0218c107a1a735dfffda9446e91b251ee390c9"
+    },
+    "vertex_write": {
+      "address": "0x2bf7f10",
+      "bytes": 81,
+      "symbols": [
+        "_ZNK8GameCore5Trade6Vertex5WriteERN13Serialization7OStreamE"
+      ],
+      "sha256": "4e54b18bd9be7110088ec5ede2b1c0b298fd2f1ae4679a1c72a9f5e201cdcd45"
+    },
+    "vertex_read": {
+      "address": "0x2bf7f90",
+      "bytes": 74,
+      "symbols": [
+        "_ZN8GameCore5Trade6Vertex4ReadERN13Serialization7IStreamE"
+      ],
+      "sha256": "9987131ca9a31ad5a9ce78dd1db0803f95db8d359825860550709c9a6789e62e"
+    },
+    "yield_hash_write": {
+      "address": "0x1ff74c0",
+      "bytes": 141,
+      "symbols": [
+        "_ZN13Serialization19WriteIndexHashArrayI11FixedPointTILj8EEN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS4_5YieldEEEEEbRNS_7OStreamEPKT_RKT0_"
+      ],
+      "sha256": "ae762e77e970a800a6f7b28cc5b1ee80eca91896a4089b386f53a7b2c85cea6e"
+    },
+    "yield_hash_read": {
+      "address": "0x1ff7160",
+      "bytes": 157,
+      "symbols": [
+        "_ZN13Serialization18ReadIndexHashArrayI11FixedPointTILj8EEN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS4_5YieldEEEEEbRNS_7IStreamEPT_RKT0_"
+      ],
+      "sha256": "82436ce31b4a3e0a43bb0f5cb7706592e741609d43eb4eaefb411b9d45bf4fad"
+    },
+    "get_edge_by_vertices": {
+      "address": "0x2bfc240",
+      "bytes": 140,
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph7GetEdgeENS0_6VertexES2_"
+      ],
+      "sha256": "4327bf0f6e79bd8358964a89582e9eb65277fe11dc97a6436f25606b58eaf797"
+    },
+    "iterate_routes": {
+      "address": "0x2bfa860",
+      "bytes": 166,
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph13IterateRoutesERKNSt3__18functionIFvRKNS0_5RouteEEEE"
+      ],
+      "sha256": "6bff69101d20874c1381f2b61bf0cae8b3f73f04ae05fc4279e1f7e0f28de232"
+    },
+    "iterate_outgoing_routes": {
+      "address": "0x2bfa910",
+      "bytes": 345,
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph21IterateOutgoingRoutesENS_6Player6CityIDERKNSt3__18functionIFvRKNS0_5RouteEEEE"
+      ],
+      "sha256": "1554a5339943e99245cb49b34bd6ca8f5d019e52b48b1c1b6b1a80fc46d9034b"
+    },
+    "validate_graph": {
+      "address": "0x2bfc690",
+      "bytes": 815,
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph8ValidateEv"
+      ],
+      "sha256": "068a1990e552756e75b67f0a54badd93d1f055252ad9730133a6b7b5fd941a65"
+    },
+    "city_id_write": {
+      "address": "0x2c9ad10",
+      "bytes": 95,
+      "symbols": [
+        "_ZN13SerializationlsERNS_7OStreamERKN8GameCore6Player6CityIDE"
+      ],
+      "sha256": "a0462572e6b0309d6de60c35fd14f41c3cb054c915751ab1103d279b6f0d981c"
+    },
+    "city_id_read": {
+      "address": "0x2c9ad70",
+      "bytes": 76,
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore6Player6CityIDE"
+      ],
+      "sha256": "95c0f2a3adabb22a1ccc987faac9ec466d51c1c76898180eef6caa3a2d279e07"
+    },
+    "unit_id_write": {
+      "address": "0x2c9adc0",
+      "bytes": 95,
+      "symbols": [
+        "_ZN13SerializationlsERNS_7OStreamERKN8GameCore6Player6UnitIDE"
+      ],
+      "sha256": "fac47f5edb84475fdb01bd75dd403a326ce14ed2f4062d541ba6f2495a36be32"
+    },
+    "unit_id_read": {
+      "address": "0x2c9ae20",
+      "bytes": 76,
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore6Player6UnitIDE"
+      ],
+      "sha256": "c92fd3f990ab4e3301aa3f0daaadda9115e5dbcd6478a44bccab819d365e43be"
+    },
+    "fixed8_write": {
+      "address": "0x2c9afe0",
+      "bytes": 42,
+      "symbols": [
+        "_ZN13SerializationlsERNS_7OStreamERK11FixedPointTILj8EE"
+      ],
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704"
+    },
+    "fixed8_read": {
+      "address": "0x2c9b010",
+      "bytes": 43,
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamER11FixedPointTILj8EE"
+      ],
+      "sha256": "5d47fcdfb3868524b3d8da8a2fab95de165678efa05f23c615963da12ddf010d"
+    },
+    "path_vector_write": {
+      "address": "0x20455c0",
+      "bytes": 91,
+      "symbols": [
+        "_ZN13SerializationlsIiEERNS_7OStreamES2_RKN5eastl6vectorIT_NS3_9allocatorEEE"
+      ],
+      "sha256": "65d5e90fcda78b875d85d74de5ca7f6f0b8317c1d4f3345fd39ee56e8725b621"
+    },
+    "path_vector_read": {
+      "address": "0x20452e0",
+      "bytes": 14,
+      "symbols": [
+        "_ZN13SerializationrsIiEERNS_7IStreamES2_RN5eastl6vectorIT_NS3_9allocatorEEE"
+      ],
+      "sha256": "769f84d1a96449107a65e62a61c3522dbc904eb5222b78e86b8ff77ebfa7457e"
+    },
+    "path_count_write": {
+      "address": "0x2045690",
+      "bytes": 46,
+      "symbols": [
+        "_ZN13Serialization30SerializeFromSequenceContainerIKiKN5eastl6vectorIiNS2_9allocatorEEEEC2ERNS_7OStreamERS6_"
+      ],
+      "sha256": "5d8ac4912095bb7a0037f92b6379ca7dc4b6a33c9a83e9e4266891609749e355"
+    }
+  },
+  "versions": {
+    "graph": 1,
+    "route": 4,
+    "edge": 3,
+    "vertex": 1
+  },
+  "layouts": {
+    "Graph": 352,
+    "Edge": 536,
+    "Route": 112,
+    "Vertex": 12,
+    "Manager": 640,
+    "ComponentID": 8
+  },
+  "edge_fields": [
+    {
+      "name": "m_iID",
+      "wrapper_offset": 152,
+      "wire": "i32"
+    },
+    {
+      "name": "m_kMostRecentRoute",
+      "wrapper_offset": 176,
+      "wire": "Route"
+    },
+    {
+      "name": "m_bHasActiveRoute",
+      "wrapper_offset": 304,
+      "wire": "u8"
+    },
+    {
+      "name": "m_iRoutesStarted",
+      "wrapper_offset": 328,
+      "wire": "i32"
+    },
+    {
+      "name": "m_iRoutesCompleted",
+      "wrapper_offset": 352,
+      "wire": "i32"
+    },
+    {
+      "name": "m_vMostRecentPath",
+      "wrapper_offset": 376,
+      "wire": "u32 count; i32[count]"
+    },
+    {
+      "name": "m_iPathTraversalIndex",
+      "wrapper_offset": 424,
+      "wire": "i32"
+    },
+    {
+      "name": "m_bPathTraversalGoingForward",
+      "wrapper_offset": 448,
+      "wire": "u8"
+    },
+    {
+      "name": "m_kFromVertex",
+      "wrapper_offset": 472,
+      "wire": "Vertex"
+    },
+    {
+      "name": "m_kToVertex",
+      "wrapper_offset": 504,
+      "wire": "Vertex"
+    }
+  ],
+  "route_fields": [
+    {
+      "name": "m_iID",
+      "offset": 0,
+      "wire": "i32"
+    },
+    {
+      "name": "m_iStartTurn",
+      "offset": 4,
+      "wire": "i32"
+    },
+    {
+      "name": "m_kTraderUnit",
+      "offset": 8,
+      "wire": "ComponentID"
+    },
+    {
+      "name": "m_eResourceType",
+      "offset": 32,
+      "wire": "u32 type hash"
+    },
+    {
+      "name": "m_iResourceQuantity",
+      "offset": 36,
+      "wire": "i32"
+    },
+    {
+      "name": "m_Origin",
+      "offset": 16,
+      "wire": "ComponentID"
+    },
+    {
+      "name": "m_Destination",
+      "offset": 24,
+      "wire": "ComponentID"
+    },
+    {
+      "name": "m_axOriginYields",
+      "offset": 40,
+      "wire": "YieldHashArray"
+    },
+    {
+      "name": "m_axDestinationYields",
+      "offset": 72,
+      "wire": "YieldHashArray"
+    }
+  ],
+  "encodings": {
+    "ComponentID": [
+      "i16 owner",
+      "i16 type",
+      "u32 id"
+    ],
+    "Vertex": [
+      "i32 version=1",
+      "i32 type (sign-extended from native i16)",
+      "i32 data1",
+      "i32 data2"
+    ],
+    "YieldHashArray": [
+      "u32 definition count",
+      "for each current definition: u32 type hash, i32 fixed8 raw"
+    ],
+    "Graph": [
+      "i32 version=1",
+      "i32 totalEdgesCreated",
+      "i32 originCount",
+      "per origin in native hash iteration: Vertex, i32 destinationCount",
+      "per destination in native hash iteration: Vertex, Edge"
+    ],
+    "Manager": [
+      "i32 version",
+      "Graph",
+      "i32 totalRoutesCreated"
+    ]
+  },
+  "route_omitted_fields": [
+    "m_bFinalizing at native offset104"
+  ],
+  "read_contract": {
+    "graph": "Allocate Edge; Read; AttachAutoArchive; rebuild EdgeID, origin and destination indices without renumbering ID",
+    "yield_hash_mapping": "Resolve serialized hash to current definition index; consume unknown hash payload into temporary FixedPoint",
+    "legacy": "Edge version2 discards extra vector after path; Route<3 consumes obsolete arrays; strict current-version contract does not decode these branches"
+  },
+  "ordering": {
+    "write": "Native hash-container iteration, not sorted ID",
+    "get_edge": "Keyed origin lookup followed by destination lookup",
+    "iterate_routes": "Walk IDMap and invoke callback for active routes; rebuilt order can be observable",
+    "limit": "Keyed wire equality does not prove future callback/tie-break or turn equivalence"
+  },
+  "limits": [
+    "Layouts checked against supplied Linux DWARF, not historical Windows evidence",
+    "No opaque-byte normalization or gameplay state exclusion",
+    "No complete save loader, initialized simulator, action or turn equivalence claim"
+  ]
+}
