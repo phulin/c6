@@ -1,6 +1,8 @@
 //! Gameplay RNG primitive recovered from the pinned XP2 DLL.
 //! See `evidence/native/xp2-random.asm` and `docs/architecture.md`.
 
+pub mod native_serialization;
+
 /// Logical fields of GameCore::Random; not a C++ object or memory layout.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct RandomState {
