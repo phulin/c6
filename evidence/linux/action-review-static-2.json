@@ -1,0 +1,32 @@
+{
+  "schema": "c6-linux-action-independent-dispatch-review-v1",
+  "review_method": "Independent read-only source and existing native report inspection; no engine execution or rebuild.",
+  "sources": {
+    "native/linux/action_dispatch.c": "f700dedc1b03e5ef1609f39f034e3dd3baa419c9cdd43b095a69224ca1897cb8",
+    "native/linux/action_dispatch.h": "f585e4e7a8d4a4231b45911da4ebb2f29ec450f8420bc1377c2a6b12d4968431",
+    "native/linux/action_state.c": "3b39416f1d2ad0e3e35ab33b1edcd5d9dc322c8a3d5fab7f35a137363f7e1e8a",
+    "native/linux/action_state.h": "13b4873e77b352b492d652a8f91348e479a8a1251f23689c73661bdc72bd7465",
+    "native/linux/action_lifecycle.c": "773b665bf91bb47d99b53a3e7276ae3186f343e7f6529be1867fad0376e8a252",
+    "native/linux/action_lifecycle.h": "ba7e96687f29260fbc03355d1a7c0a6b25c5bb7f5f77d91e29a41672088905fe",
+    "tools/linux/action_dispatch_audit.py": "4589cc5fba570504e7a6863d6c1ed27147eb37d6a432df4648b4fd2ff087610c",
+    "tools/linux/action_execution_trace.c": "a87529dddb0e0d0bbf32a43489da2487083053d684a3c7b5a71856d6d00eff98"
+  },
+  "prior_readiness_control": "evidence/linux/action-execution-lifecycle-control-3.json",
+  "prior_readiness_control_sha256": "7068ee28c578ebe2210a334c3fc2412e07ec30ac2f49afc9260489f319941067",
+  "prior_configuration_sha256": "1b9f60eb1ea601a14cd33d2a8907c1b1176887bb8768cc2e2bed9db59a8c900a",
+  "prior_successful_unarmed_entries": 270,
+  "prior_verified_trace_bindings": 12,
+  "ownership_abi_blocker_found": false,
+  "bounded_exploratory_probe_may_proceed": true,
+  "report_cautions": [
+    "Lifecycle footer hardcodes action_executed 0 even in execute profile; interpret actual dispatch and trace",
+    "Final result guard does not reject NeedsUpdate or NeedsTurnAdvance",
+    "Selected policy guards and two known RNG objects do not establish completeness",
+    "Guard termination after partial mutation is a failing process, never Unsupported or DecisionRequired"
+  ],
+  "native_execution_performed": false,
+  "action_executed_by_reviewer": false,
+  "action_execution_evidence_reviewed": false,
+  "complete_policy_boundary_coverage": false,
+  "gameplay_parity": false
+}
