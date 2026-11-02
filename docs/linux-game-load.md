@@ -58,3 +58,27 @@ cleanup return successfully in each process. These results establish reproducibl
 lower Core serialization under the identified diagnostic profile. The source
 stream differs from the reserialized output; no byte-preserving container or
 full host-load equivalence is inferred.
+
+The exact captured-output input now has a separate
+[manifest gate](../tools/linux/game_load_captured_gate.json), tied to the first
+native report, configuration and original output hash. The existing fixed
+benchmark Load API is unchanged. A new sized entry checks actual file length
+before constructing the same original MemoryIStream; its caller must gate exact
+SHA-256, length and profile.
+
+Both fresh-process captured-input runs return OK, consume all 80,657,462 bytes,
+write two identical consecutive Saves and complete cleanup:
+[roundtrip 1](../evidence/linux/game-load-summary-roundtrip-1.json) and
+[roundtrip 2](../evidence/linux/game-load-summary-roundtrip-2.json). Their separate
+configuration identity is
+`b115764c2ed13c0821dc3620e04bbe083873146dd55723a3f131a37d773dabfa`.
+All four resulting Saves have SHA-256
+`85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8`.
+
+**Byte-stable Save→Load→Save fails in this diagnostic profile.** The output has
+the same length but differs from the captured input in 89,198 bytes.
+[The minimized difference report](../evidence/linux/game-load-roundtrip-differences-1.json)
+records ranges; actual bytes and complete spans remain private. The repeated
+change is reproducible, but its field semantics and cause remain unproven. Do not
+normalize or ignore these differences, or treat successful native Results as
+proof of a branch-restorable serialized state.

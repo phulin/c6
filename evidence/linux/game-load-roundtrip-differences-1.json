@@ -1,0 +1,158 @@
+{
+  "schema": "c6-linux-game-load-roundtrip-byte-difference-v1",
+  "input_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "output_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+  "bytes": 80657462,
+  "output_bytes": 80657462,
+  "different_byte_count": 89198,
+  "full_state_roundtrip_proven": false,
+  "different_span_count": 31695,
+  "different_regions": [
+    {
+      "start": 71027820,
+      "end": 71035559,
+      "different_bytes": 4720
+    },
+    {
+      "start": 71048684,
+      "end": 71053749,
+      "different_bytes": 2261
+    },
+    {
+      "start": 71057704,
+      "end": 71067617,
+      "different_bytes": 6419
+    },
+    {
+      "start": 71070852,
+      "end": 71072359,
+      "different_bytes": 742
+    },
+    {
+      "start": 71076872,
+      "end": 71080991,
+      "different_bytes": 1806
+    },
+    {
+      "start": 71103572,
+      "end": 71108891,
+      "different_bytes": 3044
+    },
+    {
+      "start": 71133634,
+      "end": 71137245,
+      "different_bytes": 2202
+    },
+    {
+      "start": 71142428,
+      "end": 71144373,
+      "different_bytes": 1103
+    },
+    {
+      "start": 71157768,
+      "end": 71163787,
+      "different_bytes": 3390
+    },
+    {
+      "start": 71175658,
+      "end": 71185957,
+      "different_bytes": 6241
+    },
+    {
+      "start": 71228764,
+      "end": 71230805,
+      "different_bytes": 1138
+    },
+    {
+      "start": 71255174,
+      "end": 71258033,
+      "different_bytes": 1629
+    },
+    {
+      "start": 71264946,
+      "end": 71266457,
+      "different_bytes": 655
+    },
+    {
+      "start": 71288306,
+      "end": 71295513,
+      "different_bytes": 3778
+    },
+    {
+      "start": 71300564,
+      "end": 71311925,
+      "different_bytes": 6280
+    },
+    {
+      "start": 71321300,
+      "end": 71322045,
+      "different_bytes": 358
+    },
+    {
+      "start": 71331264,
+      "end": 71344521,
+      "different_bytes": 8018
+    },
+    {
+      "start": 71345998,
+      "end": 71349281,
+      "different_bytes": 2028
+    },
+    {
+      "start": 71356116,
+      "end": 71363569,
+      "different_bytes": 4196
+    },
+    {
+      "start": 71365596,
+      "end": 71367345,
+      "different_bytes": 931
+    },
+    {
+      "start": 71375320,
+      "end": 71381341,
+      "different_bytes": 2986
+    },
+    {
+      "start": 71392380,
+      "end": 71396517,
+      "different_bytes": 2478
+    },
+    {
+      "start": 71408446,
+      "end": 71409777,
+      "different_bytes": 633
+    },
+    {
+      "start": 71412388,
+      "end": 71424833,
+      "different_bytes": 7405
+    },
+    {
+      "start": 71431420,
+      "end": 71436663,
+      "different_bytes": 3013
+    },
+    {
+      "start": 71448434,
+      "end": 71456761,
+      "different_bytes": 4854
+    },
+    {
+      "start": 71470158,
+      "end": 71481887,
+      "different_bytes": 6848
+    },
+    {
+      "start": 73740688,
+      "end": 73741079,
+      "different_bytes": 14
+    },
+    {
+      "start": 74928417,
+      "end": 74929449,
+      "different_bytes": 28
+    }
+  ],
+  "limits": "Different spans preserved privately. No field semantics inferred; this is a failing byte-stable roundtrip case despite successful native Load/Save and cleanup."
+}

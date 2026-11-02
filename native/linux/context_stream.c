@@ -119,6 +119,11 @@ static void stream_fault(int signal_number,siginfo_t *information,void *machine)
 }
 
 int c6_linux_context_load(void *game,void *context,const char *path){
+    return c6_linux_context_load_sized(game,context,path,FIXTURE_STREAM_SIZE);
+}
+
+int c6_linux_context_load_sized(void *game,void *context,const char *path,size_t expected_size){
+    if(!expected_size || expected_size>SAVE_CAPACITY)return 66;
     int code=resolve_streams();if(code)return code;
     int (*load)(void *,void *)=dlsym(game,
         "_ZN8GameCore7Exports7Context4LoadERN13Serialization7IStreamE");
@@ -128,11 +133,11 @@ int c6_linux_context_load(void *game,void *context,const char *path){
     core_base=(uintptr_t)info.dli_fbase;core_end=core_base;
     dl_iterate_phdr(core_bounds,NULL);
     FILE *file=fopen(path,"rb");if(!file)return 64;
-    unsigned char *payload=malloc(FIXTURE_STREAM_SIZE);
+    unsigned char *payload=malloc(expected_size);
     if(!payload){fclose(file);return 65;}
-    size_t count=fread(payload,1,FIXTURE_STREAM_SIZE,file);
+    size_t count=fread(payload,1,expected_size,file);
     int trailing=fgetc(file);int failed=ferror(file);fclose(file);
-    if(count!=FIXTURE_STREAM_SIZE||trailing!=EOF||failed){free(payload);return 66;}
+    if(count!=expected_size||trailing!=EOF||failed){free(payload);return 66;}
     void *stream=native_allocate(NATIVE_STREAM_SIZE);if(!stream){free(payload);return 67;}
     input_construct(stream,payload,count);
     if(input_size(stream)!=count||input_offset(stream)!=0||input_bytes(stream)!=payload)return 68;

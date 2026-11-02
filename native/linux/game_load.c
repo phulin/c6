@@ -2,6 +2,8 @@
 #include "game_load.h"
 #include "context_stream.h"
 #include <dlfcn.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +13,14 @@ int c6_linux_game_load(void *context) {
     const char *input=getenv("C6_GAME_LOAD_STREAM");
     const char *output=getenv("C6_GAME_SAVE_OUTPUT");
     const char *repeat=getenv("C6_GAME_SAVE_REPEAT_OUTPUT");
+    const char *sized=getenv("C6_GAME_LOAD_EXPECTED_SIZE");
+    size_t expected_size=0;
+    if(sized){
+        char *end=NULL;errno=0;
+        unsigned long long parsed=strtoull(sized,&end,10);
+        if(errno || *sized=='-' || end==sized || *end || !parsed || parsed>SIZE_MAX)return 165;
+        expected_size=(size_t)parsed;
+    }
     Dl_info module;
     if(!context || !input || !output || !repeat ||
        !dladdr(*(void **)context,&module) || !module.dli_fname)return 160;
@@ -32,7 +42,8 @@ int c6_linux_game_load(void *context) {
         fprintf(stderr,"C6_LINUX_GAME_LOAD startup_enter\n");
         startup(context);
         fprintf(stderr,"C6_LINUX_GAME_LOAD startup_return\n");
-        result=c6_linux_context_load(game,context,input);
+        result=sized?c6_linux_context_load_sized(game,context,input,expected_size):
+                     c6_linux_context_load(game,context,input);
         if(!result)result=observe("after_core_load");
         if(!result)result=c6_linux_context_save(game,context,output);
         if(!result)result=c6_linux_context_save(game,context,repeat);

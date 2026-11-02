@@ -20,6 +20,9 @@ def summarize(report, outputs):
         r'C6_LINUX_STREAM save_return result (-?\d+) size (\d+)', stderr)]
     files = [{'bytes': p.stat().st_size, 'sha256': digest(p)} if p.is_file() else None for p in outputs]
     completed = report['returncode'] == 0 and 'C6_LINUX_GAME_LOAD boundary_return 0 ' in stderr
+    saved = len(saves) == len(files) == 2 and all(
+        artifact is not None and native['result'] == 0 and artifact['bytes'] == native['size']
+        for native, artifact in zip(saves, files))
     return {
         'schema': 'c6-linux-game-load-observation-v1',
         'configuration_sha256': report['configuration_sha256'],
@@ -27,7 +30,7 @@ def summarize(report, outputs):
         'core_loads': loads, 'core_saves': saves, 'private_save_files': files,
         'lower_core_boundary_completed': completed,
         'complete_input_consumed': bool(loads) and all(x['result'] == 0 and x['offset'] == x['size'] for x in loads),
-        'consecutive_save_bytes_equal': len(files) == 2 and files[0] is not None and files[0] == files[1],
+        'consecutive_save_bytes_equal': completed and saved and files[0] == files[1],
         'framework_cleanup_proven': report.get('framework_cleanup_proven', False),
         'host_load_finalization_proven': False, 'initialized_gameplay_fixture': False, 'gameplay_parity': False,
         'limits': 'Lower Context StartupGame/Load/Save diagnostic using constructor-state Update callback. No saved RequestLoad/Begin, postload cache/PostInitialize/active-user lifecycle, action or turn equivalence. Core Save omits live queues, caches, jobs and session state; consecutive equality is not branch-restorable full-state proof.',
