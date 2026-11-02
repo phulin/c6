@@ -3,7 +3,7 @@
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "checks_passed": true,
-  "delivery_provider_methods_checked": 52,
+  "delivery_provider_methods_checked": 56,
   "borrowed_session_getters": [
     {
       "address": "0x2f4bb30",
