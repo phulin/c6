@@ -1,0 +1,77 @@
+# Original Linux mod activation boundary
+
+The genuine Linux host can now construct and destroy its original `AppModdingFramework`, Base GameCore context, controller and supporting fixture providers. This is a native bootstrap checkpoint. XP2 action application, initialized-game loading and gameplay parity remain unproven; the c6 simulator still implements isolated primitives.
+
+The starting reference is cru121's pinned [host architecture research](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/findings/topics/exe-gamecore-architecture.md) and [host function index](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/reference/data/exe_function_index.json). Those identify `InitInstance`, `BootstrapContent`, `ConfigureContent`, `UpdateContent` and the real importer families. New lifecycle, return-ABI and provider findings below come from instructions and bounded Ghidra decompilation of the supplied **Linux host**, SHA-256 `106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4`, then measured native execution. The host does not provide the GameCore library's DWARF type definitions; host ABI findings here are not described as DWARF proof. No Windows calling convention, importer sequence or content eligibility is transferred.
+
+## Construction and ownership
+
+`AppModdingFramework::InitInstance()` (`0x33853e0`) returns bool. It allocates `0x300` bytes through the original allocator, calls the full original constructor (`0x337c980`), and only then publishes the original singleton. The constructor initializes its native modding database, file/discovery/logger/ownership services and handlers, discovers mods, subscribes to host events, and invokes `BootstrapContent()` at `0x337e11c` **before singleton publication**.
+
+`BootstrapContent()` (`0x337f090`) selects/loads the initial GameCore, initializes the original gameplay database, injects native GameCore database metadata, invokes `InitializeGameCore()`, and constructs original UI/telemetry/view support objects. Consequently InitInstance is not an isolated registry constructor. It must precede any separately factory-created context. In the passing measured fixture it loads the hash-gated **Base** library, and both original `GetDLLPath` and `dladdr` on the actual context vptr identify that Base library.
+
+`c6_linux_mod_framework_initialize(void **borrowed_context)` in [mod_activation.c](../native/linux/mod_activation.c) observes the genuine exported active-context global after native construction. The returned context is borrowed. Do not pass it to a standalone `DllDestroyGameContext`, retain it across `UpdateContent`, or run a second independent Initialize lifecycle on it.
+
+Another ABI trap is `GameCore::GetContext()` (`0x31dd790`): its C++ return wrapper uses a hidden output pointer in RDI. It is not callable as `void *(*)(void)`. The adapter avoids constructing or guessing that wrapper.
+
+The adapter's shutdown calls `AppModdingFramework::DestroyInstance()` and then `GameCoreController::Shutdown()`, matching original `Civ6App::GUIShutdown` call sites `0x2f98190` and `0x2f98195`. The original framework destructor unsubscribes its events, shuts down configuration, releases the controller's context, unloads GameCore, clears native UI/telemetry/view owners and shuts down the framework. The tested fixture then shuts down its constructor-only client, host providers and ASL filesystem. Native observations verify framework/context/controller/client/application owners become null. This covers those constructed providers, not the entire GUI application's Startup/Shutdown.
+
+## Genuine prerequisites, with native failures preserved
+
+The original methods exposed several dependencies hidden by direct GameCore factory tests:
+
+| Native boundary | Measured dependency and original solution |
+|---|---|
+| Framework subscribes to AppUpdate; null subscription-list allocator at `0x33885ee` | Original `Civ6App::RegisterEvents()` at `0x2f91a10`. Original InitialInit invokes it at `0x2f8dff7`. Shared host-service registration must run once, preserving other providers' subscribers. |
+| Telemetry listener calls `AppFiraxisLiveClient::SetTelemetryRulesetCompare`; null client at `0x31a2054` | Construct the real native client with its real owner, without starting its external service. See below. |
+| `TelemetryRulesetCompare` calls `strtoull` on null option strings | Original whole `Civ6App::RegisterApplicationOptions` (`0x2f8c210`), using actual AppOptionSet and AppEnvironment getters. Native getters then return the registered Debug.EndGameState and Debug.TutorialState strings. No option values are invented or loaded from an existing user's configuration. |
+| InitInstance returns true but no context is active | Original module selection derives a sibling path from `/proc/self/exe`. The copied launch fixture requires unchanged, hash-gated Base/XP1/XP2 SO aliases beside Civ6. Missing siblings remain a failure even when InitInstance returns true. |
+| Restored XP2 ConfigureContent reaches `Localization::Lookup` with no dictionary | Reuse the separately validated original localization fixture before configuration. The fixture's private dictionary connection is not automatically the App's LocalizationDatabase owner. |
+
+The real external client constructor is `AppFiraxisLiveClient::AppFiraxisLiveClient(char const*)` (`0x3199cc0`), size `0x218` at the original Startup allocation site. Its nested base constructor initializes containers/strings and leaves the actual external client uninitialized; its local telemetry manager parses embedded configuration. The fixture invokes this constructor with the original `Civ6` name constant and the original libc++ shared_ptr constructor (`0x31a8b60`) on the actual empty singleton owner. It does not fabricate a getter or object fields.
+
+The full `AppFiraxisLiveClient::Startup` would proceed to Steam account APIs and service initialization, so the fixture does not invoke it or publish application events. An independent native constructor/cleanup run checks that the actual getter identifies the constructed object, original `IsInitialized` remains false, and original `Shutdown` unpublishes the owner and completes. In that state the original Shutdown's connection check avoids its telemetry flush branch. This intentionally unstarted external service is a fixture limit, not full host Startup.
+
+## Filesystem and discovery boundary
+
+The launcher gates the unchanged copied host, native libraries, full Linux input inventory and the exact versioned launch-layout manifest. ASL initialization is original code. The standalone probe also calls original `ASL_SetCurrentDir("C:\\Emu\\AppAssets\\Base\\Binaries\\Linux")`, records its bool result and records the kernel's actual cwd. It normalizes the original relative `../../../Base/Assets/Database/Modding.sql` through original `ASL_EmuToNativePath` and measures original `Platform::PathExists`.
+
+A whole-tree `steamassets/base` symlink lets absolute emulated asset paths work, but the kernel resolves cwd into the original asset tree. That physical cwd falls outside the registered launch-root prefix, so original relative paths do not necessarily reverse-map into the emulated namespace. The v2 fixture constructs a genuine Base context, but `Modding::Framework::GetDatabase()` is null and XP2 configuration cannot resolve its requested mod. An unavailable native connection is reported as unavailable, never as a zero discovered-mod count.
+
+The v3 fixture `../c6-ghidra/evidence/linux-rules/asl-launch-xp2-2` adds an actual private `steamassets/base/binaries/linux` directory skeleton and only aliases the leaf asset tree. The measured kernel cwd stays under the registered launch root and original relative Modding.sql existence is true. This exposes the next native boundary: the original framework constructor aborts with an allocator integrity failure. It is not a passing mod discovery or XP2 activation observation. The source assets are unchanged; v1/v2 fixtures are retained separately.
+
+When the native framework has a database connection, the adapter's diagnostic queries its original SQLite handle for actual Mods rows and the requested XP2 ID. These are read-only counts against the native modding schema; they do not create registry rows or infer eligibility from the supplied descriptor inventory.
+
+## ConfigureContent and the genuine action pipeline
+
+`ConfigureContent()` (`0x337f600`) returns an **eight-byte ConfigureContentResult aggregate in RAX**, not bool. Its constructor initializes five defined flag bits; bit zero is success and the upper u32 is the status code. An early bool interpretation of a noncanonical AL value was invalid and is excluded from passing claims. `UpdateContent()` (`0x3381860`) likewise returns an eight-byte aggregate, with three defined flag bits. Native caller tests, constructors and the decompiled aggregate returns establish these boundaries.
+
+The exact Linux benchmark configuration is restored by original `Serializer::Manager::LoadConfiguration`; it reports RULESET_EXPANSION_2 and one enabled/required mod, `4873eb62-8ccc-4574-b784-dda455e74e68`. This proves restored host configuration, not successful activation. In the v2 fixture original ConfigureContent returns failure with status code one and retains the Base module path. The request could not be resolved through its unavailable mod database.
+
+The actual original UpdateContent sequence, recovered from the Linux host, is:
+
+1. ConfigureContent and discover the selected components.
+2. BeforeContentChange, unload GameCore, then load the configuration-selected module.
+3. Roll back the native base gameplay/localization transactions as appropriate.
+4. WriteGameCoreDatabaseData and invoke the optional original callback if present.
+5. ImportImplicitFiles, original `Modding::Framework::ApplyComponents`, further implicit-file handling, native database validation/transaction completion.
+6. InitializeGameCore, AfterContentChange, ownership checks and completion notification; failure paths roll back content.
+
+This sequence supplies real importer and eligibility code. It has not been replaced by a list of SQL/XML files or by the historical Windows 213-input recipe.
+
+The UpdateContent argument is an actual `std::__1::function<void(Database::IDatabaseConnection1*, bool)>` object, passed indirectly in RSI. The original caller at `0x2fd4c7e` constructs it through native helper `0x2fd62d0`, capturing the real LoadGameViewState. Its call body ultimately invokes `App::Censorship::ApplyContentCensoring` with that view state's native `+0x4b1` setting. UpdateContent checks callback presence before invoking it. The adapter does not forge an empty std::function, substitute a C function pointer, invent the view-state flag or bypass censoring. A genuine original caller/object lifecycle is still needed to execute this stage.
+
+## Reproduction and evidence
+
+The isolated probe builds a separate preload at `target/linux/mod-activation/mod_activation_probe.so`, never the runtime owner's preload. It records source/dependency/module hashes, content/launch identities and a fresh userdata directory. It creates no independent GameCore context. For the passing Base lifecycle:
+
+```sh
+python3 tools/linux/mod_activation_probe.py \
+  --launch-host ../c6-ghidra/evidence/linux-rules/asl-launch-xp2-1/Civ6 \
+  --client-constructor --cleanup \
+  --output /tmp/linux-mod-base-lifecycle.json
+```
+
+For the new physical-cwd failure, use `asl-launch-xp2-2`, add `--localization`, `--saved-configuration ../c6-assets-linux/Base/assets/benchmark/saves/xp2benchmark.civ6save`, and `--configure`. Failure evidence must remain marked unsuccessful; it cannot establish activated XP2 definitions or a loaded game.
+
+Raw proprietary disassembly/decompilation/debugger traces remain in `../c6-ghidra/evidence/reference-reuse/` and `../c6-ghidra/evidence/linux/ghidra-host-{mod,telemetry}-targeted.json`. Public evidence contains identities, normal native diagnostics and selected interface facts only. Reference attribution: cru121, *Civ6-GameCore-reference*, revision `5af389445118bed2bdebf7a8a42b219c8fba5175`; referenced documentation/data are CC BY 4.0. This document adds fresh Linux static/native findings and preserves their narrower trust scope.
