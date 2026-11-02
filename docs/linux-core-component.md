@@ -50,6 +50,13 @@ The [static report](../evidence/linux/core-component-static.json) pins thirteen 
 ```sh
 python3 tools/linux/core_component_audit.py --output target/linux/core-component-static.json
 cc -std=c11 -Wall -Wextra -Werror -fPIC -fsyntax-only native/linux/core_component.c
+python3 tools/linux/core_component_check.py \
+  --runtime-report /path/to/private-component-runtime.json \
+  --output target/linux/core-component-result.json
 ```
 
 These checks do not execute original code. Native lifecycle/profile integration and its separately reported control/action/repeat results belong to the runtime owner. No native result is claimed by this source/static checkpoint. Private original instructions and matching prior DWARF remain research evidence; cru121's pinned reference attribution and limitations are retained in [reference.md](reference.md).
+
+The standalone checker verifies the separate component configuration and reviewed helper/source contract, actual original input/command/snapshot/trace files, native sender/actor/conversion, queue/Receive bytes, ordered balanced execution, synchronized worker phases and original cleanup. It rejects original full-host profiles and all fatal/nonzero diagnostics. Its result schema is `c6-linux-conditional-core-component-v1`; `checks_passed` refers only to that bounded component contract. Full-host admission and action acceptance remain false/zero. Archived preload and saved-configuration files are rehashed when their paths are supplied, and that recheck coverage is reported explicitly.
+
+For an execute report, optional `--control-report` and `--repeat-report` take independent **runtime** reports and require distinct fresh userdata/command/trace paths, matching source/input/preload identities, actual command, complete before-Core stream and explicitly selected typed observations. An isolated repeat additionally compares the complete post-Core stream and those typed effects. Native object bytes contain process addresses, so the checker separately retains/reports all raw RNG32/queue40 differences without masking them or claiming complete live-state/parameter equivalence. The recorded comparison scope and `complete_cross_process_initial_state_equivalence_proven=false` remain explicit even when these bounded comparisons pass.
