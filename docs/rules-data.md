@@ -8,10 +8,13 @@ comparisons below are historical evidence only and establish no Linux parity.
 
 `RulesProfile::LinuxXp2Base` identifies the supplied Linux GameCore SHA-256
 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`.
-Its native rules manifest is not yet registered. Asking for that profile fails
-before filesystem access; it never substitutes Windows files. The native Linux
-source/profile must be exported and fingerprinted independently. In particular,
-the currently observed Linux base import does not imply a full XP2/mod fixture.
+It registers the genuine two-run native Linux base export in
+[`rules-base-snapshot.json`](../evidence/linux/rules-base-snapshot.json), source
+profile `linux-base-native-generated-v1`. Original Linux Bootstrap reads 110
+unchanged supplied base files through the explicitly fingerprinted `Schema`
+directory case view. The full mapping is bound by the native configuration hash.
+No DLC/mod activation, selected XP2 gameplay session or native definition-cache
+setup is established. This fixture never substitutes Windows files.
 
 The caller declares the complete `SourceIdentity` before loading.
 `Rules::load_profile(profile, path, &declared)` first selects the profile's
@@ -20,8 +23,8 @@ The descriptor pins native configuration, executable/GameCore and dependency
 identities, ruleset, enabled DLC/mod selection, source recipe, source-input
 identity and localization. The compatibility field `source_sequence_sha256`
 records the Linux content-gate inventory digest; it does not establish an
-execution sequence. Original Linux Bootstrap remains the order authority. `profile.source_identity()` exposes only an available
-registered descriptor; it does not validate files. The compatibility
+execution sequence. Original Linux Bootstrap remains the order authority.
+`profile.source_identity()` exposes only an available registered descriptor; it does not validate files. The compatibility
 `Rules::load()` selects only by the declared exact GameCore hash and then applies
 the same complete gate. Unknown or unavailable profiles fail before opening files.
 There is no generic caller-supplied manifest or platform fallback.
@@ -72,18 +75,51 @@ in the public repository.
 ```sh
 cargo test -p c6-data
 cargo clippy -p c6-data --all-targets -- -D warnings
-# Linux fails explicitly until its genuine native manifest is registered.
+C6_LINUX_RULES_RUN_1=/absolute/path/to/linux-rules/case-run-1 \
+C6_LINUX_RULES_RUN_2=/absolute/path/to/linux-rules/case-run-2 \
+  cargo test -p c6-data linux_native_exports -- --ignored
 cargo run --release -p c6-data --example inspect_rules -- \
-  linux-xp2-base /path/to/linux-native-export
+  linux-xp2-base ../c6-ghidra/evidence/linux-rules/case-run-1 \
+  ../c6-ghidra/evidence/linux-rules/case-run-2 \
+  > /tmp/c6-data-linux-native-parity.json
 ```
 
-The default tests are generic SQLite codec/schema fixtures, not gameplay parity
-tests. The explicitly ignored historical Windows test preserves the prior two-export regression,
-checking every manifest table and typed row stream and comparing all typed unit
-projections against their original retained SQL rows. Missing private files make
-that native test fail when requested; default fixture tests do not stand in for
-native parity. The example reports a `UNIT_WARRIOR` projection taken from the
+The default tests are generic SQLite codec/schema fixtures and profile-gate
+tests, not gameplay parity tests. The explicitly requested Linux test loads both
+real Linux exports, verifies every pinned table/row digest and compares all typed
+unit projections to retained original rows. It requires absolute environment
+paths because Cargo executes unit tests from the crate directory. Missing
+private files make the native test fail when requested. Default fixtures do not
+stand in for native parity. The ignored historical Windows test remains separate
+and was not rerun for Linux acceptance. The example reports a `UNIT_WARRIOR` projection taken from the
 validated original export, both full fingerprint reports and benchmark scope.
+
+## Linux-native base validation
+
+Rust loaded both genuine Linux exports independently: 78 configuration tables /
+1,280 rows and 318 gameplay tables / 23,966 rows, including internal tables.
+All 396 table metadata and typed-row fingerprints match the authoritative Python
+manifest and both original file hashes. Native configuration identity is
+`499dc9856ba562523ec70268224729232f751663988e44f4f9b0d6208e7f9328`.
+Semantic hashes are configuration
+`605f70d914c50f3533f3ac7895de24630fa5915981e0044011b4a094483b8cba`
+and gameplay
+`bea6bcabbd1905c8e498f6588005514d1c6f0bef0714c174d3b97e2f65710c22`.
+This proves the declared base rules input boundary, not gameplay or turn parity.
+
+Actual Linux-copy checks rejected a Units INTEGER-to-BLOB mutation, intrinsic
+rowid change, added unknown column and a physical-only trailing byte. Source
+identity mutations in each of the five descriptor fields failed before file I/O.
+The untouched two-export comparison remained equal to live Python inspection.
+
+One Linux-data release measurement loaded the pair in 115 ms and averaged
+26.6 ns for one million repeated successful immutable unit lookups. A separate
+single-load reporting process peaked at 30,156 KiB RSS. Retained SQL TEXT/BLOB
+payloads total 1,855,407 bytes; this excludes numeric fields, indexes, vector
+capacity and allocator overhead. RSS includes SQLite, validation temporaries,
+the reporting example and allocator overhead. These warm-filesystem measurements
+cover data only, not game startup, state, actions, modifiers or turns.
+
 
 ## Historical Windows-native validation
 

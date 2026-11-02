@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
+const LINUX_BASE_MANIFEST: &str = include_str!("../../../evidence/linux/rules-base-snapshot.json");
 const WINDOWS_HISTORICAL_MANIFEST: &str =
     include_str!("../../../evidence/assets/xp2-rules-snapshot.json");
 
@@ -560,8 +561,8 @@ impl RulesProfile {
             }
         }
     }
-    /// Obtaining a descriptor does not load or validate files. Unavailable native
-    /// exports return an error; no other profile's data is substituted.
+    /// Obtaining a descriptor does not load or validate files. Each descriptor is
+    /// pinned to its own native export; no other profile's data is substituted.
     pub fn source_identity(self) -> Result<SourceIdentity> {
         Ok(profile_manifest(self)?.source)
     }
@@ -575,11 +576,7 @@ struct Manifest {
 fn profile_manifest(profile: RulesProfile) -> Result<Manifest> {
     let text = match profile {
         RulesProfile::WindowsXp2Historical => WINDOWS_HISTORICAL_MANIFEST,
-        RulesProfile::LinuxXp2Base => {
-            return fail(
-                "Linux XP2 native rules export manifest is unavailable; no Windows fallback",
-            )
-        }
+        RulesProfile::LinuxXp2Base => LINUX_BASE_MANIFEST,
     };
     let manifest: Manifest = serde_json::from_str(text)?;
     if manifest.source.profile["target_sha256"].as_str() != Some(profile.gamecore_sha256()) {

@@ -233,19 +233,43 @@ fn historical_windows_native_exports_match_every_manifest_table() {
 
 #[test]
 fn linux_profile_never_falls_back_to_historical_windows() {
+    let profile = RulesProfile::LinuxXp2Base;
     let windows = xp2_source_identity();
-    assert!(
-        Rules::load_profile(RulesProfile::LinuxXp2Base, "/nonexistent", &windows)
-            .unwrap_err()
-            .to_string()
-            .contains("Linux XP2")
-    );
-    let mut linux = windows;
-    linux.profile["target_sha256"] = json!(RulesProfile::LinuxXp2Base.gamecore_sha256());
-    assert!(Rules::load("/nonexistent", &linux)
+    assert!(Rules::load_profile(profile, "/nonexistent", &windows)
         .unwrap_err()
         .to_string()
-        .contains("no Windows fallback"));
+        .contains("source/profile differs"));
+    let linux = profile.source_identity().unwrap();
+    assert_eq!(linux.profile["target_sha256"], profile.gamecore_sha256());
+    assert_eq!(linux.profile["id"], "linux-base-native-generated-v1");
+    let mut disguised_windows = windows;
+    disguised_windows.profile["target_sha256"] = json!(profile.gamecore_sha256());
+    assert!(Rules::load("/nonexistent", &disguised_windows)
+        .unwrap_err()
+        .to_string()
+        .contains("source/profile differs"));
+    let mut mutations = Vec::new();
+    let mut source = linux.clone();
+    source.native_configuration_sha256.clear();
+    mutations.push(source);
+    let mut source = linux.clone();
+    source.profile["coverage"] = json!("full_game");
+    mutations.push(source);
+    let mut source = linux.clone();
+    source.module_identities = json!([]);
+    mutations.push(source);
+    let mut source = linux.clone();
+    source.source_sequence_sha256.clear();
+    mutations.push(source);
+    let mut source = linux;
+    source.language_identity = json!({"localization": "en_US"});
+    mutations.push(source);
+    for source in mutations {
+        assert!(Rules::load_profile(profile, "/nonexistent", &source)
+            .unwrap_err()
+            .to_string()
+            .contains("source/profile differs"));
+    }
 }
 
 /// Explicitly requested Linux artifact test; missing evidence is a failure.
@@ -261,6 +285,10 @@ fn linux_native_exports_match_every_manifest_table() {
     let first = Rules::load_profile(profile, Path::new(&first_path), &source).unwrap();
     let second = Rules::load_profile(profile, Path::new(&second_path), &source).unwrap();
     assert_eq!(first.profile(), RulesProfile::LinuxXp2Base);
+    assert_eq!(first.configuration().tables().len(), 78);
+    assert_eq!(first.configuration().fingerprint().row_count, 1280);
+    assert_eq!(first.gameplay().tables().len(), 318);
+    assert_eq!(first.gameplay().fingerprint().row_count, 23966);
     assert_eq!(first.source(), &source);
     assert_eq!(
         first.configuration().fingerprint(),
