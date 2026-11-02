@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0,str(Path(__file__).parent))
-from rules_inspect import inspect, identity, HOST, GAME, validate_profile, ROOT, BASE_CONFIGURATION
+from rules_inspect import inspect, identity, HOST, GAME, validate_profile, ROOT, BASE_CONFIGURATION, ASL_CONFIGURATION, ASL_PROFILE
 
 
 class LinuxRulesGateTests(unittest.TestCase):
@@ -53,6 +53,19 @@ class LinuxRulesGateTests(unittest.TestCase):
             with self.subTest(change=change):
                 with self.assertRaisesRegex(ValueError,'unsupported Linux base|unsupported Linux complete'):
                     validate_profile(candidate,identity(candidate))
+
+    def test_original_asl_base_has_distinct_fixed_strategy(self):
+        baseline=json.loads((ROOT/'evidence/linux/runtime-filesystem-base-native-1.json').read_text())['configuration']
+        self.assertEqual(validate_profile(baseline,ASL_CONFIGURATION),ASL_PROFILE)
+        import copy
+        for change in (
+                lambda c: c.update({'prepare_host_before_gamecore':False}),
+                lambda c: c['original_asl_launch_profile'].update({'mapping_sha256':'0'*64}),
+                lambda c: c.update({'rules_source_view':{}}),
+                lambda c: c.update({'enabled_dlc_mods':['xp2']})):
+            candidate=copy.deepcopy(baseline);change(candidate)
+            with self.assertRaisesRegex(ValueError,'unsupported Linux base'):
+                validate_profile(candidate,identity(candidate))
 
     def test_changed_configuration_identity_refused(self):
         with tempfile.TemporaryDirectory() as directory:

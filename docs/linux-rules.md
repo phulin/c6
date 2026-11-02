@@ -181,3 +181,40 @@ tool. Full XP2 activation must use the genuine native framework's selected-mod,
 criteria and action pipeline and capture actual Base-to-XP2 module transitions.
 That full-content profile and its exported databases remain distinct from the
 verified base-only fixture.
+
+### Original-ASL base profile
+
+Two fresh exports using genuine ASL initialization before loading GameCore are
+recorded separately in
+[`rules-base-asl-snapshot.json`](../evidence/linux/rules-base-asl-snapshot.json).
+The fixed profile is `linux-base-original-asl-generated-v1`, native configuration
+`389b63e854d64c1fbefbadd6326356aaf06f17843624c070a329817a96c6a202`.
+Its private files are `../c6-ghidra/evidence/linux-rules/asl-base-final-{1,2}/`;
+the native reports are `runtime-filesystem-base-native-{1,2}.json`.
+
+Both complete database files and typed fingerprints match the earlier Linux
+case-view artifacts: 78 configuration tables/1,280 rows and 318 gameplay
+tables/23,966 rows. This is a comparison of these SQLite artifacts, not an
+inference of complete startup, save, action or turn equivalence. The original-ASL
+profile has no Schema-view adaptation. It remains base-only: no native full XP2
+mod activation is claimed. The previous case-view profile retains its own fixed
+identity and acceptance gates.
+
+### Native module-sibling launch view
+
+The genuine mod framework's `AdjustAndValidatePath` derives GameCore module paths
+from the copied executable's directory. A separate version-two launch fixture
+adds symlinks to the three exact supplied `libGameCore_{Base,XP1,XP2}.so` files:
+
+```sh
+python3 tools/linux/rules_launch_fixture.py --gamecore-siblings \
+  --destination ../c6-ghidra/evidence/linux-rules/asl-launch-xp2-1
+```
+
+Its mapping identity is
+`19d4949805b8db61f7030d31c990fb0bd1d4aaf7b9679e04f3e292dbab0e3ed4`.
+The version-one fixture and verified base profiles are unchanged. The validator
+accepts only the exact three-alias v1 or six-alias v2 layouts, verifies all module
+bytes, and rejects arbitrary extra files or changed mappings. Presence of those
+module inputs does not prove the native framework selected or loaded them; actual
+module transitions and full XP2 content require separate runtime evidence.

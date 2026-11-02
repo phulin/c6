@@ -15,6 +15,8 @@ HOST = '106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4'
 GAME = 'a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa'
 PROFILE = 'linux-base-native-generated-v1'
 BASE_CONFIGURATION = '499dc9856ba562523ec70268224729232f751663988e44f4f9b0d6208e7f9328'
+ASL_CONFIGURATION = '389b63e854d64c1fbefbadd6326356aaf06f17843624c070a329817a96c6a202'
+ASL_PROFILE = 'linux-base-original-asl-generated-v1'
 
 
 def validate_profile(configuration, configuration_hash):
@@ -24,16 +26,37 @@ def validate_profile(configuration, configuration_hash):
         raise ValueError('unsupported Linux complete module profile')
     if configuration.get('content_profile') != expected_content:
         raise ValueError('unsupported Linux base source content profile')
-    expected_mapping = [
-        {'source': name, 'staged': '/'.join('Schema' if part == 'schema' else part
-                                           for part in Path(name).parts), 'sha256': sha}
-        for name, sha in sorted(expected_content['files'].items())]
-    view = configuration.get('rules_source_view', {})
-    if (view.get('format') != 'c6.linux-native-base-source-view.v1' or
-            view.get('original_source_gate_sha256') != digest(ROOT / 'tools/linux/runtime-content-gate.json') or
-            view.get('mapping') != expected_mapping or
-            view.get('source_view_sha256') != identity(expected_mapping)):
-        raise ValueError('unsupported Linux base source-view strategy')
+    if 'original_asl_launch_profile' in configuration:
+        launch=configuration['original_asl_launch_profile']
+        gate_path=ROOT/'evidence/linux/rules-content-inputs.json'
+        full_gate=json.loads(gate_path.read_text())
+        mapping=[{'fixture_path':'aspyrassets','original_path':'aspyrassets'},
+                 {'fixture_path':'steamassets/base','original_path':'Base'},
+                 {'fixture_path':'steamassets/dlc','original_path':'DLC'}]
+        if ('rules_source_view' in configuration or
+                configuration.get('prepare_host_before_gamecore') is not True or
+                launch.get('format')!='c6.linux-original-asl-launch-fixture.v1' or
+                launch.get('copied_host')!={'filename':'Civ6','sha256':HOST} or
+                launch.get('mapping')!=mapping or launch.get('mapping_sha256')!=identity(mapping) or
+                launch.get('validated_input_gate_sha256')!=digest(gate_path) or
+                launch.get('validated_source_inventory_sha256')!=full_gate['source_inventory_sha256'] or
+                launch.get('validated_native_module_identities')!=full_gate['modules']):
+            raise ValueError('unsupported Linux base original-ASL source strategy')
+        expected_configuration=ASL_CONFIGURATION
+        profile=ASL_PROFILE
+    else:
+        expected_mapping = [
+            {'source': name, 'staged': '/'.join('Schema' if part == 'schema' else part
+                                               for part in Path(name).parts), 'sha256': sha}
+            for name, sha in sorted(expected_content['files'].items())]
+        view = configuration.get('rules_source_view', {})
+        if (view.get('format') != 'c6.linux-native-base-source-view.v1' or
+                view.get('original_source_gate_sha256') != digest(ROOT / 'tools/linux/runtime-content-gate.json') or
+                view.get('mapping') != expected_mapping or
+                view.get('source_view_sha256') != identity(expected_mapping)):
+            raise ValueError('unsupported Linux base source-view strategy')
+        expected_configuration=BASE_CONFIGURATION
+        profile=PROFILE
     if (configuration.get('mode') != 'host-crt-init-original-host-services-context-initialize' or
             configuration.get('enabled_dlc_mods') is not None or configuration.get('rules_database') is not None or
             configuration.get('startup_game_requested') is not False or
@@ -49,8 +72,9 @@ def validate_profile(configuration, configuration_hash):
         raise ValueError('unsupported Linux base native backup adapter')
     # Fixed named baseline, not permission to relabel arbitrary self-consistent
     # reports. Changes require a newly audited/registered fixture identity.
-    if configuration_hash != BASE_CONFIGURATION:
+    if configuration_hash != expected_configuration:
         raise ValueError('unsupported Linux base fixture configuration identity')
+    return profile
 
 
 def inspect(directory, report_path):
@@ -61,7 +85,7 @@ def inspect(directory, report_path):
     assets = configuration['original_assets']
     if assets.get('Civ6') != HOST or assets.get('libGameCore_XP2.so') != GAME:
         raise ValueError('unsupported Linux native module identity')
-    validate_profile(configuration, report['configuration_sha256'])
+    profile=validate_profile(configuration, report['configuration_sha256'])
     if report.get('exit_code') != 0 or not report.get('diagnostic_passed'):
         raise ValueError('a passing genuine Linux fixture is required')
     events = [json.loads(line[len('C6_LINUX_RULES '):]) for line in report['stderr'].splitlines()
@@ -91,7 +115,7 @@ def inspect(directory, report_path):
             name not in tables or tables[name]['rows'] <= 0 for name in ('Units', 'Types', 'GameSpeeds')):
         raise ValueError('native base rules remain unpopulated; Initialize boolean is insufficient')
     content = configuration['content_profile']
-    return {'configuration_sha256': report['configuration_sha256'],
+    return {'source_profile':profile, 'configuration_sha256': report['configuration_sha256'],
             'configuration': configuration, 'report_sha256': digest(report_path),
             'source_sequence_sha256': identity(content), 'databases': databases}
 
@@ -105,7 +129,7 @@ def compare(a, b, report_paths):
     configuration = a['configuration']
     content = configuration['content_profile']
     return {'format': 'c6.reproducible-rules-snapshot.v1',
-            'profile': {'id': PROFILE, 'target_sha256': GAME, 'original_executable_sha256': HOST,
+            'profile': {'id': a['source_profile'], 'target_sha256': GAME, 'original_executable_sha256': HOST,
                         'ruleset': 'unselected-base-content', 'enabled_dlc_mods': [],
                         'rules_database': 'original_linux_ConfigurationDatabase_and_GameplayDatabase_Initialize',
                         'coverage': 'base_sources_only_full_xp2_mod_activation_pending',
@@ -116,6 +140,7 @@ def compare(a, b, report_paths):
             'source_sequence_sha256': a['source_sequence_sha256'],
             'source_order_authority': 'original Linux ConfigurationDatabase/GameplayDatabase Bootstrap; source gate is inventory identity, not inferred execution order',
             'source_view': configuration.get('rules_source_view'),
+            'original_asl_launch_profile': configuration.get('original_asl_launch_profile'),
             'language_identity': {'localization': None, 'localized_text_database_included': False},
             'native_runs': [{'evidence': str(path), 'evidence_sha256': run['report_sha256']}
                             for path, run in zip(report_paths, (a,b), strict=True)],

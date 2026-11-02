@@ -4405,7 +4405,7 @@
   "initialized_game": false,
   "inspector": {
     "encoding": "c6.sqlite-typed-rowid.v1",
-    "source_sha256": "afc7ee39df675b54af88d00f1a84bc24479f79baa92fd128cbdda3fc22d9a468",
+    "source_sha256": "37e7937de44f133130c9b373aaa7793689e821a85711686c2d51911657c37103",
     "sqlite_version": "3.45.1",
     "typed_inspector_sha256": "1440ffcc1239514c58e62433518808f1f23bf15e05c2c6f8fc9dc417759a0421"
   },
@@ -4468,6 +4468,7 @@
       "evidence_sha256": "94c6c99c167dc288be58247ae541ea0a81517641d1d2fb6bcdae565fd4ccfaa4"
     }
   ],
+  "original_asl_launch_profile": null,
   "profile": {
     "content_recipe_sha256": "67113e9d725700b64cb52f3501e86df311ef35801d3a799d57085415010fa2ca",
     "coverage": "base_sources_only_full_xp2_mod_activation_pending",
