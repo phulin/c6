@@ -36,6 +36,25 @@ class LaunchFixtureTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'content input mismatch'):
                     fixture.validate(assets,root/'launch')
 
+    def test_module_siblings_use_a_separate_mapping_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);assets,repo,host=self.inputs(root)
+            gate_path=repo/'evidence/linux/rules-content-inputs.json'
+            gate=json.loads(gate_path.read_text())
+            for name in fixture.MODULE_ALIASES:
+                (assets/name).write_bytes(('synthetic:'+name).encode())
+                gate['modules'][name]=fixture.digest(assets/name)
+            gate_path.write_text(json.dumps(gate))
+            with patch.object(fixture,'ROOT',repo),patch.object(fixture,'HOST',host):
+                fixture.stage(assets,root/'base')
+                fixture.stage(assets,root/'modules',gamecore_siblings=True)
+                base=fixture.validate(assets,root/'base')
+                modules=fixture.validate(assets,root/'modules')
+                self.assertNotEqual(base['mapping_sha256'],modules['mapping_sha256'])
+                self.assertTrue(base['format'].endswith('.v1'))
+                self.assertTrue(modules['format'].endswith('.v2'))
+                self.assertEqual(len(modules['mapping']),6)
+
     def test_executable_symlink_cannot_replace_exact_copy(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);assets,repo,host=self.inputs(root)

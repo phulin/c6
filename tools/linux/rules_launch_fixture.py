@@ -16,23 +16,25 @@ from inventory import digest, identity
 ROOT=Path(__file__).resolve().parents[2]
 HOST='106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4'
 ALIASES={'steamassets/base':'Base','steamassets/dlc':'DLC','aspyrassets':'aspyrassets'}
+MODULE_ALIASES={name:name for name in ('libGameCore_Base.so','libGameCore_XP1.so','libGameCore_XP2.so')}
 
 
-def stage(assets,destination):
+def stage(assets,destination,gamecore_siblings=False):
     assets=assets.resolve(strict=True);destination=destination.resolve()
     if destination.exists() or destination.is_relative_to(ROOT) or destination.is_relative_to(assets):
         raise ValueError('launch fixture must be a new private directory outside source and original assets')
     if digest(assets/'Civ6')!=HOST:raise ValueError('Linux host SHA-256 gate failed')
-    for source in ALIASES.values():
+    aliases={**ALIASES,**(MODULE_ALIASES if gamecore_siblings else {})}
+    for source in aliases.values():
         if not (assets/source).resolve(strict=True).is_relative_to(assets):raise ValueError('alias input escapes Linux assets')
     destination.mkdir(parents=True)
     shutil.copyfile(assets/'Civ6',destination/'Civ6')
     (destination/'Civ6').chmod(0o555)
     if digest(destination/'Civ6')!=HOST:raise ValueError('copied native host identity mismatch')
     (destination/'steamassets').mkdir()
-    for relative,source in ALIASES.items():(destination/relative).symlink_to(assets/source,target_is_directory=True)
-    mapping=[{'fixture_path':path,'original_path':source} for path,source in sorted(ALIASES.items())]
-    result={'format':'c6.linux-original-asl-launch-fixture.v1','copied_host':{'filename':'Civ6','sha256':HOST},
+    for relative,source in aliases.items():(destination/relative).symlink_to(assets/source,target_is_directory=(assets/source).is_dir())
+    mapping=[{'fixture_path':path,'original_path':source} for path,source in sorted(aliases.items())]
+    result={'format':('c6.linux-original-asl-launch-fixture.v2' if gamecore_siblings else 'c6.linux-original-asl-launch-fixture.v1'),'copied_host':{'filename':'Civ6','sha256':HOST},
             'mapping':mapping,'mapping_sha256':identity(mapping),
             'native_authority':{'assets_path_method':'ASL::ASL_GetAppAssetsPath','address':'0x2cae9c0',
                                 'rule':'dirname(/proc/self/exe) + /steamassets',
@@ -51,8 +53,12 @@ def validate(assets,fixture):
         raise ValueError('launch fixture must remain outside public/original asset trees')
     manifest_path=fixture/'launch-fixture.json'
     manifest=json.loads(manifest_path.read_text())
-    mapping=[{'fixture_path':path,'original_path':source} for path,source in sorted(ALIASES.items())]
-    if (manifest.get('format')!='c6.linux-original-asl-launch-fixture.v1' or
+    version=manifest.get('format')
+    if version not in ('c6.linux-original-asl-launch-fixture.v1','c6.linux-original-asl-launch-fixture.v2'):
+        raise ValueError('unsupported native ASL launch mapping version')
+    aliases={**ALIASES,**(MODULE_ALIASES if version.endswith('.v2') else {})}
+    mapping=[{'fixture_path':path,'original_path':source} for path,source in sorted(aliases.items())]
+    if (
             manifest.get('mapping')!=mapping or manifest.get('mapping_sha256')!=identity(mapping) or
             manifest.get('copied_host')!={'filename':'Civ6','sha256':HOST}):
         raise ValueError('unsupported native ASL launch mapping profile')
@@ -61,11 +67,11 @@ def validate(assets,fixture):
         raise ValueError('launch requires an exact regular-file host copy')
     if (fixture/'steamassets').is_symlink() or not (fixture/'steamassets').is_dir():
         raise ValueError('steamassets must remain a real fixture directory')
-    for path,source in ALIASES.items():
+    for path,source in aliases.items():
         link=fixture/path
         if not link.is_symlink() or link.resolve(strict=True)!=(assets/source).resolve(strict=True):
             raise ValueError('native ASL source alias mismatch: '+path)
-    expected={'Civ6','steamassets','steamassets/base','steamassets/dlc','aspyrassets','launch-fixture.json'}
+    expected={'Civ6','steamassets','launch-fixture.json',*aliases.keys()}
     observed={path.relative_to(fixture).as_posix() for path in fixture.rglob('*')}
     if observed!=expected:raise ValueError('undeclared launch fixture entry')
     gate_path=ROOT/'evidence/linux/rules-content-inputs.json'
@@ -84,7 +90,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')
     p.add_argument('--destination',type=Path,required=True)
-    a=p.parse_args();result=stage(a.assets,a.destination)
+    p.add_argument('--gamecore-siblings',action='store_true',help='Original native module lookup requires all three GameCore SO siblings')
+    a=p.parse_args();result=stage(a.assets,a.destination,a.gamecore_siblings)
     print(json.dumps({'host_sha256':result['copied_host']['sha256'],'mapping_sha256':result['mapping_sha256']}))
 
 
