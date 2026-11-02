@@ -7,6 +7,7 @@ A Rust foundation for an exact, deterministic, headless Civilization VI simulato
 | Area | Current support |
 | --- | --- |
 | Gameplay `GameCore::Random` | Draw, initialize, reset, lock and unlock logical state; original-DLL differential checks with logging disabled |
+| Native RNG serialization | Original 18-byte normal `Random::Write`/`Read` payload; separate from the simulator snapshot envelope |
 | Coordinates | Plot sentinel validity and isolated plot-distance arithmetic |
 | State transport | Versioned simulator envelope, RNG state, binary/configuration identities and lossless opaque sections |
 | External loading | Rust API and versioned C shared-library API in [`include/c6.h`](include/c6.h) |
@@ -15,7 +16,7 @@ A Rust foundation for an exact, deterministic, headless Civilization VI simulato
 | Legal gameplay actions and complete turn progression | Unsupported |
 | Civ VI save loading and complete game snapshots | Unsupported |
 
-Opaque state retention does not imply that those sections can be simulated. Current RNG coverage excludes native logging and synchronization callbacks. The coordinate validity primitive checks a sentinel, not map bounds.
+Opaque state retention does not imply that those sections can be simulated. Current RNG coverage includes independent caller-selected instances but excludes native logging and synchronization callbacks. The serialization adapters reject the legacy-vector branch and short input; raw synchronous bytes can round-trip as records, while applying values above 1 to logical Rust state is rejected. The coordinate validity primitive checks a sentinel, not map bounds.
 
 ## Build and check
 
@@ -46,6 +47,7 @@ These checks require Linux x86-64, Python 3, Make, a C compiler and a separately
 ```sh
 make -C native/oracle
 python3 tools/oracle/test_native.py
+python3 tools/oracle/test_serialization.py
 cargo build -p c6-differential --bins
 python3 fixtures/generate.py
 target/debug/c6-differential fixtures/corpus/xp2-rng.json fixtures/run-native-oracle target/debug/c6-rng-candidate
@@ -55,7 +57,7 @@ The generator records input cases and the actual candidate executable identity; 
 
 ## Research and next work
 
-The [status and milestones](docs/status.md) and [engine dependency roadmap](docs/engine-roadmap.md) describe the remaining work toward complete actions and turns. [Reference provenance](docs/reference.md) distinguishes upstream mapping leads from runtime evidence. The persistent Ghidra project lives in the separate private `phulin/c6-ghidra` repository; [Ghidra setup](docs/ghidra.md) documents the pinned local tools and MCP workflow. Game binaries and private project data are not distributed here.
+The [status and milestones](docs/status.md) and [engine dependency roadmap](docs/engine-roadmap.md) describe the remaining work toward complete actions and turns. [Reference provenance](docs/reference.md) distinguishes upstream mapping leads from runtime evidence. The persistent Ghidra project lives in the separate private `phulin/c6-ghidra` repository; [Ghidra setup](docs/ghidra.md) documents the pinned local tools and MCP workflow. Game binaries and private project data are not distributed here. For Linux bootstrap research, preserve the matching `Civ6` executable, `libGameCore_XP2.so`, dependencies and installation data; the [Linux inventory guidance](docs/engine-roadmap.md#incoming-linux-installation) describes the read-only inventory tool and the unresolved host contracts.
 
 ```sh
 cargo bench -p c6-core --bench rng

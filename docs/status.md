@@ -7,6 +7,7 @@ As of 2026-11-02, c6 provides a tested Rust kernel and loadable C ABI for isolat
 | Deterministic Rust kernel | Explicit state and typed operations; unsupported game operations return errors |
 | State import/export and branching | Canonical versioned envelope, binary/rules identity fields and preserved opaque sections; no Civ VI save decoder |
 | RNG | Native arithmetic and logical object fields reproduced; logging/service effects excluded |
+| Native RNG serialization | Original 18-byte normal `Random::Write`/`Read` format; raw synchronous-byte records preserved separately from the logical bool; legacy-vector and short-stream behavior excluded |
 | Geometry | Sentinel validity and isolated plot distance reproduced; no initialized map/world |
 | Loadable library | Versioned C ABI, checked state round trips and real C caller smoke test |
 | Differential infrastructure | Process protocol, identity-pinned corpus, exact observations/RNG traces; isolated original-DLL host |
@@ -14,7 +15,7 @@ As of 2026-11-02, c6 provides a tested Rust kernel and loadable C ABI for isolat
 | Full gameplay | World, player/entity state, legal actions, combat/economy and turn scheduler unsupported |
 | Performance | RNG primitive benchmark available; no game-turn performance measurement |
 
-The native oracle executes methods from the exact XP2 FinalRelease DLL on Linux x86-64 using synthetic objects and documented service stubs. Its success establishes only those methods under that setup. It does not establish that the DLL can run a whole game without its original host.
+The native oracle executes methods from the exact XP2 FinalRelease DLL on Linux x86-64 using synthetic objects and documented service stubs. Its success establishes only those methods under that setup. It does not establish that the DLL can run a whole game without its original host. The native RNG payload is distinct from the custom `C6SN` snapshot envelope and does not provide save import. Short streams and nonzero legacy flags are refused before native reads; raw synchronous-byte values above 1 remain representable in serialized records but cannot be applied to Rust boolean state.
 
 ## Next concrete milestones
 
@@ -28,4 +29,4 @@ The native oracle executes methods from the exact XP2 FinalRelease DLL on Linux 
 
 The project checks Rust state/geometry/RNG behavior, codec and FFI contracts, harness failure handling, a compiled C consumer and original-DLL primitive comparisons. Run the commands in [README](../README.md) to reproduce the checks with the required local binary. Test counts and timings may change as coverage grows; [architecture](architecture.md), [oracle](oracle.md), [differential protocol](differential.md), [performance](performance.md) and [reference provenance](reference.md) define what each result establishes.
 
-The [engine dependency roadmap](engine-roadmap.md) records the concrete bootstrap services, message-dispatch edges and bounded next investigations. The main unresolved dependency is a reproducible initialized original-game context. Complete state extraction and all gameplay semantics remain substantial implementation work. Neither the recovered symbol map nor the existing primitive corpus closes those gaps.
+The [engine dependency roadmap](engine-roadmap.md) records the concrete bootstrap services, message-dispatch edges and bounded next investigations. The main unresolved dependency is a reproducible initialized original-game context. The read-only [Linux installation inventory](engine-roadmap.md#incoming-linux-installation) can identify supplied ELF binaries and their dependencies; the matching `Civ6` host, `libGameCore_XP2.so` and installation data are needed to investigate that separate platform. Complete state extraction and all gameplay semantics remain substantial implementation work. Neither the recovered symbol map nor the existing primitive corpus closes those gaps.
