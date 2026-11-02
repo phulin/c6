@@ -10,7 +10,7 @@ Start or reopen the server:
 tools/ghidra/serve.sh
 ```
 
-The local endpoint is `http://127.0.0.1:8765/mcp`. Do not open the same project in a second process. Large program analysis and semantic indexing run asynchronously; decompilation waits for Ghidra analysis, but does not require semantic indexing to finish. No original DLL is modified.
+The local endpoint is `http://127.0.0.1:8765/mcp`. Do not open the same project in a second process. Large program analysis runs asynchronously; whole-program semantic code indexing is disabled by default to keep shutdown practical (set `C6_GHIDRA_CODE_INDEX=1` to enable it); decompilation waits for Ghidra analysis, but does not require semantic indexing to finish. No original DLL is modified.
 
 ```sh
 source tools/ghidra/env.sh
