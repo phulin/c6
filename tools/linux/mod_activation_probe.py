@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--attach-saved-session',action='store_true')
     parser.add_argument('--game-load-stream',type=Path)
     parser.add_argument('--game-load-profile',choices=('benchmark','captured-initial'),default='benchmark')
+    parser.add_argument('--game-load-observe',action='store_true')
     parser.add_argument('--game-save-output',type=Path)
     parser.add_argument('--game-save-repeat-output',type=Path)
     parser.add_argument('--timeout',type=int,default=30)
@@ -49,6 +50,7 @@ def main():
         parser.error('--attach-saved-session requires network, saved configuration and cleanup')
     if not 1<=args.timeout<=600:parser.error('--timeout must be between 1 and 600 seconds')
     game_input=args.game_load_stream.resolve() if args.game_load_stream else None
+    if args.game_load_observe and not game_input:parser.error('--game-load-observe requires --game-load-stream')
     game_outputs={}
     captured_gate=None
     captured_gate_path=None
@@ -95,6 +97,13 @@ def main():
                  'libGameCore_XP1.so':'431f6e33f0fb5ac081016d14868cff60b3c3c2417acee82e75e23f24c466c80b'})
     for name,expected in gate.items():
         if digest(assets/name)!=expected:raise SystemExit(f'asset identity mismatch: {name}')
+    state_audit=None
+    state_audit_paths=[]
+    if args.game_load_observe:
+        from game_load_state_audit import audit
+        state_audit=audit(assets/'libGameCore_XP2.so',ROOT.parent/'c6-ghidra/evidence/linux-action-boundary/abi.dwarf')
+        state_audit_paths=[ROOT/'tools/linux/game_load_state_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
+        if state_audit!=json.loads(state_audit_paths[-1].read_text()):raise SystemExit('loaded-state facade contracts differ')
     content=json.loads((ROOT/'tools/linux/runtime-content-gate.json').read_text())['files']
     if view:
         profile=json.loads((view/'source-view.json').read_text())
@@ -156,6 +165,7 @@ def main():
               'lower_core_stream':{'sha256':digest(game_input),'bytes':game_input.stat().st_size} if game_input else None,
               'lower_core_stream_profile':args.game_load_profile if game_input else None,
               'captured_core_stream_gate':captured_gate,
+              'lower_core_state_observer':state_audit,
               'timeout_seconds':args.timeout,
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
               'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
@@ -173,6 +183,7 @@ def main():
     if game_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*game_sources,ROOT/'native/linux/game_load.h',ROOT/'native/linux/context_stream.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
+    for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
@@ -210,6 +221,7 @@ def main():
         env['C6_GAME_SAVE_OUTPUT']=str(game_outputs['save'])
         env['C6_GAME_SAVE_REPEAT_OUTPUT']=str(game_outputs['repeat'])
         if captured_gate:env['C6_GAME_LOAD_EXPECTED_SIZE']=str(expected_game_size)
+        if args.game_load_observe:env['C6_GAME_LOAD_OBSERVE']='1'
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
