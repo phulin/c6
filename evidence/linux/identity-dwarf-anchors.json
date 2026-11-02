@@ -33,6 +33,12 @@
       "name": "GameCore::Random",
       "die": "0x0b528811",
       "bytes": 32
+    },
+    {
+      "name": "GameCore::Game::Processor",
+      "die": "0x07f57410",
+      "bytes": 1,
+      "limit": "Empty type size does not establish where static/global processor state lives."
     }
   ],
   "random_member_offsets": {
@@ -57,6 +63,30 @@
     },
     "GameCore::Random::Get(unsigned short, char const*)": {
       "address": "0x2d48d60"
+    },
+    "GameCore::Game::Processor::Initialize(GameCore::Game::Instance*)": {
+      "address": "0x2a0b240"
+    },
+    "GameCore::Game::Processor::InitializePostLoad()": {
+      "address": "0x2a0b390"
+    },
+    "GameCore::Game::Processor::Read(Serialization::IStream&)": {
+      "address": "0x2a0b120"
+    },
+    "GameCore::Game::Processor::Write(Serialization::OStream&)": {
+      "address": "0x2a0b1c0"
+    },
+    "GameCore::Game::Processor::Update()": {
+      "address": "0x2a0cb70"
+    },
+    "GameCore::Game::Processor::BeginTurn()": {
+      "address": "0x2a0c460"
+    },
+    "GameCore::Game::Processor::EndTurn()": {
+      "address": "0x2a0c750"
+    },
+    "GameCore::Lua::Utility::CallProcessor": {
+      "address": "0x2ce7930"
     }
   },
   "llvm_statistics": {
@@ -73,7 +103,13 @@
     "evidence/linux/xp2-random.txt",
     "evidence/linux/xp2-dwarf-statistics.json",
     "evidence/linux/xp2-factory.txt",
-    "evidence/linux/xp2-priority-functions.txt"
+    "evidence/linux/xp2-priority-functions.txt",
+    "evidence/linux/xp2-processor.txt",
+    "evidence/linux/xp2-script-interface.txt",
+    "evidence/linux/xp2-script-processor-symbols.txt"
   ],
-  "limits": "Linux target only; function/type counts include repeated template/compiler records. No Windows layout, initialized-game or action/turn equivalence established."
+  "limits": "Linux target only; function/type counts include repeated template/compiler records. No Windows layout, initialized-game or action/turn equivalence established.",
+  "globals": {
+    "GameCore::Context::Globals::ms_pkScriptSystem": "0x3c051c0"
+  }
 }
