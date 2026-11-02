@@ -5,9 +5,11 @@ The objective is an exact headless Civ VI state/action/turn library, checked aga
 ## Task coordination
 
 - Use a separate `gpt-6.1-sol` agent at `medium` reasoning effort for each individual implementation or research task, as requested by the project owner. Give each task explicit file ownership and a concrete result. Use a fresh context when selecting the model/effort.
-- All agents share the checkout. Check `git status` before editing or committing; stage only owned files. Coordinate changes to shared manifests, protocols and evidence identities with their owners. Never discard another agent's edits or use broad staging that captures unfinished work.
+- All agents share the checkout. Check `git status` before editing or committing; stage only owned files. Every commit must use `git commit --only -m "message" -- explicit/owned/path ...`, even after earlier staging: another agent may stage files concurrently, so a bare commit is insufficient. Preserve other agents' staged and untracked changes. Coordinate shared manifests, protocols and evidence identities; never discard another agent's edits or use broad staging.
+- If an owner-approved file is accidentally captured in a shared-index commit, preserve the approved history and coordinate a scoped follow-up. Do not rewrite shared history to repair that inclusion.
 - Keep coordination concise. Put raw disassembly, decompiler dumps and long tool output in evidence files, with proprietary project artifacts in `../c6-ghidra`. Send the coordinator only conclusions, relevant addresses, evidence paths, checks and blockers.
-- Commit coherent, validated checkpoints and push the authorized project repositories. Report commit IDs and unresolved gaps. Ghidra project commits require a clean save/close before snapshotting; follow `docs/ghidra.md`.
+- Commit coherent, validated checkpoints and push the authorized project repositories. Coordinate the current public push writer and report commit IDs and unresolved gaps. Ghidra project commits require a clean save/close before snapshotting; follow `docs/ghidra.md`.
+- Designate one private-repository push owner at a time. After committing immutable closed-project snapshot chunks, release snapshot-write ownership so other verified descendants can be prepared; batch those descendants into one push. Do not launch duplicate concurrent uploads of large snapshot packs.
 
 ## Exactness and evidence
 
