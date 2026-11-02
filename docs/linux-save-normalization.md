@@ -28,9 +28,9 @@ records their ranges. Equal coarse native readouts—turn 592, phase 0, local pl
 other state. The existing fixture still omits saved RequestLoad/Begin and complete
 host postload finalization; no cause is attributed to those omissions yet.
 
-The first observational profile maps original serializer owner entry/exit offsets.
+The observational profile maps original serializer owner entry/exit offsets.
 [The static audit](../evidence/linux/save-normalization-trace-contracts.json)
-checks 203 exact XP2 exported owner methods against the pinned Linux module and
+checks 207 exact XP2 exported owner methods against the pinned Linux module and
 matching DWARF. Every selected interface returns its original OStream reference
 and takes the original OStream and const owner references. Forwarding wrappers
 call the original method and read the genuine MemoryOStream offset before and
@@ -99,3 +99,23 @@ integers. Route's live `m_bFinalizing` is omitted from this wire format. The gra
 reconstructed indices, their runtime iteration order, jobs and sync/archive state
 are not made complete merely by decoding these records. This codec contract is
 separate from loading a complete Civ VI save or advancing gameplay.
+
+The expanded 207-owner profile adds the four original GameEffects serialization
+interfaces. Its [benchmark](../evidence/linux/save-normalization-native-benchmark-2.json)
+and [captured-input](../evidence/linux/save-normalization-native-captured-2.json)
+runs retain the exact known Save hashes and complete cleanup. The
+[expanded owner map](../evidence/linux/save-normalization-owner-map-benchmark-2.json)
+locates the remaining 42 changed bytes: 14 within GameEffects::Instance and 28
+within GameEffects::RequirementSystem. Their field identities and native Load
+handling require their own evidence; owner names alone do not justify exclusion.
+
+The original trace also observes one Game-owned synchronous RNG serialization
+per Save, with the complete 18-byte record at offsets 71,027,778–71,027,796.
+[The RNG comparison](../evidence/linux/save-normalization-serialized-rng.json)
+checks exact original Write/Read/accessor bytes and matching DWARF ownership of
+`Game::Instance::m_kSyncRandom`. The wire is u32 version 1, u32 seed, u32 call
+count, u32 reset count, u8 synchronous and a false legacy-history byte. Every byte
+matches between both canonical outputs: seed 872,261,551, call count 922,992,
+reset count 0 and synchronous true. Native Write omits live `m_uiLockCount`.
+This establishes equality of that complete observed serialized RNG record, not
+coverage or equality of every live RNG object, lock state or asynchronous stream.

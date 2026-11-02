@@ -26,12 +26,12 @@ def audit(module, dwarf):
     candidates = []
     for line in subprocess.check_output(['nm', '-D', '-S', str(module)], text=True).splitlines():
         p = line.split()
-        if len(p) == 4 and p[3].startswith('_ZN13SerializationlsERNS_7OStreamERKN8GameCore'):
+        if len(p) == 4 and p[3].startswith(('_ZN13SerializationlsERNS_7OStreamERKN8GameCore', '_ZN13SerializationlsERNS_7OStreamERKN11GameEffects')):
             candidates.append(dict(symbol=p[3], address=int(p[0], 16), bytes=int(p[1], 16)))
     names = subprocess.check_output(['c++filt'], input='\n'.join(x['symbol'] for x in candidates)+'\n', text=True).splitlines()
     selected = []
     for row, name in zip(candidates, names):
-        if not (name.startswith('Serialization::operator<<(Serialization::OStream&, GameCore::') and name.endswith(' const&)')):
+        if not (name.startswith(('Serialization::operator<<(Serialization::OStream&, GameCore::', 'Serialization::operator<<(Serialization::OStream&, GameEffects::')) and name.endswith(' const&)')):
             continue
         if not (row['bytes'] > 128 or '::Manager const&' in name or '::Instance const&' in name or
                 'GameCore::Game::' in name or 'GameCore::AI::GlobalAi ' in name or 'GameCore::Random const&' in name):
@@ -40,7 +40,7 @@ def audit(module, dwarf):
             raise ValueError('original OStream reference / two reference arguments not proven: '+name)
         row['owner'] = name.removeprefix('Serialization::operator<<(Serialization::OStream&, ').removesuffix(' const&)')
         selected.append(row)
-    if len(selected) != 203:
+    if len(selected) != 207:
         raise ValueError('exact original serializer owner inventory differs')
     lines = ['/* Generated exact XP2 serialization owner interfaces; no original game code. */']
     text = sections(module)['.text']

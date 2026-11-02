@@ -1,0 +1,75 @@
+{
+  "schema": "c6-linux-save-normalization-serialized-sync-rng-v1",
+  "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "matching_dwarf_sha256": "b12b87198e53aed3a44191deaa6a1c93a80efc2c1d81997fd90d6b6455da15d4",
+  "native_methods": [
+    {
+      "name": "random_write",
+      "address": "0x2d48a20",
+      "bytes": 105,
+      "sha256": "efacb133bcd6a82530012164e75ac795ff5b0e7c2baf9a63695ea672dea33539"
+    },
+    {
+      "name": "random_read",
+      "address": "0x2d48ab0",
+      "bytes": 164,
+      "sha256": "f52dd24eb9c66c1efe8a5c2f5e877f4f041bbbef5ea5485bf26e8d7561f76dff"
+    },
+    {
+      "name": "game_const_get_sync_random",
+      "address": "0x2d7b4d0",
+      "bytes": 8,
+      "sha256": "f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b"
+    },
+    {
+      "name": "game_write_rng_call_site",
+      "address": "0x2d7a89e",
+      "bytes": 19,
+      "sha256": "2e69b962f1f308e4b7ecf164135e2edaf55e2a1ae6acaa1a7fb55b1412a69ac8"
+    }
+  ],
+  "wire_schema": [
+    "u32 version=1",
+    "u32 m_ulRandomSeed",
+    "u32 m_ulCallCount",
+    "u32 m_ulResetCount",
+    "u8 m_bSynchronous",
+    "u8 legacy_history_present=false"
+  ],
+  "initial": {
+    "owner": "GameCore::Game::Instance::m_kSyncRandom",
+    "serialized_instances_observed": 1,
+    "serialization_occurrences_per_save": 1,
+    "stream_start": 71027778,
+    "stream_end": 71027796,
+    "complete_record_bytes": 18,
+    "complete_record_sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+    "values": {
+      "version": 1,
+      "random_seed": 872261551,
+      "call_count": 922992,
+      "reset_count": 0,
+      "synchronous": true,
+      "legacy_history_present": false
+    }
+  },
+  "reloaded": {
+    "owner": "GameCore::Game::Instance::m_kSyncRandom",
+    "serialized_instances_observed": 1,
+    "serialization_occurrences_per_save": 1,
+    "stream_start": 71027778,
+    "stream_end": 71027796,
+    "complete_record_bytes": 18,
+    "complete_record_sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+    "values": {
+      "version": 1,
+      "random_seed": 872261551,
+      "call_count": 922992,
+      "reset_count": 0,
+      "synchronous": true,
+      "legacy_history_present": false
+    }
+  },
+  "complete_observed_serialized_rng_equal": true,
+  "limits": "Only the single observed Game-owned synchronous RNG serialized record is compared. Native Write omits live m_uiLockCount and always writes false for legacy history. This does not establish every live RNG object, lock state, asynchronous stream, full game state or future action/turn parity."
+}

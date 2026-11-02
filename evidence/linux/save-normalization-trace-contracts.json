@@ -4,6 +4,34 @@
   "matching_dwarf_sha256": "1c5bcad722f0b4b3aa3b1aba197523a22e9ccbf0811e297442918ee8aacf7ef8",
   "owners": [
     {
+      "symbol": "_ZN13SerializationlsERNS_7OStreamERKN11GameEffects14ModifierSystemE",
+      "address": "0x23f5750",
+      "bytes": 1813,
+      "owner": "GameEffects::ModifierSystem",
+      "sha256": "2f0037e9e113d40514f4183bb7148c87689a58732a1511840983d831ead486e5"
+    },
+    {
+      "symbol": "_ZN13SerializationlsERNS_7OStreamERKN11GameEffects17RequirementSystemE",
+      "address": "0x23f54c0",
+      "bytes": 644,
+      "owner": "GameEffects::RequirementSystem",
+      "sha256": "831533978d155dbb6ef65ab820f2d864a71078c4fc3efda611bdf6d38e80840a"
+    },
+    {
+      "symbol": "_ZN13SerializationlsERNS_7OStreamERKN11GameEffects18ArgumentDefinitionE",
+      "address": "0x23f8720",
+      "bytes": 180,
+      "owner": "GameEffects::ArgumentDefinition",
+      "sha256": "15e6919996ad82bbbad7ee9124f8cb99423eee5d5abc1bc0e458b994a8bb41ce"
+    },
+    {
+      "symbol": "_ZN13SerializationlsERNS_7OStreamERKN11GameEffects8InstanceE",
+      "address": "0x23f4b20",
+      "bytes": 580,
+      "owner": "GameEffects::Instance",
+      "sha256": "09ba1abc8d895c172f45067a8e23629b2e4cd1860a99e76a8f16565e3c910893"
+    },
+    {
       "symbol": "_ZN13SerializationlsERNS_7OStreamERKN8GameCore10FreeCities7ManagerE",
       "address": "0x294d890",
       "bytes": 155,

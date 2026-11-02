@@ -1,0 +1,48 @@
+{
+  "schema": "c6-linux-save-normalization-owner-map-v1",
+  "initial_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "reloaded_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+  "bytes": 80657462,
+  "different_bytes": 89198,
+  "trace_sha256": "cdebd8cf616c2793777c5fc63dff0025b037e1148ae0ae93b742768d207042fe",
+  "native_report_sha256": "d4921e21434bed036fa0a2655dddbe56ae8df44d288928e243e56280520a84f6",
+  "configuration_sha256": "9b6dd9944f218cadbc6cbe8a8d690305ed40289d9b11418cd93eafb7afce52d0",
+  "traced_output_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+  "observed_owner_calls": 208644,
+  "mapped_differences": [
+    {
+      "owner": "GameCore::Trade::Graph",
+      "different_bytes": 39981,
+      "calls": 1,
+      "first": 71027820,
+      "last_exclusive": 71481887
+    },
+    {
+      "owner": "GameCore::Trade::Route",
+      "different_bytes": 49175,
+      "calls": 522,
+      "first": 71027860,
+      "last_exclusive": 71481631
+    },
+    {
+      "owner": "GameEffects::Instance",
+      "different_bytes": 14,
+      "calls": 1,
+      "first": 73740688,
+      "last_exclusive": 73741079
+    },
+    {
+      "owner": "GameEffects::RequirementSystem",
+      "different_bytes": 28,
+      "calls": 1,
+      "first": 74928417,
+      "last_exclusive": 74929449
+    }
+  ],
+  "limits": "Owner ranges alone do not prove field semantics, native Load normalization or scope exclusion. AI namespaces are not blanket exclusions; gameplay state and RNG remain required.",
+  "private_details": {
+    "filename": "owner-map-captured-2.full.json",
+    "sha256": "fe9fe2f57cb46129c6d994a3b614d91ff667ff6fb70dbb5f15c3563236445d33",
+    "bytes": 317908
+  }
+}
