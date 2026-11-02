@@ -120,4 +120,65 @@ mod tests {
         assert_eq!(registry.find(1).unwrap().database_rowid, RulesRowId(-2));
         assert_eq!(registry.entries()[0].database_rowid, RulesRowId(19));
     }
+
+    #[test]
+    #[ignore = "requires audited original Linux definition query report"]
+    fn linux_native_definition_report() {
+        let path = std::env::var_os("C6_LINUX_DEFINITION_IDS_REPORT")
+            .expect("C6_LINUX_DEFINITION_IDS_REPORT must name an audited native report");
+        let report: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        assert_eq!(report["schema"], "c6-linux-definition-ids-v1");
+        assert_eq!(
+            report["gamecore_sha256"],
+            "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
+        );
+        let query = &report["native_query"];
+        assert_eq!(query["canonical_core_unchanged"], true);
+        let mapping = &query["mapping"];
+        let observed = mapping["entries"].as_array().expect("native entries");
+        let entries = observed
+            .iter()
+            .map(|entry| {
+                let hex = entry["type_hex"].as_str().unwrap().as_bytes();
+                assert_eq!(hex.len() % 2, 0);
+                let bytes = hex
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
+                    .collect();
+                DefinitionEntry {
+                    database_rowid: RulesRowId(entry["database_rowid"].as_i64().unwrap()),
+                    type_name: bytes,
+                }
+            })
+            .collect();
+        let registry = LinuxDefinitionRegistry::from_native_order(entries);
+        assert_eq!(mapping["count"].as_u64().unwrap() as usize, observed.len());
+        for (i, entry) in observed.iter().enumerate() {
+            let hash = u32::try_from(entry["hash"].as_u64().unwrap()).unwrap();
+            assert_eq!(entry["index"].as_u64().unwrap() as usize, i);
+            assert_eq!(linux_type_hash(&registry.entries()[i].type_name), hash);
+            assert_eq!(
+                entry["native_string_hash"].as_u64().unwrap(),
+                u64::from(hash)
+            );
+            assert_eq!(registry.find_index(hash), Some(i));
+            assert_eq!(entry["find_index"].as_u64().unwrap() as usize, i);
+        }
+        let missing = u32::try_from(mapping["missing_hash"].as_u64().unwrap()).unwrap();
+        assert_eq!(mapping["missing_result"], -1);
+        assert_eq!(registry.find_index(missing), None);
+        assert_eq!(registry.find_index(0), Some(0));
+        assert_eq!(registry.at(u32::try_from(observed.len()).unwrap()), None);
+        assert_eq!(
+            u64::from(linux_type_hash(b"")),
+            mapping["empty_string_hash"].as_u64().unwrap()
+        );
+        assert_eq!(
+            u64::from(linux_type_hash(b"yield_food")),
+            mapping["lowercase_food_hash"].as_u64().unwrap()
+        );
+    }
 }

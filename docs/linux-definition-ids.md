@@ -107,6 +107,17 @@ not unchanged entire process memory or all unrecorded live state. A source
 identity from a saved-context run must not be silently relabeled as the registered
 request-None diagnostic profile.
 
+After producing an audited native report, compare its complete yield mapping
+and hash/lookup boundaries against Rust with:
+
+```sh
+C6_LINUX_DEFINITION_IDS_REPORT=/absolute/path/to/audited-report.json \
+  cargo test -p c6-data linux_native_definition_report -- --ignored
+```
+
+The requested test fails if the report is absent, static-only, malformed or
+contains a different target identity; default tests leave this native case ignored.
+
 At this checkpoint native registry-query execution and active-profile mapping
 remain pending. The Rust tests are meaningful hash/input/lookup boundary fixtures
 and do not count as original-native runtime parity. Current rules export coverage
