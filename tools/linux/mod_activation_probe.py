@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--configure',action='store_true')
     parser.add_argument('--content-paths',action='store_true')
     parser.add_argument('--art-manager',action='store_true')
+    parser.add_argument('--update-constructor-callback',action='store_true')
     parser.add_argument('--localization',action='store_true')
     parser.add_argument('--cleanup',action='store_true')
     parser.add_argument('--client-only',action='store_true')
@@ -32,6 +33,8 @@ def main():
     parser.add_argument('--expected-configuration')
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args();assets=args.assets.resolve();view=args.source_view.resolve() if args.source_view else None
+    if args.update_constructor_callback and not all((args.saved_configuration,args.configure,args.localization,args.content_paths,args.art_manager)):
+        parser.error('--update-constructor-callback requires saved configuration, configure, localization, content paths and art manager')
     if not view and not args.launch_host:parser.error('--source-view or --launch-host required')
     gate=json.loads((ROOT/'tools/linux/runtime-gate.json').read_text())
     gate.update({'libGameCore_Base.so':'8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6',
@@ -88,6 +91,7 @@ def main():
     userdata=Path(tempfile.mkdtemp(prefix='userdata-',dir=work))
     preload=work/'mod_activation_probe.so'
     identity={'schema':'c6-linux-mod-activation-v1','assets':gate,'base_content_gate_sha256':digest(ROOT/'tools/linux/runtime-content-gate.json'),
+              'update_callback_profile':'native LoadGameViewState constructor only; no saved Request/Begin, not saved-game parity' if args.update_constructor_callback else None,
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
               'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
               'source_view':str(view) if view else None,'userdata':str(userdata),'userdata_initially_empty':True,'cwd':str(work),
@@ -122,6 +126,7 @@ def main():
     if args.configure:env['C6_MOD_CONFIGURE']='1'
     if args.content_paths:env['C6_MOD_CONTENT_PATHS']='1'
     if args.art_manager:env['C6_MOD_ART_MANAGER']='1'
+    if args.update_constructor_callback:env['C6_MOD_UPDATE_CONSTRUCTOR_CALLBACK']='1'
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()

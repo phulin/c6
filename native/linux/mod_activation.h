@@ -6,6 +6,9 @@
 int c6_linux_mod_register_events(void);
 int c6_linux_mod_framework_initialize(void **borrowed_context);
 int c6_linux_mod_framework_configure(void);
+/* Diagnostic only: actual native callback/owner in constructor state, without
+ * the saved-load Request/Begin phase. Not a complete saved-game fixture. */
+int c6_linux_mod_framework_update_constructor_callback(void **borrowed_context);
 int c6_linux_mod_framework_shutdown(void);
 int c6_linux_mod_client_fixture_shutdown(void);
 #endif

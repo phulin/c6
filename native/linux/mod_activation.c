@@ -207,6 +207,49 @@ int c6_linux_mod_framework_configure(void) {
     return (result&1) ? 0 : 116;
 }
 
+int c6_linux_mod_framework_update_constructor_callback(void **borrowed_context) {
+    void *(*get)(void)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework11GetInstanceEv");
+    uint64_t (*update)(void *,void *)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework13UpdateContentENSt3__18functionIFvPN8Database20IDatabaseConnection1EbEEE");
+    void *(*allocate)(size_t)=dlsym(RTLD_DEFAULT,"_Znwm");
+    void (*release)(void *)=dlsym(RTLD_DEFAULT,"_ZdlPv");
+    void (*owner_construct)(void *)=dlsym(RTLD_DEFAULT,"_ZN17LoadGameViewStateC1Ev");
+    void (*owner_delete)(void *)=dlsym(RTLD_DEFAULT,"_ZN17LoadGameViewStateD0Ev");
+    void (*callback_destruct)(void *)=dlsym(RTLD_DEFAULT,"_ZNSt3__18functionIFvPN8Database20IDatabaseConnection1EbEED2Ev");
+    unsigned char *anchor=dlsym(RTLD_DEFAULT,"_ZN17LoadGameViewState22InitializeErrorResultsEv");
+    int (*request)(void)=dlsym(RTLD_DEFAULT,"_ZN8GameCore10Serializer7Manager20GetRequestInProgressEv");
+    void **active=dlsym(RTLD_DEFAULT,"_ZN8GameCore16s_pActiveContextE");
+    if (!borrowed_context || !get || !update || !allocate || !release || !owner_construct ||
+        !owner_delete || !callback_destruct || !anchor || !request || !active || !get() || !*active) return 146;
+    if (request()!=0) return 147;
+    /* Exact host callback constructor at 0x2fd62d0, adjacent to the exported
+     * 0x2fd6230 anchor. It constructs its real inline libc++ callable, capturing
+     * the real owner. Owner allocation size is original SetupGameStates 0x4f0.
+     * C1's false censor flag remains untouched; Begin/Request is not simulated. */
+    void (*callback_construct)(void *,void *)=(void (*)(void *,void *))(anchor+0xa0);
+    void *owner=allocate(0x4f0),*callback=allocate(0x30);
+    if (!owner || !callback) {
+        if (owner) release(owner);
+        if (callback) release(callback);
+        return 148;
+    }
+    fprintf(stderr,"C6_LINUX_MOD update_constructor_callback_owner_enter request_none 1\n");
+    owner_construct(owner);
+    callback_construct(callback,owner);
+    fprintf(stderr,"C6_LINUX_MOD update_content_enter callback_native_constructor_state 1\n");
+    uint64_t result=update(get(),callback);
+    fprintf(stderr,"C6_LINUX_MOD update_content_return flags %u code %u\n",(unsigned)(result&7),(unsigned)(result>>32));
+    callback_destruct(callback);
+    release(callback);
+    owner_delete(owner);
+    fprintf(stderr,"C6_LINUX_MOD update_constructor_callback_owner_cleanup_return\n");
+    *borrowed_context=*active;
+    Dl_info module;
+    if (*active && dladdr(*(void **)*active,&module))
+        fprintf(stderr,"C6_LINUX_MOD updated_active_context_module %s\n",module.dli_fname);
+    mod_inventory(get(),"after_update");
+    return (result&1)&&*active ? 0 : 149;
+}
+
 /* Genuine GUIShutdown calls DestroyInstance before Controller::Shutdown. */
 int c6_linux_mod_framework_shutdown(void) {
     void *(*get)(void)=dlsym(RTLD_DEFAULT,"_ZN19AppModdingFramework11GetInstanceEv");
@@ -301,6 +344,8 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
     }
     if (!result && getenv("C6_MOD_CONFIGURE"))
         result = c6_linux_mod_framework_configure();
+    if (!result && getenv("C6_MOD_UPDATE_CONSTRUCTOR_CALLBACK"))
+        result = c6_linux_mod_framework_update_constructor_callback(&context);
     if (getenv("C6_MOD_CLEANUP") && context) {
         int cleanup=c6_linux_mod_framework_shutdown();
         if (!cleanup && constructed_client) cleanup=c6_linux_mod_client_fixture_shutdown();

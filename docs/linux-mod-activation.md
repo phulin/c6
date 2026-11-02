@@ -70,6 +70,10 @@ With the real App localization owner, content paths and art manager, original Co
 
 The genuine Update callback has an additional owner-state requirement: `LoadGameViewState::Begin` derives its censorship/load flag at `+0x4b1` from original `Serializer::Manager::GetRequestInProgress()==2`; its constructor alone initializes that flag false. A constructor-only callback must not be presented as the saved-load orchestration. Native RequestLoad/Begin ownership and side effects remain to be established before UpdateContent executes for this saved-game profile.
 
+A separately gated `--update-constructor-callback` diagnostic now constructs the real native `LoadGameViewState` (original SetupGameStates allocation size `0x4f0`), invokes the actual original inline callback constructor at `0x2fd62d0`, and enters original UpdateContent. It requires native RequestInProgress to be none and explicitly retains constructor-state censorship semantics; it is **not the saved-load Request/Begin profile**. No callback fields or owner flags are synthesized. The exact native callback destructor and owner deleting destructor are resolved for successful-return cleanup, but this failed run does not prove that cleanup path.
+
+[First UpdateContent failure](../evidence/linux/mod-activation-native-update-ui-owner-boundary.json) occurs in BeforeContentChange before GameCore unloading or callback invocation: ClearUserInterfaces forwards the actual null `ForgeUI::UIManager` global (`0x6560808`) into ClearUIScriptReplacements, whose native vector access faults at `0x3386ee0`. A genuine UI provider lifecycle is the next missing prerequisite; clearing a fabricated vector or replacing that getter would not establish the original transition. The diagnostic neither observes an active XP2 context nor claims that original components have been applied.
+
 The actual original UpdateContent sequence, recovered from the Linux host, is:
 
 1. ConfigureContent and discover the selected components.
