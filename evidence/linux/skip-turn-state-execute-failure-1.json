@@ -962,7 +962,7 @@
     "all_formation_roundtrips": 1250,
     "alignment": "Pinned complete stream identity and original serializer-owned ranges; typed codec consumption and exact roundtrip. No ID-byte search."
   },
-  "typed_after_alignment": "All three complete streams are byte-identical, so all attributed typed record and field ranges remain identical.",
+  "typed_after_alignment": "Captured bytes match the initial attributed record/field ranges. Worker quiescence was not proven during later captures; no coherent gameplay poststate is established.",
   "live_observations": [
     {
       "stage": "before_a",
@@ -1355,6 +1355,12 @@
   "full_action_acceptance": 0,
   "gameplay_parity": false,
   "historical_raw_save_load_failure_bytes": 89198,
-  "source_audit_sha256": "924aceab3a6c165a049cfb55addf3e27716bc4c7560bb58b95c38f497ea73889",
-  "limits": "Closed failed conditional component. Identical serialized Core and selected live surfaces do not prove complete live-state nonmutation. Queue replacement, formation/dirty/event/diplomacy/notification/end-turn effects were not executed. No gameplay transition or nonmutating Unsupported result."
+  "source_audit_sha256": "4709731baafda32cd957af9b2fa6e54e38805ca960aef7fb3e706e4d6dfc447b",
+  "limits": "Closed failed conditional component. Later Save/live captures lack proven worker quiescence and are diagnostic bytes, not a coherent unchanged poststate. No Receive or UnitOperation execution was observed; this does not prove gameplay effects could not occur during unresolved work. Framework/client cleanup are unproven despite outer cleanup_return0. Initial typed state was captured before Execute with worker_executing0 and pending0. No gameplay transition or nonmutating Unsupported result.",
+  "initial_capture_before_execute": true,
+  "initial_worker_executing": 0,
+  "post_capture_worker_quiescence_proven": false,
+  "coherent_gameplay_poststate_proven": false,
+  "framework_cleanup_proven": false,
+  "client_cleanup_proven": false
 }

@@ -4,6 +4,8 @@
 This first diagnostic profile requires byte-identical before/after Core streams.
 Changed streams reject instead of borrowing stale serializer offsets. Native
 execution failure remains a failure even when artifact validation succeeds.
+Post-execution captures lack proven worker quiescence and are diagnostic bytes,
+not a coherent gameplay poststate or proof that gameplay effects cannot occur.
 """
 import argparse
 import gzip
@@ -144,6 +146,9 @@ def audit(report, private_root):
     components = [json.loads(line.split(' ', 1)[1]) for line in run['stderr'].splitlines()
                   if line.startswith('C6_LINUX_CORE_COMPONENT {')]
     stages = {row['stage']: row for row in components if row['stage'] != 'actor_candidate'}
+    require(stages['host_worker_preconditions']['worker_executing'] == 0
+            and stages['host_worker_preconditions']['worker_suspended'] == 0
+            and stages['before']['pending'] == 0, 'initial pre-execution worker boundary differs')
     selected = stages['selected']
     require(any(row['stage'] == 'actor_candidate' and row['public_can_start'] == row['core_found'] == 1
                 and all(row[k] == selected[k] for k in ('owner', 'id', 'component_bits'))
@@ -192,6 +197,8 @@ def audit(report, private_root):
     teardown = [line for line in run['stderr'].splitlines()
                 if line.startswith('C6_LINUX_ACTION_LIFECYCLE uninitialize_return ')]
     require(len(teardown) == 1 and 'executing 1 cleanup 0' in teardown[0], 'failed worker teardown observation missing')
+    require(run['framework_cleanup_proven'] is False and run['client_cleanup_proven'] is False,
+            'failed cleanup flags differ')
     return dict(schema='c6-linux-skip-turn-state-diagnostic-v1', artifact_checks_passed=True,
                 native_execution_succeeded=False, runtime_report_sha256=digest(report),
                 configuration_sha256=run['configuration_sha256'], gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA,
@@ -201,7 +208,10 @@ def audit(report, private_root):
                 raw_original_core_saves=snapshots, raw_differences=differences,
                 snapshot_byte_shifts=0, unknown_bytes_classified=False, masked_bytes=0,
                 typed_initial_state=typed,
-                typed_after_alignment='All three complete streams are byte-identical, so all attributed typed record and field ranges remain identical.',
+                typed_after_alignment='Captured bytes match the initial attributed record/field ranges. Worker quiescence was not proven during later captures; no coherent gameplay poststate is established.',
+                initial_capture_before_execute=True, initial_worker_executing=0,
+                post_capture_worker_quiescence_proven=False, coherent_gameplay_poststate_proven=False,
+                framework_cleanup_proven=False, client_cleanup_proven=False,
                 live_observations=states, trace_sha256=digest(trace_path), trace_end=end,
                 readiness_before=stages['before'], readiness_after=stages['after'],
                 diplomacy_observations=[stages['diplomacy_before'], stages['diplomacy_after']],
@@ -214,7 +224,7 @@ def audit(report, private_root):
                 host_admission_proven=False, full_action_acceptance=0, gameplay_parity=False,
                 historical_raw_save_load_failure_bytes=89198,
                 source_audit_sha256=digest(Path(__file__)),
-                limits='Closed failed conditional component. Identical serialized Core and selected live surfaces do not prove complete live-state nonmutation. Queue replacement, formation/dirty/event/diplomacy/notification/end-turn effects were not executed. No gameplay transition or nonmutating Unsupported result.')
+                limits='Closed failed conditional component. Later Save/live captures lack proven worker quiescence and are diagnostic bytes, not a coherent unchanged poststate. No Receive or UnitOperation execution was observed; this does not prove gameplay effects could not occur during unresolved work. Framework/client cleanup are unproven despite outer cleanup_return0. Initial typed state was captured before Execute with worker_executing0 and pending0. No gameplay transition or nonmutating Unsupported result.')
 
 
 def main():
