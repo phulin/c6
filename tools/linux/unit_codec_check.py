@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check Rust Formation wire codec against exact native serializer-owned slices.
+"""Check Rust Unit/Formation wire codecs against exact native serializer-owned slices.
 
 Read-only original Save/trace reuse. No engine execution or boundary inference
 from byte patterns. Private payloads are kept in temporary files.
@@ -60,6 +60,30 @@ def main():
             formation_dir, queue_dir = Path(temp) / 'formations', Path(temp) / 'queues'
             formation_dir.mkdir()
             queue_dir.mkdir()
+            unit_dir = Path(temp) / 'units'
+            unit_dir.mkdir()
+            unit_rows = sorted((json.loads(line) for line in trace.splitlines() if b'\"owner\":\"GameCore::Unit::Instance\"' in line), key=lambda r: r['start'])
+            unit_rows = [r for r in unit_rows if r['save'] == 1]
+            if len(unit_rows) != 1262:
+                raise ValueError('unexpected native Unit count')
+            child_to_field = dict(CombatModifiers='m_kCombatModifers', MovementModifiers='m_kMovementModifiers', Experience='m_kExperience', Religion='m_kReligion', RockBand='m_kRockBand', Espionage='m_kEspionage', **{'Operations::OperationQueue':'m_kOperations'})
+            child_rows = [json.loads(line) for line in trace.splitlines() if b'\"owner\":\"GameCore::Unit::' in line]
+            children_by_parent = {}
+            for child in child_rows:
+                if child.get('save') == 1:
+                    children_by_parent.setdefault(child['parent'], []).append(child)
+            expected_fields = []
+            for i, row in enumerate(unit_rows):
+                start, end = row['start'], row['end']
+                (unit_dir / f'{i:06}.bin').write_bytes(data[start:end])
+                fields = []
+                for child in children_by_parent.get(row['call'], []):
+                    if child.get('save') == 1 and child.get('parent') == row['call'] and child['owner'] != 'GameCore::Unit::Instance':
+                        field = child_to_field[child['owner'].removeprefix('GameCore::Unit::')]
+                        fields.append([field, child['start']-start, child['end']-start])
+                if len(fields) != 7:
+                    raise ValueError('incomplete native Unit nested coverage')
+                expected_fields.append(sorted(fields, key=lambda f: f[1]))
             queue_rows = [json.loads(line) for line in trace.splitlines() if b'\"owner\":\"GameCore::Unit::Operations::OperationQueue\"' in line]
             queue_rows = [row for row in queue_rows if row['save'] == 1]
             if len(queue_rows) != 1262:
@@ -76,25 +100,33 @@ def main():
                     raise ValueError('invalid/overlapping native owner range')
                 ranges.append([start, end])
                 (formation_dir / f'{i:06}.bin').write_bytes(data[start:end])
-            result = json.loads(subprocess.check_output([str(binary), str(formation_dir), str(args.iterations), str(queue_dir)], cwd=ROOT))
+            result = json.loads(subprocess.check_output([str(binary), str(formation_dir), str(args.iterations), str(queue_dir), str(unit_dir), str(Path(temp) / 'unit-ranges.json')], cwd=ROOT))
+            if json.loads((Path(temp) / 'unit-ranges.json').read_text()) != expected_fields:
+                raise ValueError('Rust Unit field ranges differ from original nested serializer calls')
+        if result['native_unit_roundtrips'] != 1262:
+            raise ValueError('missing exact native Unit roundtrips')
         if result.pop('record_lengths') != [end-start for start, end in ranges]:
             raise ValueError('Rust typed record extents differ from original boundaries')
         if (result['native_queue_roundtrips'], result['native_queue_unsupported_handlers']) != (1262, 0):
             raise ValueError('unexpected native queue acceptance/rejection profile')
         if (result['records'], result['bytes'], result['path_nodes'], result['unit_ids'], result['nonempty_paths']) != (1250, 71168, 56, 1262, 8):
             raise ValueError('unexpected pinned native Formation fixture dimensions')
-        result.update(save_sha256=identity, native_trace_sha256=trace_sha,
+        result.update(native_unit_nested_boundaries_matched=7*len(unit_rows),
+                      native_unit_records_sha256=sha(b''.join(data[r['start']:r['end']] for r in unit_rows)),
+                      native_unit_ranges_sha256=sha(json.dumps([[r['start'],r['end']] for r in unit_rows],separators=(',', ':')).encode()),
+                      native_unit_nested_ranges_sha256=sha(json.dumps(expected_fields,separators=(',', ':')).encode()),
+                      save_sha256=identity, native_trace_sha256=trace_sha,
                       all_native_boundaries_matched=len(rows),
                       attributed_ranges_sha256=sha(json.dumps(ranges, separators=(',', ':')).encode()),
                       records_sha256=sha(b''.join(data[start:end] for start, end in ranges)))
         results.append(result)
-    sources = ['crates/c6-core/src/unit.rs', 'crates/c6-core/examples/unit_codec.rs', 'tools/linux/unit_codec_check.py']
-    report = dict(schema='c6-linux-formation-rust-codec-v1', module_sha256=MODULE,
+    sources = ['crates/c6-core/src/unit.rs', 'crates/c6-core/src/unit/state.rs', 'crates/c6-core/src/unit/variants.rs', 'crates/c6-core/examples/unit_codec.rs', 'tools/linux/unit_codec_check.py']
+    report = dict(schema='c6-linux-unit-formation-rust-codec-v1', module_sha256=MODULE,
                   fixtures=results, adapter_sha256=sha(binary.read_bytes()),
                   source_sha256={name: sha((ROOT / name).read_bytes()) for name in sources},
                   rustc=subprocess.check_output(['rustc', '--version'], text=True).strip(),
-                  timing_scope='Release mean per Formation record, decode/encode including allocation/drop. No game, rules, action, turn, RNG or original-code performance measurement.',
-                  limits='Current Formation v1 serialized state only. Live evaluating-operation, definition remapping, tracked archive dirtiness, complete Unit state and actions unsupported. Queue codec supports nine statically verified handlers and roundtrips all native fixtures across eight observed hashes, including typed MoveTo/trade-route parameters; no attributed nonempty SkipTurn fixture. Other handlers remain unsupported. Raw Save/reload/Save failure remains 89198 unmasked bytes.')
+                  timing_scope='Release mean per actual Unit/Formation record, decode/encode including allocation/drop; Unit decode includes73field ranges. Unit lookup is adapter std HashMap(owner,id), excludes building index. No game, rules, action, turn, RNG or original-code performance measurement.',
+                  limits='Current Unit v28/Formation v1 wire records with nine supported operation handlers and bounded typed variants only. Complete native fixtures roundtrip; other handler/variant forms and historical versions explicitly reject. Live omitted fields, read-time fixups, definition remapping, archive dirtiness and gameplay/actions remain unsupported. No attributed nonempty SkipTurn fixture. Raw Save/reload/Save failure remains 89198 unmasked bytes.')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

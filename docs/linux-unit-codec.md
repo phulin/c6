@@ -1,37 +1,49 @@
-# Linux Unit wire components
+# Linux Unit and Formation wire codecs
 
-The Rust library still implements isolated primitives. `c6_core::unit` now decodes and encodes the **complete current Formation version-1 wire record**, and a bounded operation-queue component. It does not load a complete Unit or Core Save, reconstruct live native objects, implement SKIP_TURN, or establish state/action/turn equivalence. The original Linux XP2 module is pinned to SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`.
+The Rust library still implements isolated primitives. `c6_core::unit` now decodes and encodes **current Unit version-28 and Formation version-1 wire records**, with explicit gates for supported operation handlers and typed variants. It does not load a Core Save, reconstruct complete live objects, implement SKIP_TURN, or establish state/action/turn equivalence. The original Linux XP2 module is pinned to SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`.
 
-The [original Unit/Formation contract](linux-unit-archive.md) and [schema audit](../evidence/linux/unit-archive-schema.json) establish the actual serializer helpers independently from the Rust implementation. Public evidence contains identities, counts and checks; proprietary payloads and raw disassembly remain private.
+The [original archive contract](linux-unit-archive.md), [named component sequences](../evidence/linux/unit-wire-contracts.json), [scalar helpers](linux-unit-wire-scalars.md), [operation helpers](linux-unit-wire-operations.md) and [variant helpers](linux-unit-wire-variants.md) ground the Rust code in original Linux instructions and matching DWARF. Public evidence contains identities and checks; proprietary payloads and raw disassembly remain private.
 
-## Formation wire support
+## Unit support
 
-Formation records preserve unsigned IDs, signed 32-bit player/domain enum bits, signed 32-bit PlotCoord coordinates, raw `FixedPointT<8>` values, eight individual bool bytes, original path order, signed 16-bit path-node coordinates, and ordered uint32 unit IDs. No sorting, floating-point conversion, definition remapping or inferred unit membership occurs. Duplicate unit IDs are retained as wire values. The native writer emits version 1, path count and ordered version-1 nodes, cache coordinates, then unit count and ordered IDs. The record size is `52 + 20 * path_nodes + 4 * unit_ids` bytes.
+`Unit` has all 73 current serialized fields in the original order, including unregistered Hero, attributes and properties. Eighteen named nested component types retain their current versioned fields. Definition enums retain uint32 hashes; plain enums retain signed 32-bit bits. Definition-indexed arrays preserve every serialized hash/value pair in order, including duplicates. Promotion maps preserve uint8 values without treating them as bools. Fixedpoint values remain raw int32; strings remain counted bytes without a UTF-8 assumption. City IDs preserve signed 16-bit owner/component halves and uint32 identity. No sorting or live definition remapping occurs.
 
-`Formation::decode` consumes the exact provided record. Unsupported record/node versions, trailing or truncated bytes, noncanonical bool bytes and resource-budget violations return errors. Version and bool restrictions describe this supported codec profile; they do not claim the original reader rejects those inputs. `Limits` bounds bytes and the aggregate number of path nodes plus unit IDs before allocations. Encoding applies the same budgets.
+`Unit::decode` consumes exactly one supplied record. `decode_with_ranges` additionally exposes each field's consumed range for comparison with original serializer traces. Both reject unsupported nested versions, handlers, variants, malformed bools, truncated/trailing bytes and resource-budget violations. Encoding validates the same supported shape. `Limits` bounds total bytes and aggregate dynamic elements/string bytes before allocations; recursive variants additionally have a maximum depth of 64. Restrictions describe the supported Rust profile, rather than claiming the original reader rejects every such input.
 
-Run the original-record comparison without executing the engine:
+`VariantMap` and `TypedVariantMap` preserve unsigned keys, original ordered tree/vector entries, optional key names, prefix metadata, scalar union bits and established recursive framing. Supported semantics include scalar None/bool/int32/uint32/float32/char8/int64/uint64 and supported nested containers. Bool upper union bytes and float NaN bits are retained. Unknown semantic types, arbitrary raw arrays, unsupported modifiers/branches and unproven payload forms reject explicitly. The [variant module](../crates/c6-core/src/unit/variants.rs) states the detailed accepted subset. A known payload framing alone does not establish every possible variant's gameplay meaning.
+
+## Formation support
+
+Formation records preserve unsigned IDs, signed 32-bit player/domain bits and PlotCoord coordinates, raw fixedpoint values, eight bool bytes, ordered path nodes with signed 16-bit coordinates, cache location, and ordered unit IDs. The native record size is `52 + 20 * path_nodes + 4 * unit_ids`. No inferred membership or pointer reconstruction occurs.
+
+## Operation queue support
+
+Queues use current version 1 and base nodes version 2. Nodes preserve the operation **hash**, directive, flags, push turn, saved activity and saved automation. Live numeric handler IDs are distinct. Supported handlers are SkipTurn, Alert, Fortify, SpySiphonFunds, SpyDisruptRocketry, SpyGainSources, SpySabotageProduction, MoveTo and MakeTradeRoute.
+
+Seven null-parameter handlers use sentinel 0. MoveTo version-1 parameters contain PlotCoord then uint32 modifiers. MakeTradeRoute version-1 parameters contain modifiers, two PlotCoords and a resource definition hash. `OperationParameters` distinguishes these forms; encoding rejects mismatched handler/parameter variants. Unknown handlers reject because there is no generic handler-body length permitting opaque skipping. Broader static handler research is not counted as implemented support.
+
+## Native record validation
+
+Run the read-only checker, which never executes the engine:
 
 ```sh
-python3 tools/linux/unit_codec_check.py --output target/linux/formation-rust-codec.json
+python3 tools/linux/unit_codec_check.py --output target/linux/unit-rust-codec.json
 ```
 
-The checker gates two exact original Save hashes and their exact native serializer trace hashes, checks the original module identity in the private canonical-stream manifest, and extracts **only original `GameCore::Formation::Instance` owner ranges**. It never infers record boundaries from ID patterns. Every decoded record must consume its exact range, reproduce its bytes, and match its typed predicted length. The [checked result](../evidence/linux/formation-rust-codec.json) covers 1,250 formations per stream, 2,500 total round trips. Each stream contributes 71,168 bytes, 56 path nodes across eight nonempty paths, and 1,262 ordered unit IDs. Formation bytes happen to be identical across this pair; this does not establish equality of other state.
+The checker gates two exact original Save hashes and exact native serializer trace hashes, and checks the original module identity in the private canonical-stream manifest. It extracts only original serializer-owned ranges. It never infers boundaries from ID byte patterns. The [checked result](../evidence/linux/unit-rust-codec.json) covers, across both streams:
 
-Constructed independent wire fixtures additionally cover signed/unsigned scalar extremes, raw enum and fixedpoint values, packed signed shorts, invalid cache coordinates, duplicate/ordered IDs, empty containers, all truncated prefixes, unsupported versions, malformed bools, malicious counts, trailing bytes and exact aggregate resource limits. Release timings in the checked report measure only actual Formation record decode and encode, including allocation/drop. They exclude game initialization, rules, actions, turns, RNG and original-code performance.
+- **2,524 complete Unit round trips**, 6,137,501 bytes per stream, with **17,668 exact nested boundary comparisons** for CombatModifiers, MovementModifiers, Experience, Religion, RockBand, Espionage and OperationQueue.
+- **2,500 complete Formation round trips**, 71,168 bytes per stream, including 56 path nodes across eight nonempty paths and 1,262 ordered unit IDs per stream.
+- **2,524 separate queue round trips**. Per stream: 954 empty, 185 MakeTradeRoute, 91 MoveTo, and 32 with six observed null-parameter handlers. No actual SkipTurn queue appears; its nonempty native fixture remains a gap.
 
-The actual native Formation reader also resets the omitted evaluating-operation flag, resolves the original owner pointer, and sets archive identity. Those live effects are not encoded in this Rust wire model. Archive dirty-variable history, original pointer/registration identity and full live state remain separate requirements.
+The checker additionally rejects all truncated prefixes of a real Unit, malformed native nested versions/bools/counts and trailing bytes. It finds the exact aggregate-item threshold for that real Unit and verifies the same threshold in encoding; exact byte-budget boundaries also pass. Native Unit keys are unique by `(owner,id)`, and adapter lookup results reference the parsed records. Constructed independent fixtures cover scalar extremes, component ID halves, raw strings, duplicate hash pairs, nonboolean promotion bytes, handler-specific parameters, recursive variants and malformed resource/depth boundaries.
 
-## Bounded operation queue
+Release timings measure actual record decode and encode including allocation/drop. Unit decode includes field-range collection; lookup uses an adapter `HashMap<(owner,id),index>` and excludes building it. These timings exclude game initialization, rules, actions, turns, RNG and original-code performance.
 
-`OperationQueue` supports current queue version 1 and base node version 2. Nodes preserve the operation **hash**, directive, flags, push turn, saved activity and saved automation. Live numeric handler IDs are distinct. Supported handlers are SkipTurn, Alert, Fortify, SpySiphonFunds, SpyDisruptRocketry, SpyGainSources, SpySabotageProduction, MoveTo and MakeTradeRoute. The [original handler contract](../evidence/linux/unit-wire-contracts-operations.json) identifies each target hash, inherited serializer, parameter factory and exact current parameter layout.
+## Remaining live state and acceptance gaps
 
-The seven null-parameter handlers use sentinel 0. MoveTo has version-1 parameters containing PlotCoord then uint32 modifiers; MakeTradeRoute has version-1 parameters containing uint32 modifiers, two PlotCoords and the resource definition hash. `OperationParameters` distinguishes these forms. Encoding rejects a parameter variant that does not match its handler; decoding rejects unknown handlers and unsupported versions. There is no generic handler-body length permitting opaque skipping. Historical versions, other handlers and live definition remapping remain unsupported.
+Current wire records omit native Unit domain and Formation evaluating-operation, along with pointers and other live data. Native readers derive fields, resolve owner/definition references and set archive identity. Those effects, complete live state, definition remapping and tracked archive dirty history are not implemented by this codec. Other operation handlers, other variant types and historical versions remain explicitly unsupported. Successful current-fixture round trips do not establish universal support for all possible Unit records or gameplay behavior.
 
-The pinned native traces attribute 1,262 queue records per stream. The checker now roundtrips **all 2,524 queue records**: per stream 954 empty, 185 MakeTradeRoute, 91 MoveTo, and 32 with one of the six observed null-parameter handlers. All exact native queue bounds are consumed and bytes reproduced. Independent constructed fixtures additionally cover multi-node order, signed field extremes, parameter modifiers/resource hashes, handler/parameter mismatches, malformed parameter versions and every truncated prefix. No actual SkipTurn queue appears in these inputs, so its nonempty native fixture remains a validation gap. Serialized queue parity does not implement any handler's gameplay behavior or establish complete Unit/action parity.
+SKIP_TURN still requires its full legality, queue mutation/dirty history, formation effects, callback/events, diplomacy, notification and RNG surfaces, plus the genuine request delivery and reversible original fixture. All player decisions must yield to external policies. The full exact simulator objective remains open.
 
-## Pending full Unit support
-
-The current Unit version-28 top-level order is known, but its nested definition-indexed arrays and maps, components, Hero, property variants and all operation-handler/parameter formats still need complete contracts and attributed fixture validation. The codec cannot safely advance past those unknown nested fields. Full Unit decoding and definition remapping remain pending. Gameplay actions remain unsupported and cannot advance state through these wire records. The complete exact simulator objective remains open; all player decisions must yield to external policies.
-
-The raw Save→Load→Save failure remains **89,198 bytes**, unclassified and unmasked. These successful component round trips neither repair nor normalize that failure.
+The raw Save→Load→Save failure remains **89,198 bytes**, unclassified and unmasked. These component round trips neither repair nor normalize that failure.

@@ -1,10 +1,15 @@
-//! Bounded Linux XP2 Unit wire components, not a Unit/save loader or gameplay.
+//! Bounded Linux XP2 Unit/Formation wire records, not a Core Save loader or gameplay.
 //!
 //! Current operation queues support nine verified handlers and their exact
 //! parameter formats. Wire operation hashes are distinct from live numeric IDs.
+//! Unit version 28 supports all current fields with explicit nested-codec gates.
 //! Formation version 1 is decoded completely as serialized wire state.
 //! See `docs/linux-unit-archive.md`; unsupported handlers cannot be skipped because
 //! their bodies have no common length. No action transition is implemented here.
+
+mod state;
+pub mod variants;
+pub use state::*;
 
 /// The original registered SkipTurn operation hash, never a numeric handler ID.
 pub const SKIP_TURN_HASH: u32 = 0x2c681908;
@@ -64,6 +69,8 @@ pub struct OperationQueue {
 }
 
 /// Codec resource policy; these are not native gameplay limits.
+/// Items aggregate dynamic elements and string bytes; typed variants also have
+/// a fixed maximum nesting depth of 64. Byte limits apply to the whole record.
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     pub max_bytes: usize,
@@ -88,6 +95,7 @@ pub enum Error {
     UnsupportedParameters(i32),
     ParameterHandlerMismatch(u32),
     NoncanonicalBool(u8),
+    Variant(variants::VariantError),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -100,6 +108,11 @@ impl OperationQueue {
     /// Decode an entire component. Only current queue/node/parameter versions are supported.
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         let mut r = Reader::new(bytes, limits)?;
+        let value = Self::read(&mut r)?;
+        r.finish()?;
+        Ok(value)
+    }
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
         r.version(1)?;
         let count = r.count(32)?;
         let mut nodes = Vec::with_capacity(count);
@@ -148,7 +161,6 @@ impl OperationQueue {
                 parameters,
             });
         }
-        r.finish()?;
         Ok(Self { nodes })
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
