@@ -7,7 +7,7 @@ import struct
 from pathlib import Path
 from save_lifecycle_audit import Elf, HOST_SHA, GAME_SHA
 
-METHODS = [('gamecore', 41968032, 212, 'Cache.Unit.Manager.RequestOperation', '218e087b8d1253ca44100a3d5fd016c1452d5b4af9e80f4123620c225b1068ae'), ('gamecore', 47852272, 81, 'Unit.Operations.Manager.MakeRequest', 'df4289c1de49d2ca7ed1a2fa74c6e97fd092f0b296e70c279f14ddd89441b911'), ('gamecore', 47802144, 246, 'Unit.Operations.BaseHandler.MakeRequest', 'f251ebcecbd03408fb08ca8a3d2fcf4f377c6002a1c21457955a62b77f711cd2'), ('gamecore', 47332848, 664, 'Messages.Manager.BroadcastMessage', '26bd66fc177e4f08efd1aa0a47f871be695a253e48fbaf721415e23b8467bead'), ('host', 53169408, 73, 'EngineUtility.SendMessage(stream)', '66519012830a77b9b6afbd6d7b2acc459ef6947e2c4c53bffbc17349e8f69bca'), ('host', 54254544, 29, 'Network.Manager.BroadcastMessage', '1bf7b49e98b7ac064a3aad55944e9a77bcae26d3a0623d03b3189a96b362349f'), ('host', 60721704, 2563, 'FNetSession.BroadcastMessage', '0c887cfa3eed625673c1ba4276851a055026bbca6004f1985242c5537a1c0356'), ('host', 54196208, 252, 'NetGameCoreMessage.Execute', '25657c19fb08579acb8dc79477586b1bef2467c5fac37d483e44d7a4a7b351ac')]
+METHODS = [('gamecore', 0x2c7e2c0, 13, 'Exports.Context.RequestUnitOperation', 'c4f01b05985fc9af021e6220373fa2bc710a31a6f4ccf60abad2f9ada0116dbe'), ('gamecore', 41968032, 212, 'Cache.Unit.Manager.RequestOperation', '218e087b8d1253ca44100a3d5fd016c1452d5b4af9e80f4123620c225b1068ae'), ('gamecore', 47852272, 81, 'Unit.Operations.Manager.MakeRequest', 'df4289c1de49d2ca7ed1a2fa74c6e97fd092f0b296e70c279f14ddd89441b911'), ('gamecore', 47802144, 246, 'Unit.Operations.BaseHandler.MakeRequest', 'f251ebcecbd03408fb08ca8a3d2fcf4f377c6002a1c21457955a62b77f711cd2'), ('gamecore', 47332848, 664, 'Messages.Manager.BroadcastMessage', '26bd66fc177e4f08efd1aa0a47f871be695a253e48fbaf721415e23b8467bead'), ('host', 53169408, 73, 'EngineUtility.SendMessage(stream)', '66519012830a77b9b6afbd6d7b2acc459ef6947e2c4c53bffbc17349e8f69bca'), ('host', 54254544, 29, 'Network.Manager.BroadcastMessage', '1bf7b49e98b7ac064a3aad55944e9a77bcae26d3a0623d03b3189a96b362349f'), ('host', 60721704, 2563, 'FNetSession.BroadcastMessage', '0c887cfa3eed625673c1ba4276851a055026bbca6004f1985242c5537a1c0356'), ('host', 54196208, 252, 'NetGameCoreMessage.Execute', '25657c19fb08579acb8dc79477586b1bef2467c5fac37d483e44d7a4a7b351ac')]
 SLOTS = [
     ('gamecore', 0x3aff870, 0x100, 0x2da2af0, 'Manager.MakeRequest'),
     ('gamecore', 0x3aff870, 0xa0, 0x2da1720, 'Manager.GetHandlerIDFromHash'),
@@ -52,6 +52,8 @@ def main():
                                       ('host', 0x39d218e, '488b4740c3')]:
         if elves[module].read(address, len(bytes.fromhex(expected))) != bytes.fromhex(expected):
             raise ValueError('session getter bytes differ')
+    if elves['gamecore'].read(0x2c7e2c0, 13) != bytes.fromhex('4889f789d64889cae9034033ff'):
+        raise ValueError('Exports.Context member-to-static forwarding ABI differs')
     result = dict(schema='c6-linux-action-delivery-abi-v1', checks_passed=True,
         host_sha256=HOST_SHA, gamecore_sha256=GAME_SHA,
         method='Read-only original Linux bytes and original virtual bindings',
@@ -60,7 +62,8 @@ def main():
         direct_calls=[dict(module=m,address=hex(v),target=hex(t),name=s) for m,v,t,s in CALLS],
         broadcast_plt='0x1fb9798', broadcast_got='0x3b21cc0',
         conversion_abi='bool(receiver RDI, hash ESI, const TypedVariantMap* RDX, Request* RCX); result AL',
-        request_operation_abi='static void(ComponentID* RDI, hash ESI, const TypedVariantMap* RDX)',
+        cache_request_operation_abi='static void(ComponentID* RDI, hash ESI, const TypedVariantMap* RDX)',
+        exports_context_request_unit_operation_abi='member void(Context* RDI, ComponentID* RSI, hash EDX, const TypedVariantMap* RCX); forwards RSI to RDI, EDX to ESI, RCX to RDX then tailcalls static Cache.Manager via PLT 0x1fb22d0',
         engine_transport_abi='receiver RDI, MemoryOStream* RSI; original bridge always returns EAX=0',
         session_broadcast_abi='void(receiver RDI, FNetMessage* RSI, bool EDX=1, bool ECX=0)',
         transport_gates=['Network.Manager+8 session nonnull', 'FNetSession.GetSyncManager nonnull',

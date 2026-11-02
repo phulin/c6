@@ -7,6 +7,13 @@
   "methods": [
     {
       "module": "gamecore",
+      "address": "0x2c7e2c0",
+      "size": 13,
+      "name": "Exports.Context.RequestUnitOperation",
+      "sha256": "c4f01b05985fc9af021e6220373fa2bc710a31a6f4ccf60abad2f9ada0116dbe"
+    },
+    {
+      "module": "gamecore",
       "address": "0x28061a0",
       "size": 212,
       "name": "Cache.Unit.Manager.RequestOperation",
@@ -155,7 +162,8 @@
   "broadcast_plt": "0x1fb9798",
   "broadcast_got": "0x3b21cc0",
   "conversion_abi": "bool(receiver RDI, hash ESI, const TypedVariantMap* RDX, Request* RCX); result AL",
-  "request_operation_abi": "static void(ComponentID* RDI, hash ESI, const TypedVariantMap* RDX)",
+  "cache_request_operation_abi": "static void(ComponentID* RDI, hash ESI, const TypedVariantMap* RDX)",
+  "exports_context_request_unit_operation_abi": "member void(Context* RDI, ComponentID* RSI, hash EDX, const TypedVariantMap* RCX); forwards RSI to RDI, EDX to ESI, RCX to RDX then tailcalls static Cache.Manager via PLT 0x1fb22d0",
   "engine_transport_abi": "receiver RDI, MemoryOStream* RSI; original bridge always returns EAX=0",
   "session_broadcast_abi": "void(receiver RDI, FNetMessage* RSI, bool EDX=1, bool ECX=0)",
   "transport_gates": [

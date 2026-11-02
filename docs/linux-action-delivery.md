@@ -10,7 +10,9 @@ The JSON records exact module identities, method byte hashes, original call site
 
 ## Conversion boundary
 
-`Cache::Unit::Manager::RequestOperation` at `0x28061a0` is static: RDI is ComponentID, ESI the operation hash, RDX the TypedVariantMap. It rejects owner values outside 0..63 and inactive cached turns, then calls the live Unit Operations Manager vtable offset `0x100` at `0x2806203`.
+`Exports::Context::RequestUnitOperation` at `0x2c7e2c0` is a member function with four ABI arguments: Context receiver RDI, ComponentID RSI, operation hash EDX, TypedVariantMap RCX. Its 13 original bytes move RSI→RDI, EDX→ESI, RCX→RDX and tailcall the static cache manager via PLT `0x1fb22d0`. The exported member must be called with its Context receiver. The JSON names this contract `exports_context_request_unit_operation_abi`.
+
+`Cache::Unit::Manager::RequestOperation` at `0x28061a0` is static: RDI is ComponentID, ESI the operation hash, RDX the TypedVariantMap. The JSON names this separate three-argument contract `cache_request_operation_abi`. It rejects owner values outside 0..63 and inactive cached turns, then calls the live Unit Operations Manager vtable offset `0x100` at `0x2806203`.
 
 That slot binds `Manager::MakeRequest` at `0x2da2af0`: `bool(receiver RDI, hash ESI, map RDX, Request* RCX)`, with result in AL. It maps the hash through manager slot `0xa0`, stores the resulting type at Request+0, rejects type -1, obtains a handler through slot `0x88`, rejects null, and tailcalls handler slot `0x78`. The actual SkipTurn table binds that slot to `BaseHandler::MakeRequest` at `0x2d96720`, which returns true even for an empty map. A null parameter shared pointer is not itself rejection. RequestOperation tests AL and only constructs/broadcasts UnitOperation when true. This return is conversion acceptance, not execution legality or delivery acknowledgement.
 
