@@ -82,3 +82,36 @@ records ranges; actual bytes and complete spans remain private. The repeated
 change is reproducible, but its field semantics and cause remain unproven. Do not
 normalize or ignore these differences, or treat successful native Results as
 proof of a branch-restorable serialized state.
+
+A separate opt-in read-only observation boundary uses the genuine loaded
+`Context::GetGame()` facade, which returns its original interface wrapper only
+after the underlying game's initialized check. The observer reads actual native
+turn, phase, Context/Game local-player IDs, NeedsUpdate, NeedsTurnAdvance,
+IsAiProcessing, IsTurnProcessing and pending-message predicates. It releases only
+the acquired wrapper through original `ICvUnknown::operator delete`, matching the
+host's native ownership convention. It never deletes the borrowed Context,
+selects a player or pumps gameplay.
+
+[game_load_state_audit.py](../tools/linux/game_load_state_audit.py) checks the exact
+XP2 module and matching DWARF excerpt, then verifies all eleven original exported
+method addresses, sizes and complete method-byte hashes.
+[The audit report](../evidence/linux/game-load-state-facade-contracts.json) is
+static ABI evidence. The observation runs between two original Saves so equality
+can test nonmutation within their serialized scope. These fields alone do not
+establish legal-action readiness, complete live state or host finalization.
+
+The observer now returns successfully with full cleanup for both the
+[benchmark input](../evidence/linux/game-load-summary-observer-1.json) and
+[captured input](../evidence/linux/game-load-summary-observer-captured-1.json), in
+separate source/configuration profiles. Both native readouts report current turn
+592, phase 0 and local player 0 from both Context and Game. Pending messages,
+NeedsUpdate, NeedsTurnAdvance, IsAiProcessing and IsTurnProcessing all return
+false. Those are observations, not adapter-selected state or a legal-action
+readiness decision.
+
+Each original Save before/after the observer is byte-identical, including after
+the native wrapper release. Benchmark-input outputs retain `ff31f4…`; captured
+input outputs retain `85d858…`. Thus these calls preserve the observed serialized
+state in both fixtures. The equal coarse readouts coexist with the reproducible
+89,198-byte roundtrip difference, reinforcing that they are insufficient to
+establish complete state equivalence.

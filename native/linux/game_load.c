@@ -9,6 +9,38 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Matching target DWARF and exact exported method byte identities are checked
+ * by tools/linux/game_load_state_audit.py. This observes the actual facade,
+ * never a fabricated Game/Context receiver or a cache stand-in. */
+static int observe_loaded_state(void *module,void *context) {
+    void *(*get_game)(void *)=dlsym(module,"_ZN8GameCore7Exports7Context7GetGameEv");
+    void (*release)(void *)=dlsym(module,"_ZN8GameCore10Interfaces10ICvUnknowndlEPv");
+    int (*context_local)(const void *)=dlsym(module,"_ZNK8GameCore7Exports7Context14GetLocalPlayerEv");
+    bool (*pending)(void *)=dlsym(module,"_ZN8GameCore7Exports7Context18HasPendingMessagesEv");
+    int (*turn)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game14GetCurrentTurnEv");
+    int (*phase)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game15GetCurrentPhaseEv");
+    int (*game_local)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game14GetLocalPlayerEv");
+    bool (*needs_update)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game11NeedsUpdateEv");
+    bool (*needs_advance)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game16NeedsTurnAdvanceEv");
+    bool (*ai)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game14IsAiProcessingEv");
+    bool (*processing)(const void *)=dlsym(module,"_ZNK8GameCore7Exports4Game16IsTurnProcessingEv");
+    if(!get_game||!release||!context_local||!pending||!turn||!phase||!game_local||
+       !needs_update||!needs_advance||!ai||!processing)return 166;
+    void *game=get_game(context);
+    if(!game)return 167;
+    int observed_turn=turn(game),observed_phase=phase(game);
+    int observed_context_local=context_local(context),observed_game_local=game_local(game);
+    bool observed_pending=pending(context),observed_update=needs_update(game);
+    bool observed_advance=needs_advance(game),observed_ai=ai(game),observed_processing=processing(game);
+    /* Native ICvUnknown delete dispatches Destroy; it owns only the acquired
+     * interface wrapper, never the underlying game or framework Context. */
+    release(game);
+    fprintf(stderr,"C6_LINUX_GAME_STATE {\"phase\":\"between_saves\",\"current_turn\":%d,\"current_phase\":%d,\"context_local_player\":%d,\"game_local_player\":%d,\"pending_messages\":%d,\"needs_update\":%d,\"needs_turn_advance\":%d,\"ai_processing\":%d,\"turn_processing\":%d,\"native_wrapper_released\":true}\n",
+        observed_turn,observed_phase,observed_context_local,observed_game_local,
+        observed_pending,observed_update,observed_advance,observed_ai,observed_processing);
+    return 0;
+}
+
 int c6_linux_game_load(void *context) {
     const char *input=getenv("C6_GAME_LOAD_STREAM");
     const char *output=getenv("C6_GAME_SAVE_OUTPUT");
@@ -46,6 +78,7 @@ int c6_linux_game_load(void *context) {
                      c6_linux_context_load(game,context,input);
         if(!result)result=observe("after_core_load");
         if(!result)result=c6_linux_context_save(game,context,output);
+        if(!result && getenv("C6_GAME_LOAD_OBSERVE"))result=observe_loaded_state(game,context);
         if(!result)result=c6_linux_context_save(game,context,repeat);
         fprintf(stderr,"C6_LINUX_GAME_LOAD shutdown_enter\n");
         shutdown(context);

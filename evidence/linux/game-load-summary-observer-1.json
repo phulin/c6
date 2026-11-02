@@ -1,0 +1,57 @@
+{
+  "schema": "c6-linux-game-load-observation-v1",
+  "configuration_sha256": "f9e6b09eb7d278a7fe46f488e22f228750172d0dd2724781635b2693a8933c9d",
+  "returncode": 0,
+  "core_loads": [
+    {
+      "result": 0,
+      "offset": 76556938,
+      "size": 76556938
+    }
+  ],
+  "core_saves": [
+    {
+      "result": 0,
+      "size": 80657462
+    },
+    {
+      "result": 0,
+      "size": 80657462
+    }
+  ],
+  "private_save_files": [
+    {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    }
+  ],
+  "lower_core_boundary_completed": true,
+  "complete_input_consumed": true,
+  "consecutive_save_bytes_equal": true,
+  "framework_cleanup_proven": true,
+  "native_state_observations": [
+    {
+      "phase": "between_saves",
+      "current_turn": 592,
+      "current_phase": 0,
+      "context_local_player": 0,
+      "game_local_player": 0,
+      "pending_messages": 0,
+      "needs_update": 0,
+      "needs_turn_advance": 0,
+      "ai_processing": 0,
+      "turn_processing": 0,
+      "native_wrapper_released": true
+    }
+  ],
+  "observer_serialized_nonmutation_proven": true,
+  "host_load_finalization_proven": false,
+  "initialized_gameplay_fixture": false,
+  "gameplay_parity": false,
+  "limits": "Lower Context StartupGame/Load/Save diagnostic using constructor-state Update callback. No saved RequestLoad/Begin, postload cache/PostInitialize/active-user lifecycle, action or turn equivalence. Core Save omits live queues, caches, jobs and session state; consecutive equality is not branch-restorable full-state proof.",
+  "native_report_sha256": "6f47a073bd37c6c75e9e3ab324ac78e4a4b01608641c6dd0784c369a37c62162"
+}

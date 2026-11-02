@@ -23,6 +23,8 @@ def summarize(report, outputs):
     saved = len(saves) == len(files) == 2 and all(
         artifact is not None and native['result'] == 0 and artifact['bytes'] == native['size']
         for native, artifact in zip(saves, files))
+    observations = [json.loads(line.removeprefix('C6_LINUX_GAME_STATE '))
+                    for line in stderr.splitlines() if line.startswith('C6_LINUX_GAME_STATE ')]
     return {
         'schema': 'c6-linux-game-load-observation-v1',
         'configuration_sha256': report['configuration_sha256'],
@@ -32,6 +34,8 @@ def summarize(report, outputs):
         'complete_input_consumed': bool(loads) and all(x['result'] == 0 and x['offset'] == x['size'] for x in loads),
         'consecutive_save_bytes_equal': completed and saved and files[0] == files[1],
         'framework_cleanup_proven': report.get('framework_cleanup_proven', False),
+        'native_state_observations': observations,
+        'observer_serialized_nonmutation_proven': completed and saved and files[0] == files[1] and bool(observations) and all(x.get('native_wrapper_released') is True for x in observations),
         'host_load_finalization_proven': False, 'initialized_gameplay_fixture': False, 'gameplay_parity': False,
         'limits': 'Lower Context StartupGame/Load/Save diagnostic using constructor-state Update callback. No saved RequestLoad/Begin, postload cache/PostInitialize/active-user lifecycle, action or turn equivalence. Core Save omits live queues, caches, jobs and session state; consecutive equality is not branch-restorable full-state proof.',
     }
