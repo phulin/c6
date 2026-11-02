@@ -74,6 +74,19 @@ def main():
     require(trace[0]['UnitOperation_Execute_virtual_interposed'] and len(bindings) in (12, 13) and all(row['interposed'] for row in bindings), 'selected guard binding proof incomplete')
     if len(bindings) == 13:
         require(any(row['event'] == 'original_virtual_binding' and row['name'] == 'UnitManager_MakeRequest' and row['interposed'] for row in trace), 'original MakeRequest virtual observation not bound')
+    owner_proof = 'hook_owner_preload' in trace[0]
+    if owner_proof:
+        require(trace[0]['hook_owner_preload'] and trace[0]['target_owner_preload'], 'UnitOperation hook/live owner differs from actual preload')
+        require(all(row['hook_owner_preload'] and row['target_owner_preload'] for row in trace if row['event'] in ('original_PLT_binding', 'original_virtual_binding')), 'selected hook/live owner differs from actual preload')
+        request_entries = [row for row in trace if row['event'] == 'make_request_enter' and row['phase'] == 1]
+        request_returns = [row for row in trace if row['event'] == 'make_request_return' and row['phase'] == 1]
+        require(len(request_entries) == len(request_returns) == int(execute), 'actual Request conversion count differs from legality queries')
+        if execute:
+            result = request_returns[0]
+            require(result['accepted'] and result['operation'] == 36 and result['flags'] == 0 and result['bAppend'] == result['bFromUser'] == 0, 'actual Request conversion differs from native SkipTurn defaults')
+            broadcasts = [row for row in trace if row['event'] == 'broadcast_enter' and row['phase'] == 1]
+            returns = [row for row in trace if row['event'] == 'broadcast_return' and row['phase'] == 1]
+            require(len(broadcasts) == len(returns) and broadcasts, 'actual Request broadcast did not return')
     end = trace[-1]
     require(end['event'] == 'end' and end['queued'] == end['received'] and end['unit_executed'] == int(execute) and (end['queued'] >= 1 if execute else end['queued'] == 0), 'genuine request delivery or execution count differs')
     require(sum(row['event'] == 'unit_execute_enter' for row in trace) == int(execute) and sum(row['event'] == 'unit_execute_return' for row in trace) == int(execute), 'original UnitOperation enter/return imbalance')
@@ -114,6 +127,9 @@ def main():
                   original_packets=packets, original_core_saves=saves, outer_original_core_saves=outer_saves, native_full_cleanup=True, message_boundary_pass=True,
                   complete_policy_boundary_coverage=False, complete_affected_state=False, complete_rng_inventory=False, gameplay_parity=False,
                   limits='Exploratory genuine original request/delivery/drain only. Two identified RNG objects and selected unit live fields/dirty ordering are observed; all affected live state and all gameplay RNG streams remain unresolved. Selected policy guards are not complete engine coverage. NeedsUpdate/NeedsTurnAdvance are reported without a full readiness claim. Guard aborts are failed possibly partial-state processes, never resumable yields.')
+    if owner_proof:
+        report['independent_preload_binding_owner_proof'] = True
+        report['actual_request_conversion'] = request_returns
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(dict(mode=mode, message_boundary_pass=True, gameplay_parity=False)))
 
