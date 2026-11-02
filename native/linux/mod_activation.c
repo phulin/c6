@@ -450,6 +450,10 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
         else {
             result=attach();
             if (!result) result=guards();
+            if (!result && getenv("C6_GAME_LOAD_STREAM")) {
+                int (*load)(void *)=dlsym(RTLD_DEFAULT,"c6_linux_game_load");
+                result=load?load(context):156;
+            }
             int left=leave();
             fprintf(stderr,"C6_LINUX_MOD saved_session_control_return result %d leave %d\n",result,left);
             if (!result) result=left;
