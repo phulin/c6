@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "source_kind": "Exact target Linux symbols/instructions; host has no DWARF.",
+  "native_contract": "evidence/linux/mod-activation-tempheap-contract.json",
+  "arena_bytes": 16777216,
+  "optional_storage": null,
+  "startup_return": "Requested size_t bytes, not bool; native arena/ownership postconditions must additionally pass.",
+  "get_heap_symbol": "_ZN8Platform11GetTempHeapEv",
+  "startup_symbol": "_ZN8Platform8TempHeap7StartupEmPh",
+  "shutdown_symbol": "_ZN8Platform8TempHeap8ShutdownEv",
+  "original_global_address": "0x6eef840",
+  "verified_read_only_observations": {
+    "allocation_read_locks": "heap+0x0 uint32; Allocate takes this read lock, DeAllocate decrements this same native word.",
+    "arena": "heap+0x40 pointer",
+    "cursor": "heap+0x48 uint32",
+    "capacity": "heap+0x50 size_t",
+    "storage_owner_bit": "heap+0x58 bit0",
+    "not_a_counter": "heap+0x4c is not used as an allocation count; no guessed counter."
+  },
+  "native_probe": "Original Allocate(1)/Allocate(17), Owns checks for native arena and boundaries, native alignment, two held read locks, first release retains cursor, last release resets it; original Allocate(0)/DeAllocate releases its read lock.",
+  "teardown": "After all Context/framework/network/Lua/App/DLL/ASL owners: original PerfEvents Shutdown (ret in target), conditional native JobManager Destroy only if absent at ownership start, require locks/cursor zero, then native TempHeap Shutdown and verify clear.",
+  "private_raw_evidence": {
+    "../c6-ghidra/evidence/linux-tempheap/app-option-default.txt": "9981f9d6c589ba2152879a5ff7b63ba7c8026d4d40ccb4cbe694004264d23205",
+    "../c6-ghidra/evidence/linux-tempheap/heap-native-api.txt": "2bc7649f9c3890a140d64a8a21e2c6b3bf189d75788ffd824387bdb4b7344766",
+    "../c6-ghidra/evidence/linux-tempheap/platform-native-order.txt": "c770c6d23c15cd40098dcd688d9fc76f97abf15b425f0a7c6968845451070d3b"
+  },
+  "limits": [
+    "Process-global original arena, not a replacement allocator or reconstructed TempHeap object.",
+    "All observed fields are read only at quiescent fixture boundaries; no arbitrary concurrent heap API guarantee.",
+    "A genuine arena fixes a missing startup precondition; no per-buffer padding/count workaround is used.",
+    "Saved-configuration/session teardown still fails in the old v2 fixture; no claim that TempHeap alone fixes all corruption or establishes gameplay parity."
+  ]
+}

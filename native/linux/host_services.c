@@ -22,11 +22,30 @@ static bool archive_factory_created;
 static bool lua_system_created;
 static bool network_started;
 static bool host_events_registered;
+static bool host_arguments_bound;
 
 static void *symbol(const char *name) {
     void *address=dlsym(RTLD_DEFAULT,name);
     if(!address) fprintf(stderr,"C6_LINUX_HOST missing_symbol %s\n",name);
     return address;
+}
+
+int c6_linux_bind_host_arguments(void *candidate) {
+    if(!application||candidate!=application||!application_global||
+       *application_global!=application)return 1;
+    int (*arguments)(int *,char ***)=symbol("c6_linux_main_arguments");
+    int argc=0;
+    char **argv=NULL;
+    if(!arguments||arguments(&argc,&argv)||argc!=1||!argv||!argv[0]||argv[1])return 1;
+    /* Exact original RunApp stores at 0x42b9aa3/0x42b9aa7. This is actual CRT
+     * input, not a fabricated command line or a reconstructed App object. */
+    if(host_arguments_bound)return *(int *)((char *)application+0x30)==argc&&
+        *(char ***)((char *)application+0x38)==argv?0:1;
+    *(int *)((char *)application+0x30)=argc;
+    *(char ***)((char *)application+0x38)=argv;
+    host_arguments_bound=true;
+    fprintf(stderr,"C6_LINUX_HOST arguments_bound argc %d genuine_crt 1\n",argc);
+    return 0;
 }
 
 int c6_linux_register_host_events(void) {
@@ -89,6 +108,8 @@ static int create_lua_system_and_probe(void) {
 
 void *c6_linux_create_host_engine_utility(void) {
     if(application || utility) return NULL;
+    int (*initialize_temp_heap)(void)=symbol("c6_linux_temp_heap_initialize");
+    if(!initialize_temp_heap||initialize_temp_heap())return NULL;
     void *(*allocate)(size_t)=symbol("_Znwm");
     void (*app_construct)(void *)=symbol("_ZN7Civ6AppC1Ev");
     void (*utility_construct)(void *)=symbol("_ZN8GameCore13EngineUtilityC1Ev");
@@ -117,6 +138,7 @@ void *c6_linux_create_host_engine_utility(void) {
      * input substitutes only the directory, not App behavior. */
     copy_path((wchar_t *)((char *)application+0x464),docs);
     *application_global=application;
+    if(c6_linux_bind_host_arguments(application))return NULL;
     fprintf(stderr,"C6_LINUX_HOST app_construct_return published\n");
     fprintf(stderr,"C6_LINUX_HOST utility_construct_enter\n");
     /* Allocation size from AppModdingFramework::GetEngineUtility native
@@ -223,6 +245,7 @@ int c6_linux_destroy_host_services(void) {
         delete_object(application);
         application=NULL;
         host_events_registered=false;
+        host_arguments_bound=false;
         if(database_started) {
             void (*shutdown)(void)=symbol("_ZN8Database8ShutdownEv");
             if(!shutdown) return 1;

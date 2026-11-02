@@ -22,12 +22,11 @@ int c6_linux_network_initialize(void *application) {
     void *(*get_firewire)(void)=symbol("_ZN11FireWireMgr11GetInstanceEv");
     void *(*get_sync)(void)=symbol("_ZN16FGameSyncManager11GetInstanceEv");
     void *(*get_messages)(void)=symbol("_ZN18FNetMessageFactory11GetInstanceEv");
-    int (*arguments)(int *,char ***)=symbol("c6_linux_main_arguments");
     void *(*get_session)(void *)=symbol("_ZN7Network7Manager10GetSessionEv");
     void **published_app=symbol("g_pkApplication");
     if(!published_app||*published_app!=application)return 150;
     if(!setup||!get_manager||!get_archive||!get_firewire||!get_sync||
-       !get_messages||!arguments||!get_session||!application||owned)return 150;
+       !get_messages||!get_session||!application||owned)return 150;
     /* Original Network::Initialize overwrites Manager/Archive/FireWire owners.
      * FireWire C1 0x3a017c5..d7 preserves an existing CRT MessageFactory.
      * Require that same native object after Setup; do not replace it. */
@@ -41,15 +40,10 @@ int c6_linux_network_initialize(void *application) {
         fprintf(stderr,"C6_LINUX_NETWORK existing_owner_refused\n");
         return 151;
     }
-    int argc=0;
-    char **argv=NULL;
-    if(arguments(&argc,&argv)||argc!=1||!argv||!argv[0]||argv[1])return 152;
+    if(c6_linux_bind_host_arguments(application))return 152;
     if(c6_linux_register_host_events())return 153;
-    /* Actual RunApp 0x42b9aa3/0x42b9aa7 stores these AppEnvironment arguments.
-     * Use the genuine CRT main arguments; never invent a command line. */
-    *(int *)((char *)application+0x30)=argc;
-    *(char ***)((char *)application+0x38)=argv;
-    fprintf(stderr,"C6_LINUX_NETWORK setup_enter argc %d\n",argc);
+    fprintf(stderr,"C6_LINUX_NETWORK setup_enter argc %d\n",
+            *(int *)((char *)application+0x30));
     bool result=setup(application);
     owned_manager=get_manager();
     owned=owned_manager!=NULL;
