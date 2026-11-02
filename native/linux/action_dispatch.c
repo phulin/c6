@@ -72,7 +72,12 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
 #undef CORE
 #undef HOST
     const char *before=getenv("C6_ACTION_SNAPSHOT_BEFORE"),*after=getenv("C6_ACTION_SNAPSHOT_AFTER"),*repeat=getenv("C6_ACTION_SNAPSHOT_REPEAT");
-    if(!before||!after||!repeat||!*controller||executing(*controller)||suspended(*controller)||native_loading()||native_saving())return 222;
+    bool present=*controller!=NULL;
+    bool worker_executing=present&&executing(*controller);
+    bool worker_suspended=present&&suspended(*controller);
+    bool loading=native_loading(),saving=native_saving();
+    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"host_worker_preconditions\",\"snapshot_before_present\":%d,\"snapshot_after_present\":%d,\"snapshot_repeat_present\":%d,\"controller_present\":%d,\"worker_executing\":%d,\"worker_suspended\":%d,\"native_loading\":%d,\"native_saving\":%d}\n",before!=NULL,after!=NULL,repeat!=NULL,present,worker_executing,worker_suspended,loading,saving);
+    if(!before||!after||!repeat||!present||worker_executing||worker_suspended||loading||saving)return 222;
     /* Actual constructor and ExecuteGameCoreUpdate bytes establish this native
      * threaded-mode selector. Read only; do not force a mode or construct a worker. */
     unsigned char threaded=*((const unsigned char *)*controller+4);
