@@ -129,6 +129,10 @@ def main():
         'native/bootstrap/localization/localization.h',
         'native/bootstrap/database-backup/backup.c',
         'native/bootstrap/database-backup/backup.h',
+        'native/bootstrap/script-system/script_system.c',
+        'native/bootstrap/script-system/script_system.h',
+        'native/bootstrap/app-provider/app_provider.c',
+        'native/bootstrap/app-provider/app_provider.h',
     )}
     sources['tools/bootstrap/config.json'] = sha(ROOT / 'tools/bootstrap/config.json')
     sources['native/bootstrap/Makefile'] = sha(ROOT / 'native/bootstrap/Makefile')
@@ -146,7 +150,9 @@ def main():
                      'wine_dll_overrides': 'msvcp140,vcruntime140,ucrtbase=n',
                      'runtime_imports': external, 'service_fixture': 'bounded_diagnostic' if args.initialize else 'none',
                      'rules_snapshot_requested': bool(args.rules_snapshot_dir),
-                     'startup_game_requested': args.startup_game, 'save_stream': save_stream,
+                     'startup_game_requested': args.startup_game,
+                     'host_app_fixture': 'complete_original_constructors_with_explicit_singleton_and_database_attachment_no_full_AppInit' if args.startup_game else None,
+                     'script_system_fixture': 'original_singleton_lua_manager_and_Havok' if args.startup_game else None, 'save_stream': save_stream,
                      'content_recipe_sha256': sha(recipe_path) if recipe_path else None,
                      'content_recipe': recipe,
                      'localization': ({k: localization[k] for k in ('language', 'selection', 'sources', 'icu_sha256', 'dll_sha256')} if localization else None),
@@ -199,6 +205,8 @@ def main():
         result.update({'host_sha256': sha(host), 'wine_version': wine_version,
                        'returncode': run.returncode, 'observations': observations,
                        'stderr': run.stderr, 'real_context_created': any(item.get('real_context_created') for item in observations),
+                       'startup_game_returned': any(item.get('phase') == 'StartupGame_returned' for item in observations),
+                       'original_context_load_called': any(item.get('phase') == 'save_stream_begin' for item in observations),
                        'context_initialized': any(item.get('phase') == 'Initialize_returned' and item.get('result') and item.get('is_initialized_after') for item in observations),
                        'initialized_game': False, 'gameplay_parity': False})
     if args.rules_snapshot_dir:

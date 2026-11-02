@@ -12,6 +12,8 @@
 #include "xml-import/content.h"
 #include "localization/localization.h"
 #include "database-backup/backup.h"
+#include "script-system/script_system.h"
+#include "app-provider/app_provider.h"
 
 static const char expected_dll[] = "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c";
 static HMODULE image;
@@ -27,7 +29,7 @@ static LONG CALLBACK crashed(EXCEPTION_POINTERS *info) {
     uintptr_t address = (uintptr_t)info->ExceptionRecord->ExceptionAddress;
     HMODULE fault_module = NULL;
     wchar_t module_path[32768] = L"unknown";
-    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+    if (address) GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                       (const wchar_t *)address, &fault_module);
     if (fault_module) GetModuleFileNameW(fault_module, module_path, 32768);
     const wchar_t *module_name = wcsrchr(module_path, L'\\');
@@ -48,6 +50,7 @@ static LONG CALLBACK crashed(EXCEPTION_POINTERS *info) {
         for (unsigned i = 0; i < 8; ++i) fprintf(stderr, "%s\"0x%llx\"", i ? "," : "", (unsigned long long)words[i]);
         fputs("]}\n", stderr);
     }
+    bootstrap_save_probe_report_fault(stderr);
     fflush(stderr);
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -207,6 +210,21 @@ int wmain(int argc, wchar_t **argv) {
                 if (!localization_manifest || !icu_path) return 18;
                 int localization_result = bootstrap_original_localization(original_executable, localization_manifest, icu_path);
                 if (localization_result) return localization_result;
+                phase = "prepare_original_app_provider";
+                void *app = bootstrap_original_app_construct(original_executable);
+                if (!app || !bootstrap_original_app_gameplay_database(original_executable, app,
+                        bootstrap_service_fixture_database_connection(1))) return 20;
+                phase = "prepare_original_script_system";
+                HMODULE havok = GetModuleHandleW(L"HavokScript_FinalRelease.dll");
+                wchar_t havok_path[32768];
+                if (!havok || !GetModuleFileNameW(havok, havok_path, 32768) ||
+                    !hash_matches(havok_path, "9fb4e34afa6666aafb519d6edb9c1e4e9add9cce2cecaa3b1e5bb8f08b168532")) return 21;
+                void *script_system = bootstrap_original_script_system(original_executable);
+                if (!script_system) return 22;
+                phase = "recache_original_engine_script_provider";
+                ((void (*)(void *, void *))vtable[0x60 / 8])(context, engine);
+                if (*(void **)((unsigned char *)image + 0xb8aa88) != script_system) return 23;
+                puts("{\"phase\":\"original_engine_script_recached\",\"genuine_script_system\":true,\"full_app_initialized\":false}");
                 phase = "StartupGame";
                 printf("{\"phase\":\"StartupGame_begin\",\"original_wrapper_rva\":\"0x591870\",\"original_implementation_rva\":\"0x46be0\",\"fixture\":\"%s\",\"initialized_game\":false}\n", content_mode ? "original_declared_content_recipe" : "original_sql_only_schema");
                 ((void (*)(void *))vtable[0x40 / 8])(context);
