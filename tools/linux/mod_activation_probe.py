@@ -40,6 +40,8 @@ def main():
     action_modes=parser.add_mutually_exclusive_group()
     action_modes.add_argument('--action-skip-turn-control',action='store_true')
     action_modes.add_argument('--action-skip-turn',action='store_true')
+    action_modes.add_argument('--action-skip-turn-registered-control',action='store_true')
+    action_modes.add_argument('--action-skip-turn-registered',action='store_true')
     parser.add_argument('--action-snapshot-before',type=Path)
     parser.add_argument('--action-snapshot-after',type=Path)
     parser.add_argument('--action-snapshot-repeat',type=Path)
@@ -66,7 +68,8 @@ def main():
         parser.error('--attach-saved-session requires network, saved configuration and cleanup')
     if not 1<=args.timeout<=600:parser.error('--timeout must be between 1 and 600 seconds')
     game_input=args.game_load_stream.resolve() if args.game_load_stream else None
-    action_mode='execute' if args.action_skip_turn else 'control' if args.action_skip_turn_control else None
+    action_mode='execute' if args.action_skip_turn or args.action_skip_turn_registered else 'control' if args.action_skip_turn_control or args.action_skip_turn_registered_control else None
+    registered_action=args.action_skip_turn_registered or args.action_skip_turn_registered_control
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -196,7 +199,7 @@ def main():
     dispatch_audits={}
     dispatch_audit_paths=[]
     if action_mode or args.action_lifecycle_observe:
-        for stem in ('action_dispatch','action_state','action_delivery'):
+        for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
             with tempfile.TemporaryDirectory(prefix='c6-dispatch-audit-') as temporary:
@@ -270,7 +273,7 @@ def main():
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
     execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode else []
     lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c'] if action_mode or args.action_lifecycle_observe else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
@@ -305,7 +308,7 @@ def main():
               'save_normalization_trace':normalization_audit,
               'lower_core_cache_dispatch_observer':execution_audit,
               'lower_core_controller_cache_lifecycle_observer':args.action_lifecycle_observe,
-              'bounded_action_mode':action_mode,'bounded_action_audits':dispatch_audits,
+              'bounded_action_mode':action_mode,'pre_controller_registration':registered_action,'bounded_action_audits':dispatch_audits,
               'lower_core_definition_registry_observer':definition_audit,
               'lower_core_unit_definition_registry_observer':unit_definition_audit,
               'lower_core_operation_registry_observer':operation_registry_audit,
@@ -343,7 +346,7 @@ def main():
     if operation_registry_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*operation_registry_sources,ROOT/'native/linux/operation_registry.h']})
     if dispatch_sources:
-        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h']})
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h',ROOT/'native/linux/action_registration.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
@@ -402,6 +405,7 @@ def main():
             env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
         if action_mode:
             env['C6_ACTION_SKIP_TURN']=action_mode
+            if registered_action:env['C6_ACTION_REGISTER_PRECONTROLLER']='1'
             env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
             for label,path in action_snapshots.items():env[f'C6_ACTION_SNAPSHOT_{label.upper()}']=str(path)
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'

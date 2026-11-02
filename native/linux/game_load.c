@@ -96,7 +96,8 @@ int c6_linux_game_load(void *context) {
             result=action_observe?action_observe(game,context):168;
         }
         if(!result && getenv("C6_ACTION_SKIP_TURN")) {
-            int (*dispatch)(void *,void *,bool)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_dispatch");
+            const char *dispatch_name=getenv("C6_ACTION_REGISTER_PRECONTROLLER")?"c6_linux_action_prepare_registered_dispatch":"c6_linux_action_prepare_dispatch";
+            int (*dispatch)(void *,void *,bool)=dlsym(RTLD_DEFAULT,dispatch_name);
             bool execute=!strcmp(getenv("C6_ACTION_SKIP_TURN"),"execute");
             result=dispatch?dispatch(game,context,execute):172;
         } else if(!result && getenv("C6_ACTION_LIFECYCLE")) {
