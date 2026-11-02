@@ -9,6 +9,11 @@
   "executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
   "format": "c6.original-mod-import-phase-contract.v1",
   "initialized_game": false,
+  "limits": [
+    "Passing explicit source import and context lifecycle diagnostic; native component selection engine not executed.",
+    "No original initialized cache comparison or complete database state fingerprint yet.",
+    "Game startup, configuration activation, save loading and turn parity remain separate boundaries."
+  ],
   "native_cascade_retest": {
     "all_213_source_imports_status_zero": true,
     "base_mode_carryover_removed": true,
@@ -16,10 +21,11 @@
     "final_commit_succeeded": false,
     "foreign_key_violations": 1734
   },
-  "native_retest_required": true,
+  "native_retest_required": false,
   "next_required_phase": {
     "context_export_slot": "0x50",
     "export_rva": "0x590600",
+    "native_execution_verified": true,
     "original_host_wrapper_rva": "0x24de00",
     "purpose": "Insert original embedded effect/collection/requirement type data before mod deferred foreign-key validation.",
     "underlying_writer_rva": "0x45ed0",
@@ -76,5 +82,21 @@
     "native_xml_status": 7,
     "source_index": 134,
     "source_path": "DLC/Expansion2/Data/Expansion1_Governments.xml"
+  },
+  "successful_native_retest": {
+    "all_original_sources_status_zero": true,
+    "configuration_sha256": "70481333c5ff7e3f8ef100bca367e7d8567ae148172e41a8bb3cad9d37d9047a",
+    "configuration_tables": 78,
+    "context_initialize_succeeded": true,
+    "embedded_total_changes_delta": 3624,
+    "embedded_types_after": 3810,
+    "embedded_types_before": 2652,
+    "evidence": "evidence/bootstrap/native-xp2-content-effects-phase.json",
+    "final_native_commit_succeeded": true,
+    "gameplay_tables": 428,
+    "initialized_game": false,
+    "mod_selection_engine_executed": false,
+    "original_source_import_count": 213,
+    "returncode": 0
   }
 }

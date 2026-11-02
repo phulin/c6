@@ -253,9 +253,9 @@ Committing after each action is a different contract and prematurely checks
 references intended to remain deferred across actions.
 
 With the original foreign-key mode and action savepoints, all 213 source imports
-return success. The current source-only candidate still fails its final native
-commit with 1,734 foreign-key violations; that is a failed rules database build,
-not initialized-game evidence. Many unresolved references are enum types used by
+returned success, but the source-only candidate failed its final native commit
+with 1,734 foreign-key violations. That preserved failure was not a passing rules
+database build. Many unresolved references are enum types used by
 `DynamicModifiers`. The original host separately writes embedded GameCore data
 through its wrapper `0x24de00`: it enables foreign keys and deferral, begins a
 transaction, calls context export slot `+0x50` with the writable database, and
@@ -271,6 +271,15 @@ before source index 115, the first gameplay mod source.
 
 [`xp2-mod-import-phase.json`](../evidence/assets/xp2-mod-import-phase.json)
 preserves the original phase contracts, first failure and later failed-commit
-evidence links. The original source sequence is retained. A passing native build
-still requires the embedded writer and complete validation; full game state,
-actions, save loading and turns remain separate boundaries.
+evidence links. The original source sequence is retained. The subsequent native run includes the original embedded writer: `Types` grows
+from 2,652 to 3,810 with 3,624 total changes. All 213 original source imports and
+the final native commit pass, producing 78 configuration and 428 gameplay tables.
+Original `ContextInitialize` succeeds, and all three lifecycle cycles complete
+with exit code zero. The result is recorded in
+[`native-xp2-content-effects-phase.json`](../evidence/bootstrap/native-xp2-content-effects-phase.json).
+
+This is a passing native import and context lifecycle fixture for the explicit
+source sequence. The native component selection engine was not executed, and no
+original initialized cache comparison or complete database state fingerprint has
+yet been obtained. Full game startup, activated session configuration, actions,
+save loading and turns remain separate boundaries.
