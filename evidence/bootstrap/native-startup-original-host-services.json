@@ -1,0 +1,278 @@
+{
+  "configuration_sha256": "03affe04a7b37f148bd707074e2c07a6f198637e0056f93f8d197b2c1f733b2a",
+  "configuration": {
+    "schema": "c6-wine-context-lifetime-v1",
+    "target_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+    "sources": {
+      "native/bootstrap/context_host.c": "4174dbfbe6001b5bafd9e9b11c0a8acf31b18def2199c372da4f91452ba10d16",
+      "native/bootstrap/services/service_fixture.c": "5637f661f16383784905b743735aa4d39931be30eab19929d732788492b6dec2",
+      "native/bootstrap/services/service_fixture.h": "c0b6e47e37f6733077464fcc2d6f4e78fb8598a42173702cc66e1b5bf72878a3",
+      "native/bootstrap/save/save_probe.c": "007f01046439e41dabcb927f4e41d79ad978f8486102d016e437eee2752c40fe",
+      "native/bootstrap/save/save_probe.h": "9c037a0994ac522f6656b8319228374e042cb90dc815c223d65d7c7f160de910",
+      "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
+      "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e",
+      "tools/bootstrap/config.json": "a094a6125762723398a8cc8ed77df80ab0d57bb34e0043a7497dc0cc4471714a",
+      "native/bootstrap/Makefile": "0c0a16a54d18227d01c57d9a5a31b1c4efc86b697c029bcd3d499389709989f8",
+      "tools/bootstrap/run.py": "9646cf69d8c8dc915bdaa4124d0ac699953cc1e26109203f68191ffc6bee90be"
+    },
+    "dependencies": [
+      {
+        "path": "DLC/Expansion2/Binaries/Win64/GameCore_XP2_FinalRelease.dll",
+        "sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+        "imports": [
+          "DatabaseDLL_FinalRelease.dll",
+          "Localization_FinalRelease.dll",
+          "HavokScript_FinalRelease.dll",
+          "KERNEL32.dll",
+          "ole32.dll",
+          "MSVCP140.dll",
+          "VCRUNTIME140.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-convert-l1-1-0.dll"
+        ]
+      },
+      {
+        "path": "Base/Binaries/Win64Steam/DatabaseDLL_FinalRelease.dll",
+        "sha256": "e6577e873f946224df65c02f6c4bc3b385607e2a82d957b0fd613e01cbe78b0c",
+        "imports": [
+          "KERNEL32.dll",
+          "MSVCP140.dll",
+          "VCRUNTIME140.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll"
+        ]
+      },
+      {
+        "path": "Base/Binaries/Win64Steam/Localization_FinalRelease.dll",
+        "sha256": "0becd5c425a3d6edc88f5315c01af3dd30dd7cb158271d56f4bba7ff2bb4e056",
+        "imports": [
+          "KERNEL32.dll",
+          "ADVAPI32.dll",
+          "MSVCP140.dll",
+          "VCRUNTIME140.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll"
+        ]
+      },
+      {
+        "path": "Base/Binaries/Win64Steam/HavokScript_FinalRelease.dll",
+        "sha256": "9fb4e34afa6666aafb519d6edb9c1e4e9add9cce2cecaa3b1e5bb8f08b168532",
+        "imports": [
+          "KERNEL32.dll",
+          "VCRUNTIME140.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll"
+        ]
+      }
+    ],
+    "wine_version": "wine-9.0 (Ubuntu 9.0~repack-4build3)",
+    "compiler_version": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
+    "original_executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+    "runtime_providers": {
+      "LaunchPad/api-ms-win-crt-conio-l1-1-0.dll": "60bd8f0bd64062292eff0f5f1a91347b8d61fbe3f2e9b140112501770eae0b80",
+      "LaunchPad/api-ms-win-crt-convert-l1-1-0.dll": "d09b49f2a30dcc13b7f0de8242fa57d0bdeb22f3b7e6c224be73bc4dd98d3c26",
+      "LaunchPad/api-ms-win-crt-environment-l1-1-0.dll": "37f731e7b1538467288bf1d0e586405b20808d4bad05e47225673661bc8b4a9f",
+      "LaunchPad/api-ms-win-crt-filesystem-l1-1-0.dll": "48c71b2d0af6807f387d97ab22a3ba77b85bdf457f8a4f03ce79d13fbb891328",
+      "LaunchPad/api-ms-win-crt-heap-l1-1-0.dll": "9b9a43b9a32a3d3c3de72b2acca41e051b1e604b45be84985b6a62fb03355e6d",
+      "LaunchPad/api-ms-win-crt-locale-l1-1-0.dll": "1c556505a926fd5f713004e88d7f8d68177d7d40a406f6ed04af7bacd2264979",
+      "LaunchPad/api-ms-win-crt-math-l1-1-0.dll": "3e8828ab7327f26da0687f683944ffc551440a3de1004cc512f04a2f498520f6",
+      "LaunchPad/api-ms-win-crt-multibyte-l1-1-0.dll": "35b247534f9a19755a281e6dc3490f8197dd515f518c6550208b862c43297345",
+      "LaunchPad/api-ms-win-crt-private-l1-1-0.dll": "3105da41b02009383826ed70857de1a8961daeb942e9068d0357cddd939fa154",
+      "LaunchPad/api-ms-win-crt-process-l1-1-0.dll": "75f7b0937a1433ea7e7fa2904b02fd46296b31da822575c0a6bc2038805971ef",
+      "LaunchPad/api-ms-win-crt-runtime-l1-1-0.dll": "d16db68b4020287bb6ce701b71312a9d887874c0d26b9ebd82c3c9b965029562",
+      "LaunchPad/api-ms-win-crt-stdio-l1-1-0.dll": "7c416d52a7e8d6113ff85bf833cae3e11c45d1c2215b061a5bbd47432b2244a5",
+      "LaunchPad/api-ms-win-crt-string-l1-1-0.dll": "fd8a73640a158857dd76173c5d97ceeba190e3c3eabf39446936b24032b54116",
+      "LaunchPad/api-ms-win-crt-time-l1-1-0.dll": "b401edaac4b41da73356de9b3358dc21f8b998a63413c868510dc734b1e4022f",
+      "LaunchPad/api-ms-win-crt-utility-l1-1-0.dll": "97e4c91103c186517fa248772b9204acf08fde05557a19efe28d11fb0932b1f7",
+      "LaunchPad/msvcp140.dll": "517cd3aac2177a357cca6032f07ad7360ee8ca212a02dd6e1301bf6cfade2094",
+      "LaunchPad/ucrtbase.dll": "2ab2a74bcb5bfd8248d232eb3bc56698fb5173b9ff7fc0daf87d8120d0f448d7",
+      "LaunchPad/vcruntime140.dll": "d89c7b863fc1ac3a179d45d5fe1b9fd35fb6fbd45171ca68d0d68ab1c1ad04fb"
+    },
+    "wine_dll_overrides": "msvcp140,vcruntime140,ucrtbase=n",
+    "runtime_imports": [
+      "ADVAPI32.dll",
+      "KERNEL32.dll",
+      "MSVCP140.dll",
+      "VCRUNTIME140.dll",
+      "api-ms-win-crt-convert-l1-1-0.dll",
+      "api-ms-win-crt-environment-l1-1-0.dll",
+      "api-ms-win-crt-filesystem-l1-1-0.dll",
+      "api-ms-win-crt-heap-l1-1-0.dll",
+      "api-ms-win-crt-locale-l1-1-0.dll",
+      "api-ms-win-crt-math-l1-1-0.dll",
+      "api-ms-win-crt-runtime-l1-1-0.dll",
+      "api-ms-win-crt-stdio-l1-1-0.dll",
+      "api-ms-win-crt-string-l1-1-0.dll",
+      "api-ms-win-crt-time-l1-1-0.dll",
+      "api-ms-win-crt-utility-l1-1-0.dll",
+      "ole32.dll"
+    ],
+    "service_fixture": "bounded_diagnostic",
+    "startup_game_requested": true,
+    "save_stream": null,
+    "sql_schema_sources": [
+      {
+        "path": "Base/Assets/Configuration/Data/Schema/AdditionalTables.sql",
+        "sha256": "a7235f071257ca511408ed084615b0472b315d6aee2c8a44d077c41509031273"
+      },
+      {
+        "path": "Base/Assets/Configuration/Data/Schema/HallofFame.sql",
+        "sha256": "dbf856b482f44857dbc0afd80dcd2d7bee0d92bb2d7e2de3893e4b1f9409ef95"
+      },
+      {
+        "path": "Base/Assets/Configuration/Data/Schema/InputConfiguration.sql",
+        "sha256": "1807c081b2feb16791c420b3da6f49fc0773712b546217eabfb57c4efd7c9109"
+      },
+      {
+        "path": "Base/Assets/Configuration/Data/Schema/SetupParameters.sql",
+        "sha256": "644476f6e8db7e0a116907add79b1d5d382c6244f98a0960ce12d8a78f0df13d"
+      },
+      {
+        "path": "Base/Assets/Gameplay/Data/Schema/01_GameplaySchema.sql",
+        "sha256": "d56906e7f67c09193b431843432bc21d62e86c32f3f46c14eae9dedbe69084e0"
+      },
+      {
+        "path": "Base/Assets/Gameplay/Data/Schema/02_AddTriggers.sql",
+        "sha256": "3226e930e6dc087d163c5d6f6968652a0a1180c64d58daa04a3b1c50d4f1787c"
+      },
+      {
+        "path": "DLC/Expansion2/Data/Expansion2_Schema.sql",
+        "sha256": "9355a7eb967f5adba021b1846e782c267483b3d2744a7a9becdd62334b091850"
+      }
+    ],
+    "sql_text_transform": "strip_utf8_bom_if_present",
+    "rules_database": "original_sql_only_schema_diagnostic",
+    "enabled_dlc_mods": null,
+    "initialized_game": false
+  },
+  "host_sha256": "ad55eb2bec8f7428dd847a382e09043d0a769fd1a4fd8facac69046cc097e3a4",
+  "wine_version": "wine-9.0 (Ubuntu 9.0~repack-4build3)",
+  "returncode": 5,
+  "observations": [
+    {
+      "phase": "original_host_sentinel_verified",
+      "original_getter_executed": true,
+      "original_executable_initialized": false
+    },
+    {
+      "phase": "loaded",
+      "normal_windows_loader": true
+    },
+    {
+      "phase": "context_queries",
+      "cycle": 0,
+      "real_context_created": true,
+      "accepted_guid_1": true,
+      "accepted_guid_2": true,
+      "unknown_rejected": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 0,
+      "gameplay": false,
+      "bytes": 11712,
+      "utf8_bom_removed": false,
+      "success": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 1,
+      "gameplay": false,
+      "bytes": 8905,
+      "utf8_bom_removed": false,
+      "success": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 2,
+      "gameplay": false,
+      "bytes": 1295,
+      "utf8_bom_removed": false,
+      "success": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 3,
+      "gameplay": false,
+      "bytes": 10638,
+      "utf8_bom_removed": false,
+      "success": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 4,
+      "gameplay": true,
+      "bytes": 296595,
+      "utf8_bom_removed": false,
+      "success": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 5,
+      "gameplay": true,
+      "bytes": 444,
+      "utf8_bom_removed": true,
+      "success": true
+    },
+    {
+      "phase": "original_database_sql",
+      "source_index": 6,
+      "gameplay": true,
+      "bytes": 77861,
+      "utf8_bom_removed": false,
+      "success": true
+    },
+    {
+      "service_fixture": "bounded_diagnostic",
+      "registered_parameters": 16,
+      "script_vm": false,
+      "logging_manager": "stderr_sink",
+      "empty_database_keepalives": true,
+      "gameplay_initialized": false
+    },
+    {
+      "phase": "Initialize_returned",
+      "result": true,
+      "is_initialized_before": false,
+      "is_initialized_after": true,
+      "initialized_game": false
+    },
+    {
+      "phase": "StartupGame_begin",
+      "original_wrapper_rva": "0x591870",
+      "original_implementation_rva": "0x46be0",
+      "fixture": "original_sql_only_schema",
+      "initialized_game": false
+    }
+  ],
+  "stderr": "{\"bootstrap_service\":\"QueryInterface\",\"slot_offset\":0}\n{\"bootstrap_service\":\"script_system_unavailable_null\",\"slot_offset\":16}\n{\"bootstrap_service\":\"GetLoggingManager_stderr_sink\",\"slot_offset\":24}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":3241152231,\"parameter\":4032072631,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":2785224901,\"parameter\":4032072631,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":3795521837,\"parameter\":4032072631,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":3305989846,\"parameter\":4032072631,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":3918721997,\"parameter\":4032072631,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":1854549907,\"parameter\":4032072631,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":490036867,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":675466772,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":1294624025,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":830651534,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":272736031,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":1372081338,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":2582142662,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":1099678774,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":3270739392,\"parameter\":594779970,\"usage\":1}\n{\"bootstrap_service\":\"RegisterEventParameter\",\"event\":4148886649,\"parameter\":4081310810,\"usage\":1}\n{\"bootstrap_service\":\"original_database_empty_keepalives_created\",\"slot_offset\":0}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":707888450}\n{\"bootstrap_service\":\"GetConfigurationDatabaseUri_empty_fixture\",\"slot_offset\":320}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":219963701}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":219963701,\"enabled\":1}\n{\"bootstrap_service\":\"GetGameplayDatabaseUri_empty_fixture\",\"slot_offset\":312}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":219963701}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":219963701,\"enabled\":1}\n{\"bootstrap_service\":\"original_archive_factory_constructed\",\"slot_offset\":272}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":319007059}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":319007059,\"enabled\":1}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":2876651106}\n{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":2876651106,\"enabled\":1}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"bootstrap_service\":\"GetGameSyncManager_original_null\",\"slot_offset\":264}\n{\"phase\":\"StartupGame\",\"exception\":\"0xc0000005\",\"fault_module\":\"Localization_FinalRelease.dll\",\"module_rva\":\"0x14660\",\"rax\":\"0x29f091c5\",\"rcx\":\"0x29\",\"rdx\":\"0x2ba1211c00467600\",\"r8\":\"0x100000001b3\",\"r9\":\"0x7e47f2db7782\"}\n{\"phase\":\"fault_stack_words\",\"words\":[\"0xffffffffffffffff\",\"0x6fff00000006\",\"0x0\",\"0x0\",\"0xffffffff\",\"0x7ffffeacd53b\",\"0x7e47f2db7760\",\"0x29f091c5\"]}\n",
+  "real_context_created": true,
+  "context_initialized": true,
+  "initialized_game": false,
+  "gameplay_parity": false
+}

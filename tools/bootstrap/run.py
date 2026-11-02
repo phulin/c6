@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--inventory-only', action='store_true')
     parser.add_argument('--initialize', action='store_true', help='run explicitly bounded host service diagnostic')
+    parser.add_argument('--content-recipe', choices=('base', 'xp2'), help='populate real original database connections using pinned original SQL/XML recipe')
     parser.add_argument('--load-stream', type=Path, help='after original StartupGame, probe original Load with fingerprinted private extracted stream')
     parser.add_argument('--startup-game', action='store_true', help='probe original StartupGame with explicit SQL-only schema fixture')
     parser.add_argument('--raw-sql-bytes', action='store_true', help='preserve UTF-8 BOM for reproducible original SQL failure boundary')
@@ -48,12 +49,39 @@ def main():
         if args.load_stream.stat().st_size != 76556938 or sha(args.load_stream) != 'a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa':
             raise SystemExit('save stream SHA256/size mismatch: refusing execution')
         save_stream = {'sha256': sha(args.load_stream), 'size': args.load_stream.stat().st_size, 'full_save_loader': False}
-    if args.startup_game:
+    if args.startup_game and not args.content_recipe:
         args.sql_schema_bootstrap = True
+    if args.content_recipe:
+        args.empty_databases = True
+        if args.sql_schema_bootstrap or args.raw_sql_bytes:
+            parser.error('--content-recipe cannot combine with seven-source SQL diagnostic')
     if args.sql_schema_bootstrap:
         args.empty_databases = True
     if args.empty_databases:
         args.initialize = True
+    localization = None
+    if args.startup_game:
+        localization = json.loads((ROOT / 'evidence/bootstrap/localization.json').read_text())['configuration']
+        localization_sources = ROOT / 'tools/analysis/localization_sources.json'
+        if sha(localization_sources) != localization['sources_manifest_sha256']:
+            raise SystemExit('localization source manifest SHA256 mismatch')
+        localization['sources'] = json.loads(localization_sources.read_text())['sources']
+        for source in localization['sources']:
+            if sha(args.assets / source['path']) != source['sha256']:
+                raise SystemExit('localization source SHA256 mismatch: ' + source['path'])
+        if sha(args.assets / 'Base/Assets/Text/icudt56l.dat') != localization['icu_sha256']:
+            raise SystemExit('ICU SHA256 mismatch: refusing execution')
+    recipe = None
+    recipe_path = None
+    if args.content_recipe:
+        recipe_path = ROOT / ('evidence/assets/base-content-recipe.json' if args.content_recipe == 'base' else 'evidence/assets/xp2-declared-content-recipe.json')
+        recipe = json.loads(recipe_path.read_text())
+        if recipe['host_executable_sha256'] != EXE_HASH:
+            raise SystemExit('content recipe executable identity mismatch')
+        for step in recipe['steps']:
+            source = (args.assets / step['path']).resolve()
+            if not source.is_relative_to(args.assets.resolve()) or source.stat().st_size != step['bytes'] or sha(source) != step['sha256']:
+                raise SystemExit('content recipe source SHA256/size mismatch: ' + step['path'])
     sql_sources = []
     if args.sql_schema_bootstrap:
         sql_sources = json.loads((ROOT / "evidence/assets/sql-schema-sources.json").read_text())["sources"]
@@ -82,6 +110,14 @@ def main():
         'native/bootstrap/services/service_fixture.h',
         'native/bootstrap/save/save_probe.c',
         'native/bootstrap/save/save_probe.h',
+        'native/bootstrap/xml-import/imports.c',
+        'native/bootstrap/xml-import/imports.h',
+        'native/bootstrap/xml-import/xml.c',
+        'native/bootstrap/xml-import/xml.h',
+        'native/bootstrap/xml-import/content.c',
+        'native/bootstrap/xml-import/content.h',
+        'native/bootstrap/localization/localization.c',
+        'native/bootstrap/localization/localization.h',
     )}
     sources['tools/bootstrap/config.json'] = sha(ROOT / 'tools/bootstrap/config.json')
     sources['native/bootstrap/Makefile'] = sha(ROOT / 'native/bootstrap/Makefile')
@@ -99,23 +135,45 @@ def main():
                      'wine_dll_overrides': 'msvcp140,vcruntime140,ucrtbase=n',
                      'runtime_imports': external, 'service_fixture': 'bounded_diagnostic' if args.initialize else 'none',
                      'startup_game_requested': args.startup_game, 'save_stream': save_stream,
+                     'content_recipe_sha256': sha(recipe_path) if recipe_path else None,
+                     'content_recipe': recipe,
+                     'localization': ({k: localization[k] for k in ('language', 'selection', 'sources', 'icu_sha256', 'dll_sha256')} if localization else None),
                      'sql_schema_sources': sql_sources,
                      'sql_text_transform': ('none' if args.raw_sql_bytes else 'strip_utf8_bom_if_present') if args.sql_schema_bootstrap else None,
                      'rules_database': 'original_sql_only_schema_diagnostic' if args.sql_schema_bootstrap else ('empty_named_memory_diagnostic' if args.empty_databases else None), 'enabled_dlc_mods': None,
                      'initialized_game': False}
+    if recipe:
+        configuration['rules_database'] = 'original_declared_content_recipe_diagnostic'
+        configuration['enabled_dlc_mods'] = recipe['selected_mod_ids']
+        configuration['ruleset'] = recipe['ruleset']
     identity = hashlib.sha256(json.dumps(configuration, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     if args.expected_configuration and args.expected_configuration != identity:
         raise SystemExit('configuration SHA256 mismatch: refusing execution')
     result = {'configuration_sha256': identity, 'configuration': configuration}
     if not args.inventory_only:
         subprocess.run(['make', '-C', str(ROOT / 'native/bootstrap')], check=True, stdout=subprocess.DEVNULL)
+        if any(sha(ROOT / name) != expected for name, expected in sources.items()):
+            raise SystemExit('bootstrap source changed during build: refusing execution')
         for runtime in runtime_files:
             shutil.copyfile(runtime, host.parent / runtime.name)
         env = dict(os.environ, WINEPREFIX=str(ROOT / 'target/bootstrap/wine-prefix'), WINEARCH='win64', WINEDEBUG='-all', WINEDLLOVERRIDES='msvcp140,vcruntime140,ucrtbase=n')
+        if localization:
+            localization_manifest = host.parent / 'localization-context-paths.tsv'
+            localization_manifest.write_text(''.join('\t'.join((Path(source['path']).suffix[1:], source['sha256'], windows(args.assets / source['path']))) + '\n' for source in localization['sources']), encoding='utf-8')
+            env['C6_BOOTSTRAP_LOCALIZATION_MANIFEST'] = windows(localization_manifest)
+            env['C6_BOOTSTRAP_ICU_PATH'] = windows(args.assets / 'Base/Assets/Text/icudt56l.dat')
         command = [wine, str(host), windows(dll), windows(deps), windows(original_executable)]
         if args.initialize:
-            command.append('--load-stream' if args.load_stream else ('--startup-game' if args.startup_game else ('--raw-sql-databases' if args.raw_sql_bytes else ('--empty-databases' if args.empty_databases else '--initialize'))))
-        if args.sql_schema_bootstrap:
+            if recipe:
+                mode = '--' + args.content_recipe + '-content' + ('-load' if args.load_stream else ('-startup' if args.startup_game else ''))
+            else:
+                mode = '--load-stream' if args.load_stream else ('--startup-game' if args.startup_game else ('--raw-sql-databases' if args.raw_sql_bytes else ('--empty-databases' if args.empty_databases else '--initialize')))
+            command.append(mode)
+        if recipe:
+            manifest = host.parent / 'content-paths.tsv'
+            manifest.write_text(''.join('\t'.join((step['database'], step['format'], step['phase'], step['sha256'], windows(args.assets / step['path']))) + ('\t' + step['action_id'] if step.get('action_id') else '') + '\n' for step in recipe['steps']), encoding='utf-8')
+            command.append(windows(manifest))
+        elif args.sql_schema_bootstrap:
             manifest = host.parent / 'sql-schema-paths.tsv'
             manifest.write_text(''.join(('1' if '/Gameplay/' in item['path'] or item['path'].startswith('DLC/') else '0') + '\t' + windows(args.assets / item['path']) + '\n' for item in sql_sources), encoding='utf-8')
             command.append(windows(manifest))

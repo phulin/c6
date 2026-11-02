@@ -9,6 +9,8 @@
 #include <string.h>
 #include "services/service_fixture.h"
 #include "save/save_probe.h"
+#include "xml-import/content.h"
+#include "localization/localization.h"
 
 static const char expected_dll[] = "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c";
 static HMODULE image;
@@ -22,9 +24,29 @@ __declspec(dllexport) void *EXP_GetEmptyBasicString(void) {
 static const char *phase = "start";
 static LONG CALLBACK crashed(EXCEPTION_POINTERS *info) {
     uintptr_t address = (uintptr_t)info->ExceptionRecord->ExceptionAddress;
-    fprintf(stderr, "{\"phase\":\"%s\",\"exception\":\"0x%08lx\",\"exception_image_rva\":\"0x%llx\"}\n",
-            phase, info->ExceptionRecord->ExceptionCode,
-            (unsigned long long)(image ? address - (uintptr_t)image : address));
+    HMODULE fault_module = NULL;
+    wchar_t module_path[32768] = L"unknown";
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                      (const wchar_t *)address, &fault_module);
+    if (fault_module) GetModuleFileNameW(fault_module, module_path, 32768);
+    const wchar_t *module_name = wcsrchr(module_path, L'\\');
+    module_name = module_name ? module_name + 1 : module_path;
+    CONTEXT *context = info->ContextRecord;
+    fprintf(stderr, "{\"phase\":\"%s\",\"exception\":\"0x%08lx\",\"fault_module\":\"%ls\",\"module_rva\":\"0x%llx\",\"rax\":\"0x%llx\",\"rcx\":\"0x%llx\",\"rdx\":\"0x%llx\",\"r8\":\"0x%llx\",\"r9\":\"0x%llx\"}\n",
+            phase, info->ExceptionRecord->ExceptionCode, module_name,
+            (unsigned long long)(fault_module ? address - (uintptr_t)fault_module : address),
+            (unsigned long long)context->Rax, (unsigned long long)context->Rcx, (unsigned long long)context->Rdx,
+            (unsigned long long)context->R8, (unsigned long long)context->R9);
+    MEMORY_BASIC_INFORMATION region;
+    uintptr_t stack = (uintptr_t)context->Rsp;
+    if (VirtualQuery((void *)stack, &region, sizeof region) && region.State == MEM_COMMIT &&
+        !(region.Protect & PAGE_GUARD) && (region.Protect & (PAGE_READWRITE | PAGE_READONLY)) &&
+        stack <= (uintptr_t)region.BaseAddress + region.RegionSize - 8 * sizeof(uint64_t)) {
+        const uint64_t *words = (const uint64_t *)stack;
+        fputs("{\"phase\":\"fault_stack_words\",\"words\":[", stderr);
+        for (unsigned i = 0; i < 8; ++i) fprintf(stderr, "%s\"0x%llx\"", i ? "," : "", (unsigned long long)words[i]);
+        fputs("]}\n", stderr);
+    }
     fflush(stderr);
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -127,6 +149,9 @@ int wmain(int argc, wchar_t **argv) {
         int c = query(context, unknown) == NULL;
         printf("{\"phase\":\"context_queries\",\"cycle\":%u,\"real_context_created\":true,\"accepted_guid_1\":%s,\"accepted_guid_2\":%s,\"unknown_rejected\":%s}\n", cycle, a?"true":"false", b?"true":"false", c?"true":"false");
         if (argc >= 5 && cycle == 0) {
+            int original_services_prepared = 0;
+            int content_mode = wcsstr(argv[4], L"content") != NULL;
+            int startup_mode = wcscmp(argv[4], L"--startup-game") == 0 || wcscmp(argv[4], L"--load-stream") == 0 || wcsstr(argv[4], L"-startup") || wcsstr(argv[4], L"-load");
             void *engine = bootstrap_service_fixture_create(image);
             if (!engine) return 12;
             phase = "SetEngineInterface";
@@ -141,7 +166,16 @@ int wmain(int argc, wchar_t **argv) {
             }
             if (argc >= 6) {
                 phase = "execute_original_sql_schema_sources";
-                if (!execute_schema_manifest(argv[5], wcscmp(argv[4], L"--raw-sql-databases") != 0)) return 15;
+                if (content_mode) {
+                    phase = "prepare_original_host_services";
+                    if (!bootstrap_service_fixture_prepare_original_host_services(original_executable)) return 17;
+                    original_services_prepared = 1;
+                    phase = "execute_original_content_manifest";
+                    int content_result = bootstrap_original_content_manifest_with_context(original_executable,
+                        bootstrap_service_fixture_database_connection(0),
+                        bootstrap_service_fixture_database_connection(1), argv[5], context);
+                    if (content_result) return content_result;
+                } else if (!execute_schema_manifest(argv[5], wcscmp(argv[4], L"--raw-sql-databases") != 0)) return 15;
             }
             bootstrap_service_fixture_report(stdout);
             phase = "Initialize";
@@ -149,13 +183,21 @@ int wmain(int argc, wchar_t **argv) {
             int initialized = ((unsigned char (*)(void *))vtable[0x28 / 8])(context);
             int after = ((unsigned char (*)(void *))vtable[0x38 / 8])(context);
             printf("{\"phase\":\"Initialize_returned\",\"result\":%s,\"is_initialized_before\":%s,\"is_initialized_after\":%s,\"initialized_game\":false}\n", initialized ? "true" : "false", before ? "true" : "false", after ? "true" : "false");
-            if (wcscmp(argv[4], L"--startup-game") == 0 || wcscmp(argv[4], L"--load-stream") == 0) {
+            if (startup_mode) {
                 void *instance = ((void **)context)[1];
                 void **instance_vtable = *(void ***)instance;
                 if (!initialized || !after || (uintptr_t)vtable[0x40 / 8] - (uintptr_t)image != 0x591870 ||
                     (uintptr_t)instance_vtable[0x50 / 8] - (uintptr_t)image != 0x46be0) return 16;
+                phase = "prepare_original_host_services";
+                if (!original_services_prepared && !bootstrap_service_fixture_prepare_original_host_services(original_executable)) return 17;
+                phase = "prepare_original_localization";
+                const wchar_t *localization_manifest = _wgetenv(L"C6_BOOTSTRAP_LOCALIZATION_MANIFEST");
+                const wchar_t *icu_path = _wgetenv(L"C6_BOOTSTRAP_ICU_PATH");
+                if (!localization_manifest || !icu_path) return 18;
+                int localization_result = bootstrap_original_localization(original_executable, localization_manifest, icu_path);
+                if (localization_result) return localization_result;
                 phase = "StartupGame";
-                puts("{\"phase\":\"StartupGame_begin\",\"original_wrapper_rva\":\"0x591870\",\"original_implementation_rva\":\"0x46be0\",\"fixture\":\"original_sql_only_schema\",\"initialized_game\":false}");
+                printf("{\"phase\":\"StartupGame_begin\",\"original_wrapper_rva\":\"0x591870\",\"original_implementation_rva\":\"0x46be0\",\"fixture\":\"%s\",\"initialized_game\":false}\n", content_mode ? "original_declared_content_recipe" : "original_sql_only_schema");
                 ((void (*)(void *))vtable[0x40 / 8])(context);
                 puts("{\"phase\":\"StartupGame_returned\",\"initialized_game\":false}");
                 if (argc == 7) {
