@@ -1,0 +1,2701 @@
+{
+  "schema": "c6-linux-unit-archive-v1",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "static_checks_passed": true,
+  "native_execution": false,
+  "native_index_mapping_validated": false,
+  "full_unit_codec_implemented": false,
+  "full_affected_state_contract_complete": false,
+  "unit_registered_variables": [
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0xa8",
+      "cpp_value_type": "unsigned int",
+      "constructor_call": "0x2c1c21a",
+      "constructor": "FAutoVariable<unsigned int, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, unsigned int&&, bool)",
+      "name": "m_id",
+      "archive_offset": "0x8",
+      "archive_index": 0,
+      "wrapper_bytes": 24,
+      "value_offset": "0xb8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0xc0",
+      "cpp_value_type": "GameCore::UnitTypes",
+      "constructor_call": "0x2c1c251",
+      "constructor": "FAutoVariable<GameCore::UnitTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eTypeIndex",
+      "archive_offset": "0x8",
+      "archive_index": 1,
+      "wrapper_bytes": 24,
+      "value_offset": "0xd0",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0xd8",
+      "cpp_value_type": "GameCore::UnitAITypes",
+      "constructor_call": "0x2c1c288",
+      "constructor": "FAutoVariable<GameCore::UnitAITypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eAIType",
+      "archive_offset": "0x8",
+      "archive_index": 2,
+      "wrapper_bytes": 24,
+      "value_offset": "0xe8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0xf0",
+      "cpp_value_type": "GameCore::PlotCoord",
+      "constructor_call": "0x2c1c2bf",
+      "constructor": "FAutoVariable<GameCore::PlotCoord, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kLocation",
+      "archive_offset": "0x8",
+      "archive_index": 3,
+      "wrapper_bytes": 24,
+      "value_offset": "0x100",
+      "value_bytes": 8
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0x108",
+      "cpp_value_type": "GameCore::DirectionTypes",
+      "constructor_call": "0x2c1c2f8",
+      "constructor": "FAutoVariable<GameCore::DirectionTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eFacingDirection",
+      "archive_offset": "0x8",
+      "archive_index": 4,
+      "wrapper_bytes": 24,
+      "value_offset": "0x118",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0x120",
+      "cpp_value_type": "GameCore::PlayerTypes",
+      "constructor_call": "0x2c1c32a",
+      "constructor": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eOwner",
+      "archive_offset": "0x8",
+      "archive_index": 5,
+      "wrapper_bytes": 24,
+      "value_offset": "0x130",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0x138",
+      "cpp_value_type": "GameCore::PlayerTypes",
+      "constructor_call": "0x2c1c35c",
+      "constructor": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eOriginalOwner",
+      "archive_offset": "0x8",
+      "archive_index": 6,
+      "wrapper_bytes": 24,
+      "value_offset": "0x148",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0x150",
+      "cpp_value_type": "Data::VariantMap",
+      "constructor_call": "0x2c1c38e",
+      "constructor": "FAutoVariable<Data::VariantMap, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kAttributes",
+      "archive_offset": "0x8",
+      "archive_index": 7,
+      "wrapper_bytes": 152,
+      "value_offset": "0x160",
+      "value_bytes": 0
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0x1e8",
+      "cpp_value_type": "Data::TypedVariantMap",
+      "constructor_call": "0x2c1c3c0",
+      "constructor": "FAutoVariable<Data::TypedVariantMap, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kProperties",
+      "archive_offset": "0x8",
+      "archive_index": 8,
+      "wrapper_bytes": 104,
+      "value_offset": "0x1f8",
+      "value_bytes": 0
+    },
+    {
+      "owner": "Unit::IInstance",
+      "wrapper_offset": "0x250",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c1c3ef",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bProcessedTurn",
+      "archive_offset": "0x8",
+      "archive_index": 9,
+      "wrapper_bytes": 24,
+      "value_offset": "0x260",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::CInstance",
+      "wrapper_offset": "0x268",
+      "cpp_value_type": "GameCore::UnitAutomateTypes",
+      "constructor_call": "0x2c128fc",
+      "constructor": "FAutoVariable<GameCore::UnitAutomateTypes, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eAutomation",
+      "archive_offset": "0x8",
+      "archive_index": 10,
+      "wrapper_bytes": 24,
+      "value_offset": "0x278",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::CInstance",
+      "wrapper_offset": "0x280",
+      "cpp_value_type": "GameCore::UnitActivityTypes",
+      "constructor_call": "0x2c12933",
+      "constructor": "FAutoVariable<GameCore::UnitActivityTypes, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eActivity",
+      "archive_offset": "0x8",
+      "archive_index": 11,
+      "wrapper_bytes": 24,
+      "value_offset": "0x290",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::CInstance",
+      "wrapper_offset": "0x298",
+      "cpp_value_type": "GameCore::DomainTypes",
+      "constructor_call": "0x2c1296a",
+      "constructor": "FAutoVariable<GameCore::DomainTypes, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eDomain",
+      "archive_offset": "0x8",
+      "archive_index": 12,
+      "wrapper_bytes": 24,
+      "value_offset": "0x2a8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::CInstance",
+      "wrapper_offset": "0x2b0",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c1299c",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bEmbarked",
+      "archive_offset": "0x8",
+      "archive_index": 13,
+      "wrapper_bytes": 24,
+      "value_offset": "0x2c0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::CInstance",
+      "wrapper_offset": "0x2c8",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c129ce",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bImmobile",
+      "archive_offset": "0x8",
+      "archive_index": 14,
+      "wrapper_bytes": 24,
+      "value_offset": "0x2d8",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::CInstance",
+      "wrapper_offset": "0x2e0",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c129fd",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bDelayedDeath",
+      "archive_offset": "0x8",
+      "archive_index": 15,
+      "wrapper_bytes": 24,
+      "value_offset": "0x2f0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x2f8",
+      "cpp_value_type": "unsigned int",
+      "constructor_call": "0x2c24f5a",
+      "constructor": "FAutoVariable<unsigned int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiController",
+      "archive_offset": "0x8",
+      "archive_index": 16,
+      "wrapper_bytes": 24,
+      "value_offset": "0x308",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x310",
+      "cpp_value_type": "GameCore::PlotCoord",
+      "constructor_call": "0x2c24f86",
+      "constructor": "FAutoVariable<GameCore::PlotCoord, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiGoal",
+      "archive_offset": "0x8",
+      "archive_index": 17,
+      "wrapper_bytes": 24,
+      "value_offset": "0x320",
+      "value_bytes": 8
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x328",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c24fbf",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bIsLevied",
+      "archive_offset": "0x8",
+      "archive_index": 18,
+      "wrapper_bytes": 24,
+      "value_offset": "0x338",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x340",
+      "cpp_value_type": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c24feb",
+      "constructor": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiAbilitiesPossessed",
+      "archive_offset": "0x8",
+      "archive_index": 19,
+      "wrapper_bytes": 40,
+      "value_offset": "0x350",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x368",
+      "cpp_value_type": "Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c2501c",
+      "constructor": "FAutoVariable<Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_abInvalidTerrainTypes",
+      "archive_offset": "0x8",
+      "archive_index": 20,
+      "wrapper_bytes": 40,
+      "value_offset": "0x378",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x390",
+      "cpp_value_type": "Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c2506d",
+      "constructor": "FAutoVariable<Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_abIgnoreTerrainTypes",
+      "archive_offset": "0x8",
+      "archive_index": 21,
+      "wrapper_bytes": 40,
+      "value_offset": "0x3a0",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x3b8",
+      "cpp_value_type": "Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c2509e",
+      "constructor": "FAutoVariable<Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_abIgnoreFeatureTypes",
+      "archive_offset": "0x8",
+      "archive_index": 22,
+      "wrapper_bytes": 40,
+      "value_offset": "0x3c8",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x3e0",
+      "cpp_value_type": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c250cf",
+      "constructor": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiBonusPointsPerKill",
+      "archive_offset": "0x8",
+      "archive_index": 23,
+      "wrapper_bytes": 40,
+      "value_offset": "0x3f0",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x408",
+      "cpp_value_type": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c25100",
+      "constructor": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiBonusPointsPerKillStrength",
+      "archive_offset": "0x8",
+      "archive_index": 24,
+      "wrapper_bytes": 40,
+      "value_offset": "0x418",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x430",
+      "cpp_value_type": "Types::HashTable<unsigned char, 1u, 0u>",
+      "constructor_call": "0x2c25131",
+      "constructor": "FAutoVariable<Types::HashTable<unsigned char, 1u, 0u>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiBypassWallsPromotionClass",
+      "archive_offset": "0x8",
+      "archive_index": 25,
+      "wrapper_bytes": 56,
+      "value_offset": "0x440",
+      "value_bytes": 40
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x468",
+      "cpp_value_type": "Types::HashTable<unsigned char, 1u, 0u>",
+      "constructor_call": "0x2c25162",
+      "constructor": "FAutoVariable<Types::HashTable<unsigned char, 1u, 0u>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_aiEnableWallAttackPromotionClass",
+      "archive_offset": "0x8",
+      "archive_index": 26,
+      "wrapper_bytes": 56,
+      "value_offset": "0x478",
+      "value_bytes": 40
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x4a0",
+      "cpp_value_type": "GameCore::MilitaryFormationTypes",
+      "constructor_call": "0x2c25193",
+      "constructor": "FAutoVariable<GameCore::MilitaryFormationTypes, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eMilitaryFormation",
+      "archive_offset": "0x8",
+      "archive_index": 27,
+      "wrapper_bytes": 24,
+      "value_offset": "0x4b0",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x4b8",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c251c9",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool)",
+      "name": "m_iDamage",
+      "archive_offset": "0x8",
+      "archive_index": 28,
+      "wrapper_bytes": 24,
+      "value_offset": "0x4c8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x4d0",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c251fa",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iFortifyTurns",
+      "archive_offset": "0x8",
+      "archive_index": 29,
+      "wrapper_bytes": 24,
+      "value_offset": "0x4e0",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x4e8",
+      "cpp_value_type": "FixedPointT<8u>",
+      "constructor_call": "0x2c2522b",
+      "constructor": "FAutoVariable<FixedPointT<8u>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_xMovesRemaining",
+      "archive_offset": "0x8",
+      "archive_index": 30,
+      "wrapper_bytes": 24,
+      "value_offset": "0x4f8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x500",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c2525c",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iAttacksRemaining",
+      "archive_offset": "0x8",
+      "archive_index": 31,
+      "wrapper_bytes": 24,
+      "value_offset": "0x510",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x518",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c2528d",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iOperationTimer",
+      "archive_offset": "0x8",
+      "archive_index": 32,
+      "wrapper_bytes": 24,
+      "value_offset": "0x528",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x530",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c252be",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iBuildCharges",
+      "archive_offset": "0x8",
+      "archive_index": 33,
+      "wrapper_bytes": 24,
+      "value_offset": "0x540",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x548",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c252ef",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iParkCharges",
+      "archive_offset": "0x8",
+      "archive_index": 34,
+      "wrapper_bytes": 24,
+      "value_offset": "0x558",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x560",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c25320",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iActionCharges",
+      "archive_offset": "0x8",
+      "archive_index": 35,
+      "wrapper_bytes": 24,
+      "value_offset": "0x570",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x578",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c25351",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iAirSlotModifier",
+      "archive_offset": "0x8",
+      "archive_index": 36,
+      "wrapper_bytes": 24,
+      "value_offset": "0x588",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x590",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c25382",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Religion>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bDominantConquer",
+      "archive_offset": "0x8",
+      "archive_index": 37,
+      "wrapper_bytes": 24,
+      "value_offset": "0x5a0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x5a8",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c253b3",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iUpgradeDiscount",
+      "archive_offset": "0x8",
+      "archive_index": 38,
+      "wrapper_bytes": 24,
+      "value_offset": "0x5b8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x5c0",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c253e4",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iDisasterCharges",
+      "archive_offset": "0x8",
+      "archive_index": 39,
+      "wrapper_bytes": 24,
+      "value_offset": "0x5d0",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x5d8",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c25415",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iEraStrengthModifier",
+      "archive_offset": "0x8",
+      "archive_index": 40,
+      "wrapper_bytes": 24,
+      "value_offset": "0x5e8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x5f0",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c25456",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, int&&, bool)",
+      "name": "m_iBarbarianTribeIndex",
+      "archive_offset": "0x8",
+      "archive_index": 41,
+      "wrapper_bytes": 24,
+      "value_offset": "0x600",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x608",
+      "cpp_value_type": "GameCore::PlayerTypes, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&",
+      "constructor_call": "0x2c25497",
+      "constructor": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, GameCore::PlayerTypes&&, bool)",
+      "name": "m_eBarbarianPlayerTarget",
+      "archive_offset": "0x8",
+      "archive_index": 42,
+      "wrapper_bytes": 24,
+      "value_offset": "0x618",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x620",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c254c8",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bAttackAfterMoving",
+      "archive_offset": "0x8",
+      "archive_index": 43,
+      "wrapper_bytes": 24,
+      "value_offset": "0x630",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x638",
+      "cpp_value_type": "int",
+      "constructor_call": "0x2c254f9",
+      "constructor": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_iMoveAfterAttacking",
+      "archive_offset": "0x8",
+      "archive_index": 44,
+      "wrapper_bytes": 24,
+      "value_offset": "0x648",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x650",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c2552a",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bIgnoreTerrainCost",
+      "archive_offset": "0x8",
+      "archive_index": 45,
+      "wrapper_bytes": 24,
+      "value_offset": "0x660",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x668",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c2555b",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bIgnoreZOC",
+      "archive_offset": "0x8",
+      "archive_index": 46,
+      "wrapper_bytes": 24,
+      "value_offset": "0x678",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x680",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c2558c",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bExertZOC",
+      "archive_offset": "0x8",
+      "archive_index": 47,
+      "wrapper_bytes": 24,
+      "value_offset": "0x690",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x698",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c255bd",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bCanSeeThroughFeatures",
+      "archive_offset": "0x8",
+      "archive_index": 48,
+      "wrapper_bytes": 24,
+      "value_offset": "0x6a8",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x6b0",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c255ee",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bCanSeeThroughTerrain",
+      "archive_offset": "0x8",
+      "archive_index": 49,
+      "wrapper_bytes": 24,
+      "value_offset": "0x6c0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x6c8",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c2561f",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bNeedsMovementCompletion",
+      "archive_offset": "0x8",
+      "archive_index": 50,
+      "wrapper_bytes": 24,
+      "value_offset": "0x6d8",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x6e0",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c25660",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bEligibleToHeal",
+      "archive_offset": "0x8",
+      "archive_index": 51,
+      "wrapper_bytes": 24,
+      "value_offset": "0x6f0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x6f8",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c25691",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bHasHiddenVisibility",
+      "archive_offset": "0x8",
+      "archive_index": 52,
+      "wrapper_bytes": 24,
+      "value_offset": "0x708",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x710",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c256c2",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bHiddenVisibilityForfeited",
+      "archive_offset": "0x8",
+      "archive_index": 53,
+      "wrapper_bytes": 24,
+      "value_offset": "0x720",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x728",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c256f3",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bNeedsAttention",
+      "archive_offset": "0x8",
+      "archive_index": 54,
+      "wrapper_bytes": 24,
+      "value_offset": "0x738",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x740",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x2c25724",
+      "constructor": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bIgnoreResourceMaintenance",
+      "archive_offset": "0x8",
+      "archive_index": 55,
+      "wrapper_bytes": 24,
+      "value_offset": "0x750",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x758",
+      "cpp_value_type": "GameCore::Unit::HealthModifiers",
+      "constructor_call": "0x2c25755",
+      "constructor": "FAutoVariable<GameCore::Unit::HealthModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kHealthModifiers",
+      "archive_offset": "0x8",
+      "archive_index": 56,
+      "wrapper_bytes": 32,
+      "value_offset": "0x768",
+      "value_bytes": 16
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x778",
+      "cpp_value_type": "GameCore::Unit::HealthReligionModifiers",
+      "constructor_call": "0x2c25786",
+      "constructor": "FAutoVariable<GameCore::Unit::HealthReligionModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kHealthReligionModifiers",
+      "archive_offset": "0x8",
+      "archive_index": 57,
+      "wrapper_bytes": 32,
+      "value_offset": "0x788",
+      "value_bytes": 16
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x798",
+      "cpp_value_type": "GameCore::Unit::CombatModifiers",
+      "constructor_call": "0x2c257b7",
+      "constructor": "FAutoVariable<GameCore::Unit::CombatModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kCombatModifers",
+      "archive_offset": "0x8",
+      "archive_index": 58,
+      "wrapper_bytes": 152,
+      "value_offset": "0x7a8",
+      "value_bytes": 132
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x830",
+      "cpp_value_type": "GameCore::Unit::MovementModifiers",
+      "constructor_call": "0x2c257e8",
+      "constructor": "FAutoVariable<GameCore::Unit::MovementModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kMovementModifiers",
+      "archive_offset": "0x8",
+      "archive_index": 59,
+      "wrapper_bytes": 48,
+      "value_offset": "0x840",
+      "value_bytes": 28
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x860",
+      "cpp_value_type": "GameCore::Unit::SightModifiers",
+      "constructor_call": "0x2c25816",
+      "constructor": "FAutoVariable<GameCore::Unit::SightModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kSightModifiers",
+      "archive_offset": "0x8",
+      "archive_index": 60,
+      "wrapper_bytes": 24,
+      "value_offset": "0x870",
+      "value_bytes": 8
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x878",
+      "cpp_value_type": "GameCore::Unit::AttackRangeModifiers",
+      "constructor_call": "0x2c25844",
+      "constructor": "FAutoVariable<GameCore::Unit::AttackRangeModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kAttackRangeModifiers",
+      "archive_offset": "0x8",
+      "archive_index": 61,
+      "wrapper_bytes": 24,
+      "value_offset": "0x888",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x890",
+      "cpp_value_type": "GameCore::Unit::Archaeology",
+      "constructor_call": "0x2c25872",
+      "constructor": "FAutoVariable<GameCore::Unit::Archaeology, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kArchaeology",
+      "archive_offset": "0x8",
+      "archive_index": 62,
+      "wrapper_bytes": 64,
+      "value_offset": "0x8a0",
+      "value_bytes": 48
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x8d0",
+      "cpp_value_type": "GameCore::Unit::Espionage",
+      "constructor_call": "0x2c258a0",
+      "constructor": "FAutoVariable<GameCore::Unit::Espionage, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kEspionage",
+      "archive_offset": "0x8",
+      "archive_index": 63,
+      "wrapper_bytes": 152,
+      "value_offset": "0x8e0",
+      "value_bytes": 136
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x968",
+      "cpp_value_type": "GameCore::Unit::Experience",
+      "constructor_call": "0x2c258ce",
+      "constructor": "FAutoVariable<GameCore::Unit::Experience, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kExperience",
+      "archive_offset": "0x8",
+      "archive_index": 64,
+      "wrapper_bytes": 96,
+      "value_offset": "0x978",
+      "value_bytes": 80
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x9c8",
+      "cpp_value_type": "GameCore::Unit::GreatPerson",
+      "constructor_call": "0x2c258fc",
+      "constructor": "FAutoVariable<GameCore::Unit::GreatPerson, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kGreatPerson",
+      "archive_offset": "0x8",
+      "archive_index": 65,
+      "wrapper_bytes": 40,
+      "value_offset": "0x9d8",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0x9f0",
+      "cpp_value_type": "GameCore::Unit::Religion",
+      "constructor_call": "0x2c2592a",
+      "constructor": "FAutoVariable<GameCore::Unit::Religion, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kReligion",
+      "archive_offset": "0x8",
+      "archive_index": 66,
+      "wrapper_bytes": 112,
+      "value_offset": "0xa00",
+      "value_bytes": 96
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xa60",
+      "cpp_value_type": "GameCore::Unit::RockBand",
+      "constructor_call": "0x2c25958",
+      "constructor": "FAutoVariable<GameCore::Unit::RockBand, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kRockBand",
+      "archive_offset": "0x8",
+      "archive_index": 67,
+      "wrapper_bytes": 224,
+      "value_offset": "0xa70",
+      "value_bytes": 208
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xb40",
+      "cpp_value_type": "GameCore::Unit::Trade",
+      "constructor_call": "0x2c25984",
+      "constructor": "FAutoVariable<GameCore::Unit::Trade, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kTrade",
+      "archive_offset": "0x8",
+      "archive_index": 68,
+      "wrapper_bytes": 64,
+      "value_offset": "0xb50",
+      "value_bytes": 48
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xb80",
+      "cpp_value_type": "Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >",
+      "constructor_call": "0x2c259b2",
+      "constructor": "FAutoVariable<Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kSightPlots",
+      "archive_offset": "0x8",
+      "archive_index": 69,
+      "wrapper_bytes": 40,
+      "value_offset": "0xb90",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xba8",
+      "cpp_value_type": "unsigned int",
+      "constructor_call": "0x2c259de",
+      "constructor": "FAutoVariable<unsigned int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_formationID",
+      "archive_offset": "0x8",
+      "archive_index": 70,
+      "wrapper_bytes": 24,
+      "value_offset": "0xbb8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xbd0",
+      "cpp_value_type": "GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>",
+      "constructor_call": "0x2c25a16",
+      "constructor": "FAutoVariable<GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kOperationsDisabled",
+      "archive_offset": "0x8",
+      "archive_index": 71,
+      "wrapper_bytes": 48,
+      "value_offset": "0xbe0",
+      "value_bytes": 32
+    },
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xc00",
+      "cpp_value_type": "GameCore::Unit::Operations::OperationQueue",
+      "constructor_call": "0x2c25a42",
+      "constructor": "FAutoVariable<GameCore::Unit::Operations::OperationQueue, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kOperations",
+      "archive_offset": "0x8",
+      "archive_index": 72,
+      "wrapper_bytes": 216,
+      "value_offset": "0xc10",
+      "value_bytes": 200
+    }
+  ],
+  "unit_unregistered_wrappers": [
+    {
+      "owner": "Unit::Instance",
+      "wrapper_offset": "0xcd8",
+      "cpp_value_type": "GameCore::Unit::Hero",
+      "constructor_call": "0x2c25a59",
+      "constructor": "FAutoVariable<GameCore::Unit::Hero, GameCore::Unit::Instance>::FAutoVariable()",
+      "name": "m_kHero",
+      "archive_index": null,
+      "wrapper_bytes": 40,
+      "value_offset": "0xce8",
+      "value_bytes": 24
+    }
+  ],
+  "formation_registered_variables": [
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0xa0",
+      "cpp_value_type": "unsigned int",
+      "constructor_call": "0x293b764",
+      "constructor": "FAutoVariable<unsigned int, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, unsigned int const&, bool)",
+      "name": "m_id",
+      "archive_offset": "0x0",
+      "archive_index": 0,
+      "wrapper_bytes": 24,
+      "value_offset": "0xb0",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0xb8",
+      "cpp_value_type": "GameCore::PlotCoord",
+      "constructor_call": "0x293b79e",
+      "constructor": "FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kLocation",
+      "archive_offset": "0x0",
+      "archive_index": 1,
+      "wrapper_bytes": 24,
+      "value_offset": "0xc8",
+      "value_bytes": 8
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0xd0",
+      "cpp_value_type": "GameCore::PlayerTypes",
+      "constructor_call": "0x293b7d5",
+      "constructor": "FAutoVariable<GameCore::PlayerTypes, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eOwner",
+      "archive_offset": "0x0",
+      "archive_index": 2,
+      "wrapper_bytes": 24,
+      "value_offset": "0xe0",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0xe8",
+      "cpp_value_type": "FixedPointT<8u>",
+      "constructor_call": "0x293b80c",
+      "constructor": "FAutoVariable<FixedPointT<8u>, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_xMovesRemaining",
+      "archive_offset": "0x0",
+      "archive_index": 3,
+      "wrapper_bytes": 24,
+      "value_offset": "0xf8",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x100",
+      "cpp_value_type": "GameCore::DomainTypes",
+      "constructor_call": "0x293b843",
+      "constructor": "FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_eDomain",
+      "archive_offset": "0x0",
+      "archive_index": 4,
+      "wrapper_bytes": 24,
+      "value_offset": "0x110",
+      "value_bytes": 4
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x118",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b889",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bIsEmbarked",
+      "archive_offset": "0x0",
+      "archive_index": 5,
+      "wrapper_bytes": 24,
+      "value_offset": "0x128",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x130",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b8ca",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bCanEmbark",
+      "archive_offset": "0x0",
+      "archive_index": 6,
+      "wrapper_bytes": 24,
+      "value_offset": "0x140",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x148",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b90b",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bCanAttack",
+      "archive_offset": "0x0",
+      "archive_index": 7,
+      "wrapper_bytes": 24,
+      "value_offset": "0x158",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x160",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b93f",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bIsRangedCombat",
+      "archive_offset": "0x0",
+      "archive_index": 8,
+      "wrapper_bytes": 24,
+      "value_offset": "0x170",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x178",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b973",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bCanCapture",
+      "archive_offset": "0x0",
+      "archive_index": 9,
+      "wrapper_bytes": 24,
+      "value_offset": "0x188",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x190",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b9a7",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_bHasMoved",
+      "archive_offset": "0x0",
+      "archive_index": 10,
+      "wrapper_bytes": 24,
+      "value_offset": "0x1a0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x1a8",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293b9e9",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bHasMovedIntoZOC",
+      "archive_offset": "0x0",
+      "archive_index": 11,
+      "wrapper_bytes": 24,
+      "value_offset": "0x1b8",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x1c0",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293ba2b",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bIgnoresZOC",
+      "archive_offset": "0x0",
+      "archive_index": 12,
+      "wrapper_bytes": 24,
+      "value_offset": "0x1d0",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x1d8",
+      "cpp_value_type": "bool",
+      "constructor_call": "0x293ba6d",
+      "constructor": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "name": "m_bEvaluatingOperation",
+      "archive_offset": "0x0",
+      "archive_index": 13,
+      "wrapper_bytes": 24,
+      "value_offset": "0x1e8",
+      "value_bytes": 1
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x1f0",
+      "cpp_value_type": "GameCore::Pathfinder::ResultNodeArray",
+      "constructor_call": "0x293baa4",
+      "constructor": "FAutoVariable<GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool)",
+      "name": "m_kLastPath",
+      "archive_offset": "0x0",
+      "archive_index": 14,
+      "wrapper_bytes": 40,
+      "value_offset": "0x200",
+      "value_bytes": 24
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x218",
+      "cpp_value_type": "GameCore::PlotCoord",
+      "constructor_call": "0x293bad6",
+      "constructor": "FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kLastPathCacheLocation",
+      "archive_offset": "0x0",
+      "archive_index": 15,
+      "wrapper_bytes": 24,
+      "value_offset": "0x228",
+      "value_bytes": 8
+    },
+    {
+      "owner": "Formation::Instance",
+      "wrapper_offset": "0x230",
+      "cpp_value_type": "Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >",
+      "constructor_call": "0x293bb05",
+      "constructor": "FAutoVariable<Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "name": "m_kUnitIDList",
+      "archive_offset": "0x0",
+      "archive_index": 16,
+      "wrapper_bytes": 72,
+      "value_offset": "0x240",
+      "value_bytes": 56
+    }
+  ],
+  "unit_write_order": [
+    {
+      "ordinal": 0,
+      "kind": "version",
+      "address": "0x2f71dd0",
+      "call": "0x2c22d12",
+      "value": 28
+    },
+    {
+      "ordinal": 1,
+      "kind": "field",
+      "name": "m_id",
+      "archive_index": 0,
+      "wrapper_offset": "0xa8",
+      "call": "0x2c22d21",
+      "serializer": "Serialization::OStream& operator<< <unsigned int, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<unsigned int, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 2,
+      "kind": "field",
+      "name": "m_eTypeIndex",
+      "archive_index": 1,
+      "wrapper_offset": "0xc0",
+      "call": "0x2c22d30",
+      "serializer": "Serialization::OStream& operator<< <GameCore::UnitTypes, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<GameCore::UnitTypes, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 3,
+      "kind": "field",
+      "name": "m_eAIType",
+      "archive_index": 2,
+      "wrapper_offset": "0xd8",
+      "call": "0x2c22d3f",
+      "serializer": "Serialization::OStream& operator<< <GameCore::UnitAITypes, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<GameCore::UnitAITypes, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 4,
+      "kind": "field",
+      "name": "m_aiController",
+      "archive_index": 16,
+      "wrapper_offset": "0x2f8",
+      "call": "0x2c22d4e",
+      "serializer": "Serialization::OStream& operator<< <unsigned int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<unsigned int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 5,
+      "kind": "field",
+      "name": "m_aiGoal",
+      "archive_index": 17,
+      "wrapper_offset": "0x310",
+      "call": "0x2c22d5d",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlotCoord, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 6,
+      "kind": "field",
+      "name": "m_kLocation",
+      "archive_index": 3,
+      "wrapper_offset": "0xf0",
+      "call": "0x2c22d6c",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlotCoord, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 7,
+      "kind": "field",
+      "name": "m_eFacingDirection",
+      "archive_index": 4,
+      "wrapper_offset": "0x108",
+      "call": "0x2c22d7b",
+      "serializer": "Serialization::OStream& operator<< <GameCore::DirectionTypes, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<GameCore::DirectionTypes, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 8,
+      "kind": "field",
+      "name": "m_eOwner",
+      "archive_index": 5,
+      "wrapper_offset": "0x120",
+      "call": "0x2c22d8a",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlayerTypes, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 9,
+      "kind": "field",
+      "name": "m_eOriginalOwner",
+      "archive_index": 6,
+      "wrapper_offset": "0x138",
+      "call": "0x2c22d99",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlayerTypes, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 10,
+      "kind": "field",
+      "name": "m_bIsLevied",
+      "archive_index": 18,
+      "wrapper_offset": "0x328",
+      "call": "0x2c22da8",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 11,
+      "kind": "field",
+      "name": "m_formationID",
+      "archive_index": 70,
+      "wrapper_offset": "0xba8",
+      "call": "0x2c22db7",
+      "serializer": "Serialization::OStream& operator<< <unsigned int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<unsigned int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 12,
+      "kind": "field",
+      "name": "m_eMilitaryFormation",
+      "archive_index": 27,
+      "wrapper_offset": "0x4a0",
+      "call": "0x2c22dc6",
+      "serializer": "Serialization::OStream& operator<< <GameCore::MilitaryFormationTypes, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::MilitaryFormationTypes, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 13,
+      "kind": "field",
+      "name": "m_eAutomation",
+      "archive_index": 10,
+      "wrapper_offset": "0x268",
+      "call": "0x2c22dd5",
+      "serializer": "Serialization::OStream& operator<< <GameCore::UnitAutomateTypes, GameCore::Unit::CInstance>(Serialization::OStream&, FAutoVariable<GameCore::UnitAutomateTypes, GameCore::Unit::CInstance> const&)@plt"
+    },
+    {
+      "ordinal": 14,
+      "kind": "field",
+      "name": "m_eActivity",
+      "archive_index": 11,
+      "wrapper_offset": "0x280",
+      "call": "0x2c22de4",
+      "serializer": "Serialization::OStream& operator<< <GameCore::UnitActivityTypes, GameCore::Unit::CInstance>(Serialization::OStream&, FAutoVariable<GameCore::UnitActivityTypes, GameCore::Unit::CInstance> const&)@plt"
+    },
+    {
+      "ordinal": 15,
+      "kind": "field",
+      "name": "m_iDamage",
+      "archive_index": 28,
+      "wrapper_offset": "0x4b8",
+      "call": "0x2c22df3",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 16,
+      "kind": "field",
+      "name": "m_iFortifyTurns",
+      "archive_index": 29,
+      "wrapper_offset": "0x4d0",
+      "call": "0x2c22e02",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 17,
+      "kind": "field",
+      "name": "m_iUpgradeDiscount",
+      "archive_index": 38,
+      "wrapper_offset": "0x5a8",
+      "call": "0x2c22e11",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 18,
+      "kind": "field",
+      "name": "m_xMovesRemaining",
+      "archive_index": 30,
+      "wrapper_offset": "0x4e8",
+      "call": "0x2c22e20",
+      "serializer": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 19,
+      "kind": "field",
+      "name": "m_iAttacksRemaining",
+      "archive_index": 31,
+      "wrapper_offset": "0x500",
+      "call": "0x2c22e2f",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 20,
+      "kind": "field",
+      "name": "m_iOperationTimer",
+      "archive_index": 32,
+      "wrapper_offset": "0x518",
+      "call": "0x2c22e3e",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 21,
+      "kind": "field",
+      "name": "m_iBuildCharges",
+      "archive_index": 33,
+      "wrapper_offset": "0x530",
+      "call": "0x2c22e4d",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 22,
+      "kind": "field",
+      "name": "m_iParkCharges",
+      "archive_index": 34,
+      "wrapper_offset": "0x548",
+      "call": "0x2c22e5c",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 23,
+      "kind": "field",
+      "name": "m_iActionCharges",
+      "archive_index": 35,
+      "wrapper_offset": "0x560",
+      "call": "0x2c22e6b",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 24,
+      "kind": "field",
+      "name": "m_iAirSlotModifier",
+      "archive_index": 36,
+      "wrapper_offset": "0x578",
+      "call": "0x2c22e7a",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 25,
+      "kind": "field",
+      "name": "m_bDominantConquer",
+      "archive_index": 37,
+      "wrapper_offset": "0x590",
+      "call": "0x2c22e89",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Religion>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Religion> const&)@plt"
+    },
+    {
+      "ordinal": 26,
+      "kind": "field",
+      "name": "m_iBarbarianTribeIndex",
+      "archive_index": 41,
+      "wrapper_offset": "0x5f0",
+      "call": "0x2c22e98",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 27,
+      "kind": "field",
+      "name": "m_eBarbarianPlayerTarget",
+      "archive_index": 42,
+      "wrapper_offset": "0x608",
+      "call": "0x2c22ea7",
+      "serializer": "void Serialization::EnumToStream<FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::Instance> >(Serialization::OStream&, FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 28,
+      "kind": "field",
+      "name": "m_iDisasterCharges",
+      "archive_index": 39,
+      "wrapper_offset": "0x5c0",
+      "call": "0x2c22eb6",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 29,
+      "kind": "field",
+      "name": "m_iEraStrengthModifier",
+      "archive_index": 40,
+      "wrapper_offset": "0x5d8",
+      "call": "0x2c22ec5",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 30,
+      "kind": "field",
+      "name": "m_bEmbarked",
+      "archive_index": 13,
+      "wrapper_offset": "0x2b0",
+      "call": "0x2c22ed4",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::CInstance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::CInstance> const&)@plt"
+    },
+    {
+      "ordinal": 31,
+      "kind": "field",
+      "name": "m_bDelayedDeath",
+      "archive_index": 15,
+      "wrapper_offset": "0x2e0",
+      "call": "0x2c22ee3",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::CInstance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::CInstance> const&)@plt"
+    },
+    {
+      "ordinal": 32,
+      "kind": "field",
+      "name": "m_bImmobile",
+      "archive_index": 14,
+      "wrapper_offset": "0x2c8",
+      "call": "0x2c22ef2",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::CInstance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::CInstance> const&)@plt"
+    },
+    {
+      "ordinal": 33,
+      "kind": "field",
+      "name": "m_bProcessedTurn",
+      "archive_index": 9,
+      "wrapper_offset": "0x250",
+      "call": "0x2c22f01",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 34,
+      "kind": "field",
+      "name": "m_bNeedsMovementCompletion",
+      "archive_index": 50,
+      "wrapper_offset": "0x6c8",
+      "call": "0x2c22f10",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 35,
+      "kind": "field",
+      "name": "m_bEligibleToHeal",
+      "archive_index": 51,
+      "wrapper_offset": "0x6e0",
+      "call": "0x2c22f1f",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 36,
+      "kind": "field",
+      "name": "m_bHasHiddenVisibility",
+      "archive_index": 52,
+      "wrapper_offset": "0x6f8",
+      "call": "0x2c22f2e",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 37,
+      "kind": "field",
+      "name": "m_bHiddenVisibilityForfeited",
+      "archive_index": 53,
+      "wrapper_offset": "0x710",
+      "call": "0x2c22f3d",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 38,
+      "kind": "field",
+      "name": "m_bIgnoreTerrainCost",
+      "archive_index": 45,
+      "wrapper_offset": "0x650",
+      "call": "0x2c22f4c",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 39,
+      "kind": "field",
+      "name": "m_bIgnoreZOC",
+      "archive_index": 46,
+      "wrapper_offset": "0x668",
+      "call": "0x2c22f5b",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 40,
+      "kind": "field",
+      "name": "m_bExertZOC",
+      "archive_index": 47,
+      "wrapper_offset": "0x680",
+      "call": "0x2c22f6a",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 41,
+      "kind": "field",
+      "name": "m_bCanSeeThroughFeatures",
+      "archive_index": 48,
+      "wrapper_offset": "0x698",
+      "call": "0x2c22f79",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 42,
+      "kind": "field",
+      "name": "m_bCanSeeThroughTerrain",
+      "archive_index": 49,
+      "wrapper_offset": "0x6b0",
+      "call": "0x2c22f88",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 43,
+      "kind": "field",
+      "name": "m_bAttackAfterMoving",
+      "archive_index": 43,
+      "wrapper_offset": "0x620",
+      "call": "0x2c22f97",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 44,
+      "kind": "field",
+      "name": "m_iMoveAfterAttacking",
+      "archive_index": 44,
+      "wrapper_offset": "0x638",
+      "call": "0x2c22fa6",
+      "serializer": "Serialization::OStream& operator<< <int, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<int, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 45,
+      "kind": "field",
+      "name": "m_bNeedsAttention",
+      "archive_index": 54,
+      "wrapper_offset": "0x728",
+      "call": "0x2c22fb5",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 46,
+      "kind": "field",
+      "name": "m_bIgnoreResourceMaintenance",
+      "archive_index": 55,
+      "wrapper_offset": "0x740",
+      "call": "0x2c22fc4",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 47,
+      "kind": "field",
+      "name": "m_kHealthModifiers",
+      "archive_index": 56,
+      "wrapper_offset": "0x758",
+      "call": "0x2c22fd3",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::HealthModifiers, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::HealthModifiers, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 48,
+      "kind": "field",
+      "name": "m_kHealthReligionModifiers",
+      "archive_index": 57,
+      "wrapper_offset": "0x778",
+      "call": "0x2c22fe2",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::HealthReligionModifiers, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::HealthReligionModifiers, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 49,
+      "kind": "field",
+      "name": "m_kCombatModifers",
+      "archive_index": 58,
+      "wrapper_offset": "0x798",
+      "call": "0x2c22ff1",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::CombatModifiers, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::CombatModifiers, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 50,
+      "kind": "field",
+      "name": "m_kMovementModifiers",
+      "archive_index": 59,
+      "wrapper_offset": "0x830",
+      "call": "0x2c23000",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::MovementModifiers, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::MovementModifiers, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 51,
+      "kind": "field",
+      "name": "m_kSightModifiers",
+      "archive_index": 60,
+      "wrapper_offset": "0x860",
+      "call": "0x2c2300f",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::SightModifiers, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::SightModifiers, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 52,
+      "kind": "field",
+      "name": "m_kAttackRangeModifiers",
+      "archive_index": 61,
+      "wrapper_offset": "0x878",
+      "call": "0x2c2301e",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::AttackRangeModifiers, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::AttackRangeModifiers, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 53,
+      "kind": "field",
+      "name": "m_kSightPlots",
+      "archive_index": 69,
+      "wrapper_offset": "0xb80",
+      "call": "0x2c2302d",
+      "serializer": "Serialization::OStream& operator<< <Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 54,
+      "kind": "field",
+      "name": "m_aiAbilitiesPossessed",
+      "archive_index": 19,
+      "wrapper_offset": "0x340",
+      "call": "0x2c2304f",
+      "serializer": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility> const&)@plt"
+    },
+    {
+      "ordinal": 55,
+      "kind": "field",
+      "name": "m_abInvalidTerrainTypes",
+      "archive_index": 20,
+      "wrapper_offset": "0x368",
+      "call": "0x2c23071",
+      "serializer": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain> const&)@plt"
+    },
+    {
+      "ordinal": 56,
+      "kind": "field",
+      "name": "m_abIgnoreTerrainTypes",
+      "archive_index": 21,
+      "wrapper_offset": "0x390",
+      "call": "0x2c23093",
+      "serializer": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain> const&)@plt"
+    },
+    {
+      "ordinal": 57,
+      "kind": "field",
+      "name": "m_abIgnoreFeatureTypes",
+      "archive_index": 22,
+      "wrapper_offset": "0x3b8",
+      "call": "0x2c230b5",
+      "serializer": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> const&)@plt"
+    },
+    {
+      "ordinal": 58,
+      "kind": "field",
+      "name": "m_aiBonusPointsPerKill",
+      "archive_index": 23,
+      "wrapper_offset": "0x3e0",
+      "call": "0x2c230d7",
+      "serializer": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&)@plt"
+    },
+    {
+      "ordinal": 59,
+      "kind": "field",
+      "name": "m_aiBonusPointsPerKillStrength",
+      "archive_index": 24,
+      "wrapper_offset": "0x408",
+      "call": "0x2c230f9",
+      "serializer": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&)@plt"
+    },
+    {
+      "ordinal": 60,
+      "kind": "field",
+      "name": "m_aiBypassWallsPromotionClass",
+      "archive_index": 25,
+      "wrapper_offset": "0x430",
+      "call": "0x2c23108",
+      "serializer": "Serialization::OStream& Serialization::operator<< <unsigned char>(Serialization::OStream&, Types::HashTable<unsigned char, 1u, 0u> const&)@plt"
+    },
+    {
+      "ordinal": 61,
+      "kind": "field",
+      "name": "m_aiEnableWallAttackPromotionClass",
+      "archive_index": 26,
+      "wrapper_offset": "0x468",
+      "call": "0x2c23117",
+      "serializer": "Serialization::OStream& Serialization::operator<< <unsigned char>(Serialization::OStream&, Types::HashTable<unsigned char, 1u, 0u> const&)@plt"
+    },
+    {
+      "ordinal": 62,
+      "kind": "field",
+      "name": "m_kExperience",
+      "archive_index": 64,
+      "wrapper_offset": "0x968",
+      "call": "0x2c23126",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Experience, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Experience, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 63,
+      "kind": "field",
+      "name": "m_kGreatPerson",
+      "archive_index": 65,
+      "wrapper_offset": "0x9c8",
+      "call": "0x2c23135",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::GreatPerson, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::GreatPerson, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 64,
+      "kind": "field",
+      "name": "m_kReligion",
+      "archive_index": 66,
+      "wrapper_offset": "0x9f0",
+      "call": "0x2c23144",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Religion, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Religion, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 65,
+      "kind": "field",
+      "name": "m_kRockBand",
+      "archive_index": 67,
+      "wrapper_offset": "0xa60",
+      "call": "0x2c23153",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::RockBand, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::RockBand, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 66,
+      "kind": "field",
+      "name": "m_kTrade",
+      "archive_index": 68,
+      "wrapper_offset": "0xb40",
+      "call": "0x2c23162",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Trade, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Trade, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 67,
+      "kind": "field",
+      "name": "m_kArchaeology",
+      "archive_index": 62,
+      "wrapper_offset": "0x890",
+      "call": "0x2c23171",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Archaeology, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Archaeology, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 68,
+      "kind": "field",
+      "name": "m_kEspionage",
+      "archive_index": 63,
+      "wrapper_offset": "0x8d0",
+      "call": "0x2c23180",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Espionage, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Espionage, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 69,
+      "kind": "field",
+      "name": "m_kAttributes",
+      "archive_index": 7,
+      "wrapper_offset": "0x150",
+      "call": "0x2c2318f",
+      "serializer": "Serialization::OStream& operator<< <Data::VariantMap, GameCore::Unit::IInstance>(Serialization::OStream&, FAutoVariable<Data::VariantMap, GameCore::Unit::IInstance> const&)@plt"
+    },
+    {
+      "ordinal": 70,
+      "kind": "field",
+      "name": "m_kOperations",
+      "archive_index": 72,
+      "wrapper_offset": "0xc00",
+      "call": "0x2c2319e",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Operations::OperationQueue, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Operations::OperationQueue, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 71,
+      "kind": "field",
+      "name": "m_kOperationsDisabled",
+      "archive_index": 71,
+      "wrapper_offset": "0xbd0",
+      "call": "0x2c231ad",
+      "serializer": "Serialization::OStream& operator<< <GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 72,
+      "kind": "field",
+      "name": "m_kHero",
+      "archive_index": null,
+      "wrapper_offset": "0xcd8",
+      "call": "0x2c231bc",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Unit::Hero, GameCore::Unit::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Unit::Hero, GameCore::Unit::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 73,
+      "kind": "field",
+      "name": "m_kProperties",
+      "archive_index": 8,
+      "wrapper_offset": "0x1e8",
+      "call": "0x2c231d7",
+      "serializer": "TypedVariantMap virtual +0x1f8, flag=1"
+    }
+  ],
+  "formation_write_order": [
+    {
+      "ordinal": 0,
+      "kind": "version",
+      "address": "0x2f34b14",
+      "call": "0x293b451",
+      "value": 1
+    },
+    {
+      "ordinal": 1,
+      "kind": "field",
+      "name": "m_id",
+      "archive_index": 0,
+      "wrapper_offset": "0xa0",
+      "call": "0x293b460",
+      "serializer": "Serialization::OStream& operator<< <unsigned int, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<unsigned int, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 2,
+      "kind": "field",
+      "name": "m_kLocation",
+      "archive_index": 1,
+      "wrapper_offset": "0xb8",
+      "call": "0x293b46f",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlotCoord, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 3,
+      "kind": "field",
+      "name": "m_eOwner",
+      "archive_index": 2,
+      "wrapper_offset": "0xd0",
+      "call": "0x293b47e",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlayerTypes, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<GameCore::PlayerTypes, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 4,
+      "kind": "field",
+      "name": "m_xMovesRemaining",
+      "archive_index": 3,
+      "wrapper_offset": "0xe8",
+      "call": "0x293b48d",
+      "serializer": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 5,
+      "kind": "field",
+      "name": "m_eDomain",
+      "archive_index": 4,
+      "wrapper_offset": "0x100",
+      "call": "0x293b49c",
+      "serializer": "void Serialization::EnumToStream<FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance> >(Serialization::OStream&, FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 6,
+      "kind": "field",
+      "name": "m_bIsEmbarked",
+      "archive_index": 5,
+      "wrapper_offset": "0x118",
+      "call": "0x293b4ab",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 7,
+      "kind": "field",
+      "name": "m_bCanEmbark",
+      "archive_index": 6,
+      "wrapper_offset": "0x130",
+      "call": "0x293b4ba",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 8,
+      "kind": "field",
+      "name": "m_bCanAttack",
+      "archive_index": 7,
+      "wrapper_offset": "0x148",
+      "call": "0x293b4c9",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 9,
+      "kind": "field",
+      "name": "m_bIsRangedCombat",
+      "archive_index": 8,
+      "wrapper_offset": "0x160",
+      "call": "0x293b4d8",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 10,
+      "kind": "field",
+      "name": "m_bCanCapture",
+      "archive_index": 9,
+      "wrapper_offset": "0x178",
+      "call": "0x293b4e7",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 11,
+      "kind": "field",
+      "name": "m_bHasMoved",
+      "archive_index": 10,
+      "wrapper_offset": "0x190",
+      "call": "0x293b4f6",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 12,
+      "kind": "field",
+      "name": "m_bHasMovedIntoZOC",
+      "archive_index": 11,
+      "wrapper_offset": "0x1a8",
+      "call": "0x293b505",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 13,
+      "kind": "field",
+      "name": "m_bIgnoresZOC",
+      "archive_index": 12,
+      "wrapper_offset": "0x1c0",
+      "call": "0x293b514",
+      "serializer": "Serialization::OStream& operator<< <bool, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<bool, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 14,
+      "kind": "field",
+      "name": "m_kLastPath",
+      "archive_index": 14,
+      "wrapper_offset": "0x1f0",
+      "call": "0x293b523",
+      "serializer": "Serialization::OStream& operator<< <GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 15,
+      "kind": "field",
+      "name": "m_kLastPathCacheLocation",
+      "archive_index": 15,
+      "wrapper_offset": "0x218",
+      "call": "0x293b532",
+      "serializer": "Serialization::OStream& operator<< <GameCore::PlotCoord, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance> const&)@plt"
+    },
+    {
+      "ordinal": 16,
+      "kind": "field",
+      "name": "m_kUnitIDList",
+      "archive_index": 16,
+      "wrapper_offset": "0x230",
+      "call": "0x293b544",
+      "serializer": "Serialization::OStream& operator<< <Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance>(Serialization::OStream&, FAutoVariable<Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance> const&)@plt"
+    }
+  ],
+  "methods": [
+    {
+      "address": "0x2c1c180",
+      "size": 1033,
+      "name": "Unit::IInstance",
+      "sha256": "d30e2653e650057749a18bef14cc6a4e97d03bce25431466ad6bbd86abc93fc1"
+    },
+    {
+      "address": "0x2c128b0",
+      "size": 541,
+      "name": "Unit::CInstance",
+      "sha256": "6576ee8a3148bbaa4a96b9549ad30f7438e6d2be731af95128c6679f3ca72c8e"
+    },
+    {
+      "address": "0x2c24f10",
+      "size": 5294,
+      "name": "Unit::Instance",
+      "sha256": "e04b81e46d10d13de70c023b684d8ef6378ebae647fb29fb3b5908714f96357a"
+    },
+    {
+      "address": "0x293b6f0",
+      "size": 1782,
+      "name": "Formation::Instance",
+      "sha256": "fcf174dc472e83a96e735bb44d324d8788a17870f71fcd700de035de2efa16c7"
+    },
+    {
+      "address": "0x2c22d00",
+      "size": 1254,
+      "name": "Unit.write",
+      "sha256": "035b64991a79ab3868f70c0a4a1e35c40c7fd54c4d525af5eb07797f4f8b1a0f"
+    },
+    {
+      "address": "0x2c231f0",
+      "size": 3011,
+      "name": "Unit.read",
+      "sha256": "e39f2c7b9a358527bbf3ceed7ff41d9c5f5dccfcf6cb3f5802bafbc0d0f2d202"
+    },
+    {
+      "address": "0x293b440",
+      "size": 276,
+      "name": "Formation.write",
+      "sha256": "b2f6335d6e18fc88f201fe39aaed436c6748757bc088516188f747c2af8dd114"
+    },
+    {
+      "address": "0x293b560",
+      "size": 385,
+      "name": "Formation.read",
+      "sha256": "5b123a18e008411f37fc3b7848a0929eab7dff3370a0a66107d373021913b82c"
+    },
+    {
+      "address": "0x293dc90",
+      "size": 20,
+      "name": "Formation.domain.write",
+      "sha256": "511dbe8d47543e35307e4b776c1030bb4088b6f4accef7f5ebb5c7d518b085c0"
+    },
+    {
+      "address": "0x2c9aba0",
+      "size": 33,
+      "name": "PlayerTypes.write",
+      "sha256": "e3aa2b85edbfcad11d2fe4b8d720bad7d662e88d8461f7994ba25444ae60c6d1"
+    },
+    {
+      "address": "0x2c9af20",
+      "size": 41,
+      "name": "PlotCoord.write",
+      "sha256": "09befdb0e6703290977db65b34b4a9d237076caa3199171f77138d55361c355d"
+    },
+    {
+      "address": "0x2c9af50",
+      "size": 41,
+      "name": "PlotCoord.read",
+      "sha256": "e3a5651a332e533a0ab691c102a6058de6b19f5da3cbd89404986c0e8deffda2"
+    },
+    {
+      "address": "0x2c9afe0",
+      "size": 42,
+      "name": "FixedPoint8.write",
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704"
+    },
+    {
+      "address": "0x2c9b110",
+      "size": 3,
+      "name": "FixedPoint8.GetRaw",
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "address": "0x2a53b90",
+      "size": 95,
+      "name": "PathNode.write",
+      "sha256": "bdcc6b600830c0a00cee43b0984bedc226c1e4d4389b027476efd361d332ae8b"
+    },
+    {
+      "address": "0x2a53bf0",
+      "size": 93,
+      "name": "PathNode.read",
+      "sha256": "2bf918175f180a00b00b880932e4b6f7cb397159d5784dc8c94e77679a023803"
+    },
+    {
+      "address": "0x2a53d10",
+      "size": 46,
+      "name": "PathArray.write_count",
+      "sha256": "ca8f51a11db4d935fff08b5a4b472d61317e5bd7fb5dcda09975ff3545fc65cc"
+    },
+    {
+      "address": "0x2a53d40",
+      "size": 125,
+      "name": "PathArray.read_sequence",
+      "sha256": "e3c61245ec7e979b7336d79139f7d869f86bd3dd73796f30580ed0d31a7948a8"
+    },
+    {
+      "address": "0x2a53dc0",
+      "size": 8,
+      "name": "PathArray.write_element",
+      "sha256": "39ca0136503fbf56808db58cc886e091dd3e0a060cfe9a86a628bfe0cfaf82a2"
+    },
+    {
+      "address": "0x2944720",
+      "size": 91,
+      "name": "Formation.UnitIDs.write",
+      "sha256": "e2525572fe434e62db71c1a4c7136082a9dd3a586ffb4620c06f6ab24996f8a6"
+    },
+    {
+      "address": "0x29447d0",
+      "size": 46,
+      "name": "Formation.UnitIDs.write_count",
+      "sha256": "4e4e0a12d81ee9c79cf98aa08504e6ee2366941096121755f172446daf4c77fc"
+    },
+    {
+      "address": "0x2944800",
+      "size": 8,
+      "name": "Formation.UnitIDs.write_element",
+      "sha256": "9808dc38a892c450adb086eefdde439b40e77f27c3eafc5738d5a7e030d455a8"
+    },
+    {
+      "address": "0x2944450",
+      "size": 125,
+      "name": "Formation.UnitIDs.read_sequence",
+      "sha256": "b4ffdcc2c5053fcce19dd93c1140c170a6263184cd058d3cb87c0e73e3dd9495"
+    },
+    {
+      "address": "0x293d8e0",
+      "size": 48,
+      "name": "Formation.ClearPathCache",
+      "sha256": "2abba4ca3d359d0580d3c526be2b80690c677bbac24677d247cb2f693b0cfdd3"
+    },
+    {
+      "address": "0x2da66b0",
+      "size": 196,
+      "name": "OperationQueue.write",
+      "sha256": "750716201d73f85cfa1a24ef428c87e9e26d51931f560590f0c2624c335d972a"
+    },
+    {
+      "address": "0x2da6780",
+      "size": 242,
+      "name": "OperationQueue.read",
+      "sha256": "0e05cf441e39c5c8b7470fde661b9a78b1a7f7e36116cae24a33f2182a185f49"
+    },
+    {
+      "address": "0x2d965a0",
+      "size": 130,
+      "name": "BaseHandler.write",
+      "sha256": "323f1fc7c924bc136d27c7f894a1b7d9c7b5b5a93e83459ec1809a123d44fe09"
+    },
+    {
+      "address": "0x2d96630",
+      "size": 239,
+      "name": "BaseHandler.read",
+      "sha256": "d18524551057d4f57a20036ad0c0cad007157c5b48bfde58ccce6a7d724e5b6c"
+    },
+    {
+      "address": "0x2da4010",
+      "size": 60,
+      "name": "Activity.CopyAssignmentDo",
+      "sha256": "5e7ff9e24f4b6e516dc369f54fa923a18af6f417eb115f3b919293f500ffed73"
+    },
+    {
+      "address": "0x1fe7180",
+      "size": 60,
+      "name": "Timer.CopyAssignmentDo",
+      "sha256": "6a0b80507b0fea02ed33d9e734d4cc0c4a439d758a456f31e1e779954765b5d3"
+    },
+    {
+      "address": "0x1fe5510",
+      "size": 14,
+      "name": "PlotCoord.SetInvalid",
+      "sha256": "0758d446ab8f4ab51321ef83677ee5716b9b8b41e0cb8cf211eed39f64294d6c"
+    },
+    {
+      "address": "0x2a53c50",
+      "size": 91,
+      "name": "PathArray.write",
+      "sha256": "bdee6e058840f33b682acb8732fc298bab7684bbf21486314b9f737182699e10"
+    },
+    {
+      "address": "0x2da2a20",
+      "size": 24,
+      "name": "Manager.SetTimer",
+      "sha256": "5865d35cab221b896960c4c2f93c46075a76cdd3d87ec44a3a0207c7f3c7fa25"
+    },
+    {
+      "address": "0x2da3100",
+      "size": 52,
+      "name": "OperationQueue.edit",
+      "sha256": "abedbd715649e178ddc9cbac813c7321e699b8f3fd5e933ce43f33e4d5654c5e"
+    },
+    {
+      "address": "0x2d4fdb0",
+      "size": 33,
+      "name": "Activity.write",
+      "sha256": "f0be3efae8ae4d7e4810c4945fad9755300a8e626d286c3a6c0467bf08f96cfc"
+    },
+    {
+      "address": "0x2d4fe10",
+      "size": 33,
+      "name": "Automation.write",
+      "sha256": "b8c514fdb32769e33b960ba0255dac01a69d8222ba84b908dc9882be53b01944"
+    },
+    {
+      "address": "0x2d4fed0",
+      "size": 33,
+      "name": "Directive.write",
+      "sha256": "8d39486131b6c973a2acadb027e79150fcaeab46b3694ee8f9dba5834ce2fb8c"
+    },
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "OStream.int32",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcc150",
+      "size": 14,
+      "name": "OStream.uint32",
+      "sha256": "9731ca1d2959dc0f406a684267a29d425c9bf7ea2f127425123508fbc2ed2d3b"
+    },
+    {
+      "address": "0x2c2b510",
+      "size": 70,
+      "name": "Hero.default_wrapper_constructor",
+      "sha256": "4c4ec0dd13f90eecb348b2bdf495c0399a51de999070c3db1c21556ce6a0ab80"
+    }
+  ],
+  "host_methods": [
+    {
+      "address": "0x3c459e8",
+      "size": 39,
+      "name": "Archive.add",
+      "sha256": "dc770a9edfe8e2b87fa3594bfd5bf91b26fa44029227dc01b3128c37b72f5a8a"
+    },
+    {
+      "address": "0x3c45a10",
+      "size": 83,
+      "name": "Archive.remove",
+      "sha256": "ec475a53fcfed3a5f78b7b90c33b43fe390a7ce3571856ac66c6d099d9fc5d55"
+    },
+    {
+      "address": "0x3c45a64",
+      "size": 54,
+      "name": "Archive.save",
+      "sha256": "55921a2a842932b92d5ce099426d2ec6697cf09b3894d2e70b4ed58c3eb2a459"
+    },
+    {
+      "address": "0x3c45a9a",
+      "size": 119,
+      "name": "Archive.load",
+      "sha256": "59548660fb6babf623decbc610c5381ebdbf4d61359f4b939977f4ca8d68f335"
+    },
+    {
+      "address": "0x3c49c28",
+      "size": 62,
+      "name": "VariableBase.constructor",
+      "sha256": "f5dba1b036b7ed67fcaa1f78ed26564b53a375fa5f98501fd9a27e6f05421d02"
+    },
+    {
+      "address": "0x3c49c66",
+      "size": 62,
+      "name": "VariableBase.constructor_bool",
+      "sha256": "c510fdcba9ec2c6eef2e21d75fd99e1be30b16795e3f36154fd84b2e9a37bd39"
+    },
+    {
+      "address": "0x3c45f34",
+      "size": 217,
+      "name": "Archive.getDeltaIndexes",
+      "sha256": "c8f7b970f932e563c94d1d3450df151bfe3926639f3691719a7377c9dbe7608f"
+    },
+    {
+      "address": "0x3c46b38",
+      "size": 411,
+      "name": "Archive.getVariable",
+      "sha256": "fa0ed954c6be469fd32178f8e10b633bb6d9b0ef96876fc54ae610ea54adc0b4"
+    },
+    {
+      "address": "0x3c46cd4",
+      "size": 758,
+      "name": "Archive.getAutoVariableId",
+      "sha256": "be30a4d0ae8e3b562f7c3944bb0bcb77344d98e9e69c09d110fc7f9cff4103a1"
+    },
+    {
+      "address": "0x2fdd7c0",
+      "size": 14,
+      "name": "OStream.WriteObject.int32",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2f66f20",
+      "size": 14,
+      "name": "OStream.WriteObject.uint32",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2fe34f0",
+      "size": 14,
+      "name": "OStream.WriteObject.bool",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x3962650",
+      "size": 14,
+      "name": "OStream.WriteObject.int16",
+      "sha256": "f2d3e22bc439750e47398663378c04dc03e443a86397bff40334966cebdde5f3"
+    }
+  ],
+  "typed_wrapper_constructors": [
+    {
+      "address": "0x2c1ca10",
+      "size": 69,
+      "name": "FAutoVariable<Data::TypedVariantMap, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "88cdd9f643185e32c5e8011837438c673c9e9b858a71c1c589ba543d17605f0f"
+    },
+    {
+      "address": "0x2c1c9c0",
+      "size": 69,
+      "name": "FAutoVariable<Data::VariantMap, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "e99ef67eaa5c8dcdf97da79d5c946b92cbca5c2839cbf184018933dfdf52559f"
+    },
+    {
+      "address": "0x293df60",
+      "size": 52,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "47cde9fa841a0089d59ac347215c527c67d366862553e277ef672b091b6eca1f"
+    },
+    {
+      "address": "0x2c2af60",
+      "size": 52,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "118f646145a3bf80a9bd506e74b74d641a128344b86c134b7ac682f99e08e7a9"
+    },
+    {
+      "address": "0x2c1c960",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::DirectionTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "7641cf1f938a7b14dc5a1aef5d2bc8914252d08730f2153fb8aa145be3c3cab3"
+    },
+    {
+      "address": "0x293dfa0",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "582d0b66131affcc046f37cf88d6e6e50df51fa0ad12c48c30511711b6e856f7"
+    },
+    {
+      "address": "0x2c12d80",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::DomainTypes, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "416e0fbf29cf256f89419bc84a1a2743aee7b76d6016df483b30c581cb5473ee"
+    },
+    {
+      "address": "0x2c2b470",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "427483e1cdcf0459e59ac5cb2784f4ae3b515e0d4b09252acbedb40d6130ea95"
+    },
+    {
+      "address": "0x2c2aed0",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::MilitaryFormationTypes, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "79c72e94d0619d49f6700f1b647107f267955f8f4eef040dd615a8fce56a8639"
+    },
+    {
+      "address": "0x293e040",
+      "size": 84,
+      "name": "FAutoVariable<GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool)",
+      "sha256": "b91a0ae81439836590d8433dad98f38ee53759c5b73479aebb609d6137048192"
+    },
+    {
+      "address": "0x293df30",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "85a4176929611e605feec01e0c0f6f0489afdfc34569fb2a6e8cae1434cc40da"
+    },
+    {
+      "address": "0x2c1c990",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "ce04fa6a668011df9de9fe82f766fc3137af4955773e8ff126e987ea0c6e56af"
+    },
+    {
+      "address": "0x2c2b010",
+      "size": 52,
+      "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, GameCore::PlayerTypes&&, bool)",
+      "sha256": "5b46b65ab1f826efd8d39a0133b39cef005e8b4fdbad4e59757988f1844ee51b"
+    },
+    {
+      "address": "0x293def0",
+      "size": 52,
+      "name": "FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "816e50ebed6abd55e79e3a381d8bff9f7e38804351ecfe6f6aded2b5be98c641"
+    },
+    {
+      "address": "0x2c1c920",
+      "size": 52,
+      "name": "FAutoVariable<GameCore::PlotCoord, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "b75d4082ff5be76c8372bd327a2804a4f5ed0c60a1665cbefde6d0a78cfe5fad"
+    },
+    {
+      "address": "0x2c2ad60",
+      "size": 52,
+      "name": "FAutoVariable<GameCore::PlotCoord, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "52b4877bcd08f0c6a936adc5c58678c27b0681ce6be2e2af8b9f41dd0faf883d"
+    },
+    {
+      "address": "0x2c2b1f0",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::Archaeology, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "02773970bbabfff8ed6717972270b4ae850d69215709075773a979549a3c50ca"
+    },
+    {
+      "address": "0x2c2b1c0",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::Unit::AttackRangeModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "a4882a08a49643e25b0c64bd74cf158635c57c64b17bed8a19a8b36763ec37a6"
+    },
+    {
+      "address": "0x2c2b0e0",
+      "size": 89,
+      "name": "FAutoVariable<GameCore::Unit::CombatModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "5ef4bed9b1ef963a7f8554aea9eb216ef693e61975c4031e1dbce2f961056dee"
+    },
+    {
+      "address": "0x2c2b240",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::Espionage, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "c34cc33fd0ddf012c27c00083dc4e99cadc63ead797c57fb5c466f8b3a967a6a"
+    },
+    {
+      "address": "0x2c2b290",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::Experience, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "dde6bb5240e7ac48871f4ee3dd4740cd54f435c4d8dfa8faff93d8af4267cd7c"
+    },
+    {
+      "address": "0x2c2b2e0",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::GreatPerson, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "f039dd3fee7b7f551097abeb79d097ffba560acd206d98bddaee60dafe189f33"
+    },
+    {
+      "address": "0x2c2b080",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::Unit::HealthModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "bd6d15614105a96a68dce8dd3ba387e82d934247b126094cece6ee5cb5a9e6c2"
+    },
+    {
+      "address": "0x2c2b0b0",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::Unit::HealthReligionModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "38a9398df802214594324a2222d33129f516a158b4f32313a8a95de7bf630df9"
+    },
+    {
+      "address": "0x2c2b140",
+      "size": 52,
+      "name": "FAutoVariable<GameCore::Unit::MovementModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "c3a7432e9c9c1f68a0910fb55c829c0670377eecfb5fafe8e4e93d476d20ef45"
+    },
+    {
+      "address": "0x2c2b4c0",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::Operations::OperationQueue, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "e719f001faf136fa31135a543379250a08ecee82a20147e740c237389a0350ce"
+    },
+    {
+      "address": "0x2c2b330",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::Religion, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "90ac81fd382dc126521e0c1295df56dccb5eeeaed33201bad908459d07c2f875"
+    },
+    {
+      "address": "0x2c2b380",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::RockBand, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "a023ae13be1bbe3bc6ac00e828ed42af9e67379ff0135c652434b2acd6708fc9"
+    },
+    {
+      "address": "0x2c2b180",
+      "size": 49,
+      "name": "FAutoVariable<GameCore::Unit::SightModifiers, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "d8b657946252e664183f1ad8a1bc90789622e8f15b1da47f4f277bbbf5aa64c8"
+    },
+    {
+      "address": "0x2c2b3d0",
+      "size": 69,
+      "name": "FAutoVariable<GameCore::Unit::Trade, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "ad467e05746155ea158cfcde76857d7f10615b8de3655f1c988521fc86864d81"
+    },
+    {
+      "address": "0x2c1c8f0",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::UnitAITypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "1a612e1d7fa41c875ee938cf4b10bb9906b6b4a4450295b4ce2c1174ed1d94a8"
+    },
+    {
+      "address": "0x2c12d50",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::UnitActivityTypes, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "644d22110d16be89b8cf8b7f7c664acb3b09d29c988f1d8a8112c6da68b7aca1"
+    },
+    {
+      "address": "0x2c12d20",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::UnitAutomateTypes, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "cc40efd12550981f8c1b96b43b9c333ef97d118da0b4422babcf11accf3436d7"
+    },
+    {
+      "address": "0x2c1c8c0",
+      "size": 48,
+      "name": "FAutoVariable<GameCore::UnitTypes, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "a0e6b4507d002d3eb947935c88772a8067c14486d599be7d98bb1f71133e0c29"
+    },
+    {
+      "address": "0x2c2ae80",
+      "size": 69,
+      "name": "FAutoVariable<Types::HashTable<unsigned char, 1u, 0u>, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "3086b402b3eb58186a4dcd290c923a33e0def9df70be574367c20f4b99ebb865"
+    },
+    {
+      "address": "0x2c2b420",
+      "size": 69,
+      "name": "FAutoVariable<Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "020d2e81ca365ffc4cf288ae8d9e9ae4da2dcc9cbbf0f9fd3c1069500154b264"
+    },
+    {
+      "address": "0x2c2ae30",
+      "size": 69,
+      "name": "FAutoVariable<Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "2ad353211bdb6d4d124ddb5879ab5f438c1856663a2b12a78d39cb16843762b7"
+    },
+    {
+      "address": "0x2c2ade0",
+      "size": 69,
+      "name": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "19c7d11ba9508dee38ae280ef45258f56bdd683eff179f6963d7bb543e80dfb7"
+    },
+    {
+      "address": "0x293e0a0",
+      "size": 69,
+      "name": "FAutoVariable<Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "b5eef72a7591c0e8c908ba16cf6dc831db43f017a7d69f4493cde6290a01b48c"
+    },
+    {
+      "address": "0x293e010",
+      "size": 45,
+      "name": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "82416b9fc421ebfc3f046d1dbaca6c2f9faf8b34179b78f1dbaf475991c0c6c4"
+    },
+    {
+      "address": "0x293dfd0",
+      "size": 52,
+      "name": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "sha256": "6c263a3d962ffcd6cbcfdfdc7f000810625199b30b898304e78bd2c254cba151"
+    },
+    {
+      "address": "0x2c12db0",
+      "size": 45,
+      "name": "FAutoVariable<bool, GameCore::Unit::CInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "4c2205d2f4fb4a7370578573dd35dfd0fd9e08d94ae41df5db8acbd8cc41224a"
+    },
+    {
+      "address": "0x2c1ca60",
+      "size": 45,
+      "name": "FAutoVariable<bool, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "7bd5e87efae15afaa48484df7dd3269e6890b04438668d40567fcee54e638a47"
+    },
+    {
+      "address": "0x2c2b050",
+      "size": 45,
+      "name": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "228f1156aa9d1995d9d36f69ca157c33ef5070c0da8135fa009c0324de918e00"
+    },
+    {
+      "address": "0x2c2ada0",
+      "size": 52,
+      "name": "FAutoVariable<bool, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+      "sha256": "acd1e696eab970abb302099fa4bab0019c9934f8d400ebb685876c4de92c3090"
+    },
+    {
+      "address": "0x2c2afa0",
+      "size": 45,
+      "name": "FAutoVariable<bool, GameCore::Unit::Religion>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "4253184328307a6309e8b3f65d9ab35dfd175fa06c8e929ec4b9729260583800"
+    },
+    {
+      "address": "0x2c2af30",
+      "size": 48,
+      "name": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "0017bae1beb73765616df0594bd898411d7c6fb14da71c54fb5ba31a5e3557d0"
+    },
+    {
+      "address": "0x2c2af00",
+      "size": 48,
+      "name": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool)",
+      "sha256": "7982ec136655e727af9b0d94f8105cf66e628512945e6b16479a4f843bc18251"
+    },
+    {
+      "address": "0x2c2afd0",
+      "size": 52,
+      "name": "FAutoVariable<int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, int&&, bool)",
+      "sha256": "51d4d9bd3a9c039da9ab8ece840d26861db8cd3d76405ad5e67cdb37d175bbfd"
+    },
+    {
+      "address": "0x293deb0",
+      "size": 52,
+      "name": "FAutoVariable<unsigned int, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, unsigned int const&, bool)",
+      "sha256": "6916093e3a5be3477547964b410bfca674c8d24cc6e54c84e70db52fcc682760"
+    },
+    {
+      "address": "0x2c1c880",
+      "size": 52,
+      "name": "FAutoVariable<unsigned int, GameCore::Unit::IInstance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, unsigned int&&, bool)",
+      "sha256": "2900f7aef5ed86993186f981cb185e8331dd5668843ea14ed5f9b6d5ebe2b742"
+    },
+    {
+      "address": "0x2c2ad30",
+      "size": 48,
+      "name": "FAutoVariable<unsigned int, GameCore::Unit::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+      "sha256": "a8ae0573a7fc6b1033388ce23f6f5ab37b79c51423632362b266639762fa11f4"
+    }
+  ],
+  "formation_wire_contract": {
+    "version": 1,
+    "endian": "little",
+    "scalar_prefix_bytes": 36,
+    "size_formula": "52 + 20 * path_node_count + 4 * unit_id_count",
+    "plot_coord": [
+      "int32:x",
+      "int32:y"
+    ],
+    "fixed_point": "int32:raw",
+    "player_and_domain": "int32:enum_bits",
+    "booleans": "8 one-byte bool fields in write order",
+    "path_array_count": "uint32",
+    "path_node_version": 1,
+    "path_node_fields": [
+      "int32:version",
+      "int32:data1_raw",
+      "int32:data2",
+      "int32:flags",
+      "int16:x",
+      "int16:y"
+    ],
+    "unit_ids_count": "uint32",
+    "unit_ids_element": "uint32",
+    "reader_side_effects": [
+      "evaluatingOperation=false",
+      "resolve actual owner player",
+      "set archive ID from actual component identity"
+    ],
+    "native_wire_comparison": false
+  },
+  "skip_turn_serializer_slots": {
+    "write": "0x2d965a0",
+    "read": "0x2d96630"
+  },
+  "operation_versions": {
+    "queue": 1,
+    "node": 2,
+    "empty_parameters": 0,
+    "path_node": 1
+  },
+  "limits": [
+    "Static constructor indices require intact original archive vector; native getter cross-check pending.",
+    "Field order is not a recursive codec or Core Save byte offset map.",
+    "Definition-indexed and dynamic fields require exact Linux rules and nested serializers.",
+    "Unknown handlers/parameters are unsupported; opaque retention does not permit advancing them.",
+    "No action execution, complete-state parity, or policy-boundary acceptance."
+  ]
+}
