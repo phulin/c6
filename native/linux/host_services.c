@@ -19,11 +19,58 @@ static void (*app_destruct)(void *);
 static void (*utility_destruct)(void *);
 static bool database_started;
 static bool archive_factory_created;
+static bool lua_system_created;
 
 static void *symbol(const char *name) {
     void *address=dlsym(RTLD_DEFAULT,name);
     if(!address) fprintf(stderr,"C6_LINUX_HOST missing_symbol %s\n",name);
     return address;
+}
+
+/* Actual AppLuaScriptSystem::Create performs allocation, Havok VM setup and
+ * singleton publication. No synthetic Lua state or reconstructed VM fields. */
+static int create_lua_system_and_probe(void) {
+    void *(*get_system)(void)=symbol("_ZN9LuaSystem15LuaScriptSystem3GetEv");
+    void (*create_system)(void)=symbol("_ZN18AppLuaScriptSystem6CreateEv");
+    void *(*get_main_state)(void *)=symbol("_ZN9LuaSystem15LuaScriptSystem8GetStateEv");
+    void *(*create_thread)(void *,int)=symbol(
+        "_ZN18AppLuaScriptSystem12CreateThreadEN9LuaSystem9LuaThread10ThreadTypeE");
+    void *(*thread_state)(const void *)=symbol("_ZNK9LuaSystem9LuaThreadcvP9lua_StateEv");
+    void (*release_thread)(void *)=symbol("_ZN12AppLuaThreadD0Ev");
+    int (*gettop)(void *)=symbol("_Z10lua_gettopP9lua_State");
+    void (*settop)(void *,int)=symbol("_Z10lua_settopP9lua_Statei");
+    void (*pushnumber)(void *,double)=symbol("_Z14lua_pushnumberP9lua_Stated");
+    double (*tonumber)(void *,int)=symbol("_Z12lua_tonumberP9lua_Statei");
+    void (*lock)(void)=symbol("_ZN3Lua7Details10LockAccessEv");
+    void (*unlock)(void)=symbol("_ZN3Lua7Details12UnlockAccessEv");
+    if(!get_system||!create_system||!get_main_state||!create_thread||
+       !thread_state||!release_thread||!gettop||!settop||!pushnumber||
+       !tonumber||!lock||!unlock||get_system()) return 1;
+    fprintf(stderr,"C6_LINUX_HOST lua_system_create_enter\n");
+    create_system();
+    void *system=get_system();
+    if(!system) return 1;
+    lua_system_created=true;
+    if(!get_main_state(system)) return 1;
+    fprintf(stderr,"C6_LINUX_HOST lua_system_create_return main_state_nonnull\n");
+    fprintf(stderr,"C6_LINUX_HOST lua_thread_create_enter\n");
+    /* ThreadType 1 matches actual GameCore::ScriptSystem::CreateLuaThread. */
+    void *thread=create_thread(system,1);
+    if(!thread) return 1;
+    void *state=thread_state(thread);
+    if(!state) {release_thread(thread);return 1;}
+    fprintf(stderr,"C6_LINUX_HOST lua_thread_create_return state_nonnull\n");
+    lock();
+    int before=gettop(state);
+    pushnumber(state,16777215.0);
+    bool roundtrip=gettop(state)==before+1&&tonumber(state,-1)==16777215.0;
+    settop(state,before);
+    roundtrip=roundtrip&&gettop(state)==before;
+    unlock();
+    fprintf(stderr,"C6_LINUX_HOST lua_stack_roundtrip_return %d\n",roundtrip);
+    release_thread(thread);
+    fprintf(stderr,"C6_LINUX_HOST lua_thread_release_return\n");
+    return roundtrip?0:1;
 }
 
 void *c6_linux_create_host_engine_utility(void) {
@@ -114,6 +161,7 @@ void *c6_linux_create_host_engine_utility(void) {
     if(!archive_create()) return NULL;
     archive_factory_created=true;
     fprintf(stderr,"C6_LINUX_HOST archive_factory_create_return nonnull\n");
+    if(getenv("C6_HOST_LUA")&&create_lua_system_and_probe()) return NULL;
     return utility;
 }
 
@@ -130,6 +178,15 @@ int c6_linux_destroy_host_services(void) {
         delete_object(utility);
         utility=NULL;
         fprintf(stderr,"C6_LINUX_HOST utility_destroy_return\n");
+    }
+    if(lua_system_created) {
+        void (*destroy_system)(void)=symbol("_ZN9LuaSystem15LuaScriptSystem7DestroyEv");
+        void *(*get_system)(void)=symbol("_ZN9LuaSystem15LuaScriptSystem3GetEv");
+        if(!destroy_system||!get_system) return 1;
+        destroy_system();
+        if(get_system()) return 1;
+        lua_system_created=false;
+        fprintf(stderr,"C6_LINUX_HOST lua_system_destroy_return unpublished\n");
     }
     if(application) {
         if(*application_global!=application) return 1;
