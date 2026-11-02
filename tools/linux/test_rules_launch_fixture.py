@@ -1,0 +1,62 @@
+"""Synthetic launch-layout validation; no original native code executes here."""
+from pathlib import Path
+import hashlib
+import json
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0,str(Path(__file__).parent))
+import rules_launch_fixture as fixture
+
+
+class LaunchFixtureTests(unittest.TestCase):
+    def inputs(self, root):
+        assets=root/'assets';assets.mkdir()
+        for name in ('Base','DLC','aspyrassets'):(assets/name).mkdir()
+        (assets/'Civ6').write_bytes(b'synthetic-host-not-an-executable')
+        (assets/'Base/data.xml').write_bytes(b'<Synthetic/>')
+        host=hashlib.sha256((assets/'Civ6').read_bytes()).hexdigest()
+        repo=root/'repo';(repo/'evidence/linux').mkdir(parents=True)
+        gate={'modules':{'Civ6':host},'files':{'Base/data.xml':fixture.digest(assets/'Base/data.xml')},'source_inventory_sha256':'synthetic'}
+        (repo/'evidence/linux/rules-content-inputs.json').write_text(json.dumps(gate))
+        return assets,repo,host
+
+    def test_regular_copy_and_gated_aliases_then_source_change_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);assets,repo,host=self.inputs(root)
+            with patch.object(fixture,'ROOT',repo),patch.object(fixture,'HOST',host):
+                fixture.stage(assets,root/'launch')
+                result=fixture.validate(assets,root/'launch')
+                self.assertEqual(result['validated_source_inventory_sha256'],'synthetic')
+                self.assertFalse((root/'launch/Civ6').is_symlink())
+                self.assertEqual((assets/'Base/data.xml').read_bytes(),b'<Synthetic/>')
+                (assets/'Base/data.xml').write_bytes(b'changed')
+                with self.assertRaisesRegex(ValueError,'content input mismatch'):
+                    fixture.validate(assets,root/'launch')
+
+    def test_executable_symlink_cannot_replace_exact_copy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);assets,repo,host=self.inputs(root)
+            with patch.object(fixture,'ROOT',repo),patch.object(fixture,'HOST',host):
+                fixture.stage(assets,root/'launch')
+                (root/'launch/Civ6').chmod(0o600);(root/'launch/Civ6').unlink()
+                (root/'launch/Civ6').symlink_to(assets/'Civ6')
+                with self.assertRaisesRegex(ValueError,'regular-file host copy'):
+                    fixture.validate(assets,root/'launch')
+
+    def test_real_steamassets_root_and_no_unknown_input_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);assets,repo,host=self.inputs(root)
+            with patch.object(fixture,'ROOT',repo),patch.object(fixture,'HOST',host):
+                fixture.stage(assets,root/'launch')
+                (root/'launch/unreviewed').write_bytes(b'unknown')
+                with self.assertRaisesRegex(ValueError,'undeclared launch'):
+                    fixture.validate(assets,root/'launch')
+                (root/'launch/unreviewed').unlink()
+                with self.assertRaisesRegex(ValueError,'new private directory'):
+                    fixture.stage(assets,root/'launch')
+
+
+if __name__=='__main__':unittest.main()

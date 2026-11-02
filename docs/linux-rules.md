@@ -135,3 +135,49 @@ view. Native StartupGame or Load returning is not inferred from these artifacts.
 Reproduce bounded Linux-only ABI disassembly privately with
 `python3 tools/linux/rules_evidence.py`. No new Windows native execution is needed
 for this workflow.
+
+## Genuine ASL launch layout and full XP2 input gate
+
+`ASL::ASL_GetAppAssetsPath` uses the executing host's `/proc/self/exe` parent
+plus `/steamassets`. The supplied extraction instead has `Base` and `DLC` at
+its root. This is separate from the Schema-view diagnostic above.
+`tools/linux/rules_launch_fixture.py` stages a new private exact-byte host copy,
+a real `steamassets` directory, and explicitly recorded input aliases:
+
+| Fixture input | Original supplied input |
+| --- | --- |
+| `steamassets/base` | `Base` |
+| `steamassets/dlc` | `DLC` |
+| `aspyrassets` | `aspyrassets` |
+
+A host symlink cannot substitute for the copy because `/proc/self/exe` resolves
+to the original executable location. `validate(assets,fixture)` rejects a symlink
+host, changed host bytes, changed aliases, undeclared entries or modified source
+inputs. Original installed files remain unchanged. The native library search
+path still uses the supplied libraries; none is replaced or synthesized.
+
+```sh
+python3 tools/linux/rules_launch_fixture.py \
+  --destination ../c6-ghidra/evidence/linux-rules/asl-launch-1
+python3 tools/linux/rules_inventory.py \
+  --output /tmp/linux-content-inputs.json
+```
+
+[`rules-content-inputs.json`](../evidence/linux/rules-content-inputs.json) pins
+2,779 supplied Linux Base/DLC files, 35 installed mod descriptors, and the exact
+Base, XP1 and XP2 native module identities. The source inventory identity is
+`4f5f1c64cd98cc6f6b39e2ac2a27a0b47f4292cef18e94732629cd188c7850b6`.
+It is an input gate, not an enabled-mod list or asserted file execution order.
+Descriptor declaration metadata remains evidence for original native resolution.
+No imported Windows action order or module-transition claim is attached to it.
+
+The launch mapping identity is
+`528532714fca0f9562dd83df0071b47aecf666069b9781a54f10a81a2f3db1f2`.
+The reusable validator hashes every gated content file and native module before
+execution and returns these identities for inclusion in the runtime configuration.
+The original ASL filesystem provider owns `ASL_FileInit`, path translation and
+`ASL_FileQuit`; its independent lifecycle evidence is separate from this staging
+tool. Full XP2 activation must use the genuine native framework's selected-mod,
+criteria and action pipeline and capture actual Base-to-XP2 module transitions.
+That full-content profile and its exported databases remain distinct from the
+verified base-only fixture.
