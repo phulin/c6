@@ -79,3 +79,40 @@ event systems, logging setters and jobs and are not requests found in this XP2
 FinalRelease image. The release rather than FinalRelease DLLs also contain an
 `EXP_GetAssertState` name absent from this executable's exports, reinforcing
 that these inventories must retain their individual binary identities.
+
+## Original XML importer probe
+
+`native/bootstrap/xml-import` executes the original host XML importer, backed by
+the original DatabaseDLL, in a separate child process. Reproduce with:
+
+```sh
+python3 tools/analysis/host_xml_import.py --output evidence/bootstrap/native-original-xml-probe.json
+```
+
+The runner fingerprints the executable, DatabaseDLL and supplied native CRT
+providers. Its result pins the adapter binary, sources, compiler, Wine and
+configuration. The native probe repeats the executable and DatabaseDLL gates.
+The reusable `imports.c` resolver binds genuine CRT, KERNEL32 and DatabaseDLL
+imports only. CRT API-set contracts resolve to the supplied UCRT, since Wine's
+explicit LoadLibrary does not expose every API-set alias. It invokes no host
+executable entry point, TLS callbacks or static constructors. Other IAT entries
+remain unresolved and reaching them is a failed probe.
+
+Constructors at host RVAs `0x799910` and `0x799d80`, followed by parse `0x79d3a0`,
+import a tiny diagnostic XML document with one `Value=7` row. The original
+database verifies a CHECK assertion and reads back count 1 and value 7 through
+its query API. Original importer, connection-context and database connection
+destructors complete. The numeric query getter is vtable offset `+0x120`, RVA
+`0x48a0`; offset `+0xf0` returns a text pointer, not an integer.
+
+Constructor dependency audit: original allocation wrappers use genuine aligned
+allocation/free CRT imports. Parser allocator object host RVA `0x1284ee8` has a
+file-backed vtable pointer to `0x106da50`; its allocator methods forward to the
+original allocation wrappers. The parser constructs its own pool and uses the
+shared loader-zero-filled empty string. No fake host objects or service-state
+patches are installed. Internal parser virtual methods and immutable tables
+come from the original image.
+
+This establishes a real original-code XML-to-original-database boundary for the
+tiny fixture. It does not establish all importer branches, the complete loading
+recipe, enabled DLC/mod resolution, initialized rules or gameplay parity.
