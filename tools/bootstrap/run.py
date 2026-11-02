@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--inventory-only', action='store_true')
     parser.add_argument('--initialize', action='store_true', help='run explicitly bounded host service diagnostic')
+    parser.add_argument('--rules-snapshot-dir', type=Path, help='export genuine rules databases to a new private directory outside repo/assets')
     parser.add_argument('--content-recipe', choices=('base', 'xp2'), help='populate real original database connections using pinned original SQL/XML recipe')
     parser.add_argument('--load-stream', type=Path, help='after original StartupGame, probe original Load with fingerprinted private extracted stream')
     parser.add_argument('--startup-game', action='store_true', help='probe original StartupGame with explicit SQL-only schema fixture')
@@ -41,6 +42,14 @@ def main():
     parser.add_argument('--empty-databases', action='store_true', help='initialize original context with real empty named-memory DatabaseDLL fixtures')
     parser.add_argument('--expected-configuration', help='refuse configuration identity mismatch')
     args = parser.parse_args()
+    if args.rules_snapshot_dir:
+        if not args.content_recipe:
+            parser.error('--rules-snapshot-dir requires --content-recipe')
+        args.rules_snapshot_dir = args.rules_snapshot_dir.resolve()
+        if args.rules_snapshot_dir.is_relative_to(ROOT) or args.rules_snapshot_dir.is_relative_to(args.assets.resolve()):
+            parser.error('original-derived rules databases must be outside public repository/assets')
+        if any((args.rules_snapshot_dir / name).exists() for name in ('configuration.sqlite', 'gameplay.sqlite')):
+            parser.error('rules snapshot files already exist: refusing overwrite')
     if args.raw_sql_bytes and not args.sql_schema_bootstrap:
         parser.error('--raw-sql-bytes requires --sql-schema-bootstrap')
     save_stream = None
@@ -118,6 +127,8 @@ def main():
         'native/bootstrap/xml-import/content.h',
         'native/bootstrap/localization/localization.c',
         'native/bootstrap/localization/localization.h',
+        'native/bootstrap/database-backup/backup.c',
+        'native/bootstrap/database-backup/backup.h',
     )}
     sources['tools/bootstrap/config.json'] = sha(ROOT / 'tools/bootstrap/config.json')
     sources['native/bootstrap/Makefile'] = sha(ROOT / 'native/bootstrap/Makefile')
@@ -134,6 +145,7 @@ def main():
                      'runtime_providers': {str(p.relative_to(args.assets)): sha(p) for p in runtime_files},
                      'wine_dll_overrides': 'msvcp140,vcruntime140,ucrtbase=n',
                      'runtime_imports': external, 'service_fixture': 'bounded_diagnostic' if args.initialize else 'none',
+                     'rules_snapshot_requested': bool(args.rules_snapshot_dir),
                      'startup_game_requested': args.startup_game, 'save_stream': save_stream,
                      'content_recipe_sha256': sha(recipe_path) if recipe_path else None,
                      'content_recipe': recipe,
@@ -157,6 +169,9 @@ def main():
         for runtime in runtime_files:
             shutil.copyfile(runtime, host.parent / runtime.name)
         env = dict(os.environ, WINEPREFIX=str(ROOT / 'target/bootstrap/wine-prefix'), WINEARCH='win64', WINEDEBUG='-all', WINEDLLOVERRIDES='msvcp140,vcruntime140,ucrtbase=n')
+        if args.rules_snapshot_dir:
+            args.rules_snapshot_dir.mkdir(parents=True, exist_ok=True)
+            env['C6_BOOTSTRAP_RULES_SNAPSHOT_DIR'] = windows(args.rules_snapshot_dir)
         if localization:
             localization_manifest = host.parent / 'localization-context-paths.tsv'
             localization_manifest.write_text(''.join('\t'.join((Path(source['path']).suffix[1:], source['sha256'], windows(args.assets / source['path']))) + '\n' for source in localization['sources']), encoding='utf-8')
@@ -186,6 +201,8 @@ def main():
                        'stderr': run.stderr, 'real_context_created': any(item.get('real_context_created') for item in observations),
                        'context_initialized': any(item.get('phase') == 'Initialize_returned' and item.get('result') and item.get('is_initialized_after') for item in observations),
                        'initialized_game': False, 'gameplay_parity': False})
+    if args.rules_snapshot_dir:
+        result['rules_snapshots'] = [{'filename': name, 'sha256': sha(args.rules_snapshot_dir / name), 'bytes': (args.rules_snapshot_dir / name).stat().st_size} for name in ('configuration.sqlite', 'gameplay.sqlite') if (args.rules_snapshot_dir / name).is_file()]
     rendered = json.dumps(result, indent=2) + '\n'
     if args.output:
         args.output.write_text(rendered)

@@ -11,6 +11,7 @@
 #include "save/save_probe.h"
 #include "xml-import/content.h"
 #include "localization/localization.h"
+#include "database-backup/backup.h"
 
 static const char expected_dll[] = "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c";
 static HMODULE image;
@@ -176,6 +177,16 @@ int wmain(int argc, wchar_t **argv) {
                         bootstrap_service_fixture_database_connection(1), argv[5], context);
                     if (content_result) return content_result;
                 } else if (!execute_schema_manifest(argv[5], wcscmp(argv[4], L"--raw-sql-databases") != 0)) return 15;
+            }
+            const wchar_t *snapshot_directory = _wgetenv(L"C6_BOOTSTRAP_RULES_SNAPSHOT_DIR");
+            if (content_mode && snapshot_directory) {
+                wchar_t snapshot_path[32768];
+                HMODULE database = GetModuleHandleW(L"DatabaseDLL_FinalRelease.dll");
+                phase = "backup_original_rules_databases";
+                if (swprintf(snapshot_path, 32768, L"%ls\\configuration.sqlite", snapshot_directory) < 0 ||
+                    bootstrap_original_database_backup(database, bootstrap_service_fixture_database_connection(0), snapshot_path, "configuration")) return 19;
+                if (swprintf(snapshot_path, 32768, L"%ls\\gameplay.sqlite", snapshot_directory) < 0 ||
+                    bootstrap_original_database_backup(database, bootstrap_service_fixture_database_connection(1), snapshot_path, "gameplay")) return 19;
             }
             bootstrap_service_fixture_report(stdout);
             phase = "Initialize";
