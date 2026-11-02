@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "elf": "libGameCore_XP2.so",
+  "sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "method": "llvm-dwarfdump-18 --name=Instance/Random with children; selected unique definition DIEs, not declaration-only DIEs; nm -D --defined-only | c++filt for symbol addresses",
+  "types": [
+    {
+      "name": "GameCore::Context::Instance",
+      "die": "0x06eeeb67",
+      "bytes": 6720
+    },
+    {
+      "name": "GameCore::Game::Instance",
+      "die": "0x0376d0e6",
+      "bytes": 688
+    },
+    {
+      "name": "GameCore::Player::Instance",
+      "die": "0x08b34ef8",
+      "bytes": 2136
+    },
+    {
+      "name": "GameCore::City::Instance",
+      "die": "0x069277fb",
+      "bytes": 6536
+    },
+    {
+      "name": "GameCore::Unit::Instance",
+      "die": "0x09a841f3",
+      "bytes": 3344
+    },
+    {
+      "name": "GameCore::Random",
+      "die": "0x0b528811",
+      "bytes": 32
+    }
+  ],
+  "random_member_offsets": {
+    "m_ulRandomSeed": 8,
+    "m_ulCallCount": 12,
+    "m_ulResetCount": 16,
+    "m_uiLockCount": 20,
+    "m_bSynchronous": 24
+  },
+  "functions": {
+    "DllCreateGameContext": {
+      "address": "0x2dcb980",
+      "die": "0x0cf610ad",
+      "return_type": "GameCore::Interfaces::IContext1 *",
+      "formal_parameters": []
+    },
+    "GameCore::Context::Instance::Instance()": {
+      "address": "0x290c000"
+    },
+    "GameCore::Game::Instance::Instance(GameCore::Context::Instance*)": {
+      "address": "0x2660670"
+    },
+    "GameCore::Random::Get(unsigned short, char const*)": {
+      "address": "0x2d48d60"
+    }
+  },
+  "llvm_statistics": {
+    "version": 9,
+    "#functions": 252565,
+    "#functions with location": 252426,
+    "#inlined functions": 248683,
+    "#unique source variables": 564403,
+    "#source variables": 1081571,
+    "#source variables with location": 960190
+  },
+  "private_evidence": [
+    "evidence/linux/xp2-instance-types.txt",
+    "evidence/linux/xp2-random.txt",
+    "evidence/linux/xp2-dwarf-statistics.json",
+    "evidence/linux/xp2-factory.txt",
+    "evidence/linux/xp2-priority-functions.txt"
+  ],
+  "limits": "Linux target only; function/type counts include repeated template/compiler records. No Windows layout, initialized-game or action/turn equivalence established."
+}

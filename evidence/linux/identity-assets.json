@@ -1,0 +1,1237 @@
+{
+  "schema": 1,
+  "method": "readelf and direct ELF64 section parsing; no artifact execution",
+  "artifacts": [
+    {
+      "path": "Civ6",
+      "bytes": 82087624,
+      "sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "EXEC (Executable file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [
+        "libASL_Interpose.so",
+        "libX11.so.6",
+        "libGL.so.1",
+        "libopenal.so.1",
+        "libiconv.so.2",
+        "libpthread.so.0",
+        "librt.so.1",
+        "libdl.so.2",
+        "libm.so.6",
+        "libuuid.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2",
+        "libgcc_s.so.1",
+        "libasound.so.2",
+        "libsteam_api.so",
+        "libstdc++.so.6",
+        "libtbb.so.2",
+        "libEOSSDK-Linux-Shipping.so",
+        "libresolv.so.2",
+        "libc++.so.1",
+        "libc++abi.so.1"
+      ],
+      "soname": [],
+      "runtime_paths": [
+        "."
+      ],
+      "has_debug_info": false,
+      "has_symtab": false,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 199423,
+      "context_exports": [],
+      "host_provider_candidates": 68436,
+      "undefined_dynamic_symbol_count": 870,
+      "undefined_names_also_defined_by_Civ6": 0,
+      "sections": {
+        ".dynsym": {
+          "address": "0x522f60",
+          "bytes": 4807056,
+          "offset": 1191776
+        },
+        ".init_array": {
+          "address": "0x535dc88",
+          "bytes": 3208,
+          "offset": 81124488
+        },
+        ".fini_array": {
+          "address": "0x535e910",
+          "bytes": 8,
+          "offset": 81127696
+        }
+      },
+      "program_interpreter": [
+        "/lib64/ld-linux-x86-64.so.2"
+      ],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x2c61310",
+        "0x0000000000000019 (INIT_ARRAY)         0x535dc88",
+        "0x000000000000001b (INIT_ARRAYSZ)       3208 (bytes)"
+      ]
+    },
+    {
+      "path": "libASL_Interpose.so",
+      "bytes": 1563664,
+      "sha256": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [],
+      "soname": [],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 3550,
+      "context_exports": [],
+      "host_provider_candidates": 16,
+      "undefined_dynamic_symbol_count": 36,
+      "undefined_names_also_defined_by_Civ6": 3,
+      "sections": {
+        ".dynsym": {
+          "address": "0x6930",
+          "bytes": 86112,
+          "offset": 26928
+        },
+        ".init_array": {
+          "address": "0x274270",
+          "bytes": 32,
+          "offset": 475760
+        },
+        ".fini_array": {
+          "address": "0x274290",
+          "bytes": 8,
+          "offset": 475792
+        },
+        ".debug_pubnames": {
+          "address": "0x0",
+          "bytes": 148846,
+          "offset": 504388
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 252003,
+          "offset": 653234
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 4268,
+          "offset": 905237
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 48060,
+          "offset": 909505
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 235362,
+          "offset": 957565
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 59094,
+          "offset": 1192927
+        },
+        ".debug_macinfo": {
+          "address": "0x0",
+          "bytes": 3,
+          "offset": 1252021
+        },
+        ".debug_pubtypes": {
+          "address": "0x0",
+          "bytes": 110057,
+          "offset": 1252024
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 2496,
+          "offset": 1362081
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 92568,
+          "offset": 1364584
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x47660",
+        "0x0000000000000019 (INIT_ARRAY)         0x274270",
+        "0x000000000000001b (INIT_ARRAYSZ)       32 (bytes)"
+      ]
+    },
+    {
+      "path": "libEOSSDK-Linux-Shipping.so",
+      "bytes": 17088312,
+      "sha256": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [
+        "6c95f46b13364a66"
+      ],
+      "needed": [
+        "libpthread.so.0",
+        "libdl.so.2",
+        "librt.so.1",
+        "libm.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2",
+        "libgcc_s.so.1"
+      ],
+      "soname": [
+        "libEOSSDK-Linux-Shipping.so"
+      ],
+      "runtime_paths": [
+        "${ORIGIN}:${ORIGIN}/..:${ORIGIN}/../../../Engine/Binaries/ThirdParty/Qualcomm/Linux:${ORIGIN}/../../../Engine/Binaries/ThirdParty/OpenVR/OpenVRv1_5_17/linux64:${ORIGIN}/../../../Engine/Binaries/ThirdParty/PhysX3/Linux/x86_64-unknown-linux-gnu"
+      ],
+      "has_debug_info": false,
+      "has_symtab": false,
+      "has_debuglink": true,
+      "exported_dynamic_symbol_count": 369,
+      "context_exports": [],
+      "host_provider_candidates": 34,
+      "undefined_dynamic_symbol_count": 361,
+      "undefined_names_also_defined_by_Civ6": 3,
+      "sections": {
+        ".dynsym": {
+          "address": "0x2c0",
+          "bytes": 17544,
+          "offset": 704
+        },
+        ".init_array": {
+          "address": "0x10406a0",
+          "bytes": 272,
+          "offset": 17041056
+        },
+        ".fini_array": {
+          "address": "0x10407b0",
+          "bytes": 8,
+          "offset": 17041328
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x0000000000000019 (INIT_ARRAY)         0x10406a0",
+        "0x000000000000001b (INIT_ARRAYSZ)       272 (bytes)",
+        "0x000000000000000c (INIT)               0xfbb14c"
+      ]
+    },
+    {
+      "path": "libGameCore_Base.so",
+      "bytes": 461894784,
+      "sha256": "8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [],
+      "soname": [],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 137488,
+      "context_exports": [
+        "DllDestroyGameContext",
+        "DllCreateGameContext"
+      ],
+      "host_provider_candidates": 100546,
+      "undefined_dynamic_symbol_count": 541,
+      "undefined_names_also_defined_by_Civ6": 403,
+      "sections": {
+        ".dynsym": {
+          "address": "0xc65f0",
+          "bytes": 3312744,
+          "offset": 812528
+        },
+        ".init_array": {
+          "address": "0x2b26998",
+          "bytes": 1536,
+          "offset": 43149720
+        },
+        ".fini_array": {
+          "address": "0x2b26f98",
+          "bytes": 16,
+          "offset": 43151256
+        },
+        ".debug_pubnames": {
+          "address": "0x0",
+          "bytes": 36836278,
+          "offset": 44659188
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 161505572,
+          "offset": 81495466
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 1893085,
+          "offset": 243001038
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 14684320,
+          "offset": 244894123
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 100909608,
+          "offset": 259578443
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 24836093,
+          "offset": 360488051
+        },
+        ".debug_macinfo": {
+          "address": "0x0",
+          "bytes": 919,
+          "offset": 385324144
+        },
+        ".debug_pubtypes": {
+          "address": "0x0",
+          "bytes": 50058783,
+          "offset": 385325063
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 4536656,
+          "offset": 435383846
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 4296792,
+          "offset": 439920504
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x15eccb8",
+        "0x0000000000000019 (INIT_ARRAY)         0x2b26998",
+        "0x000000000000001b (INIT_ARRAYSZ)       1536 (bytes)"
+      ]
+    },
+    {
+      "path": "libGameCore_XP1.so",
+      "bytes": 544547488,
+      "sha256": "431f6e33f0fb5ac081016d14868cff60b3c3c2417acee82e75e23f24c466c80b",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [],
+      "soname": [],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 159077,
+      "context_exports": [
+        "DllDestroyGameContext",
+        "DllCreateGameContext"
+      ],
+      "host_provider_candidates": 112703,
+      "undefined_dynamic_symbol_count": 555,
+      "undefined_names_also_defined_by_Civ6": 411,
+      "sections": {
+        ".dynsym": {
+          "address": "0xdb740",
+          "bytes": 3831216,
+          "offset": 898880
+        },
+        ".init_array": {
+          "address": "0x31bf9d0",
+          "bytes": 1720,
+          "offset": 50067920
+        },
+        ".fini_array": {
+          "address": "0x31c0088",
+          "bytes": 16,
+          "offset": 50069640
+        },
+        ".debug_pubnames": {
+          "address": "0x0",
+          "bytes": 43503414,
+          "offset": 51849296
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 188993378,
+          "offset": 95352710
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 2083612,
+          "offset": 284346088
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 16705442,
+          "offset": 286429700
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 122214394,
+          "offset": 303135142
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 28537694,
+          "offset": 425349536
+        },
+        ".debug_macinfo": {
+          "address": "0x0",
+          "bytes": 1007,
+          "offset": 453887230
+        },
+        ".debug_pubtypes": {
+          "address": "0x0",
+          "bytes": 59557687,
+          "offset": 453888237
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 5198560,
+          "offset": 513445924
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 5017896,
+          "offset": 518644488
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x1988070",
+        "0x0000000000000019 (INIT_ARRAY)         0x31bf9d0",
+        "0x000000000000001b (INIT_ARRAYSZ)       1720 (bytes)"
+      ]
+    },
+    {
+      "path": "libGameCore_XP2.so",
+      "bytes": 631198832,
+      "sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [],
+      "soname": [],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 186992,
+      "context_exports": [
+        "DllDestroyGameContext",
+        "DllCreateGameContext"
+      ],
+      "host_provider_candidates": 132205,
+      "undefined_dynamic_symbol_count": 561,
+      "undefined_names_also_defined_by_Civ6": 417,
+      "sections": {
+        ".dynsym": {
+          "address": "0xf6b70",
+          "bytes": 4501320,
+          "offset": 1010544
+        },
+        ".init_array": {
+          "address": "0x3a02af0",
+          "bytes": 1776,
+          "offset": 58731248
+        },
+        ".fini_array": {
+          "address": "0x3a031e0",
+          "bytes": 8,
+          "offset": 58733024
+        },
+        ".debug_pubnames": {
+          "address": "0x0",
+          "bytes": 50862420,
+          "offset": 60819196
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 219491365,
+          "offset": 111681616
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 2286823,
+          "offset": 331172981
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 19315955,
+          "offset": 333459804
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 140359533,
+          "offset": 352775759
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 33660512,
+          "offset": 493135292
+        },
+        ".debug_macinfo": {
+          "address": "0x0",
+          "bytes": 1096,
+          "offset": 526795804
+        },
+        ".debug_pubtypes": {
+          "address": "0x0",
+          "bytes": 68091303,
+          "offset": 526796900
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 6094432,
+          "offset": 594888203
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 5865360,
+          "offset": 600982640
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x1dfe238",
+        "0x0000000000000019 (INIT_ARRAY)         0x3a02af0",
+        "0x000000000000001b (INIT_ARRAYSZ)       1776 (bytes)"
+      ]
+    },
+    {
+      "path": "libc++.so.1",
+      "bytes": 1092824,
+      "sha256": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [
+        "libc++abi.so.1",
+        "libpthread.so.0",
+        "libc.so.6",
+        "libm.so.6",
+        "librt.so.1",
+        "libgcc_s.so.1"
+      ],
+      "soname": [
+        "libc++.so.1"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": false,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 1837,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 174,
+      "undefined_names_also_defined_by_Civ6": 3,
+      "sections": {
+        ".dynsym": {
+          "address": "0x3670",
+          "bytes": 48312,
+          "offset": 13936
+        },
+        ".init_array": {
+          "address": "0x2c25e0",
+          "bytes": 16,
+          "offset": 796128
+        },
+        ".fini_array": {
+          "address": "0x2c25f0",
+          "bytes": 8,
+          "offset": 796144
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 87864,
+          "offset": 818264
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x34dc8",
+        "0x0000000000000019 (INIT_ARRAY)         0x2c25e0",
+        "0x000000000000001b (INIT_ARRAYSZ)       16 (bytes)"
+      ]
+    },
+    {
+      "path": "libc++.so.1.0",
+      "bytes": 1092824,
+      "sha256": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [
+        "libc++abi.so.1",
+        "libpthread.so.0",
+        "libc.so.6",
+        "libm.so.6",
+        "librt.so.1",
+        "libgcc_s.so.1"
+      ],
+      "soname": [
+        "libc++.so.1"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": false,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 1837,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 174,
+      "undefined_names_also_defined_by_Civ6": 3,
+      "sections": {
+        ".dynsym": {
+          "address": "0x3670",
+          "bytes": 48312,
+          "offset": 13936
+        },
+        ".init_array": {
+          "address": "0x2c25e0",
+          "bytes": 16,
+          "offset": 796128
+        },
+        ".fini_array": {
+          "address": "0x2c25f0",
+          "bytes": 8,
+          "offset": 796144
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 87864,
+          "offset": 818264
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x34dc8",
+        "0x0000000000000019 (INIT_ARRAY)         0x2c25e0",
+        "0x000000000000001b (INIT_ARRAYSZ)       16 (bytes)"
+      ]
+    },
+    {
+      "path": "libc++abi.so",
+      "bytes": 253696,
+      "sha256": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [
+        "libpthread.so.0",
+        "libc.so.6",
+        "libgcc_s.so.1"
+      ],
+      "soname": [
+        "libc++abi.so.1"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": false,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 375,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 39,
+      "undefined_names_also_defined_by_Civ6": 1,
+      "sections": {
+        ".dynsym": {
+          "address": "0xc98",
+          "bytes": 9984,
+          "offset": 3224
+        },
+        ".init_array": {
+          "address": "0x22dad8",
+          "bytes": 8,
+          "offset": 187096
+        },
+        ".fini_array": {
+          "address": "0x22dae0",
+          "bytes": 8,
+          "offset": 187104
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 22176,
+          "offset": 197272
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0xb590",
+        "0x0000000000000019 (INIT_ARRAY)         0x22dad8",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libc++abi.so.1",
+      "bytes": 253696,
+      "sha256": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [
+        "libpthread.so.0",
+        "libc.so.6",
+        "libgcc_s.so.1"
+      ],
+      "soname": [
+        "libc++abi.so.1"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": false,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 375,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 39,
+      "undefined_names_also_defined_by_Civ6": 1,
+      "sections": {
+        ".dynsym": {
+          "address": "0xc98",
+          "bytes": 9984,
+          "offset": 3224
+        },
+        ".init_array": {
+          "address": "0x22dad8",
+          "bytes": 8,
+          "offset": 187096
+        },
+        ".fini_array": {
+          "address": "0x22dae0",
+          "bytes": 8,
+          "offset": 187104
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 22176,
+          "offset": 197272
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0xb590",
+        "0x0000000000000019 (INIT_ARRAY)         0x22dad8",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libc++abi.so.1.0",
+      "bytes": 253696,
+      "sha256": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [],
+      "needed": [
+        "libpthread.so.0",
+        "libc.so.6",
+        "libgcc_s.so.1"
+      ],
+      "soname": [
+        "libc++abi.so.1"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": false,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 375,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 39,
+      "undefined_names_also_defined_by_Civ6": 1,
+      "sections": {
+        ".dynsym": {
+          "address": "0xc98",
+          "bytes": 9984,
+          "offset": 3224
+        },
+        ".init_array": {
+          "address": "0x22dad8",
+          "bytes": 8,
+          "offset": 187096
+        },
+        ".fini_array": {
+          "address": "0x22dae0",
+          "bytes": 8,
+          "offset": 187104
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 22176,
+          "offset": 197272
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0xb590",
+        "0x0000000000000019 (INIT_ARRAY)         0x22dad8",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libiconv.so",
+      "bytes": 1407440,
+      "sha256": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [
+        "05882d402a5b99af7244d00cf087f9b385956fc8"
+      ],
+      "needed": [
+        "libc.so.6"
+      ],
+      "soname": [
+        "libiconv.so.2"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 14,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 30,
+      "undefined_names_also_defined_by_Civ6": 0,
+      "sections": {
+        ".dynsym": {
+          "address": "0x258",
+          "bytes": 1104,
+          "offset": 600
+        },
+        ".init_array": {
+          "address": "0x2e2c50",
+          "bytes": 8,
+          "offset": 928848
+        },
+        ".fini_array": {
+          "address": "0x2e2c58",
+          "bytes": 8,
+          "offset": 928856
+        },
+        ".debug_aranges": {
+          "address": "0x0",
+          "bytes": 144,
+          "offset": 934191
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 106980,
+          "offset": 934335
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 3350,
+          "offset": 1041315
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 20042,
+          "offset": 1044665
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 34138,
+          "offset": 1064707
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 239308,
+          "offset": 1098845
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 23088,
+          "offset": 1338153
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 24408,
+          "offset": 1363896
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x2348",
+        "0x0000000000000019 (INIT_ARRAY)         0x2e2c50",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libiconv.so.2",
+      "bytes": 1407440,
+      "sha256": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [
+        "05882d402a5b99af7244d00cf087f9b385956fc8"
+      ],
+      "needed": [
+        "libc.so.6"
+      ],
+      "soname": [
+        "libiconv.so.2"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 14,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 30,
+      "undefined_names_also_defined_by_Civ6": 0,
+      "sections": {
+        ".dynsym": {
+          "address": "0x258",
+          "bytes": 1104,
+          "offset": 600
+        },
+        ".init_array": {
+          "address": "0x2e2c50",
+          "bytes": 8,
+          "offset": 928848
+        },
+        ".fini_array": {
+          "address": "0x2e2c58",
+          "bytes": 8,
+          "offset": 928856
+        },
+        ".debug_aranges": {
+          "address": "0x0",
+          "bytes": 144,
+          "offset": 934191
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 106980,
+          "offset": 934335
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 3350,
+          "offset": 1041315
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 20042,
+          "offset": 1044665
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 34138,
+          "offset": 1064707
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 239308,
+          "offset": 1098845
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 23088,
+          "offset": 1338153
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 24408,
+          "offset": 1363896
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x2348",
+        "0x0000000000000019 (INIT_ARRAY)         0x2e2c50",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libiconv.so.2.5.1",
+      "bytes": 1407440,
+      "sha256": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [
+        "05882d402a5b99af7244d00cf087f9b385956fc8"
+      ],
+      "needed": [
+        "libc.so.6"
+      ],
+      "soname": [
+        "libiconv.so.2"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 14,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 30,
+      "undefined_names_also_defined_by_Civ6": 0,
+      "sections": {
+        ".dynsym": {
+          "address": "0x258",
+          "bytes": 1104,
+          "offset": 600
+        },
+        ".init_array": {
+          "address": "0x2e2c50",
+          "bytes": 8,
+          "offset": 928848
+        },
+        ".fini_array": {
+          "address": "0x2e2c58",
+          "bytes": 8,
+          "offset": 928856
+        },
+        ".debug_aranges": {
+          "address": "0x0",
+          "bytes": 144,
+          "offset": 934191
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 106980,
+          "offset": 934335
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 3350,
+          "offset": 1041315
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 20042,
+          "offset": 1044665
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 34138,
+          "offset": 1064707
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 239308,
+          "offset": 1098845
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 23088,
+          "offset": 1338153
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 24408,
+          "offset": 1363896
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x2348",
+        "0x0000000000000019 (INIT_ARRAY)         0x2e2c50",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libsteam_api.so",
+      "bytes": 258522,
+      "sha256": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [
+        "e6595bf0c58db930de83bcba83b370d9d34265e8"
+      ],
+      "needed": [
+        "libdl.so.2",
+        "libstdc++.so.6",
+        "libpthread.so.0",
+        "ld-linux-x86-64.so.2",
+        "libc.so.6"
+      ],
+      "soname": [
+        "libsteam_api.so"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": false,
+      "has_symtab": true,
+      "has_debuglink": true,
+      "exported_dynamic_symbol_count": 809,
+      "context_exports": [],
+      "host_provider_candidates": 3,
+      "undefined_dynamic_symbol_count": 103,
+      "undefined_names_also_defined_by_Civ6": 4,
+      "sections": {
+        ".dynsym": {
+          "address": "0x2040",
+          "bytes": 21936,
+          "offset": 8256
+        },
+        ".init_array": {
+          "address": "0x22df88",
+          "bytes": 8,
+          "offset": 188296
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 22584,
+          "offset": 199184
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0x13540",
+        "0x0000000000000019 (INIT_ARRAY)         0x22df88",
+        "0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)"
+      ]
+    },
+    {
+      "path": "libtbb.so.2",
+      "bytes": 1930308,
+      "sha256": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707",
+      "class": "ELF64",
+      "data": "2's complement, little endian",
+      "type": "DYN (Shared object file)",
+      "machine": "Advanced Micro Devices X86-64",
+      "build_ids": [
+        "c262d15d8b3b8b95a300d4bff88106a1d1e0d505"
+      ],
+      "needed": [
+        "libdl.so.2",
+        "libpthread.so.0",
+        "librt.so.1",
+        "libc++.so.1",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "soname": [
+        "libtbb.so.2"
+      ],
+      "runtime_paths": [],
+      "has_debug_info": true,
+      "has_symtab": true,
+      "has_debuglink": false,
+      "exported_dynamic_symbol_count": 284,
+      "context_exports": [],
+      "host_provider_candidates": 0,
+      "undefined_dynamic_symbol_count": 116,
+      "undefined_names_also_defined_by_Civ6": 5,
+      "sections": {
+        ".dynsym": {
+          "address": "0xb90",
+          "bytes": 9648,
+          "offset": 2960
+        },
+        ".init_array": {
+          "address": "0x230f80",
+          "bytes": 40,
+          "offset": 200576
+        },
+        ".fini_array": {
+          "address": "0x230fa8",
+          "bytes": 8,
+          "offset": 200616
+        },
+        ".debug_pubnames": {
+          "address": "0x0",
+          "bytes": 186543,
+          "offset": 212720
+        },
+        ".debug_info": {
+          "address": "0x0",
+          "bytes": 681085,
+          "offset": 399263
+        },
+        ".debug_abbrev": {
+          "address": "0x0",
+          "bytes": 48082,
+          "offset": 1080348
+        },
+        ".debug_line": {
+          "address": "0x0",
+          "bytes": 98379,
+          "offset": 1128430
+        },
+        ".debug_str": {
+          "address": "0x0",
+          "bytes": 245557,
+          "offset": 1226809
+        },
+        ".debug_loc": {
+          "address": "0x0",
+          "bytes": 195233,
+          "offset": 1472366
+        },
+        ".debug_pubtypes": {
+          "address": "0x0",
+          "bytes": 106635,
+          "offset": 1667599
+        },
+        ".debug_ranges": {
+          "address": "0x0",
+          "bytes": 75056,
+          "offset": 1774234
+        },
+        ".symtab": {
+          "address": "0x0",
+          "bytes": 28920,
+          "offset": 1852104
+        }
+      },
+      "program_interpreter": [],
+      "initialization_tags": [
+        "0x000000000000000c (INIT)               0xd3d0",
+        "0x0000000000000019 (INIT_ARRAY)         0x230f80",
+        "0x000000000000001b (INIT_ARRAYSZ)       40 (bytes)"
+      ]
+    }
+  ],
+  "aspyr_version": {
+    "ASPYRVERSIONMAJOR": 1,
+    "ASPYRVERSIONMINOR": 0,
+    "ASPYRVERSIONRELEASE": 12,
+    "ASPYRVERSIONBUILD": 9,
+    "ASPYRCHANGELIST": 363760
+  },
+  "steam_build_id": [
+    "15296837"
+  ],
+  "steam_manifest_sha256": "62c934922288a7490986adac71ff3577d2ff2e619de2bbb7b7ff34963dd2da5b",
+  "limits": "Host-name overlap is not proof of symbol binding or a complete host contract. Linux identity does not establish Windows version or ABI parity."
+}
