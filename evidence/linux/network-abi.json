@@ -14,6 +14,7 @@
     "../c6-ghidra/evidence/linux-network/network-leave.txt": "a309eef44f7044b679aaecc94564b59917617282bee103e2d68e076156b225e4",
     "../c6-ghidra/evidence/linux-network/offline-transport-thread-branch.txt": "d35cba0c17c64fe670b672778315d977c6a0351ff9f358f5e9a5be153ffbdb8c",
     "../c6-ghidra/evidence/linux-network/session-getters.txt": "946e3bc7267dc1d8ab1d578bcc5308468550955952323c261100054d804fc511",
+    "../c6-ghidra/evidence/linux-network/setup-syscalls.txt": "740587b83244a6994689f306fb547eb05b715baaad95ecf827a6a580688de419",
     "../c6-ghidra/evidence/linux-network/singleton-getters.txt": "45d8f528d21f4067a5efff8b8362bf8599ee3c07a26db86021036d28fb34785c"
   },
   "original_apis": {

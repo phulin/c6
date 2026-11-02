@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "method": "strace -f -e trace=network,execve wraps the normal fully gated runtime runner; original native child selected by its exact copied-host execve",
+  "native_configuration_sha256": "c969341107fa5d0a64f7cc69149ea18ed7264f40de68685b18043ecb9016b722",
+  "native_result": "evidence/linux/network-setup-syscall-runtime.json",
+  "native_exit_code": 0,
+  "strace_sha256": "28f957c227012de0b18d1bd7fff2d396cb693ea60ed8013be68de071e84b5001",
+  "private_trace": "../c6-ghidra/evidence/linux-network/setup-syscalls.txt",
+  "private_trace_sha256": "740587b83244a6994689f306fb547eb05b715baaad95ecf827a6a580688de419",
+  "native_child_pid": 621562,
+  "native_socket_calls": 2,
+  "native_connect_calls": 2,
+  "native_socket_families": [
+    "AF_UNIX"
+  ],
+  "native_AF_INET_or_AF_INET6_rows": 0,
+  "native_network_observations": [
+    "621562 socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = 3",
+    "621562 connect(3, {sa_family=AF_UNIX, sun_path=\"/var/run/nscd/socket\"}, 110) = -1 ENOENT (No such file or directory)",
+    "621562 socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = 3",
+    "621562 connect(3, {sa_family=AF_UNIX, sun_path=\"/var/run/nscd/socket\"}, 110) = -1 ENOENT (No such file or directory)"
+  ],
+  "limits": [
+    "SetupNetwork/Context lifetime only; no successful hosted-session syscall profile yet.",
+    "No AF_INET/AF_INET6 operations observed in this native child; this does not establish all possible network configurations or full game behavior."
+  ]
+}
