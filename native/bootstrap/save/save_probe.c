@@ -1,8 +1,7 @@
-/* A strict synthetic Serialization::IStream adapter, not a Civ6 save loader.
- * Real Windows XP2 context Load reads a private, fingerprinted extracted stream.
- * Only established raw-read/completion slots are implemented; all others abort.
- * Call only in an isolated diagnostic child after genuine StartupGame succeeds.
- */
+/* Original Windows MemoryIStream and Context::Load over a private, fingerprinted
+ * extracted stream. This is not a complete Civ6 container loader. Native reads
+ * retain original short-read and bulk-buffer behavior. Call only in an isolated
+ * diagnostic child after genuine StartupGame succeeds. */
 #include "save_probe.h"
 #include <bcrypt.h>
 #include <stdint.h>
@@ -12,40 +11,37 @@
 
 #define STREAM_SIZE 76556938u
 static const char stream_sha[] = "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa";
+/* Layout recovered from the original constructor, GetOffset/GetSize, and
+ * nondeleting destructor. Bytes are borrowed: allocator==NULL, so the original
+ * destructor does not free the caller buffer. No synthetic bulk results. */
 typedef struct {
     void **vtable;
     unsigned char *bytes;
-    uint64_t size, position, reads, completions;
-} ProbeStream;
-static void report(ProbeStream *stream, const char *phase) {
-    printf("{\"phase\":\"%s\",\"reads\":%llu,\"completions\":%llu,\"consumed\":%llu,\"available\":%llu,\"initialized_game\":false,\"gameplay_parity\":false}\n",
-           phase, (unsigned long long)stream->reads, (unsigned long long)stream->completions,
-           (unsigned long long)stream->position, (unsigned long long)stream->size);
-    fflush(stdout);
+    uint64_t position, size;
+    void *allocator;
+} NativeMemoryIStream;
+static NativeMemoryIStream *active_stream;
+void bootstrap_save_probe_report_fault(FILE *output) {
+    if (!active_stream) return;
+    fprintf(output, "{\"phase\":\"save_stream_at_fault\",\"original_memory_istream\":true,\"consumed\":%llu,\"available\":%llu,\"initialized_game\":false}\n",
+            (unsigned long long)active_stream->position,
+            (unsigned long long)active_stream->size);
+    fflush(output);
 }
-static void unsupported(ProbeStream *stream) {
-    report(stream, "save_stream_unsupported_slot");
-    ExitProcess(88);
+_Static_assert(sizeof(NativeMemoryIStream) == 0x28, "original Windows MemoryIStream size");
+static int verify_stream_contract(HMODULE image, const NativeMemoryIStream *stream,
+                                  const unsigned char *bytes, uint64_t size) {
+    static const uintptr_t expected[12] = {
+        0x9a9fe0, 0x61c8d0, 0x9aa090, 0x9aa080, 0x9aa2d0, 0x9aa140,
+        0x9aa250, 0x9aa0e0, 0x8972d0, 0x8972d0, 0x59eda0, 0x9b1040
+    };
+    if (sizeof(*stream) != 0x28 || stream->bytes != bytes || stream->position ||
+        stream->size != size || stream->allocator ||
+        (uintptr_t)stream->vtable - (uintptr_t)image != 0xabfec0) return 0;
+    for (unsigned i = 0; i < 12; ++i)
+        if ((uintptr_t)stream->vtable[i] - (uintptr_t)image != expected[i]) return 0;
+    return 1;
 }
-static void raw_read(ProbeStream *stream, const uint64_t *request, void *destination, uint64_t size) {
-    ++stream->reads;
-    if (stream->reads <= 64 || stream->reads % 100000 == 0) {
-        printf("{\"phase\":\"save_stream_read\",\"read\":%llu,\"offset\":%llu,\"size\":%llu}\n",
-               (unsigned long long)stream->reads, (unsigned long long)stream->position,
-               (unsigned long long)size);
-        fflush(stdout);
-    }
-    /* Reject unsupported absolute/asynchronous/short reads without partial copy. */
-    if (!request || request[0] != UINT64_MAX || request[1] != size ||
-        request[2] != 16 || request[3] || request[4] ||
-        size > stream->size - stream->position || (!destination && size)) {
-        report(stream, "save_stream_refused_read");
-        ExitProcess(89);
-    }
-    if (size) memcpy(destination, stream->bytes + stream->position, (size_t)size);
-    stream->position += size;
-}
-static void complete(ProbeStream *stream) { ++stream->completions; }
 static int digest_matches(const unsigned char *bytes, ULONG size) {
     BCRYPT_ALG_HANDLE algorithm = NULL;
     BCRYPT_HASH_HANDLE hash = NULL;
@@ -79,17 +75,24 @@ int bootstrap_save_probe(HMODULE image, void *context, const wchar_t *path) {
         (uintptr_t)context_vtable[0x170 / 8] - (uintptr_t)image != 0x5906e0) {
         free(bytes); return 84;
     }
-    void *vtable[256];
-    for (unsigned i = 0; i < 256; ++i) vtable[i] = (void *)(uintptr_t)unsupported;
-    vtable[0x30 / 8] = (void *)(uintptr_t)raw_read;
-    vtable[0x40 / 8] = (void *)(uintptr_t)complete;
-    ProbeStream stream = {vtable, bytes, STREAM_SIZE, 0, 0, 0};
-    report(&stream, "save_stream_begin");
+    NativeMemoryIStream stream;
+    memset(&stream, 0xa5, sizeof stream);
+    ((void *(*)(void *, const void *, uint64_t))((uintptr_t)image + 0x9a9ec0))(
+        &stream, bytes, STREAM_SIZE);
+    if (!verify_stream_contract(image, &stream, bytes, STREAM_SIZE)) {
+        free(bytes); return 86;
+    }
+    puts("{\"phase\":\"save_stream_begin\",\"original_memory_istream\":true,\"borrowed_buffer\":true,\"available\":76556938,\"initialized_game\":false,\"gameplay_parity\":false}");
+    fflush(stdout);
+    active_stream = &stream;
     int result = ((int (*)(void *, void *))context_vtable[0x170 / 8])(context, &stream);
-    report(&stream, "save_context_Load_returned");
-    printf("{\"phase\":\"save_context_Load_result\",\"original_result\":%d,\"fully_consumed\":%s,\"initialized_game\":false,\"gameplay_parity\":false}\n",
-           result, stream.position == stream.size ? "true" : "false");
+    uint64_t consumed = ((uint64_t (*)(void *))stream.vtable[0x18 / 8])(&stream);
+    printf("{\"phase\":\"save_context_Load_result\",\"original_result\":%d,\"consumed\":%llu,\"available\":%u,\"fully_consumed\":%s,\"original_memory_istream\":true,\"initialized_game\":false,\"gameplay_parity\":false}\n",
+           result, (unsigned long long)consumed, STREAM_SIZE,
+           consumed == STREAM_SIZE ? "true" : "false");
+    active_stream = NULL;
+    ((void (*)(void *))((uintptr_t)image + 0x9a9f80))(&stream);
     free(bytes);
     /* Diagnostic may record original zero, but cannot assert whole-game success. */
-    return result == 0 && stream.position == stream.size ? 0 : 85;
+    return result == 0 && consumed == STREAM_SIZE ? 0 : 85;
 }

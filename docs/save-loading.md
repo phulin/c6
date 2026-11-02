@@ -118,19 +118,56 @@ compatibility for every subsystem.
 
 `native/bootstrap/save/save_probe.c` exposes `bootstrap_save_probe(image, context,
 path)` for the runtime owner. It gates the exact private extracted payload size and
-SHA-256 and verifies the original export vtable/Load RVA. The synthetic stream
-implements only proven raw-read/completion slots, rejects non-sequential,
-asynchronous, misaligned, or short requests before copying, and aborts explicitly
-on any other slot. It logs initial reads, periodic counts, original return code,
-and total consumption. A successful diagnostic return is still not a parity
-claim. The adapter compiles under strict MinGW warnings; executing its real Load
-call awaits successful original StartupGame with appropriate definitions.
+SHA-256 and verifies the original export vtable/Load RVA. It constructs an original
+`MemoryIStream` with borrowed caller bytes, verifies its fields and all twelve
+vtable entries, and passes the untouched original stream to Load. Normal returns
+report the original result and offset through the original GetOffset method; an
+optional passive crash-filter hook reports the original offset field at a fault.
+The original nondeleting destructor runs before the caller frees the input buffer.
+No stream vtable is patched, and native short-read/bulk-read behavior is preserved.
+The adapter compiles under strict MinGW warnings; actual Load execution and result
+are separate runtime evidence, still pending as of this checkpoint.
+
+The original MemoryIStream contract is:
+
+| Item | Target Windows contract |
+| --- | --- |
+| Constructor `0x9a9ec0` | RCX caller-owned 0x28-byte object, RDX borrowed bytes, R8 u64 length; returns object |
+| Fields | `+0` vtable `0xabfec0`; `+8` bytes; `+0x10` current offset; `+0x18` size; `+0x20` allocator pointer null for borrowed input |
+| Native slots | `+0x10` size `0x9aa090`; `+0x18` offset `0x9aa080`; `+0x20` set offset `0x9aa2d0`; `+0x28` bulk read `0x9aa140`; `+0x30` raw destination read `0x9aa250`; `+0x38` allocator read `0x9aa0e0`; `+0x40` no-op completion |
+| Nondeleting destructor `0x9a9f80` | Calls buffer destructor `0x9919e0`; frees buffer only through nonnull allocator `+0x20`; borrowed bytes remain caller-owned |
+
+Bulk Read receives the original four-qword Buffer object, not an invented result
+record. The native raw-read wrapper constructs its Buffer through `0x9919a0`,
+forces request alignment zero and copy true, then invokes original bulk Read.
+Direct bulk reads may borrow bytes when permitted. Avoid replacing this behavior
+with a callback that merely copies and fabricates Buffer fields.
 
 Original StartupGame `0x46be0` is mandatory: it initializes the definition
 repository using the context database at `+0x58`, starts the index serializer at
 `0x5e4c40`, creates the game through virtual `+0x98` and stores it at context
 `+0x60`, calls game virtual `+0x18/+0x20`, and creates worldbuilder/tutorial/cache
 objects. These are absent from the narrower Initialize-only fixture.
+
+## Original Save boundary for subsequent roundtrip work
+
+The actual exported context vtable slot `+0x168` points to Save `0x5916e0`.
+Its Windows ABI is `(RCX export_context, RDX Serialization::OStream*)`, integer
+result in EAX. It forwards to underlying context Write virtual `+0x78`, target
+`0x472c0`. A null game pointer at context `+0x60` returns 7 without writes.
+Otherwise Write emits u32 version **5** via OStream raw slot `+0x28`, builds and
+writes context metadata, writes index serialization through `0x5e4d40`, gameplay
+through `0x752480`, tutorial through `0x394820`, and achievements through
+`0x16ebb0`, then returns zero. Thus a newly written version-5 stream is not
+expected to be byte-identical to the old version-4 fixture.
+
+No Save or roundtrip has executed yet. The original `MemoryOStream` constructor
+`0x9a9f20` initializes its Buffer through `0x991940` with an allocator supplied in
+RDX and capacity in R8. Its Write methods `0x9aa2e0/0x9aa360` grow through
+`0x991b40`, copy through `0x991a00`, and return 1 on growth failure. Recover a
+genuine matching allocator and error/size observations before using this for
+canonical-state comparisons. Repeated native Save/RNG invariance and a fresh
+context reload remain future executable checks, not results of this contract.
 
 ## Remaining executable gate
 
