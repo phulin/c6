@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--action-execution-observe',action='store_true')
     parser.add_argument('--action-lifecycle-observe',action='store_true')
     parser.add_argument('--action-trace-directory',type=Path)
+    parser.add_argument('--definition-ids',action='store_true')
     parser.add_argument('--save-normalization-trace',type=Path)
     parser.add_argument('--request-load-save',type=Path)
     parser.add_argument('--game-save-output',type=Path)
@@ -66,6 +67,8 @@ def main():
             raise SystemExit('complete original save request identity mismatch')
     if args.game_load_observe and not game_input:parser.error('--game-load-observe requires --game-load-stream')
     if args.action_observe and not game_input:parser.error('--action-observe requires --game-load-stream')
+    if args.definition_ids and (not game_input or args.action_observe or args.action_execution_observe or args.action_lifecycle_observe or args.save_normalization_trace):
+        parser.error('--definition-ids requires a separate Core load fixture without actor/lifecycle/serialization instrumentation')
     if args.action_execution_observe and not args.action_observe:parser.error('--action-execution-observe requires --action-observe and its Core load fixture')
     action_trace=args.action_trace_directory.resolve() if args.action_trace_directory else None
     if args.action_lifecycle_observe:
@@ -165,6 +168,15 @@ def main():
             subprocess.run([sys.executable,str(execution_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
             execution_audit=json.loads(result_path.read_text())
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
+    definition_audit=None
+    definition_audit_paths=[]
+    if args.definition_ids:
+        definition_audit_paths=[ROOT/'tools/linux/definition_ids_audit.py',ROOT/'evidence/linux/definition-ids-static.json']
+        with tempfile.TemporaryDirectory(prefix='c6-definition-audit-') as temporary:
+            result_path=Path(temporary)/'contracts.json'
+            subprocess.run([sys.executable,str(definition_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
+            definition_audit=json.loads(result_path.read_text())
+        if definition_audit!=json.loads(definition_audit_paths[-1].read_text()):raise SystemExit('original definition registry contracts differ')
     content=json.loads((ROOT/'tools/linux/runtime-content-gate.json').read_text())['files']
     if view:
         profile=json.loads((view/'source-view.json').read_text())
@@ -205,6 +217,7 @@ def main():
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
     execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe else []
     lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe else []
+    definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -236,6 +249,7 @@ def main():
               'save_normalization_trace':normalization_audit,
               'lower_core_cache_dispatch_observer':execution_audit,
               'lower_core_controller_cache_lifecycle_observer':args.action_lifecycle_observe,
+              'lower_core_definition_registry_observer':definition_audit,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -263,18 +277,21 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*execution_sources,ROOT/'native/linux/action_execution.h']})
     if lifecycle_observer_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*lifecycle_observer_sources,ROOT/'native/linux/action_lifecycle.h']})
+    if definition_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*definition_sources,ROOT/'native/linux/definition_ids.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in definition_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
@@ -310,6 +327,7 @@ def main():
         if captured_gate:env['C6_GAME_LOAD_EXPECTED_SIZE']=str(expected_game_size)
         if args.game_load_observe:env['C6_GAME_LOAD_OBSERVE']='1'
         if args.action_observe:env['C6_ACTION_OBSERVE']='1'
+        if args.definition_ids:env['C6_DEFINITION_IDS']='1'
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
