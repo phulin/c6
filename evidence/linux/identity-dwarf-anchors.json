@@ -87,6 +87,44 @@
     },
     "GameCore::Lua::Utility::CallProcessor": {
       "address": "0x2ce7930"
+    },
+    "GameCore::Exports::Context::Initialize": {
+      "address": "0x2c7c9a0",
+      "specification_die": "0x09fd2f29",
+      "return_type": "void",
+      "explicit_parameter_types": [],
+      "hidden_this": "GameCore::Exports::Context *",
+      "virtual_slot": 5,
+      "evidence": "DWARF declaration; absent DW_AT_type means void return"
+    },
+    "GameCore::Exports::Context::IsInitialied": {
+      "address": "0x2c7c9b0",
+      "specification_die": "0x09fd2f5d",
+      "return_type": "bool",
+      "explicit_parameter_types": [],
+      "hidden_this": "GameCore::Exports::Context *",
+      "virtual_slot": 7,
+      "evidence": "DWARF declaration; absent DW_AT_type means void return"
+    },
+    "GameCore::Exports::Context::SetEngineInterface": {
+      "address": "0x2c7c9f0",
+      "specification_die": "0x09fd363c",
+      "return_type": "void",
+      "explicit_parameter_types": [
+        "GameCore::Interfaces::IEngineUtility1 *"
+      ],
+      "hidden_this": "GameCore::Exports::Context *",
+      "virtual_slot": 12,
+      "evidence": "DWARF declaration; absent DW_AT_type means void return"
+    },
+    "GameCore::Exports::Context::StartupGame": {
+      "address": "0x2c7d2f0",
+      "specification_die": "0x09fd354c",
+      "return_type": "void",
+      "explicit_parameter_types": [],
+      "hidden_this": "GameCore::Exports::Context *",
+      "virtual_slot": 8,
+      "evidence": "DWARF declaration; absent DW_AT_type means void return"
     }
   },
   "llvm_statistics": {
@@ -106,7 +144,11 @@
     "evidence/linux/xp2-priority-functions.txt",
     "evidence/linux/xp2-processor.txt",
     "evidence/linux/xp2-script-interface.txt",
-    "evidence/linux/xp2-script-processor-symbols.txt"
+    "evidence/linux/xp2-script-processor-symbols.txt",
+    "evidence/linux/xp2-initialize-export-spec.txt",
+    "evidence/linux/xp2-export-spec-0x2c7c9b0.txt",
+    "evidence/linux/xp2-export-spec-0x2c7c9f0.txt",
+    "evidence/linux/xp2-export-spec-0x2c7d2f0.txt"
   ],
   "limits": "Linux target only; function/type counts include repeated template/compiler records. No Windows layout, initialized-game or action/turn equivalence established.",
   "globals": {
