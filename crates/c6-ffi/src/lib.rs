@@ -1,12 +1,22 @@
 //! Version 1 loadable C API. See include/c6.h for pointer and ownership contracts.
 use c6_core::rng::RandomState;
-use c6_core::{Action, Engine, Outcome, Snapshot};
+use c6_core::{Engine, Error, Outcome, RandomOperation, Snapshot};
 use std::ptr;
 
 pub const OK: i32 = 0;
 pub const INVALID: i32 = 1;
 pub const UNSUPPORTED: i32 = 2;
 pub const BUFFER_TOO_SMALL: i32 = 3;
+pub const MISSING_STREAM: i32 = 4;
+pub const DUPLICATE_STREAM: i32 = 5;
+fn status(error: Error) -> i32 {
+    match error {
+        Error::MissingStream(_) => MISSING_STREAM,
+        Error::DuplicateStream(_) => DUPLICATE_STREAM,
+        Error::InvalidStreamId => INVALID,
+        _ => UNSUPPORTED,
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -91,30 +101,88 @@ pub unsafe extern "C" fn c6_apply_v1(
     action: *const C6Action,
     result: *mut u32,
 ) -> i32 {
+    c6_random_stream_apply_v1(handle, 0, action, result)
+}
+/// # Safety
+/// All pointers must be valid, aligned and nonaliasing for their declared sizes.
+#[no_mangle]
+pub unsafe extern "C" fn c6_random_stream_apply_v1(
+    handle: *mut C6Handle,
+    id: u32,
+    action: *const C6Action,
+    result: *mut u32,
+) -> i32 {
     if handle.is_null() || action.is_null() || result.is_null() {
         return INVALID;
     }
     let a = &*action;
-    let action = match a.kind {
-        1 if a.argument <= u16::MAX as u32 => Action::RandomDraw {
+    let operation = match a.kind {
+        1 if a.argument <= u16::MAX as u32 => RandomOperation::Draw {
             bound: a.argument as u16,
         },
         1 => return INVALID,
-        2 => Action::RandomReset { seed: a.argument },
-        3 => Action::RandomInitialize { seed: a.argument },
-        4 => Action::RandomLock,
-        5 => Action::RandomUnlock,
+        2 => RandomOperation::Reset { seed: a.argument },
+        3 => RandomOperation::Initialize { seed: a.argument },
+        4 => RandomOperation::Lock,
+        5 => RandomOperation::Unlock,
         _ => return UNSUPPORTED,
     };
-    match (*handle).0.apply(&action) {
-        Ok(o) => {
-            *result = match o {
+    match (*handle).0.apply_random(id, operation) {
+        Ok(outcome) => {
+            *result = match outcome {
                 Outcome::Random(n) => n as u32,
                 Outcome::Applied => 0,
             };
             OK
         }
-        Err(_) => UNSUPPORTED,
+        Err(error) => status(error),
+    }
+}
+/// Register a caller-identified independent GameCore::Random instance.
+/// # Safety
+/// handle must be live; state must be readable, aligned and not overlap handle.
+#[no_mangle]
+pub unsafe extern "C" fn c6_random_stream_create_v1(
+    handle: *mut C6Handle,
+    id: u32,
+    state: *const C6RandomState,
+) -> i32 {
+    if handle.is_null() || state.is_null() {
+        return INVALID;
+    }
+    let state = &*state;
+    if state.synchronous > 1 {
+        return INVALID;
+    }
+    let state = RandomState {
+        seed: state.seed,
+        calls: state.calls,
+        resets: state.resets,
+        lock_count: state.lock_count,
+        synchronous: state.synchronous != 0,
+    };
+    match (*handle).0.insert_random_stream(id, state) {
+        Ok(()) => OK,
+        Err(error) => status(error),
+    }
+}
+/// # Safety
+/// handle must be live; out writable, aligned and not overlap handle.
+#[no_mangle]
+pub unsafe extern "C" fn c6_random_stream_state_v1(
+    handle: *const C6Handle,
+    id: u32,
+    out: *mut C6RandomState,
+) -> i32 {
+    if handle.is_null() || out.is_null() {
+        return INVALID;
+    }
+    match (*handle).0.random_state(id) {
+        Ok(state) => {
+            *out = (*state).into();
+            OK
+        }
+        Err(error) => status(error),
     }
 }
 /// # Safety
@@ -124,11 +192,7 @@ pub unsafe extern "C" fn c6_random_state_v1(
     handle: *const C6Handle,
     out: *mut C6RandomState,
 ) -> i32 {
-    if handle.is_null() || out.is_null() {
-        return INVALID;
-    }
-    *out = (*handle).0.snapshot().random.into();
-    OK
+    c6_random_stream_state_v1(handle, 0, out)
 }
 /// # Safety
 /// Handle must be live. written must be writable. A nonnull buffer must have capacity
@@ -175,6 +239,67 @@ pub unsafe extern "C" fn c6_import_v1(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ffi_streams_preserve_independence_and_roundtrip() {
+        unsafe {
+            let mut handle = ptr::null_mut();
+            assert_eq!(c6_create_v1(1, &mut handle), OK);
+            let state = C6RandomState {
+                seed: 17,
+                calls: u32::MAX,
+                resets: 9,
+                lock_count: 2,
+                synchronous: 1,
+            };
+            assert_eq!(c6_random_stream_create_v1(handle, 7, &state), OK);
+            assert_eq!(
+                c6_random_stream_create_v1(handle, 7, &state),
+                DUPLICATE_STREAM
+            );
+            assert_eq!(c6_random_stream_create_v1(handle, 0, &state), INVALID);
+            let mut output = 123;
+            let draw = C6Action {
+                kind: 1,
+                argument: 65535,
+            };
+            assert_eq!(
+                c6_random_stream_apply_v1(handle, 8, &draw, &mut output),
+                MISSING_STREAM
+            );
+            assert_eq!(output, 123);
+            let mut observed = C6RandomState::default();
+            assert_eq!(c6_random_stream_state_v1(handle, 7, &mut observed), OK);
+            assert_eq!(observed, state);
+            assert_eq!(c6_random_stream_apply_v1(handle, 7, &draw, &mut output), OK);
+            assert_eq!(c6_random_state_v1(handle, &mut observed), OK);
+            assert_eq!(observed.seed, 1);
+            assert_eq!(observed.calls, 0);
+            let mut size = 0;
+            assert_eq!(
+                c6_export_v1(handle, ptr::null_mut(), 0, &mut size),
+                BUFFER_TOO_SMALL
+            );
+            let mut bytes = vec![0; size];
+            assert_eq!(
+                c6_export_v1(handle, bytes.as_mut_ptr(), size, &mut size),
+                OK
+            );
+            let mut branch = ptr::null_mut();
+            assert_eq!(c6_import_v1(bytes.as_ptr(), size, &mut branch), OK);
+            assert_eq!(c6_random_stream_state_v1(branch, 7, &mut observed), OK);
+            assert_eq!(observed.calls, 0);
+            assert_eq!(observed.synchronous, 1);
+            let mut branch_output = 0;
+            assert_eq!(c6_random_stream_apply_v1(handle, 7, &draw, &mut output), OK);
+            assert_eq!(
+                c6_random_stream_apply_v1(branch, 7, &draw, &mut branch_output),
+                OK
+            );
+            assert_eq!(output, branch_output);
+            c6_destroy_v1(handle);
+            c6_destroy_v1(branch);
+        }
+    }
     #[test]
     fn ffi_branch_export_import_and_failure_atomicity() {
         unsafe {

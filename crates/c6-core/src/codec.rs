@@ -33,6 +33,14 @@ impl Snapshot {
             out.extend_from_slice(&(data.len() as u64).to_le_bytes());
             out.extend_from_slice(data);
         }
+        out.extend_from_slice(&(self.random_streams.len() as u64).to_le_bytes());
+        for (id, random) in &self.random_streams {
+            out.extend_from_slice(&id.to_le_bytes());
+            for n in [random.seed, random.calls, random.resets, random.lock_count] {
+                out.extend_from_slice(&n.to_le_bytes());
+            }
+            out.push(random.synchronous as u8);
+        }
         out
     }
     pub fn decode(bytes: &[u8]) -> Result<Self, DecodeError> {
@@ -59,7 +67,7 @@ impl Snapshot {
             return Err(DecodeError::Magic);
         }
         let version = r.u32()?;
-        if version != SNAPSHOT_VERSION {
+        if version != 1 && version != SNAPSHOT_VERSION {
             return Err(DecodeError::Version);
         }
         let identity = Identity {
@@ -94,13 +102,41 @@ impl Snapshot {
                 return Err(DecodeError::Invalid);
             }
         }
+        let mut random_streams = BTreeMap::new();
+        if version >= 2 {
+            let count = r.len()?;
+            if count > r.0.len() / 21 {
+                return Err(DecodeError::Truncated);
+            }
+            for _ in 0..count {
+                let id = r.u32()?;
+                if id == 0 {
+                    return Err(DecodeError::Invalid);
+                }
+                let state = RandomState {
+                    seed: r.u32()?,
+                    calls: r.u32()?,
+                    resets: r.u32()?,
+                    lock_count: r.u32()?,
+                    synchronous: match r.take(1)?[0] {
+                        0 => false,
+                        1 => true,
+                        _ => return Err(DecodeError::Invalid),
+                    },
+                };
+                if random_streams.insert(id, state).is_some() {
+                    return Err(DecodeError::Invalid);
+                }
+            }
+        }
         if !r.0.is_empty() {
             return Err(DecodeError::Trailing);
         }
         Ok(Self {
-            version,
+            version: SNAPSHOT_VERSION,
             identity,
             random,
+            random_streams,
             sections,
         })
     }
@@ -109,10 +145,39 @@ impl Snapshot {
 mod tests {
     use super::*;
     #[test]
+    fn legacy_v1_upgrades_without_losing_state() {
+        let s = Snapshot::new(RandomState::new(5));
+        let mut bytes = s.encode();
+        bytes.truncate(bytes.len() - 8);
+        bytes[4..8].copy_from_slice(&1u32.to_le_bytes());
+        assert_eq!(Snapshot::decode(&bytes), Ok(s));
+    }
+    #[test]
+    fn reserved_and_duplicate_ids_rejected() {
+        let mut s = Snapshot::new(RandomState::new(0));
+        s.random_streams.insert(1, RandomState::new(7));
+        let mut bytes = s.encode();
+        let id_offset = bytes.len() - 21;
+        bytes[id_offset..id_offset + 4].copy_from_slice(&0u32.to_le_bytes());
+        assert_eq!(Snapshot::decode(&bytes), Err(DecodeError::Invalid));
+        let mut bytes = s.encode();
+        let entry = bytes[id_offset..].to_vec();
+        bytes[id_offset - 8..id_offset].copy_from_slice(&2u64.to_le_bytes());
+        bytes.extend(entry);
+        assert_eq!(Snapshot::decode(&bytes), Err(DecodeError::Invalid));
+    }
+    #[test]
     fn roundtrip_and_all_truncations() {
         let mut s = Snapshot::new(RandomState::new(u32::MAX));
         s.identity.dll_sha256 = [17; 32];
         s.sections.insert("opaque".into(), vec![1, 0, 255]);
+        s.random_streams.insert(
+            7,
+            RandomState {
+                synchronous: true,
+                ..RandomState::new(19)
+            },
+        );
         let bytes = s.encode();
         assert_eq!(Snapshot::decode(&bytes), Ok(s));
         for n in 0..bytes.len() {

@@ -5,7 +5,7 @@ pub mod rng;
 use rng::RandomState;
 use std::collections::BTreeMap;
 
-pub const SNAPSHOT_VERSION: u32 = 1;
+pub const SNAPSHOT_VERSION: u32 = 2;
 
 /// Identities must pin the DLL and rules database/mod configuration separately.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -21,6 +21,8 @@ pub struct Snapshot {
     pub version: u32,
     pub identity: Identity,
     pub random: RandomState,
+    /// Independent caller-identified GameCore::Random instances; ID 0 is reserved.
+    pub random_streams: BTreeMap<u32, RandomState>,
     pub sections: BTreeMap<String, Vec<u8>>,
 }
 impl Snapshot {
@@ -29,6 +31,7 @@ impl Snapshot {
             version: SNAPSHOT_VERSION,
             identity: Identity::default(),
             random,
+            random_streams: BTreeMap::new(),
             sections: BTreeMap::new(),
         }
     }
@@ -63,8 +66,25 @@ pub const COVERAGE: &[(Subsystem, Coverage)] = &[
     (Subsystem::Turn, Coverage::Unsupported),
 ];
 
+/// Numeric IDs are caller assigned; 0 identifies the legacy default instance.
+pub type RngStreamId = u32;
+pub const DEFAULT_RNG_STREAM: RngStreamId = 0;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RandomOperation {
+    Draw { bound: u16 },
+    Reset { seed: u32 },
+    Initialize { seed: u32 },
+    Lock,
+    Unlock,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Action {
+    Random {
+        stream: RngStreamId,
+        operation: RandomOperation,
+    },
     RandomDraw {
         bound: u16,
     },
@@ -91,6 +111,9 @@ pub enum Outcome {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     SnapshotVersion(u32),
+    InvalidStreamId,
+    DuplicateStream(u32),
+    MissingStream(u32),
     Unsupported(Subsystem),
 }
 impl std::fmt::Display for Error {
@@ -109,31 +132,88 @@ impl Engine {
         if snapshot.version != SNAPSHOT_VERSION {
             return Err(Error::SnapshotVersion(snapshot.version));
         }
+        if snapshot.random_streams.contains_key(&DEFAULT_RNG_STREAM) {
+            return Err(Error::InvalidStreamId);
+        }
         Ok(Self { snapshot })
     }
     pub fn snapshot(&self) -> &Snapshot {
         &self.snapshot
     }
+    /// Register an independent instance. This does not identify a native owner.
+    pub fn insert_random_stream(
+        &mut self,
+        id: RngStreamId,
+        state: RandomState,
+    ) -> Result<(), Error> {
+        if id == DEFAULT_RNG_STREAM {
+            return Err(Error::InvalidStreamId);
+        }
+        if self.snapshot.random_streams.contains_key(&id) {
+            return Err(Error::DuplicateStream(id));
+        }
+        self.snapshot.random_streams.insert(id, state);
+        Ok(())
+    }
+    pub fn random_state(&self, id: RngStreamId) -> Result<&RandomState, Error> {
+        if id == DEFAULT_RNG_STREAM {
+            Ok(&self.snapshot.random)
+        } else {
+            self.snapshot
+                .random_streams
+                .get(&id)
+                .ok_or(Error::MissingStream(id))
+        }
+    }
+    /// Allocation-free stream routing; absent IDs fail before mutating state.
+    pub fn apply_random(
+        &mut self,
+        id: RngStreamId,
+        operation: RandomOperation,
+    ) -> Result<Outcome, Error> {
+        let state = if id == DEFAULT_RNG_STREAM {
+            &mut self.snapshot.random
+        } else {
+            self.snapshot
+                .random_streams
+                .get_mut(&id)
+                .ok_or(Error::MissingStream(id))?
+        };
+        match operation {
+            RandomOperation::Draw { bound } => Ok(Outcome::Random(state.draw(bound))),
+            RandomOperation::Reset { seed } => {
+                state.reset(seed);
+                Ok(Outcome::Applied)
+            }
+            RandomOperation::Initialize { seed } => {
+                state.initialize(seed);
+                Ok(Outcome::Applied)
+            }
+            RandomOperation::Lock => {
+                state.lock();
+                Ok(Outcome::Applied)
+            }
+            RandomOperation::Unlock => {
+                state.unlock();
+                Ok(Outcome::Applied)
+            }
+        }
+    }
     /// Unsupported operations leave every field unchanged.
     pub fn apply(&mut self, action: &Action) -> Result<Outcome, Error> {
         match action {
-            Action::RandomDraw { bound } => Ok(Outcome::Random(self.snapshot.random.draw(*bound))),
+            Action::Random { stream, operation } => self.apply_random(*stream, *operation),
+            Action::RandomDraw { bound } => {
+                self.apply_random(0, RandomOperation::Draw { bound: *bound })
+            }
             Action::RandomReset { seed } => {
-                self.snapshot.random.reset(*seed);
-                Ok(Outcome::Applied)
+                self.apply_random(0, RandomOperation::Reset { seed: *seed })
             }
             Action::RandomInitialize { seed } => {
-                self.snapshot.random.initialize(*seed);
-                Ok(Outcome::Applied)
+                self.apply_random(0, RandomOperation::Initialize { seed: *seed })
             }
-            Action::RandomLock => {
-                self.snapshot.random.lock();
-                Ok(Outcome::Applied)
-            }
-            Action::RandomUnlock => {
-                self.snapshot.random.unlock();
-                Ok(Outcome::Applied)
-            }
+            Action::RandomLock => self.apply_random(0, RandomOperation::Lock),
+            Action::RandomUnlock => self.apply_random(0, RandomOperation::Unlock),
             Action::EndTurn => Err(Error::Unsupported(Subsystem::Turn)),
             Action::Game { .. } => Err(Error::Unsupported(Subsystem::World)),
         }
@@ -159,12 +239,49 @@ mod tests {
         assert_eq!(engine.snapshot().sections, snapshot.sections);
     }
     #[test]
+    fn independent_streams_branch_and_fail_atomically() {
+        let mut e = Engine::new(Snapshot::new(RandomState::new(1))).unwrap();
+        e.insert_random_stream(7, RandomState::new(1)).unwrap();
+        let before = e.snapshot().clone();
+        assert_eq!(
+            e.insert_random_stream(7, RandomState::new(999)),
+            Err(Error::DuplicateStream(7))
+        );
+        assert_eq!(
+            e.insert_random_stream(0, RandomState::new(999)),
+            Err(Error::InvalidStreamId)
+        );
+        assert_eq!(
+            e.apply_random(9, RandomOperation::Lock),
+            Err(Error::MissingStream(9))
+        );
+        assert_eq!(e.snapshot(), &before);
+        let mut branch = e.clone();
+        let a = e
+            .apply_random(7, RandomOperation::Draw { bound: 65535 })
+            .unwrap();
+        assert_eq!(
+            a,
+            branch
+                .apply_random(0, RandomOperation::Draw { bound: 65535 })
+                .unwrap()
+        );
+        assert_eq!(e.random_state(7), branch.random_state(0));
+        assert_eq!(e.random_state(0), branch.random_state(7));
+        e.apply(&Action::Random {
+            stream: 7,
+            operation: RandomOperation::Reset { seed: 37 },
+        })
+        .unwrap();
+        assert_eq!(e.random_state(0).unwrap().seed, 1);
+    }
+    #[test]
     fn unknown_snapshot_version_rejected() {
         let mut snapshot = Snapshot::new(RandomState::new(0));
         snapshot.version += 1;
         assert!(matches!(
             Engine::new(snapshot),
-            Err(Error::SnapshotVersion(2))
+            Err(Error::SnapshotVersion(3))
         ));
     }
 }

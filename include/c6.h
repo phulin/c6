@@ -12,7 +12,7 @@ extern "C" {
  * Outputs remain unchanged on failure except export's required byte count.
  */
 typedef struct C6Handle C6Handle;
-enum { C6_OK=0, C6_INVALID=1, C6_UNSUPPORTED=2, C6_BUFFER_TOO_SMALL=3 };
+enum { C6_OK=0, C6_INVALID=1, C6_UNSUPPORTED=2, C6_BUFFER_TOO_SMALL=3, C6_MISSING_STREAM=4, C6_DUPLICATE_STREAM=5 };
 enum { C6_RANDOM_DRAW=1, C6_RANDOM_RESET=2, C6_RANDOM_INITIALIZE=3, C6_RANDOM_LOCK=4, C6_RANDOM_UNLOCK=5,
        C6_END_TURN=100 /* explicitly unsupported */ };
 typedef struct { uint32_t kind, argument; } C6Action;
@@ -25,6 +25,13 @@ void c6_destroy_v1(C6Handle *handle);
 /* DRAW argument is 0..65535; larger values are invalid, not truncated. */
 int32_t c6_apply_v1(C6Handle *handle, const C6Action *action, uint32_t *result);
 int32_t c6_random_state_v1(const C6Handle *handle, C6RandomState *out);
+/* ID0 is the legacy default. Explicitly register extra nonzero IDs. IDs are
+ * caller assigned; no correspondence to game owners or UI RNG is implied.
+ * Missing and duplicate streams fail atomically. synchronous must be 0 or 1.
+ */
+int32_t c6_random_stream_create_v1(C6Handle *handle, uint32_t id, const C6RandomState *state);
+int32_t c6_random_stream_apply_v1(C6Handle *handle, uint32_t id, const C6Action *action, uint32_t *result);
+int32_t c6_random_stream_state_v1(const C6Handle *handle, uint32_t id, C6RandomState *out);
 /* NULL buffer queries size and returns C6_BUFFER_TOO_SMALL. */
 int32_t c6_export_v1(const C6Handle *handle, uint8_t *buffer, size_t capacity, size_t *written);
 int32_t c6_import_v1(const uint8_t *bytes, size_t length, C6Handle **out);
