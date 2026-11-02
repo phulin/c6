@@ -57,16 +57,30 @@ def main():
         if len(rows) < 2:
             raise ValueError('insufficient attributed real formations')
         with tempfile.TemporaryDirectory(prefix='c6-formation-codec-') as temp:
+            formation_dir, queue_dir = Path(temp) / 'formations', Path(temp) / 'queues'
+            formation_dir.mkdir()
+            queue_dir.mkdir()
+            queue_rows = [json.loads(line) for line in trace.splitlines() if b'\"owner\":\"GameCore::Unit::Operations::OperationQueue\"' in line]
+            queue_rows = [row for row in queue_rows if row['save'] == 1]
+            if len(queue_rows) != 1262:
+                raise ValueError('unexpected native queue record count')
+            for i, row in enumerate(queue_rows):
+                start, end = row['start'], row['end']
+                if not 0 <= start < end <= len(data):
+                    raise ValueError('invalid native queue bounds')
+                (queue_dir / f'{i:06}.bin').write_bytes(data[start:end])
             ranges = []
             for i, row in enumerate(rows):
                 start, end = row['start'], row['end']
                 if not 0 <= start < end <= len(data) or (ranges and start < ranges[-1][1]):
                     raise ValueError('invalid/overlapping native owner range')
                 ranges.append([start, end])
-                (Path(temp) / f'{i:06}.bin').write_bytes(data[start:end])
-            result = json.loads(subprocess.check_output([str(binary), temp, str(args.iterations)], cwd=ROOT))
+                (formation_dir / f'{i:06}.bin').write_bytes(data[start:end])
+            result = json.loads(subprocess.check_output([str(binary), str(formation_dir), str(args.iterations), str(queue_dir)], cwd=ROOT))
         if result.pop('record_lengths') != [end-start for start, end in ranges]:
             raise ValueError('Rust typed record extents differ from original boundaries')
+        if (result['native_queue_roundtrips'], result['native_queue_unsupported_handlers']) != (954, 308):
+            raise ValueError('unexpected native queue acceptance/rejection profile')
         if (result['records'], result['bytes'], result['path_nodes'], result['unit_ids'], result['nonempty_paths']) != (1250, 71168, 56, 1262, 8):
             raise ValueError('unexpected pinned native Formation fixture dimensions')
         result.update(save_sha256=identity, native_trace_sha256=trace_sha,
@@ -80,7 +94,7 @@ def main():
                   source_sha256={name: sha((ROOT / name).read_bytes()) for name in sources},
                   rustc=subprocess.check_output(['rustc', '--version'], text=True).strip(),
                   timing_scope='Release mean per Formation record, decode/encode including allocation/drop. No game, rules, action, turn, RNG or original-code performance measurement.',
-                  limits='Current Formation v1 serialized state only. Live evaluating-operation, definition remapping, tracked archive dirtiness, complete Unit state and actions unsupported. Queue codec has static/constructed tests only: no attributed native queue fixture. Raw Save/reload/Save failure remains 89198 unmasked bytes.')
+                  limits='Current Formation v1 serialized state only. Live evaluating-operation, definition remapping, tracked archive dirtiness, complete Unit state and actions unsupported. Queue codec roundtrips native empty queues and rejects all native nonempty fixtures as unsupported handlers; no attributed nonempty SkipTurn fixture. Raw Save/reload/Save failure remains 89198 unmasked bytes.')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

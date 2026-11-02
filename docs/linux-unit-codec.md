@@ -26,7 +26,7 @@ The actual native Formation reader also resets the omitted evaluating-operation 
 
 `OperationQueue` supports current queue version 1, ordered nodes with the **SkipTurn operation hash** `0x2c681908`, current base node version 2, raw directive/flags/push-turn/pre-operation activity/automation words, and the absent-parameter sentinel 0. Live numeric handler IDs are not wire hashes. Unknown handlers and nonzero parameter versions fail explicitly: handler bodies have no shared length that would permit opaque skipping. Historical queue/node versions are unsupported.
 
-The queue component is supported by original-code static contracts and independent constructed boundary tests. **No attributed native queue record has been compared**, so native queue acceptance remains a validation gap. It must not substitute for complete Unit state or action parity.
+The queue component has original-code static contracts and independent constructed boundary tests. The same pinned native traces attribute 1,262 queue records per stream: the checker roundtrips all 954 empty queues and requires explicit `UnsupportedHandler` rejection for all 308 nonempty queues. Their eight actual operation hashes include no SkipTurn record. **No attributed nonempty SkipTurn queue has been compared**, so nonempty supported-handler acceptance remains a validation gap. Rejected queues do not count as successful codec parity, and empty-queue round trips do not substitute for complete Unit state or action parity.
 
 ## Pending full Unit support
 
