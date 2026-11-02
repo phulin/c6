@@ -192,7 +192,7 @@ def main():
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode:
+    if action_mode or args.action_lifecycle_observe:
         for stem in ('action_dispatch','action_state'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -260,7 +260,7 @@ def main():
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
     execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode else []
     lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c'] if action_mode else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c'] if action_mode or args.action_lifecycle_observe else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     configuration_sources=[]
