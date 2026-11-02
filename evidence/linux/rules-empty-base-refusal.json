@@ -1,0 +1,19 @@
+{
+  "accepted_as_populated_rules": false,
+  "initialized_game": false,
+  "native_database_backup_succeeded": true,
+  "native_initialize_returned_success": true,
+  "next_boundary": "Linux Bootstrap literal Schema versus installed schema spelling; gated source-view diagnostic pending",
+  "observed": {
+    "configuration": {
+      "rows": 0,
+      "tables": 0
+    },
+    "gameplay": {
+      "rows": 0,
+      "tables": 8
+    }
+  },
+  "profile": "linux-base-native-generated-v1",
+  "reason": "native base rules remain unpopulated; Initialize boolean is insufficient"
+}
