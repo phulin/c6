@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--network',action='store_true')
     parser.add_argument('--attach-saved-session',action='store_true')
     parser.add_argument('--game-load-stream',type=Path)
+    parser.add_argument('--game-load-profile',choices=('benchmark','captured-initial'),default='benchmark')
     parser.add_argument('--game-save-output',type=Path)
     parser.add_argument('--game-save-repeat-output',type=Path)
     parser.add_argument('--timeout',type=int,default=30)
@@ -49,11 +50,32 @@ def main():
     if not 1<=args.timeout<=600:parser.error('--timeout must be between 1 and 600 seconds')
     game_input=args.game_load_stream.resolve() if args.game_load_stream else None
     game_outputs={}
+    captured_gate=None
+    captured_gate_path=None
+    expected_game_size=76556938
+    expected_game_sha='a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa'
+    if args.game_load_profile=='captured-initial':
+        if not game_input:parser.error('--game-load-profile requires --game-load-stream')
+        captured_gate_path=ROOT/'tools/linux/game_load_captured_gate.json'
+        captured_gate=json.loads(captured_gate_path.read_text())
+        if captured_gate['schema']!='c6-linux-game-load-captured-input-v1' or captured_gate['profile']!='captured-initial':
+            raise SystemExit('captured Core stream gate schema mismatch')
+        origin=(ROOT/captured_gate['origin_report']).resolve()
+        if not origin.is_relative_to(ROOT) or digest(origin)!=captured_gate['origin_report_sha256']:
+            raise SystemExit('captured Core stream origin report mismatch')
+        origin_report=json.loads(origin.read_text())
+        origin_configuration=hashlib.sha256(json.dumps(origin_report['configuration'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        if (origin_report['returncode']!=0 or not origin_report['framework_cleanup_proven'] or
+            origin_report['configuration_sha256']!=origin_configuration or
+            origin_configuration!=captured_gate['origin_configuration_sha256'] or
+            any((save['bytes'],save['sha256'])!=(captured_gate['bytes'],captured_gate['sha256']) for save in origin_report['game_saves'].values()) or
+            len(origin_report['game_saves'])!=2):
+            raise SystemExit('captured Core stream origin proof mismatch')
+        expected_game_size=captured_gate['bytes'];expected_game_sha=captured_gate['sha256']
     if game_input:
         if not all((args.attach_saved_session,args.update_constructor_callback,args.ui_constructor,args.game_save_output,args.game_save_repeat_output)):
             parser.error('--game-load-stream requires attached session, native update, UI constructor and both save output paths')
-        if (not game_input.is_file() or game_input.stat().st_size!=76556938 or
-            digest(game_input)!='a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa'):
+        if (not game_input.is_file() or game_input.stat().st_size!=expected_game_size or digest(game_input)!=expected_game_sha):
             raise SystemExit('lower Core stream identity mismatch')
         for label,path in (('save',args.game_save_output),('repeat',args.game_save_repeat_output)):
             path=path.resolve()
@@ -132,6 +154,8 @@ def main():
               'native_rules_snapshot_requested':bool(snapshot),
               'native_network_requested':args.network,'native_saved_session_control_requested':args.attach_saved_session,
               'lower_core_stream':{'sha256':digest(game_input),'bytes':game_input.stat().st_size} if game_input else None,
+              'lower_core_stream_profile':args.game_load_profile if game_input else None,
+              'captured_core_stream_gate':captured_gate,
               'timeout_seconds':args.timeout,
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
               'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
@@ -148,6 +172,7 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*lifecycle_sources,ROOT/'native/linux/save_lifecycle.h']})
     if game_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*game_sources,ROOT/'native/linux/game_load.h',ROOT/'native/linux/context_stream.h']})
+    if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
@@ -184,6 +209,7 @@ def main():
         env['C6_GAME_LOAD_STREAM']=str(game_input)
         env['C6_GAME_SAVE_OUTPUT']=str(game_outputs['save'])
         env['C6_GAME_SAVE_REPEAT_OUTPUT']=str(game_outputs['repeat'])
+        if captured_gate:env['C6_GAME_LOAD_EXPECTED_SIZE']=str(expected_game_size)
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
