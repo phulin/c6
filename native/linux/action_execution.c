@@ -28,6 +28,10 @@ int c6_linux_action_execution(void *module,void *context) {
     fprintf(stderr,"C6_LINUX_ACTION_EXECUTION {\"stage\":\"host_delivery_observation\",\"controller_present\":%d,\"controller_initialized\":%d,\"controller_context_matches\":%d,\"host_context_matches\":%d,\"network_gamecore_active\":%d,\"action_executed\":false}\n",controller!=NULL,initialized,bound==context,host_bound==context,net_active);
     /* Native getters copy existing Context identity; these are borrowed,
      * unlike GetPlayer-created facades. Do not dispatch Destroy on them. */
+    if(!initialized){
+        fprintf(stderr,"C6_LINUX_ACTION_EXECUTION rejected uninitialized_controller cache_query_not_called 1 action_executed 0\n");
+        return 201;
+    }
     int who=local(context);
     if(who<0||who>=64)return 192;
     void *live=live_player(context,who),*cache=cache_player(context,who);

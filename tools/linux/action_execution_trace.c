@@ -1,0 +1,157 @@
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+/* Observation delegates to original Linux methods. A guarded unexpected policy
+ * or game-update entry terminates the diagnostic process; it never substitutes
+ * a policy result or allows that run to pass. No code/vtable bytes are patched. */
+static void *trace_module;
+static FILE *trace_log;
+static atomic_bool armed;
+static atomic_uint queued,received,executed,reported;
+static unsigned packet_number;
+static const char *trace_directory;
+
+static void fatal(const char *reason) {
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE failing_boundary %s action_acceptance 0\n",reason);
+    if(trace_log){fprintf(trace_log,"{\"event\":\"failing_boundary\",\"reason\":\"%s\"}\n",reason);fflush(trace_log);}
+    _exit(198);
+}
+static void *original(const char *symbol,void *wrapper) {
+    void *value=dlsym(atomic_load(&armed)?trace_module:RTLD_NEXT,symbol);
+    if(!value||value==wrapper)fatal("original_symbol_resolution");
+    return value;
+}
+static void packet(const char *kind,int from,const void *stream) {
+    const void *(*bytes)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK13Serialization13MemoryIStream8GetBytesEv");
+    size_t (*size)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK13Serialization13MemoryIStream7GetSizeEv");
+    size_t (*offset)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK13Serialization13MemoryIStream9GetOffsetEv");
+    if(!bytes||!size||!offset)fatal("packet_stream_provider");
+    size_t count=size(stream),position=offset(stream);
+    const void *data=bytes(stream);
+    if(!data||!count||count>1048576||position>count)fatal("unsupported_packet_boundary");
+    char path[4096];unsigned number=++packet_number;
+    int length=snprintf(path,sizeof path,"%s/%03u-%s.bin",trace_directory,number,kind);
+    if(length<0||(size_t)length>=sizeof path)fatal("packet_output_path");
+    FILE *out=fopen(path,"wx");if(!out)fatal("packet_output_open");
+    bool failed=fwrite(data,1,count,out)!=count;
+    if(fclose(out)||failed)fatal("packet_output_write");
+    fprintf(trace_log,"{\"event\":\"%s\",\"from\":%d,\"bytes\":%zu,\"offset\":%zu,\"packet\":%u}\n",kind,from,count,position,number);
+}
+
+void trace_queue(int,void *) __asm__("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE");
+void trace_queue(int from,void *stream) {
+    void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE",trace_queue);
+    if(atomic_load(&armed)){atomic_fetch_add(&queued,1);packet("queue",from,stream);}
+    call(from,stream);
+}
+void trace_receive(int,void *) __asm__("_ZN8GameCore8Messages7Manager14ReceiveMessageEiRN13Serialization13MemoryIStreamE");
+void trace_receive(int from,void *stream) {
+    void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager14ReceiveMessageEiRN13Serialization13MemoryIStreamE",trace_receive);
+    if(atomic_load(&armed)){atomic_fetch_add(&received,1);packet("receive",from,stream);}
+    call(from,stream);
+}
+void trace_unit_execute(const void *) __asm__("_ZNK8GameCore8Messages13UnitOperation7ExecuteEv");
+void trace_unit_execute(const void *message) {
+    void (*call)(const void *)=original("_ZNK8GameCore8Messages13UnitOperation7ExecuteEv",trace_unit_execute);
+    if(atomic_load(&armed)){atomic_fetch_add(&executed,1);fprintf(trace_log,"{\"event\":\"unit_execute_enter\"}\n");}
+    call(message);
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"unit_execute_return\"}\n");
+}
+void trace_event_id(uint64_t,const void *) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE");
+void trace_event_id(uint64_t event,const void *identity) {
+    void (*call)(uint64_t,const void *)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE",trace_event_id);
+    if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\"}\n",(unsigned long long)event,(unsigned long long)bits);}
+    call(event,identity);
+}
+void trace_event_id_int(uint64_t,const void *,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi");
+void trace_event_id_int(uint64_t event,const void *identity,int value) {
+    void (*call)(uint64_t,const void *,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi",trace_event_id_int);
+    if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity_int\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"value\":%d}\n",(unsigned long long)event,(unsigned long long)bits,value);}
+    call(event,identity,value);
+}
+void trace_event_id_two_int(uint64_t,const void *,int,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii");
+void trace_event_id_two_int(uint64_t event,const void *identity,int first,int second) {
+    void (*call)(uint64_t,const void *,int,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii",trace_event_id_two_int);
+    if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity_two_int\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"first\":%d,\"second\":%d}\n",(unsigned long long)event,(unsigned long long)bits,first,second);}
+    call(event,identity,first,second);
+}
+#define STOP_VOID(NAME,SYMBOL,REASON) \
+void NAME(void *) __asm__(SYMBOL); \
+void NAME(void *receiver){ \
+    if(atomic_load(&armed))fatal(REASON); \
+    void (*call)(void *)=original(SYMBOL,NAME);call(receiver); \
+}
+STOP_VOID(stop_game_update,"_ZN8GameCore4Game8Instance6UpdateEv","unexpected_Game_Update")
+STOP_VOID(stop_processor_update,"_ZN8GameCore4Game9Processor6UpdateEv","unexpected_GameProcessor_Update")
+STOP_VOID(stop_ai_control,"_ZN8GameCore2AI7Control7Manager6DoTurnEv","unresolved_AI_Control_DoTurn")
+STOP_VOID(stop_ai_process,"_ZN8GameCore2AI8GlobalAi9ProcessAiEv","unresolved_GlobalAi_ProcessAi")
+#undef STOP_VOID
+int stop_diplomatic_action(void *,const void *,int) __asm__("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE");
+int stop_diplomatic_action(void *receiver,const void *action,int player) {
+    if(atomic_load(&armed))fatal("unresolved_Diplomatic_ProcessAction_callback");
+    int (*call)(void *,const void *,int)=original("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE",stop_diplomatic_action);
+    return call(receiver,action,player);
+}
+int stop_diplomatic_deal(void *,int,const void *,bool) __asm__("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb");
+int stop_diplomatic_deal(void *receiver,int proposal,const void *deal,bool flag) {
+    if(atomic_load(&armed))fatal("unresolved_Diplomatic_ProcessDeal_callback");
+    int (*call)(void *,int,const void *,bool)=original("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb",stop_diplomatic_deal);
+    return call(receiver,proposal,deal,flag);
+}
+
+int c6_linux_action_trace_begin(void *module) {
+    if(!module||atomic_load(&armed)||trace_log)return 202;
+    trace_directory=getenv("C6_ACTION_TRACE_DIRECTORY");if(!trace_directory)return 203;
+    char path[4096];int n=snprintf(path,sizeof path,"%s/events.jsonl",trace_directory);
+    if(n<0||(size_t)n>=sizeof path)return 204;
+    trace_log=fopen(path,"wx");if(!trace_log)return 205;
+    trace_module=module;packet_number=0;
+    atomic_store(&queued,0);atomic_store(&received,0);atomic_store(&executed,0);atomic_store(&reported,0);
+    void **table=dlsym(module,"_ZTVN8GameCore8Messages13UnitOperationE");
+    bool virtual_bound=table&&table[2+0x20/8]==(void *)trace_unit_execute;
+    fprintf(trace_log,"{\"event\":\"begin\",\"UnitOperation_Execute_virtual_interposed\":%s}\n",virtual_bound?"true":"false");
+    Dl_info info;
+    void *native_update=dlsym(module,"_ZN8GameCore4Game8Instance6UpdateEv");
+    bool slots_bound=native_update&&dladdr(native_update,&info);
+    struct binding {uintptr_t offset;void *wrapper;const char *name;};
+    const struct binding bindings[]={
+        {0x3b290d8,(void *)stop_processor_update,"GameProcessor_Update"},
+        {0x3b3a468,(void *)stop_ai_process,"GlobalAi_ProcessAi"},
+        {0x3b44778,(void *)trace_receive,"ReceiveMessage"},
+        {0x3b7a830,(void *)trace_event_id,"EventSend_identity"},
+        {0x3b88880,(void *)trace_queue,"QueueMessage"},
+        {0x3b97fa8,(void *)trace_event_id_two_int,"EventSend_identity_two_int"},
+        {0x3b9b0e8,(void *)stop_diplomatic_action,"Diplomatic_ProcessAction"},
+        {0x3bab2e0,(void *)stop_ai_control,"AIControl_DoTurn"},
+        {0x3baf188,(void *)stop_diplomatic_deal,"Diplomatic_ProcessDeal"},
+        {0x3beb240,(void *)stop_game_update,"Game_Update"},
+        {0x3bfdb70,(void *)trace_event_id_int,"EventSend_identity_int"}
+    };
+    for(size_t i=0;slots_bound&&i<sizeof bindings/sizeof bindings[0];i++){
+        void *bound=*(void **)((uintptr_t)info.dli_fbase+bindings[i].offset);
+        bool match=bound==bindings[i].wrapper;
+        fprintf(trace_log,"{\"event\":\"original_PLT_binding\",\"name\":\"%s\",\"interposed\":%s}\n",bindings[i].name,match?"true":"false");
+        if(!match)slots_bound=false;
+    }
+    if(!virtual_bound||!slots_bound){fclose(trace_log);trace_log=NULL;return 206;}
+    atomic_store(&armed,true);
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE armed original_virtual_binding_proven 1\n");
+    return 0;
+}
+int c6_linux_action_trace_end(unsigned expected_messages) {
+    if(!atomic_load(&armed)||!trace_log)return 207;
+    atomic_store(&armed,false);
+    unsigned q=atomic_load(&queued),r=atomic_load(&received),e=atomic_load(&executed),p=atomic_load(&reported);
+    fprintf(trace_log,"{\"event\":\"end\",\"queued\":%u,\"received\":%u,\"unit_executed\":%u,\"reports\":%u}\n",q,r,e,p);
+    bool failed=fflush(trace_log)||ferror(trace_log);if(fclose(trace_log))failed=true;
+    trace_log=NULL;trace_module=NULL;
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE complete queued %u received %u unit_executed %u reports %u\n",q,r,e,p);
+    return failed?208:(q==expected_messages&&r==expected_messages&&e==expected_messages)?0:209;
+}

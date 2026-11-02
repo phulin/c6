@@ -1,0 +1,12 @@
+{
+  "schema": "c6-linux-action-lifecycle-instrumentation-failure-v1",
+  "runtime_report_sha256": "0dad6f043f267f07e46e5cc072708096e39d39540a172ef453e77733d7b205b2",
+  "configuration_sha256": "34f665c373248a050694fec137188dce117f124cf30e9f4cb4ac355f47fa7484",
+  "returncode": 198,
+  "failure": "Unarmed trace original-symbol resolution failed during original Core Load, before controller/cache initialization",
+  "controller_initialization_executed": false,
+  "action_executed": false,
+  "policy_choice_observed": false,
+  "cleanup_completed": false,
+  "gameplay_parity": false
+}

@@ -1,0 +1,47 @@
+#define _GNU_SOURCE
+#include "action_lifecycle.h"
+#include "action_execution.h"
+#include "action_observer.h"
+#include <stdbool.h>
+#include <dlfcn.h>
+#include <stdio.h>
+
+int c6_linux_action_prepare_observe(void *module,void *context) {
+    if(!module||!context)return 194;
+    void **active=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController21ms_pkActiveControllerE");
+    bool (*initialized)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController13IsInitializedEv");
+    void *(*get_context)(void *,const void *)=dlsym(RTLD_DEFAULT,"_ZNK18GameCoreController10GetContextEv");
+    void (*initialize)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController10InitializeEv");
+    void (*initialize_cache)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController15InitializeCacheEv");
+    void (*uninitialize)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController12UninitializeEv");
+    bool (*executing)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController11IsExecutingEv");
+    if(!active||!initialized||!get_context||!initialize||!initialize_cache||!uninitialize||!executing)return 195;
+    int (*trace_begin)(void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_begin");
+    int (*trace_end)(unsigned)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_end");
+    if(!trace_begin||!trace_end)return 202;
+    void *controller=*active,*bound=NULL;
+    if(!controller)return 196;
+    get_context(&bound,controller);
+    /* Existing Context identity is borrowed. The genuine framework owns it.
+     * Initialize/Uninitialize owns the controller/cache lifecycle only. */
+    if(bound!=context||initialized(controller)||executing(controller))return 197;
+    int trace_result=trace_begin(module);
+    if(trace_result)return trace_result;
+    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_enter bound_matches 1\n");
+    initialize(controller);
+    int result=initialized(controller)?0:199;
+    if(!result){
+        fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_cache_enter\n");
+        initialize_cache(controller);
+        fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_cache_return\n");
+        result=c6_linux_action_execution(module,context);
+        if(!result)result=c6_linux_action_observe(module,context);
+    }
+    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_enter result %d\n",result);
+    uninitialize(controller);
+    bound=NULL;get_context(&bound,controller);
+    bool clean=!initialized(controller)&&bound==NULL&&!executing(controller);
+    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d action_executed 0\n",initialized(controller),bound!=NULL,executing(controller),clean);
+    trace_result=trace_end(0);
+    return result?result:!clean?200:trace_result;
+}
