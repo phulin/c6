@@ -83,6 +83,10 @@ int c6_linux_game_load(void *context) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
+        if(!result && getenv("C6_ACTION_EXECUTION")) {
+            int (*execution_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_execution");
+            result=execution_observe?execution_observe(game,context):169;
+        }
         if(!result)result=c6_linux_context_save(game,context,repeat);
         fprintf(stderr,"C6_LINUX_GAME_LOAD shutdown_enter\n");
         shutdown(context);
