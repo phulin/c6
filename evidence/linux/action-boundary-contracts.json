@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "method": "SHA-gated read-only static original Linux ELF ABI audit",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checks_passed": true,
+  "direct_calls": [
+    {
+      "module": "gamecore",
+      "call": "0x2c7d4a8",
+      "target": "0x1f600a0",
+      "contract": "RequestAction_constructs_original_empty_parameters"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2c7d4b8",
+      "target": "0x1f6d610",
+      "contract": "RequestAction_forwards_to_parameter_overload"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2c7dca4",
+      "target": "0x1f71e70",
+      "contract": "EndTurn_constructs_PlayerTurnComplete"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2c7dcac",
+      "target": "0x1fb9798",
+      "contract": "EndTurn_broadcasts_original_message"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2d27e82",
+      "target": "0x1e61790",
+      "contract": "PlayerTurnComplete_SetTurnComplete"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2d27e8f",
+      "target": "0x1f906b0",
+      "contract": "PlayerTurnComplete_calls_GameUpdate"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2661ba1",
+      "target": "0x1e0c3e0",
+      "contract": "GameUpdate_calls_ProcessorUpdate"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2661ba6",
+      "target": "0x1f2e780",
+      "contract": "GameUpdate_processes_pending_diplomacy"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2a0ccf5",
+      "target": "0x1f299a0",
+      "contract": "GameProcessor_updates_player"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2b5c7b5",
+      "target": "0x1f107f0",
+      "contract": "InactivePlayerProcessor_calls_original_AI_DoTurn"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2b5acbc",
+      "target": "0x1e232c0",
+      "contract": "ActivePlayerProcessor_calls_TurnManager_DoTurn"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2ba16c7",
+      "target": "0x1e87800",
+      "contract": "TurnManager_checks_original_IsHuman"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x201ed3c",
+      "target": "0x1f3c7f0",
+      "contract": "InactiveAI_dispatches_original_offturn_signal"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2b31542",
+      "target": "0x1f72ff0",
+      "contract": "IsHuman_resolves_actual_player_configuration"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2a0d290",
+      "target": "0x1f4b450",
+      "contract": "GameProcessor_waits_original_AI_jobs"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2d24916",
+      "target": "0x1e43120",
+      "contract": "QueueDrain_receives_front_message"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2d2491e",
+      "target": "0x1f392d0",
+      "contract": "QueueDrain_pops_front_after_receive"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2d24935",
+      "target": "0x1ef19d0",
+      "contract": "QueueDrain_sends_reporting_event"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x28061de",
+      "target": "0x1ee11f0",
+      "contract": "UnitRequest_checks_actual_cache_turn"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x2806224",
+      "target": "0x1eb7fb0",
+      "contract": "UnitRequest_initializes_original_message"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x280622e",
+      "target": "0x1fb9798",
+      "contract": "UnitRequest_broadcasts_original_message"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x290bc46",
+      "target": "0x1e45900",
+      "contract": "CoreSave_serializes_game"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x290bc55",
+      "target": "0x1eb94e0",
+      "contract": "CoreSave_serializes_tutorial"
+    },
+    {
+      "module": "gamecore",
+      "call": "0x290bc61",
+      "target": "0x1e20f90",
+      "contract": "CoreSave_serializes_achievements"
+    },
+    {
+      "module": "host",
+      "call": "0x31d11d8",
+      "target": "0x3c402d8",
+      "contract": "Worker_enters_original_critical_section"
+    },
+    {
+      "module": "host",
+      "call": "0x31d1232",
+      "target": "0x31d4e70",
+      "contract": "Worker_marks_pass_complete"
+    },
+    {
+      "module": "host",
+      "call": "0x31d1252",
+      "target": "0x3c402de",
+      "contract": "Worker_leaves_original_critical_section"
+    },
+    {
+      "module": "host",
+      "call": "0x31d49e8",
+      "target": "0x31d2440",
+      "contract": "InlinePump_gets_controller_lock"
+    },
+    {
+      "module": "host",
+      "call": "0x31d4a2c",
+      "target": "0x31d2a00",
+      "contract": "InlinePump_releases_controller_lock"
+    },
+    {
+      "module": "host",
+      "call": "0x31d4abd",
+      "target": "0x33cee30",
+      "contract": "UpdateRequest_requires_session_host"
+    }
+  ],
+  "byte_contracts": [
+    "TurnManager_human_returns_before_AI",
+    "Configuration_IsHuman_slot_taken",
+    "Original_SetAsHuman_uses_slot_taken",
+    "ACTION_ENDTURN_hash",
+    "EndTurn_default_subtype_NONE",
+    "SetTurnComplete_true",
+    "ContextUpdate_only_autoplay",
+    "UnitRequest_manager_MakeRequest_slot100",
+    "QueueDrain_repeats_until_empty",
+    "Worker_ProcessMessages_slot238",
+    "InlinePump_GameUpdate_slot30",
+    "Host_requests_ACTION_GAME_UPDATE"
+  ],
+  "virtual_contracts": [
+    {
+      "table": "0x3aeb9c0",
+      "offset": "0x168",
+      "target": "0x2c7d230",
+      "contract": "Context_Save"
+    },
+    {
+      "table": "0x3aeb9c0",
+      "offset": "0x238",
+      "target": "0x2c7d330",
+      "contract": "Context_ProcessMessages"
+    },
+    {
+      "table": "0x3aeb9c0",
+      "offset": "0x240",
+      "target": "0x2c7d340",
+      "contract": "Context_HasPendingMessages"
+    },
+    {
+      "table": "0x3aeb9c0",
+      "offset": "0x1f8",
+      "target": "0x2c7d490",
+      "contract": "Context_RequestAction"
+    },
+    {
+      "table": "0x3aeb9c0",
+      "offset": "0x200",
+      "target": "0x2c7d4f0",
+      "contract": "Context_RequestAction_parameters"
+    },
+    {
+      "table": "0x3aeb9c0",
+      "offset": "0x208",
+      "target": "0x2c7e2c0",
+      "contract": "Context_RequestUnitOperation"
+    },
+    {
+      "table": "0x3aecf50",
+      "offset": "0x30",
+      "target": "0x2c862e0",
+      "contract": "Game_Update"
+    },
+    {
+      "table": "0x3af94c0",
+      "offset": "0x80",
+      "target": "0x290bbf0",
+      "contract": "XP2Context_Write"
+    }
+  ],
+  "endturn_action": "0x2cc9a6b5",
+  "default_turn_subtype": "0xb6fa1284",
+  "message_drain_can_invoke_native_AI": true,
+  "initialized_game": false,
+  "native_action_executed": false,
+  "complete_affected_state_observed": false,
+  "action_or_turn_parity": false
+}
