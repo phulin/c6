@@ -188,8 +188,8 @@ fn source_gate_precedes_io_and_partial_snapshots_fail() {
 
 /// Requires genuinely exported private artifacts; absence is not a passing native test.
 #[test]
-#[ignore = "requires private original-native run-1 and run-2 artifacts"]
-fn native_exports_match_every_manifest_table() {
+#[ignore = "historical Windows coverage; requires private original-native run-1 and run-2 artifacts"]
+fn historical_windows_native_exports_match_every_manifest_table() {
     let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../c6-ghidra/evidence/rules");
     let first = Rules::load(base.join("run-1"), &xp2_source_identity()).unwrap();
     let second = Rules::load(base.join("run-2"), &xp2_source_identity()).unwrap();
@@ -210,6 +210,66 @@ fn native_exports_match_every_manifest_table() {
         43570
     );
     // Typed projection is compared to original SQL fields, not memorized unit values.
+    for unit in first.units() {
+        let row = first
+            .gameplay()
+            .table("Units")
+            .unwrap()
+            .row_by_id(unit.rules_row_id)
+            .unwrap();
+        assert_eq!(unit.unit_type, row.text("UnitType").unwrap());
+        for (name, value) in [
+            ("Cost", unit.cost),
+            ("BaseMoves", unit.base_moves),
+            ("Combat", unit.combat),
+            ("RangedCombat", unit.ranged_combat),
+            ("Range", unit.range),
+            ("Maintenance", unit.maintenance),
+        ] {
+            assert_eq!(value, row.integer(name).unwrap());
+        }
+    }
+}
+
+#[test]
+fn linux_profile_never_falls_back_to_historical_windows() {
+    let windows = xp2_source_identity();
+    assert!(
+        Rules::load_profile(RulesProfile::LinuxXp2Base, "/nonexistent", &windows)
+            .unwrap_err()
+            .to_string()
+            .contains("Linux XP2")
+    );
+    let mut linux = windows;
+    linux.profile["target_sha256"] = json!(RulesProfile::LinuxXp2Base.gamecore_sha256());
+    assert!(Rules::load("/nonexistent", &linux)
+        .unwrap_err()
+        .to_string()
+        .contains("no Windows fallback"));
+}
+
+/// Explicitly requested Linux artifact test; missing evidence is a failure.
+#[test]
+#[ignore = "requires two actual private Linux native base exports"]
+fn linux_native_exports_match_every_manifest_table() {
+    let first_path = std::env::var_os("C6_LINUX_RULES_RUN_1")
+        .expect("C6_LINUX_RULES_RUN_1 must identify actual Linux-native export");
+    let second_path = std::env::var_os("C6_LINUX_RULES_RUN_2")
+        .expect("C6_LINUX_RULES_RUN_2 must identify independent Linux-native export");
+    let profile = RulesProfile::LinuxXp2Base;
+    let source = profile.source_identity().unwrap();
+    let first = Rules::load_profile(profile, Path::new(&first_path), &source).unwrap();
+    let second = Rules::load_profile(profile, Path::new(&second_path), &source).unwrap();
+    assert_eq!(first.profile(), RulesProfile::LinuxXp2Base);
+    assert_eq!(first.source(), &source);
+    assert_eq!(
+        first.configuration().fingerprint(),
+        second.configuration().fingerprint()
+    );
+    assert_eq!(
+        first.gameplay().fingerprint(),
+        second.gameplay().fingerprint()
+    );
     for unit in first.units() {
         let row = first
             .gameplay()

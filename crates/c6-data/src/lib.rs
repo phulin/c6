@@ -1,4 +1,4 @@
-//! Immutable, identity-gated rules inputs from the original-native XP2 export.
+//! Immutable, identity-gated rules inputs with explicit native binary profiles.
 //! This is a data boundary, not an initialized game or gameplay implementation.
 use rusqlite::{types::ValueRef, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,8 @@ use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
-const MANIFEST: &str = include_str!("../../../evidence/assets/xp2-rules-snapshot.json");
+const WINDOWS_HISTORICAL_MANIFEST: &str =
+    include_str!("../../../evidence/assets/xp2-rules-snapshot.json");
 
 type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
@@ -529,8 +530,8 @@ fn inspect(path: &Path) -> Result<Database> {
     })
 }
 
-/// Caller declares the source/profile before loading. Only the complete pinned
-/// original-native explicit XP2 recipe is currently accepted; no generic fallback.
+/// Caller declares the complete source/profile before loading. Only registered
+/// pinned native exports are accepted; profile selection never falls back.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SourceIdentity {
     pub native_configuration_sha256: String,
@@ -539,19 +540,64 @@ pub struct SourceIdentity {
     pub source_sequence_sha256: String,
     pub language_identity: Value,
 }
+/// Registered exact rules fixture for a separately identified native binary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RulesProfile {
+    /// Historical Windows-native export coverage; never a Linux fallback.
+    WindowsXp2Historical,
+    /// Supplied Linux GameCore with original-native base inputs and no DLC/mod activation.
+    LinuxXp2Base,
+}
+impl RulesProfile {
+    pub fn gamecore_sha256(self) -> &'static str {
+        match self {
+            Self::WindowsXp2Historical => {
+                "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c"
+            }
+            Self::LinuxXp2Base => {
+                "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
+            }
+        }
+    }
+    /// Obtaining a descriptor does not load or validate files. Unavailable native
+    /// exports return an error; no other profile's data is substituted.
+    pub fn source_identity(self) -> Result<SourceIdentity> {
+        Ok(profile_manifest(self)?.source)
+    }
+}
 #[derive(Deserialize)]
 struct Manifest {
     #[serde(flatten)]
     source: SourceIdentity,
     databases: Vec<DatabaseFingerprint>,
 }
-fn manifest() -> Result<Manifest> {
-    Ok(serde_json::from_str(MANIFEST)?)
+fn profile_manifest(profile: RulesProfile) -> Result<Manifest> {
+    let text = match profile {
+        RulesProfile::WindowsXp2Historical => WINDOWS_HISTORICAL_MANIFEST,
+        RulesProfile::LinuxXp2Base => {
+            return fail(
+                "Linux XP2 native rules export manifest is unavailable; no Windows fallback",
+            )
+        }
+    };
+    let manifest: Manifest = serde_json::from_str(text)?;
+    if manifest.source.profile["target_sha256"].as_str() != Some(profile.gamecore_sha256()) {
+        return fail("registered manifest GameCore hash differs from selected binary profile");
+    }
+    Ok(manifest)
 }
-/// The supported profile includes DLL/executable hashes, DLC selection, recipe,
-/// ruleset and null localization. Obtaining it does not load or validate data.
+// Historical private fixture helper retained for generic-codec regression tests.
+#[cfg(test)]
+fn manifest() -> Result<Manifest> {
+    profile_manifest(RulesProfile::WindowsXp2Historical)
+}
+/// Historical Windows-only identity. New callers should select a RulesProfile.
+/// This function supplies no Linux coverage and is never used as a fallback.
 pub fn xp2_source_identity() -> SourceIdentity {
-    manifest().expect("checked-in manifest").source
+    RulesProfile::WindowsXp2Historical
+        .source_identity()
+        .expect("checked-in historical manifest")
 }
 
 /// Typed original rules values, keyed by SQL UnitType. Values are not mechanics:
@@ -570,6 +616,7 @@ pub struct UnitDefinition {
 #[derive(Debug)]
 pub struct Rules {
     source: SourceIdentity,
+    profile: RulesProfile,
     configuration: Database,
     gameplay: Database,
     units: Vec<UnitDefinition>,
@@ -577,16 +624,49 @@ pub struct Rules {
 }
 impl Rules {
     pub fn load(directory: impl AsRef<Path>, declared: &SourceIdentity) -> Result<Self> {
-        let manifest = manifest()?;
+        let profile = match declared.profile["target_sha256"].as_str() {
+            Some(hash) if hash == RulesProfile::LinuxXp2Base.gamecore_sha256() => {
+                RulesProfile::LinuxXp2Base
+            }
+            Some(hash) if hash == RulesProfile::WindowsXp2Historical.gamecore_sha256() => {
+                RulesProfile::WindowsXp2Historical
+            }
+            _ => return fail("declared source/profile has no registered exact binary profile"),
+        };
+        Self::load_profile(profile, directory, declared)
+    }
+    /// Explicit profile selection precedes filesystem access. Declared input must
+    /// equal the complete authoritative manifest identity for that exact profile.
+    pub fn load_profile(
+        profile: RulesProfile,
+        directory: impl AsRef<Path>,
+        declared: &SourceIdentity,
+    ) -> Result<Self> {
+        let manifest = profile_manifest(profile)?;
         if declared != &manifest.source {
             return fail(
-                "declared source/profile differs from pinned original-native XP2 identity",
+                "declared source/profile differs from selected pinned original-native identity",
             );
         }
-        let configuration = inspect(&directory.as_ref().join("configuration.sqlite"))?;
-        validate(&configuration, &manifest.databases[0])?;
-        let gameplay = inspect(&directory.as_ref().join("gameplay.sqlite"))?;
-        validate(&gameplay, &manifest.databases[1])?;
+        // Name-based selection avoids coupling profile extension to manifest array
+        // position. Only registered exact filenames are ever opened.
+        let expected_configuration = manifest
+            .databases
+            .iter()
+            .find(|db| db.filename == "configuration.sqlite")
+            .ok_or_else(|| Error("registered manifest lacks configuration.sqlite".into()))?;
+        let expected_gameplay = manifest
+            .databases
+            .iter()
+            .find(|db| db.filename == "gameplay.sqlite")
+            .ok_or_else(|| Error("registered manifest lacks gameplay.sqlite".into()))?;
+        if manifest.databases.len() != 2 {
+            return fail("registered rules manifest must contain exactly configuration and gameplay databases");
+        }
+        let configuration = inspect(&directory.as_ref().join(&expected_configuration.filename))?;
+        validate(&configuration, expected_configuration)?;
+        let gameplay = inspect(&directory.as_ref().join(&expected_gameplay.filename))?;
+        validate(&gameplay, expected_gameplay)?;
         let table = gameplay
             .table("Units")
             .ok_or_else(|| Error("missing table Units".into()))?;
@@ -612,11 +692,15 @@ impl Rules {
         }
         Ok(Self {
             source: declared.clone(),
+            profile,
             configuration,
             gameplay,
             units,
             unit_index,
         })
+    }
+    pub fn profile(&self) -> RulesProfile {
+        self.profile
     }
     pub fn source(&self) -> &SourceIdentity {
         &self.source

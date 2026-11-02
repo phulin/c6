@@ -1,17 +1,25 @@
 //! Load actual private exports, compare optional independent run, benchmark lookups.
-use c6_data::{xp2_source_identity, Rules};
+use c6_data::{Rules, RulesProfile};
 use serde_json::json;
 use std::{hint::black_box, time::Instant};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut arguments = std::env::args().skip(1);
+    let profile = match arguments.next().as_deref() {
+        Some("linux-xp2-base") => RulesProfile::LinuxXp2Base,
+        Some("windows-xp2-historical") => RulesProfile::WindowsXp2Historical,
+        _ => {
+            return Err("choose explicit profile: linux-xp2-base or windows-xp2-historical".into())
+        }
+    };
+    let source = profile.source_identity()?;
     let directory = arguments
         .next()
-        .ok_or("usage: inspect_rules DIRECTORY [INDEPENDENT_DIRECTORY]")?;
+        .ok_or("usage: inspect_rules PROFILE DIRECTORY [INDEPENDENT_DIRECTORY]")?;
     let started = Instant::now();
-    let rules = Rules::load(directory, &xp2_source_identity())?;
+    let rules = Rules::load_profile(profile, directory, &source)?;
     let load_us = started.elapsed().as_micros();
     let independent = if let Some(other) = arguments.next() {
-        let other = Rules::load(other, &xp2_source_identity())?;
+        let other = Rules::load_profile(profile, other, &source)?;
         if rules.configuration().fingerprint() != other.configuration().fingerprint()
             || rules.gameplay().fingerprint() != other.gameplay().fingerprint()
         {
@@ -42,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
         serde_json::to_string_pretty(&json!({
-            "source": rules.source(), "sqlite_version": rusqlite::version(),
+            "profile": rules.profile(), "source": rules.source(), "sqlite_version": rusqlite::version(),
             "databases": reports, "independent_exports_compared": independent,
             "unit_type": warrior.unit_type, "rules_row_id": warrior.rules_row_id.0,
             "unit_fields_from_original_export": {"cost": warrior.cost, "base_moves": warrior.base_moves, "combat": warrior.combat, "ranged_combat": warrior.ranged_combat, "range": warrior.range, "maintenance": warrior.maintenance},
