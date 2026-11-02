@@ -20,6 +20,7 @@ static struct fixture engine = {slots, {{0, 0, 0}}, 0};
 static HMODULE original_host_image;
 static uint64_t original_archive_storage[6];
 static int original_archive_constructed;
+static int original_local_options_ready;
 static uintptr_t archive_slots[3];
 static uintptr_t *archive_object = archive_slots;
 static HMODULE original_gamecore;
@@ -331,6 +332,37 @@ int bootstrap_service_fixture_prepare_original_host_services(HMODULE original_ho
     original_archive_constructed = 1;
     slots[33] = (uintptr_t)game_sync_manager;
     trace("original_archive_factory_constructed", 0x110);
+    return 1;
+}
+static void *local_options_group(void *self, uint32_t group) {
+    typedef void *(*getter_fn)(void *, uint32_t);
+    void *result = ((getter_fn)((uintptr_t)original_host_image + 0x1c9750))(self, group);
+    trace("GetLocalOptions_original_group_empty_fixture", 0x158);
+    return result;
+}
+static void *local_options_all(void *self) {
+    typedef void *(*getter_fn)(void *);
+    trace("GetLocalOptions_original_all_empty_fixture", 0x160);
+    return ((getter_fn)((uintptr_t)original_host_image + 0x1c9760))(self);
+}
+int bootstrap_service_fixture_prepare_empty_local_options(HMODULE original_host) {
+    typedef void *(*constructor_fn)(void *);
+    const uintptr_t globals[] = {0x22d6550, 0x22d64f0};
+    if (original_host != original_host_image || original_local_options_ready) return 0;
+    /* Preflight both objects before any native constructor can mutate either. */
+    for (size_t i = 0; i < sizeof globals / sizeof globals[0]; ++i)
+        if (*(uintptr_t *)((uintptr_t)original_host + globals[i])) return 0;
+    for (size_t i = 0; i < sizeof globals / sizeof globals[0]; ++i) {
+        void *object = (void *)((uintptr_t)original_host + globals[i]);
+        /* Original static initializers 4eb0/4ed0 call this exact constructor.
+         * Invoke it explicitly without registering uninitialized EXE atexit state. */
+        if (((constructor_fn)((uintptr_t)original_host + 0x7a44a0))(object) != object ||
+            *(uintptr_t *)object != (uintptr_t)original_host + 0x103c918) return 0;
+    }
+    original_local_options_ready = 1;
+    slots[43] = (uintptr_t)local_options_group;
+    slots[44] = (uintptr_t)local_options_all;
+    trace("original_local_options_maps_constructed_empty", 0x158);
     return 1;
 }
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database) {

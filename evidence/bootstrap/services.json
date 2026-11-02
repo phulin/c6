@@ -22,7 +22,9 @@
     "GetGameplayDatabaseUri": 312,
     "GetConfigurationDatabaseUri": 320,
     "GetAutoArchiveFactory": 272,
-    "GetGameSyncManager": 264
+    "GetGameSyncManager": 264,
+    "GetLocalOptions_group_hash": 344,
+    "GetLocalOptions_all": 352
   },
   "bootstrap_order": [
     "QueryInterface(engine_guid)",
@@ -200,6 +202,44 @@
       "caller_rva": "0x1a7cf3",
       "original_stream_consumed": 8,
       "original_stream_available": 76556938
+    }
+  },
+  "local_options_fixture": {
+    "api": "bootstrap_service_fixture_prepare_empty_local_options",
+    "map_constructor_rva": "0x7a44a0",
+    "native_global_initializer_rvas": [
+      "0x4eb0",
+      "0x4ed0"
+    ],
+    "main_global_rva": "0x22d64f0",
+    "fallback_global_rva": "0x22d6550",
+    "map_vptr_rva": "0x103c918",
+    "group_getter_rva": "0x1c9750",
+    "all_getter_rva": "0x1c9760",
+    "app_options_imported": false,
+    "native_child_exit": 0,
+    "native_groups_tested": 3,
+    "native_cleanup": true,
+    "evidence": "evidence/bootstrap/services-local-options-validation.json",
+    "requested_group_hash": "0xfbb4e6a9",
+    "requested_group_name": "Performance",
+    "requested_property_hash": "0xc181eb6e",
+    "requested_property_name": "unverified",
+    "native_property_type": 0,
+    "native_property_flags": 0,
+    "full_configuration_parity": false,
+    "preexisting_native_map_rejection": {
+      "native_child_exit": 0,
+      "both_native_objects_unchanged": true
+    },
+    "actual_load_boundary": {
+      "evidence": "evidence/bootstrap/native-xp2-original-load-options.json",
+      "native_group_getter_calls": 2,
+      "next_missing_provider": "EXP_JobManager_Wait",
+      "return_site_rva": "0x992301",
+      "stream_consumed": 8,
+      "stream_available": 76556938,
+      "complete_load": false
     }
   }
 }

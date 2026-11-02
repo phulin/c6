@@ -8,6 +8,8 @@ void *bootstrap_service_fixture_create(HMODULE gamecore);
  * Caller must gate DatabaseDLL identity before invoking this function. */
 /* Explicit original EXE import binding + original archive ctor. EXE/provider SHA gates required. */
 int bootstrap_service_fixture_prepare_original_host_services(HMODULE original_host);
+/* Explicitly empty genuine LocalOptions maps; imports no AppOptions user settings. */
+int bootstrap_service_fixture_prepare_empty_local_options(HMODULE original_host);
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database);
 /* Original InitializeDatabase returns true even when prepared writer queries fail.
  * Caller owns authentic phase transaction and must verify affected SQL state. */

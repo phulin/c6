@@ -96,3 +96,15 @@ The bounded stderr sink now retains log flags and levels separately, implements 
 
 
 The next actual Load run passed logging GetTypeLevel with result zero, then stopped on engine utility `+0x158`, caller `0x1a7cf3`. The progress hook recorded the untouched original MemoryIStream consumed exactly 8 of 76,556,938 bytes before the explicit exit 86 (`evidence/bootstrap/native-xp2-original-load-logging.json`). No complete save Load result is established by that observation.
+
+
+## Original empty LocalOptions fixture
+
+The next Load requirement is engine `+0x158` GetLocalOptions(manager, u32 group_hash). The actual Windows slot order is `+0x158` for the grouped overload (`0x1c9750`), and `+0x160` for the no-argument overload (`0x1c9760`). This reverses the inferred overload names in the upstream Windows table. The grouped getter calls original `0xf8490`, which searches actual global map `0x22d64f0` and returns the nested map or actual fallback map `0x22d6550`. The no-argument getter returns the main map. The observed caller is Formation::Movement::Initialize (`0x1a7ce0`), requesting group hash `0xfbb4e6a9` (Performance) and property hash `0xc181eb6e`. The property name and persisted user setting remain unverified; no setting value is invented.
+
+`bootstrap_service_fixture_prepare_empty_local_options` explicitly invokes the original TypedVariantMap constructor `0x7a44a0` on those two actual globals. The original EXE static initializers `0x4eb0`/`0x4ed0` invoke this same constructor. The helper supplies an empty native options configuration, imports no AppOptions user settings, and refuses already initialized objects. It wires the service slots to original getters rather than returning a synthesized map or TypedVariant. The loader must record this empty-settings fixture in its configuration identity; it is not proof of the saved game's original user preference configuration.
+
+`python3 tools/analysis/bootstrap_services_local_options.py` checks all provider hashes before a native child run. It verifies original map vptr `0x103c918`, exact fallback pointer identity for groups zero, Performance and UINT32_MAX, repeated native property reference identity, native type zero/flags zero for the absent property, and original global-map destruction. All three groups pass, child exit zero. The evidence is `evidence/bootstrap/services-local-options-validation.json`; these are bounded empty-map observations, not a full options load or gameplay comparison.
+
+
+The options probe also constructs an existing main map, then verifies the helper rejects initialization with both complete native global objects unchanged before original cleanup. In the actual Load probe, the two original grouped options calls now return successfully; the next failure is the missing dynamic EXP_JobManager_Wait provider (return site `0x992301`), with the original stream still consumed 8 of 76,556,938 bytes. This next dependency belongs to the job-manager provider, not the options fixture (`evidence/bootstrap/native-xp2-original-load-options.json`).

@@ -28,16 +28,16 @@
     },
     "sources": {
       "native/bootstrap/services/logging_probe.c": "19d1dc997ee414b1f50c4ef2baf5b83a74633848c984d54d9ed9cb34e51b2490",
-      "native/bootstrap/services/service_fixture.c": "cb44ae58d61f2d61afed2db9cda7948730b83b0ef6b6cc7f4efcabfd90501968",
-      "native/bootstrap/services/service_fixture.h": "259dde18b617a1e386076b8515beac19c9358bc944cbaa2783333a5747c947c9",
+      "native/bootstrap/services/service_fixture.c": "5a4742038fbeae29eb30e13b07b64c70043c72c2eb346b44ebeae5219e07b028",
+      "native/bootstrap/services/service_fixture.h": "efbcf4e9bc5f783531d287c94673d05bd5f11071bee922c7eaf2e4c241221ddb",
       "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
       "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e"
     },
     "compiler": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
-    "host_sha256": "a8625bd15a064fdf9edd89b2ad02344e561590a55ed65495884910dc50190c0c",
+    "host_sha256": "f08da6782eaff903af51b76d24a6334314e252aab959edf38af817946b59a494",
     "wine": "wine-9.0 (Ubuntu 9.0~repack-4build3)"
   },
-  "configuration_sha256": "4572418d636702ccebde75adaf06eca09dc124d87ff2013a4901e073c400c261",
+  "configuration_sha256": "2f1b4a9592ac44ddfaaf2fa88bec87b4992ac66db112c03cc133282f7739b944",
   "returncode": 0,
   "observations": [
     {
