@@ -27,7 +27,7 @@ Every `fields` sequence in the artifact is wire order, not object memory order. 
 | Espionage | 7 | `0x2c15bc0` |
 | Hero | 5 | `0x2c1bb20` |
 
-Sight::PlotEntry, EspionageBonus, EspionageTimeReduction and InitiationYieldPopulation have no per-record version prefix in their current writers. Their exact ordered fields are also in the artifact. Archaeology's fields belong to `m_kVariants`, whose matching reflected type is `GameCore::UnitArchaeology::Reflection::Variants1`; those subfield names are preserved.
+Sight::PlotEntry has no per-record version prefix in its current writer. EspionageBonus and EspionageTimeReduction each write signed int32 version 7; InitiationYieldPopulation writes signed int32 version 1. Their exact ordered fields are also in the artifact. Archaeology's fields belong to `m_kVariants`, whose matching reflected type is `GameCore::UnitArchaeology::Reflection::Variants1`; those subfield names are preserved.
 
 A component's enum member is not automatically a raw runtime enum. For example, Hero's class passes through the real HeroClass definitions to index→hash serialization. Its current record is signed int32 version 5, uint32 HeroClass definition hash, then CityID's signed int16 owner, signed int16 component type and uint32 ID. The parent pointer and padding are absent. Older Hero readers consume obsolete fields at specific version cutoffs; accepting only the current writer version is a distinct, narrower contract.
 
