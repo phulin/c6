@@ -3,6 +3,7 @@ pub mod codec;
 pub mod geometry;
 pub mod messages;
 pub mod rng;
+pub mod trade;
 use rng::RandomState;
 use std::collections::BTreeMap;
 
