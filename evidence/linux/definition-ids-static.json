@@ -1,0 +1,182 @@
+{
+  "full_state_action_turn_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "hash_contract": {
+    "case_sensitive": true,
+    "final_xor": 0,
+    "nul_terminated": true,
+    "polynomial": "0xedb88320",
+    "seed": "0xffffffff"
+  },
+  "host_crc": {
+    "address": "0x39508ee",
+    "bytes": 40,
+    "sha256": "e5e7c7adf538f940faa89826430d778363e0790c6cc202071c14477c699819d5"
+  },
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": {
+    "hash": {
+      "address": "0x2d577c0",
+      "bytes": 26,
+      "sha256": "69af59978c2918a425feb03eb401ab03ca06877908219bac588a5d3e503c7a68",
+      "symbols": [
+        "_ZN8GameCore9Utilities8MakeHashEPKc"
+      ]
+    },
+    "lazy_hasher": {
+      "address": "0x2d57760",
+      "bytes": 81,
+      "sha256": "6ee57aae4a033ae979e4d4e2fcbd403225b405d2d84c62ffbb9bc34b122ef5d9",
+      "symbols": [
+        "_ZN8GameCore9Utilities13GetLazyHasherEv"
+      ]
+    },
+    "unit_build": {
+      "address": "0x225eec0",
+      "bytes": 285,
+      "sha256": "e3b182b843c2a7e7d23849b05cf7302a859a661ca0a5fd96650e1ee6dbb32c69",
+      "symbols": [
+        "_ZN8GameCore10Definition27DefinitionCollectionBuilder15BuildCollectionINS0_21UnitCollectionBuilderENS0_33DefinitionCollectionWithTypeIndexINS0_4UnitEEEEEvRT0_"
+      ]
+    },
+    "unit_get_sql": {
+      "address": "0x221c190",
+      "bytes": 8,
+      "sha256": "235b76a9caa9fb8d070c2c7e1d0c3a76b1722673409cb7842baae6e324439c65",
+      "symbols": [
+        "_ZN8GameCore10Definition21UnitCollectionBuilder13GetBuilderSqlEv"
+      ]
+    },
+    "yield_at": {
+      "address": "0x1fe47a0",
+      "bytes": 29,
+      "sha256": "b24fe29f954da8018606697f1e90f2f722ea27ff84d4d1e2b09a784ff09bbcd6",
+      "symbols": [
+        "_ZNK8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_5YieldEE2AtEj"
+      ]
+    },
+    "yield_build": {
+      "address": "0x2260c00",
+      "bytes": 285,
+      "sha256": "d3c2e61cb8130b59341fd7744de8fa44c467a0ca9d9ba5b8bd1faaa2bd29e785",
+      "symbols": [
+        "_ZN8GameCore10Definition27DefinitionCollectionBuilder15BuildCollectionINS0_22YieldCollectionBuilderENS0_33DefinitionCollectionWithTypeIndexINS0_5YieldEEEEEvRT0_"
+      ]
+    },
+    "yield_build_row": {
+      "address": "0x221f850",
+      "bytes": 264,
+      "sha256": "13ac6dd8da1403057d98fc18fbfe187a04c9f30544b543cac62431195fd9695e",
+      "symbols": [
+        "_ZN8GameCore10Definition22YieldCollectionBuilder15BuildDefinitionEPN8Database15IDatabaseQuery1E"
+      ]
+    },
+    "yield_count": {
+      "address": "0x1fe2360",
+      "bytes": 5,
+      "sha256": "6f9701cbf5ee8d61dcc3b99cce4175c71eb4dc7a8901d93a5f7ce9f687281d75",
+      "symbols": [
+        "_ZNK8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_5YieldEE8GetCountEv"
+      ]
+    },
+    "yield_find": {
+      "address": "0x1ff7290",
+      "bytes": 109,
+      "sha256": "26cf797892a0131ea13d8f331a7a66d08096f60faec5f827d1a4cddbddb90c40",
+      "symbols": [
+        "_ZNK8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_5YieldEE4FindEj"
+      ]
+    },
+    "yield_find_index": {
+      "address": "0x2b35520",
+      "bytes": 27,
+      "sha256": "983d2bb13fe678ca3771cf2c0c0bb232fe86886c5faf277717ce580416a5b832",
+      "symbols": [
+        "_ZNK8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_5YieldEE9FindIndexEj"
+      ]
+    },
+    "yield_get": {
+      "address": "0x2214970",
+      "bytes": 16,
+      "sha256": "b8ca8e6827d817397e9b8e220661a4b605b3b138aa25525476db4f02761e9218",
+      "symbols": [
+        "_ZN8GameCore11Definitions19GetYieldDefinitionsEv"
+      ]
+    },
+    "yield_hash_read": {
+      "address": "0x1ff7160",
+      "bytes": 157,
+      "sha256": "82436ce31b4a3e0a43bb0f5cb7706592e741609d43eb4eaefb411b9d45bf4fad",
+      "symbols": [
+        "_ZN13Serialization18ReadIndexHashArrayI11FixedPointTILj8EEN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS4_5YieldEEEEEbRNS_7IStreamEPT_RKT0_"
+      ]
+    },
+    "yield_index": {
+      "address": "0x1fe51e0",
+      "bytes": 4,
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a",
+      "symbols": [
+        "_ZNK8GameCore10Definition5Yield18GetCollectionIndexEv"
+      ]
+    },
+    "yield_push": {
+      "address": "0x231a1a0",
+      "bytes": 96,
+      "sha256": "8f57d26ff70ae9eb86ce27cff09a12965b55fb475d92159cc0c46b01a0aff162",
+      "symbols": [
+        "_ZN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_5YieldEE9push_backEPS2_"
+      ]
+    },
+    "yield_push_compare": {
+      "address": "0x231a680",
+      "bytes": 36,
+      "sha256": "656a4a87ce36c5686397c4c22dfc95734555235246e518862e861b9bafbeb3dd",
+      "symbols": [
+        "_ZZN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_5YieldEE9push_backEPS2_ENKUlPKS2_S6_E_clES6_S6_"
+      ]
+    },
+    "yield_rowid": {
+      "address": "0x2110120",
+      "bytes": 4,
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537",
+      "symbols": [
+        "_ZNK8GameCore10Definition5Yield16GetDatabaseRowIdEv"
+      ]
+    },
+    "yield_set_index": {
+      "address": "0x231a190",
+      "bytes": 4,
+      "sha256": "e0bb5195d3b0df83d6b5f35184dfa71bd6360cf410a1faeb0cda331ec8dbd16c",
+      "symbols": [
+        "_ZN8GameCore10Definition5Yield18SetCollectionIndexEj"
+      ]
+    },
+    "yield_set_type": {
+      "address": "0x221f810",
+      "bytes": 56,
+      "sha256": "f4a9fd0bda4b65b0861474c5684771e85173514b723281042914bf57283e8737",
+      "symbols": [
+        "_ZN8GameCore10Definition5Yield12SetYieldTypeEPKc"
+      ]
+    },
+    "yield_type_hash": {
+      "address": "0x1ff73b0",
+      "bytes": 4,
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1",
+      "symbols": [
+        "_ZNK8GameCore10Definition5Yield11GetTypeHashEv"
+      ]
+    },
+    "yield_type_name": {
+      "address": "0x1fe47c0",
+      "bytes": 9,
+      "sha256": "1148bdab69bec54d27636f6b940383aafaab6c6e56c76047b28b58c100ae762d",
+      "symbols": [
+        "_ZNK8GameCore10Definition5Yield12GetYieldTypeEv"
+      ]
+    }
+  },
+  "native_query": null,
+  "schema": "c6-linux-definition-ids-v1",
+  "yield_sql": "SELECT rowid, DefaultValue, IconString, Name, OccupiedCityChange, YieldType FROM Yields ORDER BY rowid"
+}

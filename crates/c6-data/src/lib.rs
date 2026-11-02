@@ -6,6 +6,8 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
+pub mod registry;
+
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
 const LINUX_BASE_MANIFEST: &str = include_str!("../../../evidence/linux/rules-base-snapshot.json");
 const LINUX_XP2_DIAGNOSTIC_MANIFEST: &str =
