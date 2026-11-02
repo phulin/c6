@@ -8,6 +8,19 @@ typedef int (*main_fn)(int,char**,char**);
 static int run_probe(int argc,char **argv,char **envp) {
     (void)argc; (void)argv; (void)envp;
     fprintf(stderr,"C6_LINUX host_main_intercepted\n");
+    if(getenv("C6_FILESYSTEM")){
+        int (*initialize)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_initialize");
+        if(!initialize)return 75;
+        fprintf(stderr,"C6_LINUX filesystem_enter\n");
+        int result=initialize();
+        fprintf(stderr,"C6_LINUX filesystem_return %d\n",result);
+        if(result)return result;
+    }
+    if(getenv("C6_PREPARE_HOST_FIRST")){
+        int (*prepare)(void)=dlsym(RTLD_DEFAULT,"c6_linux_prepare_host");
+        if(!prepare)return 78;
+        int result=prepare();if(result)return result;
+    }
     void *game=dlopen(getenv("C6_GAMECORE"),RTLD_NOW|RTLD_LOCAL);
     if(!game){fprintf(stderr,"C6_LINUX dlopen_error %s\n",dlerror());return 41;}
     fprintf(stderr,"C6_LINUX whole_gamecore_loaded\n");
@@ -43,6 +56,13 @@ static int run_probe(int argc,char **argv,char **envp) {
     }
     int closed=dlclose(game);
     fprintf(stderr,"C6_LINUX dlclose_return %d\n",closed);
+    if(getenv("C6_FILESYSTEM")){
+        int (*shutdown)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_shutdown");
+        if(!shutdown)return 76;
+        int result=shutdown();
+        fprintf(stderr,"C6_LINUX filesystem_shutdown_return %d\n",result);
+        if(result)return result;
+    }
     fflush(stderr);
     /* Host application shutdown was never initialized. Avoid its atexit path. */
     return closed?44:0;

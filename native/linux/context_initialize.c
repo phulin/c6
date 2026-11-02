@@ -4,22 +4,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "host_services.h"
+#include "context_initialize.h"
 
 static bool localization_started;
+static bool host_prepared;
+static void *utility;
 
-int c6_linux_context_initialize(void *game, void *context) {
-    void (*set_engine)(void *, void *) = dlsym(game,
-        "_ZN8GameCore7Exports7Context18SetEngineInterfaceEPNS_10Interfaces15IEngineUtility1E");
-    void (*initialize)(void *) = dlsym(game,
-        "_ZN8GameCore7Exports7Context10InitializeEv");
-    bool (*is_initialized)(void *) = dlsym(game,
-        "_ZN8GameCore7Exports7Context12IsInitialiedEv");
-    if (!set_engine || !initialize || !is_initialized) {
-        fprintf(stderr, "C6_LINUX initialize_symbols_missing\n");
-        return 45;
-    }
+/* No independent Context is created here. The original mod framework may own
+ * context creation/destruction during its BootstrapContent transitions. */
+int c6_linux_prepare_host(void) {
+    if(host_prepared)return 0;
     fprintf(stderr, "C6_LINUX host_services_enter\n");
-    void *utility = c6_linux_create_host_engine_utility();
+    utility = c6_linux_create_host_engine_utility();
     if (!utility) {
         fprintf(stderr, "C6_LINUX host_services_null\n");
         return 46;
@@ -34,6 +30,23 @@ int c6_linux_context_initialize(void *game, void *context) {
         if(result)return 55;
         localization_started=true;
     }
+    host_prepared=true;
+    return 0;
+}
+
+int c6_linux_context_initialize(void *game, void *context) {
+    void (*set_engine)(void *, void *) = dlsym(game,
+        "_ZN8GameCore7Exports7Context18SetEngineInterfaceEPNS_10Interfaces15IEngineUtility1E");
+    void (*initialize)(void *) = dlsym(game,
+        "_ZN8GameCore7Exports7Context10InitializeEv");
+    bool (*is_initialized)(void *) = dlsym(game,
+        "_ZN8GameCore7Exports7Context12IsInitialiedEv");
+    if (!set_engine || !initialize || !is_initialized) {
+        fprintf(stderr, "C6_LINUX initialize_symbols_missing\n");
+        return 45;
+    }
+    int preparation=c6_linux_prepare_host();
+    if(preparation)return preparation;
     fprintf(stderr, "C6_LINUX set_engine_enter\n");
     set_engine(context, utility);
     fprintf(stderr, "C6_LINUX set_engine_return\n");
@@ -60,6 +73,14 @@ int c6_linux_context_initialize(void *game, void *context) {
         fprintf(stderr,"C6_LINUX rules_snapshot_enter\n");
         int result=snapshot(game,context);
         fprintf(stderr,"C6_LINUX rules_snapshot_return %d\n",result);
+        if(result)return result;
+    }
+    if(getenv("C6_SAVE_LIFECYCLE_CHECK")){
+        int (*check)(void)=dlsym(RTLD_DEFAULT,"c6_linux_save_lifecycle_check");
+        if(!check)return 77;
+        fprintf(stderr,"C6_LINUX save_lifecycle_check_enter\n");
+        int result=check();
+        fprintf(stderr,"C6_LINUX save_lifecycle_check_return %d\n",result);
         if(result)return result;
     }
     if (getenv("C6_STARTUP")) {
@@ -92,5 +113,7 @@ int c6_linux_context_finish(void) {
         int result=shutdown();if(result)return result;
         localization_started=false;
     }
-    return c6_linux_destroy_host_services();
+    int result=c6_linux_destroy_host_services();
+    if(!result){host_prepared=false;utility=NULL;}
+    return result;
 }

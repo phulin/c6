@@ -30,6 +30,14 @@ def main():
                         help='construct genuine host services and enter original Context Initialize')
     parser.add_argument('--startup', action='store_true',
                         help='also enter genuine StartupGame after Context Initialize')
+    parser.add_argument('--prepare-host-first', action='store_true',
+                        help='prepare genuine host services before any GameCore load or context factory')
+    parser.add_argument('--save-lifecycle-check', action='store_true',
+                        help='check original serializer missing-stream failure without a gameplay load')
+    parser.add_argument('--filesystem', action='store_true',
+                        help='initialize original ASL filesystem before GameCore loading')
+    parser.add_argument('--host-launch-fixture', type=Path,
+                        help='validated exact copied host and original ASL content aliases')
     parser.add_argument('--rules-source-view', type=Path,
                         help='gated original Linux source symlinks with native Schema directory case')
     parser.add_argument('--rules-snapshot-dir', type=Path,
@@ -50,12 +58,17 @@ def main():
                         help='private native Save output after original Load returns OK')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    args.filesystem = args.filesystem or args.host_launch_fixture is not None
+    if args.filesystem and not args.host_launch_fixture:
+        parser.error('--filesystem requires --host-launch-fixture')
+    if args.filesystem and args.rules_source_view:
+        parser.error('original ASL filesystem and diagnostic Schema-only source view are separate profiles')
     args.startup = args.startup or args.load_stream is not None
     args.localization = args.localization or args.load_stream is not None
     args.lua = args.lua or args.load_stream is not None
     args.initialize = (args.initialize or args.startup or args.localization or args.lua
                        or args.saved_configuration is not None or args.rules_snapshot_dir is not None
-                       or args.rules_source_view is not None)
+                       or args.rules_source_view is not None or args.save_lifecycle_check or args.prepare_host_first)
     args.stream_check = args.stream_check or args.load_stream is not None
     if args.saved_configuration_output and not args.saved_configuration:
         parser.error('--saved-configuration-output requires --saved-configuration')
@@ -120,6 +133,13 @@ def main():
                           'payload_bytes': args.load_stream.stat().st_size,
                           'saved_configuration_restore_requested': bool(args.saved_configuration),
                           'source': str(save_source.relative_to(assets))}
+    launch_profile = None
+    host = assets / 'Civ6'
+    if args.host_launch_fixture:
+        from rules_launch_fixture import validate
+        args.host_launch_fixture = args.host_launch_fixture.resolve(strict=True)
+        launch_profile = validate(assets, args.host_launch_fixture)
+        host = args.host_launch_fixture / 'Civ6'
     content_gate = None
     if args.initialize:
         content_gate = json.loads((ROOT / 'tools/linux/runtime-content-gate.json').read_text())
@@ -166,7 +186,7 @@ def main():
         if name.startswith('LD_') or name.startswith('C6_'):
             del env[name]
     env['LD_LIBRARY_PATH'] = library_path
-    listing = subprocess.run(['ldd', str(assets / 'Civ6')], cwd=work,
+    listing = subprocess.run(['ldd', str(host)], cwd=work,
                              env=env, capture_output=True, text=True, check=True).stdout
     if 'not found' in listing:
         raise SystemExit(f'unavailable native runtime dependency:\n{listing}')
@@ -181,6 +201,10 @@ def main():
     compiler = subprocess.check_output(['cc', '--version'], text=True).splitlines()[0]
     extra_sources = [ROOT / 'native/linux/context_initialize.c',
                      ROOT / 'native/linux/host_services.c'] if args.initialize else []
+    if args.save_lifecycle_check:
+        extra_sources += [ROOT / 'native/linux/save_lifecycle.c']
+    if args.filesystem:
+        extra_sources += [ROOT / 'native/linux/filesystem.c']
     if args.rules_snapshot_dir:
         extra_sources += [ROOT / 'native/linux/rules_snapshot.c']
     if args.saved_configuration:
@@ -206,6 +230,14 @@ def main():
         'host_application_main_called': False,
         'host_application_shutdown_called': False,
     }
+    if args.save_lifecycle_check:
+        configuration['save_lifecycle_boundary_profile'] = {
+            'requested': True, 'header_sha256': digest(ROOT / 'native/linux/save_lifecycle.h')}
+    if launch_profile:
+        configuration['original_asl_launch_profile'] = launch_profile
+        configuration['filesystem_adapter_sources'] = {str(p.relative_to(ROOT)): digest(p) for p in
+            [ROOT / 'native/linux/filesystem.c', ROOT / 'native/linux/filesystem.h',
+             ROOT / 'tools/linux/rules_launch_fixture.py']}
     if rules_source_profile:
         configuration['rules_source_view'] = rules_source_profile
     if args.rules_snapshot_dir:
@@ -234,17 +266,26 @@ def main():
     if args.initialize:
         configuration['content_profile'] = content_gate
         configuration['startup_game_requested'] = args.startup
+        configuration['prepare_host_before_gamecore'] = args.prepare_host_first
         configuration['host_lua_requested'] = args.lua
         configuration['host_userdata'] = str(ROOT / 'target/linux-runtime/userdata')
         configuration['host_adapter_sources'] = {
             str(p.relative_to(ROOT)): digest(p) for p in
-            [*extra_sources, ROOT / 'native/linux/host_services.h']}
+            [*extra_sources, ROOT / 'native/linux/host_services.h',
+             ROOT / 'native/linux/context_initialize.h']}
     identity = hashlib.sha256(json.dumps(configuration, sort_keys=True,
                               separators=(',', ':')).encode()).hexdigest()
     if args.expected_configuration and args.expected_configuration != identity:
         raise SystemExit('configuration identity mismatch; original execution refused')
     env['LD_PRELOAD'] = str(probe)
     env['C6_GAMECORE'] = str(assets / 'libGameCore_XP2.so')
+    if args.prepare_host_first:
+        env['C6_PREPARE_HOST_FIRST'] = '1'
+    if args.save_lifecycle_check:
+        env['C6_SAVE_LIFECYCLE_CHECK'] = '1'
+    if args.filesystem:
+        env['C6_FILESYSTEM'] = '1'
+        env['C6_RULES_SOURCE_ROOT'] = str(args.host_launch_fixture / 'steamassets')
     if args.rules_source_view:
         env['C6_RULES_SOURCE_ROOT'] = str(args.rules_source_view)
     if args.rules_snapshot_dir:
@@ -274,14 +315,22 @@ def main():
         userdata.mkdir(parents=True, exist_ok=True)
         env['C6_HOST_USERDATA'] = str(userdata)
     try:
-        run = subprocess.run([str(assets / 'Civ6')], cwd=work, env=env,
+        run = subprocess.run([str(host)], cwd=work, env=env,
                              capture_output=True, text=True, timeout=30)
         code, out, err = run.returncode, run.stdout, run.stderr
     except subprocess.TimeoutExpired as exc:
         def timeout_text(value):
             return value.decode('utf-8', errors='replace') if isinstance(value, bytes) else value or ''
         code, out, err = 124, timeout_text(exc.stdout), timeout_text(exc.stderr)
-    expected = ['C6_LINUX host_main_intercepted', 'C6_LINUX whole_gamecore_loaded']
+    expected = ['C6_LINUX host_main_intercepted']
+    if args.filesystem:
+        expected += ['C6_LINUX filesystem_enter', 'C6_LINUX filesystem_return 0']
+    host_expected = ['C6_LINUX host_services_enter', 'C6_LINUX host_services_return']
+    if args.localization:
+        host_expected += ['C6_LINUX localization_enter', 'C6_LINUX localization_return 0']
+    if args.prepare_host_first:
+        expected += host_expected
+    expected += ['C6_LINUX whole_gamecore_loaded']
     load_match = re.search(r'^C6_LINUX_STREAM load_return result (-?\d+) offset (\d+) size (\d+)$', err, re.M)
     fault_match = re.search(r'^C6_LINUX_STREAM fault signal (\d+) offset (\d+) instruction (\d+) gamecore_rva (\d+)$', err, re.M)
     save_match = re.search(r'^C6_LINUX_STREAM save_return result (-?\d+) size (\d+)$', err, re.M)
@@ -290,9 +339,8 @@ def main():
     for i in range(3):
         expected += [f'C6_LINUX create_enter {i}', f'C6_LINUX create_return {i} nonnull']
         if i == 0 and args.initialize:
-            expected += ['C6_LINUX host_services_enter', 'C6_LINUX host_services_return']
-            if args.localization:
-                expected += ['C6_LINUX localization_enter', 'C6_LINUX localization_return 0']
+            if not args.prepare_host_first:
+                expected += host_expected
             expected += ['C6_LINUX set_engine_enter', 'C6_LINUX set_engine_return',
                          'C6_LINUX is_initialized_before 0', 'C6_LINUX initialize_enter',
                          'C6_LINUX initialize_return', 'C6_LINUX is_initialized_after 1']
@@ -300,6 +348,8 @@ def main():
             expected += ['C6_LINUX saved_configuration_enter', 'C6_LINUX saved_configuration_return 0']
         if i == 0 and args.rules_snapshot_dir:
             expected += ['C6_LINUX rules_snapshot_enter', 'C6_LINUX rules_snapshot_return 0']
+        if i == 0 and args.save_lifecycle_check:
+            expected += ['C6_LINUX save_lifecycle_check_enter', 'C6_LINUX save_lifecycle_check_return 0']
         if i == 0 and args.startup:
             expected += ['C6_LINUX startup_enter', 'C6_LINUX startup_return']
         if i == 0 and args.load_stream:
@@ -317,17 +367,23 @@ def main():
         expected += ['C6_LINUX host_services_destroy_enter',
                      'C6_LINUX host_services_destroy_return 0']
     expected += ['C6_LINUX dlclose_return 0']
+    if args.filesystem:
+        expected += ['C6_LINUX filesystem_shutdown_return 0']
     observed = [line for line in err.splitlines()
                 if not ((args.initialize and line.startswith('C6_LINUX_HOST ')) or
                         (args.localization and line.startswith('C6_LINUX_LOCALIZATION ')) or
                         (args.saved_configuration and line.startswith('C6_LINUX_CONFIGURATION ')) or
-                        (args.rules_snapshot_dir and line.startswith('C6_LINUX_RULES ')))]
+                        (args.rules_snapshot_dir and line.startswith('C6_LINUX_RULES ')) or
+                        (args.filesystem and line.startswith('C6_LINUX_FILESYSTEM ')) or
+                        (args.save_lifecycle_check and line.startswith('C6_LINUX_SAVE_LIFECYCLE ')))]
     passed = code == 0 and observed == expected
     result = {'configuration_sha256': identity, 'configuration': configuration,
               'exit_code': code, 'stdout': out, 'stderr': err,
               'whole_gamecore_loaded': 'C6_LINUX whole_gamecore_loaded' in err,
               'context_lifetime_cycles_passed': 3 if passed else 0,
               'diagnostic_passed': passed, 'initialized_game': False,
+              'native_save_lifecycle_boundary_passed': 'C6_LINUX save_lifecycle_check_return 0' in err.splitlines(),
+              'original_filesystem_initialized': 'C6_LINUX filesystem_return 0' in err.splitlines(),
               'rules_snapshots': ([{'filename': p.name, 'sha256': digest(p),
                                     'bytes': p.stat().st_size}
                                    for p in sorted(args.rules_snapshot_dir.glob('*.sqlite'))]
