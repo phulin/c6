@@ -270,9 +270,58 @@
       "size": 24,
       "name": "Network.NetSessionCallbacks.IsGameInProgress",
       "sha256": "ce8fd8aff583dea8c272d126e8b186574bb05c4abeab43b355f7dfb577d0e5c0"
+    },
+    {
+      "module": "host",
+      "address": "0x39fac9c",
+      "size": 54,
+      "name": "NetRegister.constructor",
+      "sha256": "18aeadbb89c83befce23659fae457a0bc08e4d567a85739df8054e0965d92f34"
+    },
+    {
+      "module": "host",
+      "address": "0x39facec",
+      "size": 813,
+      "name": "NetRegister.Execute",
+      "sha256": "d1e76f497cbe92157fda17b54d4af22f1e1af0d20e0f9aa31b6c1303514be516"
+    },
+    {
+      "module": "host",
+      "address": "0x39fb05e",
+      "size": 43,
+      "name": "NetAppRegister.constructor",
+      "sha256": "02778c1cb08dbe9565257a6d10e11ccd5ffae85150a2297c433dfe08101b4704"
+    },
+    {
+      "module": "host",
+      "address": "0x33b9820",
+      "size": 270,
+      "name": "Network.NetSessionCallbacks.PlayerRegistered",
+      "sha256": "d8bae73239f662b101e18e53b9bf79ba72cdee5dd89b985182c387d0c693eeb4"
     }
   ],
   "virtual_bindings": [
+    {
+      "module": "host",
+      "table": "0x53b6480",
+      "offset": "0x28",
+      "target": "0x39facec",
+      "name": "NetRegister.Execute"
+    },
+    {
+      "module": "host",
+      "table": "0x53b64c0",
+      "offset": "0x28",
+      "target": "0x39fb1a2",
+      "name": "NetAppRegister.Execute"
+    },
+    {
+      "module": "host",
+      "table": "0x53a9d40",
+      "offset": "0x68",
+      "target": "0x33b9820",
+      "name": "SessionCallbacks.PlayerRegistered"
+    },
     {
       "module": "host",
       "table": "0x53b5600",
@@ -579,6 +628,14 @@
     "drop_path_address": "0x39f23a8"
   },
   "registration_callback_limit": "Original host callback publishes events82,54 or70; subscriber closure and native policy safety not established",
+  "protocol_registration": {
+    "type": 1208,
+    "vptr": "0x53b6490",
+    "execute": "0x39facec",
+    "application_registration_type": 1209,
+    "application_registration_vptr": "0x53b64d0",
+    "live_core_active_host_callback": "Context.RequestAction(0x23cabda3,playerID); native action, not passive bookkeeping"
+  },
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
   "update_deferral": "FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains",
