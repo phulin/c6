@@ -249,9 +249,51 @@
       "size": 732,
       "name": "FNetSession.PlayerAppRegistered",
       "sha256": "44c868dedaada42294f0f2772f24bc5fb0b8fb60f181eb7fc9c3f48428d1562a"
+    },
+    {
+      "module": "host",
+      "address": "0x39fb1a2",
+      "size": 30,
+      "name": "NetAppRegister.Execute",
+      "sha256": "cfcf3d6828ade2ab7e12dd063023995c4c2b2f994f18446eb7d9aff707d02b90"
+    },
+    {
+      "module": "host",
+      "address": "0x33b9930",
+      "size": 617,
+      "name": "Network.NetSessionCallbacks.PlayerAppRegistered",
+      "sha256": "2f41edb2402cac08150c6ae6dbf9ed6f6a233d2e63972d1e0d00a4b55d6fe4d9"
+    },
+    {
+      "module": "host",
+      "address": "0x33bb6a0",
+      "size": 24,
+      "name": "Network.NetSessionCallbacks.IsGameInProgress",
+      "sha256": "ce8fd8aff583dea8c272d126e8b186574bb05c4abeab43b355f7dfb577d0e5c0"
     }
   ],
   "virtual_bindings": [
+    {
+      "module": "host",
+      "table": "0x53b5600",
+      "offset": "0x188",
+      "target": "0x39f4294",
+      "name": "Session.PlayerAppRegistered"
+    },
+    {
+      "module": "host",
+      "table": "0x53a9d40",
+      "offset": "0x78",
+      "target": "0x33b9930",
+      "name": "SessionCallbacks.PlayerAppRegistered"
+    },
+    {
+      "module": "host",
+      "table": "0x53a9d40",
+      "offset": "0xd0",
+      "target": "0x33bb6a0",
+      "name": "SessionCallbacks.IsGameInProgress"
+    },
     {
       "module": "host",
       "table": "0x53cc788",
@@ -527,6 +569,16 @@
     "constructor_adjacent_byte": 0,
     "original_app_registered": "0x39f4294"
   },
+  "player_app_registration_abi": "void(session RDI, int playerID ESI, bool EDX); original session slot0x188; no ownership transfer or meaningful return",
+  "passive_receive_drop_gate": {
+    "address": "0x39f237e",
+    "local_player_register": "RAX",
+    "session_register": "R12",
+    "message_register": "R14",
+    "third_bool_register": "R15",
+    "drop_path_address": "0x39f23a8"
+  },
+  "registration_callback_limit": "Original host callback publishes events82,54 or70; subscriber closure and native policy safety not established",
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
   "update_deferral": "FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains",
