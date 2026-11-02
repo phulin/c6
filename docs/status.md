@@ -12,6 +12,7 @@ The full goal remains incomplete. Native Linux context initialization and cleanu
 | Saved configuration | Native reader returns with deterministic canonical output; one added key, three flag changes and pending user settings remain explicit |
 | Stream/Load/Save adapters | Genuine native stream checks pass; populated-base Load probe times out, no successful gameplay round trip |
 | RNG primitives | 3,072 original Linux/Rust comparisons pass: arithmetic/state boundaries, four interleaved objects and normal native Read/Write; no gameplay stream ownership or logging equivalence |
+| Coordinate primitives | 7,985 original Linux/Rust comparisons pass for sentinel validity and stateless hex distance; initialized map receivers, movement and pathfinding excluded |
 | Rules databases | Two independent Linux base exports, 396 tables / 25,246 rows; exact file/schema/typed-row parity in Rust and Python, tamper refusals verified; full XP2 activation pending |
 | Rust kernel and C ABI | State envelope, explicit identities, branching and isolated operations exist; historical Windows tests do not certify Linux mechanics |
 | Complete game state | World, players/entities, pending events, caches and all RNG ownership not yet represented/audited |
@@ -21,11 +22,15 @@ Linux native checks apply to their exact module/configuration identities. Contex
 
 ## Current data and restore boundary
 
-The Linux base fixture contains 78 configuration tables / 1,280 rows and 318 gameplay tables / 23,966 rows. Two native exports are identical, and Rust plus independent Python match the complete schema, typed-row and file fingerprints. Mutation, row-ID, schema and physical-file changes are refused. This establishes immutable base rules input; SQLite row identities are not GameCore definition IDs, and unit base values are not complete mechanics. See [Linux rules](linux-rules.md) and [Rust rules input](rules-data.md).
+The Linux base fixture contains 78 configuration tables / 1,280 rows and 318 gameplay tables / 23,966 rows. Two native exports are identical, and Rust plus independent Python match the complete schema, typed-row and file fingerprints. Mutation, row-ID, schema and physical-file changes are refused. This establishes immutable base rules input; SQLite row identities are not GameCore definition IDs, and unit base values are not complete mechanics. Original ASL filesystem initialization now reproduces identical base database bytes and typed fingerprints without the Schema-only source view, with a separately identified native profile and complete host/context cleanup. See [Linux rules](linux-rules.md), [original filesystem](linux-filesystem.md) and [Rust rules input](rules-data.md).
 
 The original Linux configuration reader returns successfully, retains the saved ruleset/mod identifiers and produces deterministic native output. It adds one key, changes three flags, and leaves user settings pending; equality to the saved bytes or active full-session configuration is not claimed. The populated-base Load probe reaches the native stream end but remains inside Load until the process time bound. End position alone does not establish successful consumption or restoration; no Load result is available. An earlier empty-rules/GameSpeed failure is preserved separately. See [saved configuration](linux-saved-configuration.md) and [runtime evidence](linux-runtime.md).
 
 Isolated Linux Random now has independent native/Rust arithmetic, state, multi-object and normal complete-record comparisons. This validates the primitive and raw record codec only. Gameplay stream ownership/allocation/lifecycle, logging callbacks, legacy-vector and failing/short native stream behavior remain unverified. See [Linux Random](linux-random.md) for the active command and complete evidence boundary.
+
+Stateless Linux coordinate validity and distance also match original native code. The sentinel check is not map bounds validation; the distance primitive does not establish initialized map behavior, movement, pathfinding or action legality. See [Linux geometry](linux-geometry.md).
+
+The dedicated private `c6-linux.gpr` project is saved and snapshotted with checksums. Targeted decompilation and exact-entry MCP checks pass for the recorded methods; whole-program analysis and full DWARF import remain incomplete. [Ghidra instructions](ghidra.md) define the actual project/tool commands.
 
 ## Historical coverage boundary
 
@@ -38,7 +43,7 @@ The `C6SN` envelope is custom simulator transport, not Civ VI save import. Opaqu
 1. **Activate the complete Linux XP2 fixture.** Integrate original modding-framework ownership of context bootstrap/reload and authentic content activation, then validate rules/DLC/mod identities and startup ordering. Preserve configuration canonical differences and pending-state semantics rather than silently accepting them as exact restoration.
 2. **Restore a pinned native Linux fixture.** Extend the proven base export to an authentic activated XP2 profile; resolve the current Load timeout with original services and record return/consumption and complete restored state. Validate native Save/Load before treating retained bytes as a reusable snapshot.
 3. **Audit and port full state.** Inventory world/map, entities and stable IDs, component containers, queued events, turn scheduler, semantic caches and every random stream. Establish canonical state extraction/restoration and branching.
-4. **Validate remaining Linux mechanics and one legal action.** Preserve the verified isolated RNG boundary, compare other reused primitives against the Linux target, then execute a real legal action in an initialized fixture and compare all outputs, state mutations, events and RNG before adding Rust support.
+4. **Validate remaining Linux mechanics and one legal action.** Preserve the verified isolated RNG/stateless-coordinate boundaries, compare other reused primitives against the Linux target, then execute a real legal action in an initialized fixture and compare all outputs, state mutations, events and RNG before adding Rust support.
 5. **Reproduce a complete turn.** Match actual completion messages, phases, player/event ordering, delayed updates and every affected subsystem. Measure action/turn throughput only after these paths exist.
 
 ## Checks and evidence
