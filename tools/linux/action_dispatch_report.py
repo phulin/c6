@@ -71,7 +71,9 @@ def main():
     trace_path = Path(run['execution_paths']['action_trace_directory']) / 'events.jsonl'
     trace = [json.loads(line) for line in trace_path.read_text().splitlines()]
     bindings = [row for row in trace if row['event'] == 'original_PLT_binding']
-    require(trace[0]['UnitOperation_Execute_virtual_interposed'] and len(bindings) == 12 and all(row['interposed'] for row in bindings), 'selected guard binding proof incomplete')
+    require(trace[0]['UnitOperation_Execute_virtual_interposed'] and len(bindings) in (12, 13) and all(row['interposed'] for row in bindings), 'selected guard binding proof incomplete')
+    if len(bindings) == 13:
+        require(any(row['event'] == 'original_virtual_binding' and row['name'] == 'UnitManager_MakeRequest' and row['interposed'] for row in trace), 'original MakeRequest virtual observation not bound')
     end = trace[-1]
     require(end['event'] == 'end' and all(end[key] == int(execute) for key in ('queued', 'received', 'unit_executed')), 'genuine request delivery or execution count differs')
     require(sum(row['event'] == 'unit_execute_enter' for row in trace) == int(execute) and sum(row['event'] == 'unit_execute_return' for row in trace) == int(execute), 'original UnitOperation enter/return imbalance')

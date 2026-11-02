@@ -8,7 +8,8 @@ from pathlib import Path
 from save_lifecycle_audit import Elf, GAME_SHA, HOST_SHA
 
 
-EXPECTED_PLT = [(0x3bc1560,
+EXPECTED_PLT = [(0x3b21cc0,
+ '_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE'),(0x3bc1560,
   '_ZN8GameCore9Diplomacy7Manager16ProcessStatementEPNS0_9Statement8InstanceE'),
  (0x3b97fa8,
   '_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii'),
@@ -61,7 +62,7 @@ def main():
     relocations={}
     for line in subprocess.check_output(['readelf','-rW',str(args.assets/'libGameCore_XP2.so')],text=True).splitlines():
         fields=line.split()
-        if len(fields)>4 and 'JUMP_SLOT' in line:relocations[int(fields[0],16)]=fields[4]
+        if len(fields)>4 and ('JUMP_SLOT' in line or 'GLOB_DAT' in line):relocations[int(fields[0],16)]=fields[4]
     for offset,symbol in EXPECTED_PLT:
         if relocations.get(offset)!=symbol:raise ValueError('original PLT relocation mismatch: '+symbol)
     if host.read(0x31dd2a0,7)!=bytes.fromhex('8937c6470400c3'):

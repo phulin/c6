@@ -79,6 +79,11 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     HOST(network,"_ZN7Network7Manager11GetInstanceEv");HOST(network_update,"_ZN7Network7Manager6UpdateEf");
 #undef CORE
 #undef HOST
+    int (*identity_owner)(const void *)=dlsym(module,"_ZNK8GameCore6Player11ComponentID8GetOwnerEv");
+    void *(*get_session)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Network7Manager10GetSessionEv");
+    void *(*get_sync)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK11FNetSession14GetSyncManagerEv");
+    void *(*engine_utility)(void)=dlsym(module,"_ZN8GameCore7Context7Globals16GetEngineUtilityEv");
+    if(!identity_owner||!get_session||!get_sync||!engine_utility)return 221;
     const char *before=getenv("C6_ACTION_SNAPSHOT_BEFORE"),*after=getenv("C6_ACTION_SNAPSHOT_AFTER"),*repeat=getenv("C6_ACTION_SNAPSHOT_REPEAT");
     bool present=*controller!=NULL;
     bool worker_executing=present&&executing(*controller);
@@ -140,6 +145,12 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
         if(!result)result=c6_linux_context_save(module,context,before);
     }
     if(!result&&execute){
+        void *net=network(),*session=net?get_session(net):NULL,*transport=NULL;
+        if(session)memcpy(&transport,(const unsigned char *)session+0x28,sizeof transport);
+        void *utility=engine_utility();
+        void *send=dlsym(RTLD_DEFAULT,"_ZN8GameCore13EngineUtility11SendMessageERN13Serialization13MemoryOStreamE");
+        bool utility_bound=utility&&send&&(*(void ***)utility)[0x78/8]==send;
+        fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"delivery_prerequisites\",\"identity_owner\":%d,\"network_present\":%d,\"session_present\":%d,\"session_sync_present\":%d,\"session_transport_28_present\":%d,\"engine_utility_present\":%d,\"engine_utility_original_slot_bound\":%d}\n",identity_owner(&selected_bits),net!=NULL,session!=NULL,session&&get_sync(session)!=NULL,transport!=NULL,utility!=NULL,utility_bound);
         fprintf(stderr,"C6_LINUX_ACTION_DISPATCH request_enter\n");
         request_issued=true;
         request(context,&selected_bits,UINT32_C(0x2c681908),params);

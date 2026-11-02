@@ -39,7 +39,7 @@ def main():
     trace=[json.loads(x)for x in trace_path.read_text().splitlines()]
     if not trace[0]['UnitOperation_Execute_virtual_interposed']:raise ValueError('native action virtual binding missing')
     bindings=[x for x in trace if x['event']=='original_PLT_binding']
-    if len(bindings)not in (11,12) or not all(x['interposed'] for x in bindings):raise ValueError('original trace/guard PLT bindings differ')
+    if len(bindings)not in (11,12,13) or not all(x['interposed'] for x in bindings):raise ValueError('original trace/guard PLT bindings differ')
     end=trace[-1]
     if end['event']!='end' or any(end[k] for k in ('queued','received','unit_executed','reports')):raise ValueError('initialization control unexpectedly executed messages/reports')
     saves={}
@@ -68,7 +68,7 @@ def main():
             module_symbols[original]=symbols
         if module_symbols[original].get(symbol)!=rva:raise ValueError('unarmed delegate symbol/RVA differs')
         entries.append(dict(symbol=symbol,module=original.name,module_sha256=module_hashes[original],rva=hex(rva)))
-    unarmed_complete=bool(entries) and len(bindings)==12
+    unarmed_complete=bool(entries) and len(bindings)>=12
     report=dict(schema='c6-linux-action-lifecycle-control-v1',runtime_report_sha256=digest(args.runtime_report),configuration_sha256=identity,
                 host_sha256=HOST_SHA,gamecore_sha256=GAME_SHA,host_observation=host,cache_observation=cache,
                 trace_sha256=digest(trace_path),trace_plt_bindings=bindings,trace_end=end,original_core_saves=saves,

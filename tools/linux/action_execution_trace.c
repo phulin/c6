@@ -65,6 +65,24 @@ static void packet(const char *kind,int from,const void *stream) {
     fprintf(trace_log,"{\"event\":\"%s\",\"from\":%d,\"bytes\":%zu,\"offset\":%zu,\"packet\":%u}\n",kind,from,count,position,number);
 }
 
+bool trace_make_request(const void *,uint32_t,const void *,void *) __asm__("_ZNK8GameCore4Unit10Operations7Manager11MakeRequestENS1_5Types8TypeHashERKN4Data15TypedVariantMapEPNS1_7RequestE");
+bool trace_make_request(const void *manager,uint32_t hash,const void *params,void *request) {
+    bool (*call)(const void *,uint32_t,const void *,void *)=original("_ZNK8GameCore4Unit10Operations7Manager11MakeRequestENS1_5Types8TypeHashERKN4Data15TypedVariantMapEPNS1_7RequestE",trace_make_request,__builtin_return_address(0));
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"make_request_enter\",\"hash\":%u}\n",hash);
+    bool accepted=call(manager,hash,params,request);
+    if(atomic_load(&armed)){
+        uint32_t operation,flags;memcpy(&operation,request,4);memcpy(&flags,(unsigned char *)request+24,4);
+        fprintf(trace_log,"{\"event\":\"make_request_return\",\"accepted\":%s,\"operation\":%u,\"flags\":%u,\"bAppend\":%u,\"bFromUser\":%u}\n",accepted?"true":"false",operation,flags,((unsigned char *)request)[28],((unsigned char *)request)[29]);
+    }
+    return accepted;
+}
+void trace_broadcast(void *) __asm__("_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE");
+void trace_broadcast(void *message) {
+    void (*call)(void *)=original("_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE",trace_broadcast,__builtin_return_address(0));
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"broadcast_enter\"}\n");
+    call(message);
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"broadcast_return\"}\n");
+}
 void trace_queue(int,void *) __asm__("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE");
 void trace_queue(int from,void *stream) {
     void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE",trace_queue,__builtin_return_address(0));
@@ -147,7 +165,11 @@ int c6_linux_action_trace_begin(void *module) {
     atomic_store(&queued,0);atomic_store(&received,0);atomic_store(&executed,0);atomic_store(&reported,0);
     void **table=dlsym(module,"_ZTVN8GameCore8Messages13UnitOperationE");
     bool virtual_bound=table&&table[2+0x20/8]==(void *)trace_unit_execute;
+    void *(*get_manager)(void)=dlsym(module,"_ZN8GameCore4Unit10Operations7Manager3GetEv");
+    void *manager=get_manager?get_manager():NULL;
+    bool make_bound=manager&&(*(void ***)manager)[0x100/8]==(void *)trace_make_request;
     fprintf(trace_log,"{\"event\":\"begin\",\"UnitOperation_Execute_virtual_interposed\":%s}\n",virtual_bound?"true":"false");
+    fprintf(trace_log,"{\"event\":\"original_virtual_binding\",\"name\":\"UnitManager_MakeRequest\",\"interposed\":%s}\n",make_bound?"true":"false");
     Dl_info info;
     void *native_update=dlsym(module,"_ZN8GameCore4Game8Instance6UpdateEv");
     bool slots_bound=native_update&&dladdr(native_update,&info);
@@ -155,6 +177,7 @@ int c6_linux_action_trace_begin(void *module) {
     if(slots_bound)slots_bound=!strcmp(leaf?leaf+1:info.dli_fname,"libGameCore_XP2.so");
     struct binding {uintptr_t offset;void *wrapper;const char *name;};
     const struct binding bindings[]={
+        {0x3b21cc0,(void *)trace_broadcast,"BroadcastMessage"},
         {0x3b290d8,(void *)stop_processor_update,"GameProcessor_Update"},
         {0x3b3a468,(void *)stop_ai_process,"GlobalAi_ProcessAi"},
         {0x3b44778,(void *)trace_receive,"ReceiveMessage"},
@@ -174,7 +197,7 @@ int c6_linux_action_trace_begin(void *module) {
         fprintf(trace_log,"{\"event\":\"original_PLT_binding\",\"name\":\"%s\",\"interposed\":%s}\n",bindings[i].name,match?"true":"false");
         if(!match)slots_bound=false;
     }
-    if(!virtual_bound||!slots_bound){fclose(trace_log);trace_log=NULL;return 206;}
+    if(!virtual_bound||!make_bound||!slots_bound){fclose(trace_log);trace_log=NULL;return 206;}
     atomic_store(&armed,true);
     fprintf(stderr,"C6_LINUX_ACTION_TRACE armed original_virtual_binding_proven 1\n");
     return 0;

@@ -6,6 +6,10 @@
   "player_controller_initialize": "two native bookkeeping stores and return; no calls",
   "guard_plt_relocations": [
     {
+      "offset": "0x3b21cc0",
+      "symbol": "_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE"
+    },
+    {
       "offset": "0x3bc1560",
       "symbol": "_ZN8GameCore9Diplomacy7Manager16ProcessStatementEPNS0_9Statement8InstanceE"
     },
