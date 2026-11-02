@@ -136,6 +136,69 @@
       "size": 92,
       "name": "Player.live.C1",
       "sha256": "b691f5e6f4de4881da8aad97d7ccba10c4b29a1e688a51ffa24497986d6beb56"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44cbc",
+      "size": 358,
+      "name": "WinThread.Initialize",
+      "sha256": "45639250796014ae3218421a827a8a988870038064786d22aaafdafaeb589834"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44e22",
+      "size": 35,
+      "name": "WinThread.StartSuspendedRoutine",
+      "sha256": "f6b9454f1fe499fed4a1ed67f3b3a039a1c06000d1c808617e01ddccb8a39150"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44e4c",
+      "size": 209,
+      "name": "WinThread.StartRoutine",
+      "sha256": "ed309d8a643bf6e94894f4e49ec3ba7d2693ea123d46cb3fc5fd62ef0f623cbd"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44f1e",
+      "size": 12,
+      "name": "WinThread.IsValid",
+      "sha256": "5a6d239ca7e789cc02ab2a5b4df68b73cf377df9ded7a99870e59b400e09886e"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44f2a",
+      "size": 34,
+      "name": "WinThread.IsRunning",
+      "sha256": "e3e08586655ccf6ae401fc949fd0fca73c4b7d56db8945c5963397796f194301"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44f4c",
+      "size": 97,
+      "name": "WinThread.Start",
+      "sha256": "ae2b851ac7e0f68b02945bb2b839f8941df58146093378651479f7f7d5d02572"
+    },
+    {
+      "module": "host",
+      "address": "0x3c45108",
+      "size": 7,
+      "name": "WinThread.IsStarted",
+      "sha256": "d41288f39d5006fe9812e7a4cafe92b16184b1dcf072bfbc9cae4961e2ef7038"
+    },
+    {
+      "module": "host",
+      "address": "0x3c402c2",
+      "size": 4,
+      "name": "CriticalSection.GetLockCount",
+      "sha256": "4628fb538250bfc88b327da2acefeb54924dfb050ac98dcea105347fb07d6367"
+    },
+    {
+      "module": "host",
+      "address": "0x3c402c6",
+      "size": 4,
+      "name": "CriticalSection.GetRecursionCount",
+      "sha256": "123844b3d139f0b75833926319edcaa7dacf7529e5ca1b5d6afa59806bc75758"
     }
   ],
   "calls": [
@@ -178,6 +241,27 @@
   "conditional_wait": "one original Execute, bounded wait on genuine executing predicate, then original worker.JoinOnPassComplete shared-lock barrier on actual borrowed worker (not current thread)",
   "predicate_access": "original IsExecuting performs an aligned native 32-bit comparison; SetExecuting and SetComplete use original interlocked operations, not replacement C atomic fields",
   "completion_flag": "first fresh constructor zeros flag45; later flag is consumer notification, not independently reset per pass by SetExecuting",
+  "startup_diagnostics": {
+    "worker_global": "0x6499108",
+    "worker_thread_pointer_offset": "0x48",
+    "thread_os_handle_offset": "0xb0",
+    "thread_start_event_offset": "0xc0",
+    "thread_id_offset": "0xc8",
+    "thread_started_offset": "0xcd",
+    "thread_initialized_offset": "0xce",
+    "native_create_return": "0x31d11af",
+    "os_create_return": "0x3c44df4",
+    "worker_run": "0x31d11d0",
+    "delegate_call": "0x3c44eac",
+    "pre_start_callback": "Platform.JobManager.RegisterMasterThread"
+  },
+  "lock_diagnostics": {
+    "worker_lock": "worker+0",
+    "controller_lock": "controller+0x460",
+    "controller_recorded_owner": "controller+0x4a0",
+    "controller_recorded_depth": "controller+0x4a4",
+    "owner_identity": "Platform.GetCurrentThreadID; not assumed equal to Linux LWP"
+  },
   "native_execution": false,
   "gameplay_parity": false,
   "limits": "Static ordering proves valid scheduling conditions; it does not prove actual OS-thread creation/start success. Non-quiescent failure captures are diagnostic, not coherent snapshots or successful cleanup."
