@@ -193,7 +193,7 @@ def main():
     dispatch_audits={}
     dispatch_audit_paths=[]
     if action_mode or args.action_lifecycle_observe:
-        for stem in ('action_dispatch','action_state'):
+        for stem in ('action_dispatch','action_state','action_delivery'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
             with tempfile.TemporaryDirectory(prefix='c6-dispatch-audit-') as temporary:
