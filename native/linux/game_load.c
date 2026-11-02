@@ -83,7 +83,10 @@ int c6_linux_game_load(void *context) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
-        if(!result && getenv("C6_ACTION_EXECUTION")) {
+        if(!result && getenv("C6_ACTION_LIFECYCLE")) {
+            int (*lifecycle_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_observe");
+            result=lifecycle_observe?lifecycle_observe(game,context):170;
+        } else if(!result && getenv("C6_ACTION_EXECUTION")) {
             int (*execution_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_execution");
             result=execution_observe?execution_observe(game,context):169;
         }

@@ -36,6 +36,8 @@ def main():
     parser.add_argument('--game-load-observe',action='store_true')
     parser.add_argument('--action-observe',action='store_true')
     parser.add_argument('--action-execution-observe',action='store_true')
+    parser.add_argument('--action-lifecycle-observe',action='store_true')
+    parser.add_argument('--action-trace-directory',type=Path)
     parser.add_argument('--save-normalization-trace',type=Path)
     parser.add_argument('--request-load-save',type=Path)
     parser.add_argument('--game-save-output',type=Path)
@@ -65,6 +67,13 @@ def main():
     if args.game_load_observe and not game_input:parser.error('--game-load-observe requires --game-load-stream')
     if args.action_observe and not game_input:parser.error('--action-observe requires --game-load-stream')
     if args.action_execution_observe and not args.action_observe:parser.error('--action-execution-observe requires --action-observe and its Core load fixture')
+    action_trace=args.action_trace_directory.resolve() if args.action_trace_directory else None
+    if args.action_lifecycle_observe:
+        if not args.action_observe or args.action_execution_observe or not action_trace:
+            parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
+        if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
+            parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
+    elif action_trace:parser.error('--action-trace-directory requires --action-lifecycle-observe')
     normalization_trace=args.save_normalization_trace.resolve() if args.save_normalization_trace else None
     if normalization_trace and (not game_input or normalization_trace.exists() or not normalization_trace.parent.is_dir() or
                                 not normalization_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve())):
@@ -149,7 +158,7 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe:
+    if args.action_execution_observe or args.action_lifecycle_observe:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -194,7 +203,8 @@ def main():
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
     action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -225,6 +235,7 @@ def main():
               'lower_core_actor_legality_observer':action_audit,
               'save_normalization_trace':normalization_audit,
               'lower_core_cache_dispatch_observer':execution_audit,
+              'lower_core_controller_cache_lifecycle_observer':args.action_lifecycle_observe,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -250,6 +261,8 @@ def main():
     for path in normalization_sources:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if execution_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*execution_sources,ROOT/'native/linux/action_execution.h']})
+    if lifecycle_observer_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*lifecycle_observer_sources,ROOT/'native/linux/action_lifecycle.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
@@ -261,7 +274,7 @@ def main():
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
@@ -298,6 +311,9 @@ def main():
         if args.game_load_observe:env['C6_GAME_LOAD_OBSERVE']='1'
         if args.action_observe:env['C6_ACTION_OBSERVE']='1'
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
+        if args.action_lifecycle_observe:
+            env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
+            env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -326,6 +342,11 @@ def main():
             report['native_backup_events'].append(json.loads(line.removeprefix('C6_LINUX_RULES ')))
     report['rules_snapshots']={}
     report['game_saves']={}
+    report['action_trace_files']={}
+    if action_trace:
+        report['execution_paths']['action_trace_directory']=str(action_trace)
+        for path in sorted(action_trace.iterdir()):
+            if path.is_file():report['action_trace_files'][path.name]={'sha256':digest(path),'bytes':path.stat().st_size}
     report['save_normalization_trace']=None
     if normalization_trace:
         report['execution_paths']['save_normalization_trace']=str(normalization_trace)
