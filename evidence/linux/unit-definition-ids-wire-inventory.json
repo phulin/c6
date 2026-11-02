@@ -1,0 +1,34 @@
+{
+  "adapter_source_sha256": "1650a29fe041e732db8e0e605d7ed02d0ae753a21e2402bae4d2ae8bcf64d280",
+  "field": "Unit.e_type_index",
+  "fixtures": [
+    {
+      "all_hashes_resolved": false,
+      "distinct_hashes": 40,
+      "record_bytes_sha256": "eca60e6eb40d797174b99a4dd5166beadd1aa26e521e5fdc018a1c1f452e16e3",
+      "records": 1262,
+      "save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae"
+    },
+    {
+      "all_hashes_resolved": false,
+      "distinct_hashes": 40,
+      "record_bytes_sha256": "eca60e6eb40d797174b99a4dd5166beadd1aa26e521e5fdc018a1c1f452e16e3",
+      "records": 1262,
+      "save_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369"
+    }
+  ],
+  "full_state_action_turn_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "private_report_sha256": "d806b3d7c88a57f9f420c6cb5da2bfabec4f33c76ffd88e78e9331aced2f3321",
+  "registry": "Units",
+  "schema": "c6-linux-unit-definition-hash-inventory-v1",
+  "scope": "Current typed wire Unit.e_type_index only. Other definition kinds, live remapping and gameplay are unsupported. Raw 89198-byte Save/Load difference remains unmasked.",
+  "sources": {
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
+    "crates/c6-core/src/unit/variants.rs": "8bc3e7ca85ca237e6d617d27ec5410c84308d1a1b1e3152926946413280b7c79",
+    "tools/linux/unit_definition_ids_inventory.py": "124d81989560e1910f16bea1ee43458f3314d7b6540180ebdb336398069875d2"
+  }
+}
