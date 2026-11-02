@@ -3,6 +3,15 @@
     "path": "DLC/Expansion2/Expansion2.modinfo",
     "sha256": "b528a7c25f5977aed1ace8a54a0828025e061d880685d347c8bcf5ccd1473d87"
   },
+  "embedded_gamecore_database_phase": {
+    "before_source_index": 115,
+    "export_context_vtable_slot": "0x50",
+    "export_rva": "0x590600",
+    "gamecore_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+    "native_result_must_compare_affected_rows": true,
+    "original_host_wrapper_rva": "0x24de00",
+    "underlying_rva": "0x45ed0"
+  },
   "format": "c6.declared-xp2-content-recipe.v1",
   "gamecore": "Expansion2",
   "host_executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
@@ -14,6 +23,21 @@
     "Only UpdateDatabase actions included; script/color/UI/art and other service activation is absent.",
     "No initialized game, rules database parity, or save compatibility claimed."
   ],
+  "mod_database_connection_contract": {
+    "action_boundaries": "SAVEPOINT / RELEASE; rollback-to then release on failure",
+    "base_gameplay_content_mode_must_not_carry_into_mod_phase": true,
+    "before_transaction": [
+      "PRAGMA foreign_keys=ON;",
+      "PRAGMA defer_foreign_keys=ON;"
+    ],
+    "native_action_savepoint_rvas": [
+      "0x26023f",
+      "0x260441",
+      "0x260488"
+    ],
+    "native_mod_database_setup_rva": "0xb35e26",
+    "native_restore_foreign_keys_rva": "0xc0983"
+  },
   "native_file_sort_evidence": {
     "component_query_rva": "0x107aea0",
     "order": [

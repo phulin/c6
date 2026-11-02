@@ -1,0 +1,80 @@
+{
+  "causal_source_contract": {
+    "delete_kind": "KIND_GOVERNMENT",
+    "delete_source": "DLC/Expansion2/Data/Expansion2_RemoveData.xml",
+    "implication": "Kinds removal requires original foreign-key cascade to remove government Types before replacement content; no row filtering or deduplication is authorized.",
+    "relationship": "Types.Kind references Kinds.Kind ON DELETE CASCADE",
+    "schema_source": "Base/Assets/Gameplay/Data/Schema/01_GameplaySchema.sql"
+  },
+  "executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+  "format": "c6.original-mod-import-phase-contract.v1",
+  "initialized_game": false,
+  "native_cascade_retest": {
+    "all_213_source_imports_status_zero": true,
+    "base_mode_carryover_removed": true,
+    "evidence": "evidence/bootstrap/native-original-xp2-recipe-candidate-savepoints.json",
+    "final_commit_succeeded": false,
+    "foreign_key_violations": 1734
+  },
+  "native_retest_required": true,
+  "next_required_phase": {
+    "context_export_slot": "0x50",
+    "export_rva": "0x590600",
+    "original_host_wrapper_rva": "0x24de00",
+    "purpose": "Insert original embedded effect/collection/requirement type data before mod deferred foreign-key validation.",
+    "underlying_writer_rva": "0x45ed0",
+    "validation": "Boolean return is insufficient; compare affected Types and related rows."
+  },
+  "original_behavior": {
+    "base_gameplay_content": {
+      "defer_foreign_keys": false,
+      "foreign_keys": false,
+      "rvas": [
+        "0xbf3c6",
+        "0xbf3da"
+      ]
+    },
+    "embedded_gamecore_data_update": {
+      "defer_foreign_keys": true,
+      "foreign_keys": true,
+      "rvas": [
+        "0x24de44",
+        "0x24de5b"
+      ]
+    },
+    "mod_action_boundaries": {
+      "begin_slot": "0x90",
+      "failure_rollback_to_slot": "0xa0",
+      "failure_then_release": true,
+      "handler_rva": "0x260150",
+      "limit": "Savepoints do not commit the surrounding deferred transaction.",
+      "rvas": [
+        "0x26023f",
+        "0x260441",
+        "0x260488",
+        "0x2604a6"
+      ],
+      "success_release_slot": "0x98"
+    },
+    "mod_database_setup": {
+      "defer_foreign_keys": true,
+      "foreign_keys": true,
+      "rvas": [
+        "0xb35e26",
+        "0xb35e3a"
+      ]
+    },
+    "successful_gameplay_database_setup": {
+      "foreign_keys": true,
+      "rva": "0xc0983"
+    }
+  },
+  "preserved_native_failure": {
+    "database_error": "UNIQUE constraint failed: Types.Type",
+    "diagnostic_mode_error": "base gameplay foreign_keys=OFF incorrectly carried into mod_content",
+    "evidence": "evidence/bootstrap/native-original-xp2-recipe-candidate.json",
+    "native_xml_status": 7,
+    "source_index": 134,
+    "source_path": "DLC/Expansion2/Data/Expansion1_Governments.xml"
+  }
+}

@@ -113,6 +113,20 @@ def xp2_declared_recipe(root, base, saved):
                   descriptor={'path': descriptor.relative_to(root).as_posix(), 'sha256': digest(descriptor)},
                   source_sequence_sha256=identity(steps), steps=steps,
                   native_mod_load_order_verified=False,
+                  mod_database_connection_contract={
+                      'before_transaction': ['PRAGMA foreign_keys=ON;', 'PRAGMA defer_foreign_keys=ON;'],
+                      'native_restore_foreign_keys_rva': '0xc0983',
+                      'native_mod_database_setup_rva': '0xb35e26',
+                      'base_gameplay_content_mode_must_not_carry_into_mod_phase': True,
+                      'action_boundaries': 'SAVEPOINT / RELEASE; rollback-to then release on failure',
+                      'native_action_savepoint_rvas': ['0x26023f', '0x260441', '0x260488']},
+                  embedded_gamecore_database_phase={
+                      'before_source_index': next(i for i, step in enumerate(steps)
+                                                  if step['database'] == 'gameplay' and step['phase'] == 'mod_content'),
+                      'export_context_vtable_slot': '0x50', 'export_rva': '0x590600',
+                      'underlying_rva': '0x45ed0', 'original_host_wrapper_rva': '0x24de00',
+                      'gamecore_sha256': '324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c',
+                      'native_result_must_compare_affected_rows': True},
                   native_file_sort_evidence={'component_query_rva': '0x107aea0',
                                              'setting_query_rva': '0x107af40',
                                              'order': ['Priority DESC', 'Path ASC']},

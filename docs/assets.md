@@ -229,3 +229,48 @@ It contains only `UpdateDatabase` actions. Scripts, color/icon/art databases,
 UI and other native service activation remain separate requirements. Native
 import success alone will not prove the final database equals an original
 initialized gameplay cache or establish state/action/turn parity.
+
+## XP2 import phase failure and original correction
+
+The native XP2 candidate initially failed at source index 134,
+`Expansion1_Governments.xml`, with XML status 7 and a duplicate `Types.Type`.
+The cause was a missing database phase transition in the diagnostic: base
+gameplay content deliberately uses `foreign_keys=OFF`, whereas the original
+mod database connection enables foreign keys (`0xb35e26`) and deferral
+(`0xb35e3a`). Successful gameplay database setup also restores foreign keys at
+`0xc0983`.
+
+This matters to authentic source semantics. `Expansion2_RemoveData.xml` deletes
+`KIND_GOVERNMENT`; the original schema declares `Types.Kind` with
+`ON DELETE CASCADE`. Leaving foreign keys disabled prevents government type
+removal, so later replacement rows conflict. Restoring the original connection
+mode removes that failure without skipping, rewriting, or deduplicating rows.
+
+Original `UpdateDatabase` handler `0x260150` wraps each action in a named
+savepoint, using database slots `+0x90` and `+0x98` for savepoint/release. On
+failure it calls `+0xa0` to roll back to the savepoint, then releases it.
+Committing after each action is a different contract and prematurely checks
+references intended to remain deferred across actions.
+
+With the original foreign-key mode and action savepoints, all 213 source imports
+return success. The current source-only candidate still fails its final native
+commit with 1,734 foreign-key violations; that is a failed rules database build,
+not initialized-game evidence. Many unresolved references are enum types used by
+`DynamicModifiers`. The original host separately writes embedded GameCore data
+through its wrapper `0x24de00`: it enables foreign keys and deferral, begins a
+transaction, calls context export slot `+0x50` with the writable database, and
+commits or rolls back.
+
+For the pinned XP2 DLL, slot `+0x50` points to `0x590600`, forwarding the database
+argument to underlying `0x45ed0`, which invokes writer `0x92a290` and
+`0x979630`. This authentic phase is required before validating the mod rules
+fixture. Its boolean return is insufficient evidence: the native method can
+return true even when required prepared statements are absent. Compare its actual
+`Types` and related data changes. The candidate recipe now identifies this phase
+before source index 115, the first gameplay mod source.
+
+[`xp2-mod-import-phase.json`](../evidence/assets/xp2-mod-import-phase.json)
+preserves the original phase contracts, first failure and later failed-commit
+evidence links. The original source sequence is retained. A passing native build
+still requires the embedded writer and complete validation; full game state,
+actions, save loading and turns remain separate boundaries.
