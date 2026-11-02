@@ -256,6 +256,10 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
             int (*shutdown)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_shutdown");
             cleanup=shutdown?shutdown():136;
         }
+        if (!cleanup) {
+            int (*shutdown)(void)=dlsym(RTLD_DEFAULT,"c6_linux_temp_heap_shutdown");
+            cleanup=shutdown?shutdown():138;
+        }
         fprintf(stderr,"C6_LINUX_MOD cleanup_return %d\n",cleanup);
         if (!result) result=cleanup;
         context=NULL;

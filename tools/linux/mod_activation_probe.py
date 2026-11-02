@@ -65,7 +65,8 @@ def main():
                              'metadata_gate_sha256':digest(ROOT/'tools/linux/filesystem_gate.json'),
                              'full_content_input_gate_sha256':digest(ROOT/'evidence/linux/rules-content-inputs.json')}
     sources=[ROOT/'native/linux/mod_activation.c',ROOT/'native/linux/mod_activation.h',
-             ROOT/'native/linux/host_services.c',ROOT/'native/linux/host_services.h']
+             ROOT/'native/linux/host_services.c',ROOT/'native/linux/host_services.h',
+             ROOT/'native/linux/temp_heap.c',ROOT/'native/linux/temp_heap.h']
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -97,7 +98,7 @@ def main():
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
