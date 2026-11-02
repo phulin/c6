@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "dll_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+  "configuration_sha256": "3d5c899700cd13fcc2e4f6509e3ccc683df1e366d7967537a811ea7d151ac2ac",
+  "host_source_sha256": "20208193955cbf14c3ecce16feeccc6730d421ed77707ac988950c21e0c8f1db",
+  "adapter_source_sha256": "0ad355710ee0c32e51c5fbc1a701ee544ccdd9511fb69bee3517f88cd771b267",
+  "adapter_binary_sha256": "3da9c4323a87c375e000a59e50f0c951ec47fbfe4b22ef5cfdf847b2c7685e36",
+  "cases": 10125,
+  "mismatches": 0,
+  "writes_per_body": [
+    2,
+    2,
+    4,
+    4,
+    4,
+    4,
+    4
+  ],
+  "body_bytes": 24,
+  "source_unchanged": true,
+  "scope": "Original UnitOperation::PutInBufferBody with synthetic object and null parameters; no CanStart, Start, queue, message envelope, initialized unit, or gameplay parity tested"
+}

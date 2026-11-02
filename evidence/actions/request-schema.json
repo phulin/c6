@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed native SkipTurn capture driver request; no executable driver yet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "dll_sha256", "configuration_sha256", "fixture_sha256", "operation", "unit", "parameters", "capture"],
+  "properties": {
+    "schema": {"const": 1},
+    "dll_sha256": {"const": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c"},
+    "configuration_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "fixture_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "operation": {"const": "SKIP_TURN"},
+    "unit": {
+      "type": "object", "additionalProperties": false,
+      "required": ["owner", "id"],
+      "properties": {"owner": {"type": "integer", "minimum": 0, "maximum": 63}, "id": {"type": "integer", "minimum": 0, "maximum": 2147483647}}
+    },
+    "parameters": {"type": "object", "additionalProperties": false},
+    "capture": {"const": "request-through-message-drain-with-state-events-rng"}
+  }
+}
