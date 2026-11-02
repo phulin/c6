@@ -2,11 +2,12 @@
 #include "action_lifecycle.h"
 #include "action_execution.h"
 #include "action_observer.h"
+#include "action_dispatch.h"
 #include <stdbool.h>
 #include <dlfcn.h>
 #include <stdio.h>
 
-int c6_linux_action_prepare_observe(void *module,void *context) {
+static int prepare(void *module,void *context,bool dispatch,bool execute) {
     if(!module||!context)return 194;
     void **active=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController21ms_pkActiveControllerE");
     bool (*initialized)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController13IsInitializedEv");
@@ -36,12 +37,20 @@ int c6_linux_action_prepare_observe(void *module,void *context) {
         fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_cache_return\n");
         result=c6_linux_action_execution(module,context);
         if(!result)result=c6_linux_action_observe(module,context);
+        if(!result&&dispatch)result=c6_linux_action_dispatch(module,context,execute);
     }
     fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_enter result %d\n",result);
     uninitialize(controller);
     bound=NULL;get_context(&bound,controller);
     bool clean=!initialized(controller)&&bound==NULL&&!executing(controller);
-    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d action_executed 0\n",initialized(controller),bound!=NULL,executing(controller),clean);
-    trace_result=trace_end(0);
+    fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d dispatch_mode %d requested_execution %d\n",initialized(controller),bound!=NULL,executing(controller),clean,dispatch,execute);
+    trace_result=trace_end(dispatch&&execute?1:0);
     return result?result:!clean?200:trace_result;
+}
+
+int c6_linux_action_prepare_observe(void *module,void *context) {
+    return prepare(module,context,false,false);
+}
+int c6_linux_action_prepare_dispatch(void *module,void *context,bool execute) {
+    return prepare(module,context,true,execute);
 }

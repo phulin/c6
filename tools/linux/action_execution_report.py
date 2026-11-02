@@ -33,7 +33,8 @@ def main():
         if cache[key]!=1:raise ValueError('native cache prerequisite failed: '+key)
     if len({cache[x]for x in ('local_player','live_player','cached_player')})!=1:raise ValueError('actual player identities differ')
     marker='C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized 0 context_bound 0 executing 0 cleanup 1 action_executed 0'
-    if marker not in run['stderr']:raise ValueError('original Uninitialize cleanup missing')
+    new_marker='C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized 0 context_bound 0 executing 0 cleanup 1 dispatch_mode 0 requested_execution 0'
+    if marker not in run['stderr'] and new_marker not in run['stderr']:raise ValueError('original Uninitialize cleanup missing')
     trace_path=Path(run['execution_paths']['action_trace_directory'])/'events.jsonl'
     trace=[json.loads(x)for x in trace_path.read_text().splitlines()]
     if not trace[0]['UnitOperation_Execute_virtual_interposed']:raise ValueError('native action virtual binding missing')
