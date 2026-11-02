@@ -214,6 +214,41 @@
       "size": 49,
       "name": "AppMessages.grouped_initializer",
       "sha256": "a30d022eae136c6607ae89c1116f3dadd830f4a13764f88b9a2305c113eeb304"
+    },
+    {
+      "module": "host",
+      "address": "0x33e0ff0",
+      "size": 4,
+      "name": "FNetPlayer.GetNeedsSnapshot",
+      "sha256": "0b3d4c9b850f6ce20def8d4daac7004ea47e0e917f9cbef7cec02789df401290"
+    },
+    {
+      "module": "host",
+      "address": "0x39e231c",
+      "size": 17,
+      "name": "FNetPlayer.SetNeedsSnapshot",
+      "sha256": "9f19deada9e8882d50b09842027aa6e0a449897be82ee69ca65ae59f35e2ee05"
+    },
+    {
+      "module": "host",
+      "address": "0x39e2290",
+      "size": 58,
+      "name": "FNetPlayer.constructor",
+      "sha256": "abd4fa57f66c7de743ad4df2b6698672ca152e888652a79b12351919a71f14c0"
+    },
+    {
+      "module": "host",
+      "address": "0x39f2cb6",
+      "size": 62,
+      "name": "FNetSession.IsIgnoreIncomingMessages",
+      "sha256": "63cab8d4ea8fb85d3190dece7eb724e13bab34b6085057f106c10cf2a89b8e83"
+    },
+    {
+      "module": "host",
+      "address": "0x39f4294",
+      "size": 732,
+      "name": "FNetSession.PlayerAppRegistered",
+      "sha256": "44c868dedaada42294f0f2772f24bc5fb0b8fb60f181eb7fc9c3f48428d1562a"
     }
   ],
   "virtual_bindings": [
@@ -481,6 +516,17 @@
     "initializer": "0x2c87e80"
   },
   "message_received_entry": "0x39f2062; receiver RDI, message RSI, bool DL; 0x39f29da is an interior branch",
+  "player_receive_gate": {
+    "needs_snapshot_byte_offset": 30,
+    "needs_snapshot_getter": "0x33e0ff0",
+    "needs_snapshot_setter": "0x39e231c",
+    "adjacent_byte_offset": 31,
+    "adjacent_byte_semantics": "unclassified; set after original SendSnapshotData dispatch",
+    "ignore_incoming_getter": "0x39f2cb6",
+    "constructor_needs_snapshot": true,
+    "constructor_adjacent_byte": 0,
+    "original_app_registered": "0x39f4294"
+  },
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
   "update_deferral": "FNetMessageSync.Update false or pending connection queue update false skips session incoming/outgoing drains",
