@@ -1,0 +1,719 @@
+
+/home/phulin/c6-assets/DLC/Expansion2/Binaries/Win64/GameCore_XP2_FinalRelease.dll:     file format pei-x86-64
+
+Characteristics 0x2022
+	executable
+	large address aware
+	DLL
+
+Time/Date		Wed Jun 26 19:43:23 2024
+Magic			020b	(PE32+)
+MajorLinkerVersion	14
+MinorLinkerVersion	0
+SizeOfCode		00000000009b5800
+SizeOfInitializedData	00000000002a4600
+SizeOfUninitializedData	0000000000000000
+AddressOfEntryPoint	00000000009b0b58
+BaseOfCode		0000000000001000
+ImageBase		0000000180000000
+SectionAlignment	00001000
+FileAlignment		00000200
+MajorOSystemVersion	6
+MinorOSystemVersion	0
+MajorImageVersion	0
+MinorImageVersion	0
+MajorSubsystemVersion	6
+MinorSubsystemVersion	0
+Win32Version		00000000
+SizeOfImage		00c60000
+SizeOfHeaders		00000400
+CheckSum		00c5dba8
+Subsystem		00000003	(Windows CUI)
+DllCharacteristics	00000120
+					HIGH_ENTROPY_VA
+					NX_COMPAT
+SizeOfStackReserve	0000000000100000
+SizeOfStackCommit	0000000000001000
+SizeOfHeapReserve	0000000000100000
+SizeOfHeapCommit	0000000000001000
+LoaderFlags		00000000
+NumberOfRvaAndSizes	00000010
+
+The Data Directory
+Entry 0 0000000000b59ff0 000021f8 Export Directory [.edata (or where ever we found it)]
+Entry 1 0000000000b5c1e8 0000012c Import Directory [parts of .idata]
+Entry 2 0000000000c41000 000001e0 Resource Directory [.rsrc]
+Entry 3 0000000000b91000 000ad184 Exception Directory [.pdata]
+Entry 4 0000000000c53a00 00003a60 Security Directory
+Entry 5 0000000000c42000 0001db94 Base Relocation Directory [.reloc]
+Entry 6 0000000000ac0cb0 00000054 Debug Directory
+Entry 7 0000000000000000 00000000 Description Directory
+Entry 8 0000000000000000 00000000 Special Directory
+Entry 9 0000000000ac0da8 00000028 Thread Storage Directory [.tls]
+Entry a 0000000000ac0d10 00000094 Load Configuration Directory
+Entry b 0000000000000000 00000000 Bound Import Directory
+Entry c 00000000009b7000 00000830 Import Address Table Directory
+Entry d 0000000000000000 00000000 Delay Import Directory
+Entry e 0000000000000000 00000000 CLR Runtime Header
+Entry f 0000000000000000 00000000 Reserved
+
+There is an import table in .rdata at 0x180b5c1e8
+
+The Import Tables (interpreted .rdata section contents)
+ vma:            Hint    Time      Forward  DLL       First
+                 Table   Stamp     Chain    Name      Thunk
+ 00b5c1e8	00b5c318 00000000 00000000 00b5cba2 009b7000
+
+	DLL Name: DatabaseDLL_FinalRelease.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5cb48	    0  ?CreateConnection@Database@@YAPEAVIDatabaseConnection1@1@PEBDHPEAVIDatabaseLogger@1@@Z
+
+ 00b5c1fc	00b5c5f8 00000000 00000000 00b5d0f4 009b72e0
+
+	DLL Name: Localization_FinalRelease.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5cd8a	   40  ?GetArgumentCount@String@Localization@@QEBAIXZ
+	b5cd64	   27  ?Empty@String@Localization@@2V12@A
+	b5cd3a	   75  ?IsEmpty@String@Localization@@QEBA_NXZ
+	b5cd10	    5  ??0String@Localization@@QEAA@AEBV01@@Z
+	b5ccea	    6  ??0String@Localization@@QEAA@PEBD@Z
+	b5ccb8	   93  ?PushArgument@String@Localization@@QEAA_NPEBD@Z
+	b5cc8e	  117  ?toUTF8@String@Localization@@QEAAPEBDXZ
+	b5cc5e	   14  ??4String@Localization@@QEAAAEAV01@AEBV01@@Z
+	b5cc3c	   10  ??1String@Localization@@UEAA@XZ
+	b5d0c4	  116  ?toUTF8@String@Localization@@QEAAPEBDAEAIH@Z
+	b5d094	   92  ?PushArgument@String@Localization@@QEAA_NN@Z
+	b5d064	   96  ?PushArgument@String@Localization@@QEAA_N_J@Z
+	b5d020	   39  ?GetArgument@String@Localization@@QEBAPEBVParameterArgument@2@I@Z
+	b5cfea	   41  ?GetBaseString@String@Localization@@QEBAPEBDAEAI@Z
+	b5cfb2	   44  ?GetCurrentLanguage@Localization@@YAAEBVLanguage@1@XZ
+	b5cf84	   69  ?GetType@Language@Localization@@QEBAPEBDXZ
+	b5cf5a	   26  ?Compose@String@Localization@@QEAA_NI@Z
+	b5cf26	   94  ?PushArgument@String@Localization@@QEAA_NPEBDI@Z
+	b5ceee	   71  ?HasKey@StringDictionary@Localization@@QEBA_NPEBDI@Z
+	b5ceac	   68  ?GetStringDictionary@Localization@@YAAEBVStringDictionary@1@XZ
+	b5ce7a	   95  ?PushArgument@String@Localization@@QEAA_NV12@@Z
+	b5ce4e	    4  ??0String@Localization@@QEAA@$$QEAV01@@Z
+	b5ce1e	   90  ?PushArgument@String@Localization@@QEAA_NH@Z
+	b5cdec	   87  ?NameArgument@String@Localization@@QEAAXIPEBD@Z
+	b5cbc0	    8  ??0String@Localization@@QEAA@XZ
+	b5cbe2	   15  ??4String@Localization@@QEAAAEAV01@PEBD@Z
+	b5cdbc	   91  ?PushArgument@String@Localization@@QEAA_NM@Z
+	b5cc0e	   81  ?Lookup@Localization@@YA?AVString@1@PEBD@Z
+
+ 00b5c210	00b5c328 00000000 00000000 00b5dc4a 009b7010
+
+	DLL Name: HavokScript_FinalRelease.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5dc24	  633  ?luaL_unref@@YAXPEAUlua_State@@HH@Z
+	b5dc00	  629  ?luaL_ref@@YAHPEAUlua_State@@H@Z
+	b5dbca	  654  ?lua_getstack@@YAHPEAUlua_State@@HPEAUlua_Debug@@@Z
+	b5db92	  651  ?lua_getinfo@@YAHPEAUlua_State@@PEBDPEAUlua_Debug@@@Z
+	b5db6c	  670  ?lua_pcall@@YAHPEAUlua_State@@HHH@Z
+	b5db3c	  639  ?lua_cpcall@@YAHPEAUlua_State@@P6AH0@ZPEAX@Z
+	b5db00	  394  ?hks_obj_rawlength@@YA_KPEAUlua_State@@PEBUHksObject@@@Z
+	b5dac0	  396  ?hks_obj_rawset_array@@YAXPEAUlua_State@@PEBUHksObject@@H1@Z
+	b5da7e	  391  ?hks_obj_rawget_array@@YA?AUHksObject@@PEAUlua_State@@PEBU1@H@Z
+	b5da18	  399  ?hks_obj_rawsetslot_assignment_nogc@@YAXPEAUlua_State@@PEAVStructInst@hks@@PEBUHksObject@@IPEBDI@Z
+	b5d9b8	  398  ?hks_obj_rawsetslot_assignment@@YAXPEAUlua_State@@PEAVStructInst@hks@@PEBUHksObject@@IPEBDI@Z
+	b5d95a	  400  ?hks_obj_rawsetslot_outofline@@YAXPEAUlua_State@@PEAVStructInst@hks@@PEAVInternString@3@@Z
+	b5d8fc	  393  ?hks_obj_rawgetslot_outofline@@YAXPEAUlua_State@@PEBVStructInst@hks@@PEAVInternString@3@@Z
+	b5d8a6	  378  ?hks_obj_gc_write_barrier@@YAXPEAUlua_State@@PEAVChunkHeader@hks@@PEBUHksObject@@@Z
+	b5d866	  382  ?hks_obj_gettable@@YA?AUHksObject@@PEAUlua_State@@U1@PEBU1@@Z
+	b5d822	  381  ?hks_obj_getmetatable@@YAHPEAUlua_State@@PEBUHksObject@@PEAU2@@Z
+	b5d7e8	  401  ?hks_obj_setfenv@@YAHPEAUlua_State@@PEBUHksObject@@1@Z
+	b5d7aa	  379  ?hks_obj_getfenv@@YAXPEAUlua_State@@PEBUHksObject@@PEAU2@@Z
+	b5d770	  389  ?hks_obj_rawequal@@YAHPEAUlua_State@@PEBUHksObject@@1@Z
+	b5d738	  377  ?hks_obj_equal@@YAHPEAUlua_State@@PEBUHksObject@@1@Z
+	b5d6fe	  384  ?hks_obj_lessthan@@YAHPEAUlua_State@@PEBUHksObject@@1@Z
+	b5d6ac	  592  ?internHashed@StringTable@hks@@QEAAPEAVInternString@2@PEAUlua_State@@PEBD_KI@Z
+	b5d684	  526  ?hksi_lua_error@@YAHPEAUlua_State@@@Z
+	b5d64e	  625  ?luaL_optlstring@@YAPEBDPEAUlua_State@@HPEBDPEA_K@Z
+	b5d624	  626  ?luaL_optnumber@@YANPEAUlua_State@@HN@Z
+	b5d5fa	  611  ?luaL_checktype@@YAXPEAUlua_State@@HH@Z
+	b5d5cc	  667  ?lua_newuserdata@@YAPEAXPEAUlua_State@@_K@Z
+	b5d5a0	  602  ?luaL_argerror@@YAHPEAUlua_State@@HPEBD@Z
+	b5d564	  387  ?hks_obj_next@@YAXPEAUlua_State@@PEBUHksObject@@PEAU2@2@Z
+	b5d542	  644  ?lua_gc@@YAHPEAUlua_State@@HH@Z
+	b5d112	  640  ?lua_createtable@@YAXPEAUlua_State@@HH@Z
+	b5d13e	  409  ?hks_pushnamedcclosure@@YAXPEAUlua_State@@P6AH0@ZHPEBDH@Z
+	b5d17a	  346  ?growApiStack@CallStack@hks@@QEAAXPEAUlua_State@@H@Z
+	b5d1b2	  386  ?hks_obj_newlstringhashed@@YA?AUHksObject@@PEAUlua_State@@PEBD_KI@Z
+	b5d1f8	  405  ?hks_obj_tonumber@@YANPEAUlua_State@@PEBUHksObject@@@Z
+	b5d232	  380  ?hks_obj_getfield@@YA?AUHksObject@@PEAUlua_State@@U1@1@Z
+	b5d26e	  403  ?hks_obj_settable@@YAXPEAUlua_State@@PEBUHksObject@@11@Z
+	b5d2aa	  397  ?hks_obj_rawseti@@YAXPEAUlua_State@@PEBUHksObject@@H1@Z
+	b5d2e4	  613  ?luaL_error@@YAHPEAUlua_State@@PEBDZZ
+	b5d30c	  383  ?hks_obj_isnumber@@YAHPEAUlua_State@@PEBUHksObject@@@Z
+	b5d346	  404  ?hks_obj_tolstring@@YAPEBDPEAUlua_State@@PEAUHksObject@@PEA_K@Z
+	b5d388	  402  ?hks_obj_setmetatable@@YAHPEAUlua_State@@PEBUHksObject@@1@Z
+	b5d3c6	  390  ?hks_obj_rawget@@YAXPEAUlua_State@@PEBUHksObject@@1PEAU2@@Z
+	b5d404	  395  ?hks_obj_rawset@@YAXPEAUlua_State@@PEBUHksObject@@11@Z
+	b5d43e	  606  ?luaL_checkinteger@@YAHPEAUlua_State@@H@Z
+	b5d46a	  392  ?hks_obj_rawgeti@@YAXPEAUlua_State@@PEBUHksObject@@HPEAU2@@Z
+	b5d4aa	  388  ?hks_obj_objlen@@YA_KPEAUlua_State@@PEBUHksObject@@@Z
+	b5d4e2	  607  ?luaL_checklstring@@YAPEBDPEAUlua_State@@HPEA_K@Z
+	b5d516	  624  ?luaL_optinteger@@YAHPEAUlua_State@@HH@Z
+
+ 00b5c224	00b5c4b8 00000000 00000000 00b5de7a 009b71a0
+
+	DLL Name: KERNEL32.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ddfe	 1539  WriteFile
+	b5de0a	  599  GetLastError
+	b5de1a	  879  IsDebuggerPresent
+	b5de2e	 1402  SwitchToThread
+	b5de40	  619  GetModuleHandleA
+	b5de54	  622  GetModuleHandleW
+	b5de68	  677  GetProcAddress
+	b5f10e	  857  InitializeSListHead
+	b5f01e	 1291  SetEvent
+	b5f02a	 1202  ResetEvent
+	b5f038	 1484  WaitForSingleObjectEx
+	b5f050	  180  CreateEventW
+	b5f060	 1210  RtlCaptureContext
+	b5f074	 1217  RtlLookupFunctionEntry
+	b5f08e	 1224  RtlVirtualUnwind
+	b5f0a2	 1441  UnhandledExceptionFilter
+	b5f0be	 1377  SetUnhandledExceptionFilter
+	b5f0dc	  886  IsProcessorFeaturePresent
+	b5f0f8	  533  GetCurrentThreadId
+	b5ddf2	 1119  ReadFile
+	b5dc68	  830  HeapCreate
+	b5dc76	  831  HeapDestroy
+	b5dc84	  828  HeapAlloc
+	b5dc90	  832  HeapFree
+	b5dc9c	  836  HeapSetInformation
+	b5dcb2	  124  CloseHandle
+	b5dcc0	  529  GetCurrentProcessId
+	b5dcd6	 1519  WideCharToMultiByte
+	b5dcec	 1081  QueryPerformanceCounter
+	b5dd06	 1082  QueryPerformanceFrequency
+	b5dd22	  736  GetSystemTimeAsFileTime
+	b5dd3c	  772  GetTimeZoneInformation
+	b5dd56	  852  InitializeCriticalSection
+	b5dd72	  297  EnterCriticalSection
+	b5dd8a	  939  LeaveCriticalSection
+	b5dda2	 1434  TryEnterCriticalSection
+	b5ddbc	  261  DeleteCriticalSection
+	b5ddd4	  192  CreateFileW
+	b5dde2	  580  GetFileSizeEx
+
+ 00b5c238	00b5cb38 00000000 00000000 00b5de98 009b7820
+
+	DLL Name: ole32.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5de88	   42  CoCreateGuid
+
+ 00b5c24c	00b5c6e0 00000000 00000000 00b5eb62 009b73c8
+
+	DLL Name: MSVCP140.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5dede	  654  ?_Xlength_error@std@@YAXPEBD@Z
+	b5df00	  655  ?_Xout_of_range@std@@YAXPEBD@Z
+	b5df22	  965  ?good@ios_base@std@@QEBA_NXZ
+	b5df42	  871  ?flags@ios_base@std@@QEBAHXZ
+	b5df62	 1342  ?width@ios_base@std@@QEBA_JXZ
+	b5df82	 1341  ?width@ios_base@std@@QEAA_J_J@Z
+	b5dfa4	   47  ??0?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEAA@XZ
+	b5dfe0	  137  ??1?$basic_streambuf@DU?$char_traits@D@std@@@std@@UEAA@XZ
+	b5e01c	 1246  ?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QEAAHD@Z
+	b5e05e	 1249  ?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QEAA_JPEBD_J@Z
+	b5e0a6	  966  ?gptr@?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEBAPEADXZ
+	b5e0e8	 1095  ?pptr@?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEBAPEADXZ
+	b5e12a	  875  ?gbump@?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEAAXH@Z
+	b5e16c	 1089  ?pbump@?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEAAXH@Z
+	b5e1ae	  586  ?_Pninc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEAAPEADXZ
+	b5e1f2	  125  ??1?$basic_ios@DU?$char_traits@D@std@@@std@@UEAA@XZ
+	b5e228	 1221  ?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QEAAXH_N@Z
+	b5e268	   12  ??0?$basic_ios@DU?$char_traits@D@std@@@std@@IEAA@XZ
+	b5dec4	  651  ?_Xbad_alloc@std@@YAXXZ
+	b5e2dc	  872  ?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV12@XZ
+	b5dea2	  652  ?_Xbad_function_call@std@@YAXXZ
+	b5e38c	  128  ??1?$basic_iostream@DU?$char_traits@D@std@@@std@@UEAA@XZ
+	b5e3c8	  552  ?_Lock@?$basic_streambuf@DU?$char_traits@D@std@@@std@@UEAAXXZ
+	b5e408	  639  ?_Unlock@?$basic_streambuf@DU?$char_traits@D@std@@@std@@UEAAXXZ
+	b5e44a	 1014  ?imbue@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAXAEBVlocale@2@@Z
+	b5e498	 1205  ?setbuf@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAPEAV12@PEAD_J@Z
+	b5e4e6	 1237  ?showmanyc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAA_JXZ
+	b5e52c	 1277  ?sync@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAHXZ
+	b5e56c	 1307  ?uflow@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAHXZ
+	b5e5ac	 1347  ?xsgetn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAA_JPEAD_J@Z
+	b5e5f4	 1350  ?xsputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAA_JPEBD_J@Z
+	b5e63c	  406  ?_BADOFF@std@@3_JB
+	b5e652	 1484  _Xtime_get_ticks
+	b5e666	  604  ?_Raise_handler@std@@3P6AXAEBVexception@stdext@@@ZEA
+	b5e69e	  653  ?_Xinvalid_argument@std@@YAXPEBD@Z
+	b5e6c4	  678  ?clear@?$basic_ios@DU?$char_traits@D@std@@@std@@QEAAXH_N@Z
+	b5e702	  269  ??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV01@_N@Z
+	b5e744	  255  ??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV01@H@Z
+	b5e786	  256  ??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV01@I@Z
+	b5e7c8	  266  ??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV01@PEBX@Z
+	b5e80c	  109  ??0_Lockit@std@@QEAA@H@Z
+	b5e828	  165  ??1_Lockit@std@@QEAA@XZ
+	b5e842	 1384  _Getctype
+	b5e84e	 1385  _Getcvt
+	b5e858	 1467  _Tolower
+	b5e864	 1468  _Toupper
+	b5e870	  108  ??0_Locinfo@std@@QEAA@PEBD@Z
+	b5e890	  164  ??1_Locinfo@std@@QEAA@XZ
+	b5e8ac	  305  ??Bid@locale@std@@QEAA_KXZ
+	b5e8ca	  527  ?_Init@locale@std@@CAPEAV_Locimp@12@_N@Z
+	b5e8f6	  469  ?_Getgloballocale@locale@std@@CAPEAV_Locimp@12@XZ
+	b5e92a	  116  ??0ctype_base@std@@QEAA@_K@Z
+	b5e94a	  414  ?_Decref@facet@locale@std@@UEAAPEAV_Facet_base@3@XZ
+	b5e980	  498  ?_Incref@facet@locale@std@@UEAAXXZ
+	b5e9a6	  342  ??_7_Facet_base@std@@6B@
+	b5e9c2	  346  ??_7facet@locale@std@@6B@
+	b5e9de	  345  ??_7ctype_base@std@@6B@
+	b5e9f8	  536  ?_Ios_base_dtor@ios_base@std@@CAXPEAV12@@Z
+	b5ea26	   37  ??0?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAA@PEAV?$basic_streambuf@DU?$char_traits@D@std@@@1@_N@Z
+	b5ea92	  134  ??1?$basic_ostream@DU?$char_traits@D@std@@@std@@UEAA@XZ
+	b5eacc	  347  ??_7ios_base@std@@6B@
+	b5eae4	  307  ??_7?$basic_ios@DU?$char_traits@D@std@@@std@@6B@
+	b5eb18	 1343  ?write@?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV12@PEBD_J@Z
+	b5e29e	  580  ?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAXXZ
+	b5e320	   19  ??0?$basic_iostream@DU?$char_traits@D@std@@@std@@QEAA@PEAV?$basic_streambuf@DU?$char_traits@D@std@@@1@@Z
+
+ 00b5c260	00b5c8f0 00000000 00000000 00b5ec3e 009b75d8
+
+	DLL Name: VCRUNTIME140.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ebb8	    8  __C_specific_handler
+	b5ebd0	   48  __vcrt_InitializeCriticalSectionEx
+	b5ebf6	   14  __CxxFrameHandler3
+	b5ec0c	   37  __std_type_info_destroy_list
+	b5ec2c	   35  __std_terminate
+	b5eb70	   61  memmove
+	b5eb7a	   54  _purecall
+	b5eb86	   62  memset
+	b5eb90	   60  memcpy
+	b5eb9a	   59  memcmp
+	b5eba4	   58  memchr
+	b5ebae	   66  strstr
+
+ 00b5c274	00b5ca10 00000000 00000000 00b5ef38 009b76f8
+
+	DLL Name: api-ms-win-crt-runtime-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5eed6	   34  _execute_onexit_table
+	b5ec50	   57  _invalid_parameter_noinfo_noreturn
+	b5ee62	   24  _configure_narrow_argv
+	b5ed6e	   58  _invoke_watson
+	b5ee7c	   51  _initialize_narrow_environment
+	b5eda6	   33  _errno
+	b5ee9e	   52  _initialize_onexit_table
+	b5eeba	   60  _register_onexit_function
+	b5eeee	   30  _crt_atexit
+	b5ef12	   55  _initterm_e
+	b5ee38	   84  abort
+	b5ef06	   54  _initterm
+	b5eefc	   22  _cexit
+	b5ee50	   63  _seh_filter_dll
+
+ 00b5c288	00b5c9b8 00000000 00000000 00b5ef5a 009b76a0
+
+	DLL Name: api-ms-win-crt-math-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ecda	  255  powf
+	b5eccc	  182  expf
+	b5ece2	  190  floor
+	b5ecba	  266  roundf
+	b5ecc4	  125  ceilf
+	b5ec98	  279  sqrtf
+	b5ec92	  254  pow
+	b5ec80	  230  logf
+	b5ec76	  191  floorf
+	b5ecd4	  178  exp
+
+ 00b5c29c	00b5cab0 00000000 00000000 00b5ef7a 009b7798
+
+	DLL Name: api-ms-win-crt-string-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ede6	  137  strcpy_s
+	b5edf2	  144  strncpy_s
+	b5edfe	  140  strncat
+	b5ee08	  142  strncmp
+	b5ee12	  143  strncpy
+	b5ef20	   42  _stricmp
+	b5ef2c	   52  _strnicmp
+	b5ec88	  134  strcmp
+	b5ed9c	  110  isspace
+
+ 00b5c2b0	00b5ca88 00000000 00000000 00b5ef9c 009b7770
+
+	DLL Name: api-ms-win-crt-stdio-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ecea	    0  __acrt_iob_func
+	b5eca0	   13  __stdio_common_vsprintf
+	b5ed54	   16  __stdio_common_vsscanf
+	b5ecfc	    3  __stdio_common_vfprintf
+
+ 00b5c2c4	00b5c988 00000000 00000000 00b5efbc 009b7670
+
+	DLL Name: api-ms-win-crt-heap-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ed1e	   25  malloc
+	b5edd4	    1  _aligned_malloc
+	b5edc4	    0  _aligned_free
+	b5ed16	   24  free
+	b5ed4a	   26  realloc
+
+ 00b5c2d8	00b5cb00 00000000 00000000 00b5efdc 009b77e8
+
+	DLL Name: api-ms-win-crt-time-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ed80	   71  wcsftime
+	b5ed34	   40  _mktime64
+	b5ed28	   31  _gmtime64
+	b5ee26	   36  _localtime64_s
+	b5ed8c	   35  _localtime64
+	b5ed40	   48  _time64
+
+ 00b5c2ec	00b5c958 00000000 00000000 00b5effc 009b7640
+
+	DLL Name: api-ms-win-crt-convert-l1-1-0.dll
+	vma:  Hint/Ord Member-Name Bound-To
+	b5ee48	   80  atoi
+	b5ee40	   79  atof
+	b5ee1c	   94  strtod
+	b5edb0	   95  strtof
+	b5edba	   97  strtol
+
+ 00b5c300	00000000 00000000 00000000 00000000 00000000
+
+There is an export table in .rdata at 0x180b59ff0
+
+The Export Tables (interpreted .rdata section contents)
+
+Export Flags 			0
+Time/Date stamp 		667c6f59
+Major/Minor 			0/0
+Name 				0000000000b5a63a GameCore_XP2_FinalRelease.dll
+Ordinal Base 			1
+Number in:
+	Export Address Table 		0000009d
+	[Name Pointer/Ordinal] Table	0000009d
+Table Addresses
+	Export Address Table 		0000000000b5a018
+	Name Pointer Table 		0000000000b5a28c
+	Ordinal Table 			0000000000b5a500
+
+Export Address Table -- Ordinal Base 1
+	[   0] +base[   1] 98d030 Export RVA
+	[   1] +base[   2] 98d060 Export RVA
+	[   2] +base[   3] 98d080 Export RVA
+	[   3] +base[   4] 98d0b0 Export RVA
+	[   4] +base[   5] 98d0d0 Export RVA
+	[   5] +base[   6] 98d170 Export RVA
+	[   6] +base[   7] 6c0f0 Export RVA
+	[   7] +base[   8] 98d1c0 Export RVA
+	[   8] +base[   9] bc970 Export RVA
+	[   9] +base[  10] 98d1d0 Export RVA
+	[  10] +base[  11] 956030 Export RVA
+	[  11] +base[  12] 98d1e0 Export RVA
+	[  12] +base[  13] 98d1f0 Export RVA
+	[  13] +base[  14] 98d270 Export RVA
+	[  14] +base[  15] 98d620 Export RVA
+	[  15] +base[  16] 98e360 Export RVA
+	[  16] +base[  17] 98d750 Export RVA
+	[  17] +base[  18] 98e490 Export RVA
+	[  18] +base[  19] 98d750 Export RVA
+	[  19] +base[  20] 98e490 Export RVA
+	[  20] +base[  21] 98e5c0 Export RVA
+	[  21] +base[  22] 98d880 Export RVA
+	[  22] +base[  23] 98d9a0 Export RVA
+	[  23] +base[  24] 98e6f0 Export RVA
+	[  24] +base[  25] 98e820 Export RVA
+	[  25] +base[  26] 98dab0 Export RVA
+	[  26] +base[  27] 98de40 Export RVA
+	[  27] +base[  28] 98ed00 Export RVA
+	[  28] +base[  29] 98ee10 Export RVA
+	[  29] +base[  30] 98ef20 Export RVA
+	[  30] +base[  31] 98df40 Export RVA
+	[  31] +base[  32] 98ef20 Export RVA
+	[  32] +base[  33] 98df40 Export RVA
+	[  33] +base[  34] 98f030 Export RVA
+	[  34] +base[  35] 98f140 Export RVA
+	[  35] +base[  36] 98e050 Export RVA
+	[  36] +base[  37] 98e160 Export RVA
+	[  37] +base[  38] 98f250 Export RVA
+	[  38] +base[  39] 98f370 Export RVA
+	[  39] +base[  40] 98d1e0 Export RVA
+	[  40] +base[  41] 98e270 Export RVA
+	[  41] +base[  42] 98d270 Export RVA
+	[  42] +base[  43] 98d620 Export RVA
+	[  43] +base[  44] 98e360 Export RVA
+	[  44] +base[  45] 98d750 Export RVA
+	[  45] +base[  46] 98e490 Export RVA
+	[  46] +base[  47] 98d750 Export RVA
+	[  47] +base[  48] 98e490 Export RVA
+	[  48] +base[  49] 98e5c0 Export RVA
+	[  49] +base[  50] 98d880 Export RVA
+	[  50] +base[  51] 98d9a0 Export RVA
+	[  51] +base[  52] 98e6f0 Export RVA
+	[  52] +base[  53] 98e820 Export RVA
+	[  53] +base[  54] 98e970 Export RVA
+	[  54] +base[  55] 98ed00 Export RVA
+	[  55] +base[  56] 98ee10 Export RVA
+	[  56] +base[  57] 98df40 Export RVA
+	[  57] +base[  58] 98ef20 Export RVA
+	[  58] +base[  59] 98df40 Export RVA
+	[  59] +base[  60] 98f030 Export RVA
+	[  60] +base[  61] 98f140 Export RVA
+	[  61] +base[  62] 98e160 Export RVA
+	[  62] +base[  63] 98f250 Export RVA
+	[  63] +base[  64] 98f370 Export RVA
+	[  64] +base[  65] 98f380 Export RVA
+	[  65] +base[  66] 98f510 Export RVA
+	[  66] +base[  67] d620 Export RVA
+	[  67] +base[  68] 98f600 Export RVA
+	[  68] +base[  69] 98f6f0 Export RVA
+	[  69] +base[  70] e690 Export RVA
+	[  70] +base[  71] 9904d0 Export RVA
+	[  71] +base[  72] 98f7c0 Export RVA
+	[  72] +base[  73] 154b0 Export RVA
+	[  73] +base[  74] 15570 Export RVA
+	[  74] +base[  75] 98f8b0 Export RVA
+	[  75] +base[  76] 98f970 Export RVA
+	[  76] +base[  77] 5cdf20 Export RVA
+	[  77] +base[  78] 20ac0 Export RVA
+	[  78] +base[  79] d740 Export RVA
+	[  79] +base[  80] 18af0 Export RVA
+	[  80] +base[  81] d9e0 Export RVA
+	[  81] +base[  82] 9e710 Export RVA
+	[  82] +base[  83] 990570 Export RVA
+	[  83] +base[  84] 16f10 Export RVA
+	[  84] +base[  85] 98fb00 Export RVA
+	[  85] +base[  86] 17010 Export RVA
+	[  86] +base[  87] 98fc90 Export RVA
+	[  87] +base[  88] 1f470 Export RVA
+	[  88] +base[  89] 98fd60 Export RVA
+	[  89] +base[  90] 170b0 Export RVA
+	[  90] +base[  91] 98fe10 Export RVA
+	[  91] +base[  92] 98fec0 Export RVA
+	[  92] +base[  93] da00 Export RVA
+	[  93] +base[  94] 18b40 Export RVA
+	[  94] +base[  95] 98ff70 Export RVA
+	[  95] +base[  96] 9900c0 Export RVA
+	[  96] +base[  97] dab0 Export RVA
+	[  97] +base[  98] 17160 Export RVA
+	[  98] +base[  99] e6c0 Export RVA
+	[  99] +base[ 100] 15950 Export RVA
+	[ 100] +base[ 101] 990190 Export RVA
+	[ 101] +base[ 102] dc20 Export RVA
+	[ 102] +base[ 103] 990250 Export RVA
+	[ 103] +base[ 104] 22280 Export RVA
+	[ 104] +base[ 105] 990310 Export RVA
+	[ 105] +base[ 106] 9903d0 Export RVA
+	[ 106] +base[ 107] dd20 Export RVA
+	[ 107] +base[ 108] ddf0 Export RVA
+	[ 108] +base[ 109] 902e0 Export RVA
+	[ 109] +base[ 110] 902f0 Export RVA
+	[ 110] +base[ 111] 990490 Export RVA
+	[ 111] +base[ 112] 9904a0 Export RVA
+	[ 112] +base[ 113] e680 Export RVA
+	[ 113] +base[ 114] 9904b0 Export RVA
+	[ 114] +base[ 115] 9904c0 Export RVA
+	[ 115] +base[ 116] e690 Export RVA
+	[ 116] +base[ 117] 9904d0 Export RVA
+	[ 117] +base[ 118] 990540 Export RVA
+	[ 118] +base[ 119] 15740 Export RVA
+	[ 119] +base[ 120] 15750 Export RVA
+	[ 120] +base[ 121] 990550 Export RVA
+	[ 121] +base[ 122] 990560 Export RVA
+	[ 122] +base[ 123] 5ce010 Export RVA
+	[ 123] +base[ 124] 21ca0 Export RVA
+	[ 124] +base[ 125] d740 Export RVA
+	[ 125] +base[ 126] 18af0 Export RVA
+	[ 126] +base[ 127] d9e0 Export RVA
+	[ 127] +base[ 128] 9e710 Export RVA
+	[ 128] +base[ 129] 990570 Export RVA
+	[ 129] +base[ 130] 18b10 Export RVA
+	[ 130] +base[ 131] 9905a0 Export RVA
+	[ 131] +base[ 132] 18b20 Export RVA
+	[ 132] +base[ 133] 1f770 Export RVA
+	[ 133] +base[ 134] 18b30 Export RVA
+	[ 134] +base[ 135] e6a0 Export RVA
+	[ 135] +base[ 136] 18b40 Export RVA
+	[ 136] +base[ 137] 9905b0 Export RVA
+	[ 137] +base[ 138] 9905c0 Export RVA
+	[ 138] +base[ 139] e6b0 Export RVA
+	[ 139] +base[ 140] 18bb0 Export RVA
+	[ 140] +base[ 141] e6c0 Export RVA
+	[ 141] +base[ 142] 15cc0 Export RVA
+	[ 142] +base[ 143] 9905d0 Export RVA
+	[ 143] +base[ 144] e700 Export RVA
+	[ 144] +base[ 145] 9905e0 Export RVA
+	[ 145] +base[ 146] 232d0 Export RVA
+	[ 146] +base[ 147] 9905f0 Export RVA
+	[ 147] +base[ 148] 990600 Export RVA
+	[ 148] +base[ 149] e710 Export RVA
+	[ 149] +base[ 150] e720 Export RVA
+	[ 150] +base[ 151] 215ef0 Export RVA
+	[ 151] +base[ 152] 57fc70 Export RVA
+	[ 152] +base[ 153] 2c590 Export RVA
+	[ 153] +base[ 154] 215e30 Export RVA
+	[ 154] +base[ 155] 752d50 Export RVA
+	[ 155] +base[ 156] 752d60 Export RVA
+	[ 156] +base[ 157] 994960 Export RVA
+
+[Ordinal/Name Pointer] Table
+	[   0] ??4HksCompilerSettings@@QEAAAEAU0@$$QEAU0@@Z
+	[   1] ??4HksCompilerSettings@@QEAAAEAU0@AEBU0@@Z
+	[   2] ??4HksFixedHeapSettings@@QEAAAEAV0@$$QEAV0@@Z
+	[   3] ??4HksFixedHeapSettings@@QEAAAEAV0@AEBV0@@Z
+	[   4] ??4HksStateSettings@@QEAAAEAV0@$$QEAV0@@Z
+	[   5] ??4HksStateSettings@@QEAAAEAV0@AEBV0@@Z
+	[   6] ?_isHksGlobalMemoTestingMode@HksCompilerSettings@@QEBAHXZ
+	[   7] ?_setHksGlobalMemoTestingMode@HksCompilerSettings@@QEAAXH@Z
+	[   8] ?getBytecodeSharingFormat@HksCompilerSettings@@QEBA?AW4BytecodeSharingFormat@1@XZ
+	[   9] ?getIntLiteralsEnabled@HksCompilerSettings@@QEBA?AW4IntLiteralOptions@1@XZ
+	[  10] ?getStrip@HksCompilerSettings@@QEBAPEAPEBDXZ
+	[  11] ?hks_getcontext@@YAPEAXPEAUlua_State@@@Z
+	[  12] ?hks_isstruct@@YAHPEAUlua_State@@H@Z
+	[  13] ?hks_rawgetslot@@YAXPEAUlua_State@@HPEBDH@Z
+	[  14] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAF@Z
+	[  15] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAG@Z
+	[  16] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAH@Z
+	[  17] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAI@Z
+	[  18] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAJ@Z
+	[  19] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAK@Z
+	[  20] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAM@Z
+	[  21] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAN@Z
+	[  22] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAPEBD@Z
+	[  23] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEA_J@Z
+	[  24] ?hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEA_K@Z
+	[  25] ?hks_rawsetslot@@YAXPEAUlua_State@@HPEBDH@Z
+	[  26] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDH1@Z
+	[  27] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHF@Z
+	[  28] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHG@Z
+	[  29] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHH@Z
+	[  30] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHI@Z
+	[  31] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHJ@Z
+	[  32] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHK@Z
+	[  33] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHM@Z
+	[  34] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHN@Z
+	[  35] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHPEBX@Z
+	[  36] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDH_J@Z
+	[  37] ?hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDH_K@Z
+	[  38] ?hks_setcontext@@YAXPEAUlua_State@@PEAX@Z
+	[  39] ?hksi_hks_getcontext@@YAPEAXPEAUlua_State@@@Z
+	[  40] ?hksi_hks_isstruct@@YAHPEAUlua_State@@H@Z
+	[  41] ?hksi_hks_rawgetslot@@YAXPEAUlua_State@@HPEBDH@Z
+	[  42] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAF@Z
+	[  43] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAG@Z
+	[  44] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAH@Z
+	[  45] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAI@Z
+	[  46] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAJ@Z
+	[  47] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAK@Z
+	[  48] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAM@Z
+	[  49] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAN@Z
+	[  50] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEAPEBD@Z
+	[  51] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEA_J@Z
+	[  52] ?hksi_hks_rawgetslotv@@YAHPEAUlua_State@@HPEBDHAEA_K@Z
+	[  53] ?hksi_hks_rawsetslot@@YAXPEAUlua_State@@HPEBDH@Z
+	[  54] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHF@Z
+	[  55] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHG@Z
+	[  56] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHI@Z
+	[  57] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHJ@Z
+	[  58] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHK@Z
+	[  59] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHM@Z
+	[  60] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDHN@Z
+	[  61] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDH_J@Z
+	[  62] ?hksi_hks_rawsetslotv@@YAXPEAUlua_State@@HPEBDH_K@Z
+	[  63] ?hksi_hks_setcontext@@YAXPEAUlua_State@@PEAX@Z
+	[  64] ?hksi_lua_equal@@YAHPEAUlua_State@@HH@Z
+	[  65] ?hksi_lua_getfenv@@YAXPEAUlua_State@@H@Z
+	[  66] ?hksi_lua_getfield@@YAXPEAUlua_State@@HPEBD@Z
+	[  67] ?hksi_lua_getmetatable@@YAHPEAUlua_State@@H@Z
+	[  68] ?hksi_lua_gettable@@YAXPEAUlua_State@@H@Z
+	[  69] ?hksi_lua_gettop@@YAHPEAUlua_State@@@Z
+	[  70] ?hksi_lua_insert@@YAXPEAUlua_State@@H@Z
+	[  71] ?hksi_lua_iscfunction@@YAHPEAUlua_State@@H@Z
+	[  72] ?hksi_lua_isnumber@@YAHPEAUlua_State@@H@Z
+	[  73] ?hksi_lua_isstring@@YAHPEAUlua_State@@H@Z
+	[  74] ?hksi_lua_isuserdata@@YAHPEAUlua_State@@H@Z
+	[  75] ?hksi_lua_lessthan@@YAHPEAUlua_State@@HH@Z
+	[  76] ?hksi_lua_next@@YAHPEAUlua_State@@H@Z
+	[  77] ?hksi_lua_objlen@@YA_KPEAUlua_State@@H@Z
+	[  78] ?hksi_lua_pushinteger@@YAXPEAUlua_State@@H@Z
+	[  79] ?hksi_lua_pushlightuserdata@@YAXPEAUlua_State@@PEAX@Z
+	[  80] ?hksi_lua_pushnil@@YAXPEAUlua_State@@@Z
+	[  81] ?hksi_lua_pushnumber@@YAXPEAUlua_State@@N@Z
+	[  82] ?hksi_lua_pushthread@@YAHPEAUlua_State@@@Z
+	[  83] ?hksi_lua_pushvalue@@YAXPEAUlua_State@@H@Z
+	[  84] ?hksi_lua_rawequal@@YAHPEAUlua_State@@HH@Z
+	[  85] ?hksi_lua_rawget@@YAXPEAUlua_State@@H@Z
+	[  86] ?hksi_lua_rawget_array_lud@@YAPEAXPEAUlua_State@@HH@Z
+	[  87] ?hksi_lua_rawgeti@@YAXPEAUlua_State@@HH@Z
+	[  88] ?hksi_lua_rawlength@@YA_KPEAUlua_State@@H@Z
+	[  89] ?hksi_lua_rawset@@YAXPEAUlua_State@@H@Z
+	[  90] ?hksi_lua_rawset_array@@YAXPEAUlua_State@@HH@Z
+	[  91] ?hksi_lua_rawset_array_lud@@YAXPEAUlua_State@@HHPEAX@Z
+	[  92] ?hksi_lua_rawseti@@YAXPEAUlua_State@@HH@Z
+	[  93] ?hksi_lua_remove@@YAXPEAUlua_State@@H@Z
+	[  94] ?hksi_lua_replace@@YAXPEAUlua_State@@H@Z
+	[  95] ?hksi_lua_setfenv@@YAHPEAUlua_State@@H@Z
+	[  96] ?hksi_lua_setfield@@YAXPEAUlua_State@@HPEBD@Z
+	[  97] ?hksi_lua_setmetatable@@YAHPEAUlua_State@@H@Z
+	[  98] ?hksi_lua_settop@@YAXPEAUlua_State@@H@Z
+	[  99] ?hksi_lua_toboolean@@YAHPEAUlua_State@@H@Z
+	[ 100] ?hksi_lua_tocfunction@@YAP6AHPEAUlua_State@@@Z0H@Z
+	[ 101] ?hksi_lua_tointeger@@YAHPEAUlua_State@@H@Z
+	[ 102] ?hksi_lua_tolstring@@YAPEBDPEAUlua_State@@HPEA_K@Z
+	[ 103] ?hksi_lua_tonumber@@YANPEAUlua_State@@H@Z
+	[ 104] ?hksi_lua_topointer@@YAPEBXPEAUlua_State@@H@Z
+	[ 105] ?hksi_lua_tothread@@YAPEAUlua_State@@PEAU1@H@Z
+	[ 106] ?hksi_lua_touserdata@@YAPEAXPEAUlua_State@@H@Z
+	[ 107] ?hksi_lua_type@@YAHPEAUlua_State@@H@Z
+	[ 108] ?isEmitStruct@HksCompilerSettings@@QEBAHXZ
+	[ 109] ?isGlobalMemoization@HksCompilerSettings@@QEBAHXZ
+	[ 110] ?lua_equal@@YAHPEAUlua_State@@HH@Z
+	[ 111] ?lua_getfenv@@YAXPEAUlua_State@@H@Z
+	[ 112] ?lua_getfield@@YAXPEAUlua_State@@HPEBD@Z
+	[ 113] ?lua_getmetatable@@YAHPEAUlua_State@@H@Z
+	[ 114] ?lua_gettable@@YAXPEAUlua_State@@H@Z
+	[ 115] ?lua_gettop@@YAHPEAUlua_State@@@Z
+	[ 116] ?lua_insert@@YAXPEAUlua_State@@H@Z
+	[ 117] ?lua_iscfunction@@YAHPEAUlua_State@@H@Z
+	[ 118] ?lua_isnumber@@YAHPEAUlua_State@@H@Z
+	[ 119] ?lua_isstring@@YAHPEAUlua_State@@H@Z
+	[ 120] ?lua_isuserdata@@YAHPEAUlua_State@@H@Z
+	[ 121] ?lua_lessthan@@YAHPEAUlua_State@@HH@Z
+	[ 122] ?lua_next@@YAHPEAUlua_State@@H@Z
+	[ 123] ?lua_objlen@@YA_KPEAUlua_State@@H@Z
+	[ 124] ?lua_pushinteger@@YAXPEAUlua_State@@H@Z
+	[ 125] ?lua_pushlightuserdata@@YAXPEAUlua_State@@PEAX@Z
+	[ 126] ?lua_pushnil@@YAXPEAUlua_State@@@Z
+	[ 127] ?lua_pushnumber@@YAXPEAUlua_State@@N@Z
+	[ 128] ?lua_pushthread@@YAHPEAUlua_State@@@Z
+	[ 129] ?lua_pushvalue@@YAXPEAUlua_State@@H@Z
+	[ 130] ?lua_rawequal@@YAHPEAUlua_State@@HH@Z
+	[ 131] ?lua_rawget@@YAXPEAUlua_State@@H@Z
+	[ 132] ?lua_rawgeti@@YAXPEAUlua_State@@HH@Z
+	[ 133] ?lua_rawset@@YAXPEAUlua_State@@H@Z
+	[ 134] ?lua_rawseti@@YAXPEAUlua_State@@HH@Z
+	[ 135] ?lua_remove@@YAXPEAUlua_State@@H@Z
+	[ 136] ?lua_replace@@YAXPEAUlua_State@@H@Z
+	[ 137] ?lua_setfenv@@YAHPEAUlua_State@@H@Z
+	[ 138] ?lua_setfield@@YAXPEAUlua_State@@HPEBD@Z
+	[ 139] ?lua_setmetatable@@YAHPEAUlua_State@@H@Z
+	[ 140] ?lua_settop@@YAXPEAUlua_State@@H@Z
+	[ 141] ?lua_toboolean@@YA_NPEAUlua_State@@H@Z
+	[ 142] ?lua_tocfunction@@YAP6AHPEAUlua_State@@@Z0H@Z
+	[ 143] ?lua_tointeger@@YAHPEAUlua_State@@H@Z
+	[ 144] ?lua_tolstring@@YAPEBDPEAUlua_State@@HPEA_K@Z
+	[ 145] ?lua_tonumber@@YANPEAUlua_State@@H@Z
+	[ 146] ?lua_topointer@@YAPEBXPEAUlua_State@@H@Z
+	[ 147] ?lua_tothread@@YAPEAUlua_State@@PEAU1@H@Z
+	[ 148] ?lua_touserdata@@YAPEAXPEAUlua_State@@H@Z
+	[ 149] ?lua_type@@YAHPEAUlua_State@@H@Z
+	[ 150] ?setBytecodeSharingFormat@HksCompilerSettings@@QEAAXW4BytecodeSharingFormat@1@@Z
+	[ 151] ?setEmitStruct@HksCompilerSettings@@QEAAXH@Z
+	[ 152] ?setGlobalMemoization@HksCompilerSettings@@QEAAXH@Z
+	[ 153] ?setIntLiteralsEnabled@HksCompilerSettings@@QEAAXW4IntLiteralOptions@1@@Z
+	[ 154] DllCreateGameContext
+	[ 155] DllDestroyGameContext
+	[ 156] EXP_GetTelemetrySessionHash
+
