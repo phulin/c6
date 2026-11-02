@@ -214,7 +214,33 @@ python3 tools/linux/rules_launch_fixture.py --gamecore-siblings \
 Its mapping identity is
 `19d4949805b8db61f7030d31c990fb0bd1d4aaf7b9679e04f3e292dbab0e3ed4`.
 The version-one fixture and verified base profiles are unchanged. The validator
-accepts only the exact three-alias v1 or six-alias v2 layouts, verifies all module
-bytes, and rejects arbitrary extra files or changed mappings. Presence of those
+accepts only explicitly versioned layouts, verifies all module bytes, and rejects
+arbitrary extra files or changed mappings. Version three below additionally
+preserves the original cwd namespace. Presence of those
 module inputs does not prove the native framework selected or loaded them; actual
 module transitions and full XP2 content require separate runtime evidence.
+
+### Preserving native cwd reverse mapping
+
+The module-sibling fixture exposed another genuine prerequisite: following a
+whole-tree `steamassets/base` symlink during ASL_SetCurrentDir moves physical cwd
+outside the registered `steamassets` prefix. The native framework then cannot
+reverse-map cwd correctly for its relative `Modding.sql` path. Its database
+remains null; that is not successful XP2 configuration.
+
+Version three creates a real `steamassets/base/binaries/linux` directory skeleton
+and links only `steamassets/base/assets` to the original `Base/assets`. DLC,
+Aspyr metadata and native module input aliases remain exact. The validator
+rejects symlinks replacing any cwd skeleton directory. Existing v1/v2 fixtures
+and their tested profiles remain unchanged.
+
+```sh
+python3 tools/linux/rules_launch_fixture.py --preserve-native-cwd \
+  --destination ../c6-ghidra/evidence/linux-rules/asl-launch-xp2-2
+```
+
+The v3 alias mapping identity is
+`4768b158ee2281c1a2f54f679a06e65137c050286bdf77215b15922c7d92c0f3`.
+It supplies the observed native path precondition. Native framework database
+creation, actual selected XP2 components and final rules export still require
+execution evidence; the staging tool does not count those operations as passed.
