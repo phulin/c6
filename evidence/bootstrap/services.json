@@ -113,5 +113,44 @@
       "many_native_null_sync_getters_accepted": true,
       "initialized_game": false
     }
+  },
+  "native_database_phase": {
+    "host_rva": "0x24de00",
+    "context_export_slot": 80,
+    "context_wrapper_rva": "0x590600",
+    "concrete_xp2_vtable_rva": "0xa44f70",
+    "underlying_slot": 24,
+    "underlying_rva": "0x45ed0",
+    "abi": "boolean(context, native_writable_connection)",
+    "context_initialized_flag_read": false,
+    "writer_constructor_rva": "0x92a290",
+    "writer_rva": "0x979630",
+    "query_tables": [
+      "Types",
+      "GameEffects",
+      "GameEffectArguments"
+    ],
+    "native_return_always_true": true,
+    "missing_query_behavior": "writer no-op; context still returns true",
+    "required_comparison": [
+      "table counts before and after",
+      "total_changes before and after",
+      "commit status",
+      "foreign_key_check"
+    ],
+    "runtime_validation": {
+      "evidence": "evidence/bootstrap/native-xp2-content-effects-phase.json",
+      "child_returncode": 0,
+      "native_status": 1,
+      "types_before": 2652,
+      "types_after": 3810,
+      "total_changes_delta": 3624,
+      "declared_source_count": 213,
+      "configuration_tables": 78,
+      "gameplay_tables": 428,
+      "mod_selection_engine_executed": false,
+      "initialized_game": false,
+      "missing_schema_native_negative": "pending; no-op branch established statically"
+    }
   }
 }

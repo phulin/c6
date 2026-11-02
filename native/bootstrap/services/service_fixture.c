@@ -298,6 +298,16 @@ int bootstrap_service_fixture_prepare_empty_databases(HMODULE database) {
     trace("original_database_empty_keepalives_created", 0);
     return 1;
 }
+int bootstrap_original_context_initialize_database(void *context, void *connection) {
+    typedef unsigned char (*initialize_database_fn)(void *, void *);
+    if (!context || !connection || !original_gamecore) return 0;
+    uintptr_t *context_vtable = *(uintptr_t **)context;
+    void *instance = ((void **)context)[1];
+    if (!instance || context_vtable[10] != (uintptr_t)original_gamecore + 0x590600 ||
+        (*(uintptr_t **)instance)[3] != (uintptr_t)original_gamecore + 0x45ed0) return 0;
+    trace("ContextInitializeDatabase_original_writer", 0x50);
+    return ((initialize_database_fn)context_vtable[10])(context, connection) != 0;
+}
 void *bootstrap_service_fixture_database_connection(int gameplay) {
     return database_connections[gameplay ? 1 : 0];
 }

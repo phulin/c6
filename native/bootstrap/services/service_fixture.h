@@ -9,6 +9,9 @@ void *bootstrap_service_fixture_create(HMODULE gamecore);
 /* Explicit original EXE import binding + original archive ctor. EXE/provider SHA gates required. */
 int bootstrap_service_fixture_prepare_original_host_services(HMODULE original_host);
 int bootstrap_service_fixture_prepare_empty_databases(HMODULE database);
+/* Original InitializeDatabase returns true even when prepared writer queries fail.
+ * Caller owns authentic phase transaction and must verify affected SQL state. */
+int bootstrap_original_context_initialize_database(void *context, void *connection);
 void *bootstrap_service_fixture_database_connection(int gameplay);
 int bootstrap_service_fixture_execute_sql(int gameplay, const char *sql, int length);
 void bootstrap_service_fixture_report(FILE *output);
