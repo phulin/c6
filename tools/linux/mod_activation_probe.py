@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,6 +34,7 @@ def main():
     parser.add_argument('--game-load-stream',type=Path)
     parser.add_argument('--game-load-profile',choices=('benchmark','captured-initial'),default='benchmark')
     parser.add_argument('--game-load-observe',action='store_true')
+    parser.add_argument('--request-load-save',type=Path)
     parser.add_argument('--game-save-output',type=Path)
     parser.add_argument('--game-save-repeat-output',type=Path)
     parser.add_argument('--timeout',type=int,default=30)
@@ -50,6 +52,13 @@ def main():
         parser.error('--attach-saved-session requires network, saved configuration and cleanup')
     if not 1<=args.timeout<=600:parser.error('--timeout must be between 1 and 600 seconds')
     game_input=args.game_load_stream.resolve() if args.game_load_stream else None
+    request_input=args.request_load_save.resolve() if args.request_load_save else None
+    if request_input:
+        if not args.cleanup or any((args.saved_configuration,args.configure,args.update_constructor_callback,args.network,args.attach_saved_session,game_input,args.rules_snapshot_dir)):
+            parser.error('--request-load-save is a request-only cleanup fixture; do not combine restoration, activation, network, Core load or snapshots')
+        if (not request_input.is_file() or request_input.stat().st_size!=7348717 or
+            digest(request_input)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8'):
+            raise SystemExit('complete original save request identity mismatch')
     if args.game_load_observe and not game_input:parser.error('--game-load-observe requires --game-load-stream')
     game_outputs={}
     captured_gate=None
@@ -104,6 +113,15 @@ def main():
         state_audit=audit(assets/'libGameCore_XP2.so',ROOT.parent/'c6-ghidra/evidence/linux-action-boundary/abi.dwarf')
         state_audit_paths=[ROOT/'tools/linux/game_load_state_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
         if state_audit!=json.loads(state_audit_paths[-1].read_text()):raise SystemExit('loaded-state facade contracts differ')
+    request_audit=None
+    request_audit_paths=[]
+    if request_input:
+        request_audit_paths=[ROOT/'tools/linux/save_lifecycle_request_audit.py',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/save-lifecycle-request-contracts.json']
+        with tempfile.TemporaryDirectory(prefix='c6-request-audit-') as temporary:
+            result_path=Path(temporary)/'contracts.json'
+            subprocess.run([sys.executable,str(request_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
+            request_audit=json.loads(result_path.read_text())
+        if request_audit!=json.loads(request_audit_paths[-1].read_text()):raise SystemExit('original request contracts differ')
     content=json.loads((ROOT/'tools/linux/runtime-content-gate.json').read_text())['files']
     if view:
         profile=json.loads((view/'source-view.json').read_text())
@@ -139,6 +157,7 @@ def main():
     network_sources=[ROOT/'native/linux/network.c'] if args.network else []
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
+    request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -166,6 +185,8 @@ def main():
               'lower_core_stream_profile':args.game_load_profile if game_input else None,
               'captured_core_stream_gate':captured_gate,
               'lower_core_state_observer':state_audit,
+              'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
+              'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
               'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
@@ -182,14 +203,17 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*lifecycle_sources,ROOT/'native/linux/save_lifecycle.h']})
     if game_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*game_sources,ROOT/'native/linux/game_load.h',ROOT/'native/linux/context_stream.h']})
+    if request_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*request_sources,ROOT/'native/linux/request_load.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
@@ -216,6 +240,7 @@ def main():
     if snapshot:env['C6_RULES_SNAPSHOT_DIR']=str(snapshot)
     if args.network:env['C6_HOST_NETWORK']='1'
     if args.attach_saved_session:env['C6_MOD_ATTACH_SAVED_SESSION']='1'
+    if request_input:env['C6_REQUEST_LOAD_SAVE']=str(request_input)
     if game_input:
         env['C6_GAME_LOAD_STREAM']=str(game_input)
         env['C6_GAME_SAVE_OUTPUT']=str(game_outputs['save'])
@@ -235,7 +260,8 @@ def main():
         code,out,err=124,decode(exc.stdout),decode(exc.stderr)
     report={'configuration':identity,'configuration_sha256':configuration_identity,
             'execution_paths':{'userdata':str(userdata),'native_rules_snapshot_directory':str(snapshot) if snapshot else None,
-                               'lower_core_stream':str(game_input) if game_input else None,'game_outputs':{k:str(v) for k,v in game_outputs.items()}},
+                               'lower_core_stream':str(game_input) if game_input else None,'game_outputs':{k:str(v) for k,v in game_outputs.items()},
+                               'full_save_request':str(request_input) if request_input else None},
             'returncode':code,'stdout':out,'stderr':err,'framework_boundary_returned':code==0 and 'boundary_return result 0' in err,
             'framework_cleanup_proven':code==0 and 'cleanup_return 0' in err,'client_cleanup_proven':code==0 and 'client_shutdown_only_return unpublished 1' in err,'xp2_activation_proven':False,'initialized_game':False,'gameplay_parity':False,
             'limits':'Original host content-transition diagnostic only; selected module path and actual active-vtable module are distinct observations. Constructor-state callback is not saved Request/Begin semantics. No initialized-game or gameplay parity proof. Teardown is measured only when requested and its marker is present.'}

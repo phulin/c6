@@ -427,6 +427,14 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
     }
     void *context = NULL;
     int result = c6_linux_mod_framework_initialize(&context);
+    bool request_prepared=false;
+    const char *request_save=getenv("C6_REQUEST_LOAD_SAVE");
+    if (!result && request_save) {
+        int (*prepare)(const char *)=dlsym(RTLD_DEFAULT,"c6_linux_request_load_prepare");
+        result=prepare?prepare(request_save):157;
+        request_prepared=result==0;
+        fprintf(stderr,"C6_LINUX_MOD request_prepare_boundary_return %d\n",result);
+    }
     const char *saved=getenv("C6_SAVED_CONFIGURATION");
     if (!result && saved) {
         int (*restore)(const char *)=dlsym(RTLD_DEFAULT,"c6_linux_restore_saved_configuration");
@@ -460,7 +468,13 @@ static int mod_probe_main(int argc,char **argv,char **envp) {
         }
     }
     if (getenv("C6_MOD_CLEANUP") && context) {
-        int cleanup=c6_linux_mod_framework_shutdown();
+        int cleanup=0;
+        if (request_prepared) {
+            int (*clear)(void)=dlsym(RTLD_DEFAULT,"c6_linux_request_load_clear");
+            cleanup=clear?clear():158;
+            fprintf(stderr,"C6_LINUX_MOD request_clear_boundary_return %d\n",cleanup);
+        }
+        if (!cleanup) cleanup=c6_linux_mod_framework_shutdown();
         if (!cleanup && constructed_client) cleanup=c6_linux_mod_client_fixture_shutdown();
         if (!cleanup && getenv("C6_LOCALIZATION")) {
             int (*shutdown)(void)=dlsym(RTLD_DEFAULT,"c6_linux_shutdown_localization");
