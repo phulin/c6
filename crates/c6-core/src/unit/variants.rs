@@ -9,6 +9,8 @@
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     pub max_bytes: usize,
+    /// Aggregate container entries plus key-name and Char8 payload bytes.
+    /// Char8 includes its serialized terminating NUL byte.
     pub max_items: usize,
     pub max_depth: usize,
 }
@@ -221,7 +223,8 @@ impl<'a> Reader<'a> {
             let key = self.u32()?;
             let name = if header.names() {
                 let n = self.u16()?;
-                Some(self.take(usize::from(n))?.to_vec())
+                let n = self.count(u32::from(n), 1)?;
+                Some(self.take(n)?.to_vec())
             } else {
                 None
             };
@@ -304,7 +307,8 @@ impl<'a> Reader<'a> {
                     if element_size != 1 || count == 0 || count_flags & LONG != 0 {
                         return Err(VariantError::InvalidMetadata);
                     }
-                    let bytes = self.take(n as usize)?.to_vec();
+                    let n = self.count(n, 1)?;
+                    let bytes = self.take(n)?.to_vec();
                     if bytes.last() != Some(&0) || bytes[..bytes.len() - 1].contains(&0) {
                         return Err(VariantError::InvalidMetadata);
                     }
@@ -368,6 +372,7 @@ impl ArrayVariant {
 struct Writer {
     bytes: Vec<u8>,
     limits: Limits,
+    items: usize,
 }
 impl Writer {
     fn put(&mut self, bytes: &[u8]) -> Result<(), VariantError> {
@@ -383,10 +388,16 @@ impl Writer {
     fn u32(&mut self, n: u32) -> Result<(), VariantError> {
         self.put(&n.to_le_bytes())
     }
-    fn count(&mut self, n: usize) -> Result<(), VariantError> {
-        if n > self.limits.max_items {
+    fn claim(&mut self, n: usize) -> Result<(), VariantError> {
+        let items = self.items.checked_add(n).ok_or(VariantError::Limit)?;
+        if items > self.limits.max_items {
             return Err(VariantError::Limit);
         }
+        self.items = items;
+        Ok(())
+    }
+    fn count(&mut self, n: usize) -> Result<(), VariantError> {
+        self.claim(n)?;
         self.u32(u32::try_from(n).map_err(|_| VariantError::Limit)?)
     }
     fn depth(&self, depth: usize) -> Result<(), VariantError> {
@@ -435,6 +446,7 @@ impl Writer {
             self.u32(entry.key)?;
             match (&entry.name, header.names()) {
                 (Some(bytes), true) => {
+                    self.claim(bytes.len())?;
                     self.u16(u16::try_from(bytes.len()).map_err(|_| VariantError::Limit)?)?;
                     self.put(bytes)?;
                 }
@@ -489,7 +501,10 @@ impl Writer {
         match &value.payload {
             VariantPayload::Inline32(bits) => self.u32(*bits),
             VariantPayload::Inline64(bits) => self.put(&bits.to_le_bytes()),
-            VariantPayload::Char8(bytes) => self.put(bytes),
+            VariantPayload::Char8(bytes) => {
+                self.claim(bytes.len())?;
+                self.put(bytes)
+            }
             VariantPayload::VariantMap(map) => self.map(map, depth + 1),
             VariantPayload::EmptyVariantVector => Ok(()),
             VariantPayload::TypedVariantMap(map) => self.keyed(map.header, &map.entries, depth + 1),
@@ -529,11 +544,12 @@ macro_rules! root_codec {
                 let mut writer = Writer {
                     bytes: Vec::new(),
                     limits,
+                    items: 0,
                 };
                 ($write)(&mut writer, self)?;
                 let mut budget = DecodeBudget::new(limits);
                 let (_, consumed) = Self::decode_prefix(&writer.bytes, &mut budget)?;
-                if consumed != writer.bytes.len() {
+                if consumed != writer.bytes.len() || budget.items_used() != writer.items {
                     return Err(VariantError::InvalidMetadata);
                 }
                 Ok((writer.bytes, budget.items_used()))
@@ -578,6 +594,59 @@ mod tests {
         let (value, consumed) = read(bytes, &mut DecodeBudget::new(Limits::default())).unwrap();
         assert_eq!(consumed, bytes.len());
         value
+    }
+    #[test]
+    fn name_and_char8_bytes_share_exact_aggregate_item_budget() {
+        // One entry + two key-name bytes + three Char8 bytes (including NUL).
+        let wire = [
+            1, 0, 0, 128, 1, 0, 0, 0, 7, 0, 0, 0, 2, 0, b'n', b'm', 5, 0, 0, 0, 3, 0, 0, 33, 1, 0,
+            0, 0, b'x', b'y', 0,
+        ];
+        let limits = Limits {
+            max_bytes: wire.len(),
+            max_items: 6,
+            ..Limits::default()
+        };
+        let mut budget = DecodeBudget::new(limits);
+        let (map, consumed) = TypedVariantMap::decode_prefix(&wire, &mut budget).unwrap();
+        assert_eq!(consumed, wire.len());
+        assert_eq!(budget.items_used(), 6);
+        assert_eq!(map.encode(limits).unwrap(), (wire.to_vec(), 6));
+        for max_items in [0, 1, 2, 3, 5] {
+            let limits = Limits {
+                max_items,
+                ..limits
+            };
+            let mut budget = DecodeBudget::new(limits);
+            assert_eq!(
+                TypedVariantMap::decode_prefix(&wire, &mut budget),
+                Err(VariantError::Limit)
+            );
+            assert_eq!(budget.items_used(), 0);
+            assert_eq!(budget.bytes_used(), 0);
+            assert_eq!(map.encode(limits), Err(VariantError::Limit));
+        }
+        let mut budget = DecodeBudget::new(Limits {
+            max_bytes: wire.len() * 2,
+            max_items: 11,
+            ..limits
+        });
+        TypedVariantMap::decode_prefix(&wire, &mut budget).unwrap();
+        assert_eq!(
+            TypedVariantMap::decode_prefix(&wire, &mut budget),
+            Err(VariantError::Limit)
+        );
+        assert_eq!(budget.items_used(), 6);
+        assert_eq!(budget.bytes_used(), wire.len());
+        let string = [5, 0, 0, 0, 3, 0, 0, 33, 1, 0, 0, 0, b'x', b'y', 0];
+        let mut budget = DecodeBudget::new(Limits {
+            max_items: 2,
+            ..Limits::default()
+        });
+        assert_eq!(
+            TypedVariant::decode_prefix(&string, &mut budget),
+            Err(VariantError::Limit)
+        );
     }
     #[test]
     fn literal_unsigned_keys_and_union_bits() {
