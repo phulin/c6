@@ -3,8 +3,14 @@
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "checks_passed": true,
-  "delivery_provider_methods_checked": 42,
+  "delivery_provider_methods_checked": 52,
   "borrowed_session_getters": [
+    {
+      "address": "0x2f4bb30",
+      "size": 20,
+      "name": "LocalMachine.Queue.GetReceivingStream",
+      "sha256": "1a5fa67762f30d1f884fc4b8b5b35a4d372b252a557477376584878716742c85"
+    },
     {
       "address": "0x3044300",
       "size": 5,
@@ -55,8 +61,9 @@
     }
   ],
   "entry": "existing real host session; original CoreActive must remain false until app registration finishes",
-  "protocol": "original Network.Update processes existing NetRegister1208; original inactive-core callback publishes event55; original handler constructs and broadcasts NetAppRegister1209(false); original host PlayerAppRegistered clears NeedsSnapshot",
-  "completion": "actual original GetAppRegistered=true, GetNeedsSnapshot=false, IsIgnoreIncomingMessages=false, known original provider queue empty; bounded to eight original updates",
+  "protocol": "original Network.Update plus original LocalMachine.PublishEvents processes queued real events and existing NetRegister1208; original inactive-core callback publishes event55; original handler constructs and broadcasts NetAppRegister1209(false); original host PlayerAppRegistered clears NeedsSnapshot",
+  "completion": "actual original GetAppRegistered=true, GetNeedsSnapshot=false, IsIgnoreIncomingMessages=false, known original provider and receiving LocalMachine queue empty; bounded to eight original network/event passes",
+  "event_dispatch": "original LocalMachine.PublishEvents on genuine exported g_EventSystemLocalMachine; all queued events are preserved and dispatched, no selective replay",
   "direct_registration_call": false,
   "fabricated_events_or_messages": false,
   "flag_writes": false,

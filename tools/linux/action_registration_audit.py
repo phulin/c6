@@ -8,7 +8,7 @@ from action_delivery_audit import METHODS
 from save_lifecycle_audit import Elf, HOST_SHA, GAME_SHA
 
 
-BORROWED_GETTERS = [(50610944, 5, 'Network.GetSession', '8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e'), (60629396, 5, 'FNetSession.GetSyncManager', '142aede9b1c13ca9a9e85fa39b4ea11d5b695b949b3df7b174f93ae9608f6ad2'), (60742466, 42, 'FNetSession.GetHostPlayerID', '1432b5724843e6d7b25f1e7ea4352eda569433da29860f32ce1f0518c112e887'), (60742424, 42, 'FNetSession.GetLocalPlayerID', '68ada90d2c34f08e3ac707cc8723cfb8fa485cd9536a74d4c927a415bd3d18ce'), (60742754, 43, 'FNetSession.IsHost', '4329eccdab7df608d7fc10b83faedd22eff97614c54ad7216e20e66156295aaf'), (60742508, 59, 'FNetSession.GetPlayer', 'ea78b2ff0029742b4745a356180c402ec212f8e6188315ba83fcaf4855cd6f7d')]
+BORROWED_GETTERS = [(49593136, 20, 'LocalMachine.Queue.GetReceivingStream', '1a5fa67762f30d1f884fc4b8b5b35a4d372b252a557477376584878716742c85'), (50610944, 5, 'Network.GetSession', '8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e'), (60629396, 5, 'FNetSession.GetSyncManager', '142aede9b1c13ca9a9e85fa39b4ea11d5b695b949b3df7b174f93ae9608f6ad2'), (60742466, 42, 'FNetSession.GetHostPlayerID', '1432b5724843e6d7b25f1e7ea4352eda569433da29860f32ce1f0518c112e887'), (60742424, 42, 'FNetSession.GetLocalPlayerID', '68ada90d2c34f08e3ac707cc8723cfb8fa485cd9536a74d4c927a415bd3d18ce'), (60742754, 43, 'FNetSession.IsHost', '4329eccdab7df608d7fc10b83faedd22eff97614c54ad7216e20e66156295aaf'), (60742508, 59, 'FNetSession.GetPlayer', 'ea78b2ff0029742b4745a356180c402ec212f8e6188315ba83fcaf4855cd6f7d')]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -35,8 +35,9 @@ def main():
                   borrowed_session_getters=[dict(address=hex(a),size=n,name=k,sha256=d) for a,n,k,d in BORROWED_GETTERS],
                   peer_getters=[dict(address=hex(address), bytes=expected, name=name) for address, expected, name in getters],
                   entry='existing real host session; original CoreActive must remain false until app registration finishes',
-                  protocol='original Network.Update processes existing NetRegister1208; original inactive-core callback publishes event55; original handler constructs and broadcasts NetAppRegister1209(false); original host PlayerAppRegistered clears NeedsSnapshot',
-                  completion='actual original GetAppRegistered=true, GetNeedsSnapshot=false, IsIgnoreIncomingMessages=false, known original provider queue empty; bounded to eight original updates',
+                  protocol='original Network.Update plus original LocalMachine.PublishEvents processes queued real events and existing NetRegister1208; original inactive-core callback publishes event55; original handler constructs and broadcasts NetAppRegister1209(false); original host PlayerAppRegistered clears NeedsSnapshot',
+                  completion='actual original GetAppRegistered=true, GetNeedsSnapshot=false, IsIgnoreIncomingMessages=false, known original provider and receiving LocalMachine queue empty; bounded to eight original network/event passes',
+                  event_dispatch='original LocalMachine.PublishEvents on genuine exported g_EventSystemLocalMachine; all queued events are preserved and dispatched, no selective replay',
                   direct_registration_call=False, fabricated_events_or_messages=False, flag_writes=False,
                   native_execution=False, gameplay_parity=False,
                   limits='Original event subscribers remain guarded but not proven globally policy-free. This audit does not replace the dynamic handshake/control/Save/RNG case.')

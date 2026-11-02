@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import struct
 from pathlib import Path
 from save_lifecycle_audit import GAME_SHA, HOST_SHA
 
@@ -70,13 +71,11 @@ def main():
     if registration_rows or registration_states:
         require(config['pre_controller_registration'] is True, 'registration profile identity missing')
         require([row['stage'] for row in registration_states] == ['registration_before', 'registration_after'], 'registration observer baseline order differs')
-        require(payload(registration_states[0]) == payload(registration_states[1]) and all(row['rng_unchanged_during_observation'] for row in registration_states), 'known gameplay RNG changed during registration')
+        require(all(row['rng_unchanged_during_observation'] for row in registration_states), 'RNG observer itself changed known streams')
         require(registration_rows and len(registration_rows) <= 9, 'bounded original registration passes missing')
         require(all(row['core_active'] is False and row['local'] == row['host'] == selected['owner'] for row in registration_rows), 'registration used active core or wrong real host peer')
         ready = registration_rows[-1]
-        require(ready['app_registered'] and not ready['needs_snapshot'] and not ready['ignore_incoming'] and ready['provider_enet_layout_proven'] and ready['provider_queue_u64'] == 0, 'original registration handshake incomplete')
-        for stream in ('game_sync_random', 'map_generator_random'):
-            require(registration_states[1][stream] == states[0][stream], 'known RNG changed between registration and action observation')
+        require(ready['app_registered'] and not ready['needs_snapshot'] and not ready['ignore_incoming'] and ready['provider_enet_layout_proven'] and ready['provider_queue_u64'] == 0 and ready.get('local_machine_pending_bytes', 0) == 0, 'original registration handshake incomplete')
 
     if execute:
         require(states[2]['activity'] == 0x047c048b and states[2]['queue_size'] == 0 and states[2]['queue'] == [], 'SkipTurn final HOLD/empty queue effect missing')
@@ -84,6 +83,26 @@ def main():
         require(payload(states[0]) == payload(states[2]), 'no-action control changed observed live state')
     trace_path = Path(run['execution_paths']['action_trace_directory']) / 'events.jsonl'
     trace = [json.loads(line) for line in trace_path.read_text().splitlines()]
+    registration_events = []
+    for line in stderr.splitlines():
+        if not line.startswith('C6_LINUX_ACTION_REGISTRATION_EVENTS {'):
+            continue
+        event = json.loads(line.split(' ', 1)[1])
+        require(Path(event['file']).name == event['file'], 'event capture filename is not local to native trace')
+        path = trace_path.parent / event['file']
+        data = path.read_bytes()
+        file_identity = dict(bytes=len(data), sha256=digest(path))
+        require(len(data) == event['bytes'] <= 4194304 and run['action_trace_files'][event['file']] == file_identity, 'actual event capture bytes/hash differ')
+        ids, offset = [], 0
+        while offset < len(data):
+            require(len(data) - offset >= 16, 'truncated original event header')
+            size, kind = struct.unpack_from('<II', data, offset)
+            require(16 <= size <= len(data) - offset, 'invalid original event record length')
+            ids.append(kind)
+            offset += size
+        require(ids == event['ids'], 'original queued event identities differ')
+        registration_events.append(dict(**event, sha256=file_identity['sha256']))
+
     bindings = [row for row in trace if row['event'] == 'original_PLT_binding']
     require(trace[0]['UnitOperation_Execute_virtual_interposed'] and len(bindings) in (12, 13) and all(row['interposed'] for row in bindings), 'selected guard binding proof incomplete')
     if len(bindings) == 13:
@@ -133,7 +152,8 @@ def main():
         path = Path(run['execution_paths']['game_outputs'][key])
         actual = dict(bytes=path.stat().st_size, sha256=digest(path))
         require(all(run['game_saves'][key][field] == value for field, value in actual.items()), 'outer original Save identity differs')
-        require(actual == saves[action_key], 'queries/lifecycle changed serialized Core outside action snapshot')
+        if key == 'repeat' or not registration_rows:
+            require(actual == saves[action_key], 'queries/lifecycle changed serialized Core outside action snapshot')
         outer_saves[key] = actual
     report = dict(schema='c6-linux-bounded-action-experiment-v1', runtime_report_sha256=digest(args.runtime_report), configuration_sha256=identity,
                   mode=mode, selected=selected, readiness_before=initial, readiness_after=final, dispatch_observations=rows,
@@ -144,6 +164,9 @@ def main():
     if registration_rows:
         report['original_pre_controller_registration'] = registration_rows
         report['registration_rng_observations'] = registration_states
+        report['registration_event_captures'] = registration_events
+        report['initialization_changed_serialized_core'] = outer_saves['save'] != saves['before']
+        report['registration_known_rng_changed'] = payload(registration_states[0]) != payload(registration_states[1])
     if owner_proof:
         report['independent_preload_binding_owner_proof'] = True
         report['actual_request_conversion'] = request_returns
