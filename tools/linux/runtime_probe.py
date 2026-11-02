@@ -2,6 +2,7 @@
 """Hash-gated native ELF context lifetime diagnostic; no initialized game."""
 import argparse
 import hashlib
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -29,18 +30,96 @@ def main():
                         help='construct genuine host services and enter original Context Initialize')
     parser.add_argument('--startup', action='store_true',
                         help='also enter genuine StartupGame after Context Initialize')
+    parser.add_argument('--rules-source-view', type=Path,
+                        help='gated original Linux source symlinks with native Schema directory case')
+    parser.add_argument('--rules-snapshot-dir', type=Path,
+                        help='private new directory for genuine Linux database exports')
+    parser.add_argument('--lua', action='store_true',
+                        help='create genuine host AppLuaScriptSystem singleton')
+    parser.add_argument('--saved-configuration', type=Path,
+                        help='restore original host configuration from exact Linux XP2 save')
+    parser.add_argument('--saved-configuration-output', type=Path,
+                        help='private original GameConfig writeback for restore comparison')
+    parser.add_argument('--localization', action='store_true',
+                        help='initialize genuine Linux base English localization fixture')
+    parser.add_argument('--stream-check', action='store_true',
+                        help='check genuine host memory stream boundaries')
+    parser.add_argument('--load-stream', type=Path,
+                        help='exact private XP2 benchmark GameCore payload; implies --startup')
+    parser.add_argument('--save-output', type=Path,
+                        help='private native Save output after original Load returns OK')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    args.initialize = args.initialize or args.startup
+    args.startup = args.startup or args.load_stream is not None
+    args.localization = args.localization or args.load_stream is not None
+    args.lua = args.lua or args.load_stream is not None
+    args.initialize = (args.initialize or args.startup or args.localization or args.lua
+                       or args.saved_configuration is not None or args.rules_snapshot_dir is not None
+                       or args.rules_source_view is not None)
+    args.stream_check = args.stream_check or args.load_stream is not None
+    if args.saved_configuration_output and not args.saved_configuration:
+        parser.error('--saved-configuration-output requires --saved-configuration')
+    if args.saved_configuration_output:
+        args.saved_configuration_output = args.saved_configuration_output.resolve()
+        if args.saved_configuration_output.exists():
+            parser.error('--saved-configuration-output must not already exist')
+        if (args.saved_configuration_output.is_relative_to(ROOT) and
+                not args.saved_configuration_output.is_relative_to(ROOT / 'target')):
+            parser.error('configuration writeback must stay private or in ignored target')
+        args.saved_configuration_output.parent.mkdir(parents=True, exist_ok=True)
+    if args.rules_snapshot_dir:
+        args.rules_snapshot_dir = args.rules_snapshot_dir.resolve()
+        if args.rules_snapshot_dir.exists():
+            parser.error('--rules-snapshot-dir must be new')
+        if args.rules_snapshot_dir.is_relative_to(ROOT) and not args.rules_snapshot_dir.is_relative_to(ROOT / 'target'):
+            parser.error('rules snapshots must stay private or in ignored target')
+        args.rules_snapshot_dir.parent.mkdir(parents=True, exist_ok=True)
+    if args.save_output and not args.load_stream:
+        parser.error('--save-output requires --load-stream')
+    if args.save_output:
+        args.save_output = args.save_output.resolve()
+        if args.save_output.exists():
+            parser.error('--save-output must not already exist')
+        if args.save_output.is_relative_to(ROOT) and not args.save_output.is_relative_to(ROOT / 'target'):
+            parser.error('proprietary Save output must stay outside the public repository or in ignored target')
+        args.save_output.parent.mkdir(parents=True, exist_ok=True)
     assets = args.assets.resolve()
+    if args.rules_snapshot_dir and args.rules_snapshot_dir.is_relative_to(assets):
+        parser.error('rules snapshots must not modify original assets')
+    if args.saved_configuration_output and args.saved_configuration_output.is_relative_to(assets):
+        parser.error('configuration output must not modify original assets')
+    if args.save_output and args.save_output.is_relative_to(assets):
+        parser.error('Save output must not modify the original asset tree')
+    if args.saved_configuration:
+        args.saved_configuration = args.saved_configuration.resolve()
+        if digest(args.saved_configuration) != 'a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':
+            raise SystemExit('saved configuration source must be exact Linux XP2 benchmark')
     work = ROOT / 'target/linux/runtime'
     work.mkdir(parents=True, exist_ok=True)
+    runtime_lock = (work / 'runtime.lock').open('w')
+    fcntl.flock(runtime_lock, fcntl.LOCK_EX)
+    # Keep this descriptor alive through child execution: concurrent runners
+    # must not truncate a preload that another native child has mapped.
     # Only genuine supplied libraries and genuine system libraries are providers.
     # No game assets or original executables are copied or modified.
     gate = json.loads((ROOT / 'tools/linux/runtime-gate.json').read_text())
     for name, expected in gate.items():
         if digest(assets / name) != expected:
             raise SystemExit(f'original asset SHA-256 mismatch: {name}')
+    stream_fixture = None
+    if args.load_stream:
+        args.load_stream = args.load_stream.resolve()
+        save_source = assets / 'Base/assets/benchmark/saves/xp2benchmark.civ6save'
+        if digest(save_source) != 'a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':
+            raise SystemExit('Linux XP2 benchmark source identity mismatch')
+        if (args.load_stream.stat().st_size != 76556938 or digest(args.load_stream) !=
+                'a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa'):
+            raise SystemExit('XP2 benchmark GameCore payload identity mismatch')
+        stream_fixture = {'source_sha256': digest(save_source),
+                          'payload_sha256': digest(args.load_stream),
+                          'payload_bytes': args.load_stream.stat().st_size,
+                          'saved_configuration_restore_requested': bool(args.saved_configuration),
+                          'source': str(save_source.relative_to(assets))}
     content_gate = None
     if args.initialize:
         content_gate = json.loads((ROOT / 'tools/linux/runtime-content-gate.json').read_text())
@@ -52,6 +131,34 @@ def main():
                           for p in (assets / directory).rglob('*') if p.is_file()}
         if actual_sources != set(content_gate['files']):
             raise SystemExit('content source inventory mismatch')
+    rules_source_profile = None
+    if args.rules_source_view:
+        args.rules_source_view = args.rules_source_view.resolve(strict=True)
+        manifest_path = args.rules_source_view / 'source-view.json'
+        rules_source_profile = json.loads(manifest_path.read_text())
+        mapping = [{'source': name,
+                    'staged': str(Path(*('Schema' if p == 'schema' else p for p in Path(name).parts))),
+                    'sha256': expected} for name, expected in sorted(content_gate['files'].items())]
+        view_identity = hashlib.sha256(json.dumps(mapping, sort_keys=True,
+                                      separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+        if (rules_source_profile.get('mapping') != mapping or
+                rules_source_profile.get('source_view_sha256') != view_identity or
+                rules_source_profile.get('original_source_gate_sha256') !=
+                digest(ROOT / 'tools/linux/runtime-content-gate.json')):
+            raise SystemExit('original Linux rules source-view identity mismatch')
+        for item in mapping:
+            view = args.rules_source_view / item['staged']
+            if not view.is_symlink() or view.resolve(strict=True) != (assets / item['source']).resolve():
+                raise SystemExit('original Linux source-view symlink mismatch')
+        declared = {args.rules_source_view / item['staged'] for item in mapping} | {manifest_path}
+        actual_view = {p for p in args.rules_source_view.rglob('*') if p.is_file() or p.is_symlink()}
+        if actual_view != declared:
+            raise SystemExit('original Linux source-view inventory mismatch')
+    localization_gate = None
+    localization_env = {}
+    if args.localization:
+        from localization_gate import prepare
+        localization_gate, localization_env = prepare(assets, ROOT / 'target/linux-localization')
     library_path = f'{args.sysroot.resolve()}/usr/lib/x86_64-linux-gnu:{assets}'
     env = os.environ.copy()
     # Do not inherit arbitrary loader hooks into the diagnostic child.
@@ -74,10 +181,19 @@ def main():
     compiler = subprocess.check_output(['cc', '--version'], text=True).splitlines()[0]
     extra_sources = [ROOT / 'native/linux/context_initialize.c',
                      ROOT / 'native/linux/host_services.c'] if args.initialize else []
+    if args.rules_snapshot_dir:
+        extra_sources += [ROOT / 'native/linux/rules_snapshot.c']
+    if args.saved_configuration:
+        extra_sources += [ROOT / 'native/linux/saved_configuration.c']
+    if args.localization:
+        extra_sources += [ROOT / 'native/linux/localization.c']
+    if args.stream_check:
+        extra_sources += [ROOT / 'native/linux/context_stream.c']
     subprocess.run(['cc', '-shared', '-fPIC', '-Wall', '-Wextra', '-Werror',
                     str(source), *map(str, extra_sources), '-ldl', '-o', str(probe)], check=True)
     configuration = {
         'schema': 'c6-linux-context-lifetime-v1',
+        'runner_source_sha256': digest(Path(__file__)),
         'original_assets': gate,
         'runtime_dependencies': dependencies,
         'probe_source_sha256': digest(source),
@@ -90,9 +206,35 @@ def main():
         'host_application_main_called': False,
         'host_application_shutdown_called': False,
     }
+    if rules_source_profile:
+        configuration['rules_source_view'] = rules_source_profile
+    if args.rules_snapshot_dir:
+        configuration['rules_snapshot_profile'] = {
+            'requested': True, 'header_sha256': digest(ROOT / 'native/linux/rules_snapshot.h')}
+    if args.saved_configuration:
+        configuration['saved_configuration_profile'] = {
+            'source_sha256': digest(args.saved_configuration),
+            'restoration_requested': True,
+            'native_writeback_requested': bool(args.saved_configuration_output),
+            'adapter_header_sha256': digest(ROOT / 'native/linux/saved_configuration.h')}
+    if args.localization:
+        configuration['localization_profile'] = localization_gate
+        configuration['localization_environment'] = localization_env
+        configuration['localization_adapter_sources'] = {str(p.relative_to(ROOT)): digest(p) for p in
+            [ROOT / 'native/linux/localization.c', ROOT / 'native/linux/localization.h',
+             ROOT / 'tools/linux/localization_gate.py']}
+    if args.stream_check:
+        configuration['native_stream_adapter'] = {
+            'source_sha256': digest(ROOT / 'native/linux/context_stream.c'),
+            'header_sha256': digest(ROOT / 'native/linux/context_stream.h'),
+            'boundary_fixture': 'native input offset0/end/reset; output empty/full/overflow-no-mutation'}
+    if stream_fixture:
+        configuration['load_stream_fixture'] = stream_fixture
+        configuration['native_save_requested'] = bool(args.save_output)
     if args.initialize:
         configuration['content_profile'] = content_gate
         configuration['startup_game_requested'] = args.startup
+        configuration['host_lua_requested'] = args.lua
         configuration['host_userdata'] = str(ROOT / 'target/linux-runtime/userdata')
         configuration['host_adapter_sources'] = {
             str(p.relative_to(ROOT)): digest(p) for p in
@@ -103,6 +245,26 @@ def main():
         raise SystemExit('configuration identity mismatch; original execution refused')
     env['LD_PRELOAD'] = str(probe)
     env['C6_GAMECORE'] = str(assets / 'libGameCore_XP2.so')
+    if args.rules_source_view:
+        env['C6_RULES_SOURCE_ROOT'] = str(args.rules_source_view)
+    if args.rules_snapshot_dir:
+        args.rules_snapshot_dir.mkdir()
+        env['C6_RULES_SNAPSHOT_DIR'] = str(args.rules_snapshot_dir)
+    if args.saved_configuration_output:
+        env['C6_SAVED_CONFIGURATION_OUTPUT'] = str(args.saved_configuration_output)
+    if args.saved_configuration:
+        env['C6_SAVED_CONFIGURATION'] = str(args.saved_configuration)
+    if args.lua:
+        env['C6_HOST_LUA'] = '1'
+    if args.localization:
+        env.update(localization_env)
+        env['C6_LOCALIZATION'] = '1'
+    if args.stream_check:
+        env['C6_STREAM_CHECK'] = '1'
+    if args.load_stream:
+        env['C6_LOAD_STREAM'] = str(args.load_stream)
+    if args.save_output:
+        env['C6_SAVE_OUTPUT'] = str(args.save_output)
     if args.initialize:
         env['C6_INITIALIZE'] = '1'
         if args.startup:
@@ -116,33 +278,82 @@ def main():
                              capture_output=True, text=True, timeout=30)
         code, out, err = run.returncode, run.stdout, run.stderr
     except subprocess.TimeoutExpired as exc:
-        code, out, err = 124, str(exc.stdout or ''), str(exc.stderr or '')
+        def timeout_text(value):
+            return value.decode('utf-8', errors='replace') if isinstance(value, bytes) else value or ''
+        code, out, err = 124, timeout_text(exc.stdout), timeout_text(exc.stderr)
     expected = ['C6_LINUX host_main_intercepted', 'C6_LINUX whole_gamecore_loaded']
+    load_match = re.search(r'^C6_LINUX_STREAM load_return result (-?\d+) offset (\d+) size (\d+)$', err, re.M)
+    fault_match = re.search(r'^C6_LINUX_STREAM fault signal (\d+) offset (\d+) instruction (\d+) gamecore_rva (\d+)$', err, re.M)
+    save_match = re.search(r'^C6_LINUX_STREAM save_return result (-?\d+) size (\d+)$', err, re.M)
+    if args.stream_check:
+        expected += ['C6_LINUX_STREAM boundary_check pass']
     for i in range(3):
         expected += [f'C6_LINUX create_enter {i}', f'C6_LINUX create_return {i} nonnull']
         if i == 0 and args.initialize:
-            expected += ['C6_LINUX host_services_enter', 'C6_LINUX host_services_return',
-                         'C6_LINUX set_engine_enter', 'C6_LINUX set_engine_return',
+            expected += ['C6_LINUX host_services_enter', 'C6_LINUX host_services_return']
+            if args.localization:
+                expected += ['C6_LINUX localization_enter', 'C6_LINUX localization_return 0']
+            expected += ['C6_LINUX set_engine_enter', 'C6_LINUX set_engine_return',
                          'C6_LINUX is_initialized_before 0', 'C6_LINUX initialize_enter',
                          'C6_LINUX initialize_return', 'C6_LINUX is_initialized_after 1']
+        if i == 0 and args.saved_configuration:
+            expected += ['C6_LINUX saved_configuration_enter', 'C6_LINUX saved_configuration_return 0']
+        if i == 0 and args.rules_snapshot_dir:
+            expected += ['C6_LINUX rules_snapshot_enter', 'C6_LINUX rules_snapshot_return 0']
         if i == 0 and args.startup:
             expected += ['C6_LINUX startup_enter', 'C6_LINUX startup_return']
+        if i == 0 and args.load_stream:
+            expected += ['C6_LINUX_STREAM load_enter size 76556938']
+            if load_match and int(load_match[1]) == 0 and 0 < int(load_match[2]) <= 76556938:
+                expected += [load_match[0]]
+            else:
+                expected += ['C6_LINUX_STREAM expected_native_Load_OK']
+        if i == 0 and args.save_output:
+            expected += ['C6_LINUX_STREAM save_enter capacity 134217728']
+            expected += [save_match[0] if save_match and int(save_match[1]) == 0
+                         else 'C6_LINUX_STREAM expected_native_Save_OK']
         expected += [f'C6_LINUX destroy_return {i}']
     if args.initialize:
         expected += ['C6_LINUX host_services_destroy_enter',
                      'C6_LINUX host_services_destroy_return 0']
     expected += ['C6_LINUX dlclose_return 0']
     observed = [line for line in err.splitlines()
-                if not (args.initialize and line.startswith('C6_LINUX_HOST '))]
+                if not ((args.initialize and line.startswith('C6_LINUX_HOST ')) or
+                        (args.localization and line.startswith('C6_LINUX_LOCALIZATION ')) or
+                        (args.saved_configuration and line.startswith('C6_LINUX_CONFIGURATION ')) or
+                        (args.rules_snapshot_dir and line.startswith('C6_LINUX_RULES ')))]
     passed = code == 0 and observed == expected
     result = {'configuration_sha256': identity, 'configuration': configuration,
               'exit_code': code, 'stdout': out, 'stderr': err,
               'whole_gamecore_loaded': 'C6_LINUX whole_gamecore_loaded' in err,
               'context_lifetime_cycles_passed': 3 if passed else 0,
               'diagnostic_passed': passed, 'initialized_game': False,
+              'rules_snapshots': ([{'filename': p.name, 'sha256': digest(p),
+                                    'bytes': p.stat().st_size}
+                                   for p in sorted(args.rules_snapshot_dir.glob('*.sqlite'))]
+                                  if args.rules_snapshot_dir else []),
+              'rules_snapshot_returned': 'C6_LINUX rules_snapshot_return 0' in err.splitlines(),
+              'saved_configuration_writeback_sha256': (digest(args.saved_configuration_output) if
+                    args.saved_configuration_output and args.saved_configuration_output.is_file() else None),
+              'saved_configuration_restored': 'C6_LINUX saved_configuration_return 0' in err.splitlines(),
+              'localization_initialized': 'C6_LINUX localization_return 0' in err.splitlines(),
               'startup_game_returned': 'C6_LINUX startup_return' in err.splitlines(),
               'context_initialize_returned': 'C6_LINUX initialize_return' in err.splitlines(),
               'context_initialized_flag': 'C6_LINUX is_initialized_after 1' in err.splitlines(),
+              'native_stream_boundary_check_passed': 'C6_LINUX_STREAM boundary_check pass' in err.splitlines(),
+              'native_load_attempted': 'C6_LINUX_STREAM load_enter size 76556938' in err.splitlines(),
+              'native_stream_fault_signal': int(fault_match[1]) if fault_match else None,
+              'native_stream_fault_offset': int(fault_match[2]) if fault_match else None,
+              'native_stream_fault_gamecore_rva': int(fault_match[4]) if fault_match else None,
+              'native_stream_fault_instruction': int(fault_match[3]) if fault_match else None,
+              'native_load_returned': load_match is not None,
+              'native_load_result': int(load_match[1]) if load_match else None,
+              'native_load_offset': int(load_match[2]) if load_match else None,
+              'native_save_returned': save_match is not None,
+              'native_save_result': int(save_match[1]) if save_match else None,
+              'native_save_bytes': int(save_match[2]) if save_match else None,
+              'native_save_output_sha256': (digest(args.save_output) if args.save_output and
+                                            args.save_output.is_file() else None),
               'save_loaded': False, 'action_or_turn_parity': False,
               'limits': ['host App main and shutdown intentionally bypassed',
                          'no initialized gameplay session, map, players or rules fixture',

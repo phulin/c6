@@ -11,6 +11,11 @@ static int run_probe(int argc,char **argv,char **envp) {
     void *game=dlopen(getenv("C6_GAMECORE"),RTLD_NOW|RTLD_LOCAL);
     if(!game){fprintf(stderr,"C6_LINUX dlopen_error %s\n",dlerror());return 41;}
     fprintf(stderr,"C6_LINUX whole_gamecore_loaded\n");
+    if(getenv("C6_STREAM_CHECK")){
+        int (*check)(void)=dlsym(RTLD_DEFAULT,"c6_linux_stream_check");
+        if(!check)return 51;
+        int result=check();if(result)return result;
+    }
     void *(*create)(void)=dlsym(game,"DllCreateGameContext");
     void (*destroy)(void*)=dlsym(game,"DllDestroyGameContext");
     if(!create||!destroy){fprintf(stderr,"C6_LINUX factory_missing\n");return 42;}

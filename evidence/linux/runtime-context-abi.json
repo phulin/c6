@@ -54,10 +54,21 @@
       "symbol": "_ZN8GameCore7Exports7Context4LoadERN13Serialization7IStreamE",
       "address": "0x2c7d240",
       "declaration_die": "0x09fd349b",
-      "return": "GameCore::Serializer::Result (representation not yet extracted)",
+      "return": "GameCore::Serializer::Result (4-byte signed int enum; OK=0)",
       "arguments": [
         "Context*",
         "Serialization::IStream&"
+      ]
+    },
+    {
+      "name": "Save",
+      "symbol": "_ZN8GameCore7Exports7Context4SaveERN13Serialization7OStreamE",
+      "address": "0x2c7d230",
+      "declaration_die": "0x09fd3478",
+      "return": "GameCore::Serializer::Result (4-byte signed int enum; OK=0)",
+      "arguments": [
+        "Context*",
+        "Serialization::OStream&"
       ]
     }
   ],
@@ -65,5 +76,14 @@
     "Signatures are evidence leads for subsequent native integration. Only context factory/destroy lifetime has executed.",
     "Exports::Context::Initialize is void although its internal Instance implementation returns bool.",
     "No initialized game, Load completion, actions or turns established."
-  ]
+  ],
+  "serializer_result": {
+    "definition_die": "0x09fd454e",
+    "byte_size": 4,
+    "underlying_type": "int",
+    "OK": 0,
+    "PENDING": 1,
+    "private_evidence": "../c6-ghidra/evidence/linux-runtime/serializer-result-dwarf.txt",
+    "private_evidence_sha256": "695337a7d1b2dd60a9d8555ecb4cef36ed6259015552941b0965c7e044a295f4"
+  }
 }

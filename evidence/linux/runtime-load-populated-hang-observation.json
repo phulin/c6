@@ -1,0 +1,20 @@
+{
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "xp2_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "observation": "separate bounded GDB interruption of original Load with populated base source view and original saved-configuration restoration",
+  "native_load_returned": false,
+  "stream_cursor_observed": 76556938,
+  "payload_bytes": 76556938,
+  "cursor_observation_basis": "GDB reads active original MemoryIStream+0x10; genuine native GetOffset at0x3c54124 is exactly that field read",
+  "private_trace": "evidence/linux-runtime/load-base-populated-fast-hang-gdb.txt",
+  "private_trace_sha256": "7724c79de27ab1762335bdc78c40033596c807b0f4b918ce6beb4dd59d82587c",
+  "debugger_script_sha256": "a8829a100e1436579148faedd0ba31716bd0ca50e0e33d5d66d4a8ea33ec7ac3",
+  "debugger_auto_solib_add": false,
+  "interrupt_after_seconds": 10,
+  "first_stopped_module": "libc++.so.1",
+  "limits": [
+    "Cursor at payload end may indicate consumed valid state or exhausted/misaligned input; neither interpretation is established.",
+    "Unwinding without original GameCore symbols/CFI is insufficient to identify further callers.",
+    "No Load return, successful Save, initialized gameplay state, action or turn equivalence demonstrated."
+  ]
+}
