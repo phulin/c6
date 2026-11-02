@@ -1,0 +1,28 @@
+{
+  "repository": "https://github.com/cru121/civ6-gamecore-reference.git",
+  "website": "https://cru121.github.io/civ6-gamecore-reference/",
+  "commit": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "retrieved_utc": "2026-11-02",
+  "licenses": {
+    "documentation_and_data": "CC-BY-4.0",
+    "tools": "MIT"
+  },
+  "sha256": {
+    "README.md": "1ad4eb984e7cae31eaf0a9ff65889c1b8ac3142fd0f01fd31f2f6478bef96277",
+    "LICENSE": "d557539df68e771cc1eedcc91d13f70fca930e508d11eedcafa4b15db49e3744",
+    "LICENSE-CODE": "6e30c0bed995ac31d3a4d7a27b3aa9a22de38bff4c92c9e2d00f75810874184e",
+    "data/README.md": "c412f111848afd11ccd849c3860f0bd7d97265410845beb551e0e9046466e3ea",
+    "data/old_to_new_offsets.tsv": "ccae92edbb42dd1d8ed03e6990a98e32d7a66b7b77a0c3a6e3ff53609d33002d",
+    "reference/data/builds.json": "97cb0b84f589d9f95baf0d2bdc9760007f8c326bca30ab54e8881ed55745c0d9",
+    "reference/data/layouts.json": "3c2fedab23ea2f2d16f7c0d62af477c12ff5073ada991aa10d945e8929b670cf",
+    "reference/data/globals.json": "13461eb9595371f3dd721807dc879b73593f5af6a13193dff1879b026fd1ab97",
+    "reference/data/operations.json": "45cbfebf8c3354d5ee9034574cce16f6bb4c7a5dd982d55be0a02b8fa02fcc5b",
+    "reference/data/op_params.json": "f17cb9619f8db67ce1d2ee098f1e0fe33c5b5f9a65929935639ef11a0b114a23",
+    "reference/data/function_index.json": "a003246c5802567d8a35d74e1bd45befbd1106d3967b1a506ea5aabf1560e838",
+    "reference/data/lua_methods.json": "a4eec072638ef47dd660fa6403ad33ce34b21c74e6f5dc0cf48aa39f1de4b905",
+    "reference/data/lua_signatures.json": "17fc6fb0a4aa2ed02dc12dfc9de8097b5e04ea4f81e8caba3a1e49639d7013e6",
+    "reference/data/vtables.json": "00443f5d73c6d6dab8e928e73e0551ade4965a988236323820f50688e72ce1e2",
+    "tools/frida-live/README.md": "e8757765135b63712764e50368d32192180a3600ea9120ad221816a8661d96f8",
+    "tools/frida-live/LESSONS.md": "0e0fb124a55c4b9a4f705261af2e91483ec13bb54114cece20e6ca6338115e73"
+  }
+}

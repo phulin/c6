@@ -1,0 +1,601 @@
+{
+  "source_commit": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "address_kind": "RVA in GameCore_XP2_FinalRelease.dll; do not apply to unverified binaries",
+  "functions": [
+    {
+      "name": "GameCore::Messages::GameTurnComplete::GameTurnComplete",
+      "symbol_rva": "0x35790",
+      "current_rva": "0x35ea0",
+      "mapping": "unique",
+      "symbol_size": 35
+    },
+    {
+      "name": "GameCore::Messages::GameTurnComplete::GameTurnComplete",
+      "symbol_rva": "0x357c0",
+      "current_rva": "0x35ed0",
+      "mapping": "unique",
+      "symbol_size": 39
+    },
+    {
+      "name": "GameCore::Messages::GameTurnComplete::CreateMessage",
+      "symbol_rva": "0x357f0",
+      "current_rva": "0x35f00",
+      "mapping": "unique",
+      "symbol_size": 99
+    },
+    {
+      "name": "GameCore::Messages::GameTurnComplete::Execute",
+      "symbol_rva": "0x35860",
+      "current_rva": "0x35f70",
+      "mapping": "vtable-derived",
+      "symbol_size": 94
+    },
+    {
+      "name": "GameCore::Messages::GameTurnComplete::DebugPrintBody",
+      "symbol_rva": "0x386b0",
+      "current_rva": "0x38e70",
+      "mapping": "unique",
+      "symbol_size": 28
+    },
+    {
+      "name": "GameCore::Messages::PlayerTurnComplete::SetFromBufferBody",
+      "symbol_rva": "0x39060",
+      "current_rva": "0x39df0",
+      "mapping": "unique-reordered",
+      "symbol_size": 185
+    },
+    {
+      "name": "GameCore::Messages::PlayerTurnComplete::PlayerTurnComplete",
+      "symbol_rva": "0x39120",
+      "current_rva": "0x39820",
+      "mapping": "unique",
+      "symbol_size": 39
+    },
+    {
+      "name": "GameCore::Messages::PlayerTurnComplete::PlayerTurnComplete",
+      "symbol_rva": "0x39150",
+      "current_rva": "0x39850",
+      "mapping": "unique",
+      "symbol_size": 46
+    },
+    {
+      "name": "GameCore::Messages::PlayerTurnComplete::CreateMessage",
+      "symbol_rva": "0x39180",
+      "current_rva": "0x39880",
+      "mapping": "unique",
+      "symbol_size": 106
+    },
+    {
+      "name": "GameCore::Messages::PlayerTurnComplete::DebugPrintBody",
+      "symbol_rva": "0x391f0",
+      "current_rva": "0x398f0",
+      "mapping": "resolved",
+      "symbol_size": 44
+    },
+    {
+      "name": "GameCore::Messages::PlayerTurnComplete::Execute",
+      "symbol_rva": "0x39220",
+      "current_rva": "0x39920",
+      "mapping": "vtable-derived",
+      "symbol_size": 1216
+    },
+    {
+      "name": "GameCore::Context::Instance::InitializeSyncRandomSeed",
+      "symbol_rva": "0x45200",
+      "current_rva": "0x46030",
+      "mapping": "unique",
+      "symbol_size": 584
+    },
+    {
+      "name": "GameCore::Game::Processor::ActivateNextPlayer",
+      "symbol_rva": "0x481c0",
+      "current_rva": "0x49060",
+      "mapping": "unique",
+      "symbol_size": 268
+    },
+    {
+      "name": "GameCore::Game::Processor::ActivatePlayersAtTurnStart",
+      "symbol_rva": "0x482d0",
+      "current_rva": "0x49170",
+      "mapping": "unique",
+      "symbol_size": 360
+    },
+    {
+      "name": "GameCore::Game::Processor::BeginPhase",
+      "symbol_rva": "0x48440",
+      "current_rva": "0x492e0",
+      "mapping": "unique",
+      "symbol_size": 170
+    },
+    {
+      "name": "GameCore::Game::Processor::BeginTurn",
+      "symbol_rva": "0x484f0",
+      "current_rva": "0x49390",
+      "mapping": "unique",
+      "symbol_size": 834
+    },
+    {
+      "name": "GameCore::Game::Processor::DoAutomation",
+      "symbol_rva": "0x48840",
+      "current_rva": "0x49810",
+      "mapping": "unique",
+      "symbol_size": 151
+    },
+    {
+      "name": "GameCore::Game::Processor::EndPhase",
+      "symbol_rva": "0x488e0",
+      "current_rva": "0x498b0",
+      "mapping": "unique",
+      "symbol_size": 49
+    },
+    {
+      "name": "GameCore::Game::Processor::EndTurn",
+      "symbol_rva": "0x48920",
+      "current_rva": "0x498f0",
+      "mapping": "unique",
+      "symbol_size": 663
+    },
+    {
+      "name": "GameCore::Game::Processor::GetPlayerIDForTurnOrder",
+      "symbol_rva": "0x48bc0",
+      "current_rva": "0x49b90",
+      "mapping": "callgraph-callee",
+      "symbol_size": 13
+    },
+    {
+      "name": "GameCore::Game::Processor::GetPlayersToDeactivate",
+      "symbol_rva": "0x48bd0",
+      "current_rva": "0x49ba0",
+      "mapping": "unique",
+      "symbol_size": 411
+    },
+    {
+      "name": "GameCore::Game::Processor::GetPlayersToProcess",
+      "symbol_rva": "0x48d70",
+      "current_rva": "0x49d40",
+      "mapping": "unique",
+      "symbol_size": 566
+    },
+    {
+      "name": "GameCore::Game::Processor::Initialize",
+      "symbol_rva": "0x48fb0",
+      "current_rva": "0x49f80",
+      "mapping": "callgraph-callee",
+      "symbol_size": 189
+    },
+    {
+      "name": "GameCore::Game::Processor::InitializePostLoad",
+      "symbol_rva": "0x49070",
+      "current_rva": "0x4a040",
+      "mapping": "unique",
+      "symbol_size": 2832
+    },
+    {
+      "name": "GameCore::Game::Processor::IsNewTurn",
+      "symbol_rva": "0x49b80",
+      "current_rva": "0x4ab50",
+      "mapping": "unique",
+      "symbol_size": 33
+    },
+    {
+      "name": "GameCore::Game::Processor::IsTurnProcessing",
+      "symbol_rva": "0x49bb0",
+      "current_rva": "0x4ab80",
+      "mapping": "callgraph-callee",
+      "symbol_size": 8
+    },
+    {
+      "name": "GameCore::Game::Processor::NeedsTurnAdvance",
+      "symbol_rva": "0x49bc0",
+      "current_rva": "0x4ab90",
+      "mapping": "callgraph-callee",
+      "symbol_size": 8
+    },
+    {
+      "name": "GameCore::Game::Processor::NeedsUpdate",
+      "symbol_rva": "0x49bd0",
+      "current_rva": "",
+      "mapping": "unmatchable",
+      "symbol_size": 8
+    },
+    {
+      "name": "GameCore::Game::Processor::PostInitialize",
+      "symbol_rva": "0x49be0",
+      "current_rva": "0x4abb0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 5
+    },
+    {
+      "name": "GameCore::Game::Processor::Read",
+      "symbol_rva": "0x49bf0",
+      "current_rva": "0x4abc0",
+      "mapping": "unique",
+      "symbol_size": 582
+    },
+    {
+      "name": "GameCore::Game::Processor::SetInitialAIProcessed",
+      "symbol_rva": "0x49e40",
+      "current_rva": "0x4af10",
+      "mapping": "unique",
+      "symbol_size": 156
+    },
+    {
+      "name": "GameCore::Game::Processor::SetNeedsUpdate",
+      "symbol_rva": "0x49ee0",
+      "current_rva": "0x4afb0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 7
+    },
+    {
+      "name": "GameCore::Game::Processor::Update",
+      "symbol_rva": "0x49ef0",
+      "current_rva": "0x4afc0",
+      "mapping": "unique",
+      "symbol_size": 2235
+    },
+    {
+      "name": "GameCore::Game::Processor::Write",
+      "symbol_rva": "0x4a7b0",
+      "current_rva": "0x4b880",
+      "mapping": "unique",
+      "symbol_size": 256
+    },
+    {
+      "name": "GameCore::Player::Processor::AnyNeedTurnActivate",
+      "symbol_rva": "0x5b4d0",
+      "current_rva": "0x5c180",
+      "mapping": "unique",
+      "symbol_size": 91
+    },
+    {
+      "name": "GameCore::Player::Processor::BeginPhase",
+      "symbol_rva": "0x5b530",
+      "current_rva": "0x5c1e0",
+      "mapping": "unique",
+      "symbol_size": 237
+    },
+    {
+      "name": "GameCore::Player::Processor::BeginTurn",
+      "symbol_rva": "0x5b620",
+      "current_rva": "0x5c2d0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 234
+    },
+    {
+      "name": "GameCore::Player::Processor::CountSeqHumanTurnsUntilPlayerTurn",
+      "symbol_rva": "0x5b710",
+      "current_rva": "0x5c3c0",
+      "mapping": "unique",
+      "symbol_size": 216
+    },
+    {
+      "name": "GameCore::Player::Processor::DoAutomation",
+      "symbol_rva": "0x5b7f0",
+      "current_rva": "0x5c4a0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 1392
+    },
+    {
+      "name": "GameCore::Player::Processor::DoTurn",
+      "symbol_rva": "0x5bd60",
+      "current_rva": "0x5ca10",
+      "mapping": "callgraph-callee",
+      "symbol_size": 97
+    },
+    {
+      "name": "GameCore::Player::Processor::DoTurnActivate",
+      "symbol_rva": "0x5bdd0",
+      "current_rva": "0x5ca80",
+      "mapping": "callgraph-callee",
+      "symbol_size": 123
+    },
+    {
+      "name": "GameCore::Player::Processor::DoTurnDeactivate",
+      "symbol_rva": "0x5be50",
+      "current_rva": "0x5cb00",
+      "mapping": "unique",
+      "symbol_size": 133
+    },
+    {
+      "name": "GameCore::Player::Processor::EndPhase",
+      "symbol_rva": "0x5bee0",
+      "current_rva": "0x5cb90",
+      "mapping": "unique",
+      "symbol_size": 41
+    },
+    {
+      "name": "GameCore::Player::Processor::EndTurn",
+      "symbol_rva": "0x5bf10",
+      "current_rva": "0x5cbc0",
+      "mapping": "unique",
+      "symbol_size": 257
+    },
+    {
+      "name": "GameCore::Player::Processor::GetActiveHumanPlayerCount",
+      "symbol_rva": "0x5c020",
+      "current_rva": "0x5ccd0",
+      "mapping": "unique",
+      "symbol_size": 134
+    },
+    {
+      "name": "GameCore::Player::Processor::GetActivePlayerCount",
+      "symbol_rva": "0x5c0b0",
+      "current_rva": "0x5cd60",
+      "mapping": "callgraph-callee",
+      "symbol_size": 7
+    },
+    {
+      "name": "GameCore::Player::Processor::GetPhaseTimeLimitForPlayer",
+      "symbol_rva": "0x5c0c0",
+      "current_rva": "0x5cd70",
+      "mapping": "unique",
+      "symbol_size": 116
+    },
+    {
+      "name": "GameCore::Player::Processor::GetPlayerProcessingAutomation",
+      "symbol_rva": "0x5c140",
+      "current_rva": "0x5cdf0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 7
+    },
+    {
+      "name": "GameCore::Player::Processor::GetUnitCounts",
+      "symbol_rva": "0x5c150",
+      "current_rva": "0x5ce00",
+      "mapping": "unique",
+      "symbol_size": 213
+    },
+    {
+      "name": "GameCore::Player::Processor::GetUnprocessedAutomationCount",
+      "symbol_rva": "0x5c230",
+      "current_rva": "0x5cee0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 128
+    },
+    {
+      "name": "GameCore::Player::Processor::GetUnprocessedAutomationIDList",
+      "symbol_rva": "0x5c2b0",
+      "current_rva": "0x5cf60",
+      "mapping": "unique",
+      "symbol_size": 190
+    },
+    {
+      "name": "GameCore::Player::Processor::HasProcessedAutomation",
+      "symbol_rva": "0x5c370",
+      "current_rva": "0x5d020",
+      "mapping": "resolved",
+      "symbol_size": 19
+    },
+    {
+      "name": "GameCore::Player::Processor::Initialize",
+      "symbol_rva": "0x5c390",
+      "current_rva": "0x5d040",
+      "mapping": "unique",
+      "symbol_size": 548
+    },
+    {
+      "name": "GameCore::Player::Processor::IsGameTurnComplete",
+      "symbol_rva": "0x5c5c0",
+      "current_rva": "0x5d270",
+      "mapping": "callgraph-callee",
+      "symbol_size": 19
+    },
+    {
+      "name": "GameCore::Player::Processor::IsHumanFirstActivated",
+      "symbol_rva": "0x5c5e0",
+      "current_rva": "",
+      "mapping": "unmatchable",
+      "symbol_size": 8
+    },
+    {
+      "name": "GameCore::Player::Processor::IsTurnComplete",
+      "symbol_rva": "0x5c5f0",
+      "current_rva": "0x5d2a0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 19
+    },
+    {
+      "name": "GameCore::Player::Processor::NeedsSequentialActivate",
+      "symbol_rva": "0x5c610",
+      "current_rva": "0x5d2c0",
+      "mapping": "unique",
+      "symbol_size": 65
+    },
+    {
+      "name": "GameCore::Player::Processor::NeedsSimultaneousActivate",
+      "symbol_rva": "0x5c660",
+      "current_rva": "0x5d310",
+      "mapping": "unique",
+      "symbol_size": 65
+    },
+    {
+      "name": "GameCore::Player::Processor::NeedsTurnActivate",
+      "symbol_rva": "0x5c6b0",
+      "current_rva": "0x5d360",
+      "mapping": "unique",
+      "symbol_size": 44
+    },
+    {
+      "name": "GameCore::Player::Processor::NeedsTurnActivateUpdate",
+      "symbol_rva": "0x5c6e0",
+      "current_rva": "0x5d390",
+      "mapping": "unique",
+      "symbol_size": 44
+    },
+    {
+      "name": "GameCore::Player::Processor::PlayerTypeChanged",
+      "symbol_rva": "0x5c710",
+      "current_rva": "0x5d3c0",
+      "mapping": "unique",
+      "symbol_size": 85
+    },
+    {
+      "name": "GameCore::Player::Processor::PreviouslyActiveThisTurn",
+      "symbol_rva": "0x5c770",
+      "current_rva": "0x5d420",
+      "mapping": "unique",
+      "symbol_size": 35
+    },
+    {
+      "name": "GameCore::Player::Processor::Read",
+      "symbol_rva": "0x5c7a0",
+      "current_rva": "0x5d450",
+      "mapping": "callgraph-callee",
+      "symbol_size": 1048
+    },
+    {
+      "name": "GameCore::Player::Processor::RequestTurnUnready",
+      "symbol_rva": "0x5cbc0",
+      "current_rva": "0x5d870",
+      "mapping": "unique",
+      "symbol_size": 79
+    },
+    {
+      "name": "GameCore::Player::Processor::RequestTurnUnready",
+      "symbol_rva": "0x5cc10",
+      "current_rva": "0x5d8c0",
+      "mapping": "unique",
+      "symbol_size": 613
+    },
+    {
+      "name": "GameCore::Player::Processor::SetGameTurnComplete",
+      "symbol_rva": "0x5ce80",
+      "current_rva": "0x5db30",
+      "mapping": "unique",
+      "symbol_size": 20
+    },
+    {
+      "name": "GameCore::Player::Processor::SetNeedsTurnActivate",
+      "symbol_rva": "0x5cea0",
+      "current_rva": "0x5db50",
+      "mapping": "unique",
+      "symbol_size": 18
+    },
+    {
+      "name": "GameCore::Player::Processor::SetPlayerRevived",
+      "symbol_rva": "0x5cec0",
+      "current_rva": "0x5db70",
+      "mapping": "callgraph-callee",
+      "symbol_size": 178
+    },
+    {
+      "name": "GameCore::Player::Processor::SetSimultaneousTurns",
+      "symbol_rva": "0x5cf80",
+      "current_rva": "0x5dc30",
+      "mapping": "unique",
+      "symbol_size": 522
+    },
+    {
+      "name": "GameCore::Player::Processor::SetTurnActive",
+      "symbol_rva": "0x5d190",
+      "current_rva": "0x5de40",
+      "mapping": "callgraph-callee",
+      "symbol_size": 1001
+    },
+    {
+      "name": "GameCore::Player::Processor::SetTurnComplete",
+      "symbol_rva": "0x5d580",
+      "current_rva": "0x5e230",
+      "mapping": "unique",
+      "symbol_size": 148
+    },
+    {
+      "name": "GameCore::Player::Processor::Update",
+      "symbol_rva": "0x5d620",
+      "current_rva": "0x5e2d0",
+      "mapping": "unique",
+      "symbol_size": 312
+    },
+    {
+      "name": "GameCore::Player::Processor::UpdateEndTurnBlockingState",
+      "symbol_rva": "0x5d760",
+      "current_rva": "0x5e410",
+      "mapping": "unique",
+      "symbol_size": 182
+    },
+    {
+      "name": "GameCore::Player::Processor::Write",
+      "symbol_rva": "0x5d820",
+      "current_rva": "0x5e4d0",
+      "mapping": "callgraph-callee",
+      "symbol_size": 537
+    },
+    {
+      "name": "GameCore::Player::Operations::Manager::Process",
+      "symbol_rva": "0x30c120",
+      "current_rva": "0x30d330",
+      "mapping": "callgraph-callee",
+      "symbol_size": 6842
+    },
+    {
+      "name": "GameCore::Random::Random",
+      "symbol_rva": "0x5f9390",
+      "current_rva": "0x5f9ee0",
+      "mapping": "unique",
+      "symbol_size": 31
+    },
+    {
+      "name": "GameCore::Random::~Random",
+      "symbol_rva": "0x5f93b0",
+      "current_rva": "0x5f9f00",
+      "mapping": "callgraph-callee",
+      "symbol_size": 11
+    },
+    {
+      "name": "GameCore::Random::`vector_deleting_destructor'",
+      "symbol_rva": "0x5f94c0",
+      "current_rva": "0x5fa010",
+      "mapping": "resolved",
+      "symbol_size": 43
+    },
+    {
+      "name": "GameCore::Random::Get",
+      "symbol_rva": "0x5f94f0",
+      "current_rva": "0x5fa040",
+      "mapping": "unique",
+      "symbol_size": 214
+    },
+    {
+      "name": "GameCore::Random::Initialize",
+      "symbol_rva": "0x5f95d0",
+      "current_rva": "0x5fa120",
+      "mapping": "unique",
+      "symbol_size": 82
+    },
+    {
+      "name": "GameCore::Random::Lock",
+      "symbol_rva": "0x5f9630",
+      "current_rva": "0x5fa180",
+      "mapping": "callgraph-callee",
+      "symbol_size": 4
+    },
+    {
+      "name": "GameCore::Random::Read",
+      "symbol_rva": "0x5f9640",
+      "current_rva": "0x5fa190",
+      "mapping": "unique",
+      "symbol_size": 470
+    },
+    {
+      "name": "GameCore::Random::Reset",
+      "symbol_rva": "0x5f9820",
+      "current_rva": "0x5fa370",
+      "mapping": "callgraph-callee",
+      "symbol_size": 7
+    },
+    {
+      "name": "GameCore::Random::Unlock",
+      "symbol_rva": "0x5f9830",
+      "current_rva": "0x5fa380",
+      "mapping": "unique",
+      "symbol_size": 14
+    },
+    {
+      "name": "GameCore::Random::Write",
+      "symbol_rva": "0x5f9840",
+      "current_rva": "0x5fa390",
+      "mapping": "unique",
+      "symbol_size": 156
+    }
+  ]
+}
