@@ -245,7 +245,69 @@ The v3 alias mapping identity is
 Native execution confirms `ASL_SetCurrentDir` returns 1, physical cwd remains
 under this registered prefix, and the original relative `Modding.sql` lookup
 normalizes to the supplied lowercase file with `PathExists` returning 1. The
-framework constructor then aborts inside the original heap allocator before
-returning. Native framework database creation, actual selected XP2 components
-and final rules export remain unproven. This path result does not promote the
-fixture to a full XP2 rules profile.
+initial constructor heap failure was resolved by genuine original TempHeap
+startup before App construction. The resulting native discovery reports 35
+installed mods, including one XP2 descriptor. Installed count does not establish
+enabled content. The separately named activated profile below records the
+subsequent native selection and exported rules.
+
+
+### Original XP2 requestNone callback profile
+
+[`rules-xp2-request-none-snapshot.json`](../evidence/linux/rules-xp2-request-none-snapshot.json)
+pins `linux-xp2-native-request-none-generated-v1`, native configuration
+`4c392cbe97c20bed07617686d03260417dc2abe65aace7ce15988279279b43a6`.
+The original framework executes `ConfigureContent` and `UpdateContent`, each
+returning flags 3/status 0. The active context's vtable resolves to the exact
+supplied Linux XP2 module after UpdateContent. No manually assembled action
+recipe or Windows rules database supplies these outputs.
+
+The actual configuration reader restores `RULESET_EXPANSION_2` from the supplied
+XP2 benchmark SHA `a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8`.
+Its enabled and required lists each contain only
+`4873eb62-8ccc-4574-b784-dda455e74e68`. After update, original framework getters
+return one enabled mod, one active mod and 46 active components. The manifest
+preserves the ordered handle collections and their resolved ModId, ComponentId
+and ComponentType values from the actual native Modding database, including
+before/after observations. Getter collection order is not asserted to be action
+execution order. The 35 installed descriptors remain a separate input inventory.
+
+Both runs export the live App-owned configuration and gameplay connections
+through genuine `Database::Connection::BackupTo` before teardown. Native checks
+compare every table's source/destination row count. Complete file bytes and the
+typed schema/rowid/cell fingerprints match independently:
+
+| Database | Tables | Rows | Typed semantic SHA-256 |
+| --- | ---: | ---: | --- |
+| Configuration | 78 | 1,865 | `fc975853cdee7c04bf9b1a3a3a1cfe7835599c0a1aecd92d7566dac97d36a266` |
+| Gameplay | 428 | 41,700 | `a0744270acd16fce0a545034bd8d8d41421aa2b2950efd1cbe9781c0fae6c9b0` |
+
+The private artifacts are under
+`../c6-ghidra/evidence/linux-rules/mod-activation-xp2-constructor-final-{1,2}/`.
+Their native reports are `evidence/linux/mod-activation-native-xp2-export-{1,2}.json`.
+Both fixtures also pass original framework unload, client/provider destruction,
+filesystem shutdown and TempHeap shutdown. The metadata inspector independently
+checks the fixed module/configuration and effective-selection identities,
+original activation/backup/cleanup markers, artifact hashes and sizes, every
+schema/table fingerprint and all row counts:
+
+```sh
+python3 tools/linux/rules_xp2_inspect.py \
+  ../c6-ghidra/evidence/linux-rules/mod-activation-xp2-constructor-final-1 \
+  --native-evidence evidence/linux/mod-activation-native-xp2-export-1.json \
+  --compare-directory ../c6-ghidra/evidence/linux-rules/mod-activation-xp2-constructor-final-2 \
+  --compare-native-evidence evidence/linux/mod-activation-native-xp2-export-2.json \
+  --output evidence/linux/rules-xp2-request-none-snapshot.json
+python3 -m unittest discover -s tools/linux -p 'test_rules_*.py'
+```
+
+The callback owner is a genuine constructor-initialized `LoadGameViewState` with
+request `None`; saved Request/Begin is not invoked. The native constructor clears
+the word at owner+0x4b0, leaving censorship at +0x4b1 false. Saved Begin would set
+that field from `GetRequestInProgress()==2`; this profile does not assume that
+difference is irrelevant. The real UI manager is constructed without graphics
+initialization. Original localization uses `en_US`; its separate text database
+is not part of these two backups. No initialized game, native DefinitionID
+mapping, RNG/map/player state, save deserialization, action or turn parity is
+established by this result. SQLite rowids remain distinct from native
+DefinitionIDs. Existing base profiles keep their original identities.
