@@ -23,6 +23,9 @@
     "reference/data/lua_signatures.json": "17fc6fb0a4aa2ed02dc12dfc9de8097b5e04ea4f81e8caba3a1e49639d7013e6",
     "reference/data/vtables.json": "00443f5d73c6d6dab8e928e73e0551ade4965a988236323820f50688e72ce1e2",
     "tools/frida-live/README.md": "e8757765135b63712764e50368d32192180a3600ea9120ad221816a8661d96f8",
-    "tools/frida-live/LESSONS.md": "0e0fb124a55c4b9a4f705261af2e91483ec13bb54114cece20e6ca6338115e73"
+    "tools/frida-live/LESSONS.md": "0e0fb124a55c4b9a4f705261af2e91483ec13bb54114cece20e6ca6338115e73",
+    "tools/frida-live/builds/15296837/README.md": "7cb6dd868b72671a830210e55e094da0cae179a1ed99a8cd1b0176d652fa81bd",
+    "tools/frida-live/builds/15296837/run.bat": "9f33c5e25020a9c03077c99e7da63a149a4080779f89afc8ce15b605e0abdad3",
+    "reference/data/native.json": "4cf9333b03edf1e526156fb38df8bf3b74fa8d5fddd1a6d7358b3d9997afad4b"
   }
 }
