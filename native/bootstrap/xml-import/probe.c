@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <bcrypt.h>
 #include "imports.h"
+#include "xml.h"
+#include "content.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,11 +64,20 @@ static int64_t scalar(void *connection, const char *sql) {
     ((Destructor)(*(uintptr_t **)query)[1])(query);
     return value;
 }
+static int run_recipe(const wchar_t *manifest, CreateConnection create) {
+    void *configuration = create(":memory:", 6, NULL);
+    void *gameplay = create(":memory:", 6, NULL);
+    if (!configuration || !gameplay) return 20;
+    int status = bootstrap_original_content_manifest(original, configuration, gameplay, manifest);
+    ((Destructor)(*(uintptr_t **)configuration)[1])(configuration);
+    ((Destructor)(*(uintptr_t **)gameplay)[1])(gameplay);
+    return status;
+}
 int wmain(int argc, wchar_t **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
     SetUnhandledExceptionFilter(crash);
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
-    if (argc != 3) { fputs("usage: xml_import_probe.exe ORIGINAL_EXE DEPENDENCY_DIRECTORY\n", stderr); return 2; }
+    if (argc != 3 && argc != 4) { fputs("usage: xml_import_probe.exe ORIGINAL_EXE DEPENDENCY_DIRECTORY [RECIPE_TSV]\n", stderr); return 2; }
     wchar_t database_path[32768];
     if (swprintf(database_path, 32768, L"%ls\\DatabaseDLL_FinalRelease.dll", argv[2]) < 0) return 2;
     if (!hash_matches(argv[1], "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63") ||
@@ -111,6 +122,11 @@ int wmain(int argc, wchar_t **argv) {
     ((Destructor)((unsigned char *)original + 0x799930))(object + 8);
     phase = "original_database_connection_destroy";
     ((Destructor)(*(uintptr_t **)connection)[1])(connection);
+    if (argc == 4) {
+        phase = "original_base_recipe";
+        int status = run_recipe(argv[3], create);
+        if (status) return status;
+    }
     puts("{\"status\":\"ok\",\"original_xml_import\":true,\"initialized_game\":false}");
     return 0;
 }

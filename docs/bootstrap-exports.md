@@ -116,3 +116,56 @@ come from the original image.
 This establishes a real original-code XML-to-original-database boundary for the
 tiny fixture. It does not establish all importer branches, the complete loading
 recipe, enabled DLC/mod resolution, initialized rules or gameplay parity.
+
+The reusable `xml.[ch]` bindings also construct the original `Make_Hash` scalar
+object using the original aligned allocator at `0x982060`, constructor
+`0xbd050`, and DatabaseDLL registration slot `+0xf0`. The original database
+owns its deletion callback. Both native databases report
+`Make_Hash('KIND_CITY') = 1943503253`.
+
+`content.[ch]` exposes `bootstrap_original_content_manifest` for two genuine,
+empty, caller-owned configuration/gameplay connections. Each TSV record is
+`database<TAB>format<TAB>phase<TAB>SHA256<TAB>Windows path`, optionally followed
+by `<TAB>action_id` for mod content. It validates every source hash before
+changing either database, then rechecks each source before import. The Base
+recipe preserves original source order, UTF-8 BOM handling, SQL/XML dispatch,
+foreign-key pragmas and phase transactions. Original connection methods
+`+0x78` begin an exclusive transaction, `+0x80` commit and `+0x88` roll back.
+
+The complete 111-source Base recipe passes through the original importer and
+original database, producing 78 configuration tables and 318 gameplay tables.
+These counts are observations, not a comparison against a separately
+initialized game. Reproduce with:
+
+```sh
+python3 tools/analysis/host_xml_import.py --base-recipe --output evidence/bootstrap/native-original-base-recipe.json
+```
+
+The negative fixture `native-original-source-gate-rejection.json` replaces the
+last manifest hash with zeroes. Native preflight rejects it with status 27
+before any recipe scalar registration, pragma, transaction or source import.
+The tiny independent fixture still runs in its own connection first.
+
+Explicit `--recipe` inputs remain diagnostics with their recorded ordering
+limits. The XP2 candidate preserves three failing boundaries: inheriting the
+Base content foreign-key setting caused a Types uniqueness error at source
+134; restoring foreign keys but committing each action failed at source 204;
+using actual UpdateDatabase savepoint/release methods imports all 213 sources
+but final commit fails with 1734 foreign-key violations. These are failed
+candidates, not populated XP2 rules success. The actual mod manager enables
+foreign keys and deferred checking; handler `0x260150` uses connection
+`+0x90` savepoint, `+0x98` release and `+0xa0` rollback-to per action. Candidate
+outer transaction scope, full native mod eligibility/order and embedded
+GameCore database data still need verification. Native constraint diagnostics
+retain example tables/rows before rollback; no rows are skipped or repaired.
+
+The context-aware API now requires a genuine original GameCore context before
+gameplay mod sources. It checks context slot `+0x50` against target GameCore RVA
+`0x590600` and calls the original embedded database initializer between Base
+gameplay data and mod data, with the recovered foreign-key and transaction
+boundary. Its return flag alone is insufficient: the underlying initializer
+returns true even if statements fail. The adapter records Types counts and
+`total_changes()` before/after and requires both to increase, then requires the
+original commit to succeed. The standalone probe has no GameCore context and
+explicitly rejects that required boundary with status 33. The runtime owns
+context-aware integration evidence.

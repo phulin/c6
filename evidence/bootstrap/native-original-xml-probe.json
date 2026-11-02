@@ -1,5 +1,6 @@
 {
   "configuration": {
+    "base_recipe": null,
     "compiler_version": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
     "enabled_dlc_mods": null,
     "exe_startup": false,
@@ -35,19 +36,24 @@
       "LaunchPad/vcruntime140.dll": "d89c7b863fc1ac3a179d45d5fe1b9fd35fb6fbd45171ca68d0d68ab1c1ad04fb"
     },
     "rules_database": null,
-    "runner_sha256": "da79c4c1fdeb9baf32a369536f6e204f4c043c663e058fc51ca0bfad7e0639b9",
+    "runner_sha256": "fd79aab2d7cae018fb2c96b37432a563b0027e1508e5adf684d11027d1fc1226",
     "sources": {
-      "native/bootstrap/xml-import/Makefile": "539f57c4000f77f47c1552a0d257a59cc9cfc4fc75c3a0704859899425288005",
+      "native/bootstrap/xml-import/Makefile": "45740de5fc87afbeb594524e4d535d8c1a775b56d1a0571875340492639d4612",
+      "native/bootstrap/xml-import/content.c": "9a70ccef72a05f4eef684f21c9a1680c5001e8c84da58f0f3c0022ce0d563d83",
+      "native/bootstrap/xml-import/content.h": "7317deb1858d8b8fb9ce2586eff182d71c991881f569939a9a07fde2cf39775e",
       "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
       "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e",
-      "native/bootstrap/xml-import/probe.c": "625981470806adcaac05c388f842002623fd3bdd1d2c137a57a1befb8269df38"
+      "native/bootstrap/xml-import/probe.c": "08d4dda75774f6d09060bd2973ee0c1ee701379e288cabb5c1ae96712b3a96be",
+      "native/bootstrap/xml-import/xml.c": "5a68c26ca573155f272ef464a434a2789c128ae0ea006730ad2c0bfbf7f9efae",
+      "native/bootstrap/xml-import/xml.h": "faee6f771a0d4a38742fe9741a6e2f88432fad70db8a22062147241fadc4c50b"
     },
     "wine_version": "wine-9.0 (Ubuntu 9.0~repack-4build3)"
   },
-  "configuration_sha256": "d035cea87578dfecf41fb7ceb829a402b53aef6676926953fb74ba6b3ad5e0fa",
+  "configuration_sha256": "7edb5c47e7ae8fe4ad3070fe483bb327bbaf0450e698ddad6f366047d43fa051",
   "gameplay_parity": false,
-  "host_sha256": "ea6dd0f90c7ef3cada6399bb225d43cbd6c24f7e563a99f1e98c77905de18703",
+  "host_sha256": "3c256f1f2ae381d3f4fbc7c2222d634e3400d62c45bd8d88390281ac1ca5ebf1",
   "initialized_game": false,
+  "native_source_recipe_passed": null,
   "native_xml_probe_passed": true,
   "observations": [
     {

@@ -1,0 +1,1941 @@
+{
+  "configuration": {
+    "base_recipe": {
+      "format": "c6.original-base-content-recipe.v1",
+      "host_executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+      "initialized_game": false,
+      "limits": [
+        "Base database import only; no DLC/mod actions are enabled.",
+        "Path sort and directory flags recovered statically; native import comparison still required.",
+        "Use original XML importer and registered Make_Hash; no replacement XML interpreter is supplied.",
+        "SQL schema-only diagnostic is a different, narrower seven-source sequence."
+      ],
+      "native_import_executed": false,
+      "native_importer": {
+        "bom_skip_rva": "0xbd53f",
+        "construct_rva": "0xbd160",
+        "dispatch_rva": "0xbd1f0",
+        "sql_rva": "0xbd2c0",
+        "xml_parse_rva": "0x79d3a0",
+        "xml_rva": "0xbd320"
+      },
+      "ruleset": "RULESET_STANDARD",
+      "selected_mod_ids": [],
+      "source_sequence_sha256": "792b04208b39519fcb0bf38dc9854a4f1e10ecf64bacb13126ce6c9708440c4b",
+      "steps": [
+        {
+          "bytes": 11712,
+          "database": "configuration",
+          "format": "sql",
+          "path": "Base/Assets/Configuration/Data/Schema/AdditionalTables.sql",
+          "phase": "schema",
+          "sha256": "a7235f071257ca511408ed084615b0472b315d6aee2c8a44d077c41509031273",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8905,
+          "database": "configuration",
+          "format": "sql",
+          "path": "Base/Assets/Configuration/Data/Schema/HallofFame.sql",
+          "phase": "schema",
+          "sha256": "dbf856b482f44857dbc0afd80dcd2d7bee0d92bb2d7e2de3893e4b1f9409ef95",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1295,
+          "database": "configuration",
+          "format": "sql",
+          "path": "Base/Assets/Configuration/Data/Schema/InputConfiguration.sql",
+          "phase": "schema",
+          "sha256": "1807c081b2feb16791c420b3da6f49fc0773712b546217eabfb57c4efd7c9109",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 10638,
+          "database": "configuration",
+          "format": "sql",
+          "path": "Base/Assets/Configuration/Data/Schema/SetupParameters.sql",
+          "phase": "schema",
+          "sha256": "644476f6e8db7e0a116907add79b1d5d382c6244f98a0960ce12d8a78f0df13d",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 4045,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/BalanceMaps.xml",
+          "phase": "content",
+          "sha256": "813c62ff52d2c605581ec3406117decd3c5269b33b82e1f4dd29e8e8beeeeb9f",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 5133,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/CityStates.xml",
+          "phase": "content",
+          "sha256": "a936882326b00a728e51629b4be23f0274a78a002b301a0496320ae547eead1b",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1311,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/Difficulties.xml",
+          "phase": "content",
+          "sha256": "7bf86e62913458a25f3a0ca8ad5a0eddf8368fac9fbe5a7a62342f0d5bd5f4e5",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 32060,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/EarthMaps.xml",
+          "phase": "content",
+          "sha256": "06df1614ce8f3db84a5d46dcc38cedc840039b2fabf10d5d951440f788ace3c7",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1080,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/Eras.xml",
+          "phase": "content",
+          "sha256": "aa2fbe69ab4b7bc3aba29b9df0485ff2b354b5d00cb42801b6ba58ef73ff6253",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 207,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/FrontiersPack.xml",
+          "phase": "content",
+          "sha256": "7b26ba488ee5f444e47e523c76f2054a86466c84ffdded9566497d5a3f81acb6",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 776,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/GameSpeeds.xml",
+          "phase": "content",
+          "sha256": "ee3ff4846cebdbe2116ed75ac09b702a3c304cf3dfbd02ff48f2c727ebdca8b4",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 41378,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/HallofFame.xml",
+          "phase": "content",
+          "sha256": "3f397f6427f5b200ba77332cb02d65ade99925946755f994d536a144c6a8ef2e",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 44556,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/InputConfiguration.xml",
+          "phase": "content",
+          "sha256": "d2cba1b0855da49fd428f3fb7275acce58843037c1fe8d2c7a0feed359591931",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 212,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/LeadersPack.xml",
+          "phase": "content",
+          "sha256": "0aa064089e848bd3f7ab4fb2f53fd8f36a295d5c9fa6303f90838ccd331c4cc8",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 16906,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/MapSettings.xml",
+          "phase": "content",
+          "sha256": "84b0367724df4fe539cbafd8cc53961da18cacee9433f7212daadfece05b0840",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1565,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/MapSizes.xml",
+          "phase": "content",
+          "sha256": "237b5c3757e45d318d312b405ff77d1aea1a4acefe637e0627b3218d4d30fe16",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1998,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/NaturalWonders.xml",
+          "phase": "content",
+          "sha256": "aa435b5162d4b69c1cbebaaa082293d4bf2ded050411d05d7a3cc12cdd9b815f",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 21922,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/Players.xml",
+          "phase": "content",
+          "sha256": "9ea0ea95309b29d448933f16f3538cb58031c395c2f93bb3d417c675b12e854a",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 508,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/Rulesets.xml",
+          "phase": "content",
+          "sha256": "51a506f1f03d719c9542bbb176b9a2849d8ca414ebe3ffd7d8ec07d37b815deb",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 35331,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/SetupParameters.xml",
+          "phase": "content",
+          "sha256": "139b4199b3acb5d56bf07090b77b0450a37e356cd2d4921f26afa66092863e15",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1646,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/StandardMaps.xml",
+          "phase": "content",
+          "sha256": "578559e2a7f2805248455d0d3898a7d2b58798ae6829cb45d62e7f8a2e7c8637",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 374,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/TurnPhases.xml",
+          "phase": "content",
+          "sha256": "4618b288ba950b3ef05143a2595bfde393ce68ba5d1ad7dbf1d04a7d293691cf",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 480,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/TurnTimers.xml",
+          "phase": "content",
+          "sha256": "ce1e161b8d36284f36d485523a9a1dbe39a681cbccbeae6af27a95b51e1f079e",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 654,
+          "database": "configuration",
+          "format": "xml",
+          "path": "Base/Assets/Configuration/Data/Victories.xml",
+          "phase": "content",
+          "sha256": "80b368cb6f83c37f128dce6ae984b614987bb155f03ce563e11caa9a26b84a9b",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 296595,
+          "database": "gameplay",
+          "format": "sql",
+          "path": "Base/Assets/Gameplay/Data/Schema/01_GameplaySchema.sql",
+          "phase": "schema",
+          "sha256": "d56906e7f67c09193b431843432bc21d62e86c32f3f46c14eae9dedbe69084e0",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 444,
+          "database": "gameplay",
+          "format": "sql",
+          "path": "Base/Assets/Gameplay/Data/Schema/02_AddTriggers.sql",
+          "phase": "schema",
+          "sha256": "3226e930e6dc087d163c5d6f6968652a0a1180c64d58daa04a3b1c50d4f1787c",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 697,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Schema/Color_Tables.xml",
+          "phase": "schema",
+          "sha256": "e65937e8653957aca90779c836c88666e64477bd6456f8a5501a07a62ae4c7be",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1894,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Schema/Diplomacy_Tables.xml",
+          "phase": "schema",
+          "sha256": "3f100e91ba6e6a69ab04717f2faaf4c5d917a16f9bd87fbfa637aac8684deffa",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 426,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Schema/Leader_Tables.xml",
+          "phase": "schema",
+          "sha256": "595fa2ac1e9178dca0fc94d3e7ec20be60c156a5f2250027eddaf333f3cb3d2b",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 169126,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Agendas.xml",
+          "phase": "content",
+          "sha256": "dc4e6e76589263a0800059ac0a0e34eecb35af513eb0c9b24237a4ce6335595e",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 12736,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Barbarians.xml",
+          "phase": "content",
+          "sha256": "45aad4e3ef11da4e0bbe6afc1d84af9b8e5ca0a8379576bd147762106ad10f28",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 194511,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/BehaviorTrees.xml",
+          "phase": "content",
+          "sha256": "94677cbcb81f20ddb6733c54b145afcb70425ae0d4ef6ffa7d910fe8d53a0736",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 103798,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Beliefs.xml",
+          "phase": "content",
+          "sha256": "847c0c30577cd6543901cf203d6f9f655cc44387e3e1aced1ee885604a93918d",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 120078,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Buildings.xml",
+          "phase": "content",
+          "sha256": "7a540dbe244253788a48e5496bed2fe6afd819fe1ed21a14a9e097241ceb4a13",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1793,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Calendar.xml",
+          "phase": "content",
+          "sha256": "97419c22cd7d6eba69b180f99d0450ed6284bc6f7ffed183bf2a3d6458d492f6",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 52843,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Civics.xml",
+          "phase": "content",
+          "sha256": "bd8efe2224bd565a7ab0e27408e52b237332c7f7a39837c8b72c1de2f1950510",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 9620,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/CivilizationInfo.xml",
+          "phase": "content",
+          "sha256": "f7d4797ab1680f0f1fc7682fbbff5a3430dbc4e0fb747f2f4a0159678fce05b0",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 172009,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Civilizations.xml",
+          "phase": "content",
+          "sha256": "07e48fb0cdf46ac33828de8dcc3b339913b824e9882b55a81512452787a28e79",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 48020,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Civilopedia.xml",
+          "phase": "content",
+          "sha256": "81090c44c0d265826005730df123da45dfabc709272274bb67f45bc41f1cdfb4",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1609,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DealItems.xml",
+          "phase": "content",
+          "sha256": "6b45f7a7c6695c157afa67608d058337141bf882fcf535bb57f1cfa755a0f2bb",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 1331,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Difficulties.xml",
+          "phase": "content",
+          "sha256": "968a4486ec37ee267cf0941afd02711ff6f1dd0dfe14a139af4d040564c0526c",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 957,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements.xml",
+          "phase": "content",
+          "sha256": "e6d052cc5b54fa23bd5b1b759288e07fd3957d02180b1d575d3b95eb7d715b79",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 4182,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_DeclareFriendship.xml",
+          "phase": "content",
+          "sha256": "e74d7dc6132e9f5d19c12f88e8aff4bd4486018f4bcb5062d0cc9e280acb12f5",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 15582,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_DeclareWar.xml",
+          "phase": "content",
+          "sha256": "f34a10081a676afceea76e0b5e57d9353d5946d80035c6401547d537b51ca441",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1535,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_Defeat.xml",
+          "phase": "content",
+          "sha256": "c3966de43bbf5c8e131011dfef628f6f117c306143e6a2c124bd32b97f5011c1",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 8314,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_Delegation.xml",
+          "phase": "content",
+          "sha256": "1189d0653b868fa325933d7a82fc646d2e901e08d8054823afe0c8abe135b073",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1834,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_Denounce.xml",
+          "phase": "content",
+          "sha256": "032d8065863290a47d6ccc5a10c7b0ef3a29f14bc9cd3f16957498f29c6f7b53",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8100,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_Embassy.xml",
+          "phase": "content",
+          "sha256": "37e5ca79b95eae4ebffa6a10a84e696650c6d2883e1cecf3641fee4e93a7a10d",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 7613,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_FirstMeet.xml",
+          "phase": "content",
+          "sha256": "2cdde0ae4605dbdc01d51d5e688e650b363fe61ab31ea7cbbc05b8401fefe039",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8399,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_Greeting.xml",
+          "phase": "content",
+          "sha256": "a1aa671886c0457a263dc40a7607a9bda332c3069ce0b7b3a9b013fff509f392",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 4664,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_KudosAndWarnings.xml",
+          "phase": "content",
+          "sha256": "23c73ee38ee94ee728b2bb66f20bb84a35bf16602b7a91d2f031e9188e142ecd",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 3919,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_MakeAlliance.xml",
+          "phase": "content",
+          "sha256": "28e31ea199d598c5a050d4d5eb5870b05f805fe9b95f867b914285a32faef905",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 14721,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_MakeDeal.xml",
+          "phase": "content",
+          "sha256": "fed8ee2722b530c861a7a2f8196a9a2ab0a571948174ee02210af877a2384b70",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 7052,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_MakeDemand.xml",
+          "phase": "content",
+          "sha256": "1beb9873d746811da3fdd2e7c8ca57f31faa617968d113d6809dc87faf070f0e",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 3831,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_MakePeace.xml",
+          "phase": "content",
+          "sha256": "d8b4acb0fb7e9eb7a079edf60d72d8f373dd65aab373d190a0f5cc7bffc3dbe9",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 1071,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_NoTarget.xml",
+          "phase": "content",
+          "sha256": "b65bc33665425d9921049b53ecde501c5502aabb0977ff191549e310a085886d",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 3921,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_OpenBorders.xml",
+          "phase": "content",
+          "sha256": "8ff3742f8a7a918211f675522ac1c0a82f4384364c44dba0f46a35a9de8f0ed3",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 48010,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomacyStatements_Warning.xml",
+          "phase": "content",
+          "sha256": "8b611dbe2a347f1131bbfc8d25be76f409b5785cd3cf9af04a30baae8eac9c5f",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 34113,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/DiplomaticActions.xml",
+          "phase": "content",
+          "sha256": "9ccc741119bae005544e3de2d200cb0de1b7ecb82cf43acf6b04b7682f2498b5",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 39420,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Districts.xml",
+          "phase": "content",
+          "sha256": "e74d21ebd8f9479de646518dc79448fbf3d436367889a2faa23d5248c52c31d3",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 21035,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Eras.xml",
+          "phase": "content",
+          "sha256": "8a59e97fef36cd01520adc4a658eed983b3f23fbe51ed2f3a55e4e0ac241b052",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 22086,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Features.xml",
+          "phase": "content",
+          "sha256": "5aa83d0bc1771cb3c343aed518bdf8d9123557a07c5758892bbc2008a0a9e2af",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 22138,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GameCapabilities.xml",
+          "phase": "content",
+          "sha256": "6d99e2c2a314ffc274e37c8fd1fc68d7a1b1759647f57982cbce2343d5678aa3",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 751,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GameEffects.xml",
+          "phase": "content",
+          "sha256": "c0fb5af6676272a9590f8fb1a494962c77290b1bb907065a028fad6b544b96e9",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 15643,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GameSpeeds.xml",
+          "phase": "content",
+          "sha256": "d353bba0323c6c32adda96c71df88d36114a9c5c7b600286f2d69a6d22275fab",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 22674,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GlobalParameters.xml",
+          "phase": "content",
+          "sha256": "c3077c9149d5b4765088a27121390f63f47c74ac60133a0f297ad4caad686afc",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 14335,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GoodyHuts.xml",
+          "phase": "content",
+          "sha256": "ca9e6d527660353d6348685ef505550cdedeb9653b3f258c875f54cf67f85b38",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 91778,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Gossip.xml",
+          "phase": "content",
+          "sha256": "f41ab1acac75771f52a78cf871190c39e52e22fef769cbcf43a76faf5da87151",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 36549,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Governments.xml",
+          "phase": "content",
+          "sha256": "cb25373eff23753c3b80b188043c8a3903ccef44fb61e13ee3da80d6c29cec6c",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 13778,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople.xml",
+          "phase": "content",
+          "sha256": "76c1e674365d27af68e0b509cf7f52ecea2492760a34bbf9d59e6a74abf30948",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 48724,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Admirals.xml",
+          "phase": "content",
+          "sha256": "0b1042160952e629538a0740341ecdcb527da10dbde6d29b121561ef39559449",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 6729,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Artists.xml",
+          "phase": "content",
+          "sha256": "d9fe50674859c0f50f6878d66ce8501adffeebc07f4f9e19a7d2c9e8ab71059c",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 26928,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Engineers.xml",
+          "phase": "content",
+          "sha256": "ff6f9734695283acd48bb479c39d1880b554fed132ee1a56483c4064ac19a366",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 49943,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Generals.xml",
+          "phase": "content",
+          "sha256": "da40ab363791155237893f1ab61c1d789803c49ba94544857a57745e251c2a97",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 31891,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Merchants.xml",
+          "phase": "content",
+          "sha256": "8f4a65adafc4f88e0fcf8dfa5cfb979322d88bebaf8483c4948bf3e6b0df5361",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 5580,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Musicians.xml",
+          "phase": "content",
+          "sha256": "54cb54987995804c5c8abda1c252f7252c3b8b1ff049c0f8b6c73c21ee5faff5",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 5386,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Prophets.xml",
+          "phase": "content",
+          "sha256": "88ea7738b6cb46b3f4574e15fd0df72757c44681ac16d8c0ca78dbf736fdfe3b",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 41507,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Scientists.xml",
+          "phase": "content",
+          "sha256": "d46cc58d0fe9c81e2b14d48ff58c0a89d4ab02c493a2ffff761abc64704351b5",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8362,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatPeople_Writers.xml",
+          "phase": "content",
+          "sha256": "8122a9ffebf6e6e215b00e82de608ebed83cfdd3e5b7d5b924261aba956e29e8",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 75860,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/GreatWorks.xml",
+          "phase": "content",
+          "sha256": "385a51794482ab1be83b661c14e1c23d3882d8112ef1bb1facd7e20dd70a10c8",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 2505,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Happinesses.xml",
+          "phase": "content",
+          "sha256": "00e19fe4e21dfbadd76d0e363032764c1a58c843734d30273b5da0c081924250",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 50845,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Improvements.xml",
+          "phase": "content",
+          "sha256": "23312be5bfaf582e68c00df7b6974f035bccd6cccf06d3beecafb15013378800",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 3417,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/LeaderAnimations.xml",
+          "phase": "content",
+          "sha256": "87dede92e69a4e1ed8be88ee43debb1f81ec196117da2e0bf8427528fa9f97a6",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 318251,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Leaders.xml",
+          "phase": "content",
+          "sha256": "3f9fa3e9f6e7c9b8784a9a915e8fe5a3fa1ada646392bb0d79ce6006c0ef5d7e",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 9347,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Maps.xml",
+          "phase": "content",
+          "sha256": "ed8a652bbf658ad796463bd04243be67631fa074a9abc740c04a131f42ed6409",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 146100,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Modifiers.xml",
+          "phase": "content",
+          "sha256": "1e2a73dbb4afb58a8987143e71dd8505fdab7353ee1be717a56f5da00fc04f90",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 32703,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Notifications.xml",
+          "phase": "content",
+          "sha256": "f256b497b564e5d680bca82da2fdf8ce01c31ad13e9a03ab5786fe73c0efc950",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 17221,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Operations.xml",
+          "phase": "content",
+          "sha256": "abfd30039fbccd400a31e4d2f06df0c711733f586d5ee6d6e3f089034311f2f6",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 200882,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Policies.xml",
+          "phase": "content",
+          "sha256": "0cbbbdbf3c8e66567c4248a7905c2ac4b2a05d72d2181b2fd47143131c64062f",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 15773,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Projects.xml",
+          "phase": "content",
+          "sha256": "1cd569ce276873fc4d6a72a4856bb66482fc249a4afe0f0b3112b6c25135ea20",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 3495,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Quests.xml",
+          "phase": "content",
+          "sha256": "114651c775179fa26a7d843685e9d147478595a2e8373384141633d128c103e9",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8699,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Religions.xml",
+          "phase": "content",
+          "sha256": "8878a42175c1f16aed06cecebce42dd956efda6a293361e8d8e4ab0577c5c2bc",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8112,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Requirements.xml",
+          "phase": "content",
+          "sha256": "6cfc984813824f76a64dceafe4e69dea7362a26a13f3ed42de35d374cee29324",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 31984,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Resources.xml",
+          "phase": "content",
+          "sha256": "fd85a577a338b4679db346e4b49ce512f41161f9c9c69daf4f6512cdbf269f49",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1955,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Routes.xml",
+          "phase": "content",
+          "sha256": "9995f7b9a0474396776f06b26d617ad45b1ebc046d62fb4c287effb6a2719948",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 4224,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Scoring.xml",
+          "phase": "content",
+          "sha256": "8c6a8eaf8f53a701cf4d1bdbd8b6f853f229eace03e4e1dc83bde19292a08d7a",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8386,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Tactics.xml",
+          "phase": "content",
+          "sha256": "e630abc7ca5acde825483b6c43de21581b86b5a56aeebcaaa0b702fb836bf7dc",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 65251,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Technologies.xml",
+          "phase": "content",
+          "sha256": "9d13a4fa663cac08aca9c0500be863d7b0058757ec7c6cf5c1eb94d0f26c3756",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 8114,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Terrains.xml",
+          "phase": "content",
+          "sha256": "77fe03f55ef5116b4bacffb7a47b58d8eafab2147dc584b5d2415c080311391f",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 4344,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/TurnPhases.xml",
+          "phase": "content",
+          "sha256": "066e6f1a1f39203c4a3fc773a12ce3cc7f34fdcc32cae089e342a6b497849634",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 815,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/TurnTimers.xml",
+          "phase": "content",
+          "sha256": "a4763a00fe18b145345379bb00fff536cf056bd1d1317f586d9281f60779f393",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 118679,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/UnitAbilities.xml",
+          "phase": "content",
+          "sha256": "f15293a8940dd81605eb353b73ec966b5df7baf3525e022546ec4fc1125e47fa",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 6334,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/UnitCommands.xml",
+          "phase": "content",
+          "sha256": "86bef51e6370211443672bb3971cbdc85ad5db4739eaae9072e49965197c3461",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 22942,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/UnitNames.xml",
+          "phase": "content",
+          "sha256": "4846fae3308cadc745c30222dc3dcb8353909f865c5dead7e8e9186367d3110a",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 18269,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/UnitOperations.xml",
+          "phase": "content",
+          "sha256": "00c3c77e74f571471299564c4f6c1a277c9f09d650420dbb01314c27ba8b698f",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 163902,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/UnitPromotions.xml",
+          "phase": "content",
+          "sha256": "f4f842dae32489b4cf97b5fb85f467c1948cf0bd9ae9a0c5f1d68afa98927430",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 94306,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Units.xml",
+          "phase": "content",
+          "sha256": "f7d9d5e7658c6024e131722d957ad13b9665b34a7ffdb374b095a502bc3a6ebe",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 43895,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Victories.xml",
+          "phase": "content",
+          "sha256": "73740ae26b7dbda220eb4fb207988b6cb462348102959c19a7a82c2588dd1fde",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 950,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/WMDs.xml",
+          "phase": "content",
+          "sha256": "ab0748e1ba14a65e18c2911726ae5acfb7b0d5592b0b0ed53b93c47ce3e9f03e",
+          "utf8_bom_skip": false
+        },
+        {
+          "bytes": 1355,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Wars.xml",
+          "phase": "content",
+          "sha256": "de5a367a2fef490617e65da5d6fa72dbe872b2b1b29e5866b5eb1335b739e367",
+          "utf8_bom_skip": true
+        },
+        {
+          "bytes": 8602,
+          "database": "gameplay",
+          "format": "xml",
+          "path": "Base/Assets/Gameplay/Data/Yields.xml",
+          "phase": "content",
+          "sha256": "2524c51f61716624d9f5d521f7ac23c742a805bcffb775e11b547e538c4cf757",
+          "utf8_bom_skip": false
+        }
+      ]
+    },
+    "compiler_version": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
+    "enabled_dlc_mods": null,
+    "exe_startup": false,
+    "fixture": "C6Probe CHECK(Value=7), one native XML Row Value=7",
+    "format": "c6-original-xml-probe-configuration.v1",
+    "iat_provider_classes": [
+      "CRT",
+      "KERNEL32",
+      "DatabaseDLL"
+    ],
+    "initialized_game": false,
+    "overrides": "msvcp140,vcruntime140,ucrtbase=n",
+    "providers": {
+      "Base/Binaries/Win64Steam/CivilizationVI.exe": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+      "Base/Binaries/Win64Steam/DatabaseDLL_FinalRelease.dll": "e6577e873f946224df65c02f6c4bc3b385607e2a82d957b0fd613e01cbe78b0c",
+      "LaunchPad/api-ms-win-crt-conio-l1-1-0.dll": "60bd8f0bd64062292eff0f5f1a91347b8d61fbe3f2e9b140112501770eae0b80",
+      "LaunchPad/api-ms-win-crt-convert-l1-1-0.dll": "d09b49f2a30dcc13b7f0de8242fa57d0bdeb22f3b7e6c224be73bc4dd98d3c26",
+      "LaunchPad/api-ms-win-crt-environment-l1-1-0.dll": "37f731e7b1538467288bf1d0e586405b20808d4bad05e47225673661bc8b4a9f",
+      "LaunchPad/api-ms-win-crt-filesystem-l1-1-0.dll": "48c71b2d0af6807f387d97ab22a3ba77b85bdf457f8a4f03ce79d13fbb891328",
+      "LaunchPad/api-ms-win-crt-heap-l1-1-0.dll": "9b9a43b9a32a3d3c3de72b2acca41e051b1e604b45be84985b6a62fb03355e6d",
+      "LaunchPad/api-ms-win-crt-locale-l1-1-0.dll": "1c556505a926fd5f713004e88d7f8d68177d7d40a406f6ed04af7bacd2264979",
+      "LaunchPad/api-ms-win-crt-math-l1-1-0.dll": "3e8828ab7327f26da0687f683944ffc551440a3de1004cc512f04a2f498520f6",
+      "LaunchPad/api-ms-win-crt-multibyte-l1-1-0.dll": "35b247534f9a19755a281e6dc3490f8197dd515f518c6550208b862c43297345",
+      "LaunchPad/api-ms-win-crt-private-l1-1-0.dll": "3105da41b02009383826ed70857de1a8961daeb942e9068d0357cddd939fa154",
+      "LaunchPad/api-ms-win-crt-process-l1-1-0.dll": "75f7b0937a1433ea7e7fa2904b02fd46296b31da822575c0a6bc2038805971ef",
+      "LaunchPad/api-ms-win-crt-runtime-l1-1-0.dll": "d16db68b4020287bb6ce701b71312a9d887874c0d26b9ebd82c3c9b965029562",
+      "LaunchPad/api-ms-win-crt-stdio-l1-1-0.dll": "7c416d52a7e8d6113ff85bf833cae3e11c45d1c2215b061a5bbd47432b2244a5",
+      "LaunchPad/api-ms-win-crt-string-l1-1-0.dll": "fd8a73640a158857dd76173c5d97ceeba190e3c3eabf39446936b24032b54116",
+      "LaunchPad/api-ms-win-crt-time-l1-1-0.dll": "b401edaac4b41da73356de9b3358dc21f8b998a63413c868510dc734b1e4022f",
+      "LaunchPad/api-ms-win-crt-utility-l1-1-0.dll": "97e4c91103c186517fa248772b9204acf08fde05557a19efe28d11fb0932b1f7",
+      "LaunchPad/msvcp140.dll": "517cd3aac2177a357cca6032f07ad7360ee8ca212a02dd6e1301bf6cfade2094",
+      "LaunchPad/ucrtbase.dll": "2ab2a74bcb5bfd8248d232eb3bc56698fb5173b9ff7fc0daf87d8120d0f448d7",
+      "LaunchPad/vcruntime140.dll": "d89c7b863fc1ac3a179d45d5fe1b9fd35fb6fbd45171ca68d0d68ab1c1ad04fb"
+    },
+    "rules_database": "original_source_recipe_diagnostic",
+    "runner_sha256": "fd79aab2d7cae018fb2c96b37432a563b0027e1508e5adf684d11027d1fc1226",
+    "sources": {
+      "native/bootstrap/xml-import/Makefile": "45740de5fc87afbeb594524e4d535d8c1a775b56d1a0571875340492639d4612",
+      "native/bootstrap/xml-import/content.c": "9a70ccef72a05f4eef684f21c9a1680c5001e8c84da58f0f3c0022ce0d563d83",
+      "native/bootstrap/xml-import/content.h": "7317deb1858d8b8fb9ce2586eff182d71c991881f569939a9a07fde2cf39775e",
+      "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
+      "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e",
+      "native/bootstrap/xml-import/probe.c": "08d4dda75774f6d09060bd2973ee0c1ee701379e288cabb5c1ae96712b3a96be",
+      "native/bootstrap/xml-import/xml.c": "5a68c26ca573155f272ef464a434a2789c128ae0ea006730ad2c0bfbf7f9efae",
+      "native/bootstrap/xml-import/xml.h": "faee6f771a0d4a38742fe9741a6e2f88432fad70db8a22062147241fadc4c50b"
+    },
+    "wine_version": "wine-9.0 (Ubuntu 9.0~repack-4build3)"
+  },
+  "configuration_sha256": "d70809416ac40982d7885d007dbe1ab9fd63ed61f37f7ba14fb278ddc17d72e5",
+  "gameplay_parity": false,
+  "host_sha256": "3c256f1f2ae381d3f4fbc7c2222d634e3400d62c45bd8d88390281ac1ca5ebf1",
+  "initialized_game": false,
+  "native_source_recipe_passed": true,
+  "native_xml_probe_passed": true,
+  "observations": [
+    {
+      "count": 483,
+      "original_exe_startup": false,
+      "phase": "genuine_imports_bound"
+    },
+    {
+      "phase": "original_xml_importer_constructed"
+    },
+    {
+      "native_status": 0,
+      "phase": "original_xml_parse"
+    },
+    {
+      "getter_rva": "0x48a0",
+      "phase": "original_query_scalar",
+      "value": 1
+    },
+    {
+      "getter_rva": "0x48a0",
+      "phase": "original_query_scalar",
+      "value": 7
+    },
+    {
+      "gameplay_parity": false,
+      "phase": "original_xml_rows_verified",
+      "row_count": 1,
+      "value": 7
+    },
+    {
+      "getter_rva": "0x48a0",
+      "phase": "original_query_scalar",
+      "value": 1943503253
+    },
+    {
+      "database": 0,
+      "kind_city": 1943503253,
+      "phase": "original_make_hash_verified"
+    },
+    {
+      "getter_rva": "0x48a0",
+      "phase": "original_query_scalar",
+      "value": 1943503253
+    },
+    {
+      "database": 1,
+      "kind_city": 1943503253,
+      "phase": "original_make_hash_verified"
+    },
+    {
+      "database": "configuration",
+      "format": "sql",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 0
+    },
+    {
+      "database": "configuration",
+      "format": "sql",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 1
+    },
+    {
+      "database": "configuration",
+      "format": "sql",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 2
+    },
+    {
+      "database": "configuration",
+      "format": "sql",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 3
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 4
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 5
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 6
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 7
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 8
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 9
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 10
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 11
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 12
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 13
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 14
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 15
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 16
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 17
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 18
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 19
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 20
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 21
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 22
+    },
+    {
+      "database": "configuration",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 23
+    },
+    {
+      "database": "gameplay",
+      "format": "sql",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 24
+    },
+    {
+      "database": "gameplay",
+      "format": "sql",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 25
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 26
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 27
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 28
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 29
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 30
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 31
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 32
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 33
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 34
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 35
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 36
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 37
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 38
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 39
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 40
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 41
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 42
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 43
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 44
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 45
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 46
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 47
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 48
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 49
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 50
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 51
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 52
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 53
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 54
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 55
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 56
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 57
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 58
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 59
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 60
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 61
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 62
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 63
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 64
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 65
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 66
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 67
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 68
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 69
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 70
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 71
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 72
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 73
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 74
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 75
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 76
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 77
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 78
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 79
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 80
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 81
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 82
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 83
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 84
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 85
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 86
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 87
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 88
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 89
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 90
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 91
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 92
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 93
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 94
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 95
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 96
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 97
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 98
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 99
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 100
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 101
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 102
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 103
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 104
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 105
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 106
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 107
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 108
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 109
+    },
+    {
+      "database": "gameplay",
+      "format": "xml",
+      "native_status": 0,
+      "phase": "original_source_import",
+      "source_index": 110
+    },
+    {
+      "getter_rva": "0x48a0",
+      "phase": "original_query_scalar",
+      "value": 78
+    },
+    {
+      "database": "configuration",
+      "phase": "original_recipe_database",
+      "tables": 78
+    },
+    {
+      "getter_rva": "0x48a0",
+      "phase": "original_query_scalar",
+      "value": 318
+    },
+    {
+      "database": "gameplay",
+      "phase": "original_recipe_database",
+      "tables": 318
+    },
+    {
+      "initialized_game": false,
+      "mod_selection_engine_executed": false,
+      "phase": "original_recipe_complete",
+      "source_count": 111
+    },
+    {
+      "initialized_game": false,
+      "original_xml_import": true,
+      "status": "ok"
+    }
+  ],
+  "returncode": 0,
+  "stderr": ""
+}
