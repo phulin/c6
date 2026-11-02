@@ -138,12 +138,16 @@ void *c6_linux_create_host_engine_utility(void) {
     game_construct(game_database);
     *(void **)((char *)application+0x6320)=config;
     *(void **)((char *)application+0x6328)=game_database;
+    /* Optional fixture view changes only path spelling; runtime_probe gates
+     * every source byte and mapping against original assets before execution. */
+    const char *source_root=getenv("C6_RULES_SOURCE_ROOT");
+    if(!source_root) source_root=assets;
     char source[1024];
     wchar_t config_source[1024],game_source[1024];
-    int count=snprintf(source,sizeof source,"%s/Base/assets/configuration/data/",assets);
+    int count=snprintf(source,sizeof source,"%s/Base/assets/configuration/data/",source_root);
     if(count<0||(size_t)count>=sizeof source||
        mbstowcs(config_source,source,1024)==(size_t)-1) return NULL;
-    count=snprintf(source,sizeof source,"%s/Base/assets/gameplay/data/",assets);
+    count=snprintf(source,sizeof source,"%s/Base/assets/gameplay/data/",source_root);
     if(count<0||(size_t)count>=sizeof source||
        mbstowcs(game_source,source,1024)==(size_t)-1) return NULL;
     fprintf(stderr,"C6_LINUX_HOST configuration_database_enter\n");
