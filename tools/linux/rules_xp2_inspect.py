@@ -5,6 +5,7 @@ This profile is not saved Begin, an initialized gameplay session, or turn parity
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
@@ -61,7 +62,11 @@ def validate_report(report):
     if any(line not in lines for line in required):
         raise ValueError('required original Linux XP2 activation/backup markers missing')
     updated = [line for line in lines if line.startswith('C6_LINUX_MOD updated_active_context_module ')]
-    if len(updated) != 1 or not updated[0].endswith('/libGameCore_XP2.so'):
+    launch_host = configuration['original_filesystem_profile']['launch_host']
+    # Normalize the declared alias lexically: following its SO symlink would
+    # replace the native dladdr path with the original source module path.
+    expected_module = os.path.normpath(str(Path(launch_host).parent / 'libGameCore_XP2.so'))
+    if updated != ['C6_LINUX_MOD updated_active_context_module ' + expected_module]:
         raise ValueError('actual native XP2 context module transition is required')
     events = [json.loads(line[len('C6_LINUX_RULES '):]) for line in lines
               if line.startswith('C6_LINUX_RULES {')]
@@ -88,10 +93,33 @@ def validate_report(report):
         raise ValueError('native Linux XP2 effective selection observations missing')
     if SELECTION_SHA256 is None or identity(selections)!=SELECTION_SHA256:
         raise ValueError('unsupported Linux XP2 effective selection identity')
-    if configuration.get('cleanup_requested') and (
-            report.get('framework_cleanup_proven') is not True or
-            'C6_LINUX_MOD cleanup_return 0' not in lines):
-        raise ValueError('requested original Linux XP2 cleanup is unproven')
+    if configuration.get('cleanup_requested'):
+        cleanup = [
+            'C6_LINUX_MOD rules_snapshot_return 0',
+            'C6_LINUX_MOD framework_unload_before_configuration_destroy_return result 1 context_null 1',
+            'C6_LINUX_MOD framework_destroy_return singleton 0 context 0',
+            'C6_LINUX_MOD controller_shutdown_return active 0',
+            'C6_LINUX_MOD ui_construct_only_destroy_return unpublished 1',
+            'C6_LINUX_MOD art_manager_shutdown_return',
+            'C6_LINUX_MOD content_paths_shutdown_return result 1 manager_null 1',
+            'C6_LINUX_MOD client_shutdown_only_return unpublished 1',
+            'C6_LINUX_LOCALIZATION shutdown_return dictionary_null 1',
+            'C6_LINUX_HOST archive_factory_destroy_return',
+            'C6_LINUX_HOST utility_destroy_return',
+            'C6_LINUX_HOST lua_system_destroy_return unpublished',
+            'C6_LINUX_HOST app_destroy_return unpublished',
+            'C6_LINUX_FILESYSTEM shutdown_return',
+            'C6_LINUX_TEMPHEAP shutdown_return native_fields_clear 1',
+            'C6_LINUX_MOD cleanup_return 0',
+            'C6_LINUX_MOD boundary_return result 0 borrowed_context 0',
+        ]
+        if (report.get('framework_cleanup_proven') is not True or
+                report.get('client_cleanup_proven') is not True or
+                any(lines.count(marker) != 1 for marker in cleanup)):
+            raise ValueError('requested original Linux XP2 cleanup is unproven')
+        positions = [lines.index(marker) for marker in cleanup]
+        if positions != sorted(positions):
+            raise ValueError('original Linux XP2 cleanup ownership order differs')
     if report.get('initialized_game') is not False or report.get('gameplay_parity') is not False:
         raise ValueError('unsupported Linux XP2 session/parity profile')
     return configuration, backups

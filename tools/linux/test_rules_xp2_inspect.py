@@ -39,6 +39,52 @@ class LinuxXp2RulesGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'actual native XP2 context module'):
             validate_report(report)
 
+    def test_same_filename_from_another_module_path_is_refused(self):
+        report = self.report()
+        lines = report['stderr'].splitlines()
+        lines = [('C6_LINUX_MOD updated_active_context_module /wrong/path/libGameCore_XP2.so'
+                  if line.startswith('C6_LINUX_MOD updated_active_context_module ') else line)
+                 for line in lines]
+        report['stderr'] = '\n'.join(lines)
+        with self.assertRaisesRegex(ValueError, 'actual native XP2 context module'):
+            validate_report(report)
+
+    def test_cleanup_requires_all_owners_and_order(self):
+        report = self.report()
+        report['client_cleanup_proven'] = False
+        with self.assertRaisesRegex(ValueError, 'cleanup is unproven'):
+            validate_report(report)
+        prefixes = ('C6_LINUX_MOD framework_unload_before_configuration_destroy_return ',
+                    'C6_LINUX_MOD framework_destroy_return ',
+                    'C6_LINUX_MOD controller_shutdown_return ',
+                    'C6_LINUX_MOD ui_construct_only_destroy_return ',
+                    'C6_LINUX_MOD art_manager_shutdown_return',
+                    'C6_LINUX_MOD content_paths_shutdown_return ',
+                    'C6_LINUX_MOD client_shutdown_only_return ',
+                    'C6_LINUX_LOCALIZATION shutdown_return ',
+                    'C6_LINUX_HOST archive_factory_destroy_return',
+                    'C6_LINUX_HOST utility_destroy_return',
+                    'C6_LINUX_HOST lua_system_destroy_return ',
+                    'C6_LINUX_HOST app_destroy_return ',
+                    'C6_LINUX_FILESYSTEM shutdown_return',
+                    'C6_LINUX_TEMPHEAP shutdown_return ',
+                    'C6_LINUX_MOD boundary_return ')
+        for prefix in prefixes:
+            report = self.report()
+            report['stderr'] = '\n'.join(line for line in report['stderr'].splitlines()
+                                         if not line.startswith(prefix))
+            with self.subTest(missing=prefix):
+                with self.assertRaisesRegex(ValueError, 'cleanup is unproven'):
+                    validate_report(report)
+        report = self.report()
+        lines = report['stderr'].splitlines()
+        first = lines.index('C6_LINUX_MOD framework_destroy_return singleton 0 context 0')
+        second = lines.index('C6_LINUX_HOST app_destroy_return unpublished')
+        lines[first], lines[second] = lines[second], lines[first]
+        report['stderr'] = '\n'.join(lines)
+        with self.assertRaisesRegex(ValueError, 'cleanup ownership order differs'):
+            validate_report(report)
+
     def test_missing_native_backup_or_cleanup_is_refused(self):
         for prefix, message in (
                 ('C6_LINUX_RULES ', 'two successful original Linux BackupTo'),
