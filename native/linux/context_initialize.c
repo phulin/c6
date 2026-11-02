@@ -21,6 +21,11 @@ int c6_linux_prepare_host(void) {
         return 46;
     }
     fprintf(stderr, "C6_LINUX host_services_return\n");
+    if(getenv("C6_HOST_NETWORK")){
+        int (*guards)(void)=dlsym(RTLD_DEFAULT,"c6_linux_network_check_guards");
+        if(!guards)return 149;
+        int result=guards();if(result)return result;
+    }
     if(getenv("C6_LOCALIZATION")){
         int (*localize)(void)=dlsym(RTLD_DEFAULT,"c6_linux_initialize_localization");
         if(!localize)return 54;
@@ -90,6 +95,16 @@ int c6_linux_context_initialize(void *game, void *context) {
         fprintf(stderr, "C6_LINUX startup_enter\n");
         startup(context);
         fprintf(stderr, "C6_LINUX startup_return\n");
+    }
+    if(getenv("C6_NETWORK_HOST")){
+        int (*host)(void)=dlsym(RTLD_DEFAULT,"c6_linux_network_host_offline");
+        int (*guards)(void)=dlsym(RTLD_DEFAULT,"c6_linux_network_check_guards");
+        if(!host||!guards)return 151;
+        fprintf(stderr,"C6_LINUX network_host_enter\n");
+        int result=host();
+        fprintf(stderr,"C6_LINUX network_host_return %d\n",result);
+        if(result)return result;
+        result=guards();if(result)return result;
     }
     const char *load_path=getenv("C6_LOAD_STREAM");
     if(load_path){

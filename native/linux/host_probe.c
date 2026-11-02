@@ -5,8 +5,32 @@
 #include <unistd.h>
 
 typedef int (*main_fn)(int,char**,char**);
+static int actual_main_argc;
+static char **actual_main_argv;
+/* Original main arguments remain owned by the CRT for the process lifetime. */
+int c6_linux_main_arguments(int *argc,char ***argv){
+    if(!argc||!argv||!actual_main_argv)return 1;
+    *argc=actual_main_argc;*argv=actual_main_argv;
+    return 0;
+}
+static int finish_host(void){
+    int (*finish)(void)=dlsym(RTLD_DEFAULT,"c6_linux_context_finish");
+    if(!finish)return 49;
+    fprintf(stderr,"C6_LINUX host_services_destroy_enter\n");
+    int result=finish();
+    fprintf(stderr,"C6_LINUX host_services_destroy_return %d\n",result);
+    return result;
+}
+static int finish_filesystem(void){
+    if(!getenv("C6_FILESYSTEM"))return 0;
+    int (*shutdown)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_shutdown");
+    if(!shutdown)return 76;
+    int result=shutdown();
+    fprintf(stderr,"C6_LINUX filesystem_shutdown_return %d\n",result);
+    return result;
+}
 static int run_probe(int argc,char **argv,char **envp) {
-    (void)argc; (void)argv; (void)envp;
+    actual_main_argc=argc;actual_main_argv=argv;(void)envp;
     fprintf(stderr,"C6_LINUX host_main_intercepted\n");
     if(getenv("C6_FILESYSTEM")){
         int (*initialize)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_initialize");
@@ -20,6 +44,13 @@ static int run_probe(int argc,char **argv,char **envp) {
         int (*prepare)(void)=dlsym(RTLD_DEFAULT,"c6_linux_prepare_host");
         if(!prepare)return 78;
         int result=prepare();if(result)return result;
+    }
+    if(getenv("C6_FRAMEWORK")){
+        int (*framework)(void)=dlsym(RTLD_DEFAULT,"c6_linux_framework_run");
+        if(!framework)return 145;
+        int result=framework();if(result)return result;
+        result=finish_host();if(result)return result;
+        return finish_filesystem();
     }
     void *game=dlopen(getenv("C6_GAMECORE"),RTLD_NOW|RTLD_LOCAL);
     if(!game){fprintf(stderr,"C6_LINUX dlopen_error %s\n",dlerror());return 41;}
@@ -43,26 +74,23 @@ static int run_probe(int argc,char **argv,char **envp) {
             int result=initialize(game,context);
             if(result)return result;
         }
+        if(i==0 && getenv("C6_NETWORK_HOST")){
+            int (*leave)(void)=dlsym(RTLD_DEFAULT,"c6_linux_network_leave");
+            if(!leave)return 152;
+            fprintf(stderr,"C6_LINUX network_leave_enter\n");
+            int result=leave();
+            fprintf(stderr,"C6_LINUX network_leave_return %d\n",result);
+            if(result)return result;
+        }
         destroy(context);
         fprintf(stderr,"C6_LINUX destroy_return %d\n",i);
     }
     if(getenv("C6_INITIALIZE")){
-        int (*finish)(void)=dlsym(RTLD_DEFAULT,"c6_linux_context_finish");
-        if(!finish)return 49;
-        fprintf(stderr,"C6_LINUX host_services_destroy_enter\n");
-        int result=finish();
-        fprintf(stderr,"C6_LINUX host_services_destroy_return %d\n",result);
-        if(result)return 50;
+        int result=finish_host();if(result)return result;
     }
     int closed=dlclose(game);
     fprintf(stderr,"C6_LINUX dlclose_return %d\n",closed);
-    if(getenv("C6_FILESYSTEM")){
-        int (*shutdown)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_shutdown");
-        if(!shutdown)return 76;
-        int result=shutdown();
-        fprintf(stderr,"C6_LINUX filesystem_shutdown_return %d\n",result);
-        if(result)return result;
-    }
+    int filesystem_result=finish_filesystem();if(filesystem_result)return filesystem_result;
     fflush(stderr);
     /* Host application shutdown was never initialized. Avoid its atexit path. */
     return closed?44:0;
