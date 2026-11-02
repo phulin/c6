@@ -1,51 +1,47 @@
 # Implementation status
 
-The supplied Linux XP2 profile is the sole execution and acceptance target for the complete headless state/action/turn library. Windows work is frozen historical evidence. The [public-depot audit](version-audit.md) matches the installed Linux depot metadata to Valve's public branch; [target policy](targets.md) records exact binary identities and validation boundaries.
+The supplied Linux XP2 profile is the sole execution and acceptance target for the complete exact headless state/action/turn library. Windows work is frozen historical evidence. [Target policy](targets.md) records module identities and profile-specific validation.
 
-The full goal remains incomplete. Native Linux context initialization and cleanup, original Base English localization, genuine Lua/script providers and original StartupGame return have executed successfully, followed by original context/provider cleanup and handle closure. Original saved-configuration restoration returns and produces deterministic canonical output with explicit differences. Actual Linux base rules exports now match Rust and independent Python validation; full XP2 activation and original game loading remain active work. No Linux gameplay save has been restored, no legal action has passed complete affected-state comparison, and no complete turn has been reproduced. Follow [Linux runtime evidence](linux-runtime.md) for subsequent checkpoints.
+**Native XP2 Core state loading now works under an identified diagnostic profile. The complete Rust simulator remains unimplemented.** Native full-host saved-load finalization, branch-restorable state, legal actions and complete turns are still unverified.
 
-| Deliverable | Linux target status |
+| Deliverable | Verified scope and remaining boundary |
 | --- | --- |
-| Native loader/context | Genuine host exports, GameCore loading, Initialize flag transition, context destruction, host-service cleanup and handle closure verified |
-| Original localization | Gated Base English sources, native dictionary initialization/lookup and shutdown verified |
-| Script VM and StartupGame | Genuine Lua provider and original StartupGame return/cleanup verified; no restored playable session |
-| Saved configuration | Native reader returns with deterministic canonical output; one added key, three flag changes and pending user settings remain explicit |
-| Stream/Load/Save adapters | Genuine native stream checks pass; populated-base Load probe times out, no successful gameplay round trip |
-| RNG primitives | 3,072 original Linux/Rust comparisons pass: arithmetic/state boundaries, four interleaved objects and normal native Read/Write; no gameplay stream ownership or logging equivalence |
-| Coordinate primitives | 7,985 original Linux/Rust comparisons pass for sentinel validity and stateless hex distance; initialized map receivers, movement and pathfinding excluded |
-| Rules databases | Two independent Linux base exports, 396 tables / 25,246 rows; exact file/schema/typed-row parity in Rust and Python, tamper refusals verified; full XP2 activation pending |
-| Rust kernel and C ABI | State envelope, explicit identities, branching and isolated operations exist; historical Windows tests do not certify Linux mechanics |
-| Complete game state | World, players/entities, pending events, caches and all RNG ownership not yet represented/audited |
-| Legal actions and turns | Unsupported |
+| Native host/providers | Original filesystem, TempHeap, App/database/localization/script providers, startup and owned cleanup pass |
+| XP2 activation | Original Configure/Update and cleanup pass; one enabled/active mod and 46 components observed in getter order, not importer execution order |
+| Rules data | Two XP2 diagnostic exports: 506 tables / 43,565 rows; exact Rust/Python file/schema/typed-row parity and refusal checks; separate base profile retained |
+| Offline session | Original Attach/Leave and full cleanup pass for Base and XP2 contexts; session/local peer independently observed |
+| Core benchmark Load | Native OK, all 76,556,938 input bytes consumed, successful Shutdown/session/framework/provider cleanup |
+| Repeated Core Save | Four outputs across two independent processes are identical, 80,657,462 bytes each |
+| Captured-output reload | Native OK and cleanup repeat; resulting Saves differ from input in 89,198 bytes; byte-stable branching fails |
+| Read-only loaded game facade | Both input profiles report turn 592, phase 0, local player 0 and false pending/update/processing flags; serialized before/after equality passes |
+| Whole-save request preparation | Original RequestLoad retains an owned full-container copy and reset releases it; CheckRequest/Begin and later host finalization unverified |
+| Rust primitives | Isolated Linux Random/normal record and stateless coordinate validity/distance match original code |
+| Complete Rust state/actions/turns | Unsupported; no initialized native legal-action or complete-turn differential comparison |
 
-Linux native checks apply to their exact module/configuration identities. Context initialization is distinct from configured game startup. Original application main is bypassed; normal App startup, Steam/network initialization and application shutdown have not been reproduced. The runtime uses a bounded native host path with genuine providers rather than substituting gameplay behavior. Full XP2 activation is not supplied by the populated base recipe: the original modding framework owns content activation and context bootstrap/reload, which is still being integrated.
+## Diagnostic profile and limits
 
-## Current data and restore boundary
+The passing content profile gates eleven native modules and all 2,779 original content inputs. It uses an original constructor-state LoadGameViewState callback with request None and censorship=false, plus a genuinely constructed UI provider without graphics startup. Saved RequestLoad/Begin semantics are not inferred. Native getters report one enabled mod, one active mod and 46 components; their container order is not an execution trace. See [activation](linux-mod-activation.md), [rules input](rules-data.md) and [independent XP2 rules review](linux-xp2-rules-review.md).
 
-The Linux base fixture contains 78 configuration tables / 1,280 rows and 318 gameplay tables / 23,966 rows. Two native exports are identical, and Rust plus independent Python match the complete schema, typed-row and file fingerprints. Mutation, row-ID, schema and physical-file changes are refused. This establishes immutable base rules input; SQLite row identities are not GameCore definition IDs, and unit base values are not complete mechanics. Original ASL filesystem initialization now reproduces identical base database bytes and typed fingerprints without the Schema-only source view, with a separately identified native profile and complete host/context cleanup. See [Linux rules](linux-rules.md), [original filesystem](linux-filesystem.md) and [Rust rules input](rules-data.md).
+Original session attachment precedes lower Core Load, supplying the genuinely observed local peer. This lower path is distinct from the complete host container/request workflow. Original CheckRequest/Begin, PostInitialize, host caches, active-user selection, pending settings and full saved-profile equivalence remain acceptance gates. [Save lifecycle](linux-save-lifecycle.md) and [action boundaries](linux-actions.md) retain the exact ordering/ownership contracts.
 
-The original Linux configuration reader returns successfully, retains the saved ruleset/mod identifiers and produces deterministic native output. It adds one key, changes three flags, and leaves user settings pending; equality to the saved bytes or active full-session configuration is not claimed. The populated-base Load probe reaches the native stream end but remains inside Load until the process time bound. End position alone does not establish successful consumption or restoration; no Load result is available. An earlier empty-rules/GameSpeed failure is preserved separately. See [saved configuration](linux-saved-configuration.md) and [runtime evidence](linux-runtime.md).
+Benchmark-input Load and repeated original Saves reproduce across independent processes. Captured-output reloading also succeeds, but produces a different repeatable serialized output. The 89,198 changed bytes have unproven semantics and cause; they must not be normalized away or assigned to AI state by assumption. Successful Results, full input consumption and stable consecutive Saves do not establish a branch-restorable complete state. [Core Load/Save evidence](linux-game-load.md) records the two profiles and difference report.
 
-Isolated Linux Random now has independent native/Rust arithmetic, state, multi-object and normal complete-record comparisons. This validates the primitive and raw record codec only. Gameplay stream ownership/allocation/lifecycle, logging callbacks, legacy-vector and failing/short native stream behavior remain unverified. See [Linux Random](linux-random.md) for the active command and complete evidence boundary.
+The native read-only facade returns turn 592, phase 0 and Context/Game local player 0 in both profiles; pending messages, NeedsUpdate, NeedsTurnAdvance, IsAiProcessing and IsTurnProcessing are false. Wrapper release and these queries leave before/after Core Saves identical. These coarse observations do not imply action readiness, all AI state equivalence or complete live-state identity. Queues, caches, events, jobs and host/session state require separate coverage.
 
-Stateless Linux coordinate validity and distance also match original native code. The sentinel check is not map bounds validation; the distance primitive does not establish initialized map behavior, movement, pathfinding or action legality. See [Linux geometry](linux-geometry.md).
+## Rust and tooling boundary
 
-The dedicated private `c6-linux.gpr` project is saved and snapshotted with checksums. Targeted decompilation and exact-entry MCP checks pass for the recorded methods; whole-program analysis and full DWARF import remain incomplete. [Ghidra instructions](ghidra.md) define the actual project/tool commands.
+`c6-data` verifies registered base and activated-XP2 diagnostic SQLite profiles, retaining complete typed rows and metadata. SQLite row IDs are not established engine definition IDs; data loading and unit projections are not mechanics. Its timings measure data operations only. The `C6SN` envelope is simulator transport, not Civ VI save import; opaque retention cannot advance unknown state.
 
-## Historical coverage boundary
+[Linux Random](linux-random.md) covers isolated arithmetic/state, independent objects and normal complete records; gameplay stream ownership/lifecycle, logging and legacy/failing streams remain excluded. [Linux geometry](linux-geometry.md) covers sentinel validity and stateless distance, not initialized maps, movement or pathfinding. Historical Windows evidence establishes no additional Linux coverage.
 
-Preserved Windows work includes RNG and coordinate primitives, normal RNG serialization, a null-parameter unit-operation body codec, native context/startup probes and repeatable rules SQLite exports. The historical `c6-data` profile matches those Windows-native exports. Linux base data parity is established separately above; Windows work establishes no Linux operation parity, legal action, restored save or complete turn. Windows execution and further Windows validation are inactive.
-
-The `C6SN` envelope is custom simulator transport, not Civ VI save import. Opaque section retention does not establish semantics. A message body codec is not action legality or execution. A typed rules row is not a GameCore definition ID or an implemented mechanic.
+The private persistent `c6-linux.gpr` project has targeted decompiles, guarded MCP access and checksummed snapshots, including current canonical-stream contracts. This remains targeted analysis rather than completed whole-program/DWARF analysis; see [Ghidra tools](ghidra.md).
 
 ## Next concrete milestones
 
-1. **Activate the complete Linux XP2 fixture.** Integrate original modding-framework ownership of context bootstrap/reload and authentic content activation, then validate rules/DLC/mod identities and startup ordering. Preserve configuration canonical differences and pending-state semantics rather than silently accepting them as exact restoration.
-2. **Restore a pinned native Linux fixture.** Extend the proven base export to an authentic activated XP2 profile; resolve the current Load timeout with original services and record return/consumption and complete restored state. Validate native Save/Load before treating retained bytes as a reusable snapshot.
-3. **Audit and port full state.** Inventory world/map, entities and stable IDs, component containers, queued events, turn scheduler, semantic caches and every random stream. Establish canonical state extraction/restoration and branching.
-4. **Validate remaining Linux mechanics and one legal action.** Preserve the verified isolated RNG/stateless-coordinate boundaries, compare other reused primitives against the Linux target, then execute a real legal action in an initialized fixture and compare all outputs, state mutations, events and RNG before adding Rust support.
-5. **Reproduce a complete turn.** Match actual completion messages, phases, player/event ordering, delayed updates and every affected subsystem. Measure action/turn throughput only after these paths exist.
+1. **Complete the original saved-game host workflow.** Integrate RequestLoad checking/Begin, preserved callback policy, session/container stages, PostInitialize, caches and original active-user handling with complete cleanup and profile identities.
+2. **Establish complete restorable state.** Explain the reproducible Core roundtrip differences without assumptions, audit all serialized and live/transient state, and prove deterministic branching under a defined full-state comparison.
+3. **Execute a real legal action.** Use actual loaded units/players, complete legality predicates and synchronized host processing; compare all state, events and RNG effects before implementing matching Rust mechanics.
+4. **Port complete state and systems to Rust.** Preserve IDs, containers, iteration/event order, pending work and every random stream; retain Linux-native differential fixtures for each supported operation.
+5. **Reproduce a complete turn.** Match genuine completion messages, phases, player/control transitions and every affected subsystem. Benchmark full workloads only once those paths exist.
 
-## Checks and evidence
-
-The [README](../README.md) contains active Rust/FFI and Linux context commands. [Linux runtime](linux-runtime.md), [host services](linux-host-services.md), [asset identity](linux-assets.md) and [version audit](version-audit.md) define the native evidence and limits. [Rules data](rules-data.md) now separates the validated Linux base profile from its historical Windows profile. [Oracle](oracle.md) and Windows bootstrap documents describe frozen historical execution; their results cannot be transferred to Linux without target-specific comparisons. Rules load/lookup measurements cover data only; they do not predict full-turn throughput. Full gameplay equivalence and useful game-turn performance remain outstanding.
+The [README](../README.md) links active commands. [Native ABI review](linux-native-abi-review.md), [XP2 rules review](linux-xp2-rules-review.md), [runtime evidence](linux-runtime.md) and the owner documents above define what each checkpoint establishes. Full gameplay equivalence remains outstanding.
