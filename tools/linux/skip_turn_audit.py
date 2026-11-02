@@ -8,7 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from save_lifecycle_audit import Elf, GAME_SHA
+from save_lifecycle_audit import Elf, GAME_SHA, HOST_SHA
 
 
 METHODS = [
@@ -84,6 +84,13 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     game = Elf(args.assets / 'libGameCore_XP2.so', GAME_SHA)
+    host = Elf(args.assets / 'Civ6', HOST_SHA)
+    if game.read(0x26B0D10, 5) != bytes.fromhex('488d4708c3'):
+        raise ValueError('Unit.GetAutoArchive mismatch')
+    if host.read(0x3C46FCA, 9) != bytes.fromhex('48837f48000f95c0c3'):
+        raise ValueError('FAutoArchive.hasDeltas mismatch')
+    if host.read(0x3C45F41, 6) != bytes.fromhex('4989f54989fe'):
+        raise ValueError('getDeltaIndexes hidden return forwarding mismatch')
     for address, expected, name in CHECKS:
         raw = bytes.fromhex(expected)
         if game.read(address, len(raw)) != raw:
@@ -94,7 +101,7 @@ def main():
         if game.relocated_pointer(table + 16 + slot) != target:
             raise ValueError(f'virtual slot mismatch: {table:#x}+{slot:#x}')
     report = dict(
-        schema='c6-linux-skip-turn-contracts-v1', gamecore_sha256=GAME_SHA,
+        schema='c6-linux-skip-turn-contracts-v1', gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA,
         checks_passed=True, native_execution=False, action_executed=False,
         rust_action_implemented=False, full_affected_state_contract_complete=False,
         methods=[dict(address=hex(a), size=s, name=n, sha256=hashlib.sha256(game.read(a, s)).hexdigest())
@@ -102,6 +109,16 @@ def main():
         instruction_contracts=[dict(address=hex(a), contract=n) for a, _, n in CHECKS],
         direct_calls=[dict(address=hex(a), target=hex(t), contract=n) for a, t, n in CALLS],
         virtual_slots=[dict(vtable=hex(t), offset=hex(s), target=hex(a)) for t, s, a in SLOTS],
+        archive_observer=dict(unit_get_auto_archive='0x26b0d10',
+                              hidden_return_storage_bytes=24, hidden_return_register='RDI', archive_register='RSI',
+                              order='Native dirty-pointer set iteration mapped to original variable indexes',
+                              methods=[dict(address=hex(a), size=z, name=n, sha256=hashlib.sha256(host.read(a,z)).hexdigest())
+                                       for a,z,n in [(0x3c46fca,9,'FAutoArchive.hasDeltas'),
+                                                     (0x3c45f34,0xd9,'FAutoArchive.getDeltaIndexes'),
+                                                     (0x3c45d9e,0xe4,'FAutoArchive.calculateDeltaHash'),
+                                                     (0x327ee90,4,'Vector.uint.size'),
+                                                     (0x327eea0,0xf,'Vector.uint.const_index'),
+                                                     (0x3283350,0x2c,'Vector.uint.destructor')]]),
         typed_fields=[
             dict(owner='Unit.CInstance', name='m_eAutomation', wrapper='0x268', value='0x278', size=4),
             dict(owner='Unit.CInstance', name='m_eActivity', wrapper='0x280', value='0x290', size=4),

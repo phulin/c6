@@ -1,6 +1,7 @@
 {
   "schema": "c6-linux-skip-turn-contracts-v1",
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "checks_passed": true,
   "native_execution": false,
   "action_executed": false,
@@ -364,6 +365,51 @@
       "target": "0x2d2f640"
     }
   ],
+  "archive_observer": {
+    "unit_get_auto_archive": "0x26b0d10",
+    "hidden_return_storage_bytes": 24,
+    "hidden_return_register": "RDI",
+    "archive_register": "RSI",
+    "order": "Native dirty-pointer set iteration mapped to original variable indexes",
+    "methods": [
+      {
+        "address": "0x3c46fca",
+        "size": 9,
+        "name": "FAutoArchive.hasDeltas",
+        "sha256": "b502655cd4436694df21a37b3b55c00de4fbdfe96c424612133999ad993721ab"
+      },
+      {
+        "address": "0x3c45f34",
+        "size": 217,
+        "name": "FAutoArchive.getDeltaIndexes",
+        "sha256": "c8f7b970f932e563c94d1d3450df151bfe3926639f3691719a7377c9dbe7608f"
+      },
+      {
+        "address": "0x3c45d9e",
+        "size": 228,
+        "name": "FAutoArchive.calculateDeltaHash",
+        "sha256": "c88b5209e86f6d76d1c20df752ef8c2ad9d2ecbf6f4143ca7a6770b2e8c8b2ad"
+      },
+      {
+        "address": "0x327ee90",
+        "size": 4,
+        "name": "Vector.uint.size",
+        "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+      },
+      {
+        "address": "0x327eea0",
+        "size": 15,
+        "name": "Vector.uint.const_index",
+        "sha256": "c4712103d50333e7cdbfc233beb21fccb8a194a83ae137ea9f785347856fdaa6"
+      },
+      {
+        "address": "0x3283350",
+        "size": 44,
+        "name": "Vector.uint.destructor",
+        "sha256": "3c51189dd62c0b7b217e0df09f0ba585d764f83c88febc37925fa7a3ca896235"
+      }
+    ]
+  },
   "typed_fields": [
     {
       "owner": "Unit.CInstance",
