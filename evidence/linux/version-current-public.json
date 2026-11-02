@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-11-02T17:53:07Z",
+  "source": "Valve SteamCMD anonymous app_info_update 1; app_info_print 289070",
+  "source_url": "https://developer.valvesoftware.com/wiki/SteamCMD",
+  "installed_build_id": "15296837",
+  "public_build_id": "15296837",
+  "public_branch_updated_utc": "2024-08-07T23:07:34+00:00",
+  "aspyr_version": {
+    "ASPYRVERSIONMAJOR": 1,
+    "ASPYRVERSIONMINOR": 0,
+    "ASPYRVERSIONRELEASE": 12,
+    "ASPYRVERSIONBUILD": 9,
+    "ASPYRCHANGELIST": 363760
+  },
+  "artifact_sha256": {
+    "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+    "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
+  },
+  "installed_depots": [
+    {
+      "depot": "533502",
+      "oslist": "linux",
+      "installed_manifest": "731801825977417543",
+      "public_manifest": "731801825977417543",
+      "matches": true
+    },
+    {
+      "depot": "533503",
+      "oslist": "linux",
+      "installed_manifest": "4174395120133247913",
+      "public_manifest": "4174395120133247913",
+      "matches": true
+    },
+    {
+      "depot": "533504",
+      "oslist": "linux",
+      "installed_manifest": "4730013291139588863",
+      "public_manifest": "4730013291139588863",
+      "matches": true
+    },
+    {
+      "depot": "533505",
+      "oslist": "linux",
+      "installed_manifest": "7075230729490869604",
+      "public_manifest": "7075230729490869604",
+      "matches": true
+    },
+    {
+      "depot": "533506",
+      "oslist": "linux",
+      "installed_manifest": "4883125394190134028",
+      "public_manifest": "4883125394190134028",
+      "matches": true
+    },
+    {
+      "depot": "533507",
+      "oslist": "linux",
+      "installed_manifest": "6138702642890809933",
+      "public_manifest": "6138702642890809933",
+      "matches": true
+    },
+    {
+      "depot": "533508",
+      "oslist": "linux",
+      "installed_manifest": "6046355588939991635",
+      "public_manifest": "6046355588939991635",
+      "matches": true
+    },
+    {
+      "depot": "533509",
+      "oslist": "linux",
+      "installed_manifest": "6788302695122360131",
+      "public_manifest": "6788302695122360131",
+      "matches": true
+    },
+    {
+      "depot": "533510",
+      "oslist": "linux",
+      "installed_manifest": "6004862015692629805",
+      "public_manifest": "6004862015692629805",
+      "matches": true
+    },
+    {
+      "depot": "533511",
+      "oslist": "linux",
+      "installed_manifest": "4086532032936568200",
+      "public_manifest": "4086532032936568200",
+      "matches": true
+    },
+    {
+      "depot": "947519",
+      "oslist": "linux",
+      "installed_manifest": "5584778302079664846",
+      "public_manifest": "5584778302079664846",
+      "matches": true
+    },
+    {
+      "depot": "289089",
+      "oslist": null,
+      "installed_manifest": "2262196785766153034",
+      "public_manifest": "2262196785766153034",
+      "matches": true
+    },
+    {
+      "depot": "1253992",
+      "oslist": "linux",
+      "installed_manifest": "190753679128426469",
+      "public_manifest": "190753679128426469",
+      "matches": true
+    },
+    {
+      "depot": "1270542",
+      "oslist": "linux",
+      "installed_manifest": "740044253414621401",
+      "public_manifest": "740044253414621401",
+      "matches": true
+    },
+    {
+      "depot": "1281822",
+      "oslist": "linux",
+      "installed_manifest": "294718810747213782",
+      "public_manifest": "294718810747213782",
+      "matches": true
+    },
+    {
+      "depot": "1342012",
+      "oslist": "linux",
+      "installed_manifest": "822199356429897707",
+      "public_manifest": "822199356429897707",
+      "matches": true
+    },
+    {
+      "depot": "1284472",
+      "oslist": "linux",
+      "installed_manifest": "3367499075511523244",
+      "public_manifest": "3367499075511523244",
+      "matches": true
+    },
+    {
+      "depot": "1388852",
+      "oslist": "linux",
+      "installed_manifest": "308938244455417956",
+      "public_manifest": "308938244455417956",
+      "matches": true
+    },
+    {
+      "depot": "1436952",
+      "oslist": "linux",
+      "installed_manifest": "3599798167341808173",
+      "public_manifest": "3599798167341808173",
+      "matches": true
+    },
+    {
+      "depot": "1478302",
+      "oslist": "linux",
+      "installed_manifest": "601989005490512875",
+      "public_manifest": "601989005490512875",
+      "matches": true
+    }
+  ],
+  "all_installed_depot_manifests_match_public": true,
+  "limits": [
+    "Manifest identity comparison does not verify every installed file against Valve depot content.",
+    "Public branch update time does not date every platform binary.",
+    "Current Linux release identity does not establish Windows ABI or behavior equivalence.",
+    "No game execution, initialized gameplay or action/turn parity is tested."
+  ]
+}
