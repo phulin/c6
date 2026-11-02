@@ -6,6 +6,41 @@
   "providers": [
     {
       "module": "Civ6",
+      "symbol": "_ZN8GameCore10Serializer7Manager20GetRequestInProgressEv",
+      "address": "0x32490a0",
+      "size": 24,
+      "sha256": "3e65d3f92541f89e4416d193a12daf5c9a632fcd22b3210491d31b46e102fd4a"
+    },
+    {
+      "module": "Civ6",
+      "symbol": "_ZN7Civ6App19GetCurrentGameStateEv",
+      "address": "0x2fbff10",
+      "size": 8,
+      "sha256": "cd3b088a46074ffa9b4c4790869e67ab64a703fe19f5c00dd630b68fe62361e6"
+    },
+    {
+      "module": "Civ6",
+      "symbol": "g_pkApplication",
+      "address": "0x54841c8",
+      "size": 8,
+      "sha256": null
+    },
+    {
+      "module": "Civ6",
+      "symbol": "_ZN8GameCore10Serializer21ms_bRequestInProgressE",
+      "address": "0x649c78d",
+      "size": 1,
+      "sha256": null
+    },
+    {
+      "module": "Civ6",
+      "symbol": "_ZN8GameCore10Serializer15ms_eRequestTypeE",
+      "address": "0x649bda8",
+      "size": 4,
+      "sha256": null
+    },
+    {
+      "module": "Civ6",
       "symbol": "_ZN18GameCoreController11IsExecutingEv",
       "address": "0x31d18a0",
       "size": 26,

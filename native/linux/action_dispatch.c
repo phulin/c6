@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct status {int turn,phase,local;bool pending,update,advance,ai,processing;};
 struct api {
@@ -46,6 +47,8 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     void *(*default_manager)(void),*(*map_create)(void *,int);void (*map_delete)(void *);
     void **controller;bool (*executing)(void *),(*suspended)(const void *);
     bool (*native_loading)(void),(*native_saving)(void);
+    int (*request_in_progress)(void);void *(*current_state)(void *);
+    void **application;const bool *request_active;const int *request_type;
     void (*pump)(void *),(*sync)(void *);void *(*network)(void);void (*network_update)(void *,float);
     CORE(get_player,"_ZN8GameCore7Exports7Context9GetPlayerENS_11PlayerTypesE");
     CORE(get_units,"_ZNK8GameCore7Exports6Player8GetUnitsEv");
@@ -68,6 +71,11 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     HOST(controller,"_ZN18GameCoreController21ms_pkActiveControllerE");HOST(executing,"_ZN18GameCoreController11IsExecutingEv");HOST(suspended,"_ZNK18GameCoreController25IsGameCoreUpdateSuspendedEv");
     HOST(pump,"_ZN18GameCoreController21ExecuteGameCoreUpdateEv");HOST(sync,"_ZN18GameCoreController11SynchronizeEv");
     HOST(native_loading,"_ZN8GameCore10Serializer7Manager16IsLoadInProgressEv");HOST(native_saving,"_ZN8GameCore10Serializer7Manager16IsSaveInProgressEv");
+    HOST(request_in_progress,"_ZN8GameCore10Serializer7Manager20GetRequestInProgressEv");
+    HOST(current_state,"_ZN7Civ6App19GetCurrentGameStateEv");
+    HOST(application,"g_pkApplication");
+    HOST(request_active,"_ZN8GameCore10Serializer21ms_bRequestInProgressE");
+    HOST(request_type,"_ZN8GameCore10Serializer15ms_eRequestTypeE");
     HOST(network,"_ZN7Network7Manager11GetInstanceEv");HOST(network_update,"_ZN7Network7Manager6UpdateEf");
 #undef CORE
 #undef HOST
@@ -76,6 +84,11 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     bool worker_executing=present&&executing(*controller);
     bool worker_suspended=present&&suspended(*controller);
     bool loading=native_loading(),saving=native_saving();
+    void *app_state=*application?current_state(*application):NULL,*load_state=NULL;
+    /* This is the original IsLoadInProgress comparison operand, read only.
+     * The getter can report true for null==null in a minimal host fixture. */
+    if(*application)memcpy(&load_state,(const unsigned char *)*application+0x2310,sizeof load_state);
+    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"serializer_observation\",\"request_active\":%d,\"request_type_raw\":%d,\"request_in_progress\":%d,\"application_present\":%d,\"current_state\":\"%p\",\"load_state\":\"%p\",\"state_identity_equal\":%d}\n",*request_active,*request_type,request_in_progress(),*application!=NULL,app_state,load_state,app_state==load_state);
     fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"host_worker_preconditions\",\"snapshot_before_present\":%d,\"snapshot_after_present\":%d,\"snapshot_repeat_present\":%d,\"controller_present\":%d,\"worker_executing\":%d,\"worker_suspended\":%d,\"native_loading\":%d,\"native_saving\":%d}\n",before!=NULL,after!=NULL,repeat!=NULL,present,worker_executing,worker_suspended,loading,saving);
     if(!before||!after||!repeat||!present||worker_executing||worker_suspended||loading||saving)return 222;
     /* Actual constructor and ExecuteGameCoreUpdate bytes establish this native

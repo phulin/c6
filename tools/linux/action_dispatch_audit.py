@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from save_lifecycle_audit import Elf,HOST_SHA,GAME_SHA
 
-METHODS = [('Civ6',
+METHODS = [('Civ6', '_ZN8GameCore10Serializer7Manager20GetRequestInProgressEv', 52727968, 24, '3e65d3f92541f89e4416d193a12daf5c9a632fcd22b3210491d31b46e102fd4a'), ('Civ6', '_ZN7Civ6App19GetCurrentGameStateEv', 50069264, 8, 'cd3b088a46074ffa9b4c4790869e67ab64a703fe19f5c00dd630b68fe62361e6'), ('Civ6', 'g_pkApplication', 88621512, 8, None), ('Civ6', '_ZN8GameCore10Serializer21ms_bRequestInProgressE', 105498509, 1, None), ('Civ6', '_ZN8GameCore10Serializer15ms_eRequestTypeE', 105495976, 4, None)] + [('Civ6',
   '_ZN18GameCoreController11IsExecutingEv',
   52238496,
   26,
