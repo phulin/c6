@@ -6,7 +6,7 @@ The user-defined simulation boundary yields to external policies for **all playe
 
 **The supplied Linux XP2 build is the sole execution and acceptance target.** Its installed depot metadata matches Valve's public branch in the [release audit](docs/version-audit.md). Windows code and evidence are preserved as frozen historical work. See [target policy](docs/targets.md).
 
-**The complete Rust state/action/turn engine is not yet implemented.** The native Linux harness now activates XP2 content, attaches an offline session and successfully loads/saves the benchmark Core state with full constructed-provider cleanup. Full host saved-load finalization, branch-restorable state, legal actions and turns remain unverified. Rust currently supplies isolated validated primitives, immutable rules data and state/FFI infrastructure.
+**The complete Rust state/action/turn engine is not yet implemented.** The native Linux harness now activates XP2 content, attaches an offline session and successfully loads/saves the benchmark Core state with full constructed-provider cleanup. Full host saved-load finalization, branch-restorable state, legal actions and turns remain unverified. Rust currently supplies validated primitives, bounded Unit/Formation/queue and Trade wire transport, immutable rules/registry components and state/FFI infrastructure.
 
 | Area | Linux target status |
 | --- | --- |
@@ -16,8 +16,9 @@ The user-defined simulation boundary yields to external policies for **all playe
 | Offline session | Original Attach/Leave and cleanup verified for Base and XP2 profiles |
 | Native Core Load/Save | Benchmark Load returns OK; repeated Saves reproduce across processes; reloading captured output changes serialized bytes |
 | Native loaded-state queries | Read-only game facade reports turn/phase/local-player/processing state without changing serialized output |
-| Native actor legality | 36 real units queried, two legal SkipTurn candidates, serialized nonmutation verified; cached delivery still needs original initialization |
+| Native action experiment | Controller/cache and no-action control pass; original Request/Network.Update attempt returns delivery failure without queueing or action execution |
 | Full saved-game host lifecycle | RequestLoad ownership/reset verified; CheckRequest/Begin, PostInitialize, caches and active-user finalization incomplete |
+| Rust wire/registry components | Current-fixture Unit/Formation/queues and Trade roundtrip; actual Yield/Unit registries observed; live reconstruction and gameplay unimplemented |
 | Rust RNG/coordinates | Isolated Random/normal record and stateless validity/distance match original code; broader mechanics unimplemented |
 | Full Rust state, legal actions and turns | Unsupported |
 
@@ -77,9 +78,11 @@ cargo run --release -p c6-data --example inspect_rules -- \
   > /tmp/c6-data-linux-native-parity.json
 ```
 
-This checks rules data, not gameplay or turn throughput. [Native Core Load/Save](docs/linux-game-load.md) now succeeds with the benchmark input and reproduces consecutive Saves across independent processes. Reloading those captured Saves produces a repeatable changed output, so byte-stable Save→Load→Save and complete branch restoration are **not** established. Accepted [typed trade classification](docs/linux-save-normalization.md) explains 89,156 changed bytes as record-order differences with equal keyed payloads; the remaining 42 bytes still have unresolved field/reset semantics. Observable iteration effects remain unverified, so no bytes are masked and gameplay equivalence is not inferred. The [Rust trade codec](docs/linux-trade-codec.md) roundtrips these native wire records; it does not implement trade gameplay.
+This checks rules data, not gameplay or turn throughput. [Native Core Load/Save](docs/linux-game-load.md) now succeeds with the benchmark input and reproduces consecutive Saves across independent processes. Reloading those captured Saves produces a repeatable changed output, so byte-stable Save→Load→Save and complete branch restoration are **not** established. Accepted [typed classification](docs/linux-save-normalization.md) accounts for 89,156 bytes as trade record-order differences and 42 as GameEffects object/reference identity reconstruction. The exact allocation sequence, global reference coverage and observable ordering effects remain unresolved. Observable iteration effects remain unverified, so no bytes are masked and gameplay equivalence is not inferred. The [Rust trade codec](docs/linux-trade-codec.md) roundtrips these native wire records; it does not implement trade gameplay.
 
-The [full saved-load lifecycle](docs/linux-save-lifecycle.md) still needs original request checking/Begin and host finalization. [Saved configuration](docs/linux-saved-configuration.md) also retains explicit canonical differences and pending-user semantics. [Action/turn contracts](docs/linux-actions.md) identify future execution boundaries; read-only native legality has passed for actual units, while mutating action/turn comparisons and full Rust mechanics remain unimplemented. Original controller/cache initialization is the next bounded delivery prerequisite; encompassing host Begin/finalization remains a separate requirement.
+The [full saved-load lifecycle](docs/linux-save-lifecycle.md) still needs original request checking/Begin and host finalization. [Saved configuration](docs/linux-saved-configuration.md) also retains explicit canonical differences and pending-user semantics. [Action/turn contracts](docs/linux-actions.md) identify future execution boundaries; read-only native legality has passed for actual units, while mutating action/turn comparisons and full Rust mechanics remain unimplemented. Original controller/cache initialization and the no-action control now pass. The first Request reaches no queued message or action; the next task is diagnosing original request conversion versus broadcast/delivery gates. Encompassing host Begin/finalization remains a separate requirement.
+
+The [Unit/Formation/queue codecs](docs/linux-unit-codec.md) and [independent review](docs/linux-unit-codec-review.md) validate complete supported wire records in the current captures, not live reconstruction or universal handler/variant support. [Yield registry](docs/linux-definition-ids.md) and [Unit registry](docs/linux-unit-definition-ids.md) observations keep type hashes, native indices and database row IDs distinct; no generic rules-row-ID conversion is assumed. The [action review](docs/linux-action-review.md) separates the passing control from the failed undelivered Request.
 
 ## Coverage and next work
 
