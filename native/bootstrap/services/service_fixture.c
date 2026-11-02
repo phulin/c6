@@ -26,10 +26,10 @@ static uintptr_t *archive_object = archive_slots;
 static HMODULE original_gamecore;
 static size_t removed_absent_archive_types;
 static uintptr_t logging_slots[12];
-static uintptr_t logfile_slots[4];
+/* Exact current host LogFile vtable has 19 entries before LoggingManager. */
+static uintptr_t logfile_slots[19];
 static uintptr_t *logging_object = logging_slots;
-static uintptr_t *logfile_object = logfile_slots;
-struct log_type { uint32_t id, flags, level; unsigned char enabled; };
+struct log_type { uintptr_t *vtable; uint32_t id, flags, level; unsigned char enabled; };
 static struct log_type log_types[256];
 static size_t log_type_count;
 static void (*progress_reporter)(FILE *);
@@ -213,7 +213,7 @@ static struct log_type *create_log_type(uint32_t id) {
     if (entry) return entry;
     if (log_type_count == sizeof log_types / sizeof log_types[0]) unavailable(0x40);
     entry = &log_types[log_type_count++];
-    *entry = (struct log_type){id, 0, 0, 1};
+    *entry = (struct log_type){logfile_slots, id, 0, 0, 1};
     return entry;
 }
 static void log_register(void *self, uint32_t id, const wchar_t *filename, uint32_t flags, void *reserved) {
@@ -250,11 +250,18 @@ static uint32_t log_get_type_level(void *self, uint32_t id) {
     return level;
 }
 static void *get_logfile(void *self, uint32_t id) {
-    (void)self; (void)id;
-    return &logfile_object;
+    (void)self;
+    /* Native GetLogFile returns a stable per-type object, including disabled
+     * registered entries; an unregistered type returns null. */
+    return find_log_type(id);
+}
+static unsigned char logfile_is_enabled(void *self) {
+    struct log_type *entry = self;
+    return entry->enabled;
 }
 static void logfile_write(void *self, const char *format, ...) {
-    (void)self;
+    struct log_type *entry = self;
+    if (!entry->enabled) return;
     ++log_messages;
     va_list arguments;
     va_start(arguments, format);
@@ -289,6 +296,18 @@ static const char *gameplay_uri(void *self) {
     trace("GetGameplayDatabaseUri_empty_fixture", 0x138);
     return gameplay_database_uri;
 }
+static void initialize_logging_tables(void) {
+    memcpy(logging_slots, unsupported_slots, sizeof logging_slots);
+    memcpy(logfile_slots, unsupported_slots, sizeof logfile_slots);
+    logging_slots[2] = (uintptr_t)log_is_enabled;
+    logging_slots[5] = (uintptr_t)log_enable;
+    logging_slots[6] = (uintptr_t)log_set_type_level;
+    logging_slots[7] = (uintptr_t)log_get_type_level;
+    logging_slots[8] = (uintptr_t)log_register;
+    logging_slots[10] = (uintptr_t)get_logfile;
+    logfile_slots[2] = (uintptr_t)logfile_write;
+    logfile_slots[7] = (uintptr_t)logfile_is_enabled;
+}
 void *bootstrap_service_fixture_create(HMODULE gamecore) {
     /* The external launcher gates the whole module SHA-256. Also check the exact
      * target GUID bytes before this module-specific interface can be installed. */
@@ -300,15 +319,7 @@ void *bootstrap_service_fixture_create(HMODULE gamecore) {
     memcpy(archive_slots, unsupported_slots, sizeof archive_slots);
     archive_slots[1] = (uintptr_t)archive_unregister;
     memcpy(slots, unsupported_slots, sizeof slots);
-    memcpy(logging_slots, unsupported_slots, sizeof logging_slots);
-    memcpy(logfile_slots, unsupported_slots, sizeof logfile_slots);
-    logging_slots[2] = (uintptr_t)log_is_enabled;
-    logging_slots[5] = (uintptr_t)log_enable;
-    logging_slots[6] = (uintptr_t)log_set_type_level;
-    logging_slots[7] = (uintptr_t)log_get_type_level;
-    logging_slots[8] = (uintptr_t)log_register;
-    logging_slots[10] = (uintptr_t)get_logfile;
-    logfile_slots[2] = (uintptr_t)logfile_write;
+    initialize_logging_tables();
     slots[0] = (uintptr_t)query;
     slots[1] = (uintptr_t)destroy;
     slots[2] = (uintptr_t)script;

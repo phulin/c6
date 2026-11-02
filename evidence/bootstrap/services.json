@@ -92,7 +92,8 @@
     "LogFile_variadic_narrow_Write": 16,
     "GetTypeLevel": 56,
     "SetTypeLevel": 48,
-    "IsEnabled_type": 16
+    "IsEnabled_type": 16,
+    "LogFile_IsEnabled": 56
   },
   "negative_evidence": {
     "nullable_logging": "real original DatabaseLogger ctor fault0x5e3524; fixed with bounded sink",
@@ -275,6 +276,36 @@
       "reported_unsupported_offset_was_misleading": true,
       "adapter_limitation": "old logfile vtable had only four entries; observed +0x38 call exceeded that table",
       "stream_consumed": 8,
+      "stream_available": 76556938,
+      "complete_load": false
+    }
+  },
+  "logfile_adapter_contract": {
+    "original_vtable_rva": "0xfbf590",
+    "vtable_entries": 19,
+    "original_get_file_rva": "0x15abd0",
+    "original_file_enabled_rva": "0x15aee0",
+    "get_file_known": "stable per-type object even when disabled",
+    "get_file_unknown": "null",
+    "file_enabled_source": "same retained per-type enabled state as manager query",
+    "native_total_logging_cases": 23,
+    "native_mismatches": 0,
+    "native_child_exit": 0,
+    "native_probe_singleton_publication": {
+      "fully_constructed_original_object": true,
+      "global_rva": "0x22d8148",
+      "original_publication_instruction_rva": "0x1c97d2",
+      "full_app_init": false
+    },
+    "native_probe_filesystem_output": false,
+    "evidence": "evidence/bootstrap/services-logging-validation.json",
+    "actual_load_after_file_fix": {
+      "evidence": "evidence/bootstrap/native-xp2-original-load-log-files.json",
+      "file_gate_passed": true,
+      "next_actual_receiver": "engine utility global0xb8aa80",
+      "next_actual_slot": 208,
+      "next_return_site_rva": "0x63d6cb",
+      "stream_consumed": 76554523,
       "stream_available": 76556938,
       "complete_load": false
     }

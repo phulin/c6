@@ -28,16 +28,16 @@
     },
     "sources": {
       "native/bootstrap/services/local_options_probe.c": "5cc3fcbb7312fb06c4d2fe27ad53302cb9be2dd14a0a7d3635e475a26c3044f4",
-      "native/bootstrap/services/service_fixture.c": "5a4742038fbeae29eb30e13b07b64c70043c72c2eb346b44ebeae5219e07b028",
+      "native/bootstrap/services/service_fixture.c": "53d2d3000e0eb1c1c0b597ac24ea4f4a3aaf7d3e9fd5beb094b9749246bb61cc",
       "native/bootstrap/services/service_fixture.h": "efbcf4e9bc5f783531d287c94673d05bd5f11071bee922c7eaf2e4c241221ddb",
       "native/bootstrap/xml-import/imports.c": "4685c6208a8e7400da8609feba5f0b1407bc4d0ed9c8d3477e4d3e10dda43857",
       "native/bootstrap/xml-import/imports.h": "65dc885dc32d4c1f20c748f117dc6bc2fb7ebe7c5a6aa511f01b02c5ba79612e"
     },
     "compiler": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
-    "host_sha256": "e2fed7d7875bfa08673a1955e7581579d01d4c4079de7cb9b615c262d181cd6e",
+    "host_sha256": "4646f2297a3a27e1994985a87e85db5b9c413ef0c8776a5960d93e095f629f58",
     "wine": "wine-9.0 (Ubuntu 9.0~repack-4build3)"
   },
-  "configuration_sha256": "df3530b2a2bfea84fd41669d59229f03ea2e6ba3d75fa2d00c0750e6116c06d1",
+  "configuration_sha256": "77bb66690394af5403d3d2c415e05bb91df93f8a65f26363c2db2919437a8f74",
   "returncode": 0,
   "observations": [
     {
