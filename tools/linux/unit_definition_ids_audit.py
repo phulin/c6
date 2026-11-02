@@ -46,7 +46,7 @@ def static_contract(assets):
     return dict(schema='c6-linux-unit-definition-ids-v1', gamecore_sha256=TARGET,
                 host_sha256=HOST, methods=methods,
                 unit_builder_sql=dict(sha256=sha(sql), bytes=len(sql), order_by='rowid'),
-                full_state_action_turn_parity=False)
+                full_state_action_turn_parity=False, native_query=None)
 
 
 def audit_runtime(runtime, contract, before_path, after_path):
@@ -118,6 +118,7 @@ def audit_runtime(runtime, contract, before_path, after_path):
     if captures[0][0] != captures[1][0]:
         raise ValueError('canonical Save changed around query')
     return dict(mapping=query, source_identity=config,
+                audit_source_sha256=sha(Path(__file__).read_bytes()),
                 configuration_sha256=runtime['configuration_sha256'],
                 canonical_save=captures[0][1], canonical_core_unchanged=True,
                 full_live_state_unchanged_proven=False)
@@ -145,6 +146,7 @@ def main():
         result['native_query'] = dict(count=private['mapping']['count'],
             mapping_sha256=sha(json.dumps(private['mapping'],sort_keys=True,separators=(',', ':')).encode()),
             private_report_sha256=sha(args.private_output.read_bytes()),
+            audit_source_sha256=private['audit_source_sha256'],
             runtime_report_sha256=private['runtime_report_sha256'],
             configuration_sha256=private['configuration_sha256'],
             canonical_save=private['canonical_save'], canonical_core_unchanged=True,

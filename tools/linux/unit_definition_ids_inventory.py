@@ -15,13 +15,36 @@ from unit_codec_check import MODULE, SAVES, TRACES, sha
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = r'''
 use c6_core::unit::{Limits,Unit};
+use c6_data::{RulesRowId,registry::{DefinitionEntry,LinuxDefinitionRegistry,linux_type_hash}};
 use std::collections::BTreeMap;
 fn main()->Result<(),Box<dyn std::error::Error>> {
  let mut counts=BTreeMap::<u32,usize>::new();
+ let registry=if let Some(path)=std::env::args().nth(2) {
+  let text=std::fs::read_to_string(path)?;
+  let mut entries=Vec::new();
+  let mut expected=Vec::new();
+  for line in text.lines() {
+   let f:Vec<_>=line.split('\t').collect();
+   if f.len()!=4 {return Err("invalid registry row".into())}
+   let hex=f[3].as_bytes();
+   let name=hex.chunks_exact(2).map(|c|u8::from_str_radix(std::str::from_utf8(c).unwrap(),16)).collect::<Result<Vec<_>,_>>()?;
+   entries.push(DefinitionEntry{database_rowid:RulesRowId(f[0].parse()?),type_name:name});
+   expected.push((f[1].parse::<u32>()?,f[2].parse::<usize>()?));
+  }
+  let registry=LinuxDefinitionRegistry::from_native_order(entries);
+  for (i,(hash,found)) in expected.iter().enumerate() {
+   if linux_type_hash(&registry.entries()[i].type_name)!=*hash || registry.find_index(*hash)!=Some(*found) || registry.find_index(i as u32)!=Some(i) {return Err("Rust registry differs from original mapping".into())}
+  }
+  if registry.at(expected.len() as u32).is_some() || registry.find_index(u32::MAX).is_some() {return Err("Rust registry boundary mismatch".into())}
+  Some(registry)
+ } else {None};
  for p in std::fs::read_dir(std::env::args().nth(1).ok_or("missing path")?)? {
   let bytes=std::fs::read(p?.path())?;
   let unit=Unit::decode(&bytes,Limits::default())?;
   if unit.encode(Limits::default())?!=bytes {return Err("roundtrip mismatch".into())}
+  if let Some(r)=&registry {
+   if r.find_index(unit.e_type_index).is_none() {return Err("unresolved native Unit hash".into())}
+  }
   *counts.entry(unit.e_type_index).or_default()+=1;
  }
  println!("{{{}}}",counts.iter().map(|(k,v)|format!("\"{}\":{}",k,v)).collect::<Vec<_>>().join(","));
@@ -43,14 +66,34 @@ def main():
     manifest = json.loads((args.private_root/'evidence/linux-game-load/canonical/manifest.json').read_text())
     if manifest['module_sha256'] != MODULE:
         raise ValueError('native module identity mismatch')
+    source_names=['crates/c6-core/src/unit.rs','crates/c6-core/src/unit/state.rs','crates/c6-core/src/unit/variants.rs','crates/c6-data/src/registry.rs','tools/linux/unit_definition_ids_inventory.py']
+    sources_before={name:sha((ROOT/name).read_bytes()) for name in source_names}
     private = dict(schema='c6-linux-unit-definition-hash-inventory-v1', gamecore_sha256=MODULE,
                    field='Unit.e_type_index', registry='Units', fixtures=[])
+    if args.registry_report:
+        registry=json.loads(args.registry_report.read_text())
+        if not all([args.registry_runtime_report,args.registry_before_save,args.registry_after_save]):
+            p.error('registry comparison requires raw runtime report and both canonical controls')
+        from unit_definition_ids_audit import audit_runtime, static_contract
+        validated=audit_runtime(json.loads(args.registry_runtime_report.read_text()),
+            static_contract(ROOT.parent/'c6-assets-linux'),
+            args.registry_before_save,args.registry_after_save)
+        validated['runtime_report_sha256']=sha(args.registry_runtime_report.read_bytes())
+        if registry!=validated:
+            raise ValueError('private registry audit differs from original evidence')
     with tempfile.TemporaryDirectory(prefix='c6-unit-id-inventory-') as temp:
         temp = Path(temp)
         (temp/'src').mkdir()
         (temp/'src/main.rs').write_text(ADAPTER)
-        (temp/'Cargo.toml').write_text('[package]\nname="c6-unit-id-inventory"\nversion="0.0.0"\nedition="2021"\n[dependencies]\nc6-core={path='+json.dumps(str(ROOT/'crates/c6-core'))+'}\n')
+        (temp/'Cargo.toml').write_text('[package]\nname="c6-unit-id-inventory"\nversion="0.0.0"\nedition="2021"\n[dependencies]\nc6-core={path='+json.dumps(str(ROOT/'crates/c6-core'))+'}\nc6-data={path='+json.dumps(str(ROOT/'crates/c6-data'))+'}\n')
+        registry_args=[]
+        if args.registry_report:
+            mapping=temp/'registry.tsv'
+            mapping.write_text(''.join(f"{e['database_rowid']}\t{e['hash']}\t{e['find_index']}\t{e['type_hex']}\n" for e in registry['mapping']['entries']))
+            registry_args=[str(mapping)]
         subprocess.run(['cargo','build','--release','--offline','--manifest-path',str(temp/'Cargo.toml')],check=True)
+        private['adapter_sha256']=sha((temp/'target/release/c6-unit-id-inventory').read_bytes())
+        private['adapter_cargo_lock_sha256']=sha((temp/'Cargo.lock').read_bytes())
         for save_sha, (trace_name, trace_sha) in zip(SAVES,TRACES):
             with gzip.open(args.private_root/'evidence/linux-game-load/canonical'/f'{save_sha}.bin.gz','rb') as f:
                 data = f.read(80657463)
@@ -73,23 +116,13 @@ def main():
                     raise ValueError('invalid/overlapping original Unit boundary')
                 last=end
                 (directory/f'{i:06}.bin').write_bytes(data[start:end])
-            counts=json.loads(subprocess.check_output([str(temp/'target/release/c6-unit-id-inventory'),str(directory)],text=True))
+            counts=json.loads(subprocess.check_output([str(temp/'target/release/c6-unit-id-inventory'),str(directory),*registry_args],text=True))
             if sum(counts.values())!=1262:
                 raise ValueError('decoded Unit count mismatch')
             private['fixtures'].append(dict(save_sha256=save_sha, trace_sha256=trace_sha,
                 records=1262, typehash_counts=counts,
                 record_bytes_sha256=sha(b''.join(data[r['start']:r['end']] for r in rows))))
     if args.registry_report:
-        registry=json.loads(args.registry_report.read_text())
-        if not all([args.registry_runtime_report,args.registry_before_save,args.registry_after_save]):
-            p.error('registry comparison requires raw runtime report and both canonical controls')
-        from unit_definition_ids_audit import audit_runtime, static_contract
-        validated=audit_runtime(json.loads(args.registry_runtime_report.read_text()),
-            static_contract(ROOT.parent/'c6-assets-linux'),
-            args.registry_before_save,args.registry_after_save)
-        validated['runtime_report_sha256']=sha(args.registry_runtime_report.read_bytes())
-        if registry!=validated:
-            raise ValueError('private registry audit differs from original evidence')
         lookup={str(e['hash']):e['index'] for e in registry['mapping']['entries']}
         for fixture in private['fixtures']:
             unresolved=set(fixture['typehash_counts'])-lookup.keys()
@@ -98,19 +131,24 @@ def main():
             fixture['native_indices']={h:lookup[h] for h in fixture['typehash_counts']}
         private['registry_report_sha256']=sha(args.registry_report.read_bytes())
         private['registry_configuration_sha256']=registry['configuration_sha256']
-    private['sources']={name:sha((ROOT/name).read_bytes()) for name in ['crates/c6-core/src/unit.rs','crates/c6-core/src/unit/state.rs','crates/c6-core/src/unit/variants.rs','tools/linux/unit_definition_ids_inventory.py']}
+        private['rust_registry_entries_compared']=registry['mapping']['count']
+    private['sources']={name:sha((ROOT/name).read_bytes()) for name in source_names}
+    if private['sources']!=sources_before:
+        raise ValueError('codec/registry sources changed during adapter build or comparison')
     args.private_output.parent.mkdir(parents=True,exist_ok=True)
     args.private_output.write_text(json.dumps(private,sort_keys=True,indent=2)+'\n')
     public=dict(schema=private['schema'], gamecore_sha256=MODULE,
                 field=private['field'],registry=private['registry'],
                 private_report_sha256=sha(args.private_output.read_bytes()),
                 sources=private['sources'], adapter_source_sha256=sha(ADAPTER.encode()),
+                adapter_sha256=private['adapter_sha256'], adapter_cargo_lock_sha256=private['adapter_cargo_lock_sha256'],
                 fixtures=[{k:v for k,v in f.items() if k not in ['typehash_counts','native_indices']} | dict(distinct_hashes=len(f['typehash_counts']),all_hashes_resolved='native_indices' in f) for f in private['fixtures']],
                 full_state_action_turn_parity=False,
                 scope='Current typed wire Unit.e_type_index only. Other definition kinds, live remapping and gameplay are unsupported. Raw 89198-byte Save/Load difference remains unmasked.')
     if args.registry_report:
         public['registry_report_sha256']=private['registry_report_sha256']
         public['registry_configuration_sha256']=private['registry_configuration_sha256']
+        public['rust_registry_entries_compared']=private['rust_registry_entries_compared']
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(public,sort_keys=True,indent=2)+'\n')
     print(json.dumps(public))

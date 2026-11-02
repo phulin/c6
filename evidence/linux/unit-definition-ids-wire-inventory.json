@@ -1,9 +1,11 @@
 {
-  "adapter_source_sha256": "1650a29fe041e732db8e0e605d7ed02d0ae753a21e2402bae4d2ae8bcf64d280",
+  "adapter_cargo_lock_sha256": "f429fb27946355cf719663da599d0571f4dce0c0499ac7d70db60d4c4a731948",
+  "adapter_sha256": "c3f24084f56540140cf30cf060fd3c2014c557f27f39beb7f8a6b1f82d7449d0",
+  "adapter_source_sha256": "6a0d0b8ddb76acd0c6b2895fb8088cecb054051e0324e4cc5b8fbbb3872753e0",
   "field": "Unit.e_type_index",
   "fixtures": [
     {
-      "all_hashes_resolved": false,
+      "all_hashes_resolved": true,
       "distinct_hashes": 40,
       "record_bytes_sha256": "eca60e6eb40d797174b99a4dd5166beadd1aa26e521e5fdc018a1c1f452e16e3",
       "records": 1262,
@@ -11,7 +13,7 @@
       "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae"
     },
     {
-      "all_hashes_resolved": false,
+      "all_hashes_resolved": true,
       "distinct_hashes": 40,
       "record_bytes_sha256": "eca60e6eb40d797174b99a4dd5166beadd1aa26e521e5fdc018a1c1f452e16e3",
       "records": 1262,
@@ -21,14 +23,18 @@
   ],
   "full_state_action_turn_parity": false,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
-  "private_report_sha256": "d806b3d7c88a57f9f420c6cb5da2bfabec4f33c76ffd88e78e9331aced2f3321",
+  "private_report_sha256": "e1c93f135371e0d27c651bde591c1bf17db4b6b0603c138550f8b432b65d34a7",
   "registry": "Units",
+  "registry_configuration_sha256": "8d4cbe871ebad270c80b6edcbb0b2a57790f58036b214f085199d8d4e4384c12",
+  "registry_report_sha256": "4a95a2c71d15141dfcaa57b67f36767e97196f01a9b91a3336a34b48cb671877",
+  "rust_registry_entries_compared": 116,
   "schema": "c6-linux-unit-definition-hash-inventory-v1",
   "scope": "Current typed wire Unit.e_type_index only. Other definition kinds, live remapping and gameplay are unsupported. Raw 89198-byte Save/Load difference remains unmasked.",
   "sources": {
     "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
     "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
-    "crates/c6-core/src/unit/variants.rs": "8bc3e7ca85ca237e6d617d27ec5410c84308d1a1b1e3152926946413280b7c79",
-    "tools/linux/unit_definition_ids_inventory.py": "124d81989560e1910f16bea1ee43458f3314d7b6540180ebdb336398069875d2"
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-data/src/registry.rs": "090ab8e4362971e7ca2df840fd4334c3259f8cddb8fc943a941b3effff9d923b",
+    "tools/linux/unit_definition_ids_inventory.py": "50d6af37c23eacee3c2cd94201626280d5c127b3191e4f887a3df9ba6e904ba2"
   }
 }

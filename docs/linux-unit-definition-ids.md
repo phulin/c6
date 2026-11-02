@@ -2,8 +2,8 @@
 
 This work covers an isolated Linux XP2 definition identity boundary. It does not
 implement live Unit loading, definition remapping, actions, turns or complete
-state equivalence. Native registry querying remains pending; the current wire
-inventory must not be interpreted as accepted native Unit IDs.
+state equivalence. One genuine loaded native benchmark context supplies the
+observed Unit collection order; coverage remains specific to that context.
 
 The exact supplied GameCore SHA-256 is
 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`;
@@ -50,11 +50,31 @@ The [wire inventory](../evidence/linux/unit-definition-ids-wire-inventory.json)
 uses the complete typed Rust Unit decoder on native serializer-owned slices in
 two independently pinned canonical captures. Each contains 1,262 Unit records
 and 40 distinct `Unit.e_type_index` hashes. Both inventories agree, and every
-record roundtrips exactly. This field names a Unit definition hash on the wire,
+record roundtrips exactly. The report-driven adapter constructs the Rust
+explicit-order registry from all 116 observed native definitions, compares every
+native hash and lookup result, and resolves all 40 Unit hashes in each capture
+against that observed benchmark collection. All comparisons pass. The secondary
+capture has not had its own active registry queried; identical Unit bytes do not
+prove that its entire rules/profile identity equals the benchmark context. The adapter
+records its executable, lockfile and unchanged source identities. This field names a Unit definition hash on the wire,
 not an already resolved collection index. Other hashes in Unit state belong to
 other definition collections and must not be resolved against Units.
 
-The new native observer obtains the initialized collection using original
+The [genuine native observation](../evidence/linux/unit-definition-ids-native-1.json)
+contains 116 Unit definitions, indices 0–115 and signed database rowids 1–116.
+Every stored hash agrees with original `MakeHash(name)` and `FindIndex(hash)`
+returns the observed collection index. The boundary probes pass. This profile
+contains no zero/gapped rowid or colliding-name fixture; synthetic gate tests
+verify preservation of zero/gaps without claiming native execution coverage.
+Its separately identified configuration is
+`8d4cbe871ebad270c80b6edcbb0b2a57790f58036b214f085199d8d4e4384c12`.
+The framework and client both completed measured cleanup. Canonical Save before
+and after the query are byte-identical: 80,657,462 bytes, SHA-256
+`ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884`.
+This proves the measured serialized boundary, not every live process field.
+No action, update, turn or cache initialization is executed by this observer.
+
+The native observer obtains the initialized collection using original
 `GetUnitDefinitions` at `0x22147d0`. It calls original Unit getters, `MakeHash`
 and `FindIndex` for every definition, and probes numeric index zero, `At(count)`,
 an actually absent hash, empty input and lowercase input. It does not build or
@@ -65,7 +85,9 @@ configuration identity and ABI gate. Acceptance requires named host/GameCore
 identities, exact observer source identities, the supported mod-activation
 schema, integer returncode zero, configured cleanup, both cleanup booleans true,
 the initialized XP2 marker and byte-identical independently identified original
-Save captures around the query. Alternate success envelopes are rejected.
+Save captures around the query. Alternate success envelopes are rejected. Frozen runtime source digests remain
+in the retained original configuration; the audit separately records its current
+postprocessor source digest without relabeling the execution.
 The inventory comparison re-audits the original runtime and both captures before
 accepting the private report. A loaded benchmark observation remains distinct
 from the request-None rules export until input identity is independently linked.
