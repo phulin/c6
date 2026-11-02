@@ -1,0 +1,135 @@
+{
+  "additional_hardening": [
+    "registered runtime-report and canonical capture provenance pinned",
+    "constructor rejects collection counts outside native u32 domain before hash index construction"
+  ],
+  "additional_static_checks": {
+    "yield_find_lower_comparator": {
+      "address": "0x1ff7390",
+      "bytes": 18,
+      "comparison": "unsigned",
+      "sha256": "6e83546898a48abb685f338d7f6b76f059b8855984b2a75e04b691e4b1026bfe"
+    },
+    "yield_find_upper_comparator": {
+      "address": "0x1ff7450",
+      "bytes": 18,
+      "comparison": "unsigned",
+      "sha256": "a0aacc3c4f0fd400bfb9a41a52f818370c200657ac0f8c2c82d8e03018fd156a"
+    }
+  },
+  "checks": [
+    {
+      "command": "cargo test -p c6-data registry::",
+      "result": "pass; 2 synthetic tests; native case ignored"
+    },
+    {
+      "command": "C6_LINUX_DEFINITION_IDS_REPORT=evidence/linux/definition-ids-native-1.json cargo test -p c6-data linux_native_definition_report -- --ignored",
+      "result": "pass; 1 genuine native report comparison"
+    },
+    {
+      "command": "cc -std=c11 -Wall -Wextra -Werror -fPIC -fsyntax-only native/linux/definition_ids.c",
+      "result": "pass"
+    },
+    {
+      "command": "python3 tools/linux/definition_ids_audit.py --output /tmp/c6-definition-review-static.json",
+      "result": "pass; matches committed static evidence"
+    },
+    {
+      "command": "python3 tools/linux/definition_ids_audit.py --runtime-report frozen/runtime-report.json --before-save frozen/save.bin --after-save frozen/repeat.bin --output /tmp/c6-definition-review-native.json",
+      "result": "pass; report matched committed native report before hardening"
+    },
+    {
+      "command": "Original altered-host/config fixture Rust comparator retest",
+      "result": "rejected; expected cargo exit 101"
+    },
+    {
+      "command": "Original alternate no-cleanup runtime full audit retest",
+      "result": "rejected; expected Python exit 1"
+    },
+    {
+      "command": "Independent validate_runtime negative cases",
+      "result": "5 rejected: false framework/client cleanup, integer/string truthy cleanup, misplaced host/GameCore digests with recomputed config digest"
+    },
+    {
+      "command": "Genuine native fixture comparator after hardening",
+      "result": "pass; original public evidence unchanged"
+    },
+    {
+      "command": "python3 tools/linux/definition_ids_audit_test.py",
+      "result": "pass; 4 gate regression tests after final fix commit"
+    },
+    {
+      "command": "Final genuine native fixture comparator",
+      "result": "pass; 1 test after final provenance pins and count guard"
+    }
+  ],
+  "findings": [
+    {
+      "id": "cleanup-fallback",
+      "initial_behavior": "alternate exit_code metadata accepted with both cleanup flags false",
+      "reproduced": true,
+      "status": "fixed_and_independently_retested"
+    },
+    {
+      "id": "rust-native-handoff",
+      "initial_behavior": "comparator accepted all-zero host and configuration digests",
+      "reproduced": true,
+      "status": "fixed_and_independently_retested"
+    }
+  ],
+  "fix_commit": "3a0d224",
+  "full_state_action_turn_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "genuine_native_evidence": {
+    "canonical_capture_bytes_each": 80657462,
+    "canonical_capture_sha256_each": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "client_cleanup_proven": true,
+    "configuration_digest_recomputed": true,
+    "configuration_sha256": "c926ba2347ef6515da4b260f960957dab7389239b2cd59526407c72e74c7a1e4",
+    "equivalent_to_registered_request_none_rules_export": false,
+    "framework_cleanup_proven": true,
+    "full_live_memory_equivalence_proven": false,
+    "native_mapping_entries": 6,
+    "observer_source_digest_verified": true,
+    "public_native_report_reproduced_before_hardening": true,
+    "rules_snapshots": {},
+    "runtime_report_sha256": "153b90f6c2d77ef98fd5fe673a2af008d4e518cd024e799515d45ed5120c337e",
+    "static_report_reproduced": true
+  },
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "initial_review_sources": {
+    "crates/c6-data/src/registry.rs": "2ea16a94d6240eb5d326829683a6ccdb4434feb3e55cf74f97dfbae62be00036",
+    "docs/linux-definition-ids.md": "5be31bd67930213ce6e0a9213a8dc2b8b70c58cf278ac401895b925df090d712",
+    "evidence/linux/definition-ids-native-1.json": "fa8c6d0919280b6cc6b9c557aab81b7b8879fb21c3ef9c037a3ac16bdc53146f",
+    "evidence/linux/definition-ids-static.json": "a10c032f0e7e354efbe2fef20cb49515f8f5be9c446a37207a4fb5df8714dea9",
+    "native/linux/definition_ids.c": "82559a0e9dcf18f4ed2f4688fccf31683c68bc8441191a5f7067c76c08dde4d7",
+    "native/linux/definition_ids.h": "a168570e0f94d5a05623583d25142fca7d2c4a9fe0065fc09d68727fe6067f00",
+    "tools/linux/definition_ids_audit.py": "9520af4fbdae2f2c3486260149d55ffe10c7ad6e6d2cfbf3837fcdae5d6cf759"
+  },
+  "native_rebuild_during_review": false,
+  "original_engine_execution_during_review": false,
+  "post_fix_review_sources": {
+    "crates/c6-data/src/registry.rs": "090ab8e4362971e7ca2df840fd4334c3259f8cddb8fc943a941b3effff9d923b",
+    "docs/linux-definition-ids.md": "3beb37ea38d2ddc2054fc94b7efda927b8817a5bfd659b4e1a237dcc4b4ea5b7",
+    "tools/linux/definition_ids_audit.py": "3f36a0701db7247e30336ca3f6b324e656a8b236db352343f7c76b1f4d8017bc",
+    "tools/linux/definition_ids_audit_test.py": "a7263cf4c1421b57469d47d4b4dc2fb06aa30a7c75735589f07b82c17b977602"
+  },
+  "raw_save_load_failure_bytes_retained": 89198,
+  "review_date": "2026-11-02",
+  "schema": "c6-linux-definition-ids-independent-review-v1",
+  "scope": "isolated Linux hash and definition lookup; reused six-Yield original observation",
+  "scope_limits": [
+    "native saved capture equality only, not complete live state",
+    "caller provides native order; no database rowid-to-index inference",
+    "constructor rejects counts beyond u32 representability; no native overflow fixture",
+    "current primitive is not complete state/action/turn simulator"
+  ],
+  "unproven_native_boundaries": [
+    "arbitrary colliding distinct names",
+    "modded registries",
+    "Units IDs",
+    "embedded NUL and high-byte hashing runtime queries",
+    "rowid narrowing extremes",
+    "collection count and index overflow"
+  ]
+}
