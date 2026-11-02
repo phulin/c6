@@ -23,9 +23,27 @@ static void fatal(const char *reason) {
     if(trace_log){fprintf(trace_log,"{\"event\":\"failing_boundary\",\"reason\":\"%s\"}\n",reason);fflush(trace_log);}
     _exit(198);
 }
-static void *original(const char *symbol,void *wrapper) {
-    void *value=dlsym(atomic_load(&armed)?trace_module:RTLD_NEXT,symbol);
-    if(!value||value==wrapper)fatal("original_symbol_resolution");
+static void *original(const char *symbol,void *wrapper,void *caller) {
+    void *value=NULL;
+    if(atomic_load(&armed))value=dlsym(trace_module,symbol);
+    else {
+        Dl_info source,resolved;
+        void *module=NULL;
+        if(dladdr(caller,&source)&&source.dli_fname){
+            const char *leaf=strrchr(source.dli_fname,'/');leaf=leaf?leaf+1:source.dli_fname;
+            if(!strcmp(leaf,"libGameCore_Base.so")||!strcmp(leaf,"libGameCore_XP1.so")||!strcmp(leaf,"libGameCore_XP2.so")){
+                module=dlopen(source.dli_fname,RTLD_NOW|RTLD_NOLOAD);
+                if(module)value=dlsym(module,symbol);
+                if(value&&(!dladdr(value,&resolved)||resolved.dli_fbase!=source.dli_fbase))value=NULL;
+                if(module)dlclose(module);
+            }
+        }
+    }
+    if(!value||value==wrapper){
+        Dl_info source={0};(void)dladdr(caller,&source);
+        fprintf(stderr,"C6_LINUX_ACTION_TRACE unresolved_symbol %s caller_module %s armed %d\n",symbol,source.dli_fname?source.dli_fname:"unknown",atomic_load(&armed));
+        fatal("original_symbol_resolution");
+    }
     return value;
 }
 static void packet(const char *kind,int from,const void *stream) {
@@ -47,38 +65,38 @@ static void packet(const char *kind,int from,const void *stream) {
 
 void trace_queue(int,void *) __asm__("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE");
 void trace_queue(int from,void *stream) {
-    void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE",trace_queue);
+    void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE",trace_queue,__builtin_return_address(0));
     if(atomic_load(&armed)){atomic_fetch_add(&queued,1);packet("queue",from,stream);}
     call(from,stream);
 }
 void trace_receive(int,void *) __asm__("_ZN8GameCore8Messages7Manager14ReceiveMessageEiRN13Serialization13MemoryIStreamE");
 void trace_receive(int from,void *stream) {
-    void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager14ReceiveMessageEiRN13Serialization13MemoryIStreamE",trace_receive);
+    void (*call)(int,void *)=original("_ZN8GameCore8Messages7Manager14ReceiveMessageEiRN13Serialization13MemoryIStreamE",trace_receive,__builtin_return_address(0));
     if(atomic_load(&armed)){atomic_fetch_add(&received,1);packet("receive",from,stream);}
     call(from,stream);
 }
 void trace_unit_execute(const void *) __asm__("_ZNK8GameCore8Messages13UnitOperation7ExecuteEv");
 void trace_unit_execute(const void *message) {
-    void (*call)(const void *)=original("_ZNK8GameCore8Messages13UnitOperation7ExecuteEv",trace_unit_execute);
+    void (*call)(const void *)=original("_ZNK8GameCore8Messages13UnitOperation7ExecuteEv",trace_unit_execute,__builtin_return_address(0));
     if(atomic_load(&armed)){atomic_fetch_add(&executed,1);fprintf(trace_log,"{\"event\":\"unit_execute_enter\"}\n");}
     call(message);
     if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"unit_execute_return\"}\n");
 }
 void trace_event_id(uint64_t,const void *) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE");
 void trace_event_id(uint64_t event,const void *identity) {
-    void (*call)(uint64_t,const void *)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE",trace_event_id);
+    void (*call)(uint64_t,const void *)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE",trace_event_id,__builtin_return_address(0));
     if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\"}\n",(unsigned long long)event,(unsigned long long)bits);}
     call(event,identity);
 }
 void trace_event_id_int(uint64_t,const void *,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi");
 void trace_event_id_int(uint64_t event,const void *identity,int value) {
-    void (*call)(uint64_t,const void *,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi",trace_event_id_int);
+    void (*call)(uint64_t,const void *,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi",trace_event_id_int,__builtin_return_address(0));
     if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity_int\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"value\":%d}\n",(unsigned long long)event,(unsigned long long)bits,value);}
     call(event,identity,value);
 }
 void trace_event_id_two_int(uint64_t,const void *,int,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii");
 void trace_event_id_two_int(uint64_t event,const void *identity,int first,int second) {
-    void (*call)(uint64_t,const void *,int,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii",trace_event_id_two_int);
+    void (*call)(uint64_t,const void *,int,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii",trace_event_id_two_int,__builtin_return_address(0));
     if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity_two_int\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"first\":%d,\"second\":%d}\n",(unsigned long long)event,(unsigned long long)bits,first,second);}
     call(event,identity,first,second);
 }
@@ -86,7 +104,7 @@ void trace_event_id_two_int(uint64_t event,const void *identity,int first,int se
 void NAME(void *) __asm__(SYMBOL); \
 void NAME(void *receiver){ \
     if(atomic_load(&armed))fatal(REASON); \
-    void (*call)(void *)=original(SYMBOL,NAME);call(receiver); \
+    void (*call)(void *)=original(SYMBOL,NAME,__builtin_return_address(0));call(receiver); \
 }
 STOP_VOID(stop_game_update,"_ZN8GameCore4Game8Instance6UpdateEv","unexpected_Game_Update")
 STOP_VOID(stop_processor_update,"_ZN8GameCore4Game9Processor6UpdateEv","unexpected_GameProcessor_Update")
@@ -96,13 +114,13 @@ STOP_VOID(stop_ai_process,"_ZN8GameCore2AI8GlobalAi9ProcessAiEv","unresolved_Glo
 int stop_diplomatic_action(void *,const void *,int) __asm__("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE");
 int stop_diplomatic_action(void *receiver,const void *action,int player) {
     if(atomic_load(&armed))fatal("unresolved_Diplomatic_ProcessAction_callback");
-    int (*call)(void *,const void *,int)=original("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE",stop_diplomatic_action);
+    int (*call)(void *,const void *,int)=original("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE",stop_diplomatic_action,__builtin_return_address(0));
     return call(receiver,action,player);
 }
 int stop_diplomatic_deal(void *,int,const void *,bool) __asm__("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb");
 int stop_diplomatic_deal(void *receiver,int proposal,const void *deal,bool flag) {
     if(atomic_load(&armed))fatal("unresolved_Diplomatic_ProcessDeal_callback");
-    int (*call)(void *,int,const void *,bool)=original("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb",stop_diplomatic_deal);
+    int (*call)(void *,int,const void *,bool)=original("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb",stop_diplomatic_deal,__builtin_return_address(0));
     return call(receiver,proposal,deal,flag);
 }
 
@@ -120,6 +138,8 @@ int c6_linux_action_trace_begin(void *module) {
     Dl_info info;
     void *native_update=dlsym(module,"_ZN8GameCore4Game8Instance6UpdateEv");
     bool slots_bound=native_update&&dladdr(native_update,&info);
+    const char *leaf=slots_bound?strrchr(info.dli_fname,'/'):NULL;
+    if(slots_bound)slots_bound=!strcmp(leaf?leaf+1:info.dli_fname,"libGameCore_XP2.so");
     struct binding {uintptr_t offset;void *wrapper;const char *name;};
     const struct binding bindings[]={
         {0x3b290d8,(void *)stop_processor_update,"GameProcessor_Update"},

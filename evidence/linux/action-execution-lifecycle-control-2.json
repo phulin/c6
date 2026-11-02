@@ -1,0 +1,112 @@
+{
+  "schema": "c6-linux-action-lifecycle-control-v1",
+  "runtime_report_sha256": "0683e8babf83e21d444e1ce447c3420615cc87ada282536e9e4f1adf859f943a",
+  "configuration_sha256": "de8e3e1fd87d6bbd0e60e6187ad242a22de072c43ea70bb103740f90f0b678da",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_observation": {
+    "stage": "host_delivery_observation",
+    "controller_present": 1,
+    "controller_initialized": 1,
+    "controller_context_matches": 1,
+    "host_context_matches": 1,
+    "network_gamecore_active": 1,
+    "action_executed": false
+  },
+  "cache_observation": {
+    "stage": "cache_dispatch_observation",
+    "local_player": 0,
+    "live_player": 0,
+    "live_active": 1,
+    "live_human": 1,
+    "cache_present": 1,
+    "cached_player": 0,
+    "cached_active": 1,
+    "cached_human": 1,
+    "request_cache_predicate_passes": 1,
+    "action_executed": false
+  },
+  "trace_sha256": "26a8aea5c269147bfa4e83f535bf27826d8177657ff7d2368444a094424790a6",
+  "trace_plt_bindings": [
+    {
+      "event": "original_PLT_binding",
+      "name": "GameProcessor_Update",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "GlobalAi_ProcessAi",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "ReceiveMessage",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "EventSend_identity",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "QueueMessage",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "EventSend_identity_two_int",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "Diplomatic_ProcessAction",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "AIControl_DoTurn",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "Diplomatic_ProcessDeal",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "Game_Update",
+      "interposed": true
+    },
+    {
+      "event": "original_PLT_binding",
+      "name": "EventSend_identity_int",
+      "interposed": true
+    }
+  ],
+  "trace_end": {
+    "event": "end",
+    "queued": 0,
+    "received": 0,
+    "unit_executed": 0,
+    "reports": 0
+  },
+  "original_core_saves": {
+    "save": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    "repeat": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    }
+  },
+  "serialized_core_unchanged": true,
+  "original_uninitialize_before_unload": true,
+  "full_cleanup": true,
+  "action_executed": false,
+  "unarmed_entry_log_complete": false,
+  "complete_policy_boundary_coverage": false,
+  "gameplay_parity": false,
+  "limits": "Actual original controller/cache initialization and teardown only. Selected guards verified in the armed interval. Successful unarmed Load-entry logging remains a separate required profile before action execution; no complete transient-state or RNG comparison is claimed here."
+}
