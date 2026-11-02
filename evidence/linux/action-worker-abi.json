@@ -1,0 +1,184 @@
+{
+  "schema": "c6-linux-original-worker-ordering-v1",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checks_passed": true,
+  "methods": [
+    {
+      "module": "host",
+      "address": "0x31d4eb0",
+      "size": 8,
+      "name": "GameCoreThread.IsExecuting",
+      "sha256": "7b7b0e671e24137d96430c4b1a0222d01e1a665cf71924a4c5c5e095daed7e7d"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4950",
+      "size": 312,
+      "name": "Controller.ExecuteGameCoreUpdate",
+      "sha256": "514193e9d85d1b34d22f6053b548e0ba240de42ea22c34a4d2068265eb870dd6"
+    },
+    {
+      "module": "host",
+      "address": "0x31d1730",
+      "size": 46,
+      "name": "Controller.Synchronize",
+      "sha256": "d9945d3a3834f6145e016aa41b57fbaec681e6bf3efed34dda8b7cc3ec868502"
+    },
+    {
+      "module": "host",
+      "address": "0x31d18a0",
+      "size": 26,
+      "name": "Controller.IsExecuting",
+      "sha256": "116689463607c34540ee990b53566ad86b1f6ee2f010cffb8586ae97312519cc"
+    },
+    {
+      "module": "host",
+      "address": "0x31d1150",
+      "size": 126,
+      "name": "GameCoreThread.C1",
+      "sha256": "43ad2f8e5b2e867900eb05ede5c635215d95c59af32746dc8c1eb411d53ce4bd"
+    },
+    {
+      "module": "host",
+      "address": "0x31d11d0",
+      "size": 217,
+      "name": "GameCoreThread.Run",
+      "sha256": "11b63e8fb242e3d2ac85a2115084ac106eacfe43fd27fdff6960dd257cc54a9d"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4e50",
+      "size": 24,
+      "name": "GameCoreThread.SetExecuting",
+      "sha256": "1fd93ce7c8f39680c4e77cf3eb5ca60fc9372c2ed28c17782985bf1ec9f694ca"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4e70",
+      "size": 19,
+      "name": "GameCoreThread.SetComplete",
+      "sha256": "0e85fba1ecea919abc139064bd9b6c6c16bb5753d2ffafc67a200ab42ab4a861"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4ee0",
+      "size": 51,
+      "name": "GameCoreThread.JoinOnPassComplete",
+      "sha256": "7fe50455eb5ffa67411b507d0f96d8bb6b74aa255f573990cae0a7e7fbc28d6b"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4ec0",
+      "size": 18,
+      "name": "GameCoreThread.IsCurrentThread",
+      "sha256": "442f45e7ca73b2ab79a71f17e819a08adbe03fc1a2d725af529a2eb1c5038981"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4f30",
+      "size": 24,
+      "name": "GameCoreThread.IsSuspended",
+      "sha256": "271bb6d24c728983de1b881ac6a37fb205371c43987a370cfd6c86972c6099c7"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4f50",
+      "size": 49,
+      "name": "GameCoreThread.Resume",
+      "sha256": "0ccff73f784314a9dcc06bffb8ce3b4010b1dba30a44601d9650feb48e0a512f"
+    },
+    {
+      "module": "host",
+      "address": "0x31d5990",
+      "size": 4,
+      "name": "GameCoreThread.NeedsCompletionEvent",
+      "sha256": "dcdc7ecf6eeec6762f6f6d9eef71504a67bdc6711accb1f12f42106417e7fbef"
+    },
+    {
+      "module": "host",
+      "address": "0x31d4c90",
+      "size": 83,
+      "name": "Controller.SendProcessingComplete",
+      "sha256": "423e83d2634f6aaca97ac99f5760c28dd3e0d0e0fc5f6568b73cafbdb0a48221"
+    },
+    {
+      "module": "host",
+      "address": "0x32b3d40",
+      "size": 22,
+      "name": "EngineUtility.GetGameCoreLock",
+      "sha256": "9394d1eaa3cd10aad54c138f38dbe484621b0f48d78dfd14fb0e14b1de441406"
+    },
+    {
+      "module": "host",
+      "address": "0x32b3d60",
+      "size": 22,
+      "name": "EngineUtility.ReleaseGameCoreLock",
+      "sha256": "257d7c9d356de1f649b0ca2394024341abe3b88c655630f0f43df9cda22d670f"
+    },
+    {
+      "module": "gamecore",
+      "address": "0x2c85ce0",
+      "size": 92,
+      "name": "Game.live.C1",
+      "sha256": "981ad8a20e2991f4cb6211bc5b349ea550efa2dbc6d59625e4d9b69897b2d519"
+    },
+    {
+      "module": "gamecore",
+      "address": "0x2c85d80",
+      "size": 56,
+      "name": "Game.D1/D2",
+      "sha256": "9fd728c0f0fe56b64e0fbacaeb0c28e9f73723000c86c57ec6e708ee5f3ae1b3"
+    },
+    {
+      "module": "gamecore",
+      "address": "0x2c8c2e0",
+      "size": 92,
+      "name": "Player.live.C1",
+      "sha256": "b691f5e6f4de4881da8aad97d7ccba10c4b29a1e688a51ffa24497986d6beb56"
+    }
+  ],
+  "calls": [
+    {
+      "address": "0x31d49bd",
+      "target": "0x31d1150"
+    },
+    {
+      "address": "0x31d49cc",
+      "target": "0x31d4e50"
+    },
+    {
+      "address": "0x31d11aa",
+      "target": "0x3c44ac0"
+    },
+    {
+      "address": "0x31d11d8",
+      "target": "0x3c402d8"
+    },
+    {
+      "address": "0x31d1232",
+      "target": "0x31d4e70"
+    },
+    {
+      "address": "0x31d1252",
+      "target": "0x3c402de"
+    },
+    {
+      "address": "0x31d4eff",
+      "target": "0x3c402d8"
+    },
+    {
+      "address": "0x31d4f07",
+      "target": "0x3c402de"
+    }
+  ],
+  "counter": "original Execute CAS0->1 before Resume; original Run Context.ProcessMessages then SetComplete decrements0 while holding worker lock",
+  "facade_lifetime": "live Game and Player facades acquire controller lock; release acquired live facades before scheduling worker, reacquire after completion",
+  "synchronize": "Controller.Synchronize returns immediately when IsExecuting=false; it is not a post-false lock barrier",
+  "conditional_wait": "one original Execute, bounded wait on genuine executing predicate, then original worker.JoinOnPassComplete shared-lock barrier on actual borrowed worker (not current thread)",
+  "predicate_access": "original IsExecuting performs an aligned native 32-bit comparison; SetExecuting and SetComplete use original interlocked operations, not replacement C atomic fields",
+  "completion_flag": "first fresh constructor zeros flag45; later flag is consumer notification, not independently reset per pass by SetExecuting",
+  "native_execution": false,
+  "gameplay_parity": false,
+  "limits": "Static ordering proves valid scheduling conditions; it does not prove actual OS-thread creation/start success. Non-quiescent failure captures are diagnostic, not coherent snapshots or successful cleanup."
+}
