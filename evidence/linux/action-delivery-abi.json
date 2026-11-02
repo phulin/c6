@@ -298,6 +298,76 @@
       "size": 270,
       "name": "Network.NetSessionCallbacks.PlayerRegistered",
       "sha256": "d8bae73239f662b101e18e53b9bf79ba72cdee5dd89b985182c387d0c693eeb4"
+    },
+    {
+      "module": "host",
+      "address": "0x33d85e0",
+      "size": 478,
+      "name": "Network.Manager.SubscribeToEvents",
+      "sha256": "5f6c3c5157c7e3f6132f8c91fe114d4b888b23981d69836f72e0d9eeb949d56f"
+    },
+    {
+      "module": "host",
+      "address": "0x33bd420",
+      "size": 478,
+      "name": "Network.Manager.UnsubscribeToEvents",
+      "sha256": "b4c9390bc90a11f4a7e4a885ec0369d82444e677b87712c112c3e2c3437875b9"
+    },
+    {
+      "module": "host",
+      "address": "0x33e4db0",
+      "size": 96,
+      "name": "LocalMachine.Event55.Subscribe",
+      "sha256": "8524df36f99e9488a6e00f850782780c4873d22f12d4e0a56fd6a0df41585ff3"
+    },
+    {
+      "module": "host",
+      "address": "0x321d550",
+      "size": 23,
+      "name": "LocalMachine.Event55.Publish",
+      "sha256": "1860ff4df807375b05cc3c477eed18c533737af59933033399e9bf05f2a0101d"
+    },
+    {
+      "module": "host",
+      "address": "0x2fa1bd0",
+      "size": 127,
+      "name": "LocalMachine.PublishEvents",
+      "sha256": "df581cfc8b3b7c53a2d854a259313beab83579c9873b2468f775324070804726"
+    },
+    {
+      "module": "host",
+      "address": "0x2f4baa0",
+      "size": 20,
+      "name": "LocalMachine.EventQueue",
+      "sha256": "c8cd7b201f3f300d8a97010626b822938d40062f1a8cfa040bdb833e7f78bc07"
+    },
+    {
+      "module": "host",
+      "address": "0x2f4bb30",
+      "size": 20,
+      "name": "LocalMachine.GetReceivingStream",
+      "sha256": "1a5fa67762f30d1f884fc4b8b5b35a4d372b252a557477376584878716742c85"
+    },
+    {
+      "module": "host",
+      "address": "0x2fb7720",
+      "size": 3,
+      "name": "LocalMachine.Stream.size",
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "module": "host",
+      "address": "0x2f4bbc0",
+      "size": 14,
+      "name": "LocalMachine.EventHeader.constructor",
+      "sha256": "930390bf967ca0cbc4a61627e76d242768ecee1c169bb6bf012a47852dc6404a"
+    },
+    {
+      "module": "host",
+      "address": "0x2f973c0",
+      "size": 162,
+      "name": "Civ6App.PublishEvents",
+      "sha256": "0c12cbc106ae9e458550030dfb4ae265e7d70b6fa95d841f606c2051f397b477"
     }
   ],
   "virtual_bindings": [
@@ -479,6 +549,36 @@
   ],
   "direct_calls": [
     {
+      "module": "host",
+      "address": "0x2f91d92",
+      "target": "0x33d85e0",
+      "name": "SetupNetwork_subscribes_original_manager"
+    },
+    {
+      "module": "host",
+      "address": "0x33bd337",
+      "target": "0x33bd420",
+      "name": "Manager_destructor_unsubscribes"
+    },
+    {
+      "module": "host",
+      "address": "0x33d8664",
+      "target": "0x33e1370",
+      "name": "Manager_subscribes_event55"
+    },
+    {
+      "module": "host",
+      "address": "0x33bd4a4",
+      "target": "0x33e1a70",
+      "name": "Manager_unsubscribes_event55"
+    },
+    {
+      "module": "host",
+      "address": "0x2f97455",
+      "target": "0x2fa1bd0",
+      "name": "AppPublishEvents_drains_LocalMachine"
+    },
+    {
       "module": "gamecore",
       "address": "0x280622e",
       "target": "0x1fb9798",
@@ -635,6 +735,24 @@
     "application_registration_type": 1209,
     "application_registration_vptr": "0x53b64d0",
     "live_core_active_host_callback": "Context.RequestAction(0x23cabda3,playerID); native action, not passive bookkeeping"
+  },
+  "local_machine_events": {
+    "system": "0x5490e80",
+    "publish_event55": "0x321d550",
+    "drain": "0x2fa1bd0",
+    "channel_u32_offset": 4,
+    "queue_offset": 128,
+    "queue_channel_stride": "0x800180",
+    "receiving_index_u32_offset": "0x800100",
+    "stream_stride": "0x400080",
+    "stream_used_u32_offset": 0,
+    "stream_data_offset": 128,
+    "stream_capacity": "0x400000",
+    "event_header_size": 16,
+    "event_total_size_u32_offset": 0,
+    "event_id_u32_offset": 4,
+    "event55_player_i32_payload_offset": 0,
+    "subscribe_idempotent": false
   },
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
