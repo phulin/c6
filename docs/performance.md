@@ -11,7 +11,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 C6_BENCH_DRAWS=200000000 cargo bench -p c6-core --bench rng
 ```
 
-The C smoke script builds `c6-ffi` in release mode, compiles a C11 consumer against `include/c6.h`, links the actual shared library, and runs it. It checks ABI structure sizes, null/error behavior, unchanged state and outputs on failed actions, the native-verified draw sequence, exact snapshot roundtrip, retained nonzero identity bytes and opaque future sections, and independent state after import. This catches header/export/linkage discrepancies that Rust-only tests cannot.
+The C smoke script builds `c6-ffi` in release mode, compiles a C11 consumer against `include/c6.h`, links the actual shared library, and runs it. It checks ABI structure sizes, null/error behavior, unchanged state and outputs on failed actions, the native-verified draw sequence, exact snapshot roundtrip, retained nonzero identity bytes and opaque future sections, independent state after import, numeric stream routing and missing/duplicate stream errors, counter wrapping, and legacy snapshot v1 upgrades to v2. This catches header/export/linkage discrepancies that Rust-only tests cannot.
 
 The script currently targets a Linux linker and `.so` loading. Rust tests cover implementation behavior; a real C consumer still needs running on each intended ABI/platform. Callers must satisfy the header's pointer lifetime, alignment, ownership and synchronization contracts. The C smoke deliberately does not pass dangling or misaligned pointers: these violate that contract rather than represent recoverable input errors.
 
@@ -25,6 +25,8 @@ Measured on 2026-11-02, Linux x86-64, shared KVM VM reporting AMD EPYC 7642, rus
 | 200,000,000 | 3.632 | 3.491 | 3.582 |
 
 All three 200-million-draw runs produced checksum `6553447264242`, final seed `2242362488`, and call count `200000000`, starting at seed `0x12345678` and using bound `65535`. The shorter runs produced checksum `655546658011`, final seed `399945080` and call count `20000000`. The shorter series overlapped other workspace compilation and shows why an isolated minimum should not become a throughput promise.
+
+After the numeric stream API and snapshot v2 extension, the same 200-million-draw command measured 3.543 ns/draw with the same checksum and final state. This is a regression observation for the primitive loop; named-stream lookup and action dispatch are outside its timing. The earlier repeated measurements remain the historical baseline.
 
 The timed loop calls the Rust RNG primitive, uses `black_box` for the bound and result, and accumulates a checksum. It includes loop, optimization barrier and checksum overhead. It excludes library loading, C ABI calls, snapshot cloning/encoding, allocation, JSON differential transport, original DLL execution, logging callbacks, and all game-state mechanics. The dependency chain between draws is intentional: each draw consumes the preceding seed. Geometry is covered by differential checks but has no recorded benchmark here.
 
