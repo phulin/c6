@@ -108,7 +108,11 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"diplomacy_before\",\"pending_actions\":%d,\"open_session_map_nonempty\":%d,\"threaded\":%u}\n",dip_actions,dip_sessions,threaded);
     if(initial.local<0||initial.local>=64||initial.pending||initial.update||initial.advance||initial.ai||initial.processing||dip_actions||dip_sessions||playback(context)||recording(context)){a.release(game);return 225;}
     const void *player_core=core_player(initial.local),*unit_container=player_core?core_units(player_core):NULL;
-    if(!unit_container||complete(player_core)){a.release(game);return 226;}
+    bool activation_complete=player_core&&complete(player_core);
+    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"player_activation\",\"core_player_present\":%d,\"unit_container_present\":%d,\"activation_complete\":%d}\n",player_core!=NULL,unit_container!=NULL,activation_complete);
+    /* IsTurnActiveComplete means active with no pending activation update,
+     * not that the player has ended the turn. Retain original readiness. */
+    if(!unit_container||!activation_complete){a.release(game);return 226;}
     void *player=get_player(context,initial.local),*cached=cached_player(context,initial.local);
     bool control_ready=player&&cached&&facade_active(player)&&facade_human(player)&&facade_active(cached)&&facade_human(cached);
     if(cached)a.release(cached);
