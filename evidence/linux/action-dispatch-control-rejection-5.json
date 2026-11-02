@@ -1,0 +1,36 @@
+{
+  "schema": "c6-linux-bounded-action-prerequisite-rejection-v1",
+  "configuration_sha256": "5e0e5584f236abc129193ba06d665be96079b443bb91a98a61ae938ebba6fa18",
+  "runtime_report_sha256": "55c42b0cd2434ac77a00934e2eab389606337f319db7d65857127f04e07d4dde",
+  "source_checkpoint": "38b57d0",
+  "returncode": 228,
+  "actual_units_visited": 36,
+  "all_core_lookup_found": true,
+  "actual_legal_candidates": [
+    {
+      "stage": "actor_candidate",
+      "owner": 0,
+      "id": 15794187,
+      "component_bits": "00f1000b00010000",
+      "public_can_start": 1,
+      "core_found": 1,
+      "queue_query_status": 0,
+      "queue_size": 1
+    },
+    {
+      "stage": "actor_candidate",
+      "owner": 0,
+      "id": 12976159,
+      "component_bits": "00c6001f00010000",
+      "public_can_start": 1,
+      "core_found": 1,
+      "queue_query_status": 0,
+      "queue_size": 1
+    }
+  ],
+  "request_issued": false,
+  "native_action_executed": false,
+  "full_cleanup_profile_pass": false,
+  "gameplay_parity": false,
+  "conclusion": "Both actual legal SkipTurn actors have one original operation node. No legal empty-queue actor exists in this fixture. Empty-queue was an extra harness restriction. Original default bAppend=false performs actual clear/deactivation before replacement; future bounded case must capture this genuine affected state and event sequence without synthetic clearing."
+}
