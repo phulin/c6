@@ -152,5 +152,21 @@
       "initialized_game": false,
       "missing_schema_native_negative": "pending; no-op branch established statically"
     }
+  },
+  "script_provider_wiring": {
+    "native_getter_rva": "0x1c9880",
+    "native_singleton_rva": "0x22d8140",
+    "native_constructor_rva": "0x1615e0",
+    "required_native_vptr_rva": "0xfc0618",
+    "constructs_vm": false,
+    "sets_gamecore_global_directly": false,
+    "recache": "repeat original SetEngineInterface after genuine provider construction",
+    "startup_required_slot_zero": {
+      "name": "GameCore_Tuner",
+      "character_encoding": "narrow",
+      "boolean_argument": true
+    },
+    "post_localization_fault_rva": "0x605756",
+    "native_nonnull_vm_validation": "pending separate script bootstrap"
   }
 }

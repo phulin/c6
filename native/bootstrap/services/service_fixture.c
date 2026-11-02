@@ -153,6 +153,16 @@ static void destroy(void *self) {
 }
 static void *script(void *self) {
     (void)self;
+    if (original_host_image) {
+        typedef void *(*getter_fn)(void *);
+        void *provider = ((getter_fn)((uintptr_t)original_host_image + 0x1c9880))(self);
+        if (provider) {
+            if (*(uintptr_t *)provider != (uintptr_t)original_host_image + 0xfc0618)
+                unavailable(0x10);
+            trace("GetScriptSystem_original_provider", 0x10);
+            return provider;
+        }
+    }
     trace("script_system_unavailable_null", 0x10);
     return NULL;
 }

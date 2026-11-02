@@ -77,3 +77,10 @@ The original method constructs GameEffects::DatabaseWriter (`0x92a290`) with the
 
 
 Actual native XP2 candidate execution now records this GameCore phase returning one, Types increasing from 2,652 to 3,810, and total_changes increasing by 3,624. All 213 declared source imports then complete with configuration/gameplay table counts 78/428 (`evidence/bootstrap/native-xp2-content-effects-phase.json`, child exit zero). These are actual original database mutations, rather than inserted placeholder rows. The evidence still labels mod selection as declarative and initialized_game false. A native missing-schema no-op comparison remains a separate requested negative fixture; its behavior is currently established from the checked instructions rather than a recorded child run.
+
+
+## Genuine script-provider wiring
+
+The engine GetScriptSystem fixture now delegates to the actual original EXE getter (`0x1c9880`) once the original host image has been prepared. A non-null result is accepted only when its native vptr equals EXE `0xfc0618`, installed by the actual ScriptSystem constructor (`0x1615e0`). This wiring does not construct a VM or fabricate a provider; the native singleton remains explicitly unavailable until the separate original script bootstrap succeeds. SetEngineInterface caches the returned pointer in GameCore global `0xb8aa88`, so the loader must repeat that original call after genuine provider construction. No GameCore global is patched directly.
+
+The post-localization StartupGame failure is at Tuner::Manager::Initialize (`0x605730`), fault `0x605756`. Its first script call is slot zero with the narrow name GameCore_Tuner and true flag; a non-null returned state is passed to script slot `+0x10`. That native call must receive a real script provider and VM. Returning an invented successful thread or suppressing the tuner path would not establish complete StartupGame execution.
