@@ -128,6 +128,7 @@ def audit(run,abi,inventory,before_path,after_path,private_root):
     return dict(mapping=record,configuration=config,configuration_sha256=run['configuration_sha256'],
         canonical_save=captures[0][1],canonical_core_unchanged=True,full_live_state_unchanged_proven=False,
         registered_hashes_without_definition=len(set(selected)-seen),
+        manager_vptr_observed=False,
         corpus=corpus,candidate_report_sha256=sha(candidate_path.read_bytes()),active_handlers=sum(e['handler_present'] for e in entries),null_handlers=sum(not e['handler_present'] for e in entries))
 
 
@@ -155,6 +156,7 @@ def main():
         registered_hashes_without_definition=result['registered_hashes_without_definition'],
         mapping_sha256=sha(json.dumps(result['mapping'],sort_keys=True,separators=(',',':')).encode()),
         canonical_save=result['canonical_save'],canonical_core_unchanged=True,full_live_state_unchanged_proven=False,
+        manager_vptr_observed=False,
         corpus=result['corpus'],candidate_report_sha256=result['candidate_report_sha256'],full_state_action_turn_parity=False)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(public,indent=2)+'\n')

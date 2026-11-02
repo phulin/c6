@@ -4,8 +4,8 @@
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "configuration_sha256": "551e80945f1e8ffd28e70a74a10769a542314269d017ce348beb877ad20dee4f",
   "runtime_report_sha256": "ee26d2e02bbf55488a10f3a2d7fc0f4dadc0e6cb16c56e80f54449e0b6197a46",
-  "private_report_sha256": "321b2d75d905036ad770e2585adb718486a00ed67470759ce8688321d8616c6a",
-  "audit_source_sha256": "6a7ec3a5ed6809889a2765902c931a46efad6097e3fb92abb88f4e7857b09e34",
+  "private_report_sha256": "d8a43667523e9385bfa9ac35594027609b26d7755551c0bab46d226917899901",
+  "audit_source_sha256": "752e006333eb7533b386829ed6dfba7af7a27034a8de75fd082d889b2aae9685",
   "registry_count": 63,
   "active_handlers": 63,
   "null_handlers": 0,
@@ -17,6 +17,7 @@
   },
   "canonical_core_unchanged": true,
   "full_live_state_unchanged_proven": false,
+  "manager_vptr_observed": false,
   "corpus": [
     {
       "save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
