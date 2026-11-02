@@ -14,6 +14,43 @@ ROOT = Path(__file__).resolve().parents[2]
 HOST = '106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4'
 GAME = 'a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa'
 PROFILE = 'linux-base-native-generated-v1'
+BASE_CONFIGURATION = '499dc9856ba562523ec70268224729232f751663988e44f4f9b0d6208e7f9328'
+
+
+def validate_profile(configuration, configuration_hash):
+    expected_assets = json.loads((ROOT / 'tools/linux/runtime-gate.json').read_text())
+    expected_content = json.loads((ROOT / 'tools/linux/runtime-content-gate.json').read_text())
+    if configuration.get('original_assets') != expected_assets:
+        raise ValueError('unsupported Linux complete module profile')
+    if configuration.get('content_profile') != expected_content:
+        raise ValueError('unsupported Linux base source content profile')
+    expected_mapping = [
+        {'source': name, 'staged': '/'.join('Schema' if part == 'schema' else part
+                                           for part in Path(name).parts), 'sha256': sha}
+        for name, sha in sorted(expected_content['files'].items())]
+    view = configuration.get('rules_source_view', {})
+    if (view.get('format') != 'c6.linux-native-base-source-view.v1' or
+            view.get('original_source_gate_sha256') != digest(ROOT / 'tools/linux/runtime-content-gate.json') or
+            view.get('mapping') != expected_mapping or
+            view.get('source_view_sha256') != identity(expected_mapping)):
+        raise ValueError('unsupported Linux base source-view strategy')
+    if (configuration.get('mode') != 'host-crt-init-original-host-services-context-initialize' or
+            configuration.get('enabled_dlc_mods') is not None or configuration.get('rules_database') is not None or
+            configuration.get('startup_game_requested') is not False or
+            configuration.get('initialized_game') is not False or
+            configuration.get('host_application_main_called') is not False):
+        raise ValueError('unsupported Linux base activation/state profile')
+    forbidden = ('saved_configuration_profile', 'localization_profile', 'localization_environment',
+                 'load_stream_fixture', 'native_stream_adapter', 'native_save_requested', 'lua_profile')
+    if any(name in configuration for name in forbidden):
+        raise ValueError('unsupported Linux base optional service/session profile')
+    if configuration.get('rules_snapshot_profile') != {
+            'requested': True, 'header_sha256': digest(ROOT / 'native/linux/rules_snapshot.h')}:
+        raise ValueError('unsupported Linux base native backup adapter')
+    # Fixed named baseline, not permission to relabel arbitrary self-consistent
+    # reports. Changes require a newly audited/registered fixture identity.
+    if configuration_hash != BASE_CONFIGURATION:
+        raise ValueError('unsupported Linux base fixture configuration identity')
 
 
 def inspect(directory, report_path):
@@ -24,13 +61,14 @@ def inspect(directory, report_path):
     assets = configuration['original_assets']
     if assets.get('Civ6') != HOST or assets.get('libGameCore_XP2.so') != GAME:
         raise ValueError('unsupported Linux native module identity')
+    validate_profile(configuration, report['configuration_sha256'])
     if report.get('exit_code') != 0 or not report.get('diagnostic_passed'):
         raise ValueError('a passing genuine Linux fixture is required')
     events = [json.loads(line[len('C6_LINUX_RULES '):]) for line in report['stderr'].splitlines()
               if line.startswith('C6_LINUX_RULES {')]
     backups = [event for event in events if event.get('phase') == 'original_database_backup']
-    if len(backups) != 2 or any(not event.get('native_success') or
-                               not event.get('row_counts_match') or event.get('result') != 0 for event in backups):
+    if len(backups) != 2 or any(event.get('native_success') is not True or
+                               event.get('row_counts_match') is not True or event.get('result') != 0 for event in backups):
         raise ValueError('successful native Linux backups are required')
     artifacts = report['rules_snapshots']
     if sorted(artifact['filename'] for artifact in artifacts) != ['configuration.sqlite', 'gameplay.sqlite']:

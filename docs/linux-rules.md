@@ -80,6 +80,12 @@ genuine successful backups, matching artifact hashes/sizes, exact native counts,
 and populated base content. It reuses the platform-independent typed SQL/rowid
 fingerprint encoding documented in [rules-snapshot.md](rules-snapshot.md), without
 reusing Windows module or recipe gates. Two independent native builds must match.
+The inspector pins the audited base configuration `499dc985...` independently
+of a report's recomputed self-hash, plus the complete module gate, exact source
+inventory, Schema view and initialization-only service/session strategy. A changed
+configuration or source strategy requires a separately audited profile; it cannot
+be relabeled as this base fixture.
+
 The source identity hashes the pinned Linux input gate; execution ordering is
 owned by original Linux Bootstrap, not inferred from an inventory sort.
 
