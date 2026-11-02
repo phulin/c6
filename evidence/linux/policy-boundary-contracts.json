@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "method": "SHA-gated static Linux ELF calls, branches and relocated pointers; no native execution",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checks_passed": true,
+  "direct_calls": [
+    {
+      "address": "0x2ba1077",
+      "target": "0x1e41590",
+      "contract": "player_activation_enters_AI_control_activation"
+    },
+    {
+      "address": "0x201e941",
+      "target": "0x1f3c7f0",
+      "contract": "activation_dispatches_offturn_signal"
+    },
+    {
+      "address": "0x201e962",
+      "target": "0x1f4b450",
+      "contract": "activation_waits_offturn_jobs"
+    },
+    {
+      "address": "0x201eacc",
+      "target": "0x1fa1e50",
+      "contract": "activation_calls_priority_subscribers"
+    },
+    {
+      "address": "0x201e6b7",
+      "target": "0x1e66210",
+      "contract": "begin_turn_dispatches_priority_signal"
+    },
+    {
+      "address": "0x1fcf8f3",
+      "target": "0x1e1e000",
+      "contract": "city_manager_subscribes_offturn"
+    },
+    {
+      "address": "0x2120fb5",
+      "target": "0x1e1e000",
+      "contract": "grand_strategy_subscribes_offturn"
+    },
+    {
+      "address": "0x2122fd0",
+      "target": "0x1f5f3f0",
+      "contract": "grand_strategy_submits_job"
+    },
+    {
+      "address": "0x2123019",
+      "target": "0x1f5f3f0",
+      "contract": "grand_strategy_submits_region_job"
+    },
+    {
+      "address": "0x212302d",
+      "target": "0x1f564d0",
+      "contract": "grand_strategy_runs_jobs"
+    },
+    {
+      "address": "0x1fd8dc4",
+      "target": "0x1f5f3f0",
+      "contract": "city_build_submits_job"
+    },
+    {
+      "address": "0x1fd8dcc",
+      "target": "0x1f564d0",
+      "contract": "city_build_runs_jobs"
+    },
+    {
+      "address": "0x20fb05f",
+      "target": "0x1ec0f30",
+      "contract": "global_AI_queues_original_job_with_jobset"
+    },
+    {
+      "address": "0x20faa3f",
+      "target": "0x1e69ea0",
+      "contract": "global_AI_waits_original_jobset"
+    },
+    {
+      "address": "0x2185e9f",
+      "target": "0x1e87800",
+      "contract": "research_activation_checks_human"
+    },
+    {
+      "address": "0x2185eb0",
+      "target": "0x1e6cad0",
+      "contract": "research_activation_enters_technology_policy"
+    },
+    {
+      "address": "0x218612e",
+      "target": "0x1e87800",
+      "contract": "technology_policy_independently_checks_human"
+    },
+    {
+      "address": "0x21861e5",
+      "target": "0x1fb8ef0",
+      "contract": "analysis_choice_checks_original_CanResearch"
+    },
+    {
+      "address": "0x2186224",
+      "target": "0x1fb7080",
+      "contract": "analysis_choice_commits_research_queue"
+    },
+    {
+      "address": "0x2186277",
+      "target": "0x1f03f80",
+      "contract": "fallback_constructs_original_game_RNG_delegate"
+    },
+    {
+      "address": "0x2186307",
+      "target": "0x1fb8900",
+      "contract": "fallback_excludes_owned_technologies"
+    },
+    {
+      "address": "0x2186319",
+      "target": "0x1fb8ef0",
+      "contract": "fallback_checks_original_CanResearch"
+    },
+    {
+      "address": "0x218632d",
+      "target": "0x1e0f800",
+      "contract": "fallback_collects_native_technology_ids"
+    },
+    {
+      "address": "0x2189f20",
+      "target": "0x1e6d460",
+      "contract": "random_choice_invokes_original_delegate"
+    },
+    {
+      "address": "0x1fe524f",
+      "target": "0x1f22910",
+      "contract": "game_RNG_edits_original_Game_Random"
+    },
+    {
+      "address": "0x2186360",
+      "target": "0x1ecd240",
+      "contract": "fallback_makes_random_policy_choice"
+    },
+    {
+      "address": "0x218638d",
+      "target": "0x1fb7080",
+      "contract": "fallback_commits_research_queue"
+    },
+    {
+      "address": "0x2913590",
+      "target": "0x1f04c20",
+      "contract": "pending_diplomacy_processes_AI_statement"
+    },
+    {
+      "address": "0x291197c",
+      "target": "0x1f48180",
+      "contract": "pending_diplomacy_removes_next_statement"
+    },
+    {
+      "address": "0x291199d",
+      "target": "0x1f3ccf0",
+      "contract": "pending_diplomacy_processes_removed_statement"
+    },
+    {
+      "address": "0x2917af5",
+      "target": "0x1e9a1c0",
+      "contract": "session_queue_pops_before_processing"
+    },
+    {
+      "address": "0x2917b00",
+      "target": "0x1f8af60",
+      "contract": "session_queue_processes_owned_statement"
+    }
+  ],
+  "byte_contracts": [
+    {
+      "address": "0x2186133",
+      "contract": "QueueNextTech_human_returns_before_selection"
+    },
+    {
+      "address": "0x2185ea8",
+      "contract": "activation_completedTech_sentinel_minus_one"
+    },
+    {
+      "address": "0x2186218",
+      "contract": "analysis_insert_mode_zero"
+    },
+    {
+      "address": "0x1fe5262",
+      "contract": "game_RNG_tailcalls_original_Random_Get"
+    },
+    {
+      "address": "0x2185ea4",
+      "contract": "human_skips_activation_QueueNextTech_call"
+    },
+    {
+      "address": "0x2186322",
+      "contract": "fallback_candidate_weight_one"
+    },
+    {
+      "address": "0x2186388",
+      "contract": "fallback_insert_mode_zero"
+    },
+    {
+      "address": "0x201eaf5",
+      "contract": "activation_continues_priority_loop"
+    },
+    {
+      "address": "0x2913580",
+      "contract": "pending_diplomacy_skips_non_AI_or_finished"
+    }
+  ],
+  "pointer_contracts": [
+    {
+      "address": "0x3b1de78",
+      "target": "0x1fcfc60",
+      "contract": "city_manager_offturn_subscription"
+    },
+    {
+      "address": "0x3b20990",
+      "target": "0x2122f70",
+      "contract": "grand_strategy_offturn_subscription"
+    },
+    {
+      "address": "0x3b1f608",
+      "target": "0x2185a70",
+      "contract": "research_activation_callback"
+    },
+    {
+      "address": "0x3b1c648",
+      "target": "0x1fe5240",
+      "contract": "fallback_uses_Game_GetRandNum"
+    }
+  ],
+  "mixed_policy_body": {
+    "address": "0x2186110",
+    "size": 764,
+    "sha256": "43083232b2dd8be98852f956a92ee0c54b86098bb5276627d70a5711aa4c7404"
+  },
+  "lowest_proven_choice": "AI::Research::QueueNextTech: analyzed technology or native RNG fallback, then original SetResearchingTech",
+  "offturn_callback_classification": "unknown: proven subscriptions, state writes and job scheduling do not establish planning-only status",
+  "runtime_executed": false,
+  "suspend_resume_proven": false,
+  "complete_decision_coverage": false,
+  "gameplay_rng_exclusion_proven": false,
+  "action_or_turn_parity": false
+}

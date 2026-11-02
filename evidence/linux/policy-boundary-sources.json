@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "method": "Hashes of private nm/objdump/llvm-dwarfdump output; no game execution",
+  "private_directory": "../c6-ghidra/evidence/linux-policy-boundary",
+  "files": [
+    {
+      "file": "AI_CityBuild_DoOffTurn.asm",
+      "bytes": 6037,
+      "sha256": "737e6bd65574015b3fccb9f792dd62d5bc04d0bacefdde3e3b9f39544419794d"
+    },
+    {
+      "file": "AI_CityManager_DoOffTurn.asm",
+      "bytes": 9382,
+      "sha256": "5734602df9644f57b55e2d515f0ce1101b0adc775a7f00c6b0ca2acf6cd40c0e"
+    },
+    {
+      "file": "AI_CityManager_Initialize.asm",
+      "bytes": 14245,
+      "sha256": "939be30c142f5b2a58ed2717fad17c957199146b2ea18a3fc314e294e123199f"
+    },
+    {
+      "file": "AI_Control_Manager_BeginTurn.asm",
+      "bytes": 10577,
+      "sha256": "fd439217c92cce19bd4bd750bebd40065d62af12e564fa7bd4f73551b87ecd80"
+    },
+    {
+      "file": "AI_Control_Manager_DoTurnActivate.asm",
+      "bytes": 13769,
+      "sha256": "ee7f39c271c5fc2aaadd39dc36c78610f61376864d65661ed5da23c88ce726f6"
+    },
+    {
+      "file": "AI_Control_Manager_DoTurnDeactivate.asm",
+      "bytes": 11999,
+      "sha256": "b2522a8e0133d8ac6f09fa3554d5842567872ba2ce0e9e84f60cb21c8a8946d9"
+    },
+    {
+      "file": "AI_Control_Manager_InitializePostLoad.asm",
+      "bytes": 43286,
+      "sha256": "aa4baaf2195a39188cb732241fb97a0d73730591790623eba8489b7ed66bb923"
+    },
+    {
+      "file": "AI_Diplomatic_DoOffTurn.asm",
+      "bytes": 13092,
+      "sha256": "a6ac6f744727abd9fda7b421925413a018031966ef9ddc424af4d045423678ba"
+    },
+    {
+      "file": "AI_Diplomatic_DoTurnActivate.asm",
+      "bytes": 69231,
+      "sha256": "b44857f95f543a3e3afb48d602051dc8812ea77415ef33d1af702be1d28b69c5"
+    },
+    {
+      "file": "AI_Diplomatic_Initialize.asm",
+      "bytes": 386,
+      "sha256": "676560fa958ea923f82a2f4eebfc59313d5b6370a9d73276e7c4e7c33211a6a2"
+    },
+    {
+      "file": "AI_GlobalAi_RunJobs.asm",
+      "bytes": 1344,
+      "sha256": "592b496cdc2d0cade4ef685c272f0d0bd3f9cb712eb23ff3a19e0d53913bc56a"
+    },
+    {
+      "file": "AI_GlobalAi_SubmitJob.asm",
+      "bytes": 1455,
+      "sha256": "132a919adbd1994925329eb7d35ee5792ce299cc337737519bea3ab94fa92963"
+    },
+    {
+      "file": "AI_GlobalAi_WaitForJobs.asm",
+      "bytes": 1104,
+      "sha256": "7600a59f39b94651c3a9d69195c91ae45b5a8ad69a39e58be82484519dedd271"
+    },
+    {
+      "file": "AI_GrandStrategic_DoOffTurn.asm",
+      "bytes": 5392,
+      "sha256": "898339e0d06db72e38b6cda37952466cb222695958664c5675b3537c789f36c2"
+    },
+    {
+      "file": "AI_GrandStrategic_InitializeSignals.asm",
+      "bytes": 19589,
+      "sha256": "d89230200ebfd5360de11a3910d10edb88b579c9737ceac8273de19289f24752"
+    },
+    {
+      "file": "AI_Research_DoOffTurn.asm",
+      "bytes": 1487,
+      "sha256": "cfbc58ce4f8a929a2aa27a9262578d7a726dca4e8be2863100c7318c20accafb"
+    },
+    {
+      "file": "AI_Research_DoTurnActivate.asm",
+      "bytes": 36451,
+      "sha256": "9f34f2436c41edb4f98711d160e80107dd31efd0a29837501e619179d48f3cc9"
+    },
+    {
+      "file": "AI_Research_Initialize.asm",
+      "bytes": 1785,
+      "sha256": "c2b42a8b53116dae398c812dd1e36e8fd947fe0c7363fb11e3ba8ae708ed3cd1"
+    },
+    {
+      "file": "AI_Research_QueueNextTech.asm",
+      "bytes": 14924,
+      "sha256": "5ada891b4eb08e6ae519f2be486c3f6a79937b0a4a2280b684ecd9f488b3e454"
+    },
+    {
+      "file": "Diplomacy_Manager_Process.asm",
+      "bytes": 5149,
+      "sha256": "a088058c2523cf165eb6ab1d30a4a1dd63f53e1f369591202688c3cd08ecadab"
+    },
+    {
+      "file": "Diplomacy_Manager_ProcessPending.asm",
+      "bytes": 4152,
+      "sha256": "55f03462c8c672effbc38bbde2b21d3fda258e7165463fc128011702b480eb8e"
+    },
+    {
+      "file": "Diplomacy_Manager_ProcessPendingSessionStatement.asm",
+      "bytes": 5084,
+      "sha256": "f7efd42a3b638271453678c4cce5464f287650bf137b3676dc7437596a8e624b"
+    },
+    {
+      "file": "Diplomacy_Manager_ProcessStatement.asm",
+      "bytes": 20729,
+      "sha256": "0e0c77ec2adf0b94646f305bf5a18ad0c8d8f029dfe726b5e971bf7bf7828625"
+    },
+    {
+      "file": "Diplomacy_Session_Instance_ProcessQueue.asm",
+      "bytes": 2015,
+      "sha256": "99cfdf20e296a5a2578e8a9ddef21a0587ac02328be28c544bc8d4b7dae35c84"
+    },
+    {
+      "file": "Exports_Game_IsAiProcessing.asm",
+      "bytes": 561,
+      "sha256": "a41d848b617e78251f8e3d54e421c9b62fa749397b510041a09336d7debc35d7"
+    },
+    {
+      "file": "Exports_Game_IsTurnProcessing.asm",
+      "bytes": 567,
+      "sha256": "a23e0e82571b23038dfef049557e32ace4aba19b258e883203344ca60d628f06"
+    },
+    {
+      "file": "Game_Instance_GetRandNum.asm",
+      "bytes": 975,
+      "sha256": "e88f4c2bb31c902cf06c80dcbb5fbb867a15b45337652bfb995718e3f28659ce"
+    },
+    {
+      "file": "Game_Instance_IsAiProcessing.asm",
+      "bytes": 5457,
+      "sha256": "b1905463b9cb873d276da922f45311a1c0061745b9abd4a9c38c68c2f1cdf7f2"
+    },
+    {
+      "file": "Game_Instance_IsPaused.asm",
+      "bytes": 256,
+      "sha256": "70f1890a91e2e396f86dfba414fd932f26b2fd19aba5ae3940c3f299c764e339"
+    },
+    {
+      "file": "Game_Instance_IsTurnProcessing.asm",
+      "bytes": 272,
+      "sha256": "949061b45b3db6c355e5a167dbcedcaf9a9e9445f534e02795b5238ba6fcc14b"
+    },
+    {
+      "file": "Game_Instance_SetPaused.asm",
+      "bytes": 1098,
+      "sha256": "9ac2c3b1c312a2e0dddd644479f682020b476ad5ebccc7e5dfbf7ab0fa3d8640"
+    },
+    {
+      "file": "IsTurnProcessing.dwarf",
+      "bytes": 8149,
+      "sha256": "3364b39021fe8d908704af5c190d953a36c25b3be5f716659022fccfaa91dfa8"
+    },
+    {
+      "file": "Player_Processor_SetTurnActive.asm",
+      "bytes": 17466,
+      "sha256": "bf786a68161a09086bc0a482ccbaedad41b0137ee0a8a48a1ac1904ab6483d22"
+    },
+    {
+      "file": "Player_Techs_SetResearchingTech.asm",
+      "bytes": 13150,
+      "sha256": "5b3204a2fa3f7dc6fea486a1c8de0fc66215c73caa8789bb7f395c2619623ed4"
+    },
+    {
+      "file": "Player_TurnManager_DoBeginTurn.asm",
+      "bytes": 555,
+      "sha256": "b06ddb9bb62b23586fa5e4533ffcee1971320cfb6a567e15061faf1b5a5e286b"
+    },
+    {
+      "file": "Player_TurnManager_DoEndTurn.asm",
+      "bytes": 1157,
+      "sha256": "53216f41ba509a684188766b34ae55e0c4eb031bc11c712d9052ed9d1068ccc3"
+    },
+    {
+      "file": "Player_TurnManager_DoTurnActivate.asm",
+      "bytes": 26892,
+      "sha256": "04fd91cf358b34aad0b0f202cb18d24dcc8f7392f2e0daed7bdef976b3b5c159"
+    },
+    {
+      "file": "QueueNextTech.dwarf",
+      "bytes": 18395,
+      "sha256": "0ed34b0006313d764916993780952090fc055ce04acbee114bfb808affd3ddaa"
+    },
+    {
+      "file": "SetPaused.dwarf",
+      "bytes": 3252,
+      "sha256": "dc20ea738ffeba2d06bcdd734f55eb20cc822b93df8156c4ded43d0b71342c3e"
+    },
+    {
+      "file": "WeightedVector_GameCore_TechTypes, 10__ChooseAtRandom.asm",
+      "bytes": 2230,
+      "sha256": "93adade87e1315c0bf38d039f323fe1bbc172e0d0cba0d123537d554529e37c2"
+    },
+    {
+      "file": "offturn.dwarf.json",
+      "bytes": 51160,
+      "sha256": "f94ad57fb44b33133ebd98c974aade15c1e207760d020bd3e31288c0d62a58d1"
+    },
+    {
+      "file": "symbols.txt",
+      "bytes": 51809642,
+      "sha256": "f001f18a4178ecb30816d5ed05a6fcdac86da456a845f5a9443dbb2d26519462"
+    }
+  ],
+  "limits": "Source hashes pin observations; they do not assert runtime safety or complete decision coverage."
+}
