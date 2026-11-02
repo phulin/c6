@@ -3,11 +3,12 @@
 #include "action_execution.h"
 #include "action_observer.h"
 #include "action_dispatch.h"
+#include "action_registration.h"
 #include <stdbool.h>
 #include <dlfcn.h>
 #include <stdio.h>
 
-static int prepare(void *module,void *context,bool dispatch,bool execute) {
+static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session) {
     if(!module||!context)return 194;
     void **active=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController21ms_pkActiveControllerE");
     bool (*initialized)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController13IsInitializedEv");
@@ -28,6 +29,10 @@ static int prepare(void *module,void *context,bool dispatch,bool execute) {
     if(bound!=context||initialized(controller)||executing(controller))return 197;
     int trace_result=trace_begin(module);
     if(trace_result)return trace_result;
+    if(register_session){
+        int registration=c6_linux_action_registration(module,context);
+        if(registration){(void)trace_end(0);return registration;}
+    }
     fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_enter bound_matches 1\n");
     initialize(controller);
     int result=initialized(controller)?0:199;
@@ -49,8 +54,11 @@ static int prepare(void *module,void *context,bool dispatch,bool execute) {
 }
 
 int c6_linux_action_prepare_observe(void *module,void *context) {
-    return prepare(module,context,false,false);
+    return prepare(module,context,false,false,false);
 }
 int c6_linux_action_prepare_dispatch(void *module,void *context,bool execute) {
-    return prepare(module,context,true,execute);
+    return prepare(module,context,true,execute,false);
+}
+int c6_linux_action_prepare_registered_dispatch(void *module,void *context,bool execute) {
+    return prepare(module,context,true,execute,true);
 }

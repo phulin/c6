@@ -57,13 +57,27 @@ def main():
         require(stages[key]['pending_actions'] == 0 and stages[key]['open_session_map_nonempty'] == 0, 'diplomacy scan nonempty')
     require(stages['diplomacy_after']['result'] == 0 and stages['diplomacy_after']['request_issued'] == execute, 'request outcome differs')
     require(f'cleanup 1 dispatch_mode 1 requested_execution {int(execute)}' in stderr, 'original controller teardown missing')
-    states = [json.loads(line.split(' ', 1)[1]) for line in stderr.splitlines() if line.startswith('C6_LINUX_ACTION_STATE {')]
+    state_records = [json.loads(line.split(' ', 1)[1]) for line in stderr.splitlines() if line.startswith('C6_LINUX_ACTION_STATE {')]
+    registration_states = [row for row in state_records if row['stage'].startswith('registration_')]
+    states = [row for row in state_records if not row['stage'].startswith('registration_')]
     require([row['stage'] for row in states] == ['before_a', 'before_b', 'after_a', 'after_b'], 'state observation order differs')
     def payload(row):
         return {key: value for key, value in row.items() if key != 'stage'}
     require(all(row['unit_present'] and row['rng_unchanged_during_observation'] for row in states), 'observer failed or observed RNG mutation')
     require(states[0]['queue_size'] == selected['native_queue_size'] and len(states[0]['queue']) == selected['native_queue_size'], 'original pre-action queue observation differs from selected actor')
     require(payload(states[0]) == payload(states[1]) and payload(states[2]) == payload(states[3]), 'repeated live observations differ')
+    registration_rows = [json.loads(line.split(' ', 1)[1]) for line in stderr.splitlines() if line.startswith('C6_LINUX_ACTION_REGISTRATION {')]
+    if registration_rows or registration_states:
+        require(config['pre_controller_registration'] is True, 'registration profile identity missing')
+        require([row['stage'] for row in registration_states] == ['registration_before', 'registration_after'], 'registration observer baseline order differs')
+        require(payload(registration_states[0]) == payload(registration_states[1]) and all(row['rng_unchanged_during_observation'] for row in registration_states), 'known gameplay RNG changed during registration')
+        require(registration_rows and len(registration_rows) <= 9, 'bounded original registration passes missing')
+        require(all(row['core_active'] is False and row['local'] == row['host'] == selected['owner'] for row in registration_rows), 'registration used active core or wrong real host peer')
+        ready = registration_rows[-1]
+        require(ready['app_registered'] and not ready['needs_snapshot'] and not ready['ignore_incoming'] and ready['provider_enet_layout_proven'] and ready['provider_queue_u64'] == 0, 'original registration handshake incomplete')
+        for stream in ('game_sync_random', 'map_generator_random'):
+            require(registration_states[1][stream] == states[0][stream], 'known RNG changed between registration and action observation')
+
     if execute:
         require(states[2]['activity'] == 0x047c048b and states[2]['queue_size'] == 0 and states[2]['queue'] == [], 'SkipTurn final HOLD/empty queue effect missing')
     else:
@@ -127,6 +141,9 @@ def main():
                   original_packets=packets, original_core_saves=saves, outer_original_core_saves=outer_saves, native_full_cleanup=True, message_boundary_pass=True,
                   complete_policy_boundary_coverage=False, complete_affected_state=False, complete_rng_inventory=False, gameplay_parity=False,
                   limits='Exploratory genuine original request/delivery/drain only. Two identified RNG objects and selected unit live fields/dirty ordering are observed; all affected live state and all gameplay RNG streams remain unresolved. Selected policy guards are not complete engine coverage. NeedsUpdate/NeedsTurnAdvance are reported without a full readiness claim. Guard aborts are failed possibly partial-state processes, never resumable yields.')
+    if registration_rows:
+        report['original_pre_controller_registration'] = registration_rows
+        report['registration_rng_observations'] = registration_states
     if owner_proof:
         report['independent_preload_binding_owner_proof'] = True
         report['actual_request_conversion'] = request_returns
