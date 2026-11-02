@@ -1,4 +1,8 @@
-# Real Windows context bootstrap on Linux
+# Historical Windows context bootstrap (frozen)
+
+This Windows execution path is frozen at the user's explicit direction to work only on Linux. The commands below document historical experiments and are not the current execution plan. Existing observations remain valid only for their recorded Windows DLL, source and configuration identities; no cross-build behavior equivalence is implied.
+
+The final produced Windows result, `native-xp2-original-load-log-files.json`, consumed 76,554,523 of 76,556,938 native stream bytes and stopped at engine slot `+0xd0` (caller `0x63d6cb`), identified as the local-player getter. Load did not return. The preceding `native-xp2-original-load-log-enabled.json` exposed an undersized logfile fixture table: its raw reported slot `+0x18` was misleading; current bytes identified the actual call as ILogFile `+0x38`. The repaired full 19-entry interface and per-type identity/enabled behavior passed 23 original-code comparisons before the near-tail result. New NetworkManager/configuration work was not integrated into this runtime and must not be counted as a completed provider or game load.
 
 `tools/bootstrap/run.py` builds a MinGW x64 Windows executable and runs it with Wine. The original XP2 DLL is loaded by `LoadLibraryW`: Windows imports, TLS, CRT and static initialization run normally. This is separate from the narrow original-code mapper used for RNG and geometry.
 
