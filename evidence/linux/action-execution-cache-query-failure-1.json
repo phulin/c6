@@ -1,0 +1,32 @@
+{
+  "schema": "c6-linux-action-cache-query-failure-v1",
+  "runtime_report_sha256": "27abf95f3732d77baaa08c54ff3dedbb9a0c4abca22ebd443b32bcf5d7f6a445",
+  "configuration_sha256": "30b6a0c23652c2b6c712f2a22c51b42cc643d34ebb4a4dc25c05640f5a8f4ed1",
+  "returncode": -11,
+  "native_observations": [
+    {
+      "stage": "host_delivery_observation",
+      "controller_present": 1,
+      "controller_initialized": 0,
+      "controller_context_matches": 1,
+      "host_context_matches": 1,
+      "network_gamecore_active": 0,
+      "action_executed": false
+    }
+  ],
+  "first_core_save": {
+    "filename": "save.bin",
+    "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "bytes": 80657462
+  },
+  "fault": "Original GameCore::Cache::Player::Manager::GetValidPlayer called from Context::GetCachePlayer; null inner cache player entry dereferenced at GetValidPlayer+0x18",
+  "gdb_evidence": "private evidence/reference-reuse/linux-action-cache-phase1-gdb.txt",
+  "cached_dispatch_precondition": false,
+  "controller_delivery_precondition": false,
+  "action_executed": false,
+  "request_called": false,
+  "update_or_drain_called": false,
+  "cleanup_completed": false,
+  "serialized_nonmutation_proven": false,
+  "gameplay_parity": false
+}
