@@ -6,6 +6,10 @@
   "player_controller_initialize": "two native bookkeeping stores and return; no calls",
   "guard_plt_relocations": [
     {
+      "offset": "0x3bc1560",
+      "symbol": "_ZN8GameCore9Diplomacy7Manager16ProcessStatementEPNS0_9Statement8InstanceE"
+    },
+    {
       "offset": "0x3b97fa8",
       "symbol": "_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii"
     },
@@ -52,6 +56,11 @@
   ],
   "guard_scope": "Selected known policy/update PLT entries plus actual UnitOperation Execute vtable; unexpected entries terminate the process, never return a fabricated policy result.",
   "direct_calls": [
+    {
+      "call": "0x291199d",
+      "target": "0x1f3ccf0",
+      "contract": "PendingStatement_drain_enters_actual_ProcessStatement_guard"
+    },
     {
       "call": "0x31d1526",
       "target": "0x31d1550",

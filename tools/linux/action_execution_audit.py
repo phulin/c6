@@ -8,7 +8,9 @@ from pathlib import Path
 from save_lifecycle_audit import Elf, GAME_SHA, HOST_SHA
 
 
-EXPECTED_PLT = [(0x3b97fa8,
+EXPECTED_PLT = [(0x3bc1560,
+  '_ZN8GameCore9Diplomacy7Manager16ProcessStatementEPNS0_9Statement8InstanceE'),
+ (0x3b97fa8,
   '_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii'),
  (62034136, '_ZN8GameCore4Game9Processor6UpdateEv'),
  (62104680, '_ZN8GameCore2AI8GlobalAi9ProcessAiEv'),
@@ -31,7 +33,8 @@ def main():
     args=parser.parse_args()
     game=Elf(args.assets/'libGameCore_XP2.so',GAME_SHA)
     host=Elf(args.assets/'Civ6',HOST_SHA)
-    calls=[(host,0x31d1526,0x31d1550,'ControllerInitialize_subscribes_original_messages'),
+    calls=[(game,0x291199d,0x1f3ccf0,'PendingStatement_drain_enters_actual_ProcessStatement_guard'),
+           (host,0x31d1526,0x31d1550,'ControllerInitialize_subscribes_original_messages'),
            (host,0x31d14ef,0x31dd2a0,'ControllerInitialize_initializes_real_player_controllers'),
            (host,0x31d1428,0x31cd1e0,'ControllerUninitialize_releases_actual_app_cache'),
            (host,0x31d1430,0x31d16c0,'ControllerUninitialize_releases_its_context_binding'),

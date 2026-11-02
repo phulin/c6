@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from save_lifecycle_audit import GAME_SHA, HOST_SHA
 
@@ -37,7 +38,7 @@ def main():
     trace=[json.loads(x)for x in trace_path.read_text().splitlines()]
     if not trace[0]['UnitOperation_Execute_virtual_interposed']:raise ValueError('native action virtual binding missing')
     bindings=[x for x in trace if x['event']=='original_PLT_binding']
-    if len(bindings)!=11 or not all(x['interposed'] for x in bindings):raise ValueError('original trace/guard PLT bindings differ')
+    if len(bindings)not in (11,12) or not all(x['interposed'] for x in bindings):raise ValueError('original trace/guard PLT bindings differ')
     end=trace[-1]
     if end['event']!='end' or any(end[k] for k in ('queued','received','unit_executed','reports')):raise ValueError('initialization control unexpectedly executed messages/reports')
     saves={}
@@ -46,12 +47,33 @@ def main():
         if any(run['game_saves'][key][k]!=v for k,v in value.items()):raise ValueError('actual original Save identity differs')
         saves[key]=value
     if saves['save']!=saves['repeat']:raise ValueError('serialized Core changed in initialization control')
+    entries=[];module_symbols={};module_hashes={}
+    for line in run['stderr'].splitlines():
+        if 'C6_LINUX_ACTION_TRACE unarmed_guarded_entry' in line or 'C6_LINUX_ACTION_TRACE guarded_entry' in line:
+            raise ValueError('unresolved guarded entry observed before or during native control')
+        if not line.startswith('C6_LINUX_ACTION_TRACE unarmed_entry '):continue
+        fields=line.split()
+        if len(fields)!=10:raise ValueError('malformed successful unarmed entry')
+        symbol=fields[3];caller=Path(fields[5]).resolve();original=Path(fields[7]).resolve();rva=int(fields[9],16)
+        if caller!=original:raise ValueError('unarmed delegate DSO differs from caller DSO')
+        if original not in module_hashes:
+            module_hashes[original]=digest(original)
+            if module_hashes[original]!=run['configuration']['assets'].get(original.name):
+                raise ValueError('unarmed original DSO content gate differs')
+            symbols={}
+            for row in subprocess.check_output(['nm','-D','-S',str(original)],text=True).splitlines():
+                columns=row.split()
+                if len(columns)==4:symbols[columns[3]]=int(columns[0],16)
+            module_symbols[original]=symbols
+        if module_symbols[original].get(symbol)!=rva:raise ValueError('unarmed delegate symbol/RVA differs')
+        entries.append(dict(symbol=symbol,module=original.name,module_sha256=module_hashes[original],rva=hex(rva)))
+    unarmed_complete=bool(entries) and len(bindings)==12
     report=dict(schema='c6-linux-action-lifecycle-control-v1',runtime_report_sha256=digest(args.runtime_report),configuration_sha256=identity,
                 host_sha256=HOST_SHA,gamecore_sha256=GAME_SHA,host_observation=host,cache_observation=cache,
                 trace_sha256=digest(trace_path),trace_plt_bindings=bindings,trace_end=end,original_core_saves=saves,
                 serialized_core_unchanged=True,original_uninitialize_before_unload=True,full_cleanup=True,
-                action_executed=False,unarmed_entry_log_complete=False,complete_policy_boundary_coverage=False,gameplay_parity=False,
-                limits='Actual original controller/cache initialization and teardown only. Selected guards verified in the armed interval. Successful unarmed Load-entry logging remains a separate required profile before action execution; no complete transient-state or RNG comparison is claimed here.')
+                action_executed=False,unarmed_entry_log_complete=unarmed_complete,successful_unarmed_entries=entries,complete_policy_boundary_coverage=False,gameplay_parity=False,
+                limits='Actual original controller/cache initialization and teardown only. Selected guards verified in the armed interval. Successful unarmed entries, when present, are checked against original DSO hashes and actual symbol RVAs; no complete transient-state or RNG comparison is claimed here.')
     args.output.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(dict(native_prerequisites_pass=True,serialized_core_unchanged=True,action_executed=False)))
 

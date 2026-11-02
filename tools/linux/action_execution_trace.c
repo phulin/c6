@@ -18,7 +18,7 @@ static atomic_uint queued,received,executed,reported;
 static unsigned packet_number;
 static const char *trace_directory;
 
-static void fatal(const char *reason) {
+static _Noreturn void fatal(const char *reason) {
     fprintf(stderr,"C6_LINUX_ACTION_TRACE failing_boundary %s action_acceptance 0\n",reason);
     if(trace_log){fprintf(trace_log,"{\"event\":\"failing_boundary\",\"reason\":\"%s\"}\n",reason);fflush(trace_log);}
     _exit(198);
@@ -35,6 +35,8 @@ static void *original(const char *symbol,void *wrapper,void *caller) {
                 module=dlopen(source.dli_fname,RTLD_NOW|RTLD_NOLOAD);
                 if(module)value=dlsym(module,symbol);
                 if(value&&(!dladdr(value,&resolved)||resolved.dli_fbase!=source.dli_fbase))value=NULL;
+                if(value&&value!=wrapper)
+                    fprintf(stderr,"C6_LINUX_ACTION_TRACE unarmed_entry symbol %s caller_module %s original_module %s original_rva %llx\n",symbol,source.dli_fname,resolved.dli_fname,(unsigned long long)((uintptr_t)value-(uintptr_t)resolved.dli_fbase));
                 if(module)dlclose(module);
             }
         }
@@ -104,7 +106,9 @@ void trace_event_id_two_int(uint64_t event,const void *identity,int first,int se
 void NAME(void *) __asm__(SYMBOL); \
 void NAME(void *receiver){ \
     if(atomic_load(&armed))fatal(REASON); \
-    void (*call)(void *)=original(SYMBOL,NAME,__builtin_return_address(0));call(receiver); \
+    (void)receiver; \
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE unarmed_guarded_entry %s\n",SYMBOL); \
+    fatal("unarmed_" REASON); \
 }
 STOP_VOID(stop_game_update,"_ZN8GameCore4Game8Instance6UpdateEv","unexpected_Game_Update")
 STOP_VOID(stop_processor_update,"_ZN8GameCore4Game9Processor6UpdateEv","unexpected_GameProcessor_Update")
@@ -114,14 +118,23 @@ STOP_VOID(stop_ai_process,"_ZN8GameCore2AI8GlobalAi9ProcessAiEv","unresolved_Glo
 int stop_diplomatic_action(void *,const void *,int) __asm__("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE");
 int stop_diplomatic_action(void *receiver,const void *action,int player) {
     if(atomic_load(&armed))fatal("unresolved_Diplomatic_ProcessAction_callback");
-    int (*call)(void *,const void *,int)=original("_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE",stop_diplomatic_action,__builtin_return_address(0));
-    return call(receiver,action,player);
+    (void)receiver;(void)action;(void)player;
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE unarmed_guarded_entry Diplomatic_ProcessAction\n");
+    fatal("unarmed_unresolved_Diplomatic_ProcessAction_callback");
 }
 int stop_diplomatic_deal(void *,int,const void *,bool) __asm__("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb");
 int stop_diplomatic_deal(void *receiver,int proposal,const void *deal,bool flag) {
     if(atomic_load(&armed))fatal("unresolved_Diplomatic_ProcessDeal_callback");
-    int (*call)(void *,int,const void *,bool)=original("_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb",stop_diplomatic_deal,__builtin_return_address(0));
-    return call(receiver,proposal,deal,flag);
+    (void)receiver;(void)proposal;(void)deal;(void)flag;
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE unarmed_guarded_entry Diplomatic_ProcessDeal\n");
+    fatal("unarmed_unresolved_Diplomatic_ProcessDeal_callback");
+}
+
+bool stop_pending_statement(void *) __asm__("_ZN8GameCore9Diplomacy7Manager16ProcessStatementEPNS0_9Statement8InstanceE");
+bool stop_pending_statement(void *statement) {
+    (void)statement;
+    fprintf(stderr,"C6_LINUX_ACTION_TRACE guarded_entry ProcessStatement armed %d\n",atomic_load(&armed));
+    fatal("unresolved_pending_statement_processing");
 }
 
 int c6_linux_action_trace_begin(void *module) {
@@ -151,6 +164,7 @@ int c6_linux_action_trace_begin(void *module) {
         {0x3b9b0e8,(void *)stop_diplomatic_action,"Diplomatic_ProcessAction"},
         {0x3bab2e0,(void *)stop_ai_control,"AIControl_DoTurn"},
         {0x3baf188,(void *)stop_diplomatic_deal,"Diplomatic_ProcessDeal"},
+        {0x3bc1560,(void *)stop_pending_statement,"Diplomacy_ProcessStatement"},
         {0x3beb240,(void *)stop_game_update,"Game_Update"},
         {0x3bfdb70,(void *)trace_event_id_int,"EventSend_identity_int"}
     };
