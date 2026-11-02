@@ -118,11 +118,42 @@ C6_LINUX_DEFINITION_IDS_REPORT=/absolute/path/to/audited-report.json \
 The requested test fails if the report is absent, static-only, malformed or
 contains a different target identity; default tests leave this native case ignored.
 
-At this checkpoint native registry-query execution and active-profile mapping
-remain pending. The Rust tests are meaningful hash/input/lookup boundary fixtures
-and do not count as original-native runtime parity. Current rules export coverage
-remains 506 tables / 43,565 rows for the activated diagnostic profile; its row
-fingerprints alone establish no initialized native registry. No lookup benchmark
-is reported: any future timing must exclude game startup and turn/gameplay claims.
+## Original-native observation
+
+[The original query](../evidence/linux/definition-ids-native-1.json) completed
+with full measured framework/client cleanup under native configuration
+`c926ba2347ef6515da4b260f960957dab7389239b2cd59526407c72e74c7a1e4`.
+The selected benchmark lower-core-stream fixture loads the original XP2 context;
+its full content/source/dependency identity and actual native enabled-content
+selection are retained in the report. No cache initialization, action, update
+or turn was executed by this observer case.
+
+| Type | Native collection index | Database rowid | Unsigned native hash |
+| --- | ---: | ---: | ---: |
+| YIELD_FOOD | 0 | 1 | 619730924 |
+| YIELD_PRODUCTION | 1 | 2 | 3139030538 |
+| YIELD_GOLD | 2 | 3 | 3076612938 |
+| YIELD_SCIENCE | 3 | 4 | 981596331 |
+| YIELD_CULTURE | 4 | 5 | 3946796520 |
+| YIELD_FAITH | 5 | 6 | 2131725942 |
+
+Every original `MakeHash(type)` and `FindIndex(hash)` result agrees with Rust.
+The original checks also give direct index zero → 0, `At(count)` → null, absent
+hash `0xffffffff` → -1, empty string → `0xffffffff`, and lowercase `yield_food`
+→ 4004406743. Canonical original Save1/Save2 are both 80,657,462 bytes, SHA-256
+`ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884`.
+They are byte-identical around the query. This establishes the measured serialized
+core boundary, without asserting unchanged unrecorded live memory or full state.
+The report-driven Rust test passed against this genuine native mapping.
+
+This loaded benchmark context is separately identified from the registered
+request-None diagnostic rules export. The native query run did not export both
+rules databases again; matching six yield names/rowids does not equate their
+entire input profiles. No implicit `Rules`→runtime-index conversion or arbitrary
+mod coverage is enabled. Units IDs and collision fixtures remain unqueried.
+Current activated diagnostic rules export coverage remains 506 tables / 43,565
+rows; row fingerprints alone establish no initialized native registry.
+No lookup benchmark is reported: any future timing must exclude game startup
+and turn/gameplay claims.
 The complete raw Save→Load comparison still includes the recorded 89,198-byte
 failure; this work does not classify, mask or normalize unknown save bytes.
