@@ -75,4 +75,6 @@ finally:
     project.close()
 a.output.parent.mkdir(parents=True, exist_ok=True)
 a.output.write_text(json.dumps(result, indent=2)+'\n')
-print(json.dumps({'output':str(a.output),'functions':len(result['functions'])}))
+failed=any(not f.get('decompiled') or f.get('error') for f in result['functions'])
+print(json.dumps({'output':str(a.output),'functions':len(result['functions']),'failed':failed}))
+if failed:raise SystemExit(1)
