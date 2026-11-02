@@ -133,6 +133,8 @@ def main():
         'native/bootstrap/script-system/script_system.h',
         'native/bootstrap/app-provider/app_provider.c',
         'native/bootstrap/app-provider/app_provider.h',
+        'native/bootstrap/job-manager/job_manager.c',
+        'native/bootstrap/job-manager/job_manager.h',
     )}
     sources['tools/bootstrap/config.json'] = sha(ROOT / 'tools/bootstrap/config.json')
     sources['native/bootstrap/Makefile'] = sha(ROOT / 'native/bootstrap/Makefile')
@@ -152,6 +154,7 @@ def main():
                      'rules_snapshot_requested': bool(args.rules_snapshot_dir),
                      'startup_game_requested': args.startup_game,
                      'host_app_fixture': 'complete_original_constructors_with_explicit_singleton_and_database_attachment_no_full_AppInit' if args.startup_game else None,
+                     'job_manager_fixture': 'original_DestroyJobSet_delegation_for_verified_empty_sets_only',
                      'script_system_fixture': 'original_singleton_lua_manager_and_Havok' if args.startup_game else None, 'save_stream': save_stream,
                      'content_recipe_sha256': sha(recipe_path) if recipe_path else None,
                      'content_recipe': recipe,

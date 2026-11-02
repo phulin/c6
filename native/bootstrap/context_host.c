@@ -14,6 +14,7 @@
 #include "database-backup/backup.h"
 #include "script-system/script_system.h"
 #include "app-provider/app_provider.h"
+#include "job-manager/job_manager.h"
 
 static const char expected_dll[] = "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c";
 static HMODULE image;
@@ -120,6 +121,7 @@ static int execute_schema_manifest(const wchar_t *path, int strip_bom) {
 int wmain(int argc, wchar_t **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
     SetUnhandledExceptionFilter(crashed);
+    bootstrap_service_fixture_set_progress_reporter(bootstrap_save_probe_report_fault);
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     if (argc != 4 && argc != 5 && argc != 6 && argc != 7) { fputs("usage: context_host.exe DLL DEPENDENCY_DIRECTORY ORIGINAL_EXECUTABLE\n", stderr); return 2; }
     if (!hash_matches(argv[1], expected_dll) ||
@@ -128,6 +130,7 @@ int wmain(int argc, wchar_t **argv) {
     phase = "map_original_host_getter";
     original_executable = LoadLibraryExW(argv[3], NULL, DONT_RESOLVE_DLL_REFERENCES);
     if (!original_executable || !sentinel_is_original()) return 11;
+    if (!bootstrap_job_manager_prepare(original_executable)) return 24;
     puts("{\"phase\":\"original_host_sentinel_verified\",\"original_getter_executed\":true,\"original_executable_initialized\":false}");
     phase = "LoadLibraryW";
     image = LoadLibraryW(argv[1]);
