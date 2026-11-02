@@ -1,0 +1,158 @@
+{
+  "action_or_turn_parity": false,
+  "configuration": {
+    "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "enabled_dlc_mods": null,
+    "host_application_main_called": false,
+    "host_application_shutdown_called": false,
+    "initialized_game": false,
+    "mode": "host-crt-init-intercept-main-whole-gamecore-factory-3-cycles",
+    "original_assets": {
+      "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "libASL_Interpose.so": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4",
+      "libEOSSDK-Linux-Shipping.so": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42",
+      "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "libc++.so.1": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c",
+      "libc++abi.so.1": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666",
+      "libiconv.so.2": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005",
+      "libsteam_api.so": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0",
+      "libtbb.so.2": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707"
+    },
+    "probe_sha256": "c6e91c800b408e5cc3f8c27f98591cd5ef1c23a266b18dc64bea5af1a7930acc",
+    "probe_source_sha256": "030bd37c330a78cee7416b9270c7553bd70cbda51354ed1c6296cdab5b5ae886",
+    "rules_database": null,
+    "runtime_dependencies": {
+      "ld-linux-x86-64.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+        "sha256": "c20a2dc8917c755f02b94049356320fe1f62ac7d9f8994731f807d9df39302da"
+      },
+      "libASL_Interpose.so": {
+        "path": "/home/phulin/c6-assets-linux/libASL_Interpose.so",
+        "sha256": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4"
+      },
+      "libEOSSDK-Linux-Shipping.so": {
+        "path": "/home/phulin/c6-assets-linux/libEOSSDK-Linux-Shipping.so",
+        "sha256": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42"
+      },
+      "libGL.so.1.7.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGL.so.1.7.0",
+        "sha256": "67f471213576d225d38347a0b6d2a08a231980685301ff6461bd74d3994e5027"
+      },
+      "libGLX.so.0.0.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0",
+        "sha256": "16fc8a37eea9210dc83c57eeff5aedc10ab4c6673f2f97e8bb6ee103df657b40"
+      },
+      "libGLdispatch.so.0.0.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0",
+        "sha256": "ca01a91104c8887b3d8e59499b58cbb8f604cc285666b50d9ec888eb0c915182"
+      },
+      "libX11.so.6.4.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libX11.so.6.4.0",
+        "sha256": "c5b5d782bd9cab3420a62df88f5c991507edf3331a89f98464ddbc538c37b879"
+      },
+      "libXau.so.6.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXau.so.6.0.0",
+        "sha256": "8040da3f8516c1acfe39f04ff022480cdb273705ba5e7a4ca70bbdb1527cd67a"
+      },
+      "libXdmcp.so.6.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0",
+        "sha256": "667d97d6da16016400ab10de9f83ef4ab209ceb6adf68ff9650225ec13e723b0"
+      },
+      "libasound.so.2.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0",
+        "sha256": "ff4c69ef420f2d0ab92c813d2222d097c6a7eafe3b13952aed069e2bb0204f55"
+      },
+      "libbsd.so.0.12.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/libbsd.so.0.12.1",
+        "sha256": "0fd5a235d714063f17285ad16e6286ca79458e2cbba1388e8b6fc921b912cbdb"
+      },
+      "libc++.so.1": {
+        "path": "/home/phulin/c6-assets-linux/libc++.so.1",
+        "sha256": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c"
+      },
+      "libc++abi.so.1": {
+        "path": "/home/phulin/c6-assets-linux/libc++abi.so.1",
+        "sha256": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666"
+      },
+      "libc.so.6": {
+        "path": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+        "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+      },
+      "libdl.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+        "sha256": "c2994527172cc23b7fb0f7d611b71e00a37da27af12c2e5e9e0dc1a742886c96"
+      },
+      "libgcc_s.so.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+        "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+      },
+      "libiconv.so.2": {
+        "path": "/home/phulin/c6-assets-linux/libiconv.so.2",
+        "sha256": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005"
+      },
+      "libm.so.6": {
+        "path": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+        "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
+      },
+      "libmd.so.0.1.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libmd.so.0.1.0",
+        "sha256": "4a108e1c28f9150e45d25d2ea3ec886864c18f344272ce0c755d464abc775410"
+      },
+      "libopenal.so.1.23.1": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libopenal.so.1.23.1",
+        "sha256": "89bf02dc4e8f13680b3aae45770f9436627841b427693a565c15d4895f4c7331"
+      },
+      "libpthread.so.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+        "sha256": "90491a21ce44efcf3bd4b65ec82501c091d7ebe7f8d9b341dd01d721001d9ecd"
+      },
+      "libresolv.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/libresolv.so.2",
+        "sha256": "1d730ea434da5a5595bc6a961d7a9ace83e03703205df9644044b3dca79c362f"
+      },
+      "librt.so.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+        "sha256": "6d072187d88e092e81561a44c03a4a41397319022c6d43519757cc051c576d82"
+      },
+      "libsndio.so.7.2": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libsndio.so.7.2",
+        "sha256": "e7ce0d18eb8dd47edd102d5d08da6032257db0f2c1fbbb56125eb7c5e03db10a"
+      },
+      "libstdc++.so.6.0.33": {
+        "path": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+        "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+      },
+      "libsteam_api.so": {
+        "path": "/home/phulin/c6-assets-linux/libsteam_api.so",
+        "sha256": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0"
+      },
+      "libtbb.so.2": {
+        "path": "/home/phulin/c6-assets-linux/libtbb.so.2",
+        "sha256": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707"
+      },
+      "libuuid.so.1.3.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0",
+        "sha256": "78d7f4d6f27b7dffc1c84dfe2f83e84aefa6f6ceeffc6ac4bc41f9fbc61cb84e"
+      },
+      "libxcb.so.1.1.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0",
+        "sha256": "7958a0136b121bdc4c708968569ad152a9ed208ab026e2537b1005dde64ca440"
+      }
+    },
+    "schema": "c6-linux-context-lifetime-v1"
+  },
+  "configuration_sha256": "5fd0c4a9a8d99b25c77e4898d0a85ccfe1144660277a900a516676f9b41bbb8b",
+  "context_lifetime_cycles_passed": 3,
+  "diagnostic_passed": true,
+  "exit_code": 0,
+  "initialized_game": false,
+  "limits": [
+    "host App main and shutdown intentionally bypassed",
+    "no engine interface, rules, map, players or session initialized",
+    "separate Linux lineage; Windows parity is not implied"
+  ],
+  "save_loaded": false,
+  "stderr": "C6_LINUX host_main_intercepted\nC6_LINUX whole_gamecore_loaded\nC6_LINUX create_enter 0\nC6_LINUX create_return 0 nonnull\nC6_LINUX destroy_return 0\nC6_LINUX create_enter 1\nC6_LINUX create_return 1 nonnull\nC6_LINUX destroy_return 1\nC6_LINUX create_enter 2\nC6_LINUX create_return 2 nonnull\nC6_LINUX destroy_return 2\nC6_LINUX dlclose_return 0\n",
+  "stdout": "",
+  "whole_gamecore_loaded": true
+}
