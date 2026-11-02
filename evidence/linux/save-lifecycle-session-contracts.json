@@ -1,0 +1,206 @@
+{
+  "schema": 1,
+  "method": "SHA-gated static original Linux ELF contract checks",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checks_passed": true,
+  "direct_calls": [
+    {
+      "call": "0x2f91d78",
+      "target": "0x2fa0a00",
+      "contract": "SetupNetwork_CreateManager"
+    },
+    {
+      "call": "0x2f91d85",
+      "target": "0x33bd600",
+      "contract": "SetupNetwork_InitializeManager"
+    },
+    {
+      "call": "0x2f91d92",
+      "target": "0x33d85e0",
+      "contract": "SetupNetwork_SubscribeToEvents"
+    },
+    {
+      "call": "0x2f91da6",
+      "target": "0x33d7930",
+      "contract": "SetupNetwork_SetupFromCommandLine"
+    },
+    {
+      "call": "0x33bd60e",
+      "target": "0x33e0670",
+      "contract": "NetworkInitialize_CreateFireWire"
+    },
+    {
+      "call": "0x33bd613",
+      "target": "0x33e06f0",
+      "contract": "NetworkInitialize_CreateArchiveFactory"
+    },
+    {
+      "call": "0x3a017e4",
+      "target": "0x3a02658",
+      "contract": "FireWireConstructor_CreateGameSync"
+    },
+    {
+      "call": "0x324cb0e",
+      "target": "0x2fa09f0",
+      "contract": "AttachToSession_GetNetworkManager"
+    },
+    {
+      "call": "0x324cb1a",
+      "target": "0x33bddf0",
+      "contract": "AttachToSession_HostGame"
+    },
+    {
+      "call": "0x33be00b",
+      "target": "0x33be130",
+      "contract": "HostGame_InitSession"
+    },
+    {
+      "call": "0x33be18f",
+      "target": "0x33b8410",
+      "contract": "InitSession_ConstructOriginalCallbacks"
+    },
+    {
+      "call": "0x33be19c",
+      "target": "0x3a01e28",
+      "contract": "InitSession_FireWireCreateSession"
+    },
+    {
+      "call": "0x3a01ff6",
+      "target": "0x39e4cf4",
+      "contract": "AllocateSession_ConstructFNetSession"
+    },
+    {
+      "call": "0x39e554f",
+      "target": "0x39e2fc6",
+      "contract": "FNetSessionHost_CreateLocalPlayer"
+    },
+    {
+      "call": "0x324cb90",
+      "target": "0x3c60bc0",
+      "contract": "LoadGameCoreState_ConstructZLibIStream"
+    },
+    {
+      "call": "0x324cbae",
+      "target": "0x3c60bfa",
+      "contract": "LoadGameCoreState_DestroyZLibIStream"
+    },
+    {
+      "call": "0x33bd337",
+      "target": "0x33bd420",
+      "contract": "NetworkDestructor_UnsubscribeEvents"
+    },
+    {
+      "call": "0x33bd33c",
+      "target": "0x33e05f0",
+      "contract": "NetworkDestructor_FreeGameSync"
+    },
+    {
+      "call": "0x33bd341",
+      "target": "0x33e0610",
+      "contract": "NetworkDestructor_FreeArchiveFactory"
+    },
+    {
+      "call": "0x33bd346",
+      "target": "0x33e0630",
+      "contract": "NetworkDestructor_FreeFireWire"
+    }
+  ],
+  "shutdown_calls": [
+    {
+      "call": "0x2fbbf23",
+      "target": "0x33bfdc0",
+      "contract": "GameViewShutdown_LeaveGame"
+    },
+    {
+      "call": "0x2fbc0bf",
+      "target": "0x31d1400",
+      "contract": "GameViewShutdown_ControllerUninitialize"
+    },
+    {
+      "call": "0x2fbc0c4",
+      "target": "0x31dd810",
+      "contract": "GameViewShutdown_CoreShutdownGame"
+    },
+    {
+      "call": "0x2f98190",
+      "target": "0x3385460",
+      "contract": "GUIShutdown_FrameworkDestroy"
+    },
+    {
+      "call": "0x2f98195",
+      "target": "0x31d4d80",
+      "contract": "GUIShutdown_ControllerShutdown"
+    },
+    {
+      "call": "0x2f9819a",
+      "target": "0x2fa05c0",
+      "contract": "GUIShutdown_LuaDestroy"
+    },
+    {
+      "call": "0x2f9861d",
+      "target": "0x3c2f1cf",
+      "contract": "FinalShutdown_NetworkShutdown"
+    },
+    {
+      "call": "0x2f98622",
+      "target": "0x2fa0640",
+      "contract": "FinalShutdown_NetworkManagerFree"
+    },
+    {
+      "call": "0x337f3cf",
+      "target": "0x31ead60",
+      "contract": "FrameworkDestructor_ShutdownConfiguration"
+    },
+    {
+      "call": "0x337f3d4",
+      "target": "0x337f5a0",
+      "contract": "FrameworkDestructor_UnloadGameCore"
+    },
+    {
+      "call": "0x337f5ae",
+      "target": "0x31d16c0",
+      "contract": "FrameworkUnload_ReleaseControllerContext"
+    },
+    {
+      "call": "0x337f5b3",
+      "target": "0x31dd630",
+      "contract": "FrameworkUnload_UnloadDLL"
+    },
+    {
+      "call": "0x31d1428",
+      "target": "0x31cd1e0",
+      "contract": "ControllerUninitialize_UninitializeAppCache"
+    },
+    {
+      "call": "0x31d1430",
+      "target": "0x31d16c0",
+      "contract": "ControllerUninitialize_ReleaseContext"
+    }
+  ],
+  "byte_contracts": [
+    "AttachToSession_HostGame_server0_false",
+    "AttachToSession_returns_OK_independent_of_host_result",
+    "LoadGameCoreState_ZLib_framing_true",
+    "LoadGameCoreState_Context_Load_slot",
+    "CanInitSession_tests_transport",
+    "CanInitSession_transport0_allowed",
+    "TransportThread_created_only_for_transport1",
+    "OfflinePlayerSelection_slot_status_taken",
+    "OfflinePlayerSelection_scan_bound22"
+  ],
+  "server_type0_transport": 0,
+  "engine_network_local_player_callback": "0x32b4e00",
+  "local_player_initialized_during_game_read": true,
+  "game_read_initialize_local_player_call": "0x2d7afbf",
+  "game_initialize_local_player_plt": "0x1e0d8c0",
+  "context_load_vtable_offset": "0x170",
+  "context_load_target": "0x2c7d240",
+  "context_shutdown_game_target": "0x2c7d300",
+  "attaches_via_original_host": true,
+  "adapter_selects_player_id": false,
+  "native_session_executed": false,
+  "initialized_game": false,
+  "complete_save_load_executed": false,
+  "action_or_turn_parity": false
+}
