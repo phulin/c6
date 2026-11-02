@@ -125,9 +125,10 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
         void *facade=get(list,it);if(!facade)break;
         unsigned id=unit_id(facade);int who=owner(facade);uint64_t bits;identity(&bits,facade);
         const void *candidate=who==initial.local?find(unit_container,id):NULL;unsigned queued=~0u;
-        bool allowed=candidate&&can_start(ops,&bits,UINT32_C(0x2c681908),params,false,NULL);
-        int code=allowed?c6_linux_action_unit_queue_size(module,candidate,&queued):0;
-        if(allowed&&!code&&queued==0){selected_id=id;identity(&selected_bits,facade);unit=candidate;a.release(facade);break;}
+        bool allowed=can_start(ops,&bits,UINT32_C(0x2c681908),params,false,NULL);
+        int code=allowed&&candidate?c6_linux_action_unit_queue_size(module,candidate,&queued):0;
+        fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"actor_candidate\",\"owner\":%d,\"id\":%u,\"component_bits\":\"%016llx\",\"public_can_start\":%d,\"core_found\":%d,\"queue_query_status\":%d,\"queue_size\":%u}\n",who,id,(unsigned long long)bits,allowed,candidate!=NULL,code,queued);
+        if(allowed&&candidate&&!code&&queued==0){selected_id=id;identity(&selected_bits,facade);unit=candidate;a.release(facade);break;}
         a.release(facade);
     }
     bool request_issued=false;
