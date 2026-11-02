@@ -1,0 +1,17 @@
+{
+  "schema": "c6-linux-xp2-average-damage-input-v1",
+  "input_sha256": "bf9c310ba7c2f430cd26c8ba4db6e84efeb24f4c75e9f9cb137aa1c4a46a680a",
+  "input_bytes": 2112404,
+  "case_count": 32364,
+  "omitted_native_divide_by_zero": 2,
+  "use_average": true,
+  "source_sha256": {
+    "native/linux/combat_kernel.c": "2449e7414e54522ca41a6934d50bbf6d92c1e7298c597da9d307b4ee011c386c",
+    "native/linux/combat_kernel.h": "9d52049924c2ab9f9079956b872ad4d07c2e51c6a97584eb4fcff5dcb11076d7",
+    "tools/linux/combat_kernel_audit.py": "025bdc43633ccace07a786eb89ed5e400594ee228ffa3815334d484e583ba165",
+    "tools/linux/combat_kernel_compare.py": "2ddc13365b648eed66a5eec729ee0f09fbde9cb802bc9039b23ec09def6dbd5a",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/examples/combat_kernel.rs": "96f9ec265cda68abccc811f9428d6db56f13296a75fa9c09d9cdd2b22d4d11d1"
+  },
+  "scope": "Synthetic damage parameter records; real loaded global maximum extra damage required"
+}

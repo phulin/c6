@@ -1,0 +1,108 @@
+{
+  "schema": "c6-linux-average-damage-binding-discovery-v1",
+  "parent_configuration_sha256": "1cd965f0c8618a0b96918f94ef7de8daabea2b0c7c7b0c9b479ab69218fb6b95",
+  "parent_report_sha256": "fe9e4595e7fc3a6b999707763f806c4acad283e00e65784956e86b0a95dac3ff",
+  "archived_preload_sha256": "3ada4b10881c90725f42ee68722bbb67dc2c30be4dc2980d593d718349b03097",
+  "debugger_script_sha256": "cbd2f7fab0425a93712ca6e7f11ddd7ac12ba39a9b498063c9c6cb6bf7091dc3",
+  "replay_sha256": "b0a14538fc39b0085b0d8b646e1fc242e402c8da349dade109b6386f5d56a4e4",
+  "raw_observation_sha256": "4529ddf78ffd7951ad5c569461c7d6314ec1d29e66dadc33530113373c3a4886",
+  "original_modules": {
+    "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+    "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
+  },
+  "bindings": [
+    {
+      "slot": "0x3b80560",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x1fe4cb0"
+    },
+    {
+      "slot": "0x3bd7888",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x2be20d0"
+    },
+    {
+      "slot": "0x3bce2d8",
+      "target_module": "Civ6",
+      "target_va": "0x32ff470",
+      "target_offset": null
+    },
+    {
+      "slot": "0x3bb5520",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x1fe5230"
+    },
+    {
+      "slot": "0x3ba8508",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x1fe4aa0"
+    },
+    {
+      "slot": "0x3b56ec8",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x1fceb20"
+    },
+    {
+      "slot": "0x3bc5598",
+      "target_module": "Civ6",
+      "target_va": "0x3242ee0",
+      "target_offset": null
+    },
+    {
+      "slot": "0x3b58d58",
+      "target_module": "Civ6",
+      "target_va": "0x32ff460",
+      "target_offset": null
+    },
+    {
+      "slot": "0x3b22818",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x1fe55e0"
+    },
+    {
+      "slot": "0x3b3a6c8",
+      "target_module": "Civ6",
+      "target_va": "0x32170a0",
+      "target_offset": null
+    },
+    {
+      "slot": "0x3b91a28",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x1fccdb0"
+    },
+    {
+      "slot": "0x3b4ab60",
+      "target_module": "Civ6",
+      "target_va": "0x321e840",
+      "target_offset": null
+    },
+    {
+      "slot": "0x3bc06b8",
+      "target_module": "Civ6",
+      "target_va": "0x32ff550",
+      "target_offset": null
+    },
+    {
+      "slot": "0x3b20fc8",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x3c051b0"
+    },
+    {
+      "slot": "0x3b0ef18",
+      "target_module": "libGameCore_XP2.so",
+      "target_va": null,
+      "target_offset": "0x3c051a8"
+    }
+  ],
+  "game_function_calls_from_debugger": false,
+  "damage_calculations_executed": false,
+  "limits": "Passive GOT discovery in registered action hardware replay6; no math/FP execution or kernel parity. Next dedicated kernel profile must independently validate every binding before calculation."
+}

@@ -1,0 +1,83 @@
+{
+  "schema": "c6-linux-xp2-average-damage-comparison-v1",
+  "input_manifest": {
+    "schema": "c6-linux-xp2-average-damage-input-v1",
+    "input_sha256": "bf9c310ba7c2f430cd26c8ba4db6e84efeb24f4c75e9f9cb137aa1c4a46a680a",
+    "input_bytes": 2112404,
+    "case_count": 32364,
+    "omitted_native_divide_by_zero": 2,
+    "use_average": true,
+    "source_sha256": {
+      "native/linux/combat_kernel.c": "2449e7414e54522ca41a6934d50bbf6d92c1e7298c597da9d307b4ee011c386c",
+      "native/linux/combat_kernel.h": "9d52049924c2ab9f9079956b872ad4d07c2e51c6a97584eb4fcff5dcb11076d7",
+      "tools/linux/combat_kernel_audit.py": "025bdc43633ccace07a786eb89ed5e400594ee228ffa3815334d484e583ba165",
+      "tools/linux/combat_kernel_compare.py": "2ddc13365b648eed66a5eec729ee0f09fbde9cb802bc9039b23ec09def6dbd5a",
+      "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+      "crates/c6-core/examples/combat_kernel.rs": "96f9ec265cda68abccc811f9428d6db56f13296a75fa9c09d9cdd2b22d4d11d1"
+    },
+    "scope": "Synthetic damage parameter records; real loaded global maximum extra damage required"
+  },
+  "native_profile_file": "../c6-ghidra/evidence/linux-combat-kernel/native-3/runtime.json",
+  "candidate_input_manifest_sha256": "73552b700cc8d114f8c0d6f6dae7b497d464901842ed9b4a4fc03e8866258a41",
+  "original_input_manifest_sha256": "527c94f9ffb9cfb861259ee58941910a684520306c4904f3d0cad735ba4df033",
+  "native_profile_sha256": "b8c075717c27a258cd3390821cb3fd4484e07e207e231daa8586dc5ed9c068a9",
+  "native_output_sha256": "12c042d7bace3cd4f5ebcd566e62e8bd5b9b831c6c01e86d602833df4d4bcecd",
+  "global_max_extra_damage": 12,
+  "comparisons": 64728,
+  "native_fp_before": {
+    "fe_round": 0,
+    "mxcsr": 8101,
+    "x87_control": 895
+  },
+  "native_fp_after": {
+    "fe_round": 0,
+    "mxcsr": 8127,
+    "x87_control": 895
+  },
+  "native_libm_sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0",
+  "native_expf_offset": 95136,
+  "native_floorf_offset": 492080,
+  "exponential_symbol_version": "GLIBC_2.2.5",
+  "math_profile_scope": "Measured Linux x86-64 GNU/libm implementation and FP controls only; not generic cross-platform reproducibility",
+  "consecutive_native_saves_equal": true,
+  "original_sync_random_unchanged": true,
+  "original_dependency_binding_counts": {
+    "xp2": 9,
+    "host": 6,
+    "direct_xp2_entries": 5
+  },
+  "variants": [
+    {
+      "release": false,
+      "executable_sha256": "ab056f0bb489d709fcafc7ea53133af2b09dea131f21e4f9643e582500afb26a",
+      "mxcsr": 8064,
+      "x87_control": 895,
+      "libm_sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0",
+      "expf_offset": 95136,
+      "process_seconds": 0.3382553271949291,
+      "stdout_sha256": "5f7bc6838591f5d2559946da4a577448c944c8c46aa6d888d429116b7b35bf8c"
+    },
+    {
+      "release": true,
+      "executable_sha256": "71f740fa71b341952762f24abb4644a8ca19e347f4efedc4b7c227b983bae45b",
+      "mxcsr": 8064,
+      "x87_control": 895,
+      "libm_sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0",
+      "expf_offset": 95136,
+      "process_seconds": 0.05812519881874323,
+      "stdout_sha256": "5f7bc6838591f5d2559946da4a577448c944c8c46aa6d888d429116b7b35bf8c"
+    }
+  ],
+  "mismatches": [],
+  "rust_release_benchmark": {
+    "calls": 3236400,
+    "seconds": 0.089011385,
+    "checksum": 117343954913600
+  },
+  "limits": [
+    "Average damage arithmetic only; no combat actors/modifiers/attacks or randomized damage",
+    "Runtime profile separately proves module/rules/configuration and unchanged Core Save controls",
+    "Process timings include I/O and parsing; not pure kernel throughput or turn performance",
+    "Original divide-by-zero inputs are excluded and fail explicitly in Rust"
+  ]
+}
