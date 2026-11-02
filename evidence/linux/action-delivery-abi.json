@@ -368,9 +368,51 @@
       "size": 162,
       "name": "Civ6App.PublishEvents",
       "sha256": "0c12cbc106ae9e458550030dfb4ae265e7d70b6fa95d841f606c2051f397b477"
+    },
+    {
+      "module": "host",
+      "address": "0x39f6ab4",
+      "size": 15,
+      "name": "FNetSessionCallbacksIFace.MessageReceived",
+      "sha256": "b1954d72a82a3468f5d3979fd70fa02e14cf9ddfa6cbb124cb807a3428e6a5a0"
+    },
+    {
+      "module": "host",
+      "address": "0x33bbcf0",
+      "size": 1776,
+      "name": "Network.NetSessionCallbacks.CanReceiveMessages",
+      "sha256": "647003bc92d8d62b18e6017c5f040b02bab20ca958462373337b0e1c226d3ba8"
+    },
+    {
+      "module": "host",
+      "address": "0x39eafc0",
+      "size": 1280,
+      "name": "FNetSession.HandleIncomingMessageQueue",
+      "sha256": "88328bb79145b27bee7a52e3e1013936795e7df2722de569949bafedf9bd2a5f"
+    },
+    {
+      "module": "host",
+      "address": "0x39e0262",
+      "size": 25,
+      "name": "FNetMessage.Process",
+      "sha256": "125f88fcfd5444cb3ff6f00c455516271970abc70143d934bc8bcac8523352a3"
     }
   ],
   "virtual_bindings": [
+    {
+      "module": "host",
+      "table": "0x53a9d40",
+      "offset": "0x128",
+      "target": "0x39f6ab4",
+      "name": "SessionCallbacks.MessageReceived_direct_Process"
+    },
+    {
+      "module": "host",
+      "table": "0x53a9d40",
+      "offset": "0x130",
+      "target": "0x33bbcf0",
+      "name": "SessionCallbacks.CanReceiveMessages"
+    },
     {
       "module": "host",
       "table": "0x53b6480",
@@ -753,6 +795,25 @@
     "event_id_u32_offset": 4,
     "event55_player_i32_payload_offset": 0,
     "subscribe_idempotent": false
+  },
+  "application_message_callback": {
+    "address": "0x39f6ab4",
+    "abi": "void(callback RDI,message RSI)",
+    "session_pointer_offset": 8,
+    "dispatch": "synchronous FNetMessage.Process; no LocalMachine event"
+  },
+  "can_receive_messages": {
+    "address": "0x33bbcf0",
+    "abi": "bool(callback RDI), AL return",
+    "cached_reason_i32_offset": 72,
+    "reasons": {
+      "0": "receive allowed",
+      "1": "original load in progress",
+      "2": "original save in progress",
+      "3": "active controller executing or original Game.IsAiProcessing"
+    },
+    "incoming_session_queue_offset": 224,
+    "incoming_session_queue_count_u64_offset": 264
   },
   "local_delivery": "FNetAccessENet.Send(connection=0) queues packet; provider.Update drains via provider+8 callback slot0x30; absent callback destroys packet",
   "synchronization_deferral": "MessageReceived queues Sync.Add when sync+0x29 is nonzero and message+8 is zero",
