@@ -84,13 +84,20 @@ int c6_linux_action_dispatch(void *module,void *context,bool execute) {
     bool worker_executing=present&&executing(*controller);
     bool worker_suspended=present&&suspended(*controller);
     bool loading=native_loading(),saving=native_saving();
+    int request_kind=request_in_progress();
     void *app_state=*application?current_state(*application):NULL,*load_state=NULL;
     /* This is the original IsLoadInProgress comparison operand, read only.
      * The getter can report true for null==null in a minimal host fixture. */
     if(*application)memcpy(&load_state,(const unsigned char *)*application+0x2310,sizeof load_state);
-    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"serializer_observation\",\"request_active\":%d,\"request_type_raw\":%d,\"request_in_progress\":%d,\"application_present\":%d,\"current_state\":\"%p\",\"load_state\":\"%p\",\"state_identity_equal\":%d}\n",*request_active,*request_type,request_in_progress(),*application!=NULL,app_state,load_state,app_state==load_state);
+    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"serializer_observation\",\"request_active\":%d,\"request_type_raw\":%d,\"request_in_progress\":%d,\"application_present\":%d,\"current_state\":\"%p\",\"load_state\":\"%p\",\"state_identity_equal\":%d}\n",*request_active,*request_type,request_kind,*application!=NULL,app_state,load_state,app_state==load_state);
     fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"host_worker_preconditions\",\"snapshot_before_present\":%d,\"snapshot_after_present\":%d,\"snapshot_repeat_present\":%d,\"controller_present\":%d,\"worker_executing\":%d,\"worker_suspended\":%d,\"native_loading\":%d,\"native_saving\":%d}\n",before!=NULL,after!=NULL,repeat!=NULL,present,worker_executing,worker_suspended,loading,saving);
-    if(!before||!after||!repeat||!present||worker_executing||worker_suspended||loading||saving)return 222;
+    /* A minimal original App has no current/loading state objects. Original
+     * IsLoadInProgress then returns true for NULL==NULL despite no request.
+     * Accept only this observed profile, never an actual request/non-null load. */
+    bool null_state_profile=*application&&app_state==NULL&&load_state==NULL;
+    bool serializer_idle=!*request_active&&request_kind==0&&!saving&&(!loading||null_state_profile);
+    fprintf(stderr,"C6_LINUX_ACTION_DISPATCH {\"stage\":\"serializer_guard\",\"no_state_profile\":%d,\"actual_request_idle\":%d}\n",null_state_profile,serializer_idle);
+    if(!before||!after||!repeat||!present||worker_executing||worker_suspended||!serializer_idle)return 222;
     /* Actual constructor and ExecuteGameCoreUpdate bytes establish this native
      * threaded-mode selector. Read only; do not force a mode or construct a worker. */
     unsigned char threaded=*((const unsigned char *)*controller+4);
