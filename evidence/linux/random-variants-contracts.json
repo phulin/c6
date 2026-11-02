@@ -1,0 +1,69 @@
+{
+  "schema": "c6-linux-random-variants-contract-v1",
+  "modules": {
+    "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+    "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4"
+  },
+  "methods": [
+    {
+      "name": "scoped_ctor",
+      "module": "libGameCore_XP2.so",
+      "address": "0x2d4d030",
+      "size": 11,
+      "code_sha256": "ba979fee8ab057b244f5213ffff821788c98371ad7949af79dc5a69510363dbf"
+    },
+    {
+      "name": "scoped_reset",
+      "module": "libGameCore_XP2.so",
+      "address": "0x2d4d040",
+      "size": 3,
+      "code_sha256": "e57f6082d61fbfc2f1375ebe719921bae81e81ff55cb3522867874eaaf77ff16"
+    },
+    {
+      "name": "scoped_get",
+      "module": "libGameCore_XP2.so",
+      "address": "0x2d4d050",
+      "size": 23,
+      "code_sha256": "03837e297b1d6ef0aa58a1374ee2e2b9c06b61ba424cb68df5010569970447c0"
+    },
+    {
+      "name": "scoped_seed",
+      "module": "libGameCore_XP2.so",
+      "address": "0x2d4d070",
+      "size": 3,
+      "code_sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "name": "pcg_ctor",
+      "module": "Civ6",
+      "address": "0x3c087b4",
+      "size": 11,
+      "code_sha256": "62958441d7a9fca695f4a3813745d101a4931b06eced6427ba21b1a80d7073a2"
+    },
+    {
+      "name": "pcg_seeded_ctor",
+      "module": "Civ6",
+      "address": "0x3c087c0",
+      "size": 41,
+      "code_sha256": "96729065a1ee8c825da07a36bcaf14dc2626ec173ab2167146add30a59675f40"
+    },
+    {
+      "name": "pcg_seed",
+      "module": "Civ6",
+      "address": "0x3c087ea",
+      "size": 41,
+      "code_sha256": "96729065a1ee8c825da07a36bcaf14dc2626ec173ab2167146add30a59675f40"
+    },
+    {
+      "name": "pcg_rand",
+      "module": "Civ6",
+      "address": "0x3c08816",
+      "size": 57,
+      "code_sha256": "dfe737a85bc88e06e959ad7676f59b568081d9e381565ff0637e06e4a0a42149"
+    }
+  ],
+  "default_pcg_state": 645664597830827402,
+  "default_pcg_increment": 3,
+  "scope": "Isolated ScopedRandom and host PCG32 integer constructors, seed, draw and raw state",
+  "native_execution": false
+}
