@@ -26,6 +26,22 @@ int wmain(int argc, wchar_t **argv) {
         EXP_JobManager_DestroyJobSet(NULL);
         return 7;
     }
+    if (argc == 3 && !wcscmp(argv[2], L"wait-nonempty")) {
+        set[1] = 1;
+        EXP_JobManager_Wait(set, NULL);
+        return 9;
+    }
+    if (argc == 3 && !wcscmp(argv[2], L"wait-null")) {
+        EXP_JobManager_Wait(NULL, NULL);
+        return 10;
+    }
+    /* Arbitrary descriptor canaries are only checking the branch's proven
+     * non-access; they do not model a scheduling descriptor's semantics. */
+    uint64_t descriptor[2] = {UINT64_C(0xfeedfacecafebeef), UINT64_C(0x1234567890abcdef)};
+    EXP_JobManager_Wait(set, descriptor);
+    if (set[0] || set[1] || descriptor[0] != UINT64_C(0xfeedfacecafebeef) || descriptor[1] != UINT64_C(0x1234567890abcdef)) return 11;
+    EXP_JobManager_Wait(set, NULL);
+    if (set[0] || set[1]) return 12;
     EXP_JobManager_DestroyJobSet(set);
     if (set[0] || set[1]) return 8;
     puts("{\"phase\":\"native_job_set_probe_complete\",\"manager_initialized\":false,\"job_execution_tested\":false}");

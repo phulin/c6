@@ -36,6 +36,7 @@ static HMODULE original;
 int bootstrap_job_manager_prepare(HMODULE executable) {
     if (!exe_gate(executable) ||
         (void *)GetProcAddress(executable, "EXP_JobManager_DestroyJobSet") != (unsigned char *)executable + 0x986040 ||
+        (void *)GetProcAddress(executable, "EXP_JobManager_Wait") != (unsigned char *)executable + 0x985e20 ||
         *(void **)((unsigned char *)executable + 0x2d09b00)) return 0;
     original = executable;
     puts("{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}");
@@ -61,4 +62,18 @@ __declspec(dllexport) void EXP_JobManager_DestroyJobSet(void *set) {
     printf("{\"phase\":\"original_destroy_empty_job_set_before\",\"set\":\"%p\",\"first\":0,\"second\":0}\n", set);
     ((void (*)(void *))((unsigned char *)original + 0x986040))(set);
     printf("{\"phase\":\"original_destroy_empty_job_set_after\",\"first\":%llu,\"second\":%llu,\"original_code_executed\":true}\n", (unsigned long long)((uintptr_t *)set)[0], (unsigned long long)((uintptr_t *)set)[1]);
+}
+
+__declspec(dllexport) void EXP_JobManager_Wait(void *set, const void *descriptor) {
+    /* Native EXE 985e20 uses only set[1] on this admitted branch. RDX is
+     * forwarded for ABI fidelity; neither adapter nor native branch reads it. */
+    if (!original || !readable_set(set) ||
+        *(void **)((unsigned char *)original + 0x2d09b00) ||
+        ((uintptr_t *)set)[0] || ((uintptr_t *)set)[1]) {
+        fputs("{\"phase\":\"unsupported_job_set_wait_boundary\",\"original_wait_executed\":false}\n", stderr);
+        ExitProcess(86);
+    }
+    printf("{\"phase\":\"original_wait_empty_job_set_before\",\"set\":\"%p\",\"first\":0,\"second\":0,\"descriptor_read\":false}\n", set);
+    ((void (*)(void *, const void *))((unsigned char *)original + 0x985e20))(set, descriptor);
+    printf("{\"phase\":\"original_wait_empty_job_set_after\",\"first\":%llu,\"second\":%llu,\"original_code_executed\":true}\n", (unsigned long long)((uintptr_t *)set)[0], (unsigned long long)((uintptr_t *)set)[1]);
 }

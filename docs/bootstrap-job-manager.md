@@ -1,9 +1,10 @@
 # Original native job-set cleanup boundary
 
-The bootstrap admits one bounded original executable operation: destroying an
-empty job set while the original job-manager singleton is absent. It executes
-the genuine `EXP_JobManager_DestroyJobSet` export; it does not replace that
-operation with a host no-op. This does not initialize the job manager, schedule
+The bootstrap admits two bounded original executable operations: destroying
+and waiting on an empty job set while the original job-manager singleton is
+absent. It executes the genuine `EXP_JobManager_DestroyJobSet` and
+`EXP_JobManager_Wait` exports; it does not replace those operations with host
+no-ops. This does not initialize the job manager, schedule
 jobs, or establish gameplay or turn equivalence.
 
 The exact executable SHA-256 is
@@ -26,13 +27,26 @@ the original function. Those cases are unsupported, not passing native parity
 comparisons. In particular, the native EXE export itself dereferences a null
 set; the GameCore wrapper at RVA `0x992190` owns its separate null short circuit.
 
+The original `Wait` export is RVA `0x985e20`. Its Windows x64 ABI receives
+set in RCX and the DLL wrapper's copied 16-byte descriptor pointer in RDX.
+The DLL wrapper at RVA `0x9922c0` copies the descriptor before forwarding.
+The native EXE function reads set field `+8`; when zero, it returns without
+reading the descriptor, globals, or any scheduler object. On a nonzero active
+pointer it can invoke original routines `0xe3e700` and `0xe3ea70` and clear that
+field, so that branch remains unsupported. The adapter admits the same verified
+empty native sets as destroy, forwards the original descriptor pointer without
+interpreting its bytes, and calls the actual native export. The positive probe
+checks both canary and null descriptors, unchanged descriptor bytes, and all
+16 bytes of the job set. This establishes only that descriptor non-access on
+the empty branch; it does not recover scheduling descriptor semantics.
+
 The standalone probe fills 80 bytes of aligned storage with poison, calls the
 complete original constructor at RVA `0x985170`, and verifies its original
 vtable and empty embedded set at offset `0x38`. It then calls the adapter and
 checks all 16 bytes affected by the native operation. Thus the admitted positive
-fixture comes from original construction, not an invented empty object. Two
-negative cases deliberately pass a nonempty synthetic pointer field and null;
-both must stop before original execution. The synthetic field is only a rejection
+fixture comes from original construction, not an invented empty object. Four
+negative cases deliberately pass a nonempty synthetic pointer field and null
+to each adapter; all must stop before original execution. The synthetic field is only a rejection
 fixture and is never advanced or freed as native state.
 
 Reproduce with an idle shared Wine prefix:
@@ -49,10 +63,28 @@ or bind its imports because this audited branch and constructor do not call
 imports. The probe deliberately leaves manager construction and nonempty-set
 allocator behavior unclaimed.
 
-Other requested job hooks remain unavailable. `CreateJobList` (`0x986030`)
-uses a native synchronized pool and may legitimately return zero when the
-uninitialized pool has no available records; publishing that as working
-scheduling would conceal missing initialization. `FreeJobList` (`0x986050`)
-checks handle bounds and record availability, and `Wait` (`0x985e20`) uses
-additional native job-state services for a nonempty active pointer. Their
-addresses are evidence leads only; no host success implementations are supplied.
+The integrated `native-xp2-startup-complete-lifecycle.json` run now records
+successful original StartupGame, two native empty-set destruction pairs, later
+context factory/query cycles, and final exit 0 after DLL unload. This covers
+the actual startup/context teardown boundary with these empty sets. It does
+not establish original App/provider teardown or job execution. Later actual
+Load required the native empty-set Wait branch; see the runtime owner's
+separately fingerprinted Load evidence for its progress and remaining gaps.
+
+Other requested job hooks remain unavailable. Their bounded dependency audit is:
+
+| Export | Native target | Required state beyond admitted empty sets |
+| --- | --- | --- |
+| `AddJob` (`0x986010`) | `0x985490` | Constructs/activates native group through `0x985d70`, allocates native task, and submits through scheduler routines. |
+| `CreateJobList` (`0x986030`) | `0x985550` | Takes synchronized original pool at `0x2d09280`, moves a free record to active list; returns zero if none. |
+| `FreeJobList` (`0x986050`) | `0x9857b0` | Checks handle 1–64 and record availability, takes pool lock and moves/clears an active native record. |
+| `PushJobOntoList` (`0x986060`) | `0x985b20` | Activates native group, allocates native task, mutates linked list using handle. |
+| `SpawnList` (`0x986080`) | `0x985bf0` | Converts handle to pool record, drains task list and can submit or run tasks through original scheduler. |
+
+The uninitialized pool's native zero return is not published as working
+scheduling. `SpawnList` and `PushJobOntoList` require native handle provenance;
+passing zero or guessed pool entries is unsafe. No `CreateJobSet`/`Run`/`Join`
+host export appears in the fingerprinted executable's 26-export inventory;
+the seven `EXP_JobManager_*` exports (five above plus Wait/Destroy) are the closure
+listed in `evidence/bootstrap/exports.json`. A populated native manager and
+allocator/scheduler state must be recovered before admitting actual work.

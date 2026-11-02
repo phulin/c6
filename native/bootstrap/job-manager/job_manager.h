@@ -7,4 +7,7 @@
  * Does not initialize the manager or admit job scheduling. */
 int bootstrap_job_manager_prepare(HMODULE executable);
 __declspec(dllexport) void EXP_JobManager_DestroyJobSet(void *set);
+/* RDX points to the DLL wrapper's copied 16-byte descriptor. Its semantics
+ * are outside the admitted native empty-set branch, which never reads it. */
+__declspec(dllexport) void EXP_JobManager_Wait(void *set, const void *descriptor);
 #endif
