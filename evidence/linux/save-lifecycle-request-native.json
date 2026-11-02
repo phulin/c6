@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "method": "gated original-native deferred RequestLoad control",
+  "configuration_sha256": "5810a17a4b2a207299717c952a96ac3288eb4e08c3dcf297e1738b6545123602",
+  "original_report_sha256": "5cb631238ef0524b1d632a6d88dfbc5f0b2bde3a33cbddf1c142f10ba221c91d",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_target_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "input": {
+    "sha256": "a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8",
+    "bytes": 7348717,
+    "profile": "supplied-stream device4; both real game-state getters NULL; original deferred request only"
+  },
+  "native_exit_code": 0,
+  "request_accepted": true,
+  "native_request_kind": 2,
+  "native_request_in_progress": false,
+  "native_progress_getter": 0,
+  "native_retained_save_type": 1,
+  "complete_retained_copy_equal": true,
+  "caller_input_stream_and_bytes_released": true,
+  "original_Reset_and_ClearLastStream_succeeded": true,
+  "full_original_owner_cleanup_succeeded": true,
+  "CheckRequest_executed": false,
+  "Begin_executed": false,
+  "saved_game_censorship_profile_established": false,
+  "complete_save_load": false,
+  "action_or_turn_parity": false
+}

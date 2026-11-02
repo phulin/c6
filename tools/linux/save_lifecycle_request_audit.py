@@ -56,6 +56,7 @@ def main():
         (0x36b12ab, 'ba01000000', 'NativeLua_SINGLE_PLAYER_value1'),
         (0x42b9600, '893d0a931701c3', 'SetTickInterval_original_global_store_only'),
         (0x4352161, '803dc0773f0301751e', 'AudioSendEvent_native_uninitialized_guard'),
+        (0x333d5c0, '8a87b1040000c3', 'IsLoadingFromSave_reads_Begin_saved_profile_flag'),
     ]
     for address, value, label in checks:
         if h.read(address, len(bytes.fromhex(value))) != bytes.fromhex(value):

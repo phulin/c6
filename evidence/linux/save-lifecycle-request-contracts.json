@@ -143,7 +143,8 @@
     "Begin_saved_censor_flag_from_active_LOAD",
     "NativeLua_SINGLE_PLAYER_value1",
     "SetTickInterval_original_global_store_only",
-    "AudioSendEvent_native_uninitialized_guard"
+    "AudioSendEvent_native_uninitialized_guard",
+    "IsLoadingFromSave_reads_Begin_saved_profile_flag"
   ],
   "supplied_stream_device": 4,
   "single_player_save_type": 1,
