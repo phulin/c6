@@ -1,0 +1,46 @@
+{
+  "configuration": {
+    "schema": "c6-original-empty-job-set-probe-v1",
+    "original_executable_sha256": "e7450823cc8e00468cff7b9d7b97c63140eae38ae1d774ba4efa437556c42d63",
+    "sources": {
+      "native/bootstrap/job-manager/probe.c": "524b919b8090bafd5a360c86f88305eff15365a1ac7a1b5ce02cbfcc5a195ffb",
+      "native/bootstrap/job-manager/job_manager.c": "626d215d3ad65604715b80d324c9442655d99b7d7674ab627fdfeefd073d7113",
+      "native/bootstrap/job-manager/job_manager.h": "866a2cbb52d574cc2323da70da3c562f5d7c5bf1a95960d734b210bedd067107"
+    },
+    "host_sha256": "2ade0326bc101e4f2f0b0844e1436bf16c46d1d51bd27f574183988ab66ec153",
+    "full_executable_crt_startup": false,
+    "job_manager_initialized": false,
+    "native_constructor_rva": "0x985170",
+    "native_destroy_export_rva": "0x986040"
+  },
+  "configuration_sha256": "446f37125c931acaf6e3a586b181a25c8d6156a192cb6f14dae16a85f9b271f7",
+  "cases": [
+    {
+      "mode": "native-empty",
+      "expected_exit_code": 0,
+      "child_exit_code": 0,
+      "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n{\"phase\":\"original_destroy_empty_job_set_before\",\"set\":\"00007ffffe2ffea8\",\"first\":0,\"second\":0}\n{\"phase\":\"original_destroy_empty_job_set_after\",\"first\":0,\"second\":0,\"original_code_executed\":true}\n{\"phase\":\"native_job_set_probe_complete\",\"manager_initialized\":false,\"job_execution_tested\":false}\n",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "mode": "nonempty",
+      "expected_exit_code": 86,
+      "child_exit_code": 86,
+      "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n",
+      "stderr": "{\"phase\":\"unsupported_job_set_boundary\",\"original_destroy_executed\":false}\n",
+      "passed": true
+    },
+    {
+      "mode": "null",
+      "expected_exit_code": 86,
+      "child_exit_code": 86,
+      "stdout": "{\"phase\":\"original_job_manager_empty_boundary_prepared\",\"manager_initialized\":false,\"original_destroy_export_rva\":\"0x986040\"}\n{\"phase\":\"native_job_set_constructed\",\"constructor_rva\":\"0x985170\",\"embedded_set_offset\":56,\"empty\":true,\"poison_overwritten\":true}\n",
+      "stderr": "{\"phase\":\"unsupported_job_set_boundary\",\"original_destroy_executed\":false}\n",
+      "passed": true
+    }
+  ],
+  "initialized_game": false,
+  "job_execution_parity": false,
+  "full_turn_parity": false
+}
