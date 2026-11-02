@@ -42,6 +42,10 @@ def main():
     action_modes.add_argument('--action-skip-turn',action='store_true')
     action_modes.add_argument('--action-skip-turn-registered-control',action='store_true')
     action_modes.add_argument('--action-skip-turn-registered',action='store_true')
+    action_modes.add_argument('--core-component-control',action='store_true')
+    action_modes.add_argument('--core-component',action='store_true')
+    for name in ('before','after','repeat','command'):
+        parser.add_argument('--core-component-'+name,type=Path)
     parser.add_argument('--action-snapshot-before',type=Path)
     parser.add_argument('--action-snapshot-after',type=Path)
     parser.add_argument('--action-snapshot-repeat',type=Path)
@@ -49,6 +53,8 @@ def main():
     parser.add_argument('--definition-ids',action='store_true')
     parser.add_argument('--unit-definition-ids',action='store_true')
     parser.add_argument('--operation-registry',action='store_true')
+    parser.add_argument('--combat-kernel-input',type=Path)
+    parser.add_argument('--combat-kernel-output',type=Path)
     parser.add_argument('--save-normalization-trace',type=Path)
     parser.add_argument('--request-load-save',type=Path)
     parser.add_argument('--game-save-output',type=Path)
@@ -70,6 +76,29 @@ def main():
     game_input=args.game_load_stream.resolve() if args.game_load_stream else None
     action_mode='execute' if args.action_skip_turn or args.action_skip_turn_registered else 'control' if args.action_skip_turn_control or args.action_skip_turn_registered_control else None
     registered_action=args.action_skip_turn_registered or args.action_skip_turn_registered_control
+    core_mode='execute' if args.core_component else 'control' if args.core_component_control else None
+    core_paths={}
+    if core_mode:
+        if not game_input or any((args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.combat_kernel_input,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('Core component requires a separate fixture without host action or other diagnostic modes')
+        for label in ('before','after','repeat','command'):
+            path=getattr(args,'core_component_'+label)
+            if path is None:parser.error('Core component requires all four fresh artifact paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('Core component artifacts must be new private files in existing directories')
+            core_paths[label]=path
+        if len(set(core_paths.values()))!=4:parser.error('Core component artifact paths must be distinct')
+    elif any(getattr(args,'core_component_'+label) for label in ('before','after','repeat','command')):
+        parser.error('Core component artifact paths require an explicit component mode')
+    combat_input=args.combat_kernel_input.resolve() if args.combat_kernel_input else None
+    combat_output=args.combat_kernel_output.resolve() if args.combat_kernel_output else None
+    if bool(combat_input)!=bool(combat_output):parser.error('combat kernel requires both input and output paths')
+    if combat_input:
+        if not game_input or any((action_mode,core_mode,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('combat kernel requires a separate loaded Core fixture without other action/registry/serialization observers')
+        if not combat_input.is_file():parser.error('combat input file is missing')
+        if combat_output.exists() or not combat_output.parent.is_dir() or not combat_output.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
+            parser.error('combat output must be a new private c6-ghidra file in an existing directory')
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -82,7 +111,7 @@ def main():
     if args.action_observe and not game_input:parser.error('--action-observe requires --game-load-stream')
     if sum((args.definition_ids,args.unit_definition_ids,args.operation_registry))>1:
         parser.error('registry observers require separate native fixture profiles')
-    if (args.definition_ids or args.unit_definition_ids or args.operation_registry) and (not game_input or action_mode or args.action_observe or args.action_execution_observe or args.action_lifecycle_observe or args.save_normalization_trace):
+    if (args.definition_ids or args.unit_definition_ids or args.operation_registry) and (not game_input or action_mode or core_mode or args.action_observe or args.action_execution_observe or args.action_lifecycle_observe or args.save_normalization_trace):
         parser.error('definition registry observers require a separate Core load fixture without actor/lifecycle/serialization instrumentation')
     if args.action_execution_observe and not args.action_observe:parser.error('--action-execution-observe requires --action-observe and its Core load fixture')
     action_trace=args.action_trace_directory.resolve() if args.action_trace_directory else None
@@ -98,8 +127,8 @@ def main():
         if len(set(action_snapshots.values()))!=3:parser.error('action snapshot paths must be distinct')
     elif args.action_snapshot_before or args.action_snapshot_after or args.action_snapshot_repeat:
         parser.error('action snapshots require an explicit Skip Turn control/execute mode')
-    if args.action_lifecycle_observe or action_mode:
-        if not args.action_observe or args.action_execution_observe or not action_trace:
+    if args.action_lifecycle_observe or action_mode or core_mode:
+        if (not args.action_observe and not core_mode) or args.action_execution_observe or not action_trace:
             parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
         if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
@@ -143,6 +172,8 @@ def main():
             game_outputs[label]=path
         if game_outputs['save']==game_outputs['repeat']:parser.error('game save outputs must be distinct')
         if set(game_outputs.values())&set(action_snapshots.values()):parser.error('action snapshots and outer game Saves must be distinct')
+        if combat_output in game_outputs.values():parser.error('combat output and game Saves must be distinct')
+        if set(core_paths.values())&set(game_outputs.values()):parser.error('Core component and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
     snapshot=args.rules_snapshot_dir.resolve() if args.rules_snapshot_dir else None
@@ -173,7 +204,7 @@ def main():
         if request_audit!=json.loads(request_audit_paths[-1].read_text()):raise SystemExit('original request contracts differ')
     action_audit=None
     action_audit_paths=[]
-    if args.action_observe:
+    if args.action_observe or core_mode:
         action_audit_paths=[ROOT/'tools/linux/action_observer_audit.py',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-observer-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-action-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -189,7 +220,7 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe or args.action_lifecycle_observe or action_mode:
+    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -198,7 +229,7 @@ def main():
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode or args.action_lifecycle_observe:
+    if action_mode or args.action_lifecycle_observe or core_mode:
         for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -233,6 +264,29 @@ def main():
         operation_registry_audit_paths=[ROOT/'tools/linux/operation_registry_audit.py',ROOT/'evidence/linux/operation-registry-abi.json']
         operation_registry_audit=contract(assets)[0]
         if operation_registry_audit!=json.loads(operation_registry_audit_paths[-1].read_text()):raise SystemExit('original operation registry contracts differ')
+    combat_audit_paths=[]
+    combat_profile=None
+    if combat_input:
+        from combat_kernel_audit import audit
+        combat_audit_paths=[ROOT/'tools/linux/combat_kernel_audit.py',ROOT/'evidence/linux/combat-kernel-contracts.json',ROOT/'evidence/linux/combat-kernel-input.json']
+        manifest=json.loads(combat_audit_paths[-1].read_text())
+        if manifest['schema']!='c6-linux-xp2-average-damage-input-v1' or manifest['use_average'] is not True or digest(combat_input)!=manifest['input_sha256'] or combat_input.stat().st_size!=manifest['input_bytes']:
+            raise SystemExit('combat input manifest identity mismatch')
+        for name in ('native/linux/combat_kernel.c','native/linux/combat_kernel.h','tools/linux/combat_kernel_audit.py'):
+            if digest(ROOT/name)!=manifest['source_sha256'][name]:raise SystemExit('combat native source identity mismatch')
+        with tempfile.TemporaryDirectory(prefix='combat-audit-',dir=ROOT.parent/'c6-ghidra/evidence') as temporary:
+            contracts=audit(assets/'libGameCore_XP2.so',Path(temporary))
+        if contracts!=json.loads(combat_audit_paths[-2].read_text()):raise SystemExit('combat original contracts differ')
+        combat_profile={'input_sha256':manifest['input_sha256'],'input_bytes':manifest['input_bytes'],'case_count':manifest['case_count'],'use_average':True,'contract':contracts}
+    core_contract=None
+    core_audit_paths=[]
+    if core_mode:
+        core_audit_paths=[ROOT/'tools/linux/core_component_audit.py',ROOT/'evidence/linux/core-component-static.json']
+        with tempfile.TemporaryDirectory(prefix='core-component-audit-') as temporary:
+            result_path=Path(temporary)/'contracts.json'
+            subprocess.run([sys.executable,str(core_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
+            core_contract=json.loads(result_path.read_text())
+        if core_contract!=json.loads(core_audit_paths[-1].read_text()):raise SystemExit('original Core component contracts differ')
     content=json.loads((ROOT/'tools/linux/runtime-content-gate.json').read_text())['files']
     if view:
         profile=json.loads((view/'source-view.json').read_text())
@@ -269,14 +323,16 @@ def main():
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
-    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe else []
+    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode else []
-    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
+    combat_sources=[ROOT/'native/linux/combat_kernel.c'] if combat_input else []
+    core_sources=[ROOT/'native/linux/core_component.c'] if core_mode else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -309,9 +365,11 @@ def main():
               'lower_core_cache_dispatch_observer':execution_audit,
               'lower_core_controller_cache_lifecycle_observer':args.action_lifecycle_observe,
               'bounded_action_mode':action_mode,'pre_controller_registration':registered_action,'bounded_action_audits':dispatch_audits,
+              'core_component_mode':core_mode,'core_component_contract':core_contract,
               'lower_core_definition_registry_observer':definition_audit,
               'lower_core_unit_definition_registry_observer':unit_definition_audit,
               'lower_core_operation_registry_observer':operation_registry_audit,
+              'lower_core_average_damage_kernel':combat_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -345,6 +403,10 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*unit_definition_sources,ROOT/'native/linux/unit_definition_ids.h']})
     if operation_registry_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*operation_registry_sources,ROOT/'native/linux/operation_registry.h']})
+    if combat_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*combat_sources,ROOT/'native/linux/combat_kernel.h']})
+    if core_sources:
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h',ROOT/'native/linux/action_registration.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
@@ -353,15 +415,19 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*core_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*core_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
+    archived_preload=None
+    if core_mode:
+        archived_preload=core_paths['command'].parent/'core-component-preload.so'
+        with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
     if 'not found' in listing:raise SystemExit('native runtime dependency missing')
@@ -399,6 +465,7 @@ def main():
         if args.definition_ids:env['C6_DEFINITION_IDS']='1'
         if args.unit_definition_ids:env['C6_UNIT_DEFINITION_IDS']='1'
         if args.operation_registry:env['C6_OPERATION_REGISTRY']='1'
+        if combat_input:env.update(C6_COMBAT_KERNEL_INPUT=str(combat_input),C6_COMBAT_KERNEL_OUTPUT=str(combat_output))
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
@@ -408,6 +475,10 @@ def main():
             if registered_action:env['C6_ACTION_REGISTER_PRECONTROLLER']='1'
             env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
             for label,path in action_snapshots.items():env[f'C6_ACTION_SNAPSHOT_{label.upper()}']=str(path)
+    if core_mode:
+        env['C6_CORE_COMPONENT_MODE']=core_mode
+        env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
+        for label,path in core_paths.items():env['C6_CORE_COMPONENT_'+('COMMAND' if label=='command' else 'SNAPSHOT_'+label.upper())]=str(path)
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -446,6 +517,20 @@ def main():
         report['execution_paths']['action_trace_directory']=str(action_trace)
         for path in sorted(action_trace.iterdir()):
             if path.is_file():report['action_trace_files'][path.name]={'sha256':digest(path),'bytes':path.stat().st_size}
+    report['core_component_saves']={}
+    report['core_component_command']=None
+    if core_mode:
+        report['execution_paths']['core_component']={k:str(v) for k,v in core_paths.items()}
+        report['execution_paths']['preload']=str(archived_preload)
+        for label,path in core_paths.items():
+            if path.is_file():
+                artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
+                if label=='command':report['core_component_command']=artifact
+                else:report['core_component_saves'][label]=artifact
+    report['combat_kernel_output']=None
+    if combat_input:
+        report['execution_paths'].update(combat_kernel_input=str(combat_input),combat_kernel_output=str(combat_output))
+        if combat_output.is_file():report['combat_kernel_output']={'filename':combat_output.name,'sha256':digest(combat_output),'bytes':combat_output.stat().st_size}
     report['save_normalization_trace']=None
     if normalization_trace:
         report['execution_paths']['save_normalization_trace']=str(normalization_trace)

@@ -91,11 +91,18 @@ int c6_linux_game_load(void *context) {
             int (*operation_registry)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_operation_registry");
             result=operation_registry?operation_registry(game,context):174;
         }
+        if(!result && getenv("C6_COMBAT_KERNEL_INPUT")) {
+            int (*combat_kernel)(void *)=dlsym(RTLD_DEFAULT,"c6_linux_combat_kernel_probe");
+            result=combat_kernel?combat_kernel(game):180;
+        }
         if(!result && getenv("C6_ACTION_OBSERVE")) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
-        if(!result && getenv("C6_ACTION_SKIP_TURN")) {
+        if(!result && getenv("C6_CORE_COMPONENT_MODE")) {
+            int (*component)(void *,void *,bool)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_core_component");
+            result=component?component(game,context,!strcmp(getenv("C6_CORE_COMPONENT_MODE"),"execute")):181;
+        } else if(!result && getenv("C6_ACTION_SKIP_TURN")) {
             const char *dispatch_name=getenv("C6_ACTION_REGISTER_PRECONTROLLER")?"c6_linux_action_prepare_registered_dispatch":"c6_linux_action_prepare_dispatch";
             int (*dispatch)(void *,void *,bool)=dlsym(RTLD_DEFAULT,dispatch_name);
             bool execute=!strcmp(getenv("C6_ACTION_SKIP_TURN"),"execute");
