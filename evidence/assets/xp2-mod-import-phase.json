@@ -11,7 +11,7 @@
   "initialized_game": false,
   "limits": [
     "Passing explicit source import and context lifecycle diagnostic; native component selection engine not executed.",
-    "No original initialized cache comparison or complete database state fingerprint yet.",
+    "Original application cache equivalence unverified; reproducible native fixture snapshots are recorded in evidence/assets/xp2-rules-snapshot.json.",
     "Game startup, configuration activation, save loading and turn parity remain separate boundaries."
   ],
   "native_cascade_retest": {

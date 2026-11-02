@@ -280,6 +280,7 @@ with exit code zero. The result is recorded in
 
 This is a passing native import and context lifecycle fixture for the explicit
 source sequence. The native component selection engine was not executed, and no
-original initialized cache comparison or complete database state fingerprint has
-yet been obtained. Full game startup, activated session configuration, actions,
+original application initialized-cache comparison has been obtained. Genuine
+backups with reproducible file and typed rowid fingerprints are now documented
+in [rules-snapshot.md](rules-snapshot.md). Full game startup, activated session configuration, actions,
 save loading and turns remain separate boundaries.
