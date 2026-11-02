@@ -1,0 +1,10 @@
+{
+  "linux_source": "Base/assets/benchmark/saves/xp2benchmark.civ6save",
+  "size": 7348717,
+  "sha256": "a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8",
+  "same_bytes_as_existing_windows_supplied_fixture": true,
+  "existing_container_evidence": "evidence/saves/xp2-benchmark.json",
+  "linux_gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "native_linux_load_executed": false,
+  "save_compatibility_proven": false
+}

@@ -1,0 +1,69 @@
+{
+  "xp2_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "private_evidence": {
+    "path": "../c6-ghidra/evidence/linux-runtime/exports-context-dwarf.txt",
+    "sha256": "0271a9d496afc6bfcd00ab8e99a7a9d269383f042018e485d2df31158b42f9e2",
+    "query_offset": "0x09fd2eaa",
+    "depth": 2
+  },
+  "calling_convention": "x86_64 System V; explicit this pointer first argument",
+  "methods": [
+    {
+      "name": "Initialize",
+      "symbol": "_ZN8GameCore7Exports7Context10InitializeEv",
+      "address": "0x2c7c9a0",
+      "declaration_die": "0x09fd2f29",
+      "return": "void",
+      "arguments": [
+        "Context*"
+      ]
+    },
+    {
+      "name": "IsInitialied",
+      "symbol": "_ZN8GameCore7Exports7Context12IsInitialiedEv",
+      "address": "0x2c7c9b0",
+      "declaration_die": "0x09fd2f5d",
+      "return": "bool",
+      "arguments": [
+        "Context*"
+      ]
+    },
+    {
+      "name": "SetEngineInterface",
+      "symbol": "_ZN8GameCore7Exports7Context18SetEngineInterfaceEPNS_10Interfaces15IEngineUtility1E",
+      "address": "0x2c7c9f0",
+      "declaration_die": "0x09fd363c",
+      "return": "void",
+      "arguments": [
+        "Context*",
+        "IEngineUtility1*"
+      ]
+    },
+    {
+      "name": "StartupGame",
+      "symbol": "_ZN8GameCore7Exports7Context11StartupGameEv",
+      "address": "0x2c7d2f0",
+      "declaration_die": "0x09fd354c",
+      "return": "void",
+      "arguments": [
+        "Context*"
+      ]
+    },
+    {
+      "name": "Load",
+      "symbol": "_ZN8GameCore7Exports7Context4LoadERN13Serialization7IStreamE",
+      "address": "0x2c7d240",
+      "declaration_die": "0x09fd349b",
+      "return": "GameCore::Serializer::Result (representation not yet extracted)",
+      "arguments": [
+        "Context*",
+        "Serialization::IStream&"
+      ]
+    }
+  ],
+  "limits": [
+    "Signatures are evidence leads for subsequent native integration. Only context factory/destroy lifetime has executed.",
+    "Exports::Context::Initialize is void although its internal Instance implementation returns bool.",
+    "No initialized game, Load completion, actions or turns established."
+  ]
+}

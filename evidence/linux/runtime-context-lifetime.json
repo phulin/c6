@@ -18,8 +18,8 @@
       "libsteam_api.so": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0",
       "libtbb.so.2": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707"
     },
-    "probe_sha256": "c6e91c800b408e5cc3f8c27f98591cd5ef1c23a266b18dc64bea5af1a7930acc",
-    "probe_source_sha256": "030bd37c330a78cee7416b9270c7553bd70cbda51354ed1c6296cdab5b5ae886",
+    "probe_sha256": "88f57440d1f61cf79b4f4f274491ca8431ed078146d7ba4345d6db7a5e18e316",
+    "probe_source_sha256": "7666c351da080fbdd16de9e68b2ab5aa9679c6b2cd4b95604e544cebd4e091c1",
     "rules_database": null,
     "runtime_dependencies": {
       "ld-linux-x86-64.so.2": {
@@ -141,17 +141,20 @@
     },
     "schema": "c6-linux-context-lifetime-v1"
   },
-  "configuration_sha256": "5fd0c4a9a8d99b25c77e4898d0a85ccfe1144660277a900a516676f9b41bbb8b",
+  "configuration_sha256": "f36f85eb7e67f1dde8b97a8628e65ae4df3d4137a97ea5e669077ee5f1e94828",
+  "context_initialize_returned": false,
+  "context_initialized_flag": false,
   "context_lifetime_cycles_passed": 3,
   "diagnostic_passed": true,
   "exit_code": 0,
   "initialized_game": false,
   "limits": [
     "host App main and shutdown intentionally bypassed",
-    "no engine interface, rules, map, players or session initialized",
+    "no initialized gameplay session, map, players or rules fixture",
     "separate Linux lineage; Windows parity is not implied"
   ],
   "save_loaded": false,
+  "startup_game_returned": false,
   "stderr": "C6_LINUX host_main_intercepted\nC6_LINUX whole_gamecore_loaded\nC6_LINUX create_enter 0\nC6_LINUX create_return 0 nonnull\nC6_LINUX destroy_return 0\nC6_LINUX create_enter 1\nC6_LINUX create_return 1 nonnull\nC6_LINUX destroy_return 1\nC6_LINUX create_enter 2\nC6_LINUX create_return 2 nonnull\nC6_LINUX destroy_return 2\nC6_LINUX dlclose_return 0\n",
   "stdout": "",
   "whole_gamecore_loaded": true
