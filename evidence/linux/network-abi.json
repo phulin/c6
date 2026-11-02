@@ -67,7 +67,7 @@
     "teardown": "Leave native session while Context remains available, destroy Context users, then original Manager FreeInstance before App teardown."
   },
   "limits": [
-    "Native SetupNetwork and Context teardown are measured. Original saved-session attachment is observed, but its configuration-map teardown fails; no complete hosted-session lifetime is accepted yet.",
+    "Native saved-configuration attachment, queried original FNetSession state, duplicate-owner guards, LeaveGame and complete original ownership cleanup pass in Base-context and updated-XP2-context profiles. The earlier manager-lifetime teardown failure remains historical evidence.",
     "Native session proof does not establish complete save loading, external legal actions or turns.",
     "No Windows provider, fake session, synthetic local-player ID or replaced network callback is used."
   ],
@@ -80,6 +80,32 @@
     "default_unknown_mode_host_result": 4,
     "default_unknown_mode_session_null": true,
     "saved_session_fixture": "evidence/linux/runtime-framework-saved-session.json",
-    "saved_session_complete_lifecycle_passed": false
+    "saved_session_complete_lifecycle_passed": true,
+    "saved_session_lifecycle_profiles": {
+      "saved": {
+        "evidence": "evidence/linux/network-saved-session-lifecycle.json",
+        "configuration_sha256": "e0615b9884055f86aa015cfae374a5755f86babccdf6de8392d34ca78203585f",
+        "exit_code": 0,
+        "original_session_observed": true,
+        "duplicate_setup_refused": 150,
+        "duplicate_host_refused": 160,
+        "leave_cleared_session": true,
+        "framework_early_original_unload_before_configuration_owner_destroy": true,
+        "complete_cleanup": true,
+        "active_core": "libGameCore_Base.so"
+      },
+      "xp2-saved": {
+        "evidence": "evidence/linux/network-xp2-saved-session-lifecycle.json",
+        "configuration_sha256": "97ac01f71553dcf5dae3f188d3706a777164d2e9f935d624a19c6f653cc51e1b",
+        "exit_code": 0,
+        "original_session_observed": true,
+        "duplicate_setup_refused": 150,
+        "duplicate_host_refused": 160,
+        "leave_cleared_session": true,
+        "framework_early_original_unload_before_configuration_owner_destroy": true,
+        "complete_cleanup": true,
+        "active_core": "libGameCore_XP2.so"
+      }
+    }
   }
 }
