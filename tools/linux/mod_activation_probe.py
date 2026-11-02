@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--saved-configuration',type=Path)
     parser.add_argument('--configure',action='store_true')
     parser.add_argument('--content-paths',action='store_true')
+    parser.add_argument('--art-manager',action='store_true')
     parser.add_argument('--localization',action='store_true')
     parser.add_argument('--cleanup',action='store_true')
     parser.add_argument('--client-only',action='store_true')
@@ -88,7 +89,7 @@ def main():
     preload=work/'mod_activation_probe.so'
     identity={'schema':'c6-linux-mod-activation-v1','assets':gate,'base_content_gate_sha256':digest(ROOT/'tools/linux/runtime-content-gate.json'),
               'source_view_manifest_sha256':digest(view/'source-view.json') if view else None,'dlc_descriptors':descriptors,
-              'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
+              'sources':{str(p.relative_to(ROOT)):digest(p) for p in sources},'configure_requested':args.configure,'content_paths_requested':args.content_paths,'art_manager_requested':args.art_manager,'localization_profile':localization_profile,'cleanup_requested':args.cleanup,'client_constructor_requested':args.client_constructor,'client_only':args.client_only,
               'source_view':str(view) if view else None,'userdata':str(userdata),'userdata_initially_empty':True,'cwd':str(work),
               'runner_sha256':digest(Path(__file__)),'original_filesystem_profile':filesystem_identity,
               'saved_configuration_sha256':digest(args.saved_configuration) if args.saved_configuration else None}
@@ -120,6 +121,7 @@ def main():
         env.update(localization_environment);env['C6_LOCALIZATION']='1'
     if args.configure:env['C6_MOD_CONFIGURE']='1'
     if args.content_paths:env['C6_MOD_CONTENT_PATHS']='1'
+    if args.art_manager:env['C6_MOD_ART_MANAGER']='1'
     if args.client_only:env['C6_MOD_CLIENT_ONLY']='1'
     if args.client_constructor:env['C6_MOD_CLIENT_CONSTRUCTOR']='1'
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()

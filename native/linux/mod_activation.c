@@ -12,6 +12,7 @@
 static void *constructed_client;
 static void *constructed_framework;
 static void *constructed_content_paths;
+static bool started_art_manager;
 
 static bool events_registered;
 int c6_linux_mod_register_events(void) {
@@ -138,6 +139,18 @@ int c6_linux_mod_framework_initialize(void **borrowed_context) {
         fprintf(stderr,"C6_LINUX_MOD content_paths_setup_return result %d manager %d\n",ready,paths()!=NULL);
         if (!ready || !constructed_content_paths) return 140;
     }
+    if (getenv("C6_MOD_ART_MANAGER")) {
+        bool (*setup)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App15SetupArtManagerEv");
+        unsigned char *allocate=dlsym(RTLD_DEFAULT,"_ZN10ArtLoading19ArtLoadingAllocator13allocFunctionE");
+        unsigned char *release=dlsym(RTLD_DEFAULT,"_ZN10ArtLoading19ArtLoadingAllocator12freeFunctionE");
+        if (!setup || !allocate || !release || *(void **)(allocate+0x20) || *(void **)(release+0x20)) return 143;
+        fprintf(stderr,"C6_LINUX_MOD art_manager_setup_enter\n");
+        bool ready=setup(*app);
+        started_art_manager=ready;
+        bool callbacks=*(void **)(allocate+0x20) && *(void **)(release+0x20);
+        fprintf(stderr,"C6_LINUX_MOD art_manager_setup_return result %d native_allocator_callbacks %d\n",ready,callbacks);
+        if (!ready || !callbacks) return 144;
+    }
     if (getenv("C6_MOD_CLIENT_CONSTRUCTOR")) {
         int client_result=client_construct_only();
         if (client_result) return client_result;
@@ -185,6 +198,10 @@ int c6_linux_mod_framework_configure(void) {
         fprintf(stderr,"C6_LINUX_MOD configured_module_path result %d path %ls\n",found,selected);
     }
     mod_inventory(framework,"after_configure");
+    void **active=dlsym(RTLD_DEFAULT,"_ZN8GameCore16s_pActiveContextE");
+    Dl_info module;
+    if (active && *active && dladdr(*(void **)*active,&module))
+        fprintf(stderr,"C6_LINUX_MOD configured_active_context_module %s\n",module.dli_fname);
     /* ConfigureContent alone selects/configures; it does not execute the
      * subsequent UpdateContent gameplay ApplyComponents phase. */
     return (result&1) ? 0 : 116;
@@ -206,6 +223,15 @@ int c6_linux_mod_framework_shutdown(void) {
     constructed_framework=NULL;
     controller_shutdown();
     fprintf(stderr,"C6_LINUX_MOD controller_shutdown_return active %d\n",*controller!=NULL);
+    if (!*controller && started_art_manager) {
+        void (*shutdown)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App18ShutdownArtManagerEv");
+        void **app=dlsym(RTLD_DEFAULT,"g_pkApplication");
+        if (!shutdown || !app || !*app) return 145;
+        fprintf(stderr,"C6_LINUX_MOD art_manager_shutdown_enter\n");
+        shutdown(*app);
+        started_art_manager=false;
+        fprintf(stderr,"C6_LINUX_MOD art_manager_shutdown_return\n");
+    }
     if (!*controller && constructed_content_paths) {
         void *(*paths)(void)=dlsym(RTLD_DEFAULT,"_ZN3App11ContentPath7Manager3GetEv");
         bool (*shutdown)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App20ShutdownContentPathsEv");
