@@ -10,11 +10,13 @@ This is an index and research lead, not proof of simulator fidelity. Upstream ex
 |---|---|
 | Steam depot 947510, older symbol-bearing XP2 build | Source of C++ names and old RVAs; exact depot manifest is not supplied by `builds.json`. |
 | Steam build 15038592, July 2024 | Target of current GameCore RVAs. Upstream says August 2024 build 15296837 has the identical GameCore DLL. This claim does not establish the identity of a supplied DLL. |
-| Steam Linux depot 533502, before New Frontier Pass | DWARF member names, sizes, offsets and parameter names. Linux layouts are not a Windows ABI guarantee. |
+| Steam Linux depot 533502, described by upstream as before New Frontier Pass | Upstream DWARF member names, sizes, offsets and parameters. This attributed label does not date the supplied Linux binary; layouts are not a cross-platform ABI guarantee. |
 
 Documentation and data are [CC BY 4.0](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/LICENSE), tools are [MIT](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/LICENSE-CODE). Attribution: cru121, *Civ6-GameCore-reference*, cited repository and pinned revision; this document reorganizes a small selection of its data. Upstream credits Sukrit Tan, ChimpanG, WildW, and Community Extension contributors. Its repository publishes names, addresses, notes and short snippets, not the game implementation or binaries.
 
-Before applying any address, record the actual module SHA-256, PE image identity and ruleset. An expansion DLL or platform mismatch invalidates direct use of these RVAs. A symbol-build/current-build match is a claim to verify against bytes and runtime, especially for changed functions.
+The old/current RVAs below describe upstream Windows mappings and preserved historical research. Active execution and acceptance use the supplied Linux profile; see [targets](targets.md), [release identity](version-audit.md) and [reference reuse](reference-reuse.md). Cross-platform layout differences do not establish relative age.
+
+Before applying any address, record the actual module SHA-256, native image identity and ruleset. An expansion DLL or platform mismatch invalidates direct use of these RVAs. A symbol-build/current-build match is a claim to verify against bytes and runtime, especially for changed functions.
 
 ## Local data worth using
 
@@ -62,7 +64,7 @@ For the current XP2 build, `Game::Processor` exposes `BeginTurn` `0x49390`, `End
 
 Unit/city actions have `CanStart`, `Start`, `MakeParameters`, `SetParameters`, with spy operations also `ResolveOperation`. Upstream reports 108 handler hashes recovered directly and 16 inferred from names. Player operations largely dispatch through a hash decision tree in `Player::Operations::Manager::Process` (current `0x30d330`); six are separate classes. Recovered parameters and wrapper contexts should determine the action schema instead of inventing a generic argument list. The supplied upstream hash function is bitwise NOT of standard CRC32 of an uppercase identifier, stored as 32 bits. Uppercase normalization and signed JSON presentation must be explicit.
 
-Known version difference: current `Unit::CombatModifiers` inserted byte `NoBarbXPLimit` at offset `0x81`; following flags shift by one. Upstream identifies current `unit+0x821` and links it to Caesar's effect. This is a concrete counterexample to treating all Linux/older layouts as current Windows layouts.
+Upstream Windows build-difference observation: `Unit::CombatModifiers` gained byte `NoBarbXPLimit` at offset `0x81`, shifting following flags. Upstream identifies Windows `unit+0x821` and links it to Caesar's effect. The supplied Linux layout demonstrably differs at this boundary; this prevents transferring layouts, but does not establish that the supplied Linux build is older or noncurrent.
 
 ## Reusing the original-game harness
 
