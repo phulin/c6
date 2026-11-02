@@ -1,0 +1,60 @@
+{
+  "schema": "c6-linux-operation-registry-observation-v1",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "configuration_sha256": "551e80945f1e8ffd28e70a74a10769a542314269d017ce348beb877ad20dee4f",
+  "runtime_report_sha256": "ee26d2e02bbf55488a10f3a2d7fc0f4dadc0e6cb16c56e80f54449e0b6197a46",
+  "private_report_sha256": "321b2d75d905036ad770e2585adb718486a00ed67470759ce8688321d8616c6a",
+  "audit_source_sha256": "6a7ec3a5ed6809889a2765902c931a46efad6097e3fb92abb88f4e7857b09e34",
+  "registry_count": 63,
+  "active_handlers": 63,
+  "null_handlers": 0,
+  "registered_hashes_without_definition": 3,
+  "mapping_sha256": "179fdf01e39cce680012d66d920c90903eecf7ce8a4656dbaaeeb0af793288ed",
+  "canonical_save": {
+    "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "bytes": 80657462
+  },
+  "canonical_core_unchanged": true,
+  "full_live_state_unchanged_proven": false,
+  "corpus": [
+    {
+      "save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "units": 1262,
+      "candidate_snapshot_matches": 1,
+      "nonempty_queues": 308,
+      "queue_counts": {
+        "09c1ecc1": 1,
+        "223eea54": 10,
+        "580f2f68": 91,
+        "8374d954": 185,
+        "c31647e8": 10,
+        "d3a6f7e8": 1,
+        "e547bc17": 7,
+        "ed72b77d": 3,
+        "empty": 954
+      }
+    },
+    {
+      "save_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "units": 1262,
+      "candidate_snapshot_matches": 1,
+      "nonempty_queues": 308,
+      "queue_counts": {
+        "09c1ecc1": 1,
+        "223eea54": 10,
+        "580f2f68": 91,
+        "8374d954": 185,
+        "c31647e8": 10,
+        "d3a6f7e8": 1,
+        "e547bc17": 7,
+        "ed72b77d": 3,
+        "empty": 954
+      }
+    }
+  ],
+  "candidate_report_sha256": "6b349d2d34a8ba9918879f48597373fad9e723aac9349b5cb77608fbbd7270d5",
+  "full_state_action_turn_parity": false
+}
