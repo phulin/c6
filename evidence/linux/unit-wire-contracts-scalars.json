@@ -1,0 +1,698 @@
+{
+  "schema": "c6-linux-unit-wire-scalars-v1",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "static_only": true,
+  "native_parity_validated": false,
+  "complete_unit_codec": false,
+  "byte_order": "little-endian raw primitive bytes",
+  "enums": {
+    "BuildingTypes": {
+      "address": "0x2d4ed30",
+      "size_bound": 36,
+      "sha256": "0fcccf7bc6eb27a7eec32cba77882cad7692d076e0769907ccda4ce6221ead4f",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetBuildingDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetBuildingDefinitions()"
+    },
+    "DirectionTypes": {
+      "address": "0x2d4fcf0",
+      "size_bound": 33,
+      "sha256": "2f1915da671c051a057950970c8b38c30d14b4b1cbea4c8db139f43a444129b8",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "DistrictTypes": {
+      "address": "0x2d4ebe0",
+      "size_bound": 36,
+      "sha256": "dc40e9bc43e0fc8aec2e195881b9a1c8eab8c366272b24f46990d7fb1231425c",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetDistrictDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetDistrictDefinitions()"
+    },
+    "GreatPersonClassTypes": {
+      "address": "0x2d4f340",
+      "size_bound": 36,
+      "sha256": "2f4f2eda26b72bbbf7c973aa12028aba6d4423377f4e793541fa58c3d2123928",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetGreatPersonClassDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetGreatPersonClassDefinitions()"
+    },
+    "GreatPersonIndividualTypes": {
+      "address": "0x2d4f3b0",
+      "size_bound": 36,
+      "sha256": "f0f4c6ec1d839646c5ef6423c755b5311839b866adf18f709b1372cbdba493d6",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetGreatPersonIndividualDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetGreatPersonIndividualDefinitions()"
+    },
+    "GreatWorkListIndex": {
+      "address": "0x2d4fff0",
+      "size_bound": 33,
+      "sha256": "69ac29147e407ab4f5e5f19b867b8a9d33d8bfa6522aaf82be99eb2ac652671b",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "HeroClassTypes": {
+      "address": "0x2d4fa40",
+      "size_bound": 36,
+      "sha256": "7e743015bb7148c44786235c621d9e56342bf3fe58030f373376ba736068c516",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetHeroClassDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetHeroClassDefinitions()"
+    },
+    "HiddenVisibilityTypes": {
+      "address": "0x2d4fe70",
+      "size_bound": 33,
+      "sha256": "80e6109d81beb15b4be33d87d4f82f0ed6f9b3aa00d9ac7944786abb2a47cb7e",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "ImprovementTypes": {
+      "address": "0x2d4ee10",
+      "size_bound": 36,
+      "sha256": "553cc1de61effac943a18e8873ec9df614ca5f5c40d8631d2077791eb977a632",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetImprovementDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Improvement> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Improvement> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetImprovementDefinitions()"
+    },
+    "MilitaryFormationTypes": {
+      "address": "0x2d4fc90",
+      "size_bound": 33,
+      "sha256": "6d2b8fd49c9911b0d72a11c39725228c83966bdf4f53bc95854d22937d6b8c69",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "PlayerTypes": {
+      "address": "0x2c9aba0",
+      "size_bound": 33,
+      "sha256": "e3aa2b85edbfcad11d2fe4b8d720bad7d662e88d8461f7994ba25444ae60c6d1",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "RelicSource": {
+      "address": "0x2d50290",
+      "size_bound": 33,
+      "sha256": "9a0f1625e098236cbeda584d8c7f972e2b71dbb2a78841daabb2031ac4a6d028",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "ReligionTypes": {
+      "address": "0x2d4f730",
+      "size_bound": 36,
+      "sha256": "35c4a91970c035bacab41537e1c917882a35d122fa714e3bfca4879aceaf882c",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetReligionDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Religion> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Religion> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetReligionDefinitions()"
+    },
+    "ResourceTypes": {
+      "address": "0x2d4ee80",
+      "size_bound": 36,
+      "sha256": "5f147070a345d84922f90e04ac6fc0080f25ad35d0231f0312cf8b4a1612893a",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetResourceDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Resource> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Resource> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetResourceDefinitions()"
+    },
+    "RouteTypes": {
+      "address": "0x2d4f5e0",
+      "size_bound": 36,
+      "sha256": "a263236fa3a5141f642951327c038c3c5b3d64f895aadd4027d1eafe8da881b4",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetRouteDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Route> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Route> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetRouteDefinitions()"
+    },
+    "TechTypes": {
+      "address": "0x2d4eef0",
+      "size_bound": 36,
+      "sha256": "e8b21f56f96030386a4c9aac4582d7fce63120854b0a642cf15392ac5210cdad",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetTechnologyDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetTechnologyDefinitions()"
+    },
+    "UnitAITypes": {
+      "address": "0x2d4fc30",
+      "size_bound": 33,
+      "sha256": "8b693c0490b5544a56ecf4186980ec9a8642f577a7b506289f54b68c853a9e68",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "UnitActivityTypes": {
+      "address": "0x2d4fdb0",
+      "size_bound": 33,
+      "sha256": "f0be3efae8ae4d7e4810c4945fad9755300a8e626d286c3a6c0467bf08f96cfc",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "UnitAutomateTypes": {
+      "address": "0x2d4fe10",
+      "size_bound": 33,
+      "sha256": "b8c514fdb32769e33b960ba0255dac01a69d8222ba84b908dc9882be53b01944",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "UnitOperationTypes": {
+      "address": "0x2d4f880",
+      "size_bound": 36,
+      "sha256": "8afa13a599ce7cf6de8bae9ed1174751c9ea2eb939fa042df40ec0107d331952",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetUnitOperationDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetUnitOperationDefinitions()"
+    },
+    "UnitTypes": {
+      "address": "0x2d4ec50",
+      "size_bound": 36,
+      "sha256": "5a3b949a5afbd01e059bd8cd942a824ae730881338c0750cc049febae8f1ff4f",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetUnitDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetUnitDefinitions()"
+    },
+    "WMDTypes": {
+      "address": "0x2d4f650",
+      "size_bound": 36,
+      "sha256": "371312c8b2ac2d847ed39cdb07d1a22f74e334b6460b2b22510ace90ed0ba58b",
+      "wire": "u32 definition hash",
+      "calls": [
+        "GameCore::Definitions::GetWMDDefinitions()",
+        "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::WMD> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::WMD> const&)"
+      ],
+      "definition_getter": "GameCore::Definitions::GetWMDDefinitions()"
+    },
+    "YieldTypes": {
+      "address": "0x2d4fb70",
+      "size_bound": 33,
+      "sha256": "b971caad466bb8cb3baf0b50ec89d1f83d536c9d25f15145cc664077fdd4a5c7",
+      "wire": "i32 enum ordinal",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    }
+  },
+  "helpers": {
+    "Unit.PlayerEnumToStream": {
+      "address": "0x2c29f30",
+      "size_bound": 22,
+      "sha256": "e139bacd1e91b637af855fdc918da9d03953f848439aa6e6f497a540123fd7e8",
+      "wire": "i32 payload at FAutoVariable+0x10; no wrapper header",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "Unit.UnitTypes.save": {
+      "address": "0x2c1dbc0",
+      "size_bound": 15,
+      "sha256": "77bb3fb0ed5f52d52488263b2ee5f9dd5c3dc2f20625b23d31fb903ab97bd630",
+      "wire": "payload at FAutoVariable+0x10; direct UnitTypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::UnitTypes const&)"
+      ]
+    },
+    "Unit.UnitAITypes.save": {
+      "address": "0x2c1e5c0",
+      "size_bound": 15,
+      "sha256": "c8cd5a68f814649e650fd3ead0bec163f9d8a821e122da5d54da259930178e3b",
+      "wire": "payload at FAutoVariable+0x10; direct UnitAITypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::UnitAITypes const&)"
+      ]
+    },
+    "Unit.DirectionTypes.save": {
+      "address": "0x2c1fa00",
+      "size_bound": 15,
+      "sha256": "14b42d9768f6fae3987cb3635fb75b5a6f0d461c5634940e7e5bb3ae94ea1fed",
+      "wire": "payload at FAutoVariable+0x10; direct DirectionTypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::DirectionTypes const&)"
+      ]
+    },
+    "Unit.PlayerTypes.save": {
+      "address": "0x2c20400",
+      "size_bound": 15,
+      "sha256": "d4199fd029c2235ad54cadff64b1eeea98f572bbba2efe9b8100075e58b29ddf",
+      "wire": "payload at FAutoVariable+0x10; direct PlayerTypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::PlayerTypes const&)"
+      ]
+    },
+    "Unit.MilitaryFormationTypes.save": {
+      "address": "0x2c2d670",
+      "size_bound": 15,
+      "sha256": "2f477974968b0e62337b567dcb0da9d6f7616af1442725bfc67ca4ad84d6189a",
+      "wire": "payload at FAutoVariable+0x10; direct MilitaryFormationTypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::MilitaryFormationTypes const&)"
+      ]
+    },
+    "Unit.UnitAutomateTypes.save": {
+      "address": "0x2c13080",
+      "size_bound": 15,
+      "sha256": "3970c183984636c92fc8e14fe4987cfd411e7c743b9c892f4b94c7ecc92e4a8d",
+      "wire": "payload at FAutoVariable+0x10; direct UnitAutomateTypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::UnitAutomateTypes const&)"
+      ]
+    },
+    "Unit.UnitActivityTypes.save": {
+      "address": "0x2c13a80",
+      "size_bound": 15,
+      "sha256": "b4875f5a5458b91ab0733d060b320dd2e5e893213dace57600b654067215fb07",
+      "wire": "payload at FAutoVariable+0x10; direct UnitActivityTypes writer",
+      "calls": [
+        "Serialization::operator<<(Serialization::OStream&, GameCore::UnitActivityTypes const&)"
+      ]
+    },
+    "Sight.PlotEntry.vector": {
+      "address": "0x2c38680",
+      "size_bound": 288,
+      "sha256": "0d3e7669e559042794ed117c1065c378f6431d32bc164c6fb2f687db25847eee",
+      "wire": "u32 count; count PlotEntry records in begin/end order",
+      "calls": [
+        "Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >::begin() const",
+        "Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >::end() const",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::Sight::PlotEntry const, Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> > const>::SerializeFromSequenceContainer(Serialization::OStream&, Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> > const&)",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::Sight::PlotEntry const, Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> > const> eastl::for_each<GameCore::Unit::Sight::PlotEntry const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::Sight::PlotEntry const, Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> > const> >(GameCore::Unit::Sight::PlotEntry const*, GameCore::Unit::Sight::PlotEntry const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::Sight::PlotEntry const, Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> > const>)",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::Sight::PlotEntry const, Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> > const>::operator()(GameCore::Unit::Sight::PlotEntry const&)",
+        "Types::ptr64<GameCore::Unit::Sight::PlotEntry>::operator GameCore::Unit::Sight::PlotEntry*() const",
+        "Types::ptr64<GameCore::Unit::Sight::PlotEntry>::operator GameCore::Unit::Sight::PlotEntry*() const",
+        "Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::operator<<(Serialization::OStream&, GameCore::Unit::Sight::PlotEntry const&)"
+      ]
+    },
+    "EspionageBonus.vector": {
+      "address": "0x2c167a0",
+      "size_bound": 96,
+      "sha256": "75b4512e4ae29ed90668a009af5fb739aab3c39edea94148a7d828834ec152db",
+      "wire": "u32 count; count EspionageBonus records in begin/end order",
+      "calls": [
+        "eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator>::begin() const",
+        "eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator>::end() const",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageBonus const, eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator> const&)",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageBonus const, eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator> const> eastl::for_each<GameCore::Unit::EspionageBonus const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageBonus const, eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator> const> >(GameCore::Unit::EspionageBonus const*, GameCore::Unit::EspionageBonus const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageBonus const, eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator> const>)"
+      ]
+    },
+    "EspionageBonus.count": {
+      "address": "0x2c16c90",
+      "size_bound": 56,
+      "sha256": "c9e5b7d1a2b4e2f9f6b8c54cbfb2e87a477ae40c28ca23f366af85c692362c3b",
+      "wire": "u32(size()), low 32 bits",
+      "calls": [
+        "eastl::vector<GameCore::Unit::EspionageBonus, eastl::allocator>::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::operator<<(Serialization::OStream&, GameCore::Unit::EspionageBonus const&)"
+      ]
+    },
+    "EspionageTimeReduction.vector": {
+      "address": "0x2c16800",
+      "size_bound": 96,
+      "sha256": "fbd5d5ac475881347496e451078ee96e18d3ac4a9a86b6785f1a2fbff1174941",
+      "wire": "u32 count; count EspionageTimeReduction records in begin/end order",
+      "calls": [
+        "eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator>::begin() const",
+        "eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator>::end() const",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageTimeReduction const, eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator> const&)",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageTimeReduction const, eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator> const> eastl::for_each<GameCore::Unit::EspionageTimeReduction const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageTimeReduction const, eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator> const> >(GameCore::Unit::EspionageTimeReduction const*, GameCore::Unit::EspionageTimeReduction const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::EspionageTimeReduction const, eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator> const>)"
+      ]
+    },
+    "EspionageTimeReduction.count": {
+      "address": "0x2c16d40",
+      "size_bound": 56,
+      "sha256": "1e65d66301c03aeb9119e66650860d6fad5a232c5b6092315805b7a5e2d4e45d",
+      "wire": "u32(size()), low 32 bits",
+      "calls": [
+        "eastl::vector<GameCore::Unit::EspionageTimeReduction, eastl::allocator>::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::operator<<(Serialization::OStream&, GameCore::Unit::EspionageTimeReduction const&)"
+      ]
+    },
+    "InitiationYieldPopulation.vector": {
+      "address": "0x2c442d0",
+      "size_bound": 96,
+      "sha256": "cfd0f144a39b7ec55b50462af0c2da3d951140ee1f4e6d6282462f21076eb631",
+      "wire": "u32 count; count InitiationYieldPopulation records in begin/end order",
+      "calls": [
+        "eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator>::begin() const",
+        "eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator>::end() const",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::InitiationYieldPopulation const, eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator> const&)",
+        "Serialization::SerializeFromSequenceContainer<GameCore::Unit::InitiationYieldPopulation const, eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator> const> eastl::for_each<GameCore::Unit::InitiationYieldPopulation const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::InitiationYieldPopulation const, eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator> const> >(GameCore::Unit::InitiationYieldPopulation const*, GameCore::Unit::InitiationYieldPopulation const*, Serialization::SerializeFromSequenceContainer<GameCore::Unit::InitiationYieldPopulation const, eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator> const>)"
+      ]
+    },
+    "InitiationYieldPopulation.count": {
+      "address": "0x2c444f0",
+      "size_bound": 56,
+      "sha256": "dd2963213d8f9c7fe3a2e6846188663beb3ac09290383bff210498292575f5bb",
+      "wire": "u32(size()), low 32 bits",
+      "calls": [
+        "eastl::vector<GameCore::Unit::InitiationYieldPopulation, eastl::allocator>::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::operator<<(Serialization::OStream&, GameCore::Unit::InitiationYieldPopulation const&)"
+      ]
+    },
+    "Vector.int": {
+      "address": "0x1feff10",
+      "size_bound": 256,
+      "sha256": "b2bb7b09961247645bed2ec2203869dfe8ff0c2f2695556ab9bfb80c017c8746",
+      "wire": "u32 count; count i32 in begin/end order",
+      "calls": [
+        "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::begin() const",
+        "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::end() const",
+        "Serialization::SerializeFromSequenceContainer<int const, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const>::SerializeFromSequenceContainer(Serialization::OStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const&)",
+        "Serialization::SerializeFromSequenceContainer<int const, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const> eastl::for_each<int const*, Serialization::SerializeFromSequenceContainer<int const, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const> >(int const*, int const*, Serialization::SerializeFromSequenceContainer<int const, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const>)",
+        "Serialization::SerializeFromSequenceContainer<int const, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const>::operator()(int const&)",
+        "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+        "Platform::memhash(void const*, unsigned long)"
+      ]
+    },
+    "Vector.int.count": {
+      "address": "0x1feffc0",
+      "size_bound": 48,
+      "sha256": "3a56dfca84d59508b361ca4be3bf3c8f3dd4aead34288754d3947347c1be2faa",
+      "wire": "u32(size())",
+      "calls": [
+        "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)"
+      ]
+    },
+    "YieldIndexList": {
+      "address": "0x2194800",
+      "size_bound": 56,
+      "sha256": "297d39dc5168d2b4833c6d1fdcbf6b77b67b25169e6706634e1887aabfeba543",
+      "wire": "Yield definition hash array of i32",
+      "calls": [
+        "GameCore::IndexList<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>, &GameCore::Definitions::GetYieldDefinitions, void>::get() const",
+        "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::data() const",
+        "GameCore::Definitions::GetYieldDefinitions()",
+        "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)"
+      ]
+    },
+    "OperationIndexList.bool": {
+      "address": "0x2c3fc20",
+      "size_bound": 64,
+      "sha256": "ae7daceecc692397bab854ef02ee0517274bd5415dbd83b7c32954200fd364bc",
+      "wire": "UnitOperation definition hash array of one-byte bool",
+      "calls": [
+        "GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>::get() const",
+        "Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >::data() const",
+        "GameCore::Definitions::GetUnitOperationDefinitions()",
+        "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> const&)"
+      ]
+    },
+    "YieldHashArray": {
+      "address": "0x2003140",
+      "size_bound": 141,
+      "sha256": "dba8d3f40b5faed3e3068fae08dc1b175b82035fe9be875b6e286b035753ce68",
+      "wire": "u32 definition count; (u32 hash, i32 value) for every At(i)",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>::GetCount() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>::At(unsigned int) const",
+        "GameCore::Definition::Yield::GetTypeHash() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "OperationHashArray.bool": {
+      "address": "0x2c3fc60",
+      "size_bound": 138,
+      "sha256": "3694d7fadbde7b7f0e4ff8551aabf3988268c869af95d077a436c314b766703c",
+      "wire": "u32 definition count; (u32 hash, u8 bool) for every At(i)",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>::GetCount() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>::At(unsigned int) const",
+        "GameCore::Definition::UnitOperation::GetTypeHash() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)"
+      ]
+    },
+    "AbilityHashArray": {
+      "address": "0x2c2a070",
+      "size_bound": 141,
+      "sha256": "e1d5113c9af015ef31fb96d67583732f098aefa98bc174d36bd510d3e4e91e59",
+      "wire": "u32 definition count; (u32 hash, i32 value) for every At(i)",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::GetCount() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::At(unsigned int) const",
+        "GameCore::Definition::UnitAbility::GetTypeHash() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "TerrainHashArray.bool": {
+      "address": "0x2c2a100",
+      "size_bound": 138,
+      "sha256": "3d187920e9357af9c62004b89d0006a1f62bf2dcc91663672af5b7ed41096695",
+      "wire": "u32 definition count; (u32 hash, u8 bool) for every At(i)",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::GetCount() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::At(unsigned int) const",
+        "GameCore::Definition::Terrain::GetTypeHash() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)"
+      ]
+    },
+    "FeatureHashArray.bool": {
+      "address": "0x285ebb0",
+      "size_bound": 138,
+      "sha256": "dafb6bd17016b4097f4927937742ed109451c4e2bb29dde85c4ee1b3c78ad291",
+      "wire": "u32 definition count; (u32 hash, u8 bool) for every At(i)",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::GetCount() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::At(unsigned int) const",
+        "GameCore::Definition::Feature::GetTypeHash() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)"
+      ]
+    },
+    "GreatPersonClassHashArray": {
+      "address": "0x2b13990",
+      "size_bound": 141,
+      "sha256": "55a3b3d2e61c1bba5cbd9d03edd6f5e8fcce34981a9f64f06fc83863905a8ac0",
+      "wire": "u32 definition count; (u32 hash, i32 value) for every At(i)",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::GetCount() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::At(unsigned int) const",
+        "GameCore::Definition::GreatPersonClass::GetTypeHash() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "PromotionHashTable.u8": {
+      "address": "0x2c2a190",
+      "size_bound": 192,
+      "sha256": "9a874774388154b94aee345d45ee3175061b2b3430bd1cd4b3072161dd9870b4",
+      "wire": "u32 table size; (u32 key, u8 value) in native forward-iterator order; not definition count and not bool",
+      "calls": [
+        "Types::HashTable<unsigned char, 1u, 0u>::size() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Types::HashTable_Base<unsigned char>::end() const",
+        "Types::HashTable_Base<unsigned char>::begin() const",
+        "Types::ConstHashTableForwardIterator<unsigned char>::operator!=(Types::ConstHashTableForwardIterator<unsigned char> const&) const",
+        "Types::ConstHashTableForwardIterator<unsigned char>::key() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "Types::ConstHashTableForwardIterator<unsigned char>::value() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned char>(unsigned char const&)",
+        "Types::ConstHashTableForwardIterator<unsigned char>::operator++()",
+        "Types::ConstHashTableForwardIterator<unsigned char>::operator!=(Types::ConstHashTableForwardIterator<unsigned char> const&) const"
+      ]
+    },
+    "Unit.IndexToHash": {
+      "address": "0x2005d70",
+      "size_bound": 67,
+      "sha256": "6e17c513feb04c587e520aeea416fb77458c013e1ce17d257e303189d109ca0a",
+      "wire": "index below count -> At(index).type_hash; otherwise preserve input if Find(input) exists; otherwise 0xffffffff",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>::GetCount() const",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>::At(unsigned int) const",
+        "GameCore::Definition::Unit::GetTypeHash() const",
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>::Find(unsigned int) const"
+      ]
+    },
+    "Unit.HashToIndex": {
+      "address": "0x1ffc120",
+      "size_bound": 34,
+      "sha256": "26ec484a59dc05ceb242dc6d0e5d36fef9e8cfc39abd042b918b16ea8db67122",
+      "wire": "Find(hash).collection_index, otherwise -1",
+      "calls": [
+        "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>::Find(unsigned int) const",
+        "GameCore::Definition::Unit::GetCollectionIndex() const"
+      ]
+    },
+    "UnitID": {
+      "address": "0x2c9adc0",
+      "size_bound": 95,
+      "sha256": "fac47f5edb84475fdb01bd75dd403a326ce14ed2f4062d541ba6f2495a36be32",
+      "wire": "i16 owner; i16 component type; u32 ID",
+      "calls": [
+        "GameCore::Player::ComponentID::GetOwner() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <short>(short const&)",
+        "GameCore::Player::ComponentID::GetType() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <short>(short const&)",
+        "GameCore::Player::ComponentID::GetID() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)"
+      ]
+    },
+    "CityID": {
+      "address": "0x2c9ad10",
+      "size_bound": 95,
+      "sha256": "a0462572e6b0309d6de60c35fd14f41c3cb054c915751ab1103d279b6f0d981c",
+      "wire": "i16 owner; i16 component type; u32 ID",
+      "calls": [
+        "GameCore::Player::ComponentID::GetOwner() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <short>(short const&)",
+        "GameCore::Player::ComponentID::GetType() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <short>(short const&)",
+        "GameCore::Player::ComponentID::GetID() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)"
+      ]
+    },
+    "PlotCoord": {
+      "address": "0x2c9af20",
+      "size_bound": 41,
+      "sha256": "09befdb0e6703290977db65b34b4a9d237076caa3199171f77138d55361c355d",
+      "wire": "i32 x; i32 y",
+      "calls": [
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "FixedPoint8": {
+      "address": "0x2c9afe0",
+      "size_bound": 42,
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704",
+      "wire": "i32 raw fixed-point bits",
+      "calls": [
+        "FixedPointT<8u>::GetRaw() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+      ]
+    },
+    "String.Encoding1": {
+      "address": "0x264bed0",
+      "size_bound": 144,
+      "sha256": "53a78d519b0e18cde18b83fa385071aba08e9896be7baa7942490b445b0b04da",
+      "wire": "u32 GetLength(); exactly that many raw bytes from string buffer; no terminator",
+      "calls": [
+        "String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)1>::GetLength() const",
+        "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+        "String::Base<(String::Encoding)1>::c_str() const",
+        "String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)1>::operator=(char const*)",
+        "Serialization::IStream& Serialization::ReadVersioned<String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)1>, char const* const&>(Serialization::IStream&, String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)1>&, int, int&&, char const* const&)+0x20",
+        "Serialization::IStream& Serialization::operator>><Platform::StaticHeapAllocator<5, 0>, (String::Encoding)1>(Serialization::IStream&, String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)1>&)"
+      ]
+    },
+    "StaticArray.int5": {
+      "address": "0x2c48940",
+      "size_bound": 144,
+      "sha256": "a3df57a6001ff0d312a34b169dd3c393d2634ae0e7f2fce5bd49c411463496f3",
+      "wire": "five i32 values, no count",
+      "calls": [
+        "Types::StaticArray<int, 5ul>::operator[](unsigned long) const",
+        "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+        "Types::StaticArray<int, 5ul>::operator[](unsigned long)",
+        "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+      ]
+    }
+  },
+  "host_primitive_widths": {
+    "bool": {
+      "address": "0x2fe34f0",
+      "size_bound": 14,
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba",
+      "wire": "one raw source byte",
+      "calls": []
+    },
+    "u8": {
+      "address": "0x33b0420",
+      "size_bound": 14,
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba",
+      "wire": "one raw source byte",
+      "calls": []
+    },
+    "i16": {
+      "address": "0x3962650",
+      "size_bound": 14,
+      "sha256": "f2d3e22bc439750e47398663378c04dc03e443a86397bff40334966cebdde5f3",
+      "wire": "two raw source bytes",
+      "calls": []
+    },
+    "i32": {
+      "address": "0x2fdd7c0",
+      "size_bound": 14,
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c",
+      "wire": "four raw source bytes",
+      "calls": []
+    },
+    "u32": {
+      "address": "0x2f66f20",
+      "size_bound": 14,
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c",
+      "wire": "four raw source bytes",
+      "calls": []
+    }
+  },
+  "limits": [
+    "Current writer contracts only; historical reader version branches not covered.",
+    "Definition identities and counts require exact Linux rules inputs.",
+    "HashTable forward order is state dependent; sorting keys is not evidenced.",
+    "Static evidence does not establish complete save/state/action/turn parity."
+  ]
+}
