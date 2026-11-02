@@ -69,7 +69,7 @@
     }
   },
   "private_disassembly_sha256": "46567d27da29cfdc31a7e44de70600d85c7533a4f69ab17c690035fe9fce9a15",
-  "limits": "Static contract and separate first-invalid-write evidence. Original Startup/Shutdown with this input still needs controlled native comparison; no global heap/core parity inference.",
+  "limits": "Static contract and preserved first-invalid-write evidence, followed by controlled v3 InitInstance discovery and full native Startup/Shutdown proof in the linked report. No XP2 activation, initialized-game or global heap/core parity inference.",
   "first_failing_native_input": "../../../Base/Assets/Scenarios/tutorial/tutorial.civ6map",
   "observed_requested_bytes": 228,
   "observed_fallback_allocation_bytes": 240,
@@ -83,5 +83,6 @@
     "linux-mod-v3-first-invalid.618868.txt": "feec860f6646935f04b5ee03f90ab1501cad0bd8d85e6ced5ce2b562d6f28d24",
     "linux-mod-v3-allocator-current-gdb.txt": "7c6bd4f9f998471c2b64b322fc9dd7a94632e6401da59320cad43de0cbf6b8b8"
   },
-  "instrumentation_limits": "Valgrind 3.22 memcheck uses a distinct debug preload that delegates unrelated tool main calls; its actual Civ6 branch is unchanged. Native posix16-new/default-delete alignment/family categories were recorded and filtered after checking original allocator/free bodies; invalid reads/writes and invalid/double frees remained enabled. No allocator flags or original opcodes changed."
+  "instrumentation_limits": "Valgrind 3.22 memcheck uses a distinct debug preload that delegates unrelated tool main calls; its actual Civ6 branch is unchanged. Native posix16-new/default-delete alignment/family categories were recorded and filtered after checking original allocator/free bodies; invalid reads/writes and invalid/double frees remained enabled. No allocator flags or original opcodes changed.",
+  "controlled_native_measurement": "mod-activation-native-tempheap-discovery.json"
 }

@@ -11,6 +11,7 @@
 
 static void *constructed_client;
 static void *constructed_framework;
+static void *constructed_content_paths;
 
 static bool events_registered;
 int c6_linux_mod_register_events(void) {
@@ -127,6 +128,16 @@ int c6_linux_mod_framework_initialize(void **borrowed_context) {
         option_string(options(*app),"Debug","TutorialState")!=NULL;
     fprintf(stderr,"C6_LINUX_MOD register_application_options_return %d\n",options_ready);
     if (!options_ready) return 129;
+    if (getenv("C6_MOD_CONTENT_PATHS")) {
+        void *(*paths)(void)=dlsym(RTLD_DEFAULT,"_ZN3App11ContentPath7Manager3GetEv");
+        bool (*setup)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App17SetupContentPathsEv");
+        if (!paths || !setup || paths()) return 139;
+        fprintf(stderr,"C6_LINUX_MOD content_paths_setup_enter\n");
+        bool ready=setup(*app);
+        constructed_content_paths=paths();
+        fprintf(stderr,"C6_LINUX_MOD content_paths_setup_return result %d manager %d\n",ready,paths()!=NULL);
+        if (!ready || !constructed_content_paths) return 140;
+    }
     if (getenv("C6_MOD_CLIENT_CONSTRUCTOR")) {
         int client_result=client_construct_only();
         if (client_result) return client_result;
@@ -195,6 +206,16 @@ int c6_linux_mod_framework_shutdown(void) {
     constructed_framework=NULL;
     controller_shutdown();
     fprintf(stderr,"C6_LINUX_MOD controller_shutdown_return active %d\n",*controller!=NULL);
+    if (!*controller && constructed_content_paths) {
+        void *(*paths)(void)=dlsym(RTLD_DEFAULT,"_ZN3App11ContentPath7Manager3GetEv");
+        bool (*shutdown)(void *)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App20ShutdownContentPathsEv");
+        void **app=dlsym(RTLD_DEFAULT,"g_pkApplication");
+        if (!paths || !shutdown || !app || !*app || paths()!=constructed_content_paths) return 141;
+        bool stopped=shutdown(*app);
+        fprintf(stderr,"C6_LINUX_MOD content_paths_shutdown_return result %d manager_null %d\n",stopped,paths()==NULL);
+        if (!stopped || paths()) return 142;
+        constructed_content_paths=NULL;
+    }
     return *controller?133:0;
 }
 
