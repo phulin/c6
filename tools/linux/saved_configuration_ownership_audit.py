@@ -24,6 +24,8 @@ def main():
         (0x31ead78, 0x3c4296c, 'ShutdownConfiguration_free_owner'),
         (0x337f3cf, 0x31ead60, 'FrameworkDestructor_shutdown_configuration'),
         (0x337f3d4, 0x337f5a0, 'FrameworkDestructor_unload_core'),
+        (0x337f5ae, 0x31d16c0, 'UnloadGameCore_release_controller_context'),
+        (0x337f5b3, 0x31dd630, 'UnloadGameCore_destroy_active_core'),
     ]
     for address, target, _ in calls:
         host.call(address, target)

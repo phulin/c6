@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "method": "gated original-native cleanup control report checks",
+  "saved_only": {
+    "configuration_sha256": "a323291801b797c5644e3af1b24622cb06e1ce0777d4d50631871c7b445fb6a9",
+    "report_sha256": "5bfedc3a3c76d905e9bc555712c35de55e275dab8f6a32f44c27836e0a4ea13e",
+    "saved_configuration_restored": true,
+    "native_exit_code": 0,
+    "original_core_unloaded_before_configuration_owner_destroyed": true,
+    "normal_framework_and_service_cleanup_complete": true
+  },
+  "no_saved": {
+    "configuration_sha256": "ff208643a0581a957fc65bbb135cf79492077512d14462a72a3f853127ff403e",
+    "report_sha256": "027fae0a030eacc7ec3c426cada4585e273cd2e73fa21ed484f30df06141e183",
+    "saved_configuration_restored": false,
+    "native_exit_code": 0,
+    "original_core_unloaded_before_configuration_owner_destroyed": true,
+    "normal_framework_and_service_cleanup_complete": true
+  },
+  "runtime_fix_validated": true,
+  "input_retention_added": false,
+  "teardown_omitted": false,
+  "network_session_control_included": false,
+  "complete_game_load": false,
+  "action_or_turn_parity": false
+}

@@ -53,6 +53,16 @@
       "call": "0x337f3d4",
       "target": "0x337f5a0",
       "contract": "FrameworkDestructor_unload_core"
+    },
+    {
+      "call": "0x337f5ae",
+      "target": "0x31d16c0",
+      "contract": "UnloadGameCore_release_controller_context"
+    },
+    {
+      "call": "0x337f5b3",
+      "target": "0x31dd630",
+      "contract": "UnloadGameCore_destroy_active_core"
     }
   ],
   "byte_contracts": [

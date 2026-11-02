@@ -29,7 +29,9 @@ Private Linux disassembly evidence is in `../c6-ghidra/evidence/linux-configurat
 
 The native maps have a separate owner lifetime from the input bytes. The SHA-gated [ownership audit](../evidence/linux/saved-configuration-ownership-contracts.json) verifies that primitive-array deserialization allocates payload storage and uses the original MemoryIStream raw reader with copying enabled. `TypedVariantMap::Copy` inherits the source map's manager. The host Game configuration owns that manager at object offset 8; a copied core configuration must be destroyed before that owner.
 
-A passive GDB observation of the genuine framework's Base context proves a teardown use after free, summarized in [saved-configuration-manager-lifetime.json](../evidence/linux/saved-configuration-manager-lifetime.json). Original `LoadConfiguration` returns zero at offset 103,901. With later diagnostic getters and writeback skipped, framework destruction deletes the host configuration owner, then unloads the core. The core's configuration destructor subsequently dispatches through the exact deleted manager address. The captured child receives SIGSEGV; the debugger's zero exit status is not a successful cleanup. This isolates a configuration-owner dependency, independently of network attachment and output serialization. It does not justify retaining input bytes or omitting cleanup. A corrected original release sequence still requires native validation.
+A passive GDB observation of the genuine framework's Base context proves a teardown use after free, summarized in [saved-configuration-manager-lifetime.json](../evidence/linux/saved-configuration-manager-lifetime.json). Original `LoadConfiguration` returns zero at offset 103,901. With later diagnostic getters and writeback skipped, framework destruction deletes the host configuration owner, then unloads the core. The core's configuration destructor subsequently dispatches through the exact deleted manager address. The captured child receives SIGSEGV; the debugger's zero exit status is not a successful cleanup. This isolates a configuration-owner dependency, independently of network attachment and output serialization.
+
+The adapter now calls the original `AppModdingFramework::UnloadGameCore` while the configuration owner remains alive, then runs normal framework destruction and service shutdown. This original method releases the controller's context reference and unloads the active core; it is also the release boundary used by original content transitions. Both saved-configuration-only and no-restoration native controls exit zero with the context absent before configuration-owner destruction and complete App, filesystem and TempHeap cleanup. [saved-configuration-owner-cleanup.json](../evidence/linux/saved-configuration-owner-cleanup.json) checks their gated identities and cleanup order. Input retention and omitted teardown are not part of this correction. Actual XP2 content-transition cleanup is recorded separately in [mod-activation-native-xp2-owner-aware-cleanup.json](../evidence/linux/mod-activation-native-xp2-owner-aware-cleanup.json). These controls do not load compressed gameplay or establish session/action/turn parity.
 
 Reproduce the bounded static and passive-trace checks with:
 
@@ -40,4 +42,8 @@ python3 tools/linux/saved_configuration_lifetime_evidence.py \
   --trace ../c6-ghidra/evidence/linux-configuration/manager-first-free-v3.txt \
   --report ../c6-ghidra/evidence/linux-configuration/manager-first-free-v3-report.json \
   --output target/linux/configuration-manager-lifetime.json
+python3 tools/linux/saved_configuration_cleanup_evidence.py \
+  --saved-only ../c6-ghidra/evidence/reference-reuse/mod-activation-saved-only-owner-aware-cleanup.json \
+  --no-saved ../c6-ghidra/evidence/reference-reuse/mod-activation-no-saved-owner-aware-cleanup.json \
+  --output target/linux/configuration-owner-cleanup.json
 ```
