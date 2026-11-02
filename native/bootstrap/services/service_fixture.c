@@ -28,6 +28,10 @@ static uintptr_t logging_slots[12];
 static uintptr_t logfile_slots[4];
 static uintptr_t *logging_object = logging_slots;
 static uintptr_t *logfile_object = logfile_slots;
+struct log_type { uint32_t id, flags, level; unsigned char enabled; };
+static struct log_type log_types[256];
+static size_t log_type_count;
+static void (*progress_reporter)(FILE *);
 static size_t registered_logs;
 static size_t log_messages;
 static void *database_connections[2];
@@ -43,6 +47,10 @@ static void trace(const char *event, unsigned offset) {
 }
 static _Noreturn void unavailable(unsigned offset) {
     trace("unsupported_required_service", offset);
+    if (progress_reporter) {
+        progress_reporter(stderr);
+        fflush(stderr);
+    }
     /* A dedicated process status preserves the failed boundary, rather than letting
      * an arbitrary return value advance original code as fabricated success. */
     ExitProcess(86);
@@ -194,14 +202,44 @@ static void archive_unregister(void *self, uintptr_t *owned_name) {
     ++removed_absent_archive_types;
     trace("UnregisterArchiveType_absent_in_empty_registry", 8);
 }
+static struct log_type *find_log_type(uint32_t id) {
+    for (size_t i = 0; i < log_type_count; ++i)
+        if (log_types[i].id == id) return &log_types[i];
+    return NULL;
+}
+static struct log_type *create_log_type(uint32_t id) {
+    struct log_type *entry = find_log_type(id);
+    if (entry) return entry;
+    if (log_type_count == sizeof log_types / sizeof log_types[0]) unavailable(0x40);
+    entry = &log_types[log_type_count++];
+    *entry = (struct log_type){id, 0, 0, 1};
+    return entry;
+}
 static void log_register(void *self, uint32_t id, const wchar_t *filename, uint32_t flags, void *reserved) {
-    (void)self; (void)filename; (void)flags; (void)reserved;
+    (void)self; (void)filename; (void)reserved;
+    create_log_type(id)->flags = flags;
     ++registered_logs;
     fprintf(stderr, "{\"bootstrap_service\":\"RegisterLog_stderr_sink\",\"id\":%u}\n", id);
 }
 static void log_enable(void *self, uint32_t id, unsigned char enabled) {
     (void)self;
+    struct log_type *entry = find_log_type(id);
+    if (!entry && enabled) entry = create_log_type(id);
+    if (entry) entry->enabled = enabled;
     fprintf(stderr, "{\"bootstrap_service\":\"EnableLog_stderr_sink\",\"id\":%u,\"enabled\":%u}\n", id, enabled);
+}
+static void log_set_type_level(void *self, uint32_t id, uint32_t level) {
+    (void)self;
+    struct log_type *entry = find_log_type(id);
+    if (!entry && level) entry = create_log_type(id);
+    if (entry) entry->level = level;
+}
+static uint32_t log_get_type_level(void *self, uint32_t id) {
+    (void)self;
+    struct log_type *entry = find_log_type(id);
+    uint32_t level = entry ? entry->level : 0;
+    fprintf(stderr, "{\"bootstrap_service\":\"GetTypeLevel_stderr_sink\",\"id\":%u,\"level\":%u}\n", id, level);
+    return level;
 }
 static void *get_logfile(void *self, uint32_t id) {
     (void)self; (void)id;
@@ -257,6 +295,8 @@ void *bootstrap_service_fixture_create(HMODULE gamecore) {
     memcpy(logging_slots, unsupported_slots, sizeof logging_slots);
     memcpy(logfile_slots, unsupported_slots, sizeof logfile_slots);
     logging_slots[5] = (uintptr_t)log_enable;
+    logging_slots[6] = (uintptr_t)log_set_type_level;
+    logging_slots[7] = (uintptr_t)log_get_type_level;
     logging_slots[8] = (uintptr_t)log_register;
     logging_slots[10] = (uintptr_t)get_logfile;
     logfile_slots[2] = (uintptr_t)logfile_write;
@@ -326,6 +366,9 @@ int bootstrap_service_fixture_execute_sql(int gameplay, const char *sql, int len
     void *connection = database_connections[gameplay ? 1 : 0];
     if (!connection || !sql) return 0;
     return ((execute_fn)(*(uintptr_t **)connection)[5])(connection, sql, length) != 0;
+}
+void bootstrap_service_fixture_set_progress_reporter(void (*reporter)(FILE *)) {
+    progress_reporter = reporter;
 }
 void bootstrap_service_fixture_report(FILE *output) {
     fprintf(output, "{\"service_fixture\":\"bounded_diagnostic\",\"registered_parameters\":%zu,\"script_vm\":false,\"logging_manager\":\"stderr_sink\",\"empty_database_keepalives\":%s,\"gameplay_initialized\":false}\n", engine.registration_count, database_connections[0] && database_connections[1] ? "true" : "false");

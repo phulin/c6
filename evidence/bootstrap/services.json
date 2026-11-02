@@ -87,7 +87,9 @@
     "RegisterLog": 64,
     "EnableLog": 40,
     "GetLogFile": 80,
-    "LogFile_variadic_narrow_Write": 16
+    "LogFile_variadic_narrow_Write": 16,
+    "GetTypeLevel": 56,
+    "SetTypeLevel": 48
   },
   "negative_evidence": {
     "nullable_logging": "real original DatabaseLogger ctor fault0x5e3524; fixed with bounded sink",
@@ -168,5 +170,36 @@
     },
     "post_localization_fault_rva": "0x605756",
     "native_nonnull_vm_validation": "pending separate script bootstrap"
+  },
+  "logging_level_contract": {
+    "original_vtable_rva": "0xfbf628",
+    "original_constructor_rva": "0x15a740",
+    "GetTypeLevel_rva": "0x15ae50",
+    "SetTypeLevel_rva": "0x15b830",
+    "RegisterLog_rva": "0x15b530",
+    "unknown_id_level": 0,
+    "registered_flags_are_not_level": true,
+    "registration_preserves_level": true,
+    "native_cases": 9,
+    "native_mismatches": 0,
+    "native_child_exit": 0,
+    "evidence": "evidence/bootstrap/services-logging-validation.json",
+    "fixture_entry_limit": 256,
+    "threading_validation": "single-threaded native comparisons only"
+  },
+  "unsupported_progress_reporter": {
+    "api": "bootstrap_service_fixture_set_progress_reporter",
+    "invoked_before": "ExitProcess(86)",
+    "stream": "stderr",
+    "mutates_original_stream": false,
+    "native_save_progress_validation": {
+      "evidence": "evidence/bootstrap/native-xp2-original-load-logging.json",
+      "child_exit": 86,
+      "next_receiver": "engine utility",
+      "next_slot": 344,
+      "caller_rva": "0x1a7cf3",
+      "original_stream_consumed": 8,
+      "original_stream_available": 76556938
+    }
   }
 }
