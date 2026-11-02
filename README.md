@@ -13,7 +13,9 @@ A Rust foundation for an exact, deterministic, headless Civilization VI simulato
 | External loading | Rust API and versioned C shared-library API in [`include/c6.h`](include/c6.h) |
 | Action-message transport | Exact null-parameter unit-operation body codec; no action legality or execution |
 | Original-DLL testing | Isolated Linux x86-64 oracles and identity-pinned differential corpora; separate whole-DLL Wine bootstrap |
-| Native context bootstrap | Original factory, Initialize/IsInitialized, destruction and unload; original SQL/XML and bounded English localization fixtures |
+| Native context bootstrap | Context lifecycle and original StartupGame return with genuine database, localization and script providers; complete startup teardown remains unresolved |
+| Native rules artifacts | Original configuration/gameplay SQLite exports reproduced identically across independent builds |
+| Native save probe | Original Load entered using the original borrowed MemoryIStream; no successful Load return or full-state capture |
 | World, players, units, cities, combat and economy | Unsupported |
 | Legal gameplay actions and complete turn progression | Unsupported |
 | Civ VI save loading and complete game snapshots | Unsupported |
@@ -61,7 +63,7 @@ The generator records input cases and the actual candidate executable identity; 
 
 A separate Wine/MinGW path loads the complete original GameCore DLL with `LoadLibraryW`, running its imports, TLS and static initialization. It creates genuine contexts and has completed original `Initialize`, the `IsInitialized` transition, destruction and DLL unload with real DatabaseDLL connections and declared original Base/XP2 SQL/XML content. Original host XML-import and hashing code supply the database fixtures, and the original embedded GameCore database phase contributes generated effect/type records; a separate original LocalizationDLL fixture resolves English text.
 
-These are native context/data milestones. They do not provide a playable session, complete save load or a Rust gameplay implementation. The latest startup probe passes localization and reaches tuner initialization, where the unavailable script service stops progress; original Load has not been attempted. A context initialized flag alone does not establish game readiness. Use the current commands, asset requirements and observations in [native runtime](docs/bootstrap-runtime.md), [integration checks](docs/bootstrap-validation.md), [host services](docs/bootstrap-services.md) and [save loading](docs/save-loading.md). All executed modules and content inputs are fingerprinted; proprietary assets remain local.
+These are native context/data milestones. They do not provide a playable session, complete save load or a Rust gameplay implementation. Original StartupGame now returns with genuine App/database, HavokScript and ScriptSystem providers. The first original Load enters GameEffects initialization and stops at an unsupported logging-manager service; it has no Load return or consumed-byte observation. Startup teardown also requires a missing original job-manager host export. A context initialized flag alone does not establish game readiness. Use the current commands, asset requirements and observations in [native runtime](docs/bootstrap-runtime.md), [integration checks](docs/bootstrap-validation.md), [host services](docs/bootstrap-services.md) and [save loading](docs/save-loading.md). The [native rules snapshots](docs/rules-snapshot.md) preserve actual configuration/gameplay SQLite exports, reproduced byte-for-byte across independent builds. All executed modules and content inputs are fingerprinted; proprietary assets remain local.
 
 The Rust [action-message codec](docs/actions.md) is checked against original serialization instructions. It encodes a request body, not a legal gameplay action. An initialized player, unit, registry and complete affected-state capture are still required before implementing SkipTurn.
 
