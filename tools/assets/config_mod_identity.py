@@ -12,7 +12,7 @@ import sys
 import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'saves'))
-from inspect_save import Reader, inspect
+from inspect_save import Reader, inspect, read_xp2_configuration
 
 GUID = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
 KEYS = {'ENABLED_MODS': '1b8cd1c8', 'REQUIRED_MODS': 'fed47f44'}
@@ -51,24 +51,7 @@ def recover(path):
         raise ValueError('configuration framing only established for XP2 benchmark')
     reader = Reader(path.read_bytes())
     reader.pos = result['metadata_end']
-    if (reader.u32(), reader.u32()) != (3, 1):
-        raise ValueError('unsupported benchmark configuration versions')
-    reader.map()
-    blocks = []
-    for expected in (67, 0, 0):
-        if reader.u32() != 1:
-            raise ValueError('unsupported configuration block version')
-        block = reader.map()
-        if len(block) != expected:
-            raise ValueError('unexpected configuration block count')
-        blocks.append(block)
-    for expected in (15, 67):
-        block = reader.map()
-        if len(block) != expected:
-            raise ValueError('unexpected configuration map count')
-        blocks.append(block)
-    if reader.pos != 103901:
-        raise ValueError('unexpected end of benchmark configuration')
+    blocks = read_xp2_configuration(reader)['configuration_blocks']
     found = list(collections(blocks))
     identities = {}
     for name, key in KEYS.items():

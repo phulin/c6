@@ -92,6 +92,72 @@ def inspect(path):
                 gamecore_stream_offset=None, initialized_game=False)
 
 
+def read_player_settings(reader):
+    """Bounded nonnegative-count subset of native host UserConfig Read 0x1190f0.
+
+    Count and each player ID precede the corresponding unversioned typed map.
+    Negative-count behavior and general malformed-native fidelity are unproven.
+    """
+    count_offset = reader.pos
+    count = reader.count()
+    players = []
+    for _ in range(count):
+        id_offset = reader.pos
+        player_id = reader.u32()
+        map_start = reader.pos
+        entries = reader.map()
+        players.append(dict(player_id=player_id, player_id_offset=id_offset,
+                            map_start=map_start, end=reader.pos, entries=entries))
+    return dict(kind='player_settings', count_offset=count_offset, count=count,
+                players=players, end=reader.pos)
+
+
+def read_xp2_configuration(reader):
+    """Read pinned XP2 configuration after the caller's exact-save hash gate.
+
+    Keep configuration_blocks indices for existing offset consumers. Index 2 is
+    the count/first-ID prefix, not a versioned empty map; index 3 is that player's
+    map. The semantic player_settings structure records the actual list framing.
+    """
+    config_start = reader.pos
+    if (reader.u32(), reader.u32()) != (3, 1):
+        raise ValueError('unexpected configuration versions')
+    config_metadata = reader.map()
+    blocks = []
+    for expected in (67, 0):
+        start = reader.pos
+        if reader.u32() != 1:
+            raise ValueError('unexpected configuration block version')
+        entries = reader.map()
+        if len(entries) != expected:
+            raise ValueError('unexpected configuration block count')
+        blocks.append(dict(kind='versioned_map', version=1, start=start,
+                           end=reader.pos, entries=entries))
+    settings = read_player_settings(reader)
+    if settings['count'] != 1 or settings['players'][0]['player_id'] != 0:
+        raise ValueError('unexpected pinned player-settings identities')
+    player = settings['players'][0]
+    if len(player['entries']) != 15:
+        raise ValueError('unexpected pinned player-settings map count')
+    blocks.append(dict(kind='player_settings_prefix', start=settings['count_offset'],
+                       end=player['map_start'], count=settings['count'],
+                       player_ids=[player['player_id']],
+                       player_id_offsets=[player['player_id_offset']]))
+    blocks.append(dict(kind='player_settings_map', player_id=player['player_id'],
+                       start=player['map_start'], end=player['end'],
+                       entries=player['entries']))
+    start = reader.pos
+    entries = reader.map()
+    if len(entries) != 67:
+        raise ValueError('unexpected final configuration map count')
+    blocks.append(dict(kind='unversioned_map', start=start, end=reader.pos,
+                       entries=entries))
+    if reader.pos != 103901:
+        raise ValueError('unexpected compressed section start')
+    return dict(configuration_start=config_start, configuration_metadata=config_metadata,
+                configuration_blocks=blocks, configuration_player_settings=settings)
+
+
 def extract_xp2(path, destination):
     """Extract a fingerprinted observed stream boundary, not a general save loader.
 
@@ -105,27 +171,7 @@ def extract_xp2(path, destination):
     data = path.read_bytes()
     r = Reader(data)
     r.pos = result['metadata_end']
-    config_start = r.pos
-    if (r.u32(), r.u32()) != (3, 1):
-        raise ValueError('unexpected configuration versions')
-    config_metadata = r.map()
-    blocks = []
-    for expected in (67, 0, 0):
-        start = r.pos
-        if r.u32() != 1:
-            raise ValueError('unexpected configuration block version')
-        entries = r.map()
-        if len(entries) != expected:
-            raise ValueError('unexpected configuration block count')
-        blocks.append(dict(start=start, end=r.pos, entries=entries))
-    for expected in (15, 67):
-        start = r.pos
-        entries = r.map()
-        if len(entries) != expected:
-            raise ValueError('unexpected configuration map count')
-        blocks.append(dict(start=start, end=r.pos, entries=entries))
-    if r.pos != 103901:
-        raise ValueError('unexpected compressed section start')
+    result.update(read_xp2_configuration(r))
     inflater = zlib.decompressobj()
     payload = bytearray()
     chunks = []
@@ -145,13 +191,12 @@ def extract_xp2(path, destination):
         raise ValueError('unexpected context serialization version')
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(payload)
-    result.update(configuration_start=config_start, configuration_metadata=config_metadata,
-                  configuration_blocks=blocks, gamecore_stream_offset=103901,
+    result.update(gamecore_stream_offset=103901,
                   gamecore_compressed_end=r.pos, gamecore_chunk_count=len(chunks),
                   gamecore_payload_bytes=len(payload),
                   gamecore_payload_sha256=hashlib.sha256(payload).hexdigest(),
                   gamecore_serialization_version=4, zlib_eof=inflater.eof,
-                  boundary_basis='pinned fixture / final short sync-flush chunk; original consumer not run')
+                  boundary_basis='pinned fixture / final short sync-flush chunk; complete original consumption unvalidated')
     return result
 
 
@@ -167,7 +212,7 @@ def main():
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text)
-        print(json.dumps({k: v for k, v in result.items() if k not in ('metadata', 'configuration_metadata', 'configuration_blocks')}))
+        print(json.dumps({k: v for k, v in result.items() if k not in ('metadata', 'configuration_metadata', 'configuration_blocks', 'configuration_player_settings')}))
     else:
         print(text, end='')
 

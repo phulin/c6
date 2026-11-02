@@ -19,7 +19,7 @@
   "observed_collections": [
     {
       "key": "1b8cd1c8",
-      "location": "configuration[0][31].entries[7]",
+      "location": "configuration[0].entries[31].entries[7]",
       "mod_ids": [
         "4873eb62-8ccc-4574-b784-dda455e74e68"
       ],
@@ -27,7 +27,7 @@
     },
     {
       "key": "fed47f44",
-      "location": "configuration[0][31].entries[37]",
+      "location": "configuration[0].entries[31].entries[37]",
       "mod_ids": [
         "4873eb62-8ccc-4574-b784-dda455e74e68"
       ],
@@ -35,7 +35,7 @@
     },
     {
       "key": "1b8cd1c8",
-      "location": "configuration[4][31].entries[7]",
+      "location": "configuration[4].entries[31].entries[7]",
       "mod_ids": [
         "4873eb62-8ccc-4574-b784-dda455e74e68"
       ],
@@ -43,7 +43,7 @@
     },
     {
       "key": "fed47f44",
-      "location": "configuration[4][31].entries[35]",
+      "location": "configuration[4].entries[31].entries[35]",
       "mod_ids": [
         "4873eb62-8ccc-4574-b784-dda455e74e68"
       ],

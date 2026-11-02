@@ -77,10 +77,31 @@ size 7,348,717 bytes. Offsets are absolute byte offsets; ends are exclusive.
 | 8842 | Host configuration version 3, metadata version 1, then map with 3 entries ending 8914 |
 | 8914–65937 | Version 1 and map with 67 entries |
 | 65937–65945 | Version 1 and empty map |
-| 65945–65953 | Version 1 and empty map |
-| 65953–66257 | Map with 15 entries |
+| 65945–65949 | Player-settings count 1 |
+| 65949–65953 | Player ID 0 |
+| 65953–66257 | That player’s unversioned settings map with 15 entries |
 | 66257–103901 | Map with 67 entries |
 | 103901–7319671 | 111 length-prefixed compressed chunks: 110 of 65,536 bytes and final 6,366 bytes |
+
+Native host UserConfig Read `0x1190f0` establishes the player-list framing: after
+its versioned map, it reads a count, then for each player reads an ID followed by
+that player's typed map. The two words at 65945 and 65949 were previously
+misidentified as another version-1 empty map; their values coincide for this
+single-player fixture. The corrected parser records count and ID source offsets
+explicitly. Its `configuration_blocks` indexes stay stable for existing offset
+consumers: index 2 now describes the count/first-ID prefix, and index 3 the
+player's map. `configuration_player_settings` records the semantic list.
+
+The nonzero-ID and multiple-player regression inputs are schematic parser checks,
+not observations of native multi-player or malformed-input parity. The bounded
+parser rejects negative/oversized counts; original negative-count behavior is not
+established. Only the fingerprinted XP2 fixture's configuration framing and
+extraction are supported. The other two supplied benchmarks are checked only at
+their identity-gated outer metadata boundary. Run:
+
+```sh
+python3 -m unittest discover -s tools/saves -p 'test_inspect_save.py' -v
+```
 
 The original compressed input method `host:0x991f20` reads a signed i32 length,
 rejects values outside 0..65536, feeds that many bytes into one persistent inflate

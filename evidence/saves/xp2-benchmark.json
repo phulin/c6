@@ -12,7 +12,7 @@
   "gamecore_payload_sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
   "gamecore_serialization_version": 4,
   "zlib_eof": false,
-  "boundary_basis": "pinned fixture / final short sync-flush chunk; original consumer not run",
+  "boundary_basis": "pinned fixture / final short sync-flush chunk; complete original consumption unvalidated",
   "initialized_game": false,
   "module_identities": {
     "GameCore_XP2_FinalRelease.dll": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
@@ -20,26 +20,40 @@
   },
   "configuration_blocks": [
     {
+      "kind": "versioned_map",
+      "version": 1,
       "start": 8914,
       "end": 65937,
       "entry_count": 67
     },
     {
+      "kind": "versioned_map",
+      "version": 1,
       "start": 65937,
       "end": 65945,
       "entry_count": 0
     },
     {
+      "kind": "player_settings_prefix",
       "start": 65945,
       "end": 65953,
-      "entry_count": 0
+      "count": 1,
+      "player_ids": [
+        0
+      ],
+      "player_id_offsets": [
+        65949
+      ]
     },
     {
+      "kind": "player_settings_map",
+      "player_id": 0,
       "start": 65953,
       "end": 66257,
       "entry_count": 15
     },
     {
+      "kind": "unversioned_map",
       "start": 66257,
       "end": 103901,
       "entry_count": 67
@@ -63,7 +77,7 @@
   },
   "limits": [
     "Saved enabled/required collections are established by native key evidence; current content activation and rules-database/configuration identity remain unestablished.",
-    "Original context Read was not executed on this extracted stream.",
+    "Original Context Read has entered using the original MemoryIStream; complete successful load and consumption remain unvalidated.",
     "Decompression does not establish game-state semantics, completeness, compatibility, or parity.",
     "Section end pins observed short chunk and sync flush; no zlib checksum/eof authenticates the section."
   ],
@@ -74,6 +88,22 @@
     ],
     "REQUIRED_MODS": [
       "4873eb62-8ccc-4574-b784-dda455e74e68"
+    ]
+  },
+  "configuration_player_settings": {
+    "kind": "player_settings",
+    "count_offset": 65945,
+    "count": 1,
+    "end": 66257,
+    "native_host_reader_rva": "0x1190f0",
+    "players": [
+      {
+        "player_id": 0,
+        "player_id_offset": 65949,
+        "map_start": 65953,
+        "end": 66257,
+        "entry_count": 15
+      }
     ]
   }
 }
