@@ -207,6 +207,8 @@ int wmain(int argc, wchar_t **argv) {
                     (uintptr_t)instance_vtable[0x50 / 8] - (uintptr_t)image != 0x46be0) return 16;
                 phase = "prepare_original_host_services";
                 if (!original_services_prepared && !bootstrap_service_fixture_prepare_original_host_services(original_executable)) return 17;
+                phase = "prepare_original_empty_local_options";
+                if (!bootstrap_service_fixture_prepare_empty_local_options(original_executable)) return 25;
                 phase = "prepare_original_localization";
                 const wchar_t *localization_manifest = _wgetenv(L"C6_BOOTSTRAP_LOCALIZATION_MANIFEST");
                 const wchar_t *icu_path = _wgetenv(L"C6_BOOTSTRAP_ICU_PATH");
