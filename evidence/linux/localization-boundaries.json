@@ -1,0 +1,18 @@
+{
+  "all_passed": true,
+  "checker_sha256": "930a6354cdb93a361016ef8b14089adf25b86ab7b3eed4d58dc099f7863a065b",
+  "checks": {
+    "configuration_mismatch_refused_before_execution": true,
+    "english_extra_source_rejected": "localization English source inventory mismatch",
+    "english_sha256_mismatch_rejected": "localization source SHA-256 mismatch: Base/assets/text/en_us/advisortext.xml",
+    "existing_cache_rejected": "localization fixture symlink mismatch: /tmp/c6-localization-boundaries-ccljhtzc/valid/Base/Assets/Text/en_us/advisortext.xml",
+    "icu_sha256_mismatch_rejected": "localization source SHA-256 mismatch: Base/assets/text/icudt56l.dat",
+    "optional_ui_text_rejected": "localization fixture symlink mismatch: /tmp/c6-localization-boundaries-ccljhtzc/valid/Base/Assets/Text/en_us/advisortext.xml",
+    "unchanged_sources_accepted": true
+  },
+  "gate_adapter_sha256": "9c7e3d27ee327671d1d2299e9142da47fce6977dca54314724c27b17e902653f",
+  "gate_sha256": "d87d1f576d426f0d5903daa58c0c33c3d550b6408012254c9082befde028a7ec",
+  "limits": "These are pre-execution refusals, not localization behavior parity.",
+  "original_code_executed": false,
+  "schema": "c6-linux-localization-boundaries-v1"
+}
