@@ -174,3 +174,51 @@ The base recipe does not execute a replacement XML importer. Applying XP2 or any
 other DLC still requires an explicit selected-content identity, original criteria
 and load-order behavior, matching registered SQL functions, and a native database
 comparison.
+
+## XP2 benchmark saved content selection
+
+The save's header key `8427ae5c` means required mods. It is not its enabled-mod
+collection. Original `PopulateModMetaData` (`0x16baf0`) writes config accessors
+`0x100520` to header key `88305ebb` and `0x100ea0` to `8427ae5c`.
+Initializers `0x5390` and `0x5b90` identify their respective config collections
+as `ENABLED_MODS` and `REQUIRED_MODS`. The original CRC path (`0x7a0da0` to
+`0x7992c0`) starts at `ffffffff` without a final XOR, yielding config keys
+`1b8cd1c8` and `fed47f44`. These differ from header metadata keys.
+
+Both saved host-configuration copies explicitly contain those config collections.
+Enabled collections at offsets 37,228 and 84,912 each contain only package
+`4873eb62-8ccc-4574-b784-dda455e74e68` (XP2). Required collections at 39,778 and
+87,422 contain the same package. Reproduce the compact evidence without
+decompressing or advancing gameplay:
+
+```sh
+python3 tools/assets/config_mod_identity.py \
+  ../c6-assets/Base/Assets/Benchmark/Saves/XP2Benchmark.Civ6Save \
+  --output /tmp/c6-xp2-saved-mod-identity.json
+```
+
+[`xp2-saved-mod-identity.json`](../evidence/assets/xp2-saved-mod-identity.json)
+records these saved identities and native evidence addresses. The saved mod
+configuration supports an explicit XP2-only import candidate; it does not establish
+that the current executable activates identical content or accepts this older save.
+
+```sh
+python3 tools/assets/content_recipe.py ../c6-assets \
+  --xp2-saved-mods evidence/assets/xp2-saved-mod-identity.json \
+  --output /tmp/c6-xp2-declared-content-recipe.json
+```
+
+The checked-in candidate pins 213 sources: the base 111, four XP2 frontend
+configuration sources and 98 XP2 gameplay sources. It selects `Expansion2` as
+game core. `Expansion2` criteria pass from `GameCoreInUse=Expansion2`;
+`Expansion2AndBeyond` has `any=1`, so that same condition suffices without
+inventing a playable leader set. No other installed DLC is implicitly enabled.
+
+This extension orders actions by declared `LoadOrder`, files by descending
+`Priority`, and equal values by declaration order. Those mod default/tie ordering
+rules still need original-host verification. The candidate explicitly records
+`native_mod_load_order_verified=false`; it is not an exact activation recipe.
+It contains only `UpdateDatabase` actions. Scripts, color/icon/art databases,
+UI and other native service activation remain separate requirements. Native
+import success alone will not prove the final database equals an original
+initialized gameplay cache or establish state/action/turn parity.

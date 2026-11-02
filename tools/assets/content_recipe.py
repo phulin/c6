@@ -7,7 +7,7 @@ XML with a replacement parser or claims the resulting game is initialized.
 import argparse
 import json
 from pathlib import Path
-import sys
+import xml.etree.ElementTree as ET
 
 from inventory import digest, identity
 
@@ -66,13 +66,73 @@ def recipe(root):
                        'SQL schema-only diagnostic is a different, narrower seven-source sequence.']}
 
 
+def xp2_declared_recipe(root, base, saved):
+    """Explicit saved package selection; mod tie order remains an unverified candidate."""
+    expected_save = 'a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8'
+    if saved.get('save_sha256') != expected_save or saved.get('saved_config_mod_ids') != {
+            'ENABLED_MODS': [XP2_ID], 'REQUIRED_MODS': [XP2_ID]}:
+        raise ValueError('XP2 recipe requires the pinned saved enabled/required package identity')
+    root = root.resolve(strict=True)
+    descriptor = root / 'DLC/Expansion2/Expansion2.modinfo'
+    mod = ET.parse(descriptor).getroot()
+    if mod.get('id') != XP2_ID:
+        raise ValueError('Expansion2 descriptor package identity mismatch')
+    extension = []
+    for phase in ('FrontEndActions', 'InGameActions'):
+        actions = list(mod.findall(phase + '/UpdateDatabase'))
+        actions.sort(key=lambda action: int(action.findtext('Properties/LoadOrder') or '0'))
+        for action in actions:
+            criterion = action.get('criteria')
+            if criterion:
+                definition = mod.find("ActionCriteria/Criteria[@id='" + criterion + "']")
+                if definition is None or definition.findtext('GameCoreInUse') != 'Expansion2':
+                    raise ValueError('unsupported selected action criterion: ' + criterion)
+                # The any=1 criterion is true from GameCore alone; no leader guessing.
+                if len(definition) != 1 and definition.get('any') != '1':
+                    raise ValueError('unsupported all-of action criterion: ' + criterion)
+            files = sorted(action.findall('File'), key=lambda item: -int(item.get('Priority', '0')))
+            for item in files:
+                path = (descriptor.parent / item.text.strip()).resolve(strict=True)
+                if not path.is_relative_to(root) or path.suffix.lower() not in ('.xml', '.sql'):
+                    raise ValueError('unsupported selected mod source')
+                extension.append({'database': 'configuration' if phase == 'FrontEndActions' else 'gameplay',
+                                  'phase': 'mod_content', 'path': path.relative_to(root).as_posix(),
+                                  'format': path.suffix.lower()[1:], 'sha256': digest(path),
+                                  'bytes': path.stat().st_size,
+                                  'utf8_bom_skip': path.read_bytes().startswith(b'\xef\xbb\xbf'),
+                                  'mod_id': XP2_ID, 'action_id': action.get('id'),
+                                  'criterion': criterion, 'priority': int(item.get('Priority', '0'))})
+    steps = []
+    for kind in ('configuration', 'gameplay'):
+        steps.extend(step for step in base['steps'] if step['database'] == kind)
+        steps.extend(step for step in extension if step['database'] == kind)
+    result = dict(base)
+    result.update(format='c6.declared-xp2-content-recipe.v1', ruleset='RULESET_EXPANSION_2',
+                  gamecore='Expansion2', selected_mod_ids=[XP2_ID],
+                  saved_mod_identity_sha256=identity(saved),
+                  descriptor={'path': descriptor.relative_to(root).as_posix(), 'sha256': digest(descriptor)},
+                  source_sequence_sha256=identity(steps), steps=steps,
+                  native_mod_load_order_verified=False,
+                  limits=['Explicit saved XP2-only package selection; no other installed DLC is enabled.',
+                          'Base order recovered statically; mod order uses ascending LoadOrder, descending file Priority, declaration ties.',
+                          'Mod default/tie ordering is an unverified native import candidate, not an exact host activation recipe.',
+                          'Only UpdateDatabase actions included; script/color/UI/art and other service activation is absent.',
+                          'No initialized game, rules database parity, or save compatibility claimed.'])
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('asset_root', type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--xp2-saved-mods', type=Path,
+                        help='Emit declared XP2-only candidate using pinned saved mod identity')
     args = parser.parse_args()
     try:
         result = recipe(args.asset_root)
+        if args.xp2_saved_mods:
+            result = xp2_declared_recipe(args.asset_root, result,
+                                         json.loads(args.xp2_saved_mods.read_text()))
     except (ValueError, OSError) as error:
         parser.exit(1, str(error) + '\n')
     if args.output.resolve().is_relative_to(args.asset_root.resolve()):
