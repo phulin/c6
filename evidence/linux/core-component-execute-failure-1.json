@@ -1,0 +1,95 @@
+{
+  "schema": "c6-linux-conditional-core-component-failure-v1",
+  "checks_passed": false,
+  "runtime_report_sha256": "cfc36ece403ce11a698d4b8919f8de341d3a693d75ec6e55ac15e1d442daaea0",
+  "configuration_sha256": "5f87646b4b0ff97f755918703a70bc1062e04d33e9d57565c157a1edb1c6d18c",
+  "returncode": 230,
+  "source": "fresh_native_make_request_component",
+  "selected": {
+    "stage": "selected",
+    "mode": "execute",
+    "owner": 0,
+    "id": 15794187,
+    "component_bits": "00f1000b00010000",
+    "operation": "SKIP_TURN",
+    "hash": "2c681908",
+    "native_queue_size": 1,
+    "bAppend": false,
+    "bFromUser": false
+  },
+  "admission_assumptions": {
+    "stage": "admission_assumptions",
+    "source": "fresh_native_make_request_component",
+    "sender": 0,
+    "identity_owner": 0,
+    "host_admission_proven": false,
+    "full_action_acceptance": 0
+  },
+  "conversion": {
+    "stage": "conversion",
+    "accepted": true,
+    "bAppend": 0,
+    "bFromUser": 0,
+    "source": "fresh_original_constructor"
+  },
+  "command": {
+    "bytes": 28,
+    "sha256": "5c262073a0b62b252c10ca562ca765faff535bc0e6bdf78c4f41f331498f288a"
+  },
+  "queue_packet": {
+    "bytes": 28,
+    "sha256": "5c262073a0b62b252c10ca562ca765faff535bc0e6bdf78c4f41f331498f288a"
+  },
+  "trace_sha256": "33a2bc949ec23347fc8740955648f3bca4362b6fc51d34e9d54c7f530c47f24a",
+  "trace_end": {
+    "event": "end",
+    "queued": 1,
+    "received": 0,
+    "unit_executed": 0,
+    "reports": 0
+  },
+  "component_observed_after": {
+    "stage": "after",
+    "turn": 592,
+    "phase": 0,
+    "local": 0,
+    "pending": 1,
+    "needs_update": 0,
+    "needs_advance": 0,
+    "ai_processing": 0,
+    "turn_processing": 0
+  },
+  "original_core_save_artifacts": {
+    "before": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    "after": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    "repeat": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    }
+  },
+  "outer_original_core_save_artifacts": {
+    "save": {
+      "filename": "save.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    }
+  },
+  "native_lifecycle_footer": "C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized 0 context_bound 0 executing 1 cleanup 0 dispatch_mode 0 requested_execution 1 core_component_mode 1",
+  "framework_cleanup_proven": false,
+  "client_cleanup_proven": false,
+  "worker_quiescence_proven": false,
+  "post_component_snapshots_coherent": false,
+  "complete_native_cleanup_proven": false,
+  "core_handler_execution_observed": false,
+  "selected_policy_guard_abort": false,
+  "disposition": "Failed isolated scheduling diagnostic. Queue accepted one fresh original command but no Receive/handler execution was observed. Worker completion was not established; post-Save file equality does not establish coherent state. Native footer executing1/cleanup0 contradicts complete cleanup.",
+  "host_admission_proven": false,
+  "full_action_acceptance": 0,
+  "gameplay_parity": false
+}
