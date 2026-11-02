@@ -16,19 +16,21 @@ def main():
     binary = ROOT.parent / 'c6-assets/Base/Binaries/Win64Steam/CivilizationVI.exe'
     if digest(binary) != EXE_SHA256:
         raise SystemExit('unsupported original EXE identity')
-    sources = ['native/bootstrap/job-manager/probe.c', 'native/bootstrap/job-manager/job_manager.c']
+    sources = ['native/bootstrap/job-manager/probe.c', 'native/bootstrap/job-manager/job_manager.c', 'native/bootstrap/xml-import/imports.c']
     host = ROOT / 'target/bootstrap/job_manager_probe.exe'
     host.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(['x86_64-w64-mingw32-gcc', '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror', '-municode', '-static', '-Wl,--image-base,0x150000000', '-o', str(host), *sources, '-lbcrypt'], cwd=ROOT, check=True)
-    configuration = {'schema': 'c6-original-empty-job-set-probe-v1', 'original_executable_sha256': EXE_SHA256,
-                     'sources': {s: digest(ROOT / s) for s in sources + ['native/bootstrap/job-manager/job_manager.h']},
+    configuration = {'schema': 'c6-original-job-pool-probe-v2', 'original_executable_sha256': EXE_SHA256,
+                     'sources': {s: digest(ROOT / s) for s in sources + ['native/bootstrap/job-manager/job_manager.h', 'native/bootstrap/xml-import/imports.h']},
                      'host_sha256': digest(host), 'full_executable_crt_startup': False,
-                     'job_manager_initialized': False, 'native_constructor_rva': '0x985170',
+                     'job_manager_initialized': False, 'native_constructor_rva': '0x985170', 'native_pool_initializer_rva': '0x241a0',
+                     'native_onexit_initializer_rva': '0xe9469c',
+                     'original_ucrt_sha256': '2ab2a74bcb5bfd8248d232eb3bc56698fb5173b9ff7fc0daf87d8120d0f448d7',
                      'native_destroy_export_rva': '0x986040', 'native_wait_export_rva': '0x985e20', 'native_free_job_list_export_rva': '0x986050'}
-    environment = dict(os.environ, WINEPREFIX=str(ROOT / 'target/bootstrap/wine-prefix'), WINEARCH='win64', WINEDEBUG='-all')
+    environment = dict(os.environ, WINEPREFIX=str(ROOT / 'target/bootstrap/wine-prefix'), WINEARCH='win64', WINEDEBUG='-all', WINEDLLOVERRIDES='msvcp140,vcruntime140,ucrtbase=n')
     target = 'Z:' + str(binary.resolve()).replace('/', '\\')
     cases = []
-    for mode, expected_exit in [('native-empty', 0), ('nonempty', 86), ('null', 86), ('wait-nonempty', 86), ('wait-null', 86), ('free-nonzero', 86)]:
+    for mode, expected_exit in [('native-empty', 0), ('nonempty', 86), ('null', 86), ('wait-nonempty', 86), ('wait-null', 86), ('free-nonzero', 86), ('pool', 0), ('spawn-nonempty', 86)]:
         command = ['/usr/lib/wine/wine64', str(host), target]
         if mode != 'native-empty':
             command.append(mode)
