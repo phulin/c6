@@ -16,6 +16,7 @@ The user-defined simulation boundary yields to external policies for **all playe
 | Offline session | Original Attach/Leave and cleanup verified for Base and XP2 profiles |
 | Native Core Load/Save | Benchmark Load returns OK; repeated Saves reproduce across processes; reloading captured output changes serialized bytes |
 | Native loaded-state queries | Read-only game facade reports turn/phase/local-player/processing state without changing serialized output |
+| Native actor legality | 36 real units queried, two legal SkipTurn candidates, serialized nonmutation verified; cached delivery still needs original initialization |
 | Full saved-game host lifecycle | RequestLoad ownership/reset verified; CheckRequest/Begin, PostInitialize, caches and active-user finalization incomplete |
 | Rust RNG/coordinates | Isolated Random/normal record and stateless validity/distance match original code; broader mechanics unimplemented |
 | Full Rust state, legal actions and turns | Unsupported |
@@ -76,9 +77,9 @@ cargo run --release -p c6-data --example inspect_rules -- \
   > /tmp/c6-data-linux-native-parity.json
 ```
 
-This checks rules data, not gameplay or turn throughput. [Native Core Load/Save](docs/linux-game-load.md) now succeeds with the benchmark input and reproduces consecutive Saves across independent processes. Reloading those captured Saves produces a repeatable changed output, so byte-stable Save→Load→Save and complete branch restoration are **not** established. The difference's semantics remain unknown.
+This checks rules data, not gameplay or turn throughput. [Native Core Load/Save](docs/linux-game-load.md) now succeeds with the benchmark input and reproduces consecutive Saves across independent processes. Reloading those captured Saves produces a repeatable changed output, so byte-stable Save→Load→Save and complete branch restoration are **not** established. Accepted [typed trade classification](docs/linux-save-normalization.md) explains 89,156 changed bytes as record-order differences with equal keyed payloads; 42 bytes remain unresolved. Observable iteration effects remain unverified, so no bytes are masked and gameplay equivalence is not inferred. The [Rust trade codec](docs/linux-trade-codec.md) roundtrips these native wire records; it does not implement trade gameplay.
 
-The [full saved-load lifecycle](docs/linux-save-lifecycle.md) still needs original request checking/Begin and host finalization. [Saved configuration](docs/linux-saved-configuration.md) also retains explicit canonical differences and pending-user semantics. [Action/turn contracts](docs/linux-actions.md) identify future execution boundaries; no native legal-action/turn comparison or full Rust mechanic has passed.
+The [full saved-load lifecycle](docs/linux-save-lifecycle.md) still needs original request checking/Begin and host finalization. [Saved configuration](docs/linux-saved-configuration.md) also retains explicit canonical differences and pending-user semantics. [Action/turn contracts](docs/linux-actions.md) identify future execution boundaries; read-only native legality has passed for actual units, while mutating action/turn comparisons and full Rust mechanics remain unimplemented. Original controller/cache initialization is the next bounded delivery prerequisite; encompassing host Begin/finalization remains a separate requirement.
 
 ## Coverage and next work
 
