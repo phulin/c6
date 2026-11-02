@@ -1,0 +1,50 @@
+# Reusing the pinned reference for Linux bootstrap
+
+The pinned [cru121 reference](https://github.com/cru121/civ6-gamecore-reference/tree/5af389445118bed2bdebf7a8a42b219c8fba5175) already contains substantial Linux host research. Use that index before rediscovering bootstrap, services, save/configuration and command paths. The current c6 implementation still covers isolated primitives; the reference does not supply a proven standalone simulation or an initialized headless game.
+
+A fresh static comparison against the supplied `Civ6` SHA-256 `106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4` finds **48,005 exact exported name/address matches**, **zero same-name/different-address rows**, and 1,071 Linux-address rows whose complete name is not exactly exported. Another 1,565 rows have no Linux address. All **101 explicitly named rows** in the published host service table match exported names and addresses. This last check does not read the actual vtable pointers. Demangled constructor/destructor aliases must be represented as address sets; keeping only one address per name produces false mismatches.
+
+The results are in [reference-reuse.json](../evidence/linux/reference-reuse.json). Reproduce with:
+
+```sh
+python3 tools/reference/audit_linux_reuse.py ../c6-assets-linux/Civ6 \
+  --output /tmp/reference-reuse.json
+```
+
+The tool gates the host hash, pinned reference Git commit and clean input files, then records input hashes. No upstream Linux module fingerprint was found in the audited published identity material, so this is address overlap, **not a claim of identical upstream binary bytes**. Host address agreement does not establish GameCore library identity. The supplied XP2 remains separately gated by `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`.
+
+## Existing lifecycle and exact host anchors
+
+Local paths below are relative to `evidence/reference/upstream/`. Full signatures and Linux VAs are in `reference/data/exe_function_index.json` and its generated `docs/exe_function_index.json`; the latter is the comparison input. These selected host addresses all match supplied exports.
+
+| Boundary | Existing name and Linux VA | Existing source / next use |
+|---|---|---|
+| App construction | `Civ6App::Civ6App()` `0x2f8bcd0` | Function index; this is the Civ6App constructor, not a `GameCore::App::App` constructor. |
+| Load/create | `GameCore::LoadDLL(wchar_t const*)` `0x31dd330`; `GetContext()` `0x31dd790` | `findings/topics/exe-gamecore-architecture.md:19–25`; resolves `DllCreateGameContext` / `DllDestroyGameContext`, lazily caches context. |
+| Mod-selected library | `AppModdingFramework::LoadGameCore(bool)` `0x33814d0`; overload `(Path::FixedBuffer&, bool)` `0x3382dd0` | Same topic `:19–31`; Base/XP1/XP2 selection belongs to mod framework. |
+| Real initialization caller | `AppModdingFramework::InitializeGameCore()` `0x3381690`; `EngineUtility::EngineUtility()` `0x32b3b90`; `GameCoreController::SetContext(IContext1*)` `0x31d1660` | Same topic `:26–31`: construct engine, SetEngineInterface `+0x60`, Initialize `+0x28`, GetScriptSystemUtility `+0x68`, profile parameters `+0x1e8`, controller context. |
+| Rules database | `Application::Data::GameplayDatabase::Initialize()` `0x3041410`; overload `(wchar_t const*, wchar_t const*)` `0x3041430`; `Bootstrap(IDatabaseConnection1*, wchar_t const*)` `0x3041ab0` | Function index plus `findings/topics/exe-files-and-paths.md:7–13`; investigate actual mod/content population before accepting a connection as the rules database. |
+| Configuration database | `Application::Data::ConfigurationDatabase::Initialize()` `0x303c950`; overload `(wchar_t const*, wchar_t const*)` `0x303c970` | Function index; distinguish configuration DB from gameplay DB. |
+| Database service getters | `EngineUtility::GetGameplayDatabaseUri() const` `0x32b4e90`; `GetConfigurationDatabaseUri() const` `0x32b4eb0` | `findings/tables/interfaces_exe_implements.txt:41–42`, slots 39/40. |
+| Gameplay script service | `GameCore::ScriptSystem::CreateLuaThread(char const*, bool)` `0x3245f30`; host `AppLuaScriptSystem::RegisterThreadLibraries(LuaSystem::LuaThread*)` `0x36aee40` | Service table `:50–81`; architecture `:109–114`; `findings/topics/exe-lua-tables.md:11`. Host owns Lua VM/thread services. |
+| Save container flow | `LoadGameViewState::LaunchNextStage(unsigned int)` `0x2fd2180`; `Serializer::Manager::UnserializeGameState(Serialization::IStream*)` `0x324b880` | `findings/topics/exe-load-sequence.md:3–10`, `reference/data/exe_loading.json` (33 entries). The topic's function RVAs are Windows; use these separately matched Linux names/VAs. |
+| Save header/mod/session | `Serializer::Manager::LoadHeader(IStream&, Data::TypedVariantMap*)` `0x324ca80`; `AttachToSession()` `0x324cac0`; `LoadGameCoreState(IStream&)` `0x324cb70`; `ApplyModdingState(IStream*)` `0x324ce20` | Function index; preceding topic records header → session → GameCore → audio → UI → recorder, plus content reconfiguration before unserialization. A raw Context::Load call does not establish that flow. |
+| Saved configuration | `GameCore::App::Configuration::Game::Instance::Read(IStream&)` `0x31ea6e0`; `Write(OStream&) const` `0x31ea6b0` | Function index; `findings/tables/config_keys.tsv` has 101 setup keys; save metadata also includes mod dependencies, players, start positions and map attributes. |
+
+Source links: [architecture](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/findings/topics/exe-gamecore-architecture.md), [host interfaces](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/findings/tables/interfaces_exe_implements.txt), [load sequence](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/findings/topics/exe-load-sequence.md), [function index](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/reference/data/exe_function_index.json).
+
+## Services, actions and turns: reuse scope
+
+`interfaces_exe_implements.txt:1–47` already lists all 46 EngineUtility slots, overload signatures and host function VAs, including locks, network messages, event/cache dispatch, database URIs, local options and capabilities. `:48–81` lists the ScriptSystem service (32 slots, including destructors), followed by script arguments and other host interfaces. These are useful C++ signature and dispatch leads; demangled names omit return types, and service construction/global lifetime still requires native evidence. Architecture `:84–114` records the app/controller/thread handshake, critical section, GameCore-thread `ProcessMessages` at context `+0x238`, and the inline update path. Avoid replacing this with a guessed one-function end turn.
+
+Actions already have `reference/data/operations.json`, `op_params.json`, `findings/tables/operation_handlers.tsv` and `player_operation_cases.tsv`. Use those to choose legal request boundaries and parameter types. [Existing reference index](reference.md) distinguishes mapping categories, gameplay/UI wrappers and changed completion-message bodies. These action maps mostly target Windows builds; Linux DWARF/symbols and fresh oracle fixtures must establish the Linux ABI and full affected state.
+
+The published load sequence explicitly leaves later startup stages and some transition conditions unresolved. The presence of `IsDedicatedServerMode` or automation/benchmark options does not prove a renderer-free bootstrap. A headless host still needs real configured definitions, scripts, enabled content, configuration, save streams and execution ordering. No initialized-game fixture or action/turn native proof is added by this audit.
+
+## Available tools and missing upstream artifacts
+
+The pinned repository actually ships `tools/frida-live/` and `tools/tsv_to_symbols.py`. The Frida daemon, game-thread call queue, native named-call API, crash reports and Lua bridge can inform an oracle harness. Read its `README.md`, `LESSONS.md` and `RECIPES.md`; it requires an already running Windows game and is not a Linux headless loader. It reports module reload/stale Lua-state hazards.
+
+`reference/tools/` supplies site-data extractors such as `extract_layouts.py` and `extract_exe_loading.py`. The latter reads private `linux_depot/out/exetrace/save_decomp.txt`; they are not standalone DWARF/header generators. Upstream `README.md:31` explicitly says those extractors require the original analysis workspace. The following are referenced by upstream prose but **absent from the pinned tree**: `tools/dwarf_extract.py`, `tools/dwarf_vars.py`, `tools/layout.py`, `tools/exe/`, and `findings/tables/interface_IContext1_gamecore_vtable.txt`. No reusable native headless harness or C++ header generator was found. Current bounded DWARF tools are therefore not duplicates of an available upstream implementation. Reuse the exported data and specific signatures, then query the supplied library for missing definitions.
+
+Attribution: cru121, *Civ6-GameCore-reference*, pinned revision above. This document reorganizes selected reference data under [CC BY 4.0](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/LICENSE); upstream tools are [MIT](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/LICENSE-CODE). No upstream implementation code, proprietary binary, raw DWARF or decompilation is copied here. Reference “verified” means static disassembly unless explicitly reported as a running-game observation; the new comparison is fresh static evidence only.

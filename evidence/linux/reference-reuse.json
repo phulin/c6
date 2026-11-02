@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "reference_commit": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_inputs_sha256": {
+    "docs/exe_function_index.json": "b197c70ac1fd6e944cc2aa30d878be58d75a78e11fd868c2d2ed8a0e1181fb1a",
+    "findings/tables/interfaces_exe_implements.txt": "e86d0a5098bfa8f7f49fb74d475be65f6709e8aaccea94a802d0765663ac0b18"
+  },
+  "method": "nm -D -C; demangled name to set of addresses preserves constructor/destructor aliases",
+  "function_index_counts": {
+    "exact_name_and_address": 48005,
+    "name_not_exactly_exported": 1071,
+    "without_linux_address": 1565
+  },
+  "same_name_different_address": [],
+  "service_table_named_rows": 101,
+  "service_table_named_address_matches": 101,
+  "limits": "Static name/address agreement only. Does not compare instructions, actual vtable pointer contents, complete ABI, library identity, initialization, or gameplay. Unmatched names are not necessarily absent functions."
+}
