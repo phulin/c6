@@ -4,6 +4,7 @@ pub mod geometry;
 pub mod messages;
 pub mod rng;
 pub mod trade;
+pub mod unit;
 use rng::RandomState;
 use std::collections::BTreeMap;
 

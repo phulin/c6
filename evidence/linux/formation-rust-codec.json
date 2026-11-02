@@ -1,0 +1,45 @@
+{
+  "schema": "c6-linux-formation-rust-codec-v1",
+  "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "fixtures": [
+    {
+      "records": 1250,
+      "bytes": 71168,
+      "path_nodes": 56,
+      "unit_ids": 1262,
+      "nonempty_paths": 8,
+      "iterations": 1000,
+      "decode_ns_per_record": 96,
+      "encode_ns_per_record": 72,
+      "save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "native_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "all_native_boundaries_matched": 1250,
+      "attributed_ranges_sha256": "96f9103fc63dbf1e52355ab669620d8678987f2a660bc12bb533b276755e9c04",
+      "records_sha256": "7a953be1e527f1ad5ec9c111c8e8264aabf5db0ae4f6a8411c5a89d37d5a142a"
+    },
+    {
+      "records": 1250,
+      "bytes": 71168,
+      "path_nodes": 56,
+      "unit_ids": 1262,
+      "nonempty_paths": 8,
+      "iterations": 1000,
+      "decode_ns_per_record": 91,
+      "encode_ns_per_record": 73,
+      "save_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "native_trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "all_native_boundaries_matched": 1250,
+      "attributed_ranges_sha256": "96f9103fc63dbf1e52355ab669620d8678987f2a660bc12bb533b276755e9c04",
+      "records_sha256": "7a953be1e527f1ad5ec9c111c8e8264aabf5db0ae4f6a8411c5a89d37d5a142a"
+    }
+  ],
+  "adapter_sha256": "b8de66227db9f4c9a28753dcae00cfc081a22f7d27dda7ff08e4165f480de1e8",
+  "source_sha256": {
+    "crates/c6-core/src/unit.rs": "2211507cc677d89c0c75bc1c77b1f83e005bc723a0b47d4751c2d77c593fea43",
+    "crates/c6-core/examples/unit_codec.rs": "891cb5fb9a9f03f1eb04ef28b2a574eba9f1207e6dc799d62e879fa2e37141ee",
+    "tools/linux/unit_codec_check.py": "66e5c40ea1f0c16d309a72f53ebccf519a055d8f0251ac97efc493a0dbcef77c"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "timing_scope": "Release mean per Formation record, decode/encode including allocation/drop. No game, rules, action, turn, RNG or original-code performance measurement.",
+  "limits": "Current Formation v1 serialized state only. Live evaluating-operation, definition remapping, tracked archive dirtiness, complete Unit state and actions unsupported. Queue codec has static/constructed tests only: no attributed native queue fixture. Raw Save/reload/Save failure remains 89198 unmasked bytes."
+}
