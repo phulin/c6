@@ -4,6 +4,7 @@ pub mod combat;
 pub mod geometry;
 pub mod messages;
 pub mod random_variants;
+pub mod requirements;
 pub mod rng;
 pub mod trade;
 pub mod unit;
