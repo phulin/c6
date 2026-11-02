@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "method": "passive GDB original-host owner/delete/manager-use observation",
+  "configuration_sha256": "f66f71460d5ff77a971b6567656d2cd98bda1fcf8a5aa840c25061f2477a3853",
+  "framework_context_module_identity": {
+    "canonical_path": "/home/phulin/c6-assets-linux/libGameCore_Base.so",
+    "expected_sha256": "8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6",
+    "matches_gated_Base": true,
+    "path": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_Base.so",
+    "sha256": "8ded6da8035e5e3d6940b5d1dde9d653b6f61947647704523dbc278bcc45bef6"
+  },
+  "private_trace_sha256": "3237b79c18623295bc0adda655cc36329db434c578b03120d3e62487ecaad053",
+  "private_report_sha256": "3444f47678ee79f18c16fc8593b5400df4a2afc0bd662709ffd69dbe3fc1f775",
+  "restored_configuration": true,
+  "native_getters_and_writeback_skipped": true,
+  "input_stream_and_backing_released": true,
+  "owner_address": "0x8abe0b0",
+  "embedded_manager_address": "0x8abe0b8",
+  "manager_used_after_owning_configuration_deleted": true,
+  "use_site": "TypedVariant::DestroySelf virtual manager slot +0x28",
+  "consumer": "original Base Context embedded Game configuration destructor",
+  "runtime_cause_proven": true,
+  "runtime_fix_validated": false,
+  "child_signal": "SIGSEGV",
+  "debugger_exit_is_child_success": false,
+  "complete_game_load": false,
+  "action_or_turn_parity": false
+}

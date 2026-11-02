@@ -10,7 +10,13 @@
  * Object size follows the actual Linux MemoryIStream constructor (0x28).
  * All configuration objects and mutations belong to the original host. */
 static int inspect_restored(void);
+static void manager_snapshot(const char *phase);
 int c6_linux_restore_saved_configuration(const char *path) {
+    const char *audit=getenv("C6_SAVED_CONFIGURATION_AUDIT");
+    if(audit && strcmp(audit,"normal") && strcmp(audit,"restore-only")){
+        fprintf(stderr,"C6_LINUX_CONFIGURATION unsupported_audit_mode\n");
+        return 79;
+    }
     void *(*allocate)(size_t);
     void (*release)(void *);
     void (*construct)(void *,const void *,size_t);
@@ -50,11 +56,14 @@ int c6_linux_restore_saved_configuration(const char *path) {
      * LoadConfiguration intentionally preserves the caller-selected mode. */
     set_mode(edit_config(),UINT32_C(3915931367));
     fprintf(stderr,"C6_LINUX_CONFIGURATION selected_mode SINGLEPLAYER 3915931367\n");
+    manager_snapshot("before_restore");
     int result=restore(stream);
+    manager_snapshot("after_restore");
     size_t end=offset(stream);
     fprintf(stderr,"C6_LINUX_CONFIGURATION restore_return result %d offset %zu\n",result,end);
     destruct(stream);release(stream);free(bytes);
     if(result!=0||end!=103901)return 85;
+    if(audit && !strcmp(audit,"restore-only"))return 0;
     return inspect_restored();
 }
 
@@ -112,4 +121,28 @@ static int inspect_restored(void) {
         fprintf(stderr,"C6_LINUX_CONFIGURATION canonical_game_written bytes %zu\n",count);
     }
     return 0;
+}
+
+/* Passive map-manager identity probe. Linux Map::Clear reads its manager at
+ * +0x20 (0x395ff80); no object fields are written. */
+static void describe_manager(const char *phase,const char *label,const void *map) {
+    const void *manager=NULL,*vtable=NULL,*free_array=NULL;
+    if(map)memcpy(&manager,(const unsigned char*)map+0x20,sizeof manager);
+    if(manager)memcpy(&vtable,manager,sizeof vtable);
+    if(vtable)memcpy(&free_array,(const unsigned char*)vtable+0x28,sizeof free_array);
+    Dl_info info={0};if(free_array)dladdr(free_array,&info);
+    fprintf(stderr,"C6_LINUX_CONFIGURATION manager %s %s map %p manager %p vtable %p free_array %p symbol %s\n",
+        phase,label,map,manager,vtable,free_array,info.dli_sname?info.dli_sname:"unresolved");
+}
+static void manager_snapshot(const char *phase) {
+    void *(*get)(void)=dlsym(RTLD_DEFAULT,"_ZN8GameCore3App13Configuration4Game16GetConfigurationEv");
+    void *(*root)(const void*)=dlsym(RTLD_DEFAULT,"_ZNK8GameCore3App13Configuration4Game8Instance13GetRootValuesEv");
+    void *(*variant)(const void*,uint32_t)=dlsym(RTLD_DEFAULT,"_ZNK4Data15TypedVariantMap10GetVariantEj");
+    void *(*map)(const void*)=dlsym(RTLD_DEFAULT,"_ZNK4Data12TypedVariantcvPKNS_15TypedVariantMapEEv");
+    if(!get||!root||!variant||!map)return;
+    void *r=root(get());describe_manager(phase,"root",r);
+    if(!strcmp(phase,"after_restore")){
+        describe_manager(phase,"game",map(variant(r,UINT32_C(0x871d5b63))));
+        describe_manager(phase,"player0",map(variant(r,UINT32_C(0x655f9bc8))));
+    }
 }
