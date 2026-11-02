@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "native_bytes": 57043,
+  "native_sha256": "0ca62b8ee5485d37eccf4e991ffafcd80ccbdb4a0837c93eb9bebdd5c9796aed",
+  "saved_game_configuration_bytes": 57023,
+  "value_differences": [
+    {
+      "path": "/871d5b63/entries/24084b20",
+      "saved": null,
+      "native": {
+        "type": 2,
+        "auxiliary": 0,
+        "flags": "00000000",
+        "width": 0,
+        "unsigned": 4294967295,
+        "key": "24084b20",
+        "offset": 28509
+      }
+    }
+  ],
+  "flag_differences": [
+    {
+      "path": "/655f9bc8/entries/8e72249a",
+      "saved": "20000000",
+      "native": "00000000"
+    },
+    {
+      "path": "/871d5b63/entries/1b8cd1c8/items/0/entries/6db0f592",
+      "saved": "20000000",
+      "native": "00000000"
+    },
+    {
+      "path": "/871d5b63/entries/1b8cd1c8/items/0",
+      "saved": "04000000",
+      "native": "05000000"
+    }
+  ],
+  "value_match": false,
+  "byte_match": false,
+  "initialized_game": false,
+  "action_or_turn_parity": false
+}
