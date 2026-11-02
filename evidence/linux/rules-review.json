@@ -1,0 +1,126 @@
+{
+  "checks": {
+    "actual_110_source_view_symlinks_resolve_to_gated_originals": true,
+    "actual_host_services_and_backup_adapter_hashes_match_recorded_sources": true,
+    "actual_original_9_module_bytes_match_runtime_gate": true,
+    "actual_report_all_110_source_hashes_match_content_gate": true,
+    "actual_report_all_9_module_hashes_match_runtime_gate": true,
+    "actual_source_view_bytes_match_gate": true,
+    "both_snapshot_pairs_file_bytes_identical": true,
+    "only_schema_directory_case_changes": true
+  },
+  "databases": [
+    {
+      "actual_cell_storage_classes": {
+        "blob": 0,
+        "integer": 2016,
+        "null": 1417,
+        "real": 0,
+        "text": 5692
+      },
+      "database": "configuration",
+      "file_sha256": "23dfe702e537d08230eec5ea44a0643cff789ebb438bbab0cb5ae24e9b9c8318",
+      "rows": 1280,
+      "schema_objects": 121,
+      "tables": 78,
+      "zero_rowids": 0
+    },
+    {
+      "actual_cell_storage_classes": {
+        "blob": 0,
+        "integer": 45371,
+        "null": 29842,
+        "real": 470,
+        "text": 64977
+      },
+      "database": "gameplay",
+      "file_sha256": "6e8b8384c91fbefa23896bb8b193f0e917420d92492d003ce66bfae4a31ae294",
+      "rows": 23966,
+      "schema_objects": 634,
+      "tables": 318,
+      "zero_rowids": 2
+    }
+  ],
+  "findings": [
+    {
+      "correction": "Inspector now pins complete module/content/source-view profile and exact audited native configuration identity; changed content profile with recomputed hash is refused.",
+      "id": "linux-rules-inspector-profile-gate",
+      "owner": "asset_data",
+      "reproduction": "A genuine native report with content_profile replaced and configuration_sha256 recomputed was accepted by rules_inspect.inspect before review correction. Existing genuine report content/modules match gates.",
+      "severity": "medium",
+      "status": "fixed_and_independently_retested"
+    }
+  ],
+  "format": "c6.linux-rules-independent-review.v1",
+  "limits": [
+    "No new original-native runtime was executed by this review; the recorded original loader/backup provenance was inspected.",
+    "The two recorded runtime reports are byte-identical. Separate native execution is provenance reported by their runner, not inferred solely from differing report bytes.",
+    "Full-file and complete schema/typed-row fingerprints cover immutable SQL artifact transport, not execution of DDL/functions/collations in Rust.",
+    "Generic codec cases (BLOB, invalid UTF-8, embedded NUL, negative zero, negative/gapped rowids and WITHOUT ROWID) are synthetic regression coverage, not observed Civ VI native-boundary fixtures.",
+    "Native engine definition indexing, full XP2/DLC/mod activation, gameplay state/actions/turns, and full application filesystem initialization remain unvalidated."
+  ],
+  "native_artifact_boundary_limits": {
+    "blob_cells": 0,
+    "embedded_nul_text_cells": 0,
+    "invalid_utf8_text_cells": 0,
+    "negative_rowids": 0,
+    "negative_zero_real_cells": 0,
+    "tables_with_gapped_rowids": 0
+  },
+  "native_repeat_provenance": {
+    "configuration_excludes_output_directory": true,
+    "confirmed_by": "linux_runtime owner",
+    "destination_files_created_exclusively": true,
+    "first_cli_session": 6605,
+    "repeat_cli_session": 22633,
+    "separate_native_subprocesses": true
+  },
+  "native_reports": [
+    {
+      "path": "evidence/linux/runtime-rules-source-view-cause-probe.json",
+      "sha256": "94c6c99c167dc288be58247ae541ea0a81517641d1d2fb6bcdae565fd4ccfaa4"
+    },
+    {
+      "path": "evidence/linux/runtime-rules-source-view-repeat.json",
+      "sha256": "94c6c99c167dc288be58247ae541ea0a81517641d1d2fb6bcdae565fd4ccfaa4"
+    }
+  ],
+  "native_symbol_addresses": {
+    "Application::Data::ConfigurationDatabase::Initialize": "0x303c970",
+    "Application::Data::GameplayDatabase::Initialize": "0x3041430",
+    "Database::Connection::BackupTo": "0x395cb6c"
+  },
+  "private_artifact_directories": [
+    "../c6-ghidra/evidence/linux-rules/case-run-1",
+    "../c6-ghidra/evidence/linux-rules/case-run-2"
+  ],
+  "profile": "linux-base-native-generated-v1",
+  "reviewed_rules_commit": "864a1cb",
+  "target_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "validation": [
+    {
+      "command": "cargo test -p c6-data --lib",
+      "failed": 0,
+      "ignored": 2,
+      "passed": 6
+    },
+    {
+      "command": "C6_LINUX_RULES_RUN_1=/home/phulin/c6-ghidra/evidence/linux-rules/case-run-1 C6_LINUX_RULES_RUN_2=/home/phulin/c6-ghidra/evidence/linux-rules/case-run-2 cargo test -p c6-data linux_native_exports_match_every_manifest_table -- --ignored",
+      "failed": 0,
+      "passed": 1
+    },
+    {
+      "command": "python3 -m unittest discover -s tools/linux -p 'test_rules_inspect.py'",
+      "failed": 0,
+      "passed": 4
+    },
+    {
+      "command": "python3 tools/linux/rules_inspect.py <case-run-1> --native-evidence <cause-probe> --compare-directory <case-run-2> --compare-native-evidence <repeat> --output /tmp/c6-independent-linux-rules-review-compare.json",
+      "result": "both genuine complete file/semantic fingerprints unchanged"
+    },
+    {
+      "command": "modified report content_profile plus recomputed configuration_sha256 passed to rules_inspect.inspect",
+      "result": "rejected: unsupported Linux base source content profile"
+    }
+  ]
+}
