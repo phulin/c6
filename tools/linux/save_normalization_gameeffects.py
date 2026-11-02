@@ -113,6 +113,10 @@ def audit(module, initial, reloaded):
         require(struct.unpack_from("<BI", data, INSTANCE_START + 16) == (4, 10211),
                 "Instance version/count mismatch")
     old_teams, new_teams = teams(initial), teams(reloaded)
+    id_map = {old["instanceId"]: new["instanceId"]
+              for old, new in zip(old_teams, new_teams)}
+    require(len(id_map) == len(old_teams)
+            and len(set(id_map.values())) == len(old_teams), "non-bijective observed ID map")
     changed = [i for i in range(INSTANCE_START, INSTANCE_END)
                if initial[i] != reloaded[i]]
     accounted = set()
@@ -131,12 +135,16 @@ def audit(module, initial, reloaded):
         require(old["state"] == new["state"], "state changed")
         for field in ("contextId", "subjectId"):
             if old[field] in ids:
+                require(new[field] == id_map[old[field]], "Team reference remap mismatch")
+                require(old["requirementId"] == "DEFAULT_VICTORY_REQUIREMENT"
+                        and old["state"] == 1, "unexpected affected requirement record")
                 refs.append({"record_index": old["index"],
                              "requirementId": old["requirementId"], "field": field,
                              "offset": old[field + "_offset"],
                              "initial": old[field], "reloaded": new[field],
                              "state": old["state"]})
             if old[field] != new[field]:
+                require(old[field] in ids, "changed reference outside Team ID map")
                 pos = old[field + "_offset"]
                 accounted.update(i for i in range(pos, pos + 4)
                                  if initial[i] != reloaded[i])
