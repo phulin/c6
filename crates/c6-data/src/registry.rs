@@ -18,6 +18,8 @@ pub fn linux_type_hash(name: &[u8]) -> u32 {
 
 /// Separate native identifiers. The collection index is its position in the
 /// supplied vector; `database_rowid` remains a database identity, not that index.
+/// Names model non-null C strings; native SetYieldType(null) is a separate
+/// contract and cannot be represented by an empty byte name here.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DefinitionEntry {
     pub database_rowid: RulesRowId,
@@ -34,7 +36,12 @@ pub struct LinuxDefinitionRegistry {
 }
 
 impl LinuxDefinitionRegistry {
+    /// Panics if the collection count cannot fit the native unsigned 32-bit domain.
     pub fn from_native_order(entries: Vec<DefinitionEntry>) -> Self {
+        assert!(
+            u32::try_from(entries.len()).is_ok(),
+            "definition count exceeds the native u32 domain"
+        );
         // The native insertion uses lower_bound. Equal hashes therefore resolve
         // to the most recently inserted definition, without string comparison.
         let mut by_hash: Vec<_> = entries
@@ -79,6 +86,69 @@ impl LinuxDefinitionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha2::{Digest, Sha256};
+
+    fn check_native_fixture_identity(report: &serde_json::Value) {
+        const GAME: &str = "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa";
+        const HOST: &str = "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4";
+        // This comparator accepts the observed benchmark context only. New
+        // native configurations require their own independently audited fixture.
+        const CONFIG: &str = "c926ba2347ef6515da4b260f960957dab7389239b2cd59526407c72e74c7a1e4";
+        assert_eq!(report["schema"], "c6-linux-definition-ids-v1");
+        assert_eq!(report["gamecore_sha256"], GAME);
+        assert_eq!(report["host_sha256"], HOST);
+        let query = &report["native_query"];
+        assert_eq!(query["configuration_sha256"], CONFIG);
+        assert_eq!(
+            query["runtime_report_sha256"],
+            "153b90f6c2d77ef98fd5fe673a2af008d4e518cd024e799515d45ed5120c337e"
+        );
+        assert_eq!(
+            query["canonical_save_sha256"],
+            "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+        );
+        assert_eq!(query["canonical_save_bytes"], 80_657_462);
+        let source = &query["source_identity"];
+        let canonical = serde_json::to_vec(source).unwrap();
+        let actual = format!("{:x}", Sha256::digest(canonical));
+        assert_eq!(actual, CONFIG);
+        assert_eq!(source["schema"], "c6-linux-mod-activation-v1");
+        assert_eq!(source["assets"]["Civ6"], HOST);
+        assert_eq!(source["assets"]["libGameCore_XP2.so"], GAME);
+        assert_eq!(source["cleanup_requested"], true);
+        let gate: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../evidence/linux/definition-ids-static.json"
+        ))
+        .unwrap();
+        assert_eq!(source["lower_core_definition_registry_observer"], gate);
+        assert_eq!(query["canonical_core_unchanged"], true);
+    }
+
+    #[test]
+    fn native_fixture_identity_rejects_host_config_and_source_mutations() {
+        let report: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../evidence/linux/definition-ids-native-1.json"
+        ))
+        .unwrap();
+        check_native_fixture_identity(&report);
+        for pointer in [
+            "/host_sha256",
+            "/native_query/configuration_sha256",
+            "/native_query/runtime_report_sha256",
+            "/native_query/canonical_save_sha256",
+            "/native_query/canonical_save_bytes",
+            "/native_query/source_identity/assets/Civ6",
+            "/native_query/source_identity/sources/native~1linux~1definition_ids.c",
+        ] {
+            let mut altered = report.clone();
+            *altered.pointer_mut(pointer).unwrap() = serde_json::json!("0".repeat(64));
+            assert!(std::panic::catch_unwind(|| check_native_fixture_identity(&altered)).is_err());
+        }
+        let mut altered = report.clone();
+        altered["native_query"]["source_identity"]["lower_core_definition_registry_observer"] =
+            serde_json::Value::Null;
+        assert!(std::panic::catch_unwind(|| check_native_fixture_identity(&altered)).is_err());
+    }
 
     #[test]
     fn hash_byte_case_nul_and_empty_boundaries() {
@@ -128,13 +198,8 @@ mod tests {
             .expect("C6_LINUX_DEFINITION_IDS_REPORT must name an audited native report");
         let report: serde_json::Value =
             serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
-        assert_eq!(report["schema"], "c6-linux-definition-ids-v1");
-        assert_eq!(
-            report["gamecore_sha256"],
-            "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
-        );
+        check_native_fixture_identity(&report);
         let query = &report["native_query"];
-        assert_eq!(query["canonical_core_unchanged"], true);
         let mapping = &query["mapping"];
         let observed = mapping["entries"].as_array().expect("native entries");
         let entries = observed

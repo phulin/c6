@@ -46,6 +46,32 @@ def elf(path, expected):
     return read
 
 
+def validate_runtime(runtime, static_contract):
+    """Accept only the cleanup-proven mod-activation execution envelope."""
+    config = runtime['configuration']
+    canonical = json.dumps(config, sort_keys=True, separators=(',', ':')).encode()
+    if sha(canonical) != runtime['configuration_sha256']:
+        raise ValueError('Native configuration identity differs')
+    if config.get('schema') != 'c6-linux-mod-activation-v1':
+        raise ValueError('Unsupported native runtime configuration schema')
+    identities = config.get('assets', {})
+    if identities.get('libGameCore_XP2.so') != TARGET or identities.get('Civ6') != HOST:
+        raise ValueError('Missing original module/host gates')
+    if config.get('lower_core_definition_registry_observer') != static_contract:
+        raise ValueError('Missing or mismatched original registry ABI gate')
+    if config.get('cleanup_requested') is not True:
+        raise ValueError('Native cleanup was not configured')
+    succeeded = (type(runtime.get('returncode')) is int and runtime['returncode'] == 0
+                 and runtime.get('framework_cleanup_proven') is True
+                 and runtime.get('client_cleanup_proven') is True)
+    active_xp2 = any(line.startswith('C6_LINUX_GAME_LOAD module ')
+                     and '/libGameCore_XP2.so context_initialized 1 ' in line
+                     for line in runtime['stderr'].splitlines())
+    if not succeeded or not active_xp2:
+        raise ValueError('Native runtime did not succeed with XP2')
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--assets', type=Path, default=ROOT.parent / 'c6-assets-linux')
@@ -85,24 +111,7 @@ def main():
         if not args.before_save or not args.after_save:
             parser.error('Native audit requires both canonical Save captures')
         runtime = json.loads(args.runtime_report.read_text())
-        config = runtime['configuration']
-        canonical = json.dumps(config, sort_keys=True, separators=(',', ':')).encode()
-        if sha(canonical) != runtime['configuration_sha256']:
-            raise ValueError('Native configuration identity differs')
-        identities = json.dumps(config.get('assets', config.get('original_assets', {})))
-        if TARGET not in identities or HOST not in identities:
-            raise ValueError('Missing original module/host gates')
-        if 'returncode' in runtime:
-            succeeded = (runtime['returncode'] == 0 and runtime.get('framework_cleanup_proven')
-                         and runtime.get('client_cleanup_proven'))
-            active_xp2 = any(line.startswith('C6_LINUX_GAME_LOAD module ')
-                             and '/libGameCore_XP2.so context_initialized 1 ' in line
-                             for line in runtime['stderr'].splitlines())
-        else:
-            succeeded = runtime.get('exit_code') == 0
-            active_xp2 = runtime.get('active_context_module') == 'libGameCore_XP2.so'
-        if not succeeded or not active_xp2:
-            raise ValueError('Native runtime did not succeed with XP2')
+        config = validate_runtime(runtime, result)
         records = [json.loads(line.split('C6_LINUX_DEFINITION_IDS ', 1)[1])
                    for line in runtime['stderr'].splitlines() if line.startswith('C6_LINUX_DEFINITION_IDS ')]
         if len(records) != 1:
@@ -120,12 +129,11 @@ def main():
         if query['empty_string_hash'] != 0xffffffff or query['lowercase_food_hash'] != (~zlib.crc32(b'yield_food')) & 0xffffffff:
             raise ValueError('Native string-hash boundary mismatch')
         before, after = args.before_save.read_bytes(), args.after_save.read_bytes()
-        if 'game_saves' in runtime:
-            for label, path, data in [('save', args.before_save, before),
-                                       ('repeat', args.after_save, after)]:
-                expected = runtime['game_saves'][label]
-                if (sha(data), len(data)) != (expected['sha256'], expected['bytes']):
-                    raise ValueError(f'Original Save identity differs: {path}')
+        for label, path, data in [('save', args.before_save, before),
+                                   ('repeat', args.after_save, after)]:
+            expected = runtime['game_saves'][label]
+            if (sha(data), len(data)) != (expected['sha256'], expected['bytes']):
+                raise ValueError(f'Original Save identity differs: {path}')
         if before != after:
             raise ValueError('Original canonical core Save changed around query')
         result['native_query'] = dict(mapping=query, runtime_report_sha256=sha(args.runtime_report.read_bytes()),

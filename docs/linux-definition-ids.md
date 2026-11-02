@@ -86,6 +86,7 @@ mechanism check, not native validation of all Unit IDs or every definition kind.
 ```sh
 python3 tools/linux/definition_ids_audit.py \
   --output evidence/linux/definition-ids-static.json
+python3 tools/linux/definition_ids_audit_test.py
 cargo test -p c6-data registry::
 cargo clippy -p c6-data --all-targets -- -D warnings
 cc -std=c11 -Wall -Wextra -Werror -fPIC -fsyntax-only native/linux/definition_ids.c
@@ -116,7 +117,27 @@ C6_LINUX_DEFINITION_IDS_REPORT=/absolute/path/to/audited-report.json \
 ```
 
 The requested test fails if the report is absent, static-only, malformed or
-contains a different target identity; default tests leave this native case ignored.
+contains a different host, target or benchmark configuration identity. It
+recomputes the retained source configuration digest and checks the named assets
+and native ABI gate. It accepts the independently observed benchmark fixture
+only; default tests leave this explicit report comparison ignored.
+
+Native report acceptance requires the supported mod-activation schema,
+integer returncode zero, both cleanup flags exactly true, configured cleanup,
+the active XP2 load marker, exact named host/GameCore asset hashes, the complete
+target ABI gate and both captured Save identities. Alternate success metadata
+and hash strings in unrelated fields do not establish these gates. Historical
+source hashes are checked through their frozen configuration identity, without
+requiring them to equal an evolving worktree. Gate regression tests use mutated
+metadata only and execute no original game code.
+The Rust comparison consumes the registered audited benchmark observation:
+it also pins the frozen raw runtime-report digest and canonical capture hash/size.
+It does not audit a new execution merely because a caller supplies a JSON file.
+The original successful report remains unchanged when postprocessing checks evolve.
+
+The explicit-order registry accepts non-null C-string names only; an empty name
+does not represent `SetYieldType(null)`. Construction rejects counts outside the
+native unsigned 32-bit domain before constructing lookup indexes.
 
 ## Original-native observation
 
