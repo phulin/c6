@@ -173,7 +173,8 @@ No imported Windows action order or module-transition claim is attached to it.
 
 The launch mapping identity is
 `528532714fca0f9562dd83df0071b47aecf666069b9781a54f10a81a2f3db1f2`.
-The reusable validator hashes every gated content file and native module before
+The reusable validator rejects extra or missing content files and undeclared
+content-directory aliases, then hashes every gated content file and native module before
 execution and returns these identities for inclusion in the runtime configuration.
 The original ASL filesystem provider owns `ASL_FileInit`, path translation and
 `ASL_FileQuit`; its independent lifecycle evidence is separate from this staging
@@ -241,6 +242,10 @@ python3 tools/linux/rules_launch_fixture.py --preserve-native-cwd \
 
 The v3 alias mapping identity is
 `4768b158ee2281c1a2f54f679a06e65137c050286bdf77215b15922c7d92c0f3`.
-It supplies the observed native path precondition. Native framework database
-creation, actual selected XP2 components and final rules export still require
-execution evidence; the staging tool does not count those operations as passed.
+Native execution confirms `ASL_SetCurrentDir` returns 1, physical cwd remains
+under this registered prefix, and the original relative `Modding.sql` lookup
+normalizes to the supplied lowercase file with `PathExists` returning 1. The
+framework constructor then aborts inside the original heap allocator before
+returning. Native framework database creation, actual selected XP2 components
+and final rules export remain unproven. This path result does not promote the
+fixture to a full XP2 rules profile.

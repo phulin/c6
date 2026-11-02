@@ -88,7 +88,17 @@ def validate(assets,fixture):
     if observed!=expected:raise ValueError('undeclared launch fixture entry')
     gate_path=ROOT/'evidence/linux/rules-content-inputs.json'
     gate=json.loads(gate_path.read_text())
+    for scope in ('Base/assets','DLC'):
+        if any(source.is_symlink() and source.is_dir() for source in (assets/scope).rglob('*')):
+            raise ValueError('native Linux content directory alias is undeclared')
+    observed_inputs={source.relative_to(assets).as_posix()
+                     for scope in ('Base/assets','DLC')
+                     for source in (assets/scope).rglob('*') if source.is_file()}
+    if observed_inputs!=set(gate['files']):
+        raise ValueError('native Linux content inventory mismatch')
     for name,sha in {**gate['files'],**gate['modules']}.items():
+        if not (assets/name).resolve(strict=True).is_relative_to(assets):
+            raise ValueError('native Linux content input escapes supplied tree: '+name)
         if digest(assets/name)!=sha:raise ValueError('native Linux content input mismatch: '+name)
     result=dict(manifest)
     result['validated_input_gate_sha256']=digest(gate_path)

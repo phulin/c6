@@ -37,6 +37,25 @@ class LaunchFixtureTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'content input mismatch'):
                     fixture.validate(assets,root/'launch')
 
+    def test_native_scanner_cannot_observe_undeclared_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);assets,repo,host=self.inputs(root)
+            with patch.object(fixture,'ROOT',repo),patch.object(fixture,'HOST',host):
+                fixture.stage(assets,root/'launch')
+                (assets/'DLC/unlisted.modinfo').write_bytes(b'<Mod/>')
+                with self.assertRaisesRegex(ValueError,'content inventory mismatch'):
+                    fixture.validate(assets,root/'launch')
+                (assets/'DLC/unlisted.modinfo').unlink()
+                directory_alias=assets/'DLC/unlisted-directory'
+                directory_alias.symlink_to(assets/'Base/assets',target_is_directory=True)
+                with self.assertRaisesRegex(ValueError,'directory alias is undeclared'):
+                    fixture.validate(assets,root/'launch')
+                directory_alias.unlink()
+                external=root/'external.xml';external.write_bytes(b'<Synthetic/>')
+                source=assets/'Base/assets/data.xml';source.unlink();source.symlink_to(external)
+                with self.assertRaisesRegex(ValueError,'escapes supplied tree'):
+                    fixture.validate(assets,root/'launch')
+
     def test_module_siblings_use_a_separate_mapping_version(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);assets,repo,host=self.inputs(root)
