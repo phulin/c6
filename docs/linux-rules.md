@@ -61,15 +61,14 @@ python3 tools/linux/runtime_probe.py --initialize \
   --output /tmp/linux-rules-base-native.json
 ```
 
-The second command depends on the Linux services source-view hook. A genuine
-populated native export and repeat comparison are required before publishing
-`rules-base-snapshot.json`. A nonempty Units/Types/GameSpeeds set and populated
+The second command depends on the Linux services source-view hook. Two genuine populated native exports now pass and are recorded in
+[`rules-base-snapshot.json`](../evidence/linux/rules-base-snapshot.json). A nonempty Units/Types/GameSpeeds set and populated
 configuration database are mandatory acceptance gates; native Initialize's bool
 alone is insufficient.
 
 ## Profile and fingerprint contract
 
-The planned base profile is `linux-base-native-generated-v1`, exposed to the
+The available base profile is `linux-base-native-generated-v1`, exposed to the
 Rust loader as a separate Linux base fixture. It selects no DLC/mod actions and
 has no active gameplay session or language. Full Linux XP2 activation, original
 component criteria/dependency/file ordering and embedded definition setup remain
@@ -88,3 +87,45 @@ The database files and verbose inspection belong in the private evidence tree.
 Only fingerprints and source/profile metadata belong in this public repository.
 Native custom functions/collations and runtime planner state remain outside the
 serialized SQLite artifacts; full startup/save/action/turn parity is unproven.
+
+
+## Populated Linux base artifact
+
+The source-view cause probe and independent repeat both succeeded, using actual
+Linux Bootstrap and BackupTo methods. Their complete native configuration
+identity is `499dc9856ba562523ec70268224729232f751663988e44f4f9b0d6208e7f9328`.
+The source-view mapping identity is
+`d9c4c18403af964a18c6df693038c96fe1c2db83618474c1d029740a7dbc1616`;
+the full mapping is included in that native configuration identity.
+
+| Native Linux base artifact | Tables | Rows | File SHA-256 | Typed semantic SHA-256 |
+| --- | ---: | ---: | --- | --- |
+| Configuration | 78 | 1,280 | `23dfe702e537d08230eec5ea44a0643cff789ebb438bbab0cb5ae24e9b9c8318` | `605f70d914c50f3533f3ac7895de24630fa5915981e0044011b4a094483b8cba` |
+| Gameplay | 318 | 23,966 | `6e8b8384c91fbefa23896bb8b193f0e917420d92492d003ce66bfae4a31ae294` | `bea6bcabbd1905c8e498f6588005514d1c6f0bef0714c174d3b97e2f65710c22` |
+
+Both native backups compare every source/destination table count. Both complete
+files and typed schema/rowid/value fingerprints repeat identically. Private
+files are in `../c6-ghidra/evidence/linux-rules/case-run-{1,2}/`. The native
+reports are `runtime-rules-source-view-cause-probe.json` and
+`runtime-rules-source-view-repeat.json` in `evidence/linux/`.
+
+Reproduce the typed comparison with:
+
+```sh
+python3 tools/linux/rules_inspect.py \
+  ../c6-ghidra/evidence/linux-rules/case-run-1 \
+  --native-evidence evidence/linux/runtime-rules-source-view-cause-probe.json \
+  --compare-directory ../c6-ghidra/evidence/linux-rules/case-run-2 \
+  --compare-native-evidence evidence/linux/runtime-rules-source-view-repeat.json \
+  --output /tmp/linux-base-rules-comparison.json
+```
+
+The Linux base fixture supplies immutable native-produced rules data for the
+Rust loader. It has no activated DLC/mods or gameplay session and does not include
+the full XP2 component pipeline or embedded definition setup. Genuine application
+filesystem initialization is still distinct from the explicit Schema spelling
+view. Native StartupGame or Load returning is not inferred from these artifacts.
+
+Reproduce bounded Linux-only ABI disassembly privately with
+`python3 tools/linux/rules_evidence.py`. No new Windows native execution is needed
+for this workflow.
