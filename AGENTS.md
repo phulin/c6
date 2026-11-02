@@ -11,6 +11,9 @@ The objective is an exact headless Civ VI state/action/turn library, checked aga
 
 ## Exactness and evidence
 
+- The user explicitly defines the simulator as yielding to external policies for **all player decisions**. Execute exact rules/upkeep between decisions and yield at the next genuine decision boundary; native AI policy choices must not silently fulfill actions or end turns.
+- Exact gameplay state and gameplay RNG remain in scope. Native AI planning internals are excluded only where a planning-only role is proven. Do not blanket-exclude AI-namespaced objects: gameplay-affecting data, diplomacy, deals, NPC state and RNG remain exact regardless of ownership/name.
+- Keep unknown save bytes unclassified and unmasked. Continue reporting raw Save→Load byte differences, including the recorded 89,198-byte failure, while typed ownership/semantic classification proceeds. A planning-only exclusion must be evidenced rather than inferred from a byte range or class name.
 - The user directs Linux-only execution and acceptance for the complete state/action/turn goal. Target supplied `libGameCore_XP2.so` SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa` with matching Linux host, dependencies and inputs. See `docs/targets.md`.
 - Preserve Windows code/evidence as frozen historical work. Do not start Windows-specific tasks, run Wine/Windows native tests, or extend Windows validation unless the user changes this direction.
 - Keep exactness and coverage profile-specific. Historical Windows RNG/geometry/message and rules-data parity cannot count as Linux support; validate against original Linux code and export actual Linux rules inputs. Do not reduce the full objective to a lifecycle or primitive subset.

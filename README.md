@@ -2,6 +2,8 @@
 
 A Rust foundation for an exact, deterministic, headless Civilization VI simulator: import state, supply legal actions externally, advance turns and inspect/export complete state, with behavior checked against original game code.
 
+The user-defined simulation boundary yields to external policies for **all player decisions**. The engine must reproduce exact gameplay state, gameplay RNG and rules/upkeep between decisions; native AI planning internals are outside scope only where proven planning-only. Gameplay-affecting diplomacy, deals and NPC state remain exact regardless of AI-related names. See [scope and evidence rules](docs/targets.md#external-decision-policy).
+
 **The supplied Linux XP2 build is the sole execution and acceptance target.** Its installed depot metadata matches Valve's public branch in the [release audit](docs/version-audit.md). Windows code and evidence are preserved as frozen historical work. See [target policy](docs/targets.md).
 
 **The complete Rust state/action/turn engine is not yet implemented.** The native Linux harness now activates XP2 content, attaches an offline session and successfully loads/saves the benchmark Core state with full constructed-provider cleanup. Full host saved-load finalization, branch-restorable state, legal actions and turns remain unverified. Rust currently supplies isolated validated primitives, immutable rules data and state/FFI infrastructure.

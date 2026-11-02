@@ -2,6 +2,8 @@
 
 The supplied Linux XP2 profile is the sole execution and acceptance target for the complete exact headless state/action/turn library. Windows work is frozen historical evidence. [Target policy](targets.md) records module identities and profile-specific validation.
 
+The user has explicitly set the decision boundary: **all player decisions come from external policies**. Exact gameplay state/RNG and rules/upkeep remain required; only proven native AI planning internals are outside scope. AI-related gameplay data, diplomacy, deals and NPC state are not excluded by name. Unknown save bytes remain unmasked, and the raw 89,198-byte roundtrip failure remains reported during typed classification.
+
 **Native XP2 Core state loading now works under an identified diagnostic profile. The complete Rust simulator remains unimplemented.** Native full-host saved-load finalization, branch-restorable state, legal actions and complete turns are still unverified.
 
 | Deliverable | Verified scope and remaining boundary |
@@ -26,7 +28,7 @@ Original session attachment precedes lower Core Load, supplying the genuinely ob
 
 Benchmark-input Load and repeated original Saves reproduce across independent processes. Captured-output reloading also succeeds, but produces a different repeatable serialized output. The 89,198 changed bytes have unproven semantics and cause; they must not be normalized away or assigned to AI state by assumption. Successful Results, full input consumption and stable consecutive Saves do not establish a branch-restorable complete state. [Core Load/Save evidence](linux-game-load.md) records the two profiles and difference report.
 
-The native read-only facade returns turn 592, phase 0 and Context/Game local player 0 in both profiles; pending messages, NeedsUpdate, NeedsTurnAdvance, IsAiProcessing and IsTurnProcessing are false. Wrapper release and these queries leave before/after Core Saves identical. These coarse observations do not imply action readiness, all AI state equivalence or complete live-state identity. Queues, caches, events, jobs and host/session state require separate coverage.
+The native read-only facade returns turn 592, phase 0 and Context/Game local player 0 in both profiles; pending messages, NeedsUpdate, NeedsTurnAdvance, IsAiProcessing and IsTurnProcessing are false. Wrapper release and these queries leave before/after Core Saves identical. These coarse observations do not imply action readiness, exact gameplay-state equivalence or complete in-scope live-state identity. Queues, caches, events, jobs and host/session state require separate coverage.
 
 ## Rust and tooling boundary
 
@@ -39,9 +41,9 @@ The private persistent `c6-linux.gpr` project has targeted decompiles, guarded M
 ## Next concrete milestones
 
 1. **Complete the original saved-game host workflow.** Integrate RequestLoad checking/Begin, preserved callback policy, session/container stages, PostInitialize, caches and original active-user handling with complete cleanup and profile identities.
-2. **Establish complete restorable state.** Explain the reproducible Core roundtrip differences without assumptions, audit all serialized and live/transient state, and prove deterministic branching under a defined full-state comparison.
+2. **Establish complete restorable gameplay state.** Explain the reproducible Core roundtrip differences without assumptions, classify proven planning-only fields separately, audit all in-scope serialized and live/transient state, and prove deterministic branching. Keep raw byte equality and typed gameplay-state comparison distinct.
 3. **Execute a real legal action.** Use actual loaded units/players, complete legality predicates and synchronized host processing; compare all state, events and RNG effects before implementing matching Rust mechanics.
 4. **Port complete state and systems to Rust.** Preserve IDs, containers, iteration/event order, pending work and every random stream; retain Linux-native differential fixtures for each supported operation.
-5. **Reproduce a complete turn.** Match genuine completion messages, phases, player/control transitions and every affected subsystem. Benchmark full workloads only once those paths exist.
+5. **Reproduce a complete externally controlled turn.** Match genuine completion messages, phases, player/control transitions and every gameplay subsystem; execute rules/upkeep and yield for each next player decision. Native AI policy execution cannot substitute for external decisions. Benchmark full workloads only once those paths exist.
 
 The [README](../README.md) links active commands. [Native ABI review](linux-native-abi-review.md), [XP2 rules review](linux-xp2-rules-review.md), [runtime evidence](linux-runtime.md) and the owner documents above define what each checkpoint establishes. Full gameplay equivalence remains outstanding.
