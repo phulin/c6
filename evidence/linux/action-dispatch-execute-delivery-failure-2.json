@@ -1,0 +1,81 @@
+{
+  "schema": "c6-linux-bounded-action-delivery-failure-v1",
+  "configuration_sha256": "e049e6e294bb4e6c8f2358170e7014f25b5ffe59571d163a26c2659abd0ddef0",
+  "runtime_report_sha256": "ecad215f4c46f3a5e46daca64ee23b43b8e224ce49a8d2b0c3229e29e550a341",
+  "preload_sha256": "065d5737a92b73234efd5b1fe15e361bf6e183d36a43a799f4384a15aa6e9dd7",
+  "source_checkpoint": "112053f",
+  "returncode": 229,
+  "selected": {
+    "stage": "selected",
+    "mode": "execute",
+    "owner": 0,
+    "id": 15794187,
+    "component_bits": "00f1000b00010000",
+    "operation": "SKIP_TURN",
+    "hash": "2c681908",
+    "native_queue_size": 1,
+    "bAppend": false,
+    "bFromUser": false
+  },
+  "delivery_prerequisites": {
+    "stage": "delivery_prerequisites",
+    "identity_owner": 0,
+    "network_present": 1,
+    "session_present": 1,
+    "session_sync_present": 1,
+    "session_transport_28_present": 1,
+    "engine_utility_present": 1,
+    "engine_utility_original_slot_bound": 1
+  },
+  "make_request_return_count": 48,
+  "all_make_request_results_equal": true,
+  "make_request_result": {
+    "event": "make_request_return",
+    "accepted": true,
+    "operation": 36,
+    "flags": 0,
+    "bAppend": 0,
+    "bFromUser": 0
+  },
+  "trace_event_counts": {
+    "begin": 1,
+    "original_virtual_binding": 1,
+    "original_PLT_binding": 13,
+    "make_request_enter": 48,
+    "make_request_return": 48,
+    "broadcast_enter": 2,
+    "broadcast_return": 2,
+    "end": 1
+  },
+  "trace_sha256": "eb0cd5fe3ae07fc244295a4413ceeb05564a039aa38f2f3402a031850b67cce4",
+  "trace_end": {
+    "event": "end",
+    "queued": 0,
+    "received": 0,
+    "unit_executed": 0,
+    "reports": 0
+  },
+  "actual_action_saves": {
+    "before": {
+      "filename": "before.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "after": {
+      "filename": "after.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "repeat": {
+      "filename": "after-repeat.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    }
+  },
+  "request_issued": true,
+  "genuine_message_delivered": false,
+  "native_action_executed": false,
+  "full_cleanup_profile_pass": false,
+  "gameplay_parity": false,
+  "conclusion": "Original MakeRequest conversion accepts operation36/default flags; actual Broadcast enters/returns twice, but no core queue delivery after original Network.Update(0). Original identity owner0, actual session/sync/transport28 present and EngineUtility original slot matches. Still a delivery failure, not action acceptance; original host session route/sync/loopback gates remain unresolved. CanStart observers also invoke MakeRequest, so aggregate conversion counts are not exclusively Request calls."
+}
