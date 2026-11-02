@@ -126,7 +126,7 @@ def main():
                         bound = unsigned(step['bound'])
                         value = host.c6_get(C.byref(r),bound)
                         trace = [{'stream': step.get('stream','sync'), 'ordinal':r.calls, 'operation':'get',
-                                  'arguments':{'bound':bound,'effective_bound':bound & 65535}, 'result':value}]
+                                  'arguments':{'bound':bound,'effective_bound':bound & 65535,'stream_id':unsigned(step.get('stream_id',0))}, 'result':value}]
                     elif op in ('rng_reset','rng_initialize'):
                         getattr(host,'c6_'+op[4:])(C.byref(r),unsigned(step['seed']))
                     else:
