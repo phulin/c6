@@ -1,6 +1,6 @@
 # Working on c6
 
-The objective is an exact headless Civ VI state/action/turn library, checked against the original DLL. The current implementation covers isolated primitives. Keep that distinction explicit in code, docs and completion reports.
+The objective is an exact headless Civ VI state/action/turn library, checked against original Linux game code. The current implementation covers isolated primitives. Keep that distinction explicit in code, docs and completion reports.
 
 ## Task coordination
 
@@ -11,10 +11,12 @@ The objective is an exact headless Civ VI state/action/turn library, checked aga
 
 ## Exactness and evidence
 
-- Keep exactness and coverage profile-specific. The supplied Windows XP2 FinalRelease SHA-256 `324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c` is the existing tested baseline; supplied Linux is a distinct profile and may become the primary execution path after provenance/version validation. Preserve existing tests; do not silently substitute profiles or reduce the full objective. See `docs/targets.md`.
-- The supplied Linux and Windows gameplay layouts demonstrably differ, but that alone does not establish relative age or currentness. Use symbols/DWARF for names, structures and behavior hypotheses, then validate reused contracts against the chosen profile’s bytes and native fixtures. Do not infer chronology or cross-profile equivalence from platform layouts, reference address matches or shared Steam manifest build numbers.
+- The user directs Linux-only execution and acceptance for the complete state/action/turn goal. Target supplied `libGameCore_XP2.so` SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa` with matching Linux host, dependencies and inputs. See `docs/targets.md`.
+- Preserve Windows code/evidence as frozen historical work. Do not start Windows-specific tasks, run Wine/Windows native tests, or extend Windows validation unless the user changes this direction.
+- Keep exactness and coverage profile-specific. Historical Windows RNG/geometry/message and rules-data parity cannot count as Linux support; validate against original Linux code and export actual Linux rules inputs. Do not reduce the full objective to a lifecycle or primitive subset.
+- Linux/Windows layout differences do not establish relative age. Use symbols/DWARF and the pinned reference for discovery, then validate reused contracts against the Linux target's bytes and native fixtures. Public-depot identity, shared names and Steam build numbers do not establish cross-platform behavior equality.
 - Never represent approximate mechanics, placeholder actions, opaque bytes or a toy simulator as exact Civ VI behavior. Unsupported operations must be explicit and must not mutate state or count as passing parity tests.
-- Gate original-code execution by exact DLL SHA-256 and configuration identity. Record the rules database, enabled DLC/mods and configuration for any future initialized game fixture. RVAs, old symbols and Linux layouts are evidence leads until verified for the target binary.
+- Gate original-code execution by exact module SHA-256 and configuration identity. Record the rules database, enabled DLC/mods and configuration for any future initialized game fixture. RVAs, old symbols and Linux layouts are evidence leads until verified for the target binary.
 - An added operation needs target-version evidence, a reproducible native oracle, boundary fixtures and comparison of outputs plus all affected state. Preserve minimized failing cases. Do not infer complete subsystem or turn equivalence from a primitive test.
 - Preserve deterministic ordering, wrapping arithmetic, stream identity and complete RNG state. Do not substitute a host PRNG. Keep logging/service stubs and synthetic object fields documented as limits of the test context.
 - Keep simulator state transport distinct from actual Civ VI save loading. Retaining unknown sections does not establish their semantics or permit advancing them correctly.

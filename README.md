@@ -1,28 +1,22 @@
 # c6
 
-A Rust foundation for an exact, deterministic, headless Civilization VI simulator. The intended interface is state import, externally supplied actions, turn advancement and state export, with behavior checked against the original GameCore DLL.
+A Rust foundation for an exact, deterministic, headless Civilization VI simulator: import state, supply legal actions externally, advance turns and inspect/export complete state, with behavior checked against original game code.
 
-The supplied Windows XP2 FinalRelease DLL is the existing validated behavioral baseline. The symbol-rich Linux build is a separate execution/research profile; its relative age and currentness remain under audit, and Linux may become the primary execution path. Coverage stays specific to each profile. See [binary profiles and version evidence](docs/targets.md).
+**The supplied Linux XP2 build is the sole execution and acceptance target.** Its installed depot metadata matches Valve's public branch in the [release audit](docs/version-audit.md). Windows code and evidence are preserved as frozen historical work. See [target policy](docs/targets.md).
 
-**This is an early implementation, not a playable Civilization VI engine.** The Rust library currently reproduces isolated gameplay RNG, coordinate primitives and a unit-operation message-body format. Separate native bootstrap tools execute the original Windows DLL under Wine and have initialized real contexts with original database content. Full player actions, end-turn execution and Civ VI save import are unsupported.
+**This is not yet a playable Civ VI engine.** Native Linux context initialization, original localization/script providers, StartupGame return and cleanup work. A restored gameplay session, legal actions and full turns remain unverified. Existing Rust primitive and rules-data comparisons were established against the historical Windows profile; they do not establish Linux equivalence.
 
-| Area | Current support |
+| Area | Linux target status |
 | --- | --- |
-| Gameplay `GameCore::Random` | Draw, initialize, reset, lock and unlock logical state; original-DLL differential checks with logging disabled |
-| Native RNG serialization | Original 18-byte normal `Random::Write`/`Read` payload; separate from the simulator snapshot envelope |
-| Coordinates | Plot sentinel validity and isolated plot-distance arithmetic |
-| State transport | Versioned simulator envelope, RNG state, binary/configuration identities and lossless opaque sections |
-| External loading | Rust API and versioned C shared-library API in [`include/c6.h`](include/c6.h) |
-| Action-message transport | Exact null-parameter unit-operation body codec; no action legality or execution |
-| Original-DLL testing | Isolated Linux x86-64 oracles and identity-pinned differential corpora; separate whole-DLL Wine bootstrap |
-| Native context bootstrap | Original StartupGame, context destruction and unload complete with verified providers and empty-only job-set cleanup |
-| Native rules artifacts | Repeatable original Windows configuration/gameplay exports; immutable `c6-data` Rust loader verifies every pinned table and typed row |
-| Native save probe | Original Load entered using the original borrowed MemoryIStream; no successful Load return or full-state capture |
-| World, players, units, cities, combat and economy | Unsupported |
-| Legal gameplay actions and complete turn progression | Unsupported |
-| Civ VI save loading and complete game snapshots | Unsupported |
+| Original native host/GameCore | Genuine loader, context initialization, StartupGame return, provider cleanup and handle closure verified |
+| Localization | Original Base English bootstrap, dictionary lookup and shutdown verified |
+| Saved configuration and game loading | Active native restoration work; no restored playable session |
+| Save/load transport | Genuine stream adapters under validation; no completed native gameplay Load/Save round trip |
+| Linux rules inputs | Actual Linux-native export and Rust parity pending |
+| Rust API and C shared library | Explicit state/identity envelope, branching and isolated operations; Linux mechanics parity pending |
+| Full world/entities, legal actions and turns | Unsupported |
 
-Opaque state retention does not imply that those sections can be simulated. Current RNG coverage includes independent caller-selected instances but excludes native logging and synchronization callbacks. The serialization adapters reject the legacy-vector branch and short input; raw synchronous bytes can round-trip as records, while applying values above 1 to logical Rust state is rejected. The coordinate validity primitive checks a sentinel, not map bounds.
+Unknown state sections can be retained, but cannot yet be simulated. A passing context lifecycle or localization lookup does not establish a complete game.
 
 ## Build and check
 
@@ -32,49 +26,33 @@ Run from the repository root with Rust/Cargo installed:
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo build --release -p c6-ffi
-```
-
-On Linux, the resulting loadable library is `target/release/libc6_ffi.so`. With a C compiler available, exercise the public C API:
-
-```sh
 bash tools/check/c_abi_smoke.sh
 ```
 
-The workspace separates the dependency-free simulation kernel (`c6-core`), immutable original-rules input (`c6-data`), shared-library boundary (`c6-ffi`) and process-based validation (`c6-differential`). JSON belongs to the test transport, not the action hot path. See [architecture and state format](docs/architecture.md).
+The Linux library is `target/release/libc6_ffi.so`; its public header is [`include/c6.h`](include/c6.h). These checks verify implemented Rust/FFI contracts, not original Linux gameplay parity. The workspace separates `c6-core`, immutable rules input `c6-data`, the shared-library boundary `c6-ffi` and validation transport `c6-differential`. See [architecture](docs/architecture.md).
 
-## Compare with original machine code
+## Run the original Linux context
 
-These checks require Linux x86-64, Python 3, Make, a C compiler and a separately supplied original Gathering Storm FinalRelease DLL. The default location is `../c6-assets/DLC/Expansion2/Binaries/Win64/GameCore_XP2_FinalRelease.dll`. Its required SHA-256 is:
+Use Linux x86-64, Python 3, a native C compiler, matching original assets under `../c6-assets-linux` and the genuine loader dependencies described in [Linux runtime setup](docs/linux-runtime.md). The runner gates the host, GameCore, dependencies, content and adapter configuration by identity.
+
+```sh
+python3 tools/linux/runtime_probe.py --output /tmp/c6-linux-context.json
+python3 tools/linux/runtime_probe.py --startup --localization --lua \
+  --output /tmp/c6-linux-startup.json
+```
+
+The target `libGameCore_XP2.so` SHA-256 is:
 
 ```text
-324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c
+a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa
 ```
 
-```sh
-make -C native/oracle
-python3 tools/oracle/test_native.py
-python3 tools/oracle/test_serialization.py
-cargo build -p c6-differential --bins
-python3 fixtures/generate.py
-target/debug/c6-differential fixtures/corpus/xp2-rng.json fixtures/run-native-oracle target/debug/c6-rng-candidate
-```
+The native host supplies its real exports and ELF initialization. Its application main is bypassed, so complete App startup, Steam/network state and normal application shutdown are not implied. Follow [current runtime observations](docs/linux-runtime.md) and [host-service contracts](docs/linux-host-services.md) for startup, configuration, stream and save probes. Run shared native probes serially.
 
-The generator records input cases and the actual candidate executable identity; expected outputs come from executing original DLL methods. Regenerate after rebuilding the candidate, then retain that corpus with its test result when recording evidence. Missing or mismatched binaries and unsupported operations cannot count as parity passes. The isolated native oracle provides synthetic object fields and a disabled logging service; it does not initialize a game. See [oracle setup and limitations](docs/oracle.md) and [differential protocol](docs/differential.md).
+## Coverage and next work
 
-## Original Windows context bootstrap
+[Implementation status](docs/status.md) tracks the remaining full-state/action/turn milestones. [Linux asset identities](docs/linux-assets.md), [reference reuse](docs/reference-reuse.md) and [reference provenance](docs/reference.md) distinguish observed facts from discovery leads. Symbols and DWARF help reconstruct the Linux ABI; each behavior still needs a Linux-native oracle and complete affected-state comparison.
 
-A separate Wine/MinGW path loads the complete original GameCore DLL with `LoadLibraryW`, running its imports, TLS and static initialization. It creates genuine contexts and has completed original `Initialize`, the `IsInitialized` transition, destruction and DLL unload with real DatabaseDLL connections and declared original Base/XP2 SQL/XML content. Original host XML-import and hashing code supply the database fixtures, and the original embedded GameCore database phase contributes generated effect/type records; a separate original LocalizationDLL fixture resolves English text.
+Historical Windows RNG, geometry, message-body and [rules-data](docs/rules-data.md) evidence remains available for research. Its rules exports and passing comparisons are not Linux rules or mechanics coverage. Windows bootstrap commands are inactive under the current Linux-only direction.
 
-These are native context/data milestones. They do not provide a playable session, complete save load or a Rust gameplay implementation. Original StartupGame returns and context destruction/unload complete with genuine App/database/script providers and verified empty-only job-set cleanup. Load has entered original game-state code and records native stream progress, but has not returned successfully; the latest required service boundary is retained in the runtime evidence. A context initialized flag alone does not establish game readiness. Use the current commands, asset requirements and observations in [native runtime](docs/bootstrap-runtime.md), [integration checks](docs/bootstrap-validation.md), [host services](docs/bootstrap-services.md) and [save loading](docs/save-loading.md). The [native rules snapshots](docs/rules-snapshot.md) preserve actual Windows configuration/gameplay SQLite exports, reproduced byte-for-byte across independent builds. The immutable [Rust rules loader](docs/rules-data.md) matches their complete pinned schema and typed rows; these are rules inputs, not implemented gameplay. All executed modules and content inputs are fingerprinted; proprietary assets remain local.
-
-The Rust [action-message codec](docs/actions.md) is checked against original serialization instructions. It encodes a request body, not a legal gameplay action. An initialized player, unit, registry and complete affected-state capture are still required before implementing SkipTurn.
-
-## Research and next work
-
-The [status and milestones](docs/status.md) and [engine dependency roadmap](docs/engine-roadmap.md) describe the remaining work toward complete actions and turns. [Reference provenance](docs/reference.md) distinguishes upstream mapping leads from runtime evidence. The persistent Ghidra project lives in the separate private `phulin/c6-ghidra` repository; [Ghidra setup](docs/ghidra.md) documents the pinned local tools and MCP workflow. Game binaries and private project data are not distributed here. For Linux bootstrap research, preserve the matching `Civ6` executable, `libGameCore_XP2.so`, dependencies and installation data; the [Linux inventory guidance](docs/engine-roadmap.md#incoming-linux-installation) describes the read-only inventory tool and the unresolved host contracts.
-
-```sh
-cargo bench -p c6-core --bench rng
-```
-
-This benchmark measures only the verified RNG primitive. It provides no game-turn throughput or whole-game speedup claim; see [performance measurements](docs/performance.md).
+The private persistent research repository is `phulin/c6-ghidra`; [Ghidra setup](docs/ghidra.md) documents the tools. Proprietary binaries, raw research artifacts, extracted saves and generated databases remain outside this public repository. [Performance notes](docs/performance.md) measure implemented primitives/data operations, not full-game throughput.
