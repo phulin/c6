@@ -1,0 +1,273 @@
+{
+  "configuration": {
+    "schema": "c6-linux-original-asl-filesystem-v1",
+    "original_modules": {
+      "Civ6": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "libASL_Interpose.so": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4",
+      "libEOSSDK-Linux-Shipping.so": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42",
+      "libGameCore_XP2.so": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "libc++.so.1": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c",
+      "libc++abi.so.1": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666",
+      "libiconv.so.2": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005",
+      "libsteam_api.so": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0",
+      "libtbb.so.2": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707"
+    },
+    "runtime_dependencies": {
+      "libASL_Interpose.so": {
+        "path": "/home/phulin/c6-assets-linux/libASL_Interpose.so",
+        "sha256": "a686f48f8d367d436b2abbb21509686b705e5e570d01f4379d119830db59dbd4"
+      },
+      "libX11.so.6.4.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libX11.so.6.4.0",
+        "sha256": "c5b5d782bd9cab3420a62df88f5c991507edf3331a89f98464ddbc538c37b879"
+      },
+      "libGL.so.1.7.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGL.so.1.7.0",
+        "sha256": "67f471213576d225d38347a0b6d2a08a231980685301ff6461bd74d3994e5027"
+      },
+      "libopenal.so.1.23.1": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libopenal.so.1.23.1",
+        "sha256": "89bf02dc4e8f13680b3aae45770f9436627841b427693a565c15d4895f4c7331"
+      },
+      "libiconv.so.2": {
+        "path": "/home/phulin/c6-assets-linux/libiconv.so.2",
+        "sha256": "af3cfe177892142746da6a4195b8448395539e04ad0b572ceee314c0e0110005"
+      },
+      "libpthread.so.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+        "sha256": "90491a21ce44efcf3bd4b65ec82501c091d7ebe7f8d9b341dd01d721001d9ecd"
+      },
+      "librt.so.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+        "sha256": "6d072187d88e092e81561a44c03a4a41397319022c6d43519757cc051c576d82"
+      },
+      "libdl.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+        "sha256": "c2994527172cc23b7fb0f7d611b71e00a37da27af12c2e5e9e0dc1a742886c96"
+      },
+      "libm.so.6": {
+        "path": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+        "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
+      },
+      "libuuid.so.1.3.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0",
+        "sha256": "78d7f4d6f27b7dffc1c84dfe2f83e84aefa6f6ceeffc6ac4bc41f9fbc61cb84e"
+      },
+      "libc.so.6": {
+        "path": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+        "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+      },
+      "ld-linux-x86-64.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+        "sha256": "c20a2dc8917c755f02b94049356320fe1f62ac7d9f8994731f807d9df39302da"
+      },
+      "libgcc_s.so.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+        "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+      },
+      "libasound.so.2.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0",
+        "sha256": "ff4c69ef420f2d0ab92c813d2222d097c6a7eafe3b13952aed069e2bb0204f55"
+      },
+      "libsteam_api.so": {
+        "path": "/home/phulin/c6-assets-linux/libsteam_api.so",
+        "sha256": "9799a43c6a2d32b9404c05af2858ddd9d86a7379778d8af4bfbcf0be043456c0"
+      },
+      "libstdc++.so.6.0.33": {
+        "path": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+        "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+      },
+      "libtbb.so.2": {
+        "path": "/home/phulin/c6-assets-linux/libtbb.so.2",
+        "sha256": "d9ea3a2d65b50020a3764e8e78b50bee06b2dbc404b79768a4054b2994a3b707"
+      },
+      "libEOSSDK-Linux-Shipping.so": {
+        "path": "/home/phulin/c6-assets-linux/libEOSSDK-Linux-Shipping.so",
+        "sha256": "f13cc49f424e2d153ccf09939aa0af896e44acbf08b0aa5c9e770dff74ff1a42"
+      },
+      "libresolv.so.2": {
+        "path": "/usr/lib/x86_64-linux-gnu/libresolv.so.2",
+        "sha256": "1d730ea434da5a5595bc6a961d7a9ace83e03703205df9644044b3dca79c362f"
+      },
+      "libc++.so.1": {
+        "path": "/home/phulin/c6-assets-linux/libc++.so.1",
+        "sha256": "b599499cc19855ad7a86c14fafd6ea0eea5aa49b6b6af300950e94d42111737c"
+      },
+      "libc++abi.so.1": {
+        "path": "/home/phulin/c6-assets-linux/libc++abi.so.1",
+        "sha256": "d7d33f89ea6dd0eae24cdaeb0d73d9ee773935eab259925a7d7f8a8dab736666"
+      },
+      "libxcb.so.1.1.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0",
+        "sha256": "7958a0136b121bdc4c708968569ad152a9ed208ab026e2537b1005dde64ca440"
+      },
+      "libGLdispatch.so.0.0.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0",
+        "sha256": "ca01a91104c8887b3d8e59499b58cbb8f604cc285666b50d9ec888eb0c915182"
+      },
+      "libGLX.so.0.0.0": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0",
+        "sha256": "16fc8a37eea9210dc83c57eeff5aedc10ab4c6673f2f97e8bb6ee103df657b40"
+      },
+      "libsndio.so.7.2": {
+        "path": "/home/phulin/c6/target/linux/sysroot/usr/lib/x86_64-linux-gnu/libsndio.so.7.2",
+        "sha256": "e7ce0d18eb8dd47edd102d5d08da6032257db0f2c1fbbb56125eb7c5e03db10a"
+      },
+      "libXau.so.6.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXau.so.6.0.0",
+        "sha256": "8040da3f8516c1acfe39f04ff022480cdb273705ba5e7a4ca70bbdb1527cd67a"
+      },
+      "libXdmcp.so.6.0.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0",
+        "sha256": "667d97d6da16016400ab10de9f83ef4ab209ceb6adf68ff9650225ec13e723b0"
+      },
+      "libbsd.so.0.12.1": {
+        "path": "/usr/lib/x86_64-linux-gnu/libbsd.so.0.12.1",
+        "sha256": "0fd5a235d714063f17285ad16e6286ca79458e2cbba1388e8b6fc921b912cbdb"
+      },
+      "libmd.so.0.1.0": {
+        "path": "/usr/lib/x86_64-linux-gnu/libmd.so.0.1.0",
+        "sha256": "4a108e1c28f9150e45d25d2ea3ec886864c18f344272ce0c755d464abc775410"
+      }
+    },
+    "launch_host": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/Civ6",
+    "launch_host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+    "launch_mappings": {
+      "steamassets/base": "Base",
+      "steamassets/dlc": "DLC",
+      "aspyrassets": "aspyrassets"
+    },
+    "ASL_metadata_gate": {
+      "schema": 1,
+      "purpose": "Original ASL asset-string/data-path metadata input gate, before native FileInit",
+      "files": {
+        "aspyrassets/cs/string/asl.json": "60562673ae082f1c606828678f7af7b509c22c864f72b14819c4b5a48f5b30d8",
+        "aspyrassets/de/string/asl.json": "5c424464e357a652540948e6ae33ce761a56e2b5e3b5b7b1d7bf82982f35745b",
+        "aspyrassets/en/string/app.json": "f4dbfe5110d99a65bdccd25403a715c6b843ba26047350c508c81b140460e66e",
+        "aspyrassets/en/string/asl.json": "cba859dc6ce01f686506ce74911e79161a1477f94547d0723d8aafdaea80dab9",
+        "aspyrassets/es/string/asl.json": "3efdcefe8ec67723e16ce9111052d864986cb76164a28673025ae04170a94320",
+        "aspyrassets/es-419/string/asl.json": "eaaac7f54c07d69b2cabf8b8e08da908d32c485846e026f36ab15985803ab2df",
+        "aspyrassets/fr/string/asl.json": "c66757054c68fe6f967d81ad121b01f3bc667bb7bb135e46efa37b73025cd85a",
+        "aspyrassets/global/font/subtitles.otf": "d3e9138ccf76ef516cc6af867e4e7ed8776331947235824f924c5886186b0c80",
+        "aspyrassets/global/string/app.json": "add8ec235074ae906c1346aa1cbe06c7347b9dc93d9704747321ceab3c889726",
+        "aspyrassets/global/string/asl.json": "5a0b1309b5e2babac413c8f7f07f53627e29988ca6247d6f6d8f8cfe7b8a10d5",
+        "aspyrassets/hu/string/asl.json": "97adb217f65efc9e36daa646b2a66ef4e14fca088337c3aa5f8c3b7e452fcfa5",
+        "aspyrassets/it/string/asl.json": "3e5c0c8c275f8ad3a93ed7f17f3949abe5bbe7baaa10f730cf09d67b915086e6",
+        "aspyrassets/ja/string/asl.json": "ae3a06454674403027a2822a0375fc95983a113033a075208055e60547b6feb4",
+        "aspyrassets/ko/string/asl.json": "f5f545b93be07cd680df7195c44f5a915f9941d32e5a4124eaaf0e1089c4c977",
+        "aspyrassets/pl/string/asl.json": "4b34a66300001950f6da3e59e68b3fd1dcb30c14e001afb8ef3cad0e095b5c66",
+        "aspyrassets/pt/string/asl.json": "cba859dc6ce01f686506ce74911e79161a1477f94547d0723d8aafdaea80dab9",
+        "aspyrassets/pt-br/string/asl.json": "b106471f6911985bb845a5ecabbf84ae4a29f4a76d17fae2a253488f33b160ac",
+        "aspyrassets/ru/string/asl.json": "1ca29a71a1e85d8d8f9761065aca58e162ce118417d024a2216ccd3cf4d583c1",
+        "aspyrassets/zh/font/subtitles.otf": "e4bca8df123ce01b104780f576ea1a58b9a5ff1662a91124b6d3180cb6c88212",
+        "aspyrassets/zh-hans/string/asl.json": "d769c1e0d918b266bd58bf77f73a7f9ee9564b8222add9e7e0f8c52faa5f0769",
+        "aspyrassets/zh-hant/string/asl.json": "91871cd564be88c044460f1c01128dcef74d431113ec048abfc0b5e550976c68"
+      }
+    },
+    "native_account_home": "/home/phulin",
+    "native_data_root": "/home/phulin/.local/share/aspyr-media",
+    "native_data_before": {
+      "exists": false
+    },
+    "sources": {
+      "tools/linux/filesystem_probe.c": "b9b970e5082ad7a3079f018dd8e4f0264da37c0d0d09ddcfeb8ded26f2a77597",
+      "native/linux/filesystem.c": "3c2efb77d5401dced9ba6a9abb0d8d4ae0e05ad68026642371799b606cd3dc10",
+      "native/linux/filesystem.h": "3b8b98247b6b0e8573670615c995d9913819877890e3887f909584d136291fb4",
+      "tools/linux/filesystem_probe.py": "8993703589aeba9fe7dda47011671abef5cb05b57cd092fee2a1f05f3b364d98"
+    },
+    "preload_sha256": "b9fad552787430a6c2ba4c07c4630037919678a99704045c3fd2d5d7678dd6ff",
+    "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+  },
+  "configuration_sha256": "c44b7b14a2152db343d57a603d6788015f130a9323e0cb9aadd622548500d6bd",
+  "exit_code": 0,
+  "diagnostic_passed": true,
+  "observed_paths": [
+    {
+      "phase": "before",
+      "index": 0,
+      "exists": false,
+      "path": "C:/Emu/AppAssets/Base/Assets/Gameplay/Data/Schema/01_GameplaySchema.sql"
+    },
+    {
+      "phase": "before",
+      "index": 1,
+      "exists": false,
+      "path": "C:/Emu/AppAssets/Base/Assets/Configuration/Data/Schema/SetupParameters.sql"
+    },
+    {
+      "phase": "before",
+      "index": 2,
+      "exists": false,
+      "path": "C:/Emu/AppAssets/DLC/Expansion2/Expansion2.modinfo"
+    },
+    {
+      "phase": "before",
+      "index": 3,
+      "exists": false,
+      "path": "C:/Emu/AppAssets/__c6_absent_fixture__"
+    },
+    {
+      "phase": "before",
+      "index": 4,
+      "exists": false,
+      "path": "C:/Emu/AppData"
+    },
+    {
+      "phase": "before",
+      "index": 5,
+      "exists": false,
+      "path": "C:/Emu/AppTemp"
+    },
+    {
+      "phase": "after",
+      "index": 0,
+      "exists": true,
+      "path": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/base/assets/gameplay/data/schema/01_gameplayschema.sql"
+    },
+    {
+      "phase": "after",
+      "index": 1,
+      "exists": true,
+      "path": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/base/assets/configuration/data/schema/setupparameters.sql"
+    },
+    {
+      "phase": "after",
+      "index": 2,
+      "exists": true,
+      "path": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/dlc/expansion2/expansion2.modinfo"
+    },
+    {
+      "phase": "after",
+      "index": 3,
+      "exists": false,
+      "path": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/__c6_absent_fixture__"
+    },
+    {
+      "phase": "after",
+      "index": 4,
+      "exists": true,
+      "path": "/home/phulin/.local/share/aspyr-media/Sid Meier's Civilization VI"
+    },
+    {
+      "phase": "after",
+      "index": 5,
+      "exists": true,
+      "path": "/tmp/Aspyr_XIn1PS"
+    }
+  ],
+  "native_data_after": {
+    "exists": true,
+    "entries": [
+      "Sid Meier's Civilization VI"
+    ],
+    "directory": true
+  },
+  "temporary_path_removed": true,
+  "stderr": "C6_LINUX_FILESYSTEM host_main_intercepted\nC6_LINUX_FILESYSTEM normalized before 0 exists 0 path C:/Emu/AppAssets/Base/Assets/Gameplay/Data/Schema/01_GameplaySchema.sql\nC6_LINUX_FILESYSTEM normalized before 1 exists 0 path C:/Emu/AppAssets/Base/Assets/Configuration/Data/Schema/SetupParameters.sql\nC6_LINUX_FILESYSTEM normalized before 2 exists 0 path C:/Emu/AppAssets/DLC/Expansion2/Expansion2.modinfo\nC6_LINUX_FILESYSTEM normalized before 3 exists 0 path C:/Emu/AppAssets/__c6_absent_fixture__\nC6_LINUX_FILESYSTEM normalized before 4 exists 0 path C:/Emu/AppData\nC6_LINUX_FILESYSTEM normalized before 5 exists 0 path C:/Emu/AppTemp\nC6_LINUX_FILESYSTEM initialize_enter\nC6_LINUX_FILESYSTEM initialize_return\nC6_LINUX_FILESYSTEM initialize_repeat_return\nC6_LINUX_FILESYSTEM normalized after 0 exists 1 path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/base/assets/gameplay/data/schema/01_gameplayschema.sql\nC6_LINUX_FILESYSTEM normalized after 1 exists 1 path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/base/assets/configuration/data/schema/setupparameters.sql\nC6_LINUX_FILESYSTEM normalized after 2 exists 1 path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/dlc/expansion2/expansion2.modinfo\nC6_LINUX_FILESYSTEM normalized after 3 exists 0 path /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-1/steamassets/__c6_absent_fixture__\nC6_LINUX_FILESYSTEM normalized after 4 exists 1 path /home/phulin/.local/share/aspyr-media/Sid Meier's Civilization VI\nC6_LINUX_FILESYSTEM normalized after 5 exists 1 path /tmp/Aspyr_XIn1PS\nC6_LINUX_FILESYSTEM shutdown_enter\nC6_LINUX_FILESYSTEM shutdown_return\n",
+  "stdout": "",
+  "limits": [
+    "Original ASL path/init lifetime only; no Base/DLC database content proof.",
+    "Expected installed root directory links are an explicit fixture adaptation.",
+    "Original getpwuid-based ASL data-root creation is recorded; HOME is unchanged."
+  ]
+}
