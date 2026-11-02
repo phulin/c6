@@ -19,15 +19,24 @@ async def main():
             await client.initialize()
             result = await client.list_tools() if args.tool == 'list-tools' else await client.call_tool(args.tool, json.loads(args.arguments))
             data = result.model_dump(mode='json', exclude_none=True)
+            data['c6_request'] = {'tool': args.tool, 'arguments': json.loads(args.arguments), 'endpoint': os.environ.get('C6_MCP_URL', 'http://127.0.0.1:8765/mcp')}
+            identities=json.loads(Path(__file__).with_name('program_identities.json').read_text())
+            binary=data['c6_request']['arguments'].get('binary_name')
+            if binary:
+                data['c6_request']['pinned_program_sha256']=identities.get('/'+binary.lstrip('/'))
+            target_errors=[{'name': item.get('name'), 'error': item['error']} for item in data.get('structured_content', {}).get('result', []) if isinstance(item,dict) and item.get('error')]
+            if target_errors:
+                data['c6_validation']={'status':'failed','target_errors':target_errors}
+            failed=data.get('is_error', data.get('isError', False)) or bool(target_errors)
             rendered = json.dumps(data, indent=2)
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_text(rendered + '\n')
-                print(json.dumps({'output':str(args.output), 'bytes':len(rendered), 'isError':data.get('is_error', data.get('isError', False))}))
+                print(json.dumps({'output':str(args.output), 'bytes':len(rendered), 'isError':bool(failed)}))
             else:
                 print(rendered)
-            if data.get('is_error', data.get('isError', False)):
-                raise SystemExit(1)
+            if failed:
+                return 1
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))
