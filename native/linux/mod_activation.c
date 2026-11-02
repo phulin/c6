@@ -224,8 +224,18 @@ int c6_linux_mod_framework_shutdown(void) {
 #include <stdlib.h>
 #include <unistd.h>
 typedef int (*c6_main_fn)(int,char **,char **);
+static int actual_main_argc;
+static char **actual_main_argv;
+int c6_linux_main_arguments(int *argc,char ***argv) {
+    if (!argc || !argv || !actual_main_argv) return 1;
+    *argc=actual_main_argc;
+    *argv=actual_main_argv;
+    return 0;
+}
 static int mod_probe_main(int argc,char **argv,char **envp) {
-    (void)argc; (void)argv; (void)envp;
+    actual_main_argc=argc;
+    actual_main_argv=argv;
+    (void)envp;
     fprintf(stderr,"C6_LINUX_MOD host_main_intercepted\n");
     if (getenv("C6_MOD_FILESYSTEM")) {
         int (*filesystem)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_initialize");
