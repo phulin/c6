@@ -1,0 +1,135 @@
+{
+  "binary_sha256": "324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c",
+  "reference_commit": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "confidence": "original binary disassembly and coordinated Ghidra decompilation; pending native stream differential confirmation",
+  "write": {
+    "rva": "0x5fa390",
+    "size": 156,
+    "virtual_slot": "0x28",
+    "field_writes": [
+      {
+        "bytes": 4,
+        "value": "constant1 little endian"
+      },
+      {
+        "bytes": 4,
+        "value": "seed object+8 raw little endian"
+      },
+      {
+        "bytes": 4,
+        "value": "calls object+12 raw little endian"
+      },
+      {
+        "bytes": 4,
+        "value": "resets object+16 raw little endian"
+      },
+      {
+        "bytes": 1,
+        "value": "synchronous object+24 raw byte"
+      },
+      {
+        "bytes": 1,
+        "value": "constant0"
+      }
+    ],
+    "payload_size": 18,
+    "omits": [
+      "vptr",
+      "lock_count",
+      "padding"
+    ],
+    "globals": [],
+    "imports": []
+  },
+  "read": {
+    "rva": "0x5fa190",
+    "size": 470,
+    "initial_mutations": [
+      "resets wrapping increment",
+      "seed=0"
+    ],
+    "read_sizes": [
+      4,
+      4,
+      4,
+      4,
+      1,
+      1
+    ],
+    "read_targets": [
+      "discarded version",
+      "seed",
+      "calls",
+      "resets",
+      "synchronous raw byte",
+      "legacy vector flag"
+    ],
+    "read_slot": "0x30",
+    "after_each_read_slot": "0x40",
+    "preserves": [
+      "vptr",
+      "lock_count",
+      "padding"
+    ],
+    "version_branch": false,
+    "normal_branch_direct_calls": [],
+    "legacy_branch": {
+      "flag": "any nonzero byte",
+      "reader": "0xde150",
+      "encoding": "u32 count followed by count*u32 elements; vector discarded after read",
+      "allocator_request": "0x3c0880 -> 0x990920",
+      "deallocator": "0x9908f0 -> IAT0x9b7680"
+    }
+  },
+  "input_request": {
+    "size": 40,
+    "fields": [
+      {
+        "offset": 0,
+        "size": 8,
+        "value": "0xffffffffffffffff current offset"
+      },
+      {
+        "offset": 8,
+        "size": 8,
+        "value": "requested size4 or1"
+      },
+      {
+        "offset": 16,
+        "size": 8,
+        "value": "alignment16"
+      },
+      {
+        "offset": 24,
+        "size": 8,
+        "value": "callback context0"
+      },
+      {
+        "offset": 32,
+        "size": 8,
+        "value": "callback pointer0"
+      }
+    ],
+    "warning": "This is INPUT request, not output result/status."
+  },
+  "memory_istream": {
+    "vtable_rva": "0xabfec0",
+    "slot0x28": "0x9aa140",
+    "slot0x30": "0x9aa250",
+    "slot0x40": "0x8972d0 ret0",
+    "slot0x48": "0x8972d0 ret0",
+    "slot0x30_behavior": "wrap destination+length as MemoryBuffer, copy request forcing alignment0, invoke slot0x28 with force-copy true, destroy wrapper",
+    "short_read": "clips to remaining bytes, leaves unwritten destination bytes untouched; insufficient final flag may retain uninitialized stack data"
+  },
+  "scoped_random": {
+    "evidence": "Linux DWARF layout only: size4 seed offset0. No named ScopedRandom functions in pinned function index.",
+    "unverified": [
+      "constructor",
+      "recurrence",
+      "range reduction",
+      "serialization",
+      "Windows function address"
+    ]
+  },
+  "scope_warning": "This is Random object payload handed to stream methods, not complete game save format or full-state serialization. Harness normal path may safely require18 bytes and zero final flag; native malformed behavior not claimed."
+}
