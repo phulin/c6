@@ -4,15 +4,15 @@ A Rust foundation for an exact, deterministic, headless Civilization VI simulato
 
 **The supplied Linux XP2 build is the sole execution and acceptance target.** Its installed depot metadata matches Valve's public branch in the [release audit](docs/version-audit.md). Windows code and evidence are preserved as frozen historical work. See [target policy](docs/targets.md).
 
-**This is not yet a playable Civ VI engine.** Native Linux context initialization, original localization/script providers, StartupGame return and cleanup work. A restored gameplay session, legal actions and full turns remain unverified. Existing Rust primitive and rules-data comparisons were established against the historical Windows profile; they do not establish Linux equivalence.
+**This is not yet a playable Civ VI engine.** Native Linux context initialization, original localization/script providers, StartupGame return and cleanup work. A restored gameplay session, legal actions and full turns remain unverified. The Rust rules loader now matches actual Linux-native base exports. Linux RNG and other mechanics still require their own native comparisons; historical Windows primitive tests do not establish Linux equivalence.
 
 | Area | Linux target status |
 | --- | --- |
 | Original native host/GameCore | Genuine loader, context initialization, StartupGame return, provider cleanup and handle closure verified |
 | Localization | Original Base English bootstrap, dictionary lookup and shutdown verified |
-| Saved configuration and game loading | Active native restoration work; no restored playable session |
+| Saved configuration and game loading | Original configuration reader returns with explicit canonical differences; no restored playable session |
 | Save/load transport | Genuine stream adapters under validation; no completed native gameplay Load/Save round trip |
-| Linux rules inputs | Actual Linux-native export and Rust parity pending |
+| Linux rules inputs | Two original base exports match Rust/Python schema, typed rows and file fingerprints; full XP2 activation pending |
 | Rust API and C shared library | Explicit state/identity envelope, branching and isolated operations; Linux mechanics parity pending |
 | Full world/entities, legal actions and turns | Unsupported |
 
@@ -49,10 +49,25 @@ a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa
 
 The native host supplies its real exports and ELF initialization. Its application main is bypassed, so complete App startup, Steam/network state and normal application shutdown are not implied. Follow [current runtime observations](docs/linux-runtime.md) and [host-service contracts](docs/linux-host-services.md) for startup, configuration, stream and save probes. Run shared native probes serially.
 
+## Linux-native rules input
+
+Two independent original Linux base exports now match the immutable `c6-data` loader and independent Python fingerprints across every pinned table and typed row. The fixture contains base content only; it does not activate the saved XP2 mod or create GameCore definition caches. See [native rules exports](docs/linux-rules.md) and [Rust rules validation](docs/rules-data.md) for source-view identities, exact counts and rejection checks.
+
+With the private pinned exports available:
+
+```sh
+cargo run --release -p c6-data --example inspect_rules -- \
+  linux-xp2-base ../c6-ghidra/evidence/linux-rules/case-run-1 \
+  ../c6-ghidra/evidence/linux-rules/case-run-2 \
+  > /tmp/c6-data-linux-native-parity.json
+```
+
+This checks rules data, not gameplay or turn throughput. [Saved configuration](docs/linux-saved-configuration.md) restores through original code but has recorded added-key/flag differences and pending user settings. The populated-base native Load probe times out without a successful return; full XP2 activation and configured-state restoration remain active work.
+
 ## Coverage and next work
 
 [Implementation status](docs/status.md) tracks the remaining full-state/action/turn milestones. [Linux asset identities](docs/linux-assets.md), [reference reuse](docs/reference-reuse.md) and [reference provenance](docs/reference.md) distinguish observed facts from discovery leads. Symbols and DWARF help reconstruct the Linux ABI; each behavior still needs a Linux-native oracle and complete affected-state comparison.
 
-Historical Windows RNG, geometry, message-body and [rules-data](docs/rules-data.md) evidence remains available for research. Its rules exports and passing comparisons are not Linux rules or mechanics coverage. Windows bootstrap commands are inactive under the current Linux-only direction.
+Historical Windows RNG, geometry, message-body and rules-export evidence remains available for research. Those passing comparisons are not Linux mechanics coverage; Linux base rules parity is separately recorded above. Windows bootstrap commands are inactive under the current Linux-only direction.
 
 The private persistent research repository is `phulin/c6-ghidra`; [Ghidra setup](docs/ghidra.md) documents the tools. Proprietary binaries, raw research artifacts, extracted saves and generated databases remain outside this public repository. [Performance notes](docs/performance.md) measure implemented primitives/data operations, not full-game throughput.
