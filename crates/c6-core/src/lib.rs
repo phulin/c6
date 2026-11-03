@@ -354,3 +354,5 @@ pub mod player_tail;
 pub mod player_ai_influence_map;
 
 pub mod player_ai_culture;
+
+pub mod player_ai_city_manager;
