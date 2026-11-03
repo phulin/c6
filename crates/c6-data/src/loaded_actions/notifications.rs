@@ -22,6 +22,7 @@ pub enum Error {
     Attribution,
     Codec(c6_core::notifications::Error),
     State(StateError),
+    Owner(i32),
 }
 
 const SNAPSHOT: &str = "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884";
@@ -236,6 +237,95 @@ impl Definitions {
     pub fn auto_notify_count(&self) -> usize {
         self.ordered.iter().filter(|d| d.auto_notify).count()
     }
+}
+
+fn player_header(
+    state: &LoadedState,
+    owner: i32,
+) -> Result<&c6_core::core_player::PlayerHeader, Error> {
+    state
+        .retained()
+        .players
+        .iter()
+        .find(|player| player.header.owner == owner)
+        .map(|player| &player.header)
+        .ok_or(Error::Owner(owner))
+}
+
+/// Exact saved/current cache used by Processor::SetEndTurnBlockingState.
+/// Write0x2b4ef15 and Read0x2b4f860 both address Player+0x7a8: this is the
+/// fifteenth ordered header scalar, not an inferred initialized zero.
+pub fn owner_blocking(state: &LoadedState, owner: i32) -> Result<i32, Error> {
+    state.player_end_turn_blocking(owner).map_err(Error::State)
+}
+
+/// Source SetEndTurnBlockingState ordering over the actual owned field. The
+/// required global reporting backend sees the already-stored value and this
+/// same LoadedState. A backend error preserves that store and any callback
+/// effects; no rollback or callback absence is implied. No event is delivered
+/// for equality or a different current local player.
+pub fn set_owner_blocking<F>(
+    state: &mut LoadedState,
+    owner: i32,
+    value: i32,
+    reporting: &mut F,
+) -> Result<(), Error>
+where
+    F: FnMut(&mut LoadedState, u32, i32, i32) -> Result<(), Error>,
+{
+    c6_core::unit_operation_aftermath::set_owner_blocking_with(
+        state,
+        owner,
+        value,
+        |state, owner| owner_blocking(state, owner),
+        |state, owner, value| {
+            state
+                .store_player_end_turn_blocking(owner, value)
+                .map(|_| ())
+                .map_err(Error::State)
+        },
+        |state, owner| Ok(player_header(state, owner)?.owner),
+        |state| Ok(state.retained().core.local_player),
+        reporting,
+    )
+}
+
+/// Processor::IsTurnComplete0x2b5bb60 reads the fifth serialized processor
+/// boolean array, ms_abIsTurnComplete. It does not read a Player header flag.
+pub fn turn_complete(state: &LoadedState, owner: i32) -> Result<bool, Error> {
+    let owner = player_header(state, owner)?.owner;
+    let index = usize::try_from(owner).map_err(|_| Error::Owner(owner))?;
+    state
+        .retained()
+        .core
+        .player_processor
+        .player_complete
+        .get(index)
+        .copied()
+        .ok_or(Error::Owner(owner))
+}
+
+/// Processor::PreviouslyActiveThisTurn0x2b5bbc0 checks the activation-event
+/// array first. The actual current IsTurnActive input is required only when
+/// that flag is false, preserving the native short circuit.
+pub fn previously_active_this_turn(state: &LoadedState, owner: i32) -> Result<bool, Error> {
+    let owner = player_header(state, owner)?.owner;
+    let index = usize::try_from(owner).map_err(|_| Error::Owner(owner))?;
+    let event = state
+        .retained()
+        .core
+        .player_processor
+        .activation_event
+        .get(index)
+        .copied()
+        .ok_or(Error::Owner(owner))?;
+    if event {
+        return Ok(false);
+    }
+    Ok(!state
+        .player_controls(owner)
+        .map_err(Error::State)?
+        .turn_active)
 }
 
 /// Source leaf used by the inherited duplicate slot of ChooseTech,

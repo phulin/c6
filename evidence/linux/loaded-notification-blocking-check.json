@@ -1,0 +1,66 @@
+{
+  "schema": "c6-linux-loaded-notification-owner-v1",
+  "checks_passed": true,
+  "original_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checker_sha256": "07d1b8c8f144283d48144cd39e5cfae57e0696c531cf7677be122333a881c62c",
+  "snapshot_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "snapshot_bytes": 80657462,
+  "owner_range": [
+    76400871,
+    76405580
+  ],
+  "owner_bytes": 4709,
+  "owner_sha256": "68c99c43d65778dea5f1d49a7215d9d925b405f639d413b28e2c4f5d6f601094",
+  "owner_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "collections": 64,
+  "records": 12,
+  "slot_zero_next_id": 49,
+  "empty_other_slots": 63,
+  "numeric_id_first_match_lookup_checked": true,
+  "actual_numeric_ids_unique": true,
+  "duplicate_precedence_test_profile": "core source-only tests; actual twelve numeric IDs are unique",
+  "all_saved_fields_rechecked_at_install": true,
+  "notification_reads_survive_unit_activity_write": true,
+  "replay_after_advancement_rejected_without_revision_change": true,
+  "decoded_players": 43,
+  "decoded_units": 1262,
+  "decoded_formations": 1250,
+  "candidate_sha256": "8d3f8e6751ed1a197800b92ddae4c1f4974a35d2a67b2558d76f0bd9a2ed8965",
+  "retained_candidate": "target/linux/loaded-handler-adapter-candidates/2c68657d3fa34c95b27bc22360acd0db/candidate",
+  "retained_source_snapshot": "target/linux/loaded-handler-adapter-candidates/2c68657d3fa34c95b27bc22360acd0db/source",
+  "retained_fixture_result": "target/linux/loaded-handler-adapter-candidates/2c68657d3fa34c95b27bc22360acd0db/result.json",
+  "fixture_sha256": "78d28199a9517b467b0209ccf0dfabede9d3abc475312e1f2af788a744ac72a5",
+  "source_sha256": {
+    "crates/c6-data/src/loaded_actions/notifications.rs": "d128a73cf6f1417377359f13caab5087dcd842f7301260077b8795d6ede4b5be",
+    "crates/c6-core/src/player_notifications_owner.rs": "d0a8714a19438c25afe301780ee0f62af481bc48b98ac632d549864c888d8e98",
+    "crates/c6-core/src/loaded_state.rs": "e219c1dda10b12be967e2d95dfda0adbe20cd894010f54222c8dcd8f91e17116",
+    "tools/linux/loaded_handler_adapter_check.rs": "86e8551853116ab7ebdd23410423974e5bf5cb1bee830d27f4f56d174e7272be",
+    "tools/linux/loaded_handler_adapter_check.py": "4d31aeb26083876eb2e6e12beff75446fcba188567152429114680fbe727b9c7"
+  },
+  "source_role": "SavedOutputCore",
+  "decoder_role_unchanged": true,
+  "required_reporting_backend_available": false,
+  "native_read_or_live_runtime_equivalence": false,
+  "full_action_state_rng_parity": false,
+  "unresolved": [
+    "omitted live fields and actual subtype/creator authority",
+    "structural append/removal with stable logical handles",
+    "real notification callbacks/subtype effects",
+    "complete Update and native affected-state/RNG comparison"
+  ],
+  "owner_queries": {
+    "blocking": 0,
+    "owner": 0,
+    "previously_active_this_turn": false,
+    "turn_complete": false
+  },
+  "owner_query_scope": "source-mapped actual saved fields/current controls; no original getter return comparison",
+  "isolated_blocking_store_probe": {
+    "equal_value_skips_reporting_and_revision": true,
+    "is_action_continuation": false,
+    "native_comparison": false,
+    "reports_attempted": 1,
+    "stored_value_retained_after_error": true
+  }
+}

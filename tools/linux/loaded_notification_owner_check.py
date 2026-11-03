@@ -63,6 +63,14 @@ def main():
                 source_role='SavedOutputCore',decoder_role_unchanged=result['decode_role_unchanged'],
                 required_reporting_backend_available=False,native_read_or_live_runtime_equivalence=False,full_action_state_rng_parity=False,
                 unresolved=['omitted live fields and actual subtype/creator authority','structural append/removal with stable logical handles','real notification callbacks/subtype effects','complete Update and native affected-state/RNG comparison'])
+    if 'owner_queries' in result:
+        report['owner_queries']=result['owner_queries']
+        report['owner_query_scope']='source-mapped actual saved fields/current controls; no original getter return comparison'
+    if 'isolated_blocking_store_probe' in result:
+        probe=result['isolated_blocking_store_probe']
+        if not probe['stored_value_retained_after_error'] or not probe['equal_value_skips_reporting_and_revision'] or probe['is_action_continuation'] or probe['native_comparison']:
+            raise ValueError('isolated blocking store scope differs')
+        report['isolated_blocking_store_probe']=probe
     a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(dict(checks_passed=True,collections=64,records=12,original_execution=False,candidate_sha256=result['candidate_sha256'])))
 if __name__=='__main__':main()

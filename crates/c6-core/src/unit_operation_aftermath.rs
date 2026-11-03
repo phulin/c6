@@ -313,12 +313,39 @@ pub fn set_owner_blocking<W: Blocking>(
     owner: W::Owner,
     value: i32,
 ) -> Result<(), Error> {
-    let old = w.owner_blocking(owner)?;
+    set_owner_blocking_with(
+        w,
+        owner,
+        value,
+        |w, owner| w.owner_blocking(owner),
+        |w, owner, value| w.store_owner_blocking(owner, value),
+        |w, owner| w.owner_id(owner),
+        |w| w.local_player(),
+        |w, event, old, value| w.blocking_changed(event, old, value),
+    )
+}
+
+/// Source setter control flow shared by complete notification providers and
+/// concrete owned-field adapters. Closures receive the same mutable context;
+/// no unrelated factory/list methods or precomputed acceptance bit is needed.
+/// Reporting failure retains the preceding field store and callback effects.
+#[allow(clippy::too_many_arguments)]
+pub fn set_owner_blocking_with<C, O: Copy, E>(
+    context: &mut C,
+    owner: O,
+    value: i32,
+    mut read: impl FnMut(&mut C, O) -> Result<i32, E>,
+    mut store: impl FnMut(&mut C, O, i32) -> Result<(), E>,
+    mut owner_id: impl FnMut(&mut C, O) -> Result<i32, E>,
+    mut local_player: impl FnMut(&mut C) -> Result<i32, E>,
+    mut report: impl FnMut(&mut C, u32, i32, i32) -> Result<(), E>,
+) -> Result<(), E> {
+    let old = read(context, owner)?;
     if old != value {
-        w.store_owner_blocking(owner, value)?;
-        let id = w.owner_id(owner)?;
-        if id == w.local_player()? {
-            w.blocking_changed(BLOCKING_CHANGED, old, value)?
+        store(context, owner, value)?;
+        let id = owner_id(context, owner)?;
+        if id == local_player(context)? {
+            report(context, BLOCKING_CHANGED, old, value)?
         }
     }
     Ok(())
@@ -369,6 +396,46 @@ pub fn after_add<W: Diplomacy + Blocking + Clone>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_blocking_setter_preserves_store_and_callback_effects_on_failure() {
+        let mut context = (1i32, Vec::new());
+        let result = set_owner_blocking_with(
+            &mut context,
+            7,
+            2,
+            |c, owner| {
+                assert_eq!(owner, 7);
+                c.1.push("read");
+                Ok(c.0)
+            },
+            |c, owner, value| {
+                assert_eq!(owner, 7);
+                c.1.push("store");
+                c.0 = value;
+                Ok(())
+            },
+            |c, owner| {
+                c.1.push("id");
+                Ok(owner)
+            },
+            |c| {
+                c.1.push("local");
+                Ok(7)
+            },
+            |c, event, old, value| {
+                c.1.push("report");
+                assert_eq!((event, old, value, c.0), (BLOCKING_CHANGED, 1, 2, 2));
+                c.0 = 3;
+                Err(Error::Unsupported("required reporting continuation"))
+            },
+        );
+        assert_eq!(
+            result,
+            Err(Error::Unsupported("required reporting continuation"))
+        );
+        assert_eq!(context, (3, vec!["read", "store", "id", "local", "report"]));
+    }
 
     #[derive(Clone, Debug, PartialEq)]
     struct Record {

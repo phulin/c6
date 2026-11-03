@@ -95,3 +95,26 @@ The actual twelve saved numeric notification IDs are unique. The retained actual
 fixture checks lookup for each of those IDs. Duplicate-ID precedence is covered
 by the core owner's separate source-only tests; no native duplicate-ID boundary
 comparison is claimed.
+
+The concrete owner queries use the saved/current field mappings checked in
+`loaded-notification-owner-queries-source.json`: blocking is header scalar 14
+(native Player `+0x7a8`), turn completion is the fifth serialized processor bool
+array, and previous activation checks the first processor bool array before
+requiring actual current turn-active controls. The EndTurnBlockingTypes stream
+operators copy raw signed i32 values; they perform no definition remapping.
+
+`set_owner_blocking` delegates to the same core `set_owner_blocking_with` control
+flow as the legacy aftermath provider. It reads the current field, stores a
+changed value, reads the retained owner's ID and current local player, then
+calls the required global reporting backend for `55f15a7b` only for the local
+owner. The callback receives the same mutable LoadedState, allowing supported
+broader effects without an actor-only context. Errors retain the preceding store
+and callback effects. No reporting collector or missing-consumer success default
+is supplied.
+
+The frozen blocking fixture separately exercises this setter after its action
+prefix has already failed: the required global backend errors after seeing the
+new stored value; the field remains changed. Repeating that value skips both
+reporting and revision change. These are isolated source-only integration cases,
+not appended action execution or a native setter comparison. The real action
+prefix still terminates at its genuinely unavailable reporting backend.

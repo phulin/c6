@@ -360,6 +360,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         owner: actor.0 | (1 << 16),
         id: actor.1,
     };
+    let owner_queries = serde_json::json!({
+        "owner":actor.0,
+        "blocking":actions::notifications::owner_blocking(&state,actor.0)?,
+        "turn_complete":actions::notifications::turn_complete(&state,actor.0)?,
+        "previously_active_this_turn":actions::notifications::previously_active_this_turn(&state,actor.0)?
+    });
     let placement = bound.placement_definitions()?;
     let war = snapshot.relations();
     let inputs = actions::Inputs {
@@ -428,12 +434,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ))
     ));
     assert_eq!(state.revision(), advanced_revision);
+    // Isolated source-only setter probe after the action prefix has terminated.
+    // This is not concatenated into an action continuation or native comparison.
+    assert_eq!(state.retained().core.local_player, actor.0);
+    let prior_blocking = actions::notifications::owner_blocking(&state, actor.0)?;
+    let probe_blocking = actions::choose_tech::DEFAULT_BLOCKING;
+    assert_ne!(prior_blocking, probe_blocking);
+    let mut block_reports = 0;
+    let error = actions::notifications::set_owner_blocking(
+        &mut state,
+        actor.0,
+        probe_blocking,
+        &mut |current, event, old, new| {
+            block_reports += 1;
+            assert_eq!(event, c6_core::unit_operation_aftermath::BLOCKING_CHANGED);
+            assert_eq!((old, new), (prior_blocking, probe_blocking));
+            assert_eq!(
+                actions::notifications::owner_blocking(current, actor.0)?,
+                new
+            );
+            Err(actions::notifications::Error::Unsupported(
+                "genuine global blocking reporting backend unavailable",
+            ))
+        },
+    )
+    .expect_err("required global reporting backend remains unavailable");
+    assert!(matches!(
+        error,
+        actions::notifications::Error::Unsupported(
+            "genuine global blocking reporting backend unavailable"
+        )
+    ));
+    assert_eq!(block_reports, 1);
+    assert_eq!(
+        actions::notifications::owner_blocking(&state, actor.0)?,
+        probe_blocking
+    );
+    let same_revision = state.revision();
+    actions::notifications::set_owner_blocking(
+        &mut state,
+        actor.0,
+        probe_blocking,
+        &mut |_, _, _, _| panic!("equal-value branch must not report"),
+    )?;
+    assert_eq!(state.revision(), same_revision);
 
     assert!(state.revision() > 0);
     assert!(capture.admit(&state, &bound).is_err());
     println!(
         "{}",
-        serde_json::json!({"schema":"c6-linux-loaded-observed-handler-adapter-check-v1","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"owned_notification_collections":64,"owned_notification_records":12,"notification_first_duplicate_lookup_checked":true,"notification_reads_survive_unit_activity_write":true,"notification_replay_after_advancement_rejected":true,"notification_definitions":notification_rows,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"initial_actor_facts":initial_actor_facts,"prefix_elapsed_ns":prefix_elapsed_ns,"timing_scope":"single diagnostic attempt ending at first unavailable report; excludes decode, rules, capture admission and all-roster comparisons; not full-action throughput","per_attempt_validation":"63 immutable definition/slot pairs; no module hashing or all-Unit scans","partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"required_reporting_backend_available":false,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
+        serde_json::json!({"schema":"c6-linux-loaded-observed-handler-adapter-check-v1","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"owned_notification_collections":64,"owned_notification_records":12,"notification_first_duplicate_lookup_checked":true,"notification_reads_survive_unit_activity_write":true,"notification_replay_after_advancement_rejected":true,"notification_definitions":notification_rows,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"owner_queries":owner_queries,"isolated_blocking_store_probe":{"reports_attempted":block_reports,"stored_value_retained_after_error":true,"equal_value_skips_reporting_and_revision":true,"is_action_continuation":false,"native_comparison":false},"initial_actor_facts":initial_actor_facts,"prefix_elapsed_ns":prefix_elapsed_ns,"timing_scope":"single diagnostic attempt ending at first unavailable report; excludes decode, rules, capture admission and all-roster comparisons; not full-action throughput","per_attempt_validation":"63 immutable definition/slot pairs; no module hashing or all-Unit scans","partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"required_reporting_backend_available":false,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
     );
     Ok(())
 }
