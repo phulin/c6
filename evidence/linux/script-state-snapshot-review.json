@@ -1,0 +1,53 @@
+{
+  "checks": {
+    "changed_context_retains_bytes_without_pointee_reads": true,
+    "complete_argument_body_fingerprints_verified": 8,
+    "each_missing_argument_body_refused": 8,
+    "existing_adapter_tests": 31,
+    "independent_tests": 4,
+    "producer_collector_tests": 15,
+    "selected_ancestor_and_current_register_mutations_refused": 7,
+    "two_partial_occurrences_preserve_prior_exclusive_images": true
+  },
+  "limits": [
+    "Source acceptance only. Fresh exact source/preload/plan/profile and added complete live argument-body gates require sole-runner preparation and independent admission.",
+    "Actual retained CCall state/context/arguments and current singleton roots remain distinct; unavailable selected-frame facts cause no heap read.",
+    "Decoded captured bytes, weak-table fields and a pointed40-byte mutex do not prove complete GC/VM consistency, pthread ownership/return status, installed callback identity or effects.",
+    "Unsupported layouts and failed sections retain partial private images, not absent/default results. No substitute original calls or policy behavior.",
+    "Prior sealed native2 remains immutable and does not gain newly captured registry or snapshot facts.",
+    "No complete state/actions/gameplay-RNG/turn or Rust/native script parity is accepted."
+  ],
+  "native_execution_by_reviewer": false,
+  "native_profile_admitted": false,
+  "prior_semantics_source": "36a7371",
+  "producer_source_report_sha256": "d30a0264a2180811fc8ef0e09c79df3d6766fd21384bdb883e290db060a6ba9c",
+  "reviewed_commits": [
+    "6d284ce",
+    "d6aef7f"
+  ],
+  "schema": "c6-linux-script-natural-snapshot-independent-source-review-v1",
+  "scope": {
+    "ASL_zero_owner_to_missing_lock_inference": false,
+    "additional_breakpoint_lanes": 0,
+    "all_original_ownership_mapping_hardware_gates_preserved": true,
+    "callback_effects_admitted": false,
+    "fresh_context_tuple_before_pointees": true,
+    "immutable_copied_successful_section_replay": true,
+    "opt_in_only": true,
+    "original_calls_or_locks_added": 0,
+    "partial_section_errors_retained": true,
+    "requires_raw_unresolved_mode": true,
+    "semantic_snapshot_admitted": false,
+    "u64_per_read_item_and_total_budgets": true
+  },
+  "source_integration_accepted": true,
+  "sources": {
+    "tools/linux/full_manager_observer_runner.py": "d1767064f175b05ee9cf623fc3dd40661e5c6b29a7e1f9e16f94a17e5368d6ab",
+    "tools/linux/script_hks_registry.py": "b37623e252bc2b3430025d238671e7b3b622189729527d0e8015ccc2484867ad",
+    "tools/linux/script_manager_observer.py": "dbb075556193864bada8859dcf1d491f569247614fa9190dacf1887bc9f9b177",
+    "tools/linux/script_state_snapshot.py": "e592532222d0e4c26afc341e36abf636cea44645e198a4c73eca8730b635e1e9",
+    "tools/linux/script_state_snapshot_audit.py": "bbeb9c6f1b665fb7ebac31923dd8be876f192388ff1e655c725352ef966b2549",
+    "tools/linux/script_state_snapshot_review.py": "c87912a831df2f80f077609d913343b66067b2077cf01a6a7e3c6e6b5122947d",
+    "tools/linux/test_script_state_snapshot.py": "cb8d399aa6806d2afd1da05b5c2c32feef7e7d27650066f166fc5c6edf174c4b"
+  }
+}
