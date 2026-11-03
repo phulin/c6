@@ -1,0 +1,51 @@
+{
+  "reviewed_commit": "c01b8aa7c9b13daf0541b954531444b00aa46185",
+  "accepted_scope": "Current Goody_Hut1, Bonuses4, Congress12 and Refund12 wire value codecs, actual-definition overlays and structural first-player indexing to Cities; not complete Player state or lifecycle.",
+  "xp2_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "source_identities": {
+    "crates/c6-core/src/player_components.rs": "31a81eaf3578e9b92acbab2a75a971cbd1c3dee361f0315a1ca081076db92db4",
+    "crates/c6-core/examples/player_components_codec.rs": "7e7ac21e1d5103e0096a6556591e4ce270c50706adc51eeb413a97301961529d",
+    "tools/linux/core_stream_index.py": "7b3cf933ae9bf387a87a05bd92e179c48482bb4aed85f8447e4a4e1919003821",
+    "tools/linux/player_components_audit.py": "90d533558c81825ecbed4d12bd5544126d3a30c2b64980750161aa8a3a6592ff"
+  },
+  "native_execution": false,
+  "native_gameplay_parity": false,
+  "unresolved_findings": [],
+  "checks": {
+    "static_target_methods": 37,
+    "focused_rust_tests": 4,
+    "passed": true,
+    "native_congress_records": 86,
+    "native_first_goody_records": 2,
+    "native_first_bonus_records": 2,
+    "native_typed_leaves": 6182,
+    "synthetic_typed_leaves": 41,
+    "synthetic_refund_records": 2,
+    "source_only_overlay_sequences": 820,
+    "source_only_resize_cases": 4920,
+    "dynamic_congress_and_cities_boundary_comparisons": 2,
+    "native_refund_vectors_nonempty": 0
+  },
+  "independent_harness_identities": {
+    "/tmp/c6-player-components-review/src/main.rs": "9d95b21c2dd1e81591acce0520f2f2b491ac11adb927b7db1e75fb4fa2493f33",
+    "/tmp/c6-player-components-review/src/bin/overlays.rs": "c1521fcefc58d1b0a9db7f6936eb144d221b6567b94f4d812562e06ea162d75b",
+    "/tmp/c6-player-components-review/compare.py": "af2f6f17d17b4716d6c98f1d714561304f9d50d240d84bccf2de1197bd754df9"
+  },
+  "semantics_reviewed": [
+    "Ordered hash/value wire entries retain unknown keys and duplicates.",
+    "Actual DefinitionLookup drives overlays; later mapped pairs win.",
+    "Goody Read preserves existing values and omitted applying flag.",
+    "Bonuses concrete Reset explicitly zeros before overlay.",
+    "Congress resize preserves known prefix; unsupplied growth fails rather than inventing values.",
+    "Congress GovernmentSlot vector is positional; each Refund independently carries version12.",
+    "Omitted Congress runtime fields stay owner inputs, with no planning-only exclusion.",
+    "Count/byte checks and fallible reservations bound component allocations; Limits is not an aggregate heap cap."
+  ],
+  "limitations": [
+    "Two original normalization streams share one initial context; they do not establish gameplay branch diversity.",
+    "All observed original Refund vectors are empty; the two-record nonempty Refund carrier is source-derived synthetic evidence only.",
+    "Current-only codecs intentionally reject older versions and noncanonical encodings.",
+    "Active definition mappings and omitted runtime state remain required for value application.",
+    "Archive/dirty effects, complete Player/City codecs, complete Unit roster and gameplay actions/turns remain unsupported."
+  ]
+}
