@@ -89,6 +89,40 @@ class CaptureImage(Image):
         return manifest
 
 
+def inspect_resolved_function(image, state):
+    # hksi_lua_isfunction(-1) reads top-16, bounded below by base.
+    # Capture the actual lookup result even if __index returned an
+    # uncached event/method different from the raw named registry.
+    top, base = image.integer(state + 0x48), image.integer(state + 0x50)
+    require(top >= base + 16, 'resolved function stack is empty')
+    function = image.value(top - 16)
+    require(function.tag in (9, 10), 'resolved value is not supported function kind')
+    actual = dict(value=function.record(), closure=image.closure(function),
+                  stack_top=hex(top), stack_base=hex(base))
+    if function.tag == 10 and actual['closure']['function'] == '0x36b3540':
+        upvalues = actual['closure']['upvalues']
+        require(upvalues and upvalues[0]['tag'] == 5, 'actual TestAll group upvalue missing')
+        groups = Table(image, int(upvalues[0]['payload_hex'], 0))
+        actual['groups'] = groups.record()
+        actual['callback_arrays'] = []
+        for key, value in groups.entries():
+            if value.tag != 5:
+                continue
+            array = Table(image, value.bits)
+            length = array.length()
+            require(length <= image.limit, 'actual callback array exceeds budget')
+            slots = []
+            for index in range(1, length + 1):
+                callback = array.integer(index)
+                slot = dict(index=index, value=callback.record())
+                if callback.tag in (9, 10):
+                    slot['closure'] = image.closure(callback)
+                slots.append(slot)
+            actual['callback_arrays'].append(dict(group_key=key.record(),
+                table=array.record(), objlen=length, callbacks=slots))
+    return actual
+
+
 class Observer:
     """Runner-owned state machine; observe returns the next required site names.
 
@@ -112,6 +146,7 @@ class Observer:
         self.directory = Path(private_directory)
         require(not self.directory.resolve().is_relative_to(ROOT), 'private capture directory required')
         self.call, self.ordinal = None, 0
+        self.failed = False
         self.expected = ('dispatch',)
 
     def num(self, address):
@@ -151,37 +186,7 @@ class Observer:
         image.read(global_state + 0x58, 0x128)
         result = inspect_named_event(image, state)
         if phase == 'naturally_resolved_function_before_original_call':
-            # hksi_lua_isfunction(-1) reads top-16, bounded below by base.
-            # Capture the actual lookup result even if __index returned an
-            # uncached event/method different from the raw named registry.
-            top, base = image.integer(state + 0x48), image.integer(state + 0x50)
-            require(top >= base + 16, 'resolved function stack is empty')
-            function = image.value(top - 16)
-            require(function.tag in (9, 10), 'resolved value is not supported function kind')
-            actual = dict(value=function.record(), closure=image.closure(function),
-                          stack_top=hex(top), stack_base=hex(base))
-            if function.tag == 10 and actual['closure']['function'] == '0x36b3540':
-                upvalues = actual['closure']['upvalues']
-                require(upvalues and upvalues[0]['tag'] == 5, 'actual TestAll group upvalue missing')
-                groups = Table(image, int(upvalues[0]['payload_hex'], 0))
-                actual['groups'] = groups.record()
-                actual['callback_arrays'] = []
-                for key, value in groups.entries():
-                    if value.tag != 5:
-                        continue
-                    array = Table(image, value.bits)
-                    length = array.length()
-                    require(length <= image.limit, 'actual callback array exceeds budget')
-                    slots = []
-                    for index in range(1, length + 1):
-                        callback = array.integer(index)
-                        slot = dict(index=index, value=callback.record())
-                        if callback.tag in (9, 10):
-                            slot['closure'] = image.closure(callback)
-                        slots.append(slot)
-                    actual['callback_arrays'].append(dict(group_key=key.record(),
-                        table=array.record(), objlen=length, callbacks=slots))
-            result['actual_resolved_function'] = actual
+            result['actual_resolved_function'] = inspect_resolved_function(image, state)
         identity = dict(configuration_sha256=self.configuration, gamecore_base=hex(self.base),
                         phase=phase, occurrence=self.ordinal,
                         observation_boundary_accepted=False)
@@ -189,7 +194,10 @@ class Observer:
         # Reconstruct exclusively from the saved bytes to check image completeness.
         offline = Image(image.merged(), image.limit)
         raw_result = dict(result)
-        raw_result.pop('actual_resolved_function', None)
+        resolved = raw_result.pop('actual_resolved_function', None)
+        if resolved is not None:
+            require(inspect_resolved_function(offline, state) == resolved,
+                    'offline actual resolved function differs')
         require(inspect_named_event(offline, state) == raw_result, 'offline reconstruction differs')
         self.emit(dict(event='snapshot', **identity, roots=roots, lua_lock_raw=lock.hex(),
                        lua_owner_kind='ASL ThreadHANDLE pointer; not core u32 thread ID',
@@ -197,7 +205,29 @@ class Observer:
                        original_acquisition_observed=True,
                        callback_effects_accepted=False))
 
+    def fail(self, reason):
+        self.failed = True
+        self.emit(dict(event='observer_failure', reason=str(reason),
+                       occurrence=self.ordinal, pending_sites=list(self.expected),
+                       partial_call=self.call, callbacks_available=False,
+                       callback_absence_proven=False))
+
+    def close(self):
+        if self.call is not None or self.expected != ('dispatch',):
+            self.fail('terminal missing checkpoint/unwind/partial call')
+        self.emit(dict(event='observer_terminal', occurrences=self.ordinal,
+                       protocol_complete=not self.failed, native_parity_accepted=False))
+        return not self.failed
+
     def observe(self, event, r, thread, provenance=None):
+        require(not self.failed, 'observer already failed')
+        try:
+            return self._observe(event, r, thread, provenance)
+        except Exception as error:
+            self.fail(error)
+            raise
+
+    def _observe(self, event, r, thread, provenance=None):
         require(event in self.expected, 'unmatched checkpoint: ' + event)
         require(r['pc'] == self.address(event), 'wrong original checkpoint PC')
         if event == 'dispatch':
@@ -214,21 +244,22 @@ class Observer:
             require(self.num(r['r13']) == 0x53a63a8, 'overridden ScriptSystem')
             self.ordinal += 1
             self.call = dict(thread=thread, wrapper_rsp=r['rsp'], script=r['r13'],
-                             provenance=provenance, args=r['r15'], out=r['r14'], core_lock_was_held=bool(r['rbx'] & 255))
+                             provenance=provenance, event_pointer=r['r12'], args=r['r15'], out=r['r14'], core_lock_was_held=bool(r['rbx'] & 255))
             self.expected = ('ccall_entry',)
         else:
             require(thread == self.call['thread'], 'cross-thread/reentrant checkpoint')
             if event == 'ccall_entry':
+                require(r['rsp'] == self.call['wrapper_rsp'] - 72, 'CCall stack frame differs')
                 require(self.num(r['rsp']) == 0x36b40e1 and r['rsi'] == 0x36b3bc0,
                         'wrong protected callback/continuation')
                 require(self.num(r['rsp'] + 64) == self.base + 0x2ce79ff,
                         'not concrete ScriptSystem tail path')
                 context = bytes(self.read(r['rdx'], 26))
-                require(struct.unpack_from('<Q', context)[0] != 0 and
+                require(struct.unpack_from('<Q', context)[0] == self.call['event_pointer'] and
                         struct.unpack_from('<Q', context, 8)[0] == 0x462e7b4 and
                         struct.unpack_from('<Q', context, 16)[0] == self.call['args'],
                         'wrong TestAll context')
-                self.call.update(entry_rsp=r['rsp'], state=r['rdi'], context=r['rdx'])
+                self.call.update(entry_rsp=r['rsp'], state=r['rdi'], context=r['rdx'], context_entry_raw=context.hex())
                 self.expected = ('acquired',)
             elif event == 'acquired':
                 require(r['rsp'] == self.call['entry_rsp'] - 24 and
@@ -362,6 +393,19 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(phases), 2)
         self.assertFalse(rows[0]['return_bit'])
         self.assertEqual(rows[0]['out_value_raw'], '00')
+        self.assertTrue(observer.close())
+        self.assertTrue(rows[-1]['protocol_complete'])
+
+    def test_partial_terminal_never_reports_absence(self):
+        rows = []
+        observer = Observer(lambda p, n: bytes(n), rows.append, 0x10000000,
+                            'a'*64, '/tmp/c6-private-test')
+        observer.call = dict(state=0x1234)
+        observer.expected = ('protected_return',)
+        self.assertFalse(observer.close())
+        self.assertFalse(rows[0]['callback_absence_proven'])
+        self.assertEqual(rows[0]['partial_call']['state'], 0x1234)
+        self.assertFalse(rows[-1]['protocol_complete'])
 
     def test_wrong_manager_continuation(self):
         observer = Observer(lambda p, n: bytes(n), lambda r: None, 0x10000000,
