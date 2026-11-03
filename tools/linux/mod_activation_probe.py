@@ -17,6 +17,33 @@ def digest(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream,'sha256').hexdigest()
 
+def lifecycle_report(code, stderr):
+    """Measured marker stages stay distinct from the overall fixture result."""
+    boundary=re.findall(r'^C6_LINUX_MOD boundary_return result (-?\d+)(?: |$)',stderr,re.M)
+    cleanup=re.findall(r'^C6_LINUX_MOD cleanup_return (-?\d+)(?: |$)',stderr,re.M)
+    contexts=re.findall(r'^C6_LINUX_GAME_LOAD module .+ context_initialized ([01]) host_finalization [01](?: |$)',stderr,re.M)
+    loads=re.findall(r'^C6_LINUX_STREAM load_return result (-?\d+) offset (\d+) size (\d+)(?: |$)',stderr,re.M)
+    controller=re.findall(r'^C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized ([01]) context_bound ([01]) executing ([01]) cleanup ([01])(?: |$)',stderr,re.M)
+    result=int(boundary[-1]) if boundary else None
+    cleanup_result=int(cleanup[-1]) if cleanup else None
+    load=tuple(map(int,loads[-1])) if loads else None
+    loaded=bool(load and load[0]==0 and load[1]==load[2] and load[2]>0)
+    initialized=bool(contexts and contexts[-1]=='1')
+    client=bool(re.search(r'^C6_LINUX_MOD client_shutdown_only_return unpublished 1(?: |$)',stderr,re.M))
+    stages={'native_context_initialized_observed':initialized,'native_core_load_completed':loaded,
+            'native_core_load_result':load[0] if load else None,
+            'game_startup_returned':bool(re.search(r'^C6_LINUX_GAME_LOAD startup_return(?: |$)',stderr,re.M)),
+            'game_shutdown_returned':bool(re.search(r'^C6_LINUX_GAME_LOAD shutdown_return(?: |$)',stderr,re.M)),
+            'controller_cache_initialized':bool(re.search(r'^C6_LINUX_ACTION_LIFECYCLE initialize_cache_return(?: |$)',stderr,re.M)),
+            'controller_uninitialized_cleanly':bool(controller and controller[-1]==('0','0','0','1')),
+            'framework_cleanup_result':cleanup_result,'client_unpublished_observed':client}
+    return {'fixture_success':code==0 and result==0,'native_boundary_result':result,
+            'framework_boundary_returned':result is not None,
+            'framework_cleanup_proven':cleanup_result==0,'client_cleanup_proven':client,
+            'initialized_game':initialized and loaded,
+            'initialized_game_scope':'observed native Core context and complete stream Load only; not complete live-state coverage or gameplay parity',
+            'lifecycle_stages':stages}
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')
@@ -51,6 +78,7 @@ def main():
         parser.add_argument('--movement-cost-'+label,type=Path)
     parser.add_argument('--movement-cost-max-formations',type=int,default=256)
     parser.add_argument('--movement-cost-diagnostic',action='store_true')
+    parser.add_argument('--movement-cost-xp2-map',action='store_true')
     parser.add_argument('--prepare-only',action='store_true')
     for name in ('before','after','repeat','command'):
         parser.add_argument('--core-component-'+name,type=Path)
@@ -125,6 +153,8 @@ def main():
         if len(set(random_paths.values()))!=3:parser.error('random damage artifact paths must be distinct')
     elif any((args.combat_random_output,args.combat_random_control_save,args.combat_random_post_save)):
         parser.error('random damage output paths require its input')
+    if args.movement_cost_diagnostic and args.movement_cost_xp2_map:parser.error('movement probe revisions must be separate')
+    if args.movement_cost_xp2_map and not movement_mode:parser.error('XP2 movement probe revision requires a movement mode')
     if args.movement_cost_diagnostic and movement_mode!='control':parser.error('movement admission diagnostic requires fact-only control mode')
     movement_paths={}
     if movement_mode:
@@ -339,7 +369,7 @@ def main():
     movement_profile=None
     movement_audit_paths=[]
     if movement_mode:
-        movement_audit_paths=[ROOT/'tools/linux/movement_probe_audit.py',ROOT/('evidence/linux/movement-cost-probe-diagnostic-contract.json' if args.movement_cost_diagnostic else 'evidence/linux/movement-cost-probe-contract.json'),ROOT/'tools/linux/game_load_state_audit.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
+        movement_audit_paths=[ROOT/'tools/linux/movement_probe_audit.py',ROOT/('evidence/linux/movement-cost-probe-xp2-contract.json' if args.movement_cost_xp2_map else 'evidence/linux/movement-cost-probe-diagnostic-contract.json' if args.movement_cost_diagnostic else 'evidence/linux/movement-cost-probe-contract.json'),ROOT/'tools/linux/game_load_state_audit.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
         movement_contract=json.loads(movement_audit_paths[1].read_text())
         for name,sha in movement_contract['sources'].items():
             if digest(ROOT/name)!=sha:raise SystemExit('movement source identity mismatch: '+name)
@@ -382,7 +412,7 @@ def main():
         bootstrap_sha='b898657a0e88837be77ecdfa89516494ce3e325ddb43bcc6bb1bca4e9e02d89d'
         committed_bootstrap=subprocess.check_output(['git','show',bootstrap_commit+':'+bootstrap_source],cwd=ROOT)
         if hashlib.sha256(committed_bootstrap).hexdigest()!=bootstrap_sha or digest(ROOT/bootstrap_source)!=bootstrap_sha:raise SystemExit('movement committed localization bridge differs from accepted source')
-        movement_profile={'mode':movement_mode,'admission_diagnostic':args.movement_cost_diagnostic,'max_formations':args.movement_cost_max_formations,'query_options':0,'actual_move_options_available':False,'contract':movement_contract,'frozen_artifacts':frozen,'candidate_frozen_before_original_execution':True,'candidate_source_manifest':{'path':str(candidate_manifest_path.relative_to(ROOT)),'sha256':digest(candidate_manifest_path),'source_reference_commit':candidate_source_commit},'bootstrap_source':{'path':bootstrap_source,'sha256':bootstrap_sha,'commit':bootstrap_commit,'accepted_native_configuration':'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'},'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'quiescence':'original controller/context idle plus acquired/released native Game facade lock barrier; unknown/work fatal before poststate/teardown'}
+        movement_profile={'mode':movement_mode,'admission_diagnostic':args.movement_cost_diagnostic,'xp2_map_revision':args.movement_cost_xp2_map,'max_formations':args.movement_cost_max_formations,'query_options':0,'actual_move_options_available':False,'contract':movement_contract,'frozen_artifacts':frozen,'candidate_frozen_before_original_execution':True,'candidate_source_manifest':{'path':str(candidate_manifest_path.relative_to(ROOT)),'sha256':digest(candidate_manifest_path),'source_reference_commit':candidate_source_commit},'bootstrap_source':{'path':bootstrap_source,'sha256':bootstrap_sha,'commit':bootstrap_commit,'accepted_native_configuration':'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'},'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'quiescence':'original controller/context idle plus acquired/released native Game facade lock barrier; unknown/work fatal before poststate/teardown'}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
@@ -636,6 +666,7 @@ def main():
             'returncode':code,'stdout':out,'stderr':err,'framework_boundary_returned':code==0 and 'boundary_return result 0' in err,
             'framework_cleanup_proven':code==0 and 'cleanup_return 0' in err,'client_cleanup_proven':code==0 and 'client_shutdown_only_return unpublished 1' in err,'xp2_activation_proven':False,'initialized_game':False,'gameplay_parity':False,
             'limits':'Original host content-transition diagnostic only; selected module path and actual active-vtable module are distinct observations. Constructor-state callback is not saved Request/Begin semantics. No initialized-game or gameplay parity proof. Teardown is measured only when requested and its marker is present.'}
+    report.update(lifecycle_report(code,err))
     report['native_activation_selection']={}
     report['native_backup_events']=[]
     for line in err.splitlines():
