@@ -5,13 +5,14 @@
 use super::{notifications, resources::Bound};
 use crate::{registry::LinuxDefinitionRegistry, unit_initialization_definitions, Rules, SqlValue};
 use c6_core::{
-    core_player::initialization::WireBinding,
-    loaded_state::LoadedState,
+    core_player::initialization::{WireBinding, WireRole},
+    loaded_state::{ComponentSnapshotWitness, LoadedState},
     notification_lifecycle::{self as lifecycle, ObjectId, PoolId},
     notifications::{ComponentId, LocalizedString, Notification},
     player_prerequisites::IndexedBools,
     player_techs::Techs,
 };
+use sha2::{Digest, Sha256};
 
 pub const TYPE_HASH: u32 = 0x592d_f4c8;
 pub const VTABLE_ADDRESSPOINT: u64 = 0x3af_5060;
@@ -20,6 +21,7 @@ pub const DEFAULT_BLOCKING: i32 = 0xeef1_1bf9u32 as i32;
 pub enum Error {
     Resources(unit_initialization_definitions::Error),
     Rules(crate::Error),
+    Graph(c6_core::game_techs::Error),
     Unsupported(&'static str),
 }
 impl std::fmt::Display for Error {
@@ -82,6 +84,82 @@ impl Definitions {
             hidden_until_prereq: bools(rules, "Technologies_XP2", "HiddenUntilPrereqComplete")?,
         })
     }
+    /// Admitted native collection lookup for the separately source-closed
+    /// Game.Techs Read/Validate projection. No SQL row-ID casting is involved.
+    pub fn technology_lookup(&self) -> &dyn c6_core::movement_world::DefinitionLookup {
+        &self.technologies
+    }
+    /// Attribute the saved owner to this exact pristine source image, then
+    /// execute only the closed owner-local Read/Validate/nonempty-postload
+    /// projection. Later load callbacks and final native runtime equivalence
+    /// remain separate obligations; this does not certify a live graph capture.
+    pub fn source_read_graph(
+        &self,
+        state: &LoadedState,
+        trace: &[u8],
+        limits: c6_core::unit::Limits,
+    ) -> Result<GameTechs, Error> {
+        const CORE: &str = "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884";
+        const TRACE: &str = "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae";
+        const OWNER: &str = "8b9f3c06c16559047dfa52ccb81e8b72661c151d9a28b590b808231cb21f0455";
+        let source = state.source_image();
+        let digest: [u8; 32] = Sha256::digest(source).into();
+        let trace_digest: [u8; 32] = Sha256::digest(trace).into();
+        if !state.is_pristine()
+            || self.binding != *state.binding()
+            || digest != state.binding().core_sha256
+            || format!("{:x}", Sha256::digest(source)) != CORE
+            || format!("{:x}", Sha256::digest(trace)) != TRACE
+        {
+            return Err(Error::Unsupported("attributed GameTechs snapshot/session"));
+        }
+        let mut frame = None;
+        for line in trace.split(|b| *b == b'\n').filter(|line| !line.is_empty()) {
+            let row: serde_json::Value = serde_json::from_slice(line)
+                .map_err(|_| Error::Unsupported("GameTechs owner trace JSON"))?;
+            if row["event"] == "owner"
+                && row["save"] == 1
+                && row["owner"] == "GameCore::Game::Techs"
+            {
+                if frame.is_some() || row["depth"] != 1 || row["parent"] != 1 {
+                    return Err(Error::Unsupported("unique GameTechs source owner"));
+                }
+                let position = |field| {
+                    row[field]
+                        .as_u64()
+                        .and_then(|n| usize::try_from(n).ok())
+                        .ok_or(Error::Unsupported("GameTechs owner extent"))
+                };
+                frame = Some([position("start")?, position("end")?]);
+            }
+        }
+        let range = frame.ok_or(Error::Unsupported("GameTechs source owner missing"))?;
+        if range[0] >= range[1] {
+            return Err(Error::Unsupported("GameTechs owner extent"));
+        }
+        let bytes = source
+            .get(range[0]..range[1])
+            .ok_or(Error::Unsupported("GameTechs owner extent"))?;
+        if format!("{:x}", Sha256::digest(bytes)) != OWNER {
+            return Err(Error::Unsupported("GameTechs owner source preimage"));
+        }
+        let wire = c6_core::game_techs::Techs::decode(bytes, limits).map_err(Error::Graph)?;
+        let graph = wire
+            .project_read(&self.technologies)
+            .map_err(Error::Graph)?
+            .post_load_without_rebuild()
+            .map_err(Error::Graph)?;
+        let mut input = GameTechs::from_source_read(self.binding.clone(), &graph);
+        input.source_witness = Some(ComponentSnapshotWitness {
+            source_role: WireRole::SavedOutputCore,
+            snapshot_sha256: digest,
+            snapshot_bytes: source.len(),
+            owner_trace_sha256: trace_digest,
+            owner_range: range,
+            decoded_prefix_bytes: bytes.len(),
+        });
+        Ok(input)
+    }
     pub fn technology_count(&self) -> usize {
         self.technologies.entries().len()
     }
@@ -129,18 +207,26 @@ impl Definitions {
     }
 }
 
-/// Complete original validated mutable graph, not the initial rules edges.
-/// The caller must retain its actual source/session authority. This constructor
-/// checks shape/binding only; it does not authenticate an invented live export.
+/// Query-relevant fields from a complete ordered graph input. The full owner
+/// retains raw costs separately. Source projections and caller-provided native
+/// fields remain distinct; neither is authenticated by a shape check alone.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TechNode {
     pub native_type: i32,
     pub active: bool,
     pub prerequisites: Vec<i32>,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GraphSource {
+    CallerProvided,
+    SourceReadNoRebuild,
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GameTechs {
     binding: WireBinding,
+    source: GraphSource,
+    source_witness: Option<ComponentSnapshotWitness>,
+    projected_owner: Option<c6_core::game_techs::Graph>,
     ordered_types: Vec<i32>,
     nodes: Vec<TechNode>,
 }
@@ -155,9 +241,43 @@ impl GameTechs {
         }
         Ok(Self {
             binding,
+            source: GraphSource::CallerProvided,
+            source_witness: None,
+            projected_owner: None,
             ordered_types,
             nodes,
         })
+    }
+    /// A query view of the exact owner-local Read/Validate and nonempty
+    /// post-load source branch. The caller retains the full typed owner (costs
+    /// included) and authenticates its snapshot/session and registry binding.
+    /// This does not turn a saved owner into observed final native runtime state.
+    pub fn from_source_read(binding: WireBinding, graph: &c6_core::game_techs::Graph) -> Self {
+        Self {
+            binding,
+            source: GraphSource::SourceReadNoRebuild,
+            source_witness: None,
+            projected_owner: Some(graph.clone()),
+            ordered_types: graph.iteration().to_vec(),
+            nodes: graph
+                .nodes()
+                .iter()
+                .map(|node| TechNode {
+                    native_type: node.native_type,
+                    active: node.active,
+                    prerequisites: node.prerequisites.clone(),
+                })
+                .collect(),
+        }
+    }
+    pub fn source(&self) -> GraphSource {
+        self.source
+    }
+    pub fn source_witness(&self) -> Option<&ComponentSnapshotWitness> {
+        self.source_witness.as_ref()
+    }
+    pub fn projected_owner(&self) -> Option<&c6_core::game_techs::Graph> {
+        self.projected_owner.as_ref()
     }
     fn node(&self, t: i32) -> Option<&TechNode> {
         if t == -1 {
