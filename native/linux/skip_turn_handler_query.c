@@ -31,7 +31,7 @@ int c6_linux_skip_turn_handler_query(void *module,void *context,
     if(!anchor||!dladdr(anchor,&info)||!info.dli_fbase)return 241;
     uintptr_t base=(uintptr_t)info.dli_fbase;
     if((uintptr_t)anchor!=base+0x2da1260)return 241;
-    int (*idle)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_placement_metadata_quiescent");
+    int (*idle)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_placement_handler_metadata_quiescent");
     if(!idle)return 241;
     quiescent(idle,module,context);
     const void *(*manager_get)(void)=(void *)anchor;
@@ -55,6 +55,12 @@ int c6_linux_skip_turn_handler_query(void *module,void *context,
     if(id!=resolved_id||hash!=0x2c681908)return 242;
     if(unit&&pointer_at(unit,0)!=base+0x3ae5f80)return 243;
     if(plot&&pointer_at(plot,0)!=base+0x3ae23a0)return 243;
+    if(unit) {
+        const void *(*formation_get)(const void *)=(void *)(base+0x20214e0);
+        /* Human CanStart passes this directly to the count overload, which
+         * dereferences it. Missing live ownership is unsupported, not false. */
+        if(!formation_get(unit))return 244;
+    }
     bool allowed=false;
     if(unit) {
         void (*construct)(void *,int32_t)=(void *)(base+0x213d4a0);

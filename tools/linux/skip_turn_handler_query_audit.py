@@ -93,6 +93,8 @@ def main():
         operation='complete 32-byte 8-aligned local; original ctor(runtime ID), original dtor; null parameters',
         ignored_arguments=['Operation', 'Plot', 'visible_only', 'results'],
         query_scope='handler only; NULL Unit is recorded without original handler invocation',
+        formation_admission='original Unit.GetFormation(0x20214e0) must be nonnull for every supplied Unit; null returns unsupported244 without result or handler call',
+        admission_guard='c6_linux_placement_handler_metadata_quiescent; new independent query-profile admission required',
         purity='source-derived read-only getter/count chain; complete live purity requires native controls',
         native_comparison_available=False, full_manager_can_start_supported=False,
         complete_state_action_turns_supported=False, historical_raw_save_load_failure_bytes=89198)

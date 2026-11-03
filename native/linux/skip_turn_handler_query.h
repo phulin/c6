@@ -13,6 +13,11 @@ typedef struct {
  * loaded Context/Game admission owners, and verify Unit container membership.
  * unit and optional plot are borrowed actual objects. NULL unit is recorded
  * without invoking the handler. NULL plot is a genuine nullable argument.
+ * Every supplied Unit must have a genuine nonnull original GetFormation;
+ * missing Formation returns unsupported 244 and leaves result untouched.
+ * Requires the new independent profile's exported admission guard
+ * c6_linux_placement_handler_metadata_quiescent; old placement scope cannot
+ * admit this query.
  * Run for every actual Unit, including unplaced Units; bracket with complete
  * Saves, known RNG checks and independent repeat. No full Manager legality,
  * action, request, scripts, reporting or turn support is implied.
