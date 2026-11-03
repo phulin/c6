@@ -885,6 +885,25 @@ impl Prefix {
         binding: initialization::WireBinding,
         contexts: &impl PlayerInitializations,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_player_manager_conditional_reserving(
+            bytes,
+            limits,
+            binding,
+            contexts,
+            |records, additional| {
+                records
+                    .try_reserve_exact(additional)
+                    .map_err(|_| Error::ResourceLimit)
+            },
+        )
+    }
+    fn decode_player_manager_conditional_reserving(
+        bytes: &[u8],
+        limits: Limits,
+        binding: initialization::WireBinding,
+        contexts: &impl PlayerInitializations,
+        mut reserve: impl FnMut(&mut Vec<FirstPlayer>, usize) -> Result<(), Error>,
+    ) -> Result<(Self, usize, usize), Error> {
         let (mut prefix, consumed, items) = Self::decode_prefix_with_items(bytes, limits)?;
         let mut reader = Reader {
             bytes,
@@ -910,13 +929,12 @@ impl Prefix {
         {
             return Err(Error::ResourceLimit);
         }
-        prefix
-            .additional_players
-            .try_reserve_exact(count)
-            .map_err(|_| Error::ResourceLimit)?;
         for index in 1..prefix.player_count {
             let mut player = reader.player_prefix()?;
             reader.complete_player(&mut player, index, &binding, contexts)?;
+            // Reserve only for a fully decoded record. An advertised count
+            // never becomes a typed-storage allocation request.
+            reserve(&mut prefix.additional_players, 1)?;
             prefix.additional_players.push(player);
         }
         prefix.initialization_binding = Some(binding);
@@ -3221,6 +3239,43 @@ mod tests {
                 .0
                 .complete_player_manager_wire()
         );
+    }
+    #[test]
+    fn malformed_advertised_roster_does_not_reserve_unparsed_records() {
+        let (mut prefix, _) = source_manager(&[(false, false)]);
+        prefix.player_count = 600_001;
+        prefix.unfinished_player_entries = 600_000;
+        prefix.boundary = Boundary::NextPlayerEntry;
+        let binding = prefix.initialization_binding.clone().unwrap();
+        let (mut bytes, _) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
+        // Enough source-minimum wire for the advertised count; the next
+        // requested ID is followed by version0, so it must fail before reserve.
+        bytes.resize(bytes.len() + 600_000 * 102, 0);
+        let limits = Limits {
+            max_bytes: bytes.len(),
+            max_items: 1_000_000,
+        };
+        let provider = |_| None;
+        let mut requests = Vec::new();
+        let result = Prefix::decode_player_manager_conditional_reserving(
+            &bytes,
+            limits,
+            binding,
+            &provider,
+            |_, additional| {
+                requests.push(additional);
+                // Safe allocator seam: no request reaches the real allocator.
+                Err(Error::ResourceLimit)
+            },
+        );
+        assert!(matches!(
+            result,
+            Err(Error::Version {
+                expected: 47,
+                actual: 0
+            })
+        ));
+        assert!(requests.is_empty());
     }
     #[test]
     fn conditional_model_rejects_wrong_owner_context_and_branch_before_output() {
