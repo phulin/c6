@@ -36,9 +36,16 @@ not written here. Nested ArrayVariants use options zero through the wrapper at
 `0x3968040`. Its reader (`0x3968470`) treats negative section counts as zero
 iterations. Numeric key bits survive the signed key read.
 
-`Data::TypedVariantMap` (`0x3961e50`) and `TypedVariantVectorMap`
-(`0x3966c30`) share the keyed header/member methods (`0x3971510`, `0x3971580`).
-Both vtables resolve those methods, and the shared reader `0x3971330`, in the
+`Data::TypedVariantMap::Serialize` (`0x3961e50`) and
+`TypedVariantVectorMap::Serialize` (`0x3966c30`) share the keyed header/member
+methods (`0x3971510`, `0x3971580`). These addresses identify writer functions,
+not vtables. The pinned host vtable symbols are `0x53b3680` and `0x53b39e0`;
+each object vptr uses the table address plus 16. The ordinary map constructors
+`0x395f070` and `0x395f0f0` explicitly store `0x53b3680 + 16`. Relative to
+that address point, slots `+0x1f0/+0x1f8/+0x200/+0x208` resolve the reader,
+writer, keyed header and keyed member methods respectively. The executable
+audit already distinguishes these table and writer addresses; this clarifies
+the documentation. Both tables resolve the shared reader `0x3971330` in the
 pinned host. The ordinary map writes ascending unsigned keys; the vector map
 writes stored vector order. The latter must not be sorted by a codec.
 
