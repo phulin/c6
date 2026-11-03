@@ -154,11 +154,83 @@ pub struct CachedExecutionState {
 pub enum CachedCallCapacity {
     Unknown,
     NoGrowthForThreeIntegers,
+    /// Twenty-eight API cells, three nested C frames, and bounded depth.
+    NoGrowthForFactoryThreeIntegers,
+}
+
+/// Current semantic facts for the all-intern-hit, no-destination-growth factory
+/// frontier. Facts are supplied from actual initial state, not inferred from a
+/// successful call. Insertion facts are one-use and must be invalidated by any
+/// external VM activity. An absent fact is unsupported, never spare capacity.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FactoryExecutionState {
+    pub game_event_spare_names: std::collections::BTreeSet<String>,
+    pub name_map_spare_names: std::collections::BTreeSet<String>,
+    /// Exact native objlen+1, already allocated and nil, for the next append.
+    /// This does not assert any additional spare slot after that append.
+    pub shared_spare_slots: BTreeMap<ScriptObjectId, usize>,
+    pub weak_shared_groups: std::collections::BTreeSet<ScriptObjectId>,
+    /// Retained identities in execution order, including unswept temporaries.
+    pub factory_objects: Vec<FactoryObjects>,
+}
+
+/// All newly linked swept objects, in native construction order. Backing
+/// allocations are retained by their table: event hash16 (640 bytes), event
+/// metatable hash4 (160), new shared array1 (16), weak metatable hash1 (40).
+/// Headers are64 bytes; methods/factory closure64; protected closure48.
+/// The protected and factory closures remain112 bytes of garbage obligations;
+/// no admitted call collects them. The factory closure retains shared_group.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FactoryObjects {
+    pub event: EventIdentity,
+    pub protected_closure: ScriptObjectId,
+    pub factory_closure: ScriptObjectId,
+    pub event_metatable: ScriptObjectId,
+    pub protected_metatable: ScriptObjectId,
+    pub weak_metatable: Option<ScriptObjectId>,
+    pub swept_construction_order: Vec<ScriptObjectId>,
+}
+
+// Small effect-free scalar plan, not a heap/graph transaction or native replay.
+struct AllocationPlan {
+    countdown: i32,
+    allocated: u64,
+    peak: u64,
+    threshold: u64,
+    inhibited: bool,
+}
+impl AllocationPlan {
+    fn charge(&mut self, units: i32, allocations: &[u64], free: u64) -> Result<(), RegistryError> {
+        if self.countdown <= units && self.allocated > self.threshold && !self.inhibited {
+            return Err(RegistryError::UnsupportedEffect("collector progression"));
+        }
+        self.countdown = self.countdown.wrapping_sub(units);
+        for bytes in allocations {
+            self.allocated =
+                self.allocated
+                    .checked_add(*bytes)
+                    .ok_or(RegistryError::UnsupportedEffect(
+                        "factory allocation accounting overflow",
+                    ))?;
+            self.peak = self.peak.max(self.allocated);
+        }
+        self.allocated =
+            self.allocated
+                .checked_sub(free)
+                .ok_or(RegistryError::UnsupportedEffect(
+                    "factory allocation accounting underflow",
+                ))?;
+        Ok(())
+    }
 }
 
 impl CachedExecutionState {
     fn admit(&self, name: &str) -> Result<(), RegistryError> {
-        if self.call_capacity != CachedCallCapacity::NoGrowthForThreeIntegers {
+        if !matches!(
+            self.call_capacity,
+            CachedCallCapacity::NoGrowthForThreeIntegers
+                | CachedCallCapacity::NoGrowthForFactoryThreeIntegers
+        ) {
             return Err(RegistryError::UnsupportedEffect(
                 "unknown call growth effects",
             ));
@@ -507,6 +579,267 @@ impl ScriptEventRegistry {
         Ok(any_nonempty.then_some(true))
     }
 
+    /// Execute cached TestAll or the bounded absent-event factory from current
+    /// typed state. All source-used strings must already be interned. Unknown
+    /// capacity, map state, intern misses, collection, or callbacks refuse before
+    /// any mutation. This source projection does not establish native parity or
+    /// implement complete actions, turns, arbitrary HKS execution, or collection.
+    pub fn test_all_bounded(
+        &mut self,
+        name: &str,
+        arguments: [i32; 3],
+        effects: &mut CachedExecutionState,
+        factory: &mut FactoryExecutionState,
+    ) -> Result<Option<bool>, RegistryError> {
+        if self.cached_event(name).is_some() {
+            return self.test_all_cached(name, arguments, effects);
+        }
+        if name.as_bytes().contains(&0) {
+            return Err(RegistryError::UnsupportedEffect(
+                "embedded NUL in native field name",
+            ));
+        }
+        let entry = self
+            .names
+            .get(name)
+            .copied()
+            .ok_or_else(|| RegistryError::UnknownNameMapEntry(name.to_owned()))?;
+        if effects.call_capacity != CachedCallCapacity::NoGrowthForFactoryThreeIntegers {
+            return Err(RegistryError::UnsupportedEffect(
+                "unknown factory call growth effects",
+            ));
+        }
+        if effects.collector_phase != 0 {
+            return Err(RegistryError::UnsupportedEffect(
+                "collector phase outside factory frontier",
+            ));
+        }
+        for key in [
+            "GameEvents",
+            name,
+            "TestAll",
+            "GameEvent::lCreate",
+            "func",
+            "Add",
+            "Count",
+            "Remove",
+            "RemoveAll",
+            "Call",
+            "Accumulate",
+            "AccumulateINT",
+            "TestAny",
+            "__newindex",
+            "__metatable",
+        ] {
+            if !effects.interned_names.contains(key) {
+                return Err(RegistryError::UnsupportedEffect("string intern miss"));
+            }
+        }
+        if !factory.game_event_spare_names.contains(name) {
+            return Err(RegistryError::UnsupportedEffect(
+                "unknown GameEvents insertion growth",
+            ));
+        }
+        let append_position = match entry {
+            KnownNameEntry::Absent => {
+                if !factory.name_map_spare_names.contains(name) {
+                    return Err(RegistryError::UnsupportedEffect(
+                        "unknown name-map insertion growth",
+                    ));
+                }
+                if !effects.interned_names.contains("__mode")
+                    || !effects.interned_names.contains("v")
+                {
+                    return Err(RegistryError::UnsupportedEffect("string intern miss"));
+                }
+                0
+            }
+            KnownNameEntry::Shared(id) => {
+                let group = &self.shared_groups[&id];
+                if !factory.weak_shared_groups.contains(&id) {
+                    return Err(RegistryError::UnsupportedEffect(
+                        "unknown shared-group weak semantics",
+                    ));
+                }
+                if !factory
+                    .shared_spare_slots
+                    .get(&id)
+                    .is_some_and(|slot| *slot > 0 && *slot <= i32::MAX as usize)
+                {
+                    return Err(RegistryError::UnsupportedEffect(
+                        "unknown shared-group spare array slot",
+                    ));
+                }
+                if group.entries_in_native_order.len() >= MAX_GROUP_ENTRIES {
+                    return Err(RegistryError::UnsupportedEffect(
+                        "group entries exceed bounded projection",
+                    ));
+                }
+                for existing in &group.entries_in_native_order {
+                    if let GroupEntry::Table(local) = existing {
+                        if self.local_groups[local].objlen != 0 {
+                            return Err(RegistryError::UnsupportedCallbackVm);
+                        }
+                    }
+                }
+                match group.append_order {
+                    AppendOrder::DenseNumericArray => {
+                        if factory.shared_spare_slots[&id]
+                            != group.entries_in_native_order.len() + 1
+                        {
+                            return Err(RegistryError::UnsupportedEffect(
+                                "inconsistent shared-group spare array slot",
+                            ));
+                        }
+                        group.entries_in_native_order.len()
+                    }
+                    AppendOrder::KnownNextPosition(position) => position,
+                    AppendOrder::Unknown => {
+                        return Err(RegistryError::UnsupportedEffect(
+                            "unknown shared-group append traversal",
+                        ))
+                    }
+                }
+            }
+        };
+        let protected_obligations = effects.protected_closure_obligations.checked_add(1).ok_or(
+            RegistryError::UnsupportedEffect("cached allocation accounting overflow"),
+        )?;
+        let mut allocation = AllocationPlan {
+            countdown: effects.step_countdown,
+            allocated: effects.allocated_bytes,
+            peak: effects.peak_allocated_bytes,
+            threshold: effects.collection_threshold,
+            inhibited: effects.collection_inhibited,
+        };
+        // Ordered source ledger: each check sees OLD signed countdown and OLD
+        // current bytes. Resize allocates before freeing old backing. Intern
+        // hits at phase zero have no charge; missing membership was rejected.
+        allocation.charge(1, &[48], 0)?;
+        if entry == KnownNameEntry::Absent {
+            allocation.charge(3, &[64], 0)?; // shared table
+            allocation.charge(3, &[64, 16], 0)?; // weak metatable
+            allocation.charge(1, &[40], 16)?; // __mode string insertion
+        }
+        allocation.charge(1, &[64], 0)?; // temporary factory closure
+        allocation.charge(3, &[64], 0)?; // event
+        allocation.charge(3, &[64], 0)?; // local array
+        if entry == KnownNameEntry::Absent {
+            allocation.charge(1, &[16], 0)?; // first shared numeric slot
+        }
+        // Native registration order differs from REGISTERED_METHODS indexing.
+        const METHOD_ORDER: [usize; 9] = [0, 3, 1, 2, 4, 7, 8, 6, 5];
+        let mut old_hash_bytes = 0;
+        for insertion in 1u64..=9 {
+            allocation.charge(1, &[64], 0)?;
+            if matches!(insertion, 1 | 2 | 3 | 5 | 9) {
+                let hash_bytes = 40 * insertion.next_power_of_two();
+                allocation.charge(1, &[hash_bytes], old_hash_bytes)?;
+                old_hash_bytes = hash_bytes;
+            }
+        }
+        allocation.charge(3, &[64, 160], 0)?; // event metatable
+        allocation.charge(3, &[64], 0)?; // protected empty metatable
+
+        // Reserve every new swept identity before mutation, including garbage
+        // obligations and metatables. Assign in actual source construction order.
+        let count = if entry == KnownNameEntry::Absent {
+            17
+        } else {
+            15
+        };
+        let end = self
+            .next_identity
+            .checked_add(count)
+            .ok_or(RegistryError::IdentityExhausted)?;
+        let mut next = self.next_identity;
+        let mut order = Vec::new();
+        let mut fresh = || {
+            let id = ScriptObjectId(next);
+            next += 1;
+            order.push(id);
+            id
+        };
+        let protected_closure = fresh();
+        let (shared_group, weak_metatable) = match entry {
+            KnownNameEntry::Absent => (fresh(), Some(fresh())),
+            KnownNameEntry::Shared(id) => (id, None),
+        };
+        let factory_closure = fresh();
+        let event = fresh();
+        let local_group = fresh();
+        let mut methods = [ScriptObjectId(0); 9];
+        for method in METHOD_ORDER {
+            methods[method] = fresh();
+        }
+        let event_metatable = fresh();
+        let protected_metatable = fresh();
+        let identity = EventIdentity {
+            event,
+            shared_group,
+            local_group,
+            test_all: methods[5],
+            methods,
+        };
+        debug_assert_eq!(next, end);
+
+        // All fallible admission is complete. Commit just the reached objects,
+        // consumed facts, and scalar allocator projection.
+        if entry == KnownNameEntry::Absent {
+            self.shared_groups.insert(
+                shared_group,
+                SharedGroup {
+                    entries_in_native_order: vec![],
+                    append_order: AppendOrder::DenseNumericArray,
+                },
+            );
+            self.names
+                .insert(name.to_owned(), KnownNameEntry::Shared(shared_group));
+            factory.weak_shared_groups.insert(shared_group);
+            factory.name_map_spare_names.clear();
+        }
+        self.local_groups.insert(
+            local_group,
+            LocalGroup {
+                objlen: 0,
+                numeric_slots: BTreeMap::new(),
+            },
+        );
+        let shared = self
+            .shared_groups
+            .get_mut(&shared_group)
+            .expect("admitted group");
+        shared
+            .entries_in_native_order
+            .insert(append_position, GroupEntry::Table(local_group));
+        if matches!(shared.append_order, AppendOrder::KnownNextPosition(_)) {
+            shared.append_order = AppendOrder::Unknown;
+        }
+        self.cache.insert(name.to_owned(), identity);
+        self.next_identity = end;
+        factory.game_event_spare_names.clear();
+        factory.shared_spare_slots.remove(&shared_group);
+        factory.factory_objects.push(FactoryObjects {
+            event: identity,
+            protected_closure,
+            factory_closure,
+            event_metatable,
+            protected_metatable,
+            weak_metatable,
+            swept_construction_order: order,
+        });
+        effects.step_countdown = allocation.countdown;
+        effects.allocated_bytes = allocation.allocated;
+        effects.peak_allocated_bytes = allocation.peak;
+        effects.protected_closure_obligations = protected_obligations;
+        // Compute builtin TestAll from the actual committed group, rather than
+        // returning a factory-specific constant or replayed native answer.
+        let any_nonempty = self.shared_groups[&shared_group].entries_in_native_order.iter().any(|entry| {
+            matches!(entry, GroupEntry::Table(local) if self.local_groups[local].objlen != 0)
+        });
+        Ok(any_nonempty.then_some(true))
+    }
+
     /// Source-backed ordinary lookup: indexer creates the shared group if known
     /// absent, creates a local array and event/method closure, and caches event.
     /// This is a logical projection; HKS allocation/GC effects remain unsupported.
@@ -727,6 +1060,323 @@ impl ScriptEventRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn factory_context(
+        reused: bool,
+    ) -> (
+        ScriptEventRegistry,
+        CachedExecutionState,
+        FactoryExecutionState,
+    ) {
+        let mut seed = seed();
+        let mut factory = FactoryExecutionState {
+            game_event_spare_names: ["CanStartOperation".into(), "later".into()].into(),
+            name_map_spare_names: ["CanStartOperation".into(), "later".into()].into(),
+            ..Default::default()
+        };
+        seed.names.insert("later".into(), KnownNameEntry::Absent);
+        if reused {
+            let shared = ScriptObjectId(10);
+            seed.names
+                .insert("CanStartOperation".into(), KnownNameEntry::Shared(shared));
+            seed.shared_groups.insert(
+                shared,
+                SharedGroup {
+                    entries_in_native_order: vec![],
+                    append_order: AppendOrder::DenseNumericArray,
+                },
+            );
+            factory.shared_spare_slots.insert(shared, 1);
+            factory.weak_shared_groups.insert(shared);
+        }
+        let mut effects = cached_effects();
+        effects.call_capacity = CachedCallCapacity::NoGrowthForFactoryThreeIntegers;
+        effects.step_countdown = 1000;
+        effects.collection_threshold = u64::MAX;
+        effects.interned_names.extend(
+            [
+                "GameEvent::lCreate",
+                "func",
+                "Add",
+                "Count",
+                "Remove",
+                "RemoveAll",
+                "Call",
+                "Accumulate",
+                "AccumulateINT",
+                "TestAny",
+                "__newindex",
+                "__metatable",
+                "__mode",
+                "v",
+                "later",
+            ]
+            .map(str::to_owned),
+        );
+        (
+            ScriptEventRegistry::from_seed(seed).unwrap(),
+            effects,
+            factory,
+        )
+    }
+
+    #[test]
+    fn factory_new_and_reused_accounting_identity_and_cached_continuation() {
+        for reused in [false, true] {
+            let (mut registry, mut effects, mut factory) = factory_context(reused);
+            let original = effects.clone();
+            assert_eq!(
+                registry.test_all_bounded(
+                    "CanStartOperation",
+                    [0, 7, 36],
+                    &mut effects,
+                    &mut factory
+                ),
+                Ok(None)
+            );
+            let charge = if reused { 28 } else { 36 };
+            let net = if reused { 1744 } else { 1928 };
+            let peak = if reused { 1776 } else { 1960 };
+            assert_eq!(effects.step_countdown, original.step_countdown - charge);
+            assert_eq!(effects.allocated_bytes, original.allocated_bytes + net);
+            assert_eq!(
+                effects.peak_allocated_bytes,
+                original.allocated_bytes + peak
+            );
+            assert_eq!(effects.protected_closure_obligations, 1);
+            assert_eq!(effects.interned_names, original.interned_names);
+            let objects = &factory.factory_objects[0];
+            let event = objects.event;
+            assert_eq!(registry.cached_event("CanStartOperation"), Some(event));
+            assert_eq!(event.test_all, event.methods[5]);
+            assert!(event.event.0 < event.local_group.0);
+            // Actual source order, preserving the public method-index contract.
+            let registration = [0, 3, 1, 2, 4, 7, 8, 6, 5].map(|i| event.methods[i].0);
+            assert!(registration.windows(2).all(|ids| ids[0] + 1 == ids[1]));
+            assert_eq!(
+                objects.swept_construction_order.len(),
+                if reused { 15 } else { 17 }
+            );
+            assert!(objects
+                .swept_construction_order
+                .windows(2)
+                .all(|ids| ids[0].0 + 1 == ids[1].0));
+            assert_eq!(objects.weak_metatable.is_some(), !reused);
+            assert!(factory.weak_shared_groups.contains(&event.shared_group));
+            assert_eq!(
+                registry.shared_groups[&event.shared_group].entries_in_native_order,
+                [GroupEntry::Table(event.local_group)]
+            );
+            assert_eq!(registry.local_groups[&event.local_group].objlen, 0);
+            assert!(factory.game_event_spare_names.is_empty());
+            assert_eq!(factory.name_map_spare_names.is_empty(), !reused);
+            assert!(!factory.shared_spare_slots.contains_key(&event.shared_group));
+            let graph = registry.clone();
+            let obligations = factory.clone();
+            assert_eq!(
+                registry.test_all_bounded(
+                    "CanStartOperation",
+                    [i32::MIN, -1, i32::MAX],
+                    &mut effects,
+                    &mut factory
+                ),
+                Ok(None)
+            );
+            assert_eq!(registry, graph);
+            assert_eq!(factory, obligations);
+            assert_eq!(effects.allocated_bytes, original.allocated_bytes + net + 48);
+            assert_eq!(effects.step_countdown, original.step_countdown - charge - 1);
+            // A second uncached name cannot reuse an invalidated destination fact.
+            let before = (registry.clone(), effects.clone(), factory.clone());
+            assert!(registry
+                .test_all_bounded("later", [0; 3], &mut effects, &mut factory)
+                .is_err());
+            assert_eq!((registry.clone(), effects.clone(), factory.clone()), before);
+            let later = registry.lookup("later").unwrap();
+            assert!(later.shared_group.0 > objects_last_id(&obligations));
+        }
+    }
+    fn objects_last_id(factory: &FactoryExecutionState) -> u64 {
+        factory
+            .factory_objects
+            .last()
+            .unwrap()
+            .swept_construction_order
+            .last()
+            .unwrap()
+            .0
+    }
+
+    #[test]
+    fn factory_source_guard_order_uses_current_after_resize_free_and_not_peak() {
+        for reused in [false, true] {
+            let (mut registry, mut effects, mut factory) = factory_context(reused);
+            let charge = if reused { 28 } else { 36 };
+            let before_final = if reused { 1680 } else { 1864 };
+            effects.step_countdown = charge;
+            effects.collection_threshold = 100 + before_final;
+            // Final check is old_countdown==3 and current==threshold, although
+            // the earlier allocate-before-free resize peak exceeds threshold.
+            assert_eq!(
+                registry.test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory),
+                Ok(None)
+            );
+            assert_eq!(effects.step_countdown, 0);
+            assert!(effects.peak_allocated_bytes > effects.collection_threshold);
+            let (mut registry, mut effects, mut factory) = factory_context(reused);
+            effects.step_countdown = charge;
+            effects.collection_threshold = 100 + before_final - 1;
+            let before = (registry.clone(), effects.clone(), factory.clone());
+            assert_eq!(
+                registry.test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory),
+                Err(RegistryError::UnsupportedEffect("collector progression"))
+            );
+            assert_eq!((registry, effects, factory), before);
+        }
+    }
+
+    #[test]
+    fn factory_signed_countdown_wrap_and_old_guard() {
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        effects.step_countdown = i32::MIN;
+        effects.collection_inhibited = true;
+        effects.peak_allocated_bytes = 9999;
+        assert_eq!(
+            registry.test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory),
+            Ok(None)
+        );
+        assert_eq!(effects.step_countdown, i32::MIN.wrapping_sub(28));
+        assert_eq!(effects.peak_allocated_bytes, 9999);
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        effects.step_countdown = i32::MIN;
+        effects.collection_threshold = 99;
+        let before = (registry.clone(), effects.clone(), factory.clone());
+        assert_eq!(
+            registry.test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory),
+            Err(RegistryError::UnsupportedEffect("collector progression"))
+        );
+        assert_eq!((registry, effects, factory), before);
+    }
+
+    #[test]
+    fn factory_all_admission_failures_are_inert() {
+        for case in 0..12 {
+            let (mut registry, mut effects, mut factory) = factory_context(true);
+            match case {
+                0 => effects.call_capacity = CachedCallCapacity::NoGrowthForThreeIntegers,
+                1 => effects.collector_phase = 1,
+                2 => {
+                    effects.interned_names.remove("Count");
+                }
+                3 => {
+                    factory.game_event_spare_names.clear();
+                }
+                4 => {
+                    factory.shared_spare_slots.clear();
+                }
+                5 => {
+                    factory.weak_shared_groups.clear();
+                }
+                6 => {
+                    registry.names.remove("CanStartOperation");
+                }
+                7 => registry.next_identity = u64::MAX,
+                8 => effects.allocated_bytes = u64::MAX - 500,
+                9 => effects.protected_closure_obligations = u64::MAX,
+                10 => {
+                    factory.shared_spare_slots.insert(ScriptObjectId(10), 2);
+                }
+                11 => {
+                    registry
+                        .shared_groups
+                        .get_mut(&ScriptObjectId(10))
+                        .unwrap()
+                        .append_order = AppendOrder::Unknown
+                }
+                _ => unreachable!(),
+            }
+            let before = (registry.clone(), effects.clone(), factory.clone());
+            assert!(
+                registry
+                    .test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory)
+                    .is_err(),
+                "case {case}"
+            );
+            assert_eq!((registry, effects, factory), before, "case {case}");
+        }
+        for key in ["__mode", "v"] {
+            let (mut registry, mut effects, mut factory) = factory_context(false);
+            effects.interned_names.remove(key);
+            let before = (registry.clone(), effects.clone(), factory.clone());
+            assert!(registry
+                .test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory)
+                .is_err());
+            assert_eq!((registry, effects, factory), before);
+        }
+        let (mut registry, mut effects, mut factory) = factory_context(false);
+        factory.name_map_spare_names.clear();
+        let before = (registry.clone(), effects.clone(), factory.clone());
+        assert!(registry
+            .test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory)
+            .is_err());
+        assert_eq!((registry, effects, factory), before);
+    }
+
+    #[test]
+    fn factory_reused_group_preserves_native_order_and_refuses_live_callbacks() {
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        for (id, position) in [(20, 0), (21, 1)] {
+            registry.local_groups.insert(
+                ScriptObjectId(id),
+                LocalGroup {
+                    objlen: 0,
+                    numeric_slots: BTreeMap::new(),
+                },
+            );
+            registry
+                .shared_groups
+                .get_mut(&ScriptObjectId(10))
+                .unwrap()
+                .entries_in_native_order
+                .insert(position, GroupEntry::Table(ScriptObjectId(id)));
+        }
+        registry.next_identity = 22;
+        registry
+            .shared_groups
+            .get_mut(&ScriptObjectId(10))
+            .unwrap()
+            .append_order = AppendOrder::KnownNextPosition(1);
+        factory.shared_spare_slots.insert(ScriptObjectId(10), 8); // known sparse objlen7
+        let mut rejected = registry.clone();
+        rejected
+            .local_groups
+            .get_mut(&ScriptObjectId(21))
+            .unwrap()
+            .objlen = 1;
+        let before = (rejected.clone(), effects.clone(), factory.clone());
+        assert_eq!(
+            rejected.test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory),
+            Err(RegistryError::UnsupportedCallbackVm)
+        );
+        assert_eq!((rejected, effects.clone(), factory.clone()), before);
+        assert_eq!(
+            registry.test_all_bounded("CanStartOperation", [0; 3], &mut effects, &mut factory),
+            Ok(None)
+        );
+        let event = registry.cached_event("CanStartOperation").unwrap();
+        assert_eq!(
+            registry.shared_groups[&ScriptObjectId(10)].entries_in_native_order,
+            [
+                GroupEntry::Table(ScriptObjectId(20)),
+                GroupEntry::Table(event.local_group),
+                GroupEntry::Table(ScriptObjectId(21))
+            ]
+        );
+        assert_eq!(
+            registry.shared_groups[&ScriptObjectId(10)].append_order,
+            AppendOrder::Unknown
+        );
+    }
+
     fn cached_seed() -> (RegistrySeed, BTreeMap<String, EventIdentity>) {
         let mut registry = ScriptEventRegistry::from_seed(seed()).unwrap();
         let event = registry.lookup("CanStartOperation").unwrap();
