@@ -28,6 +28,7 @@ pub mod culture_notifications;
 pub mod handlers;
 pub mod notifications;
 pub mod reporting;
+pub mod scripting;
 
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
