@@ -34,3 +34,5 @@ python3 tools/linux/player_ai_culture_audit.py --source-commit COMMIT --output t
 ```
 
 The candidate builds an unchanged Git archive, verifies all archived regular source files against the Git pin before/after, runs actual targeted Cargo tests and strict all-target Clippy, and records archive/source/harness/executable identities. Missing public export is a build failure; the audit never injects one. The next unimplemented Player record is **AI.Diplomatic v18**.
+
+Committed [evidence](../evidence/linux/player-ai-culture.json) pins exported source `1ac18aaf38d364512cc5fdd69ff1e43770f71e7c` and candidate SHA-256 `0533dbbb420cc4fc655bf44beb682670ae4a76e6faaa3b4216a9192d711c2e03`. Both fixtures cover 43 records, 1,897,888 wire bytes and 81,143 charged items each. All 86 complete typed projections and roundtrips pass; 19,870 bounded native truncation cuts pass, alongside exhaustive small-carrier truncations, exact/one-short budgets and prefix/trailing checks. Two actual Cargo tests and strict all-target c6-core Clippy pass from the unchanged archive. All 1,227 archived regular files match Git content before and after the build.
