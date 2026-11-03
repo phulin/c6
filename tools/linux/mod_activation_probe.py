@@ -451,9 +451,9 @@ def main():
         manifest_path=args.domain_metadata_reconstruction_manifest.resolve()
         manifest=json.loads(manifest_path.read_text())
         if manifest['schema']!='c6-linux-domain-reconstruction-candidate-v1' or manifest['expected_outputs_used_as_inputs'] is not False or manifest['native_execution'] is not False or manifest['native_comparison'] is not False:raise SystemExit('domain reconstruction candidate boundary differs')
-        candidate=ROOT/manifest['candidate_path'];snapshot=ROOT/manifest['source_snapshot_path']
+        candidate=ROOT/manifest['candidate_path'];domain_source_snapshot=ROOT/manifest['source_snapshot_path']
         if digest(candidate)!=manifest['candidate_sha256'] or candidate.stat().st_size!=manifest['candidate_bytes']:raise SystemExit('domain reconstruction executable differs')
-        if digest(snapshot)!=manifest['source_snapshot_sha256'] or snapshot.stat().st_size!=manifest['source_snapshot_bytes']:raise SystemExit('domain reconstruction source archive differs')
+        if digest(domain_source_snapshot)!=manifest['source_snapshot_sha256'] or domain_source_snapshot.stat().st_size!=manifest['source_snapshot_bytes']:raise SystemExit('domain reconstruction source archive differs')
         for name,sha in manifest['sources'].items():
             committed=subprocess.check_output(['git','show',manifest['source_commit']+':'+name],cwd=ROOT)
             if hashlib.sha256(committed).hexdigest()!=sha:raise SystemExit('domain reconstruction committed source differs: '+name)
