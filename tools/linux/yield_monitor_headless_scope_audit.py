@@ -86,6 +86,7 @@ def audit(args):
     for name, address, size, expected in METHODS:
         if hashlib.sha256(game.read(int(address, 16), size)).hexdigest() != expected:
             raise ValueError('original body differs: ' + name)
+    game.call(0x2d7b264, 0x1f83730)
     occurrences = {hex(event): dict(game=executable_occurrences(game, event),
                                   host=executable_occurrences(host, event))
                    for event in [0x1f943311, 0x8fef0d8e, 0x14deda5a]}
@@ -116,6 +117,7 @@ def audit(args):
                     changed_city_snapshot_transitive_effects_closed=False,
                     cold_pathfinder_effects_closed=False,
                     all_transitive_getters_proven_pure=False,
+                    cache_freshness_history_closed=False,
                     complete_action_acceptance=False),
                 reuse={str(path): sha(ROOT / path) for path in [
                     Path('evidence/linux/reporting-yield-effects.json'),
@@ -725,6 +727,23 @@ METHODS = [('GameCore::City::Trade::GetYieldPerLocalStrategicResourceForInternat
   1530,
   '7be7c939142266f0333e8d23d479da433671d7d6bfb2d587a13ad7fec64f963a')]
 
+
+METHODS += [('Lifecycle.Game.Read',
+  '0x2d7aaa0',
+  2540,
+  '917d430f7b9c105932f394d62b2b75c83f698437ba89e7ce0ece979dad395873'),
+ ('Lifecycle.Techs.PostLoad',
+  '0x2a2d120',
+  47,
+  '3884e2f4180bd0196c0b7cd3369b38ecf69fcc40b646756bddd4fe52de715571'),
+ ('Lifecycle.Culture.PostLoad',
+  '0x29782e0',
+  47,
+  'fcf8e5165a0976e0ee2c4a56939f249ede60994d83b9b990eea3ae761aad06ef'),
+ ('Lifecycle.Processor.PostLoad',
+  '0x2a0b390',
+  2841,
+  '75625d1315811418f35f26d9fb4597080a926887c284a1330dea1a780e4ed627')]
 
 if __name__ == '__main__':
     main()

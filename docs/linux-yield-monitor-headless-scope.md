@@ -10,7 +10,7 @@ The [focused audit](../tools/linux/yield_monitor_headless_scope_audit.py) and
 [result](../evidence/linux/yield-monitor-headless-scope.json) reuse the existing
 [plot effects](linux-reporting-yield-effects.md),
 [conditional plot-query closure](linux-reporting-yield-query-closure.md), and
-[trade effects](linux-reporting-trade-effects.md). It checks 142 supplemental
+[trade effects](linux-reporting-trade-effects.md). It checks 146 supplemental
 body identities against the pinned Linux XP2 bytes. No original code executes.
 Hash checks retain the reviewed boundary; they do not automatically establish
 purity of every transitive callee.
@@ -84,6 +84,32 @@ External policies retain genuine yield-query boundaries; omitted presentation
 work must not provide guessed numbers or replace missing runtime providers
 with zero. Existing numerical `plot_yield::get_yield` retains its provider
 contract separately.
+
+The [owned data adapter](../crates/c6-data/src/loaded_actions/yield_monitor.rs)
+admits the genuine Trade.Graph serializer frame once: save1, depth2,
+call162111, parent162110, byte range `[71027800,71497438)`. It checks complete
+Core image, owner trace, frame and binding identities before passing the
+witness to LoadedState's immutable graph owner. Its `warm_route_domain`
+queries each active Route's actual city fields through that owner and validates
+every returned plot index. It returns counts and current revision, not computed
+yields, cache freshness or permission to skip the observer. A missing/empty
+forward path remains unsupported before any pooled finder executes.
+
+Native cache initialization has a specific lifecycle origin: Game.Read
+(`2d7aaa0`, `9ec` bytes) calls Monitor.Initialize at `2d7b264`, following city
+domain reconstruction. This occurs **before** Tech/Culture InitializePostLoad,
+Heroes/Analysis/Player/Rules/Barbarian/GlobalAI postludes, conditional City
+destruction, and Processor.InitializePostLoad. Tech/Culture postload can build
+their collections if either required vector is empty. Consequently this call
+alone does not certify fresh derived values at action entry. The post-init
+history remains an explicit missing authority; an abstract initialization at
+the action boundary would silently replace potentially stale native state.
+
+The separate retained-source domain checker uses the real 43-player,
+1,262-Unit LoadedState. It tests missing-owner and corrupt-trace rejection,
+one-time admission, actual warm lookups, and persistence of graph authority
+across a conservative Unit-borrow revision increment. It does not extend the
+historical reporting action prefix or authorize arbitrary Unit writes.
 
 Reproduce this static/input check without native execution:
 

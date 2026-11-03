@@ -2,6 +2,9 @@
 //! Reflected Unit snapshots are omitted under the evidenced no-UI boundary;
 //! their conditional gameplay-query effects are checked at the original Send.
 //! This does not drain host event playback or admit a complete action.
+#[path = "yield_monitor.rs"]
+pub mod yield_monitor;
+
 use super::{resources::Bound, Error, IdentityReport, Reports};
 use crate::{
     registry::LinuxDefinitionRegistry,

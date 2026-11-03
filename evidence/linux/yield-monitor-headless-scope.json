@@ -1,5 +1,5 @@
 {
-  "audit_sha256": "a1fa55efe4f8c697e5146180f199eb72ef473e01531441474a122fb84f0f5feb",
+  "audit_sha256": "e53aa5e5a472ef32b6e0589588adcedd15cbaa721a923b17d7547dae9e22f08d",
   "checks_passed": true,
   "consumer_scan_limit": "Exact literal values in executable LOAD segments; excludes arbitrary aliases or added registrations.",
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
@@ -881,6 +881,30 @@
       "name": "City.Build.BestQueueItems",
       "rva": "0x1fdfed0",
       "sha256": "7be7c939142266f0333e8d23d479da433671d7d6bfb2d587a13ad7fec64f963a"
+    },
+    {
+      "bytes": 2540,
+      "name": "Lifecycle.Game.Read",
+      "rva": "0x2d7aaa0",
+      "sha256": "917d430f7b9c105932f394d62b2b75c83f698437ba89e7ce0ece979dad395873"
+    },
+    {
+      "bytes": 47,
+      "name": "Lifecycle.Techs.PostLoad",
+      "rva": "0x2a2d120",
+      "sha256": "3884e2f4180bd0196c0b7cd3369b38ecf69fcc40b646756bddd4fe52de715571"
+    },
+    {
+      "bytes": 47,
+      "name": "Lifecycle.Culture.PostLoad",
+      "rva": "0x29782e0",
+      "sha256": "fcf8e5165a0976e0ee2c4a56939f249ede60994d83b9b990eea3ae761aad06ef"
+    },
+    {
+      "bytes": 2841,
+      "name": "Lifecycle.Processor.PostLoad",
+      "rva": "0x2a0b390",
+      "sha256": "75625d1315811418f35f26d9fb4597080a926887c284a1330dea1a780e4ed627"
     }
   ],
   "monitor": {
@@ -915,6 +939,7 @@
   "unsupported": {
     "all_transitive_getters_proven_pure": false,
     "blanket_monitor_omission_authorized": false,
+    "cache_freshness_history_closed": false,
     "changed_city_snapshot_transitive_effects_closed": false,
     "cold_pathfinder_effects_closed": false,
     "complete_action_acceptance": false
