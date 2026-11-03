@@ -366,3 +366,7 @@ pub mod player_ai_diplomatic;
 pub mod player_ai_governors;
 
 pub mod player_ai_grand_strategic;
+
+pub mod player_ai_homeland;
+
+pub mod player_ai_research;
