@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Audit current-handler interruption against pinned Linux bytes and closed captures.
 
-No original execution, native predicate comparison, or game-state mutation.
+Captured identities plus original-image dispatch predictions only; runtime method
+slots are absent. No original execution, predicate comparison or mutation.
 """
 import argparse
 from collections import Counter
@@ -68,9 +69,11 @@ def checked_entry(row, original, module_base, target):
                                     and vptr == 0x3b03960),
             'trade-route family identity mismatch')
     return dict(runtime_id=i, operation_hash=f'{row["hash"]:08x}',
-                vptr_rva=hex(vptr), slot_offset='0x20', target_rva=hex(target),
-                result=target == 0x2d95660,
-                effects='constant leaf; no object reads, memory writes, calls, allocation or RNG')
+                observed_vptr_rva=hex(vptr), predicted_slot_offset='0x20', predicted_target_rva=hex(target),
+                runtime_slot_observed=False,
+                target_provenance='original-image ELF relocation; runtime interposition not excluded',
+                predicted_leaf_result=target == 0x2d95660,
+                predicted_leaf_effects='constant leaf; no object reads, memory writes, calls, allocation or RNG')
 
 
 class RejectionTests(unittest.TestCase):
@@ -134,19 +137,26 @@ def main():
                 counts['empty'] += count
             else:
                 require(key in by_hash, 'unresolved attributed queue hash')
-                family = 'constant_true' if by_hash[key]['result'] else 'constant_false'
+                family = 'predicted_constant_true' if by_hash[key]['predicted_leaf_result'] else 'predicted_constant_false'
                 counts[family] += count
         require(sum(counts.values()) == 1262, 'incomplete attributed queue census')
         corpus.append(dict(save_sha256=sample['save_sha256'], counts=dict(counts),
-                           source='independently checked registry corpus; not a live predicate capture'))
-    report = dict(schema='c6-linux-current-handler-interruption-v1', checks_passed=True,
+                           source='saved queues and observed vptrs joined to image-predicted targets across different capture contexts',
+                           runtime_dispatch_admitted=False, native_predicate_results_observed=False))
+    report = dict(schema='c6-linux-current-handler-interruption-v2', checks_passed=True,
         gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA, original_execution_performed=False,
-        native_predicate_comparison_performed=False, methods=methods,
+        native_predicate_comparison_performed=False, runtime_handler_slots_observed=False,
+        runtime_dispatch_admitted=False,
+        supersedes=dict(schema='c6-linux-current-handler-interruption-v1', commit='3bd25f6',
+            report_sha256='d9b7ff5a2c20a92397f473e0b91f80dcd4073996f77d206f8ac9848346c8a367',
+            correction='prior target/result fields were source predictions, not observed runtime dispatch'),
+        methods=methods,
         manager_static_vptr_rva='0x3aff880', manager_static_bindings=[
             dict(slot_offset=hex(o), target_rva=hex(t)) for o, t in BINDINGS],
         capture_facts_sha256=FACTS_SHA, capture_runtime_sha256=RUNTIME_SHA,
         independent_registry_sha256=REGISTRY_SHA,
-        registered_handlers=inventory, family_counts=dict(Counter(r['target_rva'] for r in inventory)),
+        observed_registry_with_source_predictions=inventory,
+        predicted_family_counts=dict(Counter(r['predicted_target_rva'] for r in inventory)),
         attributed_queue_corpus=corpus,
         identity_semantics=dict(native_front='first native node u32 bits, not saved operation hash',
             same_operation='compare raw current node bits with captured requested bits before handler lookup',
@@ -154,8 +164,9 @@ def main():
             hash_miss='GetHandlerIDFromHash returns -1; GetHandlerFromHash returns null',
             no_general_null='out-of-range numeric access is not a defined null case',
             missing_current_handler='only an actually null GetHandler result permits interruption'),
-        source_closure='two concrete registered virtual families closed for captured registry; live dispatch ownership not captured',
-        native_coverage_gaps=['live Manager vptr and delegated slots 0x88/0x98/0xa0/0xd8',
+        source_closure='two image-predicted virtual families have closed leaf implementations; no actual runtime dispatch slot captured',
+        native_coverage_gaps=['actual runtime handler vptr+0x20 method pointers and ownership/module validation; dynamic interposition not excluded',
+            'live Manager vptr and delegated slots 0x88/0x98/0xa0/0xd8',
             'same-context per-Unit native queue front bits/handler identity and replay comparison',
             'native predicate boundary comparisons; empty/same/different/null/invalid distinctions'],
         protocol='docs/linux-current-handler-interruption.md',
@@ -168,7 +179,7 @@ def main():
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(dict(checks_passed=True, handlers=len(inventory),
-                         families=report['family_counts'], original_execution=False)))
+                         source_predicted_families=report['predicted_family_counts'], original_execution=False)))
 
 
 if __name__ == '__main__':

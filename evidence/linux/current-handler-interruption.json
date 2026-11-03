@@ -1,10 +1,18 @@
 {
-  "schema": "c6-linux-current-handler-interruption-v1",
+  "schema": "c6-linux-current-handler-interruption-v2",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "original_execution_performed": false,
   "native_predicate_comparison_performed": false,
+  "runtime_handler_slots_observed": false,
+  "runtime_dispatch_admitted": false,
+  "supersedes": {
+    "schema": "c6-linux-current-handler-interruption-v1",
+    "commit": "3bd25f6",
+    "report_sha256": "d9b7ff5a2c20a92397f473e0b91f80dcd4073996f77d206f8ac9848346c8a367",
+    "correction": "prior target/result fields were source predictions, not observed runtime dispatch"
+  },
   "methods": [
     {
       "name": "Manager.CanCurrentOperationBeInterrupted",
@@ -77,576 +85,702 @@
   "capture_facts_sha256": "3fd5b6e64b5f81e06fc06187b9dae53691ddb536a6fc0b03f6f728d759dea585",
   "capture_runtime_sha256": "5b68cfff7a3c88033694df0ef5f882a43dc780700e5ca4b194e312ca115b3740",
   "independent_registry_sha256": "d8a43667523e9385bfa9ac35594027609b26d7755551c0bab46d226917899901",
-  "registered_handlers": [
+  "observed_registry_with_source_predictions": [
     {
       "runtime_id": 0,
       "operation_hash": "1f633b1e",
-      "vptr_rva": "0x3afdae0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afdae0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 1,
       "operation_hash": "9c0b44c6",
-      "vptr_rva": "0x3afdd60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afdd60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 2,
       "operation_hash": "1d60e778",
-      "vptr_rva": "0x3b03340",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03340",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 3,
       "operation_hash": "06e68aef",
-      "vptr_rva": "0x3b03750",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03750",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 4,
       "operation_hash": "9582ab1e",
-      "vptr_rva": "0x3afe570",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afe570",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 5,
       "operation_hash": "4cab9003",
-      "vptr_rva": "0x3afe770",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afe770",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 6,
       "operation_hash": "14153aa4",
-      "vptr_rva": "0x3afe870",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afe870",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 7,
       "operation_hash": "3d7d2377",
-      "vptr_rva": "0x3afe9f0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afe9f0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 8,
       "operation_hash": "324e52e7",
-      "vptr_rva": "0x3afeaf0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afeaf0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 9,
       "operation_hash": "1124b3d3",
-      "vptr_rva": "0x3afebf0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afebf0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 10,
       "operation_hash": "a4a61aed",
-      "vptr_rva": "0x3afecf0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afecf0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 11,
       "operation_hash": "5c533acc",
-      "vptr_rva": "0x3afefa0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afefa0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 12,
       "operation_hash": "d3a6f7e8",
-      "vptr_rva": "0x3aff0a0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3aff0a0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 13,
       "operation_hash": "7eb896fb",
-      "vptr_rva": "0x3aff4a0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3aff4a0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 14,
       "operation_hash": "5733ac6c",
-      "vptr_rva": "0x3aff1a0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3aff1a0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 15,
       "operation_hash": "c72fe8fb",
-      "vptr_rva": "0x3aff2a0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3aff2a0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 16,
       "operation_hash": "f4027acc",
-      "vptr_rva": "0x3aff3a0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3aff3a0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 17,
       "operation_hash": "bcc1d2a7",
-      "vptr_rva": "0x3aff5a0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3aff5a0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 18,
       "operation_hash": "8374d954",
-      "vptr_rva": "0x3b03960",
-      "slot_offset": "0x20",
-      "target_rva": "0x2da0920",
-      "result": false,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03960",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2da0920",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": false,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 19,
       "operation_hash": "580f2f68",
-      "vptr_rva": "0x3affa40",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3affa40",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 20,
       "operation_hash": "59047564",
-      "vptr_rva": "0x3affb40",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3affb40",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 21,
       "operation_hash": "98eca9ea",
-      "vptr_rva": "0x3b02130",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02130",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 22,
       "operation_hash": "cfb9b561",
-      "vptr_rva": "0x3b03860",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03860",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 23,
       "operation_hash": "4885d724",
-      "vptr_rva": "0x3b03a60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03a60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 24,
       "operation_hash": "cd8cd1ee",
-      "vptr_rva": "0x3affdf0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3affdf0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 25,
       "operation_hash": "2c5b585e",
-      "vptr_rva": "0x3affef0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3affef0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 26,
       "operation_hash": "09d0292a",
-      "vptr_rva": "0x3affff0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3affff0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 27,
       "operation_hash": "c124d677",
-      "vptr_rva": "0x3b00170",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00170",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 28,
       "operation_hash": "d1fde2e6",
-      "vptr_rva": "0x3b03b60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03b60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 29,
       "operation_hash": "e24f39a9",
-      "vptr_rva": "0x3b00470",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00470",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 30,
       "operation_hash": "b1a33524",
-      "vptr_rva": "0x3b03c60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03c60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 31,
       "operation_hash": "08ca367f",
-      "vptr_rva": "0x3b03d60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03d60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 32,
       "operation_hash": "0d9c021e",
-      "vptr_rva": "0x3b00830",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00830",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 33,
       "operation_hash": "7d63187b",
-      "vptr_rva": "0x3b00930",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00930",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 34,
       "operation_hash": "41df0e9f",
-      "vptr_rva": "0x3b00a30",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00a30",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 35,
       "operation_hash": "411ac6df",
-      "vptr_rva": "0x3b00b30",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00b30",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 36,
       "operation_hash": "2c681908",
-      "vptr_rva": "0x3b00db0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00db0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 37,
       "operation_hash": "fd89387a",
-      "vptr_rva": "0x3b00eb0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00eb0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 38,
       "operation_hash": "5eea3a1a",
-      "vptr_rva": "0x3b03f60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03f60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 39,
       "operation_hash": "886ffcd1",
-      "vptr_rva": "0x3b02480",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02480",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 40,
       "operation_hash": "c31647e8",
-      "vptr_rva": "0x3b02590",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02590",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 41,
       "operation_hash": "ed72b77d",
-      "vptr_rva": "0x3b028c0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b028c0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 42,
       "operation_hash": "1cf0d742",
-      "vptr_rva": "0x3b029c0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b029c0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 43,
       "operation_hash": "c70c4768",
-      "vptr_rva": "0x3b02ad0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02ad0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 44,
       "operation_hash": "d575985b",
-      "vptr_rva": "0x3b02cf0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02cf0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 45,
       "operation_hash": "09c1ecc1",
-      "vptr_rva": "0x3b02e00",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02e00",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 46,
       "operation_hash": "223eea54",
-      "vptr_rva": "0x3b02f10",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02f10",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 47,
       "operation_hash": "d8687469",
-      "vptr_rva": "0x3b03010",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03010",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 48,
       "operation_hash": "b2cca377",
-      "vptr_rva": "0x3b03120",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03120",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 49,
       "operation_hash": "7fa205d1",
-      "vptr_rva": "0x3b01d20",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b01d20",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 50,
       "operation_hash": "c8ce5dfb",
-      "vptr_rva": "0x3b01e20",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b01e20",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 51,
       "operation_hash": "1e5838b9",
-      "vptr_rva": "0x3b01f20",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b01f20",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 52,
       "operation_hash": "d25fe9ae",
-      "vptr_rva": "0x3b02030",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02030",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 53,
       "operation_hash": "cbb2f941",
-      "vptr_rva": "0x3b02380",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02380",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 54,
       "operation_hash": "e547bc17",
-      "vptr_rva": "0x3afdc60",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afdc60",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 55,
       "operation_hash": "b2bdb074",
-      "vptr_rva": "0x3b00270",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b00270",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 56,
       "operation_hash": "a590ba46",
-      "vptr_rva": "0x3afedf0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3afedf0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 57,
       "operation_hash": "96b7df5a",
-      "vptr_rva": "0x3b02690",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02690",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 58,
       "operation_hash": "a5d4e1a9",
-      "vptr_rva": "0x3b027b0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b027b0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 59,
       "operation_hash": "c08a9ad9",
-      "vptr_rva": "0x3b02bd0",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b02bd0",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 60,
       "operation_hash": "38541ac6",
-      "vptr_rva": "0x3b03500",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b03500",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 61,
       "operation_hash": "852ce4df",
-      "vptr_rva": "0x3b04180",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b04180",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     },
     {
       "runtime_id": 62,
       "operation_hash": "f4921fdc",
-      "vptr_rva": "0x3b04070",
-      "slot_offset": "0x20",
-      "target_rva": "0x2d95660",
-      "result": true,
-      "effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
+      "observed_vptr_rva": "0x3b04070",
+      "predicted_slot_offset": "0x20",
+      "predicted_target_rva": "0x2d95660",
+      "runtime_slot_observed": false,
+      "target_provenance": "original-image ELF relocation; runtime interposition not excluded",
+      "predicted_leaf_result": true,
+      "predicted_leaf_effects": "constant leaf; no object reads, memory writes, calls, allocation or RNG"
     }
   ],
-  "family_counts": {
+  "predicted_family_counts": {
     "0x2d95660": 62,
     "0x2da0920": 1
   },
@@ -654,20 +788,24 @@
     {
       "save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
       "counts": {
-        "constant_true": 123,
-        "constant_false": 185,
+        "predicted_constant_true": 123,
+        "predicted_constant_false": 185,
         "empty": 954
       },
-      "source": "independently checked registry corpus; not a live predicate capture"
+      "source": "saved queues and observed vptrs joined to image-predicted targets across different capture contexts",
+      "runtime_dispatch_admitted": false,
+      "native_predicate_results_observed": false
     },
     {
       "save_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
       "counts": {
-        "constant_true": 123,
-        "constant_false": 185,
+        "predicted_constant_true": 123,
+        "predicted_constant_false": 185,
         "empty": 954
       },
-      "source": "independently checked registry corpus; not a live predicate capture"
+      "source": "saved queues and observed vptrs joined to image-predicted targets across different capture contexts",
+      "runtime_dispatch_admitted": false,
+      "native_predicate_results_observed": false
     }
   ],
   "identity_semantics": {
@@ -678,8 +816,9 @@
     "no_general_null": "out-of-range numeric access is not a defined null case",
     "missing_current_handler": "only an actually null GetHandler result permits interruption"
   },
-  "source_closure": "two concrete registered virtual families closed for captured registry; live dispatch ownership not captured",
+  "source_closure": "two image-predicted virtual families have closed leaf implementations; no actual runtime dispatch slot captured",
   "native_coverage_gaps": [
+    "actual runtime handler vptr+0x20 method pointers and ownership/module validation; dynamic interposition not excluded",
     "live Manager vptr and delegated slots 0x88/0x98/0xa0/0xd8",
     "same-context per-Unit native queue front bits/handler identity and replay comparison",
     "native predicate boundary comparisons; empty/same/different/null/invalid distinctions"
@@ -689,7 +828,7 @@
   "complete_state_action_rng_turns_supported": false,
   "historical_raw_save_load_failure_bytes": 89198,
   "source_sha256": {
-    "tools/linux/current_handler_interruption_audit.py": "b89549d253e99857aed2c63862134dfcf5eb3d4b19e950388ab96a3e9a325d05",
-    "crates/c6-core/src/unit_operation_interruption.rs": "cbdb257ca441c659b8f648f989239bb7f01b10ce4a416b2e95bf379bef255e41"
+    "tools/linux/current_handler_interruption_audit.py": "2087b35196c52418552a228b5b0d50d48ffef05a81030c03cfb6b45678e6fc09",
+    "crates/c6-core/src/unit_operation_interruption.rs": "b8ff42e5c5750f908077bd2773208cfa45e9a26ba79ecf9ebe2fbef242f4a931"
   }
 }

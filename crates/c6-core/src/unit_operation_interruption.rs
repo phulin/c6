@@ -3,7 +3,9 @@
 //! Admission must retain the actual Manager/handler owners, verify its delegated
 //! virtual slots, and supply observations from the matching module/configuration
 //! and synchronous context. Saved queue hashes are not live queue front IDs.
-//! This is source closure, not a native Manager predicate comparison.
+//! Current closed captures contain vptrs but no live +0x20 slot observations.
+//! Image relocations cannot admit this provider. This is source closure, not a
+//! native Manager predicate comparison.
 use crate::messages::{HandlerId, OperationHash};
 
 const GAME_SHA: &str = "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa";
@@ -21,9 +23,22 @@ pub struct ObservationIdentity<'a> {
 pub struct ObservedHandler {
     pub runtime_id: HandlerId,
     pub operation_hash: OperationHash,
-    /// Observed original function pointer at this retained object's vptr + 0x20,
-    /// normalized to the exact GameCore module base. Never a requested handler.
-    pub interruption_target_rva: u64,
+    /// Actual runtime slot observation is required; an image-relocation prediction
+    /// is explicitly rejected, even when it names a supported original leaf.
+    pub interruption_target: InterruptionTarget,
+}
+
+/// Provenance must be supplied by the capture owner. Public values cannot
+/// authenticate native memory: a caller must never label static ELF predictions
+/// or synthetic test inputs as a genuine live observation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InterruptionTarget {
+    /// Actual pointer read from the retained handler's live vptr + 0x20, with
+    /// owning module and complete live leaf code bytes validated against the exact
+    /// original before normalization in the same admitted context.
+    LiveSlotObservation(u64),
+    /// ELF relocation lookup does not exclude runtime interposition or rewriting.
+    OriginalImagePrediction(u64),
 }
 
 /// A genuine original reverse-map answer. None means an observed native -1,
@@ -40,6 +55,7 @@ pub enum Error {
     InvalidEvidenceIdentity,
     SlotIdentity(usize),
     UnsupportedBinding(u64),
+    UnobservedLiveBinding(u64),
     DuplicateHash(OperationHash),
     InvalidHashResolution(OperationHash),
     UnobservedHash(OperationHash),
@@ -102,7 +118,7 @@ impl<'a> ObservedRegistry<'a> {
                 if handler.runtime_id.0 as u32 as usize != i {
                     return Err(Error::SlotIdentity(i));
                 }
-                Self::leaf(handler.interruption_target_rva)?;
+                Self::leaf(handler.interruption_target)?;
             }
         }
         for (i, row) in hashes.iter().enumerate() {
@@ -128,7 +144,13 @@ impl<'a> ObservedRegistry<'a> {
         self.identity
     }
 
-    fn leaf(rva: u64) -> Result<Leaf, Error> {
+    fn leaf(target: InterruptionTarget) -> Result<Leaf, Error> {
+        let rva = match target {
+            InterruptionTarget::LiveSlotObservation(rva) => rva,
+            InterruptionTarget::OriginalImagePrediction(rva) => {
+                return Err(Error::UnobservedLiveBinding(rva));
+            }
+        };
         match rva {
             0x2d95660 => Ok(Leaf::Base),
             0x2da0920 => Ok(Leaf::MakeTradeRoute),
@@ -170,7 +192,7 @@ impl<'a> ObservedRegistry<'a> {
         slot.map(|observed| {
             Ok(Handler {
                 observed,
-                leaf: Self::leaf(observed.interruption_target_rva)?,
+                leaf: Self::leaf(observed.interruption_target)?,
             })
         })
         .transpose()
@@ -188,18 +210,20 @@ mod tests {
             capture_sha256: "3fd5b6e64b5f81e06fc06187b9dae53691ddb536a6fc0b03f6f728d759dea585",
         }
     }
+    // These manually supplied slot values exercise source semantics only. The
+    // closed metadata capture has no live +0x20 pointers and cannot admit them.
     #[test]
-    fn observed_trade_and_move_bindings_resolve_without_hash_index_conflation() {
+    fn source_only_synthetic_trade_and_move_bindings_preserve_hash_index_distinctions() {
         let mut slots = [None; 20];
         slots[18] = Some(ObservedHandler {
             runtime_id: HandlerId(18),
             operation_hash: OperationHash(0x8374d954),
-            interruption_target_rva: 0x2da0920,
+            interruption_target: InterruptionTarget::LiveSlotObservation(0x2da0920),
         });
         slots[19] = Some(ObservedHandler {
             runtime_id: HandlerId(19),
             operation_hash: OperationHash(0x580f2f68),
-            interruption_target_rva: 0x2d95660,
+            interruption_target: InterruptionTarget::LiveSlotObservation(0x2d95660),
         });
         let hashes = [
             ObservedHashResolution {
@@ -266,11 +290,20 @@ mod tests {
         let slots = [Some(ObservedHandler {
             runtime_id: HandlerId(0),
             operation_hash: OperationHash(55),
-            interruption_target_rva: 123,
+            interruption_target: InterruptionTarget::LiveSlotObservation(123),
         })];
         assert!(matches!(
             ObservedRegistry::new(identity(), &slots, &[]),
             Err(Error::UnsupportedBinding(123))
+        ));
+        let predictions = [Some(ObservedHandler {
+            runtime_id: HandlerId(0),
+            operation_hash: OperationHash(55),
+            interruption_target: InterruptionTarget::OriginalImagePrediction(0x2d95660),
+        })];
+        assert!(matches!(
+            ObservedRegistry::new(identity(), &predictions, &[]),
+            Err(Error::UnobservedLiveBinding(0x2d95660))
         ));
         let hashes = [ObservedHashResolution {
             hash: OperationHash(55),
