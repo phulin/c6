@@ -69,7 +69,7 @@ int c6_linux_full_manager_profile_admission_begin(void *module,void *context) {
     full_extent((uintptr_t)context,16);uintptr_t vptr=full_ptr((uintptr_t)context);
     Dl_info info={0};if(!dladdr((void *)vptr,&info)||!info.dli_fbase)full_fatal("context_module_unknown");
     uintptr_t base=(uintptr_t)info.dli_fbase;
-    if(base>UINTPTR_MAX-0x3c051b0)full_fatal("module_extent_unknown");
+    if(base>UINTPTR_MAX-0x3c07380)full_fatal("module_extent_unknown");
     long (*main_tid)(void)=dlsym(RTLD_DEFAULT,"c6_linux_mod_main_thread_tid");
     if(!main_tid)full_fatal("main_entry_unwitnessed");
     uintptr_t native=full_ptr((uintptr_t)context+8);full_extent(native,0x30);
@@ -105,4 +105,10 @@ int c6_linux_full_manager_locked_end(void *module,void *context,const void *game
 }
 int c6_linux_full_manager_released_owner(void *module,void *context,const void *game) {
     full_identity(module,context,game);full_check(0);return 0;
+}
+
+int c6_linux_full_manager_profile_identity(void *module,void *context,uintptr_t *base,const void **game,long *main_tid) {
+    if(!base||!game||!main_tid)full_fatal("identity_output_missing");
+    c6_linux_full_manager_profile_caller_idle(module,context);
+    *base=full_scope.base;*game=(void *)full_scope.game;*main_tid=full_scope.main_tid;return 0;
 }

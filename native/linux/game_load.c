@@ -144,6 +144,8 @@ int c6_linux_game_load(void *context) {
     const char *output=getenv("C6_GAME_SAVE_OUTPUT");
     const char *repeat=getenv("C6_GAME_SAVE_REPEAT_OUTPUT");
     const char *sized=getenv("C6_GAME_LOAD_EXPECTED_SIZE");
+    bool full_manager=getenv("C6_FULL_MANAGER_FIXTURE")!=NULL;
+    bool full_manager_returned=false;
     size_t expected_size=0;
     if(sized){
         char *end=NULL;errno=0;
@@ -152,7 +154,7 @@ int c6_linux_game_load(void *context) {
         expected_size=(size_t)parsed;
     }
     Dl_info module;
-    if(!context || !input || !output || !repeat ||
+    if(!context || !input || (!full_manager&&(!output||!repeat)) ||
        !dladdr(*(void **)context,&module) || !module.dli_fname)return 160;
     const char *leaf=strrchr(module.dli_fname,'/');
     leaf=leaf?leaf+1:module.dli_fname;
@@ -175,7 +177,11 @@ int c6_linux_game_load(void *context) {
         result=sized?c6_linux_context_load_sized(game,context,input,expected_size):
                      c6_linux_context_load(game,context,input);
         if(!result)result=observe("after_core_load");
-        if(!result)result=c6_linux_context_save(game,context,output);
+        if(!result && output){
+            int saved=c6_linux_context_save(game,context,output);
+            if(full_manager)fprintf(stderr,"C6_LINUX_FULL_MANAGER_SAVE diagnostic_before_status %d not_predicate_gate 1\n",saved);
+            else result=saved;
+        }
         if(!result && getenv("C6_GAME_LOAD_OBSERVE"))result=observe_loaded_state(game,context);
         if(!result && getenv("C6_DEFINITION_IDS")) {
             int (*definition_ids)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_definition_ids");
@@ -201,7 +207,14 @@ int c6_linux_game_load(void *context) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
-        if(!result && getenv("C6_CURRENT_HANDLER_METADATA")) {
+        if(!result && full_manager) {
+            int (*predicate)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_full_manager_fixture");
+            if(!predicate){
+                fprintf(stderr,"C6_LINUX_FULL_MANAGER_FIXTURE_LIFECYCLE fatal missing_lifecycle process_discarded 1\n");
+                fflush(stderr);_exit(184);
+            }
+            result=predicate(game,context);full_manager_returned=true;
+        } else if(!result && getenv("C6_CURRENT_HANDLER_METADATA")) {
             int (*metadata)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_current_handler_metadata");
             if(!metadata){
                 fprintf(stderr,"C6_LINUX_CURRENT_HANDLER_METADATA_LIFECYCLE fatal missing_lifecycle process_discarded 1\n");
@@ -255,7 +268,11 @@ int c6_linux_game_load(void *context) {
             int (*execution_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_execution");
             result=execution_observe?execution_observe(game,context):169;
         }
-        if(!result)result=c6_linux_context_save(game,context,repeat);
+        if(repeat&&(!result||full_manager_returned)){
+            int saved=c6_linux_context_save(game,context,repeat);
+            if(full_manager)fprintf(stderr,"C6_LINUX_FULL_MANAGER_SAVE diagnostic_after_status %d not_predicate_gate 1\n",saved);
+            else result=saved;
+        }
         fprintf(stderr,"C6_LINUX_GAME_LOAD shutdown_enter\n");
         shutdown(context);
         fprintf(stderr,"C6_LINUX_GAME_LOAD shutdown_return\n");

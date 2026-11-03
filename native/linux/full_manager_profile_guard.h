@@ -13,5 +13,6 @@ int c6_linux_full_manager_locked_begin(void *module,void *context,const void *ga
 int c6_linux_full_manager_retained_owner(void *module,void *context,const void *game);
 int c6_linux_full_manager_locked_end(void *module,void *context,const void *game);
 int c6_linux_full_manager_released_owner(void *module,void *context,const void *game);
+int c6_linux_full_manager_profile_identity(void *module,void *context,uintptr_t *base,const void **game,long *main_tid);
 int c6_linux_full_manager_profile_probe(void *module,void *context);
 #endif
