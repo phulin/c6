@@ -56,15 +56,17 @@ caller admission condition for the active profile, not evidence automatically
 obtained from Lua source hashes. Nonempty/custom Unit property copying, non-SkipTurn
 facade projections and subsequent event types remain explicit dependencies.
 
-The implementation receives the actual authoritative world through
-`Reports::send_loaded`, after the setter has released its short actor borrow and
-before the next action operation. No World clone, actor copyback or second mutable
-actor alias is used. The old Unit-only entry rejects this provider because it
-cannot resolve the required owned-world inputs. Reports returning errors leave
-the already performed action prefix intact.
+The concrete implementation reads the actual authoritative LoadedState through
+`Reports::send_loaded`, after the setter releases its short actor borrow and
+before the next action operation. It uses no World clone, actor copyback or
+second mutable actor alias. At frozen checkpoint `577b700`, the generic callback
+interface still permits wider mutable access; the concrete reporter uses only
+an immutable state view. Other-world/RNG effects are unsupported and are not
+certified by this prefix check. A follow-up will restrict this diagnostic
+callback capability. Reports returning errors leave the performed prefix intact.
 
 The [focused source audit](../tools/linux/loaded_activity_reporting_audit.py)
-checks 266 inherited and additional method bodies against the pinned Linux XP2
+checks 273 inherited and additional method bodies against the pinned Linux XP2
 SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`
 and host `106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4`.
 It reuses the existing callback/consumer evidence rather than reopening absent
@@ -118,6 +120,16 @@ source rebuild claim. New whole-entrypoint comparison covers only the prefix
 actually executed before the genuine script/report failure. Additional isolated
 report-shape fixtures remain separate from that prefix. Neither comparison
 establishes native affected-state or RNG equivalence.
+
+The retained `577b700` candidate completed the first four actual report calls:
+host publications 35, 70, 71 and 67, with all four original Send scalar rows equal.
+The empty-queue AWAKE snapshot now exercises the real adjacency evaluator: native
+direction 3 selects (80,57), HasMoved is true, and Plot cost 1 fits remaining
+integer movement 1. The pending-node snapshots before and after that boundary
+return through the member-readiness guard. The next genuine stop is the Manager
+activation ScriptSystem provider; no later action report is manufactured.
+Its complete retained source and candidate/result are recorded by
+[the ordered check](../evidence/linux/loaded-ordered-reporting-check.json).
 
 ```sh
 python3 tools/linux/loaded_activity_reporting_audit.py --output target/linux/loaded-activity-reporting-source.json
