@@ -117,6 +117,18 @@ FIXTURES = ['ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884',
 TRACES = [('trace-benchmark-1.jsonl.gz','528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae'),
     ('trace-captured-1.jsonl.gz','027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369')]
 
+def first_difference(a,b,path='projection'):
+    if type(a)!=type(b):return path
+    if isinstance(a,dict):
+        if a.keys()!=b.keys():return path+'.keys'
+        for key in a:
+            if a[key]!=b[key]:return first_difference(a[key],b[key],path+'.'+key)
+    elif isinstance(a,list):
+        if len(a)!=len(b):return path+'.length'
+        for i,(x,y) in enumerate(zip(a,b)):
+            if x!=y:return first_difference(x,y,path+'['+str(i)+']')
+    return path
+
 def hashes(r):
     return [r.u32() for _ in range(r.count())]
 
@@ -267,7 +279,7 @@ def independent(data, owners):
         units_end=matches[0]['end'];r.version(22)
         unit_bounds={x['start']:x['end'] for x in owners if x['owner']=='GameCore::Unit::Instance'}
         def unit_record(slot):
-            begin=r.pos;r.version(28);identity=r.u32();r.u32();r.raw(3*4)
+            begin=r.pos;r.version(28);identity=r.u32();r.u32();r.raw(4*4)  # AI type/controller + PlotCoord goal
             location=[r.take('i'),r.take('i')];r.take('i');owner=r.take('i')
             if begin not in unit_bounds or r.pos>unit_bounds[begin]:raise ValueError('nested Unit source boundary differs')
             r.pos=unit_bounds[begin]
@@ -361,7 +373,7 @@ def main():
             expected,map_end,end,layout = independent(data,owners)
             actual = run(data,i)
             if {k:actual[k] for k in expected} != expected:
-                raise ValueError('independent Religion/Player/container/tail typed projection differs')
+                raise ValueError('independent typed projection differs at '+first_difference({k:actual[k] for k in expected},expected))
             if (actual['map_end'],actual['consumed']) != (map_end,end):
                 raise ValueError('dynamic byte-zero prefix boundary or complete wire roundtrip differs')
             if not actual['exact_and_one_short_caps']:raise ValueError('native exact-cap checks absent')
