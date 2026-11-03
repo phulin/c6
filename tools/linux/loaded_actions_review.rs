@@ -531,7 +531,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     let movement_inputs = c6_data::unit_movement_state::Inputs {
         definitions: &movement_definitions,
-        alliances: None,
     };
     let local = state.retained().core.local_player;
     let p = state.world().player(local)?;
