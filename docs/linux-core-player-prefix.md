@@ -135,3 +135,15 @@ The [Treasury wire contract](linux-player-treasury.md) preserves all balance/rat
 Nine enabled source-only tests now cover the whole prefix through Units. The synthetic Units table is explicitly empty with nonempty raw allocator metadata, while all surrounding tail vectors/nested records and Treasury deals are present. Tests retain whole-prefix trailing/exact-budget/one-short/truncation coverage and additionally reject a mismatched recycled-container version and live count exceeding capacity. Nonempty full Units use original wire records in offline validation, rather than duplicating the complete Unit schema as a synthetic runtime default.
 
 The ignored `core_player::tests::offline_raw_core_whole_prefix_exact_caps` test accepts a raw Core input via `C6_CORE_PLAYER_PREFIX_FIXTURE`. It is intended to run **only from an isolated committed archive**, after the source/test checkpoint. It derives Map's end using `ThroughFirstPlayer`, compares the complete post-Map re-encoding, checks exact and one-short cumulative bytes/items in both directions, and requires a nonempty original Unit table. It uses no fixture offsets, traces or pattern scans. The coordinator's extended candidate/profile remains separate from historical accepted candidates. No original game code executes; all 43 original Player entries remain unfinished, and full Player/world/RNG/gameplay acceptance remains false.
+
+The complete-Units source/test checkpoint is `69944dbb0c2f9bda4ceec8ceb6b2d0ee2cc2ebbc`. Its ignored offline test was built and run from an isolated `git archive` at `/tmp/c6-player-prefix-69944db`; the test executable SHA-256 is `45797fb23de96ee35df0127dccb4944f2074b3a7e569d5fd637ee1ccd23ff13e`. Both original raw Core fixtures pass whole-prefix byte comparison, exact cumulative byte/item decode and encode, and refusal of one-short byte/item limits. The dynamically computed prefix contains **496,087 post-Map bytes, 70,280 charged items and 36 first-player Units**, ending at absolute **5,191,951** (`PlayerEras`). Existing owner observations independently place Treasury at `5,007,288..5,008,068` and Units at `5,008,068..5,191,951`, with 36 Unit-instance owners in that envelope on both originals. These are observations, never parsing inputs; individual Unit-cut projections belong to the coordinator's extended audit. All 43 Player entries remain unfinished.
+
+Reproduce the committed offline test in an isolated checkout/archive, after materializing an immutable raw Core fixture:
+
+```sh
+C6_CORE_PLAYER_PREFIX_FIXTURE=/path/to/original.raw \
+  cargo test -p c6-core offline_raw_core_whole_prefix_exact_caps \
+  --offline -- --ignored --nocapture
+```
+
+This test reads serialized bytes only and performs no original-code execution, native Read fixups or gameplay. Unknown bytes beyond Eras remain untouched and unclassified, and the recorded raw Save→Load discrepancy remains 89,198 bytes.
