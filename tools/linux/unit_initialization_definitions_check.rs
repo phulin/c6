@@ -2,7 +2,10 @@
 #[path = "loaded_actions_review_load.rs"]
 mod fixture;
 use c6_core::{
-    movement_world::DefinitionLookup, unit::HashValue, unit_initialization::InitializationInputs,
+    formation_initialization::{OwnerBinding, FORMATION_COMPONENT_TYPE, FORMATION_FIELDS},
+    movement_world::DefinitionLookup,
+    unit::{ComponentId, HashValue},
+    unit_initialization::{domain_from_hash, FormationReference, InitializationInputs},
 };
 use c6_data::{
     loaded_actions::resources::Resources, unit_initialization_definitions::Definitions, Rules,
@@ -24,6 +27,9 @@ fn wire_digest(
     for player in state.world().players() {
         for unit in player.unit_records()? {
             h.update(unit.value.encode(c6_core::unit::Limits::default())?);
+        }
+        for formation in player.formation_records()? {
+            h.update(formation.value.encode(c6_core::unit::Limits::default())?);
         }
     }
     Ok(h.finalize().to_vec())
@@ -86,11 +92,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         operations: bound.operation_lookup(),
     };
     state.initialize_rosters(&inputs)?;
+    state.initialize_formations()?;
     assert_eq!(before, wire_digest(&state)?);
+    let mut formations_checked = 0;
     for player in state.world().players() {
         for record in player.unit_records()? {
             let u = &record.value;
             let actual = state.unit_runtime(player.owner(), u.id)?;
+            assert_eq!(
+                actual.archive.identity(),
+                ComponentId {
+                    owner: u.e_owner as i16,
+                    component_type: 1,
+                    id: u.id
+                }
+            );
+            let index = inputs
+                .units
+                .lookup
+                .find_index(u.e_type_index)
+                .ok_or("missing Unit definition")?;
+            assert_eq!(actual.definition_index, index as i32);
+            assert_eq!(
+                actual.domain,
+                domain_from_hash(
+                    inputs
+                        .units
+                        .at(index as i32)
+                        .ok_or("missing Unit properties")?
+                        .domain_hash
+                )
+            );
+            let formation = player
+                .formation(u.formation_id)?
+                .map(|found| FormationReference {
+                    owner: player.owner(),
+                    requested_id: found.requested_id,
+                    resolved_id: found.resolved_id,
+                });
+            assert_eq!(actual.formation, formation);
             assert_eq!(
                 actual.abilities,
                 u.ai_abilities_possessed
@@ -141,10 +181,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .collect::<Vec<_>>()
             );
         }
+        for record in player.formation_records()? {
+            let f = &record.value;
+            let actual = state.formation_runtime(player.owner(), f.id)?;
+            assert_eq!(
+                actual.archive.identity(),
+                ComponentId {
+                    owner: f.owner as i16,
+                    component_type: FORMATION_COMPONENT_TYPE,
+                    id: f.id
+                }
+            );
+            assert_eq!(actual.archive.registered_fields(), &FORMATION_FIELDS);
+            let expected_owner = if f.owner == -1 {
+                OwnerBinding::NoOwner
+            } else {
+                OwnerBinding::Lookup {
+                    requested: f.owner,
+                    resolved: Some(player.owner()),
+                }
+            };
+            assert_eq!(actual.owner, expected_owner);
+            assert!(!actual.evaluating_operation());
+            assert_eq!(actual.archive.dirty_calls(), [4, 13]);
+            assert_eq!(actual.archive.dirty_indices(), Ok(vec![4, 13]));
+            formations_checked += 1;
+        }
     }
+    assert_eq!(formations_checked, 1250);
+    assert!(matches!(
+        state.initialize_rosters(&inputs),
+        Err(c6_core::loaded_state::Error::AlreadyInitialized)
+    ));
+    assert!(matches!(
+        state.initialize_formations(),
+        Err(c6_core::loaded_state::Error::AlreadyInitialized)
+    ));
     println!(
         "{}",
-        serde_json::json!({"units":checked,"array_collection_counts":counts,"native_save_array_orders_compared":true,"wire_unit_diagnostic_unchanged":true,"complete_unit_initialization":false,"native_initialized_state_comparison":false,"original_execution":false})
+        serde_json::json!({"units":checked,"formations":formations_checked,"runtime_identities_checked":true,"formation_read_postlude_checked":true,"array_collection_counts":counts,"native_save_array_orders_compared":true,"wire_unit_diagnostic_unchanged":true,"wire_formation_diagnostic_unchanged":true,"complete_unit_initialization":false,"native_initialized_state_comparison":false,"original_execution":false})
     );
     Ok(())
 }

@@ -62,14 +62,17 @@ binding; it is not the cross-observer resource equivalence test. No logs or full
 Core hashes need reprocessing per Unit.
 
 The [offline result](../evidence/linux/unit-initialization-definitions-check.json)
-passes for all 1,262 Unit sidecars. Its harness uses the independent review's public strict-capture helper,
+passes for all 1,262 Unit and 1,250 Formation sidecars. Its harness uses the independent review's public strict-capture helper,
 `tools/linux/loaded_actions_review_load.rs`. It admits the actual native-3
 artifacts and moves the decoded roster into World. It compares the complete
 saved array hash order against all four rebuilt registries and the existing
 operation registry, initializes every Unit runtime sidecar, and checks the live
 array values through the public Unit-only initializer. Manager controls are not
-invented for this preparation; Formation owner initialization has its own
-separate authority boundary. Comparing encoded Unit bytes before and after is a separate
+invented for this preparation. Formation owner initialization uses the separately
+source-proven enclosing Player Read identity; it does not construct a complete
+Manager mapping from saved rosters. The check verifies every logical archive
+identity, resolved Unit Formation identity, Formation evaluating-operation reset,
+its local Read dirty diagnostics and rejection of repeated initialization. Comparing encoded Unit and Formation bytes before and after is a separate
 nonmutation diagnostic, not an action-acceptance gate.
 
 ```sh

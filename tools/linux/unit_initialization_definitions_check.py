@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize 1262 decoded Unit sidecars using admitted static definitions offline."""
+"""Initialize 1262 Unit and1250 Formation sidecars using admitted definitions offline."""
 import argparse
 import json
 from pathlib import Path
@@ -21,6 +21,7 @@ def main():
     sources=['crates/c6-data/src/unit_initialization_definitions.rs','crates/c6-data/src/loaded_actions/resources.rs',
              'crates/c6-data/src/lib.rs','crates/c6-data/src/registry.rs','crates/c6-data/src/movement.rs',
              'crates/c6-core/src/unit_initialization.rs','crates/c6-core/src/loaded_state.rs',
+             'crates/c6-core/src/formation_initialization.rs',
              'tools/linux/loaded_actions_review_load.rs','tools/linux/unit_initialization_definitions_check.rs',
              'tools/linux/unit_initialization_definitions_check.py']
     before={s:sha((ROOT/s).read_bytes()) for s in sources}
@@ -43,7 +44,7 @@ def main():
         if result.returncode:
             raise RuntimeError(result.stderr)
         output=json.loads(result.stdout)
-        if output['units']!=1262 or output['original_execution'] is not False:
+        if output['units']!=1262 or output['formations']!=1250 or output['original_execution'] is not False:
             raise ValueError('unexpected integration boundary')
         output.update(schema='c6-linux-unit-initialization-definitions-check-v1',
                       candidate_sha256=sha(binary.read_bytes()),cargo_lock_sha256=sha((ROOT/'Cargo.lock').read_bytes()),
