@@ -1,0 +1,636 @@
+//! Current Linux XP2 City BuildQueue wire records (outer v16, node v2).
+//!
+//! Target SHA-256: a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
+//! Original outer writer/read: 0x284c220/0x284c6e0; node: 0x284c5d0/0x284d070.
+//! Nested FeatureOverride: 0x284c120/0x284c160; DistrictBuildingProductionModifier:
+//! 0x284c1a0/0x284c1e0. Both nested versions are 16, not 1.
+//!
+//! This preserves ordered wire data, including unknown/duplicate definition
+//! hashes and the two node type hashes. It does not perform registry remapping,
+//! Reset, queue insertion, dirty tracking, production, or player decisions.
+//! Omitted live fields are not established defaults or planning exclusions.
+use crate::unit::{HashValue, Limits};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Error {
+    Truncated,
+    TrailingBytes,
+    ResourceLimit,
+    Version {
+        expected: i32,
+        actual: i32,
+    },
+    NoncanonicalBool(u8),
+    /// Tags 0..=3 require their corresponding typed payload.
+    InvalidPayloadTag(i32),
+}
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Linux City production wire: {self:?}")
+    }
+}
+impl std::error::Error for Error {}
+
+/// OrderTypes and MilitaryFormationTypes are raw i32 providers at 0x2d500b0
+/// and 0x2d4fc90. Unit/Building/District/Project providers instead write hashes.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Order {
+    Train {
+        unit_hash: u32,
+        military_formation: i32,
+    },
+    Construct {
+        building_hash: u32,
+    },
+    Zone {
+        district_hash: u32,
+    },
+    Advance {
+        project_hash: u32,
+    },
+    /// Both original switch defaults serialize no order-specific payload,
+    /// including NO_ORDER (-1), other known orders and unknown raw values.
+    Other(i32),
+}
+impl Order {
+    pub fn tag(self) -> i32 {
+        match self {
+            Self::Train { .. } => 0,
+            Self::Construct { .. } => 1,
+            Self::Zone { .. } => 2,
+            Self::Advance { .. } => 3,
+            Self::Other(tag) => tag,
+        }
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct QueueEntry {
+    /// Outer dispatch hash; native Read consumes it without checking it.
+    pub type_hash: u32,
+    /// Inner node hash; native Read also consumes it without checking it.
+    pub node_type_hash: u32,
+    pub order: Order,
+    pub flags: i32,
+    pub request_id: u32,
+    pub location: [i32; 2],
+}
+/// Original canonical writer emits this hash in both positions. The wire
+/// codec preserves supplied hashes and does not silently canonicalize them.
+pub const BUILD_TYPE_HASH: u32 = 0x2c0f4a46;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FeatureOverride {
+    pub district_hash: u32,
+    pub feature_hash: u32,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DistrictBuildingProductionModifier {
+    pub district_hash: u32,
+    pub modifier: i32,
+}
+
+/// FixedPoint fields retain their exact signed 8-fractional-bit storage.
+/// Indexed arrays retain wire count/order; their counts are not registry sizes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BuildQueue {
+    pub entries: Vec<QueueEntry>,
+    /// YieldTypes uses raw i32 at 0x2d4fb70.
+    pub yield_type: i32,
+    pub wonder_production_multiplier: i32,
+    pub river_district_production_multiplier: i32,
+    pub river_wonder_production_multiplier: i32,
+    pub building_production_modifier: i32,
+    pub building_non_wonder_production_modifier: i32,
+    pub city_unit_production_modifier: i32,
+    pub district_production_modifier: i32,
+    pub adjacent_city_river_building_production_multiplier: i32,
+    pub adjacent_city_river_district_production_multiplier: i32,
+    pub district_adjacent_natural_wonder_production_modifier: Vec<HashValue<i32>>,
+    pub wonder_adjacent_natural_wonder_production_modifier: Vec<HashValue<i32>>,
+    pub building_progress: Vec<HashValue<i32>>,
+    pub construction_plot: Vec<HashValue<i16>>,
+    pub unit_progress: Vec<HashValue<i32>>,
+    pub district_progress: Vec<HashValue<i32>>,
+    pub project_progress: Vec<HashValue<i32>>,
+    pub zoning_plot: Vec<HashValue<i16>>,
+    pub building_production_multiplier: Vec<HashValue<i32>>,
+    pub unit_production_multiplier: Vec<HashValue<i32>>,
+    pub district_production_multiplier: Vec<HashValue<i32>>,
+    pub extra_unit_copy: Vec<HashValue<i32>>,
+    pub features_valid_wonders: Vec<HashValue<bool>>,
+    pub production_overflow: i32,
+    pub production_salvage: i32,
+    pub feature_overrides: Vec<FeatureOverride>,
+    pub corps_army_discount: Vec<HashValue<i32>>,
+    pub project_production_multiplier: Vec<HashValue<i32>>,
+    pub previous_production_type_hash: u32,
+    pub ignore_strategic_resource_requirements: bool,
+    pub strategic_resource_requirement_modifier: i32,
+    pub district_building_production_modifiers: Vec<DistrictBuildingProductionModifier>,
+}
+
+struct Budget {
+    limits: Limits,
+    items: usize,
+}
+impl Budget {
+    fn count<T>(&mut self, count: usize) -> Result<Vec<T>, Error> {
+        self.items = self.items.checked_add(count).ok_or(Error::ResourceLimit)?;
+        if self.items > self.limits.max_items
+            || count
+                .checked_mul(std::mem::size_of::<T>())
+                .ok_or(Error::ResourceLimit)?
+                > self.limits.max_bytes
+        {
+            return Err(Error::ResourceLimit);
+        }
+        let mut out = Vec::new();
+        out.try_reserve_exact(count)
+            .map_err(|_| Error::ResourceLimit)?;
+        Ok(out)
+    }
+}
+struct Reader<'a> {
+    bytes: &'a [u8],
+    pos: usize,
+    budget: Budget,
+}
+impl Reader<'_> {
+    fn take<const N: usize>(&mut self) -> Result<[u8; N], Error> {
+        let end = self.pos.checked_add(N).ok_or(Error::ResourceLimit)?;
+        if end > self.budget.limits.max_bytes {
+            return Err(Error::ResourceLimit);
+        }
+        let data = self.bytes.get(self.pos..end).ok_or(Error::Truncated)?;
+        self.pos = end;
+        Ok(data.try_into().unwrap())
+    }
+    fn version(&mut self, expected: i32) -> Result<(), Error> {
+        let actual = i32::read(self)?;
+        if actual == expected {
+            Ok(())
+        } else {
+            Err(Error::Version { expected, actual })
+        }
+    }
+    fn vector<T>(
+        &mut self,
+        mut read: impl FnMut(&mut Self) -> Result<T, Error>,
+    ) -> Result<Vec<T>, Error> {
+        let count = u32::read(self)? as usize;
+        let mut out = self.budget.count(count)?;
+        for _ in 0..count {
+            out.push(read(self)?);
+        }
+        Ok(out)
+    }
+    fn pairs<T: Scalar>(&mut self) -> Result<Vec<HashValue<T>>, Error> {
+        self.vector(|r| {
+            Ok(HashValue {
+                definition_hash: u32::read(r)?,
+                value: T::read(r)?,
+            })
+        })
+    }
+}
+struct Writer {
+    bytes: Vec<u8>,
+    budget: Budget,
+}
+impl Writer {
+    fn put(&mut self, data: &[u8]) -> Result<(), Error> {
+        let size = self
+            .bytes
+            .len()
+            .checked_add(data.len())
+            .ok_or(Error::ResourceLimit)?;
+        if size > self.budget.limits.max_bytes {
+            return Err(Error::ResourceLimit);
+        }
+        self.bytes
+            .try_reserve(data.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        self.bytes.extend_from_slice(data);
+        Ok(())
+    }
+    fn vector<T>(
+        &mut self,
+        values: &[T],
+        mut write: impl FnMut(&mut Self, &T) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        // Count validation uses no temporary allocation on encoding.
+        self.budget.items = self
+            .budget
+            .items
+            .checked_add(values.len())
+            .ok_or(Error::ResourceLimit)?;
+        if self.budget.items > self.budget.limits.max_items {
+            return Err(Error::ResourceLimit);
+        }
+        u32::try_from(values.len())
+            .map_err(|_| Error::ResourceLimit)?
+            .write(self)?;
+        for value in values {
+            write(self, value)?;
+        }
+        Ok(())
+    }
+    fn pairs<T: Scalar>(&mut self, values: &[HashValue<T>]) -> Result<(), Error> {
+        self.vector(values, |w, p| {
+            p.definition_hash.write(w)?;
+            p.value.write(w)
+        })
+    }
+}
+trait Scalar: Sized + Copy {
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error>;
+    fn write(self, w: &mut Writer) -> Result<(), Error>;
+}
+macro_rules! scalar {
+    ($t:ty, $n:expr) => {
+        impl Scalar for $t {
+            fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+                Ok(Self::from_le_bytes(r.take::<$n>()?))
+            }
+            fn write(self, w: &mut Writer) -> Result<(), Error> {
+                w.put(&self.to_le_bytes())
+            }
+        }
+    };
+}
+scalar!(i32, 4);
+scalar!(u32, 4);
+scalar!(i16, 2);
+impl Scalar for bool {
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        match r.take::<1>()?[0] {
+            0 => Ok(false),
+            1 => Ok(true),
+            b => Err(Error::NoncanonicalBool(b)),
+        }
+    }
+    fn write(self, w: &mut Writer) -> Result<(), Error> {
+        w.put(&[u8::from(self)])
+    }
+}
+impl QueueEntry {
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let type_hash = u32::read(r)?;
+        r.version(2)?;
+        let node_type_hash = u32::read(r)?;
+        let tag = i32::read(r)?;
+        let flags = i32::read(r)?;
+        let order = match tag {
+            0 => Order::Train {
+                unit_hash: u32::read(r)?,
+                military_formation: i32::read(r)?,
+            },
+            1 => Order::Construct {
+                building_hash: u32::read(r)?,
+            },
+            2 => Order::Zone {
+                district_hash: u32::read(r)?,
+            },
+            3 => Order::Advance {
+                project_hash: u32::read(r)?,
+            },
+            tag => Order::Other(tag),
+        };
+        Ok(Self {
+            type_hash,
+            node_type_hash,
+            order,
+            flags,
+            request_id: u32::read(r)?,
+            location: [i32::read(r)?, i32::read(r)?],
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        self.type_hash.write(w)?;
+        2i32.write(w)?;
+        self.node_type_hash.write(w)?;
+        self.order.tag().write(w)?;
+        self.flags.write(w)?;
+        match self.order {
+            Order::Train {
+                unit_hash,
+                military_formation,
+            } => {
+                unit_hash.write(w)?;
+                military_formation.write(w)?;
+            }
+            Order::Construct { building_hash } => building_hash.write(w)?,
+            Order::Zone { district_hash } => district_hash.write(w)?,
+            Order::Advance { project_hash } => project_hash.write(w)?,
+            Order::Other(tag) if (0..=3).contains(&tag) => {
+                return Err(Error::InvalidPayloadTag(tag))
+            }
+            Order::Other(_) => {}
+        }
+        self.request_id.write(w)?;
+        self.location[0].write(w)?;
+        self.location[1].write(w)
+    }
+}
+
+impl BuildQueue {
+    pub const VERSION: i32 = 16;
+    /// Decode only at an independently established structural boundary.
+    pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            budget: Budget { limits, items: 0 },
+        };
+        r.version(Self::VERSION)?;
+        let value = Self {
+            entries: r.vector(QueueEntry::read)?,
+            yield_type: i32::read(&mut r)?,
+            wonder_production_multiplier: i32::read(&mut r)?,
+            river_district_production_multiplier: i32::read(&mut r)?,
+            river_wonder_production_multiplier: i32::read(&mut r)?,
+            building_production_modifier: i32::read(&mut r)?,
+            building_non_wonder_production_modifier: i32::read(&mut r)?,
+            city_unit_production_modifier: i32::read(&mut r)?,
+            district_production_modifier: i32::read(&mut r)?,
+            adjacent_city_river_building_production_multiplier: i32::read(&mut r)?,
+            adjacent_city_river_district_production_multiplier: i32::read(&mut r)?,
+            district_adjacent_natural_wonder_production_modifier: r.pairs()?,
+            wonder_adjacent_natural_wonder_production_modifier: r.pairs()?,
+            building_progress: r.pairs()?,
+            construction_plot: r.pairs()?,
+            unit_progress: r.pairs()?,
+            district_progress: r.pairs()?,
+            project_progress: r.pairs()?,
+            zoning_plot: r.pairs()?,
+            building_production_multiplier: r.pairs()?,
+            unit_production_multiplier: r.pairs()?,
+            district_production_multiplier: r.pairs()?,
+            extra_unit_copy: r.pairs()?,
+            features_valid_wonders: r.pairs()?,
+            production_overflow: i32::read(&mut r)?,
+            production_salvage: i32::read(&mut r)?,
+            feature_overrides: r.vector(|r| {
+                r.version(16)?;
+                Ok(FeatureOverride {
+                    district_hash: u32::read(r)?,
+                    feature_hash: u32::read(r)?,
+                })
+            })?,
+            corps_army_discount: r.pairs()?,
+            project_production_multiplier: r.pairs()?,
+            previous_production_type_hash: u32::read(&mut r)?,
+            ignore_strategic_resource_requirements: bool::read(&mut r)?,
+            strategic_resource_requirement_modifier: i32::read(&mut r)?,
+            district_building_production_modifiers: r.vector(|r| {
+                r.version(16)?;
+                Ok(DistrictBuildingProductionModifier {
+                    district_hash: u32::read(r)?,
+                    modifier: i32::read(r)?,
+                })
+            })?,
+        };
+        Ok((value, r.pos))
+    }
+    pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
+        let (value, consumed) = Self::decode_prefix(bytes, limits)?;
+        if consumed != bytes.len() {
+            return Err(Error::TrailingBytes);
+        }
+        Ok(value)
+    }
+    pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        let mut w = Writer {
+            bytes: Vec::new(),
+            budget: Budget { limits, items: 0 },
+        };
+        Self::VERSION.write(&mut w)?;
+        w.vector(&self.entries, |w, v| v.write(w))?;
+        self.yield_type.write(&mut w)?;
+        self.wonder_production_multiplier.write(&mut w)?;
+        self.river_district_production_multiplier.write(&mut w)?;
+        self.river_wonder_production_multiplier.write(&mut w)?;
+        self.building_production_modifier.write(&mut w)?;
+        self.building_non_wonder_production_modifier.write(&mut w)?;
+        self.city_unit_production_modifier.write(&mut w)?;
+        self.district_production_modifier.write(&mut w)?;
+        self.adjacent_city_river_building_production_multiplier
+            .write(&mut w)?;
+        self.adjacent_city_river_district_production_multiplier
+            .write(&mut w)?;
+        w.pairs(&self.district_adjacent_natural_wonder_production_modifier)?;
+        w.pairs(&self.wonder_adjacent_natural_wonder_production_modifier)?;
+        w.pairs(&self.building_progress)?;
+        w.pairs(&self.construction_plot)?;
+        w.pairs(&self.unit_progress)?;
+        w.pairs(&self.district_progress)?;
+        w.pairs(&self.project_progress)?;
+        w.pairs(&self.zoning_plot)?;
+        w.pairs(&self.building_production_multiplier)?;
+        w.pairs(&self.unit_production_multiplier)?;
+        w.pairs(&self.district_production_multiplier)?;
+        w.pairs(&self.extra_unit_copy)?;
+        w.pairs(&self.features_valid_wonders)?;
+        self.production_overflow.write(&mut w)?;
+        self.production_salvage.write(&mut w)?;
+        w.vector(&self.feature_overrides, |w, v| {
+            16i32.write(w)?;
+            v.district_hash.write(w)?;
+            v.feature_hash.write(w)
+        })?;
+        w.pairs(&self.corps_army_discount)?;
+        w.pairs(&self.project_production_multiplier)?;
+        self.previous_production_type_hash.write(&mut w)?;
+        self.ignore_strategic_resource_requirements.write(&mut w)?;
+        self.strategic_resource_requirement_modifier.write(&mut w)?;
+        w.vector(&self.district_building_production_modifiers, |w, v| {
+            16i32.write(w)?;
+            v.district_hash.write(w)?;
+            v.modifier.write(w)
+        })?;
+        Ok(w.bytes)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // Independently assembled source grammar; no native execution is claimed.
+    fn word(out: &mut Vec<u8>, value: u32) {
+        out.extend_from_slice(&value.to_le_bytes());
+    }
+    fn fixture() -> Vec<u8> {
+        let mut b = Vec::new();
+        word(&mut b, 16);
+        word(&mut b, 7);
+        for (n, tag) in [0i32, 1, 2, 3, -1, 4, i32::MIN].into_iter().enumerate() {
+            word(&mut b, BUILD_TYPE_HASH.wrapping_add(n as u32));
+            word(&mut b, 2);
+            word(&mut b, 0xf0000000 | n as u32);
+            word(&mut b, tag as u32);
+            word(&mut b, i32::MIN as u32);
+            if (0..=3).contains(&tag) {
+                word(&mut b, u32::MAX - n as u32);
+            }
+            if tag == 0 {
+                word(&mut b, i32::MIN as u32);
+            }
+            word(&mut b, 0x80000000 | n as u32);
+            word(&mut b, u32::MAX);
+            word(&mut b, 0x7fffffff);
+        }
+        for i in 0..10 {
+            word(&mut b, 0x80000000 + i);
+        }
+        // All 13 initial indexed arrays populated, preserving duplicate keys.
+        for array in 0..13 {
+            word(&mut b, 2);
+            for value in [0u32, 1] {
+                word(&mut b, 0xdeadbeef);
+                match array {
+                    3 | 7 => b.extend_from_slice(&(0x8000u16 + value as u16).to_le_bytes()),
+                    12 => b.push(value as u8),
+                    _ => word(&mut b, 0x80000000 + value),
+                }
+            }
+        }
+        word(&mut b, 0x80000001); // overflow
+        word(&mut b, 0x7fffffff); // salvage
+        word(&mut b, 1); // FeatureOverride vector
+        for value in [16, u32::MAX, 0x12345678] {
+            word(&mut b, value);
+        }
+        for _ in 0..2 {
+            // CorpsArmyDiscount and Project multiplier
+            word(&mut b, 1);
+            word(&mut b, 0xdeadbeef);
+            word(&mut b, u32::MAX);
+        }
+        word(&mut b, 0xfedcba98);
+        b.push(1);
+        word(&mut b, 0x87654321);
+        word(&mut b, 1);
+        for value in [16, 0xdeadbeef, 0x80000000] {
+            word(&mut b, value);
+        }
+        b
+    }
+    #[test]
+    fn current_source_grammar_and_raw_branches() {
+        let bytes = fixture();
+        let value = BuildQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(value.entries.len(), 7);
+        assert_eq!(
+            value.entries[0].order,
+            Order::Train {
+                unit_hash: u32::MAX,
+                military_formation: i32::MIN
+            }
+        );
+        assert_eq!(
+            value.entries[1].order,
+            Order::Construct {
+                building_hash: u32::MAX - 1
+            }
+        );
+        assert_eq!(
+            value.entries[2].order,
+            Order::Zone {
+                district_hash: u32::MAX - 2
+            }
+        );
+        assert_eq!(
+            value.entries[3].order,
+            Order::Advance {
+                project_hash: u32::MAX - 3
+            }
+        );
+        assert_eq!(value.entries[6].order, Order::Other(i32::MIN));
+        assert_eq!(value.entries[0].location, [-1, i32::MAX]);
+        assert_eq!(value.yield_type, i32::MIN);
+        assert_eq!(value.construction_plot[1].value, -32767);
+        assert_eq!(value.features_valid_wonders[0].value, false);
+        assert_eq!(value.features_valid_wonders[1].value, true);
+        assert_eq!(value.feature_overrides[0].feature_hash, 0x12345678);
+        assert_eq!(
+            value.district_building_production_modifiers[0].modifier,
+            i32::MIN
+        );
+        assert_eq!(value.encode(Limits::default()).unwrap(), bytes);
+    }
+    #[test]
+    fn truncation_versions_and_prefix() {
+        let bytes = fixture();
+        for length in 0..bytes.len() {
+            assert!(
+                BuildQueue::decode(&bytes[..length], Limits::default()).is_err(),
+                "{length}"
+            );
+        }
+        let mut trailing = bytes.clone();
+        trailing.push(99);
+        assert_eq!(
+            BuildQueue::decode(&trailing, Limits::default()),
+            Err(Error::TrailingBytes)
+        );
+        assert_eq!(
+            BuildQueue::decode_prefix(&trailing, Limits::default())
+                .unwrap()
+                .1,
+            bytes.len()
+        );
+        for (offset, expected) in [(0, 16), (12, 2), (bytes.len() - 12, 16)] {
+            let mut bad = bytes.clone();
+            bad[offset..offset + 4].copy_from_slice(&1i32.to_le_bytes());
+            assert_eq!(
+                BuildQueue::decode(&bad, Limits::default()),
+                Err(Error::Version {
+                    expected,
+                    actual: 1
+                })
+            );
+        }
+    }
+    #[test]
+    fn malformed_bool_payload_and_bounded_resources() {
+        let bytes = fixture();
+        let mut bad = bytes.clone();
+        let offset = bad.len() - 21;
+        bad[offset] = 2;
+        assert_eq!(
+            BuildQueue::decode(&bad, Limits::default()),
+            Err(Error::NoncanonicalBool(2))
+        );
+        let mut value = BuildQueue::decode(&bytes, Limits::default()).unwrap();
+        value.entries[0].order = Order::Other(0);
+        assert_eq!(
+            value.encode(Limits::default()),
+            Err(Error::InvalidPayloadTag(0))
+        );
+        let value = BuildQueue::decode(&bytes, Limits::default()).unwrap();
+        for limits in [
+            Limits {
+                max_items: 6,
+                max_bytes: 100000,
+            },
+            Limits {
+                max_items: 100000,
+                max_bytes: bytes.len() - 1,
+            },
+        ] {
+            assert_eq!(
+                BuildQueue::decode(&bytes, limits),
+                Err(Error::ResourceLimit)
+            );
+            assert_eq!(value.encode(limits), Err(Error::ResourceLimit));
+        }
+        // A tiny wire record cannot force an unbounded allocation.
+        let mut bad = vec![];
+        word(&mut bad, 16);
+        word(&mut bad, u32::MAX);
+        assert_eq!(
+            BuildQueue::decode(&bad, Limits::default()),
+            Err(Error::ResourceLimit)
+        );
+    }
+}
