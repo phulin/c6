@@ -1,0 +1,52 @@
+{
+  "schema": "c6-linux-movement-cost-expanded-independent-review-v1",
+  "result_commit": "666af3334e48b72a8e0d52b87e32d639ec1b22ec",
+  "result_sha256": "08e003e7136412226b66aa96ffa17282c0966a4f4f575c920a1410bb51155575",
+  "checker_sha256": "9198a6e4a98a4bf3c6a271608be6ad9ce4c05cfbafd1ce721f59f6bb7a76d618",
+  "independent_reproduction_byte_identical": true,
+  "candidate_sha256": "d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718",
+  "helper_sha256": "d13acf6c458f1601bd1d16c76d04a2c667d8db4cebbc5ce0190dbd355a231adc",
+  "compared_cases": 7461,
+  "compared_phase_states": 67149,
+  "formations": 1250,
+  "units_seen": 1262,
+  "skipped": 0,
+  "truncated": false,
+  "raw_snapshot_pairs": 24,
+  "different_bytes": 0,
+  "masked_bytes": 0,
+  "all_four_runtime_provenance_verified": true,
+  "archived_sources_per_profile": 60,
+  "expanded_native_return_codes": [
+    0,
+    0
+  ],
+  "actual_stderr_cleanup_reviewed": true,
+  "layer_minus_one_rows": 126,
+  "observed_rng_endpoint_and_known_field_checks_passed": true,
+  "exact_configuration_delta": {
+    "control": [
+      {
+        "path": "/lower_core_movement_cost/max_formations",
+        "before": 256,
+        "after": 4096
+      }
+    ],
+    "cost": [
+      {
+        "path": "/lower_core_movement_cost/max_formations",
+        "before": 256,
+        "after": 4096
+      }
+    ]
+  },
+  "original_game_execution_by_reviewer": false,
+  "rebuild_by_reviewer": false,
+  "acceptance": "recorded expanded movement query arithmetic and retained-state observations",
+  "complete_state_actions_turns": false,
+  "complete_rng_inventory": false,
+  "movement_legality_proven": false,
+  "performance_claim": false,
+  "coverage_classification_separate": true,
+  "save_load_89198_byte_failure_unresolved": true
+}
