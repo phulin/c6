@@ -1,0 +1,260 @@
+{
+  "schema": "c6-linux-notification-lifecycle-review-v1",
+  "static_native_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "native_key_dispatch_method": "SHA-gated objdump instruction addresses; signed x86 cmp/jcc path evaluation over each exact payload key, stopping at first non-comparison leaf",
+  "host_methods": [
+    {
+      "name": "EngineUtility.SendEvent",
+      "rva": "0x32b4260",
+      "bytes": 2492,
+      "sha256": "24826057267fc9c5a6028051e2eed6dbffea87bb34c1de4600f00ae968c370d9"
+    },
+    {
+      "name": "DirtyRegistry.Get",
+      "rva": "0x32b6200",
+      "bytes": 100,
+      "sha256": "9c914c37466f2772d71d3e074e95aec9fb3256dbe2a7c8b8972558811ad06328"
+    },
+    {
+      "name": "ParameterUsage.Get",
+      "rva": "0x32055f0",
+      "bytes": 100,
+      "sha256": "6464c09d3c3a889bf0f35687cec60f84a185978992996a44622fa09512e1a875"
+    },
+    {
+      "name": "ParameterUsageList.Get",
+      "rva": "0x3205360",
+      "bytes": 92,
+      "sha256": "e04db99e8f15f83df0cc86ead4c51c4ca2b204381028208b3e0d8e56cd756a57"
+    },
+    {
+      "name": "Translate.NotificationActivated",
+      "rva": "0x3212d00",
+      "bytes": 164,
+      "sha256": "7944888c67752fca156ddafb165bb7680992ff27bc3af4623e545b5ff9a84daa"
+    },
+    {
+      "name": "Publish257",
+      "rva": "0x321cac0",
+      "bytes": 80,
+      "sha256": "4fe4c9ea0083b660eb82a946d1b96f27d7f6cb8d218714ca6a48b287c2e33819"
+    }
+  ],
+  "dispatch_key_paths": [
+    {
+      "key": "0xa1e5a149",
+      "entry": "0x32b432f",
+      "path": [
+        {
+          "rva": "0x32b432f",
+          "compare": "0xf345df88"
+        },
+        {
+          "rva": "0x32b4334",
+          "branch": "jle",
+          "taken": true
+        },
+        {
+          "rva": "0x32b4390",
+          "compare": "0xa9cd74fc"
+        },
+        {
+          "rva": "0x32b4395",
+          "branch": "jg",
+          "taken": false
+        },
+        {
+          "rva": "0x32b439b",
+          "compare": "0x8c468e3b"
+        },
+        {
+          "rva": "0x32b43a0",
+          "branch": "jle",
+          "taken": false
+        },
+        {
+          "rva": "0x32b43a6",
+          "compare": "0xa1e5a148"
+        },
+        {
+          "rva": "0x32b43ab",
+          "branch": "jg",
+          "taken": true
+        },
+        {
+          "rva": "0x32b4763",
+          "compare": "0xa1e5a149"
+        },
+        {
+          "rva": "0x32b4768",
+          "branch": "je",
+          "taken": true
+        }
+      ],
+      "leaf": "0x32b4ad8"
+    },
+    {
+      "key": "0xeab69e5a",
+      "entry": "0x32b432f",
+      "path": [
+        {
+          "rva": "0x32b432f",
+          "compare": "0xf345df88"
+        },
+        {
+          "rva": "0x32b4334",
+          "branch": "jle",
+          "taken": true
+        },
+        {
+          "rva": "0x32b4390",
+          "compare": "0xa9cd74fc"
+        },
+        {
+          "rva": "0x32b4395",
+          "branch": "jg",
+          "taken": true
+        },
+        {
+          "rva": "0x32b4490",
+          "compare": "0xd6ee6f86"
+        },
+        {
+          "rva": "0x32b4495",
+          "branch": "jle",
+          "taken": false
+        },
+        {
+          "rva": "0x32b449b",
+          "compare": "0xf0548bb6"
+        },
+        {
+          "rva": "0x32b44a0",
+          "branch": "jg",
+          "taken": false
+        },
+        {
+          "rva": "0x32b44a6",
+          "compare": "0xd6ee6f87"
+        },
+        {
+          "rva": "0x32b44ab",
+          "branch": "je",
+          "taken": false
+        },
+        {
+          "rva": "0x32b44b1",
+          "compare": "0xd6fcf3e4"
+        },
+        {
+          "rva": "0x32b44b6",
+          "branch": "jne",
+          "taken": true
+        }
+      ],
+      "leaf": "0x32b4bd0"
+    },
+    {
+      "key": "0x78a2f946",
+      "entry": "0x32b432f",
+      "path": [
+        {
+          "rva": "0x32b432f",
+          "compare": "0xf345df88"
+        },
+        {
+          "rva": "0x32b4334",
+          "branch": "jle",
+          "taken": false
+        },
+        {
+          "rva": "0x32b4336",
+          "compare": "0x3fefdf16"
+        },
+        {
+          "rva": "0x32b433b",
+          "branch": "jle",
+          "taken": false
+        },
+        {
+          "rva": "0x32b4341",
+          "compare": "0x53777b04"
+        },
+        {
+          "rva": "0x32b4346",
+          "branch": "jg",
+          "taken": true
+        },
+        {
+          "rva": "0x32b44fd",
+          "compare": "0x65677462"
+        },
+        {
+          "rva": "0x32b4502",
+          "branch": "jg",
+          "taken": true
+        },
+        {
+          "rva": "0x32b4891",
+          "compare": "0x65677463"
+        },
+        {
+          "rva": "0x32b4896",
+          "branch": "je",
+          "taken": false
+        },
+        {
+          "rva": "0x32b489c",
+          "compare": "0x7b21f796"
+        },
+        {
+          "rva": "0x32b48a1",
+          "branch": "jne",
+          "taken": true
+        }
+      ],
+      "leaf": "0x32b4bd0"
+    }
+  ],
+  "metadata_leaf": "reads uint metadata into EventData+4, then common iterator advance; no dirty Add",
+  "identity_and_bool_leaves": "common iterator advance; no dirty Add",
+  "exact_three_key_report_dirty_mutation": false,
+  "passive_report_sha256": "5bf06ea463cab04021134c6e9e7689b18db932f3452379a4096f9dbbfa6d4357",
+  "passive_selected_phase": 5,
+  "passive_cache_delegate_count": 8,
+  "notification_cache_delegate_hits": 0,
+  "notification_translator_hits": 1,
+  "notification_publish257_hits": 1,
+  "notification_prepublish_null": true,
+  "callback_scope": "Actual selected passive replay only. Cache absence is observed delegate-tail coverage, not a universal registration inventory.",
+  "delivery_remaining": [
+    "Logical KeepOrder event257 queue insertion and ordering must be represented/delivered",
+    "Later queued consumers and complete host queue state not certified by these observations",
+    "Current Rust diagnostic projection records a report but does not execute this native delivery path"
+  ],
+  "complete_notification_delivery_modeled_in_rust": false,
+  "full_action_acceptance": 0,
+  "gameplay_parity": false,
+  "reviewed_commit": "1107fbe",
+  "reviewed_commit_full": "1107fbe20afab11c930476254256c33e3b4c9e5b",
+  "independent_candidate_sha256": "72dc68a6d1fe890feaf5fd8cd45cf3096cd232665f2ef271ffcc921dafad0fc2",
+  "independent_sources": {
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/lib.rs": "6febb9d9551a2c069466a10068b7a67e6d1eb7365b5983a14c65122f77cfbb8f",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/examples/notification_state_phase.rs": "88f5c1f53c39db35ba482594463bb14f96a2a3833b5a808dab13c6221acc85d7",
+    "tools/linux/notification_state_phase_audit.py": "bb66236f251bd3b9ec6a75610672bd1d31d8d7ee28609ed8c7385b38757fcd33"
+  },
+  "independent_review_audit_sha256": "36bf4ff5fa1cff8ae7f318354a05fe451f5236f2128bb21128dc12c3a592163d",
+  "independent_complete_owner_bytes_equal": true,
+  "actual_native_phase_input_parity": false,
+  "focused_test_groups_passed": 8,
+  "blocking_findings_remaining": 0,
+  "resolved_findings": [
+    "Unpooled destruction narrowed before mutation to nonowned scalar32 parameters; pooled release retains arbitrary transported payload without native destruction",
+    "External gates/configuration/owner identity fixed during callback contract explicitly documented"
+  ]
+}
