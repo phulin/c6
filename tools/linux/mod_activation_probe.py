@@ -1014,6 +1014,13 @@ def main():
         match=re.search(r'(?:=>\s+)?(/\S+)\s+\(',line)
         if match:
             path=Path(match[1]).resolve();identity['runtime_dependencies'][path.name]={'path':str(path),'sha256':digest(path)}
+    if args.full_manager_fixture:
+        libc=identity['runtime_dependencies'].get('libc.so.6')
+        if not libc:raise SystemExit('full Manager actual loader libc identity missing')
+        full_manager_profile['runtime_module_paths']={
+            'host':str(host.resolve()),'preload':str(archived_preload.resolve()),
+            'core':str((assets/'libGameCore_XP2.so').resolve()),
+            'libc':str(Path(libc['path']).resolve())}
     if any(digest(ROOT/p)!=expected for p,expected in identity['sources'].items()):raise SystemExit('source changed during compile')
     env={k:v for k,v in os.environ.items() if not k.startswith(('LD_','C6_'))}
     env.update({'LD_PRELOAD':str(preload),'LD_LIBRARY_PATH':f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}',
