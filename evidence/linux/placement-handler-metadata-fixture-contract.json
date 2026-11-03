@@ -9,6 +9,6 @@
   "sources": {
     "native/linux/placement_handler_metadata_fixture.c": "05bd92191823b4a1f6f19c62284a8ae3befdb9ecf0c807b9792ea39d87ef8fb3",
     "native/linux/placement_handler_metadata_fixture.h": "f19b7cd25f01f25fb87983f42d3e332406f83657f572615cc0cf1dff1781e297",
-    "tools/linux/placement_handler_metadata_fixture_audit.py": "70e5a18a5e78af4a9d08924aceac6c31b27dc24f1136075fe46ae04f1b807b86"
+    "tools/linux/placement_handler_metadata_fixture_audit.py": "0ae4d40419455cb374905d3ac0ddf71d9a40050889c4502f4696143c5f1a5bd7"
   }
 }

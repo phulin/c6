@@ -11,6 +11,9 @@ def original(path):
     return subprocess.check_output(['git','show',BASELINE+':'+path],cwd=ROOT,text=True)
 
 def project_previous_lifecycle(text):
+    if "QUERY_UNIT_OPERATION_MANAGER_METADATA" in text:
+        from unit_operation_manager_metadata_fixture_audit import project_previous_lifecycle as previous
+        text=previous(text)
     text=text.replace('    QUERY_PLACEMENT_METADATA,\n    QUERY_PLACEMENT_HANDLER_METADATA\n','    QUERY_PLACEMENT_METADATA\n',1)
     text=text.replace('    const char *marker=profile==QUERY_PLACEMENT_HANDLER_METADATA?\n        "C6_LINUX_PLACEMENT_HANDLER_METADATA_LIFECYCLE":profile==QUERY_PLACEMENT_METADATA?','    const char *marker=profile==QUERY_PLACEMENT_METADATA?',1)
     text=text.replace('    if(profile==QUERY_PLACEMENT_HANDLER_METADATA)\n        fprintf(stderr,"C6_LINUX_PLACEMENT_HANDLER_METADATA_LIFECYCLE mode placement_handler_metadata read_only 1\\n");\n','',1)
@@ -25,6 +28,9 @@ def project_previous_lifecycle(text):
     return text
 
 def project_previous_loader(text):
+    if "C6_UNIT_OPERATION_MANAGER_METADATA_OUTPUT" in text:
+        from unit_operation_manager_metadata_fixture_audit import project_previous_loader as previous
+        text=previous(text)
     block='''        if(!result && getenv("C6_PLACEMENT_HANDLER_METADATA_OUTPUT")) {
             int (*handler)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_placement_handler_metadata");
             if(!handler){

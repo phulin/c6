@@ -17,4 +17,5 @@ int c6_linux_action_prepare_movement_cost(void *game_module, void *borrowed_cont
 int c6_linux_action_prepare_domain_metadata(void *game_module, void *borrowed_context);
 int c6_linux_action_prepare_placement_metadata(void *module,void *borrowed_context);
 int c6_linux_action_prepare_placement_handler_metadata(void *module,void *borrowed_context);
+int c6_linux_action_prepare_unit_operation_manager_metadata(void *module,void *borrowed_context);
 #endif

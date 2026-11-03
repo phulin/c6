@@ -1,0 +1,15 @@
+# Linux UnitOperation Manager raw metadata fixture
+
+This is a new preparation profile. It has no original native comparison or FullManager acceptance yet. Complete state, action execution and turns remain unsupported.
+
+The caller owns `unit_operation_manager_metadata_fixture.[ch]`, the independent lifecycle enum, loader branch and runner mode. The helper owns `unit_operation_manager_metadata.[ch]`. The fixture calls only that raw metadata helper, twice; it does not call FullManager, handler predicates, script callbacks, requests or turn completion.
+
+After original controller Initialize/InitializeCache, the new admission scope binds its twelve immutable original addresses. Every idle check rechecks mutable controller/context state and takes/releases the genuine Game facade lock before checking again. Unknown or active work exits the isolated process before later observations or teardown. Address admission ends before original Uninitialize. The new fixture audit compares the complete preceding lifecycle and loader against committed `b6b3143`, and compares the idle guard with the accepted guard after an exact namespace substitution.
+
+Four internal full Context Saves bracket two complete raw helper passes. Two outer full Saves retain the established loader controls. The fixture records all 32 bytes of the genuine Game synchronous Random and all 32 bytes of the Map generator Random before and after; these are known-object controls, not a complete RNG inventory. Whole Save bytes remain unmasked. Failed or partial metadata is not accepted. Actual lifecycle/cleanup markers and the retained trace must be checked separately from the helper return code.
+
+The runner mode is `--unit-operation-manager-metadata`, with a separately frozen `--unit-operation-manager-candidate-manifest`. Its seven required fresh private artifact arguments end in `output`, `repeat-output`, `control-output`, `before`, `control-save`, `after`, and `repeat`. The first two are raw metadata passes; `control-output` holds the profile identity, status and RNG observations. The other four are full Core snapshots. Outer Save paths must also be distinct. Raw artifacts remain local outside the pending private-upload manifest.
+
+The candidate manifest schema is `c6-linux-unit-operation-manager-candidate-v1`. It records exact executable/source-archive bytes, one committed source revision and complete source hashes. No native expected output may be used as candidate input. Live disabled IndexLists are reconstruction targets, not reconstruction inputs. Actual phase/control facts are inputs, not desired predicate answers. Script-system availability is an observation; it does not establish absence of registrations or effects.
+
+Before original execution, preparation must freeze the corrected helper audit, caller fixture audit, loader/runner/source identities, candidate/archive, target/host/dependencies, rules/DLC/configuration and canonical stream. Independent integrated review is required. No prepared profile has been accepted by this document.
