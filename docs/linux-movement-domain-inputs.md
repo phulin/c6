@@ -85,6 +85,13 @@ independence, Wonder guards and unavailable City state. These and the existing
 core branch tests are source-contract tests, not native coastal/Wonder/mask
 comparison. The new offline driver calculates coastal and ordered neighbors for
 all original Map plots and independently compares water at native endpoints.
+The [follow-up report](../evidence/linux/movement-domain-derived-queries.json)
+records 6,996 calculated coastal/neighbor queries, including 243 true coastal
+results, and 3,072 / 3,072 water endpoints equal to original control3. Coastal,
+neighbor and Wonder results have no new native runtime comparison here. Its
+candidate was built from a clean archive of `5d2dfc7` at
+`/tmp/c6-movement-domain-5d2dfc7`; isolated data tests pass 18 with four explicit
+fixture-dependent skips, and strict all-target data clippy passes.
 
 The existing authoritative movement export schema and original control3 JSONL
 provide Terrain/Feature/Improvement/Route/District registries only. District rows
