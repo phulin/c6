@@ -1,7 +1,6 @@
 # Domain metadata fixture admission
 
-This is a separate read-only original-code profile, prepared for native capture.
-It has not run original code or established metadata reconstruction parity. Its
+This is a separate read-only original-code profile. The [first capture controls](../evidence/linux/domain-metadata-native-capture-2.json) passed: 6,996 plot records, 65 player records, three registries, six identical full Core saves, unchanged observed RNG objects and clean teardown. Offline metadata reconstruction comparison remains pending. Its
 exported plot getter answers are expected outputs, never simulator inputs.
 Accepted movement helpers, candidates and captures remain immutable.
 
