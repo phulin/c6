@@ -70,6 +70,48 @@ static bool file_hash(int fd,const char *expected){
     for(;;){ssize_t n=pread(fd,buf,sizeof buf,pos);if(n<0)return false;if(!n)break;sha_add(&s,buf,(size_t)n);pos+=n;}
     char hex[65];sha_finish(&s,hex);return !strcmp(hex,expected);
 }
+/* Resolve the loader's genuine alias, but bind all later reads to one opened
+ * canonical fd. Paths are provenance, never a substitute for fd hash or actual
+ * runtime mapping identity. Endpoint checks reject alias/file replacement and
+ * in-place changes across hashing/capture; owners must retain the module. */
+typedef struct {int fd;char *loader_path,*canonical_path;struct stat opened;} ModuleFile;
+static bool same_file_version(const struct stat *a,const struct stat *b){
+    return S_ISREG(a->st_mode)&&S_ISREG(b->st_mode)&&a->st_dev==b->st_dev&&a->st_ino==b->st_ino&&
+        a->st_mode==b->st_mode&&a->st_size==b->st_size&&
+        a->st_mtim.tv_sec==b->st_mtim.tv_sec&&a->st_mtim.tv_nsec==b->st_mtim.tv_nsec&&
+        a->st_ctim.tv_sec==b->st_ctim.tv_sec&&a->st_ctim.tv_nsec==b->st_ctim.tv_nsec;
+}
+static bool module_file_stable(const ModuleFile *file){
+    struct stat fd,alias,canonical;
+    return file->fd>=0&&file->loader_path&&file->canonical_path&&
+        !fstat(file->fd,&fd)&&!stat(file->loader_path,&alias)&&!lstat(file->canonical_path,&canonical)&&
+        same_file_version(&file->opened,&fd)&&same_file_version(&fd,&alias)&&same_file_version(&fd,&canonical);
+}
+static void module_file_close(ModuleFile *file){
+    if(file->fd>=0)close(file->fd);
+    free(file->loader_path);free(file->canonical_path);
+    *file=(ModuleFile){.fd=-1};
+}
+/* NULL means success; failure names are stable pre-output diagnostics. The
+ * caller closes this object on every path, including partially opened paths. */
+static const char *module_file_open(ModuleFile *file,const char *loader_path,const char *expected){
+    *file=(ModuleFile){.fd=-1};
+    file->loader_path=strdup(loader_path);
+    if(!file->loader_path)return "module_alias_allocation";
+    file->canonical_path=realpath(file->loader_path,NULL);
+    if(!file->canonical_path)return "module_alias_resolution";
+    file->fd=open(file->canonical_path,O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
+    if(file->fd<0)return "module_canonical_open";
+    if(fstat(file->fd,&file->opened)||!S_ISREG(file->opened.st_mode))return "module_not_regular_file";
+    if(!module_file_stable(file))return "module_identity_changed_before_hash";
+    if(!file_hash(file->fd,expected))return "module_sha256_mismatch";
+    if(!module_file_stable(file))return "module_identity_changed_during_hash";
+    return NULL;
+}
+static int identity_refusal(const char *stage){
+    fprintf(stderr,"C6_LINUX_CURRENT_HANDLER_INTERRUPTION identity_refusal %s status 242\n",stage);
+    return 242;
+}
 static bool digest(const char *s){
     if(!s||strlen(s)!=64)return false;
     for(size_t i=0;i<64;i++)if(!((s[i]>='0'&&s[i]<='9')||(s[i]>='a'&&s[i]<='f')))return false;
@@ -280,23 +322,45 @@ int c6_linux_current_handler_interruption_capture(const C6CurrentHandlerInterrup
      * quiescence callback requires separately source-closed passive field reads;
      * no original getter/predicate/script calls are permitted in that callback. */
     void *anchor=dlsym(a->module,"_ZN8GameCore4Unit10Operations7Manager3GetEv");Dl_info info={0};
-    if(!anchor||!dladdr(anchor,&info)||!info.dli_fbase||!info.dli_fname)return 242;
+    if(!anchor||!dladdr(anchor,&info)||!info.dli_fbase||!info.dli_fname)return identity_refusal("module_anchor_unavailable");
     Image im={.base=(uintptr_t)info.dli_fbase,.fd=-1};
-    if((uintptr_t)anchor!=im.base+0x2da1260)return 242;
-    im.fd=open(info.dli_fname,O_RDONLY|O_CLOEXEC|O_NOFOLLOW);int host=open("/proc/self/exe",O_RDONLY|O_CLOEXEC);
-    bool identities=im.fd>=0&&host>=0&&file_hash(im.fd,GAME_SHA)&&file_hash(host,HOST_SHA);
-    if(host>=0)close(host);
-    if(!identities){if(im.fd>=0)close(im.fd);return 242;}
-    dl_iterate_phdr(image_segments,&im);if(!im.count){close(im.fd);return 242;}
+    if(im.base>UINTPTR_MAX-0x2da1260||(uintptr_t)anchor!=im.base+0x2da1260)return identity_refusal("module_anchor_address");
+    ModuleFile module_file={.fd=-1};
+    const char *failure=module_file_open(&module_file,info.dli_fname,GAME_SHA);
+    if(failure){module_file_close(&module_file);return identity_refusal(failure);}
+    im.fd=module_file.fd;
+    int host=open("/proc/self/exe",O_RDONLY|O_CLOEXEC);
+    if(host<0){module_file_close(&module_file);return identity_refusal("host_file_open");}
+    bool host_identity=file_hash(host,HOST_SHA);close(host);
+    if(!host_identity){module_file_close(&module_file);return identity_refusal("host_sha256_mismatch");}
+    dl_iterate_phdr(image_segments,&im);
+    if(!im.count){module_file_close(&module_file);return identity_refusal("module_program_headers");}
+    if(!runtime_code_mapping(&im,(uintptr_t)anchor,26)){
+        module_file_close(&module_file);return identity_refusal("module_anchor_mapping");
+    }
+    unsigned char anchor_code[26];
+    if(!original_code(&im,(uintptr_t)anchor,sizeof anchor_code,anchor_code)){
+        module_file_close(&module_file);return identity_refusal("module_anchor_live_code");
+    }
+    if(!module_file_stable(&module_file)){
+        module_file_close(&module_file);return identity_refusal("module_identity_changed_before_output");
+    }
     idle(a);uintptr_t game;
-    if(!read_self(im.base+0x3c051a8,&game,8)||game!=(uintptr_t)a->retained_game){close(im.fd);return 243;}
-    FILE *out=fopen(a->output_path,"wx");if(!out){close(im.fd);return 243;}
-    struct stat identity;if(fstat(im.fd,&identity)){fclose(out);close(im.fd);return 243;}
-    fprintf(out,"{\"kind\":\"profile\",\"schema\":\"c6-linux-current-handler-interruption-metadata-v1\",\"profile_sha256\":\"%s\",\"gamecore_sha256\":\"%s\",\"host_sha256\":\"%s\",\"module_base\":%" PRIuPTR ",\"file_device\":%" PRIuMAX ",\"file_inode\":%" PRIuMAX ",\"context\":%" PRIuPTR ",\"game\":%" PRIuPTR ",\"helper_direct_original_calls\":false,\"caller_quiescence_callback_invoked\":true,\"predicate_results\":false}\n",a->profile_sha256,GAME_SHA,HOST_SHA,im.base,(uintmax_t)identity.st_dev,(uintmax_t)identity.st_ino,(uintptr_t)a->borrowed_context,game);
+    if(!read_self(im.base+0x3c051a8,&game,8)||game!=(uintptr_t)a->retained_game){module_file_close(&module_file);return 243;}
+    FILE *out=fopen(a->output_path,"wx");if(!out){module_file_close(&module_file);return 243;}
+    struct stat identity;if(fstat(im.fd,&identity)){fclose(out);module_file_close(&module_file);return 243;}
+    fprintf(out,"{\"kind\":\"profile\",\"schema\":\"c6-linux-current-handler-interruption-metadata-v1\",\"profile_sha256\":\"%s\",\"gamecore_sha256\":\"%s\",\"host_sha256\":\"%s\",\"module_base\":%" PRIuPTR ",\"file_device\":%" PRIuMAX ",\"file_inode\":%" PRIuMAX ",\"context\":%" PRIuPTR ",\"game\":%" PRIuPTR ",\"helper_direct_original_calls\":false,\"caller_quiescence_callback_invoked\":true,\"predicate_results\":false,\"module_loader_path_raw\":",a->profile_sha256,GAME_SHA,HOST_SHA,im.base,(uintmax_t)identity.st_dev,(uintmax_t)identity.st_ino,(uintptr_t)a->borrowed_context,game);
+    raw(out,(const unsigned char *)module_file.loader_path,strlen(module_file.loader_path));
+    fputs(",\"module_canonical_path_raw\":",out);
+    raw(out,(const unsigned char *)module_file.canonical_path,strlen(module_file.canonical_path));
+    fputs("}\n",out);
     uintptr_t manager=0;HandlerSnapshot *handlers=NULL;size_t count=0;
     int rc=registry(out,&im,game,&manager,&handlers,&count);
     if(!rc)rc=players(out,&im,a,manager,handlers,count);
-    if(!rc){idle(a);uintptr_t after;if(!read_self(im.base+0x3c051a8,&after,8)||after!=game||!file_hash(im.fd,GAME_SHA))rc=248;}
+    if(!rc){idle(a);uintptr_t after;if(!read_self(im.base+0x3c051a8,&after,8)||after!=game||!module_file_stable(&module_file)||
+        !file_hash(im.fd,GAME_SHA)||!module_file_stable(&module_file)||
+        !runtime_code_mapping(&im,(uintptr_t)anchor,sizeof anchor_code)||
+        !original_code(&im,(uintptr_t)anchor,sizeof anchor_code,anchor_code))rc=248;}
     if(!rc)fprintf(out,"{\"kind\":\"complete\",\"manager\":%" PRIuPTR ",\"handler_slots\":%zu,\"player_slots\":65}\n",manager,count);
-    free(handlers);if(ferror(out))rc=249;if(fclose(out))rc=249;close(im.fd);return rc;
+    free(handlers);if(ferror(out))rc=249;if(fclose(out))rc=249;module_file_close(&module_file);return rc;
 }

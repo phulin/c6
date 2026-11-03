@@ -52,7 +52,73 @@ static int reject(void *module,void *context,const void *game){(void)module;(voi
 static void put32(unsigned char *p,size_t offset,uint32_t v){memcpy(p+offset,&v,4);}
 static void putptr(unsigned char *p,size_t offset,uintptr_t v){memcpy(p+offset,&v,8);}
 static void hash_text(const char *input,const char *expected){Sha s=sha_init();char result[65];sha_add(&s,input,strlen(input));sha_finish(&s,result);assert(!strcmp(result,expected));}
+static void fixture_file(const char *path,const char *data){
+ int fd=open(path,O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC,0600);assert(fd>=0);
+ assert(write(fd,data,strlen(data))==(ssize_t)strlen(data));assert(!close(fd));
+}
+static void identity_fixtures(const char *directory){
+ char canonical[4096],alias[4096],other[4096],copy[4096];
+ int n=snprintf(canonical,sizeof canonical,"%s/canonical",directory);assert(n>0&&(size_t)n<sizeof canonical);
+ n=snprintf(alias,sizeof alias,"%s/alias",directory);assert(n>0&&(size_t)n<sizeof alias);
+ n=snprintf(other,sizeof other,"%s/other",directory);assert(n>0&&(size_t)n<sizeof other);
+ n=snprintf(copy,sizeof copy,"%s/copy",directory);assert(n>0&&(size_t)n<sizeof copy);
+ const char *expected="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+ fixture_file(canonical,"abc");fixture_file(other,"xyz");fixture_file(copy,"abc");
+ assert(!symlink(canonical,alias));ModuleFile file={.fd=-1};
+ assert(!module_file_open(&file,canonical,expected)&&module_file_stable(&file));module_file_close(&file);
+ assert(!module_file_open(&file,alias,expected)&&module_file_stable(&file));
+ assert(!strcmp(file.loader_path,alias)&&!strcmp(file.canonical_path,canonical));
+ assert(fcntl(file.fd,F_GETFD)&FD_CLOEXEC);assert(fcntl(file.fd,F_GETFL)&O_NOFOLLOW);
+ /* No mapped bytes are executed. Mapping equality must use the actual fd,
+  * even when another file has the same correct SHA and byte contents. */
+ void *mapped=mmap(NULL,4096,PROT_READ|PROT_EXEC,MAP_PRIVATE,file.fd,0);assert(mapped!=MAP_FAILED);
+ Image image={.fd=file.fd,.count=1,.segments={{.lo=(uintptr_t)mapped,.hi=(uintptr_t)mapped+3,.offset=0,.flags=PF_R|PF_X}}};
+ unsigned char live[3];assert(runtime_code_mapping(&image,(uintptr_t)mapped,3));
+ assert(original_code(&image,(uintptr_t)mapped,3,live));
+ int same_hash_other_inode=open(copy,O_RDONLY|O_CLOEXEC);assert(same_hash_other_inode>=0&&file_hash(same_hash_other_inode,expected));
+ image.fd=same_hash_other_inode;assert(!runtime_code_mapping(&image,(uintptr_t)mapped,3));
+ assert(!close(same_hash_other_inode));image.fd=file.fd;
+ /* Deterministic endpoint replacements exercise the same gate checked around
+  * hashing and capture without depending on scheduler timing. */
+ assert(!unlink(alias)&&!symlink(copy,alias));assert(!module_file_stable(&file));
+ assert(runtime_code_mapping(&image,(uintptr_t)mapped,3));
+ assert(!unlink(alias)&&!symlink(canonical,alias));assert(module_file_stable(&file));
+ assert(!rename(copy,canonical));assert(!module_file_stable(&file));
+ module_file_close(&file);assert(!module_file_open(&file,alias,expected));
+ image.fd=file.fd;assert(!runtime_code_mapping(&image,(uintptr_t)mapped,3));
+ int writer=open(canonical,O_WRONLY|O_CLOEXEC);assert(writer>=0&&pwrite(writer,"xyz",3,0)==3);
+ /* Same-tick writes can retain identical filesystem timestamps. The hash must
+  * reject content changes independently; force a distinct mtime separately to
+  * test the metadata endpoint gate without a clock-resolution assumption. */
+ assert(!file_hash(file.fd,expected));
+ struct timespec changed_times[2]={file.opened.st_atim,file.opened.st_mtim};changed_times[1].tv_sec++;
+ assert(!futimens(writer,changed_times)&&!close(writer));
+ assert(!module_file_stable(&file));module_file_close(&file);
+ assert(!unlink(alias)&&!symlink(other,alias));
+ const char *reason=module_file_open(&file,alias,expected);assert(reason&&!strcmp(reason,"module_sha256_mismatch"));module_file_close(&file);
+ assert(!unlink(alias)&&!symlink("missing-file",alias));
+ reason=module_file_open(&file,alias,expected);assert(reason&&!strcmp(reason,"module_alias_resolution"));module_file_close(&file);
+ assert(!unlink(alias)&&!symlink(alias,alias));
+ reason=module_file_open(&file,alias,expected);assert(reason&&!strcmp(reason,"module_alias_resolution"));module_file_close(&file);
+ reason=module_file_open(&file,directory,expected);assert(reason&&!strcmp(reason,"module_not_regular_file"));module_file_close(&file);
+ assert(!munmap(mapped,4096));
+ puts("module_identity_groups=10 canonical alias wrong-hash broken loop nonregular wrong-mapped-inode alias-retarget canonical-replacement in-place-change");
+}
 int main(int argc,char **argv){
+ if(argc==3&&!strcmp(argv[1],"--identity-fixtures")){identity_fixtures(argv[2]);return 0;}
+ if(argc==4&&!strcmp(argv[1],"--module-file")){
+  ModuleFile module_file={.fd=-1};const char *reason=module_file_open(&module_file,argv[2],argv[3]);
+  if(reason)fprintf(stderr,"%s\n",reason);
+  module_file_close(&module_file);return reason?9:0;
+ }
+ if(argc==2&&!strcmp(argv[1],"--missing-anchor")){
+  void *main_module=dlopen(NULL,RTLD_NOW);assert(main_module);
+  C6CurrentHandlerInterruptionAdmission a={.module=main_module,.borrowed_context=(void *)1,.retained_game=(void *)1,
+   .profile_sha256=GAME_SHA,.output_path="unused",.quiescent=accept};
+  int result=c6_linux_current_handler_interruption_capture(&a);assert(!dlclose(main_module));return result;
+ }
+
+
  if(argc==4&&!strcmp(argv[1],"--hash")){int fd=open(argv[2],O_RDONLY);assert(fd>=0);bool result=file_hash(fd,argv[3]);assert(!close(fd));return result?0:9;}
  if(argc==2&&!strcmp(argv[1],"--fatal")){C6CurrentHandlerInterruptionAdmission a={.quiescent=reject};idle(&a);return 10;}
  hash_text("","e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -129,6 +195,19 @@ int main(int argc,char **argv){
         common = ['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wconversion', '-Wshadow']
         subprocess.run(common + ['-O2', '-fsanitize=undefined', str(harness), '-ldl', '-o', str(executable)], check=True)
         subprocess.run([str(executable)], check=True)
+        identity_work = work / 'identity'
+        identity_work.mkdir()
+        identity = subprocess.run([str(executable), '--identity-fixtures', str(identity_work)], capture_output=True, text=True)
+        require(identity.returncode == 0, 'module-file identity fixture failed: ' + identity.stderr)
+        require('module_identity_groups=10' in identity.stdout, 'module-file identity fixtures did not complete')
+        missing_anchor = subprocess.run([str(executable), '--missing-anchor'], capture_output=True)
+        require(missing_anchor.returncode == 242 and
+                b'identity_refusal module_anchor_unavailable status 242' in missing_anchor.stderr,
+                'pre-output identity failure lacks named diagnostic')
+        original_alias = work / 'original-module-alias'
+        original_alias.symlink_to((assets / 'libGameCore_XP2.so').resolve())
+        for path in [assets / 'libGameCore_XP2.so', original_alias]:
+            subprocess.run([str(executable), '--module-file', str(path), GAME_SHA], check=True)
         fatal = subprocess.run([str(executable), '--fatal'], capture_output=True)
         require(fatal.returncode == 240 and b'no_poststate_or_cleanup' in fatal.stderr,
                 'unknown quiescence did not fail closed')
@@ -145,6 +224,15 @@ int main(int argc,char **argv){
     return dict(strict_compiler=True, gcc_analyzer=True, ubsan_synthetic_harness=True,
                 hash_standard_vectors=2, streamed_hash_boundary_sizes=10,
                 wrong_hash_refusals=10, original_asset_files_hashed_without_execution=2,
+                canonical_and_loader_symlink_fd_admission=True,
+                original_module_canonical_and_symlink_files_admitted_without_loading=2,
+                missing_anchor_pre_output_named_diagnostic=True,
+                loader_alias_and_canonical_path_bytes_retained=True,
+                synthetic_module_identity_groups=10,
+                wrong_target_hash_broken_loop_nonregular_refused=True,
+                same_hash_wrong_mapped_inode_refused=True,
+                alias_retarget_canonical_replacement_and_in_place_change_refused=True,
+                deterministic_endpoint_changes_are_not_concurrent_race_proof=True,
                 unreadable_overflow_refused=True, queue_shape_and_native_identity_boundaries=True,
                 complete65_slot_synthetic_roster_and_block_membership=True,
                 wrong_slot_parent_and_active_list_tail_refused=True,
@@ -240,6 +328,8 @@ def main():
         caller_callback_source_validated=False, integrated_idle_acceptance=False,
         integrated_zero_original_call_closure_proven=False,
         runtime_requirements=['whole actual module file and /proc/self/exe hashes match pinned target',
+            'genuine loader alias resolved to O_NOFOLLOW regular canonical fd; original and canonical path bytes retained',
+            'opened fd metadata and alias/canonical endpoint identity stable across hash/capture; actual mapped anchor device/inode/offset/permissions and complete26-byte code match opened fd',
             'actual live Manager slots and supported complete code bytes match hashed original file',
             'actual live handler +0x20 target belongs to mapped executable original module and matches complete leaf bytes',
             'all65 mapped Player slots and complete original active Unit container membership',

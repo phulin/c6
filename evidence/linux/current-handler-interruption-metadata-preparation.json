@@ -264,6 +264,8 @@
   "integrated_zero_original_call_closure_proven": false,
   "runtime_requirements": [
     "whole actual module file and /proc/self/exe hashes match pinned target",
+    "genuine loader alias resolved to O_NOFOLLOW regular canonical fd; original and canonical path bytes retained",
+    "opened fd metadata and alias/canonical endpoint identity stable across hash/capture; actual mapped anchor device/inode/offset/permissions and complete26-byte code match opened fd",
     "actual live Manager slots and supported complete code bytes match hashed original file",
     "actual live handler +0x20 target belongs to mapped executable original module and matches complete leaf bytes",
     "all65 mapped Player slots and complete original active Unit container membership",
@@ -279,6 +281,15 @@
     "streamed_hash_boundary_sizes": 10,
     "wrong_hash_refusals": 10,
     "original_asset_files_hashed_without_execution": 2,
+    "canonical_and_loader_symlink_fd_admission": true,
+    "original_module_canonical_and_symlink_files_admitted_without_loading": 2,
+    "missing_anchor_pre_output_named_diagnostic": true,
+    "loader_alias_and_canonical_path_bytes_retained": true,
+    "synthetic_module_identity_groups": 10,
+    "wrong_target_hash_broken_loop_nonregular_refused": true,
+    "same_hash_wrong_mapped_inode_refused": true,
+    "alias_retarget_canonical_replacement_and_in_place_change_refused": true,
+    "deterministic_endpoint_changes_are_not_concurrent_race_proof": true,
     "unreadable_overflow_refused": true,
     "queue_shape_and_native_identity_boundaries": true,
     "complete65_slot_synthetic_roster_and_block_membership": true,
@@ -302,9 +313,9 @@
   "complete_state_action_rng_turns_supported": false,
   "historical_raw_save_load_failure_bytes": 89198,
   "source_sha256": {
-    "native/linux/current_handler_interruption.c": "59fe2c33f63422fb2b22b66905e5b5460d8f5a6056339cb29de7112c44cf1631",
-    "native/linux/current_handler_interruption.h": "513560c244125f2789e97572505df54d27d5987f241852756d68fd61a0a432cb",
-    "tools/linux/current_handler_interruption_metadata_audit.py": "853dcf316ad9f56868e327550b2694d4deb9f3abdda927ab0013fb7948a9692d",
+    "native/linux/current_handler_interruption.c": "bcfc754a87a7a8666db72f2808e9587390345e0533a7eba657124683e75b90e6",
+    "native/linux/current_handler_interruption.h": "8fc346ec121c6c00ab29b623093013e5bd67b43d5c800e756f8c5285460c9115",
+    "tools/linux/current_handler_interruption_metadata_audit.py": "211fc4218cb06adf2e6797da30b216e393168f3fcc7b21aae6e18c65b94c78b2",
     "tools/linux/unit_operation_manager_metadata_audit.py": "da62ff2eae1c6de6ed34a0cb9929e431bae5e55a6d213e72c48f4de7f6107c96",
     "tools/linux/current_handler_interruption_audit.py": "2087b35196c52418552a228b5b0d50d48ffef05a81030c03cfb6b45678e6fc09"
   }

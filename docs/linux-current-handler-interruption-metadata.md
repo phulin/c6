@@ -1,6 +1,6 @@
 # Passive current-handler metadata helper preparation
 
-The standalone helper in [current_handler_interruption.c](../native/linux/current_handler_interruption.c) prepares a later, separate metadata capture of the runtime bindings missing from source report `1dae236`. It has **not been integrated into a runner or executed against original game code**. The [preparation report](../evidence/linux/current-handler-interruption-metadata-preparation.json) checks pinned original methods/layouts, strict C compilation/analyzer results and synthetic refusal cases. It does not admit any live bindings or native Manager predicate result.
+The helper in [current_handler_interruption.c](../native/linux/current_handler_interruption.c) prepares a separate metadata capture of the runtime bindings missing from source report `1dae236`. This document and the [preparation report](../evidence/linux/current-handler-interruption-metadata-preparation.json) cover standalone source checks: pinned original methods/layouts, strict C compilation/analyzer results and synthetic refusal cases. Their `original_execution_performed: false` and `runner_integrated: false` describe that audit scope, not later caller/loader work. No live bindings or native Manager predicate result are admitted here. The canonical-file fix below has not been executed against original game code.
 
 The helper calls no original getter, handler method, predicate, script, action or turn function. Its only caller service is a mandatory quiescence callback that must use separately source-closed passive controller/worker field reads. That callback must make no original getter, predicate or script calls. Its implementation/profile is still pending; this preparation proves neither integrated idle acceptance nor integrated zero-original-call closure. Ordinary enclosing Load/Save/cleanup belongs to a separate scope. It reads the genuine current Game global, its component container, Manager, mapped Player slots and active Unit containers through exact bounded target layouts. All memory copies use safe kernel self reads; inaccessible or overflowing extents reject. This avoids speculative calls through interposed getters while capturing actual live Manager and handler method slots.
 
@@ -20,7 +20,7 @@ For a nonempty queue, the first node's actual first 32 bits are recorded directl
 
 `c6_linux_current_handler_interruption_capture` accepts the admission structure from [the header](../native/linux/current_handler_interruption.h): retained original module/Context/Game, a frozen full-profile SHA, an exclusive output path and a strict three-argument idle callback. The callback must authenticate the exact Context/Game/session association, main-thread lock, initialized native state, idle work/queues and all owning lifetimes. A missing callback refuses entry. A nonzero callback exits immediately with 240, without permitting post-state capture or cleanup under unknown work. The helper cannot prove those ownership/locking facts from a public pointer or profile digest; the caller's complete source and actual setup must be reviewed before any original execution. A legacy guard that calls original const getters does not satisfy this first capture contract.
 
-Proposed integration is a **new** `current_handler_interruption_metadata_observer` profile after the existing Military preparation work. Existing Manager metadata, Military, registry and source-prediction profiles must remain unchanged. The sole runner owner would add a separately audited wrapper, retain the initialized original session and Game facade correctly, implement a separately reviewed field-only controller/worker guard with the correct callback type, and load only this helper's frozen source/build. No runner changes or original capture are part of this checkpoint.
+The original source checkpoint proposed a **new** `current_handler_interruption_metadata_observer` profile after the existing Military preparation work. Existing Manager metadata, Military, registry and source-prediction profiles must remain unchanged. The sole runner owner would add a separately audited wrapper, retain the initialized original session and Game facade correctly, implement a separately reviewed field-only controller/worker guard with the correct callback type, and load only this helper's frozen source/build. No runner changes or original capture are part of this source audit; later caller/loader profiles require separate evidence and review.
 
 Before that integration can be admitted, freeze the wrapper/profile/compiled-helper sources, exact module/host/dependencies, rules database and rules-input identity, DLC/mods, configuration, input Save/Core and all output destinations. Output belongs under private `../c6-ghidra`; do not publish native memory/code bytes. Obtain two complete same-context fact passes, four internal plus two outer full unmasked Saves, known Game/Map RNG endpoint controls and terminal controller/framework/client cleanup. Compare the full facts and all six Saves byte for byte; unknown bytes remain unclassified. Equal Saves do not establish complete transient-state purity or complete RNG coverage.
 
@@ -36,3 +36,34 @@ python3 tools/linux/current_handler_interruption_metadata_audit.py \
 The audit hashes original files as data, inspects complete method bytes/symbols/DWARF, compiles the helper with strict warnings and GCC analyzer, and executes only local synthetic memory fixtures under UBSan. Tests cover hash standard/block/stream boundaries and wrong identities; unreadable/overflowing spans; inline/empty/native-ID queue boundaries; a complete synthetic 65-slot roster with parent/block/list rejection; live-code mismatch and missing executable permission; null entry admission refusal; and fatal unknown quiescence. Synthetic pointers/code are never original receivers or admitted runtime observations.
 
 Complete live gameplay state, all RNG, full Manager legality, scripts, action execution, turns and every-player external decision boundaries remain unimplemented. The historical **89,198-byte** raw Save→Load failure remains unclassified and unmasked.
+
+The module-file gate now supports genuine loader symlinks. It records the loader
+alias and canonical path as hexadecimal byte strings in `module_loader_path_raw`
+and `module_canonical_path_raw`, resolves the alias, and opens the canonical final
+file with `O_NOFOLLOW`. The opened regular-file fd is SHA-gated and retained for
+all comparisons. Its device, inode, size, mode, modification time and change time
+must remain stable, and both the followed loader alias and the canonical final
+file must still identify that fd before and after hashing and capture. The
+canonical final path must remain a regular file. Actual runtime anchor mapping
+device/inode, file offset and readable/executable permissions, complete ELF
+program headers and all 26 anchor method bytes must match that same opened fd.
+Existing Manager/handler vtable, mapping and complete live-code gates remain.
+Path equality alone never admits a mapped module. Endpoint checks do not establish
+that every possible transient filesystem change was absent.
+
+Pre-output identity refusals now emit a named stage with status 242. The failed
+second native profile had status 242 without an observed branch or errno.
+Read-only reproduction of `ELOOP` on its genuine loader alias establishes a
+sufficient old admission blocker; it does not identify the recorded native
+failure's actual branch. Old failed artifacts remain unchanged. This fix executes
+no original code and does not admit a native retry or any Manager/action/turn.
+
+The preparation audit adds ten synthetic module identity groups: direct and
+symlink success; wrong hash, broken link, loop and nonregular refusals; same-hash
+wrong mapped inode; alias retargeting; canonical replacement; and in-place file
+changes. In-place content rejection is checked independently of timestamp resolution; a forced modification time separately checks metadata rejection. It also checks named missing-anchor diagnostics and opens/hashes the
+pinned module through direct and synthetic symlink paths without loading it.
+Deterministic endpoint replacements test the race checks without claiming a
+concurrent mutation proof. Independent review and a fresh exact profile remain
+required before original execution. Save observations remain diagnostics; complete
+gameplay state, actions, RNG and turns remain unsupported.

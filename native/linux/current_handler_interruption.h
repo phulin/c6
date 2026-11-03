@@ -21,6 +21,10 @@
  * remains pending before this contract can be integrated.
  * Native root/containers are read using exact pinned layout and safe self reads;
  * unsupported storage, mapping, bindings and code reject without fabricated nulls.
+ * Loader symlinks are canonicalized only to obtain a no-follow regular-file
+ * fd. Original loader/canonical path bytes are recorded; fd hashes, stable
+ * metadata and actual mapped-file/code identity remain mandatory. Path endpoint
+ * checks do not prove absence of every transient external filesystem change.
  * Whole live-state/allocator/RNG reconstruction and native predicate parity are
  * not claimed. Existing original-image prediction profiles remain immutable. */
 typedef struct {
