@@ -2,6 +2,7 @@
   "checks": {
     "gcc_analyzer": true,
     "strict_c": true,
+    "targeted_fatal_reasons_checked": true,
     "ubsan_pre_original_refusals": 6
   },
   "enclosing_original_calls": [
@@ -66,7 +67,7 @@
     "native/linux/current_handler_metadata_probe.c": "90d16d9c7d28910b3e2b42c0cb05269b12a40fe485dda35ab1ca854c74b3436c",
     "native/linux/mod_activation.c": "433614f45caeca8114b626630c4351720477e05ae361d4cd030b043fde40f8be",
     "native/linux/stream_observation.h": "04720ac56f8c98abd3c8340da66f21199a5c42c27036cfac2c012316d8eb2b00",
-    "tools/linux/current_handler_caller_audit.py": "50f8b8c4ccb9d75a2aed3defadbfe0114bcd0b7e76467dd9e9c6fcf400122b0c",
+    "tools/linux/current_handler_caller_audit.py": "9b4d17f51569b0f81e2e7ab026d14fdf37350b8fa16db4e329c48b49a168c0b2",
     "tools/linux/current_handler_field_guard_audit.py": "3e619fe93683975d1b30a35d12b4bcd1418c23055a877d05266ff6204adf4f2d"
   }
 }

@@ -33,7 +33,7 @@ def main():
   preparation_admission=False,original_calls_in_helper_or_guard=False,
   enclosing_original_calls=['Exports.Context.GetGame facade acquisition','Context.Save observational controls','created facade Release'],
   methods=[dict(address=hex(a),bytes=n,sha256=h) for a,n,h in METHODS],sources=sources,
-  checks=dict(strict_c=True,gcc_analyzer=True,ubsan_pre_original_refusals=6),
+  checks=dict(strict_c=True,gcc_analyzer=True,ubsan_pre_original_refusals=6,targeted_fatal_reasons_checked=True),
   pending=['independent acquisition/Save lifetime review','loader/lifecycle mode and source projection',
    'exact source/mapping/profile/dependency gates before any original run','two outer Save controls and actual terminal cleanup'])
  args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
@@ -47,9 +47,12 @@ int c6_linux_current_handler_metadata_quiescent(void *m,void *c,const void *g){(
 int c6_linux_current_handler_metadata_fields_end(void *m,void *c,const void *g){(void)m;(void)c;(void)g;abort();}
 int main(void){
  const char *names[]={"OUTPUT","REPEAT_OUTPUT","CONTROL_OUTPUT","SNAPSHOT_BEFORE","SNAPSHOT_CONTROL","SNAPSHOT_AFTER","SNAPSHOT_REPEAT"};
+ const char *reasons[]={"missing_path","duplicate_path","profile_missing","profile_invalid","unreadable","context_owner_unknown"};
  for(unsigned test=0;test<6;test++){
+  FILE *errors=tmpfile();assert(errors);
   pid_t pid=fork();assert(pid>=0);
   if(!pid){
+   assert(dup2(fileno(errors),STDERR_FILENO)>=0);
    char key[96],value[32];
    for(unsigned i=0;i<7;i++){snprintf(key,sizeof key,"C6_CURRENT_HANDLER_METADATA_%s",names[i]);snprintf(value,sizeof value,"/not-created-%u",i);assert(!setenv(key,value,1));}
    assert(!setenv("C6_CURRENT_HANDLER_METADATA_PROFILE_SHA256","0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",1));
@@ -65,6 +68,7 @@ int main(void){
    c6_linux_current_handler_metadata_probe((void *)1,ctx);_exit(1);
   }
   int status;assert(waitpid(pid,&status,0)==pid);assert(WIFEXITED(status)&&WEXITSTATUS(status)==240);
+  rewind(errors);char message[512]={0};assert(fread(message,1,sizeof message-1,errors)>0);assert(strstr(message,reasons[test]));assert(!fclose(errors));
  }
  return 0;
 }
