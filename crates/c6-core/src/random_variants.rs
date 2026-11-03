@@ -60,6 +60,16 @@ impl RandomPcg32 {
         *self = Self::new(seed);
     }
 
+    /// Consume one draw as an IEEE binary32 value using the Linux host's fRand.
+    ///
+    /// The integer permutation is rounded to `f32` before scaling by 2^-32.
+    /// Under the default round-to-nearest, ties-to-even environment, the largest
+    /// draws round to 1.0; the result is not restricted to values below 1.0.
+    /// Native nondefault floating-point rounding modes are outside this contract.
+    pub fn f_rand(&mut self) -> f32 {
+        (self.rand() as f32) * f32::from_bits(0x2f80_0000)
+    }
+
     /// Return the permutation of the old state and advance both-word state exactly.
     pub fn rand(&mut self) -> u32 {
         let old = self.state;
@@ -97,6 +107,49 @@ mod tests {
         rng.seed(u32::MAX);
         assert_eq!(rng, RandomPcg32::new(u32::MAX));
         assert_eq!(rng.increment, 3);
+    }
+
+    #[test]
+    fn float_draw_rounds_before_scaling_and_can_reach_one() {
+        // These old states invert the xorshift permutation with rotation zero,
+        // selecting exact integer outputs at binary32 conversion boundaries.
+        let cases = [
+            (0, 0x0000_0000),
+            (1, 0x2f80_0000),
+            (0x00ff_ffff, 0x3b7f_ffff),
+            (0x0100_0000, 0x3b80_0000),
+            (0x0100_0001, 0x3b80_0000),
+            (0x0100_0003, 0x3b80_0002),
+            (0xffff_ff7f, 0x3f7f_ffff),
+            (0xffff_ff80, 0x3f80_0000),
+            (u32::MAX, 0x3f80_0000),
+        ];
+        for (integer, expected_bits) in cases {
+            let old = u64::from(integer ^ (integer >> 18)) << 27;
+            let mut floating = RandomPcg32 {
+                state: old,
+                increment: u64::MAX,
+            };
+            let mut integer_stream = floating;
+            assert_eq!(integer_stream.rand(), integer);
+            assert_eq!(floating.f_rand().to_bits(), expected_bits);
+            assert_eq!(floating, integer_stream);
+        }
+    }
+
+    #[test]
+    fn mixed_integer_and_float_draws_preserve_stream_order() {
+        let mut mixed = RandomPcg32::new(u32::MAX);
+        let mut integers = mixed;
+        for index in 0..128 {
+            let expected = integers.rand();
+            if index % 3 == 0 {
+                assert_eq!(mixed.rand(), expected);
+            } else {
+                let _ = mixed.f_rand();
+            }
+            assert_eq!(mixed, integers);
+        }
     }
 
     #[test]
