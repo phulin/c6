@@ -4,6 +4,7 @@ pub mod codec;
 pub mod combat;
 pub mod combat_random;
 pub mod geometry;
+pub mod improvement_yield;
 pub mod map;
 pub mod messages;
 pub mod movement;
