@@ -1,0 +1,665 @@
+{
+  "schema": "c6-linux-city-attribute-default-invariant-v1",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "original_execution": false,
+  "methods": [
+    {
+      "address": "0x1fc57c0",
+      "bytes": 39,
+      "name": "__cxx_global_var_init.1",
+      "sha256": "2ed894864d00846f0f9b4371f373cf7fd7a6535f2f2e89945cf80d7857311bdc"
+    },
+    {
+      "address": "0x2a41830",
+      "bytes": 50,
+      "name": "GameCore::Map::CityPlots::CityPlots(GameCore::Map::IInstance*)",
+      "sha256": "b0ff7045c8bed11e3d1b0529fa646188f6133298fd83fb37681c8d1665cfe1a1"
+    },
+    {
+      "address": "0x2a41870",
+      "bytes": 23,
+      "name": "GameCore::Map::CityPlots::~CityPlots()",
+      "sha256": "0107103d60a7b23d3e8a77bb5582bfd0ba192798263a2dfbefdf7580f51f5392"
+    },
+    {
+      "address": "0x2a41bb0",
+      "bytes": 116,
+      "name": "GameCore::Map::CityPlots::Initialize()",
+      "sha256": "80221f05cf14b77611320579f980794ffa7bdbb5736769cd396f7088c2c4fa04"
+    },
+    {
+      "address": "0x2a41c30",
+      "bytes": 97,
+      "name": "GameCore::Map::CityPlots::Uninitialize()",
+      "sha256": "c2a5668203856fb12d94cd81d619c7e87a86943995b3e3d6adf9d58d2ac897e0"
+    },
+    {
+      "address": "0x2a42500",
+      "bytes": 50,
+      "name": "GameCore::Map::CityPlots::GetAttributes(unsigned int)",
+      "sha256": "d9b066e28f35789167afe32cdf72cfc7287e0678e5b4f1f5324427a3260b862d"
+    },
+    {
+      "address": "0x2a42540",
+      "bytes": 55,
+      "name": "GameCore::Map::CityPlots::EditAttributes(unsigned int)",
+      "sha256": "912decf1e43891ad6c0ccc1ce65739d009885b40d8610c364e062a6b7b78abaa"
+    },
+    {
+      "address": "0x2a42580",
+      "bytes": 12,
+      "name": "GameCore::Map::CityPlots::AllocateAttributes()",
+      "sha256": "3e4787cfa07a6c5fcd610f59e834b9a6767784c8ad209baf4d5da6b4d85cc93f"
+    },
+    {
+      "address": "0x2a42590",
+      "bytes": 119,
+      "name": "GameCore::Map::CityPlots::DeallocateAttributes(unsigned int)",
+      "sha256": "648ba27c8a08d4eddaaf0d9cea3cc27048dd4110ae7c5e856b5ae65b90519942"
+    },
+    {
+      "address": "0x2bca780",
+      "bytes": 12,
+      "name": "GameCore::Map::Plot::Instance::GetCityAttributes() const",
+      "sha256": "e1a598f85f49a28e29144ddf86739e2601b0294590320845586249ce08532b8a"
+    },
+    {
+      "address": "0x2bca790",
+      "bytes": 31,
+      "name": "GameCore::Map::Plot::Instance::EditCityAttributes()",
+      "sha256": "4a427d1a077cc38c84d74cedd9cf44bb6a417367a8676ed4d99ac9da0a345511"
+    },
+    {
+      "address": "0x2bca7b0",
+      "bytes": 9,
+      "name": "GameCore::Map::Plot::Instance::HasCityAttributes() const",
+      "sha256": "465525d3e6485a0fa870265793fdd0e49577850a4fb46c4514eb2bb42fd126d2"
+    },
+    {
+      "address": "0x2bca7c0",
+      "bytes": 21,
+      "name": "GameCore::Map::Plot::Instance::ClearCityAttributes()",
+      "sha256": "1b9bb592ab5eb45e8a9dba58981ee9a5679f0f78addac4acd5a63689c20f9583"
+    },
+    {
+      "address": "0x2bca7e0",
+      "bytes": 7,
+      "name": "GameCore::Map::Plot::Instance::InitializeCityAttributes()",
+      "sha256": "d3950acc3abbc76fb8096f4da6e53a2b26b493d93923eacc8c600b40105fe736"
+    },
+    {
+      "address": "0x2bc8820",
+      "bytes": 1077,
+      "name": "GameCore::Map::Plot::Instance::Read(Serialization::IStream&, int)",
+      "sha256": "d8c6bd76add824f31a23a544617d6b211f486a0854537d69ff4ff08eb78f0276"
+    },
+    {
+      "address": "0x27bb690",
+      "bytes": 16,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::SparseVector()",
+      "sha256": "cd92a354427540a2ee849fab1c7d6da6eaf9ab27f4206430d98c9f92ced63508"
+    },
+    {
+      "address": "0x27bb6c0",
+      "bytes": 28,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::clear()",
+      "sha256": "bc7c33c10e913e81c1b09bd0865b8aac8b28d862b227563dd3c95c287aeefa90"
+    },
+    {
+      "address": "0x27bb6e0",
+      "bytes": 117,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::Alloc()",
+      "sha256": "f3fb7cc7bde614dbb169f08342e9464002aa30fef0ed5887360c22b24048fc3e"
+    },
+    {
+      "address": "0x27bb7d0",
+      "bytes": 127,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::Free(unsigned int)",
+      "sha256": "bccdb2e1dc259692be3767248ce53e110246c12d899866659010f6ff83c322ec"
+    },
+    {
+      "address": "0x27bb780",
+      "bytes": 55,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::is_element_valid(unsigned int) const",
+      "sha256": "840bd9baaf98196274b11a0390735fc9b9fffd0c3dfc349bea624239f921b10c"
+    },
+    {
+      "address": "0x27bb6b0",
+      "bytes": 11,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::Reserve(unsigned int)",
+      "sha256": "fdfeed92c7c5e8afeb0a207ae6ebab5df4aacde66b39d1ee8a76ddd95f130a52"
+    },
+    {
+      "address": "0x27bb760",
+      "bytes": 22,
+      "name": "Types::SparseVector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::destroy()",
+      "sha256": "e454776255a476e21a072c2f709ce949850b8bbe7f32d81dfaebf3be40732c3f"
+    },
+    {
+      "address": "0x27bbb60",
+      "bytes": 60,
+      "name": "Types::Vector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::push_back()",
+      "sha256": "2c83a60a4c3e00954cf8119df5eb3721fce986bb98ada6908971b17e95684544"
+    },
+    {
+      "address": "0x27bb970",
+      "bytes": 196,
+      "name": "Types::Vector<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>, Types::LinearAlloc::Default<1u, 0u> >::RequestLinearBlock(unsigned int, bool)",
+      "sha256": "34dc36247cf4e5c8f7c79d5c4a83c879197101853ba1114f368706ef6d0124c9"
+    },
+    {
+      "address": "0x27bba40",
+      "bytes": 117,
+      "name": "Types::LinearAlloc::LinearBlock<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes> > Types::LinearAlloc::DefaultStatic<Platform::StaticHeapAllocator<1, 0> >::AllocLinearBlock<Types::LinearAlloc::LinearBlock<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes> > >(Types::LinearAlloc::LinearBlock<Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes> > const&, unsigned int, bool)",
+      "sha256": "dbe01b7db95a10158721f6aab62d0d587010fada7b04a821b8fcf099eea5430d"
+    },
+    {
+      "address": "0x27bbac0",
+      "bytes": 19,
+      "name": "Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>::SparseVectorNodePolicy(Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>&&)",
+      "sha256": "69342130dde50f3a80445060cc01a2fcfb7a10613fb55f88b0df064279f9a68f"
+    },
+    {
+      "address": "0x27bbbf0",
+      "bytes": 32,
+      "name": "GameCore::Map::Plot::CityAttributes::CityAttributes()",
+      "sha256": "678fcdd56f78ea2f47ce6b9d44f35e598b66e1072bd4b45a808bec4629268595"
+    },
+    {
+      "address": "0x27bbbe0",
+      "bytes": 9,
+      "name": "Types::SparseVectorNodePolicy<GameCore::Map::Plot::CityAttributes>::SparseVectorNodePolicy()",
+      "sha256": "0d8be594b7d1c4d737dc18714692ed3eb0cc8654ca5fbbdc3026f21952c1af18"
+    },
+    {
+      "address": "0x27bbc20",
+      "bytes": 39,
+      "name": "GameCore::Map::Plot::CityAttributes::Initialize()",
+      "sha256": "8c63b3a6c242a1a59e3eecf7042bff0a94e03e0ba5d9c508ffe948370bc8799d"
+    },
+    {
+      "address": "0x27bbae0",
+      "bytes": 54,
+      "name": "GameCore::Map::Plot::CityAttributes::CityAttributes(GameCore::Map::Plot::CityAttributes&&)",
+      "sha256": "23e7cfed9518b1282c1440c0b631bcdcb56a039304fd25f47ec4f0b64967cc94"
+    },
+    {
+      "address": "0x2426880",
+      "bytes": 54,
+      "name": "GameCore::Map::Plot::CityAttributes::CityAttributes(GameCore::Map::Plot::CityAttributes const&)",
+      "sha256": "5498fdd816e88dd17f48fc22f16a1b65679b7126517455133fcbbb57999d3d49"
+    },
+    {
+      "address": "0x2bc8090",
+      "bytes": 91,
+      "name": "GameCore::Map::Plot::CityAttributes::Read(Serialization::IStream&, int)",
+      "sha256": "4735021680e42fe397e22a42fcde4e37114f3a69045747faae2e7a3e29378f77"
+    },
+    {
+      "address": "0x2bc80f0",
+      "bytes": 16,
+      "name": "GameCore::Map::Plot::CityAttributes::Update(GameCore::Map::Plot::Reflection::CityAttributes1 const&)",
+      "sha256": "fd6b61eee446ebca204402ca257237ea444ee42b87e9f4b2076d46c9e38b4cd5"
+    },
+    {
+      "address": "0x2bc8390",
+      "bytes": 23,
+      "name": "GameCore::Map::Plot::CityAttributes::SetDomainValid(GameCore::DomainMask, bool)",
+      "sha256": "586928f865bc6c6950507556026a70982e878067b2fc6717804de6f330f7f067"
+    },
+    {
+      "address": "0x2bc83b0",
+      "bytes": 31,
+      "name": "GameCore::Map::Plot::CityAttributes::SetDomainValid(GameCore::DomainTypes, bool)",
+      "sha256": "f3b68f8f4168aa4bb78abd50c3b60e6e5d67002d0203be55681b589623727e35"
+    },
+    {
+      "address": "0x2a3e320",
+      "bytes": 5,
+      "name": "GameCore::Map::Plot::CityAttributes::SetWonderType(GameCore::BuildingTypes)",
+      "sha256": "2f18e1c666165e82089f97118a2c3a69a4b9a9ff7260abcdcf61cb506a9a9b32"
+    },
+    {
+      "address": "0x286e450",
+      "bytes": 9,
+      "name": "GameCore::City::CManager::EditAttributes(GameCore::Map::Plot::Instance*)",
+      "sha256": "db4a088c0f35c41cd214a6116e372acac82a695ae796abf43ff0875ec5a50b51"
+    },
+    {
+      "address": "0x27f7e90",
+      "bytes": 163,
+      "name": "GameCore::Cache::Map::Plot::Instance::Initialize(GameCore::Map::Plot::Instance const*, bool)",
+      "sha256": "fc3229d26ef2000462285922069ee849f31716f4e37b11192ce92282432b04ef"
+    },
+    {
+      "address": "0x27f81c0",
+      "bytes": 143,
+      "name": "GameCore::Cache::Map::Plot::Instance::Update(GameCore::Map::Plot::Instance const*, bool)",
+      "sha256": "edaf3255b4faecb3f97e29d3c3a577aa477222610c6513590e99ee42b977cd87"
+    },
+    {
+      "address": "0x27f8250",
+      "bytes": 132,
+      "name": "GameCore::Cache::Map::Plot::Instance::Update(GameCore::Cache::Map::EventStream::PlotEntry const&, bool)",
+      "sha256": "25a963ff39e12b3531c628cb322a2d77ff9189ad21ea23227ebfc07a496ace82"
+    },
+    {
+      "address": "0x27f8b40",
+      "bytes": 31,
+      "name": "GameCore::Cache::Map::Plot::Instance::EditCityAttributes()",
+      "sha256": "77ad06eb9caceecb1ac7f38a29887691b11855105e6b9e8cab8a1bf71b5d5bcf"
+    },
+    {
+      "address": "0x27bb5f0",
+      "bytes": 55,
+      "name": "GameCore::Cache::Map::CityPlots::EditAttributes(unsigned int)",
+      "sha256": "85bb55515d6a9f91f0ce07550f5a8b61dd1b151de40e1ac0e326f8469495fc6e"
+    },
+    {
+      "address": "0x2859b00",
+      "bytes": 857,
+      "name": "GameCore::City::BuildQueue::PostCreateDistrict(GameCore::Definition::District const&, GameCore::PlotCoord const&, bool)",
+      "sha256": "4d245fa14bf2b34cdfc2758d0f7dffc7c09bf6a1336c22ef2f5dcd50a64475a6"
+    },
+    {
+      "address": "0x2864ba0",
+      "bytes": 856,
+      "name": "GameCore::City::Buildings::SetPillaged(GameCore::BuildingTypes, bool, bool, GameCore::PlayerTypes)",
+      "sha256": "62b46268a2e1d4e78467bbc9c3d9fa53d0b75152d6744cdbc0ba9e7e6c9d4a31"
+    },
+    {
+      "address": "0x2884f30",
+      "bytes": 424,
+      "name": "GameCore::City::Districts::Destroy(GameCore::District::Instance*)",
+      "sha256": "6b6b97422a9d4707593ab40d43ebd89b8f0f522b74a2361bce99c36e25bc43a0"
+    },
+    {
+      "address": "0x2885c00",
+      "bytes": 874,
+      "name": "GameCore::City::Districts::SetPillaged(GameCore::District::Instance*, bool, GameCore::PlayerTypes, GameCore::CityTransferTypes)",
+      "sha256": "d7072e168cbb6d9dc79f787e5063ad3c670dbf49b98a6a8283ead4709071e337"
+    },
+    {
+      "address": "0x28ba390",
+      "bytes": 6354,
+      "name": "GameCore::City::Manager::Transfer(GameCore::City::Instance*, GameCore::PlayerTypes, GameCore::CityTransferTypes)",
+      "sha256": "edaa85326d17dd1bf004d918aa9cc8952ec5649941371dd7eef0a1427304a951"
+    },
+    {
+      "address": "0x2a3c230",
+      "bytes": 681,
+      "name": "GameCore::Map::Improvement::Builder::SetWonderType(GameCore::Map::Plot::Instance*, GameCore::BuildingTypes, GameCore::PlayerTypes)",
+      "sha256": "8cadf5935efc28bcf414e00d961acc24cd1855014baad06c16a07f3c35dd1b77"
+    },
+    {
+      "address": "0x2a41a80",
+      "bytes": 178,
+      "name": "GameCore::Map::CityPlots::SetValidDomains(GameCore::Map::Plot::Instance*)",
+      "sha256": "2a4b78123d7faffdefd2c0e7c1841ff9a72ef95454eb2b4859482ac9e388e74b"
+    },
+    {
+      "address": "0x2bd4580",
+      "bytes": 953,
+      "name": "GameCore::Rules::Cities::Instance::OnConstructionComplete(GameCore::BuildingTypes, GameCore::PlotCoord, GameCore::City::Instance*, bool)",
+      "sha256": "244fff3797dd3432e51efeff2220001118aaf8223b67e06c83971e57c127ad7a"
+    },
+    {
+      "address": "0x2bd6560",
+      "bytes": 165,
+      "name": "GameCore::Rules::Cities::Instance::MarkAdjacentCitiesNavigable(GameCore::Map::Plot::Instance*)",
+      "sha256": "0e55899eac1833b3ebe4a697dfed0ad27de88703e308951e9348b166c557a5ec"
+    },
+    {
+      "address": "0x2d7aaa0",
+      "bytes": 2540,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Game::Instance&)",
+      "sha256": "917d430f7b9c105932f394d62b2b75c83f698437ba89e7ce0ece979dad395873"
+    },
+    {
+      "address": "0x2a47010",
+      "bytes": 555,
+      "name": "GameCore::Map::Instance::Read(Serialization::IStream&)",
+      "sha256": "203be99fb7e29951094b8c224aa37d5bec3e1fc7cc0b15ff95cef082fb810261"
+    },
+    {
+      "address": "0x2a472c0",
+      "bytes": 110,
+      "name": "Serialization::operator>>(Serialization::IStream&, eastl::vector<GameCore::Map::Plot::Instance, eastl::allocator>&)",
+      "sha256": "9cf942f7ab8e710a2a4c5066470c6146f61776ed8d9d33dbfeffdb12d4afa8c2"
+    },
+    {
+      "address": "0x2a47c00",
+      "bytes": 146,
+      "name": "GameCore::Map::Instance::Initialize(GameCore::Map::InitializationParameters const&)",
+      "sha256": "9a777a8688a455b8e42ca1f38ddbe97a385a5f2149e5062be797cbe3199580fe"
+    },
+    {
+      "address": "0x2a47ca0",
+      "bytes": 645,
+      "name": "GameCore::Map::Instance::Reset(GameCore::Map::InitializationParameters const&)",
+      "sha256": "e2c155e84fb0cd25e125eddb0bed0c7242416f3f8df819e5d09800f92874d191"
+    },
+    {
+      "address": "0x2a47f40",
+      "bytes": 294,
+      "name": "GameCore::Map::Instance::InitPlots()",
+      "sha256": "87f8f77037c616b3ff4f3ed54404b26706934ffd9f8afca20b02426ea19f6cde"
+    },
+    {
+      "address": "0x2a48e70",
+      "bytes": 149,
+      "name": "eastl::vector<GameCore::Map::Plot::Instance, eastl::allocator>::resize(unsigned int)",
+      "sha256": "e4c9d5ca5787787416a4894c685a818e30b46121db13d65e52a6e6e217ab7acd"
+    },
+    {
+      "address": "0x2a49aa0",
+      "bytes": 501,
+      "name": "eastl::vector<GameCore::Map::Plot::Instance, eastl::allocator>::DoInsertValues(GameCore::Map::Plot::Instance*, unsigned int, GameCore::Map::Plot::Instance const&)",
+      "sha256": "93be35b5188cfc6984bb26200fe6dd33a87ce9d307334264bdf3780208bbcdb7"
+    },
+    {
+      "address": "0x2bc8c70",
+      "bytes": 53,
+      "name": "GameCore::Map::Plot::Instance::Instance()",
+      "sha256": "e87704dc4307eb2e0205e0d27d308d93f5fb2bd434339b9567fc72d193666ba2"
+    },
+    {
+      "address": "0x27f7df0",
+      "bytes": 33,
+      "name": "GameCore::Cache::Map::Plot::Instance::Instance()",
+      "sha256": "5f60ed6d484ad38bb48981e99704bc1cf2d54927e0309df057f25f57a08e124a"
+    },
+    {
+      "address": "0x2bc8cb0",
+      "bytes": 97,
+      "name": "GameCore::Map::Plot::Instance::Initialize(int, int)",
+      "sha256": "44bf4136d46dce05132a0ac246856a5594783e2c391f3a05d133245f844bfc26"
+    }
+  ],
+  "primary_pool": {
+    "address": "0x3c05df0",
+    "bytes": 32,
+    "local_bss": true,
+    "references": [
+      {
+        "instruction": 33314753,
+        "function": 33314752,
+        "target": 62938608
+      },
+      {
+        "instruction": 44308554,
+        "function": 44308528,
+        "target": 62938608
+      },
+      {
+        "instruction": 44308593,
+        "function": 44308592,
+        "target": 62938608
+      },
+      {
+        "instruction": 44309435,
+        "function": 44309424,
+        "target": 62938608
+      },
+      {
+        "instruction": 44309624,
+        "function": 44309552,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311814,
+        "function": 44311808,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311875,
+        "function": 44311872,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311893,
+        "function": 44311872,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311907,
+        "function": 44311872,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311936,
+        "function": 44311936,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311961,
+        "function": 44311952,
+        "target": 62938608
+      },
+      {
+        "instruction": 44311979,
+        "function": 44311952,
+        "target": 62938608
+      },
+      {
+        "instruction": 44312044,
+        "function": 44311952,
+        "target": 62938608
+      }
+    ]
+  },
+  "separate_cache_pool": "0x3c02de0",
+  "calls": {
+    "get": [
+      "0x2bca785"
+    ],
+    "edit": [
+      "0x2bca7a8"
+    ],
+    "allocate": [
+      "0x2bca79b"
+    ],
+    "deallocate": [
+      "0x2bca7c8"
+    ],
+    "domain_mask": [
+      "0x2859c2a",
+      "0x2864df0",
+      "0x2885062",
+      "0x2885cf1",
+      "0x2885e66",
+      "0x28bb117",
+      "0x2a41ab5",
+      "0x2a41ad8",
+      "0x2a41afb",
+      "0x2a41b25",
+      "0x2bc83ca",
+      "0x2bd479c",
+      "0x2bd47c7",
+      "0x2bd65dc",
+      "0x2d7b0ed",
+      "0x2d7b18b",
+      "0x2d7b241"
+    ],
+    "domain_type": [],
+    "wonder": [
+      "0x2a3c3b4",
+      "0x2a3c42a",
+      "0x2a3c449"
+    ],
+    "read": [
+      "0x2bc8c41"
+    ],
+    "update": [
+      "0x27f7f0f",
+      "0x27f8239",
+      "0x27f82bc"
+    ],
+    "primary_plot_ctor": [
+      "0x27f7df4",
+      "0x2a48ea4"
+    ],
+    "primary_plot_resize": [
+      "0x2a472ec",
+      "0x2a47f80"
+    ],
+    "primary_plot_initialize": [
+      "0x2a48014",
+      "0x2bc8ca0"
+    ]
+  },
+  "mutation_receivers": [
+    {
+      "write": "0x2859c2a",
+      "producer": "0x2859c1a",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2864df0",
+      "producer": "0x2864ddb",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2885062",
+      "producer": "0x2885055",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2885cf1",
+      "producer": "0x2885ce4",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2885e66",
+      "producer": "0x2885e56",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x28bb117",
+      "producer": "0x28bb107",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a41ab5",
+      "producer": "0x2a41a8d",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a41ad8",
+      "producer": "0x2a41a8d",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a41afb",
+      "producer": "0x2a41a8d",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a41b25",
+      "producer": "0x2a41a8d",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2bd479c",
+      "producer": "0x2bd478c",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2bd47c7",
+      "producer": "0x2bd47b7",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2bd65dc",
+      "producer": "0x2bd65cc",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2d7b0ed",
+      "producer": "0x2d7b0dd",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2d7b18b",
+      "producer": "0x2d7b17b",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2d7b241",
+      "producer": "0x2d7b231",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2bc8c41",
+      "producer": "0x2bc8c35",
+      "source": "primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x27f7f0f",
+      "producer": "0x27f7f02",
+      "source": "separate cache Plot mutable+0x40"
+    },
+    {
+      "write": "0x27f8239",
+      "producer": "0x27f8227",
+      "source": "separate cache Plot mutable+0x40"
+    },
+    {
+      "write": "0x27f82bc",
+      "producer": "0x27f82ac",
+      "source": "separate cache Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a3c3b4",
+      "producer": "0x2a3c250",
+      "source": "CManager.EditAttributes -> primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a3c42a",
+      "producer": "0x2a3c250",
+      "source": "CManager.EditAttributes -> primary Plot mutable+0x40"
+    },
+    {
+      "write": "0x2a3c449",
+      "producer": "0x2a3c250",
+      "source": "CManager.EditAttributes -> primary Plot mutable+0x40"
+    }
+  ],
+  "invariant": {
+    "phase": "initialized live primary CityPlots; ordinary target-internal mutation paths",
+    "reserve": "Initialize clears sparse vector then Alloc reserves index0",
+    "initialization": "domain i16=0; packed Wonder i16=-1; owner=-1; working/owning/District UINT_MAX; yieldEffect0",
+    "release": "DeallocateAttributes explicitly refuses index0; valid frees therefore never add0 to free chain",
+    "edit": "only direct EditAttributes caller is Plot.EditCityAttributes, which allocates when plot index0",
+    "relocation": "node/vector construction, move/copy and allocation bodies preserve reserved fields",
+    "read": "Plot.Read resets index0 then mutably allocates only for serialized HasCityAttributes",
+    "reflection": "all3 CityAttributes.Update callers are separate Cache::Map Plot updates",
+    "mask": "all16 primary domain-mask writes use mutable owned attributes; nonzero only under the explicit no-wrapped-allocation bound",
+    "wonder": "all3 SetWonderType writes use CManager mutable Plot attributes",
+    "lifetime": "Uninitialize/destruction clear storage; no getter semantics claimed outside initialized live scope"
+  },
+  "fresh_load_bound": {
+    "primary_plots": "only vector resize fill temporary and Cache derived-base constructor call the primary constructor; cache overrides its vtable/pool before edits",
+    "reset": "Map.Read -> Initialize(params) -> Reset/InitPlots -> CityPlots.Initialize clears/reserves0 before component/Map-initialized callbacks",
+    "plot_read": "one indexed pass of current Plot vector; each resets index0 then allocates at most once for its saved HasCityAttributes",
+    "orphan_accounting": "pre-read canonical plots can already own up to P attributes; Plot.Read can orphan those, so P alone is not the allocation bound",
+    "bound": "for the fresh canonical single-Map read/restore sequence: at most P pre-read orphan slots plus P current owned slots plus reserved0; high-water <=2*P+1",
+    "conditions": [
+      "canonical primary Plot ownership",
+      "single current Map.Read pass after reset",
+      "no extra out-of-band attribute/index mutation",
+      "2*P <=65535"
+    ],
+    "current_fixture_plots": 6996,
+    "current_fixture_max_allocated_index": 13992
+  },
+  "original_overflow_counterexample": {
+    "allocation_result_u32": 65536,
+    "stored_plot_index_u16": 0,
+    "subsequent_edit": "EditAttributes(0) sees reserved index0 valid and can return it for mutation",
+    "source_model_policy": "explicit unsupported bound; original overflow and alias behavior remain in full-engine scope"
+  },
+  "native_default_results_used_as_inputs": false,
+  "all_plot_parity_claimed": false,
+  "full_gameplay_state_actions_turns": false
+}
