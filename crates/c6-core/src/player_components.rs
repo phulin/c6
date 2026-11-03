@@ -471,7 +471,11 @@ impl Wire for Congress {
 macro_rules! codec {
     ($type:ty) => {
         impl $type {
-            pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+            /// Returns the exact dynamic item charge for aggregate owner readers.
+            pub fn decode_prefix_with_items(
+                bytes: &[u8],
+                limits: Limits,
+            ) -> Result<(Self, usize, usize), Error> {
                 let mut reader = Reader {
                     data: bytes,
                     pos: 0,
@@ -479,7 +483,11 @@ macro_rules! codec {
                     limits,
                 };
                 let value = Self::read(&mut reader)?;
-                Ok((value, reader.pos))
+                Ok((value, reader.pos, reader.items))
+            }
+            pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+                let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
+                Ok((value, consumed))
             }
             pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
                 let (value, consumed) = Self::decode_prefix(bytes, limits)?;
@@ -601,6 +609,70 @@ mod tests {
                 .resolution_index(&Lookup(vec![]))
                 .unwrap(),
             -1
+        );
+    }
+    #[test]
+    fn prefix_item_charge_composes_across_owner_components() {
+        let limits = Limits::default();
+        let first = GoodyHut {
+            player_goodies: vec![pair(1, 2), pair(1, 3)],
+        };
+        let second = Bonuses {
+            flat_bonuses: vec![pair(4, 5), pair(6, 7)],
+        };
+        let first_wire = first.encode(limits).unwrap();
+        let second_wire = second.encode(limits).unwrap();
+        let carrier = [first_wire.clone(), second_wire.clone(), vec![99]].concat();
+        let (actual, consumed, used) = GoodyHut::decode_prefix_with_items(
+            &carrier,
+            Limits {
+                max_items: 3,
+                ..limits
+            },
+        )
+        .unwrap();
+        assert_eq!((actual, consumed, used), (first, first_wire.len(), 2));
+        assert_eq!(
+            Bonuses::decode_prefix_with_items(
+                &carrier[consumed..],
+                Limits {
+                    max_items: 3 - used,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Bonuses::decode_prefix_with_items(
+                &carrier[consumed..],
+                Limits {
+                    max_items: 4 - used,
+                    ..limits
+                }
+            )
+            .unwrap(),
+            (second, second_wire.len(), 2)
+        );
+        // Nested Refund records and every indexed/list entry share the count.
+        let congress = congress();
+        let wire = congress.encode(limits).unwrap();
+        assert_eq!(
+            Congress::decode_prefix_with_items(&wire, limits).unwrap().2,
+            9
+        );
+        assert_eq!(
+            Congress::decode_prefix_with_items(
+                &wire,
+                Limits {
+                    max_items: 8,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Congress::decode(&[wire, vec![99]].concat(), limits),
+            Err(Error::Trailing)
         );
     }
     #[test]
