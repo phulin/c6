@@ -11956,7 +11956,7 @@
   "synthetic_every_prefix_rejected": true,
   "duplicate_and_invalid_slots_rejected": true,
   "synthetic_full_id_and_owner_preserved": true,
-  "allocation_policy": "checked addressable layout and fallible reserve per allocation; aggregate serialized bytes/items across all Unit children; no aggregate heap-byte claim",
+  "allocation_policy": "envelope-owned allocations use checked addressable layout and fallible reserve; inherited Unit/state.rs sequence decoding uses Vec::with_capacity and its writer uses infallible Vec extension after existing count/wire checks; aggregate serialized bytes/items cover all Unit children; neither fully fallible nested allocation nor aggregate heap-byte bound is claimed",
   "original_execution": false,
   "private_writes": false,
   "complete_current_units_wire": true,
@@ -11970,5 +11970,13 @@
   "turns": false,
   "next_player_component": "Eras",
   "unknown_save_bytes_masked": false,
-  "recorded_raw_save_load_difference_bytes": 89198
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "post_run_allocation_policy_review_clarification": {
+    "metadata_only": true,
+    "previous_allocation_policy": "checked addressable layout and fallible reserve per allocation; aggregate serialized bytes/items across all Unit children; no aggregate heap-byte claim",
+    "scope": "Fallible reserve and explicit checked addressable layout apply to the envelope-owned implementation. Inherited Unit/state.rs allocations retain the behavior described by the corrected allocation_policy.",
+    "corpus_rerun": false,
+    "closed_run_source_archive_candidate_harness_and_audit_hashes_preserved": true,
+    "audit_source_sha256_scope": "Original closed-run audit tool before this documentation-only descriptor correction."
+  }
 }

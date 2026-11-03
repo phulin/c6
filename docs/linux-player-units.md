@@ -57,10 +57,15 @@ and prefix boundaries. `encode_with_items` reports the same aggregate item
 count as decoding. Each counted sequence element, live slot, free allocator
 word and nested Unit child consumes the shared item allowance. Prefix bytes
 consume the shared byte allowance; trailing enclosing data does not. Each
-allocation has checked addressable layout and uses fallible reserve after
-count, byte-minimum and item checks. This policy bounds aggregate serialized
-bytes/items, rather than claiming a total heap-byte cap. Native runtime
-allocation/ID reconstruction is not reproduced.
+envelope-owned allocation uses checked addressable layout and fallible reserve
+after its count, byte-minimum and item checks. This guarantee applies to the
+new Units envelope implementation. Inherited nested Unit transport retains
+`Vec::with_capacity` in `unit/state.rs` sequence decoding and infallible Vec
+extension in its writer after existing count/wire checks; the complete nested
+codec therefore does not guarantee fallible allocation failure handling.
+The shared limits bound aggregate serialized bytes/items across nested Units,
+rather than total heap bytes. Native runtime allocation/ID reconstruction is
+not reproduced.
 
 The read-only audit `tools/linux/player_units_audit.py` builds from one
 immutable actual source commit in an isolated archive, verifies ELF contracts
@@ -84,3 +89,8 @@ not claim every byte prefix of every large native envelope was tested.
 The [public report](../evidence/linux/player-units.json) records source,
 archive, candidate, harness and native record identities; it contains no
 proprietary payload or raw disassembly.
+
+A documentation review clarified the allocation-policy description after the
+closed audit run. The public report preserves the actual closed-run source,
+archive, candidate, harness and audit-tool identities and records the metadata
+correction explicitly. The corpus was not rerun for this wording change.
