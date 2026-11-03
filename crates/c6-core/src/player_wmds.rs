@@ -71,7 +71,7 @@ impl Wmds {
         weapons
             .try_reserve_exact(n)
             .map_err(|_| Error::ResourceLimit)?;
-        for pair in payload.chunks_exact(8) {
+        for pair in payload.as_chunks::<8>().0 {
             weapons.push(WeaponCount {
                 definition_hash: u32::from_le_bytes(pair[..4].try_into().unwrap()),
                 count: i32::from_le_bytes(pair[4..].try_into().unwrap()),
