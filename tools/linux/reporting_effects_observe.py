@@ -14,6 +14,8 @@ GAME_SHA = 'a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa'
 HOST_SHA = '106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4'
 CONFIG_SHA = 'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'
 BEFORE_SHA = 'ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884'
+PLOT_YIELDS_CONTENT_BUDGET = 256 * 1024
+
 PRELOAD_SHA = '907b006e5225ac9816231eceab9124fedb2810f483ba5135232c380d4f89e9fa'
 PARENT_SHA = '504571fe4cb8f194189bccc86940b820720d2f375de74cffedb9ccdb525c2029'
 GATES = [(0x2c66430, '534889fb', 'monitor_entry'),
@@ -81,15 +83,41 @@ class Decoder:
             raise ValueError('actual current game is null')
         return game
 
+    @staticmethod
+    def system_vector_header(raw, address, width, alignment, label):
+        begin, end, capacity = struct.unpack('<QQQ', raw)
+        ordered = begin <= end <= capacity
+        aligned = all(pointer % alignment == 0 for pointer in (begin, end, capacity))
+        divisible = ordered and (end - begin) % width == 0 and (capacity - begin) % width == 0
+        null_consistent = bool(begin) or end == capacity == 0
+        extent_fits_u64 = ordered and end - begin <= 0xffffffffffffffff - begin
+        if not (ordered and aligned and divisible and null_consistent and extent_fits_u64):
+            raise ObservationReadError('invalid PlotYields vector header', classification='invalid_header', label=label,
+                address=hex(address), raw24=raw.hex(), begin=hex(begin), end=hex(end), capacity=hex(capacity),
+                width=width, alignment=alignment, ordered=ordered, aligned=aligned, divisible=divisible,
+                null_consistent=null_consistent, extent_fits_u64=extent_fits_u64)
+        return dict(address=hex(address), raw24=raw.hex(), begin=hex(begin), end=hex(end), capacity=hex(capacity),
+                    width=width, alignment=alignment, count=(end - begin) // width,
+                    used_bytes=end - begin, capacity_bytes=capacity - begin)
+
     def system(self, address):
         raw = self.read(address, 88)
-        _, ids_ptr, ids_count = self.vector(address + 0x28, 4, 4096, 'PlotYields.ObjectHandles')
-        _, objects_ptr, objects_count = self.vector(address + 0x40, 16, 4096, 'PlotYields.Objects')
-        ids = list(struct.unpack('<' + 'I' * ids_count, self.read(ids_ptr, ids_count * 4))) if ids_count else []
-        objects = self.read(objects_ptr, objects_count * 16) if objects_count else b''
+        handles = self.system_vector_header(raw[0x28:0x40], address + 0x28, 4, 4, 'PlotYields.ObjectHandles')
+        objects = self.system_vector_header(raw[0x40:0x58], address + 0x40, 16, 8, 'PlotYields.Objects')
+        byte_total = handles['used_bytes'] + objects['used_bytes']
+        if byte_total > PLOT_YIELDS_CONTENT_BUDGET:
+            raise ObservationReadError('PlotYields content byte budget exceeded', classification='budget_exceeded',
+                system_address=hex(address), raw88=raw.hex(), handles_header=handles, objects_header=objects,
+                aggregate_used_bytes=byte_total, checked_sum_exceeds_u64=byte_total > 0xffffffffffffffff,
+                operational_byte_budget=PLOT_YIELDS_CONTENT_BUDGET, native_invariant_violation=False)
+        ids_raw = self.read(int(handles['begin'], 16), handles['used_bytes']) if handles['used_bytes'] else b''
+        objects_raw = self.read(int(objects['begin'], 16), objects['used_bytes']) if objects['used_bytes'] else b''
+        ids = list(struct.unpack('<' + 'I' * handles['count'], ids_raw)) if ids_raw else []
         return dict(address=hex(address), raw88=raw.hex(), counter=int.from_bytes(raw[8:12], 'little'),
-                    ids=ids, objects_raw=objects.hex(), objects_count=objects_count,
-                    handles_objects_count_equal=ids_count == objects_count)
+                    ids=ids, objects_raw=objects_raw.hex(), objects_count=objects['count'],
+                    handles_header=handles, objects_header=objects, aggregate_used_bytes=byte_total,
+                    operational_byte_budget=PLOT_YIELDS_CONTENT_BUDGET,
+                    handles_objects_count_equal=handles['count'] == objects['count'])
 
     def current_system(self):
         game = self.current_game()
@@ -228,7 +256,8 @@ def prepare(args):
                 selected.append(dict(owner=row['owner'], id=row['id']))
     if len(selected) != 1:
         raise ValueError('parent selected actor identity is ambiguous')
-    metadata = dict(schema='c6-linux-reporting-effects-observer-prepared-v1', checks_passed=True, diagnostic_only_revision=True,
+    metadata = dict(schema='c6-linux-reporting-effects-observer-prepared-v1', checks_passed=True, diagnostic_only_revision=False,
+        plot_yields_content_budget_bytes=PLOT_YIELDS_CONTENT_BUDGET, plot_yields_budget_is_native_invariant=False,
         original_code_executed=False, native_capture_performed=False, source_sha256=sha(__file__),
         parent_runtime_sha256=sha(args.parent_runtime), parent_configuration_sha256=CONFIG_SHA,
         gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA, preload_sha256=PRELOAD_SHA,
@@ -330,14 +359,16 @@ def install_gdb(config_path):
                 probe('target_TradeManager_index_via_got', index_slot, 4)
             emit(bindings)
             snapshot = decoder.monitor(receiver, cfg['expected_routes'])
-            system = decoder.current_system()
             state['intervals'] += 1
+            before_name = 'monitor-%04d-before.json' % state['intervals']
+            (output / before_name).write_text(json.dumps(snapshot) + '\n')
+            emit(dict(stage='monitor_primary_snapshot', interval=state['intervals'], snapshot_file=before_name,
+                      secondary_system_capture_pending=True, paired_interval_completed=False))
+            system = decoder.current_system()
             interval = dict(number=state['intervals'], thread=tid, entry_rsp=sp, receiver=receiver, before=snapshot,
                             systems={system: decoder.system(system)}, ignored_return_hits=0)
             state['interval'] = interval
             interval['return_point'] = Point(caller, 'monitor_return', '4883c3304c89ff')
-            before_name = 'monitor-%04d-before.json' % interval['number']
-            (output / before_name).write_text(json.dumps(snapshot) + '\n')
             emit(dict(stage='monitor_entry', interval=interval['number'], snapshot_file=before_name, thread=tid, rsp=hex(sp), receiver=hex(receiver),
                       trace_armed=armed, trace_phase=current_phase, systems=list(interval['systems'].values()),
                       matching_return=hex(caller), fixture_dimensions_match=snapshot['fixture_dimensions_match']))
@@ -348,6 +379,10 @@ def install_gdb(config_path):
                 interval['ignored_return_hits'] += 1
                 return False
             after = decoder.monitor(interval['receiver'], cfg['expected_routes'])
+            after_name = 'monitor-%04d-after.json' % interval['number']
+            (output / after_name).write_text(json.dumps(after) + '\n')
+            emit(dict(stage='monitor_primary_snapshot', interval=interval['number'], snapshot_file=after_name,
+                      secondary_system_capture_pending=True, paired_interval_completed=False))
             systems = []
             current_address = decoder.current_system()
             current = decoder.system(current_address)
@@ -356,8 +391,6 @@ def install_gdb(config_path):
                 systems.append(dict(before=before, after=current, same_live_system_identity=same,
                                     raw_counter_delta_u32=((current['counter'] - before['counter']) & 0xffffffff) if same else None,
                                     delta_is_add_call_count=False, old_address_reread_when_identity_changed=False))
-            after_name = 'monitor-%04d-after.json' % interval['number']
-            (output / after_name).write_text(json.dumps(after) + '\n')
             emit(dict(stage='monitor_return', interval=interval['number'], snapshot_file=after_name, thread=tid, changes=changes(interval['before'], after), systems=systems,
                       ignored_return_pc_hits=interval['ignored_return_hits'], readiness_hits=state['readiness_hits'],
                       readiness_coverage_capped=state['readiness_capped'], trace_armed=phase()[0], trace_phase=phase()[1],
@@ -493,6 +526,57 @@ def self_test():
     assert rows['occupied'] == 1
     assert rows['active_routes_in_native_order'][0]['slot'] == 1
     assert rows['active_routes_in_native_order'][0]['matches_parent_typed_edge']
+
+    real_header = bytes.fromhex('400fbc0c00000000dc61bc0c00000000408fbc0c00000000')
+    real = Decoder.system_vector_header(real_header, 0x38082228, 4, 4, 'real.PlotYields.ObjectHandles')
+    assert (real['count'], real['used_bytes'], real['capacity_bytes']) == (5287, 21148, 32768)
+    # Reproduce the old resource-cap rejection without calling it a native-invalid header.
+    assert real['count'] > 4096
+    raw = bytearray(88)
+    raw[0x28:0x40] = real_header
+    struct.pack_into('<QQQ', raw, 0x40, 0x100000, 0x100000 + 5287 * 16, 0x100000 + 8192 * 16)
+    reads = []
+    def used_only(address, size):
+        reads.append((address, size))
+        if address == 0x100 and size == 88:
+            return bytes(raw)
+        return bytes(size)
+    system = Decoder(used_only, 0).system(0x100)
+    assert system['aggregate_used_bytes'] == 105740
+    assert reads == [(0x100, 88), (0xcbc0f40, 21148), (0x100000, 84592)]
+    boundary = bytearray(88)
+    half = PLOT_YIELDS_CONTENT_BUDGET // 2
+    struct.pack_into('<QQQ', boundary, 0x28, 0x200000, 0x200000 + half, 0x200000 + half)
+    struct.pack_into('<QQQ', boundary, 0x40, 0x400000, 0x400000 + half, 0x400000 + half)
+    boundary_reads = []
+    def boundary_memory(address, size):
+        boundary_reads.append((address, size))
+        return bytes(boundary) if (address, size) == (0x100, 88) else bytes(size)
+    exact = Decoder(boundary_memory, 0).system(0x100)
+    assert exact['aggregate_used_bytes'] == PLOT_YIELDS_CONTENT_BUDGET
+    assert boundary_reads == [(0x100, 88), (0x200000, half), (0x400000, half)]
+    oversized = bytearray(88)
+    struct.pack_into('<QQQ', oversized, 0x28, 0x200000, 0x200000 + PLOT_YIELDS_CONTENT_BUDGET + 4,
+                     0x200000 + PLOT_YIELDS_CONTENT_BUDGET + 4)
+    def headers_only(address, size):
+        assert (address, size) == (0x100, 88), 'payload read before aggregate budget rejection'
+        return bytes(oversized)
+    try:
+        Decoder(headers_only, 0).system(0x100)
+    except ObservationReadError as error:
+        assert error.context['classification'] == 'budget_exceeded'
+        assert error.context['native_invariant_violation'] is False
+        assert error.context['raw88'] == oversized.hex()
+    else:
+        raise AssertionError('oversized used-byte total accepted')
+    for malformed in [struct.pack('<QQQ', 0x1001, 0x1011, 0x1021),
+                      struct.pack('<QQQ', 0xfffffffffffffff0, 0x10, 0x20)]:
+        try:
+            Decoder.system_vector_header(malformed, 0x100, 4, 4, 'offline.malformed')
+        except ObservationReadError as error:
+            assert error.context['classification'] == 'invalid_header'
+        else:
+            raise AssertionError('misaligned/wrapped vector header accepted')
 
 
 def main():
