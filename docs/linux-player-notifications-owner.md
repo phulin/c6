@@ -28,8 +28,21 @@ order and no trailing bytes. It uses the established codec only for preimage
 comparison; it does not produce or rewrite a game save. Total source bytes and
 record count are bounded before any encoded buffer. Item/depth limits remain
 per-collection codec limits, without a new aggregate Manager item-budget claim.
-The containing LoadedState installer owns pristine, one-time witness admission
-and checked revision barriers before mutation.
+`LoadedState::install_player_notifications(witness, collections)` admits this
+owner only once while pristine. It checks the complete source-image binding,
+SavedOutputCore witness role, nonempty bounded span, nonzero trace witness, exact
+span length and typed source preimage before installing anything. Trace
+provenance is authenticated by the producer adapter; a digest field alone is not
+an authenticated capture.
+
+`player_notifications()` and `player_notifications_source()` expose immutable
+owned state and its admission history. `notification_record_mut(slot,index,id)`
+checks the exact current ID, and `set_notification_next_id(slot,value)` checks the
+slot. Both reserve a checked global revision before writes or mutable exposure.
+Index/identity failures leave the revision unchanged; `u64::MAX` rejects before
+record/counter mutation. Failed or repeated admission does not replace existing
+state. Source witnesses remain history after later owned-field changes, not a
+revision-dependent substitute for current data.
 
 The [source audit](../evidence/linux/player-notifications-owner-source.json)
 gates the pinned Linux module and matching host, fingerprints the relevant
@@ -43,7 +56,8 @@ runtime locks/defaults. No original code was executed.
 
 ```sh
 python3 tools/linux/player_notifications_owner_audit.py --private-output ../c6-ghidra/evidence/linux-player-notifications-owner --output target/linux/player-notifications-owner-source.json
-cargo test -p c6-core player_notifications_owner --lib
+cargo test -p c6-core notification --lib
+cargo clippy -p c6-core --lib -- -D warnings
 ```
 
 Focused tests cover slot/owner separation, duplicate identities, exact identity
