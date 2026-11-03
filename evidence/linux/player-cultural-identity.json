@@ -1,0 +1,872 @@
+{
+  "schema": "c6-linux-player-cultural-identity-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "current_version": 10,
+  "wire_bytes": 60,
+  "items": 0,
+  "methods": [
+    {
+      "address": "0x2a6b4b0",
+      "size": 246,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::CulturalIdentity const&)",
+      "sha256": "8849206344d4f3951e6b134e765c6c7bb96769fccb6124d35a0d58fccdb1ae6b"
+    },
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcdac0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2a6c3d0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::CulturalIdentity>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::CulturalIdentity> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2a6c3f0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Player::CulturalIdentity>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2a6b5b0",
+      "size": 645,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::CulturalIdentity&)",
+      "sha256": "65df38fd94743fd4ea16036ac54b227d73e3803e18d3ec277892fad926e0c9cd"
+    },
+    {
+      "address": "0x1fcc1a0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)",
+      "sha256": "c6cf9d3175d5134bd8d7b3d396184fd7b9abd3f7ca364cbdc38a1794ce742775"
+    },
+    {
+      "address": "0x1fcdad0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(int&)",
+      "sha256": "09ddfd4d815a2204789075821ff06a3e8d881dc2bae4791ff3f746206deb3230"
+    },
+    {
+      "address": "0x1fcdb20",
+      "size": 25,
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)",
+      "sha256": "43f291f25ae0e59e98bf6b96e5341ed0345d1627c75c056bac01ada2cfd2f796"
+    },
+    {
+      "address": "0x1fcdb40",
+      "size": 18,
+      "name": "fastdelegate::FastDelegate1<Platform::MemoryBuffer&, void>::FastDelegate1()",
+      "sha256": "4e8b03911ca2343c3a991ee6ca0e016459940dd311827a466245aaa71c1b1f1e"
+    },
+    {
+      "address": "0x1fcdb60",
+      "size": 5,
+      "name": "fastdelegate::detail::ClosurePtr<void (fastdelegate::detail::GenericClass::*)(Platform::MemoryBuffer&), void (*)(Platform::MemoryBuffer&), void (*)(Platform::MemoryBuffer&)>::ClosurePtr()",
+      "sha256": "c95a5b9c255a854a133eed1caf8eec628aa4a808998bc832507859fe333b1022"
+    },
+    {
+      "address": "0x1fcdb80",
+      "size": 15,
+      "name": "fastdelegate::DelegateMemento::DelegateMemento()",
+      "sha256": "8d239b62e5d2e8dd82c2a8028f2cccf6b4a732111f049ae62935198342dfa72b"
+    },
+    {
+      "address": "0x1fcdb70",
+      "size": 5,
+      "name": "fastdelegate::FastDelegate1<Platform::MemoryBuffer&, void>::clear()",
+      "sha256": "b5710e855cde244bc34ae23da361977603b7c3777904a93dd5a56c0c3be86398"
+    },
+    {
+      "address": "0x1fcdb90",
+      "size": 15,
+      "name": "fastdelegate::DelegateMemento::clear()",
+      "sha256": "8d239b62e5d2e8dd82c2a8028f2cccf6b4a732111f049ae62935198342dfa72b"
+    },
+    {
+      "address": "0x2a6c410",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::CulturalIdentity>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::CulturalIdentity>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x285ed40",
+      "size": 36,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FixedPointT<8u>, int>(Serialization::IStream&, FixedPointT<8u>&, int, int&&, int&&)",
+      "sha256": "3523338d40d65af7b912247d0f6c3c40fa502332c8ed14e65366fe93765463ff"
+    },
+    {
+      "address": "0x1fcdc10",
+      "size": 9,
+      "name": "FixedPointT<8u>::operator=(int)",
+      "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f"
+    },
+    {
+      "address": "0x2c9b010",
+      "size": 43,
+      "name": "Serialization::operator>>(Serialization::IStream&, FixedPointT<8u>&)",
+      "sha256": "5d47fcdfb3868524b3d8da8a2fab95de165678efa05f23c615963da12ddf010d"
+    },
+    {
+      "address": "0x21c1020",
+      "size": 3,
+      "name": "FixedPointT<8u>::SetRaw(int)",
+      "sha256": "e57f6082d61fbfc2f1375ebe719921bae81e81ff55cb3522867874eaaf77ff16"
+    },
+    {
+      "address": "0x2a6c470",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<int, GameCore::Player::CulturalIdentity>, int>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::CulturalIdentity>&, int, int&&, int&&)",
+      "sha256": "df0e59ce900587e4dad74df344ea0febd39b0938c0f09ae2796766c172a19a6a"
+    },
+    {
+      "address": "0x243c490",
+      "size": 14,
+      "name": "FAutoVariable<int, GameCore::Player::CulturalIdentity>::operator=(int&&)",
+      "sha256": "ec07399b816920455fad9d4183a6cafa0f7b7d161e8c4e9f452a79ac8ecd4f0d"
+    },
+    {
+      "address": "0x243c4a0",
+      "size": 5,
+      "name": "void MoveAssignment<int, FAutoVariable<int, GameCore::Player::CulturalIdentity> >(FAutoVariable<int, GameCore::Player::CulturalIdentity>&, int&&)",
+      "sha256": "44f8f707d1973441cdb7254124b08bacae30a0eddfc413af5937e0fdb696bfe9"
+    },
+    {
+      "address": "0x243c4b0",
+      "size": 52,
+      "name": "void MoveAssignmentDo<int, FAutoVariable<int, GameCore::Player::CulturalIdentity> >(FAutoVariable<int, GameCore::Player::CulturalIdentity>&, int&&, std::__1::integral_constant<bool, true>)",
+      "sha256": "fd1bb024f55adb291472f532d58531686b11c8c52628dacf2950d19327ed92df"
+    },
+    {
+      "address": "0x1fcd400",
+      "size": 97,
+      "name": "std::__1::pair<std::__1::__tree_iterator<FAutoVariableBase*, std::__1::__tree_node<FAutoVariableBase*, void*>*, long>, bool> std::__1::__tree<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >::__emplace_unique_key_args<FAutoVariableBase*, FAutoVariableBase*>(FAutoVariableBase* const&, FAutoVariableBase*&&)",
+      "sha256": "6dcaf248881c7d6fab9cc61bae2a628baaf053a6dd817909ad792108fe9c5d1f"
+    },
+    {
+      "address": "0x1fcd470",
+      "size": 136,
+      "name": "std::__1::__tree_node_base<void*>*& std::__1::__tree<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >::__find_equal<FAutoVariableBase*>(std::__1::__tree_end_node<std::__1::__tree_node_base<void*>*>*&, FAutoVariableBase* const&)",
+      "sha256": "57c12053a21da4341aa319f58c0afa1ab8d5a20831c00d7fd14c2793710832d0"
+    },
+    {
+      "address": "0x1fcd580",
+      "size": 5,
+      "name": "std::__1::__tree<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >::__root_ptr() const",
+      "sha256": "337222f0640328de908dacc52ced92ff844fe6d4f480a84a6e4aa98bb839dc80"
+    },
+    {
+      "address": "0x1fcd500",
+      "size": 55,
+      "name": "std::__1::unique_ptr<std::__1::__tree_node<FAutoVariableBase*, void*>, std::__1::__tree_node_destructor<std::__1::allocator<std::__1::__tree_node<FAutoVariableBase*, void*> > > > std::__1::__tree<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >::__construct_node<FAutoVariableBase*>(FAutoVariableBase*&&)",
+      "sha256": "a2d6fdcfaaa075bd82058413535768ea27a25e7b657dc34db26929862a9f4c6b"
+    },
+    {
+      "address": "0x1fcd540",
+      "size": 54,
+      "name": "std::__1::__tree<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >::__insert_node_at(std::__1::__tree_end_node<std::__1::__tree_node_base<void*>*>*, std::__1::__tree_node_base<void*>*&, std::__1::__tree_node_base<void*>*)",
+      "sha256": "28c39727a266ced60899033f320970c2ee3396f1489cf8602422244c149bf713"
+    },
+    {
+      "address": "0x1fcd590",
+      "size": 192,
+      "name": "void std::__1::__tree_balance_after_insert<std::__1::__tree_node_base<void*>*>(std::__1::__tree_node_base<void*>*, std::__1::__tree_node_base<void*>*)",
+      "sha256": "0ee87eaa10edf2b4ae811b74ff57bb997a26c1c1c0cbab83d2c6f1c28d46df31"
+    },
+    {
+      "address": "0x1fcd690",
+      "size": 56,
+      "name": "void std::__1::__tree_right_rotate<std::__1::__tree_node_base<void*>*>(std::__1::__tree_node_base<void*>*)",
+      "sha256": "3bc4eb432d8d4c537275b48fe4d30b21abb24c155165f7334344347427fbd768"
+    },
+    {
+      "address": "0x1fcd650",
+      "size": 56,
+      "name": "void std::__1::__tree_left_rotate<std::__1::__tree_node_base<void*>*>(std::__1::__tree_node_base<void*>*)",
+      "sha256": "c47f0f3ac77cac87b3facadc65ee1f6b07ad6742272950c109bb2a7b1b390d51"
+    },
+    {
+      "address": "0x2a6c4a0",
+      "size": 72,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>, int>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>&, int, int&&, int&&)",
+      "sha256": "d2832fa63ecf70aa17e4381d74d4f366d5883df12e06605e139744415ee95f51"
+    },
+    {
+      "address": "0x1fcc8b0",
+      "size": 5,
+      "name": "FixedPointT<8u>::FixedPointT(int)",
+      "sha256": "a5050360463a3fe04639a9ad47d842d6a2c680138f54cfbbbe95eaf24f73e912"
+    },
+    {
+      "address": "0x243cc00",
+      "size": 14,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>::operator=(FixedPointT<8u>&&)",
+      "sha256": "7ddd723d9d18175887127b8763f84bec76e1f29d8ebe171ca81707baec3896cd"
+    },
+    {
+      "address": "0x243cc10",
+      "size": 5,
+      "name": "void MoveAssignment<FixedPointT<8u>, FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity> >(FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>&, FixedPointT<8u>&&)",
+      "sha256": "7cced8dc16d3ce892d20e1cf8e1557f65bc5a4d49164d594053649e491ca3b9e"
+    },
+    {
+      "address": "0x243cc20",
+      "size": 61,
+      "name": "void MoveAssignmentDo<FixedPointT<8u>, FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity> >(FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>&, FixedPointT<8u>&&, std::__1::integral_constant<bool, true>)",
+      "sha256": "4ed03fe950b4b4bff505f495edcd3429b17ef26143c59795ced2c7844bcbe047"
+    },
+    {
+      "address": "0x1fcdc00",
+      "size": 8,
+      "name": "FixedPointT<8u>::operator=(FixedPointT<8u> const&)",
+      "sha256": "775143daff273e7ffd54aaf1fdd8ee35101783a6286e5c6a3d9b76fed694472a"
+    },
+    {
+      "address": "0x2a6c670",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><FixedPointT<8u>, GameCore::Player::CulturalIdentity>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2a6c910",
+      "size": 15,
+      "name": "FAutoVariable<int, GameCore::Player::CulturalIdentity>::load(Serialization::IStream&)",
+      "sha256": "c043d64ec33301559f00cdb203da412384090ebac9aabce9599d1925d388d71a"
+    },
+    {
+      "address": "0x2a6c950",
+      "size": 15,
+      "name": "FAutoVariable<int, GameCore::Player::CulturalIdentity>::save(Serialization::OStream&) const",
+      "sha256": "871e3489d9e5333819ef78d143b0ae00d168f5f34c3d07d37ada0c65eb2e2523"
+    },
+    {
+      "address": "0x2a6d310",
+      "size": 15,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>::load(Serialization::IStream&)",
+      "sha256": "e83a57b98da2353302a03f3818dfed9d9c3b1d997e197b4103566b1b74e875df"
+    },
+    {
+      "address": "0x2a6d360",
+      "size": 15,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Player::CulturalIdentity>::save(Serialization::OStream&) const",
+      "sha256": "8e6f693d04b55f94388d4da19d5153bbd57737aadac6911439612ffa193e621c"
+    },
+    {
+      "address": "0x2c9afe0",
+      "size": 42,
+      "name": "Serialization::operator<<(Serialization::OStream&, FixedPointT<8u> const&)",
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704"
+    },
+    {
+      "address": "0x2c9b110",
+      "size": 3,
+      "name": "FixedPointT<8u>::GetRaw() const",
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    }
+  ],
+  "concrete_bindings": [
+    [
+      44479681,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      33341748,
+      32120032,
+      33348288,
+      "call"
+    ],
+    [
+      44479696,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479711,
+      32345280,
+      44483568,
+      "call"
+    ],
+    [
+      44479726,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479741,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479756,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479771,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479786,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479801,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479816,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479831,
+      32345280,
+      44483568,
+      "call"
+    ],
+    [
+      44479846,
+      32345280,
+      44483568,
+      "call"
+    ],
+    [
+      44479861,
+      32345280,
+      44483568,
+      "call"
+    ],
+    [
+      44479876,
+      32345280,
+      44483568,
+      "call"
+    ],
+    [
+      44479894,
+      33191424,
+      44483536,
+      "call"
+    ],
+    [
+      44479938,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      33341860,
+      31737840,
+      33348304,
+      "call"
+    ],
+    [
+      33348335,
+      31471216,
+      33348384,
+      "call"
+    ],
+    [
+      33348404,
+      31796656,
+      33348416,
+      "jmp"
+    ],
+    [
+      33348420,
+      32773984,
+      33348448,
+      "call"
+    ],
+    [
+      33348448,
+      32218944,
+      33348480,
+      "jmp"
+    ],
+    [
+      33348429,
+      32763152,
+      33348464,
+      "jmp"
+    ],
+    [
+      33348464,
+      33209600,
+      33348496,
+      "jmp"
+    ],
+    [
+      44479953,
+      32407360,
+      44483600,
+      "call"
+    ],
+    [
+      44479965,
+      32446944,
+      44483632,
+      "call"
+    ],
+    [
+      44480006,
+      32910240,
+      42331456,
+      "call"
+    ],
+    [
+      42331472,
+      32747424,
+      33348624,
+      "call"
+    ],
+    [
+      42331482,
+      32963584,
+      46772240,
+      "call"
+    ],
+    [
+      46772255,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      46772267,
+      32345808,
+      35393568,
+      "call"
+    ],
+    [
+      44480051,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44483710,
+      31546320,
+      37995664,
+      "call"
+    ],
+    [
+      37995668,
+      33033504,
+      37995680,
+      "call"
+    ],
+    [
+      37995680,
+      32273536,
+      37995696,
+      "jmp"
+    ],
+    [
+      37995729,
+      32193984,
+      33346560,
+      "call"
+    ],
+    [
+      33346584,
+      33165680,
+      33346672,
+      "call"
+    ],
+    [
+      33346694,
+      32309264,
+      33346944,
+      "call"
+    ],
+    [
+      33346615,
+      33142080,
+      33346816,
+      "call"
+    ],
+    [
+      33346839,
+      31925616,
+      0,
+      "call"
+    ],
+    [
+      33346635,
+      32744096,
+      33346880,
+      "call"
+    ],
+    [
+      33346922,
+      32850272,
+      33346960,
+      "call"
+    ],
+    [
+      33347080,
+      33105184,
+      33347216,
+      "call"
+    ],
+    [
+      33347105,
+      31473456,
+      33347152,
+      "jmp"
+    ],
+    [
+      33347122,
+      31473456,
+      33347152,
+      "call"
+    ],
+    [
+      33347147,
+      33105184,
+      33347216,
+      "jmp"
+    ],
+    [
+      44483720,
+      32407360,
+      44483600,
+      "call"
+    ],
+    [
+      44480096,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44480141,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44480186,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44480231,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44480276,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44480321,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44480366,
+      32832832,
+      44483744,
+      "call"
+    ],
+    [
+      44483774,
+      32860128,
+      33343664,
+      "call"
+    ],
+    [
+      33343664,
+      32747424,
+      33348624,
+      "jmp"
+    ],
+    [
+      44483785,
+      31643008,
+      37997568,
+      "call"
+    ],
+    [
+      37997572,
+      32698464,
+      37997584,
+      "call"
+    ],
+    [
+      37997584,
+      32230864,
+      37997600,
+      "jmp"
+    ],
+    [
+      37997633,
+      32193984,
+      33346560,
+      "call"
+    ],
+    [
+      37997648,
+      31649728,
+      33348608,
+      "call"
+    ],
+    [
+      44483798,
+      32120432,
+      44484208,
+      "call"
+    ],
+    [
+      44480411,
+      32832832,
+      44483744,
+      "call"
+    ],
+    [
+      44480456,
+      32832832,
+      44483744,
+      "call"
+    ],
+    [
+      44480501,
+      32832832,
+      44483744,
+      "call"
+    ],
+    [
+      44480549,
+      33074448,
+      44483696,
+      "call"
+    ],
+    [
+      44484890,
+      31938512,
+      33341856,
+      "jmp"
+    ],
+    [
+      44484954,
+      32898000,
+      33341744,
+      "jmp"
+    ],
+    [
+      44487450,
+      32963584,
+      46772240,
+      "jmp"
+    ],
+    [
+      44487530,
+      33099232,
+      46772192,
+      "jmp"
+    ],
+    [
+      46772203,
+      32683728,
+      46772496,
+      "call"
+    ],
+    [
+      46772220,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      45412772,
+      32400368,
+      44479664,
+      "call"
+    ]
+  ],
+  "virtual_bindings": [
+    [
+      61696200,
+      44484880
+    ],
+    [
+      61696224,
+      44484944
+    ],
+    [
+      61696392,
+      44487440
+    ],
+    [
+      61696416,
+      44487520
+    ]
+  ],
+  "dwarf_sha256": "34539c9c992b88776ebbeb6e78a262508f7413b2c4452440cfc873a07d3273ce",
+  "candidate_source_commit": "24dd11d67beeddb77611f676bf40d2f7606b7fc4",
+  "candidate_archive_sha256": "20a8f2036c9546f10e83f26dc1a20094aaa6420a73228564c64160de62bf6134",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "46f724d3c69e10c8b9ddb9655d3744d2cc4fb11884f30400525ab893eca477a7",
+    "crates/c6-core/src/core_stream.rs": "436211116bf002ec1d6df2be7deea9b4ec151e016b1071442a6b553c68350bb1",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "ea3cb2634af970c57e006c87cdd31a5eb9bdf766566ae34721d42c1f0a31adb9",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_ai_identity.rs": "0b1827b953da5fdbcc88349ea15186c4b7aa964b73275cfba8d618022c94d5f1",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_cultural_identity.rs": "c87ccd7989b3fb1aaebbf13d319ab86c667745376d30f1a5b65372d26ef63e34",
+    "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+    "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
+    "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+    "crates/c6-core/src/player_governors.rs": "1362500016008ff6444b1fa28599ec52e60a4807c69a87b7573451f3b58b9133",
+    "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+    "crates/c6-core/src/player_improvements.rs": "a427c0bb1b4d24e67ab6e050d949e297c80771ee89d4811132741ae0e650d484",
+    "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
+    "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/player_quests.rs": "8cd4a8374ac45f7934b8801cbea927708201603672506edb739e507e7c37a2f7",
+    "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+    "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+    "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
+    "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+    "crates/c6-core/src/player_trade.rs": "371d7f198f475a3103609e555063c05feb983471e57215d92fe6e9496ef70702",
+    "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+    "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
+    "crates/c6-core/src/player_wmds.rs": "5948c879fe976edbb68a79f0dbf81bfeb0bf4e6f16f0a23ab6a898860c53bef2",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/reporting_dirty_components.rs": "f1fde81ff4f0cb1b31fc3b67935d855034adc7dc1e20956ab241adf10459e3f8",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+    "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit_operation_aftermath.rs": "61b33abf48a8d4cf3f52af69ec94cfb3b46d4d48cf3b0554801c2cbd6d72c922",
+    "crates/c6-core/src/unit_operation_legality.rs": "50a0d57a5b5324477f9de2c975a8248550b7188d2abe7d1e58e5bf7cf9ff4d68",
+    "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
+    "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
+    "tools/linux/player_cultural_identity_audit.py": "9626f4b6c3ad789576337b6e151642521e20a2134b6fe591e397ab40008321c1"
+  },
+  "candidate_sha256": "cce47528e4e2fbbfa695d682e70c92a08f85e886d473705354a8f32ce34082db",
+  "harness_sha256": "7d6732617aaed79807dc0b8a92dc32570071b869968910127a97881d9a267abb",
+  "audit_source_sha256": "9626f4b6c3ad789576337b6e151642521e20a2134b6fe591e397ab40008321c1",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": 43,
+      "record_bytes": 2580,
+      "record_items": 0,
+      "first_observed_range": [
+        5213599,
+        5213659
+      ],
+      "byte_item_caps": [
+        [
+          60,
+          0
+        ]
+      ],
+      "ordered_record_digests_sha256": "b8700b4fc824fca4c058419352573d5502d849853eb99b048aaeb21d962bb857"
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": 43,
+      "record_bytes": 2580,
+      "record_items": 0,
+      "first_observed_range": [
+        5213599,
+        5213659
+      ],
+      "byte_item_caps": [
+        [
+          60,
+          0
+        ]
+      ],
+      "ordered_record_digests_sha256": "b8700b4fc824fca4c058419352573d5502d849853eb99b048aaeb21d962bb857"
+    }
+  ],
+  "source_only_tests": 3,
+  "exact_native_record_byte_item_caps_checked": true,
+  "one_short_native_record_byte_caps_rejected": true,
+  "native_every_truncation_rejected": true,
+  "validation_cuts": "No direct CulturalIdentity owner cuts. WMD, Improvements and complete Governors source grammars locate prefix from Quests.end; enclosing Player.end is contextual bound. No production trace offsets.",
+  "allocation_policy": "Fixed 60-byte grammar, zero dynamic items. Decode allocates nothing; encode preflights byte cap then fallibly reserves exactly 60 bytes.",
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_cultural_identity_wire": true,
+  "legacy_versions": false,
+  "native_read_fixups": false,
+  "native_read_effects": "Read invokes archive edit/virtual load wrappers; current version reads all members, Q8 via SetRaw. Codec does not edit native archives or initialize/reset parent.",
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "next_player_component": "Heroes",
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "attribution_reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_role": "discovery_only"
+}
