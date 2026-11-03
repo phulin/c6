@@ -1,0 +1,283 @@
+//! Offline raw Core to first Player AI Culture validation; never executes the engine.
+#![recursion_limit = "256"]
+use c6_core::{core_stream::ThroughFirstPlayer, map, unit};
+use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+use std::io::{Read, Write};
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|v| format!("{v:02x}")).collect()
+}
+fn digest(bytes: &[u8]) -> String {
+    hex(&Sha256::digest(bytes))
+}
+fn container<T>(v: &map::Recycled<T>) -> Value {
+    json!({"capacity":v.capacity,"current_id_bits":v.current_id_bits,
+        "free_head":v.free_head,"free_tail":v.free_tail,"free_links":v.free_links,
+        "slots":v.entries.iter().map(|e|e.index).collect::<Vec<_>>()})
+}
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<_> = std::env::args().collect();
+    if args.len() != 3 {
+        return Err(
+            "usage: c6-core-player-ai-culture-prefix-candidate RAW_CORE POST_MAP_OUTPUT".into(),
+        );
+    }
+    let mut bytes = Vec::new();
+    const MAX: u64 = 256 * 1024 * 1024;
+    std::fs::File::open(&args[1])?
+        .take(MAX + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX {
+        return Err("raw input resource bound".into());
+    }
+    let v = ThroughFirstPlayer::decode(&bytes, map::Limits::default(), unit::Limits::default())?;
+    if !std::ptr::eq(v.tail.as_ptr(), bytes[v.consumed..].as_ptr())
+        || v.tail != &bytes[v.consumed..]
+    {
+        return Err("tail borrow differs".into());
+    }
+    let (encoded, items) = v
+        .player_prefix
+        .encode_prefix_with_items(unit::Limits::default())?;
+    if encoded != bytes[v.core.consumed..v.consumed] || items + v.core.items_used != v.items_used {
+        return Err("post-Map typed wire or item charge differs".into());
+    }
+    let map_bytes = v.core.map.encode(map::Limits::default())?;
+    if map_bytes != bytes[v.core.map_start..v.core.map_end] {
+        return Err("typed Map wire differs".into());
+    }
+    std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&args[2])?
+        .write_all(&encoded)?;
+    // Native acceptance includes exact shared/Player byte+item ceilings, not
+    // only default-limit roundtrips. No native process or state is mutated.
+    let exact = map::Limits {
+        max_bytes: v.consumed,
+        max_items: v.items_used,
+        ..map::Limits::default()
+    };
+    let player_exact = unit::Limits {
+        max_bytes: encoded.len(),
+        max_items: items,
+    };
+    let again = ThroughFirstPlayer::decode(&bytes, exact, player_exact)?;
+    if again.consumed != v.consumed || again.items_used != v.items_used {
+        return Err("exact shared/Player cap differs".into());
+    }
+    for cap in [
+        map::Limits {
+            max_bytes: v.consumed - 1,
+            ..exact
+        },
+        map::Limits {
+            max_items: v.items_used - 1,
+            ..exact
+        },
+    ] {
+        if ThroughFirstPlayer::decode(&bytes, cap, player_exact).is_ok() {
+            return Err("one-short shared cap accepted".into());
+        }
+    }
+    let mut short_player_caps = vec![unit::Limits {
+        max_bytes: encoded.len() - 1,
+        ..player_exact
+    }];
+    if items > 0 {
+        short_player_caps.push(unit::Limits {
+            max_items: items - 1,
+            ..player_exact
+        });
+    }
+    for cap in short_player_caps {
+        if ThroughFirstPlayer::decode(&bytes, exact, cap).is_ok()
+            || v.player_prefix.encode_prefix(cap).is_ok()
+        {
+            return Err("one-short Player cap accepted".into());
+        }
+    }
+    if v.player_prefix.encode_prefix(player_exact)? != encoded {
+        return Err("exact encode cap differs".into());
+    }
+    let r = &v.player_prefix.religion;
+    let religion = json!({"minimum_faith_for_next_pantheon":r.minimum_faith_for_next_pantheon,
+        "next_pantheon_founder":r.next_pantheon_founder,
+        "records":r.records.iter().map(|r|json!({"religion_hash":r.religion_hash,"founder":r.founder,
+            "founded_turn":r.founded_turn,"holy_city":[r.holy_city.x,r.holy_city.y],
+            "custom_name":hex(&r.custom_name),"belief_hashes":r.belief_hashes,
+            "building_hashes":r.building_hashes,"unit_hashes":r.unit_hashes,
+            "anyone_condemns_favor":r.anyone_condemns_favor,"condemn_prohibited":r.condemn_prohibited,
+            "auto_spreads_to_new_cities":r.auto_spreads_to_new_cities,"awards_envoy":r.awards_envoy,
+            "awards_envoy_religious_pressure":r.awards_envoy_religious_pressure})).collect::<Vec<_>>()});
+    let first = if let Some(p) = &v.player_prefix.first_player {
+        let h = &p.header;
+        let c = &p.cities;
+        let formations: Result<Vec<_>, unit::Error> = p
+            .formations
+            .entries
+            .iter()
+            .map(|e| {
+                let encoded = e.value.encode(unit::Limits::default())?;
+                Ok(json!({"slot":e.index,"id":e.value.id,"owner":e.value.owner,
+                "bytes":encoded.len(),"sha256":digest(&encoded)}))
+            })
+            .collect();
+        let cities: Result<Vec<_>, c6_core::city::Error> = c
+            .records
+            .entries
+            .iter()
+            .map(|e| {
+                let b = e.value.encode(unit::Limits::default())?;
+                let h = &e.value.header;
+                Ok(json!({"slot":e.index,"id":h.id,"owner":h.owner,
+                "location":[h.location_x,h.location_y],"population":h.population,
+                "bytes":b.len(),"sha256":digest(&b)}))
+            })
+            .collect();
+        let treasury = p.treasury.encode(unit::Limits::default())?;
+        let units = p.units.encode(unit::Limits::default())?;
+        let eras = p.eras.encode(unit::Limits::default())?;
+        let trade = p.trade.encode(unit::Limits::default())?;
+        let great_people_points = p.great_people_points.encode(unit::Limits::default())?;
+        let influence = p.influence.encode(unit::Limits::default())?;
+        let quests = p.quests.encode(unit::Limits::default())?;
+        let wmds = p.wmds.encode(unit::Limits::default())?;
+        let improvements = p.improvements.encode(unit::Limits::default())?;
+        let governors = p.governors.encode(unit::Limits::default())?;
+        let cultural_identity = p.cultural_identity.encode(unit::Limits::default())?;
+        let heroes = p.heroes.encode(unit::Limits::default())?;
+        let ai_control = p
+            .ai_control
+            .as_ref()
+            .ok_or("missing actual true-branch ai_control")?
+            .encode(unit::Limits::default())?;
+        let ai_influence_map = p
+            .ai_influence_map
+            .as_ref()
+            .ok_or("missing actual true-branch ai_influence_map")?
+            .encode(unit::Limits::default())?;
+        let ai_planning = p
+            .ai_planning
+            .as_ref()
+            .ok_or("missing actual true-branch ai_planning")?
+            .encode(unit::Limits::default())?;
+        let ai_city_manager = p
+            .ai_city_manager
+            .as_ref()
+            .ok_or("missing actual true-branch ai_city_manager")?
+            .encode(unit::Limits::default())?;
+        let ai_culture = p
+            .ai_culture
+            .as_ref()
+            .ok_or("missing actual true-branch ai_culture")?
+            .encode(unit::Limits::default())?;
+        let arrays = p
+            .post_heroes_arrays
+            .as_ref()
+            .ok_or("missing actual true-branch arrays")?;
+
+        let unit_records: Result<Vec<_>, unit::Error> = p
+            .units
+            .records
+            .entries
+            .iter()
+            .map(|e| {
+                let b = e.value.encode(unit::Limits::default())?;
+                Ok(
+                    json!({"slot":e.index,"id":e.value.id,"owner":e.value.e_owner,
+                "location":[e.value.k_location.x,e.value.k_location.y],
+                "bytes":b.len(),"sha256":digest(&b)}),
+                )
+            })
+            .collect();
+        let espionage = p.espionage.encode(unit::Limits::default())?;
+        let religion = p.religion.encode(unit::Limits::default())?;
+        let resources = p.resources.encode(unit::Limits::default())?;
+        let stats = p.stats.encode(unit::Limits::default())?;
+        let techs = p.techs.encode(unit::Limits::default())?;
+        let name_manager = p.name_manager.encode(unit::Limits::default())?;
+        let culture = p.culture.encode(unit::Limits::default())?;
+        let diplomacy = p.diplomacy.encode(unit::Limits::default())?;
+        let districts = p.districts.encode(unit::Limits::default())?;
+        let district_records: Result<Vec<_>, c6_core::player_districts::Error> = p
+            .districts
+            .records
+            .entries
+            .iter()
+            .map(|e| {
+                let b = e.value.encode(unit::Limits::default())?;
+                let d = &e.value;
+                Ok(
+                    json!({"slot":e.index,"id":d.id,"location":[d.location.0,d.location.1],
+                "city_id":d.city_id,"district_hash":d.district_hash,"is_complete":d.is_complete,
+                "bytes":b.len(),"sha256":digest(&b)}),
+                )
+            })
+            .collect();
+        json!({"heroes":{"bytes":heroes.len(),"sha256":digest(&heroes)},
+            "ai_control":{"bytes":ai_control.len(),"sha256":digest(&ai_control)},
+            "ai_influence_map":{"bytes":ai_influence_map.len(),"sha256":digest(&ai_influence_map)},
+            "ai_planning":{"bytes":ai_planning.len(),"sha256":digest(&ai_planning)},
+            "ai_city_manager":{"bytes":ai_city_manager.len(),"sha256":digest(&ai_city_manager)},
+            "ai_culture":{"bytes":ai_culture.len(),"sha256":digest(&ai_culture)},
+            "post_heroes_arrays":{"unit_definitions":arrays.unit_definitions.pairs.iter().map(|x|json!([x.definition_hash,x.value])).collect::<Vec<_>>(),"feature_definitions":arrays.feature_definitions.pairs.iter().map(|x|json!([x.definition_hash,x.value])).collect::<Vec<_>>(),"continent_definitions":arrays.continent_definitions.pairs.iter().map(|x|json!([x.definition_hash,x.value])).collect::<Vec<_>>()},"cultural_identity":{"bytes":cultural_identity.len(),"sha256":digest(&cultural_identity),"ordered_words":[p.cultural_identity.extra_capital_pressure_radius,p.cultural_identity.identity_per_turn_for_domestic_trade_route_origin_raw,p.cultural_identity.martial_law_modifier,p.cultural_identity.post_combat_foreign_loyalty,p.cultural_identity.post_combat_local_loyalty,p.cultural_identity.additional_golden_age_post_combat_loyalty,p.cultural_identity.post_pillage_foreign_loyalty,p.cultural_identity.post_pillage_local_loyalty,p.cultural_identity.get_skip_free_city_step,p.cultural_identity.foreign_identity_per_turn_from_nearby_great_works_raw,p.cultural_identity.domestic_identity_per_turn_from_nearby_great_works_raw,p.cultural_identity.foreign_identity_per_turn_from_nearby_wonders_raw,p.cultural_identity.domestic_identity_per_turn_from_nearby_wonders_raw,p.cultural_identity.always_loyal_coastal_home_continent_count]},"great_people_points":{"bytes":great_people_points.len(),"sha256":digest(&great_people_points)},
+            "influence":{"bytes":influence.len(),"sha256":digest(&influence)},
+            "quests":{"bytes":quests.len(),"sha256":digest(&quests)},
+            "wmds":{"bytes":wmds.len(),"sha256":digest(&wmds)},
+            "improvements":{"bytes":improvements.len(),"sha256":digest(&improvements)},
+            "governors":{"bytes":governors.len(),"sha256":digest(&governors)},
+            "treasury":{"bytes":treasury.len(),"sha256":digest(&treasury)},
+            "units":{"bytes":units.len(),"sha256":digest(&units),
+                "container":{"capacity":p.units.records.capacity,"current_id_bits":p.units.records.current_id_bits,
+                    "free_head":p.units.records.free_head,"free_tail":p.units.records.free_tail,
+                    "free_links":p.units.records.free_links,"slots":p.units.records.entries.iter().map(|x|x.index).collect::<Vec<_>>()},
+                "records":unit_records?},
+            "eras":{"bytes":eras.len(),"sha256":digest(&eras),"era_hash":p.eras.era_hash,"game_era_hash":p.eras.game_era_hash},
+            "trade":{"bytes":trade.len(),"sha256":digest(&trade),"player":p.trade.player},
+            "espionage":{"bytes":espionage.len(),"sha256":digest(&espionage)},
+            "religion":{"bytes":religion.len(),"sha256":digest(&religion)},
+            "resources":{"bytes":resources.len(),"sha256":digest(&resources)},
+            "stats":{"bytes":stats.len(),"sha256":digest(&stats)},
+            "techs":{"bytes":techs.len(),"sha256":digest(&techs),
+                "has_tech":p.techs.has_tech.pairs.iter().map(|x|json!([x.definition_hash,x.value])).collect::<Vec<_>>()},
+            "name_manager":{"bytes":name_manager.len(),"sha256":digest(&name_manager),
+                "citizen_name_usage_counts":p.name_manager.citizen_name_usage_counts},
+            "culture":{"bytes":culture.len(),"sha256":digest(&culture),
+                "has_civic":p.culture.has_civic.pairs.iter().map(|x|json!([x.definition_hash,x.value])).collect::<Vec<_>>()},
+            "diplomacy":{"bytes":diplomacy.len(),"sha256":digest(&diplomacy)},
+            "districts":{"bytes":districts.len(),"sha256":digest(&districts),
+                "container":container(&p.districts.records),"records":district_records?},
+            "requested_owner":p.requested_owner,"header":{"owner":h.owner,
+            "starting_plot":[h.starting_plot.x,h.starting_plot.y],"ordered_scalars":h.ordered_scalars,
+            "ordered_flags":h.ordered_flags,"saved_is_alive":h.saved_is_alive(),"saved_was_ever_alive":h.saved_was_ever_alive(),"handicap_hash":h.handicap_hash,
+            "district_hash":h.district_hash,"project_hash":h.project_hash,"final_scalar":h.final_scalar},
+            "formation_container":container(&p.formations),"formations":formations?,
+            "city_container":container(&c.records),"cities":cities?,
+            "city_tail":{"fresh_water_housing_bonus":c.fresh_water_housing_bonus,
+                "urban_defenses":c.urban_defenses,"home_continent_hash":c.home_continent_hash,
+                "settled_continent_hashes":c.settled_continent_hashes,"peak_cities":c.peak_cities,
+                "extra_starting_population_off_home_continent":c.extra_starting_population_off_home_continent,
+                "population_after_conquest":c.population_after_conquest,
+                "banned_building_hashes":c.banned_building_hashes,"banned_district_hashes":c.banned_district_hashes,
+                "banned_district_building_hashes":c.banned_district_building_hashes,
+                "banned_project_hashes":c.banned_project_hashes,"building_build_overrides":c.building_build_overrides}})
+    } else {
+        Value::Null
+    };
+    println!(
+        "{}",
+        json!({"map_start":v.core.map_start,"map_end":v.core.map_end,
+        "map_sha256":digest(&map_bytes),"consumed":v.consumed,"items_used":v.items_used,
+        "through_map_items":v.core.items_used,"through_map_logical_allocation":v.core.logical_allocation_used,
+        "post_map_bytes":encoded.len(),"post_map_items":items,"post_map_sha256":digest(&encoded),
+        "exact_and_one_short_caps":true,"tail_borrowed":true,"tail_bytes":v.tail.len(),"tail_sha256":digest(v.tail),
+        "religion":religion,"player_count":v.player_prefix.player_count,"first_player":first,
+        "boundary":format!("{:?}",v.player_prefix.boundary),
+        "unfinished_player_entries":v.player_prefix.unfinished_player_entries,
+        "first_player_wire_complete":v.player_prefix.first_player_complete(),
+        "complete_player_import":false,"complete_core_import":false,"gameplay_parity":false,
+        "metadata_compatibility_checked":false,"rng_reconstructed":false,"original_game_execution":false})
+    );
+    Ok(())
+}
