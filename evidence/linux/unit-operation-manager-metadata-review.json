@@ -109,5 +109,28 @@
   "configuration_file_sha256": "6b34093bbf7b7407972758daeba9e7d2f2885472a48cd6ba7097a1d2d2b78cdf",
   "prepared_sources_verified": 60,
   "runtime_dependencies_verified": 29,
-  "capture_path": "/home/phulin/c6-ghidra/evidence/linux-unit-operation-manager-metadata/native-1"
+  "capture_path": "/home/phulin/c6-ghidra/evidence/linux-unit-operation-manager-metadata/native-1",
+  "pre_answer_checker_admission_review": {
+    "commit": "eb2bed44a5cbe59c5f5aff8f75aab6a38849a320",
+    "admission_sha256": "bbe8a75f76b3ae83c7cacef12b53093c9a22e1f7091965515032718dea2e86c7",
+    "checker_sha256": "584322e1ad0d635dff8c2e13fca4e577a45b97d2db02fc291f902b501958df9e",
+    "status": "passed_before_original_outputs",
+    "runtime_sha256": null,
+    "all_native_outputs_absent_at_review": true,
+    "six_negative_test_groups_passed": true,
+    "actual_cli_refuses_before_facts_candidate_and_diagnostics_when_runtime_pending": true,
+    "committed_admission_exact_bytes_verified": true,
+    "prepared_profile_sources_candidate_rules_trace_revalidated": true,
+    "only_future_allowed_admission_change": "runtime_sha256",
+    "input_target_separation_and_strict_projection_reviewed": true,
+    "two_complete_raw_passes_required_byte_equal_unmasked": true,
+    "six_exact_80657462_byte_full_saves_required": true,
+    "all64_known_rng_endpoint_bytes_required_equal": true,
+    "actual_terminal_controller_framework_client_cleanup_required": true,
+    "known_hook_trace_retained_hash_and_zero_counters_required": true,
+    "full65_slots43_players1262_units_and_all_comparison_targets_required": true,
+    "two_frozen_candidate_executions_equal_inputs_outputs_required": true,
+    "original_game_execution_by_reviewer": false,
+    "native_predicate_or_full_manager_acceptance": false
+  }
 }
