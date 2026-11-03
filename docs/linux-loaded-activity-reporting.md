@@ -141,6 +141,17 @@ SkipTurn OPERATION facade and empty-map parameter defaults, plus Started/HOLD
 and later deactivation/cleared shapes. They are source projection tests, not
 nine successful action calls or a native host-output comparison.
 
+The retained scoped candidate at `6bdb67d` passes that follow-up: the genuine
+four-report prefix remains unchanged, and all nine independent projection cases
+pass, including the SkipTurn facade hash and four -1 parameter defaults. Its
+[result](../evidence/linux/loaded-ordered-reporting-scoped-check.json) identifies
+the separate original report configuration `d68604a5...` and the common exact
+80,657,462-byte input snapshot `ff31f4c5...`. Equal scalar rows do not promote
+the distinct observer profiles into one live initialization authority. The
+[source audit](../evidence/linux/loaded-ordered-reporting-scoped-source.json)
+retains the 273 method-body checks. The full source preimages, generated manifests,
+candidate and result remain at the paths recorded in that result.
+
 ```sh
 python3 tools/linux/loaded_activity_reporting_audit.py --output target/linux/loaded-activity-reporting-source.json
 python3 tools/linux/loaded_activity_reporting_check.py --output target/linux/loaded-activity-reporting-check.json
