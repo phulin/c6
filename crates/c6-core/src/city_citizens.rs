@@ -132,6 +132,15 @@ impl Reader<'_> {
 impl Citizens {
     /// Decode at a structurally established boundary; never search for versions.
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
+        Ok((value, consumed))
+    }
+    /// Also return the aggregate number of dynamic array elements charged to
+    /// `max_items`, so an enclosing record can share its remaining budget.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
         let mut r = Reader {
             data: bytes,
             pos: 0,
@@ -155,7 +164,7 @@ impl Citizens {
             num_citizens_working_plots: r.i32()?,
             force_update_plot_appeal: r.bool()?,
         };
-        Ok((result, r.pos))
+        Ok((result, r.pos, r.items))
     }
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         let (result, consumed) = Self::decode_prefix(bytes, limits)?;
@@ -165,6 +174,10 @@ impl Citizens {
         Ok(result)
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        self.encode_with_items(limits).map(|(bytes, _)| bytes)
+    }
+    /// Encode and return the same aggregate dynamic-element charge as decode.
+    pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let lengths = [
             self.working_plot.len(),
             self.forced_working_plot.len(),
@@ -219,7 +232,7 @@ impl Citizens {
         out.extend_from_slice(&self.num_unassigned_citizens.to_le_bytes());
         out.extend_from_slice(&self.num_citizens_working_plots.to_le_bytes());
         out.push(u8::from(self.force_update_plot_appeal));
-        Ok(out)
+        Ok((out, items))
     }
 }
 
@@ -248,6 +261,31 @@ mod tests {
             num_citizens_working_plots: i32::MAX,
             force_update_plot_appeal: true,
         }
+    }
+    #[test]
+    fn shared_item_charge_and_prefix() {
+        let value = sample();
+        let (mut bytes, items) = value.encode_with_items(Limits::default()).unwrap();
+        assert_eq!(items, 8);
+        let length = bytes.len();
+        bytes.extend_from_slice(&[255; 20]);
+        let limits = Limits {
+            max_items: items,
+            max_bytes: length,
+        };
+        assert_eq!(
+            Citizens::decode_prefix_with_items(&bytes, limits).unwrap(),
+            (value.clone(), length, items)
+        );
+        let short = Limits {
+            max_items: items - 1,
+            ..limits
+        };
+        assert_eq!(
+            Citizens::decode_prefix_with_items(&bytes, short),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(value.encode_with_items(short), Err(Error::ResourceLimit));
     }
     #[test]
     fn current_nonempty_wire_and_prefix() {
