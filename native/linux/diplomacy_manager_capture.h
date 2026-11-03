@@ -36,6 +36,7 @@ typedef struct {
  * No original module functions execute and no original memory is written.
  * Caller owns stream lifetime and externally proves target/input/config identity,
  * actual Game+0x248 PlayerManager linkage and retained native owner/thread scope.
+ * Session EASTL header preserves next/prev/allocator raw words, not a count.
  * Allocation/ID tables are distinct vectors; native rebuild scans only allocation
  * slots 0..63, while capture preserves the actual full vector (including slot64).
  * A caller-supplied guard/reader is a trust boundary, not independent admission. */

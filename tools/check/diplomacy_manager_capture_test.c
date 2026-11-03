@@ -60,6 +60,8 @@ int main(void){
     Fixture f;init(&f);run(&f,"\"complete\":true",0);
     init(&f);nonempty(&f);run(&f,"\"id\":4294967295,\"from\":-2,\"to\":17",0);
     init(&f);nonempty(&f);run(&f,"\"pending_items\":\"not_captured_layout_unclosed\"",0);
+    init(&f);nonempty(&f);u64(f.session,0x28,0x123);u64(f.session,0x30,0x456);u64(f.session,0x38,0x789);
+    run(&f,"\"pending_prev\":\"0x456\",\"pending_next\":\"0x123\",\"pending_allocator_raw\":\"0x789\",\"pending_count\":\"unknown_not_captured\"",0);
     init(&f);nonempty(&f);u64(f.node,8,NODE);u64(f.globals,16,2);run(&f,"list_cycle",-1);
     init(&f);nonempty(&f);u64(f.node,0,99);run(&f,"list_prev_link",-1);
     init(&f);u64(f.globals,16,1);run(&f,"list_short_count",-1);

@@ -14,7 +14,9 @@ _Static_assert(sizeof(uintptr_t)==8,"Linux x86-64 capture only");
 typedef struct { const C6DiplomacyCaptureAdmission *a; size_t bytes,items; const char *error; } Capture;
 typedef struct { uint64_t prev,next,count; } List;
 typedef struct { uint64_t begin,end,capacity; } Vector;
-_Static_assert(sizeof(List)==24&&sizeof(Vector)==24,"source header sizes");
+/* Session uses EASTL ListBase, unlike process-global libc++ Session lists. */
+typedef struct { uint64_t next,prev,allocator; } SessionPendingHeader;
+_Static_assert(sizeof(List)==24&&sizeof(Vector)==24&&sizeof(SessionPendingHeader)==24,"source header sizes");
 static int fail(Capture *c,const char *reason){if(!c->error)c->error=reason;return -1;}
 static int hash(const char *s){if(!s||strlen(s)!=64)return 0;for(size_t i=0;i<64;i++)if(!strchr("0123456789abcdef",s[i]))return 0;return 1;}
 static int stage(const char *s){
@@ -44,11 +46,11 @@ static int read_field(Capture *c,uintptr_t p,size_t off,void *out,size_t n){
 static int item(Capture *c){if(c->items==c->a->max_items)return fail(c,"item_cap");c->items++;return 0;}
 static void raw(FILE *out,const void *p,size_t n){const unsigned char *b=p;fputc('"',out);for(size_t i=0;i<n;i++)fprintf(out,"%02x",b[i]);fputc('"',out);}
 static int session(Capture *c,uintptr_t p){
-    int32_t endpoints[2];List pending;
+    int32_t endpoints[2];SessionPendingHeader pending;
     if(!p)return fail(c,"null_session");
     if(item(c)||read_field(c,p,0,endpoints,sizeof endpoints)||read_field(c,p,0x28,&pending,sizeof pending))return -1;
     fprintf(c->a->output,"{\"kind\":\"session\",\"pointer\":\"0x%"PRIxPTR"\",\"from\":%"PRId32",\"to\":%"PRId32",\"pending_header_raw\":",p,endpoints[0],endpoints[1]);raw(c->a->output,&pending,sizeof pending);
-    fprintf(c->a->output,",\"pending_prev\":\"0x%"PRIx64"\",\"pending_next\":\"0x%"PRIx64"\",\"pending_count\":%"PRIu64",\"statement_payload\":\"unknown\",\"pending_items\":\"not_captured_layout_unclosed\"}\n",pending.prev,pending.next,pending.count);
+    fprintf(c->a->output,",\"pending_prev\":\"0x%"PRIx64"\",\"pending_next\":\"0x%"PRIx64"\",\"pending_allocator_raw\":\"0x%"PRIx64"\",\"pending_count\":\"unknown_not_captured\",\"statement_payload\":\"unknown\",\"pending_items\":\"not_captured_layout_unclosed\"}\n",pending.prev,pending.next,pending.allocator);
     return 0;
 }
 static int list(Capture *c,uintptr_t address,const char *name){
