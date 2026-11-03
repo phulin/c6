@@ -1,4 +1,5 @@
 //! Deterministic simulator kernel. Gameplay beyond declared coverage fails closed.
+pub mod city;
 pub mod city_citizens;
 pub mod city_district;
 pub mod city_economy;

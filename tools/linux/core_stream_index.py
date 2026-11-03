@@ -211,8 +211,82 @@ class Reader(MapReader):
                     government_slots=slots, trade_modifier=modifier, modifiers=modifiers,
                     refunds=refunds, wants_congress=wants, diplo_vp_last_turn=vp)
 
+    def city_dynamic_adjacency(self):
+        self.version(51)
+        keys=('district_hash','feature_hash','terrain_hash','improvement_hash')
+        value={key:self.u32() for key in keys}
+        value.update(river=self.boolean(),adjacent_district=self.boolean(),appeal=self.take('i'),
+            yield_hash=self.u32(),tiles_required=self.take('i'),amount=self.take('i'),description=self.string8())
+        return value
 
-def index_core(data, *, first_formations=False, first_player_components=False):
+    def city_yield_per_terrain(self):
+        self.version(51)
+        return dict(terrain_hash=self.u32(),yield_hash=self.u32(),amount_q8=self.take('i'))
+
+    def city_header(self):
+        self.version(51)
+        value=dict(id=self.u32(),location_x=self.take('i'),location_y=self.take('i'))
+        for key in ('owner','original_owner','owner_before_occupation','liberator'):
+            value[key]=self.take('i')
+        value.update(city_ai_id=self.u32(),population=self.take('i'),capital=self.boolean(),original_capital=self.boolean())
+        for key in ('last_transfer_type','just_conquered_from','just_rebelled_from','last_barbarian_invasion_turn'):
+            value[key]=self.take('i')
+        value.update(occupied=self.boolean(),last_warmonger_penalty=self.static_array('i'))
+        for key in ('production_unit_changes','production_building_changes','production_district_changes','wonder_envoy'):
+            value[key]=self.take('i')
+        value.update(delayed_death=self.boolean(),transferring=self.boolean())
+        arrays=('yield_modifiers','follower_yield_modifiers','yield_modifiers_per_governor_title_q8',
+            'yield_changes','yield_per_district','extra_yield_per_population_q8','allow_incoming_regional_stacking_counts',
+            'yield_per_unit_complete','yield_per_building_complete','yield_per_wonder_complete',
+            'yield_per_terrain_class_cities','project_yield_q8','yield_modifier_from_faith_city')
+        for key in arrays: value[key]=self.indexed_ints()
+        # Concrete generic enum overloads are mixed: only Yield/Happiness
+        # writer fields here are raw indexes; other enum fields below are hashes.
+        value['happiness_modifiers']=[dict(happiness_type_index=self.take('i'),great_person_class_hash=self.u32(),
+            yield_type_index=self.take('i'),yield_amount=self.take('i'),great_person_amount=self.take('i')) for _ in range(self.count())]
+        value['terrain_modifiers']=[dict(terrain_hash=self.u32(),adjacent_improvement_hash=self.u32(),
+            yield_type_index=self.take('i'),yield_amount=self.take('i')) for _ in range(self.count())]
+        value['improvement_valid_terrain']=[dict(terrain_hash=self.u32(),improvement_hash=self.u32()) for _ in range(self.count())]
+        value['terrain_class_yield_improvement_modifiers']=[dict(improvement_hash=self.u32(),yield_type_index=self.take('i'),amount=self.take('i')) for _ in range(self.count())]
+        value.update(project_yield_project_hash=self.u32(),housing_per_district=self.take('i'))
+        value['dynamic_bonuses']=[self.city_dynamic_adjacency() for _ in range(self.count())]
+        value['yield_per_terrain_type']=[self.city_yield_per_terrain() for _ in range(self.count())]
+        for key in ('max_unit_level','unit_experience_modifier_q8','attacks_per_turn','great_person_point_bonus_percent'):
+            value[key]=self.take('i')
+        value.update(settler_consume_pop=self.boolean(),yield_per_flood=self.indexed_ints(),
+            espionage_defense_bonus=self.take('i'),project_production=self.boolean(),
+            prevent_bypass_outer_defenses=self.take('i'),prevent_melee_attack_outer_defenses=self.take('i'),
+            name=self.string8())
+        start=self.pos
+        value['attributes']=self.untyped_map()
+        value['attributes_wire']=list(self.data[start:self.pos])
+        return value
+
+    def city_districts(self):
+        self.version(4)
+        return dict(district_ids=[self.u32() for _ in range(self.count())],extra_districts=self.take('i'))
+
+    def city_citizens(self):
+        self.version(2)
+        working=[self.take('i') for _ in range(self.count())]
+        forced=[self.take('i') for _ in range(self.count())]
+        favored=[(self.u32(),self.boolean()) for _ in range(self.count())]
+        disfavored=[(self.u32(),self.boolean()) for _ in range(self.count())]
+        return dict(working_plot=working,forced_working_plot=forced,favored_yields=favored,disfavored_yields=disfavored,
+            num_unassigned_citizens=self.take('i'),num_citizens_working_plots=self.take('i'),force_update_plot_appeal=self.boolean())
+
+    def first_city_container_prefix(self):
+        self.version(15)
+        self.version(65537)
+        bits,capacity,size=self.u32(),self.count(),self.count()
+        if bits!=16 or size>capacity: raise ValueError('unsupported City recycled container prefix')
+        slot=self.take('i') if size else None
+        if slot is not None and not 0<=slot<capacity: raise ValueError('invalid City container slot')
+        return dict(bits=bits,capacity=capacity,size=size,first_slot=slot)
+
+
+def index_core(data, *, first_formations=False, first_player_components=False, first_city=False):
+    first_player_components = first_player_components or first_city
     first_formations = first_formations or first_player_components
     if len(data) > MAX_STREAM:
         raise ValueError('Core stream resource limit')
@@ -227,7 +301,7 @@ def index_core(data, *, first_formations=False, first_player_components=False):
     r.section('game_properties', r.untyped_map)
     world = r.section('map', r.map)
     religion, players, first = None, None, None
-    component_counts = None
+    component_counts, city_summary, city_container = None, None, None
     if first_formations:
         religion = r.section('game_religion', r.religion)
         r.version(1)
@@ -248,7 +322,19 @@ def index_core(data, *, first_formations=False, first_player_components=False):
                     congress_indexed_pairs=[len(congress[k]) for k in ('suzerain','influence','trade','trade_modifier')],
                     government_slot_values=len(congress['government_slots']),
                     refund_records=len(congress['refunds']))
+                if first_city:
+                    city_container=r.section('first_player_cities_prefix',r.first_city_container_prefix)
+                    if city_container['size']:
+                        header=r.section('first_city_header',r.city_header)
+                        districts=r.section('first_city_districts',r.city_districts)
+                        citizens=r.section('first_city_citizens',r.city_citizens)
+                        city_summary=dict(id=header['id'],owner=header['owner'],location=[header['location_x'],header['location_y']],
+                            population=header['population'],container_slot=city_container['first_slot'],
+                            district_references=len(districts['district_ids']),
+                            working_plot_values=len(citizens['working_plot']),forced_working_plot_values=len(citizens['forced_working_plot']))
 
+
+    next_city_schema='City.Culture' if city_summary else 'Player.Cities.EmptyContainerTail'
     return dict(schema='c6-linux-core-prefix-index-v1', module_contract_sha256=GAME_SHA,
         stream_sha256=sha(data), stream_bytes=len(data), sections=r.sections,
         context_metadata_entries=len(metadata['entries']),
@@ -257,8 +343,10 @@ def index_core(data, *, first_formations=False, first_player_components=False):
         map_height=world['header']['height'], plots=len(world['plots']),
         religion_records=religion['records'] if religion else None, player_count=players, first_player=first,
         parsed_end=r.pos, unparsed_tail_bytes=len(data)-r.pos,
-        next_unframed_schema=(('Player.Cities' if first_player_components else 'Player.Goody_Hut') if players else 'AI.GlobalAi') if first_formations else 'Game.Religion',
+        next_unframed_schema=(((next_city_schema if first_city else 'Player.Cities') if first_player_components else 'Player.Goody_Hut') if players else 'AI.GlobalAi') if first_formations else 'Game.Religion',
         first_player_components_requested=first_player_components, first_player_component_counts=component_counts,
+        first_city_requested=first_city,first_city=city_summary,city_container_prefix=city_container,
+        complete_city_index=False,
         first_formations_requested=first_formations,
         unit_location_status='Unsupported: unframed player subsystems precede Units',
         complete_map_index=True, complete_unit_index=False, complete_formation_roster_index=False,
@@ -285,11 +373,12 @@ def main():
     p.add_argument('--extract-map', type=Path)
     p.add_argument('--first-formations', action='store_true', help='Extend past Map through the first player Formation collection only')
     p.add_argument('--first-player-components', action='store_true', help='Extend through first Player Goody_Hut, Bonuses and complete current Congress; stop at Cities')
+    p.add_argument('--first-city', action='store_true', help='Extend through the first City header, Districts and Citizens; stop at Culture')
     args = p.parse_args()
     if args.output.resolve() == args.stream.resolve():
         raise ValueError('refuse to overwrite the input Core stream')
     data = read_stream(args.stream)
-    result = index_core(data, first_formations=args.first_formations, first_player_components=args.first_player_components)
+    result = index_core(data, first_formations=args.first_formations, first_player_components=args.first_player_components, first_city=args.first_city)
     if args.extract_map and args.extract_map.resolve() == args.output.resolve():
         raise ValueError('Map extraction and index output must be distinct')
     if args.extract_map:

@@ -64,3 +64,7 @@ Complete Core/Unit/Formation-roster index flags, full world import and gameplay 
 ## Current Player component extension
 
 The optional `--first-player-components` flag (Python `first_player_components=True`) extends the first-Formation path through complete current Goody_Hut v1, Bonuses v4 and Congress v12, including counted nested Refund records. The new structural stop is Player.Cities; the default Map-only and old Formation-only modes keep their original stops. The production Rust codecs, exact Reset versus overlay rules, source/native-stream audit and observed City boundary are documented in [Player components](linux-player-components.md) and [their separate checked report](../evidence/linux/player-components.json). This extension does not locate a full Unit roster or decode complete City/Player state.
+
+## First City prefix extension
+
+`--first-city` (Python `first_city=True`) implies the first-player-components mode and follows Player.Cities v15 plus recycled-container v65537 framing into the first real City slot. It parses the complete current City51 pre-component header, Districts4 and Citizens2 and stops at Culture. Empty first-player City containers stop explicitly at their unparsed tail. The separate complete Rust City record codec and original-byte evidence are described in [City wire import](linux-city-wire.md); this partial Python mode is not a complete City/Player/Unit index. A Rust byte-0 Core reader will compose these prefix APIs directly rather than require Python offsets.
