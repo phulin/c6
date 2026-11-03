@@ -2,9 +2,9 @@
 
 The Rust [movement module](../crates/c6-core/src/movement.rs) ports the coherent
 cost accumulator, nine movement rule phases, formation ignore aggregation and ZOC
-hard-minimum selection over explicit resolved query facts. This is a bounded
-arithmetic implementation with original-target static evidence. **Native
-differential acceptance is outstanding.** It does not yet resolve those facts
+hard-minimum selection over explicit resolved query facts. Its bounded arithmetic
+now matches [1,536 genuine Linux queries and 13,824 native phase states](linux-movement-cost-results.md),
+with exact recorded controls and scoped state/RNG observations. It does not yet resolve those facts
 from a complete world, test movement legality, execute a movement action or
 advance turns. Complete gameplay state/action/turn equivalence remains unfinished.
 

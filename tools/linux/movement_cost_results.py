@@ -183,6 +183,39 @@ def raw_difference(first, second):
                 compared_span=offset, different_bytes=changed, masked_bytes=0)
 
 
+def runtime_provenance(path, header, corpus, candidate_hash, contract):
+    runtime = json.loads(path.read_text())
+    if runtime['returncode'] != 0 or not runtime['framework_cleanup_proven'] or not runtime['client_cleanup_proven']:
+        raise ValueError('native runtime did not complete its normal lifecycle')
+    if runtime['configuration_sha256'] != header['profile_sha256']:
+        raise ValueError('native corpus/runtime configuration identity mismatch')
+    if runtime['movement_cost_output']['sha256'] != digest(corpus):
+        raise ValueError('native corpus/runtime artifact identity mismatch')
+    config = runtime['configuration']
+    canonical = json.dumps(config, sort_keys=True, separators=(',', ':')).encode()
+    if hashlib.sha256(canonical).hexdigest() != runtime['configuration_sha256']:
+        raise ValueError('native canonical configuration hash mismatch')
+    if digest(path.parent / 'movement-cost-preload.so') != config['preload_sha256']:
+        raise ValueError('native archived integrated preload identity mismatch')
+    movement = config['lower_core_movement_cost']
+    if movement['frozen_artifacts']['candidate']['sha256'] != candidate_hash:
+        raise ValueError('native profile names another candidate')
+    if movement['contract'] != contract or not movement['candidate_frozen_before_original_execution']:
+        raise ValueError('native profile differs from the frozen probe contract')
+    archive = path.parent / 'source'
+    for name, expected in config['sources'].items():
+        if Path(name).is_absolute() or '..' in Path(name).parts:
+            raise ValueError('invalid archived source path')
+        if digest(archive / name) != expected:
+            raise ValueError('native archived source mismatch: ' + name)
+    if digest(archive / 'tools/linux/mod_activation_probe.py') != config['runner_sha256']:
+        raise ValueError('native archived runner identity mismatch')
+    return runtime, dict(runtime_sha256=digest(path), configuration_sha256=runtime['configuration_sha256'],
+        archived_sources_verified=len(config['sources']), archived_runner_sha256=config['runner_sha256'],
+        integrated_preload_sha256=config['preload_sha256'], canonical_configuration_verified=True,
+        framework_cleanup_proven=True, client_cleanup_proven=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--native', type=Path, required=True)
@@ -190,6 +223,10 @@ def main():
     parser.add_argument('--candidate', type=Path, required=True)
     parser.add_argument('--source-manifest', type=Path, required=True)
     parser.add_argument('--contract', type=Path, default=Path('evidence/linux/movement-cost-probe-contract.json'))
+    parser.add_argument('--native-runtime', type=Path, required=True)
+    parser.add_argument('--control-runtime', type=Path, required=True)
+    parser.add_argument('--prior-timeout-runtime', type=Path, required=True)
+    parser.add_argument('--supervisor-timing-change', type=Path, required=True)
     parser.add_argument('--snapshot-pair', nargs=3, action='append', default=[], metavar=('LABEL', 'FIRST', 'SECOND'))
     parser.add_argument('--private-candidate-output', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -219,6 +256,30 @@ def main():
     for h in [header, control_header]:
         if h.get('game_sha256') != contract['game_sha256'] or h.get('host_sha256') != contract['host_sha256']:
             raise ValueError('native corpus uses another original module profile')
+    native_runtime, native_proof = runtime_provenance(args.native_runtime, header, args.native, candidate_hash, contract)
+    control_runtime, control_proof = runtime_provenance(args.control_runtime, control_header, args.control, candidate_hash, contract)
+    normalized = []
+    for runtime in [control_runtime, native_runtime]:
+        config = json.loads(json.dumps(runtime['configuration']))
+        for key in ['runner_sha256', 'timeout_seconds']:
+            config.pop(key)
+        config['lower_core_movement_cost'].pop('mode')
+        normalized.append(config)
+    if normalized[0] != normalized[1]:
+        raise ValueError('fresh control differs beyond mode/supervisor metadata')
+    prior = json.loads(args.prior_timeout_runtime.read_text())
+    timing = json.loads(args.supervisor_timing_change.read_text())
+    changed = sorted(k for k in set(prior['configuration']) | set(native_runtime['configuration'])
+                     if prior['configuration'].get(k) != native_runtime['configuration'].get(k))
+    if (prior['returncode'] != 124 or changed != ['runner_sha256', 'timeout_seconds']
+            or prior['configuration']['timeout_seconds'] != 180
+            or native_runtime['configuration']['timeout_seconds'] != 900
+            or timing['baseline_runtime_sha256'] != digest(args.prior_timeout_runtime)
+            or timing['baseline_configuration_sha256'] != prior['configuration_sha256']
+            or timing['configuration_sha256'] != header['profile_sha256']
+            or timing['full_case_count_from_control'] != len(cases)
+            or timing['quiescence_checks_weakened'] or timing['partial_run_accepted']):
+        raise ValueError('retry differs beyond the explicitly authorized supervisor budget/runner')
     fact_equal = len(cases) == len(controls) and all(
         known_identity_projection(a) == known_identity_projection(b) for a, b in zip(cases, controls))
     first_mismatch, phase_mismatches = None, 0
@@ -249,6 +310,12 @@ def main():
         candidate_sha256=candidate_hash, source_manifest_sha256=digest(args.source_manifest),
         candidate_source_revision=revision,
         source_contract_sha256=digest(args.contract),
+        offline_checker_sha256=digest(Path(__file__)),
+        runtime_provenance=dict(cost=native_proof, control=control_proof),
+        fresh_control_configuration_comparison='identical except lower_core_movement_cost.mode, runner_sha256, timeout_seconds',
+        timing_only_retry=dict(metadata_sha256=digest(args.supervisor_timing_change),
+            prior_runtime_sha256=digest(args.prior_timeout_runtime), changed_configuration_keys=changed,
+            prior_timeout_seconds=180, timeout_seconds=900, case_count_reduced=False, guards_weakened=False),
         native_profile=header['profile_sha256'], control_profile=control_header['profile_sha256'],
         compared_cases=len(cases), compared_phase_states=len(cases)*9,
         phase_state_mismatches=phase_mismatches, first_phase_mismatch=first_mismatch,
