@@ -180,6 +180,8 @@ def main():
         row=rows[0];raw=data[row['start']:row['end']];result=current_record(raw)
         children=[dict(owner=r['owner'],start=r['start']-row['start'],end=r['end']-row['start']) for r in owners if r['parent']==row['call']]
         if result.pop('children')!=children:raise ValueError('typed child extents differ')
+        all_nested=[dict(owner=r['owner'],start=r['start']-row['start'],end=r['end']-row['start']) for r in owners if r['call']!=row['call'] and row['start']<=r['start'] and r['end']<=row['end']]
+        if all_nested!=children:raise ValueError('unverified nested native owner cut')
         next_rows=[r for r in owners if r['start']==row['end'] and r['owner']=='GameCore::FreeCities::Manager']
         if len(next_rows)!=1:raise ValueError('next FreeCities boundary differs')
         versions=result['version_offsets'];counts=result['count_offsets']
@@ -190,7 +192,7 @@ def main():
         corpus.extend(raw)
         projection=result.pop('projection_bytes');corpus.extend(struct.pack('<I',len(projection)));corpus.extend(projection)
         result['version_sites']=len(result.pop('version_offsets'));result['count_sites']=len(result.pop('count_offsets'))
-        result.update(core_sha256=identity,trace_sha256=trace_digest,wire_sha256=sha(raw),start=row['start'],end=row['end'],direct_children=dict(Counter(c['owner'] for c in children)))
+        result.update(core_sha256=identity,trace_sha256=trace_digest,wire_sha256=sha(raw),start=row['start'],end=row['end'],direct_children=dict(Counter(c['owner'] for c in children)),all_nested_native_cuts_compared=True,next_owner=dict(owner=next_rows[0]['owner'],start=next_rows[0]['start'],end=next_rows[0]['end'])))
         fixtures.append(result)
     report=dict(schema='c6-linux-game-barbarian-v1',checks_passed=True,gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,host_variant_methods=HOST_METHODS,
         methods=[dict(address=hex(a),size=n,name=s,sha256=h) for a,n,s,h in METHODS],dwarf_sha256=DWARF_SHA,outer_bindings=[dict(site=hex(a),plt=hex(b),body=hex(c)) for a,b,c in BINDINGS],fixtures=fixtures,
