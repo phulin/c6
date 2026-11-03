@@ -20,12 +20,15 @@ Saved flags remain in retained headers. Actual Manager mapping/nonnull-slot
 facts, Configuration team/slot status/alive/turn-active state and pause/
 automation controls enter through explicit `ControlInputs` bound to the
 admitted stream identity. Missing facts yield named errors. Validation precedes
-any control mutation; omitted replacement controls clear prior installed
-values rather than silently retaining them. Roster presence never supplies a
-validity map or human status.
+any control mutation. Control binding is startup-only; repeated binding rejects
+without replacing live facts or discarding sidecars. Roster presence never
+supplies a validity map or human status.
 
-Unit and Formation runtime sidecars are built once by the source-backed
-initialization modules. They retain resolved identities, derived arrays and
+Unit and Formation runtime sidecars have independent one-time stages. Unit
+preparation needs decoded owners/Formations and admitted immutable definitions,
+not Manager controls. Formation preparation uses the proven publication of its
+enclosing Player before that Player's Formation Read; it infers no unrelated
+slots. The sidecars retain resolved identities, derived arrays and
 logical archive attachment beside the actual mutable World records. Getter
 paths allocate nothing; native dirty-pointer trees or desktop presentation
 subscribers are not made arbitrary action gates. Sidecars currently cover only
@@ -36,7 +39,10 @@ not synthesized.
 
 The adapter exposes immutable World/retained-component access, direct mutable
 Unit access and matched mutable Unit/Formation plus runtime access. Runtime
-identity checks refuse stale attachments after identity changes. Consumers
+identity and exact dependency checks refuse stale attachments after type,
+formation or source-array changes. Dependencies are captured once; getter
+comparisons allocate nothing and never reset mutable arrays. Activity, timer
+and queue changes remain usable. Consumers
 must preserve authoritative state through synchronous reports/scripts; a
 scratch Unit must never overwrite callback changes to the real World.
 
@@ -69,3 +75,14 @@ initialization remain explicit. Review found reinitialization/rebinding and
 stale-runtime hazards in the original API; those are being fixed in a separate
 successor, without rewriting this frozen assembly result. Native3 Read
 attribution is not merged with another capture's mutable snapshot facts.
+
+The lifecycle successor tracks a conservative revision on mutable record
+access. Actual observed SavedOutput snapshot controls can be admitted once,
+only while pristine, with full image SHA/length and separate runtime/facts/
+configuration provenance. The decoder's original Read binding remains
+unchanged. The resource adapter validates original preimages and static
+resource equivalence; this is supplied-fact consistency, not cryptographic
+authentication. Consuming the snapshot claim prevents replay after simulation
+advancement. Reinitialization cannot restore old arrays or overwrite live
+Formation state. Five focused source tests cover these authority boundaries;
+actual-record mutation regressions and independent review remain separate.

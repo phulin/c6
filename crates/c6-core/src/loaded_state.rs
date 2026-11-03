@@ -38,7 +38,29 @@ mod tests {
         map.plots = vec![map::Plot::decode(&[0; 55], 6, map::Limits::default()).unwrap()];
         map.units.width = 1;
         map.units.height = 1;
-        let player = crate::core_player::tests::source_first_player();
+        let mut player = crate::core_player::tests::source_first_player();
+        player.formations.capacity = 2;
+        player.formations.entries = vec![map::Slot {
+            index: 1,
+            value: unit::Formation {
+                id: 0x10001,
+                owner: player.header.owner,
+                location: unit::PlotCoord { x: 0, y: 0 },
+                moves_remaining_raw: 0,
+                domain: 0,
+                is_embarked: false,
+                can_embark: false,
+                can_attack: false,
+                is_ranged_combat: false,
+                can_capture: false,
+                has_moved: false,
+                has_moved_into_zoc: false,
+                ignores_zoc: false,
+                last_path: vec![],
+                last_path_cache_location: unit::PlotCoord { x: 0, y: 0 },
+                unit_ids: vec![],
+            },
+        }];
         let (player, retained) = loaded_components::split_player(player).unwrap();
         let world = world::World::new(map, vec![player]).unwrap();
         let statistics = ImportStatistics {
@@ -65,7 +87,10 @@ mod tests {
             statistics,
             controls: None,
             runtime: None,
+            formation_runtime: None,
             limits: AssemblyLimits::default(),
+            revision: 0,
+            observed_snapshot: None,
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -130,19 +155,130 @@ mod tests {
         let mut absent = controls(&state);
         absent.players.clear();
         absent.pause_storage = None;
-        state.bind_controls(absent).unwrap();
-        assert!(state.world.player(owner).unwrap().is_alive.is_none());
         assert!(matches!(
-            state.player_controls(owner),
-            Err(Error::Missing(MissingInput::PlayerConfiguration(_)))
+            state.bind_controls(absent),
+            Err(Error::AlreadyBound)
         ));
-        assert!(matches!(
-            state.pause_storage(),
-            Err(Error::Missing(MissingInput::GamePause))
-        ));
+        assert_eq!(state.world.player(owner).unwrap().is_alive, Some(true));
+        assert_eq!(state.pause_storage().unwrap(), 0);
         assert!(matches!(
             state.unit_runtime(owner, 0),
             Err(Error::Missing(MissingInput::UnitRuntime))
+        ));
+    }
+    fn witness(s: &LoadedState) -> ObservedSnapshotWitness {
+        ObservedSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: s.binding.core_sha256,
+            snapshot_bytes: s.source_image().len(),
+            capture_runtime_sha256: [7; 32],
+            capture_facts_sha256: [8; 32],
+            capture_configuration_sha256: [9; 32],
+        }
+    }
+    #[test]
+    fn snapshot_authority_is_one_shot_and_decoder_role_stays_separate() {
+        let mut s = state();
+        let before = s.binding.clone();
+        let mut bad = witness(&s);
+        bad.snapshot_bytes += 1;
+        assert!(matches!(
+            s.bind_observed_snapshot_controls(bad, controls(&s)),
+            Err(Error::Binding)
+        ));
+        assert!(s.observed_snapshot().is_none());
+        let w = witness(&s);
+        s.bind_observed_snapshot_controls(w.clone(), controls(&s))
+            .unwrap();
+        assert_eq!(s.binding, before);
+        assert_eq!(s.observed_snapshot(), Some(&w));
+        assert!(matches!(
+            s.bind_observed_snapshot_controls(w, controls(&s)),
+            Err(Error::AlreadyBound)
+        ));
+        let mut advanced = state();
+        advanced.initialize_formations().unwrap();
+        let owner = advanced.world.players()[0].owner();
+        advanced
+            .formation_with_runtime_mut(owner, 0x20001)
+            .unwrap()
+            .0
+            .moves_remaining_raw = 7;
+        assert_eq!(advanced.revision(), 1);
+        assert!(matches!(
+            advanced.bind_observed_snapshot_controls(witness(&advanced), controls(&advanced)),
+            Err(Error::NotPristine)
+        ));
+    }
+    #[test]
+    fn formation_initialization_needs_no_unrelated_controls_and_never_resets_live_changes() {
+        let mut s = state();
+        let owner = s.world.players()[0].owner();
+        s.initialize_formations().unwrap();
+        let (f, r) = s.formation_with_runtime_mut(owner, 0x90001).unwrap();
+        f.moves_remaining_raw = 123;
+        r.archive.mark_dirty(14).unwrap();
+        assert!(matches!(
+            s.initialize_formations(),
+            Err(Error::AlreadyInitialized)
+        ));
+        assert_eq!(
+            s.world
+                .player(owner)
+                .unwrap()
+                .formation(1)
+                .unwrap()
+                .unwrap()
+                .record
+                .moves_remaining_raw,
+            123
+        );
+        assert!(s
+            .formation_runtime(owner, 1)
+            .unwrap()
+            .archive
+            .dirty_calls()
+            .contains(&14));
+    }
+    #[test]
+    fn unit_initialization_is_one_shot_and_first_controls_do_not_discard_it() {
+        struct Empty;
+        impl crate::movement_world::DefinitionLookup for Empty {
+            fn count(&self) -> usize {
+                0
+            }
+            fn find_index(&self, _: u32) -> Option<usize> {
+                None
+            }
+            fn type_hash(&self, _: usize) -> Option<u32> {
+                None
+            }
+        }
+        let mut s = state();
+        let identity = s.binding.inputs.clone();
+        let empty = Empty;
+        let properties: Vec<crate::unit_initialization::UnitDefinition> = vec![];
+        let inputs = InitializationInputs {
+            identities: &identity,
+            units: crate::movement_world::DefinitionTable::new(&empty, &properties).unwrap(),
+            abilities: &empty,
+            terrains: &empty,
+            features: &empty,
+            great_person_classes: &empty,
+            operations: &empty,
+        };
+        assert!(s.controls.is_none());
+        s.initialize_rosters(&inputs).unwrap();
+        let pointer = s.runtime.as_ref().unwrap().as_ptr();
+        assert!(matches!(
+            s.initialize_rosters(&inputs),
+            Err(Error::AlreadyInitialized)
+        ));
+        s.bind_controls(controls(&s)).unwrap();
+        assert_eq!(s.runtime.as_ref().unwrap().as_ptr(), pointer);
+        assert!(matches!(
+            s.bind_controls(controls(&s)),
+            Err(Error::AlreadyBound)
         ));
     }
 }
@@ -165,7 +301,12 @@ pub enum Error {
     Missing(MissingInput),
     UnitInitialization(crate::unit_initialization::Error),
     FormationLookup,
+    FormationOwner(crate::formation_initialization::OwnerLookupError),
     RuntimeIdentity,
+    RuntimeDependenciesChanged,
+    AlreadyInitialized,
+    AlreadyBound,
+    NotPristine,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -208,6 +349,17 @@ pub struct ControlInputs {
     pub processing_automation: Option<i32>,
     pub pause_storage: Option<u8>,
 }
+/// Provenance of an observed mutable-state export, independent of the decoder's
+/// Read/Write framing role. The resource adapter validates actual preimages.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObservedSnapshotWitness {
+    pub source_role: core_player::initialization::WireRole,
+    pub snapshot_sha256: [u8; 32],
+    pub snapshot_bytes: usize,
+    pub capture_runtime_sha256: [u8; 32],
+    pub capture_facts_sha256: [u8; 32],
+    pub capture_configuration_sha256: [u8; 32],
+}
 #[derive(Clone, Copy, Debug)]
 pub struct AssemblyLimits {
     pub max_roster_records: usize,
@@ -243,9 +395,76 @@ pub struct RetainedComponents {
 struct RuntimePlayer {
     owner: i32,
     unit_index: Vec<Option<usize>>,
-    units: Vec<UnitRuntime>,
+    units: Vec<RuntimeUnit>,
+}
+#[derive(Debug)]
+struct RuntimeFormations {
+    owner: i32,
     formation_index: Vec<Option<usize>>,
     formations: Vec<FormationRuntime>,
+}
+#[derive(Debug)]
+struct RuntimeUnit {
+    value: UnitRuntime,
+    dependencies: UnitDependencies,
+}
+/// Exact saved inputs used by the covered Read application. Captured once;
+/// comparisons allocate nothing and do not reset mutable live arrays.
+#[derive(Debug)]
+struct UnitDependencies {
+    type_hash: u32,
+    formation_id: u32,
+    abilities: Vec<unit::HashValue<i32>>,
+    invalid_terrain: Vec<unit::HashValue<bool>>,
+    ignore_terrain: Vec<unit::HashValue<bool>>,
+    ignore_feature: Vec<unit::HashValue<bool>>,
+    bonus: Vec<unit::HashValue<i32>>,
+    strength: Vec<unit::HashValue<i32>>,
+    disabled: Vec<unit::HashValue<bool>>,
+}
+impl UnitDependencies {
+    fn capture(u: &unit::Unit) -> Result<Self, Error> {
+        fn copy<T: Clone>(v: &[T]) -> Result<Vec<T>, Error> {
+            let mut out = reserved(v.len())?;
+            out.extend_from_slice(v);
+            Ok(out)
+        }
+        Ok(Self {
+            type_hash: u.e_type_index,
+            formation_id: u.formation_id,
+            abilities: copy(&u.ai_abilities_possessed)?,
+            invalid_terrain: copy(&u.ab_invalid_terrain_types)?,
+            ignore_terrain: copy(&u.ab_ignore_terrain_types)?,
+            ignore_feature: copy(&u.ab_ignore_feature_types)?,
+            bonus: copy(&u.ai_bonus_points_per_kill)?,
+            strength: copy(&u.ai_bonus_points_per_kill_strength)?,
+            disabled: copy(&u.k_operations_disabled)?,
+        })
+    }
+    fn matches(&self, u: &unit::Unit) -> bool {
+        self.type_hash == u.e_type_index
+            && self.formation_id == u.formation_id
+            && self.abilities == u.ai_abilities_possessed
+            && self.invalid_terrain == u.ab_invalid_terrain_types
+            && self.ignore_terrain == u.ab_ignore_terrain_types
+            && self.ignore_feature == u.ab_ignore_feature_types
+            && self.bonus == u.ai_bonus_points_per_kill
+            && self.strength == u.ai_bonus_points_per_kill_strength
+            && self.disabled == u.k_operations_disabled
+    }
+    fn items(u: &unit::Unit) -> Option<usize> {
+        [
+            u.ai_abilities_possessed.len(),
+            u.ab_invalid_terrain_types.len(),
+            u.ab_ignore_terrain_types.len(),
+            u.ab_ignore_feature_types.len(),
+            u.ai_bonus_points_per_kill.len(),
+            u.ai_bonus_points_per_kill_strength.len(),
+            u.k_operations_disabled.len(),
+        ]
+        .into_iter()
+        .try_fold(0usize, usize::checked_add)
+    }
 }
 #[derive(Debug)]
 pub struct LoadedState {
@@ -256,7 +475,10 @@ pub struct LoadedState {
     statistics: ImportStatistics,
     controls: Option<ControlInputs>,
     runtime: Option<Vec<RuntimePlayer>>,
+    formation_runtime: Option<Vec<RuntimeFormations>>,
     limits: AssemblyLimits,
+    revision: u64,
+    observed_snapshot: Option<ObservedSnapshotWitness>,
 }
 fn reserved<T>(n: usize) -> Result<Vec<T>, Error> {
     n.checked_mul(std::mem::size_of::<T>())
@@ -366,7 +588,10 @@ impl LoadedState {
             },
             controls: None,
             runtime: None,
+            formation_runtime: None,
             limits,
+            revision: 0,
+            observed_snapshot: None,
         })
     }
     pub fn world(&self) -> &world::World {
@@ -387,10 +612,50 @@ impl LoadedState {
     pub fn unparsed_tail(&self) -> &[u8] {
         &self.image.as_ref()[self.statistics.consumed..]
     }
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+    pub fn is_pristine(&self) -> bool {
+        self.revision == 0
+    }
+    pub fn observed_snapshot(&self) -> Option<&ObservedSnapshotWitness> {
+        self.observed_snapshot.as_ref()
+    }
+    fn require_initial_controls(&self) -> Result<(), Error> {
+        if self.controls.is_some() || self.observed_snapshot.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        Ok(())
+    }
+    /// Consume one observed SavedOutput snapshot export. Decoder provenance is
+    /// retained unchanged; these are not facts from its Read process.
+    pub fn bind_observed_snapshot_controls(
+        &mut self,
+        witness: ObservedSnapshotWitness,
+        controls: ControlInputs,
+    ) -> Result<(), Error> {
+        self.require_initial_controls()?;
+        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+            || witness.snapshot_sha256 != self.binding.core_sha256
+            || witness.snapshot_bytes != self.image.as_ref().len()
+        {
+            return Err(Error::Binding);
+        }
+        self.install_controls(controls)?;
+        self.observed_snapshot = Some(witness);
+        Ok(())
+    }
 
     /// Validate every control before changing any World field. Saved membership
     /// does not supply Manager validity or nonnull-slot facts.
     pub fn bind_controls(&mut self, controls: ControlInputs) -> Result<(), Error> {
+        self.require_initial_controls()?;
+        self.install_controls(controls)
+    }
+    fn install_controls(&mut self, controls: ControlInputs) -> Result<(), Error> {
         if controls.binding != self.binding {
             return Err(Error::Binding);
         }
@@ -422,8 +687,6 @@ impl LoadedState {
         }
         self.world.player_mapping = Some(controls.player_mapping);
         self.world.player_slot_present = Some(controls.player_slots);
-        // Existing derived owner bindings must be rebuilt when controls change.
-        self.runtime = None;
         self.controls = Some(controls);
         Ok(())
     }
@@ -455,14 +718,15 @@ impl LoadedState {
     /// Prepare bounded source-covered Read sidecars without cloning/mutating
     /// imported records. Nested Unit remaps and global load completion remain open.
     pub fn initialize_rosters(&mut self, inputs: &InitializationInputs<'_>) -> Result<(), Error> {
+        if self.runtime.is_some() {
+            return Err(Error::AlreadyInitialized);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
         if inputs.identities != &self.binding.inputs {
             return Err(Error::Binding);
         }
-        let slots = &self
-            .controls
-            .as_ref()
-            .ok_or(Error::Missing(MissingInput::ManagerSlots))?
-            .player_slots;
         let array_count = inputs
             .abilities
             .count()
@@ -477,61 +741,94 @@ impl LoadedState {
             .and_then(|n| n.checked_add(inputs.great_person_classes.count().checked_mul(2)?))
             .and_then(|n| n.checked_add(inputs.operations.count()))
             .ok_or(Error::ResourceLimit)?;
+        let wire_items = self
+            .world
+            .players()
+            .iter()
+            .try_fold(0usize, |n, p| {
+                p.unit_records()
+                    .ok()?
+                    .iter()
+                    .try_fold(n, |n, u| n.checked_add(UnitDependencies::items(&u.value)?))
+            })
+            .ok_or(Error::ResourceLimit)?;
         if array_count
             .checked_mul(self.statistics.units)
+            .and_then(|n| n.checked_add(wire_items))
             .is_none_or(|n| n > self.limits.max_runtime_array_items)
         {
             return Err(Error::ResourceLimit);
         }
         let mut runtime = reserved(self.world.players().len())?;
         for player in self.world.players() {
-            let unit_records = player.units().map_err(Error::World)?;
-            let formation_records = player.formations().map_err(Error::World)?;
-            let mut units = reserved(unit_records.entries.len())?;
-            for u in &unit_records.entries {
-                units.push(
-                    UnitRuntime::from_read(&u.value, &self.binding.inputs, inputs, player)
+            let records = player.units().map_err(Error::World)?;
+            let mut units = reserved(records.entries.len())?;
+            for u in &records.entries {
+                units.push(RuntimeUnit {
+                    value: UnitRuntime::from_read(&u.value, &self.binding.inputs, inputs, player)
                         .map_err(Error::UnitInitialization)?,
-                );
-            }
-            let mut formations = reserved(formation_records.entries.len())?;
-            for f in &formation_records.entries {
-                formations.push(FormationRuntime::from_read(&f.value, |owner| {
-                    let i = usize::try_from(owner)
-                        .ok()
-                        .filter(|i| *i < 65)
-                        .ok_or(Error::FormationLookup)?;
-                    if !slots[i] {
-                        return Ok(None);
-                    }
-                    Ok(Some(
-                        self.world.player(owner).map_err(Error::World)?.owner(),
-                    ))
-                })?);
+                    dependencies: UnitDependencies::capture(&u.value)?,
+                });
             }
             runtime.push(RuntimePlayer {
                 owner: player.owner(),
-                unit_index: slot_index(unit_records.capacity, &unit_records.entries)?,
+                unit_index: slot_index(records.capacity, &records.entries)?,
                 units,
-                formation_index: slot_index(
-                    formation_records.capacity,
-                    &formation_records.entries,
-                )?,
-                formations,
             });
         }
         self.runtime = Some(runtime);
         Ok(())
     }
+    /// Owner lookup is independent of Unit definition/array preparation.
+    pub fn initialize_formations(&mut self) -> Result<(), Error> {
+        if self.formation_runtime.is_some() {
+            return Err(Error::AlreadyInitialized);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        let mut runtime = reserved(self.world.players().len())?;
+        for player in self.world.players() {
+            let records = player.formations().map_err(Error::World)?;
+            let mut formations = reserved(records.entries.len())?;
+            for f in &records.entries {
+                let retained = self
+                    .retained
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == player.owner())
+                    .ok_or(Error::FormationLookup)?;
+                formations.push(
+                    FormationRuntime::from_owning_player_read(
+                        &f.value,
+                        retained.requested_owner,
+                        retained.header.owner,
+                    )
+                    .map_err(Error::FormationOwner)?,
+                );
+            }
+            runtime.push(RuntimeFormations {
+                owner: player.owner(),
+                formation_index: slot_index(records.capacity, &records.entries)?,
+                formations,
+            });
+        }
+        self.formation_runtime = Some(runtime);
+        Ok(())
+    }
     /// Existing pure legality queries can use the actual imported Unit without
     /// requiring unrelated UI or native dirty-tree machinery.
     pub fn unit_mut(&mut self, owner: i32, id: u32) -> Result<&mut unit::Unit, Error> {
-        self.world
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let value = self
+            .world
             .player_mut(owner)
             .map_err(Error::World)?
             .unit_mut(id)
             .map_err(Error::World)?
-            .ok_or(Error::Missing(MissingInput::Unit { owner, id }))
+            .ok_or(Error::Missing(MissingInput::Unit { owner, id }))?;
+        self.revision = next;
+        Ok(value)
     }
     pub fn unit_runtime(&self, owner: i32, id: u32) -> Result<&UnitRuntime, Error> {
         let row = self
@@ -555,15 +852,18 @@ impl LoadedState {
             .unit(id)
             .map_err(Error::World)?
             .ok_or(Error::Missing(MissingInput::Unit { owner, id }))?;
-        let identity = row.units[index].archive.identity();
+        let identity = row.units[index].value.archive.identity();
         if identity.owner as i32 != found.record.e_owner || identity.id != found.record.id {
             return Err(Error::RuntimeIdentity);
         }
-        Ok(&row.units[index])
+        if !row.units[index].dependencies.matches(found.record) {
+            return Err(Error::RuntimeDependenciesChanged);
+        }
+        Ok(&row.units[index].value)
     }
     pub fn formation_runtime(&self, owner: i32, id: u32) -> Result<&FormationRuntime, Error> {
         let row = self
-            .runtime
+            .formation_runtime
             .as_ref()
             .ok_or(Error::Missing(MissingInput::FormationRuntime))?
             .iter()
@@ -594,6 +894,8 @@ impl LoadedState {
         owner: i32,
         id: u32,
     ) -> Result<(&mut unit::Unit, &mut UnitRuntime), Error> {
+        self.unit_runtime(owner, id)?;
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         let row = self
             .runtime
             .as_mut()
@@ -615,19 +917,22 @@ impl LoadedState {
             .unit_mut(id)
             .map_err(Error::World)?
             .ok_or(Error::Missing(MissingInput::Unit { owner, id }))?;
-        let identity = row.units[index].archive.identity();
+        let identity = row.units[index].value.archive.identity();
         if identity.owner as i32 != unit.e_owner || identity.id != unit.id {
             return Err(Error::RuntimeIdentity);
         }
-        Ok((unit, &mut row.units[index]))
+        self.revision = next;
+        Ok((unit, &mut row.units[index].value))
     }
     pub fn formation_with_runtime_mut(
         &mut self,
         owner: i32,
         id: u32,
     ) -> Result<(&mut unit::Formation, &mut FormationRuntime), Error> {
+        self.formation_runtime(owner, id)?;
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         let row = self
-            .runtime
+            .formation_runtime
             .as_mut()
             .ok_or(Error::Missing(MissingInput::FormationRuntime))?
             .iter_mut()
@@ -651,6 +956,7 @@ impl LoadedState {
         if identity.owner as i32 != formation.owner || identity.id != formation.id {
             return Err(Error::RuntimeIdentity);
         }
+        self.revision = next;
         Ok((formation, &mut row.formations[index]))
     }
 }
