@@ -1,0 +1,44 @@
+{
+  "schema": "c6-linux-movement-cost-incomplete-v1",
+  "native_report_sha256": "7d4ff16b9ab8fe79ab37f2626646432c73ba39f40b2ec2d33b989e198b54dbc6",
+  "configuration_sha256": "7f771b0240bbdaa7ce901301b2bc9caeb43692d61f9f99b145c2d70b67e4445a",
+  "native_source_reference_commit": "a969de3",
+  "candidate_sha256": "d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718",
+  "supervisor_returncode": 124,
+  "supervisor_timeout_seconds": 180,
+  "corpus_sha256": "3f205fe930cf6b01c847d8d78b3c228808ecb60b3d8e342ab0daac0237c1dcd8",
+  "corpus_bytes": 3264512,
+  "expected_case_rows": 1536,
+  "complete_case_rows": 588,
+  "complete_corpus": false,
+  "native_final_summary_available": false,
+  "independent_phase_states_compared": 5292,
+  "independent_phase_mismatches": 0,
+  "native_path_disagreements": 0,
+  "frozen_candidate_compared_cases": 0,
+  "frozen_candidate_not_run_reason": "Incomplete corpus has no authentic native summary; no complete summary is fabricated.",
+  "retained_internal_saves": {
+    "before": {
+      "filename": "before.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "control": {
+      "filename": "control.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    }
+  },
+  "post_saves_available": false,
+  "final_rng_observation_available": false,
+  "native_normal_exit": false,
+  "normal_cleanup_proven": false,
+  "precise_last_native_call": "unavailable; partial buffered suffix is not an instruction trace",
+  "bottleneck_hypothesis": "16 guarded cost-call boundaries plus fact guard per edge; idle hook repeats12 symbol lookup/address identity checks and native facade/idle queries. No per-call timing was collected.",
+  "timing_rerun": "Root authorized one fresh same-source1536case run with900s supervisor budget; this failed prefix remains unmodified.",
+  "complete_affected_state": false,
+  "complete_rng_inventory": false,
+  "full_movement_parity": false,
+  "save_load_89198_byte_failure": "separate recorded unresolved failure; no bytes masked or excluded",
+  "independent_checker_sha256": "3497dc1b8a66e22f428fc2b62f682b5187535914f99af29284e35baadc47f9d5"
+}
