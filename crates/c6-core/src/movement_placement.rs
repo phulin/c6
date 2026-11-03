@@ -612,3 +612,295 @@ mod combat_tests {
         );
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlacementDefinition {
+    Absent,
+    Present { spy: bool, trade_route: bool },
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlacementMissing {
+    TerrainPrefix,
+    Definition,
+    DistrictType,
+    UnitOwner,
+    PlotOwner,
+    BlockedEntry,
+    BestDefender,
+    SubjectEmbarked,
+    DefenderEmbarked,
+    War,
+    EnterForeign,
+    OpenBorders,
+    EnforceBorders,
+    DistrictLookup,
+    DistrictDefense,
+    DistrictAtLocation,
+    Defensible,
+    RangedCombat,
+    MeleeForRanged,
+    BombardCombat,
+    MeleeForBombard,
+    IsCombat,
+    Barbarian,
+    TribeIndex,
+    ClansActive,
+    TribeLookup,
+    BribeTurns,
+    ClanExcludedType,
+}
+/// Actual getter results for the remaining shore Unit placement stages. The
+/// terrain prefix must have been evaluated for this same Unit/destination and
+/// request; its rejection does not skip the defender query or later read-set.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ShoreUnitFacts {
+    pub terrain: Option<TerrainAssessment>,
+    pub definition: Option<PlacementDefinition>,
+    pub district_type: Option<i32>,
+    pub unit_owner: Option<i32>,
+    pub plot_owner: Option<i32>,
+    pub blocked_entry: Option<bool>,
+    pub best_defender_present: Option<bool>,
+    pub subject_embarked: Option<bool>,
+    pub defender_embarked: Option<bool>,
+    pub at_war: Option<bool>,
+    pub enter_foreign: Option<bool>,
+    pub open_borders: Option<bool>,
+    pub enforce_borders: Option<bool>,
+    pub district_lookup_present: Option<bool>,
+    pub district_defense_raw: Option<i32>,
+    pub district_at_location_present: Option<bool>,
+    pub district_defensible: Option<bool>,
+    pub ranged_combat: Option<i32>,
+    pub melee_for_ranged: Option<i32>,
+    pub bombard_combat: Option<i32>,
+    pub melee_for_bombard: Option<i32>,
+    pub is_combat: Option<bool>,
+    pub barbarian: Option<bool>,
+    pub tribe_index: Option<i32>,
+    pub clans_active: Option<bool>,
+    pub tribe_present: Option<bool>,
+    pub bribe_turns: Option<i32>,
+    pub clan_excluded_type: Option<bool>,
+}
+/// A verified native Map lookup result. Unknown lookup is an upstream error,
+/// never KnownAbsent. General placement flags/filters are outside this API.
+pub enum ShorePlacementPlot<'a> {
+    KnownAbsent,
+    Present(&'a ShoreUnitFacts),
+}
+fn required<T>(value: Option<T>, missing: PlacementMissing) -> Result<T, PlacementMissing> {
+    value.ok_or(missing)
+}
+
+fn foreign_rejection(f: &ShoreUnitFacts) -> Result<bool, PlacementMissing> {
+    let mut rejected = false;
+    if !required(f.at_war, PlacementMissing::War)? {
+        if !required(f.enter_foreign, PlacementMissing::EnterForeign)?
+            && !required(f.open_borders, PlacementMissing::OpenBorders)?
+            && required(f.enforce_borders, PlacementMissing::EnforceBorders)?
+        {
+            rejected = true;
+        } else if required(f.district_type, PlacementMissing::DistrictType)? != -1
+            && required(f.district_lookup_present, PlacementMissing::DistrictLookup)?
+        {
+            rejected = required(f.district_defense_raw, PlacementMissing::DistrictDefense)? > 0;
+        }
+    } else if required(
+        f.district_at_location_present,
+        PlacementMissing::DistrictAtLocation,
+    )? && required(f.district_defensible, PlacementMissing::Defensible)?
+    {
+        let ranged = required(f.ranged_combat, PlacementMissing::RangedCombat)?;
+        let melee = required(f.melee_for_ranged, PlacementMissing::MeleeForRanged)?;
+        if ranged > melee {
+            rejected = true;
+        } else {
+            let bombard = required(f.bombard_combat, PlacementMissing::BombardCombat)?;
+            let melee = required(f.melee_for_bombard, PlacementMissing::MeleeForBombard)?;
+            if bombard > melee {
+                rejected = true;
+            } else {
+                // Native still queries this, but shore flag0 resets its rejection.
+                let _ = required(f.is_combat, PlacementMissing::IsCombat)?;
+            }
+        }
+    }
+    // Reached after this foreign branch even when it just added rejection.
+    if required(f.barbarian, PlacementMissing::Barbarian)?
+        && required(f.tribe_index, PlacementMissing::TribeIndex)? >= 0
+        && required(f.clans_active, PlacementMissing::ClansActive)?
+        && required(f.tribe_present, PlacementMissing::TribeLookup)?
+        && required(f.bribe_turns, PlacementMissing::BribeTurns)? > 0
+        && !required(f.clan_excluded_type, PlacementMissing::ClanExcludedType)?
+    {
+        rejected = true;
+    }
+    Ok(rejected)
+}
+
+/// Full shore-specific Unit placement decision arithmetic after its terrain
+/// prefix, over actual resolved getter results. This does not resolve World
+/// state or admit getter effects. Required evaluation must be supported before
+/// advancing gameplay; an error is Unsupported, never native result0.
+pub fn shore_unit_result(plot: ShorePlacementPlot<'_>) -> Result<i32, PlacementMissing> {
+    let ShorePlacementPlot::Present(f) = plot else {
+        return Ok(0);
+    };
+    let definition = required(f.definition, PlacementMissing::Definition)?;
+    let mut rejected = required(f.terrain, PlacementMissing::TerrainPrefix)?.rejected;
+    if matches!(definition, PlacementDefinition::Present { spy: true, .. })
+        && required(f.district_type, PlacementMissing::DistrictType)? == -1
+    {
+        rejected = true;
+    }
+    let plot_owner = required(f.plot_owner, PlacementMissing::PlotOwner)?;
+    let unit_owner = required(f.unit_owner, PlacementMissing::UnitOwner)?;
+    if plot_owner != unit_owner && !rejected && plot_owner != -1 {
+        rejected |= required(f.blocked_entry, PlacementMissing::BlockedEntry)?;
+    }
+    // GetBestDefender is not skipped for an already rejected present Plot.
+    if required(f.best_defender_present, PlacementMissing::BestDefender)?
+        && required(f.subject_embarked, PlacementMissing::SubjectEmbarked)?
+        && required(f.defender_embarked, PlacementMissing::DefenderEmbarked)?
+    {
+        rejected = true;
+    }
+    if !rejected
+        && plot_owner != unit_owner
+        && plot_owner != -1
+        && matches!(
+            definition,
+            PlacementDefinition::Present {
+                spy: false,
+                trade_route: false
+            }
+        )
+    {
+        rejected |= foreign_rejection(f)?;
+    }
+    Ok(i32::from(!rejected))
+}
+
+#[cfg(test)]
+mod unit_result_tests {
+    use super::*;
+    fn own() -> ShoreUnitFacts {
+        ShoreUnitFacts {
+            terrain: Some(TerrainAssessment { rejected: false }),
+            definition: Some(PlacementDefinition::Present {
+                spy: false,
+                trade_route: false,
+            }),
+            unit_owner: Some(4),
+            plot_owner: Some(4),
+            best_defender_present: Some(false),
+            ..ShoreUnitFacts::default()
+        }
+    }
+    fn result(f: &ShoreUnitFacts) -> Result<i32, PlacementMissing> {
+        shore_unit_result(ShorePlacementPlot::Present(f))
+    }
+    #[test]
+    fn unresolved_terrain_prefix_never_becomes_false_by_default() {
+        let mut f = own();
+        f.terrain = None;
+        assert_eq!(result(&f), Err(PlacementMissing::TerrainPrefix));
+    }
+
+    #[test]
+    fn absent_own_and_unowned_paths_are_not_blanket_denials() {
+        assert_eq!(shore_unit_result(ShorePlacementPlot::KnownAbsent), Ok(0));
+        let mut f = own();
+        assert_eq!(result(&f), Ok(1));
+        f.plot_owner = Some(-1);
+        assert_eq!(result(&f), Ok(1));
+    }
+    #[test]
+    fn prior_rejection_still_needs_defender_and_skips_unreached_territory() {
+        let mut f = own();
+        f.terrain = Some(TerrainAssessment { rejected: true });
+        f.best_defender_present = None;
+        assert_eq!(result(&f), Err(PlacementMissing::BestDefender));
+        f.best_defender_present = Some(false);
+        f.plot_owner = Some(7);
+        assert_eq!(result(&f), Ok(0));
+    }
+    #[test]
+    fn spy_and_embarked_coexistence_add_rejection_only_when_reached() {
+        let mut f = own();
+        f.definition = Some(PlacementDefinition::Present {
+            spy: true,
+            trade_route: false,
+        });
+        f.district_type = Some(-1);
+        assert_eq!(result(&f), Ok(0));
+        let mut f = own();
+        f.best_defender_present = Some(true);
+        f.subject_embarked = Some(false);
+        assert_eq!(result(&f), Ok(1));
+        f.subject_embarked = Some(true);
+        assert_eq!(result(&f), Err(PlacementMissing::DefenderEmbarked));
+        f.defender_embarked = Some(true);
+        assert_eq!(result(&f), Ok(0));
+    }
+    #[test]
+    fn foreign_enforcement_and_district_paths_still_query_barbarian_stage() {
+        let mut f = own();
+        f.plot_owner = Some(7);
+        f.blocked_entry = Some(false);
+        f.at_war = Some(false);
+        f.enter_foreign = Some(false);
+        f.open_borders = Some(false);
+        f.enforce_borders = Some(true);
+        assert_eq!(result(&f), Err(PlacementMissing::Barbarian));
+        f.barbarian = Some(false);
+        assert_eq!(result(&f), Ok(0));
+        f.enforce_borders = Some(false);
+        f.district_type = Some(-1);
+        assert_eq!(result(&f), Ok(1));
+        f.district_type = Some(2);
+        f.district_lookup_present = Some(true);
+        f.district_defense_raw = Some(1);
+        assert_eq!(result(&f), Ok(0));
+    }
+    #[test]
+    fn war_ranged_bombard_and_queried_combat_flag_preserve_shore_option() {
+        let mut f = own();
+        f.plot_owner = Some(7);
+        f.blocked_entry = Some(false);
+        f.at_war = Some(true);
+        f.district_at_location_present = Some(true);
+        f.district_defensible = Some(true);
+        f.ranged_combat = Some(12);
+        f.melee_for_ranged = Some(10);
+        f.barbarian = Some(false);
+        assert_eq!(result(&f), Ok(0));
+        f.ranged_combat = Some(10);
+        f.bombard_combat = Some(10);
+        f.melee_for_bombard = Some(10);
+        assert_eq!(result(&f), Err(PlacementMissing::IsCombat));
+        f.is_combat = Some(true);
+        assert_eq!(result(&f), Ok(1));
+    }
+    #[test]
+    fn clan_bribe_depends_on_actual_branch_and_exclusion_without_mutation() {
+        let mut f = own();
+        f.plot_owner = Some(7);
+        f.blocked_entry = Some(false);
+        f.at_war = Some(false);
+        f.enter_foreign = Some(true);
+        f.district_type = Some(-1);
+        f.barbarian = Some(true);
+        f.tribe_index = Some(0);
+        f.clans_active = Some(true);
+        f.tribe_present = Some(true);
+        f.bribe_turns = Some(1);
+        f.clan_excluded_type = Some(false);
+        let before = f;
+        assert_eq!(result(&f), Ok(0));
+        assert_eq!(f, before);
+        f.clan_excluded_type = Some(true);
+        assert_eq!(result(&f), Ok(1));
+    }
+}
