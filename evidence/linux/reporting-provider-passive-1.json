@@ -1,0 +1,665 @@
+{
+  "checks_passed": true,
+  "full_host_admission": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "gameplay_parity": false,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "kernel_admission": {
+    "accept_live_action": false,
+    "complete_reporting_effects_proven": false,
+    "requirement": "Bind actual enabled/suspended/cache flags, invoked cache handler targets and receivers, translator identities, pre-publish subscribers and all transitive effects; reject unsupported environments before mutation."
+  },
+  "limits": "Static plan for one conditional Linux component replay. Complete gameplay state/action/turns remain unimplemented. Unserialized live state and complete RNG remain unresolved; the raw Save-to-Load 89198-byte failure remains unclassified and unmasked.",
+  "live_callback_inventory_observed": false,
+  "methods": [
+    {
+      "bytes": 143,
+      "image": "game",
+      "name": "Event.SendVectorMap",
+      "rva": "0x2d4a500",
+      "sha256": "c95a0bbe9b2dac3683bee31fe6484410b6d592f2aa8a252a0950154f026a9665"
+    },
+    {
+      "bytes": 31,
+      "image": "game",
+      "name": "Cache.StaticThunk",
+      "rva": "0x2708590",
+      "sha256": "bf3b15476236fd282872eb69d663c895ac7307576f13a709741e75a0a34cbf7a"
+    },
+    {
+      "bytes": 5,
+      "image": "game",
+      "name": "Cache.StaticFunctionGetter",
+      "rva": "0x27085f0",
+      "sha256": "929c23452cedc988ea59a8e51d08db931cf4835d3f04a62bb0297543f053a9b4"
+    },
+    {
+      "bytes": 4,
+      "image": "game",
+      "name": "Cache.StaticFunctionCast",
+      "rva": "0x2708600",
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21"
+    },
+    {
+      "bytes": 9,
+      "image": "game",
+      "name": "Cache.Unit.OnUpdate",
+      "rva": "0x27ff430",
+      "sha256": "3a537d2d8ee7579d85fc3cddd98dcf9dacb0751b52962d0d828cce3f86cab63e"
+    },
+    {
+      "bytes": 114,
+      "image": "game",
+      "name": "Cache.Unit.PublishUpdate",
+      "rva": "0x27ff860",
+      "sha256": "4c779cabd97a4d5df671007fc54218756fd544a2c360106ee2d77a15f54f8832"
+    },
+    {
+      "bytes": 222,
+      "image": "game",
+      "name": "Cache.Unit.Add",
+      "rva": "0x27ff2d0",
+      "sha256": "8316ba976ec1953a1e5e902a2ef9547183b958ce2730a1111eb90c9fabe2a8bd"
+    },
+    {
+      "bytes": 32,
+      "image": "game",
+      "name": "YieldMonitor.OnMessagesProcessed",
+      "rva": "0x2c66430",
+      "sha256": "16eb58439fb9776125a47258b120a738d099914227f6f85389a023331e991da9"
+    },
+    {
+      "bytes": 333,
+      "image": "game",
+      "name": "YieldMonitor.CheckPlot",
+      "rva": "0x2c665f0",
+      "sha256": "0f1a191dda92973708f6ec1de0ec41dbb829c192651d4d84aca1310738fb2dd2"
+    },
+    {
+      "bytes": 82,
+      "image": "game",
+      "name": "YieldMonitor.CheckTrade",
+      "rva": "0x2c668b0",
+      "sha256": "870260314ca6bc625d0c2e7f7d43f8649b6a8c7f5490a9bd7a2b6f8e7da52d6c"
+    },
+    {
+      "bytes": 464,
+      "image": "host",
+      "name": "Translate.UnitActivityChanged",
+      "rva": "0x320b670",
+      "sha256": "8146efa08292f7944b55bf877ebd0e21fe21545d0ea040026bd12a3a69dddfa0"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationAdded",
+      "rva": "0x320cb30",
+      "sha256": "1d3f3b2efb7fb26efde6010fa4b12c49c61ebcdd79ac34ef1158eb69e1babdbd"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationStarted",
+      "rva": "0x320cbb0",
+      "sha256": "f90d14aff6faab476906f61c58ce3b8f23ce1b988b160e485db56b9eaf6f46d3"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationDeactivated",
+      "rva": "0x320ccb0",
+      "sha256": "ee34adf5b4541fa747307546a7899469539c7866e8dac8a697e588cb75d1eb04"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationsCleared",
+      "rva": "0x320cd30",
+      "sha256": "acb9af301f7b99cb48c3f333496bf43d61ed5555de81e6600520ebe5957e1758"
+    },
+    {
+      "bytes": 164,
+      "image": "host",
+      "name": "Translate.NotificationActivated",
+      "rva": "0x3212d00",
+      "sha256": "7944888c67752fca156ddafb165bb7680992ff27bc3af4623e545b5ff9a84daa"
+    },
+    {
+      "bytes": 86,
+      "image": "host",
+      "name": "DirtyComponents.Add",
+      "rva": "0x32b5950",
+      "sha256": "1f4235247163eba5152a3010fbb5f27a940bf74284dd888757f30869529dd3c2"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Event.IsEnabled",
+      "rva": "0x2d49180",
+      "sha256": "59b106f733bf15ae469e4e147126b4065ff4e8f5e07baab5dfb9487997e68c68"
+    },
+    {
+      "bytes": 5,
+      "image": "game",
+      "name": "Event.IsSuspended",
+      "rva": "0x2d49190",
+      "sha256": "83276920b6b626251d072ef15c3476ab42c3b8c4ed95428fce539b2faf89850c"
+    },
+    {
+      "bytes": 45,
+      "image": "game",
+      "name": "Globals.IsUnserializing",
+      "rva": "0x290bb30",
+      "sha256": "771f43a0efb13454645a0870b507ef7336f72a248ac496e7bce153ef6e7864b0"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Cache.AreUpdatesEnabled",
+      "rva": "0x2723640",
+      "sha256": "4f7ea77a0e05ec97922128597c34b3d00f9c47ffdf47e0cd4ea54fed4eb8ed5a"
+    },
+    {
+      "bytes": 79,
+      "image": "game",
+      "name": "Event.SendMap",
+      "rva": "0x2d4a4b0",
+      "sha256": "c1888c434ab05b22459602c065edeb08c79ab33480cb0beb070bf92fcc89ade5"
+    },
+    {
+      "bytes": 238,
+      "image": "game",
+      "name": "Cache.Send",
+      "rva": "0x2723550",
+      "sha256": "c224d2f00939be39974ab16bfc564f2877cef2ece1e8a94e972e243d5dbced20"
+    },
+    {
+      "bytes": 73,
+      "image": "game",
+      "name": "Cache.FastDelegate3.Invoke",
+      "rva": "0x2724730",
+      "sha256": "c028ee1789ac606906c75f4f49514de738c8fe72ebe2ecdce5813c6f6e76880c"
+    },
+    {
+      "bytes": 2492,
+      "image": "host",
+      "name": "EngineUtility.SendEvent",
+      "rva": "0x32b4260",
+      "sha256": "24826057267fc9c5a6028051e2eed6dbffea87bb34c1de4600f00ae968c370d9"
+    },
+    {
+      "bytes": 129,
+      "image": "host",
+      "name": "Translate.Dispatch",
+      "rva": "0x3214c50",
+      "sha256": "84bcf221705b2d35e2ff59079cec7c5b22cd7c10afb65c5774642d5c5c7ca910"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish71",
+      "rva": "0x32176b0",
+      "sha256": "4bcd0436d2ba72ae44f4d885d4864d5b1880f9f0a84c833a62179ce2f99187cd"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish257",
+      "rva": "0x321cac0",
+      "sha256": "4fe4c9ea0083b660eb82a946d1b96f27d7f6cb8d218714ca6a48b287c2e33819"
+    },
+    {
+      "bytes": 5,
+      "image": "host",
+      "name": "PrePublish.Get",
+      "rva": "0x2fd7db0",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish71.Invoke",
+      "rva": "0x3228580",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish257.Invoke",
+      "rva": "0x3237c40",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 4,
+      "image": "host",
+      "name": "PrePublish71.GetThis",
+      "rva": "0x32285f0",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "bytes": 9,
+      "image": "host",
+      "name": "PrePublish71.GetMember",
+      "rva": "0x3228600",
+      "sha256": "1e4ed268bbb17635735f00271500035a8dd2732548b89d3a643d52d7ac4f299d"
+    }
+  ],
+  "native_execution": false,
+  "parent_configuration_sha256": "b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b",
+  "passive_capture": {
+    "checkpoints": [
+      {
+        "capture": "AL actual IsSuspended result; EBP event hash; RBX map; read enabled game+3c00649/cache updates game+3bffce8",
+        "image": "game",
+        "instruction_bytes": "84c0740c",
+        "name": "suspended_return",
+        "rva": "0x2d4a4c6"
+      },
+      {
+        "capture": "RAX resolved callback; RDI adjusted receiver; ESI event; RDX EventData; RCX map; retain stack return and backtrace",
+        "image": "game",
+        "instruction_bytes": "ffe0",
+        "name": "cache_delegate_tail",
+        "rva": "0x2724777"
+      },
+      {
+        "capture": "RAX actual translator including null; event u32[RSP+0xc]; R15 EventData; R14 map",
+        "image": "host",
+        "instruction_bytes": "4885c0740c",
+        "name": "registered_translator",
+        "rva": "0x3214cb0"
+      },
+      {
+        "capture": "RDI DispatchData; subscriber u64[RDI+0x10]; caller u64[RSP]; raw delegate24 and backtrace when nonnull",
+        "image": "host",
+        "instruction_bytes": "488b4710c3",
+        "name": "prepublish_getter",
+        "rva": "0x2fd7db0"
+      }
+    ],
+    "game_code_patches": false,
+    "inferior_calls": false,
+    "inferior_field_writes": false,
+    "limits": [
+      "Executed vector-map overload bypasses chosen map checkpoint; actual flag values were not captured",
+      "Disabled reporting path misses suspended-return checkpoint",
+      "Missing translator registration misses registered-translator checkpoint",
+      "Pre-publish subscriber pointer proves registration, not actual callback invocation",
+      "Raw delegate resolution requires exact target ABI and does not classify transitive writes",
+      "Hardware stops change scheduling; replay must compare command, streams, typed state and cleanup",
+      "Loader instrumentation must be reported separately"
+    ],
+    "maximum_simultaneous_hardware_breakpoints": 4,
+    "preserve": [
+      "Raw callback/receiver/object addresses",
+      "Module ASLR bases and pointer RVAs separately",
+      "Unclassified bytes and cross-process differences",
+      "Read errors and missed checkpoint coverage"
+    ]
+  },
+  "passive_replay": {
+    "authoritative_core_mutation_from_callback_proven": false,
+    "cache_callbacks": [
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0xe23b112d",
+        "sequence": 2,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0x383669f1",
+        "sequence": 8,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0x15c35863",
+        "sequence": 12,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0xe23b112d",
+        "sequence": 16,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0x3d4006f2",
+        "sequence": 20,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0xe23b112d",
+        "sequence": 24,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995ae9ff430",
+        "classification": "Unit snapshot cache allocation plus host CacheUpdated event275",
+        "continuation_rva": "0x27ff430",
+        "event_hash": "0x383669f1",
+        "sequence": 30,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2708590",
+          "permissions": "r-xp",
+          "pointer": "0x7995ae908590",
+          "symbol": "fastdelegate::FastDelegate3<unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*, void>::InvokeStaticFunction(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) const in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      },
+      {
+        "adjusted_receiver": "0x7995afe06b20",
+        "classification": "Conditional yield-monitor cache comparison/update and recursive reporting; current branch and transitive gameplay effects unresolved",
+        "continuation_rva": "0x2c66430",
+        "event_hash": "0x9ea4c222",
+        "sequence": 36,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x7995ac200000",
+          "module": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+          "module_load_bias": "0x7995ac200000",
+          "module_offset": "0x2c66430",
+          "permissions": "r-xp",
+          "pointer": "0x7995aee66430",
+          "symbol": "GameCore::YieldMonitor::Instance::OnMessagesProcessed(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so"
+        }
+      }
+    ],
+    "callback_receiver_state_observed": false,
+    "command_sha256": "5c262073a0b62b252c10ca562ca765faff535bc0e6bdf78c4f41f331498f288a",
+    "complete_transitive_effects_proven": false,
+    "derived_branch_facts": "Original vector-map sender gates require enabled=true and suspended=false on paths that reached cache dispatch/provider; invoked cache delegates require cache updates enabled. This is path evidence, not a direct flag capture.",
+    "direct_flag_observation": false,
+    "full_host_admission": false,
+    "gdb_exit": 0,
+    "limits": "Raw pointer/ASLR values retained. Translator pointer checkpoint precedes the indirect call. Null pre-publish registration is scoped to actual getter hits. Cache snapshot Fill methods, yield-monitor branch/live cache, host dirty registrations and activity-facade virtual calls remain unresolved. No blanket cache/AI/presentation exclusion.",
+    "metadata_sha256": "d71d885784c5170ffbe5a93632faeec484378af6798be46886e4bb927c3d5637",
+    "missing_map_checkpoint_hits": true,
+    "native_execution_observed": true,
+    "native_exit": 0,
+    "observations_sha256": "1ddcd78a25a23e150a3116e445e6a2036607806718b31488d1996fed0cc7b41e",
+    "prepublish": {
+      "all_observed_pointers_null": true,
+      "host_event_counts": {
+        "257": 1,
+        "275": 7,
+        "35": 3,
+        "67": 1,
+        "68": 1,
+        "70": 2,
+        "71": 2
+      },
+      "observed_calls": 17,
+      "universal_absence_proven": false
+    },
+    "pure_reporting_proven": false,
+    "runtime_sha256": "0246f1cc941d7f9499623d8bea67ea5c5579a9460860dea6e5447c4b3b48c5a3",
+    "rust_live_action_admission": false,
+    "saves": [
+      {
+        "bytes": 80657462,
+        "name": "before.bin",
+        "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+      },
+      {
+        "bytes": 80657462,
+        "name": "save.bin",
+        "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+      },
+      {
+        "bytes": 80656254,
+        "name": "after.bin",
+        "sha256": "be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc"
+      },
+      {
+        "bytes": 80656254,
+        "name": "after-repeat.bin",
+        "sha256": "be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc"
+      },
+      {
+        "bytes": 80656254,
+        "name": "repeat.bin",
+        "sha256": "be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc"
+      }
+    ],
+    "schema": "c6-linux-reporting-provider-passive-classification-v1",
+    "selected_armed": true,
+    "selected_counts": {
+      "cache_delegate_tail": 8,
+      "host_pre_publish_getter": 17,
+      "host_translation_pointer": 10
+    },
+    "selected_hits": 35,
+    "selected_phase": 5,
+    "timing_equivalent": false,
+    "total_hits": 3140,
+    "translators": [
+      {
+        "event_hash": "0xe23b112d",
+        "sequence": 4,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0b670",
+          "permissions": "r-xp",
+          "pointer": "0x320b670",
+          "symbol": "GameCore::Events::Translate::UnitActivityChanged(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320b670"
+      },
+      {
+        "event_hash": "0xa60328c5",
+        "sequence": 6,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0ccb0",
+          "permissions": "r-xp",
+          "pointer": "0x320ccb0",
+          "symbol": "GameCore::Events::Translate::UnitOperationDeactivated(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320ccb0"
+      },
+      {
+        "event_hash": "0x383669f1",
+        "sequence": 10,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0cd30",
+          "permissions": "r-xp",
+          "pointer": "0x320cd30",
+          "symbol": "GameCore::Events::Translate::UnitOperationsCleared(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320cd30"
+      },
+      {
+        "event_hash": "0x15c35863",
+        "sequence": 14,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0cb30",
+          "permissions": "r-xp",
+          "pointer": "0x320cb30",
+          "symbol": "GameCore::Events::Translate::UnitOperationAdded(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320cb30"
+      },
+      {
+        "event_hash": "0xe23b112d",
+        "sequence": 18,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0b670",
+          "permissions": "r-xp",
+          "pointer": "0x320b670",
+          "symbol": "GameCore::Events::Translate::UnitActivityChanged(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320b670"
+      },
+      {
+        "event_hash": "0x3d4006f2",
+        "sequence": 22,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0cbb0",
+          "permissions": "r-xp",
+          "pointer": "0x320cbb0",
+          "symbol": "GameCore::Events::Translate::UnitOperationStarted(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320cbb0"
+      },
+      {
+        "event_hash": "0xe23b112d",
+        "sequence": 26,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0b670",
+          "permissions": "r-xp",
+          "pointer": "0x320b670",
+          "symbol": "GameCore::Events::Translate::UnitActivityChanged(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320b670"
+      },
+      {
+        "event_hash": "0xa60328c5",
+        "sequence": 28,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0ccb0",
+          "permissions": "r-xp",
+          "pointer": "0x320ccb0",
+          "symbol": "GameCore::Events::Translate::UnitOperationDeactivated(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320ccb0"
+      },
+      {
+        "event_hash": "0x383669f1",
+        "sequence": 32,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e0cd30",
+          "permissions": "r-xp",
+          "pointer": "0x320cd30",
+          "symbol": "GameCore::Events::Translate::UnitOperationsCleared(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x320cd30"
+      },
+      {
+        "event_hash": "0x25f6cfd",
+        "sequence": 34,
+        "target": {
+          "mapping_offset": "0x0",
+          "mapping_start": "0x400000",
+          "module": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+          "module_load_bias": "0x400000",
+          "module_offset": "0x2e12d00",
+          "permissions": "r-xp",
+          "pointer": "0x3212d00",
+          "symbol": "GameCore::Events::Translate::NotificationActivated(unsigned int, GameCore::Events::EventData*, Data::TypedVariantMap const*) in section .text of /home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6"
+        },
+        "target_elf_virtual_address": "0x3212d00"
+      }
+    ],
+    "validation_sha256": "2f0181d8cf6720997bebc2a91b2fdcdd76753dfa8db978b79b24903551e5a883"
+  },
+  "schema": "c6-linux-reporting-provider-static-v2",
+  "source_audit_sha256": "fde246b6e86404e084fa1967e358075b21e5795ac8b3226938b47cc1a26585a9",
+  "static_only": true
+}
