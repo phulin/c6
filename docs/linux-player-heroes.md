@@ -60,3 +60,13 @@ when false, skipping the Unit/Feature/Continent boolean hash arrays and all
 15 AI blocks. These blocks are present when the flag is true. Full Player/world import, exact gameplay state,
 actions and turns remain unsupported. Unknown save bytes remain unclassified
 and unmasked; the recorded raw Save→Load difference remains 89,198 bytes.
+
+Acceptance recorded in `evidence/linux/player-heroes.json` uses committed source
+`59e30ec` (including the `3ec5407` crate export), 98 method pins, 183 direct/PLT
+bindings and 10 virtual save/load slots. Actual exported-crate tests (3), strict
+`c6-core` all-target Clippy and the release candidate passed. Both canonical
+corpora supplied 43 contextual records, each consuming exactly 540 bytes and
+128 dynamic items; every record roundtripped byte-for-byte with exact limits,
+rejected one-short byte/item limits, and rejected every proper truncation.
+Populated synthetic tests also cover nested claims/discovery records and hostile
+counts; corpus prefix agreement does not establish initialized native effects.

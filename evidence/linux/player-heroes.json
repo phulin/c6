@@ -1,0 +1,1902 @@
+{
+  "schema": "c6-linux-player-heroes-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "current_version": 6,
+  "next_boundary_condition": {
+    "member": "m_bWasEverAlive",
+    "wrapper_offset": 616,
+    "value_offset": 632,
+    "header_bool_index": 1,
+    "header_writer_call": "0x2b4ef3d",
+    "branch": "0x2b4f1bc",
+    "false_target": "0x2b4f413",
+    "dwarf_fragment_sha256": "0ba83a60adfe8f683cdb7590df4b6d20047516e981c956c1aad59884f05bd5af",
+    "machine_pins": [
+      [
+        45412132,
+        30,
+        "7c7bbb1f7449bad33136356d56ef674662b38e0b9531a0ce73793e9c8aac17c8"
+      ],
+      [
+        45412796,
+        14,
+        "38eb35f1a7eb7e811a2cb83e87ebbd309544f269da5dd57ef5c5cc10e6be5cd1"
+      ]
+    ]
+  },
+  "methods": [
+    {
+      "address": "0x269b5a0",
+      "size": 98,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::HeroClaimData&)",
+      "sha256": "00c046efea8c95afbc026929c774618dad4bfb13dc1014cbcc1e4a0c4eac64e8"
+    },
+    {
+      "address": "0x269e8a0",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::EraTypes, GameCore::EraTypes&>(Serialization::IStream&, GameCore::EraTypes&, int, int&&, GameCore::EraTypes&)",
+      "sha256": "715a23a73370a8c8557668cbc0c6df7cec2f8aba005495e6fcbe2a90270410eb"
+    },
+    {
+      "address": "0x2d4edd0",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::EraTypes&)",
+      "sha256": "a7695171a09cc43289748975d8d653be8e0ddc5594aa8e7c1ce88fffd435c54b"
+    },
+    {
+      "address": "0x2d510b0",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> const&)",
+      "sha256": "a53222fe1ac63af8f4e0ba9d013a019338f774f95ec270948f74020b6a345894"
+    },
+    {
+      "address": "0x2059240",
+      "size": 4,
+      "name": "GameCore::Definition::Era::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "address": "0x21de190",
+      "size": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const",
+      "sha256": "1486483da0a18c1b2791cc12cfce28af11c5f75f73bb9237aa2ec7ae319fb20c"
+    },
+    {
+      "address": "0x21df1b0",
+      "size": 133,
+      "name": "std::__1::__wrap_iter<GameCore::Definition::Era* const*> std::__1::__upper_bound<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Era const*)#1}&, std::__1::__wrap_iter<GameCore::Definition::Era* const*>, unsigned int>(std::__1::__wrap_iter<GameCore::Definition::Era* const*>, std::__1::__wrap_iter<GameCore::Definition::Era* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Era const*)#1}&)",
+      "sha256": "16cf703d0982e5fc96ffaaa3c3ce791a67de06a1180e87ce987196d22df13382"
+    },
+    {
+      "address": "0x21df240",
+      "size": 18,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Era const*)#1}::operator()(unsigned int, GameCore::Definition::Era const*) const",
+      "sha256": "3ba9c1e6804570cbb88199c7f73bb4e67531bf94504dad13a14480bbfb0c62e3"
+    },
+    {
+      "address": "0x21df1a0",
+      "size": 4,
+      "name": "GameCore::Definition::Era::GetTypeHash() const",
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1"
+    },
+    {
+      "address": "0x21df0f0",
+      "size": 11,
+      "name": "std::__1::__wrap_iter<GameCore::Definition::Era* const*> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::Era* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(GameCore::Definition::Era const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::Era* const*>, std::__1::__wrap_iter<GameCore::Definition::Era* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(GameCore::Definition::Era const*, unsigned int)#1})",
+      "sha256": "198b0d67bc481948e137e537adef4cbc86f67fe2da9ac082089e42ab19b12566"
+    },
+    {
+      "address": "0x21df100",
+      "size": 116,
+      "name": "std::__1::__wrap_iter<GameCore::Definition::Era* const*> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::Era* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(GameCore::Definition::Era const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::Era* const*>, std::__1::__wrap_iter<GameCore::Definition::Era* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(GameCore::Definition::Era const*, unsigned int)#1}&)",
+      "sha256": "bccba808c772eff3a78ce47e5c4fed4bd1cbe6bf596fc06119f3020da7731ec8"
+    },
+    {
+      "address": "0x21df180",
+      "size": 18,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::Find(unsigned int) const::{lambda(GameCore::Definition::Era const*, unsigned int)#1}::operator()(GameCore::Definition::Era const*, unsigned int) const",
+      "sha256": "907cca1c3567e523f843a5ea7e681f5e27a3e4939c8dc6e4e42d430001e1bf1f"
+    },
+    {
+      "address": "0x1fcc1c0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)",
+      "sha256": "5edd23b31cc38a2cc74b61c4b33889da2f35c69f9ce10ee24f2899eb7e91af01"
+    },
+    {
+      "address": "0x1fcdbb0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(unsigned int&)",
+      "sha256": "b5c97ed9421b7f58e0ea8a7e2989ec1c05dd9c16a79416af11d59bd45e57dc3e"
+    },
+    {
+      "address": "0x1fcdb20",
+      "size": 25,
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)",
+      "sha256": "43f291f25ae0e59e98bf6b96e5341ed0345d1627c75c056bac01ada2cfd2f796"
+    },
+    {
+      "address": "0x1fcc1a0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)",
+      "sha256": "c6cf9d3175d5134bd8d7b3d396184fd7b9abd3f7ca364cbdc38a1794ce742775"
+    },
+    {
+      "address": "0x1fcdad0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(int&)",
+      "sha256": "09ddfd4d815a2204789075821ff06a3e8d881dc2bae4791ff3f746206deb3230"
+    },
+    {
+      "address": "0x2d4fa70",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::HeroClassTypes&)",
+      "sha256": "713be1a1afacda8fe37ecdde57438e35e14c32b9c7be67191d8295759519da73"
+    },
+    {
+      "address": "0x265b700",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> const&)",
+      "sha256": "8223fec9b03d7f9ff40f2564e9382c049e4e4dbb6ef7f8264d38b33198e0144d"
+    },
+    {
+      "address": "0x20e32f0",
+      "size": 4,
+      "name": "GameCore::Definition::HeroClass::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "address": "0x265b730",
+      "size": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const",
+      "sha256": "9fe41c3335e2553726415e40cbad869c63a44411e40afd27c9de8dcf48291fde"
+    },
+    {
+      "address": "0x265b850",
+      "size": 133,
+      "name": "std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*> std::__1::__upper_bound<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::HeroClass const*)#1}&, std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, unsigned int>(std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::HeroClass const*)#1}&)",
+      "sha256": "e235ac58d314bfd28c2a13b2ce85b29dfe306c5366a41d3f4ddb4f8c2e0d02ca"
+    },
+    {
+      "address": "0x265b8e0",
+      "size": 18,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::HeroClass const*)#1}::operator()(unsigned int, GameCore::Definition::HeroClass const*) const",
+      "sha256": "1b94a61eece0478cf5313808f2a4d7bf197ededf20f7991303442744d6cd3a67"
+    },
+    {
+      "address": "0x22dcfa0",
+      "size": 4,
+      "name": "GameCore::Definition::HeroClass::GetTypeHash() const",
+      "sha256": "77205cdc9a7bd9bf1f7e6ff1fdda57017736a90fa0063ff3b0d23ffeea318cab"
+    },
+    {
+      "address": "0x265b7a0",
+      "size": 11,
+      "name": "std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(GameCore::Definition::HeroClass const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(GameCore::Definition::HeroClass const*, unsigned int)#1})",
+      "sha256": "8f4a73a95e60a32d8c99e867320c71a3a5895cc65c77e9821160d4cb9321c9aa"
+    },
+    {
+      "address": "0x265b7b0",
+      "size": 116,
+      "name": "std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(GameCore::Definition::HeroClass const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, std::__1::__wrap_iter<GameCore::Definition::HeroClass* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(GameCore::Definition::HeroClass const*, unsigned int)#1}&)",
+      "sha256": "ca7c61d858dc45cba1bf7f58844f30ec0ff2a6e51104456b9460f3b99759c746"
+    },
+    {
+      "address": "0x265b830",
+      "size": 18,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::Find(unsigned int) const::{lambda(GameCore::Definition::HeroClass const*, unsigned int)#1}::operator()(GameCore::Definition::HeroClass const*, unsigned int) const",
+      "sha256": "72cb1238c5453181d6e8eba84ac527fc9a0b9f6168862bf842b7b9b3839b3398"
+    },
+    {
+      "address": "0x269b540",
+      "size": 83,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::HeroClaimData const&)",
+      "sha256": "162b7dff0f967cb5ce23d1f950970c6047278b0167538ceadeb8919ec85dee5e"
+    },
+    {
+      "address": "0x2d4eda0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::EraTypes const&)",
+      "sha256": "e246d7b03b8b87e64a140a859d261d190aed6aacf1f69d421667e19c8910889d"
+    },
+    {
+      "address": "0x2d51080",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> const&)",
+      "sha256": "9a6dce189a54362122658819c2dcb40c5ccbe9afd2c202d92e7cf9d253ce615d"
+    },
+    {
+      "address": "0x1fcc150",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+      "sha256": "9731ca1d2959dc0f406a684267a29d425c9bf7ea2f127425123508fbc2ed2d3b"
+    },
+    {
+      "address": "0x1fcdba0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(unsigned int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2d51730",
+      "size": 66,
+      "name": "unsigned int Serialization::IndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> const&)",
+      "sha256": "fa287c4507b508049ebccb401f102b857c8c78c4533bdc2a4f3fb003ed3b298d"
+    },
+    {
+      "address": "0x2036910",
+      "size": 29,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::At(unsigned int) const",
+      "sha256": "b24fe29f954da8018606697f1e90f2f722ea27ff84d4d1e2b09a784ff09bbcd6"
+    },
+    {
+      "address": "0x2059b00",
+      "size": 5,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era>::GetCount() const",
+      "sha256": "a65d6e2d31e690fcc447d30913ec2333839d587be3245a3b6df2ad2f3ac01f51"
+    },
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcdac0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2d4fa40",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::HeroClassTypes const&)",
+      "sha256": "7e743015bb7148c44786235c621d9e56342bf3fe58030f373376ba736068c516"
+    },
+    {
+      "address": "0x2d514a0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> const&)",
+      "sha256": "0be380c25efe7988932b7baeec5f16c40621c3d7442e88c902e73038a490325f"
+    },
+    {
+      "address": "0x2d51b40",
+      "size": 66,
+      "name": "unsigned int Serialization::IndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> const&)",
+      "sha256": "a9776752777109a0f9f4ca1b8e84e834725ba534a98ab15630117c19e029522e"
+    },
+    {
+      "address": "0x265a730",
+      "size": 29,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::At(unsigned int) const",
+      "sha256": "b24fe29f954da8018606697f1e90f2f722ea27ff84d4d1e2b09a784ff09bbcd6"
+    },
+    {
+      "address": "0x265a5c0",
+      "size": 5,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass>::GetCount() const",
+      "sha256": "e37b366edceda5c764b757d27b40a41c486982f2a4cbdfb156f3060407448c09"
+    },
+    {
+      "address": "0x269b500",
+      "size": 57,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::HeroDiscoveryWeightData&)",
+      "sha256": "f6cc9137ef192c3e77a02caaeeebc1e2165abe1a9c355e9d8be6ff1e88f2f00a"
+    },
+    {
+      "address": "0x269b4c0",
+      "size": 59,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::HeroDiscoveryWeightData const&)",
+      "sha256": "1ccd0face7a442223e7f1140bf66a6ca3018599067ab99590bd405a75e584462"
+    },
+    {
+      "address": "0x269b3a0",
+      "size": 283,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Heroes&)",
+      "sha256": "7588b99d80b6245013835438ea63d942f9f168b4ff4346aaaad7695fb2b2964e"
+    },
+    {
+      "address": "0x269e830",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const&>(Serialization::IStream&, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>&, int, int&&, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const&)",
+      "sha256": "1f520d86cfd7406915e777e5d0753567c39f9bedfb1286e3bbf75746b05282da"
+    },
+    {
+      "address": "0x269f7e0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::HeroClaimData>(Serialization::IStream&, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>&)",
+      "sha256": "5a88308cdd76160162fdaf7425f14a500d729233fa15abfa47811a24d57f5ac0"
+    },
+    {
+      "address": "0x269fa60",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::HeroClaimData, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>&)",
+      "sha256": "afb6e51db8570deaf7e582ec3b5f65e326c996ca1f36209b9b3b12dc856c85b3"
+    },
+    {
+      "address": "0x269e7c0",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const&>(Serialization::IStream&, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>&, int, int&&, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const&)",
+      "sha256": "4d664254c4b8af7f5be8575eb6b85b6be2fd5c6e541d1c4e7adc7e9561817732"
+    },
+    {
+      "address": "0x269f200",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::HeroDiscoveryWeightData>(Serialization::IStream&, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>&)",
+      "sha256": "6949e7c0444a97d671f2c6e25e5d09001541f4067f423b52d48a43a060446394"
+    },
+    {
+      "address": "0x269f2d0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::HeroDiscoveryWeightData, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>&)",
+      "sha256": "86857680c463f10bec33132400ecd6d422e83e468e0ef9eed3505979c57d1a3f"
+    },
+    {
+      "address": "0x269e750",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<eastl::vector<int, eastl::allocator>, eastl::vector<int, eastl::allocator> const&>(Serialization::IStream&, eastl::vector<int, eastl::allocator>&, int, int&&, eastl::vector<int, eastl::allocator> const&)",
+      "sha256": "1a09fb11269c0aec62b8b0b02de61d8ce719144e8e87ac465ff4902fed3a986a"
+    },
+    {
+      "address": "0x20452e0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><int>(Serialization::IStream&, eastl::vector<int, eastl::allocator>&)",
+      "sha256": "769f84d1a96449107a65e62a61c3522dbc904eb5222b78e86b8ff77ebfa7457e"
+    },
+    {
+      "address": "0x20452f0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<int, eastl::vector<int, eastl::allocator> >(Serialization::IStream&, eastl::vector<int, eastl::allocator>&)",
+      "sha256": "f5c5baea2fe9586b5656e0132571e0cbafd36687020c1da908f1b4e78627b4ef"
+    },
+    {
+      "address": "0x269e730",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Heroes>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Heroes>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x265b900",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> >(Serialization::IStream&, bool*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> const&)",
+      "sha256": "f93551bfbb3b7e030915c9f626040ea30d958c8dcb1bd58597f8612468f80962"
+    },
+    {
+      "address": "0x1fe2000",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)",
+      "sha256": "8354dc947302541cc1e97c714b223e16c8e9f086c7d09ad77b437291a622809d"
+    },
+    {
+      "address": "0x1fe81a0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(bool&)",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    },
+    {
+      "address": "0x269b310",
+      "size": 144,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Heroes const&)",
+      "sha256": "31ee0327f636fbec7c82c7de87707b1eb5beae8af07d11a317547e40fd395dff"
+    },
+    {
+      "address": "0x269e6d0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>, GameCore::Player::Heroes>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>, GameCore::Player::Heroes> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x269e6b0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>, GameCore::Player::Heroes>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>, GameCore::Player::Heroes> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x269e690",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<int, eastl::allocator>, GameCore::Player::Heroes>(Serialization::OStream&, FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Heroes> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x269e670",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Heroes>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Heroes> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x265a200",
+      "size": 138,
+      "name": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::HeroClass> const&)",
+      "sha256": "9b98bb5429e602e69b0ddf2b881680db89895055f4434507729dff2b20ff3658"
+    },
+    {
+      "address": "0x1fe1f90",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)",
+      "sha256": "441a140d71c552a6ced859e0e9efa0994c519cad451b975cbb5fc13e8025cd3f"
+    },
+    {
+      "address": "0x1fe7900",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(bool const&)",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x26a0150",
+      "size": 15,
+      "name": "FAutoVariable<int, GameCore::Player::Heroes>::save(Serialization::OStream&) const",
+      "sha256": "480028fbe899ce94aaac8c2e56e72732aa3b873563edc43cbdd0139b4923e050"
+    },
+    {
+      "address": "0x26a1620",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Heroes>::save(Serialization::OStream&) const",
+      "sha256": "fbf71eb3f57af458bb8047d20a0c43b9a4f3334a3ce12ca3754322d16d9551e1"
+    },
+    {
+      "address": "0x20455c0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <int>(Serialization::OStream&, eastl::vector<int, eastl::allocator> const&)",
+      "sha256": "65d5e90fcda78b875d85d74de5ca7f6f0b8317c1d4f3345fd39ee56e8725b621"
+    },
+    {
+      "address": "0x2045620",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const> eastl::for_each<int const*, Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const> >(int const*, int const*, Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const>)",
+      "sha256": "6f7bf45d9c4d6130fb2236660c2a71b89f4c87cc772f74eb1ed44590e2da1758"
+    },
+    {
+      "address": "0x20456c0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const>::operator()(int const&)",
+      "sha256": "e38a4a447f13a1507c0677949debcc2f3fcd429aa4b0ad498eb856cc59835455"
+    },
+    {
+      "address": "0x2045690",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<int, eastl::allocator> const&)",
+      "sha256": "5d8ac4912095bb7a0037f92b6379ca7dc4b6a33c9a83e9e4266891609749e355"
+    },
+    {
+      "address": "0x26a0b80",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Heroes>::save(Serialization::OStream&) const",
+      "sha256": "f9c0bfce182d0a06c1d8478de599b6bd4658de5926d0aa2d965a80e7f05314df"
+    },
+    {
+      "address": "0x265d550",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <bool>(Serialization::OStream&, eastl::vector<bool, eastl::allocator> const&)",
+      "sha256": "efbd3631abbdfce477dce8ed54ffe2dfebb55f0e7eeb087233be419d90b492a8"
+    },
+    {
+      "address": "0x265d5b0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const> eastl::for_each<bool const*, Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const> >(bool const*, bool const*, Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const>)",
+      "sha256": "3aaceda12bbc98cac9035b2b6a6012cd08b6bc174e73f6fdb74de8ca2fcbf9a6"
+    },
+    {
+      "address": "0x265d650",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const>::operator()(bool const&)",
+      "sha256": "0e385252c11148253815357b77f05847deeaa731af56e047fc6bb9faf87217f9"
+    },
+    {
+      "address": "0x265d620",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<bool, eastl::allocator> const&)",
+      "sha256": "ad923cb852bac049cd1c5bf86dfef22a70019230df259390cda8f34fef55176e"
+    },
+    {
+      "address": "0x26a20d0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>, GameCore::Player::Heroes>::save(Serialization::OStream&) const",
+      "sha256": "4cfce8ecd83dd9dd83bc7dd8ae2c51c68462323527e1bcfe0ebef34dbe258d6b"
+    },
+    {
+      "address": "0x26a2af0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::HeroDiscoveryWeightData>(Serialization::OStream&, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const&)",
+      "sha256": "6ecc365edcf147414d8884d846d99ddbece5511bfbb3194489273a602f6f9cfd"
+    },
+    {
+      "address": "0x26a2b50",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroDiscoveryWeightData const, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const> eastl::for_each<GameCore::Player::HeroDiscoveryWeightData const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroDiscoveryWeightData const, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const> >(GameCore::Player::HeroDiscoveryWeightData const*, GameCore::Player::HeroDiscoveryWeightData const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroDiscoveryWeightData const, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const>)",
+      "sha256": "dff5ab870288cf89ea008882d91845bfb1679d11a7d5835b5a89ea2999fcc4fd"
+    },
+    {
+      "address": "0x26a2bd0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroDiscoveryWeightData const, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const>::operator()(GameCore::Player::HeroDiscoveryWeightData const&)",
+      "sha256": "7024fcf692ff6dfbd2d3da157bb96e7ae0f8f4344e0970ea62b55a668aa653b2"
+    },
+    {
+      "address": "0x26a2ba0",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroDiscoveryWeightData const, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator> const&)",
+      "sha256": "26abc14e263f79a7fe31680c6ed11eac8b9e41299d1d36927832f2c92080b87d"
+    },
+    {
+      "address": "0x26a2f70",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>, GameCore::Player::Heroes>::save(Serialization::OStream&) const",
+      "sha256": "94cb705b11a1b97a3bfb6fafc63e187e5a4580b50ff8ca724920c58b6c7440ae"
+    },
+    {
+      "address": "0x26a39e0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::HeroClaimData>(Serialization::OStream&, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const&)",
+      "sha256": "957decd3b37474e1859be1e96487672fbfde937d8bbf823cd25c1c84c0170a4b"
+    },
+    {
+      "address": "0x26a3a40",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroClaimData const, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const> eastl::for_each<GameCore::Player::HeroClaimData const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroClaimData const, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const> >(GameCore::Player::HeroClaimData const*, GameCore::Player::HeroClaimData const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroClaimData const, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const>)",
+      "sha256": "324ff57a28a5c3db0a363373e0aadd0a168fefce1f07efc2c71f607dceb5f412"
+    },
+    {
+      "address": "0x26a3ac0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroClaimData const, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const>::operator()(GameCore::Player::HeroClaimData const&)",
+      "sha256": "9381b2de2a1af1b442c2453ba10b7a62788964edd5b3695db941558945c2909c"
+    },
+    {
+      "address": "0x26a3a90",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::HeroClaimData const, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator> const&)",
+      "sha256": "ea5b937a21a0962f19f087675668a1dca7925feae3b8aacf81a60f8db8bbb93a"
+    },
+    {
+      "address": "0x26a0110",
+      "size": 15,
+      "name": "FAutoVariable<int, GameCore::Player::Heroes>::load(Serialization::IStream&)",
+      "sha256": "13c0aee0450283ff17c099626f439b48e388c5989a999feddb79e6a7e858e80d"
+    },
+    {
+      "address": "0x26a15b0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Heroes>::load(Serialization::IStream&)",
+      "sha256": "7625830950db9eaafa35eeb68a98f7329959970882a6613d1bd6383e87eae316"
+    },
+    {
+      "address": "0x269e780",
+      "size": 52,
+      "name": "FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Heroes>::edit()",
+      "sha256": "5b47998b127abd5b2b7f93e09942f8feb08ff7e8ffa27e73381fc3936cfbda38"
+    },
+    {
+      "address": "0x26a0b10",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Heroes>::load(Serialization::IStream&)",
+      "sha256": "561ff6b6ff33d35a8fedec8f0e47ad4e5e16bb6fd6a6aeb85ee61ece21edc7bd"
+    },
+    {
+      "address": "0x265d130",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><bool>(Serialization::IStream&, eastl::vector<bool, eastl::allocator>&)",
+      "sha256": "82dc844e6d6a66e9a55d5dd23f4606b46ecfa98ee1a7959ba996ead472180366"
+    },
+    {
+      "address": "0x265d140",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<bool, eastl::vector<bool, eastl::allocator> >(Serialization::IStream&, eastl::vector<bool, eastl::allocator>&)",
+      "sha256": "c76f6b90bf448f3ccd37ae3d79493ba5901de1c0f16cedd1ebd0198a977192c2"
+    },
+    {
+      "address": "0x269e6f0",
+      "size": 52,
+      "name": "FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Heroes>::edit()",
+      "sha256": "9c884acfe523d50d736ae6eab8ec3f2229bce6db9995b92f893aed91e5da8e0e"
+    },
+    {
+      "address": "0x26a2060",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>, GameCore::Player::Heroes>::load(Serialization::IStream&)",
+      "sha256": "16e6e3e4b2d519631817fc534b947a725f6d846efb3457e49e6b541e36771ce2"
+    },
+    {
+      "address": "0x269e7f0",
+      "size": 52,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::HeroDiscoveryWeightData, eastl::allocator>, GameCore::Player::Heroes>::edit()",
+      "sha256": "bea248957524b0a9bbea6e52108f762a588c75e78295d39c4a0d63a73ad9f4a4"
+    },
+    {
+      "address": "0x26a2f00",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>, GameCore::Player::Heroes>::load(Serialization::IStream&)",
+      "sha256": "c57cc55e6a680ced6b79929f222b1c5d4885bc29ba9906e2af0cf1caa4a82e81"
+    },
+    {
+      "address": "0x269e860",
+      "size": 52,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::HeroClaimData, eastl::allocator>, GameCore::Player::Heroes>::edit()",
+      "sha256": "cf2b5dd29c0b4185dc55a474679bb1170818959397af6e37e81e3e30ad3871bc"
+    }
+  ],
+  "concrete_bindings": [
+    [
+      45412791,
+      32169376,
+      40481552,
+      "call"
+    ],
+    [
+      40482223,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      40482234,
+      31820576,
+      47512176,
+      "call"
+    ],
+    [
+      40482246,
+      32442288,
+      47508944,
+      "call"
+    ],
+    [
+      40482258,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      40482290,
+      32522016,
+      40495264,
+      "call"
+    ],
+    [
+      40495282,
+      32442288,
+      47508944,
+      "call"
+    ],
+    [
+      47508963,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      47508972,
+      32555776,
+      35732336,
+      "call"
+    ],
+    [
+      47508982,
+      32105440,
+      47517872,
+      "call"
+    ],
+    [
+      47517880,
+      32541792,
+      35512720,
+      "call"
+    ],
+    [
+      47517894,
+      33046416,
+      33919552,
+      "jmp"
+    ],
+    [
+      35512779,
+      32988416,
+      35516656,
+      "call"
+    ],
+    [
+      35512802,
+      33063824,
+      35516848,
+      "call"
+    ],
+    [
+      35516916,
+      31983952,
+      35516992,
+      "call"
+    ],
+    [
+      35516998,
+      31733152,
+      35516832,
+      "call"
+    ],
+    [
+      35516660,
+      32849712,
+      35516672,
+      "call"
+    ],
+    [
+      35516733,
+      31624736,
+      35516800,
+      "call"
+    ],
+    [
+      35516806,
+      31733152,
+      35516832,
+      "call"
+    ],
+    [
+      33341892,
+      33039872,
+      33348528,
+      "call"
+    ],
+    [
+      33348559,
+      31471216,
+      33348384,
+      "call"
+    ],
+    [
+      33348404,
+      31796656,
+      33348416,
+      "jmp"
+    ],
+    [
+      33341860,
+      31737840,
+      33348304,
+      "call"
+    ],
+    [
+      33348335,
+      31471216,
+      33348384,
+      "call"
+    ],
+    [
+      47512195,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      47512204,
+      32250528,
+      35733168,
+      "call"
+    ],
+    [
+      47512214,
+      31987056,
+      40220416,
+      "call"
+    ],
+    [
+      40220424,
+      33089696,
+      40220464,
+      "call"
+    ],
+    [
+      40220438,
+      33060208,
+      34484976,
+      "jmp"
+    ],
+    [
+      40220523,
+      31976192,
+      40220576,
+      "call"
+    ],
+    [
+      40220546,
+      33175536,
+      40220752,
+      "call"
+    ],
+    [
+      40220820,
+      31553056,
+      40220896,
+      "call"
+    ],
+    [
+      40220902,
+      31790528,
+      36556704,
+      "call"
+    ],
+    [
+      40220580,
+      32935264,
+      40220592,
+      "call"
+    ],
+    [
+      40220653,
+      32000512,
+      40220720,
+      "call"
+    ],
+    [
+      40220726,
+      31790528,
+      36556704,
+      "call"
+    ],
+    [
+      40482129,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      40482140,
+      32672560,
+      47512128,
+      "call"
+    ],
+    [
+      40482152,
+      32053584,
+      47508896,
+      "call"
+    ],
+    [
+      40482164,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      40482179,
+      32053584,
+      47508896,
+      "call"
+    ],
+    [
+      47508904,
+      32555776,
+      35732336,
+      "call"
+    ],
+    [
+      47508917,
+      31661440,
+      47517824,
+      "call"
+    ],
+    [
+      47517837,
+      32718704,
+      47519536,
+      "call"
+    ],
+    [
+      47517854,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      33341780,
+      32631936,
+      33348512,
+      "call"
+    ],
+    [
+      47519547,
+      32075664,
+      33921792,
+      "call"
+    ],
+    [
+      47519561,
+      31771360,
+      33777936,
+      "call"
+    ],
+    [
+      47519575,
+      31733152,
+      35516832,
+      "jmp"
+    ],
+    [
+      47519582,
+      32541792,
+      35512720,
+      "call"
+    ],
+    [
+      33921792,
+      32418624,
+      33928992,
+      "jmp"
+    ],
+    [
+      33341748,
+      32120032,
+      33348288,
+      "call"
+    ],
+    [
+      47512136,
+      32250528,
+      35733168,
+      "call"
+    ],
+    [
+      47512149,
+      33132704,
+      47518880,
+      "call"
+    ],
+    [
+      47518893,
+      33245264,
+      47520576,
+      "call"
+    ],
+    [
+      47518910,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      47520587,
+      32705776,
+      40216000,
+      "call"
+    ],
+    [
+      47520601,
+      32661328,
+      40216368,
+      "call"
+    ],
+    [
+      47520615,
+      31790528,
+      36556704,
+      "jmp"
+    ],
+    [
+      47520622,
+      33089696,
+      40220464,
+      "call"
+    ],
+    [
+      40216000,
+      31771440,
+      36555392,
+      "jmp"
+    ],
+    [
+      40482063,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      40482074,
+      31820576,
+      47512176,
+      "call"
+    ],
+    [
+      40482089,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      40482001,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      40482012,
+      32672560,
+      47512128,
+      "call"
+    ],
+    [
+      40482027,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      40481716,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      40481728,
+      31613120,
+      40494832,
+      "call"
+    ],
+    [
+      40481736,
+      32897888,
+      40215600,
+      "call"
+    ],
+    [
+      40481744,
+      32250528,
+      35733168,
+      "call"
+    ],
+    [
+      40481758,
+      32215120,
+      40220928,
+      "call"
+    ],
+    [
+      40481773,
+      32954608,
+      40494896,
+      "call"
+    ],
+    [
+      40481785,
+      31893328,
+      40494976,
+      "call"
+    ],
+    [
+      40481820,
+      33125696,
+      40494928,
+      "call"
+    ],
+    [
+      40481832,
+      31893328,
+      40494976,
+      "call"
+    ],
+    [
+      40481867,
+      33125696,
+      40494928,
+      "call"
+    ],
+    [
+      40481879,
+      32654624,
+      40495088,
+      "call"
+    ],
+    [
+      40481914,
+      31705568,
+      40495040,
+      "call"
+    ],
+    [
+      40481926,
+      33231408,
+      40495200,
+      "call"
+    ],
+    [
+      40481961,
+      31727648,
+      40495152,
+      "call"
+    ],
+    [
+      40495166,
+      32514416,
+      40498928,
+      "call"
+    ],
+    [
+      40495176,
+      32692496,
+      40499168,
+      "call"
+    ],
+    [
+      40499172,
+      32960464,
+      40499808,
+      "call"
+    ],
+    [
+      40499825,
+      31571888,
+      40496208,
+      "call"
+    ],
+    [
+      40499846,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      40499862,
+      33244896,
+      40499936,
+      "call"
+    ],
+    [
+      40499891,
+      33144704,
+      40500064,
+      "call"
+    ],
+    [
+      40499899,
+      31957056,
+      40500160,
+      "call"
+    ],
+    [
+      40499910,
+      32223664,
+      40482208,
+      "call"
+    ],
+    [
+      40495054,
+      31989440,
+      40497424,
+      "call"
+    ],
+    [
+      40495064,
+      32051632,
+      40497664,
+      "call"
+    ],
+    [
+      40497668,
+      33004416,
+      40497872,
+      "call"
+    ],
+    [
+      40497889,
+      31736864,
+      40496176,
+      "call"
+    ],
+    [
+      40497910,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      40497926,
+      32002736,
+      40498000,
+      "call"
+    ],
+    [
+      40497955,
+      33246608,
+      40498128,
+      "call"
+    ],
+    [
+      40497963,
+      32087232,
+      40498208,
+      "call"
+    ],
+    [
+      40497974,
+      31859344,
+      40482048,
+      "call"
+    ],
+    [
+      40494942,
+      32139696,
+      33809008,
+      "call"
+    ],
+    [
+      40494952,
+      32141024,
+      33837792,
+      "call"
+    ],
+    [
+      33837796,
+      31715552,
+      33837808,
+      "call"
+    ],
+    [
+      33837825,
+      31750752,
+      33781648,
+      "call"
+    ],
+    [
+      33837846,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      33837862,
+      32067456,
+      33837936,
+      "call"
+    ],
+    [
+      33837891,
+      32615840,
+      33838064,
+      "call"
+    ],
+    [
+      33837899,
+      31518448,
+      33838144,
+      "call"
+    ],
+    [
+      33837910,
+      31938512,
+      33341856,
+      "call"
+    ],
+    [
+      40220956,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      40220998,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      40221010,
+      31987056,
+      40220416,
+      "call"
+    ],
+    [
+      40221046,
+      32766320,
+      33431552,
+      "call"
+    ],
+    [
+      33431556,
+      31666816,
+      33456544,
+      "call"
+    ],
+    [
+      33456575,
+      31471216,
+      33348384,
+      "call"
+    ],
+    [
+      40481570,
+      32898000,
+      33341744,
+      "call"
+    ],
+    [
+      40481582,
+      31592464,
+      40215184,
+      "call"
+    ],
+    [
+      40481590,
+      32250528,
+      35733168,
+      "call"
+    ],
+    [
+      40481604,
+      33167408,
+      40215040,
+      "call"
+    ],
+    [
+      40481619,
+      32891152,
+      40494704,
+      "call"
+    ],
+    [
+      40481634,
+      32985456,
+      40494736,
+      "call"
+    ],
+    [
+      40481649,
+      32985456,
+      40494736,
+      "call"
+    ],
+    [
+      40481664,
+      32689568,
+      40494768,
+      "call"
+    ],
+    [
+      40481682,
+      32796672,
+      40494800,
+      "call"
+    ],
+    [
+      40215065,
+      32705776,
+      40216000,
+      "call"
+    ],
+    [
+      40215082,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      40215109,
+      32661328,
+      40216368,
+      "call"
+    ],
+    [
+      40215117,
+      31790528,
+      36556704,
+      "call"
+    ],
+    [
+      40215132,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      40215144,
+      31462048,
+      33431440,
+      "call"
+    ],
+    [
+      33431444,
+      33083040,
+      33454336,
+      "call"
+    ],
+    [
+      40501594,
+      32898000,
+      33341744,
+      "jmp"
+    ],
+    [
+      40506922,
+      32924224,
+      33838528,
+      "jmp"
+    ],
+    [
+      33838548,
+      32617808,
+      33838704,
+      "call"
+    ],
+    [
+      33838559,
+      32158032,
+      33838720,
+      "call"
+    ],
+    [
+      33838578,
+      33069952,
+      33838736,
+      "call"
+    ],
+    [
+      33838599,
+      31763424,
+      33838624,
+      "call"
+    ],
+    [
+      33838662,
+      32564224,
+      33838784,
+      "call"
+    ],
+    [
+      33838787,
+      32898000,
+      33341744,
+      "jmp"
+    ],
+    [
+      33838754,
+      32345024,
+      33782272,
+      "call"
+    ],
+    [
+      33838771,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      40504202,
+      32440864,
+      40228176,
+      "jmp"
+    ],
+    [
+      40228196,
+      32008416,
+      40228352,
+      "call"
+    ],
+    [
+      40228207,
+      32201184,
+      40228368,
+      "call"
+    ],
+    [
+      40228226,
+      32451808,
+      40228384,
+      "call"
+    ],
+    [
+      40228247,
+      32187712,
+      40228272,
+      "call"
+    ],
+    [
+      40228310,
+      31860144,
+      40228432,
+      "call"
+    ],
+    [
+      40228435,
+      31462048,
+      33431440,
+      "jmp"
+    ],
+    [
+      40228402,
+      32523760,
+      34130032,
+      "call"
+    ],
+    [
+      40228419,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      40509658,
+      32255376,
+      40512240,
+      "jmp"
+    ],
+    [
+      40512260,
+      32356368,
+      40496480,
+      "call"
+    ],
+    [
+      40512271,
+      32289696,
+      40496496,
+      "call"
+    ],
+    [
+      40512290,
+      31775136,
+      40512416,
+      "call"
+    ],
+    [
+      40512311,
+      31669008,
+      40512336,
+      "call"
+    ],
+    [
+      40512374,
+      31896400,
+      40512464,
+      "call"
+    ],
+    [
+      40512467,
+      31921872,
+      40481984,
+      "jmp"
+    ],
+    [
+      40512434,
+      31846272,
+      40218672,
+      "call"
+    ],
+    [
+      40512451,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      40513402,
+      33256368,
+      40516064,
+      "jmp"
+    ],
+    [
+      40516084,
+      32413488,
+      40496864,
+      "call"
+    ],
+    [
+      40516095,
+      32326624,
+      40496880,
+      "call"
+    ],
+    [
+      40516114,
+      32677568,
+      40516240,
+      "call"
+    ],
+    [
+      40516135,
+      32900256,
+      40516160,
+      "call"
+    ],
+    [
+      40516198,
+      32677520,
+      40516288,
+      "call"
+    ],
+    [
+      40516291,
+      31539168,
+      40482112,
+      "jmp"
+    ],
+    [
+      40516258,
+      32071584,
+      40496784,
+      "call"
+    ],
+    [
+      40516275,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      40501530,
+      31938512,
+      33341856,
+      "jmp"
+    ],
+    [
+      40506810,
+      32141024,
+      33837792,
+      "jmp"
+    ],
+    [
+      40495010,
+      32193984,
+      33346560,
+      "call"
+    ],
+    [
+      40504090,
+      33023520,
+      40227120,
+      "jmp"
+    ],
+    [
+      40227124,
+      33260992,
+      40227136,
+      "call"
+    ],
+    [
+      40227153,
+      33192912,
+      34136816,
+      "call"
+    ],
+    [
+      40227174,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      40227190,
+      31783952,
+      40227264,
+      "call"
+    ],
+    [
+      40227219,
+      32551824,
+      40227376,
+      "call"
+    ],
+    [
+      40227227,
+      32938640,
+      40227440,
+      "call"
+    ],
+    [
+      40227238,
+      32766320,
+      33431552,
+      "call"
+    ],
+    [
+      40494866,
+      32193984,
+      33346560,
+      "call"
+    ],
+    [
+      40509546,
+      32051632,
+      40497664,
+      "jmp"
+    ],
+    [
+      40495122,
+      32193984,
+      33346560,
+      "call"
+    ],
+    [
+      40513290,
+      32692496,
+      40499168,
+      "jmp"
+    ],
+    [
+      40495234,
+      32193984,
+      33346560,
+      "call"
+    ]
+  ],
+  "virtual_bindings": [
+    [
+      61548504,
+      40513280
+    ],
+    [
+      61548528,
+      40513392
+    ],
+    [
+      61548312,
+      40509536
+    ],
+    [
+      61548336,
+      40509648
+    ],
+    [
+      61547928,
+      40504080
+    ],
+    [
+      61547952,
+      40504192
+    ],
+    [
+      61548120,
+      40506800
+    ],
+    [
+      61548144,
+      40506912
+    ],
+    [
+      61547736,
+      40501520
+    ],
+    [
+      61547760,
+      40501584
+    ]
+  ],
+  "dwarf_sha256": "265b4135d090f391dee23ea9a0d1e5aaf84bad723a9b1405a9440d0e0d81f4bd",
+  "candidate_source_commit": "59e30ecfb4c7722a4226a3d24128541af2f1b2fb",
+  "candidate_archive_sha256": "8248fcd557c7ef8c77e61d8ff28b06e79db672db9d7c7207042149a386ad2788",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "d1704a911ca0c73f4a390f9dc2d934431cdf5949bed2c8611b843d35b891c17a",
+    "crates/c6-core/src/core_stream.rs": "eae5e1aab04eba6f39aeee0a6e390977eeb7502dd7ea7860b1d621da15012b91",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "0a73c5854a0b0c0c5a523de9b78043137ab2d75b89394fd26f3ad9fdf3a8e1a4",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_ai_identity.rs": "0b1827b953da5fdbcc88349ea15186c4b7aa964b73275cfba8d618022c94d5f1",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_cultural_identity.rs": "c87ccd7989b3fb1aaebbf13d319ab86c667745376d30f1a5b65372d26ef63e34",
+    "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+    "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
+    "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+    "crates/c6-core/src/player_governors.rs": "1362500016008ff6444b1fa28599ec52e60a4807c69a87b7573451f3b58b9133",
+    "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+    "crates/c6-core/src/player_heroes.rs": "aeec1006dd9184562387fb3d04ea79ce7e323bde73bb32bfed9fcc19b70995a6",
+    "crates/c6-core/src/player_improvements.rs": "a427c0bb1b4d24e67ab6e050d949e297c80771ee89d4811132741ae0e650d484",
+    "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
+    "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/player_quests.rs": "8cd4a8374ac45f7934b8801cbea927708201603672506edb739e507e7c37a2f7",
+    "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+    "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+    "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
+    "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+    "crates/c6-core/src/player_trade.rs": "371d7f198f475a3103609e555063c05feb983471e57215d92fe6e9496ef70702",
+    "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+    "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
+    "crates/c6-core/src/player_wmds.rs": "5948c879fe976edbb68a79f0dbf81bfeb0bf4e6f16f0a23ab6a898860c53bef2",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/reporting_dirty_components.rs": "f1fde81ff4f0cb1b31fc3b67935d855034adc7dc1e20956ab241adf10459e3f8",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+    "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit_operation_aftermath.rs": "61b33abf48a8d4cf3f52af69ec94cfb3b46d4d48cf3b0554801c2cbd6d72c922",
+    "crates/c6-core/src/unit_operation_legality.rs": "50a0d57a5b5324477f9de2c975a8248550b7188d2abe7d1e58e5bf7cf9ff4d68",
+    "crates/c6-core/src/unit_operation_notification_provider.rs": "0f93a963706f82662048fdc606f761caa503e18d39457bf679d880ae1f644a8f",
+    "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
+    "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
+    "tools/linux/player_heroes_audit.py": "300c28a77d5242ffd269f1fd1351570c6ba4ea550ccef8844acabde3dc8d2ad9"
+  },
+  "candidate_sha256": "65e4dfa375658789513a5beb7a48a1615ff4bd199e7b628130d06c9e5aa67a8b",
+  "harness_sha256": "ecaaee99047795aa56b23d99dbd285b72f90c4c4591b4d621a7401af7ddbf892",
+  "audit_source_sha256": "300c28a77d5242ffd269f1fd1351570c6ba4ea550ccef8844acabde3dc8d2ad9",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": 43,
+      "record_bytes": 23220,
+      "record_items": 5504,
+      "first_observed_range": [
+        5213659,
+        5214199
+      ],
+      "byte_item_caps": [
+        [
+          540,
+          128
+        ]
+      ],
+      "ordered_record_digests_sha256": "d8d32b6ea44f8246d37b407a9036f6de98db6cb8a3ff800393b6c4ccd205d007"
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": 43,
+      "record_bytes": 23220,
+      "record_items": 5504,
+      "first_observed_range": [
+        5213659,
+        5214199
+      ],
+      "byte_item_caps": [
+        [
+          540,
+          128
+        ]
+      ],
+      "ordered_record_digests_sha256": "d8d32b6ea44f8246d37b407a9036f6de98db6cb8a3ff800393b6c4ccd205d007"
+    }
+  ],
+  "source_only_tests": 3,
+  "exact_native_record_byte_item_caps_checked": true,
+  "one_short_native_record_byte_caps_rejected": true,
+  "native_every_truncation_rejected": true,
+  "validation_cuts": "No direct Heroes owner cuts. WMD, Improvements, complete Governors and CulturalIdentity source grammars locate prefix from Quests.end; enclosing Player.end is contextual bound. No production trace offsets.",
+  "allocation_policy": "Two-pass decode validates complete prefix, byte and aggregate item caps and owned storage arithmetic before fallible per-vector allocation. Encode preflights then reserves exact output.",
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_heroes_wire": true,
+  "legacy_versions": false,
+  "native_read_fixups": false,
+  "native_read_effects": "Reader edits archive variables, remaps definition hashes to indices, consumes missing hash values into discard slots and version-defaults legacy vectors/last appearance. Current codec preserves saved hashes and ordered vectors; no live remapping, archive edits, constructor defaults or signal subscription.",
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "next_player_component": "conditional Player+0x278: Unit/Feature/Continent bool hash arrays, then 15 AI blocks; false skips to 0x2b4f413",
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "attribution_reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_role": "discovery_only"
+}
