@@ -241,11 +241,15 @@ fn is_city(state: &LoadedState, plot: &Plot, definitions: &Definitions) -> Resul
     };
     Ok(definitions.districts.type_hash(index) == Some(c6_core::city_district::CITY_CENTER_HASH))
 }
-fn plot_movement_cost(
+/// Current original Plot movement-cost projection used by Unit readiness too.
+pub fn plot_movement_cost(
     state: &LoadedState,
     plot: &Plot,
     definitions: &Definitions,
 ) -> Result<i32, Error> {
+    if definitions.identities != state.binding().inputs {
+        return Err(Error::Binding);
+    }
     if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
         return Err(Error::Map);
     }
