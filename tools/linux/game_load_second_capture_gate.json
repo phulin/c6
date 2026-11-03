@@ -1,0 +1,14 @@
+{
+  "schema": "c6-linux-game-load-closed-output-v1",
+  "profile": "captured-second",
+  "bytes": 80657462,
+  "sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+  "origin_configuration_sha256": "a65921cab58cc10e8943fd4655d9de9eacef7150341f2e718c53d0eb40e2f414",
+  "origin_runtime": "../c6-ghidra/evidence/linux-military-initialization/native-3/runtime.json",
+  "origin_runtime_sha256": "01479e18272065e11ab0a50dc2284b6fdf4fce77a166b07ae98a19bba5dfa8b3",
+  "origin_summary": "evidence/linux/military-initialization-ff31-capture.json",
+  "origin_summary_sha256": "d77e86bfd9dce8b5857e20c6ff0213cd52510dfc0cac78e19d7a87ca3913ae3e",
+  "origin_classification_commit": "71cd09e",
+  "origin_independent_review_commit": "9ab8b89",
+  "limits": "Origin/byte/control gate for actual raw Context.Save output only. Not a full Save container, initialized Read context, native dispatch, whole-state/gameplay parity, or a prediction of the next output."
+}

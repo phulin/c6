@@ -60,7 +60,7 @@ def main():
     parser.add_argument('--network',action='store_true')
     parser.add_argument('--attach-saved-session',action='store_true')
     parser.add_argument('--game-load-stream',type=Path)
-    parser.add_argument('--game-load-profile',choices=('benchmark','captured-initial'),default='benchmark')
+    parser.add_argument('--game-load-profile',choices=('benchmark','captured-initial','captured-second'),default='benchmark')
     parser.add_argument('--game-load-observe',action='store_true')
     parser.add_argument('--action-observe',action='store_true')
     parser.add_argument('--action-execution-observe',action='store_true')
@@ -302,6 +302,7 @@ def main():
     game_outputs={}
     captured_gate=None
     captured_gate_path=None
+    captured_extra_sources=[]
     expected_game_size=76556938
     expected_game_sha='a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa'
     if args.game_load_profile=='captured-initial':
@@ -321,6 +322,13 @@ def main():
             any((save['bytes'],save['sha256'])!=(captured_gate['bytes'],captured_gate['sha256']) for save in origin_report['game_saves'].values()) or
             len(origin_report['game_saves'])!=2):
             raise SystemExit('captured Core stream origin proof mismatch')
+        expected_game_size=captured_gate['bytes'];expected_game_sha=captured_gate['sha256']
+    if args.game_load_profile=='captured-second':
+        if not game_input:parser.error('--game-load-profile requires --game-load-stream')
+        from game_load_second_capture_gate import load_gate as second_gate
+        captured_gate_path=ROOT/'tools/linux/game_load_second_capture_gate.json'
+        captured_gate=second_gate(ROOT)
+        captured_extra_sources=[ROOT/'tools/linux/game_load_second_capture_gate.py',ROOT/captured_gate['origin_summary']]
         expected_game_size=captured_gate['bytes'];expected_game_sha=captured_gate['sha256']
     if game_input:
         if not all((args.attach_saved_session,args.update_constructor_callback,args.ui_constructor,args.game_save_output,args.game_save_repeat_output)):
@@ -798,6 +806,7 @@ def main():
     if dispatch_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h',ROOT/'native/linux/action_registration.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
+    for path in captured_extra_sources:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
