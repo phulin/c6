@@ -13,3 +13,11 @@ Discovery names are attributed to [cru121's pinned reference](reference.md), rev
 Context is an attributed low-level wire input, not reconstructed initialization. Complete Core import still needs faithful HasAiPersonality/list initialization from real Player, configuration and rules inputs, or an attributed complete initialization snapshot. `Some(OperationTypes)` with empty saved arrays is accepted as a structural transport carrier; no native-save validity is asserted. The live vector guard and saved definition-array count are distinct values, and validating their relationship requires that initialization context.
 
 The offline typed parser currently checks all 86 original Military records, including nested Operation/OperationDef/OperationTeam extents against their actual trace hooks. Research has no owner hook in these particular traces; version 4 at the exact consumed Military end is a bounded next-schema dependency, not a fabricated Research hook. Its complete typed parser is separate.
+
+Final validation uses unchanged exported Git archive `3b84280`: all four actual Cargo Military/Operation tests and strict `c6-core` Clippy passed, and every archived regular source was checked against Git before and after the build. The independently projected Rust candidate exactly round-tripped all 86 original Save records and matched typed digest `18167792699959556877`. Each Core supplies 172,247 Military bytes and 25,379 aggregate items; 91,821 scalar/container boundary and interior truncation cuts per Core were refused. Exact budgets, one-short byte/item budgets, strict trailing rejection and prefix tail consumption passed; small source carriers test every truncation, both context branches, all 256 raw bool bytes, hostile counts, unsupported versions and nested string/float storage. Actual corpus operations carry 92 Operations, 92 OperationDefs and 98 OperationTeams per Core, each checked against original nested hook extents. This is original Save-output validation, not an original Read or gameplay oracle.
+
+Reproduce without native execution:
+
+```sh
+python3 tools/linux/player_ai_military_audit.py --source-commit 3b84280 --output target/linux/player-ai-military.json
+```
