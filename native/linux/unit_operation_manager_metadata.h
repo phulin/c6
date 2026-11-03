@@ -6,7 +6,9 @@
  * handlers, requests, actions or turn advancement are executed. The separate
  * c6_linux_unit_operation_manager_metadata_quiescent guard is required; unknown
  * work exits immediately before further observation or cleanup. Output is raw
- * JSONL facts at exclusive C6_UNIT_OPERATION_MANAGER_METADATA_OUTPUT. Unsupported
+ * ET_EXEC host absolute ELF VAs use load bias dli_fbase-0x400000; GameCore
+ * ET_DYN RVAs use its actual base. All 65 player slots and complete roster
+ * membership are explicit. Framed v2 JSONL facts at exclusive C6_UNIT_OPERATION_MANAGER_METADATA_OUTPUT. Unsupported
  * returns nonzero and never substitutes a zero/false observation. Partial output
  * on failure is not an accepted capture. All native pointers are borrowed. */
 int c6_linux_unit_operation_manager_metadata_probe(void *module,void *borrowed_context);

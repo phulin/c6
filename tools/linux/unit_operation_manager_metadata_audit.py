@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import struct
 import subprocess
@@ -380,7 +381,33 @@ METHODS = [('gamecore',
   'const, Data::TypedVariant>*, eastl::pair<unsigned int const, '
   'Data::TypedVariant>&>::rbtree_iterator(eastl::rbtree_node<eastl::pair<unsigned int const, '
   'Data::TypedVariant> > const*)',
-  '539cfe51c3dc23be3a51b13f4cd6c55a914a4a8b4c38fc3a0789fb490f8d23ac')]
+  '539cfe51c3dc23be3a51b13f4cd6c55a914a4a8b4c38fc3a0789fb490f8d23ac'),
+ ('gamecore',
+  33574848,
+  51,
+  'GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const',
+  '31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038'),
+ ('gamecore',
+  33572480,
+  12,
+  'GameCore::Player::Manager::GetPlayerToIndex() const',
+  '4559158698f06477f0713cb29647b1504e9dfc42ad6c2b39d4dda61184eb794b'),
+ ('gamecore',
+  41829664,
+  12,
+  'eastl::vector<int, eastl::fixed_vector_allocator<4ul, 65ul, 4ul, 0ul, true, eastl::allocator> >::size() '
+  'const',
+  'ae44bae11d894985cb645110e44b652d1877edf80086bfb18223e0d272d516f6'),
+ ('gamecore',
+  45766016,
+  12,
+  'GameCore::Player::Units::Find(unsigned int) const',
+  'd198a658e55262febda648055233f9b1d2069441377f889fb95313bd318f7091'),
+ ('gamecore',
+  47690960,
+  8,
+  'GameCore::Game::Instance::GetSyncRandom() const',
+  'f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b')]
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
@@ -401,6 +428,17 @@ def self_test():
         harness.write_text('#include "' + str(ROOT / SOURCE) + '"\n' + r'''
 #include <assert.h>
 int main(void) {
+ uintptr_t bias=99;
+ assert(host_bias_for_base(0x400000,&bias)&&bias==0);
+ assert(!host_bias_for_base(0,&bias));
+ assert(!host_bias_for_base(0x800000,&bias));
+ assert(host_symbol_binding(0x400000,0x395f480,0x395f480,&bias)&&bias==0);
+ /* This is the exact fca6e3e erroneous host-base-plus-ELF-VA result. */
+ assert(!host_symbol_binding(0x400000,0x400000+0x395f480,0x395f480,&bias));
+ assert(!host_symbol_binding(0x800000,0x395f480,0x395f480,&bias));
+ unsigned char header[20]={127,'E','L','F',2,1};header[16]=2;header[18]=62;
+ assert(elf_header(header,2));assert(!elf_header(header,3));
+ header[16]=3;assert(elf_header(header,3));header[18]=0;assert(!elf_header(header,3));
  size_t n=99;
  assert(span(0,0,8,0,&n)&&n==0);
  assert(span(8,40,8,4,&n)&&n==4);
@@ -438,6 +476,10 @@ def main():
         require(sha(images[image].read(address, size)) == fingerprint, 'complete method differs: ' + name)
         methods.append(dict(image=image, address=hex(address), bytes=size, name=name, sha256=fingerprint))
     host, game = images['host'], images['gamecore']
+    require(struct.unpack_from('<H',host.raw,16)[0]==2 and min(lo for lo,hi,off in host.loads)==0x400000,
+            'host must be pinned ET_EXEC with first PT_LOAD VA 0x400000')
+    require(struct.unpack_from('<H',game.raw,16)[0]==3 and min(lo for lo,hi,off in game.loads)==0,
+            'GameCore must be pinned ET_DYN with zero-based ELF VAs')
     require(int.from_bytes(host.read(0x53b3690+0x70,8),'little') == 0x395f480,
             'constructed map const virtual binding differs')
     for address in [0x395f081,0x395f103]:
@@ -458,11 +500,20 @@ def main():
     automation = game.read(0x2b5c3c0,7)
     require(automation[:2]==bytes.fromhex('8b05') and 0x2b5c3c0+6+struct.unpack_from('<i',automation,2)[0]==0x3c06598,
             'automation global target differs')
+    require(game.read(0x2d7b4d0,8).hex()=='488d87f8000000c3','Game sync RNG reference offset differs')
+    native_symbols=subprocess.check_output(['nm','-D','-S','-C',str(a.assets/'libGameCore_XP2.so')],text=True)
+    require(re.search(r'^0*3c072f0\s+0*20\s+B GameCore::Map::Generator::ms_kRandom$',native_symbols,re.M),
+            'actual Map RNG global address/32-byte symbol size differs')
     source = (ROOT / SOURCE).read_text()
     for part in ['U1 count_get=', 'II find_index=', 'int32_t (*hash_index)',
                  'c6_linux_unit_operation_manager_metadata_quiescent', 'fopen(path,"wx")',
-                 'size>capacity', 'data>UINTPTR_MAX-size', 'map_binding(root,host)',
-                 '(uintptr_t)as_map!=host+0x321c700', 'as_map(child)!=map',
+                 'size>capacity', 'data>UINTPTR_MAX-size', 'map_binding(root,host_bias)',
+                 '(uintptr_t)as_map!=host_bias+0x321c700', 'as_map(child)!=map', 'host_symbol_binding(host_base,(uintptr_t)lookup,0x395f480,&host_bias)',
+                 '!elf_header((const void *)base,3)', '!elf_header((const void *)host_base,2)',
+                 'mapping_size((const unsigned char *)manager+0x1a08)!=65',
+                 'player!=(mapping_valid?stored:NULL)', 'find_unit(units,id)!=unit',
+                 'seen_slots[unit_slot/8]', 'player_slot', 'roster_summary',
+                 'c6-linux-unit-operation-manager-metadata-v2',
                  'raw(out,vector,32)', 'raw(out,list,32)', 'raw(out,(const void *)data,size)',
                  'script_callbacks_inspected\\\":false']:
         require(part in source,'required source boundary absent: '+part)
@@ -472,18 +523,30 @@ def main():
         '-ex',"ptype 'GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>'",
         '-ex',"ptype /o 'GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>'",
         '-ex',"ptype /o 'Types::LinearAlloc::LinearBlock<bool>'",
+        '-ex',"ptype /o 'GameCore::Random'",
         '-ex',"ptype /o 'eastl::VectorBase<GameCore::Definition::TurnPhase const*, eastl::allocator>'"], text=True)
     for part in ['uint32_t GetCount() const','uint32_t size() const','int32_t FindIndex(uint32_t) const',
                  's_Purgatory','nElements','mpBegin','mpEnd','mpCapacity','mAllocator','total size (bytes):   32']:
         require(part in dwarf,'DWARF contract differs: '+part)
+    for offset,typename,name in [(8,'SeedType','m_ulRandomSeed'),(12,'uint32','m_ulCallCount'),
+                                  (16,'uint32','m_ulResetCount'),(20,'uint','m_uiLockCount'),(24,'bool','m_bSynchronous')]:
+        width=1 if offset==24 else 4
+        require(re.search(r'/\*\s*'+str(offset)+r'\s*\|\s*'+str(width)+r'\s*\*/\s+'+typename+r' '+name+r';',dwarf),
+                'known Random object field layout differs: '+name)
     self_test()
-    report = dict(schema='c6-linux-unit-operation-manager-metadata-preparation-v1', checks_passed=True,
+    report = dict(schema='c6-linux-unit-operation-manager-metadata-preparation-v2', checks_passed=True,
         gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,original_execution_performed=False,
         native_capture_available=False,new_profile_required=True,methods=methods,
+        supersedes_preparation_commit='fca6e3e',
+        historical_preparation_defect='fca6e3e added ET_EXEC dli_fbase to already absolute host ELF VAs; unexecuted helper would reject entry',
+        elf_address_rules=dict(host_type='ET_EXEC',host_first_load_va='0x400000',required_host_dli_fbase='0x400000',
+            host_load_bias=0,host_constants='ELF VAs; add load bias only',gamecore_type='ET_DYN',
+            gamecore_first_load_va=0,gamecore_constants='zero-based ELF VAs/RVAs; add actual module load bias',
+            runtime_checks=['exact host lookup symbol VA','mapped ELF64 little-endian x86-64 host ET_EXEC and GameCore ET_DYN headers']),
         source_sha256={name:sha((ROOT/name).read_bytes()) for name in [SOURCE,HEADER,AUDIT]},
         configured_phase_provider=dict(status='closed_for_concrete_standard_map_binding_only',
             root_offset=128,game_map_offset=136,initializer='0x28e54d0',const_virtual_slot=112,
-            host_map_vptr='0x53b3690',host_const_lookup='0x395f480',host_const_map_conversion='0x321c700',
+            host_map_vptr='ELF VA 0x53b3690',host_const_lookup='0x395f480',host_const_map_conversion='0x321c700',
             lifetime='borrowed retained Configuration/Game root owns Key_Game child; retain root and its real variant manager until observer returns',
             runtime_required=['nonnull actual root and game maps','both concrete vptr/const lookup bindings','root Key_Game const conversion equals actual configuration+0x88','exact host conversion binding'],
             unknown_override='unsupported before lookup; never substituted'),
@@ -491,14 +554,17 @@ def main():
             'all actual Unit disabled IndexList size/capacity/default rawbyte/ordered raw values',
             'current raw phase enum and actual configured phase hash plus raw nullable ordered 32-byte phase vector',
             'phase/segment rowids, phase type hash, signed phase order and raw segment flags',
-            'Game pause rawbyte and automation player rawenum','actual Player IDs, turn-active rawbyte and slot status',
+            'Game pause rawbyte and automation player rawenum','all 65 player slots: actual mapped index, original validity, stored and resolved identities; actual Player IDs/turn-active rawbyte/slot status',
             'ScriptSystem availability and actual vptr; callbacks remain uninspected'],
+        known_rng_snapshot_contract=dict(game_const_getter='0x2d7b4d0',game_offset=248,map_global='0x3c072f0',
+            bytes_per_object=32,field_offsets=dict(seed=8,calls=12,resets=16,lock=20,synchronous=24),
+            complete_gameplay_rng_coverage=False,snapshots_performed=False),
         scalar_abi=dict(definition_GetCount='u32',definition_size='u32',FindIndex='i32',HashToIndex='i32',
             phase_order='i32',current_phase='i32',automation_player='i32',phase_vector_bytes=32,
             disabled_list_bytes=32,disabled_default_offset=24,disabled_size_offset=16,disabled_capacity_offset=8),
-        validation=['67 complete original method fingerprints including full host const-lookup/conversion leaf closure',
+        validation=['72 complete original method fingerprints including full host const-lookup/conversion leaf closure',
             'pinned host/game whole ELF hashes','original concrete host map virtual slot and constructor origin',
-            'target DWARF widths and storage layouts','strict C warnings/analyzer','UBSan actual guard/raw-byte/preflight checks without original execution'],
+            'target DWARF widths and storage layouts','strict C warnings/analyzer','UBSan actual ET_EXEC symbol binding regression, ELF-header/extent guards, raw-byte/preflight checks without original execution'],
         unresolved=['new source/profile-specific admission and quiescent guard','new runner integration and immutable candidate identity',
             'same-context native raw facts and independent saved Unit/PlayerHeader/rules crosschecks',
             'four internal plus two outer raw Saves, two known RNG checks, repeat capture and cleanup',

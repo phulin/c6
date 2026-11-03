@@ -33,23 +33,37 @@ static bool span(uintptr_t begin,uintptr_t end,size_t width,size_t limit,size_t 
     uintptr_t n=(end-begin)/width;if(n>limit)return false;
     *count=(size_t)n;return true;
 }
+/* Civ6 is pinned ET_EXEC: dli_fbase is its first PT_LOAD at 0x400000,
+ * while symbol/table constants are already ELF VAs. Only ET_DYN GameCore
+ * constants are RVAs added directly to dli_fbase. */
+static bool host_bias_for_base(uintptr_t actual_base,uintptr_t *bias) {
+    if(actual_base!=0x400000)return false;
+    *bias=actual_base-0x400000;return true;
+}
+static bool host_symbol_binding(uintptr_t actual_base,uintptr_t symbol,uintptr_t elf_va,uintptr_t *bias) {
+    return host_bias_for_base(actual_base,bias)&&elf_va<=UINTPTR_MAX-*bias&&symbol==*bias+elf_va;
+}
+static bool elf_header(const void *base,unsigned type) {
+    return !memcmp(base,"\177ELF\002\001",6)&&byte(base,16)==type&&
+        byte(base,17)==0&&byte(base,18)==62&&byte(base,19)==0;
+}
 static void idle(int (*guard)(void *,void *),void *module,void *context) {
     int rc=guard(module,context);
     if(rc){fprintf(stderr,"C6_LINUX_MANAGER_METADATA quiescence_unproven %d no_post_state_or_cleanup\n",rc);fflush(stderr);_exit(240);}
 }
-static bool map_binding(const void *map,uintptr_t host) {
-    return map&&ptr(map,0)==host+0x53b3690&&
-        ptr((const void *)(host+0x53b3690),0x70)==host+0x395f480;
+static bool map_binding(const void *map,uintptr_t host_bias) {
+    return map&&ptr(map,0)==host_bias+0x53b3690&&
+        ptr((const void *)(host_bias+0x53b3690),0x70)==host_bias+0x395f480;
 }
-static int configuration(FILE *out,uintptr_t base,uintptr_t host) {
+static int configuration(FILE *out,uintptr_t base,uintptr_t host_bias) {
     P0 get=(void *)(base+0x2003e60);
     const void *config=get();if(!config)return 243;
     const void *root=(const void *)ptr(config,0x80),*map=(const void *)ptr(config,0x88);
     /* InitializeGameVariants borrows the Key_Game child of root. The runner
      * retains root's actual owner and its variant manager throughout this call.
      * Unknown provider overrides are unsupported before any virtual lookup. */
-    if(!map_binding(root,host)||!map_binding(map,host))return 243;
-    PI lookup=(void *)(host+0x395f480);
+    if(!map_binding(root,host_bias)||!map_binding(map,host_bias))return 243;
+    PI lookup=(void *)(host_bias+0x395f480);
     const void *key_game=(const void *)ptr((const void *)(base+0x3b21748),0);
     const void *key_mode=(const void *)ptr((const void *)(base+0x3b1eb38),0);
     const void *key_phase=(const void *)ptr((const void *)(base+0x3b15228),0);
@@ -57,7 +71,7 @@ static int configuration(FILE *out,uintptr_t base,uintptr_t host) {
     uint32_t game_key=(uint32_t)i32(key_game,0),mode_key=(uint32_t)i32(key_mode,0),phase_key=(uint32_t)i32(key_phase,0);
     const void *child=lookup(root,game_key);
     const void *(*as_map)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK4Data12TypedVariantcvPKNS_15TypedVariantMapEEv");
-    if((uintptr_t)as_map!=host+0x321c700||!child||as_map(child)!=map)return 243;
+    if((uintptr_t)as_map!=host_bias+0x321c700||!child||as_map(child)!=map)return 243;
     const void *mode=lookup(map,mode_key),*phase=lookup(map,phase_key);
     if(!mode||!phase)return 243;
     U1 configured=(void *)(base+0x28e4870);
@@ -107,6 +121,10 @@ static int registry(FILE *out,uintptr_t base) {
 static int players(FILE *out,uintptr_t base,const void *game,int (*guard)(void *,void *),void *module,void *context) {
     P1 manager_get=(void *)(base+0x20e0670),config_get=(void *)(base+0x2b315e0),units_get=(void *)(base+0x1fccc70);
     const void *(*player_get)(const void *,int32_t)=(void *)(base+0x2003940);
+    bool (*valid)(const void *,int32_t)=(void *)(base+0x2004fc0);
+    const int32_t *(*mapping_get)(const void *)=(void *)(base+0x2004680);
+    uint64_t (*mapping_size)(const void *)=(void *)(base+0x27e4520);
+    PI find_unit=(void *)(base+0x2ba5580);
     I1 owner=(void *)(base+0x1fcc140),slot=(void *)(base+0x28ebe70);
     U1 units_count=(void *)(base+0x1fe4ee0),unit_id=(void *)(base+0x2021490);
     Iterator (*begin)(const void *)=(void *)(base+0x2021450),(*end)(const void *)=(void *)(base+0x2021470);
@@ -114,25 +132,38 @@ static int players(FILE *out,uintptr_t base,const void *game,int (*guard)(void *
     Iterator *(*next)(Iterator *)=(void *)(base+0x20214a0);
     const void *manager=manager_get(game);if(!manager)return 246;
     size_t players_n;if(!span(ptr(manager,0x20),ptr(manager,0x28),8,65,&players_n)||players_n!=65)return 246;
+    size_t actual_players=0,total_units=0;
+    if(mapping_size((const unsigned char *)manager+0x1a08)!=65)return 246;
+    const int32_t *mapping=mapping_get(manager);if(!mapping)return 246;
     for(int32_t p=0;p<65;p++) {
-        idle(guard,module,context);const void *player=player_get(manager,p);
+        idle(guard,module,context);bool mapping_valid=valid(manager,p);
+        const void *player=player_get(manager,p);
+        const void *stored=(const void *)ptr((const void *)ptr(manager,0x20),(size_t)p*8);
+        if(player!=(mapping_valid?stored:NULL))return 246;
+        fprintf(out,"{\"kind\":\"player_slot\",\"query\":%d,\"mapped_index\":%d,\"mapping_valid\":%s,\"stored_player\":%" PRIuPTR ",\"resolved_player\":%" PRIuPTR "}\n",p,mapping[p],mapping_valid?"true":"false",(uintptr_t)stored,(uintptr_t)player);
         if(!player)continue;
+        actual_players++;
         const void *config=config_get(player),*units=units_get(player);
         if(!config||!units||owner(player)!=p)return 246;
         fprintf(out,"{\"kind\":\"player\",\"query\":%d,\"actual_id\":%d,\"turn_active_raw\":%u,\"slot_status\":%d}\n",p,owner(player),byte(player,0x290),slot(config));
         uint32_t count=units_count(units);if(count>65536)return 246;
-        Iterator it=begin(units),last=end(units);uint32_t n=0;
+        Iterator it=begin(units),last=end(units);uint32_t n=0;unsigned char seen_slots[65536/8]={0};
         for(;it.entry!=last.entry;n++,next(&it)) {
             if(n>=count)return 246;
             idle(guard,module,context);const void *unit=deref(&it);
             if(!unit||ptr(unit,0)!=base+0x3ae5f80||i32(unit,0x130)!=p)return 246;
+            uint32_t id=unit_id(unit),unit_slot=id&65535u;
+            if(find_unit(units,id)!=unit||seen_slots[unit_slot/8]&(1u<<(unit_slot%8)))return 246;
+            seen_slots[unit_slot/8]|=(unsigned char)(1u<<(unit_slot%8));
             const void *list=(const unsigned char *)unit+0xbe0;
             uint32_t size=(uint32_t)i32(list,16),capacity=(uint32_t)i32(list,8);uintptr_t data=ptr(list,0);
             if(size>capacity||capacity>65536||(!data&&size)||data>UINTPTR_MAX-size)return 246;
-            fprintf(out,"{\"kind\":\"unit_disabled\",\"owner\":%d,\"ordinal\":%u,\"id\":%u,\"size\":%u,\"capacity\":%u,\"default_raw\":%u,\"list_raw\":",p,n,unit_id(unit),size,capacity,byte(list,24));raw(out,list,32);fputs(",\"values_raw\":",out);raw(out,(const void *)data,size);fputs("}\n",out);
+            fprintf(out,"{\"kind\":\"unit_disabled\",\"owner\":%d,\"ordinal\":%u,\"id\":%u,\"size\":%u,\"capacity\":%u,\"default_raw\":%u,\"list_raw\":",p,n,id,size,capacity,byte(list,24));raw(out,list,32);fputs(",\"values_raw\":",out);raw(out,(const void *)data,size);fputs("}\n",out);
         }
         if(n!=count)return 246;
+        total_units+=n;
     }
+    fprintf(out,"{\"kind\":\"roster_summary\",\"player_slots\":65,\"resolved_players\":%zu,\"units\":%zu}\n",actual_players,total_units);
     return 0;
 }
 int c6_linux_unit_operation_manager_metadata_probe(void *module,void *context) {
@@ -141,14 +172,17 @@ int c6_linux_unit_operation_manager_metadata_probe(void *module,void *context) {
     void *lookup=dlsym(RTLD_DEFAULT,"_ZNK4Data15TypedVariantMap10GetVariantEj");
     int (*guard)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_unit_operation_manager_metadata_quiescent");
     if(!anchor||!lookup||!guard||!dladdr(anchor,&game_info)||!dladdr(lookup,&host_info))return 241;
-    uintptr_t base=(uintptr_t)game_info.dli_fbase,host=(uintptr_t)host_info.dli_fbase;
-    if(!base||!host||(uintptr_t)anchor!=base+0x2da1260||(uintptr_t)lookup!=host+0x395f480)return 241;
+    uintptr_t base=(uintptr_t)game_info.dli_fbase,host_base=(uintptr_t)host_info.dli_fbase,host_bias;
+    if(!base||!host_symbol_binding(host_base,(uintptr_t)lookup,0x395f480,&host_bias)||
+       !elf_header((const void *)base,3)||!elf_header((const void *)host_base,2)||
+       (uintptr_t)anchor!=base+0x2da1260)return 241;
     idle(guard,module,context);
     P0 game_get=(void *)(base+0x1fcc320),script_get=(void *)(base+0x2171660);
     const void *game=game_get();if(!game)return 242;
     const char *path=getenv("C6_UNIT_OPERATION_MANAGER_METADATA_OUTPUT");if(!path||!*path)return 242;
     FILE *out=fopen(path,"wx");if(!out)return 242;
-    int rc=configuration(out,base,host);
+    fprintf(out,"{\"kind\":\"profile\",\"schema\":\"c6-linux-unit-operation-manager-metadata-v2\",\"module_base\":%" PRIuPTR ",\"host_base\":%" PRIuPTR ",\"host_load_bias\":%" PRIuPTR "}\n",base,host_base,host_bias);
+    int rc=configuration(out,base,host_bias);
     if(!rc)rc=phases(out,base);
     if(!rc)rc=registry(out,base);
     if(!rc)rc=players(out,base,game,guard,module,context);
@@ -157,6 +191,7 @@ int c6_linux_unit_operation_manager_metadata_probe(void *module,void *context) {
         fprintf(out,"{\"kind\":\"globals\",\"game_pause_raw\":%u,\"automation_player_raw\":%d,\"script_system\":%" PRIuPTR,byte(game,0x228),i32((const void *)(base+0x3c06598),0),(uintptr_t)script);
         if(script)fprintf(out,",\"script_vptr\":%" PRIuPTR,ptr(script,0));
         fputs(",\"script_callbacks_inspected\":false}\n",out);idle(guard,module,context);
+        fputs("{\"kind\":\"complete\",\"player_slots\":65}\n",out);
     }
     if(ferror(out)&&!rc)rc=247;
     if(fclose(out)&&!rc)rc=247;

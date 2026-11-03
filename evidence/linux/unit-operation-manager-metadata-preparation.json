@@ -1,5 +1,5 @@
 {
-  "schema": "c6-linux-unit-operation-manager-metadata-preparation-v1",
+  "schema": "c6-linux-unit-operation-manager-metadata-preparation-v2",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
@@ -475,12 +475,63 @@
       "bytes": 4,
       "name": "eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant>*, eastl::pair<unsigned int const, Data::TypedVariant>&>::rbtree_iterator(eastl::rbtree_node<eastl::pair<unsigned int const, Data::TypedVariant> > const*)",
       "sha256": "539cfe51c3dc23be3a51b13f4cd6c55a914a4a8b4c38fc3a0789fb490f8d23ac"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2004fc0",
+      "bytes": 51,
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const",
+      "sha256": "31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2004680",
+      "bytes": 12,
+      "name": "GameCore::Player::Manager::GetPlayerToIndex() const",
+      "sha256": "4559158698f06477f0713cb29647b1504e9dfc42ad6c2b39d4dda61184eb794b"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x27e4520",
+      "bytes": 12,
+      "name": "eastl::vector<int, eastl::fixed_vector_allocator<4ul, 65ul, 4ul, 0ul, true, eastl::allocator> >::size() const",
+      "sha256": "ae44bae11d894985cb645110e44b652d1877edf80086bfb18223e0d272d516f6"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2ba5580",
+      "bytes": 12,
+      "name": "GameCore::Player::Units::Find(unsigned int) const",
+      "sha256": "d198a658e55262febda648055233f9b1d2069441377f889fb95313bd318f7091"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2d7b4d0",
+      "bytes": 8,
+      "name": "GameCore::Game::Instance::GetSyncRandom() const",
+      "sha256": "f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b"
     }
   ],
+  "supersedes_preparation_commit": "fca6e3e",
+  "historical_preparation_defect": "fca6e3e added ET_EXEC dli_fbase to already absolute host ELF VAs; unexecuted helper would reject entry",
+  "elf_address_rules": {
+    "host_type": "ET_EXEC",
+    "host_first_load_va": "0x400000",
+    "required_host_dli_fbase": "0x400000",
+    "host_load_bias": 0,
+    "host_constants": "ELF VAs; add load bias only",
+    "gamecore_type": "ET_DYN",
+    "gamecore_first_load_va": 0,
+    "gamecore_constants": "zero-based ELF VAs/RVAs; add actual module load bias",
+    "runtime_checks": [
+      "exact host lookup symbol VA",
+      "mapped ELF64 little-endian x86-64 host ET_EXEC and GameCore ET_DYN headers"
+    ]
+  },
   "source_sha256": {
-    "native/linux/unit_operation_manager_metadata.c": "0222c430c31ff5cf9ea744c0cfb9a8aef4cedb8a1fa78c5dd79af8b1b0d8356a",
-    "native/linux/unit_operation_manager_metadata.h": "d98c03080cb0529d7d951dc1423d501901d32e3b4e70477ee97c831b13704638",
-    "tools/linux/unit_operation_manager_metadata_audit.py": "819d523d5f6cf00d046ef84bd36c346c8c545c6ef10e436bea3cc2feb442018f"
+    "native/linux/unit_operation_manager_metadata.c": "adb04fa423772889e7f5608df8587c3e8f34de2e876342cfb8d030ba26ab7f57",
+    "native/linux/unit_operation_manager_metadata.h": "222f034487c3f56a2d9c152fbce672343e764ca7100612beb55926d800567589",
+    "tools/linux/unit_operation_manager_metadata_audit.py": "da62ff2eae1c6de6ed34a0cb9929e431bae5e55a6d213e72c48f4de7f6107c96"
   },
   "configured_phase_provider": {
     "status": "closed_for_concrete_standard_map_binding_only",
@@ -488,7 +539,7 @@
     "game_map_offset": 136,
     "initializer": "0x28e54d0",
     "const_virtual_slot": 112,
-    "host_map_vptr": "0x53b3690",
+    "host_map_vptr": "ELF VA 0x53b3690",
     "host_const_lookup": "0x395f480",
     "host_const_map_conversion": "0x321c700",
     "lifetime": "borrowed retained Configuration/Game root owns Key_Game child; retain root and its real variant manager until observer returns",
@@ -506,9 +557,24 @@
     "current raw phase enum and actual configured phase hash plus raw nullable ordered 32-byte phase vector",
     "phase/segment rowids, phase type hash, signed phase order and raw segment flags",
     "Game pause rawbyte and automation player rawenum",
-    "actual Player IDs, turn-active rawbyte and slot status",
+    "all 65 player slots: actual mapped index, original validity, stored and resolved identities; actual Player IDs/turn-active rawbyte/slot status",
     "ScriptSystem availability and actual vptr; callbacks remain uninspected"
   ],
+  "known_rng_snapshot_contract": {
+    "game_const_getter": "0x2d7b4d0",
+    "game_offset": 248,
+    "map_global": "0x3c072f0",
+    "bytes_per_object": 32,
+    "field_offsets": {
+      "seed": 8,
+      "calls": 12,
+      "resets": 16,
+      "lock": 20,
+      "synchronous": 24
+    },
+    "complete_gameplay_rng_coverage": false,
+    "snapshots_performed": false
+  },
   "scalar_abi": {
     "definition_GetCount": "u32",
     "definition_size": "u32",
@@ -524,12 +590,12 @@
     "disabled_capacity_offset": 8
   },
   "validation": [
-    "67 complete original method fingerprints including full host const-lookup/conversion leaf closure",
+    "72 complete original method fingerprints including full host const-lookup/conversion leaf closure",
     "pinned host/game whole ELF hashes",
     "original concrete host map virtual slot and constructor origin",
     "target DWARF widths and storage layouts",
     "strict C warnings/analyzer",
-    "UBSan actual guard/raw-byte/preflight checks without original execution"
+    "UBSan actual ET_EXEC symbol binding regression, ELF-header/extent guards, raw-byte/preflight checks without original execution"
   ],
   "unresolved": [
     "new source/profile-specific admission and quiescent guard",
