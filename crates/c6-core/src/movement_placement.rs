@@ -747,8 +747,8 @@ pub fn shore_unit_result(plot: ShorePlacementPlot<'_>) -> Result<i32, PlacementM
     let ShorePlacementPlot::Present(f) = plot else {
         return Ok(0);
     };
-    let definition = required(f.definition, PlacementMissing::Definition)?;
     let mut rejected = required(f.terrain, PlacementMissing::TerrainPrefix)?.rejected;
+    let definition = required(f.definition, PlacementMissing::Definition)?;
     if matches!(definition, PlacementDefinition::Present { spy: true, .. })
         && required(f.district_type, PlacementMissing::DistrictType)? == -1
     {
@@ -803,6 +803,10 @@ mod unit_result_tests {
     }
     #[test]
     fn unresolved_terrain_prefix_never_becomes_false_by_default() {
+        assert_eq!(
+            result(&ShoreUnitFacts::default()),
+            Err(PlacementMissing::TerrainPrefix)
+        );
         let mut f = own();
         f.terrain = None;
         assert_eq!(result(&f), Err(PlacementMissing::TerrainPrefix));
