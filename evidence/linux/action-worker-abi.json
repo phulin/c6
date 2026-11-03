@@ -199,6 +199,48 @@
       "size": 4,
       "name": "CriticalSection.GetRecursionCount",
       "sha256": "123844b3d139f0b75833926319edcaa7dacf7529e5ca1b5d6afa59806bc75758"
+    },
+    {
+      "module": "host",
+      "address": "0x2ce1ae4",
+      "size": 5,
+      "name": "ASL_WinCreateThreadWithName.forward",
+      "sha256": "771c44122d32595cefdb5326128eb103233da727601f043f32d7acc398477687"
+    },
+    {
+      "module": "host",
+      "address": "0x2cdfa0b",
+      "size": 155,
+      "name": "ASL.WinCreateThreadWithName",
+      "sha256": "250b3e5649fe0e7e19aefa2ee1066b7d1ddc86d1381226691bd3f3c17b89ed54"
+    },
+    {
+      "module": "host",
+      "address": "0x2cdfaa6",
+      "size": 596,
+      "name": "ThreadHANDLE.C1",
+      "sha256": "407c89860f010120275d87ecc26fa6e96164b25cc4a2b84b46f47a67e92a2f6c"
+    },
+    {
+      "module": "host",
+      "address": "0x2cdf8e0",
+      "size": 20,
+      "name": "ASL.PrepareMainThread",
+      "sha256": "c0ad799f23f9919f8ec5f96436586c6e44ff81e684fa6bcb0ce590630116a3b3"
+    },
+    {
+      "module": "host",
+      "address": "0x2d8ae7d",
+      "size": 21,
+      "name": "GetLastError",
+      "sha256": "84e2989c3b214b2db7831416e7c6aa625e51969cdb4d20d3405cda197ee8ee8f"
+    },
+    {
+      "module": "host",
+      "address": "0x3c44ac0",
+      "size": 140,
+      "name": "Platform.CreateThread.normal_path",
+      "sha256": "456b15680cd5575be59fb232facbf9a58c96334f6e8339b6671ea03860dd2ad9"
     }
   ],
   "calls": [
@@ -254,6 +296,18 @@
     "worker_run": "0x31d11d0",
     "delegate_call": "0x3c44eac",
     "pre_start_callback": "Platform.JobManager.RegisterMasterThread"
+  },
+  "creation_failure": {
+    "admission_byte": "host0x544cc70 bit0",
+    "admission_branch": "0x2cdfa2d; clear returnsNULL without pthread call",
+    "native_admission_lifecycle": "ASL.PrepareMainThread exchanges admission byte then original OnCreateThread; not executed by this audit",
+    "pthread_attr_init_return": "0x2cdfbd5",
+    "pthread_detach_return": "0x2cdfbe5",
+    "pthread_stack_return": "0x2cdfc0b; return unchecked by original",
+    "pthread_create_return": "0x2cdfc25",
+    "requested_stack": "original worker option1 yields ASL request0; original ThreadHANDLE normalizes to max(request,1048576)",
+    "affinity": "no affinity operation in audited constructor path",
+    "error_propagation": "admission rejection does not set error; pthread_create error is overwritten before later GetLastError, which reads separate TLS error"
   },
   "lock_diagnostics": {
     "worker_lock": "worker+0",
