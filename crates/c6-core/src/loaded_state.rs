@@ -298,6 +298,11 @@ mod tests {
         state.install_diplomacy_manager(crate::diplomacy_manager::PendingStateSnapshot {
             witness,
             ever_alive: vec![crate::diplomacy_manager::PlayerHandle { owner }],
+            allocation_slots: {
+                let mut slots = vec![None; 65];
+                slots[0] = Some(crate::diplomacy_manager::PlayerHandle { owner });
+                slots
+            },
             open_sessions: crate::diplomacy_manager::EmptyOpenSessions::from_has_pending_session_statements(false).unwrap(),
             pending_actions: vec![],
         }).unwrap();
@@ -310,6 +315,7 @@ mod tests {
         let snapshot = || crate::diplomacy_manager::PendingStateSnapshot {
             witness: w.clone(),
             ever_alive: vec![],
+            allocation_slots: vec![None; 65],
             open_sessions:
                 crate::diplomacy_manager::EmptyOpenSessions::from_has_pending_session_statements(
                     false,
@@ -481,6 +487,54 @@ mod tests {
         assert!(!state.is_pristine());
         assert!(processor.seen.is_empty());
         assert!(state.diplomacy_manager().unwrap().has_outgoing(owner));
+    }
+    #[test]
+    fn diplomacy_inventory_uses_allocation_slots_not_owner_id_range() {
+        use crate::diplomacy_manager::{EmptyOpenSessions, PendingStateSnapshot, PlayerHandle};
+        fn owner64_state() -> LoadedState {
+            let mut state = state();
+            state.world = world::World::new(
+                state.world.map().clone(),
+                vec![world::Player::new(64, None, None).unwrap()],
+            )
+            .unwrap();
+            state.retained.players[0].header.owner = 64;
+            state.retained.players[0].header.ordered_flags[1] = true;
+            state
+                .bind_observed_snapshot_controls(witness(&state), controls(&state))
+                .unwrap();
+            state
+        }
+        let mut state = owner64_state();
+        let w = state.observed_snapshot().unwrap().clone();
+        let mut allocation = vec![None; 65];
+        allocation[0] = Some(PlayerHandle { owner: 64 });
+        let snapshot = |ever_alive, allocation_slots| PendingStateSnapshot {
+            witness: w.clone(),
+            ever_alive,
+            allocation_slots,
+            open_sessions: EmptyOpenSessions::from_has_pending_session_statements(false).unwrap(),
+            pending_actions: vec![],
+        };
+        assert!(matches!(
+            state.install_diplomacy_manager(snapshot(vec![], allocation.clone())),
+            Err(Error::Binding)
+        ));
+        assert!(state.diplomacy_manager().is_err());
+        state
+            .install_diplomacy_manager(snapshot(vec![PlayerHandle { owner: 64 }], allocation))
+            .unwrap();
+        assert_eq!(
+            state.diplomacy_manager().unwrap().ever_alive(),
+            [PlayerHandle { owner: 64 }]
+        );
+        // InitializeLists excludes allocation slot64, irrespective of owner ID.
+        let mut last = owner64_state();
+        let mut allocation = vec![None; 65];
+        allocation[64] = Some(PlayerHandle { owner: 64 });
+        last.install_diplomacy_manager(snapshot(vec![], allocation))
+            .unwrap();
+        assert!(last.diplomacy_manager().unwrap().ever_alive().is_empty());
     }
     #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
@@ -943,33 +997,34 @@ impl LoadedState {
             .controls
             .as_ref()
             .ok_or(Error::Missing(MissingInput::ManagerSlots))?;
-        // Check complete membership against the admitted ID-to-pointer table,
-        // but preserve the observed allocation-slot order. InitializeLists scans
-        // a DIFFERENT allocation-slot table; sorting player IDs would be wrong.
-        // Do not infer pointer presence or allocation order from saved rosters.
+        // These are two separate native tables. IDs need not follow allocation
+        // order, and owner64 may occur within the first64 allocation slots.
+        if snapshot.allocation_slots.len() != 65 {
+            return Err(Error::Binding);
+        }
+        let mut present = [false; 65];
         let mut expected = reserved(64)?;
-        for owner in 0..64 {
-            if !controls.player_slots[owner] {
-                continue;
+        for (index, handle) in snapshot.allocation_slots.iter().enumerate() {
+            let Some(handle) = handle else { continue };
+            let owner = usize::try_from(handle.owner)
+                .ok()
+                .filter(|owner| *owner < 65)
+                .ok_or(Error::Binding)?;
+            if !controls.player_slots[owner] || std::mem::replace(&mut present[owner], true) {
+                return Err(Error::Binding);
             }
             let record = self
                 .retained
                 .players
                 .iter()
-                .find(|p| p.header.owner == owner as i32)
-                .ok_or(Error::Missing(MissingInput::Player(owner as i32)))?;
-            if record.header.saved_was_ever_alive() {
-                self.player_controls(owner as i32)?;
-                expected.push(crate::diplomacy_manager::PlayerHandle {
-                    owner: owner as i32,
-                });
+                .find(|p| p.header.owner == handle.owner)
+                .ok_or(Error::Missing(MissingInput::Player(handle.owner)))?;
+            if index < 64 && record.header.saved_was_ever_alive() {
+                self.player_controls(handle.owner)?;
+                expected.push(*handle);
             }
         }
-        if snapshot.ever_alive.len() != expected.len()
-            || expected
-                .iter()
-                .any(|player| !snapshot.ever_alive.contains(player))
-        {
+        if present != controls.player_slots || snapshot.ever_alive != expected {
             return Err(Error::Binding);
         }
         let manager = crate::diplomacy_manager::Manager::from_observed_empty_sessions(

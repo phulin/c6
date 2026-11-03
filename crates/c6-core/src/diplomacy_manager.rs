@@ -62,6 +62,9 @@ impl EmptyOpenSessions {
 pub struct PendingStateSnapshot {
     pub witness: crate::loaded_state::ObservedSnapshotWitness,
     pub ever_alive: Vec<PlayerHandle>,
+    /// Complete actual 65-entry allocation-slot table, distinct from the ID
+    /// table. InitializeLists visits only its first64 entries, in this order.
+    pub allocation_slots: Vec<Option<PlayerHandle>>,
     pub open_sessions: EmptyOpenSessions,
     pub pending_actions: Vec<PendingAction>,
 }
@@ -86,7 +89,7 @@ impl Manager {
     ) -> Result<Self, Error> {
         if ever_alive.len() > 64
             || ever_alive.iter().enumerate().any(|(i, p)| {
-                !(0..64).contains(&p.owner)
+                !(0..65).contains(&p.owner)
                     || ever_alive[..i].iter().any(|other| other.owner == p.owner)
             })
         {
