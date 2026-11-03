@@ -25,17 +25,21 @@ Checked arithmetic covers accumulated name lengths, record-array allocation and
 record endpoints. Its second pass uses endpoints already proven in bounds.
 Encode checks the same logical record/name allocation budget, encoded-byte
 budget and u32 count/name representability before producing output. Empty
-sections are handled by the library. The example's negative-fixture assertions
-assume the documented nonempty canonical section and do not support an empty
-section as their input.
+sections are handled by the library. Review identified an empty-section panic
+in the validation example; commit `5a63463` fixes its truncation assertions and
+uses checked subtraction for the reduced-record-budget check.
 
 [The actual-section audit](../evidence/linux/requirements-codec.json) reports
 28,304 records and 1,189,125 bytes in each of two distinct canonical sections:
 56,608 record occurrences total. It compares record and field boundaries plus
 signed references and states against the prior independent Python decoder, and
-requires byte-identical full-section encoding. The recorded codec executable's
-SHA-256 still matches the inspected artifact. These checks provide more evidence
-than a constructed Rust encode/decode roundtrip.
+requires byte-identical full-section encoding. These checks provide more evidence
+than a constructed Rust encode/decode roundtrip. That report records the earlier
+executable. After the adapter fix, the owner verified exact empty-section output
+and empty boundaries and reran both complete canonical sections successfully.
+The reviewer inspected the fix and its rerun summary and verified the new
+executable SHA-256:
+`e146e95867eeee92f84c4de475bfc181a5989c1b8fdc2df514432a0883f1ce51`.
 
 The reviewer performed read-only source/evidence and identity checks, without
 another engine run or broad test repeat. The implementation owner's recorded
