@@ -1,0 +1,97 @@
+{
+  "schema": "c6-linux-movement-domain-reconstruction-review-v1",
+  "verdict": "accepted_source_and_current_fixture_prechecks_only",
+  "source_commit": "65d71d42dba26125075385f3dca09c16290c449f",
+  "source_snapshot_sha256": "399a64bc719beffa7a94b827042ce891b5a124c3e64efca56e966e8c6ff3fa65",
+  "candidate_sha256": "eeb2e43481c6fd7898a692a92b73fcb10418e080905ee8482e310df637622c4a",
+  "candidate_bytes": 26220480,
+  "manifest_sha256": "d5af89b8182bfbc0d5a957e26191791a3bcc3128d291b4ed7dac189faad027cd",
+  "manifest_commit": "7cf7ae9",
+  "manifest_sources_verified": 60,
+  "exact_git_archive_and_all_extracted_source_files_verified": true,
+  "reviewed_source_hashes": {
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-data/examples/city_movement_inputs.rs": "f426dbd960f5bf9fb1565fdc493b0d41d5a95627f9d5773f5c8c368543caff11",
+    "crates/c6-data/src/city_movement.rs": "ecf506e0b589bec843c285963e9739b2c75bc9a8d3af605785696ec09e2edb73"
+  },
+  "static_query_audit": {
+    "pinned_original_methods": 45,
+    "direction_tables": 2,
+    "passed": true
+  },
+  "source_checks": {
+    "data_tests_passed": 21,
+    "fixture_dependent_skips": 4,
+    "focused_city_movement_tests": 8,
+    "core_city_district_tests": 6,
+    "strict_data_all_target_clippy": true
+  },
+  "current_native_fixture_prechecks": {
+    "district_endpoints_equal": 3072,
+    "water_endpoints_equal": 3072,
+    "coastal_neighbor_plots_calculated": 6996,
+    "native_coastal_wonder_mask_comparison": false
+  },
+  "independent_synthetic_full_current_map": {
+    "synthetic_metadata": true,
+    "native_mask_comparison": false,
+    "real_city_records": 245,
+    "real_district_prefixes": 1284,
+    "typed_map_plots": 6996,
+    "independent_coastal_neighbors_equal": 6996,
+    "synthetic_masks_equal": 6996,
+    "owned_masks": 5287,
+    "absent_owned_masks": 1709,
+    "coastal_true": 243,
+    "negative_cases": {
+      "missing_metadata": "rejected_without_output",
+      "missing_player": "rejected_without_output",
+      "missing_member": "rejected_without_output",
+      "duplicate_member": "rejected_without_output",
+      "incomplete_registry": "rejected_without_output",
+      "wrong_find": "rejected_without_output",
+      "expected_field": "rejected_without_output",
+      "unknown_xp2": "rejected_without_output",
+      "mismatched_terrain": "rejected_without_output"
+    }
+  },
+  "synthetic_metadata_limits": [
+    "player validity and membership grouped from serialized actual owners solely for synthetic composition exercise; no PlayerManager proof",
+    "all District Canal/InternalOnly false and XP2 explicitly absent",
+    "empty Building registry and no completed Wonders",
+    "no raw native mask comparison"
+  ],
+  "contracts_reviewed": [
+    "complete base pass before XP2 augmentation; deterministic plot order",
+    "Canal and InternalOnly independent; CanalWonder without completion; Bridge after completion",
+    "native signed-short Building remap and second Find including Bridge packed -1 behavior",
+    "coastal rejects source water; passable neighboring water and low16 Landmass slot with signed count>=1; no Area or Landmass water substitution",
+    "original ordered axial neighbors, wrap arithmetic and negative-multiple quirk",
+    "Wonder owning City lookup; signed location>=0; ignores pillage and location equality",
+    "Building Read -1 defaults; unknown hashes ignored; wire-order aliases overwrite",
+    "all65 explicit player mapping and complete membership; query chooses container independently of actual owner",
+    "every serialized City/District consumed once; duplicate low16 slot rejected; requested generation ignored",
+    "full signed i16 mask values remain signed; absent owned attribute mask is None rather than zero",
+    "complete metadata required in full mode; missing inputs abort without output or Map mutation",
+    "strict input schemas reject native plot_expected/coastal/Wonder/mask fields"
+  ],
+  "scope_findings": [
+    {
+      "id": "default_city_attribute_fallback",
+      "status": "explicit_native_comparison_exclusion_required",
+      "detail": "Original GetCityAttributes may return reserved entry0 for absent owned attributes. Frozen65d returns None masks but auxiliary Wonder=false there. Neither proves live default mask or Wonder output.",
+      "affected_current_fixture_plots": 1709,
+      "resolution": "Keep65d freeze per coordinator direction; compare owned-attribute masks only, report fallback mask/Wonder outputs unavailable; author handles separate source tightening/default state evidence followup"
+    }
+  ],
+  "native_capture_status": "pending independently admitted fresh metadata capture",
+  "native_mask_comparisons": 0,
+  "native_coastal_comparisons": 0,
+  "native_wonder_comparisons": 0,
+  "original_code_executed_by_review": false,
+  "complete_affected_state": false,
+  "complete_rng_inventory": false,
+  "full_gameplay_state_actions_turns": false,
+  "raw_save_load_difference_preserved": 89198,
+  "unknown_save_bytes_masked": 0
+}
