@@ -282,14 +282,22 @@ impl World {
             .by_owner
             .binary_search_by_key(&owner, |&(key, _)| key)
             .map_err(|_| MissingInput::Player { owner })?;
-        Ok(&self.players[self.by_owner[i].1])
+        let player = &self.players[self.by_owner[i].1];
+        if player.owner != owner {
+            return Err(MissingInput::RecordOwner { owner });
+        }
+        Ok(player)
     }
     pub fn player_mut(&mut self, owner: i32) -> Result<&mut Player, MissingInput> {
         let i = self
             .by_owner
             .binary_search_by_key(&owner, |&(key, _)| key)
             .map_err(|_| MissingInput::Player { owner })?;
-        Ok(&mut self.players[self.by_owner[i].1])
+        let player = &mut self.players[self.by_owner[i].1];
+        if player.owner != owner {
+            return Err(MissingInput::RecordOwner { owner });
+        }
+        Ok(player)
     }
     pub fn plot_mut(&mut self, index: usize) -> Option<&mut Plot> {
         self.map.plots.get_mut(index)
@@ -635,6 +643,19 @@ mod tests {
         assert_eq!(
             World::new(invalid, vec![]).unwrap_err(),
             MissingInput::InvalidCell
+        );
+    }
+    #[test]
+    fn replacing_player_with_another_owner_cannot_silently_rebind_the_index() {
+        let mut world = World::new(map(), vec![Player::new(7, None, None).unwrap()]).unwrap();
+        *world.player_mut(7).unwrap() = Player::new(2, None, None).unwrap();
+        assert_eq!(
+            world.player(7).unwrap_err(),
+            MissingInput::RecordOwner { owner: 7 }
+        );
+        assert_eq!(
+            world.player_mut(7).unwrap_err(),
+            MissingInput::RecordOwner { owner: 7 }
         );
     }
     #[test]
