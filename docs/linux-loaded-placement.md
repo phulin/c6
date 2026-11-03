@@ -21,3 +21,20 @@ checker manifest, runs that candidate, then opens the independently pinned
 native expected rows. It preserves all failures and exact row differences.
 This is a query comparison, not a save writer or complete World/action/RNG
 acceptance. Historical capture/profile evidence remains immutable.
+
+The frozen `70ff4a1` candidate passed the actual snapshot comparison: all
+**17,584 placement rows and 1,262 Unit definition/Formation bindings** match
+with zero differences. It calculated these from the imported World, not from
+native getter-reconstructed Unit records. Its SHA-256 is
+`e24e0a65efa1340179934234f25069c93be524bf71f52e52620ed9706c2fbdee`;
+all 1,553 archived source files remained unchanged. Source archive, executable
+and freeze manifest are preserved in
+`target/frozen/loaded-placement/70ff4a1868a4b43c66d7a7aa6e261fbc3517709c/`.
+
+[The comparison record](../evidence/linux/loaded-placement-comparison.json)
+pins the source, checker, capture manifest, target runtime and native answer
+digests. World revision remains zero after the read-only queries. Independent
+review of this new comparison is pending. Native3 Read remains decoding
+evidence; the mutable facts remain their actual observed SavedOutput snapshot
+view. Complete native Read, actions, turns and RNG parity remain unsupported.
+The recorded 89,198-byte raw difference remains unmasked.

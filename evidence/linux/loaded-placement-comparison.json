@@ -1,0 +1,32 @@
+{
+  "accepted": true,
+  "bytes_masked": 0,
+  "candidate_sha256": "e24e0a65efa1340179934234f25069c93be524bf71f52e52620ed9706c2fbdee",
+  "checker_sha256": "2d7a8a2935da3fbaa224373a7f3306d30441dfd15d155090fb925de23679c143",
+  "counts": {
+    "count_results": 17584,
+    "unit_binding_results": 1262
+  },
+  "decode_role": "ReadInputCore",
+  "full_action_parity": false,
+  "input_manifest_sha256": "87e3b61271eaeef1fb6f959fedeace75e70bbf35955329f130ab6576f1e10bb5",
+  "mismatches": {
+    "count_results": 0,
+    "unit_binding_results": 0
+  },
+  "native_execution": false,
+  "native_expected_answers_opened_after_candidate": true,
+  "native_expected_sha256": "bc65088165f1b57473738f6ec5f784c86b838060d3c8f2c87a8bebcd5240c882",
+  "native_read_equivalence": false,
+  "output_sha256": "12cb0ae8d64b182b5e1c1769433ba25b53d0f2d1d2b3072b545e52f0d05b143d",
+  "raw_save_load_difference_retained": 89198,
+  "schema": "c6-loaded-placement-comparison-v1",
+  "snapshot_source_role": "SavedOutputCore",
+  "source_archive_sha256": "55938bb8b89aa908fa6f5abdfcdcae1b92f6c61aeb247948fe3e47c18b725fe5",
+  "source_commit": "70ff4a1868a4b43c66d7a7aa6e261fbc3517709c",
+  "source_core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "source_files": 1553,
+  "source_hashes_changed": 0,
+  "status": "comparison_passed_pending_independent_review",
+  "target_runtime_sha256": "01479e18272065e11ab0a50dc2284b6fdf4fce77a166b07ae98a19bba5dfa8b3"
+}
