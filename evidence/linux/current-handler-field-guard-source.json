@@ -165,13 +165,15 @@
   "sources": {
     "native/linux/current_handler_metadata_fixture.c": "a29d5380c648de5e216e812e46772c040428bbac749b8ef7d57383480ed0d945",
     "native/linux/current_handler_metadata_fixture.h": "42f6b2f886c80bfb3541af0cb60fd08b730315c3d42de4c41ffe12324151fe61",
-    "tools/linux/current_handler_field_guard_audit.py": "44d6be9c570fa9664b3f2c7c9a636a8f3ab2075c834066367d025b08884404c9"
+    "tools/linux/current_handler_field_guard_audit.py": "ed86eabad79838ee52d46487b033978b91c8a8bafd1084f5f84466e4ed08a531"
   },
   "synthetic": {
     "accepted_idle_scope": true,
+    "child_main_tid_rebound": true,
     "gcc_analyzer": true,
     "refusal_cases": 21,
     "strict_c": true,
+    "targeted_fatal_reasons_checked": true,
     "ubsan": true
   }
 }
