@@ -23,6 +23,7 @@ METHODS = [
     (0x212a1d0, 55, 'YieldIndexList.const_index', '48a45b23243b69c3170acca5e18e353c06a80ed36d6a9e461fa56d8b62de3a42'),
     (0x2dd91f0, 95, 'Feature.SparsePlotData.const_index', '26c64b904a1e821660e796e45d201ced4095ceac66fa5e8b924e7aa0bd0a9fcd'),
     (0x1fe25f0, 5, 'CityAttributes.GetWonderType', '4bb35de4f90a0d35d73c48bd802c0038cb98b5f55c665c02855ec492a4acb379'),
+    (0x2a3ee50, 757, 'Improvement.GetPlayerYieldFrom', 'f75e801dbf601be97571a61978777c845cc21da43ae840992265ca1c3443e6b1'),
 ]
 CONTRACTS = [
     (0x1fe25f0, '0fbf471ec3', 'wonder definition index is signed16'),
@@ -49,6 +50,7 @@ CALLS = [
     (0x2194fe3, 0x1ec8b80, 'wire IndexList reads ordered hash/value overlay'),
     (0x2bf6126, 0x1e4c6a0, 'GetYield uses improvement wrapper'),
     (0x2bf6187, 0x1edd680, 'appeal integer quotient passes through fixed-point AsInt'),
+    (0x2a3ee93, 0x1ea5480, 'improvement composition uses direct-index At rather than hash-capable Find'),
 ]
 
 

@@ -69,6 +69,12 @@
       "bytes": 5,
       "name": "CityAttributes.GetWonderType",
       "sha256": "4bb35de4f90a0d35d73c48bd802c0038cb98b5f55c665c02855ec492a4acb379"
+    },
+    {
+      "address": "0x2a3ee50",
+      "bytes": 757,
+      "name": "Improvement.GetPlayerYieldFrom",
+      "sha256": "f75e801dbf601be97571a61978777c845cc21da43ae840992265ca1c3443e6b1"
     }
   ],
   "instruction_contracts": [
@@ -183,16 +189,21 @@
       "address": "0x2bf6187",
       "target": "0x1edd680",
       "contract": "appeal integer quotient passes through fixed-point AsInt"
+    },
+    {
+      "address": "0x2a3ee93",
+      "target": "0x1ea5480",
+      "contract": "improvement composition uses direct-index At rather than hash-capable Find"
     }
   ],
   "implementations": [
     {
       "path": "crates/c6-core/src/plot_yield.rs",
-      "sha256": "d764990c3fe8666bca41487489d59cce7639a101f481b56890ba3c2e07f2a699"
+      "sha256": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751"
     },
     {
       "path": "crates/c6-core/src/improvement_yield.rs",
-      "sha256": "4d37f82a2ebee9fa52a628dbd3b74d5f2458ad86a9997c4412dc3de99f198394"
+      "sha256": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441"
     },
     {
       "path": "crates/c6-core/src/yields.rs",

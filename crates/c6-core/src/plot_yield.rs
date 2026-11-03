@@ -949,11 +949,11 @@ mod tests {
 
     // Source fixtures contain duplicate terrain/feature/resource matches, null
     // citizen refs, all-row neighboring bonuses, and uncaptured unrelated data.
-    fn with_context<T>(
+    fn with_context<R: Runtime, T>(
         world: &World,
-        runtime: &Live,
+        runtime: &R,
         natural_wonder: bool,
-        body: impl FnOnce(&mut Context<'_, Live, NoAdjacency>) -> T,
+        body: impl FnOnce(&mut Context<'_, R, NoAdjacency>) -> T,
     ) -> T {
         let resource_rows = [
             None,
@@ -1420,5 +1420,309 @@ mod tests {
             )
         });
         assert_eq!(world, before);
+    }
+
+    struct Late {
+        calls: RefCell<Vec<&'static str>>,
+        building_location: i32,
+        building_pillaged: bool,
+    }
+    impl Late {
+        fn new() -> Self {
+            Self {
+                calls: RefCell::default(),
+                building_location: 1,
+                building_pillaged: false,
+            }
+        }
+        fn called(&self, name: &'static str) {
+            self.calls.borrow_mut().push(name);
+        }
+    }
+    impl Runtime for Late {
+        fn visible_resource(&self, _: i32, resource: i32) -> Result<i32, Error> {
+            self.called("visible");
+            Ok(resource)
+        }
+        fn city_effect_yield(&self, _: u32, _: i32) -> Result<Option<i32>, Error> {
+            self.called("effects");
+            Ok(None)
+        }
+        fn great_person_resource_yield(
+            &self,
+            _: i32,
+            _: i32,
+            _: i32,
+        ) -> Result<Option<i32>, Error> {
+            self.called("great-person");
+            Ok(Some(i32::MAX))
+        }
+        fn city_yield_per_flood(&self, _: ComponentId, _: i32) -> Result<i32, Error> {
+            self.called("flood-yield");
+            Ok(3)
+        }
+        fn river_floods(&self, _: u32) -> Result<Option<i32>, Error> {
+            self.called("river");
+            Ok(Some(i32::MAX))
+        }
+        fn has_city_terrain_adjacent_improvement(
+            &self,
+            _: ComponentId,
+            _: i32,
+            _: i32,
+        ) -> Result<bool, Error> {
+            self.called("has-adjacent");
+            Ok(true)
+        }
+        fn city_terrain_adjacent_improvement(
+            &self,
+            _: ComponentId,
+            _: i32,
+            _: i32,
+            _: i32,
+        ) -> Result<NativeFixedPoint8, Error> {
+            self.called("adjacent");
+            Ok(NativeFixedPoint8(-1))
+        }
+        fn city_yield_per_terrain_class_improvement(
+            &self,
+            _: ComponentId,
+            _: i32,
+            _: i32,
+        ) -> Result<i32, Error> {
+            self.called("terrain-class");
+            Ok(3)
+        }
+        fn different_city_terrain_types(&self, _: i32) -> Result<i32, Error> {
+            self.called("different-terrain");
+            Ok(i32::MAX)
+        }
+        fn active_drought_type(&self, _: u32) -> Result<i32, Error> {
+            self.called("drought");
+            Ok(-1)
+        }
+        fn building_location(&self, _: ComponentId, _: i32) -> Result<i32, Error> {
+            self.called("location");
+            Ok(self.building_location)
+        }
+        fn building_pillaged(&self, _: ComponentId, _: i32) -> Result<bool, Error> {
+            self.called("pillage");
+            Ok(self.building_pillaged)
+        }
+    }
+
+    #[test]
+    fn late_queries_preserve_native_repetition_order_wrap_and_negative_fixedpoint_floor() {
+        let mut world = world();
+        let plot = world.plot_mut(0).unwrap();
+        plot.city_attributes = Some(attributes(u32::MAX, 1));
+        plot.resource_hash = 300;
+        plot.improvement_hash = 400;
+        plot.appeal = -3;
+        for index in 1..3 {
+            let plot = world.plot_mut(index).unwrap();
+            plot.city_attributes = Some(attributes(u32::MAX, u32::MAX));
+            plot.improvement_hash = 400;
+        }
+        let live = Late::new();
+        let before = world.clone();
+        with_context(&world, &live, false, |ctx| {
+            // 15 + MAX wraps; 3*MAX wraps to2147483645; each raw -1
+            // FixedPoint8 adjacent bonus floors to -1; final 3*MAX wraps again.
+            assert_eq!(get_yield(ctx, 0, 0, -1, false), Ok(-2147483642));
+        });
+        assert_eq!(
+            *live.calls.borrow(),
+            [
+                "visible",
+                "effects",
+                "great-person",
+                "flood-yield",
+                "river",
+                "flood-yield",
+                "has-adjacent",
+                "adjacent",
+                "adjacent",
+                "terrain-class",
+                "terrain-class",
+                "different-terrain",
+                "drought"
+            ]
+        );
+        assert_eq!(world, before);
+        let missing = Live {
+            drought: -1,
+            ..Default::default()
+        };
+        with_context(&world, &missing, false, |ctx| {
+            assert_eq!(
+                get_yield(ctx, 0, 0, -1, false),
+                Err(Error::Provider("GreatPeopleResourceYield"))
+            );
+        });
+        assert_eq!(*missing.calls.borrow(), ["resource", "effects"]);
+        world.plot_mut(0).unwrap().resource_hash = u32::MAX;
+        missing.calls.borrow_mut().clear();
+        with_context(&world, &missing, false, |ctx| {
+            assert_eq!(
+                get_yield(ctx, 0, 0, -1, false),
+                Err(Error::Provider("YieldPerFlood"))
+            );
+        });
+        assert_eq!(*missing.calls.borrow(), ["resource", "effects"]);
+    }
+
+    fn appeal_query(
+        world: &World,
+        live: &Late,
+        rows: Option<&[AppealYieldChange]>,
+    ) -> Result<i32, Error> {
+        with_context(world, live, false, |ctx| {
+            let districts = [
+                District {
+                    citizen_yields: None,
+                    adjacent_appeal_yields: rows,
+                },
+                District {
+                    citizen_yields: None,
+                    adjacent_appeal_yields: None,
+                },
+            ];
+            let rules = Rules {
+                districts: Definitions::new(&DISTRICTS, &districts).unwrap(),
+                ..*ctx.rules
+            };
+            let local = Context {
+                world: ctx.world,
+                cities: ctx.cities,
+                rules: &rules,
+                runtime: ctx.runtime,
+                improvement_adjacency: ctx.improvement_adjacency,
+                feature_yields: ctx.feature_yields,
+                adjacency: ctx.adjacency,
+            };
+            get_yield(&local, 0, 0, -1, false)
+        })
+    }
+
+    #[test]
+    fn adjacent_appeal_guards_precede_providers_and_range_bounds_are_inclusive() {
+        let mut world = world();
+        let plot = world.plot_mut(0).unwrap();
+        plot.city_attributes = Some(attributes(u32::MAX, u32::MAX));
+        plot.appeal = -3;
+        world.plot_mut(1).unwrap().city_attributes = Some(attributes(1, 1));
+        let mut live = Late::new();
+        let rows = [
+            AppealYieldChange {
+                yield_index: Some(index(0)),
+                unimproved: true,
+                building_hash: 600,
+                minimum: -3,
+                maximum: -3,
+                change: i32::MAX,
+            },
+            AppealYieldChange {
+                yield_index: Some(index(0)),
+                unimproved: true,
+                building_hash: u32::MAX,
+                minimum: -3,
+                maximum: -3,
+                change: 7,
+            },
+            AppealYieldChange {
+                yield_index: Some(index(1)),
+                unimproved: false,
+                building_hash: 600,
+                minimum: i32::MIN,
+                maximum: i32::MAX,
+                change: 999,
+            },
+        ];
+        assert_eq!(appeal_query(&world, &live, Some(&rows)), Ok(-2147483636));
+        assert_eq!(
+            *live.calls.borrow(),
+            ["visible", "effects", "location", "pillage", "drought"]
+        );
+        // A location mismatch skips the pillage getter; absent building hashes
+        // do not invent a missing-building veto for the second matching row.
+        live.calls.borrow_mut().clear();
+        live.building_location = 2;
+        assert_eq!(appeal_query(&world, &live, Some(&rows)), Ok(13));
+        assert_eq!(
+            *live.calls.borrow(),
+            ["visible", "effects", "location", "drought"]
+        );
+        live.calls.borrow_mut().clear();
+        live.building_location = 1;
+        live.building_pillaged = true;
+        assert_eq!(appeal_query(&world, &live, Some(&rows)), Ok(13));
+        assert_eq!(
+            *live.calls.borrow(),
+            ["visible", "effects", "location", "pillage", "drought"]
+        );
+        live.calls.borrow_mut().clear();
+        live.building_pillaged = false;
+        world.plot_mut(0).unwrap().appeal = -4;
+        assert_eq!(appeal_query(&world, &live, Some(&rows)), Ok(6));
+        // An existing improvement suppresses unimproved rows before any building
+        // provider. Its own base9 and appeal(-3*250/100)=-7 still contribute.
+        world.plot_mut(0).unwrap().appeal = -3;
+        world.plot_mut(0).unwrap().improvement_hash = 400;
+        live.calls.borrow_mut().clear();
+        assert_eq!(appeal_query(&world, &live, Some(&rows)), Ok(8));
+        assert_eq!(*live.calls.borrow(), ["visible", "effects", "drought"]);
+        world.plot_mut(0).unwrap().improvement_hash = u32::MAX;
+        assert_eq!(
+            appeal_query(&world, &live, None),
+            Err(Error::References("District.AdjacentAppealYields"))
+        );
+        // Different source/neighbor-city owners skip even uncaptured appeal rows.
+        world
+            .plot_mut(0)
+            .unwrap()
+            .city_attributes
+            .as_mut()
+            .unwrap()
+            .player = 1;
+        live.calls.borrow_mut().clear();
+        assert_eq!(appeal_query(&world, &live, None), Ok(6));
+        assert_eq!(*live.calls.borrow(), ["visible", "effects", "drought"]);
+        // Missing neighbor owning city skips those rows before owner comparison.
+        world
+            .plot_mut(0)
+            .unwrap()
+            .city_attributes
+            .as_mut()
+            .unwrap()
+            .player = 0;
+        world
+            .plot_mut(1)
+            .unwrap()
+            .city_attributes
+            .as_mut()
+            .unwrap()
+            .owning_city = u32::MAX;
+        assert_eq!(appeal_query(&world, &live, None), Ok(6));
+    }
+
+    #[test]
+    fn unowned_appeal_is_an_explicit_unavailable_query_not_a_cached_short_default() {
+        let mut world = world();
+        world.plot_mut(0).unwrap().improvement_hash = 400;
+        world.plot_mut(0).unwrap().appeal = 32000;
+        let before = world.clone();
+        let live = Live {
+            drought: -1,
+            ..Default::default()
+        };
+        with_context(&world, &live, false, |ctx| {
+            assert_eq!(
+                get_yield(ctx, 0, 0, -1, false),
+                Err(Error::Provider("Rules.Appeal"))
+            );
+        });
+        assert_eq!(world, before);
+        assert!(live.calls.borrow().is_empty());
     }
 }
