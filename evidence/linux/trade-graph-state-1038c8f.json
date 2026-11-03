@@ -1,0 +1,189 @@
+{
+  "active_path_nodes": 6193,
+  "active_route_city_path_hits": 182,
+  "active_routes": 182,
+  "candidate_directory": "/home/phulin/c6-ghidra/evidence/linux-trade-graph-state/candidate-1038c8f",
+  "candidate_sha256": "9a868b65c5aaf2df68f5d8727d45fbfa35a6a22727c952ff2f920270c92bed47",
+  "cargo_lock_sha256": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
+  "cold_pathfinder_supported": false,
+  "committed_source_archive_sha256": "a4ce889bed979a59d3469700f1d5c12a688ea79ea6b6fe81272002787504db3b",
+  "committed_source_preimages_checked": 1698,
+  "complete_source_preimages_retained": true,
+  "core_test_candidate_sha256": "4a6cdea76611f1f31ec9bde6c3580aab0c00f31b2aa8502a8a56b15df25cb81b",
+  "core_test_output": "\nrunning 7 tests\ntest trade_graph_state::tests::city_key_uses_signed_owner_full_id_and_ignores_component_type ... ok\ntest trade_graph_state::tests::empty_forward_is_miss_even_if_reverse_exists_and_unplaced_values_are_not_normalized ... ok\ntest trade_graph_state::tests::forward_and_reverse_are_distinct_and_do_not_follow_route_or_cursor_flags ... ok\ntest trade_graph_state::tests::native_equal_hash_vertices_remain_distinct_keys ... ok\ntest trade_graph_state::tests::native_inner_sentinel_rejects_only_destination_and_exact_frame_consumption ... ok\ntest loaded_state::tests::trade_graph_owner_survives_unrelated_writes_but_cannot_be_replayed_or_late_installed ... ok\ntest loaded_state::tests::trade_graph_admission_rejects_mismatched_frames_atomically ... ok\n\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 421 filtered out; finished in 0.02s\n\n",
+  "direct_native_query_comparison": false,
+  "driver_source_status": [
+    "?? tools/linux/trade_graph_state_check.py"
+  ],
+  "edges": 1571,
+  "frame": {
+    "call": 162111,
+    "depth": 2,
+    "end": 71497438,
+    "event": "owner",
+    "owner": "GameCore::Trade::Graph",
+    "parent": 162110,
+    "save": 1,
+    "start": 71027800
+  },
+  "full_state_action_turn_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "instruction_gates": 5,
+  "live_native_index_observation": false,
+  "loaded_state_bridge_checked": true,
+  "methods": {
+    "city_vertex": {
+      "address": "0x2bf85f0",
+      "bytes": 45,
+      "sha256": "bc7c5f848ae3783c753faac2a52e9de7c3eb2b66b53402d805b4253c1696719b",
+      "symbols": [
+        "_ZN8GameCore5Trade6VertexC1ENS_6Player6CityIDE",
+        "_ZN8GameCore5Trade6VertexC2ENS_6Player6CityIDE"
+      ]
+    },
+    "component_id": {
+      "address": "0x1fd1080",
+      "bytes": 4,
+      "sha256": "4703e829cd2c504bae1968b685216f9f191e08f6e2e2a6f3be0a737a92c43721",
+      "symbols": [
+        "_ZNK8GameCore6Player11ComponentID5GetIDEv"
+      ]
+    },
+    "component_player": {
+      "address": "0x1fd0e30",
+      "bytes": 4,
+      "sha256": "eea57f4eeb9f601ec3b1154cc785380880eae152e709e8156a9039bd8e939aa9",
+      "symbols": [
+        "_ZNK8GameCore6Player11ComponentID9GetPlayerEv"
+      ]
+    },
+    "graph_city_path": {
+      "address": "0x2bfbbe0",
+      "bytes": 104,
+      "sha256": "2ef1a7c8b200fe067837c295878ca170fc55827e41c63b3599ed49cb119c6223",
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph13GetPathToCityENS_6Player6CityIDES3_"
+      ]
+    },
+    "graph_get_edge": {
+      "address": "0x2bfc240",
+      "bytes": 140,
+      "sha256": "4327bf0f6e79bd8358964a89582e9eb65277fe11dc97a6436f25606b58eaf797",
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph7GetEdgeENS0_6VertexES2_"
+      ]
+    },
+    "graph_get_path": {
+      "address": "0x2bfbc50",
+      "bytes": 46,
+      "sha256": "c31a97c9094a028b77ac474d0a584591ab0b433aaf2bba62e2d1871d9fee692a",
+      "symbols": [
+        "_ZNK8GameCore5Trade5Graph7GetPathENS0_6VertexES2_"
+      ]
+    },
+    "graph_read": {
+      "address": "0x2bf8210",
+      "bytes": 424,
+      "sha256": "d6e1922f68badbcbd55cf5b5b7dc74081d7e6d4f5d8cd5b7824586cd824b5f12",
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore5Trade5GraphE"
+      ]
+    },
+    "inner_find": {
+      "address": "0x2bfd5e0",
+      "bytes": 79,
+      "sha256": "6a74da3451c72e9035c75e96f651cae051f2ea3a3d7889428feced126724885b",
+      "symbols": [
+        "_ZNK5Types7HashMapIN8GameCore5Trade6VertexEPNS2_4EdgeE13VertexToIndexLi51ELj0EE4FindERKS3_PS5_"
+      ]
+    },
+    "inner_find_base": {
+      "address": "0x2c03a30",
+      "bytes": 176,
+      "sha256": "3c407074165c1a5a4f2b0b5dfd99b4c771aa3151d2e71ad41d48398924fca524",
+      "symbols": [
+        "_ZNK5Types14HashTable_BaseINS_17_HashMapValueTypeIN8GameCore5Trade6VertexEPNS3_4EdgeEEEE4FindIZNKS_7HashMapIS4_S6_13VertexToIndexLi51ELj0EE4FindERKS4_PS6_EUlRKS7_E_EEKbjPS7_T_"
+      ]
+    },
+    "inner_find_equality": {
+      "address": "0x2c03ae0",
+      "bytes": 8,
+      "sha256": "d08f642defa091c297b81cf6541b1486691d9ce68e6b0ffb33fb8445ffb60d65",
+      "symbols": [
+        "_ZZNK5Types7HashMapIN8GameCore5Trade6VertexEPNS2_4EdgeE13VertexToIndexLi51ELj0EE4FindERKS3_PS5_ENKUlRKNS_17_HashMapValueTypeIS3_S5_EEE_clESE_"
+      ]
+    },
+    "manager_existing_path": {
+      "address": "0x2c08eb0",
+      "bytes": 79,
+      "sha256": "c8a6fe2aa46c491d448a9117b4223ac42b961311b0241d60d50017e00b2ef898",
+      "symbols": [
+        "_ZNK8GameCore5Trade7Manager15GetExistingPathENS_6Player6CityIDES3_"
+      ]
+    },
+    "manager_find_new_path": {
+      "address": "0x2c06210",
+      "bytes": 516,
+      "sha256": "cd14782e0e2ed5a15c26aa3674412399f4d3a2054aef2bd208592aace42bbd32",
+      "symbols": [
+        "_ZNK8GameCore5Trade7Manager11FindNewPathENS_6Player6CityIDES3_RN5eastl6vectorIiNS4_9allocatorEEE"
+      ]
+    },
+    "outer_find": {
+      "address": "0x2bfd940",
+      "bytes": 129,
+      "sha256": "83bb930841322b9fda4070c0c525f5f7c25c646f69e31c7be890c270db9fe234",
+      "symbols": [
+        "_ZNK5eastl9hashtableIN8GameCore5Trade6VertexENS_4pairIKS3_N5Types7HashMapIS3_PNS2_4EdgeE13VertexToIndexLi51ELj0EEEEENS_9allocatorENS_9use_firstISC_EENS_8equal_toIS3_EENS_4hashIS3_EENS_17mod_range_hashingENS_19default_ranged_hashENS_19prime_rehash_policyELb0ELb1ELb1EE4findERS5_"
+      ]
+    },
+    "outer_find_node": {
+      "address": "0x2bfe170",
+      "bytes": 80,
+      "sha256": "597c72ee4ca5b3646b1e929c2da8a441ea31277d57ae797eb04d9be521105cfe",
+      "symbols": [
+        "_ZNK5eastl9hashtableIN8GameCore5Trade6VertexENS_4pairIKS3_N5Types7HashMapIS3_PNS2_4EdgeE13VertexToIndexLi51ELj0EEEEENS_9allocatorENS_9use_firstISC_EENS_8equal_toIS3_EENS_4hashIS3_EENS_17mod_range_hashingENS_19default_ranged_hashENS_19prime_rehash_policyELb0ELb1ELb1EE10DoFindNodeEPNS_9hash_nodeISC_Lb0EEERS5_j"
+      ]
+    },
+    "vertex_equal": {
+      "address": "0x2bfe340",
+      "bytes": 32,
+      "sha256": "7dd3d0693bcf64d499f436a5199d5b889657bf783caa03245cb616e8929200b3",
+      "symbols": [
+        "_ZNK8GameCore5Trade6VertexeqERKS1_"
+      ]
+    },
+    "vertex_hash": {
+      "address": "0x2bf8540",
+      "bytes": 53,
+      "sha256": "3716480f0c784decda5fe6be70a799273ad09824111e4bb4e88651eaa16a52ec",
+      "symbols": [
+        "_ZNK8GameCore5Trade6Vertex7GetHashEv"
+      ]
+    }
+  },
+  "native_id_map_iteration_order": false,
+  "nonempty_paths": 1571,
+  "original_execution": false,
+  "origins": 179,
+  "reverse_projection_checks": 182,
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "schema": "c6-linux-trade-graph-state-v1",
+  "source_archive_sha256": "2efb3a4e26fb8b7acc529cca8122bd870bfccbff9156fb875e4708655a70b863",
+  "source_commit": "1038c8ff1cec070f5ee771db55392c1caca87527",
+  "source_core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "source_frame_sha256": "64a196d77b6bc35a72354226dda4111e10f46742cd62d4e335b43c737a186c33",
+  "source_fresh_graph_read_logical_index_authority": true,
+  "source_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "sources": {
+    "check.py": "ff8dc5d77c64a3443fa16984c8fc29668efa929a1d539cf1b2af21b2d17eff21",
+    "harness.rs": "ebd4fc6695aebbf4d6d51fc1a688f3a3a3d44b4c0e1fe7be9f7fb4d090a14f47",
+    "trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "trade_graph_state.rs": "9acbb5c79da477c56e7823c840a2c30766465596fc15f23a945fef01b6182a94",
+    "trade_read_order.rs": "76b24251ef1b5377cef37814713357a8df89c23d15d1069005869ad3745cf6de"
+  },
+  "test_candidate_sha256": "bb43f7fde869722ecd9fd1a43cc5b7130fd2bf0e2035faa650eea1b99e02e2d1",
+  "test_output": "\nrunning 5 tests\ntest trade_graph_state::tests::city_key_uses_signed_owner_full_id_and_ignores_component_type ... ok\ntest trade_graph_state::tests::empty_forward_is_miss_even_if_reverse_exists_and_unplaced_values_are_not_normalized ... ok\ntest trade_graph_state::tests::native_equal_hash_vertices_remain_distinct_keys ... ok\ntest trade_graph_state::tests::native_inner_sentinel_rejects_only_destination_and_exact_frame_consumption ... ok\ntest trade_graph_state::tests::forward_and_reverse_are_distinct_and_do_not_follow_route_or_cursor_flags ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s\n\n",
+  "uncommitted_source_paths": []
+}
