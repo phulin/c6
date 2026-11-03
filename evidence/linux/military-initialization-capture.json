@@ -1,0 +1,3348 @@
+{
+  "schema": "c6-linux-military-initialization-capture-classification-v1",
+  "checks_passed": true,
+  "audit_sha256": "cf6c12bc23b74106cde074f1056946900d2ab3a9809598a2e6f3e86a09eb7056",
+  "artifacts": {
+    "capture.gdb": {
+      "sha256": "af7f7bc09e12122e0be66899071c909fb3969d2c20cdc8e82b126fd3557946dd",
+      "bytes": 2155
+    },
+    "runtime-plan.json": {
+      "sha256": "74747381dec58ebe62412ee1c4e2a0f921c7fc68190bd2a5c3d737d4e1356e1f",
+      "bytes": 5852
+    },
+    "supervisor.json": {
+      "sha256": "245462172e0e7efde2518fd17de5602d3434e71730fa64a89b4194e15fe5e8ee",
+      "bytes": 324
+    },
+    "inferior.json": {
+      "sha256": "5eea80242b8272e477b7e7650275f22e506f949d71cf1717f104adf05560d8ab",
+      "bytes": 185
+    },
+    "runtime-prepared.json": {
+      "sha256": "1ca999eba2614f42f2480c605f46d23c32fc4893bf01a3d07219907c12e9695f",
+      "bytes": 58004
+    },
+    "exit.json": {
+      "sha256": "f44b36ef16382c3be02ed5039d6f8b0476c6b22f91f98b86cbc202cb9be89ec6",
+      "bytes": 51
+    },
+    "transcript.txt": {
+      "sha256": "6cae9cdd3aeb2b61f11ef1e60685e6b941cadfdb9896bf831c930fd0feb3668d",
+      "bytes": 579498
+    },
+    "observations.jsonl": {
+      "sha256": "3bb06efe0a31da5e215a2e553e9f3b7bb41ef6da6ffc4cd93a5f4972330addb0",
+      "bytes": 3206038
+    },
+    "runtime.json": {
+      "sha256": "f45554791cb9aeee891fbe36ac8ec0d6ef859fbd960f4f6819c3fb60281246bd",
+      "bytes": 662191
+    }
+  },
+  "source_preimages_archive": {
+    "sha256": "4c4cc51fc4d428c59db17c40010bd3ab103ece076a8908cc4e92da58f667d177",
+    "bytes": 93709
+  },
+  "frozen_source_preimages": {
+    "native/linux/mod_activation.c": "7977f90ab2e01cd4d9156fb3d8fed0203a22c3b00edbf15d5a3ab02b44d3b35d",
+    "native/linux/mod_activation.h": "af22977f6fd4d7e5d4ac4104a2ec7a57aaab8e307f8d45504ce8dab5e7fc51af",
+    "native/linux/host_services.c": "f958b7afb65c865c061a8164e8686bb05c2bde9bda5b3a66dbc8939b5c22e3cf",
+    "native/linux/host_services.h": "46d086ae47ea1374a42b2a525f58b9dac2433e7026b6ca98731c8de163f10d71",
+    "native/linux/temp_heap.c": "cc7fa312392700f4cd0dbaffd211935c356f8546414bb973a33beb120cd8ad05",
+    "native/linux/temp_heap.h": "a0d6869eeb16871461910cd3df3faeeee7ad8dd660176602baa9dfa5abd2b5fe",
+    "native/linux/saved_configuration.c": "4b5ad94bdde1d5bdfb0b096e5bfe97e6dd8fbacd3e8d2654f4584cd7ffea51ba",
+    "native/linux/saved_configuration.h": "a22c8da36f8d51b47cba0f4ba4f0f40f5972d88f6fdcd822dc23b52dca840558",
+    "native/linux/network.c": "77d68393ccc1e247c108ecab224edf7af9d551912b4dd884e7d279e666b83c7f",
+    "native/linux/network.h": "d378c1fd8b7e434b2239e3f3fff23792a5ad48c813a11e8f72dd9e3616115b11",
+    "native/linux/save_lifecycle.c": "7fa8848fc10424acb52e2e826a33a577bc5bcfc474c1b39d2bf17be624ab2e34",
+    "native/linux/save_lifecycle.h": "16d27b476c20e27f6f9fe2953e9da85ee4f0bb6906ee8b939413c082cc497649",
+    "native/linux/game_load.c": "86a7d3ba6fd89d213fe477cfd309bdd9d8deafca6e2f6dd5a959bfa7b7697732",
+    "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
+    "native/linux/game_load.h": "f3f2f6a80f6cbf3f3a9617067b6d9ab493ee4d32bc2279fc056510bd3cb39bd5",
+    "native/linux/context_stream.h": "20cc3f198f5460b00a732ddb3047f069b3592cd6de6c485dadcd5562d674962b",
+    "native/linux/stream_observation.h": "04720ac56f8c98abd3c8340da66f21199a5c42c27036cfac2c012316d8eb2b00",
+    "tools/linux/military_initialization_observer.py": "39a440f07a911c1ca33ee09de653297142c33e43fa96d4df6de529338cf95217",
+    "tools/linux/military_initialization_observer_audit.py": "3e00f2d7abddbb587c292be631e4dd5bbe43ee92bc579ca4b6e34827def8bd3f",
+    "evidence/linux/military-initialization-observer-preparation.json": "0c54c71733477dbc2529bd0915344f03c2b2ea061bb8e938994f1d31698580bb",
+    "tools/linux/military_observer_runner.py": "4b61cba5aa3223830388cbca2b8b289741c7517decef52016470d03773a8d3d2",
+    "tools/linux/military_stream_fixture_audit.py": "1c26c6e6416b5266f26505a5f67d9fa36a4d8126a6a595e3f44f09ccf57b634f",
+    "evidence/linux/military-stream-fixture-contract.json": "1b2c03e26c1cb6af686648d6513d8f280663942d7c12dc295eb87b220afe483d",
+    "tools/linux/ai_military_initialization_audit.py": "150c246e39710d0709be25edda49b2bdf1df2c0eca1441e150da7e06407cf96d",
+    "tools/linux/player_wmds_audit.py": "33c3e854945a1a576e25a168b197ca10975c61681d4d096d12bc6cfcfc7f268c",
+    "tools/linux/inspect_elf.py": "cc0eca2b674832de02f4f9d7885115c27468ee6298b4c9aabfca3bc4c9de4998",
+    "tools/linux/action_worker_audit.py": "ea092bf7b178771083e58fd985e51a68804a650a098052320de62f71ea00c01b",
+    "evidence/linux/action-worker-abi.json": "8e0c2d9ca0bbed2f2da603003064713e0adffd2cdd533b4f77191dcfc14985d9",
+    "native/linux/localization.c": "b898657a0e88837be77ecdfa89516494ce3e325ddb43bcc6bb1bca4e9e02d89d",
+    "native/linux/localization.h": "85b9807b03d6f751e619120c26a04df474c0925266566aba1a3193bb412de76f",
+    "tools/linux/localization_gate.py": "9c7e3d27ee327671d1d2299e9142da47fce6977dca54314724c27b17e902653f",
+    "native/linux/filesystem.c": "a94142fa66a572807051a0aef09198e69b5cd5bce1c8d954b06080a1c425be40",
+    "native/linux/filesystem.h": "3b8b98247b6b0e8573670615c995d9913819877890e3887f909584d136291fb4",
+    "tools/linux/mod_activation_probe.py": "d602414dfbe674792272c7aff9f1e0a8aef205f1b2792115d50d9817a24c5926"
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "runtime_profile_sha256": "89aced529f2fe26bfb62eac23240e21b36cf031d055b506a1c3f486e489e5344",
+  "raw_jsonl_rows": 3057,
+  "raw_engine_rows": 1034,
+  "event_counts": {
+    "observer_begin": 1,
+    "installed": 1,
+    "passive_owner_guard": 917,
+    "marker_checkpoint": 14,
+    "stream_marker": 11,
+    "checkpoint": 903,
+    "read_entry": 43,
+    "owner_installation_witness": 43,
+    "initialize_entry": 43,
+    "personality_return": 43,
+    "leader_return": 43,
+    "query_entry": 43,
+    "count_entry": 43,
+    "count_return": 43,
+    "initialize_return": 43,
+    "read_initialized": 43,
+    "read_return": 43,
+    "original_stream_range": 129,
+    "known_rng_after_load": 1,
+    "stream_destroyed": 3,
+    "write_entry": 86,
+    "write_guard": 86,
+    "hash_array_entry": 258,
+    "write_return": 86,
+    "saved_output_binding": 86,
+    "final_live_original_method_fingerprints_equal": 1,
+    "capture_end": 1
+  },
+  "guarded_paused_stops": 917,
+  "source_profile_gate_rechecked": true,
+  "offline_mutation_refusals": [
+    "missing initialization return",
+    "wrong stream identity",
+    "return stack mismatch",
+    "nested frame extent mismatch",
+    "wrong active definition count",
+    "changed initialized snapshot",
+    "wrong output hash",
+    "wrong output range",
+    "wrong actual owner",
+    "worker present",
+    "missing destruction",
+    "spoofed runtime profile",
+    "unclassified DB identity"
+  ],
+  "original_execution_by_this_audit": false,
+  "original_capture_closed_exit_zero": true,
+  "source_witness_final_live_method_count": 34,
+  "raw_capture_complete_flag": false,
+  "typed_snapshot_admission_performed": false,
+  "candidate_execution": false,
+  "candidate_comparison": false,
+  "inputs": {
+    "save": {
+      "sha256": "a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8",
+      "bytes": 7348717,
+      "scope": "whole_file_supplied_to_saved_configuration_loader"
+    },
+    "core": {
+      "sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
+      "bytes": 76556938,
+      "scope": "actual_MemoryIStream_payload"
+    }
+  },
+  "save_to_core_extraction_binding_proven": false,
+  "streams": [
+    {
+      "occurrence": 1,
+      "role": "read",
+      "core_sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
+      "core_bytes": 76556938,
+      "physical_lifetime_destroyed": true,
+      "marker_phases": [
+        1,
+        2,
+        3
+      ],
+      "record_count": 43,
+      "observed_owner_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        62,
+        63
+      ],
+      "records": [
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-2",
+          "owner_i32": 0,
+          "core_range": [
+            6440270,
+            6443276
+          ],
+          "frame_id": "frame-1",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 61,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "b56da4eef6e5580ee9694803c0179d257884da77df4f0cabfe10b7dc1c51d4c2",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-6",
+          "owner_i32": 1,
+          "core_range": [
+            7548450,
+            7552171
+          ],
+          "frame_id": "frame-5",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 15,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "ed7fbcaaed5ae91069dc1f531b40998a2ed6973b0970ca0c344bba9d1a8d858f",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-10",
+          "owner_i32": 2,
+          "core_range": [
+            10279246,
+            10286340
+          ],
+          "frame_id": "frame-9",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 9,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-14",
+          "owner_i32": 3,
+          "core_range": [
+            13776185,
+            13781822
+          ],
+          "frame_id": "frame-13",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 63,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "1d013c573a6d93ac9b11f90e4a7196507d4ccfd78e3b12cbe2d29ccdbaf4c060",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-18",
+          "owner_i32": 4,
+          "core_range": [
+            16857481,
+            16863075
+          ],
+          "frame_id": "frame-17",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 64,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-22",
+          "owner_i32": 5,
+          "core_range": [
+            19131413,
+            19137271
+          ],
+          "frame_id": "frame-21",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 67,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "57f6bfe1db318dbec355a229aeed8f691de7370691418bc812d22b3c1de8baa7",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-26",
+          "owner_i32": 6,
+          "core_range": [
+            21787490,
+            21791267
+          ],
+          "frame_id": "frame-25",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 14,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "ed7fbcaaed5ae91069dc1f531b40998a2ed6973b0970ca0c344bba9d1a8d858f",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-30",
+          "owner_i32": 7,
+          "core_range": [
+            25244402,
+            25250332
+          ],
+          "frame_id": "frame-29",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 66,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "f9d780ccc1188a94ce8763083b6d796c9933e835eb8c21ca2c197a903c087072",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-34",
+          "owner_i32": 8,
+          "core_range": [
+            28395752,
+            28398790
+          ],
+          "frame_id": "frame-33",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 12,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-38",
+          "owner_i32": 9,
+          "core_range": [
+            31778891,
+            31785057
+          ],
+          "frame_id": "frame-37",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 69,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "57f6bfe1db318dbec355a229aeed8f691de7370691418bc812d22b3c1de8baa7",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-42",
+          "owner_i32": 10,
+          "core_range": [
+            35634907,
+            35640649
+          ],
+          "frame_id": "frame-41",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 18,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-46",
+          "owner_i32": 11,
+          "core_range": [
+            36798474,
+            36802210
+          ],
+          "frame_id": "frame-45",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 65,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "8e82231bf63dc0d897c9170389cf980c7903e07b08671bc0a25bf563aa8235a1",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-50",
+          "owner_i32": 12,
+          "core_range": [
+            38788552,
+            38794241
+          ],
+          "frame_id": "frame-49",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 70,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "4b7c3ac3b36fa7c0555ced7b2050c6376c9cbd11e0f57d6ef609e32b844b7dac",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-54",
+          "owner_i32": 13,
+          "core_range": [
+            39935922,
+            39939536
+          ],
+          "frame_id": "frame-53",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 6,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "b56da4eef6e5580ee9694803c0179d257884da77df4f0cabfe10b7dc1c51d4c2",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-58",
+          "owner_i32": 14,
+          "core_range": [
+            41294634,
+            41299311
+          ],
+          "frame_id": "frame-57",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 8,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "99bfa38fb4a2d9bffc5ff63688eb658cdac5b54d6364b0a6342fb561fb1f381b",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-62",
+          "owner_i32": 15,
+          "core_range": [
+            44555331,
+            44559625
+          ],
+          "frame_id": "frame-61",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 10,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "fb2a954f1b5179f16ac76c69e21d706b73fc48e3ded8297569107c86a7a06daa",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-66",
+          "owner_i32": 16,
+          "core_range": [
+            48161124,
+            48166916
+          ],
+          "frame_id": "frame-65",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 13,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8",
+          "post_read_vector_values_sha256": "048600e24db4f893f263c743505cf8d67cd76d491ee53849b347917bc601aa8b",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-70",
+          "owner_i32": 17,
+          "core_range": [
+            49445395,
+            49448213
+          ],
+          "frame_id": "frame-69",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 47,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-74",
+          "owner_i32": 18,
+          "core_range": [
+            49917788,
+            49920562
+          ],
+          "frame_id": "frame-73",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 34,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-78",
+          "owner_i32": 19,
+          "core_range": [
+            50486800,
+            50489178
+          ],
+          "frame_id": "frame-77",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 30,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-82",
+          "owner_i32": 20,
+          "core_range": [
+            50974224,
+            50977274
+          ],
+          "frame_id": "frame-81",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 37,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-86",
+          "owner_i32": 21,
+          "core_range": [
+            51552766,
+            51555048
+          ],
+          "frame_id": "frame-85",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 27,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-90",
+          "owner_i32": 22,
+          "core_range": [
+            52142950,
+            52145600
+          ],
+          "frame_id": "frame-89",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 42,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-94",
+          "owner_i32": 23,
+          "core_range": [
+            52750721,
+            52753711
+          ],
+          "frame_id": "frame-93",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 55,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-98",
+          "owner_i32": 24,
+          "core_range": [
+            53346419,
+            53348505
+          ],
+          "frame_id": "frame-97",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 60,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-102",
+          "owner_i32": 25,
+          "core_range": [
+            53955599,
+            53958361
+          ],
+          "frame_id": "frame-101",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 45,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-106",
+          "owner_i32": 26,
+          "core_range": [
+            54434130,
+            54436648
+          ],
+          "frame_id": "frame-105",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 59,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-110",
+          "owner_i32": 27,
+          "core_range": [
+            54994915,
+            54997057
+          ],
+          "frame_id": "frame-109",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 44,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-114",
+          "owner_i32": 28,
+          "core_range": [
+            55578491,
+            55580661
+          ],
+          "frame_id": "frame-113",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 38,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-118",
+          "owner_i32": 29,
+          "core_range": [
+            56178859,
+            56181969
+          ],
+          "frame_id": "frame-117",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 33,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-122",
+          "owner_i32": 30,
+          "core_range": [
+            56777753,
+            56780303
+          ],
+          "frame_id": "frame-121",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 53,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-126",
+          "owner_i32": 31,
+          "core_range": [
+            57366148,
+            57368234
+          ],
+          "frame_id": "frame-125",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 35,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-130",
+          "owner_i32": 32,
+          "core_range": [
+            57999298,
+            58001384
+          ],
+          "frame_id": "frame-129",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 56,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-134",
+          "owner_i32": 33,
+          "core_range": [
+            58606825,
+            58609279
+          ],
+          "frame_id": "frame-133",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 46,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-138",
+          "owner_i32": 34,
+          "core_range": [
+            59196522,
+            59198636
+          ],
+          "frame_id": "frame-137",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 50,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-142",
+          "owner_i32": 35,
+          "core_range": [
+            59791972,
+            59794058
+          ],
+          "frame_id": "frame-141",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 57,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-146",
+          "owner_i32": 36,
+          "core_range": [
+            60275375,
+            60278089
+          ],
+          "frame_id": "frame-145",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 28,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-150",
+          "owner_i32": 37,
+          "core_range": [
+            60842913,
+            60845311
+          ],
+          "frame_id": "frame-149",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 58,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-154",
+          "owner_i32": 38,
+          "core_range": [
+            61438925,
+            61441803
+          ],
+          "frame_id": "frame-153",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 52,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-158",
+          "owner_i32": 39,
+          "core_range": [
+            62064528,
+            62067570
+          ],
+          "frame_id": "frame-157",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 54,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-162",
+          "owner_i32": 40,
+          "core_range": [
+            62551428,
+            62554114
+          ],
+          "frame_id": "frame-161",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 36,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "post_read_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-166",
+          "owner_i32": 62,
+          "core_range": [
+            64649006,
+            64659600
+          ],
+          "frame_id": "frame-165",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 51,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "7ce476d38c5c9ef036eadc97a905e2806c3f5e6aebace8cea2c1eed80a0ebae9",
+          "post_read_vector_values_sha256": "d4fb93de59d2ec2081cce105ed8dbaa33aea5129bc51acaa362547b0223159ed",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": true
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        },
+        {
+          "role": "read",
+          "stream_occurrence": 1,
+          "military_occurrence": "1/military-170",
+          "owner_i32": 63,
+          "core_range": [
+            65788907,
+            65802599
+          ],
+          "frame_id": "frame-169",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "allowed_initialized_size": 7,
+          "operation_type_arrays_present": true,
+          "actual_has_ai_personality": true,
+          "actual_leader_i32": 48,
+          "actual_definition_count": 7,
+          "observed_handler_default_i32": 0,
+          "initialized_vector_values_sha256": "5709de0406d132c66dec00870323958351e806742552479ac5661b3c40b07959",
+          "post_read_vector_values_sha256": "5709de0406d132c66dec00870323958351e806742552479ac5661b3c40b07959",
+          "prior_vector_values_sha256": "4f5b3270626d591519eeadd77b38b2e6e0c9ef50ed197e21a6d39ad50dd44c5e",
+          "changed_after_read": {
+            "allowed": false,
+            "per_war": false,
+            "current": false
+          },
+          "prior_sizes": {
+            "allowed": 0,
+            "per_war": 0,
+            "current": 0
+          },
+          "initialized_sizes": {
+            "allowed": 7,
+            "per_war": 7,
+            "current": 7
+          },
+          "per_war_query_not_observed": true
+        }
+      ]
+    },
+    {
+      "occurrence": 2,
+      "role": "write",
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "core_bytes": 80657462,
+      "physical_lifetime_destroyed": true,
+      "marker_phases": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "record_count": 43,
+      "observed_owner_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        62,
+        63
+      ],
+      "records": [
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-174",
+          "owner_i32": 0,
+          "core_range": [
+            6583893,
+            6586947
+          ],
+          "frame_id": "frame-173",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "b56da4eef6e5580ee9694803c0179d257884da77df4f0cabfe10b7dc1c51d4c2"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-176",
+          "owner_i32": 1,
+          "core_range": [
+            7740616,
+            7744437
+          ],
+          "frame_id": "frame-175",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "ed7fbcaaed5ae91069dc1f531b40998a2ed6973b0970ca0c344bba9d1a8d858f"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-178",
+          "owner_i32": 2,
+          "core_range": [
+            10674517,
+            10681767
+          ],
+          "frame_id": "frame-177",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-180",
+          "owner_i32": 3,
+          "core_range": [
+            14378778,
+            14384567
+          ],
+          "frame_id": "frame-179",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "1d013c573a6d93ac9b11f90e4a7196507d4ccfd78e3b12cbe2d29ccdbaf4c060"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-182",
+          "owner_i32": 4,
+          "core_range": [
+            17647723,
+            17653433
+          ],
+          "frame_id": "frame-181",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-184",
+          "owner_i32": 5,
+          "core_range": [
+            20059795,
+            20065837
+          ],
+          "frame_id": "frame-183",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "57f6bfe1db318dbec355a229aeed8f691de7370691418bc812d22b3c1de8baa7"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-186",
+          "owner_i32": 6,
+          "core_range": [
+            22853125,
+            22856962
+          ],
+          "frame_id": "frame-185",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "ed7fbcaaed5ae91069dc1f531b40998a2ed6973b0970ca0c344bba9d1a8d858f"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-188",
+          "owner_i32": 7,
+          "core_range": [
+            26523318,
+            26529372
+          ],
+          "frame_id": "frame-187",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "f9d780ccc1188a94ce8763083b6d796c9933e835eb8c21ca2c197a903c087072"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-190",
+          "owner_i32": 8,
+          "core_range": [
+            29885966,
+            29889028
+          ],
+          "frame_id": "frame-189",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-192",
+          "owner_i32": 9,
+          "core_range": [
+            33455427,
+            33461817
+          ],
+          "frame_id": "frame-191",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "57f6bfe1db318dbec355a229aeed8f691de7370691418bc812d22b3c1de8baa7"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-194",
+          "owner_i32": 10,
+          "core_range": [
+            37561567,
+            37567465
+          ],
+          "frame_id": "frame-193",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-196",
+          "owner_i32": 11,
+          "core_range": [
+            38776544,
+            38780392
+          ],
+          "frame_id": "frame-195",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "8e82231bf63dc0d897c9170389cf980c7903e07b08671bc0a25bf563aa8235a1"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-198",
+          "owner_i32": 12,
+          "core_range": [
+            40894487,
+            40900396
+          ],
+          "frame_id": "frame-197",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "4b7c3ac3b36fa7c0555ced7b2050c6376c9cbd11e0f57d6ef609e32b844b7dac"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-200",
+          "owner_i32": 13,
+          "core_range": [
+            42097142,
+            42100844
+          ],
+          "frame_id": "frame-199",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "b56da4eef6e5580ee9694803c0179d257884da77df4f0cabfe10b7dc1c51d4c2"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-202",
+          "owner_i32": 14,
+          "core_range": [
+            43546482,
+            43551287
+          ],
+          "frame_id": "frame-201",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "99bfa38fb4a2d9bffc5ff63688eb658cdac5b54d6364b0a6342fb561fb1f381b"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-204",
+          "owner_i32": 15,
+          "core_range": [
+            47014741,
+            47019127
+          ],
+          "frame_id": "frame-203",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "fb2a954f1b5179f16ac76c69e21d706b73fc48e3ded8297569107c86a7a06daa"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-206",
+          "owner_i32": 16,
+          "core_range": [
+            50831478,
+            50837410
+          ],
+          "frame_id": "frame-205",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "048600e24db4f893f263c743505cf8d67cd76d491ee53849b347917bc601aa8b"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-208",
+          "owner_i32": 17,
+          "core_range": [
+            52172688,
+            52175570
+          ],
+          "frame_id": "frame-207",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-210",
+          "owner_i32": 18,
+          "core_range": [
+            52692248,
+            52695086
+          ],
+          "frame_id": "frame-209",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-212",
+          "owner_i32": 19,
+          "core_range": [
+            53309885,
+            53312311
+          ],
+          "frame_id": "frame-211",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-214",
+          "owner_i32": 20,
+          "core_range": [
+            53843693,
+            53846807
+          ],
+          "frame_id": "frame-213",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-216",
+          "owner_i32": 21,
+          "core_range": [
+            54472860,
+            54475166
+          ],
+          "frame_id": "frame-215",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-218",
+          "owner_i32": 22,
+          "core_range": [
+            55113635,
+            55116349
+          ],
+          "frame_id": "frame-217",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-220",
+          "owner_i32": 23,
+          "core_range": [
+            55772223,
+            55775277
+          ],
+          "frame_id": "frame-219",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-222",
+          "owner_i32": 24,
+          "core_range": [
+            56415685,
+            56417795
+          ],
+          "frame_id": "frame-221",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-224",
+          "owner_i32": 25,
+          "core_range": [
+            57075508,
+            57078334
+          ],
+          "frame_id": "frame-223",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-226",
+          "owner_i32": 26,
+          "core_range": [
+            57599236,
+            57601818
+          ],
+          "frame_id": "frame-225",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-228",
+          "owner_i32": 27,
+          "core_range": [
+            58209423,
+            58211589
+          ],
+          "frame_id": "frame-227",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-230",
+          "owner_i32": 28,
+          "core_range": [
+            58841580,
+            58843774
+          ],
+          "frame_id": "frame-229",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-232",
+          "owner_i32": 29,
+          "core_range": [
+            59495514,
+            59498712
+          ],
+          "frame_id": "frame-231",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-234",
+          "owner_i32": 30,
+          "core_range": [
+            60145311,
+            60147909
+          ],
+          "frame_id": "frame-233",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-236",
+          "owner_i32": 31,
+          "core_range": [
+            60783354,
+            60785464
+          ],
+          "frame_id": "frame-235",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-238",
+          "owner_i32": 32,
+          "core_range": [
+            61466372,
+            61468482
+          ],
+          "frame_id": "frame-237",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-240",
+          "owner_i32": 33,
+          "core_range": [
+            62123493,
+            62126011
+          ],
+          "frame_id": "frame-239",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-242",
+          "owner_i32": 34,
+          "core_range": [
+            62761953,
+            62764091
+          ],
+          "frame_id": "frame-241",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-244",
+          "owner_i32": 35,
+          "core_range": [
+            63407053,
+            63409163
+          ],
+          "frame_id": "frame-243",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-246",
+          "owner_i32": 36,
+          "core_range": [
+            63936776,
+            63939554
+          ],
+          "frame_id": "frame-245",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-248",
+          "owner_i32": 37,
+          "core_range": [
+            64552925,
+            64555347
+          ],
+          "frame_id": "frame-247",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-250",
+          "owner_i32": 38,
+          "core_range": [
+            65199530,
+            65202472
+          ],
+          "frame_id": "frame-249",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-252",
+          "owner_i32": 39,
+          "core_range": [
+            65878901,
+            65882007
+          ],
+          "frame_id": "frame-251",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-254",
+          "owner_i32": 40,
+          "core_range": [
+            66412153,
+            66414903
+          ],
+          "frame_id": "frame-253",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-256",
+          "owner_i32": 62,
+          "core_range": [
+            68631632,
+            68642346
+          ],
+          "frame_id": "frame-255",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "d4fb93de59d2ec2081cce105ed8dbaa33aea5129bc51acaa362547b0223159ed"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 2,
+          "military_occurrence": "2/military-258",
+          "owner_i32": 63,
+          "core_range": [
+            69828912,
+            69842964
+          ],
+          "frame_id": "frame-257",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "5709de0406d132c66dec00870323958351e806742552479ac5661b3c40b07959"
+        }
+      ]
+    },
+    {
+      "occurrence": 3,
+      "role": "write",
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "core_bytes": 80657462,
+      "physical_lifetime_destroyed": true,
+      "marker_phases": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "record_count": 43,
+      "observed_owner_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        62,
+        63
+      ],
+      "records": [
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-260",
+          "owner_i32": 0,
+          "core_range": [
+            6583893,
+            6586947
+          ],
+          "frame_id": "frame-259",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "b56da4eef6e5580ee9694803c0179d257884da77df4f0cabfe10b7dc1c51d4c2"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-262",
+          "owner_i32": 1,
+          "core_range": [
+            7740616,
+            7744437
+          ],
+          "frame_id": "frame-261",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "ed7fbcaaed5ae91069dc1f531b40998a2ed6973b0970ca0c344bba9d1a8d858f"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-264",
+          "owner_i32": 2,
+          "core_range": [
+            10674517,
+            10681767
+          ],
+          "frame_id": "frame-263",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-266",
+          "owner_i32": 3,
+          "core_range": [
+            14378778,
+            14384567
+          ],
+          "frame_id": "frame-265",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "1d013c573a6d93ac9b11f90e4a7196507d4ccfd78e3b12cbe2d29ccdbaf4c060"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-268",
+          "owner_i32": 4,
+          "core_range": [
+            17647723,
+            17653433
+          ],
+          "frame_id": "frame-267",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-270",
+          "owner_i32": 5,
+          "core_range": [
+            20059795,
+            20065837
+          ],
+          "frame_id": "frame-269",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "57f6bfe1db318dbec355a229aeed8f691de7370691418bc812d22b3c1de8baa7"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-272",
+          "owner_i32": 6,
+          "core_range": [
+            22853125,
+            22856962
+          ],
+          "frame_id": "frame-271",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "ed7fbcaaed5ae91069dc1f531b40998a2ed6973b0970ca0c344bba9d1a8d858f"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-274",
+          "owner_i32": 7,
+          "core_range": [
+            26523318,
+            26529372
+          ],
+          "frame_id": "frame-273",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "f9d780ccc1188a94ce8763083b6d796c9933e835eb8c21ca2c197a903c087072"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-276",
+          "owner_i32": 8,
+          "core_range": [
+            29885966,
+            29889028
+          ],
+          "frame_id": "frame-275",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "132418c59a772d02c5fa4ea05ffec8d613fad4572db3e4b662f558f5c10103a8"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-278",
+          "owner_i32": 9,
+          "core_range": [
+            33455427,
+            33461817
+          ],
+          "frame_id": "frame-277",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "57f6bfe1db318dbec355a229aeed8f691de7370691418bc812d22b3c1de8baa7"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-280",
+          "owner_i32": 10,
+          "core_range": [
+            37561567,
+            37567465
+          ],
+          "frame_id": "frame-279",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "262fd64adcb1779a56fa364f9c34c146cb440ea6761c504f9d478794c6e9e1cf"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-282",
+          "owner_i32": 11,
+          "core_range": [
+            38776544,
+            38780392
+          ],
+          "frame_id": "frame-281",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "8e82231bf63dc0d897c9170389cf980c7903e07b08671bc0a25bf563aa8235a1"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-284",
+          "owner_i32": 12,
+          "core_range": [
+            40894487,
+            40900396
+          ],
+          "frame_id": "frame-283",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "4b7c3ac3b36fa7c0555ced7b2050c6376c9cbd11e0f57d6ef609e32b844b7dac"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-286",
+          "owner_i32": 13,
+          "core_range": [
+            42097142,
+            42100844
+          ],
+          "frame_id": "frame-285",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "b56da4eef6e5580ee9694803c0179d257884da77df4f0cabfe10b7dc1c51d4c2"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-288",
+          "owner_i32": 14,
+          "core_range": [
+            43546482,
+            43551287
+          ],
+          "frame_id": "frame-287",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "99bfa38fb4a2d9bffc5ff63688eb658cdac5b54d6364b0a6342fb561fb1f381b"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-290",
+          "owner_i32": 15,
+          "core_range": [
+            47014741,
+            47019127
+          ],
+          "frame_id": "frame-289",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "fb2a954f1b5179f16ac76c69e21d706b73fc48e3ded8297569107c86a7a06daa"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-292",
+          "owner_i32": 16,
+          "core_range": [
+            50831478,
+            50837410
+          ],
+          "frame_id": "frame-291",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "048600e24db4f893f263c743505cf8d67cd76d491ee53849b347917bc601aa8b"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-294",
+          "owner_i32": 17,
+          "core_range": [
+            52172688,
+            52175570
+          ],
+          "frame_id": "frame-293",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-296",
+          "owner_i32": 18,
+          "core_range": [
+            52692248,
+            52695086
+          ],
+          "frame_id": "frame-295",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-298",
+          "owner_i32": 19,
+          "core_range": [
+            53309885,
+            53312311
+          ],
+          "frame_id": "frame-297",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-300",
+          "owner_i32": 20,
+          "core_range": [
+            53843693,
+            53846807
+          ],
+          "frame_id": "frame-299",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-302",
+          "owner_i32": 21,
+          "core_range": [
+            54472860,
+            54475166
+          ],
+          "frame_id": "frame-301",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-304",
+          "owner_i32": 22,
+          "core_range": [
+            55113635,
+            55116349
+          ],
+          "frame_id": "frame-303",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-306",
+          "owner_i32": 23,
+          "core_range": [
+            55772223,
+            55775277
+          ],
+          "frame_id": "frame-305",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-308",
+          "owner_i32": 24,
+          "core_range": [
+            56415685,
+            56417795
+          ],
+          "frame_id": "frame-307",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-310",
+          "owner_i32": 25,
+          "core_range": [
+            57075508,
+            57078334
+          ],
+          "frame_id": "frame-309",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-312",
+          "owner_i32": 26,
+          "core_range": [
+            57599236,
+            57601818
+          ],
+          "frame_id": "frame-311",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-314",
+          "owner_i32": 27,
+          "core_range": [
+            58209423,
+            58211589
+          ],
+          "frame_id": "frame-313",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-316",
+          "owner_i32": 28,
+          "core_range": [
+            58841580,
+            58843774
+          ],
+          "frame_id": "frame-315",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-318",
+          "owner_i32": 29,
+          "core_range": [
+            59495514,
+            59498712
+          ],
+          "frame_id": "frame-317",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-320",
+          "owner_i32": 30,
+          "core_range": [
+            60145311,
+            60147909
+          ],
+          "frame_id": "frame-319",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "e8bce462bdb244d222ef3e04ba104188de331834bdfa41a5f3e274a42d00bd81"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-322",
+          "owner_i32": 31,
+          "core_range": [
+            60783354,
+            60785464
+          ],
+          "frame_id": "frame-321",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-324",
+          "owner_i32": 32,
+          "core_range": [
+            61466372,
+            61468482
+          ],
+          "frame_id": "frame-323",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-326",
+          "owner_i32": 33,
+          "core_range": [
+            62123493,
+            62126011
+          ],
+          "frame_id": "frame-325",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-328",
+          "owner_i32": 34,
+          "core_range": [
+            62761953,
+            62764091
+          ],
+          "frame_id": "frame-327",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-330",
+          "owner_i32": 35,
+          "core_range": [
+            63407053,
+            63409163
+          ],
+          "frame_id": "frame-329",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-332",
+          "owner_i32": 36,
+          "core_range": [
+            63936776,
+            63939554
+          ],
+          "frame_id": "frame-331",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-334",
+          "owner_i32": 37,
+          "core_range": [
+            64552925,
+            64555347
+          ],
+          "frame_id": "frame-333",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-336",
+          "owner_i32": 38,
+          "core_range": [
+            65199530,
+            65202472
+          ],
+          "frame_id": "frame-335",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-338",
+          "owner_i32": 39,
+          "core_range": [
+            65878901,
+            65882007
+          ],
+          "frame_id": "frame-337",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-340",
+          "owner_i32": 40,
+          "core_range": [
+            66412153,
+            66414903
+          ],
+          "frame_id": "frame-339",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "9156dc9cc0d4ff4950e1550eec5fd5d78da635b6dbde486c37adcff5bc1c0123"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-342",
+          "owner_i32": 62,
+          "core_range": [
+            68631632,
+            68642346
+          ],
+          "frame_id": "frame-341",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "d4fb93de59d2ec2081cce105ed8dbaa33aea5129bc51acaa362547b0223159ed"
+        },
+        {
+          "role": "write",
+          "stream_occurrence": 3,
+          "military_occurrence": "3/military-344",
+          "owner_i32": 63,
+          "core_range": [
+            69828912,
+            69842964
+          ],
+          "frame_id": "frame-343",
+          "owner_lifetime_scope": "selected_original_Read_or_Write_frame_only",
+          "operation_type_arrays_present": true,
+          "allowed_writer_size": 7,
+          "writer_vector_values_sha256": "5709de0406d132c66dec00870323958351e806742552479ac5661b3c40b07959"
+        }
+      ]
+    }
+  ],
+  "definitions": {
+    "observations": 344,
+    "ordered": [
+      {
+        "collection_index_u32": 0,
+        "database_row_i32": 1,
+        "default_value_i32": 0,
+        "operation_type_hash_u32": 2550264684
+      },
+      {
+        "collection_index_u32": 1,
+        "database_row_i32": 2,
+        "default_value_i32": 1,
+        "operation_type_hash_u32": 3793403111
+      },
+      {
+        "collection_index_u32": 2,
+        "database_row_i32": 3,
+        "default_value_i32": 2,
+        "operation_type_hash_u32": 2930570446
+      },
+      {
+        "collection_index_u32": 3,
+        "database_row_i32": 4,
+        "default_value_i32": 3,
+        "operation_type_hash_u32": 4157557744
+      },
+      {
+        "collection_index_u32": 4,
+        "database_row_i32": 5,
+        "default_value_i32": 4,
+        "operation_type_hash_u32": 4095524777
+      },
+      {
+        "collection_index_u32": 5,
+        "database_row_i32": 6,
+        "default_value_i32": 5,
+        "operation_type_hash_u32": 287324275
+      },
+      {
+        "collection_index_u32": 6,
+        "database_row_i32": 7,
+        "default_value_i32": 6,
+        "operation_type_hash_u32": 2327193651
+      }
+    ],
+    "portable_order_sha256": "e895435ea6ff98783727bd6334736a39d94ca0413ac00e68f9675fe90c0f49c2"
+  },
+  "summary": {
+    "reads": 43,
+    "writes": 86,
+    "input_initialized_allowed_sizes": {
+      "7": 43
+    },
+    "input_actual_leader_indices": {
+      "61": 1,
+      "15": 1,
+      "9": 1,
+      "63": 1,
+      "64": 1,
+      "67": 1,
+      "14": 1,
+      "66": 1,
+      "12": 1,
+      "69": 1,
+      "18": 1,
+      "65": 1,
+      "70": 1,
+      "6": 1,
+      "8": 1,
+      "10": 1,
+      "13": 1,
+      "47": 1,
+      "34": 1,
+      "30": 1,
+      "37": 1,
+      "27": 1,
+      "42": 1,
+      "55": 1,
+      "60": 1,
+      "45": 1,
+      "59": 1,
+      "44": 1,
+      "38": 1,
+      "33": 1,
+      "53": 1,
+      "35": 1,
+      "56": 1,
+      "46": 1,
+      "50": 1,
+      "57": 1,
+      "28": 1,
+      "58": 1,
+      "52": 1,
+      "54": 1,
+      "36": 1,
+      "51": 1,
+      "48": 1
+    },
+    "input_handler_defaults": {
+      "0": 43
+    },
+    "input_actual_personality_true": 43,
+    "input_nonempty_allowed": 43,
+    "writer_nonempty_allowed": 86,
+    "vectors_changed_by_saved_Read": {
+      "allowed": 0,
+      "per_war": 0,
+      "current": 20
+    }
+  },
+  "known_rng": {
+    "post_load_raw64_sha256": "df4fa1fd2d87be2de2887cfc9814ff4991356b9769944608a957f24248c69deb",
+    "post_load_bytes": 64,
+    "save_endpoint_independent_raw_dumps": 0,
+    "save_endpoint_equality": "source-guard witness at each actual Save enter/return; no independently emitted endpoint dumps"
+  },
+  "limits": [
+    "role-local selected original frames, no proof of owner persistence across streams",
+    "no incoming ff31 Read or initialized ff31 context captured",
+    "per-war query execution/preparation/rows not separately observed; full actual vector snapshots retained",
+    "rules input/config/content/DLC/mod identities; live gameplay DB byte snapshot unavailable",
+    "whole Save and actual MemoryIStream payload identities remain separately scoped",
+    "no outer Manager ordinal/requested-ID mapping inferred from owner/order/count",
+    "no runtime policy-call counters; source-only ordinary Load/Save profile",
+    "complete gameplay state/RNG/actions/turns remain unsupported"
+  ],
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "unknown_save_bytes_masked": false
+}
