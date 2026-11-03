@@ -1,4 +1,6 @@
-//! Complete current Linux XP2 City Culture/Gold/Growth wire records only.
+//! Bounded Linux XP2 City Culture16/17, current Gold/Growth wire records only.
+//! Culture16 explicitly defaults its absent green-energy tourism scalar to0.
+//! Nested Tourism/GreatWork16/17 versions are independent; older versions refuse.
 //!
 //! Target SHA-256: a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! Culture v17 W/R: 0x287f9e0/0x287fad0; Gold v11: 0x2887340/0x2887460;
@@ -34,6 +36,7 @@ pub enum Error {
     Truncated,
     Version { expected: i32, actual: i32 },
     InvalidBool,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
 }
@@ -185,17 +188,29 @@ impl<T: Wire> Wire for Vec<T> {
     }
 }
 macro_rules! record {
-    ($name:ident, $version:expr, { $( $(#[$attr:meta])* $field:ident: $ty:ty ),* $(,)? }) => {
+    ($name:ident, $version:expr $(, legacy $legacy:expr, $version_field:ident)?, { $( $(#[$attr:meta])* $field:ident: $ty:ty $(=> $since:literal)? ),* $(,)? }) => {
         #[derive(Clone, Debug, Eq, PartialEq)]
-        pub struct $name { $( $(#[$attr])* pub $field: $ty, )* }
+        pub struct $name {
+            $( pub $version_field: i32, )?
+            $( $(#[$attr])* pub $field: $ty, )*
+        }
         impl Wire for $name {
-            const MIN_SIZE: usize = 4 $(+ <$ty as Wire>::MIN_SIZE)*;
+            const MIN_SIZE: usize = {
+                let _minimum_version = $version;
+                $( let _minimum_version = $legacy; )?
+                4 $(+ if true $(&& _minimum_version >= $since)? { <$ty as Wire>::MIN_SIZE } else { 0 })*
+            };
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
                 let actual = i32::read(r)?;
-                if actual != $version { return Err(Error::Version { expected: $version, actual }); }
-                Ok(Self { $( $field: <$ty as Wire>::read(r)?, )* })
+                if actual != $version $( && actual != $legacy )? { return Err(Error::Version { expected: $version, actual }); }
+                Ok(Self {
+                    $( $version_field: actual, )?
+                    $( $field: if true $(&& actual >= $since)? { <$ty as Wire>::read(r)? }
+                        else { Default::default() }, )*
+                })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
+                $( if self.$version_field != $version { return Err(Error::UnsupportedLegacyWrite); } )?
                 ($version).write(w)?;
                 $( self.$field.write(w)?; )*
                 Ok(())
@@ -231,7 +246,7 @@ macro_rules! record {
         }
     };
 }
-record!(TourismModifier, CULTURE_VERSION, {
+record!(TourismModifier, CULTURE_VERSION, legacy 16, wire_version, {
     improvement_hash: u32,
     great_work_object: i32,
     affects_wonder: bool,
@@ -239,13 +254,13 @@ record!(TourismModifier, CULTURE_VERSION, {
     scaling_factor: i32,
     tourism_modifier_id: i32,
 });
-record!(GreatWorkYieldModifier, CULTURE_VERSION, {
+record!(GreatWorkYieldModifier, CULTURE_VERSION, legacy 16, wire_version, {
     great_work_object: i32,
     yield_type: i32,
     yield_change: i32,
     scaling_factor: i32,
 });
-record!(Culture, CULTURE_VERSION, {
+record!(Culture, CULTURE_VERSION, legacy 16, wire_version, {
     culture_raw_q8: i32,
     plots_acquired: i32,
     border_expansion_modifier: i32,
@@ -253,7 +268,7 @@ record!(Culture, CULTURE_VERSION, {
     enhanced_tourism_modifier: i32,
     improvement_tourism_modifier: i32,
     national_park_tourism_modifier: i32,
-    tourism_from_green_energy_modifier: i32,
+    tourism_from_green_energy_modifier: i32 => 17,
     tourism_modifiers: Vec<TourismModifier>,
     great_work_yield_modifiers: Vec<GreatWorkYieldModifier>,
     expended_great_person_tiles: i32,
@@ -375,6 +390,52 @@ mod tests {
         pair(&mut b, u32::MAX, -64);
         pair(&mut b, u32::MAX, 64);
         b
+    }
+    #[test]
+    fn culture16_scalar_default_and_independent_nested_versions() {
+        let limits = Limits::default();
+        let mut bytes = culture_bytes();
+        bytes[..4].copy_from_slice(&16i32.to_le_bytes());
+        bytes[40..44].copy_from_slice(&16i32.to_le_bytes());
+        bytes[66..70].copy_from_slice(&16i32.to_le_bytes());
+        // Only green-energy scalar disappears; vectors retain their own versions.
+        bytes.drain(32..36);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let (value, n, items) = Culture::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((n, items), (end, 2));
+        assert_eq!(value.wire_version, 16);
+        assert_eq!(value.tourism_from_green_energy_modifier, 0);
+        assert_eq!(value.national_park_tourism_modifier, 17);
+        assert_eq!(value.tourism_modifiers[0].wire_version, 16);
+        assert_eq!(value.great_work_yield_modifiers[0].wire_version, 16);
+        assert_eq!(value.great_work_yield_modifiers[0].scaling_factor, 34);
+        assert!(value.no_culture_border_expansion);
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Culture::decode_prefix(&bytes[..n], limits).is_err(), "{n}");
+        }
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        assert!(Culture::decode_prefix(&bytes, exact).is_ok());
+        assert_eq!(
+            Culture::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        // The same outer16 reader accepts nested17 without rewriting its tag.
+        bytes[36..40].copy_from_slice(&17i32.to_le_bytes());
+        bytes[62..66].copy_from_slice(&17i32.to_le_bytes());
+        let value = Culture::decode_prefix(&bytes, limits).unwrap().0;
+        assert_eq!(value.tourism_modifiers[0].wire_version, 17);
+        assert_eq!(value.great_work_yield_modifiers[0].wire_version, 17);
     }
     #[test]
     fn economic_records_preserve_nested_versions_raw_bits_and_order() {
@@ -501,21 +562,21 @@ mod tests {
         refuse!(Gold, gold_bytes(), 132);
         refuse!(Growth, growth_bytes(), 44);
         let mut bytes = culture_bytes();
-        bytes[40] = 16;
+        bytes[40] = 15;
         assert_eq!(
             Culture::decode(&bytes, Limits::default()),
             Err(Error::Version {
                 expected: 17,
-                actual: 16
+                actual: 15
             })
         );
         let mut bytes = culture_bytes();
-        bytes[66..70].copy_from_slice(&16i32.to_le_bytes());
+        bytes[66..70].copy_from_slice(&15i32.to_le_bytes());
         assert_eq!(
             Culture::decode(&bytes, Limits::default()),
             Err(Error::Version {
                 expected: 17,
-                actual: 16
+                actual: 15
             })
         );
         let tourism = TourismModifier::decode(&culture_bytes()[40..62], Limits::default()).unwrap();
