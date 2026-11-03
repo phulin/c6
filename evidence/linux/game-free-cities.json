@@ -1,0 +1,1787 @@
+{
+  "schema": "c6-linux-game-free-cities-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "methods": [
+    {
+      "address": "0x294fb60",
+      "size": 67,
+      "name": "FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "c5b3ce069b39f27e7beaf41d841cb8ec6a71770b9b3ddf84903b13a36fe8a4a7"
+    },
+    {
+      "address": "0x294fb40",
+      "size": 15,
+      "name": "FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>::load(Serialization::IStream&)",
+      "sha256": "9631d8546c88ea51180f53ca45c4e000df5d1cf018ad22fc64bf43b762a25a01"
+    },
+    {
+      "address": "0x294fb50",
+      "size": 9,
+      "name": "FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x294f130",
+      "size": 19,
+      "name": "FAutoVariable<GameCore::AI::Control::ControlPriority, GameCore::FreeCities::Manager>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "4e8774646f4c6285c4c152036004697fba83ac754fb0d4e05010c654eb13ff2b"
+    },
+    {
+      "address": "0x294f110",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::AI::Control::ControlPriority, GameCore::FreeCities::Manager>::load(Serialization::IStream&)",
+      "sha256": "d0653b0debafb1e2d18b47976dd947d78ffe7095abcb06fb9566c034261268b6"
+    },
+    {
+      "address": "0x294f120",
+      "size": 9,
+      "name": "FAutoVariable<GameCore::AI::Control::ControlPriority, GameCore::FreeCities::Manager>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x213d450",
+      "size": 19,
+      "name": "void Serialization::EnumToStream<GameCore::AI::Control::ControlPriority>(Serialization::OStream&, GameCore::AI::Control::ControlPriority const&)",
+      "sha256": "12b6dbef4860d24c618aa6b72f3e6f5496746ab0e7fbacb1c9f252266b69414d"
+    },
+    {
+      "address": "0x213d3b0",
+      "size": 30,
+      "name": "void Serialization::EnumFromStream<GameCore::AI::Control::ControlPriority>(Serialization::IStream&, GameCore::AI::Control::ControlPriority&)",
+      "sha256": "14173c9f7f4efcefbdf97b47f99d776977e0d9a6d86472a411a3028779d0cbea"
+    },
+    {
+      "address": "0x28898d0",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> >(Serialization::IStream&, bool*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> const&)",
+      "sha256": "9118c800e6dfdecba4920059a3321c5d261f8742f8338fdb6ba8caeaa31a991c"
+    },
+    {
+      "address": "0x2002f30",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(Serialization::IStream&, bool*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)",
+      "sha256": "7fcfb1e4465824c3669e564791b4db6920a5115cc9985ebfa473ba9ce0bf29e1"
+    },
+    {
+      "address": "0x294d310",
+      "size": 138,
+      "name": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> const&)",
+      "sha256": "c90fb97fd26eb55e92e240c5634784fecfbce8e1894643c89cf27ceaf3411914"
+    },
+    {
+      "address": "0x20031e0",
+      "size": 138,
+      "name": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)",
+      "sha256": "bead1d24762d4f16a0cdfde6a4d098b203aa0f55ece94e8adbe1596c9fff62b8"
+    },
+    {
+      "address": "0x2950650",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::FreeCities::Instance, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > >(Serialization::IStream&, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "5783b61a4639b71d1204b705eb26471fcf10416a294bb8ae71d613158c0da535"
+    },
+    {
+      "address": "0x2950af0",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::FreeCities::Instance const, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const>::SerializeFromSequenceContainer(Serialization::OStream&, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "878aaa296a2ac0203c0643efad56922acebf5fe7fa27106f57d7c3f73984322b"
+    },
+    {
+      "address": "0x2950b20",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::FreeCities::Instance const, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const>::operator()(GameCore::FreeCities::Instance const&)",
+      "sha256": "e3227c095173a278aa004e73af8814d25c89cd672d966fc2bc6a531a6354a712"
+    },
+    {
+      "address": "0x1fe81a0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(bool&)",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    },
+    {
+      "address": "0x1fe7900",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(bool const&)",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x294d890",
+      "size": 155,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::FreeCities::Manager const&)",
+      "sha256": "4fb2a13ce4ef74977b4f22cdde11b3a00c560e87661e0ed2566657cf2dbb8cbe"
+    },
+    {
+      "address": "0x294b990",
+      "size": 180,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::FreeCities::Instance const&)",
+      "sha256": "7cadf0cb056a7250ce9c1a3503069a03a03162fe4c36e955ae7e3ed1df87238b"
+    },
+    {
+      "address": "0x2c9aba0",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::PlayerTypes const&)",
+      "sha256": "e3aa2b85edbfcad11d2fe4b8d720bad7d662e88d8461f7994ba25444ae60c6d1"
+    },
+    {
+      "address": "0x2c9af20",
+      "size": 41,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::PlotCoord const&)",
+      "sha256": "09befdb0e6703290977db65b34b4a9d237076caa3199171f77138d55361c355d"
+    },
+    {
+      "address": "0x2950a40",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >(Serialization::OStream&, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "877727830a764d86c889524aa35f68ccfbe69e24bcd97fd8e8d6c3a8c4bf3ff8"
+    },
+    {
+      "address": "0x294d020",
+      "size": 56,
+      "name": "Serialization::OStream& Serialization::operator<< <bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>, &GameCore::Definitions::GetUnitDefinitions>(Serialization::OStream&, GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>, &GameCore::Definitions::GetUnitDefinitions, void> const&)",
+      "sha256": "73e103198f5c5e33403003a8f796d843b2aa8f98b10b51cb4dc07e3135e3b968"
+    },
+    {
+      "address": "0x294d060",
+      "size": 56,
+      "name": "Serialization::OStream& Serialization::operator<< <bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>, &GameCore::Definitions::GetBuildingDefinitions>(Serialization::OStream&, GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>, &GameCore::Definitions::GetBuildingDefinitions, void> const&)",
+      "sha256": "7d4fdf36f9e8d5b6cac7293403de6e2f7a8a2295d791ac566e879cfdfa1e2bb3"
+    },
+    {
+      "address": "0x294d930",
+      "size": 231,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::FreeCities::Manager&)",
+      "sha256": "b55c7ecfb5d2d9973b780b45b47352c936d94865197e8f1a47271be57bbe6b6d"
+    },
+    {
+      "address": "0x294ba50",
+      "size": 362,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::FreeCities::Instance&)",
+      "sha256": "415c1d6c5330f9843092136bd92b24d0479b61b71e65e19f9539a808212b067d"
+    },
+    {
+      "address": "0x2c9abd0",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::PlayerTypes&)",
+      "sha256": "2cc19dccb1ce5ba3727486d694c79a0b5c90c1d7658cf975ce07ade2572a6ee7"
+    },
+    {
+      "address": "0x2c9af50",
+      "size": 41,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::PlotCoord&)",
+      "sha256": "e3a5651a332e533a0ab691c102a6058de6b19f5da3cbd89404986c0e8deffda2"
+    },
+    {
+      "address": "0x2950640",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >(Serialization::IStream&, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "60d09bcf0e6392369199e1854ace794ed09a33f66e2e3c4215380b6c4f198f44"
+    },
+    {
+      "address": "0x294d0b0",
+      "size": 67,
+      "name": "Serialization::IStream& Serialization::operator>><bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>, &GameCore::Definitions::GetUnitDefinitions>(Serialization::IStream&, GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit>, &GameCore::Definitions::GetUnitDefinitions, void>&)",
+      "sha256": "6ee400f587ab53ee4610382c2f4a92dcff8055942662068676b8b3a0520be395"
+    },
+    {
+      "address": "0x294d410",
+      "size": 67,
+      "name": "Serialization::IStream& Serialization::operator>><bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>, &GameCore::Definitions::GetBuildingDefinitions>(Serialization::IStream&, GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>, &GameCore::Definitions::GetBuildingDefinitions, void>&)",
+      "sha256": "97cb74c1aad6e193b03980c8aa285af2cf4f3dee51d501ee714657a84eebf6e0"
+    },
+    {
+      "address": "0x2950aa0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::FreeCities::Instance const, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const> eastl::for_each<GameCore::FreeCities::Instance const*, Serialization::SerializeFromSequenceContainer<GameCore::FreeCities::Instance const, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const> >(GameCore::FreeCities::Instance const*, GameCore::FreeCities::Instance const*, Serialization::SerializeFromSequenceContainer<GameCore::FreeCities::Instance const, Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> > const>)",
+      "sha256": "274b53d9195da551eb33c5eb594febf2f6a52612a915f213fb11b9b2a10818b6"
+    },
+    {
+      "address": "0x294fbb0",
+      "size": 15,
+      "name": "FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>::save(Serialization::OStream&) const",
+      "sha256": "790dbfe14128c5b587e0917898d650758239509dca9df3ac3370684d40169fdf"
+    },
+    {
+      "address": "0x294fc50",
+      "size": 1815,
+      "name": "FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "6ad89d81c3810d313c308f01ad99db13808f20c87c6851893876bfc563c91c6d"
+    },
+    {
+      "address": "0x294fbc0",
+      "size": 9,
+      "name": "FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x294f150",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::AI::Control::ControlPriority, GameCore::FreeCities::Manager>::save(Serialization::OStream&) const",
+      "sha256": "82a65cbb89b6c7d6add8e6f27d42e8f8eb4f4fa809c88f1d67628384e56fbf68"
+    },
+    {
+      "address": "0x294f1f0",
+      "size": 1724,
+      "name": "FAutoVariable<GameCore::AI::Control::ControlPriority, GameCore::FreeCities::Manager>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "b4f60ed77538ebcb3da63ec9133007f79b5203e3e46a040726eb3d18dee84e57"
+    },
+    {
+      "address": "0x294f160",
+      "size": 9,
+      "name": "FAutoVariable<GameCore::AI::Control::ControlPriority, GameCore::FreeCities::Manager>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x294e980",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>(Serialization::OStream&, FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x294e9e0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>(Serialization::IStream&, FAutoVariable<Types::Vector<GameCore::FreeCities::Instance, Types::LinearAlloc::Default<1u, 0u> >, GameCore::FreeCities::Manager>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    }
+  ],
+  "dwarf_sha256": "18cff30459b744d4e41c45431369c9e0d57d1d4295956262bb9e235d8083200e",
+  "outer_bindings": [
+    {
+      "site": "0x294fb70",
+      "plt": "0x1eaac00",
+      "body": "0x294faf0"
+    },
+    {
+      "site": "0x294fb7b",
+      "plt": "0x1f9fdd0",
+      "body": "0x2950640"
+    },
+    {
+      "site": "0x294fb83",
+      "plt": "0x1e1d4c0",
+      "body": "0x2950a10"
+    },
+    {
+      "site": "0x294fb96",
+      "plt": "0x1e1d4c0",
+      "body": "0x2950a10"
+    },
+    {
+      "site": "0x294fb9e",
+      "plt": "0x1f76d40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f13c",
+      "plt": "0x1e89b60",
+      "body": "0x2d4fb40"
+    },
+    {
+      "site": "0x213d45c",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x213d3bd",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x28898ec",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2889916",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2889922",
+      "plt": "0x1e27fd0",
+      "body": "0x1ffc120"
+    },
+    {
+      "site": "0x2889946",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000"
+    },
+    {
+      "site": "0x2002f4c",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2002f76",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2002f82",
+      "plt": "0x1ea4540",
+      "body": "0x1ffb930"
+    },
+    {
+      "site": "0x2002fa6",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000"
+    },
+    {
+      "site": "0x294d329",
+      "plt": "0x1eb2df0",
+      "body": "0x1fe2280"
+    },
+    {
+      "site": "0x294d33a",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x294d355",
+      "plt": "0x1f905f0",
+      "body": "0x1fcd120"
+    },
+    {
+      "site": "0x294d35d",
+      "plt": "0x1ebfc00",
+      "body": "0x1fe52c0"
+    },
+    {
+      "site": "0x294d36c",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x294d378",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90"
+    },
+    {
+      "site": "0x20031f9",
+      "plt": "0x1ec2240",
+      "body": "0x1fe2260"
+    },
+    {
+      "site": "0x200320a",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x2003225",
+      "plt": "0x1e931b0",
+      "body": "0x1fe4ad0"
+    },
+    {
+      "site": "0x200322d",
+      "plt": "0x1f3e390",
+      "body": "0x1fe5b70"
+    },
+    {
+      "site": "0x200323c",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x2003248",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90"
+    },
+    {
+      "site": "0x2950661",
+      "plt": "0x1e773c0",
+      "body": "0x29506d0"
+    },
+    {
+      "site": "0x2950676",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2950687",
+      "plt": "0x1e9b930",
+      "body": "0x29506f0"
+    },
+    {
+      "site": "0x29506a3",
+      "plt": "0x1f34be0",
+      "body": "0x2950710"
+    },
+    {
+      "site": "0x29506ab",
+      "plt": "0x1e4ec20",
+      "body": "0x2950750"
+    },
+    {
+      "site": "0x29506b6",
+      "plt": "0x1ed3c50",
+      "body": "0x294ba50"
+    },
+    {
+      "site": "0x2950b02",
+      "plt": "0x1f83360",
+      "body": "0x294ed50"
+    },
+    {
+      "site": "0x2950b13",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x1fe81bf",
+      "plt": "0x1e03670",
+      "body": "0x1fcdb20"
+    },
+    {
+      "site": "0x294d8ac",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x294d8bb",
+      "plt": "0x1e3da60",
+      "body": "0x2037940"
+    },
+    {
+      "site": "0x294d8c8",
+      "plt": "0x1f00a90",
+      "body": "0x20357b0"
+    },
+    {
+      "site": "0x294d8d0",
+      "plt": "0x1fb0810",
+      "body": "0x1fcc140"
+    },
+    {
+      "site": "0x294d8e1",
+      "plt": "0x1e8d360",
+      "body": "0x2c9aba0"
+    },
+    {
+      "site": "0x294d8f8",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x294d907",
+      "plt": "0x1e0db50",
+      "body": "0x213d450"
+    },
+    {
+      "site": "0x294d919",
+      "plt": "0x1e7db30",
+      "body": "0x294e980"
+    },
+    {
+      "site": "0x294b9a7",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x294b9af",
+      "plt": "0x1f00a90",
+      "body": "0x20357b0"
+    },
+    {
+      "site": "0x294b9b7",
+      "plt": "0x1fb0810",
+      "body": "0x1fcc140"
+    },
+    {
+      "site": "0x294b9c5",
+      "plt": "0x1e8d360",
+      "body": "0x2c9aba0"
+    },
+    {
+      "site": "0x294b9d1",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x294b9dd",
+      "plt": "0x1f1db30",
+      "body": "0x2c9af20"
+    },
+    {
+      "site": "0x294b9e9",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90"
+    },
+    {
+      "site": "0x294b9f5",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x294ba01",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x294ba0d",
+      "plt": "0x1e8d360",
+      "body": "0x2c9aba0"
+    },
+    {
+      "site": "0x294ba19",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x294ba25",
+      "plt": "0x1f65dd0",
+      "body": "0x294d020"
+    },
+    {
+      "site": "0x294ba34",
+      "plt": "0x1e6e0c0",
+      "body": "0x294d060"
+    },
+    {
+      "site": "0x2c9abb3",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x2c9af2a",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x2c9af39",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x2950a54",
+      "plt": "0x1e4a3d0",
+      "body": "0x294edb0"
+    },
+    {
+      "site": "0x2950a5f",
+      "plt": "0x1f9b9a0",
+      "body": "0x294edc0"
+    },
+    {
+      "site": "0x2950a72",
+      "plt": "0x1ecb520",
+      "body": "0x2950af0"
+    },
+    {
+      "site": "0x2950a87",
+      "plt": "0x1f31dc0",
+      "body": "0x2950aa0"
+    },
+    {
+      "site": "0x294d02a",
+      "plt": "0x1e11b60",
+      "body": "0x294d300"
+    },
+    {
+      "site": "0x294d032",
+      "plt": "0x1f02b50",
+      "body": "0x206ffe0"
+    },
+    {
+      "site": "0x294d03a",
+      "plt": "0x1e12df0",
+      "body": "0x22147d0"
+    },
+    {
+      "site": "0x294d048",
+      "plt": "0x1e28100",
+      "body": "0x294d310"
+    },
+    {
+      "site": "0x294d06a",
+      "plt": "0x1e13990",
+      "body": "0x294d2e0"
+    },
+    {
+      "site": "0x294d072",
+      "plt": "0x1f02b50",
+      "body": "0x206ffe0"
+    },
+    {
+      "site": "0x294d07a",
+      "plt": "0x1e7c250",
+      "body": "0x2213730"
+    },
+    {
+      "site": "0x294d088",
+      "plt": "0x1e4f9e0",
+      "body": "0x20031e0"
+    },
+    {
+      "site": "0x294d944",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x294d977",
+      "plt": "0x1ebf120",
+      "body": "0x1fd0ae0"
+    },
+    {
+      "site": "0x294d97c",
+      "plt": "0x1e81590",
+      "body": "0x2b53260"
+    },
+    {
+      "site": "0x294d988",
+      "plt": "0x1f59220",
+      "body": "0x2004fc0"
+    },
+    {
+      "site": "0x294d991",
+      "plt": "0x1e81590",
+      "body": "0x2b53260"
+    },
+    {
+      "site": "0x294d99d",
+      "plt": "0x1e97ac0",
+      "body": "0x1fcc1b0"
+    },
+    {
+      "site": "0x294d9b9",
+      "plt": "0x1f18c60",
+      "body": "0x2035ba0"
+    },
+    {
+      "site": "0x294d9c8",
+      "plt": "0x1efe620",
+      "body": "0x2035bb0"
+    },
+    {
+      "site": "0x294d9d0",
+      "plt": "0x1fb8200",
+      "body": "0x2035bc0"
+    },
+    {
+      "site": "0x294d9e3",
+      "plt": "0x1fb4c50",
+      "body": "0x294e9a0"
+    },
+    {
+      "site": "0x294d9ee",
+      "plt": "0x1fb0a10",
+      "body": "0x213d3b0"
+    },
+    {
+      "site": "0x294d9fd",
+      "plt": "0x1ecb2e0",
+      "body": "0x294e9e0"
+    },
+    {
+      "site": "0x294da05",
+      "plt": "0x1e00b30",
+      "body": "0x294da20"
+    },
+    {
+      "site": "0x294ba66",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x294ba73",
+      "plt": "0x1faa940",
+      "body": "0x2c9abd0"
+    },
+    {
+      "site": "0x294ba78",
+      "plt": "0x1e81590",
+      "body": "0x2b53260"
+    },
+    {
+      "site": "0x294ba84",
+      "plt": "0x1e97ac0",
+      "body": "0x1fcc1b0"
+    },
+    {
+      "site": "0x294ba94",
+      "plt": "0x1f18c60",
+      "body": "0x2035ba0"
+    },
+    {
+      "site": "0x294ba9f",
+      "plt": "0x1efe620",
+      "body": "0x2035bb0"
+    },
+    {
+      "site": "0x294baa7",
+      "plt": "0x1fb8200",
+      "body": "0x2035bc0"
+    },
+    {
+      "site": "0x294bab4",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x294bac1",
+      "plt": "0x1f8f620",
+      "body": "0x2c9af50"
+    },
+    {
+      "site": "0x294bace",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000"
+    },
+    {
+      "site": "0x294baf6",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480"
+    },
+    {
+      "site": "0x294bb1e",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480"
+    },
+    {
+      "site": "0x294bb46",
+      "plt": "0x1ebf120",
+      "body": "0x1fd0ae0"
+    },
+    {
+      "site": "0x294bb6b",
+      "plt": "0x1e556a0",
+      "body": "0x2118b60"
+    },
+    {
+      "site": "0x294bb78",
+      "plt": "0x1e10350",
+      "body": "0x294d0a0"
+    },
+    {
+      "site": "0x294bb83",
+      "plt": "0x1f1dce0",
+      "body": "0x294d0b0"
+    },
+    {
+      "site": "0x294bba6",
+      "plt": "0x1eda850",
+      "body": "0x294d100"
+    },
+    {
+      "site": "0x2c9abdf",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x2c9af5a",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x2c9af69",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x2950644",
+      "plt": "0x1e646e0",
+      "body": "0x2950650"
+    },
+    {
+      "site": "0x294d0bd",
+      "plt": "0x1e10350",
+      "body": "0x294d0a0"
+    },
+    {
+      "site": "0x294d0c5",
+      "plt": "0x1e24a00",
+      "body": "0x294d200"
+    },
+    {
+      "site": "0x294d0cd",
+      "plt": "0x1efab60",
+      "body": "0x2071120"
+    },
+    {
+      "site": "0x294d0d5",
+      "plt": "0x1e12df0",
+      "body": "0x22147d0"
+    },
+    {
+      "site": "0x294d0e3",
+      "plt": "0x1e900a0",
+      "body": "0x28898d0"
+    },
+    {
+      "site": "0x294d41d",
+      "plt": "0x1eded80",
+      "body": "0x294d460"
+    },
+    {
+      "site": "0x294d425",
+      "plt": "0x1e1eea0",
+      "body": "0x294d210"
+    },
+    {
+      "site": "0x294d42d",
+      "plt": "0x1efab60",
+      "body": "0x2071120"
+    },
+    {
+      "site": "0x294d435",
+      "plt": "0x1e7c250",
+      "body": "0x2213730"
+    },
+    {
+      "site": "0x294d443",
+      "plt": "0x1eb5e90",
+      "body": "0x2002f30"
+    },
+    {
+      "site": "0x2950ac6",
+      "plt": "0x1f28820",
+      "body": "0x2950b20"
+    },
+    {
+      "site": "0x294fc81",
+      "plt": "0x1eaac00",
+      "body": "0x294faf0"
+    },
+    {
+      "site": "0x294fc8c",
+      "plt": "0x1f9fdd0",
+      "body": "0x2950640"
+    },
+    {
+      "site": "0x294fc9b",
+      "plt": "0x1fb6520",
+      "body": "0x1fe9950"
+    },
+    {
+      "site": "0x294fcb1",
+      "plt": "0x1fb6520",
+      "body": "0x1fe9950"
+    },
+    {
+      "site": "0x294fcd8",
+      "plt": "0x1f4ad50",
+      "body": "0x2950a40"
+    },
+    {
+      "site": "0x294fcf4",
+      "plt": "0x1f4ad50",
+      "body": "0x2950a40"
+    },
+    {
+      "site": "0x294fcfc",
+      "plt": "0x1f492c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fd07",
+      "plt": "0x1f492c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fd22",
+      "plt": "0x1f69ad0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fd4f",
+      "plt": "0x1e786c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fd65",
+      "plt": "0x1f3f790",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fd72",
+      "plt": "0x1e78190",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fd93",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294fda7",
+      "plt": "0x1e4df20",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fdb4",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294fdf5",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fe30",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fe4f",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fe5f",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fe6c",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fe8d",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294fea4",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294feae",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294fec1",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fecf",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fee1",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fee9",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294fef1",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294ff20",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294ff3e",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294ff4d",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294ff63",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294ff84",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294ffa2",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294ffac",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294ffcd",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294ffee",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950002",
+      "plt": "0x1e9e2c0",
+      "body": "0x1fcc9b0"
+    },
+    {
+      "site": "0x295000c",
+      "plt": "0x1e9e2c0",
+      "body": "0x1fcc9b0"
+    },
+    {
+      "site": "0x2950019",
+      "plt": "0x1f054b0",
+      "body": "0x2950b40"
+    },
+    {
+      "site": "0x295002b",
+      "plt": "0x1f054b0",
+      "body": "0x2950b40"
+    },
+    {
+      "site": "0x2950052",
+      "plt": "0x1e786c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950063",
+      "plt": "0x1f3f790",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950070",
+      "plt": "0x1e78190",
+      "body": "0x0"
+    },
+    {
+      "site": "0x295007a",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x2950087",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x295009e",
+      "plt": "0x1e4df20",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29500e2",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950119",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950138",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950148",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950155",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2950162",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x2950172",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x2950195",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29501a8",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29501b6",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29501c8",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29501d0",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29501d8",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29501e7",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x29501f4",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x2950218",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x295022e",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x295023a",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x2950247",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x295026b",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x295028c",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29502ad",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x29502b7",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x29502c1",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x29502ce",
+      "plt": "0x1e1d4c0",
+      "body": "0x2950a10"
+    },
+    {
+      "site": "0x2950305",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x295033e",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x2950348",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x295035a",
+      "plt": "0x1e1d4c0",
+      "body": "0x2950a10"
+    },
+    {
+      "site": "0x2950362",
+      "plt": "0x1f76d40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f21e",
+      "plt": "0x1e89b60",
+      "body": "0x2d4fb40"
+    },
+    {
+      "site": "0x294f228",
+      "plt": "0x1fb6520",
+      "body": "0x1fe9950"
+    },
+    {
+      "site": "0x294f23e",
+      "plt": "0x1fb6520",
+      "body": "0x1fe9950"
+    },
+    {
+      "site": "0x294f265",
+      "plt": "0x1f2d330",
+      "body": "0x2d4fb10"
+    },
+    {
+      "site": "0x294f27c",
+      "plt": "0x1f2d330",
+      "body": "0x2d4fb10"
+    },
+    {
+      "site": "0x294f284",
+      "plt": "0x1f492c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f28f",
+      "plt": "0x1f492c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f2aa",
+      "plt": "0x1f69ad0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f2d7",
+      "plt": "0x1e786c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f2ed",
+      "plt": "0x1f3f790",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f2fa",
+      "plt": "0x1e78190",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f31c",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f330",
+      "plt": "0x1e4df20",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f33d",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f37e",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f3bf",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f3da",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f3ea",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f3f7",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f419",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f430",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f43a",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f44d",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f45b",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f46d",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f475",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f47d",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f4b7",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f4d5",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f4e4",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f517",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f535",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f53f",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f563",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f57f",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f589",
+      "plt": "0x1e9e2c0",
+      "body": "0x1fcc9b0"
+    },
+    {
+      "site": "0x294f593",
+      "plt": "0x1e9e2c0",
+      "body": "0x1fcc9b0"
+    },
+    {
+      "site": "0x294f5a0",
+      "plt": "0x1ed7320",
+      "body": "0x2d55ee0"
+    },
+    {
+      "site": "0x294f5af",
+      "plt": "0x1ed7320",
+      "body": "0x2d55ee0"
+    },
+    {
+      "site": "0x294f5d6",
+      "plt": "0x1e786c0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f5e7",
+      "plt": "0x1f3f790",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f5f4",
+      "plt": "0x1e78190",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f5fe",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f60b",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f622",
+      "plt": "0x1e4df20",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f666",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f69d",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f6bc",
+      "plt": "0x1e125d0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f6cc",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f6d9",
+      "plt": "0x1fa8b40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f6e6",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f6f3",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f710",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f723",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f731",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f743",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f74b",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f753",
+      "plt": "0x1ecaec0",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f762",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f76f",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f793",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f7a9",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f7b8",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f7c5",
+      "plt": "0x1f1d630",
+      "body": "0x1fe9970"
+    },
+    {
+      "site": "0x294f7e9",
+      "plt": "0x1f30160",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f80a",
+      "plt": "0x1fab100",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f82b",
+      "plt": "0x1f33250",
+      "body": "0x0"
+    },
+    {
+      "site": "0x294f83a",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f844",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f895",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f89f",
+      "plt": "0x1f14350",
+      "body": "0x1fcc250"
+    },
+    {
+      "site": "0x294f8a7",
+      "plt": "0x1f76d40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2d7a899",
+      "plt": "0x1f07650",
+      "body": "0x294d890"
+    }
+  ],
+  "fixtures": [
+    {
+      "bytes": 64366,
+      "items": 12430,
+      "projection_sha256": "bf9272a4658d1a927c0ee413cc4532621cb6d76657be879369dd4d42156c5cf3",
+      "instances": 55,
+      "unit_entries": 6380,
+      "building_entries": 5995,
+      "version_sites": 56,
+      "count_sites": 111,
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "wire_sha256": "273b8a90c5a0e69792765c8d957a6ca935f75bde1d3b48aa91b0f4a1f0ac7579",
+      "start": 70963412,
+      "end": 71027778,
+      "direct_children": {
+        "GameCore::FreeCities::Instance": 55
+      },
+      "all_nested_native_cuts_compared": true,
+      "next_owner": {
+        "owner": "GameCore::Random",
+        "start": 71027778,
+        "end": 71027796
+      }
+    },
+    {
+      "bytes": 64366,
+      "items": 12430,
+      "projection_sha256": "bf9272a4658d1a927c0ee413cc4532621cb6d76657be879369dd4d42156c5cf3",
+      "instances": 55,
+      "unit_entries": 6380,
+      "building_entries": 5995,
+      "version_sites": 56,
+      "count_sites": 111,
+      "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "wire_sha256": "273b8a90c5a0e69792765c8d957a6ca935f75bde1d3b48aa91b0f4a1f0ac7579",
+      "start": 70963412,
+      "end": 71027778,
+      "direct_children": {
+        "GameCore::FreeCities::Instance": 55
+      },
+      "all_nested_native_cuts_compared": true,
+      "next_owner": {
+        "owner": "GameCore::Random",
+        "start": 71027778,
+        "end": 71027796
+      }
+    }
+  ],
+  "candidate": {
+    "source_commit": "194711e2f055328637563d2e5aa0eb52d4682651",
+    "archive_sha256": "7c214abe31211738e71fd60c3a471378af1c7fc5af95186af43194be30105b0b",
+    "module_sha256": "995dfa4c8f798ef2c2c66287e37a5ef6b2c8d9e88db25dbc83b10ce9b186e11b",
+    "driver_sha256": "a8e0902b98193a7ecbc6f58820fc0e7b0272e7994cade30fe18edecd9f67eb1d",
+    "harness_sha256": "d982aa6fcae753e0beff4bc0394857a8e23a36c2ec0840ec1be091e3fcd98fe6",
+    "executable_sha256": "777c8e79a1af27e787c1db78c443137b9a02a0105b7fada109fd044cc6365e0b",
+    "records": 2,
+    "source_tests": 3,
+    "strict_clippy": true,
+    "full_typed_projection_compared": true,
+    "isolated_export_added": false,
+    "source_files_sha256": {
+      "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+      "Cargo.lock": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
+      "crates/c6-core/Cargo.toml": "0bcf7b157c27f3c87ae75b43c36cb5d622f6360a4fa9fb2efbdccd346143c0dc",
+      "tools/linux/game_free_cities_audit.py": "a8e0902b98193a7ecbc6f58820fc0e7b0272e7994cade30fe18edecd9f67eb1d",
+      "tools/linux/player_wmds_audit.py": "33c3e854945a1a576e25a168b197ca10975c61681d4d096d12bc6cfcfc7f268c",
+      "crates/c6-core/benches/rng.rs": "5b0fe73942c72568b8e014f8a04509aa9c8ba7675629de3163a97305a7af8e4d",
+      "crates/c6-core/examples/combat_kernel.rs": "96f9ec265cda68abccc811f9428d6db56f13296a75fa9c09d9cdd2b22d4d11d1",
+      "crates/c6-core/examples/combat_random.rs": "db3ed036d45c264a0cf18399cf0f2cec716b8cbb4f7d7dd595e16875ff3fb4b7",
+      "crates/c6-core/examples/notification_state_phase.rs": "0dcb3a0924777d2c5be2778b27c2b7187556f0af99d4486ba8a1862c6752b407",
+      "crates/c6-core/examples/notifications_codec.rs": "d63880fefb6ef7f57e1d6d31410fe20736c8f8bddc8ce0216354e853233298f4",
+      "crates/c6-core/examples/player_components_codec.rs": "7e7ac21e1d5103e0096a6556591e4ce270c50706adc51eeb413a97301961529d",
+      "crates/c6-core/examples/random_variants.rs": "cc9ebf741400dde71d53b70a6ec5c5ebe931af18cbfe09ddd9d43b7349d8f483",
+      "crates/c6-core/examples/requirements_codec.rs": "bd51b065fa9003a29aa32292144a036d9204fbf5eff1e7aaba5dd4c567cba4ff",
+      "crates/c6-core/examples/skip_turn_kernel.rs": "32dcb6b708d0acab0032c031ce23a89fe4bcac2d8e148e4a42acc154208ae30d",
+      "crates/c6-core/examples/trade_codec.rs": "64ce051ee11da327f1a2950883f911d7a90e4613dacc3a7e7c5466b79150d01e",
+      "crates/c6-core/examples/unit_codec.rs": "9194562771c056761e67bf5dee252767f495378a6794ebe2a6fd7d1c74c6e982",
+      "crates/c6-core/examples/unit_placement.rs": "3a190aea3574e4dc4be65d6de53f547ca2da01b999a735896034d5077b409254",
+      "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+      "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+      "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+      "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+      "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+      "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+      "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+      "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+      "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+      "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+      "crates/c6-core/src/core_player.rs": "96712d5b6485d5013fb796dae2a588fd6695acf5f521a7ada39600a6377f27f9",
+      "crates/c6-core/src/core_stream.rs": "2d384ff21dc948d6ed38a2bc52edf83670e22696330b4a896a874d311e06763f",
+      "crates/c6-core/src/game_barbarian.rs": "4762bd90e3b25ae9ca0b01ce30719e98e632bda6295650da9783e26920c0e909",
+      "crates/c6-core/src/game_free_cities.rs": "995dfa4c8f798ef2c2c66287e37a5ef6b2c8d9e88db25dbc83b10ce9b186e11b",
+      "crates/c6-core/src/game_global_ai.rs": "11fd165c35e84d21c745caf517fe9d4b7717d940e45f534ef02f49d086cae902",
+      "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+      "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+      "crates/c6-core/src/lib.rs": "a75f240684e41ddce5c446fd45e8c95f56772b08093df0fff08399ce20da9e71",
+      "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+      "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+      "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+      "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+      "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+      "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+      "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+      "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+      "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+      "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+      "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+      "crates/c6-core/src/player_ai_behavior_tree.rs": "6d6babd71f41469eecfd1630bfb69ae1b3dc6bab9d15ef6f9b6ec9b58ace3427",
+      "crates/c6-core/src/player_ai_city_manager.rs": "689504987c69eb3a555e4e05d0bc1d2cd01f889ad4336339a16900e80265bf85",
+      "crates/c6-core/src/player_ai_control.rs": "384ebe1f36a529e1119f6f8dcb51090a8e3507b1ac4fbd596f46dbba73a96229",
+      "crates/c6-core/src/player_ai_culture.rs": "ae23342a4ed82bbd8e2740a3299d17282e0da903283cccf1143de78579c7d8ff",
+      "crates/c6-core/src/player_ai_diplomatic.rs": "a499949d81cfb82657e5fedafd42259900e6c5066315141d6ed940df99da0ee5",
+      "crates/c6-core/src/player_ai_economic.rs": "e98e0a9da59abc122b340d81ce8ec4e6754a3e693e4eb5efe6d9edad3194efd6",
+      "crates/c6-core/src/player_ai_governors.rs": "2c70bacd561c4c65de4024ff581c8794f32eb632e7f9078e068ab79afdc9b88d",
+      "crates/c6-core/src/player_ai_grand_strategic.rs": "5fb4cbd61b44a36a4d57579ffb0f13b582f219d21912e953a5f434126fbecf77",
+      "crates/c6-core/src/player_ai_homeland.rs": "a4b44f24c0ef30c37b686dc4384d155dbd2112d287b424dd0a66c446ba7405e4",
+      "crates/c6-core/src/player_ai_identity.rs": "0b1827b953da5fdbcc88349ea15186c4b7aa964b73275cfba8d618022c94d5f1",
+      "crates/c6-core/src/player_ai_influence_map.rs": "57f5d72e2d8a1b3e35b813515e364ea0f61a35a42a4fa84ab994af2fbb1b2418",
+      "crates/c6-core/src/player_ai_military.rs": "44671c110f4baf67a009bb767e79e1e0be6dbc1f2d91190d8a30492bead54e92",
+      "crates/c6-core/src/player_ai_military_operations.rs": "d3dc8e719d38c4e918025f686b0a015548208d0283308c66ce6283758cec902d",
+      "crates/c6-core/src/player_ai_research.rs": "5df87d9a482fe707b0d34e54786800ad5fb3dea0ea47cb9520e9be326b68b643",
+      "crates/c6-core/src/player_ai_tactical.rs": "ea253bbd0c47aca2b6d3fa00d88f9b4222b5da0b728533dab1c48f4b3ff7d4e1",
+      "crates/c6-core/src/player_ai_targets.rs": "316654da12d9de6bdb468d9f0e08367549cbc6b9b44ec28d357e8465aebf875d",
+      "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+      "crates/c6-core/src/player_cultural_identity.rs": "c87ccd7989b3fb1aaebbf13d319ab86c667745376d30f1a5b65372d26ef63e34",
+      "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+      "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+      "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+      "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+      "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
+      "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+      "crates/c6-core/src/player_governors.rs": "1362500016008ff6444b1fa28599ec52e60a4807c69a87b7573451f3b58b9133",
+      "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+      "crates/c6-core/src/player_heroes.rs": "aeec1006dd9184562387fb3d04ea79ce7e323bde73bb32bfed9fcc19b70995a6",
+      "crates/c6-core/src/player_improvements.rs": "a427c0bb1b4d24e67ab6e050d949e297c80771ee89d4811132741ae0e650d484",
+      "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
+      "crates/c6-core/src/player_initialization.rs": "ae06628cf862e76c3055101c79c226bf533430afe8b3f504735fb34ed06248b2",
+      "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+      "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+      "crates/c6-core/src/player_quests.rs": "8cd4a8374ac45f7934b8801cbea927708201603672506edb739e507e7c37a2f7",
+      "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+      "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+      "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
+      "crates/c6-core/src/player_tail.rs": "45f90c3afa702f5c3dfe09bf03f0802683104243f0d381bb2f60abb815c16387",
+      "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+      "crates/c6-core/src/player_trade.rs": "371d7f198f475a3103609e555063c05feb983471e57215d92fe6e9496ef70702",
+      "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+      "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
+      "crates/c6-core/src/player_wmds.rs": "5948c879fe976edbb68a79f0dbf81bfeb0bf4e6f16f0a23ab6a898860c53bef2",
+      "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+      "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+      "crates/c6-core/src/reporting_dirty_components.rs": "f1fde81ff4f0cb1b31fc3b67935d855034adc7dc1e20956ab241adf10459e3f8",
+      "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+      "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+      "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+      "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+      "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
+      "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+      "crates/c6-core/src/turn_completion.rs": "b43ad8ff48d48290788df6a6b475ea678b0c77c61d71540c17333648c2d69dc5",
+      "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+      "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+      "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+      "crates/c6-core/src/unit_operation_aftermath.rs": "61b33abf48a8d4cf3f52af69ec94cfb3b46d4d48cf3b0554801c2cbd6d72c922",
+      "crates/c6-core/src/unit_operation_interruption.rs": "b8ff42e5c5750f908077bd2773208cfa45e9a26ba79ecf9ebe2fbef242f4a931",
+      "crates/c6-core/src/unit_operation_legality.rs": "ff8938badf64155229e60984995ea680244e94658edccc1ecba959e327167cd3",
+      "crates/c6-core/src/unit_operation_notification_provider.rs": "0f93a963706f82662048fdc606f761caa503e18d39457bf679d880ae1f644a8f",
+      "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
+      "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+      "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
+    },
+    "every_source_hash_verified_against_git_pin": true,
+    "actual_exported_crate_tests": true,
+    "candidate_uses_exported_crate": true,
+    "archive_source_mutations": false,
+    "exact_byte_and_shared_item_caps": true,
+    "bounded_native_hostile_counts_and_versions": true,
+    "bounded_native_truncations_rejected": true,
+    "short_byte_and_item_caps_rejected": true,
+    "strict_trailing_rejected": true,
+    "exact_prefix_consumption": true
+  },
+  "complete_observed_free_cities_records": true,
+  "complete_current_free_cities_structural_fields": true,
+  "complete_current_free_cities_wire": true,
+  "original_execution": false,
+  "private_writes": false,
+  "native_read_side_effects": false,
+  "full_player": false,
+  "gameplay_state": false,
+  "world_import": false,
+  "actions": false,
+  "turns": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "next_component": "GameCore::Random"
+}
