@@ -22,6 +22,33 @@ pub struct NamedArgument {
     pub name: Vec<u8>,
 }
 impl LocalizedText {
+    /// Decode one current localization prefix using the existing Map codec.
+    /// Trailing caller bytes are neither read nor charged. Report the aggregate
+    /// item charge so an enclosing component can preserve its own shared budget.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: super::Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let clipped = bytes.len() > limits.max_bytes;
+        let mut reader = Reader::new(&bytes[..bytes.len().min(limits.max_bytes)], limits)?;
+        let value = Self::read(&mut reader, 0).map_err(|error| {
+            if clipped && error == Error::Truncated {
+                Error::ResourceLimit
+            } else {
+                error
+            }
+        })?;
+        Ok((value, reader.pos, reader.items))
+    }
+
+    /// Encode with the same recursive byte/item/allocation/depth enforcement
+    /// as Map. The returned item charge belongs to the enclosing record too.
+    pub fn encode_with_items(&self, limits: super::Limits) -> Result<(Vec<u8>, usize), Error> {
+        let mut writer = Writer::new(limits);
+        self.write(&mut writer, 0)?;
+        Ok((writer.bytes, writer.items))
+    }
+
     pub(super) fn read(r: &mut Reader<'_>, depth: usize) -> Result<Self, Error> {
         if depth > r.limits.max_depth {
             return Err(Error::ResourceLimit);
@@ -114,5 +141,69 @@ impl LocalizedText {
             w.list(&arg.name, |w, v| w.u8(*v))?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod prefix_tests {
+    use super::*;
+    #[test]
+    fn recursive_prefix_preserves_tail_and_reports_shared_item_charge() {
+        let value = LocalizedText {
+            base: b"base".to_vec(),
+            arguments: vec![
+                LocalizedArgument::Long64(i64::MIN),
+                LocalizedArgument::Text(Box::new(LocalizedText {
+                    base: b"nested".to_vec(),
+                    arguments: vec![LocalizedArgument::Float64Bits(0x7ff8000000000042)],
+                    named_arguments: vec![],
+                })),
+            ],
+            named_arguments: vec![NamedArgument {
+                argument_index: 1,
+                name: b"N".to_vec(),
+            }],
+        };
+        let limits = crate::map::Limits::default();
+        let (wire, items) = value.encode_with_items(limits).unwrap();
+        let mut carrier = wire.clone();
+        carrier.extend_from_slice(b"untouched-tail");
+        assert_eq!(
+            LocalizedText::decode_prefix_with_items(&carrier, limits).unwrap(),
+            (value.clone(), wire.len(), items)
+        );
+        // A prefix budget equal to the record length accepts a longer carrier.
+        let exact = crate::map::Limits {
+            max_bytes: wire.len(),
+            ..limits
+        };
+        assert_eq!(
+            LocalizedText::decode_prefix_with_items(&carrier, exact).unwrap(),
+            (value.clone(), wire.len(), items)
+        );
+        // The enclosing record subtracts charges before reading a later value.
+        let exhausted = crate::map::Limits {
+            max_items: items - 1,
+            ..limits
+        };
+        assert_eq!(
+            LocalizedText::decode_prefix_with_items(&wire, exhausted),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            value.encode_with_items(exhausted),
+            Err(Error::ResourceLimit)
+        );
+        for end in 0..wire.len() {
+            assert!(LocalizedText::decode_prefix_with_items(&wire[..end], limits).is_err());
+        }
+        let too_short = crate::map::Limits {
+            max_bytes: wire.len() - 1,
+            ..limits
+        };
+        assert_eq!(
+            LocalizedText::decode_prefix_with_items(&carrier, too_short),
+            Err(Error::ResourceLimit)
+        );
     }
 }
