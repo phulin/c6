@@ -19,7 +19,7 @@ After this container, Player.Cities15 writes:
 1. Fresh-water-housing bool and urban-defenses i32.
 2. Home Continent hash and counted settled Continent hashes.
 3. Peak-Cities u32, extra starting population off home continent i32, population after conquest i32.
-4. Counted banned Building, District, District-building and Project hashes, in that order.
+4. Counted banned Building, District, District-building and Project hashes, in that order. Both District vectors—including native `m_bannedDistrictBuildings`—contain `GameCore::DistrictTypes` definition hashes; the field name does not change the second vector to BuildingTypes.
 5. Counted Building-to-Building override hash pairs, preserving duplicates and order.
 
 The unused `m_buildingBuildMap` is not invented as another wire vector. `m_Initialized` is likewise not serialized by this writer. Native names are taken from matching Linux layout leads and direct member-address/call observations; omitted live values are not classified as planning-only.
@@ -79,3 +79,5 @@ cargo test -p c6-core core_stream
 ```
 
 The workspace tests, strict workspace Clippy and C ABI smoke pass for this integrated checkpoint. This is original wire-data comparison with an offline Rust executable, not original-code execution. The next unsupported unframed component is **Player.Diplomacy**; completing remaining Players and reaching their District/Unit rosters requires their intervening real schemas. Runtime Manager validity/65-slot mappings, Read fixups, complete logical state and RNG are not reconstructed by Manager wire membership alone.
+
+Independent review [592d660](linux-core-player-prefix-review.md) accepted the immutable `2578ba02fc7c001cd8dfc1cafe39f33de064194e04f08bebdfa4640ba1e93742` candidate and its 51 tested source files. It confirmed both original projections/whole-prefix roundtrips and owner boundaries, all 213 method fingerprints/seven concrete bindings, and budget/model rejection cases. The partial import and runtime-state limitations remain unchanged.
