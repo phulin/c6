@@ -7,9 +7,36 @@ import os
 from pathlib import Path
 import subprocess
 import signal
+import re
 import time
 from military_observer_runner import process_identity,session_processes,dispose_session,require,sha
 ROOT=Path(__file__).resolve().parents[2]
+
+def launch_paths(host,env,work,cfg,plan):
+    """Bind the actual launch arguments/environment before GDB can run."""
+    paths=cfg['lower_core_full_manager_observer']['runtime_module_paths']
+    actual={'host':str(Path(host).resolve()),
+            'preload':str(Path(env['LD_PRELOAD']).resolve()),
+            'core':str((Path(env['C6_HOST_ASSETS'])/'libGameCore_XP2.so').resolve())}
+    require(str(Path(work).resolve())==str(Path(cfg['cwd']).resolve()),'actual debugger working directory differs')
+    require(all(actual[role]==paths[role]==plan[role] for role in actual),'actual launch module paths differ')
+    for role,path in actual.items():
+        require(sha(path)==plan['modules'][path]['sha256'],'actual launch module file differs: '+role)
+    # Inspect the original loader search with the exact search path. Do not
+    # preload our interception library into ldd or its shell/interpreter.
+    dependency_env={key:value for key,value in os.environ.items() if not key.startswith(('C6_','LD_'))}
+    dependency_env['LD_LIBRARY_PATH']=env['LD_LIBRARY_PATH']
+    listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
+    matches=re.findall(r'libc\.so\.6\s+=>\s+(/\S+)\s+\(',listing)
+    require(len(matches)==1,'actual launch libc resolution unknown')
+    actual['libc']=str(Path(matches[0]).resolve())
+    require(actual['libc']==paths['libc']==plan['libc'],'actual launch libc path differs')
+    require(sha(actual['libc'])==plan['modules'][actual['libc']]['sha256'],'actual launch libc bytes differ')
+    for role,path in actual.items():
+        retained=Path(path).stat();declared=plan['modules'][path]
+        require(retained.st_ino==declared['inode'] and
+                [os.major(retained.st_dev),os.minor(retained.st_dev)]==declared['device'],
+                'actual launch module inode/device differs: '+role)
 
 def stop_unadmitted_child(process):
     """Only the unreaped Popen child; no session identity has been admitted."""
@@ -37,6 +64,7 @@ def run(host,env,work,timeout,directory,prepared,plan):
     source_files={str((ROOT/name).resolve()):value for name,value in cfg['sources'].items()};source_files[str((ROOT/'tools/linux/mod_activation_probe.py').resolve())]=cfg['runner_sha256']
     gate=dict(schema='c6-linux-full-manager-caller-runtime-v1',report_path=str(prepared),report_sha256=sha(prepared),configuration_sha256=prepared_data['configuration_sha256'],source_files=source_files,static_plan_path=str(Path(plan).resolve()))
     manifest=json.loads(Path(plan).read_text());require(manifest==cfg['lower_core_full_manager_observer']['static_plan'] and sha(plan)==cfg['lower_core_full_manager_observer']['static_plan_sha256'],'static plan drift after admission');manifest['runtime_gate']=gate
+    launch_paths(host,env,work,cfg,manifest)
     runtime_plan=directory/'runtime-plan.json';runtime_plan.write_text(json.dumps(manifest,indent=2)+'\n')
     authorization=directory/'launch-authorized.json'
     require(not authorization.exists(),'debugger launch authorization must be fresh')
