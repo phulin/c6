@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "mod_activation.h"
 #include <dlfcn.h>
+#include <link.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -392,11 +393,42 @@ int c6_linux_main_arguments(int *argc,char ***argv) {
     *argv=actual_main_argv;
     return 0;
 }
+static bool main_thread_prepared;
+static int core_module_present(struct dl_phdr_info *module,size_t size,void *opaque) {
+    (void)size;
+    bool *present=opaque;
+    const char *name=module->dlpi_name?strrchr(module->dlpi_name,'/'):NULL;
+    name=name?name+1:module->dlpi_name;
+    if (name && (!strcmp(name,"libGameCore_Base.so") || !strcmp(name,"libGameCore_XP1.so") || !strcmp(name,"libGameCore_XP2.so"))) *present=true;
+    return 0;
+}
+static int prepare_original_main_thread(void) {
+    void (*prepare)(void)=dlsym(RTLD_DEFAULT,"_ZN3ASL17PrepareMainThreadEv");
+    volatile unsigned char *flags=(volatile unsigned char *)(uintptr_t)0x544cc70;
+    void **application=dlsym(RTLD_DEFAULT,"g_pkApplication");
+    bool core_present=false;
+    dl_iterate_phdr(core_module_present,&core_present);
+    fprintf(stderr,"C6_LINUX_MAIN_THREAD prepare_enter flags %u app_present %d core_present %d already_called %d\n",*flags,application&&*application,core_present,main_thread_prepared);
+    if ((uintptr_t)prepare!=0x2cdf8e0 || !application || *application || core_present || main_thread_prepared || (*flags&1)) return 164;
+    /* Original EmuPreMain invokes this before the game entry, App and TempHeap.
+     * It performs real TLS/DLL thread notifications; never repeat after loading Core. */
+    prepare();
+    main_thread_prepared=true;
+    core_present=false;
+    dl_iterate_phdr(core_module_present,&core_present);
+    fprintf(stderr,"C6_LINUX_MAIN_THREAD prepare_return flags %u app_present %d core_present %d process_scoped 1 paired_reset_not_proven 1\n",*flags,*application!=NULL,core_present);
+    if (*application || core_present) return 166;
+    return (*flags&1)?0:165;
+}
 static int mod_probe_main(int argc,char **argv,char **envp) {
     actual_main_argc=argc;
     actual_main_argv=argv;
     (void)envp;
     fprintf(stderr,"C6_LINUX_MOD host_main_intercepted\n");
+    if (getenv("C6_MOD_PREPARE_MAIN_THREAD")) {
+        int prepared=prepare_original_main_thread();
+        if (prepared) _exit(prepared);
+    }
     if (getenv("C6_MOD_FILESYSTEM")) {
         int (*filesystem)(void)=dlsym(RTLD_DEFAULT,"c6_linux_filesystem_initialize");
         bool (*directory)(const char *)=dlsym(RTLD_DEFAULT,"_ZN3ASL17ASL_SetCurrentDirEPKc");

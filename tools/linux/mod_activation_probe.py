@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')
     parser.add_argument('--source-view',type=Path)
     parser.add_argument('--launch-host',type=Path)
+    parser.add_argument('--prepare-main-thread',action='store_true')
     parser.add_argument('--saved-configuration',type=Path)
     parser.add_argument('--configure',action='store_true')
     parser.add_argument('--content-paths',action='store_true')
@@ -287,6 +288,15 @@ def main():
             subprocess.run([sys.executable,str(core_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
             core_contract=json.loads(result_path.read_text())
         if core_contract!=json.loads(core_audit_paths[-1].read_text()):raise SystemExit('original Core component contracts differ')
+    main_thread_contract=None
+    main_thread_audit_paths=[]
+    if args.prepare_main_thread:
+        main_thread_audit_paths=[ROOT/'tools/linux/action_worker_audit.py',ROOT/'evidence/linux/action-worker-abi.json']
+        with tempfile.TemporaryDirectory(prefix='main-thread-audit-') as temporary:
+            result_path=Path(temporary)/'contracts.json'
+            subprocess.run([sys.executable,str(main_thread_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
+            main_thread_contract=json.loads(result_path.read_text())
+        if main_thread_contract!=json.loads(main_thread_audit_paths[-1].read_text()):raise SystemExit('original early main-thread contracts differ')
     content=json.loads((ROOT/'tools/linux/runtime-content-gate.json').read_text())['files']
     if view:
         profile=json.loads((view/'source-view.json').read_text())
@@ -366,6 +376,7 @@ def main():
               'lower_core_controller_cache_lifecycle_observer':args.action_lifecycle_observe,
               'bounded_action_mode':action_mode,'pre_controller_registration':registered_action,'bounded_action_audits':dispatch_audits,
               'core_component_mode':core_mode,'core_component_contract':core_contract,
+              'prepare_main_thread':args.prepare_main_thread,'main_thread_preparation_contract':main_thread_contract,
               'lower_core_definition_registry_observer':definition_audit,
               'lower_core_unit_definition_registry_observer':unit_definition_audit,
               'lower_core_operation_registry_observer':operation_registry_audit,
@@ -415,7 +426,7 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*core_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
@@ -441,6 +452,7 @@ def main():
     env.update({'LD_PRELOAD':str(preload),'LD_LIBRARY_PATH':f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}',
                 'C6_HOST_ASSETS':str(assets),'C6_RULES_SOURCE_ROOT':str(view) if view else str(host.parent/'steamassets'),'C6_HOST_USERDATA':str(userdata),'C6_HOST_LUA':'1'})
     if args.launch_host:env['C6_MOD_FILESYSTEM']='1'
+    if args.prepare_main_thread:env['C6_MOD_PREPARE_MAIN_THREAD']='1'
     if args.saved_configuration:env['C6_SAVED_CONFIGURATION']=str(args.saved_configuration.resolve())
     if args.cleanup:env['C6_MOD_CLEANUP']='1'
     if args.localization:
