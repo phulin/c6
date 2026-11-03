@@ -1,5 +1,7 @@
 //! Deterministic simulator kernel. Gameplay beyond declared coverage fails closed.
+pub mod city_citizens;
 pub mod city_district;
+pub mod city_wire;
 pub mod codec;
 pub mod combat;
 pub mod combat_random;
@@ -12,6 +14,7 @@ pub mod movement_world;
 pub mod notification_lifecycle;
 pub mod notifications;
 pub mod player_components;
+pub mod player_prerequisites;
 pub mod random_variants;
 pub mod requirements;
 pub mod rng;
