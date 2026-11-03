@@ -12,7 +12,7 @@ not replace or clone the World, discard retained components, change Player human
 status, supply a precomputed legality answer, or manufacture archive bindings.
 `diagnose_skip_turn` then creates an explicit aftermath provider over the same
 resulting LoadedState and calls the existing `process_pending` and
-`update_owner_blocking` functions in that order. Initial Manager rejection still
+`update_owner_blocking` functions in that order. A supported early Activate return still
 runs the post-Add continuation. Each genuine player choice remains external;
 the existing aftermath decision errors propagate without running native policy.
 
@@ -50,9 +50,29 @@ The requested and resolved recycled IDs retain native low16 lookup behavior;
 request generation equality is not manufactured. ComponentID owner/type words
 remain packed in the request, and the sidecar supplies actual report identity.
 
-After initial legality, the implementation performs Clear, old deactivation and
-front deletion, insertion, fresh activation legality, activity assignment,
-SkipTurn Start, and final front deletion. Timer assignment, ordered queue writes,
+The actual Execute lookup first resolves through the World Manager mapping.
+An absent/invalid Unit returns before Add and before aftermath. A found Unit
+then performs Clear, old deactivation and front deletion, post-Clear handler
+lookup/CheckInsert, insertion, activation at its original boundary, activity
+assignment, SkipTurn Start, and final front deletion. A proven null requested
+handler slot returns after Clear without inserting, then runs the normal
+aftermath. No extra full Manager query runs before Clear. A busy Unit with an old MoveTo
+therefore has its timer reset before activation; an initially empty busy Unit
+keeps its timer and returns from Activate before querying legality. The
+OPERATION/Continue activation branch follows the actual inherited SkipTurn
+virtual leaves: clear the Formation path, set evaluating=true, invoke the
+no-effect Update/TimerComplete leaves where required, let CheckComplete set
+delete=true, execute the actual no-pending-completion branch, set evaluating=false
+and PopFront. Unit and Formation movement values do not change that deletion
+result. A pending movement completion remains an explicit partial dependency.
+A false activation CanStart result uses the concrete
+[Unit MaxMoves/HasMoved provider](linux-unit-movement-state.md), including actual rules, Unit modifiers and Player diplomacy. It pops
+the front when the Unit has not moved or its signed push turn precedes the
+actual current turn; otherwise it retains the node. Missing movement/alliance
+inputs remain precise partial failures. No Formation `has_moved` flag supplies
+this Unit predicate.
+
+Timer assignment, ordered queue writes,
 empty-queue reports and repeated Formation path/cache clears happen in place.
 It reuses `set_activity`, `clear_path_cache`, full Manager/SkipTurn predicates and
 the current-interruption/aftermath modules. Start is split at its report boundary
@@ -78,25 +98,40 @@ can therefore be used conditionally in that admitted resource configuration.
 This check does not authenticate a new execution or establish an unchanged live
 rules database after unsupported callbacks/configuration changes.
 
-Mutable war relations, Manager membership and Player/control facts stay behind
-`Bound::snapshot_diagnostic`. That method requires an untouched decode tagged
-`SavedOutputCore` with the exact associated snapshot
-`ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884`.
-It explicitly rejects `ReadInputCore`, including the original Read input
+Mutable war relations, Manager membership and Player/control facts are installed
+through `Bound::admit_observed_snapshot(&mut LoadedState)` exactly once. It checks
+the complete **80,657,462-byte** original image against the associated snapshot
+`ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884`,
+the Bound destination binding and core's pristine/one-shot guards. A mutable
+borrow or action advances the revision, even if the caller later restores the
+same bytes; the old captured facts cannot then be admitted again. Existing
+controls/initialization also block replay.
+
+The actual decoder framing role stays unchanged. A separate observed-snapshot
+witness records the SavedOutput source role and its capture/runtime/facts/
+configuration identities. This is an explicitly attributed observed-snapshot
+diagnostic, not a claim that native3's Read process supplied these mutable
+controls or reproduced all Read effects. Different full images, including
 `a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa`,
-and different snapshots. Provenance names the independent placement/Manager fact
-artifacts and their shared saved-snapshot diagnostic association. This does not
-establish same-process unsaved controls or native3 live-state identity. The
-returned 43 Player configurations retain the actual one-human roster; pause=0
-and automation=-1 remain those captured diagnostic values. WarTypes retains its
-actual 2,016-element triangular storage. None of these mutable facts is exposed
-through the cross-profile immutable definition view.
+fail the snapshot gate. No broad role-admission change is made.
+
+The one-shot method installs 43 actual Player configurations, preserving the
+one-human roster and captured pause=0/automation=-1 values. It transfers a
+nonclone `SnapshotState` owning the 2,016-element mutable WarTypes vector.
+Subsequent `relations()` accesses that owned current state; the API exposes no
+reusable original-controls or original-war-vector issuance. Faithful diplomacy
+providers must retain and update this same sidecar with the LoadedState.
+Provenance names both independent placement/Manager capture artifacts and their
+shared saved-snapshot association, with `native3_live_state_acceptance=false`.
+None of these mutable facts is exposed through the cross-profile immutable
+definition view.
 
 The resource adapter supplies Unit domain/placement and operation/phase inputs.
-It does not fabricate omitted ability/terrain/feature/GreatPerson collection
-orders required by complete Unit initialization, runtime handler virtual slots,
-scripting callbacks or diplomacy/notification behavior. Missing providers remain
-explicit execution gaps.
+The [Unit initialization definition builder](linux-unit-initialization-definitions.md)
+supplies the source-backed ability/terrain/feature/GreatPerson collection orders
+from the admitted actual rules. Runtime handler virtual slots, scripting
+callbacks and diplomacy/notification behavior still require their own genuine
+providers; none is fabricated by this resource adapter.
 
 ## Diagnostic boundaries and partial failures
 
@@ -135,6 +170,8 @@ Every failure includes the completed prefix trace and leaves real mutations and
 provider effects in place. It is not rollback and must not be reported as an
 unchanged rejection. The combined function's `DiagnosticComplete` means the
 supplied provider chain returned; it does not certify full action acceptance.
+Native diagnostic logging backends remain outside this bounded source provider
+profile; the typed trace is not a native service comparison.
 Request decoding/TurnUnready, unrestricted callbacks, whole-action native
 comparison, remaining gameplay state and full RNG inventory remain gaps.
 
@@ -148,6 +185,7 @@ unclassified and unmasked.
 ## Checks
 
 ```sh
+python3 tools/linux/loaded_skip_turn_continuation_audit.py --output target/linux/loaded-skip-turn-continuation.json
 cargo test -p c6-data loaded_actions
 cargo test -p c6-data loaded_actions -- --ignored
 cargo clippy -p c6-data --lib --tests -- -D warnings
@@ -160,9 +198,13 @@ public original metadata before decoding. Override the path with
 synchronous activity reread/equality suppression; retained callback mutations
 and stop on unsupported/error; and assignment-before-report failure. These
 three pinned-record source replays pass. Two additional closed-resource tests
-check actual cross-profile reuse, changed-resource rejection, and rejection of
-mutable-state transplantation to Read input/different snapshots. The ordinary test checks exact packed
-signed identity bits and optional report arguments. No full loaded-world/native
+check actual cross-profile reuse, changed-resource rejection, full-byte
+associated-snapshot validation and preservation of the separate decoder framing
+role. Pristine/replay rejection and full state-phase/aftermath behavior are
+covered by the [independent full-entrypoint review](linux-loaded-actions-review.md). The ordinary test checks exact packed
+signed identity bits and optional report arguments. The independent review uses actual decoded state and captured controls/war
+inputs with explicit synthetic handler/script/report probes, and deliberately
+stops at the unavailable notification backend. No full loaded-world/native
 SkipTurn acceptance or complete affected-state comparison is claimed.
 
 Original target remains Linux XP2 SHA-256
