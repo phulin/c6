@@ -1,18 +1,25 @@
-//! Compose the computed cached registry path with existing Manager queries.
+//! Compose computed registry execution with existing Manager queries.
 //!
 //! Receiver, argument and synchronization semantics remain with the environment.
 //! Only direct TestAll is computed here. Its owned collector state evolves across
-//! calls; it is not a replayed oracle result. Unsupported factory, listener or
-//! collector paths refuse before changing the logical registry or collector.
+//! calls; it is not a replayed oracle result. Unsupported intern, growth, listener
+//! or collector paths refuse before changing the logical registry or collector.
 use c6_core::{
-    script_event_registry::{CachedExecutionState, RegistryError, ScriptEventRegistry},
+    script_event_registry::{
+        CachedExecutionState, FactoryExecutionState, RegistryError, ScriptEventRegistry,
+    },
     skip_turn::legality::{ManagerQueries, ManagerQueryState, ScriptTestAllResult},
     unit::Unit,
 };
 
+enum RegistryAccess<'a> {
+    Cached(&'a ScriptEventRegistry),
+    Factory(&'a mut ScriptEventRegistry, &'a mut FactoryExecutionState),
+}
+
 pub struct RegistryQueries<'a, Q: ManagerQueries<Unit>> {
     delegate: &'a mut Q,
-    registry: &'a ScriptEventRegistry,
+    registry: RegistryAccess<'a>,
     execution: &'a mut CachedExecutionState,
     script: Q::Script,
     last_error: Option<RegistryError>,
@@ -28,7 +35,24 @@ impl<'a, Q: ManagerQueries<Unit>> RegistryQueries<'a, Q> {
     ) -> Self {
         Self {
             delegate,
-            registry,
+            registry: RegistryAccess::Cached(registry),
+            execution,
+            script,
+            last_error: None,
+        }
+    }
+    /// Enables the bounded factory using persistent initial capacity facts and
+    /// retained created-object obligations. Nothing is reconstructed per call.
+    pub fn with_factory(
+        delegate: &'a mut Q,
+        registry: &'a mut ScriptEventRegistry,
+        execution: &'a mut CachedExecutionState,
+        factory: &'a mut FactoryExecutionState,
+        script: Q::Script,
+    ) -> Self {
+        Self {
+            delegate,
+            registry: RegistryAccess::Factory(registry, factory),
             execution,
             script,
             last_error: None,
@@ -201,17 +225,22 @@ where
         if arguments != [s.unit.e_owner, s.unit.id as i32, s.operation.runtime_id] {
             return Err("registry Manager argument identity mismatch");
         }
-        match self
-            .registry
-            .test_all_cached(event, arguments, self.execution)
-        {
+        let answer = match &mut self.registry {
+            RegistryAccess::Cached(registry) => {
+                registry.test_all_cached(event, arguments, self.execution)
+            }
+            RegistryAccess::Factory(registry, factory) => {
+                registry.test_all_bounded(event, arguments, self.execution, factory)
+            }
+        };
+        match answer {
             Ok(value) => Ok(ScriptTestAllResult {
                 called: value.is_some(),
                 value: value.unwrap_or(initial_value),
             }),
             Err(error) => {
                 self.last_error = Some(error);
-                Err("cached registry execution unsupported")
+                Err("registry execution unsupported")
             }
         }
     }
@@ -552,5 +581,145 @@ mod tests {
             .script_call_test_all(&mut state, 91, &mut args, "CanStartOperation", false)
             .is_err());
         assert_eq!(execution, before);
+    }
+    fn factory_fixture() -> (
+        ScriptEventRegistry,
+        CachedExecutionState,
+        FactoryExecutionState,
+    ) {
+        let registry = ScriptEventRegistry::from_seed(RegistrySeed {
+            names: [("CanStartOperation".into(), KnownNameEntry::Absent)].into(),
+            ..RegistrySeed::default()
+        })
+        .unwrap();
+        let (_, mut execution) = fixture();
+        execution.call_capacity = CachedCallCapacity::NoGrowthForFactoryThreeIntegers;
+        execution.step_countdown = 1000;
+        execution.interned_names.extend(
+            [
+                "GameEvent::lCreate",
+                "func",
+                "Add",
+                "Count",
+                "Remove",
+                "RemoveAll",
+                "Call",
+                "Accumulate",
+                "AccumulateINT",
+                "TestAny",
+                "__newindex",
+                "__metatable",
+                "__mode",
+                "v",
+            ]
+            .into_iter()
+            .map(str::to_owned),
+        );
+        let factory = FactoryExecutionState {
+            game_event_spare_names: ["CanStartOperation".into()].into(),
+            name_map_spare_names: ["CanStartOperation".into()].into(),
+            ..FactoryExecutionState::default()
+        };
+        (registry, execution, factory)
+    }
+    #[test]
+    fn factory_query_publishes_once_then_computes_cached_reuse() {
+        let (mut registry, mut execution, mut factory) = factory_fixture();
+        let mut environment = Environment;
+        let mut unit = crate::loaded_actions::tests::synthetic_unit();
+        let mut operation = ManagerOperation {
+            runtime_id: 36,
+            directive: -1,
+            parameters: (),
+            flags: 0,
+        };
+        let mut args = vec![unit.e_owner, unit.id as i32, 36];
+        let mut state = ManagerQueryState {
+            unit: &mut unit,
+            operation: &mut operation,
+        };
+        {
+            let mut query = RegistryQueries::with_factory(
+                &mut environment,
+                &mut registry,
+                &mut execution,
+                &mut factory,
+                91,
+            );
+            assert_eq!(
+                query.script_call_test_all(&mut state, 91, &mut args, "CanStartOperation", false),
+                Ok(ScriptTestAllResult {
+                    called: false,
+                    value: false
+                })
+            );
+        }
+        let identity = registry.cached_event("CanStartOperation").unwrap();
+        assert_eq!(execution.step_countdown, 964);
+        assert_eq!(execution.allocated_bytes, 2028);
+        assert_eq!(execution.peak_allocated_bytes, 2060);
+        assert_eq!(factory.factory_objects.len(), 1);
+        assert_eq!(factory.factory_objects[0].event, identity);
+        assert!(factory.game_event_spare_names.is_empty());
+        {
+            let mut query = RegistryQueries::with_factory(
+                &mut environment,
+                &mut registry,
+                &mut execution,
+                &mut factory,
+                91,
+            );
+            assert_eq!(
+                query.script_call_test_all(&mut state, 91, &mut args, "CanStartOperation", true),
+                Ok(ScriptTestAllResult {
+                    called: false,
+                    value: true
+                })
+            );
+        }
+        assert_eq!(registry.cached_event("CanStartOperation"), Some(identity));
+        assert_eq!(factory.factory_objects.len(), 1);
+        assert_eq!(execution.step_countdown, 963);
+        assert_eq!(execution.allocated_bytes, 2076);
+        assert_eq!(execution.peak_allocated_bytes, 2076);
+        assert_eq!(execution.protected_closure_obligations, 2);
+    }
+    #[test]
+    fn missing_factory_capacity_preserves_registry_and_collector() {
+        let (mut registry, mut execution, mut factory) = factory_fixture();
+        factory.game_event_spare_names.clear();
+        let before = (registry.clone(), execution.clone(), factory.clone());
+        let mut environment = Environment;
+        let mut unit = crate::loaded_actions::tests::synthetic_unit();
+        let mut operation = ManagerOperation {
+            runtime_id: 36,
+            directive: -1,
+            parameters: (),
+            flags: 0,
+        };
+        let mut args = vec![unit.e_owner, unit.id as i32, 36];
+        let mut state = ManagerQueryState {
+            unit: &mut unit,
+            operation: &mut operation,
+        };
+        {
+            let mut query = RegistryQueries::with_factory(
+                &mut environment,
+                &mut registry,
+                &mut execution,
+                &mut factory,
+                91,
+            );
+            assert!(query
+                .script_call_test_all(&mut state, 91, &mut args, "CanStartOperation", false)
+                .is_err());
+            assert_eq!(
+                query.last_registry_error(),
+                Some(&RegistryError::UnsupportedEffect(
+                    "unknown GameEvents insertion growth"
+                ))
+            );
+        }
+        assert_eq!((registry, execution, factory), before);
     }
 }
