@@ -136,6 +136,20 @@ reachable repairs; original IsDead, location and sight-range guards matter.
 Original Read framing/guard inputs and actual relevant callback effects are
 the next bounded history requirements. No baseline certificate is minted.
 
+The [original first-City prefix probe](../tools/linux/yield_monitor_raw_city_prefix_check.py)
+starts from the actual `a667` Core bytes and uses existing Core/Map/Player
+grammar. Its test-only retained Reader instrumentation stops after the first
+Player's Cities, before Units; it does not search for signatures or transfer
+saved-output offsets. The [retained result](../evidence/linux/yield-monitor-original-first-city-prefix.json)
+refuses **Context version4 before Map**, since the production decoder supports
+Context5. Consequently no City prefix or original appeal flag was reached.
+The compiled candidate is
+`0fbe60e8f231663f267444de7f989dafacd98b570e49b5024e83eee68c90ba69`,
+with both committed and instrumented complete source archives retained under
+`target/linux/yield-monitor-raw-city-prefix-candidates/d113cb4cb0aa48589d332339227ea533/`.
+The original failed unstructured invocation is retained separately; no
+unsupported version was forced and production raw-input support is unchanged.
+
 The separate retained-source domain checker uses the real 43-player,
 1,262-Unit LoadedState. It tests missing-owner and corrupt-trace rejection,
 one-time admission, actual warm lookups, and persistence of graph authority
