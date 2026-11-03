@@ -27,6 +27,7 @@ pub mod player_districts;
 pub mod player_eras;
 pub mod player_espionage;
 pub mod player_great_people_points;
+pub mod player_improvements;
 pub mod player_influence;
 pub mod player_quests;
 pub mod player_religion;
@@ -333,3 +334,9 @@ mod tests {
 }
 
 pub mod tracked_value;
+
+pub mod unit_operation_aftermath;
+
+pub mod reporting_dirty_components;
+
+pub mod player_governors;
