@@ -52,7 +52,9 @@ python3 tools/linux/player_wmds_audit.py --source-commit COMMIT \
 ```
 
 The audit SHA-gates GameCore and host, verifies target contracts and DWARF, then
-builds one isolated committed archive. It records archive, complete Rust source
+builds one isolated committed archive. That archive passes targeted Cargo WMD
+tests and actual strict `cargo clippy -p c6-core --all-targets -- -D warnings`
+before the release candidate is built. It records archive, complete Rust source
 manifest, driver, harness and candidate identities. Both canonical native streams
 must roundtrip every original WMDs record at exact byte/item caps, reject
 every truncated prefix, and reject one-short caps. The source tests exercise
@@ -70,7 +72,7 @@ and turns remain unimplemented. Unknown bytes stay unclassified and unmasked,
 including the recorded 89,198-byte raw Save→Load failure. Saved wire roundtrip
 does not establish native live serialization, Read effects or gameplay parity.
 
-Validated source commit `610b82d` passes both source tests and all 86 original
+Validated source commit `8a99f1f` passes both source tests and all 86 original
 saved records across the two canonical streams. Each stream covers 43 records,
 1,032 bytes and 86 collection items; every record consumes 24 bytes and two
 items. Exact caps pass, every truncated prefix fails, and byte cap 23 or item

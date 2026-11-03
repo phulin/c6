@@ -251,8 +251,8 @@
   ],
   "virtual_bindings": [],
   "dwarf_sha256": "19cce2aa08df00719939eddd9c4f066b412cebf77ff10f90a1fa7af119987637",
-  "candidate_source_commit": "610b82d71ff697db11ba025edc0cbf13443ba8bc",
-  "candidate_archive_sha256": "9264e455dbd1946994a76ac8bb9ded4a6355a5c1cb417fad7844177f694969e4",
+  "candidate_source_commit": "8a99f1fba96a5f189545751c323a4a6ce2f35e11",
+  "candidate_archive_sha256": "1a2c134994ef6d9e8c63122c8993e1dced1c5a4e2817ea29f0284f94728a428e",
   "candidate_sources": {
     "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
     "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
@@ -271,7 +271,7 @@
     "crates/c6-core/src/core_stream.rs": "436211116bf002ec1d6df2be7deea9b4ec151e016b1071442a6b553c68350bb1",
     "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
     "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
-    "crates/c6-core/src/lib.rs": "62c24b98f08d4cb8f5b88656f56635c03422f51b957b3d479a81c2cba1a02f1c",
+    "crates/c6-core/src/lib.rs": "a0f9be518cda7e6f9f572be62f74882809e34e6ae818d23b0634189ec0a68d6c",
     "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
     "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
     "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
@@ -291,6 +291,7 @@
     "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
     "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
     "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+    "crates/c6-core/src/player_improvements.rs": "3193a6e9edebb417a77bb7d51556d3b3b9f34249c8cd7c1257c4a7250400601c",
     "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
     "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
     "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
@@ -302,7 +303,7 @@
     "crates/c6-core/src/player_trade.rs": "371d7f198f475a3103609e555063c05feb983471e57215d92fe6e9496ef70702",
     "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
     "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
-    "crates/c6-core/src/player_wmds.rs": "cb665d87fe217cebe4a3b76c556dfddbef0dac57798135a997d9999de57934e3",
+    "crates/c6-core/src/player_wmds.rs": "5948c879fe976edbb68a79f0dbf81bfeb0bf4e6f16f0a23ab6a898860c53bef2",
     "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
     "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
     "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
@@ -318,11 +319,11 @@
     "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
     "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
     "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
-    "tools/linux/player_wmds_audit.py": "4ab624aa1901a3157c9de9ef3cd8c5c64bc745ae751dae2db3520019459e0316"
+    "tools/linux/player_wmds_audit.py": "33c3e854945a1a576e25a168b197ca10975c61681d4d096d12bc6cfcfc7f268c"
   },
-  "candidate_sha256": "d5c3ae455531e97a7daf705cf187d1d1e2937c4acd65cb4048ef11c81dacab3a",
-  "harness_sha256": "b55a952f58ced40bfa21e26e427ad8038c84939ae20fe2ca8af63c6a8627cfd2",
-  "audit_source_sha256": "4ab624aa1901a3157c9de9ef3cd8c5c64bc745ae751dae2db3520019459e0316",
+  "candidate_sha256": "9c72f3f7a68fee3c174a45c4bd66fb99c0baf382a6ff38e8158e046eb0fc85fb",
+  "harness_sha256": "2eb76e8603d522b94b9e309f4bf1878b6dbda2f81e51515b74f18a1f1cb88d09",
+  "audit_source_sha256": "33c3e854945a1a576e25a168b197ca10975c61681d4d096d12bc6cfcfc7f268c",
   "fixtures": [
     {
       "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
@@ -362,6 +363,8 @@
     }
   ],
   "source_only_tests": 2,
+  "committed_archive_targeted_cargo_tests": true,
+  "committed_archive_cargo_clippy_all_targets_strict": true,
   "exact_native_record_byte_item_caps_checked": true,
   "one_short_native_record_byte_caps_rejected": true,
   "one_short_native_record_item_caps_rejected": true,
