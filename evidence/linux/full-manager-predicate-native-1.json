@@ -1,0 +1,32 @@
+{
+  "schema": "c6-linux-full-manager-predicate-native-failure-v1",
+  "configuration_sha256": "7470f4ec047ea9cd44f5afd422fe549f06110112e3634e1d67cf0c19a003ef9c",
+  "preparation_review": "8c2ca59",
+  "wrapper_session": 60444,
+  "wrapper_terminal_returncode": 0,
+  "runtime_returncode": 239,
+  "runtime_sha256": "a8d62a2b74a24be12fb2892da372477e6fa637d972f9cf9ad6358b9b96c7a5ca",
+  "observer_refusal": "wrong original host executable",
+  "predicate_invoked": false,
+  "last_fixture_phase": 1,
+  "original_core_Load_complete": true,
+  "diagnostic_Save": {
+    "bytes": 80657462,
+    "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+  },
+  "known_rng_endpoint_dumps": 0,
+  "native_cleanup_proven": false,
+  "debugger_terminal": true,
+  "owned_session_remaining_processes": [],
+  "native_host_pid_generation_retained": false,
+  "cause": {
+    "planned_host": "/home/phulin/c6-assets-linux/Civ6",
+    "actual_launch_host": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+    "both_host_hashes_equal": true
+  },
+  "next_preload_path_mismatch_identified_statically": true,
+  "correction_cli_preload_commit": "bce246e",
+  "retry_performed": false,
+  "parity_accepted": false,
+  "artifact_manifest_sha256": "9c1f84f638880fef5bdfbcc0c57a0f20ac70fab88076b0330fb5012ed99776c2"
+}
