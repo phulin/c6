@@ -1,0 +1,2425 @@
+{
+  "schema": "c6-linux-player-influence-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "current_version": 22,
+  "version_address": "0x2f61f44",
+  "methods": [
+    {
+      "address": "0x2b26a00",
+      "size": 15,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "13da3dfdc48d301ed483fbb0242f91f0e015bbdc9a0a723d544ddbee50b14dc5"
+    },
+    {
+      "address": "0x2c9b010",
+      "size": 43,
+      "name": "Serialization::operator>>(Serialization::IStream&, FixedPointT<8u>&)",
+      "sha256": "5d47fcdfb3868524b3d8da8a2fab95de165678efa05f23c615963da12ddf010d"
+    },
+    {
+      "address": "0x1fcc1a0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)",
+      "sha256": "c6cf9d3175d5134bd8d7b3d396184fd7b9abd3f7ca364cbdc38a1794ce742775"
+    },
+    {
+      "address": "0x1fcdad0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(int&)",
+      "sha256": "09ddfd4d815a2204789075821ff06a3e8d881dc2bae4791ff3f746206deb3230"
+    },
+    {
+      "address": "0x1fcdb20",
+      "size": 25,
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)",
+      "sha256": "43f291f25ae0e59e98bf6b96e5341ed0345d1627c75c056bac01ada2cfd2f796"
+    },
+    {
+      "address": "0x2b26a50",
+      "size": 15,
+      "name": "FAutoVariable<FixedPointT<8u>, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "a978020d95c4ef09f59acfc90c3c7d668a931c0b551dcc7d1e4d02ff74d19661"
+    },
+    {
+      "address": "0x2c9afe0",
+      "size": 42,
+      "name": "Serialization::operator<<(Serialization::OStream&, FixedPointT<8u> const&)",
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704"
+    },
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcdac0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2b29380",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<FixedPointT<8u>, eastl::allocator>, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "3246c5696432e2cfd0d9d8296f08697b3dadd3abbc2c50b8a0ce4f72e281daa9"
+    },
+    {
+      "address": "0x2002810",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><FixedPointT<8u> >(Serialization::IStream&, eastl::vector<FixedPointT<8u>, eastl::allocator>&)",
+      "sha256": "baa464afec68870e781fc4ceb5c699ba2f94c7905e18531f6470020a56821544"
+    },
+    {
+      "address": "0x2005e70",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<FixedPointT<8u>, eastl::vector<FixedPointT<8u>, eastl::allocator> >(Serialization::IStream&, eastl::vector<FixedPointT<8u>, eastl::allocator>&)",
+      "sha256": "a2a75f942907f7e2602e0459ccd565a79e1b0fc0440acceb58ac79ed216e2ec7"
+    },
+    {
+      "address": "0x1fcc1c0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)",
+      "sha256": "5edd23b31cc38a2cc74b61c4b33889da2f35c69f9ce10ee24f2899eb7e91af01"
+    },
+    {
+      "address": "0x1fcdbb0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(unsigned int&)",
+      "sha256": "b5c97ed9421b7f58e0ea8a7e2989ec1c05dd9c16a79416af11d59bd45e57dc3e"
+    },
+    {
+      "address": "0x2b293f0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<FixedPointT<8u>, eastl::allocator>, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "73d7c1ccd3dc386af029f6291b3ff7a94ad7510db6ecc56e479f70554927166b"
+    },
+    {
+      "address": "0x20027b0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <FixedPointT<8u> >(Serialization::OStream&, eastl::vector<FixedPointT<8u>, eastl::allocator> const&)",
+      "sha256": "200dd9bec38b0ae9a68b5cb2cd9e4326dafffa46deedc06bec01c0da57a54fda"
+    },
+    {
+      "address": "0x2005e30",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<FixedPointT<8u> const, eastl::vector<FixedPointT<8u>, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<FixedPointT<8u>, eastl::allocator> const&)",
+      "sha256": "1dcad0d1ae380d34491362f5eac3573698ba1e92548b351ea44f0cca0e6c02ef"
+    },
+    {
+      "address": "0x1fcc150",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+      "sha256": "9731ca1d2959dc0f406a684267a29d425c9bf7ea2f127425123508fbc2ed2d3b"
+    },
+    {
+      "address": "0x1fcdba0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(unsigned int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2005dc0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<FixedPointT<8u> const, eastl::vector<FixedPointT<8u>, eastl::allocator> const> eastl::for_each<FixedPointT<8u> const*, Serialization::SerializeFromSequenceContainer<FixedPointT<8u> const, eastl::vector<FixedPointT<8u>, eastl::allocator> const> >(FixedPointT<8u> const*, FixedPointT<8u> const*, Serialization::SerializeFromSequenceContainer<FixedPointT<8u> const, eastl::vector<FixedPointT<8u>, eastl::allocator> const>)",
+      "sha256": "21e86bd35683b7d2375929f55da0224eb5e2af23c2214edebd4255bf6f4cd7cd"
+    },
+    {
+      "address": "0x2005e60",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<FixedPointT<8u> const, eastl::vector<FixedPointT<8u>, eastl::allocator> const>::operator()(FixedPointT<8u> const&)",
+      "sha256": "dd3be38880d58d5b3eae313c6e2f2279b2aae607621c8e000ed2f9831011778e"
+    },
+    {
+      "address": "0x2b288e0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "722cf38382c71ef94e00faf84613ff37c0f4d42bf6c038a2aa18fa8b9724b1ea"
+    },
+    {
+      "address": "0x265d130",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><bool>(Serialization::IStream&, eastl::vector<bool, eastl::allocator>&)",
+      "sha256": "82dc844e6d6a66e9a55d5dd23f4606b46ecfa98ee1a7959ba996ead472180366"
+    },
+    {
+      "address": "0x265d140",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<bool, eastl::vector<bool, eastl::allocator> >(Serialization::IStream&, eastl::vector<bool, eastl::allocator>&)",
+      "sha256": "c76f6b90bf448f3ccd37ae3d79493ba5901de1c0f16cedd1ebd0198a977192c2"
+    },
+    {
+      "address": "0x1fe2000",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)",
+      "sha256": "8354dc947302541cc1e97c714b223e16c8e9f086c7d09ad77b437291a622809d"
+    },
+    {
+      "address": "0x1fe81a0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(bool&)",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    },
+    {
+      "address": "0x2b28950",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "0cea63f87642d2d3c493399bc30ca9165ebe2a2aa6262ecb192c6628b7f41f87"
+    },
+    {
+      "address": "0x265d550",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <bool>(Serialization::OStream&, eastl::vector<bool, eastl::allocator> const&)",
+      "sha256": "efbd3631abbdfce477dce8ed54ffe2dfebb55f0e7eeb087233be419d90b492a8"
+    },
+    {
+      "address": "0x265d620",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<bool, eastl::allocator> const&)",
+      "sha256": "ad923cb852bac049cd1c5bf86dfef22a70019230df259390cda8f34fef55176e"
+    },
+    {
+      "address": "0x265d5b0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const> eastl::for_each<bool const*, Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const> >(bool const*, bool const*, Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const>)",
+      "sha256": "3aaceda12bbc98cac9035b2b6a6012cd08b6bc174e73f6fdb74de8ca2fcbf9a6"
+    },
+    {
+      "address": "0x265d650",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<bool const, eastl::vector<bool, eastl::allocator> const>::operator()(bool const&)",
+      "sha256": "0e385252c11148253815357b77f05847deeaa731af56e047fc6bb9faf87217f9"
+    },
+    {
+      "address": "0x1fe1f90",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)",
+      "sha256": "441a140d71c552a6ced859e0e9efa0994c519cad451b975cbb5fc13e8025cd3f"
+    },
+    {
+      "address": "0x1fe7900",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(bool const&)",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x2b27e40",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "7c56ab5722cf4a9359bd87a0c10d62ee2e19efaf41d978d59bc4d65d3bd4db2f"
+    },
+    {
+      "address": "0x20452e0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><int>(Serialization::IStream&, eastl::vector<int, eastl::allocator>&)",
+      "sha256": "769f84d1a96449107a65e62a61c3522dbc904eb5222b78e86b8ff77ebfa7457e"
+    },
+    {
+      "address": "0x20452f0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<int, eastl::vector<int, eastl::allocator> >(Serialization::IStream&, eastl::vector<int, eastl::allocator>&)",
+      "sha256": "f5c5baea2fe9586b5656e0132571e0cbafd36687020c1da908f1b4e78627b4ef"
+    },
+    {
+      "address": "0x2b27eb0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "e921d0e9d59600f616a75b0e9de1813f99ff3230280a87e701fe9b29b4814aa1"
+    },
+    {
+      "address": "0x20455c0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <int>(Serialization::OStream&, eastl::vector<int, eastl::allocator> const&)",
+      "sha256": "65d5e90fcda78b875d85d74de5ca7f6f0b8317c1d4f3345fd39ee56e8725b621"
+    },
+    {
+      "address": "0x2045690",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<int, eastl::allocator> const&)",
+      "sha256": "5d8ac4912095bb7a0037f92b6379ca7dc4b6a33c9a83e9e4266891609749e355"
+    },
+    {
+      "address": "0x2045620",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const> eastl::for_each<int const*, Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const> >(int const*, int const*, Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const>)",
+      "sha256": "6f7bf45d9c4d6130fb2236660c2a71b89f4c87cc772f74eb1ed44590e2da1758"
+    },
+    {
+      "address": "0x20456c0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<int const, eastl::vector<int, eastl::allocator> const>::operator()(int const&)",
+      "sha256": "e38a4a447f13a1507c0677949debcc2f3fcd429aa4b0ad498eb856cc59835455"
+    },
+    {
+      "address": "0x2b29e20",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "0ab57783859867e7135138d9399403de77357af3c83e2dc4c84a7e32973aa2f6"
+    },
+    {
+      "address": "0x2c9abd0",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::PlayerTypes&)",
+      "sha256": "2cc19dccb1ce5ba3727486d694c79a0b5c90c1d7658cf975ce07ade2572a6ee7"
+    },
+    {
+      "address": "0x2b29e60",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "b281d1fd828cbbf6965ae39e667cf1ed3f6e2a568bdadaa6f80639039ffb6d26"
+    },
+    {
+      "address": "0x2c9aba0",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::PlayerTypes const&)",
+      "sha256": "e3aa2b85edbfcad11d2fe4b8d720bad7d662e88d8461f7994ba25444ae60c6d1"
+    },
+    {
+      "address": "0x2b26010",
+      "size": 15,
+      "name": "FAutoVariable<bool, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "28819e2c632069fd4221b70ba67b371e8f722bb675e98fa7c88a8255a331eeb0"
+    },
+    {
+      "address": "0x2b26050",
+      "size": 15,
+      "name": "FAutoVariable<bool, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "74725222a7501141683b74cc31e26a8312c0dae9ac1f1b1a9ab550f71d87ff0e"
+    },
+    {
+      "address": "0x2b27440",
+      "size": 15,
+      "name": "FAutoVariable<int, GameCore::Player::Influence>::load(Serialization::IStream&)",
+      "sha256": "b262c391bce02f111335c93e4ca85bd1895757a7abdbe279ffc75c07e62223c9"
+    },
+    {
+      "address": "0x2b27480",
+      "size": 15,
+      "name": "FAutoVariable<int, GameCore::Player::Influence>::save(Serialization::OStream&) const",
+      "sha256": "5e26fe02ef46575e2deb43a5bb60cf23fb09a3f5933e88c3f8e59bbe5f680739"
+    },
+    {
+      "address": "0x2b1ed50",
+      "size": 660,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Influence const&)",
+      "sha256": "eb0ad9daf704ba84051fc6ac66debfc4b7fe42257b3ce52fd4a9ae103ac1936c"
+    },
+    {
+      "address": "0x20030c0",
+      "size": 19,
+      "name": "void Serialization::EnumToStream<GameCore::PlayerTypes>(Serialization::OStream&, GameCore::PlayerTypes const&)",
+      "sha256": "53e00befd8655db0c427919039335f3534f6be53858eb37a84c25490081ba08b"
+    },
+    {
+      "address": "0x2b25020",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Player::Influence>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Influence> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b25040",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <bool, GameCore::Player::Influence>(Serialization::OStream&, FAutoVariable<bool, GameCore::Player::Influence> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b25060",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Influence>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Influence> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b25080",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<int, eastl::allocator>, GameCore::Player::Influence>(Serialization::OStream&, FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Influence> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b250a0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<bool, eastl::allocator>, GameCore::Player::Influence>(Serialization::OStream&, FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Influence> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x1ff74c0",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<FixedPointT<8u>, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::OStream&, FixedPointT<8u> const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "ae762e77e970a800a6f7b28cc5b1ee80eca91896a4089b386f53a7b2c85cea6e"
+    },
+    {
+      "address": "0x2b250c0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::PlayerTypes, GameCore::Player::Influence>(Serialization::OStream&, FAutoVariable<GameCore::PlayerTypes, GameCore::Player::Influence> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b1eff0",
+      "size": 1356,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Influence&)",
+      "sha256": "2a70f901725a7ac69038d646f980f7410b3180a9c9bd003bbf7d78681aeeafcd"
+    },
+    {
+      "address": "0x1fe5ca0",
+      "size": 30,
+      "name": "void Serialization::EnumFromStream<GameCore::PlayerTypes>(Serialization::IStream&, GameCore::PlayerTypes&)",
+      "sha256": "64a2263c6cb95736e735600c61a22e07f12969b393675bb416f45dcabee8ff95"
+    },
+    {
+      "address": "0x2b1f540",
+      "size": 166,
+      "name": "GameCore::Player::Influence::Initialize(GameCore::Player::Instance*)",
+      "sha256": "3704669f7ccf0e16b27ac205be3944bab462eacc1b40b4974b18f4b8e50c487e"
+    },
+    {
+      "address": "0x2b202b0",
+      "size": 1085,
+      "name": "GameCore::Player::Influence::Reset()",
+      "sha256": "0c4f2cb13c898b9b904e46b48b9bbd08a1c238735d89f915742380dcb79d76ba"
+    },
+    {
+      "address": "0x2b250e0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><FixedPointT<8u>, GameCore::Player::Influence>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Influence>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b25110",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<bool, GameCore::Player::Influence>, bool>(Serialization::IStream&, FAutoVariable<bool, GameCore::Player::Influence>&, int, int&&, bool&&)",
+      "sha256": "a5867d4ec6a0d3d66ab6a3d29e7992cef5dee05e41819acd280cb5ed904cb46e"
+    },
+    {
+      "address": "0x2b25d10",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><bool, GameCore::Player::Influence>(Serialization::IStream&, FAutoVariable<bool, GameCore::Player::Influence>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b25140",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Influence>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Influence>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b25160",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<int, GameCore::Player::Influence>, int>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Influence>&, int, int&&, int&&)",
+      "sha256": "2ce214eeae6760666d41864895bcabdf4a2951e46053a56e9e68e0dece372a2b"
+    },
+    {
+      "address": "0x2b25190",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<int, eastl::allocator>, GameCore::Player::Influence>(Serialization::IStream&, FAutoVariable<eastl::vector<int, eastl::allocator>, GameCore::Player::Influence>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b251b0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<bool, eastl::allocator>, GameCore::Player::Influence>(Serialization::IStream&, FAutoVariable<eastl::vector<bool, eastl::allocator>, GameCore::Player::Influence>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x1ff7160",
+      "size": 157,
+      "name": "bool Serialization::ReadIndexHashArray<FixedPointT<8u>, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::IStream&, FixedPointT<8u>*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "82436ce31b4a3e0a43bb0f5cb7706592e741609d43eb4eaefb411b9d45bf4fad"
+    },
+    {
+      "address": "0x1ff7260",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "97ccdf99110784245628a451ab9a17a107a9d6db0e9a11ee4812c603ecf1f454"
+    },
+    {
+      "address": "0x1fd0ae0",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::PlayerTypes, GameCore::PlayerTypes>(Serialization::IStream&, GameCore::PlayerTypes&, int, int&&, GameCore::PlayerTypes&&)",
+      "sha256": "096e6f9e038c7dd5abab6ffe31c30cc9bb1d64ea1a0d1c4eeea96cd8944343bc"
+    },
+    {
+      "address": "0x2002480",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)",
+      "sha256": "23f9d1493d61ddb5d8df9b32f1d08543a6eabe7d8b75c1ff9463c7772bc52442"
+    },
+    {
+      "address": "0x28c8980",
+      "size": 127,
+      "name": "bool Serialization::ReadIndexHashArrayVersioned<FixedPointT<8u>, int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::IStream&, FixedPointT<8u>*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&, int, int&&, int&&)",
+      "sha256": "e2836a5d1139e63c468e027331e0931dd9e57cdc241908f71e0d90413cceff86"
+    },
+    {
+      "address": "0x269e750",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<eastl::vector<int, eastl::allocator>, eastl::vector<int, eastl::allocator> const&>(Serialization::IStream&, eastl::vector<int, eastl::allocator>&, int, int&&, eastl::vector<int, eastl::allocator> const&)",
+      "sha256": "1a09fb11269c0aec62b8b0b02de61d8ce719144e8e87ac465ff4902fed3a986a"
+    },
+    {
+      "address": "0x2b252d0",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int const&>(Serialization::IStream&, int&, int, int&&, int const&)",
+      "sha256": "c770b91ee97c1afbef325a7285d277e4cdb39d48e579031c19aec64f6d47ef85"
+    }
+  ],
+  "concrete_bindings": [
+    {
+      "site": "0x2b26a0a",
+      "plt": "0x1f6fc00",
+      "body": "0x2c9b010",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2c9b01f",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcc1a4",
+      "plt": "0x1e447f0",
+      "body": "0x1fcdad0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcdaef",
+      "plt": "0x1e03670",
+      "body": "0x1fcdb20",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcdb34",
+      "plt": "0x1e52db0",
+      "body": "0x1fcdb40",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2c9b02b",
+      "plt": "0x1ed8ed0",
+      "body": "0x21c1020",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b26a5a",
+      "plt": "0x1f90de0",
+      "body": "0x2c9afe0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2c9afeb",
+      "plt": "0x1f2b6d0",
+      "body": "0x2c9b110",
+      "kind": "call"
+    },
+    {
+      "site": "0x2c9affc",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcc134",
+      "plt": "0x1ea1ce0",
+      "body": "0x1fcdac0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2938a",
+      "plt": "0x1f0aac0",
+      "body": "0x2002810",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2002814",
+      "plt": "0x1f2cfd0",
+      "body": "0x2005e70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005e81",
+      "plt": "0x1ec34f0",
+      "body": "0x2003850",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005e96",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcc1c4",
+      "plt": "0x1f82600",
+      "body": "0x1fcdbb0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcdbcf",
+      "plt": "0x1e03670",
+      "body": "0x1fcdb20",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005ea6",
+      "plt": "0x1f84d50",
+      "body": "0x2005ef0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005ec3",
+      "plt": "0x1f51e00",
+      "body": "0x2005f70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005ecb",
+      "plt": "0x1f467d0",
+      "body": "0x2005fd0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005ed6",
+      "plt": "0x1f6fc00",
+      "body": "0x2c9b010",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b293fa",
+      "plt": "0x1e59d30",
+      "body": "0x20027b0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x20027c4",
+      "plt": "0x1f6f620",
+      "body": "0x2005e10",
+      "kind": "call"
+    },
+    {
+      "site": "0x20027cf",
+      "plt": "0x1e92890",
+      "body": "0x2005e20",
+      "kind": "call"
+    },
+    {
+      "site": "0x20027e2",
+      "plt": "0x1fabaf0",
+      "body": "0x2005e30",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005e42",
+      "plt": "0x1f9c750",
+      "body": "0x20051c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005e53",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fcc154",
+      "plt": "0x1f1ec80",
+      "body": "0x1fcdba0",
+      "kind": "call"
+    },
+    {
+      "site": "0x20027f7",
+      "plt": "0x1e0bca0",
+      "body": "0x2005dc0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005de6",
+      "plt": "0x1f51460",
+      "body": "0x2005e60",
+      "kind": "call"
+    },
+    {
+      "site": "0x2005e63",
+      "plt": "0x1f90de0",
+      "body": "0x2c9afe0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b288ea",
+      "plt": "0x1f7e620",
+      "body": "0x265d130",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x265d134",
+      "plt": "0x1fb85c0",
+      "body": "0x265d140",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d151",
+      "plt": "0x1fa7bd0",
+      "body": "0x208e2f0",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d166",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d176",
+      "plt": "0x1e4fc10",
+      "body": "0x265d1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d193",
+      "plt": "0x1f0b390",
+      "body": "0x265d230",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d19b",
+      "plt": "0x1f69a90",
+      "body": "0x265d270",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d1a6",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fe2004",
+      "plt": "0x1e33280",
+      "body": "0x1fe81a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fe81bf",
+      "plt": "0x1e03670",
+      "body": "0x1fcdb20",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2895a",
+      "plt": "0x1ef0220",
+      "body": "0x265d550",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x265d564",
+      "plt": "0x1e868e0",
+      "body": "0x265d600",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d56f",
+      "plt": "0x1eb59e0",
+      "body": "0x265d610",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d582",
+      "plt": "0x1ef2ce0",
+      "body": "0x265d620",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d632",
+      "plt": "0x1f045f0",
+      "body": "0x208c870",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d643",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d597",
+      "plt": "0x1eb2540",
+      "body": "0x265d5b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d5d6",
+      "plt": "0x1e625b0",
+      "body": "0x265d650",
+      "kind": "call"
+    },
+    {
+      "site": "0x265d653",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x1fe1f94",
+      "plt": "0x1f8cea0",
+      "body": "0x1fe7900",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b27e4a",
+      "plt": "0x1ea6ee0",
+      "body": "0x20452e0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x20452e4",
+      "plt": "0x1e3f0e0",
+      "body": "0x20452f0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045301",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045316",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045326",
+      "plt": "0x1e94f80",
+      "body": "0x2045370",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045343",
+      "plt": "0x1f1ada0",
+      "body": "0x20453f0",
+      "kind": "call"
+    },
+    {
+      "site": "0x204534b",
+      "plt": "0x1e0eef0",
+      "body": "0x2045440",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045356",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b27eba",
+      "plt": "0x1f66240",
+      "body": "0x20455c0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x20455d4",
+      "plt": "0x1f1b550",
+      "body": "0x2045670",
+      "kind": "call"
+    },
+    {
+      "site": "0x20455df",
+      "plt": "0x1eab150",
+      "body": "0x2045680",
+      "kind": "call"
+    },
+    {
+      "site": "0x20455f2",
+      "plt": "0x1f89b80",
+      "body": "0x2045690",
+      "kind": "call"
+    },
+    {
+      "site": "0x20456a2",
+      "plt": "0x1ed8bc0",
+      "body": "0x2037a00",
+      "kind": "call"
+    },
+    {
+      "site": "0x20456b3",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045607",
+      "plt": "0x1e4abe0",
+      "body": "0x2045620",
+      "kind": "call"
+    },
+    {
+      "site": "0x2045646",
+      "plt": "0x1f0e400",
+      "body": "0x20456c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x20456c3",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b29e2a",
+      "plt": "0x1faa940",
+      "body": "0x2c9abd0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2c9abdf",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b29e6a",
+      "plt": "0x1e8d360",
+      "body": "0x2c9aba0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2c9abb3",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2601a",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b2605a",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b2744a",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b2748a",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b1ed67",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ed7d",
+      "plt": "0x1f18c60",
+      "body": "0x2035ba0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ed88",
+      "plt": "0x1e12e40",
+      "body": "0x20377d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ed99",
+      "plt": "0x1f2f190",
+      "body": "0x2b25010",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eda1",
+      "plt": "0x1fb0810",
+      "body": "0x1fcc140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1edad",
+      "plt": "0x1fb8200",
+      "body": "0x2035bc0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1edbe",
+      "plt": "0x1ea9310",
+      "body": "0x20030c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x20030cc",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1edcd",
+      "plt": "0x1ebaf70",
+      "body": "0x2b25020",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eddc",
+      "plt": "0x1ebaf70",
+      "body": "0x2b25020",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1edeb",
+      "plt": "0x1fa9d10",
+      "body": "0x2b25040",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1edfa",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee09",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee18",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee27",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee36",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee45",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee54",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee63",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee72",
+      "plt": "0x1e452b0",
+      "body": "0x2b250a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee7e",
+      "plt": "0x1f6f620",
+      "body": "0x2005e10",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee86",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ee94",
+      "plt": "0x1f98670",
+      "body": "0x1ff74c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff74d9",
+      "plt": "0x1f28460",
+      "body": "0x1fe2360",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff74ea",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff7505",
+      "plt": "0x1e7e6c0",
+      "body": "0x1fe47a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff750d",
+      "plt": "0x1fb52a0",
+      "body": "0x1ff73b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff751c",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff7527",
+      "plt": "0x1f90de0",
+      "body": "0x2c9afe0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eea3",
+      "plt": "0x1e76d90",
+      "body": "0x2b250c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eeb2",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eec1",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eed0",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eedc",
+      "plt": "0x1f6f620",
+      "body": "0x2005e10",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eee4",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eef2",
+      "plt": "0x1f98670",
+      "body": "0x1ff74c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1eefe",
+      "plt": "0x1f6f620",
+      "body": "0x2005e10",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef06",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef14",
+      "plt": "0x1f98670",
+      "body": "0x1ff74c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef23",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef32",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef41",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef50",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef5f",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef6e",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef7d",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef8c",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1ef9b",
+      "plt": "0x1ef6010",
+      "body": "0x2b25060",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1efaa",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1efbc",
+      "plt": "0x1e07b70",
+      "body": "0x2b25080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1efd7",
+      "plt": "0x1fb8200",
+      "body": "0x2035bc0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1efdf",
+      "plt": "0x1f76d40",
+      "body": "0x0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f006",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f01b",
+      "plt": "0x1e592e0",
+      "body": "0x1fe5ca0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fe5cad",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f024",
+      "plt": "0x1f84f90",
+      "body": "0x290b930",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f02f",
+      "plt": "0x1f3c560",
+      "body": "0x2b1f540",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f568",
+      "plt": "0x1f18c60",
+      "body": "0x2035ba0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f577",
+      "plt": "0x1efe620",
+      "body": "0x2035bb0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f57f",
+      "plt": "0x1fb8200",
+      "body": "0x2035bc0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f587",
+      "plt": "0x1f2f190",
+      "body": "0x2b25010",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f58f",
+      "plt": "0x1fb0810",
+      "body": "0x1fcc140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f5a5",
+      "plt": "0x1ed06e0",
+      "body": "0x1fe4710",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f5ad",
+      "plt": "0x1ef35d0",
+      "body": "0x1fe5c30",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f5b8",
+      "plt": "0x1ece0b0",
+      "body": "0x0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f5bd",
+      "plt": "0x1e53f90",
+      "body": "0x2b20220",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f5c5",
+      "plt": "0x1f6a640",
+      "body": "0x2b202b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b202c6",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b202d5",
+      "plt": "0x1f630e0",
+      "body": "0x2b25100",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b202e2",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b202f1",
+      "plt": "0x1f630e0",
+      "body": "0x2b25100",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20304",
+      "plt": "0x1e15230",
+      "body": "0x2b25790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2031a",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20330",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20346",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2035c",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20372",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20388",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2039e",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b203b4",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b203ca",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b203d9",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b203e1",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b203e9",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20400",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2040f",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20417",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2041f",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20436",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20445",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2044d",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20455",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2046c",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2047b",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20483",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2048b",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204a2",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204b1",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204b9",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204c1",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204d8",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204e4",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204ec",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b204fb",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20503",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2050b",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20522",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20531",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20539",
+      "plt": "0x1e47a60",
+      "body": "0x2037790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20541",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20558",
+      "plt": "0x1f93d00",
+      "body": "0x21e3b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20567",
+      "plt": "0x1e8bcf0",
+      "body": "0x2b257a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2056f",
+      "plt": "0x1fa7bd0",
+      "body": "0x208e2f0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20577",
+      "plt": "0x1e8bcf0",
+      "body": "0x2b257a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2058b",
+      "plt": "0x1f010a0",
+      "body": "0x265a5d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2059a",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205a2",
+      "plt": "0x1ec34f0",
+      "body": "0x2003850",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205b1",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205b9",
+      "plt": "0x1ec34f0",
+      "body": "0x2003850",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205c8",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205d0",
+      "plt": "0x1ec34f0",
+      "body": "0x2003850",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205d5",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205dd",
+      "plt": "0x1f28460",
+      "body": "0x1fe2360",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205e8",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b205f8",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20606",
+      "plt": "0x1e699c0",
+      "body": "0x2003870",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2060e",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2061e",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2062c",
+      "plt": "0x1e699c0",
+      "body": "0x2003870",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20634",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20644",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20652",
+      "plt": "0x1e699c0",
+      "body": "0x2003870",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20668",
+      "plt": "0x1eea430",
+      "body": "0x2b257f0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2067e",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b20694",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b206aa",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b206c0",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b206d9",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f5d7",
+      "plt": "0x1e15230",
+      "body": "0x2b25790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f045",
+      "plt": "0x1e31440",
+      "body": "0x2b250e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f054",
+      "plt": "0x1e31440",
+      "body": "0x2b250e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f066",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f077",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f086",
+      "plt": "0x1f630e0",
+      "body": "0x2b25100",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f091",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f0a2",
+      "plt": "0x1f567e0",
+      "body": "0x1fcc8b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f0b1",
+      "plt": "0x1f630e0",
+      "body": "0x2b25100",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f0db",
+      "plt": "0x1e774e0",
+      "body": "0x2b25110",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2511e",
+      "plt": "0x1e15230",
+      "body": "0x2b25790",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b25128",
+      "plt": "0x1eac1b0",
+      "body": "0x2b25d10",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f0ea",
+      "plt": "0x1f582e0",
+      "body": "0x2b25140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f0f9",
+      "plt": "0x1f582e0",
+      "body": "0x2b25140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f108",
+      "plt": "0x1f582e0",
+      "body": "0x2b25140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f117",
+      "plt": "0x1f582e0",
+      "body": "0x2b25140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f144",
+      "plt": "0x1e132a0",
+      "body": "0x2b25160",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b2516e",
+      "plt": "0x1f699d0",
+      "body": "0x2b257e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b25178",
+      "plt": "0x1f582e0",
+      "body": "0x2b25140",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f171",
+      "plt": "0x1e132a0",
+      "body": "0x2b25160",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f180",
+      "plt": "0x1f78340",
+      "body": "0x2b25190",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f196",
+      "plt": "0x1f78340",
+      "body": "0x2b25190",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f1a5",
+      "plt": "0x1f44200",
+      "body": "0x2b251b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f1b1",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f1b9",
+      "plt": "0x1e84d10",
+      "body": "0x2093da0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f1c1",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f1cf",
+      "plt": "0x1e4b2c0",
+      "body": "0x1ff7160",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff717c",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff71a6",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff71b2",
+      "plt": "0x1f952e0",
+      "body": "0x1ff7260",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff7268",
+      "plt": "0x1ecb780",
+      "body": "0x1ff7290",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff7276",
+      "plt": "0x1f86650",
+      "body": "0x1fe51e0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x1ff71d3",
+      "plt": "0x1e4f8f0",
+      "body": "0x1fceb60",
+      "kind": "call"
+    },
+    {
+      "site": "0x1ff71de",
+      "plt": "0x1f6fc00",
+      "body": "0x2c9b010",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f1db",
+      "plt": "0x1f44cb0",
+      "body": "0x2b25210",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f204",
+      "plt": "0x1ebf120",
+      "body": "0x1fd0ae0",
+      "kind": "call"
+    },
+    {
+      "site": "0x1fd0af2",
+      "plt": "0x1faa940",
+      "body": "0x2c9abd0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f210",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f239",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480",
+      "kind": "call"
+    },
+    {
+      "site": "0x2002492",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f245",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f26e",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f27a",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f2a3",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f2af",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f2b7",
+      "plt": "0x1e84d10",
+      "body": "0x2093da0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f2bf",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f2eb",
+      "plt": "0x1fa7dc0",
+      "body": "0x28c8980",
+      "kind": "call"
+    },
+    {
+      "site": "0x28c8999",
+      "plt": "0x1e778d0",
+      "body": "0x2003a20",
+      "kind": "call"
+    },
+    {
+      "site": "0x28c89a4",
+      "plt": "0x1f64f30",
+      "body": "0x2003a30",
+      "kind": "call"
+    },
+    {
+      "site": "0x28c89c6",
+      "plt": "0x1f86650",
+      "body": "0x1fe51e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x28c89d3",
+      "plt": "0x1f3afa0",
+      "body": "0x1fcdc10",
+      "kind": "call"
+    },
+    {
+      "site": "0x28c89fa",
+      "plt": "0x1e4b2c0",
+      "body": "0x1ff7160",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b1f2f7",
+      "plt": "0x1e25520",
+      "body": "0x2b251d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f2ff",
+      "plt": "0x1e84d10",
+      "body": "0x2093da0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f307",
+      "plt": "0x1f5ee30",
+      "body": "0x2214970",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f333",
+      "plt": "0x1fa7dc0",
+      "body": "0x28c8980",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f349",
+      "plt": "0x1f78340",
+      "body": "0x2b25190",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f355",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f378",
+      "plt": "0x1f97540",
+      "body": "0x269e750",
+      "kind": "call"
+    },
+    {
+      "site": "0x269e75e",
+      "plt": "0x1ea69b0",
+      "body": "0x203e270",
+      "kind": "call"
+    },
+    {
+      "site": "0x269e768",
+      "plt": "0x1ea6ee0",
+      "body": "0x20452e0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f384",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f3a7",
+      "plt": "0x1f97540",
+      "body": "0x269e750",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f3b3",
+      "plt": "0x1e58ed0",
+      "body": "0x2b25290",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f3d6",
+      "plt": "0x1f97540",
+      "body": "0x269e750",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f3e2",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f40b",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f417",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f440",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f44c",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f475",
+      "plt": "0x1fb67c0",
+      "body": "0x2002480",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f47d",
+      "plt": "0x1fac0a0",
+      "body": "0x208ec60",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f490",
+      "plt": "0x1eef070",
+      "body": "0x2b25250",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f4b1",
+      "plt": "0x1e1ad00",
+      "body": "0x2b252d0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b252e2",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f4de",
+      "plt": "0x1e132a0",
+      "body": "0x2b25160",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f4f4",
+      "plt": "0x1f78340",
+      "body": "0x2b25190",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f50d",
+      "plt": "0x1f78340",
+      "body": "0x2b25190",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b1f528",
+      "plt": "0x1e937d0",
+      "body": "0x2b25d30",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b4f145",
+      "plt": "0x1e87530",
+      "body": "0x2b1ed50",
+      "kind": "call"
+    }
+  ],
+  "virtual_bindings": [
+    {
+      "address": "0x3adc4d8",
+      "body": "0x2b26a00"
+    },
+    {
+      "address": "0x3adc4f0",
+      "body": "0x2b26a50"
+    },
+    {
+      "address": "0x3adc7d8",
+      "body": "0x2b29380"
+    },
+    {
+      "address": "0x3adc7f0",
+      "body": "0x2b293f0"
+    },
+    {
+      "address": "0x3adc718",
+      "body": "0x2b288e0"
+    },
+    {
+      "address": "0x3adc730",
+      "body": "0x2b28950"
+    },
+    {
+      "address": "0x3adc658",
+      "body": "0x2b27e40"
+    },
+    {
+      "address": "0x3adc670",
+      "body": "0x2b27eb0"
+    },
+    {
+      "address": "0x3adc898",
+      "body": "0x2b29e20"
+    },
+    {
+      "address": "0x3adc8b0",
+      "body": "0x2b29e60"
+    },
+    {
+      "address": "0x3adc418",
+      "body": "0x2b26010"
+    },
+    {
+      "address": "0x3adc430",
+      "body": "0x2b26050"
+    },
+    {
+      "address": "0x3adc598",
+      "body": "0x2b27440"
+    },
+    {
+      "address": "0x3adc5b0",
+      "body": "0x2b27480"
+    }
+  ],
+  "dwarf_sha256": "2ab5f671653ffe1817a31cd5d2a0d2e2a9c6abd46abf53042d71930dfc3086bb",
+  "candidate_source_commit": "3e8f7355224c21c5dc255b1f189222eb7a194f23",
+  "candidate_archive_sha256": "7dfa061bb511f22b2d907a323215b12dcdb64075d8cce061a320c3adf491df04",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "130bfc9056e4ecca8dcc388271a3cec7fafa9fbe9a8701e6868d2ebcdaf0ba12",
+    "crates/c6-core/src/core_stream.rs": "436211116bf002ec1d6df2be7deea9b4ec151e016b1071442a6b553c68350bb1",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "6a5a24838f97caec74ac8e7a8e795f3c408f4130e81a2b415f206195e8dd510e",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+    "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
+    "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+    "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+    "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
+    "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+    "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+    "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
+    "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+    "crates/c6-core/src/player_trade.rs": "371d7f198f475a3103609e555063c05feb983471e57215d92fe6e9496ef70702",
+    "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+    "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+    "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
+    "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
+    "tools/linux/player_influence_audit.py": "d1963b5d8295c50bd9fb2b94b5268d051ed45e578af2610bac941e91789cc252"
+  },
+  "candidate_sha256": "5223ef62345017422d875bb6672745d8396fb20c83811209c51b66561c3fa7ea",
+  "harness_sha256": "c0cc4c73149fef4192e0136b4811807174217832a0f1ce3d1e8dcae46b9c106f",
+  "audit_source_sha256": "d1963b5d8295c50bd9fb2b94b5268d051ed45e578af2610bac941e91789cc252",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": 43,
+      "record_bytes": 91375,
+      "record_items": 22790,
+      "first_observed_range": [
+        5207985,
+        5210110
+      ],
+      "byte_item_caps": [
+        [
+          2125,
+          530
+        ]
+      ],
+      "ordered_record_digests_sha256": "6cece2e3540445fcb0080393e19fadbe6ddcc2e48ffc4465b86e1fe6324f1d81"
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": 43,
+      "record_bytes": 91375,
+      "record_items": 22790,
+      "first_observed_range": [
+        5207985,
+        5210110
+      ],
+      "byte_item_caps": [
+        [
+          2125,
+          530
+        ]
+      ],
+      "ordered_record_digests_sha256": "6cece2e3540445fcb0080393e19fadbe6ddcc2e48ffc4465b86e1fe6324f1d81"
+    }
+  ],
+  "source_only_tests": 2,
+  "exact_native_record_byte_item_caps_checked": true,
+  "one_short_native_record_byte_item_caps_rejected": true,
+  "native_every_truncation_rejected": true,
+  "validation_cuts": "Influence owner cuts only; production codec has no offsets or search inputs",
+  "allocation_policy": "aggregate wire byte and collection item caps; each declared count preflights minimum wire before fallible typed reservation; typed dynamic storage independently bounded by max_items, at most 8 typed bytes per charged item plus fixed struct; no aggregate heap cap claim",
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_influence_wire": true,
+  "legacy_versions": false,
+  "definition_remapping": false,
+  "native_read_fixups": false,
+  "native_current_read_calls_initialize": true,
+  "native_current_read_calls_reset": true,
+  "native_current_read_reset_reproduced": false,
+  "native_current_read_callbacks_reproduced": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "next_player_component": "Quests",
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "attribution_reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_role": "discovery_only"
+}

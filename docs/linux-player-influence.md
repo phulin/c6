@@ -68,3 +68,15 @@ Complete Player loading, Core/world import, exact gameplay state, action
 execution and turns remain unimplemented. Unknown bytes remain unclassified
 and unmasked, including the recorded 89,198-byte raw Save→Load failure. Offline
 saved-wire comparison does not establish native Read or gameplay parity.
+
+Validated source commit `3e8f735` passes the isolated source tests and all 86
+original saved records across both canonical streams: 91,375 bytes per stream,
+182,750 bytes total. Every record is 2,125 bytes and 530 charged items; exact
+caps pass, every truncation fails and one-short byte/item caps fail. The first
+observed record occupies `[5,207,985, 5,210,110)`; these are validation
+observations only. The native sample contains seven nonempty 64-entry i32
+vectors, a 64-entry bool vector, three six-entry yield tables and an empty
+levy-discount-percent-by-player vector. Its nonempty variant is covered by the
+source fixture. The evidence records actual source archive, source manifest,
+driver and candidate executable identities. Native live serialization, native
+Read and gameplay parity remain validation gaps.
