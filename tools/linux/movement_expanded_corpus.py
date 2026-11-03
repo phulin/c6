@@ -73,7 +73,7 @@ def coverage(header, summary, cases, attestation):
         missing += 6 - len(rows)
         direction_histogram[str(len(rows))] += 1
     observed = len(groups)
-    require(summary['formations'] >= observed and header['formation_limit'] == LIMIT,
+    require(observed <= summary['formations'] <= LIMIT and header['formation_limit'] == LIMIT,
             'formation accounting/budget differs')
     result = dict(formations_discovered=summary['formations'],
         formations_with_cases=observed,
@@ -89,11 +89,16 @@ def coverage(header, summary, cases, attestation):
         cases_by_domain=dict(Counter(str(c['formation_domain']) for c in cases)),
         cases_by_layer=dict(Counter(str(c['formation_layer']) for c in cases)),
         cases_by_member_count=dict(Counter(str(len(c['members'])) for c in cases)),
-        escort_member_cases=sum(any(m['escort'] for m in c['members']) for c in cases),
+        escort_member_cases=sum(any(m['found'] and m['escort'] for m in c['members']) for c in cases),
         missing_member_cases=sum(any(not m['found'] for m in c['members']) for c in cases),
-        source_border_cases=sum(c['from']['x'] in (0, attestation['map_width'] - 1) or
+        source_coordinate_edge_cases=sum(c['from']['x'] in (0, attestation['map_width'] - 1) or
                                 c['from']['y'] in (0, attestation['map_height'] - 1)
-                                for c in cases))
+                                for c in cases),
+        source_open_border_cases=sum(
+            (not attestation['wrap_x'] and
+             c['from']['x'] in (0, attestation['map_width'] - 1)) or
+            (not attestation['wrap_y'] and
+             c['from']['y'] in (0, attestation['map_height'] - 1)) for c in cases))
     if header['execute']:
         result['actual_variations'] = variations(cases)
     result['all_discovered_formations_accounted_without_skips'] = (
