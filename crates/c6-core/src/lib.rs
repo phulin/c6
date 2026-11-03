@@ -9,6 +9,7 @@ pub mod city_wire;
 pub mod codec;
 pub mod combat;
 pub mod combat_random;
+pub mod core_stream;
 pub mod geometry;
 pub mod improvement_yield;
 pub mod map;
