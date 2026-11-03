@@ -4,7 +4,7 @@
 //! Explicit recycled slots, never generated IDs, supply lookup storage. Rules,
 //! module and configuration identity gates belong to the importer. See
 //! `docs/linux-world-state.md` for the evidence and unsupported live state.
-use crate::map::{Map, Plot, Recycled, UnitReference};
+use crate::map::{Map, Plot, Recycled, Slot, UnitReference};
 use crate::unit::{Formation, Unit};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -13,6 +13,8 @@ pub enum MissingInput {
     PlayerRegistry,
     Units { owner: i32 },
     Formations { owner: i32 },
+    UnitWireMetadata { owner: i32 },
+    FormationWireMetadata { owner: i32 },
     InvalidDimensions,
     DuplicatePlayer { owner: i32 },
     InvalidSlot,
@@ -37,9 +39,34 @@ pub struct Found<'a, T> {
     pub record: &'a T,
 }
 
+/// Complete logical slot export in native iteration order. This establishes
+/// Find/iteration contents, not native capacity, free-list or allocator metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompleteSlots<T> {
+    pub entries: Vec<Slot<T>>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum CollectionRecords<T> {
+    Wire(Recycled<T>),
+    Slots(CompleteSlots<T>),
+}
+impl<T> CollectionRecords<T> {
+    fn entries(&self) -> &[Slot<T>] {
+        match self {
+            Self::Wire(v) => &v.entries,
+            Self::Slots(v) => &v.entries,
+        }
+    }
+    fn entries_mut(&mut self) -> &mut [Slot<T>] {
+        match self {
+            Self::Wire(v) => &mut v.entries,
+            Self::Slots(v) => &mut v.entries,
+        }
+    }
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Collection<T> {
-    records: Recycled<T>,
+    records: CollectionRecords<T>,
     by_slot: Vec<Option<usize>>,
 }
 impl<T> Collection<T> {
@@ -47,8 +74,23 @@ impl<T> Collection<T> {
         if records.capacity > 65536 {
             return Err(MissingInput::InvalidSlot);
         }
-        let mut by_slot = vec![None; records.capacity as usize];
-        for (i, entry) in records.entries.iter().enumerate() {
+        let capacity = records.capacity as usize;
+        Self::assemble(CollectionRecords::Wire(records), capacity)
+    }
+    fn from_slots(records: CompleteSlots<T>) -> Result<Self, MissingInput> {
+        let mut capacity = 0;
+        for entry in &records.entries {
+            let slot = usize::try_from(entry.index).map_err(|_| MissingInput::InvalidSlot)?;
+            if slot >= 65536 {
+                return Err(MissingInput::InvalidSlot);
+            }
+            capacity = capacity.max(slot + 1);
+        }
+        Self::assemble(CollectionRecords::Slots(records), capacity)
+    }
+    fn assemble(records: CollectionRecords<T>, capacity: usize) -> Result<Self, MissingInput> {
+        let mut by_slot = vec![None; capacity];
+        for (i, entry) in records.entries().iter().enumerate() {
             let slot = usize::try_from(entry.index).map_err(|_| MissingInput::InvalidSlot)?;
             let target = by_slot.get_mut(slot).ok_or(MissingInput::InvalidSlot)?;
             if target.replace(i).is_some() {
@@ -64,11 +106,11 @@ impl<T> Collection<T> {
         self.by_slot.get((id & 0xffff) as usize).copied().flatten()
     }
     fn get(&self, id: u32) -> Option<&T> {
-        Some(&self.records.entries.get(self.index(id)?)?.value)
+        Some(&self.records.entries().get(self.index(id)?)?.value)
     }
     fn get_mut(&mut self, id: u32) -> Option<&mut T> {
         let index = self.index(id)?;
-        Some(&mut self.records.entries.get_mut(index)?.value)
+        Some(&mut self.records.entries_mut().get_mut(index)?.value)
     }
 }
 
@@ -117,19 +159,74 @@ impl Player {
     pub fn owner(&self) -> i32 {
         self.owner
     }
-    pub fn units(&self) -> Result<&Recycled<Unit>, MissingInput> {
-        Ok(&self
+    /// Construct from verified complete Begin/End/GetCount/Find exports, without
+    /// fabricating unused allocator metadata. Absent collections remain unknown.
+    pub fn from_lookup_slots(
+        owner: i32,
+        units: Option<CompleteSlots<Unit>>,
+        formations: Option<CompleteSlots<Formation>>,
+    ) -> Result<Self, MissingInput> {
+        if units
+            .as_ref()
+            .is_some_and(|c| c.entries.iter().any(|s| s.value.e_owner != owner))
+            || formations
+                .as_ref()
+                .is_some_and(|c| c.entries.iter().any(|s| s.value.owner != owner))
+        {
+            return Err(MissingInput::RecordOwner { owner });
+        }
+        Ok(Self {
+            owner,
+            units: units.map(Collection::from_slots).transpose()?,
+            formations: formations.map(Collection::from_slots).transpose()?,
+            slot_status: None,
+            team: None,
+            is_alive: None,
+            technologies: None,
+            civics: None,
+        })
+    }
+    pub fn unit_records(&self) -> Result<&[Slot<Unit>], MissingInput> {
+        Ok(self
             .units
             .as_ref()
             .ok_or(MissingInput::Units { owner: self.owner })?
-            .records)
+            .records
+            .entries())
     }
-    pub fn formations(&self) -> Result<&Recycled<Formation>, MissingInput> {
-        Ok(&self
+    pub fn formation_records(&self) -> Result<&[Slot<Formation>], MissingInput> {
+        Ok(self
             .formations
             .as_ref()
             .ok_or(MissingInput::Formations { owner: self.owner })?
-            .records)
+            .records
+            .entries())
+    }
+    pub fn units(&self) -> Result<&Recycled<Unit>, MissingInput> {
+        match &self
+            .units
+            .as_ref()
+            .ok_or(MissingInput::Units { owner: self.owner })?
+            .records
+        {
+            CollectionRecords::Wire(v) => Ok(v),
+            CollectionRecords::Slots(_) => {
+                Err(MissingInput::UnitWireMetadata { owner: self.owner })
+            }
+        }
+    }
+    pub fn formations(&self) -> Result<&Recycled<Formation>, MissingInput> {
+        match &self
+            .formations
+            .as_ref()
+            .ok_or(MissingInput::Formations { owner: self.owner })?
+            .records
+        {
+            CollectionRecords::Wire(v) => Ok(v),
+            CollectionRecords::Slots(_) => {
+                Err(MissingInput::FormationWireMetadata { owner: self.owner })
+            }
+        }
     }
     pub fn unit(&self, id: u32) -> Result<Option<Found<'_, Unit>>, MissingInput> {
         let collection = self
@@ -216,6 +313,9 @@ pub struct World {
     /// Native Manager player-ID to player-container-index mapping. -1 is absent;
     /// all other values are valid for IsValid, independent of imported records.
     pub player_mapping: Option<[i32; 65]>,
+    /// Actual manager Player* slot non-null facts, independent of validity.
+    /// Unknown remains None; false is a captured null pointer, not absent import.
+    pub player_slot_present: Option<[bool; 65]>,
     pub civic_availability: Option<Vec<bool>>,
 }
 impl World {
@@ -279,6 +379,7 @@ impl World {
             technology_availability: None,
             civic_availability: None,
             player_mapping: None,
+            player_slot_present: None,
         })
     }
     pub fn map(&self) -> &Map {
@@ -342,14 +443,32 @@ impl World {
             .ok_or(MissingInput::PlayerRegistry)?;
         Ok(mapping[owner as usize] != -1)
     }
+    /// Resolve an actual GetValidPlayer slot. A valid mapping with missing
+    /// imported state remains an error; a separately captured null slot is absent.
+    pub fn valid_player(&self, owner: i32) -> Result<Option<&Player>, MissingInput> {
+        if !self.player_is_valid(owner)? {
+            return Ok(None);
+        }
+        if self
+            .player_slot_present
+            .as_ref()
+            .is_some_and(|v| !v[owner as usize])
+        {
+            return Ok(None);
+        }
+        self.player(owner).map(Some)
+    }
     /// Original CManager::GetUnit: invalid identity/player returns absent. Type
     /// bits do not gate this lookup; layer membership equality retains them.
     pub fn unit(&self, reference: UnitReference) -> Result<Option<Found<'_, Unit>>, MissingInput> {
         let owner = reference.player();
-        if owner == -1 || reference.id == u32::MAX || !self.player_is_valid(owner)? {
+        if owner == -1 || reference.id == u32::MAX {
             return Ok(None);
         }
-        self.player(owner)?.unit(reference.id)
+        match self.valid_player(owner)? {
+            Some(player) => player.unit(reference.id),
+            None => Ok(None),
+        }
     }
 }
 
@@ -665,6 +784,111 @@ mod tests {
         assert_eq!(
             query(&world, 0, 6),
             Err(Error::World(MissingInput::Player { owner: 6 }))
+        );
+    }
+    #[test]
+    fn complete_lookup_slots_never_invent_allocator_metadata() {
+        let f = formation(0x10004, 7, vec![3]);
+        let p = Player::from_lookup_slots(
+            7,
+            Some(CompleteSlots { entries: vec![] }),
+            Some(CompleteSlots {
+                entries: vec![Slot { index: 4, value: f }],
+            }),
+        )
+        .unwrap();
+        assert!(p.unit_records().unwrap().is_empty());
+        assert_eq!(p.units(), Err(MissingInput::UnitWireMetadata { owner: 7 }));
+        assert_eq!(
+            p.formations(),
+            Err(MissingInput::FormationWireMetadata { owner: 7 })
+        );
+        assert_eq!(p.formation(0x90004).unwrap().unwrap().resolved_id, 0x10004);
+        assert!(p.formation(5).unwrap().is_none());
+        assert!(p.formation(u32::MAX).unwrap().is_none());
+        let unknown = Player::from_lookup_slots(7, None, None).unwrap();
+        assert_eq!(
+            unknown.unit_records(),
+            Err(MissingInput::Units { owner: 7 })
+        );
+        assert_eq!(
+            Collection::from_slots(CompleteSlots {
+                entries: vec![Slot {
+                    index: 65536,
+                    value: 0
+                }]
+            })
+            .unwrap_err(),
+            MissingInput::InvalidSlot
+        );
+        assert_eq!(
+            Collection::from_slots(CompleteSlots {
+                entries: vec![Slot { index: 1, value: 0 }, Slot { index: 1, value: 1 }]
+            })
+            .unwrap_err(),
+            MissingInput::DuplicateSlot
+        );
+    }
+    #[test]
+    fn actual_null_player_slot_is_distinct_from_unavailable_record() {
+        let mut w = World::new(map(), vec![]).unwrap();
+        let mut mapping = [-1; 65];
+        mapping[5] = 0;
+        w.player_mapping = Some(mapping);
+        assert_eq!(w.valid_player(5), Err(MissingInput::Player { owner: 5 }));
+        w.player_slot_present = Some([false; 65]);
+        assert_eq!(w.valid_player(5), Ok(None));
+        assert!(w
+            .unit(UnitReference::from_component_id(crate::unit::ComponentId {
+                owner: 5,
+                component_type: 1,
+                id: 1
+            }))
+            .unwrap()
+            .is_none());
+        let input = crate::skip_turn::placement::Inputs {
+            world: &w,
+            definitions: None,
+            relations: None,
+            plot_unit_limit: None,
+        };
+        assert_eq!(input.same_team(5, 5), Ok(false));
+        assert_eq!(input.at_war_with(0, 5), Ok(false));
+    }
+    #[test]
+    fn formation_layer_uses_first_raw_member_and_neighbors_keep_nulls() {
+        use crate::skip_turn::placement::{formation_layer, query_plots};
+        let mut m = map();
+        m.units.layers[0].maximum = 2;
+        m.units.layers[0].cells[0].units =
+            vec![UnitReference::from_component_id(crate::unit::ComponentId {
+                owner: 7,
+                component_type: 1,
+                id: 0x10001,
+            })];
+        let w = World::new(m, vec![]).unwrap();
+        let mut f = formation(2, 7, vec![0x90001, 0x10001]);
+        f.location = crate::unit::PlotCoord { x: 1, y: 0 };
+        assert_eq!(formation_layer(&w, &f), Ok(None));
+        f.unit_ids.remove(0);
+        assert_eq!(formation_layer(&w, &f), Ok(Some(3)));
+        let anchor = crate::unit::PlotCoord { x: 0, y: 0 };
+        let q = query_plots(w.map(), anchor).unwrap();
+        assert_eq!(q.iter().filter(|v| v.is_some()).count(), 2);
+        assert_eq!(q[2], Some(crate::unit::PlotCoord { x: 1, y: 0 }));
+        let mut wrapped = w.map().clone();
+        wrapped.header.wrap_x = true;
+        wrapped.header.wrap_y = true;
+        let q = query_plots(&wrapped, anchor).unwrap();
+        assert_eq!(q[0], q[1]);
+        assert_eq!(q[5], q[2]);
+        assert_eq!(
+            query_plots(&wrapped, crate::unit::PlotCoord { x: -2, y: 0 }).unwrap()[0],
+            None
+        );
+        assert_eq!(
+            query_plots(&wrapped, crate::unit::PlotCoord { x: -9999, y: 0 }).unwrap(),
+            [None; 7]
         );
     }
     #[test]

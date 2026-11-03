@@ -1,0 +1,312 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "c6-linux-placement-inputs-v1"
+    },
+    "gamecore_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "host_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "profile_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "map": {
+      "$ref": "#/$defs/blob"
+    },
+    "player_mapping": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -2147483648,
+        "maximum": 2147483647
+      },
+      "minItems": 65,
+      "maxItems": 65
+    },
+    "player_slot_present": {
+      "type": "array",
+      "items": {
+        "type": "boolean"
+      },
+      "minItems": 65,
+      "maxItems": 65
+    },
+    "players": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/player"
+      },
+      "maxItems": 65
+    },
+    "unit_definitions": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "complete": {
+          "const": true
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/definition"
+          },
+          "maxItems": 1000000
+        }
+      },
+      "required": [
+        "count",
+        "complete",
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "relations": {
+      "type": "object",
+      "properties": {
+        "player_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65
+        },
+        "war_types": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647
+          },
+          "maxItems": 2080
+        },
+        "complete": {
+          "const": true
+        }
+      },
+      "required": [
+        "player_count",
+        "war_types",
+        "complete"
+      ],
+      "additionalProperties": false
+    },
+    "plot_unit_limit": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    }
+  },
+  "required": [
+    "schema",
+    "gamecore_sha256",
+    "host_sha256",
+    "configuration_sha256",
+    "profile_sha256",
+    "map",
+    "player_mapping",
+    "player_slot_present",
+    "players",
+    "unit_definitions",
+    "relations",
+    "plot_unit_limit"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "blob": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 134217728
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "member": {
+      "type": "object",
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "actual_owner": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "wire": {
+          "$ref": "#/$defs/blob"
+        }
+      },
+      "required": [
+        "ordinal",
+        "id",
+        "slot",
+        "actual_owner",
+        "wire"
+      ],
+      "additionalProperties": false
+    },
+    "membership": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        },
+        "complete": {
+          "const": true
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/member"
+          },
+          "maxItems": 65536
+        }
+      },
+      "required": [
+        "count",
+        "complete",
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "player": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "slot_status": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "team": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "alive": {
+          "type": "boolean"
+        },
+        "units": {
+          "$ref": "#/$defs/membership"
+        },
+        "formations": {
+          "$ref": "#/$defs/membership"
+        }
+      },
+      "required": [
+        "owner",
+        "slot_status",
+        "team",
+        "alive",
+        "units",
+        "formations"
+      ],
+      "additionalProperties": false
+    },
+    "definition": {
+      "type": "object",
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "hash": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "domain_hash": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "formation_class_hash": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "make_trade_route": {
+          "type": "boolean"
+        },
+        "spy": {
+          "type": "boolean"
+        },
+        "combat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "range": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "ordinal",
+        "index",
+        "hash",
+        "domain_hash",
+        "formation_class_hash",
+        "make_trade_route",
+        "spy",
+        "combat",
+        "range"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "description": "Offline raw-state/native-primitive metadata only. No native count/rivalry/CanStart answers."
+}

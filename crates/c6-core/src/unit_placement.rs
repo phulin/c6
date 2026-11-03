@@ -102,35 +102,143 @@ pub fn is_cargo(_: &Unit) -> bool {
 
 /// Native sparse-grid lookup wraps the signed linear arithmetic; it does not
 /// wrap coordinates geometrically or require each axis independently in bounds.
-pub fn layered_units<'a>(world: &'a World, unit: &Unit) -> Result<&'a [UnitReference], Error> {
-    let coord = unit.k_location;
-    if coord.x < -9998 || coord.y < -9998 {
-        return Ok(&[]);
-    }
-    let index = coord
+pub fn coordinate_valid(coord: crate::unit::PlotCoord) -> bool {
+    coord.x >= -9998 && coord.y >= -9998
+}
+fn linear_index(world: &World, coord: crate::unit::PlotCoord) -> u32 {
+    coord
         .y
         .wrapping_mul(world.map().units.width as i32)
-        .wrapping_add(coord.x) as u32;
-    let identity = ComponentId {
-        owner: unit.e_owner as i16,
-        component_type: 1,
-        id: unit.id,
-    };
-    let mut layer_id = None;
+        .wrapping_add(coord.x) as u32
+}
+fn identity_layer(
+    world: &World,
+    coord: crate::unit::PlotCoord,
+    identity: ComponentId,
+) -> Result<Option<u32>, Error> {
+    if !coordinate_valid(coord) {
+        return Ok(None);
+    }
+    let index = linear_index(world, coord);
     for layer in &world.map().units.layers {
         if index >= layer.maximum || index as usize >= world.map().plots.len() {
             continue;
         }
-        let candidates = world.plot_units(layer.layer_id, index as usize)?;
-        if candidates.iter().any(|r| r.component_id() == identity) {
-            layer_id = Some(layer.layer_id);
-            break;
+        if world
+            .plot_units(layer.layer_id, index as usize)?
+            .iter()
+            .any(|r| r.component_id() == identity)
+        {
+            return Ok((layer.layer_id != u32::MAX).then_some(layer.layer_id));
         }
     }
-    let Some(id) = layer_id.filter(|id| *id != u32::MAX) else {
+    Ok(None)
+}
+pub fn unit_layer(world: &World, unit: &Unit) -> Result<Option<u32>, Error> {
+    identity_layer(
+        world,
+        unit.k_location,
+        ComponentId {
+            owner: unit.e_owner as i16,
+            component_type: 1,
+            id: unit.id,
+        },
+    )
+}
+/// Native Formation layer uses the first raw member ID at Formation.location;
+/// it does not find a living member or resolve the member's recycled pointer.
+pub fn formation_layer(world: &World, formation: &Formation) -> Result<Option<u32>, Error> {
+    match formation.unit_ids.first() {
+        Some(&id) => identity_layer(
+            world,
+            formation.location,
+            ComponentId {
+                owner: formation.owner as i16,
+                component_type: 1,
+                id,
+            },
+        ),
+        None => Ok(None),
+    }
+}
+pub fn units_at(
+    world: &World,
+    layer: Option<u32>,
+    coord: crate::unit::PlotCoord,
+) -> Result<&[UnitReference], Error> {
+    let Some(layer) = layer else {
         return Ok(&[]);
     };
-    Ok(world.plot_units(id, index as usize)?)
+    let index = linear_index(world, coord);
+    if index as usize >= world.map().plots.len() {
+        return Ok(&[]);
+    }
+    let Some(entry) = world
+        .map()
+        .units
+        .layers
+        .iter()
+        .find(|v| v.layer_id == layer)
+    else {
+        return Ok(&[]);
+    };
+    if index >= entry.maximum {
+        return Ok(&[]);
+    }
+    Ok(world.plot_units(layer, index as usize)?)
+}
+pub fn layered_units<'a>(world: &'a World, unit: &Unit) -> Result<&'a [UnitReference], Error> {
+    units_at(world, unit_layer(world, unit)?, unit.k_location)
+}
+fn row_half(y: i32) -> i32 {
+    if y >= 0 {
+        y >> 1
+    } else {
+        let n = y.wrapping_sub(1);
+        n.wrapping_add(((n as u32) >> 31) as i32) >> 1
+    }
+}
+fn coordinate_range(value: i32, size: i32, wrap: bool) -> i32 {
+    if !wrap {
+        value
+    } else if value < 0 {
+        (value % size).wrapping_add(size)
+    } else if value >= size {
+        value % size
+    } else {
+        value
+    }
+}
+/// Original GetPlot/GetAdjacentPlot positions: current then directions0..5,
+/// retaining nulls/duplicates. Native negative exact-multiple wrap is preserved.
+pub fn query_plots(
+    map: &crate::map::Map,
+    anchor: crate::unit::PlotCoord,
+) -> Result<[Option<crate::unit::PlotCoord>; 7], Error> {
+    use crate::unit::PlotCoord;
+    if map.header.width <= 0 || map.header.height <= 0 {
+        return Err(Error::World(WorldError::InvalidDimensions));
+    }
+    if !coordinate_valid(anchor) {
+        return Ok([None; 7]);
+    }
+    let resolve = |x, y| {
+        let x = coordinate_range(x, map.header.width, map.header.wrap_x);
+        let y = coordinate_range(y, map.header.height, map.header.wrap_y);
+        (x >= 0 && y >= 0 && x < map.header.width && y < map.header.height)
+            .then_some(PlotCoord { x, y })
+    };
+    let mut result = [None; 7];
+    result[0] = resolve(anchor.x, anchor.y);
+    const X: [i32; 6] = [0, 1, 1, 0, -1, -1];
+    const Y: [i32; 6] = [1, 0, -1, -1, 0, 1];
+    let hex_x = anchor.x.wrapping_sub(row_half(anchor.y));
+    for d in 0..6 {
+        let y = anchor.y.wrapping_add(Y[d]);
+        let x = hex_x.wrapping_add(X[d]).wrapping_add(row_half(y));
+        result[d + 1] = resolve(x, y);
+    }
+    Ok(result)
 }
 
 /// Borrowed genuine inputs; absence is explicit and evaluated only when used.
@@ -144,7 +252,7 @@ pub struct Inputs<'a, 'd> {
     pub plot_unit_limit: Option<i32>,
 }
 impl Inputs<'_, '_> {
-    fn definition(&self, unit: &Unit) -> Result<Option<&UnitProperties>, Error> {
+    pub fn definition(&self, unit: &Unit) -> Result<Option<&UnitProperties>, Error> {
         let table = self.definitions.ok_or(Error::Definitions)?;
         let runtime_index = table
             .lookup
@@ -169,15 +277,10 @@ impl Inputs<'_, '_> {
             == 3)
     }
     pub fn at_war_with(&self, owner: i32, target: i32) -> Result<bool, Error> {
-        if !self.world.player_is_valid(target)? {
+        let Some(target_player) = self.world.valid_player(target)? else {
             return Ok(false);
-        }
-        if !self
-            .world
-            .player(target)?
-            .is_alive
-            .ok_or(Error::Alive(target))?
-        {
+        };
+        if !target_player.is_alive.ok_or(Error::Alive(target))? {
             return Ok(false);
         }
         if owner == target {
@@ -191,16 +294,8 @@ impl Inputs<'_, '_> {
         // Native resolves both actual GetValidPlayer pointers before testing
         // either for null or taking the same-player shortcut. A valid mapping
         // alone does not prove an imported Player record is available.
-        let first = if self.world.player_is_valid(a)? {
-            Some(self.world.player(a)?)
-        } else {
-            None
-        };
-        let second = if self.world.player_is_valid(b)? {
-            Some(self.world.player(b)?)
-        } else {
-            None
-        };
+        let first = self.world.valid_player(a)?;
+        let second = self.world.valid_player(b)?;
         let (Some(first), Some(second)) = (first, second) else {
             return Ok(false);
         };
