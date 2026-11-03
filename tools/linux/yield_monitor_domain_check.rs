@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ))?;
     assert!(monitor::warm_route_domain(&state).is_err());
     let initial_revision = state.revision();
+    let postload = monitor::postload_guard_inputs(&state)?;
     let mut bad = trace.clone();
     bad[0] ^= 1;
     assert!(monitor::install_trade_graph_snapshot(&mut state, &bad, Default::default()).is_err());
@@ -59,6 +60,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "schema":"c6-linux-yield-monitor-owned-domain-v1",
             "actual_players":state.statistics().players,
             "actual_units":state.statistics().units,
+        "postload_guard_inputs": {
+            "cities":postload.cities,
+            "force_update_plot_appeal":postload.force_update_plot_appeal,
+            "units":postload.units,
+            "empty_unit_sight":postload.empty_unit_sight,
+            "guards_are_saved_inputs_not_native_postload_execution":true
+        },
             "graph_frame":source.owner_range,
             "graph_frame_bytes":source.decoded_prefix_bytes,
             "active_routes":before.active_routes,

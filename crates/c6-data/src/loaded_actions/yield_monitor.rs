@@ -21,6 +21,7 @@ const FRAME_RANGE: [usize; 2] = [71_027_800, 71_497_438];
 pub enum Error {
     Attribution,
     State(c6_core::loaded_state::Error),
+    World(c6_core::world::MissingInput),
     MissingWarmRoutePath { edge_id: i32, route_id: i32 },
     InvalidPathPlot { edge_id: i32, plot: i32 },
     ResourceLimit,
@@ -152,6 +153,46 @@ pub fn warm_route_domain(state: &LoadedState) -> Result<WarmRouteDomain, Error> 
             result.queried_path_nodes = result
                 .queried_path_nodes
                 .checked_add(path.len())
+                .ok_or(Error::ResourceLimit)?;
+        }
+    }
+    Ok(result)
+}
+
+/// Actual saved guards relevant to the post-Monitor initialization interval.
+/// These are current owned inputs, not proof that native postload ran or that
+/// every callback preserved query inputs. Nonempty sight can exclude the
+/// PopulateSight branch; empty sight still requires IsDead/location guards.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PostLoadGuardInputs {
+    pub cities: usize,
+    pub force_update_plot_appeal: usize,
+    pub units: usize,
+    pub empty_unit_sight: usize,
+}
+
+pub fn postload_guard_inputs(state: &LoadedState) -> Result<PostLoadGuardInputs, Error> {
+    let mut result = PostLoadGuardInputs {
+        cities: 0,
+        force_update_plot_appeal: 0,
+        units: 0,
+        empty_unit_sight: 0,
+    };
+    for player in &state.retained().players {
+        for city in &player.cities.records.entries {
+            result.cities = result.cities.checked_add(1).ok_or(Error::ResourceLimit)?;
+            result.force_update_plot_appeal = result
+                .force_update_plot_appeal
+                .checked_add(usize::from(city.value.citizens.force_update_plot_appeal))
+                .ok_or(Error::ResourceLimit)?;
+        }
+    }
+    for player in state.world().players() {
+        for unit in player.unit_records().map_err(Error::World)? {
+            result.units = result.units.checked_add(1).ok_or(Error::ResourceLimit)?;
+            result.empty_unit_sight = result
+                .empty_unit_sight
+                .checked_add(usize::from(unit.value.k_sight_plots.is_empty()))
                 .ok_or(Error::ResourceLimit)?;
         }
     }
