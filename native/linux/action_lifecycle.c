@@ -64,6 +64,12 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
     int (*trace_begin)(void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_begin");
     int (*trace_end)(unsigned)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_end");
     if(!trace_begin||!trace_end)return preparation_failure(profile,"missing_trace_symbol",202);
+    /* Only this effectful predicate profile observes trace counters without a
+     * zero/equality expectation; structural and I/O failures still propagate. */
+    int (*trace_end_observational)(void)=profile==QUERY_FULL_MANAGER_FIXTURE?
+        dlsym(RTLD_DEFAULT,"c6_linux_action_trace_end_observational"):NULL;
+    if(profile==QUERY_FULL_MANAGER_FIXTURE&&!trace_end_observational)
+        return preparation_failure(profile,"missing_observational_trace_symbol",202);
     void *controller=*active,*bound=NULL;
     if(!controller)return preparation_failure(profile,"missing_controller",196);
     get_context(&bound,controller);
@@ -151,7 +157,8 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
     bool clean=!initialized(controller)&&bound==NULL&&!executing(controller);
     if(movement_cost&&!clean)query_fatal(profile,"uninitialize_not_clean");
     fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d dispatch_mode %d requested_execution %d core_component_mode %d\n",initialized(controller),bound!=NULL,executing(controller),clean,dispatch,execute,core_component);
-    trace_result=trace_end((dispatch||core_component)&&execute?1:0);
+    trace_result=profile==QUERY_FULL_MANAGER_FIXTURE?trace_end_observational():
+        trace_end((dispatch||core_component)&&execute?1:0);
     return result?result:!clean?200:trace_result;
 }
 
