@@ -1,0 +1,94 @@
+{
+  "reviewed_commit": "f531a462138c99535cd9bd12d0b6987e163871b4",
+  "dependency_commits": [
+    "7e36363",
+    "96808f6",
+    "2eac8b0"
+  ],
+  "accepted_scope": "Direct Rust raw-Core byte-zero wire prefix through complete supported Map, with borrowed unclassified tail.",
+  "candidate_sha256": "15143093b47948c067db1aeb901002b857df471f4bb2dfba634d05b361f610d2",
+  "frozen_report_sha256": "c26be863f4c01514867510542e0bdda00c9cbb715e51b505aadf5c18c798aaf4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "source_identities": {
+    "crates/c6-core/src/core_stream.rs": "f4f6ddfb583f928405feb74d98955a4f53eab53ce7c4f4d894a0dfb5e2adbcc3",
+    "crates/c6-core/src/map.rs": "b1a23b965ca418b506f750e65709607c33c4334317ae50c3e57ecd9d653843e9",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-differential/src/bin/c6-core-prefix-candidate.rs": "44e9537c9d44c6272716ecfe5c1790e88ecdaf1d8a7b9dddfe3a6700c6c0cb3c"
+  },
+  "audit_source_sha256": "4a89932b8ebccb9694c903db99264f04de1d66b27cc62882614e7f9badfff7c6",
+  "checks": {
+    "frozen_sources_checked": 50,
+    "target_methods_checked": 42,
+    "game_namespace_bool_symbols_checked": 3,
+    "original_streams": [
+      {
+        "map_start": 1884,
+        "map_end": 4695864,
+        "map_bytes": 4693980,
+        "map_sha256": "cd2ec75b4e342a6ebccc1b96889335352657b9ea67f83d5f6d56f6a94eaf2de9",
+        "tail_bytes": 75961598,
+        "tail_sha256": "179ef25964b5f2e1548d8aa7f484f385bf1ec51411fe20d26dd95a5071931921"
+      },
+      {
+        "map_start": 1884,
+        "map_end": 4695864,
+        "map_bytes": 4693980,
+        "map_sha256": "cd2ec75b4e342a6ebccc1b96889335352657b9ea67f83d5f6d56f6a94eaf2de9",
+        "tail_bytes": 75961598,
+        "tail_sha256": "2165eeac60777da7a9f0ae639973c49f47f128b1d29e509fc4e6f8335779c5a1"
+      }
+    ],
+    "raw_stream_byte_differences": 89198,
+    "phase_relocation_bytes": 5,
+    "phase_relocation_passed": true,
+    "typed_prefix_fields_compared": true,
+    "native_execution": false
+  },
+  "focused_rust_tests": {
+    "core_stream": 4,
+    "map_prefix": 1,
+    "passed": true
+  },
+  "independent_budget_checks": {
+    "map_items": 1957345,
+    "prefix_items": 751,
+    "total_items": 1958096,
+    "map_logical_allocation": 5253460,
+    "prefix_logical_allocation": 10296,
+    "total_logical_allocation": 5263756,
+    "consumed_byte_limit": 4695864,
+    "exact_combined_limits_passed": true,
+    "each_one_short_refused": true,
+    "borrowed_tail_pointer_and_independence_passed": true,
+    "actual_prefix_sample_truncations_refused": 5,
+    "unknown_rules_provider_refused": true
+  },
+  "source_only_relocations": {
+    "metadata_bytes": 20,
+    "game_properties_bytes": 24,
+    "independent_phase_segment_bytes": 5,
+    "passed": true
+  },
+  "review_scripts": {
+    "/tmp/c6-core-prefix-review/check.py": "5f8b2899e67f4aa32f1e359e39ff639537faea8d0056f5d94762d4b1c0026862",
+    "/tmp/c6-core-prefix-review/relocations.py": "09cdd832b061a73a7563932a275cea6389cb653e19f79bf4474a7b9212a13c8e",
+    "/tmp/c6-core-prefix-review/src/main.rs": "9561d456d35d18fd3a505aaac66d52d6489be8742c381d8e95d877249cf227df"
+  },
+  "unresolved_findings": [],
+  "original_game_execution": false,
+  "metadata_compatibility_checked": false,
+  "full_core_import": false,
+  "rng_reconstructed": false,
+  "gameplay_parity": false,
+  "next_unparsed_section": "Game.Religion",
+  "unknown_bytes_masked": 0,
+  "limitations": [
+    "Current supported Placement provider only; unknown unframed Rules providers/counts are errors.",
+    "Nested variants and Map components retain existing explicit supported-form limits.",
+    "The two original streams are one normalization context, not gameplay branch diversity.",
+    "Logical allocation charge excludes allocator overhead and inline fixed arrays.",
+    "Actual module/configuration provenance, metadata compatibility and native Read side effects remain caller/owner dependencies.",
+    "The complete borrowed tail remains unclassified; no Player/Unit/City roster or RNG import follows."
+  ]
+}
