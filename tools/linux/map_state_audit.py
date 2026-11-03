@@ -283,27 +283,80 @@ class Reader:
                     plot_rivers=self.sparse_plot_data(lambda:self.array('i')),
                     floodplain_rivers=self.sparse_plot_data(lambda:self.array('i')))
 
-    def empty_terrain_component(self):
-        self.version(6)
-        # Nonempty lists require the separately documented record/version contracts.
-        for _ in range(6):
-            if self.count():
-                raise ValueError('unsupported nonempty terrain component record')
-        return dict(coastal_lowlands=[], deserts=[], mountain_ranges=[], named_lakes=[], named_oceans=[], named_seas=[])
+    def coastal_lowland(self):
+        self.version(9)
+        return dict(lowland_hash=self.u32(), plot=self.take('i'), starting_terrain_hash=self.u32(),
+                    river_flow=[self.take('b') for _ in range(6)], river_crossing_count=self.take('b'),
+                    river_crossing_mask=self.take('B'), river_edges=[self.take('B') for _ in range(6)],
+                    flooded=self.take('B'), submerged=self.take('B'), protected=self.take('B'))
 
-    def empty_route_component(self):
+    def named_terrain(self, version, hashed):
+        self.version(version)
+        return dict(type_hash=self.u32() if hashed else self.take('i'),
+                    discovering_civ_hash=self.u32(), territory=self.take('i'), custom_name=self.string8())
+
+    def terrain_component(self):
+        self.version(6)
+        result=dict(coastal_lowlands=[self.coastal_lowland() for _ in range(self.count())])
+        for name, version, hashed in [('deserts',6,True),('mountain_ranges',6,True),
+                                      ('named_lakes',1,False),('named_oceans',1,False),('named_seas',1,False)]:
+            result[name]=[self.named_terrain(version,hashed) for _ in range(self.count())]
+        return result
+
+    def route_component(self):
         self.version(1)
         self.version(1)
         width, height, count = self.u32(), self.u32(), self.count()
+        portals=[]
         if count:
-            raise ValueError('unsupported nonempty route portal record')
-        return dict(width=width,height=height,portals=[])
+            self.version(2)
+            for _ in range(count):
+                portals.append(dict(entrance_plot=self.take('i'),exit_plots=self.array('i'),source_plots=self.array('i')))
+        return dict(width=width,height=height,portals=portals)
 
-    def empty_territories_component(self):
+    def localized_string(self, depth=0):
+        if depth>64:
+            raise ValueError('localized name depth budget')
+        self.version(0xffffffff)
+        if self.take('B')!=1:
+            raise ValueError('unsupported localized string version')
+        base=self.string8()
+        args=[]
+        for _ in range(self.take('B')):
+            kind=self.take('B')
+            if kind==0:
+                value=None
+            elif kind==1:
+                value=self.take('i')
+            elif kind==2:
+                value=self.take('q')
+            elif kind==3:
+                value=self.u32()
+            elif kind==4:
+                value=self.take('Q')
+            elif kind==5:
+                value=self.localized_string(depth+1)
+            else:
+                raise ValueError('unsupported localized argument type')
+            args.append(dict(kind=kind,value=value))
+        names=[]
+        for _ in range(self.take('B')):
+            index=self.u32()
+            if self.take('B')!=1:
+                raise ValueError('unsupported localized argument name multiplicity')
+            names.append(dict(index=index,name=self.string8()))
+        return dict(base=base,args=args,names=names)
+
+    def territory(self):
+        self.version(2)
+        return dict(id=self.take('i'),terrain_class_hash=self.u32(),
+                    counts=[self.take('i') for _ in range(6)],is_lake=self.take('B'),is_sea=self.take('B'),
+                    bounds=[self.take('i') for _ in range(4)],centroid_delta=[self.take('i') for _ in range(2)],
+                    feature_counts=self.hash_array(),name=self.localized_string())
+
+    def territories_component(self):
         self.version(1)
-        def unsupported():
-            raise ValueError('unsupported nonempty territory instance')
-        return dict(territories=self.recycled(unsupported),plot_territories=self.array('I'))
+        return dict(territories=self.recycled(self.territory),plot_territories=self.array('I'))
 
     def components(self):
         self.version(1)
@@ -314,9 +367,9 @@ class Reader:
             start = self.pos
             payload = self.raw(size)
             sub = Reader(self.data,start,self.pos)
-            decoders = dict(Route=sub.empty_route_component,Feature=sub.feature_component,
-                            River=sub.river_component,Terrain=sub.empty_terrain_component,
-                            Territories=sub.empty_territories_component,TerritoryBuilder=lambda:None)
+            decoders = dict(Route=sub.route_component,Feature=sub.feature_component,
+                            River=sub.river_component,Terrain=sub.terrain_component,
+                            Territories=sub.territories_component,TerritoryBuilder=lambda:None)
             if name not in decoders:
                 raise ValueError(f'unsupported map component {name}')
             value=decoders[name]()
@@ -436,8 +489,10 @@ def main():
     artifacts=[dict(name=x.name,sha256=digest(x),bytes=x.stat().st_size) for x in sorted(private.iterdir()) if x.is_file() and x.suffix in ('.asm','.txt')]
     result=dict(schema='c6-linux-map-state-v1',module_sha256=XP2,streams=results,private_static_evidence=artifacts,
                 map_bytes_equal=results[0]['map_sha256']==results[1]['map_sha256'],
+                source_only_nonempty_schemas=['Route portal v2','CoastalLowland v9','Desert v6','MountainRange v6','NamedTerritory v1','Territory v2','current recursive Localization::String'],
+                source_only_limits='Recovered original writer/reader schemas; no original-code nonempty Route/Terrain/Territory fixture exists in this audit. Hand-authored branch fixtures are structural checks only.',
                 raw_save_load_different_bytes=sum(a!=b for a,b in zip(*input_streams)),
-                limits='Static original-code contract plus independent decode of original streams; no native execution, world reconstruction, movement, actions, turns, or gameplay RNG parity. Component payloads decoded in observed branches; nonempty route portals, terrain vectors and territory instances are unsupported rather than opaque acceptance. Raw 89,198-byte Save→Load failure remains required.')
+                limits='Static original-code contract plus independent decode of original streams; no native execution, world reconstruction, movement, actions, turns, or gameplay RNG parity. Current-version Map component schemas decoded; nonempty Route/Terrain/Territory records are source-derived only and absent from these native fixtures. Historical versions remain unsupported. Raw 89,198-byte Save→Load failure remains required.')
     args.output.write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(dict(output=str(args.output),streams=[dict(sha256=x['stream_sha256'],counts=x['counts']) for x in results])))
 

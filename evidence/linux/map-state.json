@@ -1773,6 +1773,11 @@
   ],
   "private_static_evidence": [
     {
+      "name": "coastal-lowland-read.asm",
+      "sha256": "9cf981ebb41d1df3360c6b96a3ce0c27b7d23cc0f2c7ddd62d3656a863af30e6",
+      "bytes": 10063
+    },
+    {
       "name": "component-leaf-streams.asm",
       "sha256": "2881a88c8a15532e537b2fda7ce35fcb92d46bc0b4701f71f5933886a15d0d5c",
       "bytes": 39851
@@ -1803,6 +1808,21 @@
       "bytes": 104115
     },
     {
+      "name": "localization-argument-dispatch.txt",
+      "sha256": "79932901e5b44de3cf3de46d442d74a0222ba8afc6382e415b13203f7e64f576",
+      "bytes": 402
+    },
+    {
+      "name": "localization-string-stream.asm",
+      "sha256": "a9afee9f40ebe77277a2324ed3843941c04dbac281b7022c4669bd26afd89b4e",
+      "bytes": 33830
+    },
+    {
+      "name": "localized-long-scalar.asm",
+      "sha256": "48b43d7540e5f482262963497e4b0b1254ef35b2efc9339f6904f84b9dd11496",
+      "bytes": 2357
+    },
+    {
       "name": "map-stream.asm",
       "sha256": "b154675b7ebc16c4d61bbe02fe5a57c0a6cbe3c7c7efbae601357a8d88f59b3b",
       "bytes": 27561
@@ -1818,6 +1838,11 @@
       "bytes": 14757
     },
     {
+      "name": "nonempty-component-types.txt",
+      "sha256": "f1a455833de4f066a4f6080bfbd94ad47b9b3092a664736e657826d231d8c717",
+      "bytes": 3437
+    },
+    {
       "name": "plot-stream.asm",
       "sha256": "bca57f772f8194eb31890a85442e0d32bb6ea1f1e59be2e3d14ef060216978f3",
       "bytes": 31099
@@ -1826,6 +1851,16 @@
       "name": "plot-types.txt",
       "sha256": "9bb7dd92b30f8aa991232359669e17d6a3f977abac5989690da5ede3e3a0e624",
       "bytes": 3889
+    },
+    {
+      "name": "portal-read.asm",
+      "sha256": "8a88ef53e199c4d2e297953b10b3f5aa4948975c47227e2848b48660ab48c54c",
+      "bytes": 7852
+    },
+    {
+      "name": "portal-types.txt",
+      "sha256": "1e5c7a71b35c84124b4cc11af4911c6a68a5e2868e6505a289651bcd0c253f1c",
+      "bytes": 426
     },
     {
       "name": "recycled-types.txt",
@@ -1844,6 +1879,16 @@
     }
   ],
   "map_bytes_equal": true,
+  "source_only_nonempty_schemas": [
+    "Route portal v2",
+    "CoastalLowland v9",
+    "Desert v6",
+    "MountainRange v6",
+    "NamedTerritory v1",
+    "Territory v2",
+    "current recursive Localization::String"
+  ],
+  "source_only_limits": "Recovered original writer/reader schemas; no original-code nonempty Route/Terrain/Territory fixture exists in this audit. Hand-authored branch fixtures are structural checks only.",
   "raw_save_load_different_bytes": 89198,
-  "limits": "Static original-code contract plus independent decode of original streams; no native execution, world reconstruction, movement, actions, turns, or gameplay RNG parity. Component payloads decoded in observed branches; nonempty route portals, terrain vectors and territory instances are unsupported rather than opaque acceptance. Raw 89,198-byte Save\u2192Load failure remains required."
+  "limits": "Static original-code contract plus independent decode of original streams; no native execution, world reconstruction, movement, actions, turns, or gameplay RNG parity. Current-version Map component schemas decoded; nonempty Route/Terrain/Territory records are source-derived only and absent from these native fixtures. Historical versions remain unsupported. Raw 89,198-byte Save\u2192Load failure remains required."
 }
