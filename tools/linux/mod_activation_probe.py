@@ -45,6 +45,12 @@ def main():
     action_modes.add_argument('--action-skip-turn-registered',action='store_true')
     action_modes.add_argument('--core-component-control',action='store_true')
     action_modes.add_argument('--core-component',action='store_true')
+    action_modes.add_argument('--movement-cost-control',action='store_true')
+    action_modes.add_argument('--movement-cost',action='store_true')
+    for label in ('output','before','control-save','after','repeat'):
+        parser.add_argument('--movement-cost-'+label,type=Path)
+    parser.add_argument('--movement-cost-max-formations',type=int,default=256)
+    parser.add_argument('--prepare-only',action='store_true')
     for name in ('before','after','repeat','command'):
         parser.add_argument('--core-component-'+name,type=Path)
     parser.add_argument('--action-snapshot-before',type=Path)
@@ -80,6 +86,7 @@ def main():
     action_mode='execute' if args.action_skip_turn or args.action_skip_turn_registered else 'control' if args.action_skip_turn_control or args.action_skip_turn_registered_control else None
     registered_action=args.action_skip_turn_registered or args.action_skip_turn_registered_control
     core_mode='execute' if args.core_component else 'control' if args.core_component_control else None
+    movement_mode='execute' if args.movement_cost else 'control' if args.movement_cost_control else None
     core_paths={}
     if core_mode:
         if not game_input or any((args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.combat_kernel_input,args.save_normalization_trace,args.rules_snapshot_dir)):
@@ -117,6 +124,21 @@ def main():
         if len(set(random_paths.values()))!=3:parser.error('random damage artifact paths must be distinct')
     elif any((args.combat_random_output,args.combat_random_control_save,args.combat_random_post_save)):
         parser.error('random damage output paths require its input')
+    movement_paths={}
+    if movement_mode:
+        if not game_input or not args.prepare_main_thread or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('movement cost requires a separate loaded Core fixture with original main-thread preparation')
+        if not 1<=args.movement_cost_max_formations<=4096:parser.error('movement formation limit must be1..4096')
+        args.game_load_observe=True
+        for label in ('output','before','control_save','after','repeat'):
+            path=getattr(args,'movement_cost_'+label)
+            if path is None:parser.error('movement cost requires output and all four snapshot paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('movement artifacts must be fresh private files in existing directories')
+            movement_paths[label]=path
+        if len(set(movement_paths.values()))!=5:parser.error('movement artifact paths must be distinct')
+    elif any(getattr(args,'movement_cost_'+label) for label in ('output','before','control_save','after','repeat')):
+        parser.error('movement artifact paths require a movement mode')
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -145,8 +167,8 @@ def main():
         if len(set(action_snapshots.values()))!=3:parser.error('action snapshot paths must be distinct')
     elif args.action_snapshot_before or args.action_snapshot_after or args.action_snapshot_repeat:
         parser.error('action snapshots require an explicit Skip Turn control/execute mode')
-    if args.action_lifecycle_observe or action_mode or core_mode:
-        if (not args.action_observe and not core_mode) or args.action_execution_observe or not action_trace:
+    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode:
+        if (not args.action_observe and not core_mode and not movement_mode) or args.action_execution_observe or not action_trace:
             parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
         if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
@@ -193,6 +215,7 @@ def main():
         if combat_output in game_outputs.values():parser.error('combat output and game Saves must be distinct')
         if set(random_paths.values())&set(game_outputs.values()):parser.error('random damage and outer Save paths must be distinct')
         if set(core_paths.values())&set(game_outputs.values()):parser.error('Core component and outer Save paths must be distinct')
+        if set(movement_paths.values())&set(game_outputs.values()):parser.error('movement and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
     snapshot=args.rules_snapshot_dir.resolve() if args.rules_snapshot_dir else None
@@ -239,7 +262,7 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode:
+    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/action_event_audit.py',ROOT/'evidence/linux/action-event-abi.json',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -248,7 +271,7 @@ def main():
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode or args.action_lifecycle_observe or core_mode:
+    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode:
         for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -311,6 +334,53 @@ def main():
             random_contract=random_audit(assets/'libGameCore_XP2.so',assets/'Civ6',Path(temporary))
         if random_contract!=json.loads(random_audit_paths[-2].read_text()):raise SystemExit('random damage native contracts differ')
         random_profile={'input_sha256':random_manifest['input_sha256'],'input_bytes':random_manifest['input_bytes'],'case_count':random_manifest['case_count'],'use_average':False,'contract':random_contract}
+    movement_profile=None
+    movement_audit_paths=[]
+    if movement_mode:
+        movement_audit_paths=[ROOT/'tools/linux/movement_probe_audit.py',ROOT/'evidence/linux/movement-cost-probe-contract.json',ROOT/'tools/linux/game_load_state_audit.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
+        movement_contract=json.loads(movement_audit_paths[1].read_text())
+        for name,sha in movement_contract['sources'].items():
+            if digest(ROOT/name)!=sha:raise SystemExit('movement source identity mismatch: '+name)
+        frozen={}
+        for kind,reference in movement_contract['frozen_builds'].items():
+            path=ROOT/'target/frozen/movement-cost-probe'/reference['sha256']/kind
+            if not path.exists():
+                source=ROOT/reference['path']
+                if not source.is_file() or digest(source)!=reference['sha256'] or source.stat().st_size!=reference['bytes']:raise SystemExit('movement reference artifact mismatch: '+kind)
+                path.parent.mkdir(parents=True,exist_ok=True)
+                with path.open('xb') as stream:stream.write(source.read_bytes())
+                path.chmod(0o555)
+            if digest(path)!=reference['sha256'] or path.stat().st_size!=reference['bytes']:raise SystemExit('frozen movement artifact mismatch: '+kind)
+            frozen[kind]={'path':str(path.relative_to(ROOT)),'sha256':digest(path),'bytes':path.stat().st_size}
+        with tempfile.TemporaryDirectory(prefix='movement-probe-audit-') as temporary:
+            result=Path(temporary)/'contracts.json'
+            subprocess.run([sys.executable,str(movement_audit_paths[0]),'--assets',str(assets),'--native-helper',frozen['native_helper']['path'],'--candidate',frozen['candidate']['path'],'--output',str(result)],check=True,capture_output=True,text=True)
+            actual=json.loads(result.read_text())
+        # Only relocate immutable artifact paths; their complete bytes/hash are
+        # checked above and remain in the actual execution configuration.
+        for kind in frozen:actual['frozen_builds'][kind]['path']=movement_contract['frozen_builds'][kind]['path']
+        if actual!=movement_contract:raise SystemExit('movement original/source/build contracts differ')
+        candidate_source_commit=subprocess.check_output(['git','rev-parse','cb6113b^{commit}'],cwd=ROOT,text=True).strip()
+        candidate_source_files={}
+        for name in ('crates/c6-core/src/movement.rs','crates/c6-differential/src/bin/c6-movement-cost-candidate.rs','crates/c6-core/src/lib.rs','crates/c6-core/Cargo.toml','crates/c6-differential/Cargo.toml','Cargo.lock'):
+            content=subprocess.check_output(['git','show',candidate_source_commit+':'+name],cwd=ROOT)
+            source_sha=hashlib.sha256(content).hexdigest()
+            if name in movement_contract['sources'] and source_sha!=movement_contract['sources'][name]:raise SystemExit('frozen movement candidate source reference differs')
+            candidate_source_files[name]=source_sha
+        candidate_manifest={'schema':'c6-frozen-movement-candidate-source-v1','candidate_sha256':frozen['candidate']['sha256'],'source_reference_commit':candidate_source_commit,'sources_at_reference_commit':candidate_source_files,'mutable_release_binary_not_used':True}
+        candidate_manifest_path=ROOT/frozen['candidate']['path'];candidate_manifest_path=candidate_manifest_path.with_name('source-manifest.json')
+        candidate_manifest_bytes=(json.dumps(candidate_manifest,sort_keys=True,indent=2)+'\n').encode()
+        if candidate_manifest_path.exists():
+            if candidate_manifest_path.read_bytes()!=candidate_manifest_bytes:raise SystemExit('immutable movement source manifest differs')
+        else:
+            with candidate_manifest_path.open('xb') as stream:stream.write(candidate_manifest_bytes)
+            candidate_manifest_path.chmod(0o444)
+        bootstrap_commit='50a91ae839ab8c1ff5b5e893be24d56084e66772'
+        bootstrap_source='native/linux/localization.c'
+        bootstrap_sha='b898657a0e88837be77ecdfa89516494ce3e325ddb43bcc6bb1bca4e9e02d89d'
+        committed_bootstrap=subprocess.check_output(['git','show',bootstrap_commit+':'+bootstrap_source],cwd=ROOT)
+        if hashlib.sha256(committed_bootstrap).hexdigest()!=bootstrap_sha or digest(ROOT/bootstrap_source)!=bootstrap_sha:raise SystemExit('movement committed localization bridge differs from accepted source')
+        movement_profile={'mode':movement_mode,'max_formations':args.movement_cost_max_formations,'query_options':0,'actual_move_options_available':False,'contract':movement_contract,'frozen_artifacts':frozen,'candidate_frozen_before_original_execution':True,'candidate_source_manifest':{'path':str(candidate_manifest_path.relative_to(ROOT)),'sha256':digest(candidate_manifest_path),'source_reference_commit':candidate_source_commit},'bootstrap_source':{'path':bootstrap_source,'sha256':bootstrap_sha,'commit':bootstrap_commit,'accepted_native_configuration':'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'},'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'quiescence':'original controller/context idle plus acquired/released native Game facade lock barrier; unknown/work fatal before poststate/teardown'}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
@@ -365,17 +435,18 @@ def main():
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
-    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode else []
+    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode else []
-    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
     combat_sources=[ROOT/'native/linux/combat_kernel.c'] if combat_input else []
     random_sources=[ROOT/'native/linux/combat_random.c'] if random_input else []
     core_sources=[ROOT/'native/linux/core_component.c'] if core_mode else []
+    movement_sources=[ROOT/'native/linux/movement_cost.c'] if movement_mode else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -415,6 +486,7 @@ def main():
               'lower_core_operation_registry_observer':operation_registry_audit,
               'lower_core_average_damage_kernel':combat_profile,
               'lower_core_random_damage_kernel':random_profile,
+              'lower_core_movement_cost':movement_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -452,6 +524,8 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*combat_sources,ROOT/'native/linux/combat_kernel.h']})
     if random_sources:
         identity['sources'].update({name:digest(ROOT/name) for name in random_manifest['source_sha256']})
+    if movement_sources:
+        identity['sources'].update(movement_contract['sources'])
     if core_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
@@ -462,19 +536,26 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
+    if movement_profile:movement_profile['integrated_preload_sha256']=identity['preload_sha256']
     archived_preload=None
     if core_mode:
         archived_preload=core_paths['command'].parent/'core-component-preload.so'
         with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
+    if movement_mode:
+        archived_preload=movement_paths['output'].parent/'movement-cost-preload.so'
+        if archived_preload.exists():
+            if digest(archived_preload)!=digest(preload):raise SystemExit('movement immutable preload differs')
+        else:
+            with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
     listing=subprocess.check_output(['ldd',str(host)],env=dependency_env,text=True)
     if 'not found' in listing:raise SystemExit('native runtime dependency missing')
@@ -515,6 +596,8 @@ def main():
         if args.operation_registry:env['C6_OPERATION_REGISTRY']='1'
         if combat_input:env.update(C6_COMBAT_KERNEL_INPUT=str(combat_input),C6_COMBAT_KERNEL_OUTPUT=str(combat_output))
         if random_input:env.update(C6_COMBAT_RANDOM_INPUT=str(random_input),C6_COMBAT_RANDOM_OUTPUT=str(random_paths['output']),C6_COMBAT_RANDOM_CONTROL_SAVE=str(random_paths['control_save']),C6_COMBAT_RANDOM_POST_SAVE=str(random_paths['post_save']))
+        if movement_mode:
+            env.update(C6_MOVEMENT_COST_MODE=movement_mode,C6_MOVEMENT_COST_EXECUTE='1' if movement_mode=='execute' else '0',C6_MOVEMENT_COST_MAX_FORMATIONS=str(args.movement_cost_max_formations),C6_MOVEMENT_COST_OUTPUT=str(movement_paths['output']),C6_MOVEMENT_COST_SNAPSHOT_BEFORE=str(movement_paths['before']),C6_MOVEMENT_COST_SNAPSHOT_CONTROL=str(movement_paths['control_save']),C6_MOVEMENT_COST_SNAPSHOT_AFTER=str(movement_paths['after']),C6_MOVEMENT_COST_SNAPSHOT_REPEAT=str(movement_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
@@ -533,6 +616,11 @@ def main():
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     if args.expected_configuration and args.expected_configuration!=configuration_identity:
         raise SystemExit('configuration identity mismatch; native execution refused')
+    if movement_mode:env['C6_MOVEMENT_COST_PROFILE_SHA256']=configuration_identity
+    if args.prepare_only:
+        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
+        print(json.dumps({'output':str(args.output),'prepared_only':True,'native_execution_performed':False,'configuration_sha256':configuration_identity}))
+        return
     try:
         run=subprocess.run([str(host)],cwd=work,env=env,text=True,capture_output=True,timeout=args.timeout)
         code,out,err=run.returncode,run.stdout,run.stderr
@@ -576,6 +664,16 @@ def main():
                 artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
                 if label=='command':report['core_component_command']=artifact
                 else:report['core_component_saves'][label]=artifact
+    report['movement_cost_output']=None
+    report['movement_cost_saves']={}
+    if movement_mode:
+        report['execution_paths']['movement']={k:str(v) for k,v in movement_paths.items()}
+        report['execution_paths']['preload']=str(archived_preload)
+        for label,path in movement_paths.items():
+            if path.is_file():
+                artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
+                if label=='output':report['movement_cost_output']=artifact
+                else:report['movement_cost_saves']['control' if label=='control_save' else label]=artifact
     report['combat_random_output']=None
     report['combat_random_saves']={}
     if random_input:

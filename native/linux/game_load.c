@@ -8,6 +8,62 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+/* A potentially active/unknown owner must never return into fixture teardown.
+ * This is a caller-side observation gate, not an original-service replacement. */
+static _Noreturn void movement_not_quiescent(const char *reason) {
+    fprintf(stderr,"C6_LINUX_MOVEMENT_QUIESCENCE {\"fatal\":true,\"reason\":\"%s\",\"poststate_allowed\":false,\"cleanup_proven\":false}\n",reason);
+    fflush(stderr);
+    _exit(184);
+}
+
+static void *movement_symbol(void *owner,const char *name,uintptr_t expected,void *base) {
+    void *symbol=dlsym(owner,name);Dl_info info={0};
+    if(!symbol||(uintptr_t)symbol!=expected||!dladdr(symbol,&info)||info.dli_fbase!=base)
+        movement_not_quiescent("original_binding_unknown");
+    return symbol;
+}
+
+int c6_linux_movement_cost_quiescent(void *module,void *context) {
+    Dl_info info={0};
+    if(!module||!context||!dladdr(*(void **)context,&info)||!info.dli_fbase||!info.dli_fname)
+        movement_not_quiescent("context_owner_unknown");
+    const char *leaf=strrchr(info.dli_fname,'/');leaf=leaf?leaf+1:info.dli_fname;
+    if(strcmp(leaf,"libGameCore_XP2.so"))movement_not_quiescent("context_module_unknown");
+    uintptr_t base=(uintptr_t)info.dli_fbase;
+#define MOVEMENT_CORE(name,rva) movement_symbol(module,name,base+(rva),info.dli_fbase)
+#define MOVEMENT_HOST(name,address) movement_symbol(RTLD_DEFAULT,name,address,(void *)0x400000)
+    void **active=MOVEMENT_HOST("_ZN18GameCoreController21ms_pkActiveControllerE",0x6499100);
+    bool (*initialized)(void *)=MOVEMENT_HOST("_ZN18GameCoreController13IsInitializedEv",0x31d1720);
+    bool (*executing)(void *)=MOVEMENT_HOST("_ZN18GameCoreController11IsExecutingEv",0x31d18a0);
+    void *(*get_context)(void *,const void *)=MOVEMENT_HOST("_ZNK18GameCoreController10GetContextEv",0x31d5090);
+    bool (*context_initialized)(void *)=MOVEMENT_CORE("_ZN8GameCore7Exports7Context12IsInitialiedEv",0x2c7c9b0);
+    bool (*pending)(void *)=MOVEMENT_CORE("_ZN8GameCore7Exports7Context18HasPendingMessagesEv",0x2c7d340);
+    void *(*get_game)(void *)=MOVEMENT_CORE("_ZN8GameCore7Exports7Context7GetGameEv",0x2c7cae0);
+    void (*release)(void *)=MOVEMENT_CORE("_ZN8GameCore10Interfaces10ICvUnknowndlEPv",0x290bba0);
+    bool (*needs_update)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game11NeedsUpdateEv",0x2c86a60);
+    bool (*needs_advance)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game16NeedsTurnAdvanceEv",0x2c869f0);
+    bool (*ai)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game14IsAiProcessingEv",0x2c867e0);
+    bool (*processing)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game16IsTurnProcessingEv",0x2c86800);
+#undef MOVEMENT_CORE
+#undef MOVEMENT_HOST
+    void *controller=*active,*bound=NULL;
+    if(!controller)movement_not_quiescent("controller_unknown");
+    get_context(&bound,controller);
+    if(*active!=controller||bound!=context||!initialized(controller)||!context_initialized(context)||executing(controller)||pending(context))
+        movement_not_quiescent("controller_or_context_not_idle");
+    void *game=get_game(context);
+    if(!game)movement_not_quiescent("game_facade_unavailable");
+    bool work=needs_update(game)||needs_advance(game)||ai(game)||processing(game);
+    /* Only the acquired interface wrapper is owned. Both Context and its native
+     * Game remain borrowed; no facade survives this check or any cost call. */
+    release(game);
+    bound=NULL;get_context(&bound,controller);
+    if(*active!=controller||bound!=context||!initialized(controller)||!context_initialized(context)||executing(controller)||pending(context)||work)
+        movement_not_quiescent("game_or_controller_not_idle");
+    return 0;
+}
 
 /* Matching target DWARF and exact exported method byte identities are checked
  * by tools/linux/game_load_state_audit.py. This observes the actual facade,
@@ -103,7 +159,11 @@ int c6_linux_game_load(void *context) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
-        if(!result && getenv("C6_CORE_COMPONENT_MODE")) {
+        if(!result && getenv("C6_MOVEMENT_COST_MODE")) {
+            int (*movement)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_movement_cost");
+            if(!movement)movement_not_quiescent("movement_lifecycle_unavailable");
+            result=movement(game,context);
+        } else if(!result && getenv("C6_CORE_COMPONENT_MODE")) {
             int (*component)(void *,void *,bool)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_core_component");
             result=component?component(game,context,!strcmp(getenv("C6_CORE_COMPONENT_MODE"),"execute")):181;
         } else if(!result && getenv("C6_ACTION_SKIP_TURN")) {
