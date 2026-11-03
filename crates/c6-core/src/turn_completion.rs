@@ -28,19 +28,24 @@ pub enum LogBranch {
 /// Fallible services are explicit gaps, never permission to skip native effects.
 pub trait World {
     type Player: Copy;
+    type Game: Copy;
+    type PlayerManager: Copy;
     type Cities: Copy;
     type City: Copy;
     type Cursor: Copy;
 
     fn resolve_player(&mut self, encoded: i32) -> Result<Self::Player, Error>;
+    /// Native singleton pointer reads; preserve lookup time and retained identity.
+    fn game_instance(&mut self) -> Result<Self::Game, Error>;
+    fn player_manager(&mut self) -> Result<Self::PlayerManager, Error>;
     fn player_id(&mut self, player: Self::Player) -> Result<usize, Error>;
     fn is_human(&mut self, player: Self::Player) -> Result<bool, Error>;
     fn is_alive(&mut self, player: Self::Player) -> Result<bool, Error>;
     fn is_turn_active(&mut self, player: Self::Player) -> Result<bool, Error>;
-    fn is_paused(&mut self) -> Result<bool, Error>;
+    fn is_paused(&mut self, game: Self::Game) -> Result<bool, Error>;
     /// Actual Player::ms_abIsTurnComplete, not a field of a serialized player.
     fn completion_flags(&mut self) -> &mut [bool; 64];
-    fn is_valid_slot(&mut self, slot: i32) -> Result<bool, Error>;
+    fn is_valid_slot(&mut self, manager: Self::PlayerManager, slot: i32) -> Result<bool, Error>;
     /// Exact logging-options/format/service branch; callbacks cannot be omitted.
     fn log(&mut self, branch: LogBranch, player: Self::Player) -> Result<(), Error>;
     /// Synchronous original reporting event and every registered subscriber.
@@ -106,6 +111,8 @@ fn completion_hook<W: World>(world: &mut W, player: W::Player, reason: u32) -> R
 /// Original SetTurnComplete 0x2b5b840 returns true even for false assignment.
 /// Repeated hooks target the SAME requested player once per valid numeric slot;
 /// IsAlive is reread after validity on every iteration, including callback changes.
+/// The Manager is captured once after the true global write and retained across
+/// hooks; replacing its global pointer does not replace the loop's receiver.
 pub fn set_turn_complete<W: World>(
     world: &mut W,
     player: W::Player,
@@ -121,8 +128,9 @@ pub fn set_turn_complete<W: World>(
         ))?;
     *flag = complete;
     if complete {
+        let manager = world.player_manager()?;
         for slot in 0..64 {
-            if world.is_valid_slot(slot)? && world.is_alive(player)? {
+            if world.is_valid_slot(manager, slot)? && world.is_alive(player)? {
                 completion_hook(world, player, reason)?;
             }
         }
@@ -152,15 +160,17 @@ pub struct RequiresGameUpdate<P> {
 /// profiling; yielding inside it requires its own evidenced typed continuation.
 /// A provider must not return Ok after skipping unfinished upkeep or decisions.
 pub trait GameUpdate: World {
-    fn game_update(&mut self) -> Result<(), Error>;
+    fn game_update(&mut self, game: Self::Game) -> Result<(), Error>;
 }
 
 impl<P: Copy> RequiresGameUpdate<P> {
     /// Run the required update. After the first returns, reread the SAME player
     /// object's active flag; if true require precisely one more whole Update.
+    /// Each Update uses its own fresh Game singleton lookup.
     /// None means this dispatch body returned, not completed EndTurn acceptance.
     pub fn run<W: GameUpdate<Player = P>>(self, world: &mut W) -> Result<Option<Self>, Error> {
-        world.game_update()?;
+        let game = world.game_instance()?;
+        world.game_update(game)?;
         if self.first && world.is_turn_active(self.player)? {
             Ok(Some(Self {
                 player: self.player,
@@ -174,6 +184,7 @@ impl<P: Copy> RequiresGameUpdate<P> {
 
 /// Original PlayerTurnComplete::Execute prefix (0x2d27b50). Reason stays raw:
 /// unknown values follow the native hook's non-forced path without a whitelist.
+/// Capture Game before IsHuman unconditionally; pause uses that retained object.
 pub fn execute_prefix<W: World>(
     world: &mut W,
     encoded_player: i32,
@@ -183,7 +194,8 @@ pub fn execute_prefix<W: World>(
         return Ok(Prefix::InvalidEncodedPlayer);
     }
     let player = world.resolve_player(encoded_player)?;
-    if world.is_human(player)? && world.is_paused()? {
+    let game = world.game_instance()?;
+    if world.is_human(player)? && world.is_paused(game)? {
         world.log(LogBranch::PausedHuman, player)?;
         world.report(PAUSED_HUMAN_REPORT, player)?;
         return Ok(Prefix::PausedHuman);
@@ -211,6 +223,11 @@ mod tests {
 
     struct Fixture {
         flags: [bool; 64],
+        game: usize,
+        manager: usize,
+        replace_on_human: bool,
+        replace_on_hook: bool,
+        replace_on_update: bool,
         valid: [bool; 64],
         human: bool,
         alive: bool,
@@ -239,6 +256,11 @@ mod tests {
             valid[63] = true;
             Self {
                 flags: [false; 64],
+                game: 10,
+                manager: 20,
+                replace_on_human: false,
+                replace_on_hook: false,
+                replace_on_update: false,
                 valid,
                 human: true,
                 alive: true,
@@ -256,6 +278,8 @@ mod tests {
     }
     impl World for Fixture {
         type Player = usize;
+        type Game = usize;
+        type PlayerManager = usize;
         type Cities = usize;
         type City = usize;
         type Cursor = usize;
@@ -263,11 +287,23 @@ mod tests {
             self.events.push(format!("resolve:{id}"));
             Ok(id as usize)
         }
+        fn game_instance(&mut self) -> Result<usize, Error> {
+            self.events.push(format!("game:{}", self.game));
+            Ok(self.game)
+        }
+        fn player_manager(&mut self) -> Result<usize, Error> {
+            assert!(self.flags.iter().any(|v| *v));
+            self.events.push(format!("manager:{}", self.manager));
+            Ok(self.manager)
+        }
         fn player_id(&mut self, player: usize) -> Result<usize, Error> {
             Ok(player)
         }
         fn is_human(&mut self, _: usize) -> Result<bool, Error> {
             self.events.push("human".into());
+            if self.replace_on_human {
+                self.game = 11;
+            }
             Ok(self.human)
         }
         fn is_alive(&mut self, player: usize) -> Result<bool, Error> {
@@ -278,16 +314,16 @@ mod tests {
             self.events.push(format!("active:{player}"));
             Ok(self.active)
         }
-        fn is_paused(&mut self) -> Result<bool, Error> {
-            self.events.push("paused".into());
-            Ok(self.paused)
+        fn is_paused(&mut self, game: usize) -> Result<bool, Error> {
+            self.events.push(format!("paused:{game}"));
+            Ok(game == 10 && self.paused)
         }
         fn completion_flags(&mut self) -> &mut [bool; 64] {
             &mut self.flags
         }
-        fn is_valid_slot(&mut self, slot: i32) -> Result<bool, Error> {
-            self.events.push(format!("valid:{slot}"));
-            Ok(self.valid[slot as usize])
+        fn is_valid_slot(&mut self, manager: usize, slot: i32) -> Result<bool, Error> {
+            self.events.push(format!("valid:{manager}:{slot}"));
+            Ok(manager == 20 && self.valid[slot as usize])
         }
         fn log(&mut self, branch: LogBranch, _: usize) -> Result<(), Error> {
             self.events.push(format!("log:{branch:?}"));
@@ -303,6 +339,10 @@ mod tests {
             assert!(self.flags[player]);
             self.events.push(format!("hook:{player}"));
             self.hooks += 1;
+            if self.replace_on_hook {
+                self.manager = 21;
+                self.game = 12;
+            }
             if self.die_after_hook {
                 self.alive = false;
             }
@@ -343,8 +383,11 @@ mod tests {
         }
     }
     impl GameUpdate for Fixture {
-        fn game_update(&mut self) -> Result<(), Error> {
-            self.events.push("update".into());
+        fn game_update(&mut self, game: usize) -> Result<(), Error> {
+            self.events.push(format!("update:{game}"));
+            if self.replace_on_update {
+                self.game += 1;
+            }
             if self.deactivate_on_update {
                 self.active = false;
             }
@@ -387,7 +430,14 @@ mod tests {
         assert_eq!(execute_prefix(&mut f, 7, NONE), Ok(Prefix::PausedHuman));
         assert_eq!(
             f.events,
-            ["resolve:7", "human", "paused", "log:PausedHuman", "report"]
+            [
+                "resolve:7",
+                "game:10",
+                "human",
+                "paused:10",
+                "log:PausedHuman",
+                "report"
+            ]
         );
         assert!(!f.active);
         assert_eq!(f.hooks, 0);
@@ -401,7 +451,10 @@ mod tests {
         };
         f.flags[7] = true;
         assert_eq!(execute_prefix(&mut f, 7, NONE), Ok(Prefix::AlreadyComplete));
-        assert_eq!(f.events, ["resolve:7", "human", "log:AlreadyComplete"]);
+        assert_eq!(
+            f.events,
+            ["resolve:7", "game:10", "human", "log:AlreadyComplete"]
+        );
     }
     #[test]
     fn same_requested_player_hook_repeats_per_valid_slot_and_none_preserves_queues() {
@@ -421,7 +474,7 @@ mod tests {
             f.events.iter().filter(|s| s.starts_with("valid:")).count(),
             64
         );
-        assert!(!f.events.iter().any(|s| s == "update"));
+        assert!(!f.events.iter().any(|s| s.starts_with("update:")));
     }
     #[test]
     fn hook_mutation_is_seen_by_later_alive_checks() {
@@ -515,8 +568,8 @@ mod tests {
         let second = first.run(&mut f).unwrap().unwrap();
         assert!(second.run(&mut f).unwrap().is_none());
         assert_eq!(
-            &f.events[f.events.len() - 3..],
-            ["update", "active:7", "update"]
+            &f.events[f.events.len() - 5..],
+            ["game:10", "update:10", "active:7", "game:10", "update:10"]
         );
         let mut f = Fixture {
             deactivate_on_update: true,
@@ -524,6 +577,61 @@ mod tests {
         };
         let first = token(&mut f, NONE);
         assert!(first.run(&mut f).unwrap().is_none());
-        assert_eq!(&f.events[f.events.len() - 2..], ["update", "active:7"]);
+        assert_eq!(
+            &f.events[f.events.len() - 3..],
+            ["game:10", "update:10", "active:7"]
+        );
+    }
+    #[test]
+    fn dispatch_captures_game_before_human_and_retains_it_for_pause() {
+        let mut f = Fixture {
+            paused: true,
+            replace_on_human: true,
+            ..Fixture::default()
+        };
+        assert_eq!(execute_prefix(&mut f, 7, NONE), Ok(Prefix::PausedHuman));
+        assert_eq!(f.game, 11);
+        assert_eq!(
+            &f.events[..4],
+            ["resolve:7", "game:10", "human", "paused:10"]
+        );
+        let mut f = Fixture {
+            human: false,
+            ..Fixture::default()
+        };
+        let _ = token(&mut f, NONE);
+        assert_eq!(&f.events[..3], ["resolve:7", "game:10", "human"]);
+        assert!(!f.events.iter().any(|s| s.starts_with("paused:")));
+    }
+    #[test]
+    fn retained_manager_survives_hook_replacement_but_each_update_looks_up_new_game() {
+        let mut f = Fixture {
+            replace_on_hook: true,
+            replace_on_update: true,
+            ..Fixture::default()
+        };
+        let first = token(&mut f, NONE);
+        assert_eq!(f.manager, 21);
+        assert_eq!(f.hooks, 2);
+        assert_eq!(
+            f.events
+                .iter()
+                .filter(|s| s.starts_with("manager:"))
+                .collect::<Vec<_>>(),
+            [&"manager:20"]
+        );
+        assert_eq!(
+            f.events
+                .iter()
+                .filter(|s| s.starts_with("valid:20:"))
+                .count(),
+            64
+        );
+        let second = first.run(&mut f).unwrap().unwrap();
+        assert!(second.run(&mut f).unwrap().is_none());
+        assert_eq!(
+            &f.events[f.events.len() - 5..],
+            ["game:12", "update:12", "active:7", "game:13", "update:13"]
+        );
     }
 }

@@ -16,6 +16,8 @@ PREFIX_METHODS = {
     0x2661ba0,
 }
 ACCESSORS = [
+    (0x2660650, 8, 'Game.GetInstance', 'f2da8e6d1cfad107964503183788ee3a3940ed4000767c930e4617053d2e59fb'),
+    (0x2b53260, 8, 'Player.Manager.GetInstance', '3767e99c9e2a663768e78a24c0669349430acf05be01ce1ee8f273e1f62679e7'),
     (0x299e450, 8, 'Player.EditTurnManager', '180ed9bda300816a5b82f1b549d7ec97314d5197a1e4755b145c5ff39231c499'),
     (0x20a8cb0, 8, 'Player.EditCities', '91d1746a30132ffc2968016e3adacc19f461ee24a3c0510f47bea2428acc1e04'),
     (0x1fe4890, 12, 'City.EditBuildQueue', '3d5c3e93320fdc74310d1c2945a3e4c3b0d74a16d7b2f77477e476bd74013d32'),
@@ -27,6 +29,10 @@ ACCESSORS = [
 # Includes tail transfers. Each edge resolves the original ELF-defined GOT,
 # independent of any interposition/stubs in a future native fixture.
 EXTRA_EDGES = [
+    (0x2d27b77, 0x2660650, 'unconditional Game capture before IsHuman'),
+    (0x2b5b86b, 0x2b53260, 'single Player Manager capture after true global write'),
+    (0x2d27e87, 0x2660650, 'fresh Game lookup for first Update'),
+    (0x2d27ea4, 0x2660650, 'fresh Game lookup for second Update'),
     (0x2b5b89d, 0x299e450, 'requested player EditTurnManager'),
     (0x2ba17b6, 0x20a8cb0, 'turn manager owner EditCities'),
     (0x2ba17c1, 0x2a5b640, 'cities completion hook'),
@@ -39,6 +45,12 @@ EXTRA_EDGES = [
     (0x1fe509a, 0x1fe71d0, 'Front queue delegate'),
     (0x2d27e97, 0x2021030, 'same player active reread'),
     (0x2d27ebc, 0x2661ba0, 'second Game.Update tail transfer'),
+]
+CAPTURES = [
+    (0x2d27b7c, '4989c6', 'retain initial Game receiver in r14 before IsHuman'),
+    (0x2d27b8f, '4c89f7', 'paused predicate uses retained Game receiver'),
+    (0x2b5b870, '4889c3', 'retain Player Manager receiver in rbx'),
+    (0x2b5b880, '4889df', 'all validity calls reuse retained Player Manager'),
 ]
 
 
@@ -72,7 +84,7 @@ def main():
     calls = [c for c in CALLS if any(a <= c[0] < a+n for a,n,_,_ in methods)]
     edges = [dict(edge(game, relocations, a, t), name=name) for a,_,_,t,name in calls]
     edges += [dict(edge(game, relocations, a, t), name=name) for a,t,name in EXTRA_EDGES]
-    branches = [b for b in BYTES if any(a <= b[0] < a+n for a,n,_,_ in methods)]
+    branches = [b for b in BYTES if any(a <= b[0] < a+n for a,n,_,_ in methods)] + CAPTURES
     for address, expected, name in branches:
         if game.read(address, len(bytes.fromhex(expected))).hex() != expected:
             raise ValueError('branch bytes differ: ' + name)
@@ -86,7 +98,7 @@ def main():
              'tools/linux/turn_completion_kernel_audit.py',
              'docs/linux-turn-completion-kernel.md']
     report = dict(
-        schema='c6-linux-turn-completion-kernel-v1', checks_passed=True,
+        schema='c6-linux-turn-completion-kernel-v2', checks_passed=True,
         gamecore_sha256=GAME_SHA, required_future_host_sha256=HOST_SHA,
         methods=[dict(address=hex(a), size=n, name=s, sha256=h) for a,n,s,h in methods],
         resolved_edges=edges,
@@ -95,11 +107,11 @@ def main():
             owner='Player::ms_abIsTurnComplete; not serialized Player field'),
         source_sha256={p: hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in paths},
         implementation=dict(
-            prefix='unsigned encoded range; paused human log/report; duplicate log; setter; required Update',
-            setter='write global bool; true loops all 64 numeric valid slots, rereading requested player alive and invoking same requested hook',
+            prefix='unsigned encoded range; resolve player; capture Game before IsHuman; paused predicate retains Game; log/report or duplicate log or setter and required Update',
+            setter='write global bool; true captures one Player Manager then loops all 64 slots with retained Manager, rereading requested player alive and invoking same requested hook',
             forced_timer='human reread per hook; recycled city cursor/end rereads; typed BuildQueue entries/overflow',
             archive='mandatory edit_build_queue provider; exact archive/dirty effects remain unimplemented',
-            continuation='mandatory first complete Game.Update, then same-player active reread, optional second complete Game.Update',
+            continuation='fresh Game lookup before mandatory first complete Game.Update; same-player active reread; optional second complete Game.Update with another fresh Game lookup',
             effect_providers='no no-op defaults; errors may follow internal mutation',
             public_Engine_apply='unchanged; must reject before mutation'),
         native_execution=False, native_differential_fixture_available=False,

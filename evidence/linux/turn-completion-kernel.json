@@ -1,5 +1,5 @@
 {
-  "schema": "c6-linux-turn-completion-kernel-v1",
+  "schema": "c6-linux-turn-completion-kernel-v2",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "required_future_host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
@@ -69,6 +69,18 @@
       "size": 17,
       "name": "GameCore::Game::Instance::Update()",
       "sha256": "e9d50e09f9c4183d872ce51adfb4b35db4aaad7ed99d28f150eaa004fe74e6cc"
+    },
+    {
+      "address": "0x2660650",
+      "size": 8,
+      "name": "Game.GetInstance",
+      "sha256": "f2da8e6d1cfad107964503183788ee3a3940ed4000767c930e4617053d2e59fb"
+    },
+    {
+      "address": "0x2b53260",
+      "size": 8,
+      "name": "Player.Manager.GetInstance",
+      "sha256": "3767e99c9e2a663768e78a24c0669349430acf05be01ce1ee8f273e1f62679e7"
     },
     {
       "address": "0x299e450",
@@ -190,6 +202,34 @@
       "got": "0x3bba2a8",
       "target": "0x2913510",
       "name": "GameCore::Diplomacy::Manager::ProcessPending()"
+    },
+    {
+      "address": "0x2d27b77",
+      "plt": "0x1dfea70",
+      "got": "0x3b22420",
+      "target": "0x2660650",
+      "name": "unconditional Game capture before IsHuman"
+    },
+    {
+      "address": "0x2b5b86b",
+      "plt": "0x1e81590",
+      "got": "0x3b639b0",
+      "target": "0x2b53260",
+      "name": "single Player Manager capture after true global write"
+    },
+    {
+      "address": "0x2d27e87",
+      "plt": "0x1dfea70",
+      "got": "0x3b22420",
+      "target": "0x2660650",
+      "name": "fresh Game lookup for first Update"
+    },
+    {
+      "address": "0x2d27ea4",
+      "plt": "0x1dfea70",
+      "got": "0x3b22420",
+      "target": "0x2660650",
+      "name": "fresh Game lookup for second Update"
     },
     {
       "address": "0x2b5b89d",
@@ -324,6 +364,22 @@
     {
       "address": "0x2a5b644",
       "name": "only_forced_or_timer_city_overflow_path"
+    },
+    {
+      "address": "0x2d27b7c",
+      "name": "retain initial Game receiver in r14 before IsHuman"
+    },
+    {
+      "address": "0x2d27b8f",
+      "name": "paused predicate uses retained Game receiver"
+    },
+    {
+      "address": "0x2b5b870",
+      "name": "retain Player Manager receiver in rbx"
+    },
+    {
+      "address": "0x2b5b880",
+      "name": "all validity calls reuse retained Player Manager"
     }
   ],
   "global_completion_array": {
@@ -333,16 +389,16 @@
     "owner": "Player::ms_abIsTurnComplete; not serialized Player field"
   },
   "source_sha256": {
-    "crates/c6-core/src/turn_completion.rs": "8ac742ed5c6256e4cd1728d6bf10fdeb1ec9ed629dcf1e53baddf8a85532abb5",
-    "tools/linux/turn_completion_kernel_audit.py": "55a3c48bcb4192fee2a6ecccbea19304b40889d4abb9ce19a5e906563eb64909",
-    "docs/linux-turn-completion-kernel.md": "38fe5cad4d4448c68ddb92c19bc9412aed2121cbf72d7bff53c30c64f80248e0"
+    "crates/c6-core/src/turn_completion.rs": "b43ad8ff48d48290788df6a6b475ea678b0c77c61d71540c17333648c2d69dc5",
+    "tools/linux/turn_completion_kernel_audit.py": "06505d643e88fa8e9cc27f37ca5cad82778602e2c99f6d97e8fea3eee835fe2d",
+    "docs/linux-turn-completion-kernel.md": "598c1dacf1fe38c3ec7ec4e975dbe66fcdee2e619428aef9f0adaf319e6999bc"
   },
   "implementation": {
-    "prefix": "unsigned encoded range; paused human log/report; duplicate log; setter; required Update",
-    "setter": "write global bool; true loops all 64 numeric valid slots, rereading requested player alive and invoking same requested hook",
+    "prefix": "unsigned encoded range; resolve player; capture Game before IsHuman; paused predicate retains Game; log/report or duplicate log or setter and required Update",
+    "setter": "write global bool; true captures one Player Manager then loops all 64 slots with retained Manager, rereading requested player alive and invoking same requested hook",
     "forced_timer": "human reread per hook; recycled city cursor/end rereads; typed BuildQueue entries/overflow",
     "archive": "mandatory edit_build_queue provider; exact archive/dirty effects remain unimplemented",
-    "continuation": "mandatory first complete Game.Update, then same-player active reread, optional second complete Game.Update",
+    "continuation": "fresh Game lookup before mandatory first complete Game.Update; same-player active reread; optional second complete Game.Update with another fresh Game lookup",
     "effect_providers": "no no-op defaults; errors may follow internal mutation",
     "public_Engine_apply": "unchanged; must reject before mutation"
   },
