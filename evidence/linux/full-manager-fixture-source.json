@@ -1,0 +1,397 @@
+{
+  "checked_exports": [
+    {
+      "address": "0x2c7cae0",
+      "field": "acquire",
+      "symbol": "_ZN8GameCore7Exports7Context7GetGameEv"
+    },
+    {
+      "address": "0x290bba0",
+      "field": "release",
+      "symbol": "_ZN8GameCore10Interfaces10ICvUnknowndlEPv"
+    },
+    {
+      "address": "0x2da1260",
+      "field": "manager_get",
+      "symbol": "_ZN8GameCore4Unit10Operations7Manager3GetEv"
+    },
+    {
+      "address": "0x2da1720",
+      "field": "id_for_hash",
+      "symbol": "_ZNK8GameCore4Unit10Operations7Manager20GetHandlerIDFromHashENS1_5Types8TypeHashE"
+    },
+    {
+      "address": "0x2da16f0",
+      "field": "handler_for_hash",
+      "symbol": "_ZNK8GameCore4Unit10Operations7Manager18GetHandlerFromHashENS1_5Types8TypeHashE"
+    },
+    {
+      "address": "0x213d4a0",
+      "field": "construct",
+      "symbol": "_ZN8GameCore4Unit10Operations9OperationC2ENS_18UnitOperationTypesE"
+    },
+    {
+      "address": "0x213cac0",
+      "field": "destroy",
+      "symbol": "_ZN8GameCore4Unit10Operations9OperationD2Ev"
+    },
+    {
+      "address": "0x2da20f0",
+      "field": "can_start",
+      "symbol": "_ZNK8GameCore4Unit10Operations7Manager8CanStartEPKNS0_8InstanceERKNS1_9OperationEPKNS_3Map4Plot8InstanceEbPN4Data15TypedVariantMapE"
+    },
+    {
+      "address": "0x20e0670",
+      "field": "players",
+      "symbol": "_ZN8GameCore4Game8Instance16GetPlayerManagerEv"
+    },
+    {
+      "address": "0x2003940",
+      "field": "player",
+      "symbol": "_ZNK8GameCore6Player7Manager14GetValidPlayerENS_11PlayerTypesE"
+    },
+    {
+      "address": "0x1fccc70",
+      "field": "units",
+      "symbol": "_ZNK8GameCore6Player8Instance8GetUnitsEv"
+    },
+    {
+      "address": "0x2ba5580",
+      "field": "find_unit",
+      "symbol": "_ZNK8GameCore6Player5Units4FindEj"
+    },
+    {
+      "address": "0x2021490",
+      "field": "unit_id",
+      "symbol": "_ZNK8GameCore4Unit9IInstance5GetIDEv"
+    },
+    {
+      "address": "0x20214e0",
+      "field": "formation",
+      "symbol": "_ZNK8GameCore4Unit8Instance12GetFormationEv"
+    }
+  ],
+  "checked_methods": [
+    {
+      "address": "0x2c7cae0",
+      "name": "facade_2c7cae0",
+      "sha256": "0bee95a94a869e776ee221963d7e80aa885739a6d73aff21785121122d1a2c9f",
+      "size": 92
+    },
+    {
+      "address": "0x2c85ce0",
+      "name": "facade_2c85ce0",
+      "sha256": "981ad8a20e2991f4cb6211bc5b349ea550efa2dbc6d59625e4d9b69897b2d519",
+      "size": 92
+    },
+    {
+      "address": "0x2c85d80",
+      "name": "facade_2c85d80",
+      "sha256": "9fd728c0f0fe56b64e0fbacaeb0c28e9f73723000c86c57ec6e708ee5f3ae1b3",
+      "size": 56
+    },
+    {
+      "address": "0x290bba0",
+      "name": "facade_290bba0",
+      "sha256": "ad7d214f06fbbe64670982468ad970bc59593dbb904cc8cf29764bd75e59f480",
+      "size": 22
+    },
+    {
+      "address": "0x2d7b4d0",
+      "name": "facade_2d7b4d0",
+      "sha256": "f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b",
+      "size": 8
+    },
+    {
+      "address": "0x2c86370",
+      "name": "facade_2c86370",
+      "sha256": "ff38a02ea4fa34d0d0258df743b207c473530c7154151d18aa114aa4d4c7afd2",
+      "size": 5
+    },
+    {
+      "address": "0x2c86b80",
+      "name": "facade_2c86b80",
+      "sha256": "5920342050c4e1a7e3da5f1777b6c0687ba790afb7487f181e33fd95efff7755",
+      "size": 40
+    },
+    {
+      "address": "0x264c060",
+      "name": "component_at",
+      "sha256": "e864d685fed8e09fe6089b219d16d885221ad68c732a5c70a0d3a9d2167fac11",
+      "size": 42
+    },
+    {
+      "address": "0x2da3020",
+      "name": "map_find",
+      "sha256": "aaf03ca7fd20001939179a57fa4d626a38d80cdd473f3f9b10d46fda96301c81",
+      "size": 51
+    },
+    {
+      "address": "0x2da3070",
+      "name": "map_end",
+      "sha256": "7bcc6425ec30e5ab81388544f73ff1ecdbd50fa3ffca50ce5f3d2f9c20c1d4bd",
+      "size": 19
+    },
+    {
+      "address": "0x213d4a0",
+      "name": "operation_ctor",
+      "sha256": "4c67da5b259652b60282f0b2537cb9ad58ffe092118c741793120955b33014a3",
+      "size": 24
+    },
+    {
+      "address": "0x213cac0",
+      "name": "operation_dtor",
+      "sha256": "602378b0f64b1db59b55f1d15e148f2e1fc33dec4f30cb6f94be62391d4d1251",
+      "size": 9
+    },
+    {
+      "address": "0x1fe6f50",
+      "name": "shared_dtor",
+      "sha256": "ba934e9e2c29aed297d3e9b31c814d9d3c9dc377c67dc51c13a0ebdfb9ac17fd",
+      "size": 48
+    },
+    {
+      "address": "0x2da20f0",
+      "name": "Manager.CanStart",
+      "sha256": "573164c5e12ad82eeb6761d2492634ae376ae6de63526a3b94cf0608d8550927",
+      "size": 579
+    },
+    {
+      "address": "0x2da2a60",
+      "name": "Manager.CanCurrentOperationBeInterrupted",
+      "sha256": "6b2b1cbb8b18460cf4fb4f4f7a8000cd6f42ae2108cab549666eb1a387772ebe",
+      "size": 116
+    },
+    {
+      "address": "0x2c297e0",
+      "name": "Unit.IsOperationDisabled",
+      "sha256": "de0f4942cf7c5e7e3e4fb4cd9ea1973ef50dc1b903add1ff673c871556839751",
+      "size": 73
+    },
+    {
+      "address": "0x2a54f30",
+      "name": "Phase.IsAllowTacticalCommands",
+      "sha256": "794ae6ccbdb27984a0baa907c011cab9858884f434482532c7d853791350169b",
+      "size": 37
+    },
+    {
+      "address": "0x2a55230",
+      "name": "Phase.CurrentDefinition",
+      "sha256": "234514ebec562e9eaf779528d82ee52914ca963c8b8559bc4ef6469203e72e5e",
+      "size": 35
+    },
+    {
+      "address": "0x2a55ba0",
+      "name": "Phase.ActiveSegment",
+      "sha256": "b811adb2d88317c4120dc7c33dd574a1678d7f98965dd45cb6cf6745cafe2e73",
+      "size": 5
+    },
+    {
+      "address": "0x2a55bc0",
+      "name": "Segment.AllowTactical",
+      "sha256": "06059c117d2525723825777083e470ee9220181f3044fd23f4b764be0ac6b038",
+      "size": 8
+    },
+    {
+      "address": "0x2b5c3c0",
+      "name": "Player.ProcessingAutomation",
+      "sha256": "750b0f58d460bdbe162c9ce1512bdd6a141a3527ce526bc67ef708695777aafb",
+      "size": 7
+    },
+    {
+      "address": "0x2021030",
+      "name": "Player.IsTurnActive",
+      "sha256": "f44ea052578d46f191ac4e546446f30a3022dc5085b44ee6b9378719eabb8c5b",
+      "size": 7
+    },
+    {
+      "address": "0x2b31530",
+      "name": "Player.IsHuman",
+      "sha256": "7b956c7055aea66551b2309c8d001e35a098fc6e19355bd959b5a46241245c95",
+      "size": 32
+    },
+    {
+      "address": "0x281b720",
+      "name": "Game.IsPaused",
+      "sha256": "bf1c7941b3b62b57c2112fc90a57e28fbe0b8e7ab2b783e84a7c6731d061630f",
+      "size": 7
+    },
+    {
+      "address": "0x2c1c820",
+      "name": "Unit.GetPlot",
+      "sha256": "70482659dd93faebc86071ffed12f087fac73975901d7d2ea272edf981fad99a",
+      "size": 34
+    },
+    {
+      "address": "0x2702f00",
+      "name": "Queue.Size",
+      "sha256": "ac6738f18aec9e8ecc5485d5a8d50fb556201d33e235a6e801311cc7a366a268",
+      "size": 5
+    },
+    {
+      "address": "0x2da1050",
+      "name": "Queue.GetAt",
+      "sha256": "2b7cb3be8910ab9acbe185c49e7173f71569af10e9bb11a3a3114b30fa358060",
+      "size": 38
+    },
+    {
+      "address": "0x20e0710",
+      "name": "Unit.GetQueue",
+      "sha256": "eaee35c24a14cd015937e182b1d93f582e7715eea23c0cddbb987495a6431719",
+      "size": 8
+    },
+    {
+      "address": "0x2c2c220",
+      "name": "Definition.FindIndex",
+      "sha256": "0987f96defd19d195435710a642c1e5fcee85058aee80d49076836b0190e8f2d",
+      "size": 27
+    },
+    {
+      "address": "0x2c2c250",
+      "name": "Disabled.IsValidIndex",
+      "sha256": "cfae545fe0031fd04ae072a8b013c6d5ba4739a1269f753a10ecc2b12655707f",
+      "size": 23
+    },
+    {
+      "address": "0x2c2c740",
+      "name": "Disabled.AtConst",
+      "sha256": "e08593a7c1125bb9289d36e04c49770b7015123437fc7e131ea4c5661bfa2258",
+      "size": 55
+    },
+    {
+      "address": "0x2ce79b0",
+      "name": "Script.CallTestAll",
+      "sha256": "47ad40fd9efa7ddcbe88b6bc4de3eff8c174262c6cc031ce76d78e63094c431e",
+      "size": 116
+    },
+    {
+      "address": "0x2d3e750",
+      "name": "Script.ArgsCtor",
+      "sha256": "d6f72c2fe605bd69ac48758eeaf43eedc6f85fafe066e76184f3456c3d17f9f9",
+      "size": 35
+    },
+    {
+      "address": "0x2d3e7b0",
+      "name": "Script.ArgsDtor",
+      "sha256": "924ad43ce8225ccfead12de01459448e302fcc12f42fa61aee6706163e07c27d",
+      "size": 36
+    },
+    {
+      "address": "0x2171660",
+      "name": "Script.System",
+      "sha256": "0d5bf15629235063deb60052f71390c42fd80e98a458e0775078bcd7bb77e07e",
+      "size": 11
+    },
+    {
+      "address": "0x2171670",
+      "name": "Script.ArgsGet",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23",
+      "size": 4
+    },
+    {
+      "address": "0x21de280",
+      "name": "Script.ArgsArrow",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23",
+      "size": 4
+    },
+    {
+      "address": "0x2d95660",
+      "name": "BaseHandler.CanBeInterrupted",
+      "sha256": "e18aacce29affcdddaa5f641ac1ec12552e0fe9d066e6408941b1792818b8619",
+      "size": 3
+    },
+    {
+      "address": "0x1fccc70",
+      "name": "units",
+      "sha256": "881c20b86cb02a6b25219fefe1ac158db460204e9e4bc34be216221471420a51",
+      "size": 8
+    },
+    {
+      "address": "0x20e0670",
+      "name": "player_manager",
+      "sha256": "7a5e82ab0d9eeb4a98fea0624663246fda26b6bad0a9771e4fc3d236b7f2f300",
+      "size": 8
+    },
+    {
+      "address": "0x2ba5580",
+      "name": "find_unit",
+      "sha256": "d198a658e55262febda648055233f9b1d2069441377f889fb95313bd318f7091",
+      "size": 12
+    },
+    {
+      "address": "0x2003940",
+      "name": "GetValidPlayer",
+      "sha256": "58bb7297d06455fd64617c3472f7087054b4aa5fa1b28ab20ce94cb74db41648",
+      "size": 39
+    },
+    {
+      "address": "0x2004fc0",
+      "name": "PlayerManager.IsValid",
+      "sha256": "31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038",
+      "size": 51
+    },
+    {
+      "address": "0x2021490",
+      "name": "Unit.GetID",
+      "sha256": "317ef4dac77c526b04292f52727705f4b2857f4e0c5620bf48414d69903402e5",
+      "size": 7
+    },
+    {
+      "address": "0x20214e0",
+      "name": "Unit.GetFormation",
+      "sha256": "0851dd84ca94b57f3265451fe81d1a7b19c6f7d57018eb10d0ea8a35255485d0",
+      "size": 8
+    },
+    {
+      "address": "0x2baa650",
+      "name": "RecycledUnit.Find",
+      "sha256": "23187b5ffe8639ccf9e9f356f40d40c171a4e81ef1d4488b412aa1262744a899",
+      "size": 84
+    }
+  ],
+  "checks": {
+    "gcc_analyzer": true,
+    "strict_c": true,
+    "synthetic_summary": "4 synthetic genuine-ABI lifetime branches including complete facade acquire/release; 3 exact fatal refusals; no original execution",
+    "ubsan_synthetic_lifetime": true
+  },
+  "complete_state_actions_rng_turns": false,
+  "full_manager_native_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "guard_original_calls": false,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "native_execution": false,
+  "native_profile_admitted": false,
+  "original_calls": [
+    "genuine Context.GetGame facade acquisition/release",
+    "original Manager registry and Player/Unit membership lookup",
+    "original Operation construction/complete Manager.CanStart/destruction",
+    "optional original Save diagnostics"
+  ],
+  "pending": [
+    "distinct runner-owned main-entry/ownership guard source and exact profile",
+    "external hardware Lua observer integration and safe-window provenance",
+    "independent caller source/lifetime review before sole-runner execution",
+    "all affected gameplay/VM state, callback effects, complete RNG/order comparison"
+  ],
+  "predicate_invocations_per_fixture_at_most": 1,
+  "save_identity_acceptance_gate": false,
+  "schema": "c6-linux-full-manager-fixture-source-v1",
+  "sources": {
+    "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
+    "native/linux/context_stream.h": "20cc3f198f5460b00a732ddb3047f069b3592cd6de6c485dadcd5562d674962b",
+    "native/linux/full_manager_fixture.c": "421b823351d40d5edf54260a44c26a9291113f6c65322f4346a302df05583d86",
+    "native/linux/full_manager_fixture.h": "88ce65efe4aeaab1b0af95221e54f6e95769d61894bf7893c167bcdaae0e7664",
+    "tools/linux/current_handler_caller_audit.py": "9b4d17f51569b0f81e2e7ab026d14fdf37350b8fa16db4e329c48b49a168c0b2",
+    "tools/linux/full_manager_fixture_audit.py": "679062c6ebf4c68791da4a8590807cb063038e77f950a0b00943248257b7850b",
+    "tools/linux/map_state_audit.py": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b",
+    "tools/linux/movement_probe_audit.py": "f00bb872d6f253ed9cdc3f40fe9431ec02101cbb772dced612ec58a8ed8cc5cf",
+    "tools/linux/placement_metadata_audit.py": "f019a7e236f4bd2881d6746203e475b664fe023efd3fd29a4c8a5554bc272174",
+    "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916",
+    "tools/linux/script_manager_observer.py": "dbb075556193864bada8859dcf1d491f569247614fa9190dacf1887bc9f9b177",
+    "tools/linux/skip_turn_handler_query_audit.py": "13d8f2aae108f1e49383f88f0f3e3fe698f105ae24840d048328bd5ec22d2b88",
+    "tools/linux/unit_operation_legality_audit.py": "77249224a0ee9e34747e2755c6da794c187421c61065627a2dde740e46eb594f",
+    "tools/linux/unit_operation_manager_audit.py": "9c387092d0bcf88bf7ce86ac51959f32a9ddaa614534c757e43e59e8dfd9c02d",
+    "tools/linux/unit_placement_audit.py": "8bdefa3fffc421b59b9893b53be1f88fa1bff5801ee84373349e30b5a1034457"
+  }
+}
