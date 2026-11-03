@@ -103,9 +103,8 @@ or arbitrary-history support still requires the original overflow/alias behavior
 and adequate allocator state; it is not permanently excluded from the complete
 state/action/turn objective.
 
-No new Rust default model or all-plot comparison is claimed by this packet.
-After source review, a new bounded candidate may model the explicit reserved
-state and compare it against all retained native-2 rows. The historical raw
+The source proof supports an explicit bounded getter model and a separately
+frozen candidate comparison against all retained native-2 rows. The historical raw
 89,198-byte Save→Load failure remains unresolved and unmasked.
 
 ## Inline stores and bulk copies
@@ -142,5 +141,13 @@ assumes well-typed internal ownership and the normal Reflection output contract;
 it does not authorize arbitrary external callers to alias an output buffer to
 the private primary pool.
 
-The source packet still awaits independent final receiver-path review before a
-new Rust default model is added. No new native execution or parity claim is made.
+Independent review accepted source checkpoint `d0153d5` under the stated
+positive-geometry, fresh-single-read and typed-output contracts. The production
+`FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read` operation
+starts that new context explicitly. Geometry checks bound allocations; they do
+not certify arbitrary previous live Map history. The type has no deserializer or
+native default-value parameters. It retains signed owned values and resolves
+absent getters from the original initialized mask0 and Wonder sentinel -1.
+The driver preserves owned Option outputs and adds an opt-in
+`effective_initialized` result. No successor native parity is claimed until its
+separately frozen candidate is compared against retained native-2 outputs.

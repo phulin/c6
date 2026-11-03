@@ -3,9 +3,9 @@ use c6_core::city_district::DomainRebuildInputs;
 use c6_core::map::{Limits, Map};
 use c6_core::movement_world::{DefinitionTable, TerrainProperties};
 use c6_data::city_movement::{
-    CityBuildings, DistrictPrefix, DomainRegistryExport, MapDomainInputs, NativeDomainDefinitions,
-    NativeTerrainDefinitions, PlayerMetadata, TerrainRegistryExport, TypedDomainInputs,
-    WorldInstances,
+    CityBuildings, DistrictPrefix, DomainRegistryExport, FreshSingleMapReadDefaults,
+    MapDomainInputs, NativeDomainDefinitions, NativeTerrainDefinitions, PlayerMetadata,
+    TerrainRegistryExport, TypedDomainInputs, WorldInstances,
 };
 use c6_data::registry::LinuxDefinitionHashRegistry;
 use serde::Deserialize;
@@ -14,6 +14,8 @@ use serde_json::json;
 #[serde(deny_unknown_fields)]
 struct Input {
     map_path: String,
+    #[serde(default)]
+    fresh_single_map_read_defaults: bool,
     district_hashes: Vec<u32>,
     terrain_hashes: Vec<u32>,
     terrain_is_water: Vec<bool>,
@@ -120,12 +122,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None
             });
         }
+        let effective = if input.fresh_single_map_read_defaults {
+            let defaults =
+                FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map)?;
+            let mut effective_masks = Vec::new();
+            let mut effective_wonders = Vec::new();
+            for index in 0..map.plots.len() {
+                effective_masks.push(defaults.effective_mask(index, masks[index])?.0);
+                effective_wonders
+                    .push(defaults.effective_wonder_complete(index, wonder_complete[index])?);
+            }
+            Some(json!({"phase":"fresh_single_canonical_map_read",
+                "highest_allocated_index":defaults.highest_allocated_index(),
+                "masks":effective_masks,"wonder_complete":effective_wonders}))
+        } else {
+            None
+        };
         Some(
-            json!({"masks":masks.iter().map(|mask|mask.map(|mask|mask.0)).collect::<Vec<_>>(),
+            json!({"effective_initialized":effective,"masks":masks.iter().map(|mask|mask.map(|mask|mask.0)).collect::<Vec<_>>(),
             "wonder_complete":wonder_complete}),
         )
     } else {
-        if input.require_domain_metadata {
+        if input.require_domain_metadata || input.fresh_single_map_read_defaults {
             return Err("complete genuine domain metadata unavailable".into());
         }
         None

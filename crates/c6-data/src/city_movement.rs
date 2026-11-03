@@ -22,6 +22,7 @@ pub enum Error {
     Location,
     Attributes,
     MapGeometry,
+    FreshReadAllocationBound,
     LandmassTable,
     CityTable,
     ResourceLimit,
@@ -740,6 +741,85 @@ pub fn building_location(
     Ok(location)
 }
 
+/// Source-derived reserved entry for a fresh, single canonical Map read/restore.
+///
+/// This operation requires the initialized primary pool and normal typed payload
+/// ownership proved in docs/linux-city-attribute-default.md. A serialized Map
+/// alone does not establish arbitrary live allocator history. No default bytes or
+/// native getter observations are accepted here. Sparse logical nodes can reach
+/// 2*P+1 (including reserved0), so a returned index cannot wrap its u16 plot field
+/// only when 2*P<=65535. Overflow/alias behavior remains unsupported here.
+/// Padding and other attribute fields are not modeled by this getter boundary.
+pub struct FreshSingleMapReadDefaults<'a> {
+    map: &'a Map,
+    highest_allocated_index: u32,
+}
+impl<'a> FreshSingleMapReadDefaults<'a> {
+    /// Start the explicit fresh-read operation. This does not inspect or certify
+    /// the history of a previously initialized live Map.
+    pub fn initialize_for_fresh_single_canonical_read(map: &'a Map) -> Result<Self, Error> {
+        if map.header.width <= 0
+            || map.header.height <= 0
+            || (map.header.width as usize).checked_mul(map.header.height as usize)
+                != Some(map.plots.len())
+        {
+            return Err(Error::MapGeometry);
+        }
+        let highest_allocated_index = map
+            .plots
+            .len()
+            .checked_mul(2)
+            .filter(|index| *index <= usize::from(u16::MAX))
+            .ok_or(Error::FreshReadAllocationBound)? as u32;
+        for plot in &map.plots {
+            if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
+                return Err(Error::Attributes);
+            }
+        }
+        Ok(Self {
+            map,
+            highest_allocated_index,
+        })
+    }
+    /// Bound on constructed logical indices, not geometric storage capacity.
+    pub fn highest_allocated_index(&self) -> u32 {
+        self.highest_allocated_index
+    }
+    fn owned(&self, plot: usize) -> Result<bool, Error> {
+        self.map
+            .plots
+            .get(plot)
+            .map(|plot| plot.city_attributes.is_some())
+            .ok_or(Error::Location)
+    }
+    /// Retain each calculated owned mask; resolve absent getters through the
+    /// explicit initialized reserved entry, whose original i16 mask store is0.
+    pub fn effective_mask(
+        &self,
+        plot: usize,
+        owned: Option<DomainMask>,
+    ) -> Result<DomainMask, Error> {
+        match (self.owned(plot)?, owned) {
+            (true, Some(mask)) => Ok(mask),
+            (false, None) => Ok(DomainMask(0)),
+            _ => Err(Error::Attributes),
+        }
+    }
+    /// Original Initialize stores packed Wonder=-1. The native completion query
+    /// tests that sentinel before any Building Find or owning-City lookup.
+    pub fn effective_wonder_complete(
+        &self,
+        plot: usize,
+        owned: Option<bool>,
+    ) -> Result<bool, Error> {
+        match (self.owned(plot)?, owned) {
+            (true, Some(complete)) => Ok(complete),
+            (false, None) => Ok(false),
+            _ => Err(Error::Attributes),
+        }
+    }
+}
+
 /// Complete source-derived rebuild queries once exact registry metadata exists.
 pub struct TypedDomainInputs<'a, 'd, 'r> {
     pub map: MapDomainInputs<'a, 'd>,
@@ -887,6 +967,60 @@ mod tests {
             },
             components: vec![],
         }
+    }
+    #[test]
+    fn fresh_read_defaults_reject_overflow_and_preserve_owned_values() {
+        let mut map = map();
+        map.header.width = 32767;
+        map.header.height = 1;
+        map.plots.resize(32767, map.plots[0].clone());
+        let defaults =
+            FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map).unwrap();
+        assert_eq!(defaults.highest_allocated_index(), 65534);
+        assert_eq!(defaults.effective_mask(0, None), Ok(DomainMask(0)));
+        assert_eq!(defaults.effective_wonder_complete(0, None), Ok(false));
+        assert_eq!(
+            defaults.effective_mask(0, Some(DomainMask(19))),
+            Err(Error::Attributes)
+        );
+        assert_eq!(defaults.effective_mask(32767, None), Err(Error::Location));
+        map.header.width = 32768;
+        map.plots.push(map.plots[0].clone());
+        assert!(matches!(
+            FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map),
+            Err(Error::FreshReadAllocationBound)
+        ));
+        map.header.width = 0;
+        assert!(matches!(
+            FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map),
+            Err(Error::MapGeometry)
+        ));
+        map.header.width = 1;
+        assert!(matches!(
+            FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map),
+            Err(Error::MapGeometry)
+        ));
+        map.plots.truncate(1);
+        map.plots[0].flags.set(PlotFlag::HasCityAttributes, true);
+        assert!(matches!(
+            FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map),
+            Err(Error::Attributes)
+        ));
+        map.plots[0].city_attributes = Some(CityAttributes {
+            working_city: u32::MAX,
+            owning_city: u32::MAX,
+            district: u32::MAX,
+            player: -1,
+            wonder_building_hash: u32::MAX,
+        });
+        let defaults =
+            FreshSingleMapReadDefaults::initialize_for_fresh_single_canonical_read(&map).unwrap();
+        assert_eq!(
+            defaults.effective_mask(0, Some(DomainMask(-32768))),
+            Ok(DomainMask(-32768))
+        );
+        assert_eq!(defaults.effective_wonder_complete(0, Some(true)), Ok(true));
+        assert_eq!(defaults.effective_mask(0, None), Err(Error::Attributes));
     }
     fn buildings() -> Buildings {
         Buildings {
