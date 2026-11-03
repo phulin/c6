@@ -37,6 +37,36 @@ def derive_nodes(elf,binary):
   row['calls']=calls
  return binds
 
+def derive_current_readers(binary):
+ ins=[]
+ for l in subprocess.check_output(['objdump','-d','-C','--no-show-raw-insn','--start-address=0x26eb070','--stop-address=0x26ec638',str(binary)],text=True).splitlines():
+  m=re.match(r'\s*([a-f0-9]+):\s+(\w+)\s*(.*)',l)
+  if m:ins.append((int(m[1],16),m[2],m[3]))
+ d={a:(op,arg) for a,op,arg in ins};nxt={a:ins[i+1][0] for i,(a,_,_) in enumerate(ins[:-1])}
+ result={}
+ for sym,row in NODE_CONTRACTS.items():
+  pc=0x26eb070;cur=None;eq=False;gt=False;calls=[];seen=set()
+  while True:
+   assert pc not in seen;seen.add(pc);op,arg=d[pc]
+   if 'NT_' in arg:cur=re.search(r'BehaviorTree::(NT_\w+)',arg)[1]
+   if op=='cmp' and '%ebp' in arg:eq=cur==sym
+   if op=='cmpl':gt=33>int(re.search(r'\$0x([0-9a-f]+)',arg)[1],16)
+   if op=='call':calls.append(arg.split(' <',1)[1][:-1])
+   if op=='ret':break
+   if op=='jmp' or op=='je' and eq or op=='jne' and not eq or op=='jg' and gt:pc=int(arg.split()[0],16)
+   else:pc=nxt[pc]
+  fields=[]
+  for c in calls[1:]:
+   if '::Zero()' in c or 'Definitions::Get' in c:continue
+   if 'SharedData<' in c:fields.append('shared')
+   elif 'bool' in c:fields.append('byte')
+   elif 'PlotCoord' in c:fields.append('plot')
+   else:fields.append('word')
+  expected=[x if x in ['shared','byte','plot'] else 'word' for x in row['fields']]
+  if fields!=expected:raise ValueError("current reader/writer dispatch disagreement: "+sym)
+  result[sym]=dict(current_version=33,fields=fields,calls=calls)
+ return result
+
 class Value:
  def __init__(self,name,fields,tuple_value=False):self.name,self.fields,self.tuple_value=name,fields,tuple_value
  def debug(self):
@@ -139,7 +169,7 @@ def candidate(pin,wire,projection):
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--binary',type=Path,default=ROOT.parent/'c6-assets-linux/libGameCore_XP2.so');ap.add_argument('--private-root',type=Path,default=ROOT.parent/'c6-ghidra');ap.add_argument('--source-commit');ap.add_argument('--output',type=Path,required=True);a=ap.parse_args()
- elf=Elf(a.binary,GAME_SHA);nodes=derive_nodes(elf,a.binary)
+ elf=Elf(a.binary,GAME_SHA);nodes=derive_nodes(elf,a.binary);reader_contracts=derive_current_readers(a.binary)
  for sym,row in nodes.items():
   expected=NODE_CONTRACTS[sym]
   if any(row[k]!=expected[k] for k in ('name','hash','calls')):raise ValueError('target node dispatch contract changed: '+sym)
@@ -178,7 +208,7 @@ def main():
   address,size=int(m[1],16),int(m[2],16);name=m[3]
   if ('BehaviorTree' in name and any(x in name for x in ['::Write(', '::Read(', '::WriteNodeData(', '::ReadNodeData(', '::Serialize(Serialization::','Serialization::operator<<(', 'Serialization::operator>>(', 'InitializeBehaviorTreeNodeIndices','Manager::InitializeLists','Manager::InitializeArchive'])) or address in [0x20e3660,0x20e3a50,0x26e6370,0x26e6510]:
    methods.append(dict(address=hex(address),size=size,name=name,sha256=sha(elf.read(address,size))))
- report=dict(schema='c6-linux-player-ai-behavior-tree-v1',checks_passed=True,gamecore_sha256=GAME_SHA,audit_source_sha256=sha(Path(__file__).read_bytes()),methods=methods,dwarf_sha256=sha(dwarf.encode()),records=86,node_dispatch_contracts=NODE_CONTRACTS,actual_node_counts=all_nodes,grammar=RECORDS,fixtures=fixtures,actual_cut_checks=cut_total,actual_hostile_versions=version_total,actual_hostile_counts=count_total,all_actual_was_ever_alive=True,tail_boundary='actual BehaviorTree.Manager.end -> enclosing Player.end; existing independently typed PlayerTail grammar',original_execution=False,private_writes=False,native_read_reconstruction=False,policy_execution=False,planning_only_exclusion=False,unknown_bytes_masked=0,recorded_raw_save_load_difference_bytes=89198,full_player=False,world_import=False,gameplay_state=False,actions=False,turns=False,reference_revision='5af389445118bed2bdebf7a8a42b219c8fba5175',reference_role='discovery names only; target ELF/DWARF/bytes authoritative')
+ report=dict(schema='c6-linux-player-ai-behavior-tree-v1',checks_passed=True,gamecore_sha256=GAME_SHA,audit_source_sha256=sha(Path(__file__).read_bytes()),methods=methods,dwarf_sha256=sha(dwarf.encode()),records=86,node_dispatch_contracts=NODE_CONTRACTS,current_reader_contracts=reader_contracts,actual_node_counts=all_nodes,grammar=RECORDS,fixtures=fixtures,actual_cut_checks=cut_total,actual_hostile_versions=version_total,actual_hostile_counts=count_total,all_actual_was_ever_alive=True,tail_boundary='actual BehaviorTree.Manager.end -> enclosing Player.end; existing independently typed PlayerTail grammar',original_execution=False,private_writes=False,native_read_reconstruction=False,policy_execution=False,planning_only_exclusion=False,unknown_bytes_masked=0,recorded_raw_save_load_difference_bytes=89198,full_player=False,world_import=False,gameplay_state=False,actions=False,turns=False,reference_revision='5af389445118bed2bdebf7a8a42b219c8fba5175',reference_role='discovery names only; target ELF/DWARF/bytes authoritative')
  if a.source_commit:report['candidate']=candidate(a.source_commit,wire,projection)
  a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(checks_passed=True,records=86,dispatches=len(nodes),actual_dispatches=len(all_nodes),candidate=bool(a.source_commit))))
 if __name__=='__main__':main()
