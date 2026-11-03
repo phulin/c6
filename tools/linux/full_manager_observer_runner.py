@@ -180,11 +180,11 @@ class RawContextTrace:
         else:
             call=self.call
             require(thread==call['thread'],'different selected native caller thread')
-            # Nested protected calls may naturally hit the same generic PC.
-            # Retain them without mistaking them for the selected CCall.
+            # A generic checkpoint can have unresolved selected-frame attribution.
+            # Preserve it without assuming nesting or the selected CCall.
             if name not in ('ccall_entry','wrapper_return') and 'entry_rsp' in call and (
                     r['rsp']!=call['entry_rsp']-24 or r['r14']!=call['context']):
-                self.emit(dict(event='unattributed_nested_native_checkpoint',checkpoint=name,
+                self.emit(dict(event='unattributed_native_checkpoint',checkpoint=name,
                                registers=r,registry_decoded=False,callback_absence_proven=False))
                 return self.expected
             if name=='ccall_entry':

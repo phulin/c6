@@ -659,8 +659,8 @@
   "schema": "c6-linux-full-manager-observer-runner-source-v1",
   "sources": {
     "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
-    "tools/linux/full_manager_observer_runner.py": "1fa96f9198e03ebf8e43382103728ba76211883e6d38118dcbbc498481511bd8",
-    "tools/linux/full_manager_observer_runner_audit.py": "98c10c4a61bf6ab97610eb0cb3ad7c43b06acf0e5a1a7127dd3073beb5046818",
+    "tools/linux/full_manager_observer_runner.py": "56cf4636e91e8064c5a25e3940efb3c9506859ece4a2642c383451922a4bdfb7",
+    "tools/linux/full_manager_observer_runner_audit.py": "6abc41e3ee3ce8d610de1950c54b481dc1cff25b9ccdafc859d694965e2831f8",
     "tools/linux/military_observer_runner.py": "4b61cba5aa3223830388cbca2b8b289741c7517decef52016470d03773a8d3d2",
     "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916",
     "tools/linux/script_can_start_boundary_audit.py": "b8abdc88a1e8d99aeed490e0e43ee4c90c22c8a2c18581f0a431f8da7761f201",

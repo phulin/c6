@@ -396,7 +396,7 @@ class Tests(unittest.TestCase):
             point('dispatch',rsp=wrapper,r12=0x2000,r13=0x3000,r15=0x5000,r14=0x6000)
             point('ccall_entry',rsp=wrapper-72,rdi=0x7000,rsi=0x36b3bc0,rdx=0x4000)
             point('acquired',rsp=wrapper-96,rbx=0x7000,r14=0x4000,r15=0x36b3bc0)
-            # A nested generic CCall return is retained and does not become the selected result.
+            # An unresolved generic CCall return does not become the selected result.
             self.assertEqual(point('protected_return',rsp=wrapper-192,r14=0x4500,rax=9),('resolved','protected_return'))
             point('resolved',rsp=wrapper-96,rbx=0x7000,r14=0x4000)
             point('protected_return',rsp=wrapper-96,r14=0x4000,rax=0)
