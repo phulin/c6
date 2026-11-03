@@ -630,6 +630,44 @@ mod tests {
         );
     }
     #[test]
+    fn team_query_resolves_actual_players_before_same_owner_shortcut() {
+        use crate::skip_turn::placement::{Error, Inputs};
+        let mut world = World::new(map(), vec![]).unwrap();
+        let mut mapping = [-1; 65];
+        world.player_mapping = Some(mapping);
+        fn query(world: &World, a: i32, b: i32) -> Result<bool, Error> {
+            Inputs {
+                world,
+                definitions: None,
+                relations: None,
+                plot_unit_limit: None,
+            }
+            .same_team(a, b)
+        }
+        assert_eq!(query(&world, 5, 5), Ok(false)); // Known invalid, not missing.
+        mapping[5] = 0;
+        world.player_mapping = Some(mapping);
+        assert_eq!(
+            query(&world, 5, 5),
+            Err(Error::World(MissingInput::Player { owner: 5 }))
+        );
+        let player = Player::new(5, None, None).unwrap();
+        let mut world = World::new(map(), vec![player]).unwrap();
+        world.player_mapping = Some(mapping);
+        assert_eq!(query(&world, 5, 5), Ok(true)); // Resolved identity needs no Team.
+        assert_eq!(query(&world, 0, 5), Ok(false));
+        mapping[6] = 1;
+        world.player_mapping = Some(mapping);
+        assert_eq!(
+            query(&world, 5, 6),
+            Err(Error::World(MissingInput::Player { owner: 6 }))
+        );
+        assert_eq!(
+            query(&world, 0, 6),
+            Err(Error::World(MissingInput::Player { owner: 6 }))
+        );
+    }
+    #[test]
     fn invalid_assembly_rejects_duplicates_bounds_and_inconsistent_owners() {
         assert_eq!(
             Collection::new(recycled(2, vec![(2, 0)])).unwrap_err(),

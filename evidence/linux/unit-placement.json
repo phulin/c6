@@ -270,14 +270,14 @@
     }
   ],
   "source_sha256": {
-    "crates/c6-core/src/unit_placement.rs": "f82ae4fb517305b52a04973993ffa4fd4cfd05a62ff409b7a76c2e92af75269f",
-    "crates/c6-core/src/world.rs": "df8f7b97347905ba98b17daaf8e13627273128180b93827fa529dbbe0f85d0cd",
+    "crates/c6-core/src/unit_placement.rs": "71e8e28102e31f4debc295dc2716983b2523695c0483a5945c9af240275bbd28",
+    "crates/c6-core/src/world.rs": "ff30a11433e8044b9c4a20c26d617c954605462106482427a3b593c53b8b6474",
     "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
     "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
     "crates/c6-core/examples/unit_placement.rs": "3a190aea3574e4dc4be65d6de53f547ca2da01b999a735896034d5077b409254",
     "tools/linux/unit_placement_audit.py": "8bdefa3fffc421b59b9893b53be1f88fa1bff5801ee84373349e30b5a1034457"
   },
-  "candidate_sha256": "b574a1f9a97cc297d80cbd3cd5e667dbd698090b0d388a3c9c5ed92e6818d8a8",
+  "candidate_sha256": "14caa59dc44c6c17bacd9b347a11231cdd1e833361b9c643e5343b7ecfc60a1a",
   "original_stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
   "original_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
   "configuration_sha256": "446b6e6afc2542d244f4335ef513392e3e75f4fafefdb0d0e724afcaac8f202c",

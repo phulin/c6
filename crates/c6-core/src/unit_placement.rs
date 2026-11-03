@@ -188,16 +188,27 @@ impl Inputs<'_, '_> {
             .at_war(owner, target)
     }
     pub fn same_team(&self, a: i32, b: i32) -> Result<bool, Error> {
-        let first = self.world.player_is_valid(a)?;
-        let second = self.world.player_is_valid(b)?;
-        if !first || !second {
+        // Native resolves both actual GetValidPlayer pointers before testing
+        // either for null or taking the same-player shortcut. A valid mapping
+        // alone does not prove an imported Player record is available.
+        let first = if self.world.player_is_valid(a)? {
+            Some(self.world.player(a)?)
+        } else {
+            None
+        };
+        let second = if self.world.player_is_valid(b)? {
+            Some(self.world.player(b)?)
+        } else {
+            None
+        };
+        let (Some(first), Some(second)) = (first, second) else {
             return Ok(false);
-        }
+        };
         if a == b {
             return Ok(true);
         }
-        let x = self.world.player(a)?.team.ok_or(Error::Team(a))?;
-        let y = self.world.player(b)?.team.ok_or(Error::Team(b))?;
+        let x = first.team.ok_or(Error::Team(a))?;
+        let y = second.team.ok_or(Error::Team(b))?;
         Ok(x != -1 && y != -1 && x == y)
     }
     pub fn rivals(&self, a: &Unit, b: &Unit) -> Result<bool, Error> {
