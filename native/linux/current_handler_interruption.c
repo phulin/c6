@@ -277,7 +277,8 @@ static int players(FILE *out,const Image *im,const C6CurrentHandlerInterruptionA
 int c6_linux_current_handler_interruption_capture(const C6CurrentHandlerInterruptionAdmission *a){
     if(!a||!a->module||!a->borrowed_context||!a->retained_game||!a->quiescent||!digest(a->profile_sha256)||!a->output_path||!*a->output_path)return 241;
     /* No original symbol is called, including this identity anchor. The caller
-     * quiescence callback is separately admitted and may use proven const getters. */
+     * quiescence callback requires separately source-closed passive field reads;
+     * no original getter/predicate/script calls are permitted in that callback. */
     void *anchor=dlsym(a->module,"_ZN8GameCore4Unit10Operations7Manager3GetEv");Dl_info info={0};
     if(!anchor||!dladdr(anchor,&info)||!info.dli_fbase||!info.dli_fname)return 242;
     Image im={.base=(uintptr_t)info.dli_fbase,.fd=-1};
@@ -291,7 +292,7 @@ int c6_linux_current_handler_interruption_capture(const C6CurrentHandlerInterrup
     if(!read_self(im.base+0x3c051a8,&game,8)||game!=(uintptr_t)a->retained_game){close(im.fd);return 243;}
     FILE *out=fopen(a->output_path,"wx");if(!out){close(im.fd);return 243;}
     struct stat identity;if(fstat(im.fd,&identity)){fclose(out);close(im.fd);return 243;}
-    fprintf(out,"{\"kind\":\"profile\",\"schema\":\"c6-linux-current-handler-interruption-metadata-v1\",\"profile_sha256\":\"%s\",\"gamecore_sha256\":\"%s\",\"host_sha256\":\"%s\",\"module_base\":%" PRIuPTR ",\"file_device\":%" PRIuMAX ",\"file_inode\":%" PRIuMAX ",\"context\":%" PRIuPTR ",\"game\":%" PRIuPTR ",\"helper_original_calls\":false,\"caller_quiescence_callback_invoked\":true,\"predicate_results\":false}\n",a->profile_sha256,GAME_SHA,HOST_SHA,im.base,(uintmax_t)identity.st_dev,(uintmax_t)identity.st_ino,(uintptr_t)a->borrowed_context,game);
+    fprintf(out,"{\"kind\":\"profile\",\"schema\":\"c6-linux-current-handler-interruption-metadata-v1\",\"profile_sha256\":\"%s\",\"gamecore_sha256\":\"%s\",\"host_sha256\":\"%s\",\"module_base\":%" PRIuPTR ",\"file_device\":%" PRIuMAX ",\"file_inode\":%" PRIuMAX ",\"context\":%" PRIuPTR ",\"game\":%" PRIuPTR ",\"helper_direct_original_calls\":false,\"caller_quiescence_callback_invoked\":true,\"predicate_results\":false}\n",a->profile_sha256,GAME_SHA,HOST_SHA,im.base,(uintmax_t)identity.st_dev,(uintmax_t)identity.st_ino,(uintptr_t)a->borrowed_context,game);
     uintptr_t manager=0;HandlerSnapshot *handlers=NULL;size_t count=0;
     int rc=registry(out,&im,game,&manager,&handlers,&count);
     if(!rc)rc=players(out,&im,a,manager,handlers,count);

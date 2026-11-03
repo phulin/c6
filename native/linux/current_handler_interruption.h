@@ -7,12 +7,18 @@
  * context/Game association, idle work/queues and retained owner lifetime. Failure
  * is fatal before any further observation or native cleanup. This callback is a
  * caller admission service, never a game predicate or replacement game service.
+ * Its implementation must use separately source-closed passive controller/worker
+ * field reads, with NO original getter/predicate/script calls. No implementation
+ * or integrated idle/zero-original-call closure is admitted by this header.
+ * Ordinary enclosing original Load/Save/cleanup is a separate caller scope.
  * Full rules/DLC/mod/input/configuration/source identities belong in the pinned
  * profile identified by profile_sha256. No observed answers may be profile inputs.
  * Two full passes, six full unmasked Saves, known Game/Map RNG endpoint controls
  * and original terminal cleanup must be admitted separately by the sole runner.
  * Output is exclusive JSONL; partial/nonzero/fatal output is never accepted.
- * No original getters, handler methods, scripts, actions or turns are called.
+ * Neither helper nor its admission callback may call original getters, handler
+ * methods, predicates, scripts, actions or turns. Callback source/profile closure
+ * remains pending before this contract can be integrated.
  * Native root/containers are read using exact pinned layout and safe self reads;
  * unsupported storage, mapping, bindings and code reject without fabricated nulls.
  * Whole live-state/allocator/RNG reconstruction and native predicate parity are

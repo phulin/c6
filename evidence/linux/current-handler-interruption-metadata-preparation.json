@@ -257,8 +257,11 @@
       "minimum_capacity": 5
     }
   },
-  "helper_original_calls": [],
-  "caller_callback": "required strict retained-context idle admission; separately source/profile gated",
+  "helper_direct_original_calls": [],
+  "caller_callback": "required source-closed passive controller/worker field reads; no original getters/predicates/scripts",
+  "caller_callback_source_validated": false,
+  "integrated_idle_acceptance": false,
+  "integrated_zero_original_call_closure_proven": false,
   "runtime_requirements": [
     "whole actual module file and /proc/self/exe hashes match pinned target",
     "actual live Manager slots and supported complete code bytes match hashed original file",
@@ -288,7 +291,7 @@
     "synthetic_fixtures_are_not_native_binding_acceptance": true
   },
   "open_integration": [
-    "separate metadata profile and caller guard/source identities",
+    "separate metadata profile and field-only caller guard/source identities; legacy getter-based guards are not admitted",
     "retained Context/Game/root/session lifetimes and main-thread native lock",
     "two full passes, six unmasked Saves, known64 RNG endpoint bytes and terminal cleanup",
     "same-context serializer ownership/hash evidence and independently observed reverse-map answers",
@@ -299,9 +302,9 @@
   "complete_state_action_rng_turns_supported": false,
   "historical_raw_save_load_failure_bytes": 89198,
   "source_sha256": {
-    "native/linux/current_handler_interruption.c": "6a480669a9868b9b96334cbe42ba5f432f5e2c5a762a8e1bfde4b1de01cddffa",
-    "native/linux/current_handler_interruption.h": "705fcc9d02f59d5a9ef2ccdb5ff65deb4df1d1abf718ca6ca3b0d8ba676ae589",
-    "tools/linux/current_handler_interruption_metadata_audit.py": "2afeca25c7b81cf1fe7e114a169517b890c31fe26ec416bc653cfaf1639edcfb",
+    "native/linux/current_handler_interruption.c": "59fe2c33f63422fb2b22b66905e5b5460d8f5a6056339cb29de7112c44cf1631",
+    "native/linux/current_handler_interruption.h": "513560c244125f2789e97572505df54d27d5987f241852756d68fd61a0a432cb",
+    "tools/linux/current_handler_interruption_metadata_audit.py": "853dcf316ad9f56868e327550b2694d4deb9f3abdda927ab0013fb7948a9692d",
     "tools/linux/unit_operation_manager_metadata_audit.py": "da62ff2eae1c6de6ed34a0cb9929e431bae5e55a6d213e72c48f4de7f6107c96",
     "tools/linux/current_handler_interruption_audit.py": "2087b35196c52418552a228b5b0d50d48ffef05a81030c03cfb6b45678e6fc09"
   }
