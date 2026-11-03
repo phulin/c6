@@ -1,0 +1,992 @@
+{
+  "schema": "c6-linux-player-districts-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": [
+    {
+      "address": "0x2002e80",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "94dd2bf8590edc193df1efd16e6b7ac79e302dfcd5e400314f193bd55e591af6"
+    },
+    {
+      "address": "0x2003140",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "dba8d3f40b5faed3e3068fae08dc1b175b82035fe9be875b6e286b035753ce68"
+    },
+    {
+      "address": "0x2003280",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "e0c72d445008f5bf338a0638e7bf47e84dfedf057538aaedf62aaf6efb7287c8"
+    },
+    {
+      "address": "0x2006b20",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "a0e07cea319b67f30b550c208e2cfbf72fb3d461929b95834e839be738521489"
+    },
+    {
+      "address": "0x2126370",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> const&)",
+      "sha256": "c78f8f69cf7da06801da2a3cce0b49cd64bf1ae3e1d9853e33e9ad574704c8a0"
+    },
+    {
+      "address": "0x2129a70",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> const&)",
+      "sha256": "534a0ecacdbc6d5187361e1faa453b586ed2716783501298d6c5915dd9c57c2d"
+    },
+    {
+      "address": "0x2194800",
+      "size": 56,
+      "name": "Serialization::OStream& Serialization::operator<< <int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>, &GameCore::Definitions::GetYieldDefinitions>(Serialization::OStream&, GameCore::IndexList<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>, &GameCore::Definitions::GetYieldDefinitions, void> const&)",
+      "sha256": "297d39dc5168d2b4833c6d1fdcbf6b77b67b25169e6706634e1887aabfeba543"
+    },
+    {
+      "address": "0x2194880",
+      "size": 301,
+      "name": "void GameCore::IndexSerializer::YieldTypes_ReadArray<int>(Serialization::IStream&, GameCore::IndexList<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>, &GameCore::Definitions::GetYieldDefinitions, void>&, bool)",
+      "sha256": "108f40da8fc32a3e88adcb8b64f4bf5a945361a976f2d7fcac0d6370a06250d7"
+    },
+    {
+      "address": "0x291cc10",
+      "size": 86,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::District::AdjacencyBonusMirror const&)",
+      "sha256": "76cc4547c4a67f5521257e46836fe0dd3bb49ee304de1be08d02e98dd217c122"
+    },
+    {
+      "address": "0x291cc70",
+      "size": 83,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::District::AdjacencyBonusMirror&)",
+      "sha256": "378946fab84b69402680f56845a69a12f9a7116a107db2b2fc1b0626ee2cd77d"
+    },
+    {
+      "address": "0x291cd70",
+      "size": 487,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::District::Instance const&)",
+      "sha256": "c86a88b70f37fbf88c31c4be0f5fc1e84a1c9d929be471a219ce3985a6698149"
+    },
+    {
+      "address": "0x291cf60",
+      "size": 1103,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::District::Instance&)",
+      "sha256": "8946937f50875d90d39f6bd7b6c15a9960da7e1e81fbd09aac06b698569360b4"
+    },
+    {
+      "address": "0x2920cc0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2920ce0",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<FixedPointT<8u>, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::OStream&, FixedPointT<8u> const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&)",
+      "sha256": "ff70064f3a9cadc72e964d01d85e1916ca0943fa274245975fb0fad593b65c4f"
+    },
+    {
+      "address": "0x2920eb0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2921ba0",
+      "size": 157,
+      "name": "bool Serialization::ReadIndexHashArray<FixedPointT<8u>, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::IStream&, FixedPointT<8u>*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&)",
+      "sha256": "3067cfe665f0590e78ed733e29c61802cd221a059fec8a77d9cafed462f67afe"
+    },
+    {
+      "address": "0x2923300",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::DistrictTypes, GameCore::District::Instance>::load(Serialization::IStream&)",
+      "sha256": "3eb116914c84c8491eafd6fdf15adecaa3f54a85b9d2f7fbb2b6c766918aed8a"
+    },
+    {
+      "address": "0x2923340",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::DistrictTypes, GameCore::District::Instance>::save(Serialization::OStream&) const",
+      "sha256": "16f9ac7ad8b1d687fb0d10603637640aca8fd7de48ef0c77d1add392f0717510"
+    },
+    {
+      "address": "0x2923d00",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::IndexList<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>, &GameCore::Definitions::GetYieldDefinitions, void>, GameCore::District::Instance>::load(Serialization::IStream&)",
+      "sha256": "0f2f6f0d90e7e28862f3dca5dea8d1b61a655e6e1a26f61d4f864ffe504e3c73"
+    },
+    {
+      "address": "0x2923d70",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::IndexList<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield>, &GameCore::Definitions::GetYieldDefinitions, void>, GameCore::District::Instance>::save(Serialization::OStream&) const",
+      "sha256": "d20206949a5d7e5ac9cd41fcb1e64fa7ab4c97b49811e0d52da676bc40e57a33"
+    },
+    {
+      "address": "0x29247b0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>::load(Serialization::IStream&)",
+      "sha256": "94c702d9800dbc57c809232ac58da880839af1d928623f32e9b313000c645396"
+    },
+    {
+      "address": "0x29247c0",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x29247d0",
+      "size": 73,
+      "name": "FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "f48aa66099b11264021b466b375f25788c681bf2d70212b52d32f6f08742ac23"
+    },
+    {
+      "address": "0x2924820",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>::save(Serialization::OStream&) const",
+      "sha256": "5763a7e135a91b1b44bf4b352cd04eb491d538b6df89c6af3c6112995e7147e8"
+    },
+    {
+      "address": "0x2924830",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x29248c0",
+      "size": 1775,
+      "name": "FAutoVariable<eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>, GameCore::District::Instance>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "fdf4668f0a32529db65ba36b5b7a6d09bbb236f3e1ed1909820a74ebfb140131"
+    },
+    {
+      "address": "0x2925240",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::District::AdjacencyBonusMirror>(Serialization::IStream&, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>&)",
+      "sha256": "aa1540e555f8363c65be07eab9040e18f418745064585d936e91da23a2b0c25a"
+    },
+    {
+      "address": "0x2925250",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::District::AdjacencyBonusMirror, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator>&)",
+      "sha256": "e87565500cb8949a6a79854b9d060475bc7b7b8d6d70cc0235cff721296ec1f6"
+    },
+    {
+      "address": "0x29257d0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::District::AdjacencyBonusMirror>(Serialization::OStream&, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const&)",
+      "sha256": "2336c0807e8fd9e307fe214b266f6b29ce6c8018a8a54dc78b81c56f4c470a3c"
+    },
+    {
+      "address": "0x2925830",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::District::AdjacencyBonusMirror const, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const> eastl::for_each<GameCore::District::AdjacencyBonusMirror const*, Serialization::SerializeFromSequenceContainer<GameCore::District::AdjacencyBonusMirror const, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const> >(GameCore::District::AdjacencyBonusMirror const*, GameCore::District::AdjacencyBonusMirror const*, Serialization::SerializeFromSequenceContainer<GameCore::District::AdjacencyBonusMirror const, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const>)",
+      "sha256": "d25887a5113e3541603f3c8212a93987e804eabf85b0b66ead411aa197289019"
+    },
+    {
+      "address": "0x2925880",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::District::AdjacencyBonusMirror const, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const&)",
+      "sha256": "3fb980844c868d05db8a5ec4602835f812a38997bd1c727781452912dca737c1"
+    },
+    {
+      "address": "0x29258b0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::District::AdjacencyBonusMirror const, eastl::vector<GameCore::District::AdjacencyBonusMirror, eastl::allocator> const>::operator()(GameCore::District::AdjacencyBonusMirror const&)",
+      "sha256": "078ad4adf5486a0c14fd9ff18ac6684d25e82bb0b93897bb2eef48651b3dfdf6"
+    },
+    {
+      "address": "0x2928540",
+      "size": 15,
+      "name": "FAutoVariable<Data::TypedVariantMap, GameCore::District::Instance>::load(Serialization::IStream&)",
+      "sha256": "c6e91d6274bef13e31c7aea93aa4011388bcbf1b3d57301e8303b13799e97976"
+    },
+    {
+      "address": "0x29285b0",
+      "size": 15,
+      "name": "FAutoVariable<Data::TypedVariantMap, GameCore::District::Instance>::save(Serialization::OStream&) const",
+      "sha256": "b3876a3c09dac2fc5cf74ba11f92a9077af25b190bf73b3845fdf971a4e2785d"
+    },
+    {
+      "address": "0x2adfc90",
+      "size": 107,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DistrictCreateYield const&)",
+      "sha256": "33148589d4198daf0dae37457864ea74e3720f0e1e2bee48b6c3d7ab47a1f995"
+    },
+    {
+      "address": "0x2adfd00",
+      "size": 105,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DistrictCreateYield&)",
+      "sha256": "a3ba16664c71e39418ed6219f5c9955653db9c1227b4c7cc313190601111cb99"
+    },
+    {
+      "address": "0x2adfd70",
+      "size": 59,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DistrictCreateUnit const&)",
+      "sha256": "277a05914fce952690f8d9df3d0bde6d4922c066d2d774bffc380edd16b6b4ec"
+    },
+    {
+      "address": "0x2adfdb0",
+      "size": 57,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DistrictCreateUnit&)",
+      "sha256": "29992f5db2e4835cffc5e08ed770f63354c56c82accb172e243b83ed7d588980"
+    },
+    {
+      "address": "0x2adfdf0",
+      "size": 71,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const&)",
+      "sha256": "68054dd080c33cbed10b41d6907059589b10a6fe4f31233c096fa35052a72129"
+    },
+    {
+      "address": "0x2adfe40",
+      "size": 69,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass&)",
+      "sha256": "8536f4ca8f6dd523521f1927a691707faa41ed80a35146911af10b3bc6961f38"
+    },
+    {
+      "address": "0x2adfe90",
+      "size": 59,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DistrictUnlockTech const&)",
+      "sha256": "be54803dd7b3ea9f881b52826d1ab17149513956528f85fcf994c6f329fd594a"
+    },
+    {
+      "address": "0x2adfed0",
+      "size": 57,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DistrictUnlockTech&)",
+      "sha256": "7581ea2918090eacf21174d31d21d994c48d810db1cf18950f143b0b744d4378"
+    },
+    {
+      "address": "0x2adff10",
+      "size": 59,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DistrictUnlockCivic const&)",
+      "sha256": "f158e635ffe1d567f7f58629e9e5ee1d7ee8ddc5d7e9b0f6e4d28f4233523d38"
+    },
+    {
+      "address": "0x2adff50",
+      "size": 57,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DistrictUnlockCivic&)",
+      "sha256": "dd1b756ee47b41f6049f1eeb15cedef45cb37eb4cf1d562f3b8dd1efd1c6079d"
+    },
+    {
+      "address": "0x2adff90",
+      "size": 325,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Districts const&)",
+      "sha256": "b3794b9c902ddf8ceae45f8aa7c4e0eefe0245cc1a3b73b797328427a45b1548"
+    },
+    {
+      "address": "0x2ae00e0",
+      "size": 762,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Districts&)",
+      "sha256": "a2e0a23de368df51aee0402a116378239cf4c6be714f310e981645bf97252208"
+    },
+    {
+      "address": "0x2ae3000",
+      "size": 374,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::District::Instance, 8u, 16u>(Serialization::OStream&, RecycledIDContainer<GameCore::District::Instance, 8u, 16u> const&)",
+      "sha256": "acceb05731d494327fcd195730d8dbc965048c1e4a4d69202ba18ab6ced51883"
+    },
+    {
+      "address": "0x2ae31a0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2ae31c0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2ae31e0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2ae3200",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2ae3220",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2ae3240",
+      "size": 386,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::District::Instance, 8u, 16u>(Serialization::IStream&, RecycledIDContainer<GameCore::District::Instance, 8u, 16u>&)",
+      "sha256": "bac737dc6a535e94d28ca9bc0a1d5795cd8caf2fe19d2cfdf446c4e126bf76b4"
+    },
+    {
+      "address": "0x2ae3420",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2ae3440",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2ae3460",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2ae3480",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>&>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>&, int, int&&, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>&)",
+      "sha256": "8f1b01e8a304e9bd874bd0f8448f1a0cd3524a39db74565711a779a0ee73d30d"
+    },
+    {
+      "address": "0x2ae34f0",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>&>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>&, int, int&&, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>&)",
+      "sha256": "104b409fe23e116662e5e2a119608bf1a6dc136806d04476015284824f8579ee"
+    },
+    {
+      "address": "0x2ae5230",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::DistrictUnlockTech>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>&)",
+      "sha256": "2620efa6a615f80d23972ae4ad2cf94559c3dda657764d4f9cad127b3b9ff41e"
+    },
+    {
+      "address": "0x2ae54c0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::DistrictUnlockTech, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>&)",
+      "sha256": "625bcb0fd940c9561aef6aa0b9fa389114bfa78f49e25d1ffc0d1f9e92c97508"
+    },
+    {
+      "address": "0x2ae59e0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::DistrictUnlockCivic>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>&)",
+      "sha256": "6de9e3c241632adcca5d9f41695cb265ee7f50ec8b2d3f11809c969e91a7c6ba"
+    },
+    {
+      "address": "0x2ae5c70",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::DistrictUnlockCivic, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>&)",
+      "sha256": "f820d7e1b0f518ae7f4016367fec2e3c13fc22132657fcefcfc3600951e9877e"
+    },
+    {
+      "address": "0x2ae82d0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>::load(Serialization::IStream&)",
+      "sha256": "598dac86b776b0af7c6b5b42b8f6e94aa2ae51a773cf526c4df9e20e7823c0d5"
+    },
+    {
+      "address": "0x2ae82e0",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2ae82f0",
+      "size": 73,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "dc5fce9ce6162c6e69c50492e247eff1a6e60dc7a6c4c9b85babc9ef4b6e23cb"
+    },
+    {
+      "address": "0x2ae8340",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>::save(Serialization::OStream&) const",
+      "sha256": "cd067e7badeaead7e65118c45b1dbce10166a616465c16cea84a31467709592e"
+    },
+    {
+      "address": "0x2ae8350",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2ae83e0",
+      "size": 1775,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>, GameCore::Player::Districts>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "f620987b89cef3dbffeb775eea2983f8f4f280822fbeb3d16fc2ab50279c6193"
+    },
+    {
+      "address": "0x2ae8d60",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::DistrictCreateYield>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>&)",
+      "sha256": "2d8be939a021992bc28a206fb30f33cb998d9a62ce4218338e12c4d7669f1ff9"
+    },
+    {
+      "address": "0x2ae8d70",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::DistrictCreateYield, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator>&)",
+      "sha256": "730eb38fbbd15842ba277ff6bb84ebb0d4b38871035b3643dfba64913e0c6ae7"
+    },
+    {
+      "address": "0x2ae92f0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::DistrictCreateYield>(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const&)",
+      "sha256": "987ccded4a08691e37f6b20e08be077844664e068337d66f9c07f5a6d8d876dd"
+    },
+    {
+      "address": "0x2ae9350",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateYield const, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const> eastl::for_each<GameCore::Player::DistrictCreateYield const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateYield const, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const> >(GameCore::Player::DistrictCreateYield const*, GameCore::Player::DistrictCreateYield const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateYield const, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const>)",
+      "sha256": "71dbbd696c708848b97714913ae5aba212d7ddc0dd8b3d5245c0c95f7269fc06"
+    },
+    {
+      "address": "0x2ae93a0",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateYield const, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const&)",
+      "sha256": "beca1b43fa66fd10e9861428e5292adf100752297a9168cf0d490f1c81f6496b"
+    },
+    {
+      "address": "0x2ae93d0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateYield const, eastl::vector<GameCore::Player::DistrictCreateYield, eastl::allocator> const>::operator()(GameCore::Player::DistrictCreateYield const&)",
+      "sha256": "fb454a039cacdb4086af0819a49231ebcbf101023a40d37963c5d1c10bb57236"
+    },
+    {
+      "address": "0x2ae9740",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>::load(Serialization::IStream&)",
+      "sha256": "a9ea9709d7ccce79bbacefbe7182933225f1ad3f5e3ec58840d24258a1e552dd"
+    },
+    {
+      "address": "0x2ae9750",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2ae9760",
+      "size": 73,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "584dc5f4262759eb22f6dd77de29af36f3ea146b290321a275d3f6630f452526"
+    },
+    {
+      "address": "0x2ae97b0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>::save(Serialization::OStream&) const",
+      "sha256": "76aeec9c6f39b8e3faab8563190da1570c1882b573ff6c7ca331d27c4588b79c"
+    },
+    {
+      "address": "0x2ae97c0",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2ae9850",
+      "size": 1775,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>, GameCore::Player::Districts>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "e999b3a10c73f42ac50b28a2134a8306b3a5873713f40edec97600397907bb8e"
+    },
+    {
+      "address": "0x2aea1d0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::DistrictCreateUnit>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>&)",
+      "sha256": "877b152c7c0632059939c9142012ee9e987b041867618182b732493364cb95ea"
+    },
+    {
+      "address": "0x2aea1e0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::DistrictCreateUnit, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator>&)",
+      "sha256": "9addc64b6b81424841201599b357c3277e6a9a2270a3c3ccf4446c382f7a9f53"
+    },
+    {
+      "address": "0x2aea730",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::DistrictCreateUnit>(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const&)",
+      "sha256": "75b4f10ce6aed4c15c913d075c15eab003afdea3d68c2b9ebae1670465f99758"
+    },
+    {
+      "address": "0x2aea790",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateUnit const, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const> eastl::for_each<GameCore::Player::DistrictCreateUnit const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateUnit const, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const> >(GameCore::Player::DistrictCreateUnit const*, GameCore::Player::DistrictCreateUnit const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateUnit const, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const>)",
+      "sha256": "08ab526e807d4f78d57f75ecee845ae2106a7ae1e9704d858f7acf436a091115"
+    },
+    {
+      "address": "0x2aea7e0",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateUnit const, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const&)",
+      "sha256": "40a71a3d51a46bd1ee44066b58f220bb70013565132f4260eae2c3f63148f4de"
+    },
+    {
+      "address": "0x2aea810",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictCreateUnit const, eastl::vector<GameCore::Player::DistrictCreateUnit, eastl::allocator> const>::operator()(GameCore::Player::DistrictCreateUnit const&)",
+      "sha256": "349bcab13f32704fb10ca912f8907984200d643c89feed4f5f311235912c033b"
+    },
+    {
+      "address": "0x2aeab50",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>::load(Serialization::IStream&)",
+      "sha256": "7b638efbf958f8075c757205f9093f31b55bd6653da07e6ddb0c0a2906d629c9"
+    },
+    {
+      "address": "0x2aeab60",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2aeab70",
+      "size": 73,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "10a663e6613b2a0e6b5231a291ed78535ab8b9eec7b6f218b3c969b53d6d0782"
+    },
+    {
+      "address": "0x2aeabc0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>::save(Serialization::OStream&) const",
+      "sha256": "6094b2da1359f09ba79ec8ee672163bad29d6bfb8e4ce863c84a9004b368ebeb"
+    },
+    {
+      "address": "0x2aeabd0",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2aeac60",
+      "size": 1775,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>, GameCore::Player::Districts>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "9745d2f01383edf0b094fea133fe564c703a9bba5915ca90f630cf13fbd7592a"
+    },
+    {
+      "address": "0x2aeb5e0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass>(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>&)",
+      "sha256": "750f9fe13b9be78d86659537807e323199b11ab9481ae1aad25915451b92bb64"
+    },
+    {
+      "address": "0x2aeb5f0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> >(Serialization::IStream&, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator>&)",
+      "sha256": "481ba86c2661779ce15a2086e8e128837de8a27ad1d05b81e832b8555727e20e"
+    },
+    {
+      "address": "0x2aebb70",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass>(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const&)",
+      "sha256": "2d3297a60b3a121c6c93ce1faf638cb4b50a0b77eca1b80b3ec4c02991eab5bb"
+    },
+    {
+      "address": "0x2aebbd0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const> eastl::for_each<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const> >(GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const*, GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const>)",
+      "sha256": "f8c0bc122164469912970573012386ee7e2138f1825a972ce4cf36b67f6cb1f8"
+    },
+    {
+      "address": "0x2aebc20",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const&)",
+      "sha256": "89a08b91553048e44c9db951d3f07ec49a71aa94277f1821999aec916229354a"
+    },
+    {
+      "address": "0x2aebc50",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const, eastl::vector<GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass, eastl::allocator> const>::operator()(GameCore::Player::DistrictAndBuildingsCreateUnitWithAbilityByClass const&)",
+      "sha256": "06103b5ad61182ad754819d5a64b846b3355ac9e8484b9a59aa6f4f6f99c43e8"
+    },
+    {
+      "address": "0x2aebfc0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>::load(Serialization::IStream&)",
+      "sha256": "317a79c40a10a910a1ec8cf0e2fa7d1acf80b80d6b87337bfacd143c1156ec5e"
+    },
+    {
+      "address": "0x2aebfd0",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2aebfe0",
+      "size": 73,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "38a0b1e78b5f0faa7dee1241e0ec93153404a54ec8b9131318707f40d68640db"
+    },
+    {
+      "address": "0x2aec030",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>::save(Serialization::OStream&) const",
+      "sha256": "1da4245f74a99910655dda1501b05add05722b121a23c0b2136093d107deafa1"
+    },
+    {
+      "address": "0x2aec040",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2aec0d0",
+      "size": 1775,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator>, GameCore::Player::Districts>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "7f7ef33428dfee5dc8eec76c4fe23ba6bb4bab02c45daf71404ec49857cfd5e0"
+    },
+    {
+      "address": "0x2aecaa0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::DistrictUnlockTech>(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const&)",
+      "sha256": "8454aa9ea4fc652729a6c64f57087bf5f52a3c77b3e53f10b4366acbfc6dd0bb"
+    },
+    {
+      "address": "0x2aecb00",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockTech const, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const> eastl::for_each<GameCore::Player::DistrictUnlockTech const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockTech const, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const> >(GameCore::Player::DistrictUnlockTech const*, GameCore::Player::DistrictUnlockTech const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockTech const, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const>)",
+      "sha256": "b19616f08416a0468e07edbf15bb5201660a8f215955487e9a94320de7bd805f"
+    },
+    {
+      "address": "0x2aecb50",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockTech const, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const&)",
+      "sha256": "f01eb264c29d40bdbd755dc9419c5a7c1c8dd4c57f9b4aa540bb5a456d2277b4"
+    },
+    {
+      "address": "0x2aecb80",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockTech const, eastl::vector<GameCore::Player::DistrictUnlockTech, eastl::allocator> const>::operator()(GameCore::Player::DistrictUnlockTech const&)",
+      "sha256": "ebd82d01bfbbc0b05c6d3b9b3a4f86da417c21a7482a7c8e08e5f32459b04297"
+    },
+    {
+      "address": "0x2aeceb0",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>::load(Serialization::IStream&)",
+      "sha256": "e3ff6e97d1ed7533e45d8a1ffe0464d051eacaf8cd0c21cc83e75cbd20358a18"
+    },
+    {
+      "address": "0x2aecec0",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2aeced0",
+      "size": 73,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "061bf06d3a64941b69c6eb4826945163403aa2a6cdac53c052e951f4f4a4a551"
+    },
+    {
+      "address": "0x2aecf20",
+      "size": 15,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>::save(Serialization::OStream&) const",
+      "sha256": "b73800715ffca17a36f4733bf2956230585b9491fc31abad7b9e929ae2a5c141"
+    },
+    {
+      "address": "0x2aecf30",
+      "size": 9,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2aecfc0",
+      "size": 1775,
+      "name": "FAutoVariable<eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator>, GameCore::Player::Districts>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "6ea2ea321a227c9d6e0941f20a2d25af361a96aff92c047729760499d5447bd5"
+    },
+    {
+      "address": "0x2aed990",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::Player::DistrictUnlockCivic>(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const&)",
+      "sha256": "2eb7718db94b07028b5ab0a137fc93feb1d3c4fd4bdc485efbfabb621f49266a"
+    },
+    {
+      "address": "0x2aed9f0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockCivic const, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const> eastl::for_each<GameCore::Player::DistrictUnlockCivic const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockCivic const, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const> >(GameCore::Player::DistrictUnlockCivic const*, GameCore::Player::DistrictUnlockCivic const*, Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockCivic const, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const>)",
+      "sha256": "6d9619410e455c35856f5c4df6c82b4cc806f9e086bbd1e819441c62f1c2e726"
+    },
+    {
+      "address": "0x2aeda40",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockCivic const, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const>::SerializeFromSequenceContainer(Serialization::OStream&, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const&)",
+      "sha256": "1741e60bf224d7450f972d0474570c2ead2728e7dda6444d58dfc7d280326f78"
+    },
+    {
+      "address": "0x2aeda70",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<GameCore::Player::DistrictUnlockCivic const, eastl::vector<GameCore::Player::DistrictUnlockCivic, eastl::allocator> const>::operator()(GameCore::Player::DistrictUnlockCivic const&)",
+      "sha256": "1292cd51cd0aa313f528de4ce088b3b28777de6bc747a18475a922ae50fbcfb7"
+    },
+    {
+      "address": "0x2d4eb70",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::CivicTypes const&)",
+      "sha256": "259301d4abef819cc377acf6436d4036a2241bb2b57f9241fe4aea3a13ac0f02"
+    },
+    {
+      "address": "0x2d4eba0",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::CivicTypes&)",
+      "sha256": "23ed427d7285eff6b631c259b039d49a30273a5e0f8af7daa84500f258d2588f"
+    },
+    {
+      "address": "0x2d4ebe0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::DistrictTypes const&)",
+      "sha256": "dc40e9bc43e0fc8aec2e195881b9a1c8eab8c366272b24f46990d7fb1231425c"
+    },
+    {
+      "address": "0x2d4ec10",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::DistrictTypes&)",
+      "sha256": "8f2608b388942db0f3d64ebc8e0e8f9cedd91acf351ae7e3d5cbdf710883f92d"
+    },
+    {
+      "address": "0x2d4ee10",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::ImprovementTypes const&)",
+      "sha256": "553cc1de61effac943a18e8873ec9df614ca5f5c40d8631d2077791eb977a632"
+    },
+    {
+      "address": "0x2d4ee40",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::ImprovementTypes&)",
+      "sha256": "2f6a637a7c44e832fe7172a40794a4f17093b31eceb0f307447e72e9cb1c357b"
+    },
+    {
+      "address": "0x2d4eef0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::TechTypes const&)",
+      "sha256": "e8b21f56f96030386a4c9aac4582d7fce63120854b0a642cf15392ac5210cdad"
+    },
+    {
+      "address": "0x2d4ef20",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::TechTypes&)",
+      "sha256": "047050d264acc31d6a4477873412f54329d63a12b971850fa8ca7602c1cfa31c"
+    },
+    {
+      "address": "0x2d4f2d0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::UnitAbilityTypes const&)",
+      "sha256": "2f885c059351bfe8decd9c94aa6474fdcc3991fa5b27336df27d18d50eaae03d"
+    },
+    {
+      "address": "0x2d4f300",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::UnitAbilityTypes&)",
+      "sha256": "eb2eec5fafba1439f8cc549711cf96580f60febd055716ea95b863f07e01d978"
+    },
+    {
+      "address": "0x2d4fb70",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::YieldTypes const&)",
+      "sha256": "b971caad466bb8cb3baf0b50ec89d1f83d536c9d25f15145cc664077fdd4a5c7"
+    },
+    {
+      "address": "0x2d4fba0",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::YieldTypes&)",
+      "sha256": "8f3a33cbd2aca7db1a0c6d4e9fae3b8ea968171068bccd693ea5ca8982362a12"
+    },
+    {
+      "address": "0x2d502f0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::UnitPromotionClassTypes const&)",
+      "sha256": "821b0ff788c56d14d16ee196521bb6c3123fad502e2cb692d159c6b7c0c59e32"
+    },
+    {
+      "address": "0x2d50320",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::UnitPromotionClassTypes&)",
+      "sha256": "b35a49271ce4cac08084f04204907ee4a853537a44ceb38d57799593e05b6a48"
+    }
+  ],
+  "versions": [
+    {
+      "name": "District",
+      "address": "0x2f30b08",
+      "value": 15
+    },
+    {
+      "name": "CreateYield",
+      "address": "0x2f5d770",
+      "value": 1
+    },
+    {
+      "name": "CreateUnit",
+      "address": "0x2f5d774",
+      "value": 1
+    },
+    {
+      "name": "CreateUnitWithAbility",
+      "address": "0x2f5d778",
+      "value": 1
+    },
+    {
+      "name": "UnlockTech",
+      "address": "0x2f5d77c",
+      "value": 1
+    },
+    {
+      "name": "UnlockCivic",
+      "address": "0x2f5d780",
+      "value": 1
+    },
+    {
+      "name": "PlayerDistricts",
+      "address": "0x2f5d784",
+      "value": 8
+    },
+    {
+      "name": "Recycled",
+      "address": "0x2f5d788",
+      "value": 65537
+    }
+  ],
+  "host_methods": [
+    {
+      "address": "0x3971330",
+      "size": 480,
+      "sha256": "5e28e9973784847874797906847e9c5e2093d6245c60eec23b804bcbfc4a0369"
+    },
+    {
+      "address": "0x3961e50",
+      "size": 196,
+      "sha256": "e45d5808a5c8cc683ef5a06060228f21ad81ed49d6d12a9043e4255e0236b1da"
+    }
+  ],
+  "host_property_bindings": [
+    {
+      "table": "0x53b3680",
+      "slot": "0x1f0",
+      "target": "0x3971330"
+    },
+    {
+      "table": "0x53b3680",
+      "slot": "0x1f8",
+      "target": "0x3961e50"
+    }
+  ],
+  "property_call_checks": [
+    {
+      "address": "0x291ce1d",
+      "bytes": "488dbb80030000"
+    },
+    {
+      "address": "0x291ce2b",
+      "bytes": "ba01000000"
+    },
+    {
+      "address": "0x291ce33",
+      "bytes": "ff90f8010000"
+    },
+    {
+      "address": "0x291d029",
+      "bytes": "ff91f0010000"
+    }
+  ],
+  "dwarf_sha256": "1cd7ae69f3d70d7961095fefebdb8497e1e583de41d5045b5f220b2a99b1c5da",
+  "audit_source_sha256": "bd1b88925d456e5690e926dba351a181a33a8bac7e7249f7c1090798f2faec08",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "d247f6d1ce964af296671632d37ceace9b54f8820ae2515774d00f81c6388ec9",
+    "crates/c6-core/src/core_stream.rs": "eb9a630f4ef1672dec8e1e3f36d5350a7253315608c1014f71abe9ecacc2d367",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "c33445b2063088f5d864b0a8fec479f9f765c6206901f307cb952db19aa04492",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "14d5787e305a081ee9c84e8a3aa7bf20986fa43542aafe76f62e50b477cda0d7",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_diplomacy.rs": "9d09de54ca5b5fd9e9bd6dbb6cc877530e05833248836b4bfc3611f02ee2d6fd",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "60504c81eea7d11c85c21498d9999b390e2659e190d5caff330ab8c42b2defff",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "657cb792c218840e8e1ff33500656714f1f62c0a86c855947d871de57d872ac7",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/world.rs": "a693d81e3d72ddb6ac66a97578e9dd27e577c573b5b8e919eee3697ff527c09d",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
+  },
+  "candidate_sha256": "e88550708f6d99a64ad3410eea5a75bc60a10f7292cced57430cc20fa1adc278",
+  "harness_sha256": "2a323113b0268396877d66ee1c862ebc63713288846941a85be24de15096fab0",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": {
+        "district": 1284,
+        "districts": 43
+      },
+      "record_bytes": {
+        "district": 543132,
+        "districts": 602500
+      },
+      "typed_observations_sha256": {
+        "district": "8e8383226e37ad4d7243ae54333b47c963a4c5fb52edd634e81677bdeac355f1",
+        "districts": "4992967b66e1e1484eb0e311498976b7aaf1114867c440a84a6416ae2253eb0b"
+      },
+      "ordered_input_record_digests_sha256": {
+        "district": "fe1e14e421c516343bfc9cea42f728a5c71e59e8da5366a96a0b4d3d2d4bae61",
+        "districts": "3082c8ab45385a64e45e247fd2d2d6387c0cf6e8c742ba7ce5a8c3524bfc1d9a"
+      }
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": {
+        "district": 1284,
+        "districts": 43
+      },
+      "record_bytes": {
+        "district": 543132,
+        "districts": 602500
+      },
+      "typed_observations_sha256": {
+        "district": "8e8383226e37ad4d7243ae54333b47c963a4c5fb52edd634e81677bdeac355f1",
+        "districts": "4992967b66e1e1484eb0e311498976b7aaf1114867c440a84a6416ae2253eb0b"
+      },
+      "ordered_input_record_digests_sha256": {
+        "district": "fe1e14e421c516343bfc9cea42f728a5c71e59e8da5366a96a0b4d3d2d4bae61",
+        "districts": "3082c8ab45385a64e45e247fd2d2d6387c0cf6e8c742ba7ce5a8c3524bfc1d9a"
+      }
+    }
+  ],
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_district_wire": true,
+  "complete_current_player_districts_wire": true,
+  "native_read_fixups": false,
+  "definition_remapping": false,
+  "actual_district_owner_reconstructed": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198
+}
