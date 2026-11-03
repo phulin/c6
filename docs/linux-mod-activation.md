@@ -128,6 +128,12 @@ A separate [passive original-host trace](../evidence/linux/mod-activation-transp
 
 ## Reproduction and evidence
 
+The later registered-host fixture completes the original registration event drain, but still defers the real type-3 command: passive observation proves original receive reason 1 (loading), with one deferred message and no Core execution. See the [host/Core admission boundary](linux-core-oracle-boundary.md). No host readiness field or receive predicate is replaced.
+
+A separately identified [conditional Core component fixture](linux-core-component.md) now executes one native-produced SkipTurn command in two fresh processes. It invokes genuine PrepareMainThread once before TempHeap/App/Core startup, releases acquired facades before the original worker resumes, and proves native completion, the worker lock barrier and parked state before post-state reads. Both runs queue, receive and execute one command; their repeated post-Saves have the same SHA-256 `be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc` and 80,656,254 bytes. The same-source no-action control preserves the original Save. Earlier failed worker profiles remain failures.
+
+This component starts from fresh original legality checks and MakeRequest output and calls the original Core queue directly. It does not broadcast or replay the full-host deferred packet. Host admission, complete affected-state/RNG coverage, Rust action parity and turns remain unproven; Rust action application remains unsupported.
+
 The isolated probe builds a separate preload at `target/linux/mod-activation/mod_activation_probe.so`, never the runtime owner's preload. It records source/dependency/module hashes, content/launch identities and a fresh userdata directory. It creates no independent GameCore context. For the passing Base lifecycle:
 
 ```sh
