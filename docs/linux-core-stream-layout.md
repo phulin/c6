@@ -68,3 +68,7 @@ The optional `--first-player-components` flag (Python `first_player_components=T
 ## First City prefix extension
 
 `--first-city` (Python `first_city=True`) implies the first-player-components mode and follows Player.Cities v15 plus recycled-container v65537 framing into the first real City slot. It parses the complete current City51 pre-component header, Districts4 and Citizens2 and stops at Culture. Empty first-player City containers stop explicitly at their unparsed tail. The separate complete Rust City record codec and original-byte evidence are described in [City wire import](linux-city-wire.md); this partial Python mode is not a complete City/Player/Unit index. A Rust byte-0 Core reader will compose these prefix APIs directly rather than require Python offsets.
+
+## Direct library entry from byte 0
+
+The separate [Rust Core prefix API](linux-core-prefix.md) now composes the same supported current prefix and existing Map parser directly from raw byte 0. It returns typed data, complete Map, consumed cursor and a borrowed untouched tail; library callers do not need this Python tool's offsets or traces. Its separate [checked profile](../evidence/linux/core-prefix.json) compares both original raw streams and length-changing source-only carriers. This remains a partial import ending before Game.Religion, not complete executable world state.
