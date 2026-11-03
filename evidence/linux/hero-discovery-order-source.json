@@ -1,0 +1,757 @@
+{
+  "schema": "c6-linux-hero-discovery-order-source-v1",
+  "checks_passed": true,
+  "original_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": [
+    {
+      "address": "0x2655ed0",
+      "size": 14,
+      "name": "HeroesManager.InitializePostLoad",
+      "sha256": "616dd12ba4d7e62d6963ffdcadb7411a89a444ea080296e99285551e8d2c318d"
+    },
+    {
+      "address": "0x2655ee0",
+      "size": 219,
+      "name": "HeroesManager.RebuildValidHeroClasses",
+      "sha256": "60b2d8f1ecb94b80636b2d2ffd8d4929ab1535b8b99f496d8219d15a0c3c9342"
+    },
+    {
+      "address": "0x2655fc0",
+      "size": 202,
+      "name": "HeroesManager.ValidatePlayerHeroDiscoveryOrders",
+      "sha256": "08d610194b9cea3f7852ce3f3655e6fd1c9439685f7c8a86f35d89324f4c09f1"
+    },
+    {
+      "address": "0x2655200",
+      "size": 20,
+      "name": "HeroesManager.IsActive",
+      "sha256": "f7f235d1ddb39277ad716804bbb5ff6178b9d0a67073f61c5be965d2ecde300a"
+    },
+    {
+      "address": "0x26560b0",
+      "size": 137,
+      "name": "HeroesManager.IsAllowedToUse",
+      "sha256": "d59d1432d71fa923524834ac0b1f28210a119a8470960cd0f98124544f6fcfd8"
+    },
+    {
+      "address": "0x269bb60",
+      "size": 44,
+      "name": "Player.Heroes.IsAllowedToUse",
+      "sha256": "57766c27d48d8f8bb7af405690ea93aecba7a229d08c8dd039bc4354e20c2a43"
+    },
+    {
+      "address": "0x269be80",
+      "size": 45,
+      "name": "Player.Heroes.IsHeroDiscovered",
+      "sha256": "f22d22ec4abc0b953db3a21fc02380143792a73889d0b1fce475629c15debade"
+    },
+    {
+      "address": "0x269c6f0",
+      "size": 475,
+      "name": "Player.Heroes.RebuildHeroDiscoveryOrder",
+      "sha256": "418fa74f4d229ed5d6940b0b823ebb188a5228b1a6ce11b1e252d33565f8d0ab"
+    },
+    {
+      "address": "0x269c8d0",
+      "size": 38,
+      "name": "Player.Heroes.GetCurrentEra",
+      "sha256": "c01da9a6be780dfa2be335ea785d1d3575c0434056ef3c83d7e8b2df1bd7b4a8"
+    },
+    {
+      "address": "0x269c900",
+      "size": 445,
+      "name": "Player.Heroes.CouldClaimHeroNow",
+      "sha256": "f19c5a1d2a5a7dd87e67d73996bf2b2c3839b5edd0a10e597fd342660dc9bf6a"
+    },
+    {
+      "address": "0x269cac0",
+      "size": 5,
+      "name": "discovery_sort",
+      "sha256": "d0a249944b4ad8feb3a0c6a2be5bc100879da2937ae8770fc0f6585b90baff61"
+    },
+    {
+      "address": "0x269e060",
+      "size": 114,
+      "name": "discovery_quick_sort",
+      "sha256": "00737dca63e1077571396c99e952b8f7c4c7e98783ead4e9bb64808bc58e5923"
+    },
+    {
+      "address": "0x269e0e0",
+      "size": 176,
+      "name": "discovery_quick_sort_impl",
+      "sha256": "3eeb516091981aca7dc5891e184659ff17ae27a46e58478e4f6ad92b90eab3d1"
+    },
+    {
+      "address": "0x269e190",
+      "size": 185,
+      "name": "discovery_insertion_sort",
+      "sha256": "3d9e06ef1529388450349c1f18f47daa1cea4c75e649b50d2339bee961b42b46"
+    },
+    {
+      "address": "0x269e450",
+      "size": 10,
+      "name": "signed_weight_comparator",
+      "sha256": "40bb6afbe8ba8d9710798e55b211812feff8926822b1511d763bb2a20ca53b2a"
+    },
+    {
+      "address": "0x21febd0",
+      "size": 8,
+      "name": "HeroClassCollectionBuilder.GetBuilderCountSql",
+      "sha256": "2c14c50c2951e900b525aa1dfcede94a4aac7925633be7d20f17944c283e1e65"
+    },
+    {
+      "address": "0x21febe0",
+      "size": 8,
+      "name": "HeroClassCollectionBuilder.GetBuilderSql",
+      "sha256": "1aa0daa27e29b56be426cf361e40cdde294c1be8bef60945c1be99c403f9510a"
+    },
+    {
+      "address": "0x2254960",
+      "size": 285,
+      "name": "HeroClassCollectionBuilder.BuildCollection",
+      "sha256": "47d2e08ae972aa323d2372be4e1f28bd33106122747c85cc21b3adaa1eb5e8b1"
+    },
+    {
+      "address": "0x2246d30",
+      "size": 15,
+      "name": "HeroClassCollectionWithTypeIndex.constructor",
+      "sha256": "4f423685ff840a09b71787d49acc24c1a2a21021cd8d41a0fb1ecaaeabda16bf"
+    },
+    {
+      "address": "0x2213eb0",
+      "size": 16,
+      "name": "Definitions.GetHeroClassDefinitions",
+      "sha256": "ad7c3778c37c8de54f258f723121110a8770c81c06d0e04e2d9924ea36993ede"
+    }
+  ],
+  "candidate": {
+    "source_commit": "421456bb1957853842a43e8078d61b13d01f77c1",
+    "complete_source_archive_sha256": "a51f6c71bdd5f684c3742cdad12c4d586d8ba2a0c56153811fce19314be1a4d2",
+    "complete_source_archive": "target/linux/hero-discovery-order/candidate-a51f6c71bdd5f684c3742cdad12c4d586d8ba2a0c56153811fce19314be1a4d2/source.tar",
+    "extracted_committed_tree": true,
+    "concurrent_wip_included": false,
+    "generated_source_duplicate": {
+      "source": "crates/c6-core/src/rng/native_serialization.rs",
+      "destination": "crates/c6-core/src/native_serialization.rs",
+      "sha256": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce"
+    },
+    "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+    "compiler_executable_sha256": "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71",
+    "standard_library_rlib_sha256": "bf156342c5f849f27d8f53003131bc7c0e675143389d84dd549b2ebbaccfaa2f",
+    "candidate_sha256": "a38c26d2104996a99e3fd4fe4fc8bf62e8848612c9299c3e7fdca0b1f47df5a9",
+    "test_candidate_sha256": "16c58a55ab27a11fbd03a890e4011c141230e188baa4bb6a6e54634b6648cede",
+    "tests_result": "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+  },
+  "saved_fixture": {
+    "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+    "surface": "post-load SavedOutput; writer owner cuts only",
+    "records": [
+      {
+        "player": 0,
+        "range": [
+          5213659,
+          5214199
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 1,
+        "range": [
+          7328839,
+          7329379
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 2,
+        "range": [
+          8916116,
+          8916656
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 3,
+        "range": [
+          12399910,
+          12400450
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 4,
+        "range": [
+          15967958,
+          15968498
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 5,
+        "range": [
+          18923630,
+          18924170
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 6,
+        "range": [
+          21349585,
+          21350125
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 7,
+        "range": [
+          24553183,
+          24553723
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 8,
+        "range": [
+          28225153,
+          28225693
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 9,
+        "range": [
+          31466123,
+          31466663
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 10,
+        "range": [
+          35408319,
+          35408859
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 11,
+        "range": [
+          38384018,
+          38384558
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 12,
+        "range": [
+          39443829,
+          39444369
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 13,
+        "range": [
+          41697322,
+          41697862
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 14,
+        "range": [
+          42576195,
+          42576735
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 15,
+        "range": [
+          45184535,
+          45185075
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 16,
+        "range": [
+          48759603,
+          48760143
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 17,
+        "range": [
+          51698660,
+          51699200
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 18,
+        "range": [
+          52313803,
+          52314343
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 19,
+        "range": [
+          52833831,
+          52834371
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 20,
+        "range": [
+          53458555,
+          53459095
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 21,
+        "range": [
+          53994465,
+          53995005
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 22,
+        "range": [
+          54637186,
+          54637726
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 23,
+        "range": [
+          55293965,
+          55294505
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 24,
+        "range": [
+          55939713,
+          55940253
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 25,
+        "range": [
+          56599826,
+          56600366
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 26,
+        "range": [
+          57224099,
+          57224639
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 27,
+        "range": [
+          57741044,
+          57741584
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 28,
+        "range": [
+          58371319,
+          58371859
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 29,
+        "range": [
+          59021234,
+          59021774
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 30,
+        "range": [
+          59668587,
+          59669127
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 31,
+        "range": [
+          60305782,
+          60306322
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 32,
+        "range": [
+          60986017,
+          60986557
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 33,
+        "range": [
+          61652944,
+          61653484
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 34,
+        "range": [
+          62283196,
+          62283736
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 35,
+        "range": [
+          62934494,
+          62935034
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 36,
+        "range": [
+          63551674,
+          63552214
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 37,
+        "range": [
+          64080148,
+          64080688
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 38,
+        "range": [
+          64723982,
+          64724522
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 39,
+        "range": [
+          65401679,
+          65402219
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 40,
+        "range": [
+          66029257,
+          66029797
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 62,
+        "range": [
+          66992676,
+          66993216
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      },
+      {
+        "player": 63,
+        "range": [
+          69453451,
+          69453991
+        ],
+        "record_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "validate_false_rebuild_required": true
+      }
+    ],
+    "zero_orders": 43,
+    "raw_read_guard_inference": false,
+    "native_rebuild_observed": false
+  },
+  "byte_zero_first_player_comparison": {
+    "records": [
+      {
+        "parsed": false,
+        "unsupported_boundary": "Core(UnsupportedVersion { section: \"Context\", expected: 5, actual: 4 })",
+        "stream_sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
+        "heroes_encoded_sha256": null,
+        "byte_zero_source_grammar_attempted": true,
+        "offsets_borrowed_from_other_fixture": false,
+        "native_rebuild_reached_or_skipped": "not observed; header/order parsing does not establish manager/configuration gates"
+      },
+      {
+        "parsed": true,
+        "player": 0,
+        "header_ordered_flags": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "discovery_order_records": 0,
+        "discovered_records": 0,
+        "claims_records": 0,
+        "encoded_heroes_bytes": 540,
+        "consumed": 6583893,
+        "boundary": "AIMilitary",
+        "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+        "heroes_encoded_sha256": "e6f772413aa2605b4eabe8e5c1d6a89fccbd73e15072941e954e93ed33b9ab8d",
+        "byte_zero_source_grammar_attempted": true,
+        "offsets_borrowed_from_other_fixture": false,
+        "native_rebuild_reached_or_skipped": "not observed; header/order parsing does not establish manager/configuration gates"
+      }
+    ],
+    "candidate_sha256": "b448a7b88a7b12d48ce2fb69555426d03d4847be171c8421830f82b20d1447d4",
+    "dependency_lock_sha256": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
+    "exact_first_player_heroes_records_equal": null,
+    "remaining_players_raw_read_heroes_framing": false
+  },
+  "incoming_raw_read": {
+    "sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
+    "bytes": 76556938,
+    "first_player_heroes_source_framing_available": false,
+    "all_players_heroes_owner_framing_available": false,
+    "actual_rebuild_reached_or_skipped": "unresolved; retain exact byte-zero parser support result and native manager/configuration/registry gaps"
+  },
+  "builder": {
+    "count_sql_sha256": "4677b526d6cfcc8558e377205ad87e34d3a50d54cce7ce9d94d953af252a001a",
+    "rows_sql_sha256": "f4e963a5a457a40bac98609a90976137774c7c0cd301626f2ac150309f68280a",
+    "table": "HeroClasses",
+    "order": "rowid",
+    "fresh_collection_pointer_storage_zero": true,
+    "zero_rows_append_zero_definitions": true,
+    "initialized_runtime_collection_identity_admitted": false
+  },
+  "activated_databases": [
+    {
+      "sha256": "c880adaedcfd6da7808302b3b76bb9cad7d3188b35ae78e780cff7b56e04477e",
+      "native_builder_rows": 0,
+      "readonly": true
+    },
+    {
+      "sha256": "c880adaedcfd6da7808302b3b76bb9cad7d3188b35ae78e780cff7b56e04477e",
+      "native_builder_rows": 0,
+      "readonly": true
+    }
+  ],
+  "empty_class_collection_rng_proof": "If the runtime collection is the fresh collection populated solely by the pinned zero-row builder result, every rebuild consumes zero RNG draws, independent of earlier gate outcomes.",
+  "runtime_collection_database_binding_admitted": false,
+  "bounded_kernel": {
+    "maximum_output_records": 28,
+    "exact_native_insertion_sort_ties": true,
+    "owned_heroes_and_game_random_mutation": true,
+    "transactional_missing_inputs": true,
+    "native_archive_edits": "ordered diagnostic effects; physical pointer trees not required for local value mutation",
+    "source_queries": "fallible interfaces; synthetic tests confer no captured configuration/eligibility authority",
+    "production_loaded_state_bridge": false,
+    "original_native_rebuild_oracle": false
+  },
+  "full_state_actions_turns": false,
+  "save_writer": false,
+  "unknown_bytes_masked": false,
+  "recorded_raw_save_load_failure_bytes": 89198
+}
