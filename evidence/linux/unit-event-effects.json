@@ -5,7 +5,7 @@
   "native_execution": false,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
-  "source_audit_sha256": "feb3f632c8fcaa052fee92affaeadebdafe7c5f91cd0a94a76da16224e51e269",
+  "source_audit_sha256": "fd4fb84baf321aaae5003adbe4a569ed8c122fda39dcb3496624e7b3f1c22cc3",
   "provider_static_sha256": "648dd7884a82eb939ab4f7b8039554006f86429741763aea0c7e65cd40874cbc",
   "provider_focused_sha256": "b487d03b96a68df639ffebe76bfcb363ca47b4245bd274296bcc26b636e44af2",
   "observations_sha256": "1ddcd78a25a23e150a3116e445e6a2036607806718b31488d1996fed0cc7b41e",
@@ -341,6 +341,650 @@
       "rva": "0x2c27600",
       "bytes": 48,
       "sha256": "28fa111b8b63e9bc6ac3f5649fb338c64aeddb2ec9bb8f128af0994d9607f70a"
+    },
+    {
+      "name": "Plot.IsImpassable",
+      "image": "game",
+      "rva": "0x1fe24c0",
+      "bytes": 9,
+      "sha256": "3fd84bb2c4a4c605a3da98cd0d4a7a18e5de2047bf236b71d8f775f6f6fadc70"
+    },
+    {
+      "name": "Unit.InvalidTerrain",
+      "image": "game",
+      "rva": "0x2c27c30",
+      "bytes": 60,
+      "sha256": "821d3356ee2f97d324d2b7d1c31584e08524f710137c52369a59c1ea91d40199"
+    },
+    {
+      "name": "Unit.CanEmbark",
+      "image": "game",
+      "rva": "0x2c27a90",
+      "bytes": 185,
+      "sha256": "c2bbc1e5471ede85fba788e0e2ee023d04ecbbeaab16a02b6875e85dafdcb498"
+    },
+    {
+      "name": "Player.Units.CanEmbark",
+      "image": "game",
+      "rva": "0x2ba5c70",
+      "bytes": 459,
+      "sha256": "a79be58fd4c8305925598f5bb70f6747659cd8cd7785a72465f8f9563d115a16"
+    },
+    {
+      "name": "Player.Units.EmbarkPass",
+      "image": "game",
+      "rva": "0x2ba5e40",
+      "bytes": 72,
+      "sha256": "2ec01126e269d179ab1a2bdd8640eb01400abd1996ab095b3ebb5c52a7799616"
+    },
+    {
+      "name": "Diplomacy.BlockedEntry",
+      "image": "game",
+      "rva": "0x2ab1010",
+      "bytes": 20,
+      "sha256": "ed450c281adea73e9c2426990110c0d2073bbcdb99d71a83289abebe931c4118"
+    },
+    {
+      "name": "Diplomacy.OpenBorders",
+      "image": "game",
+      "rva": "0x2aa8730",
+      "bytes": 67,
+      "sha256": "f09718ffb680abbf7352813c3991866ec3d631231f36782c5e4bc69ce3f8123a"
+    },
+    {
+      "name": "Diplomacy.Allied",
+      "image": "game",
+      "rva": "0x2aa78a0",
+      "bytes": 51,
+      "sha256": "4ebc866c4937554b572f9ca2935f4d0e48fca65d72029cb2a6983e4826627ea1"
+    },
+    {
+      "name": "Diplomacy.PermanentAlliance",
+      "image": "game",
+      "rva": "0x2aa78e0",
+      "bytes": 51,
+      "sha256": "bbecefa2920b0a1877855a1dcbe4412982324e94c4d735c3234ce817e9f8e1a2"
+    },
+    {
+      "name": "Diplomacy.War",
+      "image": "game",
+      "rva": "0x2aa4bb0",
+      "bytes": 91,
+      "sha256": "95598b7b9fe28eedb4e31712dd005eb94d2f1eb389c1db8d5f8d210b30196122"
+    },
+    {
+      "name": "Diplomacy.EnforceBorders",
+      "image": "game",
+      "rva": "0x2166c40",
+      "bytes": 7,
+      "sha256": "0d9112df8939c9bcb2617a35b3e4832801f01dde2b5c4f1facafe5fe3455914a"
+    },
+    {
+      "name": "Relations.Allied",
+      "image": "game",
+      "rva": "0x2983170",
+      "bytes": 29,
+      "sha256": "e1d11cc3557f22c0a0a802db50ff8d093a5c2263f8ebeebc78e66c67c7cdd930"
+    },
+    {
+      "name": "Relations.PermanentAlliance",
+      "image": "game",
+      "rva": "0x2983880",
+      "bytes": 19,
+      "sha256": "3b42ffaa892380c62ff71a5ac07314317daba0c868eccc134ec56865e44c2901"
+    },
+    {
+      "name": "Relations.War",
+      "image": "game",
+      "rva": "0x2983ba0",
+      "bytes": 31,
+      "sha256": "7feb0befd035aa90f70df5bdfcc528ef2cf2ea7ae223e19d1e1a93f5fcfb5661"
+    },
+    {
+      "name": "Relations.WarLookup",
+      "image": "game",
+      "rva": "0x29885d0",
+      "bytes": 52,
+      "sha256": "4bd31b9475fc8fc65094489a8177b41a9f320506e9f8e1e302934d106e44d2e3"
+    },
+    {
+      "name": "Relations.AllianceLookup",
+      "image": "game",
+      "rva": "0x2988430",
+      "bytes": 52,
+      "sha256": "92d4b63c6a44203d6f303f043f2d2298f6a33478b9d9889f344de5d73d0cd487"
+    },
+    {
+      "name": "Relations.BoolLookup",
+      "image": "game",
+      "rva": "0x2988140",
+      "bytes": 52,
+      "sha256": "654c5680e4f10a6e298c5a7dd4ce8c914dd18f45115ca35f5af36c6f46ef7b44"
+    },
+    {
+      "name": "Plot.CityAttributes",
+      "image": "game",
+      "rva": "0x2bca780",
+      "bytes": 12,
+      "sha256": "e1a598f85f49a28e29144ddf86739e2601b0294590320845586249ce08532b8a"
+    },
+    {
+      "name": "Plot.HasCityAttributes",
+      "image": "game",
+      "rva": "0x2bca7b0",
+      "bytes": 9,
+      "sha256": "465525d3e6485a0fa870265793fdd0e49577850a4fb46c4514eb2bb42fd126d2"
+    },
+    {
+      "name": "CityAttributes.Get",
+      "image": "game",
+      "rva": "0x2a42500",
+      "bytes": 50,
+      "sha256": "d9b066e28f35789167afe32cdf72cfc7287e0678e5b4f1f5324427a3260b862d"
+    },
+    {
+      "name": "CityAttributes.SparseIndex",
+      "image": "game",
+      "rva": "0x27bb7c0",
+      "bytes": 11,
+      "sha256": "58d254619e5a5128732de0f553b8caf77db1bcd0d080fcb921f4f5f067855f84"
+    },
+    {
+      "name": "CityAttributes.VectorIndex",
+      "image": "game",
+      "rva": "0x27bbba0",
+      "bytes": 19,
+      "sha256": "45e68acdc8f7288c3321b2eb8542ec618f436233928f00054ad5282353e9381f"
+    },
+    {
+      "name": "CityAttributes.DomainValid",
+      "image": "game",
+      "rva": "0x2bc8350",
+      "bytes": 20,
+      "sha256": "aa94b9e935091bc509d768556124eacb14865e3338f42fd71f2db093a7fe8169"
+    },
+    {
+      "name": "CityAttributes.DomainMask",
+      "image": "game",
+      "rva": "0x2bc8370",
+      "bytes": 25,
+      "sha256": "16b028f1d852ff0059b080d174fd3453e30ab797f1984112b533acef3461a6be"
+    },
+    {
+      "name": "District.Resolve",
+      "image": "game",
+      "rva": "0x286e0b0",
+      "bytes": 93,
+      "sha256": "c1691db37b45fa3441151d0fc7494058a260d898fcba8ac052721df8728f27f2"
+    },
+    {
+      "name": "District.At",
+      "image": "game",
+      "rva": "0x286e150",
+      "bytes": 113,
+      "sha256": "fece5e2ccd95f7ce4353ef41420067a4aafdb4ae2830062bafa615fa44df778e"
+    },
+    {
+      "name": "District.PlayerFind",
+      "image": "game",
+      "rva": "0x2ae12e0",
+      "bytes": 12,
+      "sha256": "a460913eb67325a8287de3200d8f7ffbafa73204508ea8b9e7ee045a2d34d50f"
+    },
+    {
+      "name": "District.ContainerFind",
+      "image": "game",
+      "rva": "0x2ae4290",
+      "bytes": 84,
+      "sha256": "851cd5df1a54fadad43fca32535d1e082d5159169247e367345f165b5a4c4419"
+    },
+    {
+      "name": "District.BaseDefense",
+      "image": "game",
+      "rva": "0x291f950",
+      "bytes": 268,
+      "sha256": "ca00bd8dacfc609c304e95d3482b349207894b5441b03f6c9dd7d01c81c9b309"
+    },
+    {
+      "name": "District.Defensible",
+      "image": "game",
+      "rva": "0x291f660",
+      "bytes": 70,
+      "sha256": "466aa0ea4bc6b2126926f5afeaeece8fc907a82e4b7012794c559bdc8d5c8176"
+    },
+    {
+      "name": "District.CityCenter",
+      "image": "game",
+      "rva": "0x291e6a0",
+      "bytes": 67,
+      "sha256": "4471cb9e59c15ac21445e1181b674232bf6777a1939204d8d49a28ee03109353"
+    },
+    {
+      "name": "District.MaxDamage",
+      "image": "game",
+      "rva": "0x291f6b0",
+      "bytes": 162,
+      "sha256": "51e4408ed22d459c5bcedbff4dae863b4b6f53faf212c5dead45ee8b6b892a42"
+    },
+    {
+      "name": "District.Complete",
+      "image": "game",
+      "rva": "0x1fe24b0",
+      "bytes": 7,
+      "sha256": "04de6938c59bb5009eaa15a67bf3dad4db82acf731c120a7b6fb5ba3ce334419"
+    },
+    {
+      "name": "District.Pillaged",
+      "image": "game",
+      "rva": "0x291eb20",
+      "bytes": 7,
+      "sha256": "d2e1e923f91a89ab76f04f17b4cc251b878d300e218ad876b1b9770fc9f26a17"
+    },
+    {
+      "name": "GameCore::Combat::Manager::IsUnitVisible(GameCore::PlayerTypes, GameCore::Unit::Instance const*, unsigned int)",
+      "image": "game",
+      "rva": "0x28cecc0",
+      "bytes": 259,
+      "sha256": "cb02678c88bda93799c3e35560e04abaaf3e2b7303e0372fa2cfa4ccf11f78fd"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetLocationLayer() const",
+      "image": "game",
+      "rva": "0x2c1c790",
+      "bytes": 136,
+      "sha256": "e45e60d49000512d47997c7d10c6eaaa573ad63882c6d3955f98b94c5c0e9efe"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetUnits(GameCore::PlotCoord const&, unsigned int) const",
+      "image": "game",
+      "rva": "0x213d060",
+      "bytes": 16,
+      "sha256": "3ddf6e242b78b07d414c3bdd8d3a8b4996f47c9e36fb1d4cd409b777313eae9f"
+    },
+    {
+      "name": "GameCore::Unit::CManager::EditUnit(GameCore::Player::ComponentID const&)",
+      "image": "game",
+      "rva": "0x2c15870",
+      "bytes": 93,
+      "sha256": "3f84b7fce94637f07984aea26f83cc8ffe20ef8418983603b43a8dbcd040585d"
+    },
+    {
+      "name": "GameCore::Context::Globals::GetPlayerVisibility(GameCore::PlayerTypes)",
+      "image": "game",
+      "rva": "0x290b9b0",
+      "bytes": 20,
+      "sha256": "999aed03c31a8e440f1108836a04103f0e22b8e4b190c1237d7eb5b7cca0b3c1"
+    },
+    {
+      "name": "GameCore::Unit::CombatModifiers::CanBypassCombatUnits() const",
+      "image": "game",
+      "rva": "0x28e04e0",
+      "bytes": 4,
+      "sha256": "eaadc2e89026be8cb470ff124a4552261005b7825ea7240f030576828b189d29"
+    },
+    {
+      "name": "GameCore::Unit::CInstance::IsDelayedDeath() const",
+      "image": "game",
+      "rva": "0x2004610",
+      "bytes": 7,
+      "sha256": "de39d18aef461f4a12fa7245f72e2ac4d148e47ec1e6b9dda49c15036b7dc5c4"
+    },
+    {
+      "name": "GameCore::Unit::Instance::GetReligion() const",
+      "image": "game",
+      "rva": "0x20e0900",
+      "bytes": 8,
+      "sha256": "f8dae205409553f7d655afdd41f906ae5b9ce28189bc647f85a8ae99062aab0f"
+    },
+    {
+      "name": "GameCore::Unit::Religion::GetReligiousStrength() const",
+      "image": "game",
+      "rva": "0x213ce90",
+      "bytes": 4,
+      "sha256": "4628fb538250bfc88b327da2acefeb54924dfb050ac98dcea105347fb07d6367"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetLocation() const",
+      "image": "game",
+      "rva": "0x2004620",
+      "bytes": 8,
+      "sha256": "61b33a4e80d42ad12d675e3ed3406e3a8ba8dbe8c05d5d1536e26f429cb7203f"
+    },
+    {
+      "name": "GameCore::PlotCoord::PlotCoord(GameCore::PlotCoord const&)",
+      "image": "game",
+      "rva": "0x1fe4d10",
+      "bytes": 12,
+      "sha256": "b213dbc80a85b61f5b724eb0d51605c414734f6c92c236da2bdcf40b43af3f05"
+    },
+    {
+      "name": "GameCore::PlotCoord::IsValid() const",
+      "image": "game",
+      "rva": "0x1fe2340",
+      "bytes": 22,
+      "sha256": "8aa1013da5016cf18bf96ce8be0b0c3b75c0e03c3681e9ea9349e97db360631f"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetOwner() const",
+      "image": "game",
+      "rva": "0x2004670",
+      "bytes": 7,
+      "sha256": "189fcf2dedb49f72260462d7135b85f6b2ee4f66daf2924b7e6167a33f461382"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetDefinition() const",
+      "image": "game",
+      "rva": "0x20037c0",
+      "bytes": 8,
+      "sha256": "35da7d0536cc9e6f0aab7895aa188cb81cf78155f8002f7c268df4052120f8f3"
+    },
+    {
+      "name": "GameCore::Definition::Unit::IsTeamVisibility() const",
+      "image": "game",
+      "rva": "0x27f5320",
+      "bytes": 12,
+      "sha256": "469702f6c55c2c42af2557ba58e9240543239dc1348521fb0a3e4cc270141175"
+    },
+    {
+      "name": "GameCore::Map::GetInstance()",
+      "image": "game",
+      "rva": "0x2a474d0",
+      "bytes": 8,
+      "sha256": "68847c41d9d77afebbecb6ec8ec11fa5b801320f1dd7fa58a249fa22cb94d681"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetComponentID() const",
+      "image": "game",
+      "rva": "0x20e82e0",
+      "bytes": 26,
+      "sha256": "4dd57984270bbcfbc8ea3273d4dce7454e1a80b27cc975a263084961359155b2"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetUnitLayerID(GameCore::Player::ComponentID const&, int, int) const",
+      "image": "game",
+      "rva": "0x2a4e990",
+      "bytes": 160,
+      "sha256": "0c6978a4a1b77b224a8d03d274849472ae7129181c30dfbfd74325d375b20e21"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetUnits(int, int, unsigned int) const",
+      "image": "game",
+      "rva": "0x2a4e6c0",
+      "bytes": 118,
+      "sha256": "032dbeb462279ba6d24b0cf9eab171f396017aa6a403814b73cdaf74ec5e9011"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::IsValid() const",
+      "image": "game",
+      "rva": "0x208e9e0",
+      "bytes": 21,
+      "sha256": "6b7ab1333e17d6c73ef1445fc18db84c1ff4ecc644a31115c46534e071f1d771"
+    },
+    {
+      "name": "GameCore::Player::Manager::Edit()",
+      "image": "game",
+      "rva": "0x2b53290",
+      "bytes": 8,
+      "sha256": "2d87a19f581ba6bcba5e05e0ecc51c4a06bcb1db2f1ebdc534b97804370939e4"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::GetPlayer() const",
+      "image": "game",
+      "rva": "0x1fd0e30",
+      "bytes": 4,
+      "sha256": "eea57f4eeb9f601ec3b1154cc785380880eae152e709e8156a9039bd8e939aa9"
+    },
+    {
+      "name": "GameCore::Player::Manager::EditValidPlayer(GameCore::PlayerTypes)",
+      "image": "game",
+      "rva": "0x2427d30",
+      "bytes": 39,
+      "sha256": "c7894f0eb3f037c2de1b91e201b10cb06dd6bc17ab94833959c3f22729218007"
+    },
+    {
+      "name": "GameCore::Player::Instance::GetUnits() const",
+      "image": "game",
+      "rva": "0x1fccc70",
+      "bytes": 8,
+      "sha256": "881c20b86cb02a6b25219fefe1ac158db460204e9e4bc34be216221471420a51"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::GetID() const",
+      "image": "game",
+      "rva": "0x1fd1080",
+      "bytes": 4,
+      "sha256": "4703e829cd2c504bae1968b685216f9f191e08f6e2e2a6f3be0a737a92c43721"
+    },
+    {
+      "name": "GameCore::Player::Units::Find(unsigned int) const",
+      "image": "game",
+      "rva": "0x2ba5580",
+      "bytes": 12,
+      "sha256": "d198a658e55262febda648055233f9b1d2069441377f889fb95313bd318f7091"
+    },
+    {
+      "name": "GameCore::Context::Globals::GetMap()",
+      "image": "game",
+      "rva": "0x290b8a0",
+      "bytes": 16,
+      "sha256": "f9cc044c211daf36f0dded8b1f757467b802002036f72bcadb87134ff66be7a8"
+    },
+    {
+      "name": "GameCore::Map::Instance::GetPlayerVisibility(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2a48740",
+      "bytes": 15,
+      "sha256": "a4b57eb480e58cbe317fd9fc0ae18be99ba36c4ba8c55fa5e55d56b6ade6bfb0"
+    },
+    {
+      "name": "GameCore::TPlotCoord2<int>::TPlotCoord2(int, int)",
+      "image": "game",
+      "rva": "0x1fcda00",
+      "bytes": 6,
+      "sha256": "0e446b8c0d57bbdbb861e488c14603c4a0730b95d656bfa1a9a96f39d9c79904"
+    },
+    {
+      "name": "GameCore::Player::UnitID::UnitID(GameCore::PlayerTypes, unsigned int)",
+      "image": "game",
+      "rva": "0x20bcfc0",
+      "bytes": 10,
+      "sha256": "d5e35bf64814cd22ffa58215a152329f4f4647676e2d5f856506b87e5dee4af5"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::begin() const",
+      "image": "game",
+      "rva": "0x2a4ec50",
+      "bytes": 5,
+      "sha256": "f69d3862cb41ad0108c40c2f55d2ccb5db826864ea167b5778b50a41905ebffd"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::end() const",
+      "image": "game",
+      "rva": "0x2a4ec60",
+      "bytes": 21,
+      "sha256": "76fc0bc489e66558290a53c71c1f2fb05d3bcbb78771ec458b56fd89aaedbc1c"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGridEntry::GetGrid() const",
+      "image": "game",
+      "rva": "0x27c4550",
+      "bytes": 5,
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGrid::Contains(GameCore::Player::ComponentID const&, int, int) const",
+      "image": "game",
+      "rva": "0x2a4e170",
+      "bytes": 43,
+      "sha256": "e15baf01568fcf6d53511fc1d01e9c1ca52e273524ec165ec9d94867264aabfc"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetLayerIndexID(int) const",
+      "image": "game",
+      "rva": "0x2a4e5b0",
+      "bytes": 65,
+      "sha256": "c7baec6a5ab030c89ecb7ed9df95adfac5ad273493aa8b4afe252e31f69703bc"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGrid::Get(int, int) const",
+      "image": "game",
+      "rva": "0x2a4e030",
+      "bytes": 10,
+      "sha256": "090091f5ddac7731eb9caa0e9085d7ca6803d830485fdb29067eeea22366ed40"
+    },
+    {
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2004fc0",
+      "bytes": 51,
+      "sha256": "31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038"
+    },
+    {
+      "name": "RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::Find(unsigned int) const",
+      "image": "game",
+      "rva": "0x2baa650",
+      "bytes": 84,
+      "sha256": "23187b5ffe8639ccf9e9f356f40d40c171a4e81ef1d4488b412aa1262744a899"
+    },
+    {
+      "name": "GameCore::Context::Globals::GetGame()",
+      "image": "game",
+      "rva": "0x1fcc320",
+      "bytes": 11,
+      "sha256": "440d8ec0711321eeaafb3479cabd65b277a965561733cb61087722b09b561205"
+    },
+    {
+      "name": "GameCore::Game::Instance::GetMap()",
+      "image": "game",
+      "rva": "0x1fe2220",
+      "bytes": 8,
+      "sha256": "60f333d9f21930ce93b03ef00947904c289d6d58010da000d11efa92c55ef289"
+    },
+    {
+      "name": "GameCore::Map::Player::Visibility::Manager::GetVisibility(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2bc18c0",
+      "bytes": 66,
+      "sha256": "26ab66b819e2442996e7a8229cfe986ce58b596267cbbbd1377b7432df46705f"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::ComponentID(GameCore::PlayerTypes, unsigned int, GameCore::Player::ComponentID::Type)",
+      "image": "game",
+      "rva": "0x1fe4710",
+      "bytes": 11,
+      "sha256": "cb4c434e7692669068d42f77251a91039bc80797654608f3bdbd62f534f7478f"
+    },
+    {
+      "name": "Types::ptr64<GameCore::Map::SparseComponentIDGridEntry>::operator GameCore::Map::SparseComponentIDGridEntry*() const",
+      "image": "game",
+      "rva": "0x27c45f0",
+      "bytes": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "GameCore::Map::ComponentIDFixedVector::Find(GameCore::Player::ComponentID const&) const",
+      "image": "game",
+      "rva": "0x2a4ede0",
+      "bytes": 77,
+      "sha256": "7c24aa478239b5cc0dd1cfc85c19584d754c3e16c6857a442e8744aa2977e94f"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+      "image": "game",
+      "rva": "0x2a4ec40",
+      "bytes": 4,
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::operator[](unsigned long) const",
+      "image": "game",
+      "rva": "0x2a4efe0",
+      "bytes": 18,
+      "sha256": "d1ca49f2892bd567de76e47f45a2e92141b5e5249517077a28769ffaf7c347b7"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGridEntry::GetID() const",
+      "image": "game",
+      "rva": "0x2a4ec80",
+      "bytes": 3,
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGrid::Get(unsigned int) const",
+      "image": "game",
+      "rva": "0x2a4e010",
+      "bytes": 24,
+      "sha256": "fc2a2c196cfb04ed6165cab3f5aefff32ed0224cdee525fea1ff6154ad47f47e"
+    },
+    {
+      "name": "GameCore::Player::Manager::IsValidRange(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2005000",
+      "bytes": 7,
+      "sha256": "1bda6fddb3180619888eb42cbb75a05d0877b5498c502ebb72ec289b4e0ba7a1"
+    },
+    {
+      "name": "eastl::vector<int, eastl::fixed_vector_allocator<4ul, 65ul, 4ul, 0ul, true, eastl::allocator> >::operator[](unsigned int) const",
+      "image": "game",
+      "rva": "0x2005010",
+      "bytes": 10,
+      "sha256": "48c12c9fd19f4c5e8d91d38427f3559a3d4ddf082db8166c368193439b627a63"
+    },
+    {
+      "name": "eastl::vector<RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::BlockHeader*, eastl::allocator>::size() const",
+      "image": "game",
+      "rva": "0x20bd180",
+      "bytes": 12,
+      "sha256": "8375e78d364001210bb02186b4a5388e8e09554d7905f614c75f29f2692f7228"
+    },
+    {
+      "name": "eastl::vector<RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::BlockHeader*, eastl::allocator>::operator[](unsigned int) const",
+      "image": "game",
+      "rva": "0x20bd190",
+      "bytes": 10,
+      "sha256": "a21856896b0de6639267126f1fbdba85430b87d5a32a2dafd3b5b94e381f24cf"
+    },
+    {
+      "name": "Types::Vector<GameCore::Player::ComponentID, Types::LinearAlloc::DefaultInline<GameCore::Player::ComponentID, 8u, 1u, 51u> >::begin() const",
+      "image": "game",
+      "rva": "0x2167950",
+      "bytes": 9,
+      "sha256": "85541dbeab7af4da9dfb001f9e45869cd2f1346a7374ee52eb993f46393a79d3"
+    },
+    {
+      "name": "Types::Vector<GameCore::Player::ComponentID, Types::LinearAlloc::DefaultInline<GameCore::Player::ComponentID, 8u, 1u, 51u> >::end() const",
+      "image": "game",
+      "rva": "0x2167960",
+      "bytes": 22,
+      "sha256": "9d32072ac170d9069ad5fcdd29ded79598bfc879666cacae8f6222d117c10415"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::operator==(GameCore::Player::ComponentID const&) const",
+      "image": "game",
+      "rva": "0x2006720",
+      "bytes": 34,
+      "sha256": "565a5536704f1c2eda96270c96177cd8dea251e96a1c60e185c70c2ab5c49f80"
+    },
+    {
+      "name": "Types::ptr64<GameCore::Player::ComponentID>::operator GameCore::Player::ComponentID*() const",
+      "image": "game",
+      "rva": "0x21685d0",
+      "bytes": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "GameCore::Unit::Instance::IsKindOf(unsigned int) const",
+      "image": "game",
+      "rva": "0x2c26a90",
+      "bytes": 6,
+      "sha256": "1841c462c002d4015f18698e6f708f340efad3bbe9db6d6aae6823b5f7bd6793"
+    },
+    {
+      "name": "GameCore::Map::Instance::GetUnits() const",
+      "image": "game",
+      "rva": "0x2a48750",
+      "bytes": 8,
+      "sha256": "1616e363aa6cd3367e0deef5507cdde0dcbbe5998fc4a5f1c90146ad80a46b60"
     },
     {
       "name": "TypedMap.Ctor",
@@ -774,6 +1418,14 @@
       "raw_hex": "3275d511",
       "sha256": "4f3b8b968db108cec0d53fe9a13ea43daa363085d0647c48e71cc61c6a3f85e8"
     },
+    "m_eOriginalOwner": {
+      "range": [
+        5052695,
+        5052699
+      ],
+      "raw_hex": "00000000",
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
     "m_bIsLevied": {
       "range": [
         5052699,
@@ -789,6 +1441,14 @@
       ],
       "raw_hex": "00010000",
       "sha256": "bf5e8ffa51a9e748985800c1d3d7f1a2a6ae7435136593ca8d9637e3f87c699c"
+    },
+    "m_iBarbarianTribeIndex": {
+      "range": [
+        5052757,
+        5052761
+      ],
+      "raw_hex": "ffffffff",
+      "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e"
     },
     "m_bNeedsAttention": {
       "range": [
@@ -807,6 +1467,51 @@
       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
     }
   },
+  "observed_readiness_prefix": {
+    "configuration_sha256": "dff58116edc7f77ccfa668279bf70864083ccafb9f96dede2715fc9164fc2c44",
+    "failure_sha256": "d1d66d0f424ede70d14506dcc6e6ab9d06c5f02fd989996275b932ef8f785765",
+    "observations_sha256": "f035d0200018fd40197bf2fa2e745804713e667e98034a42a37d7c6da816c307",
+    "complete_action": false,
+    "coherent_poststate": false,
+    "native_cleanup_proven": false,
+    "observer_failure": "monitor-entry vector decoder rejected header; no completed monitor interval",
+    "readiness_hit_count": 32,
+    "readiness_capped": true,
+    "selected_call": {
+      "sequence": 2,
+      "owner": 0,
+      "id": 15794187,
+      "unit": "0x44eae520",
+      "location": [
+        81,
+        58
+      ],
+      "activity": "0x6b25012e",
+      "queue_size": 0,
+      "needs_attention": 0,
+      "actual_return_al": 1,
+      "required_call_chain_seen": true,
+      "trace_phase": 5
+    },
+    "fallback_skip_basis": "Captured AL1 followed by exact next conditional; no separate post-jump observation",
+    "scope": "Only this captured call; capped prefix is not a complete callback or action census"
+  },
+  "placement_query_effects": {
+    "native_unit_and_xp2_map_bindings_pinned": true,
+    "defender_context": {
+      "specific_owner": -1,
+      "viewer": "actual Unit owner",
+      "attacker": "actual Unit",
+      "flags": 264
+    },
+    "visibility": "0x100 skips ordinary/hidden/layer visibility; require valid coordinate/definition and TeamVisibility owner match",
+    "container": "Scan existing layer/cell vectors; absent layer/cell uses existing fallback, resolve existing Unit/district pointers; no insertion",
+    "diplomacy": "Existing blocked-entry vector, open-borders array, alliance/permanent/war symmetric relationship reads; no diplomatic mutation",
+    "embark": "Existing Unit pass vector and tech/civic definition iteration with already-owned prerequisite flags; no unlock mutation",
+    "district": "Definition hitpoints, existing strength statistics and fixedpoint caller-stack results; native city-attribute sparse lookup returns existing index or0",
+    "source_write_reporting_rng_or_lazy_insert_found": false,
+    "excluded": "Empty custom callback, null output PlotCoord and alternate search gated out; initial originalOwner0/tribe-1 constrain captured actor but per-callback values not all read"
+  },
   "readiness": {
     "automate": "CanMove && !HasPendingOperations",
     "select": "IsReadyToMove && !IsAutomated && !CanCyclePast",
@@ -822,8 +1527,8 @@
     },
     "adjacency_alternate_search_reachable": false,
     "hold_cycling": "Registered definition IsHoldCycling filter, then full manager CanStart with testVisible=false and output map",
-    "actual_adjacent_result_captured": false,
-    "actual_hold_cycling_reachability_proven": false
+    "actual_adjacent_result_captured": true,
+    "actual_hold_cycling_reachability_proven": "Skipped for one captured old-empty AWAKE call; not a complete callback census"
   },
   "focused_readiness_checkpoint": {
     "rva": "0x2c28137",
@@ -840,8 +1545,8 @@
     "true_branch": "Skip both HoldCycling fallbacks; CanCyclePast=false"
   },
   "unresolved": [
-    "Actual HasAdjacentMove result and fallback HoldCycling CanStart/script/subtype effects",
-    "Placement visibility/diplomacy/container full transitive closure and actual outcomes; strength comparator itself closed",
+    "HoldCycling CanStart/script/subtype effects remain for unobserved branches; excluded only for captured AL1 old-empty AWAKE call",
+    "Actual neighbor/candidate and intermediate query results not captured; native Placement query paths reviewed as read-only",
     "Per-callback property-map contents; before/after serialized properties are empty but intermediate maps were not captured",
     "Snapshot computed values, output node keys, allocator/peak state and complete queued cache entries"
   ],
@@ -852,5 +1557,5 @@
   "rust_live_action_admitted": false,
   "gameplay_parity": false,
   "historical_raw_save_load_failure_bytes": 89198,
-  "limits": "Exact target callback/cache output and query branches, not complete gameplay support. Static absence of direct stores/RNG in inspected bodies is not proof of complete transitive purity. Actual cache state and readiness branch still require evidence; no AI/planning-only exclusion, byte masking, native run or project mutation."
+  "limits": "Exact target callback/cache output and query branches, not complete gameplay support. Static absence of direct stores/RNG in inspected bodies is not proof of complete transitive purity. Actual cache state and uncaptured readiness branches still require evidence; no AI/planning-only exclusion, byte masking, native run or project mutation."
 }
