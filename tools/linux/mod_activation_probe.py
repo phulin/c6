@@ -56,6 +56,8 @@ def main():
     parser.add_argument('--operation-registry',action='store_true')
     parser.add_argument('--combat-kernel-input',type=Path)
     parser.add_argument('--combat-kernel-output',type=Path)
+    for label in ('input','output','control-save','post-save'):
+        parser.add_argument('--combat-random-'+label,type=Path)
     parser.add_argument('--save-normalization-trace',type=Path)
     parser.add_argument('--request-load-save',type=Path)
     parser.add_argument('--game-save-output',type=Path)
@@ -100,6 +102,21 @@ def main():
         if not combat_input.is_file():parser.error('combat input file is missing')
         if combat_output.exists() or not combat_output.parent.is_dir() or not combat_output.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('combat output must be a new private c6-ghidra file in an existing directory')
+    random_input=args.combat_random_input.resolve() if args.combat_random_input else None
+    random_paths={}
+    if random_input:
+        if not game_input or any((action_mode,core_mode,combat_input,args.game_load_observe,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('random damage requires a separate loaded Core fixture without other diagnostic modes')
+        if not random_input.is_file():parser.error('random damage input is missing')
+        for label in ('output','control_save','post_save'):
+            path=getattr(args,'combat_random_'+label)
+            if path is None:parser.error('random damage requires output, control-save and post-save paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('random damage artifacts must be new private files')
+            random_paths[label]=path
+        if len(set(random_paths.values()))!=3:parser.error('random damage artifact paths must be distinct')
+    elif any((args.combat_random_output,args.combat_random_control_save,args.combat_random_post_save)):
+        parser.error('random damage output paths require its input')
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -174,6 +191,7 @@ def main():
         if game_outputs['save']==game_outputs['repeat']:parser.error('game save outputs must be distinct')
         if set(game_outputs.values())&set(action_snapshots.values()):parser.error('action snapshots and outer game Saves must be distinct')
         if combat_output in game_outputs.values():parser.error('combat output and game Saves must be distinct')
+        if set(random_paths.values())&set(game_outputs.values()):parser.error('random damage and outer Save paths must be distinct')
         if set(core_paths.values())&set(game_outputs.values()):parser.error('Core component and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
@@ -279,6 +297,20 @@ def main():
             contracts=audit(assets/'libGameCore_XP2.so',Path(temporary))
         if contracts!=json.loads(combat_audit_paths[-2].read_text()):raise SystemExit('combat original contracts differ')
         combat_profile={'input_sha256':manifest['input_sha256'],'input_bytes':manifest['input_bytes'],'case_count':manifest['case_count'],'use_average':True,'contract':contracts}
+    random_profile=None
+    random_audit_paths=[]
+    if random_input:
+        from combat_random_audit import audit as random_audit
+        random_audit_paths=[ROOT/'tools/linux/combat_random_audit.py',ROOT/'evidence/linux/combat-random-contracts.json',ROOT/'evidence/linux/combat-random-input.json']
+        random_manifest=json.loads(random_audit_paths[-1].read_text())
+        if random_manifest['schema']!='c6-linux-random-damage-input-v1' or random_manifest['use_average'] is not False or digest(random_input)!=random_manifest['input_sha256'] or random_input.stat().st_size!=random_manifest['input_bytes']:
+            raise SystemExit('random damage input manifest mismatch')
+        for name,sha in random_manifest['source_sha256'].items():
+            if digest(ROOT/name)!=sha:raise SystemExit('random damage source identity mismatch: '+name)
+        with tempfile.TemporaryDirectory(prefix='combat-random-audit-',dir=ROOT.parent/'c6-ghidra/evidence') as temporary:
+            random_contract=random_audit(assets/'libGameCore_XP2.so',assets/'Civ6',Path(temporary))
+        if random_contract!=json.loads(random_audit_paths[-2].read_text()):raise SystemExit('random damage native contracts differ')
+        random_profile={'input_sha256':random_manifest['input_sha256'],'input_bytes':random_manifest['input_bytes'],'case_count':random_manifest['case_count'],'use_average':False,'contract':random_contract}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
@@ -342,6 +374,7 @@ def main():
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
     combat_sources=[ROOT/'native/linux/combat_kernel.c'] if combat_input else []
+    random_sources=[ROOT/'native/linux/combat_random.c'] if random_input else []
     core_sources=[ROOT/'native/linux/core_component.c'] if core_mode else []
     configuration_sources=[]
     if args.saved_configuration:
@@ -381,6 +414,7 @@ def main():
               'lower_core_unit_definition_registry_observer':unit_definition_audit,
               'lower_core_operation_registry_observer':operation_registry_audit,
               'lower_core_average_damage_kernel':combat_profile,
+              'lower_core_random_damage_kernel':random_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -416,6 +450,8 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*operation_registry_sources,ROOT/'native/linux/operation_registry.h']})
     if combat_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*combat_sources,ROOT/'native/linux/combat_kernel.h']})
+    if random_sources:
+        identity['sources'].update({name:digest(ROOT/name) for name in random_manifest['source_sha256']})
     if core_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
@@ -426,14 +462,14 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*core_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     archived_preload=None
     if core_mode:
@@ -478,6 +514,7 @@ def main():
         if args.unit_definition_ids:env['C6_UNIT_DEFINITION_IDS']='1'
         if args.operation_registry:env['C6_OPERATION_REGISTRY']='1'
         if combat_input:env.update(C6_COMBAT_KERNEL_INPUT=str(combat_input),C6_COMBAT_KERNEL_OUTPUT=str(combat_output))
+        if random_input:env.update(C6_COMBAT_RANDOM_INPUT=str(random_input),C6_COMBAT_RANDOM_OUTPUT=str(random_paths['output']),C6_COMBAT_RANDOM_CONTROL_SAVE=str(random_paths['control_save']),C6_COMBAT_RANDOM_POST_SAVE=str(random_paths['post_save']))
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
@@ -539,6 +576,16 @@ def main():
                 artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
                 if label=='command':report['core_component_command']=artifact
                 else:report['core_component_saves'][label]=artifact
+    report['combat_random_output']=None
+    report['combat_random_saves']={}
+    if random_input:
+        report['execution_paths']['combat_random_input']=str(random_input)
+        report['execution_paths']['combat_random']={k:str(v) for k,v in random_paths.items()}
+        for label,path in random_paths.items():
+            if path.is_file():
+                artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
+                if label=='output':report['combat_random_output']=artifact
+                else:report['combat_random_saves'][label.removesuffix('_save')]=artifact
     report['combat_kernel_output']=None
     if combat_input:
         report['execution_paths'].update(combat_kernel_input=str(combat_input),combat_kernel_output=str(combat_output))

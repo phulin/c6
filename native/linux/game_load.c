@@ -91,6 +91,10 @@ int c6_linux_game_load(void *context) {
             int (*operation_registry)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_operation_registry");
             result=operation_registry?operation_registry(game,context):174;
         }
+        if(!result && getenv("C6_COMBAT_RANDOM_INPUT")) {
+            int (*combat_random)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_combat_random_probe");
+            result=combat_random?combat_random(game,context):182;
+        }
         if(!result && getenv("C6_COMBAT_KERNEL_INPUT")) {
             int (*combat_kernel)(void *)=dlsym(RTLD_DEFAULT,"c6_linux_combat_kernel_probe");
             result=combat_kernel?combat_kernel(game):180;
