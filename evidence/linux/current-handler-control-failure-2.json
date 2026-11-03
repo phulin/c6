@@ -1,0 +1,45 @@
+{
+  "actual_lifecycle_cleanup_marker": "initialized 0 context_bound 0 executing 0 cleanup 1",
+  "client_cleanup_proven": true,
+  "complete_rng_inventory": false,
+  "diagnosis": {
+    "exact_native_failure_subbranch_recorded": false,
+    "necessary_blocker_reproduced": "O_NOFOLLOW rejects actual ASL module symlink with ELOOP40",
+    "new_original_run_for_diagnosis": false,
+    "original_errno_recorded": false
+  },
+  "framework_cleanup_proven": true,
+  "handler_dispatch_or_gameplay_parity": false,
+  "known_rng_bytes": 64,
+  "known_rng_endpoints_equal": true,
+  "missing_outputs": [
+    "facts.jsonl",
+    "facts-repeat.jsonl",
+    "after.bin",
+    "after-repeat.bin",
+    "repeat.bin"
+  ],
+  "native_facts_cases": 0,
+  "no_original_process_remaining_verified": true,
+  "original_returncode": 242,
+  "partial_or_failed_artifacts_preserved": true,
+  "profile_sha256": "94509905930c5991ff0f6d96d0bcf6fd6be8b9b8c5d672bbd38b7a22651616dc",
+  "raw_saves_observed": {
+    "before.bin": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    "control.bin": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    "save.bin": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    }
+  },
+  "runtime_sha256": "a2db7dfe69c7a1010d0b721b58e1f009bdfa974dde71c7c9d7ae2c7e6988909b",
+  "schema": "c6-linux-current-handler-control-failure-v1",
+  "status": "unsupported_pre_output_identity_admission",
+  "unchanged_retry_performed": false
+}
