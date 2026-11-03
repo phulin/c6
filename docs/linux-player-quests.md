@@ -53,3 +53,12 @@ Complete Player loading, Core/world import, exact gameplay state, action
 execution and turns remain unimplemented. Unknown bytes stay unclassified and
 unmasked, including the recorded 89,198-byte raw Save→Load difference. Saved
 wire roundtrip does not establish native Read or gameplay parity.
+
+Validated source commit `a92328e` passes both source tests and all 86 original
+saved records across the two canonical streams, 344 bytes per stream and 688
+bytes total. Every record consumes eight bytes and zero items. Exact caps pass;
+every truncated prefix and seven-byte cap fail. The first observed range is
+`[5,210,110, 5,210,118)` in each stream, solely a validation observation.
+The evidence records the committed archive, source manifest, driver, harness
+and candidate executable identities. Native live serialization and native Read
+remain validation gaps.
