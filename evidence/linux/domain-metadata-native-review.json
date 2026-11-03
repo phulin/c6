@@ -1,0 +1,80 @@
+{
+  "reviewed_commits": [
+    "6c93f31",
+    "42f0c3c",
+    "d090532eab1645e7658b653063d0a10f49ea55a0",
+    "16ce613a467265c1696549e2c00e417c4cf3a8b5",
+    "2daa8b2219089b2f57f43f4dc9f9bf5210b212b4",
+    "100d2945d19f46a146a0e526adf8ce7e335c56a6"
+  ],
+  "accepted_scope": "Static original ABI/receiver/lifetime and immediate-discard source gate for the independently prepared read-only domain metadata capture profile.",
+  "sources": {
+    "native/linux/domain_metadata.c": "20b95d3cb5a847927df07ccd19906630689a7bf8be64a6cd14ed21d14740ec10",
+    "native/linux/domain_metadata.h": "e954cdf72e01384ecd91fb020fcbe29ac8203f6bcfd0221d2718d67bd12a0b5b",
+    "native/linux/domain_metadata_fixture.c": "b84dbece1113898e2ce477bdf1a76f680e2e3ad4bdff32ecb14042072c3ab9b2",
+    "native/linux/domain_metadata_fixture.h": "53791fa66e6c9aed043494dc796f292d2bba3c7cd3ab025a4cd7c4dccd8266fc",
+    "native/linux/action_lifecycle.c": "71ffeb4b2d018cf062df796b812913549ce3a523064ae616d378a9d3fc9f9d9a",
+    "native/linux/action_lifecycle.h": "cf17157a998542b2cece806c4e1ce9bbb83880111712bea572f65fc1ff78f1bf",
+    "native/linux/game_load.c": "0856ef49250b1906d25c29179cd4776f9f906e3e49dbcad067b4dcc76156324f",
+    "tools/linux/mod_activation_probe.py": "a217a5ae11b0bfd4965b7d218701dd4b57ad811da1aac0f7c31d0d9d99e0df2a",
+    "tools/linux/domain_metadata_audit.py": "cdf91384495e7c741ad8c0a5e983713b95001a48978d7488683bc5b8b7de0548",
+    "tools/linux/domain_metadata_fixture_audit.py": "243659acc7525c9375289b962c61d834a5396c8cf83a65e258b517a27da9e6c6",
+    "tools/linux/oracle_admission_cache_audit.py": "af3e8baa111bd36d9d8c5dc6ce047fccd27d2a3777391cce306cc7f860a52414"
+  },
+  "prepared_configuration_sha256": "b08df54fbca7d9a4627836121928010726f40f8ad4d1e5071218ab8b0606ae95",
+  "prepared_preload_sha256": "ab4f17f770cf4b2bd7206bf6e32a411d8c4c8e8e59ce4763e2543c88d646c7ac",
+  "prepared_source_count": 60,
+  "reconstruction_manifest_sha256": "d5af89b8182bfbc0d5a957e26191791a3bcc3128d291b4ed7dac189faad027cd",
+  "reconstruction_candidate_sha256": "eeb2e43481c6fd7898a692a92b73fcb10418e080905ee8482e310df637622c4a",
+  "rust_candidate_correctness_reviewed_here": false,
+  "static_checks": {
+    "exporter_original_methods": 87,
+    "loaded_facade_original_methods": 11,
+    "controller_cache_abi_passed": true,
+    "fixture_projection_passed": true,
+    "legacy_loader_lifecycle_projection_passed": true,
+    "strict_c_and_analyzer_passed": true,
+    "python_compile_passed": true,
+    "mutually_exclusive_cli_refused": true
+  },
+  "offline_mutable_guard_test": {
+    "source_sha256": "b84dbece1113898e2ce477bdf1a76f680e2e3ad4bdff32ecb14042072c3ab9b2",
+    "cases": 8,
+    "native_game_execution": false,
+    "all_passed": true
+  },
+  "guard_test_script_sha256": "13c630b135c6965ebd694e3350662c19a519bf6f2cbeb0067495986aa12b65fc",
+  "resolved_findings": [
+    {
+      "issue": "At query alone did not establish actual collection-index or duplicate/direct-index Find behavior.",
+      "fixed_commit": "42f0c3c",
+      "resolution": "Original GetCollectionIndex and Find(hash/query) results are exported; same-context Terrain included."
+    },
+    {
+      "issue": "Initial domain guard released facade and reread state after detecting work.",
+      "fixed_commit": "2daa8b2",
+      "resolution": "Domain-only immediate fatal before facade release/postreads; eight offline cases pass."
+    }
+  ],
+  "unresolved_source_findings": [],
+  "native_execution_performed": false,
+  "native_purity_proven": false,
+  "native_comparison_passed": false,
+  "expected_plot_outputs_may_be_inputs": false,
+  "complete_state_actions_turns": false,
+  "complete_rng_inventory": false,
+  "admission_conditions": [
+    "Use the exact reviewed prepared configuration/preload and root-authorized separate capture.",
+    "Preserve full module/host/dependency/input/rules/configuration/helper/candidate provenance.",
+    "Unknown/live state must exit before any subsequent observations/save/teardown.",
+    "Validate status/counts and retain every raw save/RNG/policy/cleanup control without masking.",
+    "Keep expected plot getters/masks separate from reconstruction inputs.",
+    "Treat absent owned attributes separately from default getter masks; unsupported comparisons remain explicit."
+  ],
+  "limitations": [
+    "No original execution or dynamic purity evidence was produced.",
+    "Two known RNG objects and save controls are not a complete live state/RNG inventory.",
+    "The independent frozen Rust reconstruction review is separate.",
+    "The 89,198-byte raw Save/Load failure remains unmasked."
+  ]
+}
