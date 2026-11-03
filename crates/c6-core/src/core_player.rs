@@ -1,5 +1,6 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Units.
-//! Stops before unframed Eras; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete Eras.
+//! Stops before unframed Trade; this is not a Player/world/gameplay importer.
+use crate::player_eras;
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
@@ -31,6 +32,7 @@ pub enum Error {
     Techs(player_techs::Error),
     Treasury(player_treasury::Error),
     Units(player_units::Error),
+    Eras(player_eras::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -118,13 +120,14 @@ pub struct FirstPlayer {
     pub techs: player_techs::Techs,
     pub treasury: player_treasury::Treasury,
     pub units: player_units::Units,
+    pub eras: player_eras::Eras,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerEras,
+    PlayerTrade,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -132,7 +135,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerEras.
+    /// No complete Player entry has been consumed at PlayerTrade.
     pub unfinished_player_entries: u32,
 }
 
@@ -443,6 +446,7 @@ impl Prefix {
                 Error::Treasury,
             )?;
             let units = r.component(player_units::Units::decode_prefix_with_items, Error::Units)?;
+            let eras = r.component(player_eras::Eras::decode_prefix_with_items, Error::Eras)?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -462,10 +466,11 @@ impl Prefix {
                 techs,
                 treasury,
                 units,
+                eras,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerEras
+            Boundary::PlayerTrade
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -1329,6 +1334,7 @@ mod tests {
         out.extend(techs_carrier().encode(Limits::default()).unwrap());
         out.extend(treasury_carrier().encode(Limits::default()).unwrap());
         out.extend(units_carrier().encode(Limits::default()).unwrap());
+        words(&mut out, &[2, 0x80000000, u32::MAX]);
 
         out
     }
@@ -1336,11 +1342,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched Eras");
+        trailing.extend_from_slice(b"untouched Trade");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerEras);
+        assert_eq!(value.boundary, Boundary::PlayerTrade);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1408,6 +1414,18 @@ mod tests {
         assert_eq!(p.units.proposed_promotions.len(), 1);
         assert_eq!(p.units.unit_fuel_demands[0].value, i32::MIN);
         assert_eq!(p.treasury.gold_diplomatic_deals.len(), 1);
+        assert_eq!(p.eras.era_hash, 0x80000000);
+        assert_eq!(p.eras.game_era_hash, u32::MAX);
+        assert_eq!(
+            p.eras
+                .encode_with_items(Limits {
+                    max_bytes: 12,
+                    max_items: 0
+                })
+                .unwrap()
+                .1,
+            0
+        );
         assert_eq!(p.cities.building_build_overrides, [[111, 222], [111, 333]]);
         let exact = Limits {
             max_bytes: n,
@@ -1457,7 +1475,8 @@ mod tests {
             + player.stats.encode(Limits::default()).unwrap().len()
             + player.techs.encode(Limits::default()).unwrap().len()
             + player.treasury.encode(Limits::default()).unwrap().len()
-            + player.units.encode(Limits::default()).unwrap().len();
+            + player.units.encode(Limits::default()).unwrap().len()
+            + player.eras.encode(Limits::default()).unwrap().len();
         let names_start = n - later_bytes - culture.len() - names.len();
         let culture_start = n - later_bytes - culture.len();
         let changed = value.encode_prefix(Limits::default()).unwrap();
@@ -1494,7 +1513,8 @@ mod tests {
         let techs = p.techs.encode(Limits::default()).unwrap();
         let stats = p.stats.encode(Limits::default()).unwrap();
         let after_techs = p.treasury.encode(Limits::default()).unwrap().len()
-            + p.units.encode(Limits::default()).unwrap().len();
+            + p.units.encode(Limits::default()).unwrap().len()
+            + p.eras.encode(Limits::default()).unwrap().len();
         let stats_start = n - after_techs - techs.len() - stats.len();
         // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
         // words, four counted vectors, then the first WriteArray<int,64>.
@@ -1541,7 +1561,7 @@ mod tests {
         let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
         let p = v.first_player.unwrap();
         let units = p.units.encode(Limits::default()).unwrap();
-        let start = n - units.len();
+        let start = n - p.eras.encode(Limits::default()).unwrap().len() - units.len();
         let mut malformed = bytes.clone();
         malformed[start + 4..start + 8].copy_from_slice(&65538u32.to_le_bytes());
         assert!(matches!(
@@ -1583,7 +1603,7 @@ mod tests {
         )
         .unwrap();
         let prefix = &value.player_prefix;
-        assert_eq!(prefix.boundary, Boundary::PlayerEras);
+        assert_eq!(prefix.boundary, Boundary::PlayerTrade);
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
         let post_map = &bytes[value.core.consumed..];
         assert_eq!(encoded, post_map[..encoded.len()]);
@@ -1624,6 +1644,41 @@ mod tests {
             p.units.records.entries.len(),
             prefix.boundary
         );
+    }
+    #[test]
+    fn eras_scalar_tail_requires_current_version_without_item_charge() {
+        let bytes = carrier();
+        let (v, n, items) = Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        let eras = v.first_player.as_ref().unwrap().eras;
+        let (encoded, era_items) = eras
+            .encode_with_items(Limits {
+                max_bytes: 12,
+                max_items: 0,
+            })
+            .unwrap();
+        assert_eq!((encoded.len(), era_items), (12, 0));
+        assert_eq!(
+            player_eras::Eras::decode_prefix_with_items(
+                &encoded,
+                Limits {
+                    max_bytes: 12,
+                    max_items: 0
+                }
+            )
+            .unwrap()
+            .2,
+            0
+        );
+        assert!(items > 0); // whole-prefix one-short item checks never subtract from Era's zero.
+        let mut malformed = bytes;
+        malformed[n - encoded.len()..n - encoded.len() + 4].copy_from_slice(&3u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::Eras(player_eras::Error::Version {
+                expected: 2,
+                actual: 3
+            }))
+        ));
     }
     #[test]
     fn empty_manager_stops_and_preserves_suffix() {
@@ -1928,7 +1983,8 @@ impl Prefix {
         if self.unfinished_player_entries != self.player_count
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
-                (0, None, Boundary::AfterEmptyPlayerManager) | (1.., Some(_), Boundary::PlayerEras)
+                (0, None, Boundary::AfterEmptyPlayerManager)
+                    | (1.., Some(_), Boundary::PlayerTrade)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -2023,6 +2079,7 @@ impl Prefix {
                 player_units::Units::encode_with_items,
                 Error::Units,
             )?;
+            w.component(&p.eras, player_eras::Eras::encode_with_items, Error::Eras)?;
         }
         Ok((w.bytes, w.items))
     }
@@ -2065,7 +2122,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerEras;
+        v.boundary = Boundary::PlayerTrade;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
