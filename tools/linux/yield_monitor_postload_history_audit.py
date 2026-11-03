@@ -149,6 +149,10 @@ def audit(args):
     ]
     for address, target, _ in calls:
         image.call(address, target)
+    for binding in CONTRACT_BINDINGS:
+        target = image.relocated_pointer(int(binding['table'], 16) + 16 + int(binding['slot'], 16))
+        if target != int(binding['target'], 16):
+            raise ValueError('stock contract postload vtable differs: ' + binding['name'])
     if image.read(0x286eb67, 5).hex() != '41807e7000':
         raise ValueError('Citizens force_update_plot_appeal guard differs')
     if image.read(0x201e38b, 3).hex() != 'ff5010':
@@ -158,13 +162,14 @@ def audit(args):
     guards = json.loads(args.guard_report.read_text())
     if guards['source_revision'] != 'a2a8d1a18b677cd8ee905462543b7c8bad94be25':
         raise ValueError('saved-guard fixture source revision differs')
-    return dict(schema='c6-linux-yield-monitor-postload-history-v1', checks_passed=True,
+    return dict(schema='c6-linux-yield-monitor-postload-history-v2', checks_passed=True,
                 original_code_executed=False, gamecore_sha256=GAME_SHA,
                 audit_sha256=sha(Path(__file__)),
                 methods=[dict(name=name, rva=address, bytes=size, sha256=digest)
                          for name, address, size, digest in METHODS],
                 calls=[dict(rva=hex(address), target=hex(target), contract=name)
                        for address, target, name in calls],
+                stock_contract_bindings=CONTRACT_BINDINGS,
                 saved_output_guards=dict(report_sha256=GUARD_REPORT_SHA,
                     source_revision=guards['source_revision'],
                     candidate_sha256=guards['candidate_sha256'],
@@ -175,14 +180,15 @@ def audit(args):
                     global_ai_postload='Single RET; not a namespace exclusion.',
                     behavior_tree='Visits existing trees and rebinds their Control handles; concrete handle initialization skips when pointer already bound.',
                     handle='Unbound postload subscription resolves saved owner/id, releases a NULL pointer and attaches to existing contract. Wider contract lifecycle is separate.',
-                    control_manager='Registers priority callback functions, then invokes each existing Contract virtual+0x10 at201e38b; actual transitive query-input effects remain open.',
+                    control_manager='Registers priority callback functions, then invokes existing Contract virtual+0x10 at201e38b. Six stock tables bind five classes to RET and UnitRequestContract to the concrete creation-signal subscription path.',
+                    unit_request_contract='Guarded postload creates building/unit/district-created function objects and subscribes them if the corresponding stored handle is empty. Concrete Subscribe/EnsureRing/AddBefore allocate/link callback nodes and copy function objects; they do not dispatch the registered creation callback. Callback registrations remain required for future genuine events.',
                     city_buildings='Clears a GreatWorkSlot ID only when nonmissing slot indexes a Game.Culture GreatWork whose type is -1; retained slot identity can change.',
                     city_citizens='If force_update_plot_appeal true, clear it and invoke Rules.Appeal.Update on every nonnull city plot. Cached Plot appeal is a direct query input.',
                     unit_sight='Dead/invalid-location/nonempty-sight guards skip population.21 empty saved-output vectors do not prove21 reachable repairs.',
                     heroes='False force rebuild still rebuilds empty player discovery orders; actual allowed/eligible-class gates precede Game.GetRandNum. Separate owner task retains this gameplay RNG obligation.'),
                 remaining=[
                     'Original a667 Read-input City.Citizens flags and guarded Unit sight fields; ff31 saved output cannot establish pre-clear values.',
-                    'Actual Control contract postload targets and query-input writes/callback effects if reached.',
+                    'Actual runtime contract/callback admission must match the six source-checked stock vtables; arbitrary additional subclasses remain unsupported.',
                     'Known current definition bindings and source guard outcomes for Tech/Culture/Hero postloads; nonempty saved vectors alone are not the Read projection.',
                     'Any later relevant Rules/Barbarian/City destruction/Processor/idle continuation writes or callbacks.'],
                 cache_freshness_history_closed=False,
@@ -202,6 +208,90 @@ def main():
                          saved_output_guards=result['saved_output_guards']['values'],
                          monitor_omission_authorized=False)))
 
+
+METHODS += [('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::BuildingTypes, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::Subscribe(std::__1::function<void '
+  '(GameCore::BuildingTypes, unsigned int)>)',
+  '0x200d9d0',
+  61,
+  '431e1064435a32d0934a9a010fbd904dd2ac738414a5bdd42d09531b8672f747'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::DistrictTypes, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::Subscribe(std::__1::function<void '
+  '(GameCore::DistrictTypes, unsigned int)>)',
+  '0x200db30',
+  61,
+  'bd130c1889a6b9be5c40be35cf676c57fff542525ef5ff70996c1b90040248d9'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::Unit::Instance*, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::Subscribe(std::__1::function<void '
+  '(GameCore::Unit::Instance*, unsigned int)>)',
+  '0x200da80',
+  61,
+  'b84c9f823bbc0f6eda30a4b65b04b8c400e712db439fdf52c9ececfffff28504'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::BuildingTypes, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::EnsureRing()',
+  '0x20148c0',
+  179,
+  '4288aeaf20c760e98593b97e15c0827a96fdd93a76ab63c92f3c04d10358d83a'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::BuildingTypes, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::SignalLink::AddBefore(std::__1::function<void '
+  '(GameCore::BuildingTypes, unsigned int)> const&)',
+  '0x2014980',
+  149,
+  'a7946a8b8beeac15ef1eba4e3d369264989ab4280b4ef5b07d6a5c255b7b4068'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::DistrictTypes, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::EnsureRing()',
+  '0x2014f20',
+  179,
+  'c9692c0f822917463927353abc8e7ba3495c05f1c9bdd88caf2827d4358f74a1'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::DistrictTypes, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::SignalLink::AddBefore(std::__1::function<void '
+  '(GameCore::DistrictTypes, unsigned int)> const&)',
+  '0x2014fe0',
+  149,
+  '7974ca1ea4fbfa79f6081d98cfe2a7178450bc857ebf15198d5dbdc10417df38'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::Unit::Instance*, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::EnsureRing()',
+  '0x2014bf0',
+  179,
+  'c5750fec472ec5f65c976a72875536c984f45ac0700a0fd6cbdd596fe5539227'),
+ ('GameCore::Message::SignalBase::ProtoSignal<void (GameCore::Unit::Instance*, unsigned int), '
+  'GameCore::Message::SignalBase::CollectorDefault<void> >::SignalLink::AddBefore(std::__1::function<void '
+  '(GameCore::Unit::Instance*, unsigned int)> const&)',
+  '0x2014cb0',
+  149,
+  '8bc0d4cca77d6525a2c98fce0133789c269dd18b4644a83578d2ec6bd7f27e60'),
+ ('Stock.UnitRequestContract.InitializePostLoad',
+  '0x2009d10',
+  595,
+  'a5a1153252ce4d50ce1c144ee2f0ec947f93ad1a4ece8497d34e719ececf4450'),
+ ('Stock.Contract.InitializePostLoad',
+  '0x200dbd0',
+  1,
+  'ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e')]
+CONTRACT_BINDINGS = [{'name': 'vtable for GameCore::AI::Control::UnitRequestContract',
+  'slot': '0x10',
+  'table': '0x3a04e40',
+  'target': '0x2009d10'},
+ {'name': 'vtable for GameCore::AI::Control::PurchasePlotContract',
+  'slot': '0x10',
+  'table': '0x3a050c8',
+  'target': '0x200dbd0'},
+ {'name': 'vtable for GameCore::AI::Control::TechResearchContract',
+  'slot': '0x10',
+  'table': '0x3a04f18',
+  'target': '0x200dbd0'},
+ {'name': 'vtable for GameCore::AI::Control::CivicResearchContract',
+  'slot': '0x10',
+  'table': '0x3a04ff0',
+  'target': '0x200dbd0'},
+ {'name': 'vtable for GameCore::AI::Control::DiplomaticActionContract',
+  'slot': '0x10',
+  'table': '0x3a051a0',
+  'target': '0x200dbd0'},
+ {'name': 'vtable for GameCore::AI::Control::Contract',
+  'slot': '0x10',
+  'table': '0x3a05ee0',
+  'target': '0x200dbd0'}]
 
 if __name__ == '__main__':
     main()

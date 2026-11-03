@@ -114,6 +114,19 @@ saved owner/contract identities. The Control manager subsequently invokes
 existing Contract virtual `+0x10` at `201e38b`; these transitive effects remain
 unclosed. Its namespace is not a reason to omit a gameplay write or callback.
 
+The [subsequent subscriber refinement](../evidence/linux/yield-monitor-postload-subscribers.json)
+checks 41 focused bodies and the six concrete stock Contract vtables. Five
+tables bind postload to the base return; UnitRequestContract binds to
+`2009d10`. That method conditionally subscribes building-, unit- and
+district-created callbacks. The three concrete Subscribe/EnsureRing/AddBefore
+paths construct rings/links, copy their known member-function objects and
+return subscription handles; they do not execute the registered creation
+callback. These registrations still matter for future genuine events and
+cannot be discarded as planning state. Additional subclasses/registrations
+require admission; the literal stock bindings are not evidence that a foreign
+runtime contains no added callbacks. This narrows the postload input
+intersection without claiming the remaining history is closed.
+
 City Citizens postload (`286eb60`) has a direct intersection with monitor
 inputs: a true `force_update_plot_appeal` clears the flag and calls
 `Rules.Appeal.Update` for each nonnull city plot. The resulting cached appeal
