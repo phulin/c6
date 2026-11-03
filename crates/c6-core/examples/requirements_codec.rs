@@ -14,7 +14,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let limits = Limits::default();
     let system = RequirementSystem::decode(&bytes, limits)?;
     for end in [0, 1, 4, 5, bytes.len() - 1] {
-        assert!(RequirementSystem::decode(&bytes[..end], limits).is_err());
+        if end < bytes.len() {
+            assert!(RequirementSystem::decode(&bytes[..end], limits).is_err());
+        }
     }
     let mut invalid = bytes.clone();
     invalid[0] = 4;
@@ -22,14 +24,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     invalid[0] = 3;
     invalid[1..5].copy_from_slice(&u32::MAX.to_le_bytes());
     assert!(RequirementSystem::decode(&invalid, limits).is_err());
-    assert!(RequirementSystem::decode(
-        &bytes,
-        Limits {
-            max_records: system.records.len() - 1,
-            ..limits
-        }
-    )
-    .is_err());
+    if let Some(max_records) = system.records.len().checked_sub(1) {
+        assert!(RequirementSystem::decode(
+            &bytes,
+            Limits {
+                max_records,
+                ..limits
+            }
+        )
+        .is_err());
+    }
     let encoded = system.encode(limits)?;
     assert_eq!(encoded, bytes);
     std::fs::write(&args[2], encoded)?;
