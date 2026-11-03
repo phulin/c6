@@ -1,6 +1,7 @@
 //! Deterministic simulator kernel. Gameplay beyond declared coverage fails closed.
 pub mod codec;
 pub mod combat;
+pub mod combat_random;
 pub mod geometry;
 pub mod messages;
 pub mod random_variants;

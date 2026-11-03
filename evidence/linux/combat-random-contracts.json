@@ -1,0 +1,650 @@
+{
+  "schema": "c6-linux-xp2-random-damage-audit-v1",
+  "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "average_contract": {
+    "schema": "c6-linux-xp2-average-damage-audit-v1",
+    "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+    "matching_dwarf_sha256": "6ab2d55303538578427cbf5ed75b74433981d289189d17a54086a7e811454de6",
+    "methods": [
+      {
+        "name": "calculate_damage",
+        "address": "0x2bd8980",
+        "size": 510,
+        "symbol": "_ZN8GameCore5Rules6Combat8Instance15CalculateDamageERKNS2_16DamageParametersE",
+        "sha256": "e1fec1208f585d2e3cb798fd7c82b0ac87bfd308babd50611ec53276d58ffd33"
+      },
+      {
+        "name": "construct_parameters",
+        "address": "0x2be20e0",
+        "size": 62,
+        "symbol": "_ZN8GameCore5Rules6Combat8Instance16DamageParametersC2Ev",
+        "sha256": "2fbff31f833513c2ec29ecd995f2c1dc34ca6c0c12d8b62d23cdacc1495d329a"
+      },
+      {
+        "name": "global_max_extra_damage",
+        "address": "0x2be20d0",
+        "size": 7,
+        "symbol": "_ZNK8GameCore4Game16GlobalParameters23COMBAT_MAX_EXTRA_DAMAGEEv",
+        "sha256": "9f414f7f08d50d038140cd26918a0b13b80f8c336b9da47f123ec02e6016aa62"
+      },
+      {
+        "name": "get_parameters",
+        "address": "0x1fe4cb0",
+        "size": 11,
+        "symbol": "_ZN8GameCore7Context7Globals13GetParametersEv",
+        "sha256": "f9148dd8c05b882256683a186217d2b945448a3648d10680666c5b6f19e1e33d"
+      },
+      {
+        "name": "get_game",
+        "address": "0x1fcc320",
+        "size": 11,
+        "symbol": "_ZN8GameCore7Context7Globals7GetGameEv",
+        "sha256": "440d8ec0711321eeaafb3479cabd65b277a965561733cb61087722b09b561205"
+      },
+      {
+        "name": "fixed_multiply",
+        "address": "0x1fceb20",
+        "size": 44,
+        "symbol": "_ZNK11FixedPointTILj8EEmlERKS0_",
+        "sha256": "e432d56865fabbebf9ccb78cb003a11a22e9efd060da0a64bd69211fe9e4dd73"
+      },
+      {
+        "name": "fixed_subtract",
+        "address": "0x1fe4aa0",
+        "size": 36,
+        "symbol": "_ZNK11FixedPointTILj8EEmiERKS0_",
+        "sha256": "721b59a4f4f750b5d9b33736c57dc0c7ca093c8b33f1dfb03ec633d1ae291714"
+      },
+      {
+        "name": "fixed_divide",
+        "address": "0x1fe55e0",
+        "size": 45,
+        "symbol": "_ZNK11FixedPointTILj8EEdvERKS0_",
+        "sha256": "5b5020c780e1d0617af9e64b21e5858b105950153bcf4bc662b2dff059fbb7b4"
+      },
+      {
+        "name": "fixed_as_float",
+        "address": "0x1fe2170",
+        "size": 31,
+        "symbol": "_ZNK11FixedPointTILj8EE7AsFloatEv",
+        "sha256": "e76f50de28df4f55881dd0802424aee8fed2c68393c28bf8d543f583f824689c"
+      },
+      {
+        "name": "fixed_as_int",
+        "address": "0x1fccdb0",
+        "size": 6,
+        "symbol": "_ZNK11FixedPointTILj8EE5AsIntEv",
+        "sha256": "4f148fa10453703b4668eaf2c1b5c697dbdc8310930e05beca0e978d6d5c85e4"
+      },
+      {
+        "name": "fixed_assign_int",
+        "address": "0x1fcdc10",
+        "size": 9,
+        "symbol": "_ZN11FixedPointTILj8EEaSEi",
+        "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f"
+      },
+      {
+        "name": "fixed_equal",
+        "address": "0x1fe5230",
+        "size": 8,
+        "symbol": "_ZNK11FixedPointTILj8EEeqERKS0_",
+        "sha256": "e5f1fcacf089c20bbec3d2904c82c57f43af62575d2a67817fbf02e50d26f280"
+      },
+      {
+        "name": "fixed_greater",
+        "address": "0x1fe2b30",
+        "size": 8,
+        "symbol": "_ZNK11FixedPointTILj8EEgtERKS0_",
+        "sha256": "ab00271575857734f9deafa1606796d9d87586ae02bc14e6486fe4c79f0cb86d"
+      },
+      {
+        "name": "game_rand_num",
+        "address": "0x1fe5240",
+        "size": 39,
+        "symbol": "_ZN8GameCore4Game8Instance10GetRandNumEtPKc",
+        "sha256": "dc5512d444383e583abab29ae301710fcd783ed9f508fc1977a5c3024e69bd1a"
+      },
+      {
+        "name": "fixed_default_constructor",
+        "address": "0x1fceb60",
+        "size": 7,
+        "symbol": "_ZN11FixedPointTILj8EEC2Ev",
+        "sha256": "1df8eed5de3158f416b76de6766b079a7067de033c465a3a0fb4c27772ff3be4"
+      },
+      {
+        "name": "fixed_assign_copy",
+        "address": "0x1fcdc00",
+        "size": 8,
+        "symbol": "_ZN11FixedPointTILj8EEaSERKS0_",
+        "sha256": "775143daff273e7ffd54aaf1fdd8ee35101783a6286e5c6a3d9b76fed694472a"
+      }
+    ],
+    "parameter_fields": [
+      {
+        "name": "xAttackerStrength",
+        "offset": 0
+      },
+      {
+        "name": "xDefenderStrength",
+        "offset": 4
+      },
+      {
+        "name": "iDefenderMaxHitPoints",
+        "offset": 8
+      },
+      {
+        "name": "iOuterDefenseDamage",
+        "offset": 12
+      },
+      {
+        "name": "iOuterDefenseMaxHitPoints",
+        "offset": 16
+      },
+      {
+        "name": "eDefenseType",
+        "offset": 20
+      },
+      {
+        "name": "xPowerScaling",
+        "offset": 24
+      },
+      {
+        "name": "iMinimumDamage",
+        "offset": 28
+      },
+      {
+        "name": "iBaseDamage",
+        "offset": 32
+      },
+      {
+        "name": "iPowerDampener",
+        "offset": 36
+      },
+      {
+        "name": "iMaxExtraDamage",
+        "offset": 40
+      },
+      {
+        "name": "bUseAverage",
+        "offset": 44
+      },
+      {
+        "name": "bBypassDefenses",
+        "offset": 45
+      }
+    ],
+    "parameter_size": 48,
+    "sync_random_offset": 248,
+    "sync_random_size": 32,
+    "constants": [
+      {
+        "name": "q8_fraction",
+        "address": "0x2dfc344",
+        "value": 0.00390625
+      },
+      {
+        "name": "rounding_half",
+        "address": "0x2dfc354",
+        "value": 0.5
+      }
+    ],
+    "arithmetic_runtime_bindings": [
+      {
+        "name": "expf",
+        "plt": "0x1f944f0",
+        "got": "0x3bed160"
+      },
+      {
+        "name": "floorf",
+        "plt": "0x1f22960",
+        "got": "0x3bb4398"
+      }
+    ],
+    "module_owned_runtime_bindings": [
+      {
+        "name": "_ZN8GameCore7Context7Globals13GetParametersEv",
+        "plt": "0x1ebacf0",
+        "got": "0x3b80560",
+        "target": "0x1fe4cb0"
+      },
+      {
+        "name": "_ZNK8GameCore4Game16GlobalParameters23COMBAT_MAX_EXTRA_DAMAGEEv",
+        "plt": "0x1f69340",
+        "got": "0x3bd7888",
+        "target": "0x2be20d0"
+      },
+      {
+        "name": "_ZN11FixedPointTILj8EEC2Ei",
+        "plt": "0x1f567e0",
+        "got": "0x3bce2d8",
+        "target": "0x1fcc8b0"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EEeqERKS0_",
+        "plt": "0x1f24c70",
+        "got": "0x3bb5520",
+        "target": "0x1fe5230"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EEmiERKS0_",
+        "plt": "0x1f0ac40",
+        "got": "0x3ba8508",
+        "target": "0x1fe4aa0"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EEmlERKS0_",
+        "plt": "0x1e67fc0",
+        "got": "0x3b56ec8",
+        "target": "0x1fceb20"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EE7AsFloatEv",
+        "plt": "0x1f44d60",
+        "got": "0x3bc5598",
+        "target": "0x1fe2170"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EEgtERKS0_",
+        "plt": "0x1e6bce0",
+        "got": "0x3b58d58",
+        "target": "0x1fe2b30"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EEdvERKS0_",
+        "plt": "0x1dff260",
+        "got": "0x3b22818",
+        "target": "0x1fe55e0"
+      },
+      {
+        "name": "_ZN11FixedPointTILj8EEaSERKS0_",
+        "plt": "0x1e2efc0",
+        "got": "0x3b3a6c8",
+        "target": "0x1fcdc00"
+      },
+      {
+        "name": "_ZNK11FixedPointTILj8EE5AsIntEv",
+        "plt": "0x1edd680",
+        "got": "0x3b91a28",
+        "target": "0x1fccdb0"
+      },
+      {
+        "name": "_ZN11FixedPointTILj8EEC2Ev",
+        "plt": "0x1e4f8f0",
+        "got": "0x3b4ab60",
+        "target": "0x1fceb60"
+      },
+      {
+        "name": "_ZN11FixedPointTILj8EEaSEi",
+        "plt": "0x1f3afa0",
+        "got": "0x3bc06b8",
+        "target": "0x1fcdc10"
+      },
+      {
+        "name": "_ZN8GameCore7Context7Globals15ms_pkParametersE",
+        "plt": null,
+        "got": "0x3b20fc8",
+        "target": "0x3c051b0"
+      },
+      {
+        "name": "_ZN8GameCore7Context7Globals16ms_pkCurrentGameE",
+        "plt": null,
+        "got": "0x3b0ef18",
+        "target": "0x3c051a8"
+      }
+    ],
+    "host_weak_dependency_candidates": {
+      "module_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "image_type": "ET_EXEC; VAs are absolute, not GameCore-relative offsets",
+      "methods": [
+        {
+          "name": "fixed_int_constructor",
+          "host_absolute_va": "0x32ff470",
+          "target_offset": "0x1fcc8b0",
+          "size": 5,
+          "symbol": "_ZN11FixedPointTILj8EEC2Ei",
+          "sha256": "ac09dbe7f6e7bbf77c48c66ff7b52de5f90bb2ce47d16f8da94a24cdf4434be1",
+          "proof": "Direct tail jump to independently byte-identical host signed integer assignment"
+        },
+        {
+          "name": "fixed_default_constructor",
+          "host_absolute_va": "0x321e840",
+          "target_offset": "0x1fceb60",
+          "size": 7,
+          "symbol": "_ZN11FixedPointTILj8EEC2Ev",
+          "sha256": "1df8eed5de3158f416b76de6766b079a7067de033c465a3a0fb4c27772ff3be4",
+          "proof": "Complete instruction bytes identical to supplied XP2 helper"
+        },
+        {
+          "name": "fixed_assign_copy",
+          "host_absolute_va": "0x32170a0",
+          "target_offset": "0x1fcdc00",
+          "size": 8,
+          "symbol": "_ZN11FixedPointTILj8EEaSERKS0_",
+          "sha256": "775143daff273e7ffd54aaf1fdd8ee35101783a6286e5c6a3d9b76fed694472a",
+          "proof": "Complete instruction bytes identical to supplied XP2 helper"
+        },
+        {
+          "name": "fixed_assign_int",
+          "host_absolute_va": "0x32ff550",
+          "target_offset": "0x1fcdc10",
+          "size": 9,
+          "symbol": "_ZN11FixedPointTILj8EEaSEi",
+          "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f",
+          "proof": "Complete instruction bytes identical to supplied XP2 helper"
+        },
+        {
+          "name": "fixed_as_float",
+          "host_absolute_va": "0x3242ee0",
+          "target_offset": "0x1fe2170",
+          "size": 31,
+          "symbol": "_ZNK11FixedPointTILj8EE7AsFloatEv",
+          "sha256": "0d762e2176032ec231569cac659a3e2d87f576b39764efec36b1d442713dd9b4",
+          "proof": "Identical instruction bytes after normalizing read-only constant displacement; exact Q8 1/256 constant"
+        },
+        {
+          "name": "fixed_greater",
+          "host_absolute_va": "0x32ff460",
+          "target_offset": "0x1fe2b30",
+          "size": 8,
+          "symbol": "_ZNK11FixedPointTILj8EEgtERKS0_",
+          "sha256": "ab00271575857734f9deafa1606796d9d87586ae02bc14e6486fe4c79f0cb86d",
+          "proof": "Complete instruction bytes identical to supplied XP2 helper"
+        }
+      ],
+      "runtime_binding_observed": false
+    },
+    "required_runtime_binding_profile": {
+      "xp2": 9,
+      "original_host": 6,
+      "direct_xp2_entries": 5,
+      "host_image_base": "0x400000",
+      "host_va_kind": "absolute ET_EXEC virtual address"
+    },
+    "garrison_defense_type": 1587009065,
+    "native_execution": false,
+    "scope": "Average damage arithmetic; original helper receiver unused; genuine loaded GlobalParameters required",
+    "conclusions": [
+      "Signed Q8 difference wraps i32; multiply uses signed i64 product then low i32 after shift 8",
+      "AsFloat splits arithmetic integer and unsigned low-byte fractional parts",
+      "Single-precision expf, multiply, add 0.5, floorf, CVTTSS2SI",
+      "Global COMBAT_MAX_EXTRA_DAMAGE / 2 truncates toward zero in average mode",
+      "Garrison damage reduces through fixed-point remaining outer defenses unless bypassed",
+      "Zero defender strength returns maximum before zero attacker returns minimum; caps follow reduction",
+      "Parameter power dampener and maximum extra damage fields are not read by this helper",
+      "Nonaverage branch draws original game synchronous RNG before both early returns; not implemented"
+    ],
+    "limits": [
+      "No unit/district strength construction, modifiers, attacks, legal-action or turn parity",
+      "Static evidence only; native arithmetic acceptance requires separate loaded-context corpus comparison"
+    ]
+  },
+  "core_methods": [
+    {
+      "name": "game_draw",
+      "address": "0x1fe5240",
+      "size": 39,
+      "symbol": "_ZN8GameCore4Game8Instance10GetRandNumEtPKc",
+      "sha256": "dc5512d444383e583abab29ae301710fcd783ed9f508fc1977a5c3024e69bd1a"
+    },
+    {
+      "name": "wrapper_edit",
+      "address": "0x1fe7230",
+      "size": 52,
+      "symbol": "_ZN13FAutoVariableIN8GameCore6RandomENS0_4Game8InstanceEE4editEv",
+      "sha256": "503d747204b594022b466dcb27691b7d5315b87e953c465cee484815a57ee760"
+    },
+    {
+      "name": "random_draw",
+      "address": "0x2d48d60",
+      "size": 247,
+      "symbol": "_ZN8GameCore6Random3GetEtPKc",
+      "sha256": "eb4fc6526825a9d32c4ea1bf7fb207eb2f74e1d022f53369b648dcb86cff9943"
+    },
+    {
+      "name": "random_seed",
+      "address": "0x2d48e60",
+      "size": 4,
+      "symbol": "_ZNK8GameCore6Random7GetSeedEv",
+      "sha256": "4628fb538250bfc88b327da2acefeb54924dfb050ac98dcea105347fb07d6367"
+    },
+    {
+      "name": "logging_getter",
+      "address": "0x1fe31d0",
+      "size": 11,
+      "symbol": "_ZN8GameCore7Context7Globals10GetLoggingEv",
+      "sha256": "c661f80d1c69808a24942a5ae939db1cf1493a700a768f557052b7ac1ee4d7e5"
+    },
+    {
+      "name": "turn_getter",
+      "address": "0x1fe4810",
+      "size": 7,
+      "symbol": "_ZNK8GameCore4Game8Instance18GetCurrentGameTurnEv",
+      "sha256": "01ca18bb0d177a24c4734410ae3bc66f10496b67c9c98aac247cb1ec7fba594d"
+    },
+    {
+      "name": "tree_emplace",
+      "address": "0x1fcd400",
+      "size": 97,
+      "symbol": "_ZNSt3__16__treeIP17FAutoVariableBaseNS_4lessIS2_EENS_9allocatorIS2_EEE25__emplace_unique_key_argsIS2_JS2_EEENS_4pairINS_15__tree_iteratorIS2_PNS_11__tree_nodeIS2_PvEElEEbEERKT_DpOT0_",
+      "sha256": "6dcaf248881c7d6fab9cc61bae2a628baaf053a6dd817909ad792108fe9c5d1f"
+    },
+    {
+      "name": "tree_find",
+      "address": "0x1fcd470",
+      "size": 136,
+      "symbol": "_ZNSt3__16__treeIP17FAutoVariableBaseNS_4lessIS2_EENS_9allocatorIS2_EEE12__find_equalIS2_EERPNS_16__tree_node_baseIPvEERPNS_15__tree_end_nodeISC_EERKT_",
+      "sha256": "57c12053a21da4341aa319f58c0afa1ab8d5a20831c00d7fd14c2793710832d0"
+    }
+  ],
+  "host_methods": [
+    {
+      "name": "archive_constructor",
+      "address": "0x3c45760",
+      "size": 347,
+      "symbol": "_ZN12FAutoArchiveC2ERK18AutoVariableStringP18FGameSyncInterface",
+      "sha256": "51a405d25f47abe9e0d7391b73d588cd8e9e7952547eaf07a25996b9e145e883"
+    },
+    {
+      "name": "archive_register",
+      "address": "0x3c459e8",
+      "size": 39,
+      "symbol": "_ZN12FAutoArchive3addER17FAutoVariableBase",
+      "sha256": "dc770a9edfe8e2b87fa3594bfd5bf91b26fa44029227dc01b3128c37b72f5a8a"
+    },
+    {
+      "name": "archive_save",
+      "address": "0x3c45a64",
+      "size": 54,
+      "symbol": "_ZNK12FAutoArchive4saveERN13Serialization7OStreamE",
+      "sha256": "55921a2a842932b92d5ce099426d2ec6697cf09b3894d2e70b4ed58c3eb2a459"
+    },
+    {
+      "name": "archive_clear_delta",
+      "address": "0x3c45d18",
+      "size": 133,
+      "symbol": "_ZN12FAutoArchive10clearDeltaEv",
+      "sha256": "8c603234dfd50040d8f55ac5f574ab2ee5fff303694e332b985e95af37c2d0fb"
+    },
+    {
+      "name": "tree_emplace",
+      "address": "0x3c4782e",
+      "size": 150,
+      "symbol": "_ZNSt3__16__treeIP17FAutoVariableBaseNS_4lessIS2_EENS_9allocatorIS2_EEE25__emplace_unique_key_argsIS2_JS2_EEENS_4pairINS_15__tree_iteratorIS2_PNS_11__tree_nodeIS2_PvEElEEbEERKT_DpOT0_",
+      "sha256": "61e82ea28e5b0b093ee5e5b00eea04600aedf9e51c8bd27062282688be5ec47a"
+    }
+  ],
+  "instruction_contracts": [
+    {
+      "name": "saved_signed_base",
+      "address": "0x2bd898f",
+      "bytes": 4
+    },
+    {
+      "name": "average_flag",
+      "address": "0x2bd8993",
+      "bytes": 5
+    },
+    {
+      "name": "nonaverage_branch",
+      "address": "0x2bd8998",
+      "bytes": 2
+    },
+    {
+      "name": "native_bound_u16",
+      "address": "0x2bd89c7",
+      "bytes": 3
+    },
+    {
+      "name": "draw_call",
+      "address": "0x2bd89d4",
+      "bytes": 5
+    },
+    {
+      "name": "draw_zero_extension",
+      "address": "0x2bd89d9",
+      "bytes": 3
+    },
+    {
+      "name": "zero_defender_result",
+      "address": "0x2bd89fe",
+      "bytes": 4
+    },
+    {
+      "name": "defender_branch",
+      "address": "0x2bd89fc",
+      "bytes": 2
+    },
+    {
+      "name": "zero_attacker_result",
+      "address": "0x2bd8a25",
+      "bytes": 4
+    },
+    {
+      "name": "attacker_branch",
+      "address": "0x2bd8a23",
+      "bytes": 2
+    },
+    {
+      "name": "wrapping_base_add",
+      "address": "0x2bd8a2e",
+      "bytes": 3
+    },
+    {
+      "name": "single_signed_float_conversion",
+      "address": "0x2bd8a44",
+      "bytes": 4
+    },
+    {
+      "name": "owner_pointer",
+      "address": "0x1fe7238",
+      "bytes": 4
+    },
+    {
+      "name": "changed_tree",
+      "address": "0x1fe7246",
+      "bytes": 4
+    },
+    {
+      "name": "contained_random",
+      "address": "0x1fe7257",
+      "bytes": 4
+    }
+  ],
+  "additional_runtime_bindings": [
+    {
+      "name": "get_game",
+      "plt": "0x1f78450",
+      "slot": "0x3bdf110",
+      "target": "0x1fcc320",
+      "host_absolute_va": false,
+      "symbol": "_ZN8GameCore7Context7Globals7GetGameEv"
+    },
+    {
+      "name": "game_draw",
+      "plt": "0x1fb94d0",
+      "slot": "0x3b1c648",
+      "target": "0x1fe5240",
+      "host_absolute_va": false,
+      "symbol": "_ZN8GameCore4Game8Instance10GetRandNumEtPKc"
+    },
+    {
+      "name": "wrapper_edit",
+      "plt": "0x1f22910",
+      "slot": "0x3bb4370",
+      "target": "0x1fe7230",
+      "host_absolute_va": false,
+      "symbol": "_ZN13FAutoVariableIN8GameCore6RandomENS0_4Game8InstanceEE4editEv"
+    },
+    {
+      "name": "random_draw",
+      "plt": "0x1e7a2f0",
+      "slot": "0x3b60060",
+      "target": "0x2d48d60",
+      "host_absolute_va": false,
+      "symbol": "_ZN8GameCore6Random3GetEtPKc"
+    },
+    {
+      "name": "host_tree_emplace",
+      "plt": "0x1eb3dc0",
+      "slot": "0x3b7cdc8",
+      "target": "0x3c4782e",
+      "host_absolute_va": true,
+      "symbol": "_ZNSt3__16__treeIP17FAutoVariableBaseNS_4lessIS2_EENS_9allocatorIS2_EEE25__emplace_unique_key_argsIS2_JS2_EEENS_4pairINS_15__tree_iteratorIS2_PNS_11__tree_nodeIS2_PvEElEEbEERKT_DpOT0_"
+    },
+    {
+      "name": "logging_getter",
+      "plt": "0x1f2a370",
+      "slot": "0x3bb80a0",
+      "target": "0x1fe31d0",
+      "host_absolute_va": false,
+      "symbol": "_ZN8GameCore7Context7Globals10GetLoggingEv"
+    },
+    {
+      "name": "turn_getter",
+      "plt": "0x1fb9188",
+      "slot": "0x3b17068",
+      "target": "0x1fe4810",
+      "host_absolute_va": false,
+      "symbol": "_ZNK8GameCore4Game8Instance18GetCurrentGameTurnEv"
+    },
+    {
+      "name": "random_seed",
+      "plt": "0x1f50480",
+      "slot": "0x3bcb128",
+      "target": "0x2d48e60",
+      "host_absolute_va": false,
+      "symbol": "_ZNK8GameCore6Random7GetSeedEv"
+    }
+  ],
+  "matching_tree_dwarf_sha256": "94db27c2134089ddc893c27bbb519abfcfe3cdde0b0522996ece62d0f89be360",
+  "archive": {
+    "owner_from_wrapper": 8,
+    "game_wrapper": 232,
+    "game_random": 248,
+    "game_archive": 32,
+    "registered_begin": 8,
+    "registered_end": 16,
+    "registered_capacity": 24,
+    "changed_begin": 56,
+    "changed_root": 64,
+    "changed_size": 72,
+    "tree_node_left": 0,
+    "tree_node_right": 8,
+    "tree_node_parent": 16,
+    "tree_node_key": 32,
+    "tree_node_bytes": 40,
+    "class_instance": 144
+  },
+  "transformation": "Original nonaverage CFG zero-extends the u16 draw, tests zero strengths, adds draw+saved base with wrapping i32 ADD, then performs one signed i32-to-f32 conversion. Rust keeps the draw/edit prefix and supplies that identical wrapped base to unchanged average arithmetic with zero extra; subsequent Q8/FP operations and early-return ordering are retained.",
+  "invalid_arithmetic": "Zero Q8 divisor may trap only after edit/draw. Rust reports an explicit post-draw native-fault outcome with the prefix retained; initial native corpus excludes those trap inputs before any execution.",
+  "random_internal_order": "Random::Get increments calls, computes new seed/sample in registers, invokes logging, then stores the new seed. Conditional comparison is at normal call returns; failed/reentrant logging and allocator failures are not modeled as atomic unsupported operations.",
+  "native_execution": false,
+  "complete_rng_inventory": false,
+  "full_combat_parity": false,
+  "limits": [
+    "Conditional named Game sync stream only; caller-provided logical keys require validated native pointer-order mapping",
+    "Native tree allocation/links/colors and logging/service state are not a Rust live-layout implementation",
+    "Full raw Save differences must be reported without masking; named-stream agreement is not full-state or branch-restoration parity"
+  ]
+}
