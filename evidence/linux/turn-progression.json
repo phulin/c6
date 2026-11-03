@@ -1,0 +1,785 @@
+{
+  "schema": "c6-linux-turn-progression-static-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "discovery_reference": {
+    "author": "cru121",
+    "revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+    "license": "CC BY 4.0",
+    "target_addresses_rederived_from_linux": true
+  },
+  "methods": [
+    {
+      "address": "0x2c7d4f0",
+      "size": 3528,
+      "name": "GameCore::Exports::Context::RequestAction(GameCore::ActionTypes, GameCore::PlayerTypes, Data::TypedVariantVectorMap const&)",
+      "sha256": "8d470698084c8e3d2d2e21137f2c16c717f3a9e7f816306f47be3575aa085319"
+    },
+    {
+      "address": "0x2d27b00",
+      "size": 59,
+      "name": "GameCore::Messages::PlayerTurnComplete::PlayerTurnComplete(GameCore::PlayerTypes, GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "0e698736920e9586a00af92ae746ffcca314229b18423747ea4f01faf000ce48"
+    },
+    {
+      "address": "0x2d28000",
+      "size": 41,
+      "name": "GameCore::Messages::PlayerTurnComplete::PutInBufferBody(Serialization::OStream&) const",
+      "sha256": "66c07ba2214ee0e4363af0e501e28dfade3712a05729c56d2132047628db747c"
+    },
+    {
+      "address": "0x2d28030",
+      "size": 41,
+      "name": "GameCore::Messages::PlayerTurnComplete::SetFromBufferBody(Serialization::IStream&)",
+      "sha256": "b86fc1fdd8106bc8e5568e7335f572ec3c092629fed329678acbc332094d878a"
+    },
+    {
+      "address": "0x2d27b50",
+      "size": 1190,
+      "name": "GameCore::Messages::PlayerTurnComplete::Execute() const",
+      "sha256": "695d8e7b98876bc8582a8778c2fe4372fd5b0cca6420ba40041994121d9b84fa"
+    },
+    {
+      "address": "0x2d28130",
+      "size": 3,
+      "name": "GameCore::Messages::PlayerTurnComplete::GetUnreadiesTurn() const",
+      "sha256": "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+    },
+    {
+      "address": "0x2d232b0",
+      "size": 83,
+      "name": "GameCore::Messages::GameTurnComplete::Execute() const",
+      "sha256": "422fc46b74202df82aae00f8ccc46310510ee22a64a01718fa8a559d2d5fdee2"
+    },
+    {
+      "address": "0x2b5b840",
+      "size": 130,
+      "name": "GameCore::Player::Processor::SetTurnComplete(GameCore::Player::Instance&, bool, GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "bf6e10c8a7a8fb2f77f4ca269a1b80a28aef56140b0c42eae3f8db1bd59bf6fc"
+    },
+    {
+      "address": "0x2ba17b0",
+      "size": 22,
+      "name": "GameCore::Player::TurnManager::DoSetTurnComplete(GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "adfce5a688d5d22da5aeb9fe66d7e4e7e2b0f22692e796e1a399da8a0f9b827f"
+    },
+    {
+      "address": "0x2a5b640",
+      "size": 51,
+      "name": "GameCore::Player::Cities::DoSetTurnComplete(GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "d6ee12cd3bba79040e5914ca82a066475c9435a602168376a04fc2eda01052e6"
+    },
+    {
+      "address": "0x2a5b570",
+      "size": 195,
+      "name": "GameCore::Player::Cities::RemoveUnassignedProductionOverflow()",
+      "sha256": "4846d8d97a3029fa5cb57f36b1ce74e27ac5a2cdfb53ddbeda44e1b0c68ee151"
+    },
+    {
+      "address": "0x2850fc0",
+      "size": 14,
+      "name": "GameCore::City::BuildQueue::ClearOverflow()",
+      "sha256": "1ff881b344b791b64935ad8275bf140397c280331ab8112c93d32d332484a7af"
+    },
+    {
+      "address": "0x2661ba0",
+      "size": 17,
+      "name": "GameCore::Game::Instance::Update()",
+      "sha256": "e9d50e09f9c4183d872ce51adfb4b35db4aaad7ed99d28f150eaa004fe74e6cc"
+    },
+    {
+      "address": "0x2a0c430",
+      "size": 33,
+      "name": "GameCore::Game::Processor::IsNewTurn()",
+      "sha256": "42f989ce40a0ef442c09059b84fa6cc9a13f4862f4841cad4b50da1c2a7472eb"
+    },
+    {
+      "address": "0x2a0cb70",
+      "size": 2326,
+      "name": "GameCore::Game::Processor::Update()",
+      "sha256": "3d0e408c00c96e44fb5ea509baedf9a0f690347b4696e469c37b0ac7f2b12055"
+    },
+    {
+      "address": "0x2a0c460",
+      "size": 746,
+      "name": "GameCore::Game::Processor::BeginTurn()",
+      "sha256": "babd3496e211c2cc8a2fa5cb011cec3553665156ac97c02504a4000198566ca6"
+    },
+    {
+      "address": "0x2a0c750",
+      "size": 634,
+      "name": "GameCore::Game::Processor::EndTurn()",
+      "sha256": "16949465303cae46f7b95966ee04510626b99a4dda30b3aed6d09e6245c3b477"
+    },
+    {
+      "address": "0x2a0bef0",
+      "size": 147,
+      "name": "GameCore::Game::Processor::ActivatePlayersAtTurnStart()",
+      "sha256": "55231d33b54161fd4b63f8b2db0ff0947b0ff2172210ae4130e7832e069f1699"
+    },
+    {
+      "address": "0x2a0bf90",
+      "size": 295,
+      "name": "GameCore::Game::Processor::ActivateNextPlayer()",
+      "sha256": "d402bd681e0a98d5dfbb0db1967e291fd97bb3e458a4c673e92ab7621b354d30"
+    },
+    {
+      "address": "0x2a0c0c0",
+      "size": 487,
+      "name": "GameCore::Game::Processor::GetPlayersToProcess(Types::Vector<GameCore::PlayerTypes, Types::LinearAlloc::DefaultInline<GameCore::PlayerTypes, 64u, 51u, 0u> >&)",
+      "sha256": "a8892c6ac0fe4a386b36aee656d88cbfb3459a389522b1d66129672be4f4b8b1"
+    },
+    {
+      "address": "0x2a0c2b0",
+      "size": 377,
+      "name": "GameCore::Game::Processor::GetPlayersToDeactivate(Types::Vector<GameCore::PlayerTypes, Types::LinearAlloc::DefaultInline<GameCore::PlayerTypes, 64u, 51u, 0u> >&)",
+      "sha256": "1f599a1174d3258cb284cf134bcd89b0445fca94aa2f910517b3e0edfa51cdf6"
+    },
+    {
+      "address": "0x2a0c9e0",
+      "size": 164,
+      "name": "GameCore::Game::Processor::BeginPhase(int)",
+      "sha256": "01feb862550a3eaa0fc0058fe00dd152114fda6cf8de71c3bb676291595e7bac"
+    },
+    {
+      "address": "0x2a0ca90",
+      "size": 42,
+      "name": "GameCore::Game::Processor::EndPhase()",
+      "sha256": "c388e4013488828e1e222d675963d3ccda8ff5d17a1ea8c0719ea0fd8f5c3635"
+    },
+    {
+      "address": "0x2a0cae0",
+      "size": 135,
+      "name": "GameCore::Game::Processor::DoAutomation()",
+      "sha256": "fc056c16075642035c5e8ede11006de889c7578864be6f51bcf4086fb6544d21"
+    },
+    {
+      "address": "0x2a54700",
+      "size": 181,
+      "name": "GameCore::Phase::Processor::InitializeTurnPhaseData()",
+      "sha256": "23621eded7d30d7320575912b08ea3affa64b3112114a84eb7a5a24b24de7147"
+    },
+    {
+      "address": "0x2a54880",
+      "size": 1683,
+      "name": "GameCore::Phase::Processor::ActivateNextTurnPhase(bool&)",
+      "sha256": "1ee231112b4658b5c4101d58a4ea9a7684a8a3a09b25f8b8b2fb470b72aabfa5"
+    },
+    {
+      "address": "0x2a54860",
+      "size": 11,
+      "name": "GameCore::Phase::Processor::BeginTurn()",
+      "sha256": "5afa3064e44ca66f93685648c985e8268f461fa441e4dbb78aabccf8f70d8087"
+    },
+    {
+      "address": "0x2a54870",
+      "size": 11,
+      "name": "GameCore::Phase::Processor::EndTurn()",
+      "sha256": "9bb4ab636d6a03f7d8cea744e08c3c008c8468dd7789e6900d4e385cbd5aa989"
+    },
+    {
+      "address": "0x2b5a8c0",
+      "size": 313,
+      "name": "GameCore::Player::Processor::BeginTurn()",
+      "sha256": "a8b2b54a5f93781cf44516618f9729bf83bdbe83c5f5f96311beee5a59d459ee"
+    },
+    {
+      "address": "0x2b5aa00",
+      "size": 269,
+      "name": "GameCore::Player::Processor::EndTurn()",
+      "sha256": "e795ea50bdb401861f2afd557cca1ffa72f9bda6f71b9f6ed220c528d4a311de"
+    },
+    {
+      "address": "0x2b5ab10",
+      "size": 196,
+      "name": "GameCore::Player::Processor::BeginPhase()",
+      "sha256": "6c5209859b7a1ad0b2586523d23f81c05543e2a3bcbfd57344bed8d3e148506f"
+    },
+    {
+      "address": "0x2b5ac00",
+      "size": 163,
+      "name": "GameCore::Player::Processor::DoTurnActivate(GameCore::Player::Instance&)",
+      "sha256": "e40e22d51b9a2648f6f0c0f661211ca4966f667f4eae88154fc18dc6582e5bb9"
+    },
+    {
+      "address": "0x2b5ad20",
+      "size": 156,
+      "name": "GameCore::Player::Processor::DoTurnDeactivate(GameCore::Player::Instance&)",
+      "sha256": "7f47b1f7c487e241b0372495ed223b1b856bf0beb80033a8022914054db8e2ce"
+    },
+    {
+      "address": "0x2b5acb0",
+      "size": 109,
+      "name": "GameCore::Player::Processor::DoTurn(GameCore::Player::Instance&)",
+      "sha256": "241f765996df381cdbbf8d381721652b85d662f1c4c6e7af2421dee849999516"
+    },
+    {
+      "address": "0x2b5c720",
+      "size": 356,
+      "name": "GameCore::Player::Processor::Update(GameCore::Player::Instance&)",
+      "sha256": "8464aedee5e1a5fd83c6ce257d67ded9cbf3ed578a6f0f2c4341aa881f3125c0"
+    },
+    {
+      "address": "0x2b5b1a0",
+      "size": 1571,
+      "name": "GameCore::Player::Processor::DoAutomation(GameCore::Player::Instance&)",
+      "sha256": "ec31b9b95c27f31b5718b921688112e7320314e56440bce010892d4214ca1019"
+    },
+    {
+      "address": "0x2b5adc0",
+      "size": 984,
+      "name": "GameCore::Player::Processor::SetTurnActive(GameCore::Player::Instance&, bool)",
+      "sha256": "3555d19911dd2669bf7ca9cd24ac141ebb79a2b211c48c78cccc04c0aac833f0"
+    },
+    {
+      "address": "0x2ba1750",
+      "size": 18,
+      "name": "GameCore::Player::TurnManager::DoBeginTurn()",
+      "sha256": "91f6f1f4adb290f340477c57e365c9336e57076d620d2c225705b44d23983fda"
+    },
+    {
+      "address": "0x2ba0b60",
+      "size": 1356,
+      "name": "GameCore::Player::TurnManager::DoTurnActivate(bool)",
+      "sha256": "f76c17c4a7ad1b7ff87dc464d1d4df414f4a15ead689448ff4682d3236a7b33e"
+    },
+    {
+      "address": "0x2ba1770",
+      "size": 53,
+      "name": "GameCore::Player::TurnManager::DoEndTurn()",
+      "sha256": "fae38035b87e6b8a589ab1f276ce1d5420f21ed76ccd5d1c07ff2dc40aa1c699"
+    },
+    {
+      "address": "0x2d77fa0",
+      "size": 196,
+      "name": "GameCore::XP2::Game::Instance::DoBeginTurn()",
+      "sha256": "6d6ee1acf44f7edc05c9c406455d8f38b8ea3bba2ef230cff73f0d65a234aec6"
+    },
+    {
+      "address": "0x2a480e0",
+      "size": 73,
+      "name": "GameCore::Map::Instance::DoTurn()",
+      "sha256": "aec1c05f2ba1c71357182e65c7270515994b3212850e9994b33ff9a0788c2102"
+    },
+    {
+      "address": "0x2d57dc0",
+      "size": 49,
+      "name": "GameCore::Utilities::GetNumberOrHash(Data::TypedVariant const*)",
+      "sha256": "1b4df6bf627231aee32e7fe143745be52e569fe61787a24c4b2c19c9cf051b33"
+    },
+    {
+      "address": "0x2d28090",
+      "size": 19,
+      "name": "Serialization::EnumToStream<RequestSubTypes>",
+      "sha256": "e3c81196bd5a80bf03aed9f9294eba27522677a483262ee8c38ed280791907dc"
+    },
+    {
+      "address": "0x20030c0",
+      "size": 19,
+      "name": "Serialization::EnumToStream<PlayerTypes>",
+      "sha256": "53e00befd8655db0c427919039335f3534f6be53858eb37a84c25490081ba08b"
+    }
+  ],
+  "direct_calls": [
+    {
+      "address": "0x2c7d50b",
+      "plt": "0x1eb5610",
+      "got": "0x3b7d9f0",
+      "original_target": "0x2c7d420",
+      "name": "GameCore::Exports::Context::IsWorldBuilderActive()"
+    },
+    {
+      "address": "0x2c7d57c",
+      "plt": "0x1e2cd20",
+      "got": "0x3b39578",
+      "original_target": "0x290ba20",
+      "name": "GameCore::Context::Globals::GetLocalPlayer()"
+    },
+    {
+      "address": "0x2c7dbab",
+      "plt": "0x1eca460",
+      "got": "0x3b88118",
+      "original_target": "0x2d57dc0",
+      "name": "GameCore::Utilities::GetNumberOrHash(Data::TypedVariant const*)"
+    },
+    {
+      "address": "0x2c7dca4",
+      "plt": "0x1f71e70",
+      "got": "0x3bdbe20",
+      "original_target": "0x2d27b00",
+      "name": "GameCore::Messages::PlayerTurnComplete::PlayerTurnComplete(GameCore::PlayerTypes, GameCore::Events::TurnRequest::RequestSubTypes)"
+    },
+    {
+      "address": "0x2c7dcac",
+      "plt": "0x1fb9798",
+      "got": "0x3b21cc0",
+      "original_target": "0x2d23df0",
+      "name": "GameCore::Messages::Manager::BroadcastMessage(GameCore::Messages::BaseMessage&)"
+    },
+    {
+      "address": "0x2d27b82",
+      "plt": "0x1e87800",
+      "got": "0x3b66ae8",
+      "original_target": "0x2b31530",
+      "name": "GameCore::Player::Instance::IsHuman() const"
+    },
+    {
+      "address": "0x2d27b92",
+      "plt": "0x1e119f0",
+      "got": "0x3b2bbe0",
+      "original_target": "0x281b720",
+      "name": "GameCore::Game::Instance::IsPaused() const"
+    },
+    {
+      "address": "0x2d27cfb",
+      "plt": "0x1ed47e0",
+      "got": "0x3b8d2d8",
+      "original_target": "0x2b5bb60",
+      "name": "GameCore::Player::Processor::IsTurnComplete(GameCore::Player::Instance const&)"
+    },
+    {
+      "address": "0x2d27e82",
+      "plt": "0x1e61790",
+      "got": "0x3b53ab0",
+      "original_target": "0x2b5b840",
+      "name": "GameCore::Player::Processor::SetTurnComplete(GameCore::Player::Instance&, bool, GameCore::Events::TurnRequest::RequestSubTypes)"
+    },
+    {
+      "address": "0x2d27e8f",
+      "plt": "0x1f906b0",
+      "got": "0x3beb240",
+      "original_target": "0x2661ba0",
+      "name": "GameCore::Game::Instance::Update()"
+    },
+    {
+      "address": "0x2d27fe0",
+      "plt": "0x1ef4490",
+      "got": "0x3b9d130",
+      "original_target": "0x2d49ec0",
+      "name": "GameCore::Reporting::Event::Send(GameCore::Reporting::Event::Type, int)"
+    },
+    {
+      "address": "0x2b5b885",
+      "plt": "0x1f59220",
+      "got": "0x3bcf7f8",
+      "original_target": "0x2004fc0",
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const"
+    },
+    {
+      "address": "0x2b5b891",
+      "plt": "0x1fb6350",
+      "got": "0x3bfe090",
+      "original_target": "0x2003cb0",
+      "name": "GameCore::Player::Instance::IsAlive() const"
+    },
+    {
+      "address": "0x2b5b8a8",
+      "plt": "0x1e23200",
+      "got": "0x3b347e8",
+      "original_target": "0x2ba17b0",
+      "name": "GameCore::Player::TurnManager::DoSetTurnComplete(GameCore::Events::TurnRequest::RequestSubTypes)"
+    },
+    {
+      "address": "0x2d232b4",
+      "plt": "0x1f9bf70",
+      "got": "0x3bf0ea0",
+      "original_target": "0x2a0d4c0",
+      "name": "GameCore::Game::Processor::NeedsTurnAdvance()"
+    },
+    {
+      "address": "0x2d232d5",
+      "plt": "0x1e43d00",
+      "got": "0x3b44d68",
+      "original_target": "0x2b5bba0",
+      "name": "GameCore::Player::Processor::SetGameTurnComplete(GameCore::Player::Instance&, bool)"
+    },
+    {
+      "address": "0x2661ba1",
+      "plt": "0x1e0c3e0",
+      "got": "0x3b290d8",
+      "original_target": "0x2a0cb70",
+      "name": "GameCore::Game::Processor::Update()"
+    },
+    {
+      "address": "0x2661ba6",
+      "plt": "0x1f2e780",
+      "got": "0x3bba2a8",
+      "original_target": "0x2913510",
+      "name": "GameCore::Diplomacy::Manager::ProcessPending()"
+    },
+    {
+      "address": "0x2a0cbd3",
+      "plt": "0x1e253e0",
+      "got": "0x3b358d8",
+      "original_target": "0x2a0c460",
+      "name": "GameCore::Game::Processor::BeginTurn()"
+    },
+    {
+      "address": "0x2a0ccf5",
+      "plt": "0x1f299a0",
+      "got": "0x3bb7bb8",
+      "original_target": "0x2b5c720",
+      "name": "GameCore::Player::Processor::Update(GameCore::Player::Instance&)"
+    },
+    {
+      "address": "0x2a0cd28",
+      "plt": "0x1eb7e10",
+      "got": "0x3b7edf0",
+      "original_target": "0x2a0c2b0",
+      "name": "GameCore::Game::Processor::GetPlayersToDeactivate(Types::Vector<GameCore::PlayerTypes, Types::LinearAlloc::DefaultInline<GameCore::PlayerTypes, 64u, 51u, 0u> >&)"
+    },
+    {
+      "address": "0x2a0cd85",
+      "plt": "0x1e6cbd0",
+      "got": "0x3b594d0",
+      "original_target": "0x2b5ad20",
+      "name": "GameCore::Player::Processor::DoTurnDeactivate(GameCore::Player::Instance&)"
+    },
+    {
+      "address": "0x2a0cd9c",
+      "plt": "0x1f72d90",
+      "got": "0x3bdc5b0",
+      "original_target": "0x2a0bf90",
+      "name": "GameCore::Game::Processor::ActivateNextPlayer()"
+    },
+    {
+      "address": "0x2a0d277",
+      "plt": "0x1f14b00",
+      "got": "0x3bad468",
+      "original_target": "0x2a0c750",
+      "name": "GameCore::Game::Processor::EndTurn()"
+    },
+    {
+      "address": "0x2a0d290",
+      "plt": "0x1f4b450",
+      "got": "0x3bc8910",
+      "original_target": "0x20faa30",
+      "name": "GameCore::AI::GlobalAi::WaitForJobs()"
+    },
+    {
+      "address": "0x2a0c499",
+      "plt": "0x1f584c0",
+      "got": "0x3bcf148",
+      "original_target": "0x2b5a8c0",
+      "name": "GameCore::Player::Processor::BeginTurn()"
+    },
+    {
+      "address": "0x2a0c49e",
+      "plt": "0x1e434a0",
+      "got": "0x3b44938",
+      "original_target": "0x2a54860",
+      "name": "GameCore::Phase::Processor::BeginTurn()"
+    },
+    {
+      "address": "0x2a0c721",
+      "plt": "0x1f4fad0",
+      "got": "0x3bcac50",
+      "original_target": "0x2a0bef0",
+      "name": "GameCore::Game::Processor::ActivatePlayersAtTurnStart()"
+    },
+    {
+      "address": "0x2a0c76c",
+      "plt": "0x1f69790",
+      "got": "0x3bd7ab0",
+      "original_target": "0x2b5aa00",
+      "name": "GameCore::Player::Processor::EndTurn()"
+    },
+    {
+      "address": "0x2a0c771",
+      "plt": "0x1e9ddc0",
+      "got": "0x3b71dc8",
+      "original_target": "0x2a54870",
+      "name": "GameCore::Phase::Processor::EndTurn()"
+    },
+    {
+      "address": "0x2a0c9b6",
+      "plt": "0x1efe900",
+      "got": "0x3ba2368",
+      "original_target": "0x2824910",
+      "name": "GameCore::Game::Autoplay::Manager::EndTurn()"
+    },
+    {
+      "address": "0x2b5aadf",
+      "plt": "0x1fb9798",
+      "got": "0x3b21cc0",
+      "original_target": "0x2d23df0",
+      "name": "GameCore::Messages::Manager::BroadcastMessage(GameCore::Messages::BaseMessage&)"
+    },
+    {
+      "address": "0x2b5a9d7",
+      "plt": "0x1e454e0",
+      "got": "0x3b45958",
+      "original_target": "0x2ba1750",
+      "name": "GameCore::Player::TurnManager::DoBeginTurn()"
+    },
+    {
+      "address": "0x2b5aa52",
+      "plt": "0x1e57fe0",
+      "got": "0x3b4eed8",
+      "original_target": "0x2ba1770",
+      "name": "GameCore::Player::TurnManager::DoEndTurn()"
+    },
+    {
+      "address": "0x2b5c76d",
+      "plt": "0x1f35610",
+      "got": "0x3bbd9f0",
+      "original_target": "0x2b5ac00",
+      "name": "GameCore::Player::Processor::DoTurnActivate(GameCore::Player::Instance&)"
+    },
+    {
+      "address": "0x2b5c775",
+      "plt": "0x1f944d0",
+      "got": "0x3bed150",
+      "original_target": "0x2b5acb0",
+      "name": "GameCore::Player::Processor::DoTurn(GameCore::Player::Instance&)"
+    },
+    {
+      "address": "0x2b5c7a3",
+      "plt": "0x1f93950",
+      "got": "0x3becb90",
+      "original_target": "0x2b5bd70",
+      "name": "GameCore::Player::Processor::UpdateEndTurnBlockingState(GameCore::Player::Instance&)"
+    },
+    {
+      "address": "0x2b5c7b5",
+      "plt": "0x1f107f0",
+      "got": "0x3bab2e0",
+      "original_target": "0x201eb70",
+      "name": "GameCore::AI::Control::Manager::DoTurn()"
+    },
+    {
+      "address": "0x2b5ac70",
+      "plt": "0x1e6a420",
+      "got": "0x3b580f8",
+      "original_target": "0x2ba0b60",
+      "name": "GameCore::Player::TurnManager::DoTurnActivate(bool)"
+    },
+    {
+      "address": "0x2b5ad2a",
+      "plt": "0x1f89000",
+      "got": "0x3be76e8",
+      "original_target": "0x2b5adc0",
+      "name": "GameCore::Player::Processor::SetTurnActive(GameCore::Player::Instance&, bool)"
+    },
+    {
+      "address": "0x2b5ad32",
+      "plt": "0x1f0ca50",
+      "got": "0x3ba9410",
+      "original_target": "0x2b5b1a0",
+      "name": "GameCore::Player::Processor::DoAutomation(GameCore::Player::Instance&)"
+    },
+    {
+      "address": "0x2b5ad8e",
+      "plt": "0x1e29480",
+      "got": "0x3b37928",
+      "original_target": "0x2ba16f0",
+      "name": "GameCore::Player::TurnManager::DoTurnDeactivate()"
+    },
+    {
+      "address": "0x2a54a87",
+      "plt": "0x1f47190",
+      "got": "0x3bc67b0",
+      "original_target": "0x2a0cae0",
+      "name": "GameCore::Game::Processor::DoAutomation()"
+    },
+    {
+      "address": "0x2a54ab2",
+      "plt": "0x1e6eba0",
+      "got": "0x3b5a4b8",
+      "original_target": "0x2a0ca90",
+      "name": "GameCore::Game::Processor::EndPhase()"
+    },
+    {
+      "address": "0x2a54e75",
+      "plt": "0x1ef6f40",
+      "got": "0x3b9e688",
+      "original_target": "0x2a55010",
+      "name": "GameCore::Phase::Processor::CalcPhaseTimeLimit()"
+    },
+    {
+      "address": "0x2a54e86",
+      "plt": "0x1f86e90",
+      "got": "0x3be6630",
+      "original_target": "0x2a0c9e0",
+      "name": "GameCore::Game::Processor::BeginPhase(int)"
+    },
+    {
+      "address": "0x2ba1077",
+      "plt": "0x1e41590",
+      "got": "0x3b439b0",
+      "original_target": "0x201e880",
+      "name": "GameCore::AI::Control::Manager::DoTurnActivate(bool)"
+    }
+  ],
+  "byte_contracts": [
+    {
+      "address": "0x2c7d51b",
+      "contract": "player_minus_one_resolves_local"
+    },
+    {
+      "address": "0x2c7db94",
+      "contract": "reason_parameter_key"
+    },
+    {
+      "address": "0x2c7dc94",
+      "contract": "absent_reason_defaults_NONE"
+    },
+    {
+      "address": "0x2d27b11",
+      "contract": "PlayerTurnComplete_message_key"
+    },
+    {
+      "address": "0x2d28130",
+      "contract": "completion_does_not_unready_turn"
+    },
+    {
+      "address": "0x2d27b63",
+      "contract": "unsigned_player_range_rejection"
+    },
+    {
+      "address": "0x2d27b87",
+      "contract": "nonhuman_skips_pause_rejection"
+    },
+    {
+      "address": "0x2d27b97",
+      "contract": "unpaused_continues_to_complete_check"
+    },
+    {
+      "address": "0x2d27d00",
+      "contract": "not_complete_advances"
+    },
+    {
+      "address": "0x2d27fc7",
+      "contract": "paused_human_ignored_report"
+    },
+    {
+      "address": "0x2b5b863",
+      "contract": "write_complete_then_false_skips_hooks"
+    },
+    {
+      "address": "0x2b5b88e",
+      "contract": "alive_predicate_uses_same_requested_player"
+    },
+    {
+      "address": "0x2b5b89a",
+      "contract": "turn_manager_uses_same_requested_player"
+    },
+    {
+      "address": "0x2b5b8ad",
+      "contract": "repeat_per_valid_slot_0_through_63"
+    },
+    {
+      "address": "0x2a5b644",
+      "contract": "only_forced_or_timer_city_overflow_path"
+    },
+    {
+      "address": "0x2a0c6d3",
+      "contract": "game_begin_turn_virtual"
+    },
+    {
+      "address": "0x2d77fac",
+      "contract": "XP2_map_turn_virtual"
+    },
+    {
+      "address": "0x2a48110",
+      "contract": "map_components_turn_in_index_order"
+    },
+    {
+      "address": "0x2ba0b71",
+      "contract": "not_first_activation_skips_upkeep_region"
+    },
+    {
+      "address": "0x2ba0f73",
+      "contract": "unit_operations_activation_callback_requires_classification"
+    },
+    {
+      "address": "0x2b5b387",
+      "contract": "automation_calls_original_unit_operations"
+    },
+    {
+      "address": "0x2a0d3ab",
+      "contract": "processor_can_repeat_within_single_update"
+    }
+  ],
+  "virtuals": [
+    {
+      "table": "0x3af95d0",
+      "slot": "0x30",
+      "target": "0x2d77fa0",
+      "name": "XP2 game DoBeginTurn"
+    },
+    {
+      "table": "0x3afb150",
+      "slot": "0x160",
+      "target": "0x2a480e0",
+      "name": "XP2 map DoTurn"
+    }
+  ],
+  "matching_dwarf": {
+    "player_turn_complete_bytes": 32,
+    "player_offset": 24,
+    "reason_offset": 28,
+    "set_turn_complete_returns_bool": true,
+    "request_subtypes": {
+      "NONE": "0xb6fa1284",
+      "UserForced": "0x720b6468",
+      "TurnTimerExpired": "0x4601eac9"
+    }
+  },
+  "dispatch": {
+    "action": "0x2cc9a6b5",
+    "player_minus_one": "original local player",
+    "parameter_key": "0x34bfb075",
+    "absent_reason": "0xb6fa1284",
+    "message_key": "0xd7c02786",
+    "completion_unreadies_turn": false,
+    "invalid_player": "unsigned >63 returns without dispatch-side gameplay calls",
+    "paused_human": "logs and sends 0xa7b85261(player); callbacks remain in scope",
+    "already_complete": "logs only; no setter/update/ignored report in this body",
+    "accepted": "SetTurnComplete(true, reason); Game.Update; if player remains active, Game.Update again",
+    "set_complete_true_hook": "same requested player DoSetTurnComplete once per valid slot in [0,64)",
+    "forced_human_hook": "clear production overflow only for empty city build queues, original city order"
+  },
+  "next_bounded_transition": {
+    "name": "player-completion dispatch prefix with required update continuation",
+    "default_NONE_changes": "player global turn-complete true; no forced/timer overflow branch",
+    "continuation": "RequiresGameUpdate, internal phase token; never expose as completed EndTurn",
+    "implementable_from_static_contract": true,
+    "native_differential_fixture_available": false
+  },
+  "update_order": [
+    "Autoplay.Update",
+    "clear NeedsUpdate",
+    "conditional Game.BeginTurn",
+    "ordered GetPlayersToProcess -> Player.Update",
+    "ordered GetPlayersToDeactivate -> Player.DoTurnDeactivate including automation",
+    "if no active players: ActivateNextPlayer/next phase",
+    "conditional Game.EndTurn",
+    "GlobalAi.WaitForJobs",
+    "single-player diplomacy/session/deal pending gates and internal repeat",
+    "Autoplay.Update",
+    "Game.Instance.Update tail: pending diplomacy and cache profiling"
+  ],
+  "decision_contract": "all player decisions supplied externally; retain exact rules/upkeep, NPC state, RNG and ordering",
+  "earliest_next_external_boundary": "not proven universally; activation/offturn/automation/diplomacy can choose before human-ready return",
+  "dependencies": [
+    "full logical player/phase/global transient state",
+    "production queue semantics for forced/timer",
+    "registered reporting and signal effects",
+    "game/map/component and player/city/unit upkeep",
+    "external policy continuations before choice mutation or RNG",
+    "complete gameplay RNG inventory"
+  ],
+  "raw_archival_attempt": {
+    "automatic_review_rejected": true,
+    "retried": false,
+    "resolution": "continued approved read-only inspection and public reproducible hashes; no Ghidra/private Git mutation"
+  },
+  "native_execution": false,
+  "full_host_UI_admission_required": false,
+  "complete_affected_state_proven": false,
+  "complete_decision_coverage": false,
+  "full_action_acceptance": 0,
+  "gameplay_parity": false,
+  "full_gameplay_state_action_turn_supported": false
+}
