@@ -258,6 +258,15 @@ impl FirstPlayerCitiesPrefix {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Cities, usize), PlayerPrefixBoundary> {
+        Self::decode_cities_prefix_with_items(bytes, limits).map(|(value, size, _)| (value, size))
+    }
+    /// Also return the actual aggregate dynamic-element charge, so a bounded
+    /// continuation can subtract both bytes and items before its next child.
+    /// This does not admit a complete Player38 body or runtime initialization.
+    pub fn decode_cities_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Cities, usize, usize), PlayerPrefixBoundary> {
         let mut r = Reader {
             bytes,
             pos: 0,
@@ -269,7 +278,7 @@ impl FirstPlayerCitiesPrefix {
             component: "Cities",
             error,
         })?;
-        Ok((cities, r.pos))
+        Ok((cities, r.pos, r.items))
     }
 }
 #[derive(Debug, Eq, PartialEq)]
@@ -5735,6 +5744,35 @@ mod cities_versions_tests {
             }
         }
         bytes
+    }
+    #[test]
+    fn cities_charged_api_keeps_tail_and_exposes_exact_shared_budget() {
+        for version in [12, 15] {
+            let bytes = wire(version);
+            // Two settled hashes, four banned hashes, and (only15) two overrides.
+            let expected_items = if version == 12 { 6 } else { 8 };
+            let limits = Limits {
+                max_bytes: bytes.len(),
+                max_items: expected_items,
+            };
+            let mut carrier = bytes.clone();
+            carrier.extend([0xaa, 0xbb]);
+            let (value, size, items) =
+                FirstPlayerCitiesPrefix::decode_cities_prefix_with_items(&carrier, limits).unwrap();
+            assert_eq!((size, items), (bytes.len(), expected_items));
+            assert_eq!(
+                FirstPlayerCitiesPrefix::decode_cities_prefix(&carrier, limits).unwrap(),
+                (value, size)
+            );
+            assert!(FirstPlayerCitiesPrefix::decode_cities_prefix_with_items(
+                &carrier,
+                Limits {
+                    max_items: expected_items - 1,
+                    ..limits
+                }
+            )
+            .is_err());
+        }
     }
     #[test]
     fn cities12_and15_exact_grammar_and_limits() {
