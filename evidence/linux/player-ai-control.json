@@ -1,0 +1,1529 @@
+{
+  "schema": "c6-linux-player-ai-control-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "methods": [
+    {
+      "address": "0x2d4fb10",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::AI::Control::ControlPriority const&)",
+      "sha256": "777ee93239f8610f836cd9f3c9c65848ebaa5659917e6f6e8684fd194634207f"
+    },
+    {
+      "address": "0x2018210",
+      "size": 24,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::AI::Control::Contract const&)",
+      "sha256": "33ddce5b8a48788d688ee481223f439049d2a476b78b82158871c52b4d311cde"
+    },
+    {
+      "address": "0x2c9af20",
+      "size": 41,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::PlotCoord const&)",
+      "sha256": "09befdb0e6703290977db65b34b4a9d237076caa3199171f77138d55361c355d"
+    },
+    {
+      "address": "0x2021970",
+      "size": 374,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::AI::Control::Instance, 8u, 16u>(Serialization::OStream&, RecycledIDContainer<GameCore::AI::Control::Instance, 8u, 16u> const&)",
+      "sha256": "16fd902428341cbb384c3650869cd07688ad7e42f42de1536cfcbafdea4a4a15"
+    },
+    {
+      "address": "0x2018230",
+      "size": 24,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::AI::Control::Contract&)",
+      "sha256": "7ed76f8f837bcce64085db9b6c4a0f9e53a6fdf961fed0ff92a06a1d5ae1cb43"
+    },
+    {
+      "address": "0x2021720",
+      "size": 386,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::AI::Control::Instance, 8u, 16u>(Serialization::IStream&, RecycledIDContainer<GameCore::AI::Control::Instance, 8u, 16u>&)",
+      "sha256": "d0fe095725806eec89690f1391c04a365da1ac7e44c444034a8bb8a73fa0886a"
+    },
+    {
+      "address": "0x200c1a0",
+      "size": 183,
+      "name": "GameCore::AI::Control::UnitRequestContract::Read(Serialization::IStream&)",
+      "sha256": "52e9ac711dcc29b1afb276657691b093cac33f5e6f837dbc1d000872adc2f960"
+    },
+    {
+      "address": "0x200cec0",
+      "size": 51,
+      "name": "GameCore::AI::Control::PurchasePlotContract::Read(Serialization::IStream&)",
+      "sha256": "f5b8568acd3d63d6eebdd88ff56ab90617a807cbf4d0645dafa86d3f50be021f"
+    },
+    {
+      "address": "0x200c860",
+      "size": 234,
+      "name": "GameCore::AI::Control::TechResearchContract::Read(Serialization::IStream&)",
+      "sha256": "e0e5e01d8a882d4d404fd42b691f5e5aba21d0743a0e01afde9755e1bba14ee0"
+    },
+    {
+      "address": "0x200cc90",
+      "size": 116,
+      "name": "GameCore::AI::Control::CivicResearchContract::Read(Serialization::IStream&)",
+      "sha256": "8632df6aea847c807cbfb4fae5052c9238dd53ab893d4aa768c35e7f46c1288f"
+    },
+    {
+      "address": "0x200d2a0",
+      "size": 142,
+      "name": "GameCore::AI::Control::DiplomaticActionContract::Read(Serialization::IStream&)",
+      "sha256": "4061056947186224ebdbbc154e58aea6b24389172c4fc5c0cf00cc0a864aa64b"
+    },
+    {
+      "address": "0x201ca10",
+      "size": 491,
+      "name": "GameCore::AI::Control::Factory::CreateRawContract(GameCore::AI::Control::ContractType)",
+      "sha256": "7d00c0a7d1f4647b1d75c610b85fd027b512d10c28a58d2a66f6e580ff5b9206"
+    },
+    {
+      "address": "0x201d0c0",
+      "size": 401,
+      "name": "GameCore::AI::Control::Manager::Read(Serialization::IStream&)",
+      "sha256": "d593b24d73bcc457218164da8b971daf2fc46b4345724c1eb158abb2272bab41"
+    },
+    {
+      "address": "0x2018be0",
+      "size": 222,
+      "name": "GameCore::AI::Control::Contract::Read(Serialization::IStream&)",
+      "sha256": "b6f075bc5b70a5e3599e87251cf0f1b39462cd44aedb78609694aab251ce6234"
+    },
+    {
+      "address": "0x201ce70",
+      "size": 108,
+      "name": "GameCore::AI::Control::Instance::Read(Serialization::IStream&)",
+      "sha256": "6d99f7d0a6d10f37752c7e1c0aa6bac570672aaf436a1a52425ab80dfc5d8d6c"
+    },
+    {
+      "address": "0x200c260",
+      "size": 169,
+      "name": "GameCore::AI::Control::UnitRequestContract::Write(Serialization::OStream&) const",
+      "sha256": "dd09e2ae0ebea314e3ff52585e3413fd550fc60058c699e6f16f4c24d149f56a"
+    },
+    {
+      "address": "0x200cf00",
+      "size": 59,
+      "name": "GameCore::AI::Control::PurchasePlotContract::Write(Serialization::OStream&) const",
+      "sha256": "0c973a804b5d77b9ff1def725364ac89f3267ff63b762d84dcf12878997c2898"
+    },
+    {
+      "address": "0x200c950",
+      "size": 114,
+      "name": "GameCore::AI::Control::TechResearchContract::Write(Serialization::OStream&) const",
+      "sha256": "39dcba54d4fdca7cbbd6e0c4341778f3c2763e61cdfc19a7b606b0c8dc8ffe4e"
+    },
+    {
+      "address": "0x200cd10",
+      "size": 99,
+      "name": "GameCore::AI::Control::CivicResearchContract::Write(Serialization::OStream&) const",
+      "sha256": "755e3eef818d6f2c124966901903a3039fd53781ecb6db6b6ef3b43e41901149"
+    },
+    {
+      "address": "0x200d330",
+      "size": 89,
+      "name": "GameCore::AI::Control::DiplomaticActionContract::Write(Serialization::OStream&) const",
+      "sha256": "55c7ea9b3dcdd8f1443410a1f71bde8788b6ff52e214ed2ea223c98b8cba37d2"
+    },
+    {
+      "address": "0x201cf80",
+      "size": 279,
+      "name": "GameCore::AI::Control::Manager::Write(Serialization::OStream&) const",
+      "sha256": "2ec55fb0cae521cfd78e3a52ad0621c3a5056de61942c9534d7ad0891e16c139"
+    },
+    {
+      "address": "0x2018cc0",
+      "size": 159,
+      "name": "GameCore::AI::Control::Contract::Write(Serialization::OStream&) const",
+      "sha256": "617a5f626be3018aa0c88442327f08e33f49805c60a07bd46df5927c61292397"
+    },
+    {
+      "address": "0x201ce00",
+      "size": 74,
+      "name": "GameCore::AI::Control::Instance::Write(Serialization::OStream&) const",
+      "sha256": "5a6bb0d94184c0cc150174341bac3e0a2fd0da3b65ed4d3fa05c5b7985bd2e84"
+    }
+  ],
+  "virtuals": [
+    {
+      "vtable": "0x3a04e40",
+      "reader": "0x200c1a0",
+      "writer": "0x200c260",
+      "name": "UnitRequestContract"
+    },
+    {
+      "vtable": "0x3a04f18",
+      "reader": "0x200c860",
+      "writer": "0x200c950",
+      "name": "TechResearchContract"
+    },
+    {
+      "vtable": "0x3a04ff0",
+      "reader": "0x200cc90",
+      "writer": "0x200cd10",
+      "name": "CivicResearchContract"
+    },
+    {
+      "vtable": "0x3a050c8",
+      "reader": "0x200cec0",
+      "writer": "0x200cf00",
+      "name": "PurchasePlotContract"
+    },
+    {
+      "vtable": "0x3a051a0",
+      "reader": "0x200d2a0",
+      "writer": "0x200d330",
+      "name": "DiplomaticActionContract"
+    }
+  ],
+  "factory_keys": {
+    "0": "UnitRequest",
+    "1": "TechResearch",
+    "2": "CivicResearch",
+    "3": "PurchasePlot",
+    "4": "DiplomaticAction",
+    "-1": "null"
+  },
+  "contract_bytes_including_key": {
+    "0": 69,
+    "1": 56,
+    "2": 52,
+    "3": 52,
+    "4": 52,
+    "-1": 4
+  },
+  "fixtures": [
+    {
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "players": 43,
+      "ever_alive": 43,
+      "skipped": 0,
+      "records": [
+        {
+          "player": 0,
+          "priority": 4,
+          "bytes": 4984,
+          "items": 123,
+          "capacity": 64,
+          "active": 39,
+          "free": 25,
+          "current_id_bits": 235077632,
+          "contracts": 59,
+          "contract_keys": {
+            "0": 58,
+            "3": 1
+          },
+          "wire_sha256": "1a0c1972f5465bb0d20711874a34c3ae0be858a2a27c5ac665f5ac52eea91266"
+        },
+        {
+          "player": 1,
+          "priority": -1,
+          "bytes": 502,
+          "items": 36,
+          "capacity": 32,
+          "active": 3,
+          "free": 29,
+          "current_id_bits": 58523648,
+          "contracts": 4,
+          "contract_keys": {
+            "0": 4
+          },
+          "wire_sha256": "eb36685d94ed89c765897077ddcb347c5a5251ed8017e6a4ff6567b48315bd81"
+        },
+        {
+          "player": 2,
+          "priority": -1,
+          "bytes": 3796,
+          "items": 186,
+          "capacity": 160,
+          "active": 82,
+          "free": 78,
+          "current_id_bits": 551419904,
+          "contracts": 26,
+          "contract_keys": {
+            "0": 26
+          },
+          "wire_sha256": "d8b671e52433f5723f7b8f803200b4c25df8e1055e52476a8d2831f2dcc0b64d"
+        },
+        {
+          "player": 3,
+          "priority": -1,
+          "bytes": 4209,
+          "items": 155,
+          "capacity": 120,
+          "active": 79,
+          "free": 41,
+          "current_id_bits": 371326976,
+          "contracts": 35,
+          "contract_keys": {
+            "0": 35
+          },
+          "wire_sha256": "645959fdb11afbc4353cff92011cf8424d367907bd5061445825605afa978287"
+        },
+        {
+          "player": 4,
+          "priority": -1,
+          "bytes": 3158,
+          "items": 117,
+          "capacity": 88,
+          "active": 48,
+          "free": 40,
+          "current_id_bits": 357302272,
+          "contracts": 29,
+          "contract_keys": {
+            "0": 28,
+            "1": 1
+          },
+          "wire_sha256": "de6cf78424fa88366705825b415afbadd1be207564f500dfde5e63044e9917c8"
+        },
+        {
+          "player": 5,
+          "priority": -1,
+          "bytes": 3393,
+          "items": 115,
+          "capacity": 80,
+          "active": 38,
+          "free": 42,
+          "current_id_bits": 278003712,
+          "contracts": 35,
+          "contract_keys": {
+            "0": 35
+          },
+          "wire_sha256": "3915040c196edb2bd870cf5128c8ed8b226f67fc76f8ba548e7dd3ed6943da59"
+        },
+        {
+          "player": 6,
+          "priority": -1,
+          "bytes": 2892,
+          "items": 108,
+          "capacity": 80,
+          "active": 39,
+          "free": 41,
+          "current_id_bits": 288292864,
+          "contracts": 28,
+          "contract_keys": {
+            "0": 26,
+            "4": 2
+          },
+          "wire_sha256": "315e90715f796f0988f75add39984f27e05a665292b3dec673f5e75d2589922c"
+        },
+        {
+          "player": 7,
+          "priority": -1,
+          "bytes": 4064,
+          "items": 142,
+          "capacity": 104,
+          "active": 61,
+          "free": 43,
+          "current_id_bits": 393609216,
+          "contracts": 38,
+          "contract_keys": {
+            "0": 38
+          },
+          "wire_sha256": "397c5e88bf863f92295608c6922b392678aaef4ac85f5847913f0a74f441b248"
+        },
+        {
+          "player": 8,
+          "priority": -1,
+          "bytes": 4173,
+          "items": 180,
+          "capacity": 136,
+          "active": 35,
+          "free": 101,
+          "current_id_bits": 878444544,
+          "contracts": 44,
+          "contract_keys": {
+            "0": 43,
+            "4": 1
+          },
+          "wire_sha256": "80691aa7f796d4a4f9bd306bccd62b429db981cc3309f2e1c27f172f0b5e3135"
+        },
+        {
+          "player": 9,
+          "priority": -1,
+          "bytes": 5746,
+          "items": 157,
+          "capacity": 96,
+          "active": 70,
+          "free": 26,
+          "current_id_bits": 349306880,
+          "contracts": 61,
+          "contract_keys": {
+            "0": 60,
+            "3": 1
+          },
+          "wire_sha256": "b326169ee5e33d58d756cf44b9c47de264544d69e74b1dacebf6739d78bccc97"
+        },
+        {
+          "player": 10,
+          "priority": -1,
+          "bytes": 4255,
+          "items": 171,
+          "capacity": 136,
+          "active": 80,
+          "free": 56,
+          "current_id_bits": 546439168,
+          "contracts": 35,
+          "contract_keys": {
+            "0": 33,
+            "3": 2
+          },
+          "wire_sha256": "dbcc94a96450b213075e4237f8bdfa4c3d38ee1e7f32c3bd9ed45ad170268642"
+        },
+        {
+          "player": 11,
+          "priority": -1,
+          "bytes": 638,
+          "items": 37,
+          "capacity": 32,
+          "active": 8,
+          "free": 24,
+          "current_id_bits": 16646144,
+          "contracts": 5,
+          "contract_keys": {
+            "1": 1,
+            "0": 4
+          },
+          "wire_sha256": "3aafed23d5155059cce3edfdfe5a737d157eb417337c52f190ccdfff9e9bc625"
+        },
+        {
+          "player": 12,
+          "priority": -1,
+          "bytes": 9444,
+          "items": 191,
+          "capacity": 72,
+          "active": 57,
+          "free": 15,
+          "current_id_bits": 220594176,
+          "contracts": 119,
+          "contract_keys": {
+            "0": 118,
+            "4": 1
+          },
+          "wire_sha256": "d8b30eb77464c1d7e8c6cf11859e35771abb4aa0f4f707b945c48dc254138c26"
+        },
+        {
+          "player": 13,
+          "priority": -1,
+          "bytes": 624,
+          "items": 45,
+          "capacity": 40,
+          "active": 7,
+          "free": 33,
+          "current_id_bits": 47906816,
+          "contracts": 5,
+          "contract_keys": {
+            "2": 1,
+            "0": 2,
+            "1": 2
+          },
+          "wire_sha256": "8b06e6f2c3e9ac8ec946c154832eb51290f368870a5cfe38e27c666fe7841118"
+        },
+        {
+          "player": 14,
+          "priority": -1,
+          "bytes": 2686,
+          "items": 92,
+          "capacity": 64,
+          "active": 28,
+          "free": 36,
+          "current_id_bits": 261357568,
+          "contracts": 28,
+          "contract_keys": {
+            "0": 28
+          },
+          "wire_sha256": "29898f1bcee1e1309a5fc51abc5423b412e0e73bb733781be0de4933da3847cf"
+        },
+        {
+          "player": 15,
+          "priority": -1,
+          "bytes": 7401,
+          "items": 189,
+          "capacity": 104,
+          "active": 69,
+          "free": 35,
+          "current_id_bits": 319225856,
+          "contracts": 85,
+          "contract_keys": {
+            "0": 83,
+            "4": 2
+          },
+          "wire_sha256": "8b0068073cd2c4ee1ce9cc2033d4e68ed7197d8e708ca65c68e45b47dcd6af66"
+        },
+        {
+          "player": 16,
+          "priority": -1,
+          "bytes": 8477,
+          "items": 199,
+          "capacity": 104,
+          "active": 91,
+          "free": 13,
+          "current_id_bits": 316211200,
+          "contracts": 95,
+          "contract_keys": {
+            "0": 95
+          },
+          "wire_sha256": "eb37d9ca10ab2e308a71958f233f3712340a3df03e09fdfc6880fe9ea4fe7e3e"
+        },
+        {
+          "player": 17,
+          "priority": -1,
+          "bytes": 146,
+          "items": 8,
+          "capacity": 8,
+          "active": 4,
+          "free": 4,
+          "current_id_bits": 17563648,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "9e70dc306a0634d23db1a93d9fc96cd0bcaad5eea462e082dbf2fc037d2fffe8"
+        },
+        {
+          "player": 18,
+          "priority": -1,
+          "bytes": 239,
+          "items": 10,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 5832704,
+          "contracts": 2,
+          "contract_keys": {
+            "0": 1,
+            "1": 1
+          },
+          "wire_sha256": "dd562b9f062af9c20d77125aa6c7c4a1f6d5ebced174f57f3f1d29fd3dc9eb66"
+        },
+        {
+          "player": 19,
+          "priority": -1,
+          "bytes": 969,
+          "items": 27,
+          "capacity": 16,
+          "active": 6,
+          "free": 10,
+          "current_id_bits": 25821184,
+          "contracts": 11,
+          "contract_keys": {
+            "0": 11
+          },
+          "wire_sha256": "054e5a369f8a376a999b9a0756f58e3325328ca24ac403dc78240e7ac5b71046"
+        },
+        {
+          "player": 20,
+          "priority": -1,
+          "bytes": 215,
+          "items": 17,
+          "capacity": 16,
+          "active": 2,
+          "free": 14,
+          "current_id_bits": 7798784,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "23834ec47fbc8023454cc4b232e8036e6463dbeae2dbbd5439f5d79a39fb43d5"
+        },
+        {
+          "player": 21,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 31326208,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "08d232868b0c24785a65fe83091ce6a426c9cdb6689da82812f9c516e359a41b"
+        },
+        {
+          "player": 22,
+          "priority": -1,
+          "bytes": 799,
+          "items": 17,
+          "capacity": 8,
+          "active": 6,
+          "free": 2,
+          "current_id_bits": 27852800,
+          "contracts": 9,
+          "contract_keys": {
+            "0": 9
+          },
+          "wire_sha256": "939fbb9be17e814cecaeeed583f6258b7c772d2c86263abdd9cb365130fb0a19"
+        },
+        {
+          "player": 23,
+          "priority": -1,
+          "bytes": 263,
+          "items": 17,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 37355520,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "174b4d3031fc5351d834d0337e9a3b310c1c6f58a4f17365d462b65fa6a4b8cc"
+        },
+        {
+          "player": 24,
+          "priority": -1,
+          "bytes": 470,
+          "items": 20,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 36962304,
+          "contracts": 4,
+          "contract_keys": {
+            "0": 4
+          },
+          "wire_sha256": "3777d50c84e9ae07448d31dcb7b8dbe55a0859f867c3a02646701457e04225a6"
+        },
+        {
+          "player": 25,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 20381696,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "2663861cfc219eee5edb80c1f5e709ae90d999ce4a222609dcad0a5f45c5b9c4"
+        },
+        {
+          "player": 26,
+          "priority": -1,
+          "bytes": 347,
+          "items": 12,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 2293760,
+          "contracts": 4,
+          "contract_keys": {
+            "3": 1,
+            "1": 2,
+            "0": 1
+          },
+          "wire_sha256": "e30c56a24835bc4565422768f2aac3bc3b1b7240e02785f0a45973d9f08bda09"
+        },
+        {
+          "player": 27,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 50724864,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "f16821dfae5ce4aa429e039fe173a60a48847c05e31eb70d21e1954d332daaf8"
+        },
+        {
+          "player": 28,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 24772608,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "6d38f5681fe222d27cabe3cdf8ca07e3525777f49152b15238a73e6471f26553"
+        },
+        {
+          "player": 29,
+          "priority": -1,
+          "bytes": 279,
+          "items": 17,
+          "capacity": 16,
+          "active": 6,
+          "free": 10,
+          "current_id_bits": 24379392,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "eb69b3f520b0de7fd7db994c0ec80d9c7a4c6167baeaa5579dd2e0f8f021ec2a"
+        },
+        {
+          "player": 30,
+          "priority": -1,
+          "bytes": 279,
+          "items": 17,
+          "capacity": 16,
+          "active": 6,
+          "free": 10,
+          "current_id_bits": 34930688,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "0b8b4f24f3b1ce271569820ee6e2ad5c9d13dffa877d4abcf35f72d6bc230d5b"
+        },
+        {
+          "player": 31,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 31981568,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "2e6ddf42620b344c64a131f3399fef0f09c060d52dd709e7374079393ab244da"
+        },
+        {
+          "player": 32,
+          "priority": -1,
+          "bytes": 284,
+          "items": 10,
+          "capacity": 8,
+          "active": 4,
+          "free": 4,
+          "current_id_bits": 28377088,
+          "contracts": 2,
+          "contract_keys": {
+            "0": 2
+          },
+          "wire_sha256": "9d7774d344672dca19dad4452424739064669645a8ad136dd48d389db3de5f1c"
+        },
+        {
+          "player": 33,
+          "priority": -1,
+          "bytes": 953,
+          "items": 27,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 16252928,
+          "contracts": 11,
+          "contract_keys": {
+            "0": 11
+          },
+          "wire_sha256": "9ecaa6e7f63a995b63f0505cc1a95fb54929205542b8a28b5762362975aee3b8"
+        },
+        {
+          "player": 34,
+          "priority": -1,
+          "bytes": 369,
+          "items": 19,
+          "capacity": 16,
+          "active": 3,
+          "free": 13,
+          "current_id_bits": 45809664,
+          "contracts": 3,
+          "contract_keys": {
+            "0": 3
+          },
+          "wire_sha256": "847594b312ce9663a5f0a8c7fca1ab21d4438cc516c7e78f4770570bf5cb559b"
+        },
+        {
+          "player": 35,
+          "priority": -1,
+          "bytes": 231,
+          "items": 17,
+          "capacity": 16,
+          "active": 3,
+          "free": 13,
+          "current_id_bits": 32505856,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "fe1ee194e7bbd589a8468d2bf24d22c3d8d877d7ad60da9d8ffaae9d5e5621ee"
+        },
+        {
+          "player": 36,
+          "priority": -1,
+          "bytes": 114,
+          "items": 8,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 5963776,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "1ad20f9d5d740d909b9ee49a17c0d464695993ebcea0a2ec58ef854b7e2cbbe9"
+        },
+        {
+          "player": 37,
+          "priority": -1,
+          "bytes": 332,
+          "items": 18,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 31326208,
+          "contracts": 2,
+          "contract_keys": {
+            "0": 2
+          },
+          "wire_sha256": "767e0daa2b6eaaf3d1a47c72ab39d8abc1865778016c477efc3ce507d70c2303"
+        },
+        {
+          "player": 38,
+          "priority": -1,
+          "bytes": 502,
+          "items": 20,
+          "capacity": 16,
+          "active": 7,
+          "free": 9,
+          "current_id_bits": 20447232,
+          "contracts": 4,
+          "contract_keys": {
+            "0": 4
+          },
+          "wire_sha256": "a79df39b001907fdbc74180b012fb91d9e6d646d0574ffa22e4172d9e542e7b2"
+        },
+        {
+          "player": 39,
+          "priority": -1,
+          "bytes": 231,
+          "items": 9,
+          "capacity": 8,
+          "active": 5,
+          "free": 3,
+          "current_id_bits": 21757952,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "52080cbc7bf5341cd6fb8d8b3be8dd249952b25d6b423ccbb867e5f33f84fa07"
+        },
+        {
+          "player": 40,
+          "priority": -1,
+          "bytes": 183,
+          "items": 9,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 5505024,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "fba5c9819b209d61ca02b9e2e3a1c23a313078488c33d66aaec0c478fd4dd7f3"
+        },
+        {
+          "player": 62,
+          "priority": -1,
+          "bytes": 1682,
+          "items": 88,
+          "capacity": 88,
+          "active": 80,
+          "free": 8,
+          "current_id_bits": 9764864,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "16cae55b07e6cfde4e16822bebf6479fbe4bcd959d83b666f43a4adae2fb73ca"
+        },
+        {
+          "player": 63,
+          "priority": -1,
+          "bytes": 706,
+          "items": 40,
+          "capacity": 40,
+          "active": 31,
+          "free": 9,
+          "current_id_bits": 16515072,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "6eb6ec7721b24a99cb1a78c535f22093cf789db991cb8eeb91bd3f3406cb6a39"
+        }
+      ]
+    },
+    {
+      "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "players": 43,
+      "ever_alive": 43,
+      "skipped": 0,
+      "records": [
+        {
+          "player": 0,
+          "priority": 4,
+          "bytes": 4984,
+          "items": 123,
+          "capacity": 64,
+          "active": 39,
+          "free": 25,
+          "current_id_bits": 235077632,
+          "contracts": 59,
+          "contract_keys": {
+            "0": 58,
+            "3": 1
+          },
+          "wire_sha256": "1a0c1972f5465bb0d20711874a34c3ae0be858a2a27c5ac665f5ac52eea91266"
+        },
+        {
+          "player": 1,
+          "priority": -1,
+          "bytes": 502,
+          "items": 36,
+          "capacity": 32,
+          "active": 3,
+          "free": 29,
+          "current_id_bits": 58523648,
+          "contracts": 4,
+          "contract_keys": {
+            "0": 4
+          },
+          "wire_sha256": "eb36685d94ed89c765897077ddcb347c5a5251ed8017e6a4ff6567b48315bd81"
+        },
+        {
+          "player": 2,
+          "priority": -1,
+          "bytes": 3796,
+          "items": 186,
+          "capacity": 160,
+          "active": 82,
+          "free": 78,
+          "current_id_bits": 551419904,
+          "contracts": 26,
+          "contract_keys": {
+            "0": 26
+          },
+          "wire_sha256": "d8b671e52433f5723f7b8f803200b4c25df8e1055e52476a8d2831f2dcc0b64d"
+        },
+        {
+          "player": 3,
+          "priority": -1,
+          "bytes": 4209,
+          "items": 155,
+          "capacity": 120,
+          "active": 79,
+          "free": 41,
+          "current_id_bits": 371326976,
+          "contracts": 35,
+          "contract_keys": {
+            "0": 35
+          },
+          "wire_sha256": "645959fdb11afbc4353cff92011cf8424d367907bd5061445825605afa978287"
+        },
+        {
+          "player": 4,
+          "priority": -1,
+          "bytes": 3158,
+          "items": 117,
+          "capacity": 88,
+          "active": 48,
+          "free": 40,
+          "current_id_bits": 357302272,
+          "contracts": 29,
+          "contract_keys": {
+            "0": 28,
+            "1": 1
+          },
+          "wire_sha256": "de6cf78424fa88366705825b415afbadd1be207564f500dfde5e63044e9917c8"
+        },
+        {
+          "player": 5,
+          "priority": -1,
+          "bytes": 3393,
+          "items": 115,
+          "capacity": 80,
+          "active": 38,
+          "free": 42,
+          "current_id_bits": 278003712,
+          "contracts": 35,
+          "contract_keys": {
+            "0": 35
+          },
+          "wire_sha256": "3915040c196edb2bd870cf5128c8ed8b226f67fc76f8ba548e7dd3ed6943da59"
+        },
+        {
+          "player": 6,
+          "priority": -1,
+          "bytes": 2892,
+          "items": 108,
+          "capacity": 80,
+          "active": 39,
+          "free": 41,
+          "current_id_bits": 288292864,
+          "contracts": 28,
+          "contract_keys": {
+            "0": 26,
+            "4": 2
+          },
+          "wire_sha256": "315e90715f796f0988f75add39984f27e05a665292b3dec673f5e75d2589922c"
+        },
+        {
+          "player": 7,
+          "priority": -1,
+          "bytes": 4064,
+          "items": 142,
+          "capacity": 104,
+          "active": 61,
+          "free": 43,
+          "current_id_bits": 393609216,
+          "contracts": 38,
+          "contract_keys": {
+            "0": 38
+          },
+          "wire_sha256": "397c5e88bf863f92295608c6922b392678aaef4ac85f5847913f0a74f441b248"
+        },
+        {
+          "player": 8,
+          "priority": -1,
+          "bytes": 4173,
+          "items": 180,
+          "capacity": 136,
+          "active": 35,
+          "free": 101,
+          "current_id_bits": 878444544,
+          "contracts": 44,
+          "contract_keys": {
+            "0": 43,
+            "4": 1
+          },
+          "wire_sha256": "80691aa7f796d4a4f9bd306bccd62b429db981cc3309f2e1c27f172f0b5e3135"
+        },
+        {
+          "player": 9,
+          "priority": -1,
+          "bytes": 5746,
+          "items": 157,
+          "capacity": 96,
+          "active": 70,
+          "free": 26,
+          "current_id_bits": 349306880,
+          "contracts": 61,
+          "contract_keys": {
+            "0": 60,
+            "3": 1
+          },
+          "wire_sha256": "b326169ee5e33d58d756cf44b9c47de264544d69e74b1dacebf6739d78bccc97"
+        },
+        {
+          "player": 10,
+          "priority": -1,
+          "bytes": 4255,
+          "items": 171,
+          "capacity": 136,
+          "active": 80,
+          "free": 56,
+          "current_id_bits": 546439168,
+          "contracts": 35,
+          "contract_keys": {
+            "0": 33,
+            "3": 2
+          },
+          "wire_sha256": "dbcc94a96450b213075e4237f8bdfa4c3d38ee1e7f32c3bd9ed45ad170268642"
+        },
+        {
+          "player": 11,
+          "priority": -1,
+          "bytes": 638,
+          "items": 37,
+          "capacity": 32,
+          "active": 8,
+          "free": 24,
+          "current_id_bits": 16646144,
+          "contracts": 5,
+          "contract_keys": {
+            "1": 1,
+            "0": 4
+          },
+          "wire_sha256": "3aafed23d5155059cce3edfdfe5a737d157eb417337c52f190ccdfff9e9bc625"
+        },
+        {
+          "player": 12,
+          "priority": -1,
+          "bytes": 9444,
+          "items": 191,
+          "capacity": 72,
+          "active": 57,
+          "free": 15,
+          "current_id_bits": 220594176,
+          "contracts": 119,
+          "contract_keys": {
+            "0": 118,
+            "4": 1
+          },
+          "wire_sha256": "d8b30eb77464c1d7e8c6cf11859e35771abb4aa0f4f707b945c48dc254138c26"
+        },
+        {
+          "player": 13,
+          "priority": -1,
+          "bytes": 624,
+          "items": 45,
+          "capacity": 40,
+          "active": 7,
+          "free": 33,
+          "current_id_bits": 47906816,
+          "contracts": 5,
+          "contract_keys": {
+            "2": 1,
+            "0": 2,
+            "1": 2
+          },
+          "wire_sha256": "8b06e6f2c3e9ac8ec946c154832eb51290f368870a5cfe38e27c666fe7841118"
+        },
+        {
+          "player": 14,
+          "priority": -1,
+          "bytes": 2686,
+          "items": 92,
+          "capacity": 64,
+          "active": 28,
+          "free": 36,
+          "current_id_bits": 261357568,
+          "contracts": 28,
+          "contract_keys": {
+            "0": 28
+          },
+          "wire_sha256": "29898f1bcee1e1309a5fc51abc5423b412e0e73bb733781be0de4933da3847cf"
+        },
+        {
+          "player": 15,
+          "priority": -1,
+          "bytes": 7401,
+          "items": 189,
+          "capacity": 104,
+          "active": 69,
+          "free": 35,
+          "current_id_bits": 319225856,
+          "contracts": 85,
+          "contract_keys": {
+            "0": 83,
+            "4": 2
+          },
+          "wire_sha256": "8b0068073cd2c4ee1ce9cc2033d4e68ed7197d8e708ca65c68e45b47dcd6af66"
+        },
+        {
+          "player": 16,
+          "priority": -1,
+          "bytes": 8477,
+          "items": 199,
+          "capacity": 104,
+          "active": 91,
+          "free": 13,
+          "current_id_bits": 316211200,
+          "contracts": 95,
+          "contract_keys": {
+            "0": 95
+          },
+          "wire_sha256": "eb37d9ca10ab2e308a71958f233f3712340a3df03e09fdfc6880fe9ea4fe7e3e"
+        },
+        {
+          "player": 17,
+          "priority": -1,
+          "bytes": 146,
+          "items": 8,
+          "capacity": 8,
+          "active": 4,
+          "free": 4,
+          "current_id_bits": 17563648,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "9e70dc306a0634d23db1a93d9fc96cd0bcaad5eea462e082dbf2fc037d2fffe8"
+        },
+        {
+          "player": 18,
+          "priority": -1,
+          "bytes": 239,
+          "items": 10,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 5832704,
+          "contracts": 2,
+          "contract_keys": {
+            "0": 1,
+            "1": 1
+          },
+          "wire_sha256": "dd562b9f062af9c20d77125aa6c7c4a1f6d5ebced174f57f3f1d29fd3dc9eb66"
+        },
+        {
+          "player": 19,
+          "priority": -1,
+          "bytes": 969,
+          "items": 27,
+          "capacity": 16,
+          "active": 6,
+          "free": 10,
+          "current_id_bits": 25821184,
+          "contracts": 11,
+          "contract_keys": {
+            "0": 11
+          },
+          "wire_sha256": "054e5a369f8a376a999b9a0756f58e3325328ca24ac403dc78240e7ac5b71046"
+        },
+        {
+          "player": 20,
+          "priority": -1,
+          "bytes": 215,
+          "items": 17,
+          "capacity": 16,
+          "active": 2,
+          "free": 14,
+          "current_id_bits": 7798784,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "23834ec47fbc8023454cc4b232e8036e6463dbeae2dbbd5439f5d79a39fb43d5"
+        },
+        {
+          "player": 21,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 31326208,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "08d232868b0c24785a65fe83091ce6a426c9cdb6689da82812f9c516e359a41b"
+        },
+        {
+          "player": 22,
+          "priority": -1,
+          "bytes": 799,
+          "items": 17,
+          "capacity": 8,
+          "active": 6,
+          "free": 2,
+          "current_id_bits": 27852800,
+          "contracts": 9,
+          "contract_keys": {
+            "0": 9
+          },
+          "wire_sha256": "939fbb9be17e814cecaeeed583f6258b7c772d2c86263abdd9cb365130fb0a19"
+        },
+        {
+          "player": 23,
+          "priority": -1,
+          "bytes": 263,
+          "items": 17,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 37355520,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "174b4d3031fc5351d834d0337e9a3b310c1c6f58a4f17365d462b65fa6a4b8cc"
+        },
+        {
+          "player": 24,
+          "priority": -1,
+          "bytes": 470,
+          "items": 20,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 36962304,
+          "contracts": 4,
+          "contract_keys": {
+            "0": 4
+          },
+          "wire_sha256": "3777d50c84e9ae07448d31dcb7b8dbe55a0859f867c3a02646701457e04225a6"
+        },
+        {
+          "player": 25,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 20381696,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "2663861cfc219eee5edb80c1f5e709ae90d999ce4a222609dcad0a5f45c5b9c4"
+        },
+        {
+          "player": 26,
+          "priority": -1,
+          "bytes": 347,
+          "items": 12,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 2293760,
+          "contracts": 4,
+          "contract_keys": {
+            "3": 1,
+            "1": 2,
+            "0": 1
+          },
+          "wire_sha256": "e30c56a24835bc4565422768f2aac3bc3b1b7240e02785f0a45973d9f08bda09"
+        },
+        {
+          "player": 27,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 50724864,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "f16821dfae5ce4aa429e039fe173a60a48847c05e31eb70d21e1954d332daaf8"
+        },
+        {
+          "player": 28,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 24772608,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "6d38f5681fe222d27cabe3cdf8ca07e3525777f49152b15238a73e6471f26553"
+        },
+        {
+          "player": 29,
+          "priority": -1,
+          "bytes": 279,
+          "items": 17,
+          "capacity": 16,
+          "active": 6,
+          "free": 10,
+          "current_id_bits": 24379392,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "eb69b3f520b0de7fd7db994c0ec80d9c7a4c6167baeaa5579dd2e0f8f021ec2a"
+        },
+        {
+          "player": 30,
+          "priority": -1,
+          "bytes": 279,
+          "items": 17,
+          "capacity": 16,
+          "active": 6,
+          "free": 10,
+          "current_id_bits": 34930688,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "0b8b4f24f3b1ce271569820ee6e2ad5c9d13dffa877d4abcf35f72d6bc230d5b"
+        },
+        {
+          "player": 31,
+          "priority": -1,
+          "bytes": 247,
+          "items": 17,
+          "capacity": 16,
+          "active": 4,
+          "free": 12,
+          "current_id_bits": 31981568,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "2e6ddf42620b344c64a131f3399fef0f09c060d52dd709e7374079393ab244da"
+        },
+        {
+          "player": 32,
+          "priority": -1,
+          "bytes": 284,
+          "items": 10,
+          "capacity": 8,
+          "active": 4,
+          "free": 4,
+          "current_id_bits": 28377088,
+          "contracts": 2,
+          "contract_keys": {
+            "0": 2
+          },
+          "wire_sha256": "9d7774d344672dca19dad4452424739064669645a8ad136dd48d389db3de5f1c"
+        },
+        {
+          "player": 33,
+          "priority": -1,
+          "bytes": 953,
+          "items": 27,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 16252928,
+          "contracts": 11,
+          "contract_keys": {
+            "0": 11
+          },
+          "wire_sha256": "9ecaa6e7f63a995b63f0505cc1a95fb54929205542b8a28b5762362975aee3b8"
+        },
+        {
+          "player": 34,
+          "priority": -1,
+          "bytes": 369,
+          "items": 19,
+          "capacity": 16,
+          "active": 3,
+          "free": 13,
+          "current_id_bits": 45809664,
+          "contracts": 3,
+          "contract_keys": {
+            "0": 3
+          },
+          "wire_sha256": "847594b312ce9663a5f0a8c7fca1ab21d4438cc516c7e78f4770570bf5cb559b"
+        },
+        {
+          "player": 35,
+          "priority": -1,
+          "bytes": 231,
+          "items": 17,
+          "capacity": 16,
+          "active": 3,
+          "free": 13,
+          "current_id_bits": 32505856,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "fe1ee194e7bbd589a8468d2bf24d22c3d8d877d7ad60da9d8ffaae9d5e5621ee"
+        },
+        {
+          "player": 36,
+          "priority": -1,
+          "bytes": 114,
+          "items": 8,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 5963776,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "1ad20f9d5d740d909b9ee49a17c0d464695993ebcea0a2ec58ef854b7e2cbbe9"
+        },
+        {
+          "player": 37,
+          "priority": -1,
+          "bytes": 332,
+          "items": 18,
+          "capacity": 16,
+          "active": 5,
+          "free": 11,
+          "current_id_bits": 31326208,
+          "contracts": 2,
+          "contract_keys": {
+            "0": 2
+          },
+          "wire_sha256": "767e0daa2b6eaaf3d1a47c72ab39d8abc1865778016c477efc3ce507d70c2303"
+        },
+        {
+          "player": 38,
+          "priority": -1,
+          "bytes": 502,
+          "items": 20,
+          "capacity": 16,
+          "active": 7,
+          "free": 9,
+          "current_id_bits": 20447232,
+          "contracts": 4,
+          "contract_keys": {
+            "0": 4
+          },
+          "wire_sha256": "a79df39b001907fdbc74180b012fb91d9e6d646d0574ffa22e4172d9e542e7b2"
+        },
+        {
+          "player": 39,
+          "priority": -1,
+          "bytes": 231,
+          "items": 9,
+          "capacity": 8,
+          "active": 5,
+          "free": 3,
+          "current_id_bits": 21757952,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "52080cbc7bf5341cd6fb8d8b3be8dd249952b25d6b423ccbb867e5f33f84fa07"
+        },
+        {
+          "player": 40,
+          "priority": -1,
+          "bytes": 183,
+          "items": 9,
+          "capacity": 8,
+          "active": 2,
+          "free": 6,
+          "current_id_bits": 5505024,
+          "contracts": 1,
+          "contract_keys": {
+            "0": 1
+          },
+          "wire_sha256": "fba5c9819b209d61ca02b9e2e3a1c23a313078488c33d66aaec0c478fd4dd7f3"
+        },
+        {
+          "player": 62,
+          "priority": -1,
+          "bytes": 1682,
+          "items": 88,
+          "capacity": 88,
+          "active": 80,
+          "free": 8,
+          "current_id_bits": 9764864,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "16cae55b07e6cfde4e16822bebf6479fbe4bcd959d83b666f43a4adae2fb73ca"
+        },
+        {
+          "player": 63,
+          "priority": -1,
+          "bytes": 706,
+          "items": 40,
+          "capacity": 40,
+          "active": 31,
+          "free": 9,
+          "current_id_bits": 16515072,
+          "contracts": 0,
+          "contract_keys": {},
+          "wire_sha256": "6eb6ec7721b24a99cb1a78c535f22093cf789db991cb8eeb91bd3f3406cb6a39"
+        }
+      ]
+    }
+  ],
+  "candidate": null,
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_control_wire": true,
+  "native_read_side_effects": false,
+  "gameplay_state": false,
+  "full_player": false,
+  "world_import": false,
+  "actions": false,
+  "turns": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "next_component": "InfluenceMap v2",
+  "reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175"
+}
