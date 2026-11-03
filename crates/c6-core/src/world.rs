@@ -707,4 +707,89 @@ mod tests {
             })
         );
     }
+    #[test]
+    fn owned_world_drives_numeric_technology_and_civic_bonus_helpers() {
+        use crate::movement_world::DefinitionLookup;
+        use crate::yields::{
+            improvement_bonus_civic_yield, improvement_bonus_tech_yield, BonusYieldChange,
+            ImprovementDefinition, MissingInput as YieldMissing, NativeDefinitionIndex,
+            NativeFixedPoint8, OrderedImprovementDefinitions, PrerequisiteKind,
+        };
+        // Synthetic native-order registry and references, not an original-game
+        // fixture. The production adapter receives its actual DefinitionLookup.
+        struct Registry;
+        impl DefinitionLookup for Registry {
+            fn count(&self) -> usize {
+                1
+            }
+            fn find_index(&self, value: u32) -> Option<usize> {
+                (value == 0 || value == 0xabcdef01).then_some(0)
+            }
+            fn type_hash(&self, index: usize) -> Option<u32> {
+                (index == 0).then_some(0xabcdef01)
+            }
+        }
+        let index = |value| Some(NativeDefinitionIndex::new(value, 2).unwrap());
+        let references = [
+            Some(BonusYieldChange {
+                yield_index: index(0),
+                prerequisite_technology: index(0),
+                prerequisite_civic: index(0),
+                bonus_yield_change: 3,
+            }),
+            Some(BonusYieldChange {
+                yield_index: index(0),
+                prerequisite_technology: index(1),
+                prerequisite_civic: index(1),
+                bonus_yield_change: 7,
+            }),
+        ];
+        let definitions = [ImprovementDefinition {
+            type_hash: 0xabcdef01,
+            bonus_yield_changes: Some(&references),
+        }];
+        let rules = OrderedImprovementDefinitions::new(&Registry, &definitions).unwrap();
+        let mut world = World::new(map(), vec![Player::new(7, None, None).unwrap()]).unwrap();
+        let mut mapping = [-1; 65];
+        mapping[7] = 0;
+        world.player_mapping = Some(mapping);
+        world.player_mut(7).unwrap().technologies = Some(vec![true, false]);
+        world.technology_availability = Some(vec![true, true]);
+        assert_eq!(
+            improvement_bonus_tech_yield(rules, &world, 7, 0xabcdef01, 0),
+            Ok(NativeFixedPoint8(3 * 256))
+        );
+        world.player_mut(7).unwrap().technologies.as_mut().unwrap()[1] = true;
+        assert_eq!(
+            improvement_bonus_tech_yield(rules, &world, 7, 0xabcdef01, 0),
+            Ok(NativeFixedPoint8(10 * 256))
+        );
+        world.technology_availability.as_mut().unwrap()[0] = false;
+        assert_eq!(
+            improvement_bonus_tech_yield(rules, &world, 7, 0xabcdef01, 0),
+            Ok(NativeFixedPoint8(7 * 256))
+        );
+        world.technology_availability = None;
+        assert_eq!(
+            improvement_bonus_tech_yield(rules, &world, 7, 0xabcdef01, 0),
+            Err(YieldMissing::GlobalAvailability {
+                kind: PrerequisiteKind::Technology,
+                index: 0
+            })
+        );
+        world.player_mut(7).unwrap().civics = Some(vec![false, true]);
+        world.civic_availability = Some(vec![true, true]);
+        assert_eq!(
+            improvement_bonus_civic_yield(rules, &world, 7, 0xabcdef01, 0),
+            Ok(NativeFixedPoint8(7 * 256))
+        );
+        world.player_mut(7).unwrap().civics = None;
+        assert_eq!(
+            improvement_bonus_civic_yield(rules, &world, 7, 0xabcdef01, 0),
+            Err(YieldMissing::PlayerMask {
+                player: 7,
+                kind: PrerequisiteKind::Civic
+            })
+        );
+    }
 }
