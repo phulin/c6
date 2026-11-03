@@ -362,3 +362,7 @@ pub mod player_ai_economic;
 pub mod turn_completion;
 
 pub mod player_ai_diplomatic;
+
+pub mod player_ai_governors;
+
+pub mod player_ai_grand_strategic;
