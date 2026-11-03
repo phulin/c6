@@ -291,7 +291,7 @@ def main():
         if set(full_manager_actor)!={'schema','actor_owner','actor_full_id','visible_only'} or full_manager_actor['schema']!='c6-linux-full-manager-predicate-input-v1' or type(full_manager_actor['actor_owner']) is not int or not 0<=full_manager_actor['actor_owner']<65 or type(full_manager_actor['actor_full_id']) is not int or not 0<=full_manager_actor['actor_full_id']<2**32-1 or type(full_manager_actor['visible_only']) is not bool:raise SystemExit('full Manager actor input differs; no expected answers permitted')
         full_manager_directory=args.full_manager_observer_directory.resolve()
         if not full_manager_directory.is_dir() or not full_manager_directory.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('full Manager observer directory must be fresh private storage')
-        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json','capture'):
+        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json','capture','launch-authorized.json','launch-authorized.tmp'):
             if (full_manager_directory/name).exists():parser.error('full Manager observer outputs must be fresh')
         if args.full_manager_observer_plan:full_manager_plan=args.full_manager_observer_plan.resolve()
         for label in ('output','controls','metadata_before','metadata_control','metadata_after','metadata_repeat','snapshot_before','snapshot_control','snapshot_after','snapshot_repeat'):
@@ -314,7 +314,7 @@ def main():
         if not args.prepare_only and not args.expected_configuration:parser.error('Military original execution requires exact admitted expected configuration')
         military_directory=args.military_observer_directory.resolve()
         if not military_directory.is_dir() or not military_directory.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('Military observer directory must be private')
-        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json','capture'):
+        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json','capture','launch-authorized.json','launch-authorized.tmp'):
             if (military_directory/name).exists():parser.error('Military observer runtime artifacts must be fresh')
         military_plan=args.military_observer_plan.resolve()
     elif args.military_observer_plan or args.military_observer_directory:
