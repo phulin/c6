@@ -2,6 +2,8 @@
 """Pinned read-only ChooseTech source and frozen offline Rust boundary checks."""
 import argparse
 import hashlib
+import gzip
+import tempfile
 import json
 import io
 import posixpath
@@ -41,7 +43,7 @@ def freeze_and_check():
  # Preserve complete project source preimages, including uncommitted concurrent
  # WIP, instead of relabeling a hash list as a reproducible committed build.
  revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
- archive_bytes=subprocess.check_output(['git','archive','--format=tar',revision,'Cargo.toml','Cargo.lock','crates','tools/linux/loaded_actions_review_load.rs','tools/linux/save_lifecycle_audit.py'],cwd=ROOT)
+ archive_bytes=subprocess.check_output(['git','archive','--format=tar',revision,'Cargo.toml','Cargo.lock','crates','tools/linux/loaded_actions_review_load.rs','tools/linux/save_lifecycle_audit.py','evidence/linux/game-techs-source.json'],cwd=ROOT)
  with tarfile.open(fileobj=io.BytesIO(archive_bytes),mode='r:') as archive:
   payload={member.name:archive.extractfile(member).read() for member in archive.getmembers() if member.isfile()}
  for name,data in list(payload.items()):
@@ -66,12 +68,17 @@ def freeze_and_check():
  manifest.write_text('[workspace]\n[package]\nname="choose-tech-notification-check"\nversion="0.0.0"\nedition="2021"\n[dependencies]\nserde_json="1"\nc6-core={path='+json.dumps(str(snapshot/'crates/c6-core'))+'}\nc6-data={path='+json.dumps(str(snapshot/'crates/c6-data'))+'}\n[[bin]]\nname="check"\npath='+json.dumps(str(snapshot/CHECK))+'\n')
  shutil.copyfile(snapshot/'Cargo.lock',package/'Cargo.lock');target=Path('/tmp/c6-choose-tech-notification-target')
  (folder/'source-origin.json').write_text(json.dumps(dict(source_revision=revision,differences=differences,selection='committed project tree plus exact owned checker/audit preimages; unrelated WIP excluded'),indent=2,sort_keys=True)+'\n')
- run=subprocess.run(['cargo','run','--release','--offline','--manifest-path',str(manifest),'--target-dir',str(target),'--',str(ROOT)],cwd=ROOT,capture_output=True,text=True)
+ trace_source=ROOT.parent/'c6-ghidra/evidence/linux-save-normalization/checkpoint-203-owners/trace-benchmark-1.jsonl.gz'
+ trace_encoded=trace_source.read_bytes();trace=gzip.decompress(trace_encoded)
+ require(sha(trace)=='528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae','original graph owner trace identity differs')
+ with tempfile.NamedTemporaryFile(prefix='choose-tech-owner-trace-',dir=trace_source.parent) as raw_trace:
+  raw_trace.write(trace);raw_trace.flush()
+  run=subprocess.run(['cargo','run','--release','--offline','--manifest-path',str(manifest),'--target-dir',str(target),'--',str(ROOT),raw_trace.name],cwd=ROOT,capture_output=True,text=True)
  (folder/'build-stderr.txt').write_text(run.stderr)
  require(run.returncode==0,'frozen checker failed: '+run.stderr)
  result=json.loads(run.stdout);candidate=folder/'candidate';shutil.copyfile(target/'release/check',candidate);candidate.chmod(0o555)
  dependency_artifacts={str(p.relative_to(target)):digest(p) for p in (target/'release/deps').iterdir() if p.is_file() and p.suffix in ('.rlib','.rmeta','.so')}
- result.update(source_revision=revision,source_differences_from_revision=differences,source_sha256=identities,
+ result.update(owner_trace_input=dict(compressed_source=str(trace_source.relative_to(ROOT.parent)),compressed_sha256=sha(trace_encoded),decompressed_sha256=sha(trace)),source_revision=revision,source_differences_from_revision=differences,source_sha256=identities,
   retained_source_snapshot=str(snapshot.relative_to(ROOT)),retained_candidate=str(candidate.relative_to(ROOT)),candidate_sha256=digest(candidate),
   generated_manifest=str(manifest.relative_to(ROOT)),generated_manifest_sha256=digest(manifest),dependency_lock_sha256=digest(package/'Cargo.lock'),
   rustc_identity=subprocess.check_output(['rustc','-Vv'],text=True),cargo_identity=subprocess.check_output(['cargo','-V'],text=True),dependency_artifact_sha256=dependency_artifacts,
@@ -128,7 +135,7 @@ def main():
   pool_scope='LIFO object selection/logical identity is caller-owned; physical addresses and allocator capacity are not required; reused logical ID/component type retained',
   constructor_effects=dict(default_blocking='0xeef11bf9',expires_delta=0,flag_199=False,flag_19a=True,locks=0,group_default='0xb6fa1284'),
   registration='XP2 Manager RegisterNotifications calls ChooseTech.Register; writes creator under hash0x592df4c8 via Manager.Register. This is source proof, not a live creator-map capture.',
-  open=['actual creator mapping at invocation and logical object allocation/reuse authority','complete initialized mutable GameTechs ordered types/active nodes/prerequisite graph when reached',
+  open=['actual creator mapping at invocation and logical object allocation/reuse authority','final native runtime GameTechs authority across remaining load callbacks; source Read/Validate/nonempty-postload graph now projected from attributed original owner',
         'nonempty reused parameter destruction; arbitrary non-auto/fallback creation not implemented','InitializeText/Add/reporting and complete notification Update remain separate',
         'complete affected gameplay state/RNG/order and native action/turn validation'],
   native_factory_or_predicate_compared=False,complete_state_actions_rng_turns=False)

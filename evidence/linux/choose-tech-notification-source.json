@@ -19,6 +19,7 @@
     "benchmark": {
       "city_count": 11,
       "human": true,
+      "needed_with_source_read_graph": false,
       "needed_without_native_graph": "Err(Unsupported(\"retained validated GameTechs active nodes/prerequisite graph\"))",
       "owner": 0,
       "queue_hashes": [
@@ -26,7 +27,7 @@
       ],
       "researching_native_index": 75
     },
-    "candidate_sha256": "252087a3bb2230e6b0dbb03e0e7e7e6e8c70368421a332353c8fa1e6a51f1517",
+    "candidate_sha256": "af00c5f0dda9c35932fe57d4b0472130419a0833727fddb3291ae034e7ce3943",
     "cargo_identity": "cargo 1.98.1 (797e8a9bc 2026-08-05)\n",
     "complete_state_actions_rng_turns": false,
     "created_default_blocking": -286188551,
@@ -43,8 +44,12 @@
       "release/deps/libc6_core-a12654b27a572aa9.rmeta": "db47aad746b5d5b3a68e8e04ef544502ddbc5843f1d6cdbc66aa494c65fd67e7",
       "release/deps/libc6_core-b06a2849dcdc4ac5.rlib": "b24ee6302e4c0f43d0514e605ea9e209575bd7ee596e155a91464988f8b0aef0",
       "release/deps/libc6_core-b06a2849dcdc4ac5.rmeta": "abcd804873ef1010079e53d44b89f188fec60574f777a274a4ee2bc9c61ad6a7",
+      "release/deps/libc6_core-ea8921f1968f7022.rlib": "f20b21fa428b94976bc8b8089c8c834a33c73b2fe147563d4a038f2f57a1cd90",
+      "release/deps/libc6_core-ea8921f1968f7022.rmeta": "0e66559de4dd25eb5f717c6698be6f1c17dffa10e97d4aaf74cf5e27fe951245",
       "release/deps/libc6_data-396fe2cd308c1e7e.rlib": "38af4b5abd929901a63bc94cd14ad94865fb62ec4a6e3ce97f58186c031c8538",
       "release/deps/libc6_data-396fe2cd308c1e7e.rmeta": "8067a6f26adc320e09a36baeb8c6d46ac2f523b74891028fc2e3d2fe86a7cec6",
+      "release/deps/libc6_data-6cbd93a970ee0590.rlib": "9b0c93099f4f69f266e6f0b5eb7b6e6ce15c4dd9f2156437971f13d67098f564",
+      "release/deps/libc6_data-6cbd93a970ee0590.rmeta": "2810def21ef0ed2c8973a16ff3ef1070b25d10016fabdbea56ac6dc5459de3b4",
       "release/deps/libc6_data-7c12c4932b1b0580.rlib": "3e40f1d17d28c7397dc731a5ed0c947ac6899cb8772228e3e0dfe6cded819d93",
       "release/deps/libc6_data-7c12c4932b1b0580.rmeta": "03aa33ddec4318a28490becc92af653661bc2e4ed6661d47b31673485011a9ee",
       "release/deps/libcc-7fbca3c86234d1a0.rlib": "f4fc22502560698e10ad29f0fbb5994d9a6a134db1114de7307dbd1dfa15b55c",
@@ -113,12 +118,28 @@
     },
     "dependency_artifacts_scope": "retained target inventory; dependency versions/checksums pinned by retained Cargo.lock",
     "dependency_lock_sha256": "c06b8636fd9d8f15d046fbd455b084e1efde11fc3e557a0562a47394fd33f1a6",
-    "generated_manifest": "target/linux/choose-tech-notification-candidates/8c6795b482824f119ba1a5961fc1bb14/check/Cargo.toml",
-    "generated_manifest_sha256": "2e9e5b6862c26095ef3e977b8ef6580482ea0f9f9553214ad463a25c5db94d21",
+    "game_techs_projection": {
+      "fallback_for_missing_node": "unknown",
+      "iteration": 75,
+      "nodes": 75,
+      "owner_range": [
+        73312277,
+        73314260
+      ],
+      "raw_costs_retained": true,
+      "source_scope": "ReadValidate/nonemptyPostLoad; not final native runtime admission"
+    },
+    "generated_manifest": "target/linux/choose-tech-notification-candidates/2b63a4a8dffa4c0c82769766c6d7ad58/check/Cargo.toml",
+    "generated_manifest_sha256": "f145017f7838278ea774b1546eab9a5bfe27aa7af002731d21d665f2fdaa4f56",
     "logical_creation_cases_pass": true,
     "native_factory_pool_or_graph_admitted": false,
     "original_execution": false,
-    "retained_candidate": "target/linux/choose-tech-notification-candidates/8c6795b482824f119ba1a5961fc1bb14/candidate",
+    "owner_trace_input": {
+      "compressed_sha256": "5dd8fb4dd50a9445f32d34d3cbadf9f0ceacba0670fe57fd50e544fe57e47093",
+      "compressed_source": "c6-ghidra/evidence/linux-save-normalization/checkpoint-203-owners/trace-benchmark-1.jsonl.gz",
+      "decompressed_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae"
+    },
+    "retained_candidate": "target/linux/choose-tech-notification-candidates/2b63a4a8dffa4c0c82769766c6d7ad58/candidate",
     "retained_players": [
       {
         "city_count": 11,
@@ -551,25 +572,25 @@
         "researching_native_index": 75
       }
     ],
-    "retained_source_archive": "target/linux/choose-tech-notification-candidates/8c6795b482824f119ba1a5961fc1bb14/source-preimages.tar.gz",
-    "retained_source_snapshot": "target/linux/choose-tech-notification-candidates/8c6795b482824f119ba1a5961fc1bb14/source",
+    "retained_source_archive": "target/linux/choose-tech-notification-candidates/2b63a4a8dffa4c0c82769766c6d7ad58/source-preimages.tar.gz",
+    "retained_source_snapshot": "target/linux/choose-tech-notification-candidates/2b63a4a8dffa4c0c82769766c6d7ad58/source",
     "rustc_identity": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
     "schema": "c6-linux-choose-tech-notification-check-v1",
-    "source_archive_sha256": "9bcdd3c4c75cfd00b6ce0a45297beb12b9ea12a108eb1e72c5cc5cbce5e49299",
+    "source_archive_sha256": "4b062ca1bbc73218629fd05c46fc46c524b45b679b948dc9e414f44c29d29070",
     "source_differences_from_revision": [
       {
-        "committed_sha256": null,
+        "committed_sha256": "9266bf69103021fc08b4d1e22cbb5acc5958f94bc6f578660aabaa247cc7d1d6",
         "path": "tools/linux/choose_tech_notification_check.rs",
-        "retained_sha256": "9266bf69103021fc08b4d1e22cbb5acc5958f94bc6f578660aabaa247cc7d1d6"
+        "retained_sha256": "61cd7fb7e9e7a0647b0df759440b9010f33e518de31c22ac479e81534bf8be70"
       },
       {
-        "committed_sha256": null,
+        "committed_sha256": "a06d7f13acf9fa67cfb387c56fdf4b00aa370b161c081a749703f92fe20ed802",
         "path": "tools/linux/choose_tech_notification_audit.py",
-        "retained_sha256": "a06d7f13acf9fa67cfb387c56fdf4b00aa370b161c081a749703f92fe20ed802"
+        "retained_sha256": "2f95bea2e3897c743ed8f9f545001f0506c781dd9d03e57ab8f79db486621575"
       }
     ],
     "source_preimages_complete": true,
-    "source_revision": "3618c4550cbf283af983171fd8b14b5361ea9a18",
+    "source_revision": "8a53067e54adab89b8bb3605e842b980e6177f81",
     "source_selection": "committed project tree plus exact owned checker/audit preimages; unrelated WIP excluded",
     "source_sha256": {
       "Cargo.lock": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
@@ -607,11 +628,12 @@
       "crates/c6-core/src/game_free_cities.rs": "995dfa4c8f798ef2c2c66287e37a5ef6b2c8d9e88db25dbc83b10ce9b186e11b",
       "crates/c6-core/src/game_global_ai.rs": "11fd165c35e84d21c745caf517fe9d4b7717d940e45f534ef02f49d086cae902",
       "crates/c6-core/src/game_random_wire.rs": "d8fc55268532631fa9dd04520190e9bc956812664ccd96231a8e86760a8233cb",
+      "crates/c6-core/src/game_techs.rs": "c6a6a1ab5eca124fdaa38b3b67bd8b2d088d39d4c224afc59bd3b1e794ada2d5",
       "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
       "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
-      "crates/c6-core/src/lib.rs": "2bcd37f52f4fc7a3fc1af95dff7c9c5e1d70b269d4c0c40428bad48e6cf67505",
+      "crates/c6-core/src/lib.rs": "444713e2c1c8ef8af8fb3e7a134ebe55cad45f2cde3dcc9f31d49df159714507",
       "crates/c6-core/src/loaded_components.rs": "8e71ff17335f9d338d0db851128d7e72dc6863bd3858df2df9021fc87460d9d4",
-      "crates/c6-core/src/loaded_state.rs": "2bbf24049f8d11a66e37cd236b419b546da3da0c0ca64d78b73d930ea9017c94",
+      "crates/c6-core/src/loaded_state.rs": "7471141a6f1aa58582447e60f32b96644b16bd21f2fbbe29b8d47471c96b73d7",
       "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
       "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
       "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
@@ -655,6 +677,7 @@
       "crates/c6-core/src/player_initialization.rs": "9611d018a56d1f02d4e353f28ef8a4c3e2cb75c4c28457a2e1b018be84c6a09b",
       "crates/c6-core/src/player_initialization_capture.rs": "19f2ec84d0d32a77b8e38cfa6905240ac83fdbd13230c1de7e9403871f0fb082",
       "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+      "crates/c6-core/src/player_notifications_owner.rs": "d0a8714a19438c25afe301780ee0f62af481bc48b98ac632d549864c888d8e98",
       "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
       "crates/c6-core/src/player_quests.rs": "8cd4a8374ac45f7934b8801cbea927708201603672506edb739e507e7c37a2f7",
       "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
@@ -675,6 +698,7 @@
       "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
       "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
       "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+      "crates/c6-core/src/trade_graph_state.rs": "9acbb5c79da477c56e7823c840a2c30766465596fc15f23a945fef01b6182a94",
       "crates/c6-core/src/trade_read_order.rs": "76b24251ef1b5377cef37814713357a8df89c23d15d1069005869ad3745cf6de",
       "crates/c6-core/src/turn_completion.rs": "b43ad8ff48d48290788df6a6b475ea678b0c77c61d71540c17333648c2d69dc5",
       "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
@@ -695,11 +719,12 @@
       "crates/c6-data/src/game_relations.rs": "43c96f0982c921c3aa8e598284c61b412c5b3cbf58b6edfdde61f91cdc739644",
       "crates/c6-data/src/lib.rs": "f725679790dc9f11bcd563e05c357f4b5c45c8575bca1bc56d13fb0123fcd7a9",
       "crates/c6-data/src/loaded_actions.rs": "e5ed0c966fcc3234293f8013c5bea426afa38abe65b40aa4b61d664609ac8b82",
-      "crates/c6-data/src/loaded_actions/choose_tech.rs": "1532ad205803b555f82aa297b71b01f4f5cedc5fb7420f006211cd7b9f540a94",
+      "crates/c6-data/src/loaded_actions/choose_tech.rs": "71200d9bd3afa111db7f3f079da35cad910448f08b9900430cca3595cea02109",
       "crates/c6-data/src/loaded_actions/handlers.rs": "340fa47f8fb8e80bd7c1018d120507bbe032bc2ee46bb8008015866155ab57cd",
-      "crates/c6-data/src/loaded_actions/notifications.rs": "5d4e721d7fba14b5c596702ad9b0fbbcb165b507f65079c1af2cc02d77219e4e",
-      "crates/c6-data/src/loaded_actions/reporting.rs": "c4967690717f9098fb892276a1f355a7cc4f3729de5aefad1333d48e65634bdc",
+      "crates/c6-data/src/loaded_actions/notifications.rs": "8df422b0d4a16be174761e6114e38737d31af57b2d962e4a99f4d42180148efc",
+      "crates/c6-data/src/loaded_actions/reporting.rs": "6c25042c23d8007f35b61ec8dc736df3aa42bc825c89dda324949ca0a9f4f309",
       "crates/c6-data/src/loaded_actions/resources.rs": "39f944c7fb2a66d54d5507ebb960f69ee17c3a85f3a79098a9ff1af84d810a41",
+      "crates/c6-data/src/loaded_actions/yield_monitor.rs": "3aef7f360b8a0bdfe8c48c8ae1d97db2115f4c93feb717e8b41a7b8f76a6443c",
       "crates/c6-data/src/movement.rs": "76153d7e76bc3a06e9512caf548384f87a2f32f57ef835d1f60cb43ec7e88d8c",
       "crates/c6-data/src/registry.rs": "5c72f7427f6c6f102238a72e0c0d50caf4052d4007b7a4870cf77e1076cfa63c",
       "crates/c6-data/src/tests.rs": "595711f1b20f3fe34dd4a84c19abbffbed40e15a9410abb0c4f63c870ce7413b",
@@ -737,17 +762,18 @@
       "evidence/linux/current-handler-closed-review.json": "e0243a249b2971d5a726dfa5f64702a9fd6614eb4527038fd0300367f20d1b15",
       "evidence/linux/definition-ids-native-1.json": "fa8c6d0919280b6cc6b9c557aab81b7b8879fb21c3ef9c037a3ac16bdc53146f",
       "evidence/linux/definition-ids-static.json": "a10c032f0e7e354efbe2fef20cb49515f8f5be9c446a37207a4fb5df8714dea9",
+      "evidence/linux/game-techs-source.json": "50b4ce93e534ac7c58d3d20e7420fefc11fc341bcd2554e0a93fe4e1ec38ffd5",
       "evidence/linux/rules-base-snapshot.json": "553485cb57c305be016cfc8167b872067da377c5c7dc3de5f9c20d9baf1f9011",
       "evidence/linux/rules-xp2-request-none-snapshot.json": "f23bfb47cf729bc44f44e1683c88f17ac75f191433dbeef1e5bd1b4e747d99ec",
       "evidence/linux/skip-turn-state-execute-3.json": "fc6f88d9f33173fdc738dba53423dfe0957dffdfc8c6292c64caa54bda98492f",
-      "tools/linux/choose_tech_notification_audit.py": "a06d7f13acf9fa67cfb387c56fdf4b00aa370b161c081a749703f92fe20ed802",
-      "tools/linux/choose_tech_notification_check.rs": "9266bf69103021fc08b4d1e22cbb5acc5958f94bc6f578660aabaa247cc7d1d6",
+      "tools/linux/choose_tech_notification_audit.py": "2f95bea2e3897c743ed8f9f545001f0506c781dd9d03e57ab8f79db486621575",
+      "tools/linux/choose_tech_notification_check.rs": "61cd7fb7e9e7a0647b0df759440b9010f33e518de31c22ac479e81534bf8be70",
       "tools/linux/loaded_actions_review_load.rs": "8a10f8a064f28b3761fd9d8dae3fa0887d985ab0bb697415b889d922f7c98123",
       "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916"
     },
     "synthetic_graph_cases_pass": true,
     "technology_definitions": 77,
-    "worktree_matches_retained_sources": false
+    "worktree_matches_retained_sources": true
   },
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "methods": [
@@ -2496,7 +2522,7 @@
   "native_factory_or_predicate_compared": false,
   "open": [
     "actual creator mapping at invocation and logical object allocation/reuse authority",
-    "complete initialized mutable GameTechs ordered types/active nodes/prerequisite graph when reached",
+    "final native runtime GameTechs authority across remaining load callbacks; source Read/Validate/nonempty-postload graph now projected from attributed original owner",
     "nonempty reused parameter destruction; arbitrary non-auto/fallback creation not implemented",
     "InitializeText/Add/reporting and complete notification Update remain separate",
     "complete affected gameplay state/RNG/order and native action/turn validation"

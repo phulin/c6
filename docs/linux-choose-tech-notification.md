@@ -53,18 +53,30 @@ completed prerequisite; CanResearch requires every prerequisite. MoreToResearch
 uses its own native ordered type vector and repeatable/owned logic. These are
 separate rules. Mutable validated GameTechs nodes and prerequisites are explicit
 inputs, not reconstructed from initial SQL edges. The input constructor checks
-shape/session binding but cannot authenticate an invented live export. Current
-retained state has no such graph owner yet.
+shape/session binding but cannot authenticate an invented live export. The separate [Game.Techs owner](linux-game-techs.md) now decodes and validates this state with the actual technology registry. The byte-zero Core decoder still retains its later source bytes in the untouched tail; source attribution is a separate admission step.
 
 The actual diagnostic benchmark Player0 has 11 cities, human configuration,
 queue hash `0x9ce01238` and resolved native research index 75 among 77 technology
 definitions. It reaches MoreToResearch before the current-tech/CanResearch test,
-so it correctly stops at the missing validated mutable GameTechs graph. This is
-a named action-completion gap, not a false IsNeeded answer or a passing native
-comparison. The exact next owner comprises GameTechs nodes at +0xc0 and its
-separate ordered TechTypes vector at +0xf0. Node type is +0, active is +4, and the
-current prerequisite vector is +0x10. Native Read/Validate provenance remains
-necessary before using these values as live state.
+so the original no-graph query correctly stopped at that missing input.
+`Definitions::source_read_graph` now authenticates the exact Core, complete owner
+trace, unique attributed Game.Techs frame and owner preimage against this pristine
+state. It applies the typed version-3 Read/Validate with the actual admitted
+registry and the nonempty InitializePostLoad branch. This retains 75 nodes and a
+separate 75-type iteration vector, rather than inventing a 77-node SQL graph.
+The full typed owner, including raw costs, and its ComponentSnapshotWitness are
+retained alongside the query view.
+
+With that source-projected graph, the same benchmark evaluates IsNeeded=false.
+The query retains the original short circuits and does not run CanResearch when
+the original earlier branch returns. `GraphSource::SourceReadNoRebuild` explicitly
+identifies the result as an owner-local source projection. Final native runtime
+Graph authority across the remaining load callbacks and a differential return
+comparison remain unaccepted. This is not a claim of an observed native false
+return or a complete post-load lifecycle. Missing-node fallback prerequisites
+remain explicitly unknown; ChooseTech's active-node prerequisite path does not
+demand them. GameTechs nodes are at +0xc0, its independent ordered TechTypes
+vector is at +0xf0, and each node's type/active/prerequisites are +0/+4/+0x10.
 
 The offline checker uses actual admitted rules and typed retained PlayerTechs,
 plus explicitly synthetic graph and logical-creation boundary cases. It retains

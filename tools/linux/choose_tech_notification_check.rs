@@ -40,6 +40,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .find(|p| p["owner"] == 0)
         .ok_or("benchmark owner")?
         .clone();
+    let trace_path =
+        std::path::PathBuf::from(std::env::args_os().nth(2).ok_or("owner trace path")?);
+    let trace = std::fs::read(trace_path)?;
+    assert!(definitions
+        .source_read_graph(
+            &state,
+            b"invalid trace",
+            c6_core::unit::Limits {
+                max_bytes: 1_000_000,
+                max_items: 10_000
+            }
+        )
+        .is_err());
+    let graph_input = definitions.source_read_graph(
+        &state,
+        &trace,
+        c6_core::unit::Limits {
+            max_bytes: 1_000_000,
+            max_items: 10_000,
+        },
+    )?;
+    assert_eq!(graph_input.source(), ct::GraphSource::SourceReadNoRebuild);
+    let source_witness = graph_input.source_witness().ok_or("graph source witness")?;
+    assert_eq!(source_witness.snapshot_sha256, state.binding().core_sha256);
+    let projected_owner = graph_input
+        .projected_owner()
+        .ok_or("retained complete graph")?;
+    let graph_projection = serde_json::json!({"nodes":projected_owner.nodes().len(),"iteration":projected_owner.iteration().len(),"source_scope":"ReadValidate/nonemptyPostLoad; not final native runtime admission","owner_range":source_witness.owner_range,"raw_costs_retained":true,"fallback_for_missing_node":"unknown"});
+    let source_needed = definitions
+        .player(&state, 0, Some(&graph_input))?
+        .is_needed(true)?;
+    let mut benchmark = benchmark;
+    benchmark["needed_with_source_read_graph"] = serde_json::json!(source_needed);
     let created = ct::create_auto(
         &notifications,
         true,
@@ -391,7 +424,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(q.has_tech(0).is_err());
     println!(
         "{}",
-        serde_json::json!({"schema":"c6-linux-choose-tech-notification-check-v1","original_execution":false,"technology_definitions":definitions.technology_count(),"created_severity":severity,"created_default_blocking":created.default_blocking,"created_group_hash":created.group_hash,"benchmark":benchmark,"retained_players":retained,"synthetic_graph_cases_pass":true,"logical_creation_cases_pass":true,"native_factory_pool_or_graph_admitted":false,"complete_state_actions_rng_turns":false})
+        serde_json::json!({"schema":"c6-linux-choose-tech-notification-check-v1","original_execution":false,"technology_definitions":definitions.technology_count(),"created_severity":severity,"created_default_blocking":created.default_blocking,"created_group_hash":created.group_hash,"benchmark":benchmark,"game_techs_projection":graph_projection,"retained_players":retained,"synthetic_graph_cases_pass":true,"logical_creation_cases_pass":true,"native_factory_pool_or_graph_admitted":false,"complete_state_actions_rng_turns":false})
     );
     Ok(())
 }
