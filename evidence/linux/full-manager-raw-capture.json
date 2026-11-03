@@ -1,0 +1,106 @@
+{
+  "capture_path": "/home/phulin/c6-ghidra/evidence/linux-full-manager-predicate/native-2",
+  "checks_passed": true,
+  "classifier_sha256": "4f0105ea5e4b3587f0795aed1d88dbbfc2641ba278fd62706497622d877b8615",
+  "complete_state_actions_rng_turns": false,
+  "configuration_sha256": "27ee77e3bf3aed48f957e13d41a314cf7a9c413f5ccb0e1793fe7d4826987116",
+  "historical_raw_save_load_difference_bytes": 89198,
+  "limits": [
+    "One actual original predicate boundary observation, no Rust/native full Manager comparison or action execution acceptance.",
+    "resolved PC is explicitly unattributed; no installed method/closure/registry identity or empty-callback claim.",
+    "No heap/registry traversal, collector snapshot, callback effects or complete RNG/VM state.",
+    "Whole-profile effects, diagnostic Save comparisons and native lifecycle review belong to separate reports."
+  ],
+  "mutations_refused": [
+    "AL",
+    "checkpoint",
+    "ASL_owner",
+    "registry",
+    "context"
+  ],
+  "original_execution_by_checker": false,
+  "producer_source_sha256": "8028e92ea6d34cd5c2b35cc8e338453b457213e47ba7ae96150521ac9708431e",
+  "raw_facts": {
+    "Lua_ASL_owner_pointer_values": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "Lua_lock_counts": [
+      -1,
+      0,
+      0,
+      -1
+    ],
+    "Lua_lock_recursion": [
+      0,
+      1,
+      1,
+      0
+    ],
+    "Lua_mutex_pointer_stable": true,
+    "Lua_owner_classification": "unresolved",
+    "VM_GC_classification": "unresolved",
+    "actor": {
+      "full_id": 15794187,
+      "owner": 0,
+      "runtime_operation_id": 36,
+      "visible_only": false
+    },
+    "actual_CallTestAll_return_bit": false,
+    "actual_Manager_AL": true,
+    "actual_out_byte": "00",
+    "before_release_context_non_nil_flag_raw_u8": 0,
+    "callback_absence_proven": false,
+    "callback_effects_accepted": false,
+    "callback_registry_decoded": false,
+    "checkpoint_count": 19,
+    "complete_RNG_or_VM_state": false,
+    "core_owner_equals_Lua_ASL_handle_claimed": false,
+    "core_owner_equals_OS_TID_claimed": false,
+    "fixture_markers": 9,
+    "full_manager_native_parity": false,
+    "installed_TestAll_closure_identity_captured": false,
+    "native_constructor_destructor_breakpoints_observed": false,
+    "natural_CallTestAll_count": 1,
+    "observed_resolved_PC": "0x36b3c44",
+    "operation_token_stable_at_enter_return": true,
+    "protected_status": 0,
+    "protected_success_byte": 1,
+    "pushed_argument_vector_bytes_captured": false,
+    "raw_state_header_sha256": [
+      "2269470c32ae379b031fb3c7dbaf91446673aeb61afaf26af264728f1c0f983e",
+      "2269470c32ae379b031fb3c7dbaf91446673aeb61afaf26af264728f1c0f983e",
+      "2269470c32ae379b031fb3c7dbaf91446673aeb61afaf26af264728f1c0f983e"
+    ],
+    "resolved_raw_state_context_registers_match": true,
+    "separate_core_owner_depth_phase_9": [
+      0,
+      0
+    ],
+    "separate_core_owner_depth_phases_1_to_8": [
+      1,
+      1
+    ],
+    "source_only_argument_order": [
+      "current owner",
+      "current Unit ID bits as signed i32",
+      "current runtime operation ID"
+    ],
+    "unattributed_resolved_checkpoints": 1,
+    "unresolved_parent_prefixes": 8
+  },
+  "raw_observations_sha256": "f13e5dda8ddbfe2bc4adea6f0f1c07df0eec226e0e6528b1f6c375bd18ecbe27",
+  "runtime_sha256": "255603fc41c1768a5da113beeb94b14aa28010da837e71bb9540fd7b16028903",
+  "schema": "c6-linux-full-manager-raw-capture-v1",
+  "seal_sha256": "449c875d1f45d01257ddfc59ded6b1690f10e9a2c76132f9171903a599575822",
+  "sealed_files_verified": 129,
+  "source_guarantees_separate_from_raw": [
+    "Pinned protected-body branch makes observed PC0x36b3c44 the post-lua_isfunction success path. The producer still leaves this generic HKS checkpoint unattributed; no closure identity is established.",
+    "Pinned source supplies Operation32/alignment8 and native ctor/dtor ordering; markers retain only live address tokens.",
+    "Argument push order is source-backed; actual ScriptSystemArgs vector and callback closure/group storage were not copied.",
+    "Original PC/source path is observed; raw Lua owner pointer is zero despite recursion one, so owner/GC/VM proof remains unresolved."
+  ],
+  "unknown_save_bytes_masked": 0
+}
