@@ -15,6 +15,7 @@ pub mod notification_lifecycle;
 pub mod notifications;
 pub mod player_components;
 pub mod player_prerequisites;
+pub mod plot_yield;
 pub mod random_variants;
 pub mod requirements;
 pub mod rng;
