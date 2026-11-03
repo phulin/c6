@@ -324,6 +324,8 @@ def independent(data, owners):
         start=r.pos;r.version(10);words=[r.take('i') for _ in range(14)]
         matches=[x for x in owners if x['owner']=='GameCore::Player::CulturalIdentity' and x['start']==start]
         if len(matches)!=1 or matches[0]['end']!=r.pos:raise ValueError('CulturalIdentity native boundary differs')
+        if len([x for x in owners if x['owner']=='GameCore::Player::Heroes' and x['start']==r.pos and x['parent']==matches[0]['parent']])!=1:
+            raise ValueError('computed stop differs from same-parent native Heroes entry')
         first['cultural_identity']=dict(bytes=r.pos-start,sha256=sha(data[start:r.pos]),ordered_words=words)
     return dict(religion=religion,player_count=players,first_player=first),map_end,r.pos,layout
 
@@ -454,7 +456,7 @@ def main():
         direct_rust_byte0_parser=True,python_offsets_required_by_library=False,native_traces_required_by_library=False,
         native_city_owner_cuts_used_only_for_independent_validation=True,
         unhooked_outer_components_compared_by_source_order_and_adjacent_cuts=["WMDs","Improvements","Governors"],next_unparsed_section='Player.Heroes',
-        next_schema_proven_by_writer_order=True,native_next_schema_entry_observed=False,
+        next_schema_proven_by_writer_order=True,native_next_schema_entry_observed=True,
         complete_player_import=False,complete_core_import=False,metadata_compatibility_checked=False,
         rng_reconstructed=False,gameplay_parity=False,original_game_execution=False,offline_rust_candidate_execution=True)
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,indent=2)+'\n')
