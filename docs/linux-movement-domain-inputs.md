@@ -169,8 +169,14 @@ Absent CityAttributes produce an explicit absent mask entry; this is distinct
 from an unsupported plot. The source fixture tests the full composition with
 different container/member owners and stale requested generations. This does not
 replace the still-pending original all-plot comparison.
+The follow-up candidate also represents auxiliary Wonder results as absent for
+plots without owned attributes. A direct Wonder query there returns
+MissingWonderCompletion: original GetCityAttributes may return reserved entry0,
+whose later mutations have not been closed. Neither an absent mask nor an absent
+Wonder result may be converted to a zero/false native fallback answer. A future
+comparison must report those fallback queries as unavailable explicitly.
 
-The [immutable reconstruction manifest](../evidence/linux/movement-domain-reconstruction-candidate.json)
+The [historical reconstruction manifest](../evidence/linux/movement-domain-reconstruction-candidate-65d71d4.json)
 freezes source `65d71d4`, clean Git archive SHA-256 `399a64bc…`, and candidate
 SHA-256 `eeb2e434…` (26,220,480 bytes). The source archive and independent build
 remain under `/tmp/c6-domain-reconstruction-65d71d4`. All 60 recorded build-source
@@ -182,6 +188,8 @@ calculations. The full genuine-metadata path has only source-fixture validation
 until a fresh independently admitted original capture exists; native coastal,
 Wonder and raw-mask parity remain unclaimed. This manifest is the runner's
 candidate identity gate, not acceptance of a new native execution profile.
+It remains preserved as history and is superseded for new comparison by the
+corrected candidate's explicit unavailable fallback-Wonder output.
 
 Such exports need the same pinned module/host/profile and original owned Core
 association, closed execution, unchanged affected-state controls and RNG gates.

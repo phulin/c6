@@ -772,7 +772,7 @@ impl DomainRebuildInputs for TypedDomainInputs<'_, '_, '_> {
             return Err(city_district::Error::PlotAttributes { plot });
         }
         let Some(attributes) = &record.city_attributes else {
-            return Ok(false);
+            return Err(city_district::Error::MissingWonderCompletion { plot });
         };
         self.cities
             .is_wonder_complete(attributes, self.registry, self.building_definitions, plot)
@@ -1020,6 +1020,10 @@ mod tests {
             cities: &cities,
             building_definitions: definitions.building_lookup(),
         };
+        assert_eq!(
+            inputs.is_wonder_complete(0),
+            Err(city_district::Error::MissingWonderCompletion { plot: 0 })
+        );
         let masks = city_district::rebuild_valid_domains(
             &map,
             &registry,

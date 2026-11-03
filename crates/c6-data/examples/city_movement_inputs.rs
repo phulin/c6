@@ -114,7 +114,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         let mut wonder_complete = Vec::new();
         for index in 0..map.plots.len() {
-            wonder_complete.push(inputs.is_wonder_complete(index)?);
+            wonder_complete.push(if map.plots[index].city_attributes.is_some() {
+                Some(inputs.is_wonder_complete(index)?)
+            } else {
+                None
+            });
         }
         Some(
             json!({"masks":masks.iter().map(|mask|mask.map(|mask|mask.0)).collect::<Vec<_>>(),
