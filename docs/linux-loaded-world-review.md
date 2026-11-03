@@ -64,6 +64,13 @@ indices. `VmHWM` is a process peak that also includes earlier artifact admission
 and allocator retention. Neither measurement is per-action latency or exact
 incremental World memory. Sidecar initialization is absent from that trial.
 
+The original immutable single-decode run is now separately recorded in
+[the startup evidence](../evidence/linux/loaded-world-assembly.json):
+0.157825059 seconds for decode plus assembly; RSS 99,048 KiB before and
+172,648 KiB after; process peak 963,456 KiB including admission. These are
+measurements of that frozen binary and fixture, not of successor sidecars or
+this review harness.
+
 The independent comparison passed for all 43 Players, 1,262 Units, 1,250
 Formations, 245 Cities and 1,284 Districts. Independent field counts are zero
 busy Units and 705 Units with positive moves. All six signed mutation probes
@@ -102,3 +109,46 @@ comparison supplies stronger adapter checks without treating those absent
 output fields as verified evidence. Actual missing gameplay inputs remain
 explicit; the unparsed tail and historical 89,198-byte Save→Load difference
 remain unclassified and unmasked. Save production is not an action gate.
+
+## Lifecycle successor
+
+The independent follow-up checks `2ec623f` and `40c9775` through committed Core
+`78698fb2b746a87b6f7287ac063faf20719bd2e9`. Unit and Formation initialization
+are independent one-shot stages. Neither needs unrelated Manager slot/control
+facts. First control binding retains prepared sidecars; subsequent binding or
+stage repetition rejects rather than overwriting changed arrays or archive
+state. Mutable access advances a revision, preventing later installation of
+an initial observed snapshot. The witness's attributed source role is separate
+from the unchanged decoder binding; the checks do not relabel this input Read.
+
+Unit runtime getters check captured type, requested Formation ID and all seven
+saved hash-array dependencies. They also resolve the current Formation and
+compare owner/requested/resolved identity. The latter guard was added after
+this review found that changing a Formation generation ID otherwise left a
+Unit's cached resolved reference stale. Ordinary timer/activity/queue changes
+do not reset live runtime arrays. Ownership/identity changes still fail through
+the established container and archive checks.
+
+The extended independent harness passed on all 1,262 Units and 1,250
+Formations. It tests repeated initialization and control binding, preservation
+of changed live arrays/dirty calls/evaluating state, raw type/Formation/hash-array
+mutation refusal, the referenced-Formation identity regression, and witness
+replay/after-advance refusal. Full retained/map/ordered-record comparisons and
+the six signed scalar probes still pass. These lifecycle tests deliberately
+use **synthetic definitions and controls**, exercising guard behavior rather
+than asserting authentic native initialization. Their public evidence is
+[separate from the frozen result](../evidence/linux/loaded-world-lifecycle-review.json).
+Reproduction uses the same Python tool with the committed successor archive,
+its completed dependency directory, and
+`--lifecycle tools/check/linux_loaded_world_lifecycle_review.rs`. When a shared
+dependency directory contains several builds, pass `--extern-artifact NAME=PATH`
+for the exact `c6_core` and `serde_json` libraries; the evidence records their
+tested hashes. The tool refuses ambiguous implicit library selection.
+
+The genuine admitted rules-backed 1,262 Unit/1,250 Formation stage trial is
+separately recorded by `48a60d8` in
+[the initialization evidence](../evidence/linux/unit-initialization-definitions-check.json).
+It does not compare omitted native unsaved state. Neither result establishes
+complete native Read, complete executable gameplay World, actions, RNG
+transitions or turns. The original frozen lifecycle findings and startup
+measurements above remain unchanged historical results.

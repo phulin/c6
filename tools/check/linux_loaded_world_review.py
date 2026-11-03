@@ -28,6 +28,8 @@ def main():
     parser.add_argument("--deps", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
+    parser.add_argument("--lifecycle", type=Path, help="optional additional Rust lifecycle checks before mutation probes")
+    parser.add_argument("--extern-artifact", action="append", default=[], metavar="NAME=PATH", help="explicit completed rlib when dependency directory contains multiple builds")
     args = parser.parse_args()
     root = args.source_root.resolve()
     work = args.work_dir.resolve()
@@ -106,6 +108,11 @@ def main():
     (u.i_operation_timer, u.x_moves_remaining) = saved;
     assert!(state.unit_runtime(review_subject.0, review_subject.1).is_err(), "no invented initialization");
 '''
+    if args.lifecycle:
+        marker = "    let review_subject = state.world().players()"
+        assert review.count(marker) == 1
+        review = review.replace(marker, args.lifecycle.read_text() + "\n" + marker)
+        review = review.replace('    assert!(state.unit_runtime(review_subject.0, review_subject.1).is_err(), "no invented initialization");', '')
     path = root / "crates/c6-differential/src/bin/c6-core-contextual-candidate.rs"
     source = path.read_text()
     marker = "    let source_pointer = bytes.as_ptr();"
@@ -129,8 +136,9 @@ def main():
     output.write_text(source)
     binary = work / "review"
     command = ["rustc", "--edition=2021", "-O", str(output), "-L", f"dependency={args.deps.resolve()}", "-o", str(binary)]
+    overrides = dict(value.split("=", 1) for value in args.extern_artifact)
     for name in ["c6_core", "serde_json", "sha2"]:
-        libraries = list(args.deps.glob(f"lib{name}-*.rlib"))
+        libraries = [Path(overrides[name])] if name in overrides else list(args.deps.glob(f"lib{name}-*.rlib"))
         if len(libraries) != 1:
             raise ValueError(f"expected one frozen {name} rlib, got {libraries}")
         command.extend(["--extern", f"{name}={libraries[0].resolve()}"])
@@ -142,6 +150,10 @@ def main():
     assert report["derived_field_queries"]["busy_units"] == report["independent_review"]["expected_busy"]
     assert report["derived_field_queries"]["units_with_moves"] == report["independent_review"]["expected_movable"]
     report["independent_review"]["base_candidate_source_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    if args.lifecycle:
+        report["independent_review"]["lifecycle_checks_passed"] = True
+        report["independent_review"]["lifecycle_inputs"] = "synthetic definitions/controls test guards only; no native initialization parity"
+        report["independent_review"]["lifecycle_checks_sha256"] = hashlib.sha256(args.lifecycle.read_bytes()).hexdigest()
     (work / "result.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report["independent_review"], indent=2))
 
