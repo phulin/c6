@@ -1,0 +1,21 @@
+# Frozen SkipTurn handler preflight
+
+The accepted immutable placement candidate `58171fb1…` already computes every handler result needed for the next genuine handler-only native profile. A separate read-only Rust probe, compiled against the exact `301f9e9` source archive in a separate directory, reconstructs the accepted typed input state and reproduces all **1,262 results: 1,214 true, 48 false, zero unsupported**. No simulation source fix or candidate refreeze is needed. The accepted count profile and historical reports remain unchanged.
+
+The [preflight report](../evidence/linux/skip-turn-handler-preflight-301f9e9.json) pins the accepted input/output, complete frozen source/archive, analytical probe sources/toolchain/binary and private detailed values. It validates every Unit identity/result, leaves Unit state unchanged and logs the concrete provider order: IsHuman first; only a human passing fortify/HOLD/SLEEP checks then calls FormationFriendlyCount(false), followed by PLOT_UNIT_LIMIT. Typed activity/espionage checks retain their original positions. All 36 humans are placed: 19 reject before count, and 17 reach count then limit, producing 14 true and three false.
+
+All **21 unplaced Units are nonhuman, delayed-death objects still present in their genuine Unit containers**. Every one returns true, has an actual resolved Formation and espionage operation NONE. Six have positive fortify turns, which do not reject nonhumans in this handler. These Units invoke only IsHuman among the required provider hooks; no count/limit provider runs. They must not be removed by a missing-plot, delayed-death or global-fortify prefilter. Full Manager eligibility remains a different contract.
+
+The source-defined empty-vector path is also preserved: an invalid Unit location yields layer -1, then original UnitContainer::GetUnits returns its map-owned empty vector; the typed model uses the equivalent empty logical slice. Formation resolution still precedes its count and the parameter read follows the count. However, this fixture has no **human unplaced Unit**, so that combined native boundary remains uncovered. Passing NULL Plot for a placed human tests the ignored argument, not an invalid internal Unit location. Do not equate those cases.
+
+The genuine native helper's final admission proof is `99e810b`, building on `d75864e` and `cc7cd11`: registered handler/manager bindings, actual runtime numeric ID and complete original Operation construction/destruction are independently gated. Its extra Formation-presence check is a scope restriction, not a native false result; all 1,262 accepted bindings are non-null. Original Unit.GetFormation is a pure eight-byte pointer getter, so this admission read adds no getter mutation before the handler. The handler body ignores Operation/Plot/visible/results, while all actual supplied objects and lifetimes remain legitimate.
+
+The next native profile can reuse the unchanged `c6-linux-placement-inputs-v1` facts-only schema and candidate. Original handler answers belong exclusively in the separate expected stream. Each expected row should retain actor owner/ordinal/ID, actual Unit presence, current-or-NULL Plot choice, visible-only flag, independent repeat, registered numeric ID/hash and returned bool. Query every actual Unit, including the 21 unplaced Units; placed Units may test both actual current Plot and NULL, and both visible values. A NULL Unit wrapper sentinel is a no-call control, not a native handler result. The new external checker may compare native variants against the single computed result per actor while retaining every variant and denominator.
+
+Reproduce without original-code execution:
+
+```sh
+python3 tools/linux/skip_turn_handler_preflight.py --output target/linux/skip-turn-handler-preflight.json
+```
+
+This is a source/model preflight, **not native handler acceptance**. The new handler profile still needs independently admitted source/lifetime/configuration gates, actual original queries, complete raw Save and known RNG controls, repeat comparisons and independent review. Complete Manager::CanStart, scripts, request ordering, callbacks, actions, all relevant state/RNG and turns remain open. The raw 89,198-byte Save→Load failure remains recorded and unmasked.

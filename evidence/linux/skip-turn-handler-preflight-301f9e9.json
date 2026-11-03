@@ -1,0 +1,70 @@
+{
+  "schema": "c6-linux-skip-turn-handler-preflight-v1",
+  "checks_passed": true,
+  "candidate_source_commit": "301f9e9d188f6a5ac815914218d0380f51b25938",
+  "candidate_sha256": "58171fb1398b148cfc1e94fc882b79723a9571d193cd6d9c375c3c51fb68f59a",
+  "candidate_manifest_sha256": "e2925853cea2eaee831e1c2ba57421957a02d659e9822b750c28c2ffee1cc6c4",
+  "source_snapshot_sha256": "560bb94b98da8a187118e6cbc82f60d279e6d008c12884bd07a1b878c1b6b559",
+  "accepted_count_report_sha256": "8e6726ffb48e4799a77c2bdadc84722978f646f8f1095433ce7d0a51b1efa116",
+  "state_projection_file_sha256": "79167949acf5e3482f0782bcc973b4ef5e56119ef1af0d10771f56b6b62950d0",
+  "frozen_output_sha256": "e76ba3b6656c496dc0bc477a48f37802aae2d286e0d145c6706f5232a899db95",
+  "preflight_python_sha256": "e621fc335fa7c5a3b6d38e3b3023d19495e42695e21daf6fbaaf707205f592db",
+  "preflight_rust_sha256": "7cafb70e52edc7b712749fde31ed5b488efaedb4a4cc91555e4337f8cf188bef",
+  "probe_sha256": "c55763a8d8b896bf4fe591b0856a808d2b8206100a512bce6cf27341a3132a4c",
+  "rustc_version": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+  "groups": {
+    "all": {
+      "units": 1262,
+      "true": 1214,
+      "false": 48,
+      "human": 36,
+      "count_queried": 17,
+      "empty_layered_vector": 21,
+      "delayed_death": 21,
+      "formations_resolved": 1262
+    },
+    "unplaced": {
+      "units": 21,
+      "true": 21,
+      "false": 0,
+      "human": 0,
+      "count_queried": 0,
+      "empty_layered_vector": 21,
+      "delayed_death": 21,
+      "formations_resolved": 21
+    },
+    "human": {
+      "units": 36,
+      "true": 14,
+      "false": 22,
+      "human": 36,
+      "count_queried": 17,
+      "empty_layered_vector": 0,
+      "delayed_death": 0,
+      "formations_resolved": 36
+    },
+    "human_reaching_count": {
+      "units": 17,
+      "true": 14,
+      "false": 3,
+      "human": 17,
+      "count_queried": 17,
+      "empty_layered_vector": 0,
+      "delayed_death": 0,
+      "formations_resolved": 17
+    }
+  },
+  "unsupported_handlers": 0,
+  "all_frozen_results_equal": true,
+  "all_source_provider_orders_equal": true,
+  "all_units_unchanged": true,
+  "values_sha256": "6fb1bb121806b921b673ea637e24fea0c27d45c03ac44db3625654de3a1acb7a",
+  "private_values_path": "/home/phulin/c6-ghidra/evidence/linux-skip-turn-handler-preflight/probe-70udurbi/values.json",
+  "native_helper_contract_commit": "99e810b",
+  "native_handler_comparison": false,
+  "original_game_execution": false,
+  "full_manager_predicate": false,
+  "gameplay_action_acceptance": false,
+  "complete_state_actions_turns": false,
+  "historical_raw_save_load_difference_bytes": 89198
+}
