@@ -204,9 +204,15 @@ macro_rules! record {
         impl $name {
             /// Decode only at an independently established structural boundary.
             pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+                let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
+                Ok((value, consumed))
+            }
+            /// Also report aggregate dynamic elements consumed by this record.
+            /// Callers can subtract this count from a surrounding record budget.
+            pub fn decode_prefix_with_items(bytes: &[u8], limits: Limits) -> Result<(Self, usize, usize), Error> {
                 let mut r = Reader { bytes, pos: 0, budget: Budget { limits, items: 0, allocated: 0 } };
                 let value = Self::read(&mut r)?;
-                Ok((value, r.pos))
+                Ok((value, r.pos, r.budget.items))
             }
             pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
                 let (value, consumed) = Self::decode_prefix(bytes, limits)?;
@@ -214,9 +220,13 @@ macro_rules! record {
                 Ok(value)
             }
             pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+                self.encode_with_items(limits).map(|(bytes, _)| bytes)
+            }
+            /// Also report aggregate dynamic elements charged during encoding.
+            pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
                 let mut w = Writer { bytes: Vec::new(), budget: Budget { limits, items: 0, allocated: 0 } };
                 self.write(&mut w)?;
-                Ok(w.bytes)
+                Ok((w.bytes, w.budget.items))
             }
         }
     };
@@ -385,6 +395,57 @@ mod tests {
         assert_eq!(g.amenities_from_religion_minimum_followers, 5);
         assert_eq!(g.feature_appeal_modifiers[0].definition_hash, u32::MAX);
         assert_eq!(g.encode(limits).unwrap(), growth_bytes());
+    }
+    #[test]
+    fn composition_reports_and_enforces_aggregate_items() {
+        let cbytes = culture_bytes();
+        let gbytes = gold_bytes();
+        let mut combined = cbytes.clone();
+        combined.extend_from_slice(&gbytes);
+        let (culture, consumed, items) = Culture::decode_prefix_with_items(
+            &combined,
+            Limits {
+                max_bytes: 9999,
+                max_items: 14,
+            },
+        )
+        .unwrap();
+        assert_eq!((consumed, items), (cbytes.len(), 2));
+        assert_eq!(
+            culture.encode_with_items(Limits::default()).unwrap(),
+            (cbytes, 2)
+        );
+        let remaining = Limits {
+            max_bytes: 9999,
+            max_items: 14 - items,
+        };
+        let (gold, consumed_gold, gold_items) =
+            Gold::decode_prefix_with_items(&combined[consumed..], remaining).unwrap();
+        assert_eq!((consumed_gold, gold_items), (gbytes.len(), 12));
+        assert_eq!(gold.encode_with_items(remaining).unwrap(), (gbytes, 12));
+        let insufficient = Limits {
+            max_bytes: 9999,
+            max_items: 13 - items,
+        };
+        assert_eq!(
+            Gold::decode_prefix_with_items(&combined[consumed..], insufficient),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            gold.encode_with_items(insufficient),
+            Err(Error::ResourceLimit)
+        );
+        let (growth, _, growth_items) =
+            Growth::decode_prefix_with_items(&growth_bytes(), Limits::default()).unwrap();
+        assert_eq!(growth_items, 2);
+        assert_eq!(growth.encode_with_items(Limits::default()).unwrap().1, 2);
+        assert_eq!(
+            culture.tourism_modifiers[0]
+                .encode_with_items(Limits::default())
+                .unwrap()
+                .1,
+            0
+        );
     }
     macro_rules! refuse {
         ($name:ident, $fixture:expr, $bool_pos:expr) => {{
