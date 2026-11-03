@@ -1,0 +1,54 @@
+{
+  "accepted_boundary": "first UnitActivityChanged report: actual old MoveTo pending, MemberNotReady, then event35 publication",
+  "api_commit": "974430329059ba993da2eeca0bb1aa000adfbde8",
+  "authoritative_state_observed_at_report": {
+    "activity": 1797587246,
+    "pending_nodes": 1,
+    "remaining_q8": 256
+  },
+  "checkpoint_sha256": "a584655cc71ec2dafac9b5c88fe4189534317bacf53287eb1890f97418979658",
+  "complete_state_actions_turns_rng": false,
+  "exercised_adjacency": false,
+  "exercised_hold_cycling": false,
+  "exercised_plot_movement_cost": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "historical_snapshot": {
+    "commit_preimages_absent": [
+      "crates/c6-data/src/loaded_actions/handlers.rs"
+    ],
+    "commit_preimages_differ": [
+      "crates/c6-data/src/loaded_actions.rs"
+    ],
+    "complete_source_reconstruction_available": false,
+    "frozen_source_files": 167,
+    "immutable_source_snapshot": true,
+    "limitation": "first temporary source directory was deleted; metadata hashes and retained binary do not recover missing source preimages",
+    "matching_commit_preimages": 165,
+    "root_changed_after_snapshot": true
+  },
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "native_action_comparison": false,
+  "native_pending_branch": "0x2c281ab ->0x2c281d5 false before formation or CanCyclePast",
+  "omitted_outputs": [
+    "proven reflected Unit output stream",
+    "stock visual UnitFlag dirty history"
+  ],
+  "original_execution": false,
+  "original_method_bodies_checked": 266,
+  "partial_failure_retains_action_prefix": true,
+  "playback_consumers_available": false,
+  "publication_is_copied_identity_and_int": true,
+  "retained_binary_replay": {
+    "executable_sha256": "2667fe4b21b2ac68dc22e097c1cdb36bd9c30606571cb1c3c5a1b5580740496e",
+    "fields_equal": 23,
+    "original_execution": false,
+    "output_sha256": "9b4ef7a4b7f71f02b0ef31291fa760cf428a809a9e993bb80d70281aa0bf16e5",
+    "source_rebuild": false
+  },
+  "reviewed_commit": "94910318109c9ba7b759bde8cd69c67a4807d7b2",
+  "schema": "c6-linux-loaded-activity-reporting-independent-review-v1",
+  "scope_admission": "StockHeadlessNoAddedConsumers is a caller condition; supplied Lua alone cannot prove it",
+  "static_report_sha256": "8a6086acca7aae66b029e2bc2959799e96e9a9a8374b4a396f8337c76788117e",
+  "unexercised_source_review": "no concrete adjacency success defect found; general placement, callback fallbacks and native parity not accepted",
+  "unsupported_next_report": "a60328c5"
+}
