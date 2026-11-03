@@ -1,0 +1,44 @@
+{
+  "schema": "c6-linux-unit-operation-legality-independent-review-v1",
+  "reviewed_commit": "c9cedcda1a84b63335ea18335ee5ec6a140b0542",
+  "isolated_committed_source": true,
+  "static_audit_byte_identical": true,
+  "methods": 17,
+  "call_edges": 16,
+  "kernel_target_methods_checked": 69,
+  "candidate_sha256": "0071f9fc083ce4157bbb403481ee5abdc601ff5a202bc33a7a86825a22f8e224",
+  "typed_record_comparisons": [
+    {
+      "owner": "unit",
+      "bytes": 4774,
+      "sha256": "70d8db374d99b5029cbfa77c1ac4ec8bb36eb6f03d56ce55c01846a4fec8786d",
+      "exact_record_equal": true
+    },
+    {
+      "owner": "formation",
+      "bytes": 56,
+      "sha256": "a744ba02f244cfe8b8255966e85229a0880de139fef7dce3d2e7c2ed6a446b78",
+      "exact_record_equal": true
+    }
+  ],
+  "source_sha256": {
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/src/skip_turn.rs": "6a14ff063f5bf29a64294976eda909e5c6f0c8cc7e5f7fbce5dc9c1df8aecb57",
+    "crates/c6-core/examples/skip_turn_kernel.rs": "32dcb6b708d0acab0032c031ce23a89fe4bcac2d8e148e4a42acc154208ae30d",
+    "tools/linux/unit_operation_legality_audit.py": "77249224a0ee9e34747e2755c6da794c187421c61065627a2dde740e46eb594f"
+  },
+  "synthetic_checks": 35,
+  "synthetic_checks_have_native_boundary_fixtures": false,
+  "kernel_report_differences": [
+    "synthetic_contract_checks iteration/timing object"
+  ],
+  "blocking_defects": [],
+  "original_code_execution_performed": false,
+  "bounded_review_passed": true,
+  "handler_live_provider_implemented": false,
+  "full_manager_can_start_supported": false,
+  "full_gameplay_action_supported": false,
+  "next_dependency": "actual layered Formation friendly-count provider with diplomacy/type/cargo/definitions/combat rivalry; actual IsHuman and PLOT_UNIT_LIMIT",
+  "complete_rng_state_actions_turns_supported": false,
+  "historical_raw_save_load_failure_bytes": 89198
+}
