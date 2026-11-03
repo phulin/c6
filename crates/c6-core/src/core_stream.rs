@@ -306,6 +306,164 @@ impl<'a> ThroughFirstPlayer<'a> {
     }
 }
 
+/// Refusals from the source-image-bound, conditional all-Player wire reader.
+#[derive(Debug, Eq, PartialEq)]
+pub enum ThroughPlayerManagerError {
+    SourceImageMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
+    Core(Error),
+    Player(crate::core_player::Error),
+    ResourceLimit,
+}
+impl std::fmt::Display for ThroughPlayerManagerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for ThroughPlayerManagerError {}
+
+/// Conditional saved-wire import through PlayerManager, with a borrowed tail.
+///
+/// The source image is verified here once. Snapshot admission and provenance
+/// remain separate from native Read fixups and executable World construction.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ThroughPlayerManager<'a> {
+    pub core: CorePrefix<'a>,
+    pub player_prefix: crate::core_player::Prefix,
+    pub consumed: usize,
+    pub items_used: usize,
+    pub source_core_sha256: [u8; 32],
+    pub tail: &'a [u8],
+}
+impl<'a> ThroughPlayerManager<'a> {
+    /// Verify the complete immutable raw Core image, then decode from byte zero.
+    ///
+    /// The digest covers the untouched tail as well as the consumed prefix.
+    /// Byte/item policies match `ThroughFirstPlayer::decode`: limits cover the
+    /// consumed sections, and allocation/depth accounting beyond Map retains
+    /// each component's documented policy. Per-owner framing comes only from
+    /// the supplied snapshot provider; this method never infers a default.
+    pub fn decode(
+        bytes: &'a [u8],
+        shared: map::Limits,
+        player_limits: crate::unit::Limits,
+        binding: crate::core_player::initialization::WireBinding,
+        contexts: &impl crate::core_player::PlayerInitializations,
+    ) -> Result<Self, ThroughPlayerManagerError> {
+        use sha2::Digest;
+        let actual: [u8; 32] = sha2::Sha256::digest(bytes).into();
+        if actual != binding.core_sha256 {
+            return Err(ThroughPlayerManagerError::SourceImageMismatch {
+                expected: binding.core_sha256,
+                actual,
+            });
+        }
+        let core = CorePrefix::decode(bytes, shared).map_err(ThroughPlayerManagerError::Core)?;
+        let effective = crate::unit::Limits {
+            max_bytes: player_limits
+                .max_bytes
+                .min(shared.max_bytes - core.consumed),
+            max_items: player_limits
+                .max_items
+                .min(shared.max_items - core.items_used),
+        };
+        let (player_prefix, player_bytes, player_items) =
+            crate::core_player::Prefix::decode_player_manager_conditional(
+                core.tail, effective, binding, contexts,
+            )
+            .map_err(ThroughPlayerManagerError::Player)?;
+        let consumed = core
+            .consumed
+            .checked_add(player_bytes)
+            .ok_or(ThroughPlayerManagerError::ResourceLimit)?;
+        let items_used = core
+            .items_used
+            .checked_add(player_items)
+            .ok_or(ThroughPlayerManagerError::ResourceLimit)?;
+        Ok(Self {
+            core,
+            player_prefix,
+            consumed,
+            items_used,
+            source_core_sha256: actual,
+            tail: &bytes[consumed..],
+        })
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ThroughGlobalAiError {
+    Players(ThroughPlayerManagerError),
+    GlobalAi(crate::game_global_ai::Error),
+    ResourceLimit,
+}
+impl std::fmt::Display for ThroughGlobalAiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for ThroughGlobalAiError {}
+
+/// The next source-closed Core owner after the conditional PlayerManager.
+/// Native GlobalAi Read/job effects are not performed by this wire composition.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ThroughGlobalAi<'a> {
+    pub players: ThroughPlayerManager<'a>,
+    pub global_ai: crate::game_global_ai::GlobalAi,
+    pub consumed: usize,
+    pub items_used: usize,
+    pub tail: &'a [u8],
+}
+impl<'a> ThroughGlobalAi<'a> {
+    /// Verify the image once in the PlayerManager boundary, then continue using
+    /// remaining shared and post-Map byte/item credits without another hash.
+    pub fn decode(
+        bytes: &'a [u8],
+        shared: map::Limits,
+        post_map_limits: crate::unit::Limits,
+        binding: crate::core_player::initialization::WireBinding,
+        contexts: &impl crate::core_player::PlayerInitializations,
+    ) -> Result<Self, ThroughGlobalAiError> {
+        let players =
+            ThroughPlayerManager::decode(bytes, shared, post_map_limits, binding, contexts)
+                .map_err(ThroughGlobalAiError::Players)?;
+        let post_map_bytes = players.consumed - players.core.map_end;
+        let post_map_items = players.items_used - players.core.items_used;
+        let effective = crate::unit::Limits {
+            max_bytes: post_map_limits
+                .max_bytes
+                .checked_sub(post_map_bytes)
+                .ok_or(ThroughGlobalAiError::ResourceLimit)?
+                .min(shared.max_bytes - players.consumed),
+            max_items: post_map_limits
+                .max_items
+                .checked_sub(post_map_items)
+                .ok_or(ThroughGlobalAiError::ResourceLimit)?
+                .min(shared.max_items - players.items_used),
+        };
+        let (global_ai, size, items) =
+            crate::game_global_ai::GlobalAi::decode_prefix_with_items(players.tail, effective)
+                .map_err(ThroughGlobalAiError::GlobalAi)?;
+        let consumed = players
+            .consumed
+            .checked_add(size)
+            .ok_or(ThroughGlobalAiError::ResourceLimit)?;
+        let items_used = players
+            .items_used
+            .checked_add(items)
+            .ok_or(ThroughGlobalAiError::ResourceLimit)?;
+        Ok(Self {
+            players,
+            global_ai,
+            consumed,
+            items_used,
+            tail: &bytes[consumed..],
+        })
+    }
+}
+
 struct Reader<'a> {
     bytes: &'a [u8],
     pos: usize,
@@ -797,5 +955,247 @@ mod tests {
             ),
             Err(Error::Variant(variants::VariantError::Limit))
         ));
+    }
+
+    fn context_binding(bytes: &[u8]) -> crate::core_player::initialization::WireBinding {
+        use crate::core_player::initialization::{
+            DatabaseIdentity, InputIdentities, WireBinding, WireRole,
+        };
+        use sha2::Digest;
+        WireBinding {
+            role: WireRole::ReadInputCore,
+            core_sha256: sha2::Sha256::digest(bytes).into(),
+            occurrence_id: b"source-wrapper-case".to_vec(),
+            output_id: None,
+            inputs: InputIdentities {
+                configuration_sha256: [1; 32],
+                rules_inputs_sha256: [2; 32],
+                database: DatabaseIdentity::LiveSnapshotUnavailable,
+                dlc_inputs_sha256: [3; 32],
+                mods_inputs_sha256: [4; 32],
+                content_inputs_sha256: [5; 32],
+            },
+        }
+    }
+    #[test]
+    fn contextual_byte_zero_image_binding_includes_unparsed_tail() {
+        use crate::core_player::initialization::{InitializationSnapshot, PlayerIdentity};
+        let (bytes, map_end, end) = through_player_fixture(true);
+        let calls = std::cell::Cell::new(0);
+        let contexts = |_: PlayerIdentity| {
+            calls.set(calls.get() + 1);
+            None::<std::sync::Arc<InitializationSnapshot>>
+        };
+        let binding = context_binding(&bytes);
+        let parsed = ThroughPlayerManager::decode(
+            &bytes,
+            map::Limits::default(),
+            crate::unit::Limits::default(),
+            binding.clone(),
+            &contexts,
+        )
+        .unwrap();
+        assert_eq!((parsed.core.map_end, parsed.consumed), (map_end, end));
+        assert_eq!(parsed.source_core_sha256, binding.core_sha256);
+        assert!(parsed.player_prefix.complete_player_manager_wire());
+        assert!(!parsed.player_prefix.initialization_reconstructed());
+        assert!(std::ptr::eq(parsed.tail.as_ptr(), bytes[end..].as_ptr()));
+        assert_eq!(calls.get(), 0); // Empty roster requires no manufactured snapshot.
+        let mut changed = bytes.clone();
+        *changed.last_mut().unwrap() ^= 1;
+        assert!(matches!(
+            ThroughPlayerManager::decode(
+                &changed,
+                map::Limits::default(),
+                crate::unit::Limits::default(),
+                binding.clone(),
+                &contexts,
+            ),
+            Err(ThroughPlayerManagerError::SourceImageMismatch { .. })
+        ));
+        let mut wrong = binding;
+        wrong.core_sha256[0] ^= 1;
+        assert!(matches!(
+            ThroughPlayerManager::decode(
+                &bytes,
+                map::Limits::default(),
+                crate::unit::Limits::default(),
+                wrong,
+                &contexts,
+            ),
+            Err(ThroughPlayerManagerError::SourceImageMismatch { .. })
+        ));
+        assert_eq!(calls.get(), 0);
+    }
+    #[test]
+    fn contextual_byte_zero_caps_are_shared_and_hash_does_not_spend_wire_credit() {
+        use crate::core_player::initialization::{InitializationSnapshot, PlayerIdentity};
+        let (mut bytes, map_end, end) = through_player_fixture(true);
+        bytes.resize(end + 100_000, 0x81);
+        let binding = context_binding(&bytes);
+        let contexts = |_: PlayerIdentity| None::<std::sync::Arc<InitializationSnapshot>>;
+        let parsed = ThroughPlayerManager::decode(
+            &bytes,
+            map::Limits::default(),
+            crate::unit::Limits::default(),
+            binding.clone(),
+            &contexts,
+        )
+        .unwrap();
+        let player_items = parsed.items_used - parsed.core.items_used;
+        let shared = map::Limits {
+            max_bytes: end,
+            max_items: parsed.items_used,
+            ..map::Limits::default()
+        };
+        let player = crate::unit::Limits {
+            max_bytes: end - map_end,
+            max_items: player_items,
+        };
+        assert!(
+            ThroughPlayerManager::decode(&bytes, shared, player, binding.clone(), &contexts)
+                .is_ok()
+        );
+        for (shared_limit, player_limit) in [
+            (
+                map::Limits {
+                    max_bytes: end - 1,
+                    ..shared
+                },
+                player,
+            ),
+            (
+                map::Limits {
+                    max_items: shared.max_items - 1,
+                    ..shared
+                },
+                player,
+            ),
+            (
+                shared,
+                crate::unit::Limits {
+                    max_bytes: player.max_bytes - 1,
+                    ..player
+                },
+            ),
+            (
+                shared,
+                crate::unit::Limits {
+                    max_items: player.max_items - 1,
+                    ..player
+                },
+            ),
+        ] {
+            assert!(ThroughPlayerManager::decode(
+                &bytes,
+                shared_limit,
+                player_limit,
+                binding.clone(),
+                &contexts
+            )
+            .is_err());
+        }
+    }
+    #[test]
+    fn accepted_global_ai_composes_after_manager_under_remaining_limits() {
+        use crate::core_player::initialization::{InitializationSnapshot, PlayerIdentity};
+        use crate::game_global_ai::{
+            ControlFactory, EspionageManager, GlobalAi, HashQ8, MayhemTracker, ReligiousManager,
+        };
+        let global = GlobalAi {
+            value_f8: 17,
+            mayhem: MayhemTracker {
+                native_f32_bits: 0x7fc01234,
+            },
+            control_factory: ControlFactory { next_id: u32::MAX },
+            espionage: EspionageManager {
+                entries: Vec::new(),
+            },
+            religious: ReligiousManager {
+                entries: Vec::new(),
+            },
+            value_128_raw_q8: i32::MIN,
+            values_140: vec![-1, 0, i32::MAX],
+            yields_a8: vec![
+                HashQ8 {
+                    definition_hash: 11,
+                    raw_q8: -5,
+                },
+                HashQ8 {
+                    definition_hash: 11,
+                    raw_q8: 7,
+                },
+            ],
+            yields_d0: Vec::new(),
+        };
+        let (wire, global_items) = global
+            .encode_with_items(crate::unit::Limits::default())
+            .unwrap();
+        let (mut bytes, map_end, manager_end) = through_player_fixture(true);
+        bytes.truncate(manager_end);
+        bytes.extend_from_slice(&wire);
+        let end = bytes.len();
+        bytes.extend_from_slice(&[0x81, 0x92, 0xa3]);
+        let binding = context_binding(&bytes);
+        let contexts = |_: PlayerIdentity| None::<std::sync::Arc<InitializationSnapshot>>;
+        let parsed = ThroughGlobalAi::decode(
+            &bytes,
+            map::Limits::default(),
+            crate::unit::Limits::default(),
+            binding.clone(),
+            &contexts,
+        )
+        .unwrap();
+        assert_eq!(parsed.global_ai, global);
+        assert_eq!(
+            (parsed.players.consumed, parsed.consumed),
+            (manager_end, end)
+        );
+        assert_eq!(parsed.items_used - parsed.players.items_used, global_items);
+        assert!(std::ptr::eq(parsed.tail.as_ptr(), bytes[end..].as_ptr()));
+        let shared = map::Limits {
+            max_bytes: end,
+            max_items: parsed.items_used,
+            ..map::Limits::default()
+        };
+        let post_map = crate::unit::Limits {
+            max_bytes: end - map_end,
+            max_items: parsed.items_used - parsed.players.core.items_used,
+        };
+        assert!(
+            ThroughGlobalAi::decode(&bytes, shared, post_map, binding.clone(), &contexts).is_ok()
+        );
+        for (a, b) in [
+            (
+                map::Limits {
+                    max_bytes: end - 1,
+                    ..shared
+                },
+                post_map,
+            ),
+            (
+                map::Limits {
+                    max_items: shared.max_items - 1,
+                    ..shared
+                },
+                post_map,
+            ),
+            (
+                shared,
+                crate::unit::Limits {
+                    max_bytes: post_map.max_bytes - 1,
+                    ..post_map
+                },
+            ),
+            (
+                shared,
+                crate::unit::Limits {
+                    max_items: post_map.max_items - 1,
+                    ..post_map
+                },
+            ),
+        ] {
+            assert!(ThroughGlobalAi::decode(&bytes, a, b, binding.clone(), &contexts).is_err());
+        }
     }
 }
