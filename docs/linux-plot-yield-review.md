@@ -1,0 +1,33 @@
+# Independent Linux plot-yield source review
+
+The reviewed outer `Rules.Yields.GetYield` translation is a source implementation over typed inputs and unresolved live query providers. This review does not accept initialized native numerical parity, complete gameplay state, action execution, RNG equivalence or turns. Existing world-fact control comparisons do not compare numerical GetYield. The independent raw 89,198-byte Save→Load failure remains unclassified and unmasked.
+
+The review starts with outer implementation `157ff09`, improvement helper `4056d20` and registry alignment follow-up `4bf2175`. It compares the complete original outer body at `0x2bf5ad0`, improvement composition at `0x2a3ee50` and political-owner wrapper at `0x2a3ed90`. The target is original Linux XP2 SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`. No original game code was executed.
+
+## Corrected finding
+
+The initial improvement composition incorrectly used registry `Find`, accepting type hashes. Native composition calls direct-index `At` at `0x2a3ee93` through PLT `0x1ea5480`. An out-of-range value must return zero before property or player queries, even when the same bits resolve a registered hash. Correction `67c9269` removes the hash path, documents the direct-index argument, and adds a regression that makes every provider panic if reached for the out-of-range hash, index or unsigned sentinel. The outer function already supplies the actual resolved collection index.
+
+## Inspected contracts
+
+- The wonder and impassable guards precede district and numerical queries. Completed non-city districts return citizen/building sums early; null citizen references are skipped. Native plot definition indices narrow through signed 16 bits; direct `At` and native small-index/hash `Find` remain distinct.
+- Terrain and feature base changes use the first matching row; all six direction queries occur only after a terrain match. The double-adjacent-terrain multiplier becomes two without accumulating further doublings. A natural wonder clears terrain before its feature change. Resource references skip nulls and stop at the first matching yield.
+- Actual Feature-manager sparse IndexLists are reconstructed from owned Map component storage, including the sparse default. Reset produces registry-sized zero storage; ordered known hashes overwrite, unknown hashes consume input. This does not replay final plot yields. Invalid sparse and registry inputs produce explicit errors.
+- The improvement guard uses the same base rows as the composed helper. The helper takes the first matching base row, all adjacency references including duplicates, then technology and civic bonuses. Null contribution output skips the native modifier/Add/Remove branch; it does not establish modifier equivalence. The political owner determines the wrapper's unowned zero path.
+- Appeal multiplies with 32-bit wrap, divides signed by 100, then wraps through integer-to-FixedPoint8 and arithmetic `AsInt`. Fixed-point sums and conversions retain signed 32-bit storage; no host float or wider accumulation replaces them.
+- The native six-name yield switch reads supplied original globals. Missing improvement property maps/keys use evidenced absent-key behavior. Present per-yield maps, other conversion kinds and duplicate-key reconstruction remain explicit provider gaps.
+- City minima use signed maximum before CityPlots effects, neighboring bonuses and later City/Player additions. Neighbor features sum all matching rows. Adjacent district appeal rows retain owning-city, same-owner, unimproved, building location/pillage and inclusive appeal bounds.
+- Great-person resource queries use the effective player and raw resource with the valid-player/null-player guards. Flood and terrain-class multiplication wrap at 32 bits. Neighbor improvement modifiers convert each FixedPoint8 value separately and do not add an invented pillage test. Positive flood/terrain-class getters are queried again in native order.
+- Drought still applies for the boolean's natural-only path. Loss subtraction wraps before signed-negative clamping, and protection retains political-owner/owning-city guards.
+
+## Acceptance boundary
+
+The providers expose identifiable original queries rather than a table of final plot outputs. Their default methods fail explicitly; known absence and missing capture are separate. Successful mock-provider arithmetic and negative missing-input tests establish only source behavior. The reviewed immutable World borrowing does not prove an arbitrary provider is pure or close transitive native effects.
+
+Unimplemented providers include impassable terrain work permission, resource visibility, present property conversions, unowned appeal, City building enumeration/location/pillage, CityPlots effects, great-person resource calculations, river/flood state, City terrain modifiers, player terrain statistics and drought state/prevention. Native direction tables, improvement adjacency calculations and all-yields normalization remain unimplemented inputs. Registry/rules imports still require actual ordered definitions, enabled content and configuration identity. SQL IDs or hash ordering are not substitutes.
+
+Additional source fixtures exercise the previously untested adjacent appeal and late City/Player paths. They check inclusive appeal bounds, location-before-pillage demand, unknown building hashes, unimproved and owner/city guards, repeated flood and terrain-class queries, wrapping multiplication and per-neighbor negative FixedPoint8 conversion. Missing great-person and flood providers fail at their native demand points. These supplied-provider fixtures are not native observations.
+
+The [machine-readable result](../evidence/linux/plot-yield-review.json) records exact reviewed source identities and checks. The pinned plot audit checks twelve source bodies, seventeen instruction contracts and six call sites. The separate effects audit checks fifty-six bodies and the null-contribution effect boundary. These static checks and source tests do not supply a native numerical oracle or compare complete affected gameplay state.
+
+Independent reruns passed twelve plot and six improvement source tests, core all-target Clippy, both pinned audits and the exact `At` call check. Follow-up `4ff2392` adds the branch fixtures and expands the audit to pin the corrected improvement call and body. Committed source-evidence implementation hashes match the reviewed files. No outstanding source defect was found within the documented input contract. Native numerical acceptance remains outstanding.

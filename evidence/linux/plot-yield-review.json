@@ -1,0 +1,109 @@
+{
+  "schema": "c6-linux-plot-yield-independent-review-v1",
+  "target_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "scope": "complete outer numerical branch translation and null-contribution improvement composition over typed supplied inputs",
+  "initial_commits": [
+    "157ff09b5f3bfe62204634583b081451b2f58e64",
+    "4056d20147fc8e7af5a73c771e5582e92d3f6074",
+    "4bf2175c7d0f026b3f30597643d14a3d9abb64de"
+  ],
+  "findings": [
+    {
+      "id": "improvement-at-not-find",
+      "status": "corrected",
+      "correction_commit": "67c9269ad1166a8654823de5b575ed0861fcea5b",
+      "native_call": "0x2a3ee93",
+      "native_target": "0x1ea5480",
+      "contract": "direct unsigned collection index; out-of-range hash must return zero before row/provider queries",
+      "regression": "out_of_range_hash_returns_zero_before_rows_or_providers"
+    }
+  ],
+  "native_source_evidence": [
+    "../c6-ghidra/evidence/linux-reporting-provider/focused-contracts/rules-plot-yield.asm",
+    "../c6-ghidra/evidence/linux-reporting-yield-effects-local/extra-008.asm",
+    "../c6-ghidra/evidence/linux-reporting-yield-effects-local/additional-081.asm",
+    "../c6-ghidra/evidence/linux-reporting-yield-effects-local/additional-085.asm"
+  ],
+  "checks": [
+    {
+      "command": "cargo test -p c6-core plot_yield",
+      "passed": true,
+      "tests": 12
+    },
+    {
+      "command": "cargo test -p c6-core improvement_yield",
+      "passed": true,
+      "tests": 6
+    },
+    {
+      "command": "cargo clippy -p c6-core --all-targets -- -D warnings",
+      "passed": true
+    },
+    {
+      "command": "python3 tools/linux/plot_yield_audit.py --output target/linux/plot-yield-review-source.json",
+      "passed": true,
+      "bodies": 12,
+      "instruction_contracts": 17,
+      "calls": 6
+    },
+    {
+      "command": "python3 tools/linux/reporting_yield_effects_audit.py --output target/linux/plot-yield-review-effects.json",
+      "passed": true,
+      "bodies": 56
+    },
+    {
+      "check": "independent Elf.call(0x2a3ee93,0x1ea5480) under exact module SHA gate",
+      "passed": true
+    },
+    {
+      "check": "committed plot-yield-source.json implementation hashes match current source files",
+      "passed": true
+    }
+  ],
+  "reviewed_files": [
+    {
+      "path": "crates/c6-core/src/plot_yield.rs",
+      "sha256": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751"
+    },
+    {
+      "path": "crates/c6-core/src/improvement_yield.rs",
+      "sha256": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441"
+    },
+    {
+      "path": "docs/linux-plot-yield.md",
+      "sha256": "ef836608040a9cc00b45b2849c8bd057971cf6e3eabfe6af32612ba978313c7e"
+    },
+    {
+      "path": "docs/linux-improvement-yield.md",
+      "sha256": "57ba88911442adc079a09ab93fa3b0ca66339c0bd2348d4d825a005b01488efb"
+    },
+    {
+      "path": "tools/linux/plot_yield_audit.py",
+      "sha256": "5ae969cfd4ed40c06c2777c03e358cb9681ed8bed815be3145ffea87fef7d77b"
+    }
+  ],
+  "native_execution_performed": false,
+  "native_numerical_acceptance": false,
+  "world_fact_controls_prove_numerical_yield": false,
+  "complete_state_action_turn_support": false,
+  "raw_save_load_failure_bytes": 89198,
+  "unknown_save_bytes": "unclassified and unmasked",
+  "remaining_gaps": [
+    "initialized native numerical oracle and complete affected-state comparison",
+    "native direction imports and improvement adjacency math",
+    "all-yields normalization policy",
+    "present property conversions and foreign property subclasses",
+    "unowned appeal",
+    "terrain work and resource visibility",
+    "City buildings and PlotYieldData",
+    "great-person resource calculations",
+    "river floods and city terrain modifiers",
+    "player terrain statistics",
+    "climate drought state and prevention",
+    "actual ordered rules/configuration/content identity imports"
+  ],
+  "source_review_accepted": true,
+  "unresolved_source_defects_found": [],
+  "source_fixture_limits": "mock/supplied providers; no native output or affected-state comparisons",
+  "reviewed_followup_commit": "4ff2392b6587b70924626a38baf9dcde90940e18"
+}
