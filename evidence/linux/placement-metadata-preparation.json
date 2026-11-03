@@ -540,7 +540,7 @@
   ],
   "placement_chain_method_count": 44,
   "source_sha256": {
-    "native/linux/placement_metadata.c": "fc250241c3b1c00e909e5f70a41ae904aa60113b3443c1c670dea27bf9158c91",
+    "native/linux/placement_metadata.c": "b48835c12d6898bbef7a23024ad90405fd7863ab2981575a080ab0393e567e40",
     "native/linux/placement_metadata.h": "8655e4fceafa2e555bc02074829bcc0e9026995f6532b24378f73a21f9ca3454",
     "tools/linux/placement_metadata_audit.py": "f019a7e236f4bd2881d6746203e475b664fe023efd3fd29a4c8a5554bc272174",
     "tools/linux/unit_placement_audit.py": "8bdefa3fffc421b59b9893b53be1f88fa1bff5801ee84373349e30b5a1034457",

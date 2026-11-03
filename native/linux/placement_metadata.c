@@ -28,7 +28,7 @@ typedef struct {
     P1 unit_location,formation_location,unit_definition,unit_formation;
     B1 initialized,alive,coord_valid;
     const int32_t *(*mapping)(const void *);
-    U1 mapping_size;
+    N1 mapping_size;
     bool (*valid)(const void *,int32_t);
     const void *(*player)(const void *,int32_t);
     I1 owner,slot_status,team,plot_limit,width,height;
