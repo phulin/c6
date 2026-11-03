@@ -1,9 +1,12 @@
 //! Attributed initialization inputs for conditional saved-wire decoding.
 //!
-//! Raw observer JSONL is not an admitted snapshot. There is deliberately no
-//! public/native admission factory until genuine capture and checker closure.
-//! Candidate preflight checks shape/binding only and never proves initialization.
+//! Raw observer JSONL is not a snapshot by declaration. The capture child checks
+//! bounded finalized artifacts/events before constructing role-local snapshots.
+//! This validates supplied-capture consistency, not authenticity/native gameplay.
+//! Legacy Candidate preflight remains shape/binding only.
 use crate::player_ai_military;
+#[path = "player_initialization_capture.rs"]
+pub mod capture;
 
 pub type Digest = [u8; 32];
 
@@ -36,6 +39,9 @@ pub struct WireBinding {
     pub role: WireRole,
     /// Raw Core identity; never the .Civ6Save container identity.
     pub core_sha256: Digest,
+    /// Actual STREAM occurrence, canonical decimal bytes from raw
+    /// `stream_occurrence`; per-Military occurrences remain separate metadata.
+    /// Legacy SourceOnly test bindings are explicitly tagged test values.
     pub occurrence_id: Vec<u8>,
     pub output_id: Option<Vec<u8>>,
     pub inputs: InputIdentities,
@@ -212,6 +218,7 @@ pub enum Error {
     Definitions,
     InputBinding,
     OwnerBinding,
+    CursorBinding,
     SourceOnly,
 }
 impl std::fmt::Display for Error {
@@ -402,19 +409,41 @@ impl SnapshotCandidate {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Origin {
-    /// Reserved for a future genuine capture/checker admission factory.
+    /// Source-validated consistency of supplied finalized capture artifacts.
+    /// Execution authenticity and native/gameplay acceptance remain separate.
     AttributedObservation,
     #[cfg(test)]
     SourceOnly,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct InitializationSnapshot {
-    candidate: SnapshotCandidate,
+    candidate: Option<SnapshotCandidate>,
+    role: Option<capture::RoleSnapshot>,
     origin: Origin,
 }
 impl InitializationSnapshot {
-    pub fn candidate(&self) -> &SnapshotCandidate {
-        &self.candidate
+    pub fn candidate(&self) -> Option<&SnapshotCandidate> {
+        self.candidate.as_ref()
+    }
+    pub fn captured_role(&self) -> Option<&capture::RoleSnapshot> {
+        self.role.as_ref()
+    }
+    fn from_role(role: capture::RoleSnapshot, origin: Origin) -> Self {
+        Self {
+            candidate: None,
+            role: Some(role),
+            origin,
+        }
+    }
+    pub(super) fn check_cursor(&self, cursor: usize) -> Result<(), Error> {
+        if self
+            .role
+            .as_ref()
+            .is_some_and(|role| role.core_range[0] != cursor)
+        {
+            return Err(Error::CursorBinding);
+        }
+        Ok(())
     }
     pub fn origin(&self) -> Origin {
         self.origin
@@ -424,16 +453,30 @@ impl InitializationSnapshot {
     }
     /// Derive the unsaved wire branch from an attributed state, not a count in
     /// the stream. The binding is supplied by an externally attributed Core
-    /// reader; this module neither hashes a whole Core nor admits raw JSONL.
+    /// reader. Capture ingestion performs import-time checks once; this lookup
+    /// only reuses its immutable role/stream/owner facts.
     pub(super) fn context_for(
         &self,
         player: PlayerIdentity,
         binding: &WireBinding,
     ) -> Result<player_ai_military::Context, Error> {
-        if player != self.candidate.player {
+        #[cfg(test)]
+        if self.origin == Origin::SourceOnly
+            && !matches!(
+                binding.role,
+                WireRole::SourceOnlyReadCase | WireRole::SourceOnlyWriteCase
+            )
+        {
+            return Err(Error::SourceOnly);
+        }
+        if let Some(role) = &self.role {
+            return role.context_for(player, binding);
+        }
+        let candidate = self.candidate.as_ref().ok_or(Error::InputBinding)?;
+        if player != candidate.player {
             return Err(Error::OwnerBinding);
         }
-        if binding.inputs != self.candidate.inputs {
+        if binding.inputs != candidate.inputs {
             return Err(Error::InputBinding);
         }
         #[cfg(test)]
@@ -454,19 +497,19 @@ impl InitializationSnapshot {
             WireRole::SourceOnlyWriteCase => true,
         };
         let expected = if output {
-            self.candidate.saved_output.output_core_sha256
+            candidate.saved_output.output_core_sha256
         } else {
-            self.candidate.input_core_sha256
+            candidate.input_core_sha256
         };
         let witness = if output {
-            &self.candidate.write_entry.witness
+            &candidate.write_entry.witness
         } else {
-            &self.candidate.read_initialized.witness
+            &candidate.read_initialized.witness
         };
         if binding.core_sha256 != expected
             || binding.occurrence_id != witness.occurrence_id
             || if output {
-                binding.output_id.as_ref() != Some(&self.candidate.saved_output.output_id)
+                binding.output_id.as_ref() != Some(&candidate.saved_output.output_id)
             } else {
                 binding.output_id.is_some()
             }
@@ -474,9 +517,9 @@ impl InitializationSnapshot {
             return Err(Error::InputBinding);
         }
         let size = if output {
-            self.candidate.write_guard.allowed_size_u32
+            candidate.write_guard.allowed_size_u32
         } else {
-            self.candidate.read_initialized.vectors.allowed.size_u32
+            candidate.read_initialized.vectors.allowed.size_u32
         };
         Ok(player_ai_military::Context {
             operation_type_arrays_present: size != 0,
@@ -487,6 +530,17 @@ impl InitializationSnapshot {
         player_id: i32,
         binding: &WireBinding,
     ) -> Result<(), Error> {
+        if let Some(role) = &self.role {
+            if role.binding != *binding {
+                return Err(Error::InputBinding);
+            }
+            return if player_id == role.player_id() {
+                Ok(())
+            } else {
+                Err(Error::OwnerBinding)
+            };
+        }
+        let candidate = self.candidate.as_ref().ok_or(Error::InputBinding)?;
         let output = match binding.role {
             WireRole::ReadInputCore => false,
             WireRole::SavedOutputCore => true,
@@ -496,9 +550,9 @@ impl InitializationSnapshot {
             WireRole::SourceOnlyWriteCase => true,
         };
         let state = if output {
-            &self.candidate.write_entry
+            &candidate.write_entry
         } else {
-            &self.candidate.read_initialized
+            &candidate.read_initialized
         };
         if state
             .player
@@ -510,12 +564,13 @@ impl InitializationSnapshot {
         Ok(())
     }
     /// Test-only construction is visibly tagged and cannot bind to native roles.
-    /// There is no public observed/native factory before genuine admission.
+    /// This legacy constructor cannot promote a source test to native roles.
     #[cfg(test)]
     pub(super) fn source_only(candidate: SnapshotCandidate) -> Result<Self, Error> {
         candidate.preflight(Limits::default())?;
         Ok(Self {
-            candidate,
+            candidate: Some(candidate),
+            role: None,
             origin: Origin::SourceOnly,
         })
     }
@@ -742,18 +797,20 @@ mod tests {
             Err(Error::SourceOnly)
         );
         assert_eq!(
-            snapshot.candidate().inputs.database,
+            snapshot.candidate().unwrap().inputs.database,
             DatabaseIdentity::LiveSnapshotUnavailable
         );
         assert_ne!(
             snapshot
                 .candidate()
+                .unwrap()
                 .initialize_entry_prior
                 .vectors
                 .allowed
                 .values_i32,
             snapshot
                 .candidate()
+                .unwrap()
                 .read_initialized
                 .vectors
                 .allowed
@@ -764,22 +821,25 @@ mod tests {
     fn candidate_preflight_preserves_raw_order_and_refuses_missing_cross_bindings() {
         let (snapshot, _, _) = source_case(identity(), true, true);
         assert_eq!(
-            snapshot.candidate().array_writes[0].definitions.ordered[0].collection_index_u32,
+            snapshot.candidate().unwrap().array_writes[0]
+                .definitions
+                .ordered[0]
+                .collection_index_u32,
             9
         );
-        let mut missing = snapshot.candidate().clone();
+        let mut missing = snapshot.candidate().unwrap().clone();
         missing.read_return.witness.occurrence_id = b"another-input".to_vec();
         assert_eq!(
             missing.preflight(Limits::default()),
             Err(Error::WitnessBinding)
         );
-        let mut wrong_stream = snapshot.candidate().clone();
+        let mut wrong_stream = snapshot.candidate().unwrap().clone();
         wrong_stream.read_return.witness.stream_pointer ^= 1;
         assert_eq!(
             wrong_stream.preflight(Limits::default()),
             Err(Error::WitnessBinding)
         );
-        let mut incomplete = snapshot.candidate().clone();
+        let mut incomplete = snapshot.candidate().unwrap().clone();
         incomplete
             .read_initialized
             .vectors
@@ -790,11 +850,11 @@ mod tests {
             incomplete.preflight(Limits::default()),
             Err(Error::VectorSize)
         );
-        let mut guard = snapshot.candidate().clone();
+        let mut guard = snapshot.candidate().unwrap().clone();
         guard.write_guard.branch_taken = false;
         assert_eq!(guard.preflight(Limits::default()), Err(Error::WriteGuard));
         assert_eq!(
-            snapshot.candidate().preflight(Limits {
+            snapshot.candidate().unwrap().preflight(Limits {
                 max_values: 0,
                 ..Limits::default()
             }),

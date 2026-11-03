@@ -733,6 +733,7 @@ impl Reader<'_> {
         index: u32,
         binding: &initialization::WireBinding,
         contexts: &impl PlayerInitializations,
+        core_origin: usize,
     ) -> Result<(), Error> {
         if !player.header.saved_was_ever_alive() {
             return Ok(());
@@ -742,11 +743,17 @@ impl Reader<'_> {
             requested_owner: player.requested_owner,
             record_owner: player.header.owner,
         };
+        let absolute_cursor = core_origin
+            .checked_add(self.pos)
+            .ok_or(Error::ResourceLimit)?;
         let snapshot = contexts
-            .for_player(identity)
+            .for_player_at(identity, absolute_cursor)
             .ok_or(Error::MissingInitializationSnapshot(identity))?;
         let context = snapshot
             .context_for(identity, binding)
+            .map_err(Error::Initialization)?;
+        snapshot
+            .check_cursor(absolute_cursor)
             .map_err(Error::Initialization)?;
         let military = self.component(
             |bytes, limits| {
@@ -801,6 +808,14 @@ pub trait PlayerInitializations {
         &self,
         identity: initialization::PlayerIdentity,
     ) -> Option<Arc<initialization::InitializationSnapshot>>;
+    /// Absolute Military cursor is source-derived, never a Manager ordinal.
+    fn for_player_at(
+        &self,
+        identity: initialization::PlayerIdentity,
+        _absolute_military_cursor: usize,
+    ) -> Option<Arc<initialization::InitializationSnapshot>> {
+        self.for_player(identity)
+    }
 }
 impl<F> PlayerInitializations for F
 where
@@ -885,11 +900,23 @@ impl Prefix {
         binding: initialization::WireBinding,
         contexts: &impl PlayerInitializations,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_player_manager_conditional_at(bytes, limits, binding, contexts, 0)
+    }
+    /// `core_origin` is the actual absolute cursor where this post-Map slice
+    /// begins. Role-admitted snapshots bind their Military start to that cursor.
+    pub fn decode_player_manager_conditional_at(
+        bytes: &[u8],
+        limits: Limits,
+        binding: initialization::WireBinding,
+        contexts: &impl PlayerInitializations,
+        core_origin: usize,
+    ) -> Result<(Self, usize, usize), Error> {
         Self::decode_player_manager_conditional_reserving(
             bytes,
             limits,
             binding,
             contexts,
+            core_origin,
             |records, additional| {
                 records
                     .try_reserve_exact(additional)
@@ -902,6 +929,7 @@ impl Prefix {
         limits: Limits,
         binding: initialization::WireBinding,
         contexts: &impl PlayerInitializations,
+        core_origin: usize,
         mut reserve: impl FnMut(&mut Vec<FirstPlayer>, usize) -> Result<(), Error>,
     ) -> Result<(Self, usize, usize), Error> {
         let (mut prefix, consumed, items) = Self::decode_prefix_with_items(bytes, limits)?;
@@ -912,7 +940,7 @@ impl Prefix {
             limits,
         };
         if let Some(first) = prefix.first_player.as_mut() {
-            reader.complete_player(first, 0, &binding, contexts)?;
+            reader.complete_player(first, 0, &binding, contexts, core_origin)?;
         }
         let count = prefix.player_count.saturating_sub(1) as usize;
         // Preflight entry count, available header wire and addressable storage.
@@ -931,7 +959,7 @@ impl Prefix {
         }
         for index in 1..prefix.player_count {
             let mut player = reader.player_prefix()?;
-            reader.complete_player(&mut player, index, &binding, contexts)?;
+            reader.complete_player(&mut player, index, &binding, contexts, core_origin)?;
             // Reserve only for a fully decoded record. An advertised count
             // never becomes a typed-storage allocation request.
             reserve(&mut prefix.additional_players, 1)?;
@@ -3084,7 +3112,7 @@ mod tests {
             let provider = |identity| {
                 snapshots
                     .iter()
-                    .find(|s| s.candidate().player == identity)
+                    .find(|s| s.candidate().unwrap().player == identity)
                     .map(Arc::clone)
             };
             let (bytes, items) = value.encode_prefix_with_items(Limits::default()).unwrap();
@@ -3194,7 +3222,7 @@ mod tests {
             calls.borrow_mut().push(identity);
             snapshots
                 .iter()
-                .find(|s| s.candidate().player == identity)
+                .find(|s| s.candidate().unwrap().player == identity)
                 .map(Arc::clone)
         };
         let (bytes, items) = value.encode_prefix_with_items(Limits::default()).unwrap();
@@ -3262,6 +3290,7 @@ mod tests {
             limits,
             binding,
             &provider,
+            0,
             |_, additional| {
                 requests.push(additional);
                 // Safe allocator seam: no request reaches the real allocator.
