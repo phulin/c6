@@ -26,10 +26,9 @@ def main():
              'tools/linux/loaded_actions_review_load.rs',
              'tools/linux/yield_monitor_domain_check.rs',
              'tools/linux/yield_monitor_domain_check.py']
-    # No unstated WIP overlays: the test intentionally runs only committed bytes.
-    pending = subprocess.check_output(['git', 'diff', '--name-only', 'HEAD', '--', *paths], cwd=ROOT, text=True)
-    if pending.strip():
-        raise ValueError('commit the required source paths before freezing: ' + pending)
+    # Archive HEAD directly. Concurrent work is excluded, without requiring a
+    # whole-workspace lock or making unrelated owners checkpoint their changes.
+    pending = subprocess.check_output(['git', 'diff', '--name-only', 'HEAD', '--', *paths], cwd=ROOT, text=True).splitlines()
     retained = ROOT / 'target/linux/yield-monitor-domain-candidates' / uuid.uuid4().hex
     retained.mkdir(parents=True)
     archive = retained / 'source.tar'
@@ -68,6 +67,7 @@ def main():
                   retained_candidate=str(candidate.relative_to(ROOT)),
                   generated_manifest_sha256=sha(cargo),
                   generated_lock_sha256=sha(package / 'Cargo.lock'),
+                  workspace_changed_paths_excluded=pending,
                   source_contains_uncommitted_overlay=False)
     (retained / 'result.json').write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
     args.output.parent.mkdir(parents=True, exist_ok=True)
