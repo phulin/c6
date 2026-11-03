@@ -8,7 +8,7 @@
 //! Linux module SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! Unknown unframed Rules providers fail. CorePrefix stops after Map; the
 //! ThroughFirstPlayer composition continues through Religion and the first
-//! Player's AI Culture, stopping before AI Diplomatic on the true saved branch.
+//! Player's AI Homeland, stopping before Military's initialization context.
 //! The never-alive branch closes one saved-wire Player; an empty Manager also
 //! has an explicit boundary. Neither result establishes executable world state.
 //! Each result borrows its untouched remaining tail without semantic exclusion.
@@ -247,7 +247,7 @@ impl std::fmt::Display for ThroughFirstPlayerError {
 impl std::error::Error for ThroughFirstPlayerError {}
 
 /// Raw Core prefix through Game.Religion and the first Player's supported wire.
-/// The true saved branch remains unfinished at AI Diplomatic after AI Culture;
+/// The context-free true branch remains unfinished at Military after AI Homeland;
 /// the never-alive branch closes that one wire record. An empty Manager stops
 /// at AfterEmptyPlayerManager. These boundaries do not establish a complete world.
 #[derive(Debug, Eq, PartialEq)]
