@@ -102,6 +102,11 @@ pub struct CorePrefix<'a> {
     pub map_end: usize,
     /// Equal to map_end; the next unframed serializer is Game.Religion.
     pub consumed: usize,
+    /// Aggregate item charge through Map, for readers continuing into the tail.
+    pub items_used: usize,
+    /// Aggregate logical allocation charge under the declared limits policy.
+    /// Includes conservative variant charges; this is not native heap usage.
+    pub logical_allocation_used: usize,
     /// Untouched input bytes. No tail copy or semantic exclusion is performed.
     pub tail: &'a [u8],
 }
@@ -192,7 +197,7 @@ impl<'a> CorePrefix<'a> {
         let local_player = r.i32()?;
         let game_properties = r.variant(VariantMap::decode_prefix)?;
         let map_start = r.pos;
-        let (map, consumed, _) = Map::decode_prefix_with_items(
+        let (map, consumed, map_items, map_allocation) = Map::decode_prefix_with_usage(
             &bytes[map_start..],
             map::Limits {
                 max_bytes: limits.max_bytes - map_start,
@@ -201,6 +206,7 @@ impl<'a> CorePrefix<'a> {
                 max_depth: limits.max_depth,
             },
         )?;
+        r.charge(map_items, map_allocation)?;
         r.take(consumed)?;
         Ok(Self {
             metadata,
@@ -215,6 +221,8 @@ impl<'a> CorePrefix<'a> {
             map_start,
             map_end: r.pos,
             consumed: r.pos,
+            items_used: r.items,
+            logical_allocation_used: r.allocation,
             tail: &bytes[r.pos..],
         })
     }
@@ -526,7 +534,15 @@ mod tests {
             max_allocation: exact_allocation,
             ..map::Limits::default()
         };
-        assert_eq!(CorePrefix::decode(&bytes, limits).unwrap().consumed, end);
+        let decoded = CorePrefix::decode(&bytes, limits).unwrap();
+        assert_eq!(decoded.consumed, end);
+        assert_eq!(decoded.items_used, exact_items);
+        assert_eq!(decoded.logical_allocation_used, exact_allocation);
+        assert!(std::ptr::eq(decoded.tail.as_ptr(), bytes[end..].as_ptr()));
+        // An enclosing reader can subtract these exact charges before decoding
+        // subsequent records; no fresh budget or allocation estimate is needed.
+        assert_eq!(limits.max_items - decoded.items_used, 0);
+        assert_eq!(limits.max_allocation - decoded.logical_allocation_used, 0);
         for limited in [
             map::Limits {
                 max_bytes: end - 1,
