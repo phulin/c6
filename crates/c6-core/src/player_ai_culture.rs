@@ -211,55 +211,61 @@ record!(CultureAi,VERSION,{
  civic_analyzers:Vec<HashEntry<CivicAnalysis>>,policy_analyzers:Vec<HashEntry<PolicyAnalysis>>,resolution_analyzers:Vec<HashEntry<ResolutionAnalysis>>,
  govt_values:Vec<HashEntry<i32>>,rockband_analyzers:Vec<RockBandAnalysis>,great_work_manager:GreatWorks,national_park_spots:Vec<i32>,num_naturalists:i32,must_change_policies:BoolByte
 });
-impl CultureAi {
-    pub fn decode(data: &[u8], limits: Limits) -> Result<Self, Error> {
-        let (v, n) = Self::decode_prefix(data, limits)?;
-        if n != data.len() {
-            return Err(Error::Trailing);
+macro_rules! bounded_codec {
+    ($name:ident) => {
+        impl $name {
+            pub fn decode(data: &[u8], limits: Limits) -> Result<Self, Error> {
+                let (v, n) = Self::decode_prefix(data, limits)?;
+                if n != data.len() {
+                    return Err(Error::Trailing);
+                }
+                Ok(v)
+            }
+            pub fn decode_prefix(data: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+                Self::decode_prefix_with_items(data, limits).map(|(v, n, _)| (v, n))
+            }
+            pub fn decode_prefix_with_items(
+                data: &[u8],
+                limits: Limits,
+            ) -> Result<(Self, usize, usize), Error> {
+                let mut r = Reader {
+                    data,
+                    pos: 0,
+                    items: 0,
+                    limits,
+                };
+                let v = Self::read(&mut r)?;
+                Ok((v, r.pos, r.items))
+            }
+            pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+                self.encode_with_items(limits).map(|(v, _)| v)
+            }
+            pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+                let mut w = Writer {
+                    data: None,
+                    pos: 0,
+                    items: 0,
+                    limits,
+                };
+                self.write(&mut w)?;
+                let mut out = Vec::new();
+                out.try_reserve_exact(w.pos)
+                    .map_err(|_| Error::ResourceLimit)?;
+                let items = w.items;
+                w = Writer {
+                    data: Some(out),
+                    pos: 0,
+                    items: 0,
+                    limits,
+                };
+                self.write(&mut w)?;
+                Ok((w.data.unwrap(), items))
+            }
         }
-        Ok(v)
-    }
-    pub fn decode_prefix(data: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
-        Self::decode_prefix_with_items(data, limits).map(|(v, n, _)| (v, n))
-    }
-    pub fn decode_prefix_with_items(
-        data: &[u8],
-        limits: Limits,
-    ) -> Result<(Self, usize, usize), Error> {
-        let mut r = Reader {
-            data,
-            pos: 0,
-            items: 0,
-            limits,
-        };
-        let v = Self::read(&mut r)?;
-        Ok((v, r.pos, r.items))
-    }
-    pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
-        self.encode_with_items(limits).map(|(v, _)| v)
-    }
-    pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
-        let mut w = Writer {
-            data: None,
-            pos: 0,
-            items: 0,
-            limits,
-        };
-        self.write(&mut w)?;
-        let mut out = Vec::new();
-        out.try_reserve_exact(w.pos)
-            .map_err(|_| Error::ResourceLimit)?;
-        let items = w.items;
-        w = Writer {
-            data: Some(out),
-            pos: 0,
-            items: 0,
-            limits,
-        };
-        self.write(&mut w)?;
-        Ok((w.data.unwrap(), items))
-    }
+    };
 }
+bounded_codec!(CultureAi);
+bounded_codec!(BoostManager);
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -409,6 +415,79 @@ mod tests {
                 v.done_off_turn = BoolByte(2);
                 v
             })
+        );
+    }
+    #[test]
+    fn shared_boost_manager_boundary() {
+        // Direct target-schema carrier: v1, signed owner, allowed, count,
+        // then two ordered raw control-ID/signed uniqueness pairs.
+        let raw: Vec<u8> = [1u32, 3, 2, 2, u32::MAX, 0x8000_0000, 7, (-9i32) as u32]
+            .into_iter()
+            .flat_map(u32::to_le_bytes)
+            .collect();
+        let expected = BoostManager {
+            player_id: 3,
+            allowed_active_boosts: 2,
+            active_boosts: vec![
+                ActiveBoost {
+                    behavior_tree_control_id: u32::MAX,
+                    boost_uniqueness_hash: i32::MIN,
+                },
+                ActiveBoost {
+                    behavior_tree_control_id: 7,
+                    boost_uniqueness_hash: -9,
+                },
+            ],
+        };
+        let exact = Limits {
+            max_bytes: 32,
+            max_items: 2,
+        };
+        assert_eq!(BoostManager::decode(&raw, exact), Ok(expected.clone()));
+        assert_eq!(expected.encode_with_items(exact), Ok((raw.clone(), 2)));
+        for n in 0..raw.len() {
+            assert!(BoostManager::decode(&raw[..n], exact).is_err());
+        }
+        for short in [
+            Limits {
+                max_bytes: 31,
+                ..exact
+            },
+            Limits {
+                max_items: 1,
+                ..exact
+            },
+        ] {
+            assert_eq!(BoostManager::decode(&raw, short), Err(Error::ResourceLimit));
+            assert_eq!(expected.encode(short), Err(Error::ResourceLimit));
+        }
+        let mut tail = raw.clone();
+        tail.extend_from_slice(&[99; 64]);
+        assert_eq!(BoostManager::decode(&tail, exact), Err(Error::Trailing));
+        assert_eq!(
+            BoostManager::decode_prefix(&tail, exact),
+            Ok((expected.clone(), 32))
+        );
+        assert_eq!(
+            BoostManager::decode_prefix_with_items(&tail, exact),
+            Ok((expected, 32, 2))
+        );
+        let empty = BoostManager {
+            player_id: -1,
+            allowed_active_boosts: 0,
+            active_boosts: vec![],
+        };
+        let empty_cap = Limits {
+            max_bytes: 16,
+            max_items: 0,
+        };
+        let bytes = empty.encode(empty_cap).unwrap();
+        assert_eq!(BoostManager::decode(&bytes, empty_cap), Ok(empty));
+        let mut hostile = bytes;
+        hostile[12..16].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(
+            BoostManager::decode(&hostile, empty_cap),
+            Err(Error::ResourceLimit)
         );
     }
 }
