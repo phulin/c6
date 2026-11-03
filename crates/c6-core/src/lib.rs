@@ -2,6 +2,8 @@
 pub mod city_citizens;
 pub mod city_district;
 pub mod city_economy;
+pub mod city_production;
+pub mod city_services;
 pub mod city_wire;
 pub mod codec;
 pub mod combat;
