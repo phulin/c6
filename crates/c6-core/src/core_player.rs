@@ -1,11 +1,18 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Heroes and conditional AI prefix.
-//! Yields at the exact conditional AIMilitary or a source-proven complete false-branch Player; no gameplay.
+//! Bounded post-Map Core saved-wire composition, with a context-free first-entry
+//! prefix and a separately attributed conditional whole-Manager path; no gameplay.
 use crate::player_prerequisites::{self, IndexedBools};
 use crate::player_tail;
+use std::sync::Arc;
+#[path = "player_initialization.rs"]
+pub mod initialization;
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
+};
+use crate::{
+    player_ai_behavior_tree, player_ai_military, player_ai_research, player_ai_tactical,
+    player_ai_targets,
 };
 use crate::{
     player_ai_city_manager, player_ai_culture, player_ai_diplomatic, player_ai_economic,
@@ -27,6 +34,15 @@ pub enum Error {
     Version { expected: u32, actual: u32 },
     InvalidContainer,
     InvalidPrefix,
+    EntryIndex(u32),
+    MissingInitializationSnapshot(initialization::PlayerIdentity),
+    Initialization(initialization::Error),
+    MilitaryContextMismatch,
+    AIMilitary(player_ai_military::Error),
+    AIResearch(player_ai_research::Error),
+    AITactical(player_ai_tactical::Error),
+    AITargets(player_ai_targets::Error),
+    AIBehaviorTree(player_ai_behavior_tree::Error),
     OwnerMismatch { requested: i32, record: i32 },
     Formation(unit::Error),
     Component(pc::Error),
@@ -186,7 +202,13 @@ pub struct FirstPlayer {
     pub ai_grand_strategic: Option<player_ai_grand_strategic::GrandStrategic>,
     pub ai_homeland: Option<player_ai_homeland::Homeland>,
 
-    /// Complete common suffix only for the false WasEverAlive branch.
+    pub initialization_snapshot: Option<Arc<initialization::InitializationSnapshot>>,
+    pub ai_military: Option<player_ai_military::Military>,
+    pub ai_research: Option<player_ai_research::Research>,
+    pub ai_tactical: Option<player_ai_tactical::Tactical>,
+    pub ai_targets: Option<player_ai_targets::Targets>,
+    pub ai_behavior_tree: Option<player_ai_behavior_tree::BehaviorTreeManager>,
+    /// Complete suffix for a closed false entry or fully contextual true entry.
     pub tail: Option<player_tail::Tail>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -196,9 +218,9 @@ pub enum Boundary {
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
     /// WasEverAlive=true: all supported ordered AI wire records consumed; Military context is still required.
     AIMilitary,
-    /// First false-branch wire Player closed; next explicit requested ID is unread.
+    /// Represented wire entries are closed; next explicit requested ID is unread.
     NextPlayerEntry,
-    /// The sole false-branch wire Player and its enclosing Manager are closed.
+    /// Every represented Manager entry is closed; later Game components are unread.
     AfterPlayerManager,
 }
 #[derive(Debug, Eq, PartialEq)]
@@ -206,9 +228,13 @@ pub struct Prefix {
     pub religion: Religion,
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
+    /// Additional ordered Manager entries, without cloning the first entry.
+    pub additional_players: Vec<FirstPlayer>,
+    /// Explicit attributed Core role; source-only bindings exist only in tests.
+    pub initialization_binding: Option<initialization::WireBinding>,
     pub boundary: Boundary,
-    /// Counts unfinished Manager entries; a complete false-branch first wire
-    /// Player is subtracted, while actual true-branch imports remain partial.
+    /// Counts unfinished Manager wire entries, derived from actual represented
+    /// records; context-free true-branch imports remain partial.
     pub unfinished_player_entries: u32,
 }
 
@@ -468,6 +494,333 @@ impl<'a> Reader<'a> {
         })
     }
 }
+impl Reader<'_> {
+    fn player_prefix(&mut self) -> Result<FirstPlayer, Error> {
+        self.charge(0, 1)?;
+        let requested_owner = self.i32()?;
+        let header = self.header()?;
+        if requested_owner != header.owner {
+            return Err(Error::OwnerMismatch {
+                requested: requested_owner,
+                record: header.owner,
+            });
+        }
+        self.version(1)?;
+        let formations = self.recycled(Reader::formation)?;
+        let goody_hut = self.component(pc::GoodyHut::decode_prefix_with_items, Error::Component)?;
+        let bonuses = self.component(pc::Bonuses::decode_prefix_with_items, Error::Component)?;
+        let congress = self.component(pc::Congress::decode_prefix_with_items, Error::Component)?;
+        let cities = self.cities()?;
+        let diplomacy = self.component(
+            player_diplomacy::Diplomacy::decode_prefix_with_items,
+            Error::Diplomacy,
+        )?;
+        let districts = self.component(
+            player_districts::Districts::decode_prefix_with_items,
+            Error::Districts,
+        )?;
+        let name_manager = self.component(
+            player_name_manager::NameManager::decode_prefix_with_items,
+            Error::NameManager,
+        )?;
+        let culture = self.component(
+            player_culture::Culture::decode_prefix_with_items,
+            Error::Culture,
+        )?;
+        let espionage = self.component(
+            player_espionage::Espionage::decode_prefix_with_items,
+            Error::Espionage,
+        )?;
+        let religion = self.component(
+            player_religion::Religion::decode_prefix_with_items,
+            Error::Religion,
+        )?;
+        let resources = self.component(
+            player_resources::Resources::decode_prefix_with_items,
+            Error::Resources,
+        )?;
+        let stats = self.component(player_stats::Stats::decode_prefix_with_items, Error::Stats)?;
+        let techs = self.component(player_techs::Techs::decode_prefix_with_items, Error::Techs)?;
+        let treasury = self.component(
+            player_treasury::Treasury::decode_prefix_with_items,
+            Error::Treasury,
+        )?;
+        let units = self.component(player_units::Units::decode_prefix_with_items, Error::Units)?;
+        let eras = self.component(player_eras::Eras::decode_prefix_with_items, Error::Eras)?;
+        let trade = self.component(player_trade::Trade::decode_prefix_with_items, Error::Trade)?;
+        let great_people_points = self.component(
+            player_great_people_points::GreatPeoplePoints::decode_prefix_with_items,
+            Error::GreatPeoplePoints,
+        )?;
+        let influence = self.component(
+            player_influence::Influence::decode_prefix_with_items,
+            Error::Influence,
+        )?;
+        let quests = self.component(
+            player_quests::Quests::decode_prefix_with_items,
+            Error::Quests,
+        )?;
+        let wmds = self.component(player_wmds::Wmds::decode_prefix_with_items, Error::Wmds)?;
+        let improvements = self.component(
+            player_improvements::Improvements::decode_prefix_with_items,
+            Error::Improvements,
+        )?;
+        let governors = self.component(
+            player_governors::Governors::decode_prefix_with_items,
+            Error::Governors,
+        )?;
+        let cultural_identity = self.component(
+            player_cultural_identity::CulturalIdentity::decode_prefix_with_items,
+            Error::CulturalIdentity,
+        )?;
+        let heroes = self.component(
+            player_heroes::Heroes::decode_prefix_with_items,
+            Error::Heroes,
+        )?;
+        let post_heroes_arrays = if header.saved_was_ever_alive() {
+            Some(PostHeroesArrays {
+                unit_definitions: self.indexed_bools()?,
+                feature_definitions: self.indexed_bools()?,
+                continent_definitions: self.indexed_bools()?,
+            })
+        } else {
+            None
+        };
+        let (ai_control, ai_influence_map, ai_planning) = if header.saved_was_ever_alive() {
+            (
+                Some(self.component(
+                    player_ai_control::ControlManager::decode_prefix_with_items,
+                    Error::AIControl,
+                )?),
+                Some(self.component(
+                    player_ai_influence_map::InfluenceMap::decode_prefix_with_items,
+                    Error::AIInfluenceMap,
+                )?),
+                Some(self.component(
+                    player_ai_identity::PlanningManagerIdentity::decode_prefix_with_items,
+                    Error::AIPlanning,
+                )?),
+            )
+        } else {
+            (None, None, None)
+        };
+        let ai_city_manager = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_city_manager::CityManager::decode_prefix_with_items,
+                Error::AICityManager,
+            )?)
+        } else {
+            None
+        };
+        let ai_culture = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_culture::CultureAi::decode_prefix_with_items,
+                Error::AICulture,
+            )?)
+        } else {
+            None
+        };
+        let ai_diplomatic = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_diplomatic::Diplomatic::decode_prefix_with_items,
+                Error::AIDiplomatic,
+            )?)
+        } else {
+            None
+        };
+        let ai_economic = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_economic::Economic::decode_prefix_with_items,
+                Error::AIEconomic,
+            )?)
+        } else {
+            None
+        };
+        let ai_governors = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_governors::Governors::decode_prefix_with_items,
+                Error::AIGovernors,
+            )?)
+        } else {
+            None
+        };
+        let ai_grand_strategic = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_grand_strategic::GrandStrategic::decode_prefix_with_items,
+                Error::AIGrandStrategic,
+            )?)
+        } else {
+            None
+        };
+        let ai_homeland = if header.saved_was_ever_alive() {
+            Some(self.component(
+                player_ai_homeland::Homeland::decode_prefix_with_items,
+                Error::AIHomeland,
+            )?)
+        } else {
+            None
+        };
+        let tail = if header.saved_was_ever_alive() {
+            None
+        } else {
+            Some(self.component(
+                |bytes, limits| {
+                    player_tail::Tail::decode_prefix_with_items(
+                        bytes,
+                        player_tail::Context {
+                            player_version: 47,
+                            was_ever_alive: false,
+                        },
+                        limits,
+                    )
+                },
+                Error::Tail,
+            )?)
+        };
+        Ok(FirstPlayer {
+            requested_owner,
+            header,
+            formations,
+            goody_hut,
+            bonuses,
+            congress,
+            cities,
+            diplomacy,
+            districts,
+            name_manager,
+            culture,
+            espionage,
+            religion,
+            resources,
+            stats,
+            techs,
+            treasury,
+            units,
+            eras,
+            trade,
+            great_people_points,
+            influence,
+            quests,
+            wmds,
+            improvements,
+            governors,
+            cultural_identity,
+            heroes,
+            post_heroes_arrays,
+            ai_control,
+            ai_influence_map,
+            ai_planning,
+            ai_city_manager,
+            ai_culture,
+            ai_diplomatic,
+            ai_economic,
+            ai_governors,
+            ai_grand_strategic,
+            ai_homeland,
+
+            initialization_snapshot: None,
+            ai_military: None,
+            ai_research: None,
+            ai_tactical: None,
+            ai_targets: None,
+            ai_behavior_tree: None,
+            tail,
+        })
+    }
+    fn complete_player(
+        &mut self,
+        player: &mut FirstPlayer,
+        index: u32,
+        binding: &initialization::WireBinding,
+        contexts: &impl PlayerInitializations,
+    ) -> Result<(), Error> {
+        if !player.header.saved_was_ever_alive() {
+            return Ok(());
+        }
+        let identity = initialization::PlayerIdentity {
+            manager_index: index,
+            requested_owner: player.requested_owner,
+            record_owner: player.header.owner,
+        };
+        let snapshot = contexts
+            .for_player(identity)
+            .ok_or(Error::MissingInitializationSnapshot(identity))?;
+        let context = snapshot
+            .context_for(identity, binding)
+            .map_err(Error::Initialization)?;
+        let military = self.component(
+            |bytes, limits| {
+                player_ai_military::Military::decode_prefix_with_items_in_context(
+                    bytes, limits, context,
+                )
+            },
+            Error::AIMilitary,
+        )?;
+        snapshot
+            .check_saved_player(military.player_id, binding)
+            .map_err(Error::Initialization)?;
+        player.ai_military = Some(military);
+        player.ai_research = Some(self.component(
+            player_ai_research::Research::decode_prefix_with_items,
+            Error::AIResearch,
+        )?);
+        player.ai_tactical = Some(self.component(
+            player_ai_tactical::Tactical::decode_prefix_with_items,
+            Error::AITactical,
+        )?);
+        player.ai_targets = Some(self.component(
+            player_ai_targets::Targets::decode_prefix_with_items,
+            Error::AITargets,
+        )?);
+        player.ai_behavior_tree = Some(self.component(
+            player_ai_behavior_tree::BehaviorTreeManager::decode_prefix_with_items,
+            Error::AIBehaviorTree,
+        )?);
+        player.tail = Some(self.component(
+            |bytes, limits| {
+                player_tail::Tail::decode_prefix_with_items(
+                    bytes,
+                    player_tail::Context {
+                        player_version: 47,
+                        was_ever_alive: true,
+                    },
+                    limits,
+                )
+            },
+            Error::Tail,
+        )?);
+        player.initialization_snapshot = Some(snapshot);
+        Ok(())
+    }
+}
+
+/// A read-only metadata provider. Arc cloning shares immutable snapshot inputs;
+/// it never clones a Player/world or consumes provider state on parse failure.
+pub trait PlayerInitializations {
+    fn for_player(
+        &self,
+        identity: initialization::PlayerIdentity,
+    ) -> Option<Arc<initialization::InitializationSnapshot>>;
+}
+impl<F> PlayerInitializations for F
+where
+    F: Fn(initialization::PlayerIdentity) -> Option<Arc<initialization::InitializationSnapshot>>,
+{
+    fn for_player(
+        &self,
+        identity: initialization::PlayerIdentity,
+    ) -> Option<Arc<initialization::InitializationSnapshot>> {
+        self(identity)
+    }
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InitializationBasis {
+    ContextFreeWire,
+    AttributedSnapshotInputs,
+    #[cfg(test)]
+    SourceOnlySnapshotInputs,
+}
+
 impl Prefix {
     /// Input begins immediately after the complete Map wire record. Any suffix
     /// is left untouched at `boundary`; counts are not a complete roster claim.
@@ -491,231 +844,7 @@ impl Prefix {
         let first_player = if player_count == 0 {
             None
         } else {
-            r.charge(0, 1)?;
-            let requested_owner = r.i32()?;
-            let header = r.header()?;
-            if requested_owner != header.owner {
-                return Err(Error::OwnerMismatch {
-                    requested: requested_owner,
-                    record: header.owner,
-                });
-            }
-            r.version(1)?;
-            let formations = r.recycled(Self::read_formation)?;
-            let goody_hut =
-                r.component(pc::GoodyHut::decode_prefix_with_items, Error::Component)?;
-            let bonuses = r.component(pc::Bonuses::decode_prefix_with_items, Error::Component)?;
-            let congress = r.component(pc::Congress::decode_prefix_with_items, Error::Component)?;
-            let cities = r.cities()?;
-            let diplomacy = r.component(
-                player_diplomacy::Diplomacy::decode_prefix_with_items,
-                Error::Diplomacy,
-            )?;
-            let districts = r.component(
-                player_districts::Districts::decode_prefix_with_items,
-                Error::Districts,
-            )?;
-            let name_manager = r.component(
-                player_name_manager::NameManager::decode_prefix_with_items,
-                Error::NameManager,
-            )?;
-            let culture = r.component(
-                player_culture::Culture::decode_prefix_with_items,
-                Error::Culture,
-            )?;
-            let espionage = r.component(
-                player_espionage::Espionage::decode_prefix_with_items,
-                Error::Espionage,
-            )?;
-            let religion = r.component(
-                player_religion::Religion::decode_prefix_with_items,
-                Error::Religion,
-            )?;
-            let resources = r.component(
-                player_resources::Resources::decode_prefix_with_items,
-                Error::Resources,
-            )?;
-            let stats = r.component(player_stats::Stats::decode_prefix_with_items, Error::Stats)?;
-            let techs = r.component(player_techs::Techs::decode_prefix_with_items, Error::Techs)?;
-            let treasury = r.component(
-                player_treasury::Treasury::decode_prefix_with_items,
-                Error::Treasury,
-            )?;
-            let units = r.component(player_units::Units::decode_prefix_with_items, Error::Units)?;
-            let eras = r.component(player_eras::Eras::decode_prefix_with_items, Error::Eras)?;
-            let trade = r.component(player_trade::Trade::decode_prefix_with_items, Error::Trade)?;
-            let great_people_points = r.component(
-                player_great_people_points::GreatPeoplePoints::decode_prefix_with_items,
-                Error::GreatPeoplePoints,
-            )?;
-            let influence = r.component(
-                player_influence::Influence::decode_prefix_with_items,
-                Error::Influence,
-            )?;
-            let quests = r.component(
-                player_quests::Quests::decode_prefix_with_items,
-                Error::Quests,
-            )?;
-            let wmds = r.component(player_wmds::Wmds::decode_prefix_with_items, Error::Wmds)?;
-            let improvements = r.component(
-                player_improvements::Improvements::decode_prefix_with_items,
-                Error::Improvements,
-            )?;
-            let governors = r.component(
-                player_governors::Governors::decode_prefix_with_items,
-                Error::Governors,
-            )?;
-            let cultural_identity = r.component(
-                player_cultural_identity::CulturalIdentity::decode_prefix_with_items,
-                Error::CulturalIdentity,
-            )?;
-            let heroes = r.component(
-                player_heroes::Heroes::decode_prefix_with_items,
-                Error::Heroes,
-            )?;
-            let post_heroes_arrays = if header.saved_was_ever_alive() {
-                Some(PostHeroesArrays {
-                    unit_definitions: r.indexed_bools()?,
-                    feature_definitions: r.indexed_bools()?,
-                    continent_definitions: r.indexed_bools()?,
-                })
-            } else {
-                None
-            };
-            let (ai_control, ai_influence_map, ai_planning) = if header.saved_was_ever_alive() {
-                (
-                    Some(r.component(
-                        player_ai_control::ControlManager::decode_prefix_with_items,
-                        Error::AIControl,
-                    )?),
-                    Some(r.component(
-                        player_ai_influence_map::InfluenceMap::decode_prefix_with_items,
-                        Error::AIInfluenceMap,
-                    )?),
-                    Some(r.component(
-                        player_ai_identity::PlanningManagerIdentity::decode_prefix_with_items,
-                        Error::AIPlanning,
-                    )?),
-                )
-            } else {
-                (None, None, None)
-            };
-            let ai_city_manager = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_city_manager::CityManager::decode_prefix_with_items,
-                    Error::AICityManager,
-                )?)
-            } else {
-                None
-            };
-            let ai_culture = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_culture::CultureAi::decode_prefix_with_items,
-                    Error::AICulture,
-                )?)
-            } else {
-                None
-            };
-            let ai_diplomatic = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_diplomatic::Diplomatic::decode_prefix_with_items,
-                    Error::AIDiplomatic,
-                )?)
-            } else {
-                None
-            };
-            let ai_economic = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_economic::Economic::decode_prefix_with_items,
-                    Error::AIEconomic,
-                )?)
-            } else {
-                None
-            };
-            let ai_governors = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_governors::Governors::decode_prefix_with_items,
-                    Error::AIGovernors,
-                )?)
-            } else {
-                None
-            };
-            let ai_grand_strategic = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_grand_strategic::GrandStrategic::decode_prefix_with_items,
-                    Error::AIGrandStrategic,
-                )?)
-            } else {
-                None
-            };
-            let ai_homeland = if header.saved_was_ever_alive() {
-                Some(r.component(
-                    player_ai_homeland::Homeland::decode_prefix_with_items,
-                    Error::AIHomeland,
-                )?)
-            } else {
-                None
-            };
-            let tail = if header.saved_was_ever_alive() {
-                None
-            } else {
-                Some(r.component(
-                    |bytes, limits| {
-                        player_tail::Tail::decode_prefix_with_items(
-                            bytes,
-                            player_tail::Context {
-                                player_version: 47,
-                                was_ever_alive: false,
-                            },
-                            limits,
-                        )
-                    },
-                    Error::Tail,
-                )?)
-            };
-            Some(FirstPlayer {
-                requested_owner,
-                header,
-                formations,
-                goody_hut,
-                bonuses,
-                congress,
-                cities,
-                diplomacy,
-                districts,
-                name_manager,
-                culture,
-                espionage,
-                religion,
-                resources,
-                stats,
-                techs,
-                treasury,
-                units,
-                eras,
-                trade,
-                great_people_points,
-                influence,
-                quests,
-                wmds,
-                improvements,
-                governors,
-                cultural_identity,
-                heroes,
-                post_heroes_arrays,
-                ai_control,
-                ai_influence_map,
-                ai_planning,
-                ai_city_manager,
-                ai_culture,
-                ai_diplomatic,
-                ai_economic,
-                ai_governors,
-                ai_grand_strategic,
-                ai_homeland,
-
-                tail,
-            })
+            Some(r.player_prefix()?)
         };
         let boundary = match first_player.as_ref() {
             Some(p) if p.header.saved_was_ever_alive() => Boundary::AIMilitary,
@@ -733,6 +862,8 @@ impl Prefix {
                 religion,
                 player_count,
                 first_player,
+                additional_players: Vec::new(),
+                initialization_binding: None,
                 boundary,
                 unfinished_player_entries: player_count - completed,
             },
@@ -740,11 +871,170 @@ impl Prefix {
             r.items,
         ))
     }
-    fn read_formation(r: &mut Reader<'_>) -> Result<Formation, Error> {
-        r.formation()
-    }
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
         Self::decode_prefix_with_items(bytes, limits).map(|(v, n, _)| (v, n))
+    }
+}
+
+impl Prefix {
+    /// Conditional all-Player wire path. Requires attributed snapshots for every
+    /// actual true branch. This never reconstructs native initialization.
+    pub fn decode_player_manager_conditional(
+        bytes: &[u8],
+        limits: Limits,
+        binding: initialization::WireBinding,
+        contexts: &impl PlayerInitializations,
+    ) -> Result<(Self, usize, usize), Error> {
+        let (mut prefix, consumed, items) = Self::decode_prefix_with_items(bytes, limits)?;
+        let mut reader = Reader {
+            bytes,
+            pos: consumed,
+            items,
+            limits,
+        };
+        if let Some(first) = prefix.first_player.as_mut() {
+            reader.complete_player(first, 0, &binding, contexts)?;
+        }
+        let count = prefix.player_count.saturating_sub(1) as usize;
+        // Preflight entry count, available header wire and addressable storage.
+        // Requested ID (4B) + current Player47 header (98B) is a conservative
+        // structural minimum, never an observed fixture stride. Item-derived
+        // storage is separate from wire bytes, as in the existing unit policy.
+        // Each entry spends its one roster item when player_prefix reads it.
+        if count > reader.remaining().max_items
+            || count > bytes.len().saturating_sub(reader.pos) / 102
+            || count > reader.remaining().max_bytes / 102
+            || count
+                .checked_mul(std::mem::size_of::<FirstPlayer>())
+                .is_none_or(|n| n > isize::MAX as usize)
+        {
+            return Err(Error::ResourceLimit);
+        }
+        prefix
+            .additional_players
+            .try_reserve_exact(count)
+            .map_err(|_| Error::ResourceLimit)?;
+        for index in 1..prefix.player_count {
+            let mut player = reader.player_prefix()?;
+            reader.complete_player(&mut player, index, &binding, contexts)?;
+            prefix.additional_players.push(player);
+        }
+        prefix.initialization_binding = Some(binding);
+        prefix.unfinished_player_entries = 0;
+        prefix.boundary = if prefix.player_count == 0 {
+            Boundary::AfterEmptyPlayerManager
+        } else {
+            Boundary::AfterPlayerManager
+        };
+        prefix.validate_model()?;
+        Ok((prefix, reader.pos, reader.items))
+    }
+    /// Includes the explicit requested ID before Player47. Derive record cuts by
+    /// excluding those first four bytes; no fixture offsets are consulted.
+    pub fn encode_player_entry_prefix_with_items(
+        &self,
+        index: u32,
+        limits: Limits,
+    ) -> Result<(Vec<u8>, usize), Error> {
+        let p = self
+            .players()
+            .nth(index as usize)
+            .ok_or(Error::EntryIndex(index))?;
+        p.encode_entry_prefix_with_items(limits, index, self.initialization_binding.as_ref())
+    }
+}
+impl FirstPlayer {
+    fn validate_entry(
+        &self,
+        index: u32,
+        binding: Option<&initialization::WireBinding>,
+    ) -> Result<bool, Error> {
+        if self.requested_owner != self.header.owner {
+            return Err(Error::OwnerMismatch {
+                requested: self.requested_owner,
+                record: self.header.owner,
+            });
+        }
+        let was = self.header.saved_was_ever_alive();
+        if [
+            self.post_heroes_arrays.is_some(),
+            self.ai_control.is_some(),
+            self.ai_influence_map.is_some(),
+            self.ai_planning.is_some(),
+            self.ai_city_manager.is_some(),
+            self.ai_culture.is_some(),
+            self.ai_diplomatic.is_some(),
+            self.ai_economic.is_some(),
+            self.ai_governors.is_some(),
+            self.ai_grand_strategic.is_some(),
+            self.ai_homeland.is_some(),
+        ]
+        .iter()
+        .any(|present| *present != was)
+        {
+            return Err(Error::InvalidPrefix);
+        }
+        let later = [
+            self.ai_military.is_some(),
+            self.ai_research.is_some(),
+            self.ai_tactical.is_some(),
+            self.ai_targets.is_some(),
+            self.ai_behavior_tree.is_some(),
+        ];
+        if !was {
+            if later.iter().any(|v| *v)
+                || self.initialization_snapshot.is_some()
+                || self.tail.as_ref().is_none_or(|tail| tail.alive.is_some())
+            {
+                return Err(Error::InvalidPrefix);
+            }
+            return Ok(true);
+        }
+        if later.iter().all(|v| !*v) {
+            if self.initialization_snapshot.is_some() || self.tail.is_some() {
+                return Err(Error::InvalidPrefix);
+            }
+            return Ok(false);
+        }
+        if later.iter().any(|v| !*v) || self.tail.as_ref().is_none_or(|tail| tail.alive.is_none()) {
+            return Err(Error::InvalidPrefix);
+        }
+        let snapshot = self
+            .initialization_snapshot
+            .as_ref()
+            .ok_or(Error::InvalidPrefix)?;
+        let binding = binding.ok_or(Error::InvalidPrefix)?;
+        let identity = initialization::PlayerIdentity {
+            manager_index: index,
+            requested_owner: self.requested_owner,
+            record_owner: self.header.owner,
+        };
+        let context = snapshot
+            .context_for(identity, binding)
+            .map_err(Error::Initialization)?;
+        let military = self.ai_military.as_ref().unwrap();
+        snapshot
+            .check_saved_player(military.player_id, binding)
+            .map_err(Error::Initialization)?;
+        if military.operation_types.is_some() != context.operation_type_arrays_present {
+            return Err(Error::MilitaryContextMismatch);
+        }
+        Ok(true)
+    }
+    pub fn encode_entry_prefix_with_items(
+        &self,
+        limits: Limits,
+        manager_index: u32,
+        binding: Option<&initialization::WireBinding>,
+    ) -> Result<(Vec<u8>, usize), Error> {
+        self.validate_entry(manager_index, binding)?;
+        let mut writer = Writer {
+            bytes: Vec::new(),
+            items: 0,
+            limits,
+        };
+        writer.player_prefix(self)?;
+        Ok((writer.bytes, writer.items))
     }
 }
 
@@ -2585,6 +2875,397 @@ mod tests {
                 .as_ref()
                 .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
     }
+    // Arbitrary source-only wire values; Default below means an empty saved
+    // test carrier, never a claim about a native constructor or Initialize.
+    fn complete_source_player(
+        index: u32,
+        was: bool,
+        arrays: bool,
+    ) -> (
+        FirstPlayer,
+        Option<Arc<initialization::InitializationSnapshot>>,
+        initialization::WireBinding,
+    ) {
+        let (prefix, _) = Prefix::decode_prefix(&carrier(), Limits::default()).unwrap();
+        let mut p = prefix.first_player.unwrap();
+        p.requested_owner = index as i32;
+        p.header.owner = index as i32;
+        let identity = initialization::PlayerIdentity {
+            manager_index: index,
+            requested_owner: p.requested_owner,
+            record_owner: p.header.owner,
+        };
+        let (snapshot, binding, _) = initialization::source_case(identity, arrays, !arrays);
+        if !was {
+            p.header.ordered_flags[1] = false;
+            p.post_heroes_arrays = None;
+            p.ai_control = None;
+            p.ai_influence_map = None;
+            p.ai_planning = None;
+            p.ai_city_manager = None;
+            p.ai_culture = None;
+            p.ai_diplomatic = None;
+            p.ai_economic = None;
+            p.ai_governors = None;
+            p.ai_grand_strategic = None;
+            p.ai_homeland = None;
+            p.tail = Some(false_tail_carrier());
+            return (p, None, binding);
+        }
+        let snapshot = Arc::new(snapshot);
+        p.initialization_snapshot = Some(Arc::clone(&snapshot));
+        p.ai_military = Some(player_ai_military::Military {
+            player_id: index as i32,
+            on_war_footing: player_ai_military::BoolByte(197),
+            operation_types: arrays.then(|| player_ai_military::OperationTypes {
+                allowed: vec![player_ai_military::HashValue {
+                    hash: u32::MAX,
+                    value: -7,
+                }],
+                per_war: vec![],
+                current: vec![],
+            }),
+            ..player_ai_military::Military::default()
+        });
+        p.ai_research = Some(player_ai_research::Research {
+            player_id: -9,
+            research_target_hash: u32::MAX,
+            turns_to_research_unit: vec![],
+            favored_techs: vec![],
+            tree_analysis: vec![],
+            done_off_turn: player_ai_research::BoolByte(197),
+            managed_contracts: vec![],
+            boost_manager: player_ai_culture::BoostManager {
+                player_id: -8,
+                allowed_active_boosts: 3,
+                active_boosts: vec![],
+            },
+            turns_remaining_on_current_research: -1,
+        });
+        p.ai_tactical = Some(player_ai_tactical::Tactical {
+            player_id: -7,
+            control_instance_id: u32::MAX,
+            prioritized_moves: player_ai_homeland::MoveList {
+                base_moves: vec![-1],
+                moves: vec![],
+            },
+            zombie_type: i32::MIN,
+        });
+        use player_ai_targets as t;
+        let id = || t::ComponentId {
+            owner: -1,
+            component_type: -2,
+            id: u32::MAX,
+        };
+        p.ai_targets = Some(t::Targets {
+            player_id: -6,
+            desired_targets: vec![],
+            new_war_started: t::BoolByte(197),
+            knowledge_base: t::CivKnowledge {
+                owner: -5,
+                known_cities: vec![],
+                barbarians: vec![],
+                player_knowledge: vec![],
+                total_hostile_armies_of_type: vec![],
+                war_knowledge: vec![],
+                player_armies: t::Armies(std::array::from_fn(|_| t::ArmyKnowledge {
+                    army_size: t::Conditional {
+                        present: t::BoolByte(0),
+                        value: None,
+                    },
+                })),
+                trade_knowledge: t::TradeKnowledge {
+                    owner: -4,
+                    from_city: id(),
+                    to_city: id(),
+                    origin_yield_values_q8: vec![-1],
+                    destination_yield_values_q8: vec![],
+                    best_yield_destination: -3,
+                    best_yield_origin: -2,
+                    total_value_q8: i32::MIN,
+                },
+                yield_average_q8: vec![],
+                yield_error_q8: vec![],
+            },
+            operation_start_points: vec![],
+            release_turn: -1,
+            map_area_visibility: vec![],
+            map_visibility: vec![],
+            targets: t::TargetList { targets: vec![] },
+        });
+        p.ai_behavior_tree = Some(player_ai_behavior_tree::BehaviorTreeManager {
+            player_id: -3,
+            blackboard: player_ai_behavior_tree::Blackboard {
+                job_index: -1,
+                ..player_ai_behavior_tree::Blackboard::default()
+            },
+            behavior_trees: player_ai_behavior_tree::RecycledBehaviorTrees {
+                first_free: u32::MAX,
+                last_free: u32::MAX,
+                ..player_ai_behavior_tree::RecycledBehaviorTrees::default()
+            },
+        });
+        let mut tail = false_tail_carrier();
+        tail.alive = Some(player_tail::AliveTail {
+            agendas: vec![u32::MAX],
+            ..player_tail::AliveTail::default()
+        });
+        p.tail = Some(tail);
+        (p, Some(snapshot), binding)
+    }
+    fn source_manager(
+        branches: &[(bool, bool)],
+    ) -> (Prefix, Vec<Arc<initialization::InitializationSnapshot>>) {
+        let (mut value, _) = Prefix::decode_prefix(&carrier(), Limits::default()).unwrap();
+        value.first_player = None;
+        value.additional_players.clear();
+        value.player_count = branches.len() as u32;
+        if branches.is_empty() {
+            value.religion.records.clear();
+        }
+        value.unfinished_player_entries = 0;
+        value.boundary = if branches.is_empty() {
+            Boundary::AfterEmptyPlayerManager
+        } else {
+            Boundary::AfterPlayerManager
+        };
+        let mut snapshots = vec![];
+        for (index, &(was, arrays)) in branches.iter().enumerate() {
+            let (p, snapshot, binding) = complete_source_player(index as u32, was, arrays);
+            value.initialization_binding = Some(binding);
+            if let Some(snapshot) = snapshot {
+                snapshots.push(snapshot);
+            }
+            if index == 0 {
+                value.first_player = Some(p);
+            } else {
+                value.additional_players.push(p);
+            }
+        }
+        (value, snapshots)
+    }
+    #[test]
+    fn conditional_source_manager_mixed_roster_exact_caps_entries_and_suffix() {
+        for branches in [
+            vec![],
+            vec![(false, false)],
+            vec![(true, true), (false, false), (true, false)],
+        ] {
+            let (value, snapshots) = source_manager(&branches);
+            let fallback = initialization::source_case(
+                initialization::PlayerIdentity {
+                    manager_index: 0,
+                    requested_owner: 0,
+                    record_owner: 0,
+                },
+                false,
+                false,
+            )
+            .1;
+            let binding = value.initialization_binding.clone().unwrap_or(fallback);
+            let provider = |identity| {
+                snapshots
+                    .iter()
+                    .find(|s| s.candidate().player == identity)
+                    .map(Arc::clone)
+            };
+            let (bytes, items) = value.encode_prefix_with_items(Limits::default()).unwrap();
+            let exact = Limits {
+                max_bytes: bytes.len(),
+                max_items: items,
+            };
+            let mut input = bytes.clone();
+            input.extend([91, 92, 93]);
+            let (decoded, used, charged) = Prefix::decode_player_manager_conditional(
+                &input,
+                exact,
+                binding.clone(),
+                &provider,
+            )
+            .unwrap_or_else(|e| {
+                panic!(
+                    "branches {branches:?}, bytes {}, items {items}: {e:?}",
+                    bytes.len()
+                )
+            });
+            assert_eq!((used, charged), (bytes.len(), items));
+            assert_eq!(&input[used..], &[91, 92, 93]);
+            assert!(decoded.complete_player_manager_wire());
+            assert!(!decoded.initialization_reconstructed());
+            assert_eq!(decoded.players().count(), branches.len());
+            assert_eq!(
+                decoded.encode_prefix_with_items(exact).unwrap(),
+                (bytes.clone(), items)
+            );
+            let mut entry_total = 0;
+            for index in 0..branches.len() {
+                let (entry, _) = decoded
+                    .encode_player_entry_prefix_with_items(index as u32, exact)
+                    .unwrap();
+                assert_eq!(&entry[..4], &(index as i32).to_le_bytes());
+                entry_total += entry.len();
+            }
+            assert!(entry_total <= bytes.len());
+            let mut shorts = vec![Limits {
+                max_bytes: bytes.len() - 1,
+                max_items: items,
+            }];
+            if items > 0 {
+                shorts.push(Limits {
+                    max_bytes: bytes.len(),
+                    max_items: items - 1,
+                });
+            }
+            for short in shorts {
+                assert!(Prefix::decode_player_manager_conditional(
+                    &bytes,
+                    short,
+                    binding.clone(),
+                    &provider
+                )
+                .is_err());
+                assert!(decoded.encode_prefix_with_items(short).is_err());
+            }
+            if !snapshots.is_empty() {
+                assert_eq!(
+                    decoded.initialization_basis(),
+                    InitializationBasis::SourceOnlySnapshotInputs
+                );
+                let (standard, standard_used) = Prefix::decode_prefix(&bytes, exact).unwrap();
+                assert_eq!(standard.boundary, Boundary::AIMilitary);
+                assert!(standard_used < bytes.len());
+                let missing = |_| None;
+                assert!(matches!(
+                    Prefix::decode_player_manager_conditional(
+                        &bytes,
+                        exact,
+                        binding.clone(),
+                        &missing
+                    ),
+                    Err(Error::MissingInitializationSnapshot(_))
+                ));
+                let mut wrong = binding.clone();
+                wrong.core_sha256 = [99; 32];
+                assert!(matches!(
+                    Prefix::decode_player_manager_conditional(&bytes, exact, wrong, &provider),
+                    Err(Error::Initialization(initialization::Error::InputBinding))
+                ));
+                // Every cut of the actual continuation and remaining entries must fail.
+                for end in standard_used..bytes.len() {
+                    assert!(
+                        Prefix::decode_player_manager_conditional(
+                            &bytes[..end],
+                            exact,
+                            binding.clone(),
+                            &provider
+                        )
+                        .is_err(),
+                        "cut {end}"
+                    );
+                }
+            }
+        }
+    }
+    #[test]
+    fn conditional_source_43_entry_roster_uses_each_snapshot_once_per_parse() {
+        let branches: Vec<_> = (0..43).map(|i| (i % 3 != 1, i % 2 == 0)).collect();
+        let (value, snapshots) = source_manager(&branches);
+        let binding = value.initialization_binding.clone().unwrap();
+        let calls = std::cell::RefCell::new(Vec::new());
+        let provider = |identity| {
+            calls.borrow_mut().push(identity);
+            snapshots
+                .iter()
+                .find(|s| s.candidate().player == identity)
+                .map(Arc::clone)
+        };
+        let (bytes, items) = value.encode_prefix_with_items(Limits::default()).unwrap();
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: items,
+        };
+        let (decoded, n, i) =
+            Prefix::decode_player_manager_conditional(&bytes, exact, binding.clone(), &provider)
+                .unwrap();
+        assert_eq!((n, i), (bytes.len(), items));
+        assert_eq!(decoded.additional_players.len(), 42);
+        assert!(decoded.complete_player_manager_wire());
+        assert_eq!(calls.borrow().len(), snapshots.len());
+        assert_eq!(
+            decoded.encode_prefix_with_items(exact).unwrap(),
+            (bytes.clone(), items)
+        );
+        for short in [
+            Limits {
+                max_bytes: bytes.len() - 1,
+                max_items: items,
+            },
+            Limits {
+                max_bytes: bytes.len(),
+                max_items: items - 1,
+            },
+        ] {
+            assert!(Prefix::decode_player_manager_conditional(
+                &bytes,
+                short,
+                binding.clone(),
+                &provider
+            )
+            .is_err());
+            assert!(decoded.encode_prefix_with_items(short).is_err());
+        }
+        // Reusing immutable metadata after a failed parse remains valid.
+        assert!(
+            Prefix::decode_player_manager_conditional(&bytes, exact, binding, &provider)
+                .unwrap()
+                .0
+                .complete_player_manager_wire()
+        );
+    }
+    #[test]
+    fn conditional_model_rejects_wrong_owner_context_and_branch_before_output() {
+        let (mut value, _) = source_manager(&[(true, true), (false, false)]);
+        value
+            .first_player
+            .as_mut()
+            .unwrap()
+            .ai_military
+            .as_mut()
+            .unwrap()
+            .operation_types = None;
+        assert_eq!(
+            value.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::MilitaryContextMismatch)
+        );
+        let (mut value, _) = source_manager(&[(true, true)]);
+        value
+            .first_player
+            .as_mut()
+            .unwrap()
+            .ai_military
+            .as_mut()
+            .unwrap()
+            .player_id = -99;
+        assert!(matches!(
+            value.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::Initialization(initialization::Error::OwnerBinding))
+        ));
+        let (mut value, _) = source_manager(&[(true, true)]);
+        value.first_player.as_mut().unwrap().ai_targets = None;
+        assert_eq!(
+            value.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -4154,64 +4835,346 @@ impl Writer {
         Ok(())
     }
 }
+impl Writer {
+    fn player_prefix(&mut self, p: &FirstPlayer) -> Result<(), Error> {
+        if p.requested_owner != p.header.owner {
+            return Err(Error::OwnerMismatch {
+                requested: p.requested_owner,
+                record: p.header.owner,
+            });
+        }
+        self.charge(1)?;
+        self.int(p.requested_owner)?;
+        self.header(&p.header)?;
+        self.word(1)?;
+        self.recycled(&p.formations, Writer::formation)?;
+        self.component(
+            &p.goody_hut,
+            pc::GoodyHut::encode_with_items,
+            Error::Component,
+        )?;
+        self.component(&p.bonuses, pc::Bonuses::encode_with_items, Error::Component)?;
+        self.component(
+            &p.congress,
+            pc::Congress::encode_with_items,
+            Error::Component,
+        )?;
+        self.cities(&p.cities)?;
+        self.component(
+            &p.diplomacy,
+            player_diplomacy::Diplomacy::encode_with_items,
+            Error::Diplomacy,
+        )?;
+        self.component(
+            &p.districts,
+            player_districts::Districts::encode_with_items,
+            Error::Districts,
+        )?;
+        self.component(
+            &p.name_manager,
+            player_name_manager::NameManager::encode_with_items,
+            Error::NameManager,
+        )?;
+        self.component(
+            &p.culture,
+            player_culture::Culture::encode_with_items,
+            Error::Culture,
+        )?;
+        self.component(
+            &p.espionage,
+            player_espionage::Espionage::encode_with_items,
+            Error::Espionage,
+        )?;
+        self.component(
+            &p.religion,
+            player_religion::Religion::encode_with_items,
+            Error::Religion,
+        )?;
+        self.component(
+            &p.resources,
+            player_resources::Resources::encode_with_items,
+            Error::Resources,
+        )?;
+        self.component(
+            &p.stats,
+            player_stats::Stats::encode_with_items,
+            Error::Stats,
+        )?;
+        self.component(
+            &p.techs,
+            player_techs::Techs::encode_with_items,
+            Error::Techs,
+        )?;
+        self.component(
+            &p.treasury,
+            player_treasury::Treasury::encode_with_items,
+            Error::Treasury,
+        )?;
+        self.component(
+            &p.units,
+            player_units::Units::encode_with_items,
+            Error::Units,
+        )?;
+        self.component(&p.eras, player_eras::Eras::encode_with_items, Error::Eras)?;
+        self.component(
+            &p.trade,
+            player_trade::Trade::encode_with_items,
+            Error::Trade,
+        )?;
+        self.component(
+            &p.great_people_points,
+            player_great_people_points::GreatPeoplePoints::encode_with_items,
+            Error::GreatPeoplePoints,
+        )?;
+        self.component(
+            &p.influence,
+            player_influence::Influence::encode_with_items,
+            Error::Influence,
+        )?;
+        self.component(
+            &p.quests,
+            player_quests::Quests::encode_with_items,
+            Error::Quests,
+        )?;
+        self.component(&p.wmds, player_wmds::Wmds::encode_with_items, Error::Wmds)?;
+        self.component(
+            &p.improvements,
+            player_improvements::Improvements::encode_with_items,
+            Error::Improvements,
+        )?;
+        self.component(
+            &p.governors,
+            player_governors::Governors::encode_with_items,
+            Error::Governors,
+        )?;
+        self.component(
+            &p.cultural_identity,
+            player_cultural_identity::CulturalIdentity::encode_with_items,
+            Error::CulturalIdentity,
+        )?;
+        self.component(
+            &p.heroes,
+            player_heroes::Heroes::encode_with_items,
+            Error::Heroes,
+        )?;
+        if let Some(arrays) = &p.post_heroes_arrays {
+            for table in [
+                &arrays.unit_definitions,
+                &arrays.feature_definitions,
+                &arrays.continent_definitions,
+            ] {
+                self.component(
+                    table,
+                    |value, limits| Ok((value.encode(limits)?, value.pairs.len())),
+                    Error::IndexedBools,
+                )?;
+            }
+        }
+        if let Some(value) = &p.ai_control {
+            self.component(
+                value,
+                player_ai_control::ControlManager::encode_with_items,
+                Error::AIControl,
+            )?;
+        }
+        if let Some(value) = &p.ai_influence_map {
+            self.component(
+                value,
+                player_ai_influence_map::InfluenceMap::encode_with_items,
+                Error::AIInfluenceMap,
+            )?;
+        }
+        if let Some(value) = &p.ai_planning {
+            self.component(
+                value,
+                player_ai_identity::PlanningManagerIdentity::encode_with_items,
+                Error::AIPlanning,
+            )?;
+        }
+        if let Some(value) = &p.ai_city_manager {
+            self.component(
+                value,
+                player_ai_city_manager::CityManager::encode_with_items,
+                Error::AICityManager,
+            )?;
+        }
+        if let Some(value) = &p.ai_culture {
+            self.component(
+                value,
+                player_ai_culture::CultureAi::encode_with_items,
+                Error::AICulture,
+            )?;
+        }
+        if let Some(value) = &p.ai_diplomatic {
+            self.component(
+                value,
+                player_ai_diplomatic::Diplomatic::encode_with_items,
+                Error::AIDiplomatic,
+            )?;
+        }
+        if let Some(value) = &p.ai_economic {
+            self.component(
+                value,
+                player_ai_economic::Economic::encode_with_items,
+                Error::AIEconomic,
+            )?;
+        }
+        if let Some(value) = &p.ai_governors {
+            self.component(
+                value,
+                player_ai_governors::Governors::encode_with_items,
+                Error::AIGovernors,
+            )?;
+        }
+        if let Some(value) = &p.ai_grand_strategic {
+            self.component(
+                value,
+                player_ai_grand_strategic::GrandStrategic::encode_with_items,
+                Error::AIGrandStrategic,
+            )?;
+        }
+        if let Some(value) = &p.ai_homeland {
+            self.component(
+                value,
+                player_ai_homeland::Homeland::encode_with_items,
+                Error::AIHomeland,
+            )?;
+        }
+
+        if let Some(value) = &p.ai_military {
+            self.component(
+                value,
+                player_ai_military::Military::encode_with_items,
+                Error::AIMilitary,
+            )?;
+        }
+        if let Some(value) = &p.ai_research {
+            self.component(
+                value,
+                player_ai_research::Research::encode_with_items,
+                Error::AIResearch,
+            )?;
+        }
+        if let Some(value) = &p.ai_tactical {
+            self.component(
+                value,
+                player_ai_tactical::Tactical::encode_with_items,
+                Error::AITactical,
+            )?;
+        }
+        if let Some(value) = &p.ai_targets {
+            self.component(
+                value,
+                player_ai_targets::Targets::encode_with_items,
+                Error::AITargets,
+            )?;
+        }
+        if let Some(value) = &p.ai_behavior_tree {
+            self.component(
+                value,
+                player_ai_behavior_tree::BehaviorTreeManager::encode_with_items,
+                Error::AIBehaviorTree,
+            )?;
+        }
+        if let Some(value) = &p.tail {
+            self.component(
+                value,
+                |value, limits| {
+                    value.encode_with_items(
+                        player_tail::Context {
+                            player_version: 47,
+                            was_ever_alive: p.header.saved_was_ever_alive(),
+                        },
+                        limits,
+                    )
+                },
+                Error::Tail,
+            )?;
+        }
+        Ok(())
+    }
+}
 impl Prefix {
-    /// Completeness of this first serialized wire entry only, not live state.
-    /// The real true branch is still partial at AI.Military; context is required beyond it.
+    /// Completeness of the first saved-wire entry, never live initialization.
     pub fn first_player_complete(&self) -> bool {
         self.first_player.as_ref().is_some_and(|p| {
-            !p.header.saved_was_ever_alive()
-                && p.tail.as_ref().is_some_and(|tail| tail.alive.is_none())
-                && p.post_heroes_arrays.is_none()
-                && p.ai_control.is_none()
-                && p.ai_influence_map.is_none()
-                && p.ai_planning.is_none()
-                && p.ai_city_manager.is_none()
-                && p.ai_culture.is_none()
-                && p.ai_diplomatic.is_none()
-                && p.ai_economic.is_none()
-                && p.ai_governors.is_none()
-                && p.ai_grand_strategic.is_none()
-                && p.ai_homeland.is_none()
+            p.validate_entry(0, self.initialization_binding.as_ref())
+                .is_ok_and(|complete| complete)
         })
     }
-    /// Encode exactly the supported prefix, without an unsupported Player tail.
-    /// Inconsistent boundary/count/first-entry combinations are rejected.
-    pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
-        let expected_boundary = match self.first_player.as_ref() {
-            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIMilitary,
-            Some(_) if self.player_count > 1 => Boundary::NextPlayerEntry,
-            Some(_) => Boundary::AfterPlayerManager,
-            None => Boundary::AfterEmptyPlayerManager,
-        };
-        let expected_unfinished = self
-            .player_count
-            .checked_sub(u32::from(self.first_player_complete()))
-            .ok_or(Error::InvalidPrefix)?;
-        if self.unfinished_player_entries != expected_unfinished
-            || (self.player_count == 0) != self.first_player.is_none()
-            || self.boundary != expected_boundary
-            || self.first_player.as_ref().is_some_and(|p| {
-                [
-                    p.post_heroes_arrays.is_some(),
-                    p.ai_control.is_some(),
-                    p.ai_influence_map.is_some(),
-                    p.ai_planning.is_some(),
-                    p.ai_city_manager.is_some(),
-                    p.ai_culture.is_some(),
-                    p.ai_diplomatic.is_some(),
-                    p.ai_economic.is_some(),
-                    p.ai_governors.is_some(),
-                    p.ai_grand_strategic.is_some(),
-                    p.ai_homeland.is_some(),
-                ]
-                .iter()
-                .any(|present| *present != p.header.saved_was_ever_alive())
-                    || p.tail.is_some() == p.header.saved_was_ever_alive()
-                    || p.tail.as_ref().is_some_and(|tail| tail.alive.is_some())
-            })
+    pub fn players(&self) -> impl Iterator<Item = &FirstPlayer> {
+        self.first_player
+            .iter()
+            .chain(self.additional_players.iter())
+    }
+    pub const fn initialization_reconstructed(&self) -> bool {
+        false
+    }
+    pub fn initialization_basis(&self) -> InitializationBasis {
+        for p in self.players() {
+            if let Some(snapshot) = &p.initialization_snapshot {
+                return match snapshot.origin() {
+                    initialization::Origin::AttributedObservation => {
+                        InitializationBasis::AttributedSnapshotInputs
+                    }
+                    #[cfg(test)]
+                    initialization::Origin::SourceOnly => {
+                        InitializationBasis::SourceOnlySnapshotInputs
+                    }
+                };
+            }
+        }
+        InitializationBasis::ContextFreeWire
+    }
+    pub fn complete_player_manager_wire(&self) -> bool {
+        self.validate_model().is_ok()
+            && self.unfinished_player_entries == 0
+            && matches!(
+                self.boundary,
+                Boundary::AfterPlayerManager | Boundary::AfterEmptyPlayerManager
+            )
+    }
+    fn validate_model(&self) -> Result<(), Error> {
+        let stored = self
+            .additional_players
+            .len()
+            .checked_add(usize::from(self.first_player.is_some()))
+            .ok_or(Error::ResourceLimit)?;
+        if (self.player_count == 0) != (stored == 0)
+            || (self.first_player.is_none() && !self.additional_players.is_empty())
+            || stored > self.player_count as usize
         {
             return Err(Error::InvalidPrefix);
         }
+        let mut completed = 0u32;
+        let mut last_complete = false;
+        for (index, p) in self.players().enumerate() {
+            let complete = p.validate_entry(index as u32, self.initialization_binding.as_ref())?;
+            if !complete && index + 1 != stored {
+                return Err(Error::InvalidPrefix);
+            }
+            completed += u32::from(complete);
+            last_complete = complete;
+        }
+        let boundary = if stored == 0 {
+            Boundary::AfterEmptyPlayerManager
+        } else if !last_complete {
+            Boundary::AIMilitary
+        } else if completed < self.player_count {
+            Boundary::NextPlayerEntry
+        } else {
+            Boundary::AfterPlayerManager
+        };
+        if self.boundary != boundary
+            || self.unfinished_player_entries != self.player_count - completed
+        {
+            return Err(Error::InvalidPrefix);
+        }
+        Ok(())
+    }
+    /// Encode only represented wire entries; validation precedes output allocation.
+    pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        self.validate_model()?;
         let mut w = Writer {
             bytes: Vec::new(),
             items: 0,
@@ -4223,225 +5186,8 @@ impl Prefix {
         if self.player_count as usize > w.remaining().max_items {
             return Err(Error::ResourceLimit);
         }
-        if let Some(p) = &self.first_player {
-            if p.requested_owner != p.header.owner {
-                return Err(Error::OwnerMismatch {
-                    requested: p.requested_owner,
-                    record: p.header.owner,
-                });
-            }
-            w.charge(1)?;
-            w.int(p.requested_owner)?;
-            w.header(&p.header)?;
-            w.word(1)?;
-            w.recycled(&p.formations, Writer::formation)?;
-            w.component(
-                &p.goody_hut,
-                pc::GoodyHut::encode_with_items,
-                Error::Component,
-            )?;
-            w.component(&p.bonuses, pc::Bonuses::encode_with_items, Error::Component)?;
-            w.component(
-                &p.congress,
-                pc::Congress::encode_with_items,
-                Error::Component,
-            )?;
-            w.cities(&p.cities)?;
-            w.component(
-                &p.diplomacy,
-                player_diplomacy::Diplomacy::encode_with_items,
-                Error::Diplomacy,
-            )?;
-            w.component(
-                &p.districts,
-                player_districts::Districts::encode_with_items,
-                Error::Districts,
-            )?;
-            w.component(
-                &p.name_manager,
-                player_name_manager::NameManager::encode_with_items,
-                Error::NameManager,
-            )?;
-            w.component(
-                &p.culture,
-                player_culture::Culture::encode_with_items,
-                Error::Culture,
-            )?;
-            w.component(
-                &p.espionage,
-                player_espionage::Espionage::encode_with_items,
-                Error::Espionage,
-            )?;
-            w.component(
-                &p.religion,
-                player_religion::Religion::encode_with_items,
-                Error::Religion,
-            )?;
-            w.component(
-                &p.resources,
-                player_resources::Resources::encode_with_items,
-                Error::Resources,
-            )?;
-            w.component(
-                &p.stats,
-                player_stats::Stats::encode_with_items,
-                Error::Stats,
-            )?;
-            w.component(
-                &p.techs,
-                player_techs::Techs::encode_with_items,
-                Error::Techs,
-            )?;
-            w.component(
-                &p.treasury,
-                player_treasury::Treasury::encode_with_items,
-                Error::Treasury,
-            )?;
-            w.component(
-                &p.units,
-                player_units::Units::encode_with_items,
-                Error::Units,
-            )?;
-            w.component(&p.eras, player_eras::Eras::encode_with_items, Error::Eras)?;
-            w.component(
-                &p.trade,
-                player_trade::Trade::encode_with_items,
-                Error::Trade,
-            )?;
-            w.component(
-                &p.great_people_points,
-                player_great_people_points::GreatPeoplePoints::encode_with_items,
-                Error::GreatPeoplePoints,
-            )?;
-            w.component(
-                &p.influence,
-                player_influence::Influence::encode_with_items,
-                Error::Influence,
-            )?;
-            w.component(
-                &p.quests,
-                player_quests::Quests::encode_with_items,
-                Error::Quests,
-            )?;
-            w.component(&p.wmds, player_wmds::Wmds::encode_with_items, Error::Wmds)?;
-            w.component(
-                &p.improvements,
-                player_improvements::Improvements::encode_with_items,
-                Error::Improvements,
-            )?;
-            w.component(
-                &p.governors,
-                player_governors::Governors::encode_with_items,
-                Error::Governors,
-            )?;
-            w.component(
-                &p.cultural_identity,
-                player_cultural_identity::CulturalIdentity::encode_with_items,
-                Error::CulturalIdentity,
-            )?;
-            w.component(
-                &p.heroes,
-                player_heroes::Heroes::encode_with_items,
-                Error::Heroes,
-            )?;
-            if let Some(arrays) = &p.post_heroes_arrays {
-                for table in [
-                    &arrays.unit_definitions,
-                    &arrays.feature_definitions,
-                    &arrays.continent_definitions,
-                ] {
-                    w.component(
-                        table,
-                        |value, limits| Ok((value.encode(limits)?, value.pairs.len())),
-                        Error::IndexedBools,
-                    )?;
-                }
-            }
-            if let Some(value) = &p.ai_control {
-                w.component(
-                    value,
-                    player_ai_control::ControlManager::encode_with_items,
-                    Error::AIControl,
-                )?;
-            }
-            if let Some(value) = &p.ai_influence_map {
-                w.component(
-                    value,
-                    player_ai_influence_map::InfluenceMap::encode_with_items,
-                    Error::AIInfluenceMap,
-                )?;
-            }
-            if let Some(value) = &p.ai_planning {
-                w.component(
-                    value,
-                    player_ai_identity::PlanningManagerIdentity::encode_with_items,
-                    Error::AIPlanning,
-                )?;
-            }
-            if let Some(value) = &p.ai_city_manager {
-                w.component(
-                    value,
-                    player_ai_city_manager::CityManager::encode_with_items,
-                    Error::AICityManager,
-                )?;
-            }
-            if let Some(value) = &p.ai_culture {
-                w.component(
-                    value,
-                    player_ai_culture::CultureAi::encode_with_items,
-                    Error::AICulture,
-                )?;
-            }
-            if let Some(value) = &p.ai_diplomatic {
-                w.component(
-                    value,
-                    player_ai_diplomatic::Diplomatic::encode_with_items,
-                    Error::AIDiplomatic,
-                )?;
-            }
-            if let Some(value) = &p.ai_economic {
-                w.component(
-                    value,
-                    player_ai_economic::Economic::encode_with_items,
-                    Error::AIEconomic,
-                )?;
-            }
-            if let Some(value) = &p.ai_governors {
-                w.component(
-                    value,
-                    player_ai_governors::Governors::encode_with_items,
-                    Error::AIGovernors,
-                )?;
-            }
-            if let Some(value) = &p.ai_grand_strategic {
-                w.component(
-                    value,
-                    player_ai_grand_strategic::GrandStrategic::encode_with_items,
-                    Error::AIGrandStrategic,
-                )?;
-            }
-            if let Some(value) = &p.ai_homeland {
-                w.component(
-                    value,
-                    player_ai_homeland::Homeland::encode_with_items,
-                    Error::AIHomeland,
-                )?;
-            }
-            if let Some(value) = &p.tail {
-                w.component(
-                    value,
-                    |value, limits| {
-                        value.encode_with_items(
-                            player_tail::Context {
-                                player_version: 47,
-                                was_ever_alive: false,
-                            },
-                            limits,
-                        )
-                    },
-                    Error::Tail,
-                )?;
-            }
+        for p in self.players() {
+            w.player_prefix(p)?;
         }
         Ok((w.bytes, w.items))
     }
@@ -4464,6 +5210,8 @@ mod encode_tests {
             },
             player_count: 0,
             first_player: None,
+            additional_players: Vec::new(),
+            initialization_binding: None,
             boundary: Boundary::AfterEmptyPlayerManager,
             unfinished_player_entries: 0,
         };
