@@ -10,6 +10,7 @@ pub mod movement;
 pub mod movement_world;
 pub mod notification_lifecycle;
 pub mod notifications;
+pub mod player_components;
 pub mod random_variants;
 pub mod requirements;
 pub mod rng;

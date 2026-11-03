@@ -331,7 +331,7 @@
     }
   ],
   "sources_sha256": {
-    "tools/linux/core_stream_index.py": "a23f4521614271d0cb58ac49464dd8027eeeadfe697905ede7e2f60dbf65259c",
+    "tools/linux/core_stream_index.py": "7b3cf933ae9bf387a87a05bd92e179c48482bb4aed85f8447e4a4e1919003821",
     "tools/linux/map_state_audit.py": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b"
   },
   "original_fixtures": [

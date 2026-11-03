@@ -180,8 +180,40 @@ class Reader(MapReader):
         self.version(1)
         return self.recycled(lambda: self.section('formation', self.formation))
 
+    def indexed_ints(self):
+        # Current WriteIndexHashArray<int>: count then ordered hash/value pairs.
+        return [(self.u32(), self.take('i')) for _ in range(self.count())]
 
-def index_core(data, *, first_formations=False):
+    def goody_hut(self):
+        self.version(1)
+        return dict(player_goodies=self.indexed_ints())
+
+    def bonuses(self):
+        self.version(4)
+        return dict(flat_bonuses=self.indexed_ints())
+
+    def congress_refund(self):
+        self.version(12)
+        return dict(resolution_hash=self.u32(), which_effect=self.take('i'), refund_percent=self.take('i'))
+
+    def congress(self):
+        self.version(12)
+        favor = self.static_array('i', 6)
+        suzerain = self.indexed_ints()
+        influence = self.indexed_ints()
+        trade = self.indexed_ints()
+        slots = [self.take('i') for _ in range(self.count())]
+        modifier = self.indexed_ints()
+        modifiers = self.static_array('i', 4)
+        refunds = [self.congress_refund() for _ in range(self.count())]
+        wants, vp = self.boolean(), self.take('i')
+        return dict(favor=favor, suzerain=suzerain, influence=influence, trade=trade,
+                    government_slots=slots, trade_modifier=modifier, modifiers=modifiers,
+                    refunds=refunds, wants_congress=wants, diplo_vp_last_turn=vp)
+
+
+def index_core(data, *, first_formations=False, first_player_components=False):
+    first_formations = first_formations or first_player_components
     if len(data) > MAX_STREAM:
         raise ValueError('Core stream resource limit')
     r = Reader(data)
@@ -195,6 +227,7 @@ def index_core(data, *, first_formations=False):
     r.section('game_properties', r.untyped_map)
     world = r.section('map', r.map)
     religion, players, first = None, None, None
+    component_counts = None
     if first_formations:
         religion = r.section('game_religion', r.religion)
         r.version(1)
@@ -206,6 +239,16 @@ def index_core(data, *, first_formations=False):
                 raise ValueError('player manager identity differs from player record')
             formations = r.section('first_player_formations', r.first_formations)
             first = dict(owner=owner, formations=len(formations['entries']))
+            if first_player_components:
+                goody = r.section('first_player_goody_hut', r.goody_hut)
+                bonus = r.section('first_player_bonuses', r.bonuses)
+                congress = r.section('first_player_congress', r.congress)
+                component_counts = dict(goody_hut_pairs=len(goody['player_goodies']),
+                    bonus_pairs=len(bonus['flat_bonuses']),
+                    congress_indexed_pairs=[len(congress[k]) for k in ('suzerain','influence','trade','trade_modifier')],
+                    government_slot_values=len(congress['government_slots']),
+                    refund_records=len(congress['refunds']))
+
     return dict(schema='c6-linux-core-prefix-index-v1', module_contract_sha256=GAME_SHA,
         stream_sha256=sha(data), stream_bytes=len(data), sections=r.sections,
         context_metadata_entries=len(metadata['entries']),
@@ -214,7 +257,8 @@ def index_core(data, *, first_formations=False):
         map_height=world['header']['height'], plots=len(world['plots']),
         religion_records=religion['records'] if religion else None, player_count=players, first_player=first,
         parsed_end=r.pos, unparsed_tail_bytes=len(data)-r.pos,
-        next_unframed_schema=('Player.Goody_Hut' if players else 'AI.GlobalAi') if first_formations else 'Game.Religion',
+        next_unframed_schema=(('Player.Cities' if first_player_components else 'Player.Goody_Hut') if players else 'AI.GlobalAi') if first_formations else 'Game.Religion',
+        first_player_components_requested=first_player_components, first_player_component_counts=component_counts,
         first_formations_requested=first_formations,
         unit_location_status='Unsupported: unframed player subsystems precede Units',
         complete_map_index=True, complete_unit_index=False, complete_formation_roster_index=False,
@@ -240,11 +284,12 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--extract-map', type=Path)
     p.add_argument('--first-formations', action='store_true', help='Extend past Map through the first player Formation collection only')
+    p.add_argument('--first-player-components', action='store_true', help='Extend through first Player Goody_Hut, Bonuses and complete current Congress; stop at Cities')
     args = p.parse_args()
     if args.output.resolve() == args.stream.resolve():
         raise ValueError('refuse to overwrite the input Core stream')
     data = read_stream(args.stream)
-    result = index_core(data, first_formations=args.first_formations)
+    result = index_core(data, first_formations=args.first_formations, first_player_components=args.first_player_components)
     if args.extract_map and args.extract_map.resolve() == args.output.resolve():
         raise ValueError('Map extraction and index output must be distinct')
     if args.extract_map:
