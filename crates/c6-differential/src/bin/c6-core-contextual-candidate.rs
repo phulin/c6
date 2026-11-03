@@ -1,7 +1,10 @@
 //! Offline finalized-capture consistency and contextual saved-wire import.
 //! Never executes original code or establishes native Read/gameplay semantics.
 use c6_core::core_player::initialization::{capture::*, WireBinding, WireRole};
-use c6_core::{core_stream::ThroughRandom, map, unit};
+use c6_core::{
+    loaded_state::{AssemblyLimits, CoreImage, LoadedState},
+    map, unit,
+};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, io::Read, path::Path};
@@ -123,67 +126,104 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         max_bytes: 128 * 1024 * 1024,
         max_items: 64 * 1024 * 1024,
     };
-    let mut streams = Vec::new();
-    for binding in &bindings {
-        let bytes: &[u8] = match binding.role {
-            WireRole::ReadInputCore => &fields["input_core"],
-            WireRole::SavedOutputCore => {
-                let name = std::str::from_utf8(
-                    binding.output_id.as_deref().ok_or("missing output name")?,
-                )?;
-                outputs.get(name).ok_or("missing bound output artifact")?
-            }
-        };
-        let provider = capture.for_binding(binding);
-        let parsed =
-            ThroughRandom::decode(bytes, shared, player_limits, binding.clone(), &provider)?;
-        let players = &parsed.global_ai.players;
-        let (encoded, items) = players
-            .player_prefix
-            .encode_prefix_with_items(player_limits)?;
-        if encoded != bytes[players.core.map_end..players.consumed]
-            || items + players.core.items_used != players.items_used
-        {
-            return Err("complete PlayerManager roundtrip/item charge differs".into());
-        }
-        let (global, global_items) = parsed
-            .global_ai
-            .global_ai
-            .encode_with_items(player_limits)?;
-        if global != bytes[players.consumed..parsed.global_ai.consumed]
-            || global_items + players.items_used != parsed.global_ai.items_used
-        {
-            return Err("GlobalAi roundtrip/item charge differs".into());
-        }
-        if !players.player_prefix.complete_player_manager_wire()
-            || !std::ptr::eq(parsed.tail.as_ptr(), bytes[parsed.consumed..].as_ptr())
-        {
-            return Err("incomplete Manager or nonborrowed tail".into());
-        }
-        let roster: Vec<_> = players.player_prefix.players().map(|p| json!({
-            "requested_owner":p.requested_owner,"record_owner":p.header.owner,
-            "saved_is_alive":p.header.saved_is_alive(),"saved_was_ever_alive":p.header.saved_was_ever_alive(),
-            "formation_slots":p.formations.entries.iter().map(|e|e.index).collect::<Vec<_>>(),
-            "city_slots":p.cities.records.entries.iter().map(|e|e.index).collect::<Vec<_>>(),
-            "district_slots":p.districts.records.entries.iter().map(|e|e.index).collect::<Vec<_>>(),
-            "units":p.units.records.entries.iter().map(|e|json!({"slot":e.index,"id":e.value.id})).collect::<Vec<_>>()
-        })).collect();
-        streams.push(json!({"role":format!("{:?}",binding.role),"stream_occurrence":hex(&binding.occurrence_id),"output_id":binding.output_id.as_deref().map(hex),
-            "core_sha256":hex(&binding.core_sha256),"core_bytes":bytes.len(),"map_end":players.core.map_end,
-            "player_manager_end":players.consumed,"global_ai_end":parsed.global_ai.consumed,"consumed":parsed.consumed,"items":parsed.items_used,
-            "post_map_roundtrip_sha256":hash(&encoded),"global_ai_sha256":hash(&global),"tail_sha256":hash(parsed.tail),"tail_bytes":parsed.tail.len(),
-            "barbarian_instances":parsed.barbarian.instances.len(),
-            "free_city_instances":parsed.free_cities.instances.len(),
-            "sync_random_record":{"seed":parsed.random.record.seed,"calls":parsed.random.record.calls,"resets":parsed.random.record.resets,"synchronous_byte":parsed.random.record.synchronous_byte},
-            "rosters":roster,"initialization_reconstructed":false,"player_manager_global_ai_wire_roundtrip":true}));
+    let mut reads = bindings
+        .into_iter()
+        .filter(|b| b.role == WireRole::ReadInputCore);
+    let binding = reads.next().ok_or("missing Read input binding")?;
+    if reads.next().is_some() {
+        return Err("multiple Read occurrences require an explicit selection".into());
     }
+    drop(named_outputs);
+    drop(named_sources);
+    drop(outputs);
+    drop(sources);
+    let bytes = fields.remove("input_core").ok_or("missing owned Core")?;
+    drop(fields);
+    let source_pointer = bytes.as_ptr();
+    let source_bytes = bytes.len();
+    let resident_kib = |field: &str| -> Option<u64> {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        status.lines().find_map(|line| {
+            line.strip_prefix(field)
+                .and_then(|v| v.split_whitespace().next())
+                .and_then(|v| v.parse().ok())
+        })
+    };
+    let before_rss = resident_kib("VmRSS:");
+    let start = std::time::Instant::now();
+    let provider = capture.for_binding(&binding);
+    let mut state = LoadedState::decode(
+        CoreImage::Unique(bytes),
+        shared,
+        player_limits,
+        binding.clone(),
+        &provider,
+        AssemblyLimits::default(),
+    )?;
+    let assembly_seconds = start.elapsed().as_secs_f64();
+    let after_rss = resident_kib("VmRSS:");
+    let peak_rss = resident_kib("VmHWM:");
+    if state.source_image().as_ptr() != source_pointer || state.source_image().len() != source_bytes
+    {
+        return Err("input ownership was copied or truncated".into());
+    }
+    if state.world().players().len() != state.retained().players.len() {
+        return Err("retained Player count differs".into());
+    }
+    let mut roster = Vec::new();
+    let mut busy = 0usize;
+    let mut movable = 0usize;
+    for (player, retained) in state
+        .world()
+        .players()
+        .iter()
+        .zip(&state.retained().players)
+    {
+        if player.owner() != retained.header.owner || player.owner() != retained.requested_owner {
+            return Err("owner order differs".into());
+        }
+        let units = player.unit_records()?;
+        for u in units {
+            busy += usize::from(c6_core::skip_turn::legality::is_busy(&u.value));
+            movable += usize::from(c6_core::skip_turn::legality::can_move(&u.value));
+        }
+        roster.push(json!({"owner":player.owner(),"units":units.len(),"formations":player.formation_records()?.len(),
+            "cities":retained.cities.records.entries.len(),"districts":retained.districts.records.entries.len(),
+            "saved_is_alive":retained.header.saved_is_alive(),"live_is_alive_available":player.is_alive.is_some(),
+            "live_configuration_available":player.slot_status.is_some(),"all_other_components_retained":true}));
+    }
+    let stats = state.statistics();
+    let missing_controls = format!("{:?}", state.processing_automation().unwrap_err());
+    let first = state.world().players().iter().find_map(|p| {
+        p.unit_records()
+            .ok()?
+            .first()
+            .map(|u| (p.owner(), u.value.id))
+    });
+    let state_query = if let Some((owner, id)) = first {
+        let before = state.unit_mut(owner, id)?.i_operation_timer;
+        let value = c6_core::skip_turn::legality::is_busy(state.unit_mut(owner, id)?);
+        if state.unit_mut(owner, id)?.i_operation_timer != before {
+            return Err("pure busy query mutated timer".into());
+        }
+        json!({"owner":owner,"unit_id":id,"is_busy":value,"runtime_unavailable":state.unit_runtime(owner,id).is_err(),"mutated":false})
+    } else {
+        Value::Null
+    };
     println!(
         "{}",
-        serde_json::to_string(
-            &json!({"schema":"c6-contextual-wire-candidate-v2","candidate_sha256":hash(&read(&std::env::current_exe()?,64*1024*1024)?),
-        "manifest_sha256":hash(&manifest_bytes),"raw_observation_sha256":hex(&capture.identity.raw_observation_sha256),
-        "capture_consistency_checked":true,"native_acceptance":false,"complete_world_import":false,"gameplay_parity":false,"native_read_effects_reproduced":false,"streams":streams})
-        )?
+        serde_json::to_string(&json!({"schema":"c6-loaded-state-candidate-v3",
+        "candidate_sha256":hash(&read(&std::env::current_exe()?,64*1024*1024)?),"manifest_sha256":hash(&manifest_bytes),
+        "raw_observation_sha256":hex(&capture.identity.raw_observation_sha256),"role":format!("{:?}",binding.role),
+        "source_core_sha256":hex(&binding.core_sha256),"source_bytes":source_bytes,"source_buffer_moved":true,
+        "players":stats.players,"units":stats.units,"formations":stats.formations,"consumed":stats.consumed,"items":stats.items_used,
+        "retained_barbarian_instances":state.retained().barbarian.instances.len(),"retained_free_city_instances":state.retained().free_cities.instances.len(),
+        "retained_sync_random":{"seed":state.retained().random.record.seed,"calls":state.retained().random.record.calls,"resets":state.retained().random.record.resets,"synchronous_byte":state.retained().random.record.synchronous_byte},
+        "tail_bytes":state.unparsed_tail().len(),"tail_sha256":hash(state.unparsed_tail()),"rosters":roster,
+        "derived_field_queries":{"busy_units":busy,"units_with_moves":movable,"first_subject":state_query,"new_native_comparison":false},
+        "missing_live_controls":missing_controls,"assembly_seconds":assembly_seconds,"resident_kib_before":before_rss,"resident_kib_after":after_rss,
+        "process_peak_kib_including_admission":peak_rss,"timing_scope":"decode and consuming assembly only; excludes artifact admission and actions",
+        "native_acceptance":false,"complete_live_world":false,"native_read_effects_complete":false,"gameplay_parity":false}))?
     );
     Ok(())
 }

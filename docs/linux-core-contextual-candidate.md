@@ -7,6 +7,9 @@ distinct admitted stream role from byte zero through Player.Manager, GlobalAi,
 Barbarian, FreeCities and the serialized sync Random record. Native execution
 attribution remains a separately reviewed claim. The immutable v1 profile
 stops after GlobalAi; v2's later prefix has a separate source/binary identity.
+Version 3 consumes the single Read input into `loaded_state::LoadedState`,
+retaining every decoded component and the entire original byte buffer. Its
+startup timing covers decode/assembly, separately from admission and actions.
 
 Build from a single committed archive, preserving the executable and all source
 identities before supplying genuine capture artifacts:
@@ -42,8 +45,10 @@ byte-zero wrapper verifies each full immutable Core image once, then passes
 structurally derived absolute Military cursors and remaining byte/item credits
 to the contextual decoder. It does not rerun initialization or native Read.
 
-Each role's complete Player.Manager and GlobalAi wire re-encoding must match
-its own source bytes and dynamic-item charges exactly. Output preserves the
+Historical versions 1 and 2 check Player.Manager/GlobalAi re-encoding as a schema
+diagnostic. Version 3 performs no save production: it checks moved-buffer
+identity, complete owned/retained roster order, derived pure field queries and
+explicit missing live controls. Output preserves the
 role, occurrence, actual Core digest, consumed offsets, borrowed-tail digest,
 ordered player identities and imported roster slots/Unit IDs. No unknown tail
 is skipped to manufacture a complete import; the next owner in v2 is Trade.Manager.

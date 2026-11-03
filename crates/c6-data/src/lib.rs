@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
 pub mod city_movement;
+pub mod loaded_actions;
 pub mod movement;
 pub mod registry;
 pub mod unit_operation_manager;
