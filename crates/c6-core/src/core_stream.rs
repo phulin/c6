@@ -11,7 +11,9 @@
 //! Player's AI Homeland, stopping before Military's initialization context.
 //! The never-alive branch closes one saved-wire Player; an empty Manager also
 //! has an explicit boundary. Neither result establishes executable world state.
-//! Each result borrows its untouched remaining tail without semantic exclusion.
+//! ThroughRandom additionally composes the explicit-context PlayerManager,
+//! GlobalAi, Barbarian, FreeCities and sync Random wire records, stopping before
+//! Trade.Manager. Each result borrows its untouched tail without exclusion.
 
 use crate::map::{self, Map};
 use crate::unit::variants::{self, DecodeBudget, TypedVariantMap, VariantMap};
@@ -464,6 +466,134 @@ impl<'a> ThroughGlobalAi<'a> {
             consumed,
             items_used,
             tail: &bytes[consumed..],
+        })
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ThroughRandomError {
+    GlobalAi(ThroughGlobalAiError),
+    Barbarian(crate::game_barbarian::Error),
+    FreeCities(crate::game_free_cities::Error),
+    Random(crate::game_random_wire::Error),
+    ResourceLimit,
+}
+impl std::fmt::Display for ThroughRandomError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for ThroughRandomError {}
+
+/// Current saved-wire prefix through the sync Random record, before Trade.Manager.
+/// Native Read/reset/remapping, complete RNG state and gameplay are not performed.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ThroughRandom<'a> {
+    pub global_ai: ThroughGlobalAi<'a>,
+    pub barbarian: crate::game_barbarian::Manager,
+    pub free_cities: crate::game_free_cities::Manager,
+    pub random: crate::game_random_wire::Random,
+    pub consumed: usize,
+    pub items_used: usize,
+    pub tail: &'a [u8],
+}
+impl<'a> ThroughRandom<'a> {
+    /// The existing Player boundary verifies the whole image once. Every later
+    /// owner spends the same aggregate shared and post-Map byte/item credits.
+    /// Child typed-allocation policies remain separate from wire accounting.
+    pub fn decode(
+        bytes: &'a [u8],
+        shared: map::Limits,
+        post_map_limits: crate::unit::Limits,
+        binding: crate::core_player::initialization::WireBinding,
+        contexts: &impl crate::core_player::PlayerInitializations,
+    ) -> Result<Self, ThroughRandomError> {
+        let global_ai = ThroughGlobalAi::decode(bytes, shared, post_map_limits, binding, contexts)
+            .map_err(ThroughRandomError::GlobalAi)?;
+        let mut consumed = global_ai.consumed;
+        let mut items_used = global_ai.items_used;
+        let remaining =
+            |consumed: usize, items: usize| -> Result<crate::unit::Limits, ThroughRandomError> {
+                let post_bytes = consumed
+                    .checked_sub(global_ai.players.core.map_end)
+                    .ok_or(ThroughRandomError::ResourceLimit)?;
+                let post_items = items
+                    .checked_sub(global_ai.players.core.items_used)
+                    .ok_or(ThroughRandomError::ResourceLimit)?;
+                Ok(crate::unit::Limits {
+                    max_bytes: post_map_limits
+                        .max_bytes
+                        .checked_sub(post_bytes)
+                        .ok_or(ThroughRandomError::ResourceLimit)?
+                        .min(
+                            shared
+                                .max_bytes
+                                .checked_sub(consumed)
+                                .ok_or(ThroughRandomError::ResourceLimit)?,
+                        ),
+                    max_items: post_map_limits
+                        .max_items
+                        .checked_sub(post_items)
+                        .ok_or(ThroughRandomError::ResourceLimit)?
+                        .min(
+                            shared
+                                .max_items
+                                .checked_sub(items)
+                                .ok_or(ThroughRandomError::ResourceLimit)?,
+                        ),
+                })
+            };
+        let (barbarian, size, items) = crate::game_barbarian::Manager::decode_prefix_with_items(
+            bytes
+                .get(consumed..)
+                .ok_or(ThroughRandomError::ResourceLimit)?,
+            remaining(consumed, items_used)?,
+        )
+        .map_err(ThroughRandomError::Barbarian)?;
+        consumed = consumed
+            .checked_add(size)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        items_used = items_used
+            .checked_add(items)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        let (free_cities, size, items) =
+            crate::game_free_cities::Manager::decode_prefix_with_items(
+                bytes
+                    .get(consumed..)
+                    .ok_or(ThroughRandomError::ResourceLimit)?,
+                remaining(consumed, items_used)?,
+            )
+            .map_err(ThroughRandomError::FreeCities)?;
+        consumed = consumed
+            .checked_add(size)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        items_used = items_used
+            .checked_add(items)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        let (random, size, items) = crate::game_random_wire::Random::decode_prefix_with_items(
+            bytes
+                .get(consumed..)
+                .ok_or(ThroughRandomError::ResourceLimit)?,
+            remaining(consumed, items_used)?,
+        )
+        .map_err(ThroughRandomError::Random)?;
+        consumed = consumed
+            .checked_add(size)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        items_used = items_used
+            .checked_add(items)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        let tail = bytes
+            .get(consumed..)
+            .ok_or(ThroughRandomError::ResourceLimit)?;
+        Ok(Self {
+            global_ai,
+            barbarian,
+            free_cities,
+            random,
+            consumed,
+            items_used,
+            tail,
         })
     }
 }
@@ -1200,6 +1330,280 @@ mod tests {
             ),
         ] {
             assert!(ThroughGlobalAi::decode(&bytes, a, b, binding.clone(), &contexts).is_err());
+        }
+    }
+    fn random_prefix_fixture() -> (Vec<u8>, [usize; 6], [usize; 3]) {
+        use crate::{game_barbarian as b, game_free_cities as f, game_global_ai as g};
+        // Arbitrary explicit saved values, not runtime constructor defaults.
+        let global = g::GlobalAi {
+            value_f8: u32::MAX,
+            mayhem: g::MayhemTracker {
+                native_f32_bits: 0x7fc01234,
+            },
+            control_factory: g::ControlFactory { next_id: u32::MAX },
+            espionage: g::EspionageManager { entries: vec![] },
+            religious: g::ReligiousManager { entries: vec![] },
+            value_128_raw_q8: i32::MIN,
+            values_140: vec![-1, 0, i32::MAX],
+            yields_a8: vec![g::HashQ8 {
+                definition_hash: 11,
+                raw_q8: -5,
+            }],
+            yields_d0: vec![],
+        };
+        let barbarian = b::Manager {
+            player_ordinal: -1,
+            value_c8: u32::MAX,
+            value_e0: 0x80000000,
+            value_f8: 7,
+            control_priority_ordinal: i32::MIN,
+            improvement_hash: u32::MAX,
+            flag_168_raw: 197,
+            values_1a8: vec![-1, 8, 9],
+            instances: vec![],
+            camp_locations: vec![b::CampLocation { plot_index: -1 }],
+            clans: b::ClansManager {
+                unique_unit_claims: vec![b::UniqueUnitClaimData {
+                    unit_hash: u32::MAX,
+                    value_4: i32::MIN,
+                    value_8: -7,
+                }],
+                value_100: i32::MAX,
+            },
+        };
+        let free = f::Manager {
+            player_ordinal: -9,
+            control_priority_ordinal: i32::MIN,
+            instances: vec![f::Instance {
+                player_ordinal: 62,
+                city_index: -1,
+                city_location: f::PlotCoord {
+                    x: i32::MIN,
+                    y: i32::MAX,
+                },
+                living_raw: 197,
+                turns_since_last_unit: -3,
+                urban_defenses: -4,
+                retaliation_target_ordinal: -1,
+                retaliation_behavior_tree: u32::MAX,
+                buildable_units: vec![
+                    f::HashBool {
+                        definition_hash: 11,
+                        value_raw: 0,
+                    },
+                    f::HashBool {
+                        definition_hash: 11,
+                        value_raw: 197,
+                    },
+                ],
+                buildable_walls: vec![f::HashBool {
+                    definition_hash: u32::MAX,
+                    value_raw: 255,
+                }],
+            }],
+        };
+        let random = crate::game_random_wire::Random {
+            record: crate::rng::native_serialization::SerializedRandomRecord {
+                seed: 0xdeadbeef,
+                calls: u32::MAX,
+                resets: 0x80000000,
+                synchronous_byte: 197,
+            },
+        };
+        let (mut bytes, map_end, manager_end) = through_player_fixture(true);
+        bytes.truncate(manager_end);
+        let (wire, _) = global
+            .encode_with_items(crate::unit::Limits::default())
+            .unwrap();
+        bytes.extend(wire);
+        let global_end = bytes.len();
+        let (wire, barb_items) = barbarian
+            .encode_with_items(crate::unit::Limits::default())
+            .unwrap();
+        bytes.extend(wire);
+        let barb_end = bytes.len();
+        let (wire, free_items) = free
+            .encode_with_items(crate::unit::Limits::default())
+            .unwrap();
+        bytes.extend(wire);
+        let free_end = bytes.len();
+        let (wire, random_items) = random
+            .encode_with_items(crate::unit::Limits::default())
+            .unwrap();
+        bytes.extend(wire);
+        let end = bytes.len();
+        bytes.extend([0x81, 0x92, 0xa3]);
+        (
+            bytes,
+            [map_end, manager_end, global_end, barb_end, free_end, end],
+            [barb_items, free_items, random_items],
+        )
+    }
+    #[test]
+    fn random_prefix_preserves_nested_fields_borrowed_trade_tail_and_all_aggregate_caps() {
+        use crate::core_player::initialization::{InitializationSnapshot, PlayerIdentity};
+        let (bytes, cursors, items) = random_prefix_fixture();
+        let [map_end, manager_end, global_end, barb_end, free_end, end] = cursors;
+        let contexts = |_: PlayerIdentity| None::<std::sync::Arc<InitializationSnapshot>>;
+        let binding = context_binding(&bytes);
+        let value = ThroughRandom::decode(
+            &bytes,
+            map::Limits::default(),
+            crate::unit::Limits::default(),
+            binding.clone(),
+            &contexts,
+        )
+        .unwrap();
+        assert_eq!(value.global_ai.players.consumed, manager_end);
+        assert_eq!(value.global_ai.consumed, global_end);
+        assert_eq!(value.consumed, end);
+        assert_eq!(
+            value.items_used,
+            value.global_ai.items_used + items.iter().sum::<usize>()
+        );
+        assert_eq!(items[2], 0);
+        assert_eq!(value.barbarian.flag_168_raw, 197);
+        assert_eq!(
+            value.barbarian.clans.unique_unit_claims[0].value_4,
+            i32::MIN
+        );
+        assert_eq!(value.free_cities.instances[0].living_raw, 197);
+        assert_eq!(
+            value.free_cities.instances[0].buildable_units[1].value_raw,
+            197
+        );
+        assert_eq!(value.random.record.synchronous_byte, 197);
+        assert_eq!(value.random.record.seed, 0xdeadbeef);
+        assert_eq!(value.tail, &[0x81, 0x92, 0xa3]);
+        assert!(std::ptr::eq(value.tail.as_ptr(), bytes[end..].as_ptr()));
+        let limits = crate::unit::Limits::default();
+        assert_eq!(
+            value.barbarian.encode(limits).unwrap(),
+            bytes[global_end..barb_end]
+        );
+        assert_eq!(
+            value.free_cities.encode(limits).unwrap(),
+            bytes[barb_end..free_end]
+        );
+        assert_eq!(value.random.encode(limits).unwrap(), bytes[free_end..end]);
+        let shared = map::Limits {
+            max_bytes: end,
+            max_items: value.items_used,
+            ..map::Limits::default()
+        };
+        let post = crate::unit::Limits {
+            max_bytes: end - map_end,
+            max_items: value.items_used - value.global_ai.players.core.items_used,
+        };
+        assert!(ThroughRandom::decode(&bytes, shared, post, binding.clone(), &contexts).is_ok());
+        for (shared, post, byte_short) in [
+            (
+                map::Limits {
+                    max_bytes: end - 1,
+                    ..shared
+                },
+                post,
+                true,
+            ),
+            (
+                map::Limits {
+                    max_items: shared.max_items - 1,
+                    ..shared
+                },
+                post,
+                false,
+            ),
+            (
+                shared,
+                crate::unit::Limits {
+                    max_bytes: post.max_bytes - 1,
+                    ..post
+                },
+                true,
+            ),
+            (
+                shared,
+                crate::unit::Limits {
+                    max_items: post.max_items - 1,
+                    ..post
+                },
+                false,
+            ),
+        ] {
+            let result = ThroughRandom::decode(&bytes, shared, post, binding.clone(), &contexts);
+            if byte_short {
+                assert!(matches!(
+                    result,
+                    Err(ThroughRandomError::Random(
+                        crate::game_random_wire::Error::ResourceLimit
+                    ))
+                ));
+            } else {
+                assert!(matches!(
+                    result,
+                    Err(ThroughRandomError::FreeCities(
+                        crate::game_free_cities::Error::ResourceLimit
+                    ))
+                ));
+            }
+        }
+    }
+    #[test]
+    fn random_prefix_refuses_current_versions_and_every_new_component_truncation() {
+        use crate::core_player::initialization::{InitializationSnapshot, PlayerIdentity};
+        let (bytes, cursors, _) = random_prefix_fixture();
+        let [_, _, global_end, barb_end, free_end, end] = cursors;
+        let contexts = |_: PlayerIdentity| None::<std::sync::Arc<InitializationSnapshot>>;
+        for (start, version, expected) in [
+            (
+                global_end,
+                6u32,
+                ThroughRandomError::Barbarian(crate::game_barbarian::Error::Version {
+                    expected: 5,
+                    actual: 6,
+                }),
+            ),
+            (
+                barb_end,
+                4,
+                ThroughRandomError::FreeCities(crate::game_free_cities::Error::Version {
+                    expected: 3,
+                    actual: 4,
+                }),
+            ),
+            (
+                free_end,
+                2,
+                ThroughRandomError::Random(crate::game_random_wire::Error::Version {
+                    expected: 1,
+                    actual: 2,
+                }),
+            ),
+        ] {
+            let mut changed = bytes.clone();
+            changed[start..start + 4].copy_from_slice(&version.to_le_bytes());
+            let result = ThroughRandom::decode(
+                &changed,
+                map::Limits::default(),
+                crate::unit::Limits::default(),
+                context_binding(&changed),
+                &contexts,
+            );
+            assert_eq!(result, Err(expected));
+        }
+        for cut in global_end..end {
+            let truncated = &bytes[..cut];
+            assert!(
+                ThroughRandom::decode(
+                    truncated,
+                    map::Limits::default(),
+                    crate::unit::Limits::default(),
+                    context_binding(truncated),
+                    &contexts
+                )
+                .is_err(),
+                "cut {cut}"
+            );
         }
     }
 }
