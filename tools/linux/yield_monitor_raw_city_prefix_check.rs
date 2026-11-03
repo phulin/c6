@@ -6,7 +6,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         max_items: 64 * 1024 * 1024,
         ..Default::default()
     };
-    let core = c6_core::core_stream::CorePrefix::decode(&raw, map_limits)?;
+    let core = match c6_core::core_stream::CorePrefix::decode(&raw, map_limits) {
+        Ok(core) => core,
+        Err(error) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "schema":"c6-linux-original-first-city-prefix-v1",
+                    "original_code_executed":false,
+                    "bounded_core_prefix_error":format!("{error:?}"),
+                    "city_prefix_reached":false,
+                    "all_player_city_inputs_supported":false,
+                    "cache_freshness_proven":false
+                })
+            );
+            return Ok(());
+        }
+    };
     let limits = c6_core::unit::Limits {
         max_bytes: 256 * 1024 * 1024,
         max_items: 64 * 1024 * 1024,
