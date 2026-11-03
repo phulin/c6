@@ -402,6 +402,7 @@
     "pthread_detach_return": "0x2cdfbe5",
     "pthread_stack_return": "0x2cdfc0b; return unchecked by original",
     "pthread_create_return": "0x2cdfc25",
+    "requested_flags": "original worker option1 yields ASL flags0; Platform event provides suspended startup",
     "requested_stack": "original worker option1 yields ASL request0; original ThreadHANDLE normalizes to max(request,1048576)",
     "affinity": "no affinity operation in audited constructor path",
     "error_propagation": "admission rejection does not set error; pthread_create error is overwritten before later GetLastError, which reads separate TLS error"
