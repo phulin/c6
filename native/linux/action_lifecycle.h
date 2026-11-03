@@ -18,4 +18,9 @@ int c6_linux_action_prepare_domain_metadata(void *game_module, void *borrowed_co
 int c6_linux_action_prepare_placement_metadata(void *module,void *borrowed_context);
 int c6_linux_action_prepare_placement_handler_metadata(void *module,void *borrowed_context);
 int c6_linux_action_prepare_unit_operation_manager_metadata(void *module,void *borrowed_context);
+/* Separate passive current-handler caller profile. Its two-argument lifecycle
+ * callbacks require unlocked idle state; the three-argument locked helper guard
+ * stays inside the probe's explicit original facade lifetime. Save observations
+ * are diagnostic; this profile does not admit Manager/actions/turns. */
+int c6_linux_action_prepare_current_handler_metadata(void *module,void *borrowed_context);
 #endif
