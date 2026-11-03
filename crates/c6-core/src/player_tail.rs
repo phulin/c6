@@ -544,6 +544,48 @@ mod tests {
         }
     }
     #[test]
+    fn nested_properties_share_cumulative_budget() {
+        let wire = [
+            1, 0, 0, 128, 1, 0, 0, 0, 7, 0, 0, 0, 2, 0, b'n', b'm', 5, 0, 0, 0, 3, 0, 0, 33, 1, 0,
+            0, 0, b'x', b'y', 0,
+        ];
+        let mut budget = DecodeBudget::new(VariantLimits::default());
+        let (properties, n) = TypedVariantMap::decode_prefix(&wire, &mut budget).unwrap();
+        assert_eq!(n, wire.len());
+        for alive in [false, true] {
+            let mut value = sample(alive);
+            value.properties = properties.clone();
+            let c = context(alive);
+            let (bytes, items) = value.encode_with_items(c, Limits::default()).unwrap();
+            let lim = Limits {
+                max_bytes: bytes.len(),
+                max_items: items,
+            };
+            assert_eq!(
+                Tail::decode_prefix_with_items(&bytes, c, lim).unwrap(),
+                (value.clone(), bytes.len(), items)
+            );
+            for cap in [
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    ..lim
+                },
+                Limits {
+                    max_items: items - 1,
+                    ..lim
+                },
+            ] {
+                assert!(Tail::decode(&bytes, c, cap).is_err());
+                assert!(value.encode(c, cap).is_err());
+            }
+            value.properties.entries[0].value.modifier_bits = 1;
+            assert!(matches!(
+                value.encode(c, Limits::default()),
+                Err(Error::Variant(_))
+            ));
+        }
+    }
+    #[test]
     fn empty_branch_size_and_zero_items() {
         for alive in [false, true] {
             let v = Tail {
