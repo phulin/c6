@@ -83,9 +83,9 @@ into mock C functions. They never load a game/host module or execute original
 instruction bytes, and their synthetic output files are not native query
 answers. Complete compiled source preimages, exact test executable, compiler,
 dynamic dependency identities and per-case logs are retained in the private
-candidate directory named by the report. The archive explicitly identifies its
-new-file WIP relative to the recorded commit; it is not relabeled as a coherent
-committed original profile. Earlier diagnostic source snapshots remain private.
+candidate directory named by the report. The final packet verifies every retained source byte against the frozen
+source commit. Earlier explicitly recorded new-file WIP diagnostic snapshots
+remain private and are not relabeled as this committed-source check.
 
 The sole runner owns loader/CLI/main-witness/lifecycle integration, the exact
 new profile and original execution. The integrated source must then receive
@@ -94,3 +94,15 @@ comparison. Coverage must include source-valid unplaced/delayed-death records;
 no invented safe fields or silent filters are allowed. Original ownership or
 query observation gaps remain validation gaps. No push or original execution
 was performed for this packet.
+
+The final source freeze is `bf76da7f9ae97e32001f3131e1c5dc144c418c34`.
+All12 retained source preimages match that commit, with no packet WIP. The
+private `profile-candidate-bf76da7` source archive SHA is
+`9689fb990881060a82ca10c7ffb2c1cf25e46e8d96cec91d8a3002fdd4edd594`;
+the tested executable SHA is
+`c5eddfc933f776da24e321a27102b9805055582a3211d15a08e63b62b4a0d99c`.
+The packet checks21 reused facade/owner/lock method gates and54 movement ABI
+bodies. Six resolved test runtime dependencies are hashed. Reproduce with
+`--source-commit bf76da7 --directory NEW_PRIVATE_DIRECTORY --output NEW_REPORT`;
+retain that new artifact's identities and compare cases/method/source semantics,
+not whole-report or executable bytes across different source paths/directories.
