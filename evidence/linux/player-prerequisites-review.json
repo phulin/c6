@@ -1,0 +1,151 @@
+{
+  "schema": "c6-linux-player-prerequisites-independent-review-v1",
+  "reviewed_implementation_commit": "40ead82",
+  "committed_export_commit": "41cb241",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "disposition": "accepted_supplied_input_projection_only",
+  "semantic_defects": [],
+  "source_sha256": {
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "docs/linux-player-prerequisites.md": "1e897fb2cde8e3d0b98dd0955c748ade55946401add2d79e7020c32caf801d25",
+    "tools/linux/player_prerequisites_audit.py": "29f8b0f8b229202257a1c8ac300879a974be0be1642b7ddb27956f794608efab",
+    "evidence/linux/player-prerequisites.json": "23efc0b848003aa69714b46d6b6d115ddbf8649231438ae25f6f1ce3a7712ea7"
+  },
+  "reproduced_audit": {
+    "methods": 19,
+    "calls": 7,
+    "instruction_contracts": 5,
+    "byte_identical_report": true
+  },
+  "independent_additional_method_fingerprints": [
+    {
+      "address": "0x2b8ac60",
+      "bytes": 79,
+      "name": "Player.Techs.HasTech",
+      "sha256": "cf4a3cabd3f3b09872b8bd16197980410160d0ae810aae1d63a423ea68c32ec3"
+    },
+    {
+      "address": "0x2a73e70",
+      "bytes": 86,
+      "name": "Player.Culture.HasCivic",
+      "sha256": "d61b6ae94c24981349cecd699fed49fa57c413f81d7d15787f33a3996dfe4f68"
+    },
+    {
+      "address": "0x2a2d160",
+      "bytes": 24,
+      "name": "Game.Techs.HasTech",
+      "sha256": "15b73ac27200be281d4dc5657f341244ff1f86e80e95a10d7d3c0dfeda4125a9"
+    },
+    {
+      "address": "0x2978310",
+      "bytes": 24,
+      "name": "Game.Culture.HasCivic",
+      "sha256": "6b922359c9946249e8f6cb842ea7af3d46d23608c32d0a8855aa1178528e759f"
+    },
+    {
+      "address": "0x20164b0",
+      "bytes": 109,
+      "name": "Technology.Find",
+      "sha256": "fab3ae6449e4235617b9f8ccd826e45afb2e1a742c05dabd5c6f34cb53cec7ee"
+    },
+    {
+      "address": "0x2017180",
+      "bytes": 109,
+      "name": "Civic.Find",
+      "sha256": "73ffef1410a78916706049d05454871a2a107979626ab7caa660ccb6595b79f7"
+    },
+    {
+      "address": "0x2951db0",
+      "bytes": 19,
+      "name": "Types.GetIndex.Civic",
+      "sha256": "6f03228f444b3b6c1b4019e2d3471367abddad91fe407aa0259503531c9ad626"
+    },
+    {
+      "address": "0x2955a70",
+      "bytes": 94,
+      "name": "Types.GetTypeIndexT.Civic",
+      "sha256": "57e02c836734d6b9eb1a7d60e774b6a23bbf46e3dc2aa09582e75fc0217ae170"
+    },
+    {
+      "address": "0x276a270",
+      "bytes": 3,
+      "name": "TechNode.GetType",
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "address": "0x2746770",
+      "bytes": 3,
+      "name": "CivicNode.GetType",
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "address": "0x2a2d410",
+      "bytes": 69,
+      "name": "TechNode.find_if",
+      "sha256": "010cfadfdfe844511882bf2fa64e67e2e33ac6271d34ee5c62768bf7dab966f9"
+    },
+    {
+      "address": "0x2979560",
+      "bytes": 69,
+      "name": "CivicNode.find_if",
+      "sha256": "0a197cb50b9caf9c35f07941599f2bfa952a132a39f08c5c084c0f24b18d4349"
+    },
+    {
+      "address": "0x2a2d740",
+      "bytes": 19,
+      "name": "TechNode.find_if.predicate",
+      "sha256": "1b48988ef3f7019112133ef055bb37751f810cabe9c069ab64931025a2056cf5"
+    },
+    {
+      "address": "0x29798d0",
+      "bytes": 19,
+      "name": "CivicNode.find_if.predicate",
+      "sha256": "9508840f74b81fa7d9c59992e5bb7dd8144aa2e207b59c6e7fa135211e7d090d"
+    }
+  ],
+  "reviewed_contracts": [
+    "u32 little-endian pair count and ordered u32 hash / byte bool; canonical bool support only",
+    "known definition remap via Find and collection index; unknown hash consumed; later wire duplicate wins",
+    "generic overlay preserves prior; both concrete owners clear and resize acquired false to definition count",
+    "acquired tech raw +0x140 and civic raw +0x360 match actual HasTech/HasCivic and first hash array",
+    "global nodes +0xc0; -1 absent; positional type match precedes first ordered matching type",
+    "global availability is node presence and IsActive(+4); acquired bit checked afterward",
+    "complete typed inputs required; absent captured owner/global state stays missing; no native player mapping synthesized",
+    "committed World/Player install fields feed committed yields prerequisite helpers; committed lib export verified"
+  ],
+  "checks": [
+    {
+      "command": "python3 tools/linux/player_prerequisites_audit.py --output /tmp/player-prerequisites-review-audit.json",
+      "result": "pass; committed report byte identical"
+    },
+    {
+      "command": "cargo test -p c6-core player_prerequisites",
+      "passed": 5
+    },
+    {
+      "command": "cargo test -p c6-core yields::tests",
+      "passed": 7
+    },
+    {
+      "command": "cargo test -p c6-data registry::tests::native_index_hash_miss_and_duplicate_precedence",
+      "passed": 1
+    }
+  ],
+  "limitations": [
+    "tests are synthetic and used shared checkout with unrelated changes; prerequisite implementation hash matches reviewed commit",
+    "caller must supply actual native ordered registries and same module/rules/DLC/mod/configuration identity",
+    "no complete owner/Core parser; wire array must already be structurally located or complete actual live vector supplied",
+    "complete actual post-Read/Validate ordered global nodes required; no raw node codec",
+    "existing registry collision contract reused; no new initialized native registry capture",
+    "native bool reader accepts raw bytes; typed codec deliberately refuses noncanonical values"
+  ],
+  "native_execution": false,
+  "native_capture": false,
+  "native_differential_acceptance": false,
+  "complete_owner_codec": false,
+  "complete_core_import": false,
+  "gameplay_parity": false,
+  "action_parity": false,
+  "turn_parity": false,
+  "raw_save_load_difference_bytes": 89198
+}
