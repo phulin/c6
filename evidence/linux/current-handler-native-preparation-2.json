@@ -1,0 +1,68 @@
+{
+  "all_preimages_match_committed_head": true,
+  "caller_source_review": "133bebd",
+  "configuration_file_sha256": "a3b60b287c4719e24392bafc8083f78d25ca6c4810d3015001e274648a9f9ea3",
+  "configuration_sha256": "94509905930c5991ff0f6d96d0bcf6fd6be8b9b8c5d672bbd38b7a22651616dc",
+  "expected_fresh_outputs": [
+    "facts.jsonl",
+    "facts-repeat.jsonl",
+    "controls.jsonl",
+    "before.bin",
+    "control.bin",
+    "after.bin",
+    "after-repeat.bin",
+    "save.bin",
+    "repeat.bin"
+  ],
+  "guard_source_review": "2cb6cab",
+  "launch_plan_sha256": "6d8bd19feef8ddaa066fbeef9de1310451c6a9fc9b77a0cd83304cd88b601ee6",
+  "lifecycle_checkpoint": "3aa3858",
+  "missing_source_gates": [],
+  "native_execution": false,
+  "original_execution_admitted": false,
+  "pending": [
+    "independent exact preparation admission",
+    "actual original terminal outcome",
+    "independent raw facts/state/RNG/cleanup review"
+  ],
+  "preload_sha256": "158e6d70d552a22ef56d97e7dc05d25ad37a5769a3e58c9712bdf0728454e44b",
+  "preparation_only": true,
+  "prepared_sha256": "b006f0ba78f8e50fc864b5acd61c00d802ad112bfd1b96fb939dc2ffee516372",
+  "previous_preparation": {
+    "missing_source_gates": [
+      "tools/linux/rules_launch_fixture.py",
+      "tools/assets/inventory.py"
+    ],
+    "profile_sha256": "04ff1af95620e02c7a1ddb49f48961a46255bce8dcf75c8e13c1811105a6a1ad",
+    "status": "unexecuted_missing_active_import_gates"
+  },
+  "public_main_and_private_push_held": true,
+  "runner_archived_separately": true,
+  "runner_sha256": "528791321f1bc6b52ee4542168eab0b5c4c4c075cf0d568027c8c86c560cbb3a",
+  "schema": "c6-linux-current-handler-native-preparation-v1",
+  "scope": {
+    "Lua_calls_added": false,
+    "Save_lock_continuity_claimed": false,
+    "captures": [
+      "actual Manager/handler slots and full method bytes",
+      "complete stored Unit queue capacity bytes and native fronts",
+      "all65Player query slots and actual complete Unit membership"
+    ],
+    "complete_rng_inventory": false,
+    "helper_and_guard_original_calls": false,
+    "internal_observational_saves": 4,
+    "known_rng_bytes": 64,
+    "metadata_passes": 2,
+    "native_handler_or_Manager_calls": false,
+    "not_observed": [
+      "native GetHandler return",
+      "native current-handler interrupt return",
+      "full Manager predicate/action/turn"
+    ],
+    "outer_observational_saves": 2
+  },
+  "source_archive_sha256": "d60cf0820d689948807f895ff3191cc935f210296d4193476db8b8d768871247",
+  "source_checkpoint": "141689e",
+  "source_files": 71,
+  "status": "fresh_corrected_preparation_pending_exact_admission"
+}
