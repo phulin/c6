@@ -200,6 +200,10 @@ def changes(before, after):
     return result
 
 
+def matching_monitor_return(interval, thread, rsp):
+    return bool(interval is not None and thread == interval['thread'] and rsp == interval['entry_rsp'] + 8)
+
+
 def expected_routes(path):
     import subprocess
     raw = Path(path).read_bytes()
@@ -262,14 +266,15 @@ def prepare(args):
         parent_runtime_sha256=sha(args.parent_runtime), parent_configuration_sha256=CONFIG_SHA,
         gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA, preload_sha256=PRELOAD_SHA,
         gates=[dict(rva=hex(a), bytes=b, name=n) for a, b, n in GATES],
-        maximum_simultaneous_hardware_breakpoints=3, readiness_hit_cap=32,
+        maximum_simultaneous_hardware_breakpoints=3, persistent_hardware_breakpoints=3, readiness_hit_cap=32,
+        breakpoint_mutation_inside_stop=False,
         source_and_initializer_change=False, inferior_calls=False, inferior_writes=False, software_game_breakpoints=False,
         expected_typed_active_routes=len(routes), before_core_sha256=BEFORE_SHA,
         expected_routes_sha256=hashlib.sha256(json.dumps(routes, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
         codec_sha256=sha(ROOT / 'crates/c6-core/src/trade.rs'), expected_actor=selected[0],
         tracer_fields=dict(armed_offset='0x27500', armed_bytes=1, phase_offset='0x27514', phase_bytes=4),
         hypothesis='Read actual old-empty AWAKE HasAdjacentMove result and monitor cache/counter effects. Null contribution statically skips direct Bonus/Add/Remove path; no Add/Remove runtime census.',
-        scope='Armed phase5 Unit readiness provenance plus original monitor entry through matching native caller return with same thread and exact stack return.',
+        scope='Armed phase5 Unit readiness provenance plus original monitor entry through pinned persistent native return site with matching thread and exact stack return. Readiness cap limits recording, not hardware binding.',
         limits=['No global purity, complete effects/RNG or full action acceptance',
                 'Counter raw delta is not an Add count; no Add/Remove runtime coverage is supplied and complete counter-writer coverage is unproven',
                 'Native route lookup-index consistency remains unobserved', 'Original helper deadline must remain unchanged'])
@@ -295,7 +300,7 @@ def install_gdb(config_path):
     if not output.is_dir():
         raise ValueError('driver must create fresh raw output directory')
     log = (output / 'observations.jsonl').open('x')
-    state = dict(base=None, preload=None, installed=False, interval=None, sequence=0, intervals=0, readiness_hits=0, readiness_capped=False)
+    state = dict(base=None, preload=None, installed=False, interval=None, sequence=0, intervals=0, readiness_hits=0, readiness_capped=False, inactive_return_hits=0)
     def mem(p, n):
         return gdb.selected_inferior().read_memory(p, n).tobytes() if n else b''
     def reg(name):
@@ -334,7 +339,9 @@ def install_gdb(config_path):
             sp, receiver = reg('rsp'), reg('rdi')
             caller = decoder.uint(sp)
             if caller != state['base'] + 0x272361e:
-                raise ValueError('monitor caller differs from native cache delegate return')
+                raise ObservationReadError('monitor caller differs from pinned persistent return site',
+                    classification='return_site_mismatch', actual_caller=hex(caller),
+                    expected_caller=hex(state['base'] + 0x272361e), thread=tid, rsp=hex(sp), receiver=hex(receiver))
             # Preserve bounded context before any deep decode. This is a prefix,
             # never a completed interval or a valid before/after observation.
             emit(dict(stage='monitor_entry_prefix', thread=tid, receiver=hex(receiver), raw48=mem(receiver, 48).hex(),
@@ -368,14 +375,14 @@ def install_gdb(config_path):
             interval = dict(number=state['intervals'], thread=tid, entry_rsp=sp, receiver=receiver, before=snapshot,
                             systems={system: decoder.system(system)}, ignored_return_hits=0)
             state['interval'] = interval
-            interval['return_point'] = Point(caller, 'monitor_return', '4883c3304c89ff')
             emit(dict(stage='monitor_entry', interval=interval['number'], snapshot_file=before_name, thread=tid, rsp=hex(sp), receiver=hex(receiver),
                       trace_armed=armed, trace_phase=current_phase, systems=list(interval['systems'].values()),
                       matching_return=hex(caller), fixture_dimensions_match=snapshot['fixture_dimensions_match']))
         elif point.kind == 'monitor_return':
             if not interval:
-                raise ValueError('return without active monitor interval')
-            if tid != interval['thread'] or reg('rsp') != interval['entry_rsp'] + 8:
+                state['inactive_return_hits'] += 1
+                return False
+            if not matching_monitor_return(interval, tid, reg('rsp')):
                 interval['ignored_return_hits'] += 1
                 return False
             after = decoder.monitor(interval['receiver'], cfg['expected_routes'])
@@ -395,9 +402,10 @@ def install_gdb(config_path):
                       ignored_return_pc_hits=interval['ignored_return_hits'], readiness_hits=state['readiness_hits'],
                       readiness_coverage_capped=state['readiness_capped'], trace_armed=phase()[0], trace_phase=phase()[1],
                       add_remove_runtime_coverage=False))
-            point.delete()
             state['interval'] = None
         elif point.kind == 'has_adjacent_move_return':
+            if state['readiness_capped']:
+                return False
             armed, current_phase = phase()
             if not armed or current_phase != 5:
                 return False
@@ -430,9 +438,8 @@ def install_gdb(config_path):
                       hold_cycling_fallbacks_skipped=bool(actual),
                       fallback_skip_basis='Exact next conditional branch; no separate post-jump observation'))
             if state['readiness_hits'] >= 32:
-                point.enabled = False
                 state['readiness_capped'] = True
-                emit(dict(stage='readiness_coverage_disabled', reason='32-hit bound', observed_hits=32))
+                emit(dict(stage='readiness_capture_capped', reason='32-record bound; persistent hardware remains active', observed_hits=32))
         return False
     def install(event=None):
         if state['installed']:
@@ -458,14 +465,16 @@ def install_gdb(config_path):
                 raise ValueError('live module byte gate differs')
         Point(state['base'] + 0x2c66430, 'monitor_entry', '534889fb')
         Point(state['base'] + 0x2c28137, 'has_adjacent_move_return', '84c07518')
+        Point(state['base'] + 0x272361e, 'monitor_return', '4883c3304c89ff')
         state['installed'] = True
         emit(dict(stage='hardware_installed', game_base=hex(state['base']), preload_base=hex(state['preload']),
                   gamecore_sha256=GAME_SHA, preload_sha256=PRELOAD_SHA, source_sha256=sha(__file__), gates_verified=len(GATES),
-                  persistent_points=2, maximum_points_with_matching_return=3))
+                  persistent_points=3, maximum_points_with_matching_return=3, breakpoint_mutation_inside_stop=False))
     def exited(event):
         emit(dict(stage='inferior_exit', hardware_installed=state['installed'],
                   interval_still_open=bool(state['interval']), readiness_hits=state['readiness_hits'],
-                  readiness_coverage_capped=state['readiness_capped'], exit_code=getattr(event, 'exit_code', None)))
+                  readiness_coverage_capped=state['readiness_capped'], inactive_return_site_hits=state['inactive_return_hits'],
+                  exit_code=getattr(event, 'exit_code', None)))
         log.close()
     gdb.events.new_objfile.connect(install)
     gdb.events.exited.connect(exited)
@@ -473,6 +482,22 @@ def install_gdb(config_path):
 
 
 def self_test():
+    import ast
+    tree = ast.parse(Path(__file__).read_text())
+    callbacks = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name in {'stop', 'hit'}]
+    for callback in callbacks:
+        for node in ast.walk(callback):
+            if isinstance(node, ast.Call):
+                assert not (isinstance(node.func, ast.Name) and node.func.id == 'Point'), 'breakpoint construction inside stop path'
+                assert not (isinstance(node.func, ast.Attribute) and node.func.attr == 'delete'), 'breakpoint deletion inside stop path'
+            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                assert not any(isinstance(target, ast.Attribute) and target.attr in {'enabled', 'condition', 'thread', 'inferior', 'ignore_count'} for target in targets), 'breakpoint mutation inside stop path'
+    interval = dict(thread=[1, 2, 0], entry_rsp=0x1000)
+    assert not matching_monitor_return(None, [1, 2, 0], 0x1008)
+    assert not matching_monitor_return(interval, [1, 3, 0], 0x1008)
+    assert not matching_monitor_return(interval, [1, 2, 0], 0x0ff8)
+    assert matching_monitor_return(interval, [1, 2, 0], 0x1008)
     memory = bytearray(512)
     struct.pack_into('<QI', memory, 32, 128, 4)
     struct.pack_into('<I', memory, 48, 3)
