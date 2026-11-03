@@ -90,3 +90,8 @@ Unit activity assignment, then verifies that a snapshot replay after advancement
 fails without changing revision. These are Rust ownership/integration checks;
 they do not replace native gameplay comparison. Each retained run uses a unique
 binary name so a concurrent run cannot replace its executable before retention.
+
+The actual twelve saved numeric notification IDs are unique. The retained actual
+fixture checks lookup for each of those IDs. Duplicate-ID precedence is covered
+by the core owner's separate source-only tests; no native duplicate-ID boundary
+comparison is claimed.

@@ -43,12 +43,18 @@ def main():
     span=core[76400871:76405580]
     if span[:8]!=bytes.fromhex('0100000040000000') or sha(span)!='68c99c43d65778dea5f1d49a7215d9d925b405f639d413b28e2c4f5d6f601094':
         raise ValueError('attributed Manager span/header differs')
+    baseline=json.loads((ROOT/'evidence/linux/notifications-codec.json').read_bytes())['fixtures']['before']
+    if baseline['core_sha256']!=sha(core):raise ValueError('independent codec baseline differs')
+    actual_ids=[row['id'] for row in baseline['records']]
+    if len(actual_ids)!=12 or len(set(actual_ids))!=12:
+        raise ValueError('actual numeric-ID uniqueness scope changed')
     paths=['crates/c6-data/src/loaded_actions/notifications.rs','crates/c6-core/src/player_notifications_owner.rs','crates/c6-core/src/loaded_state.rs','tools/linux/loaded_handler_adapter_check.rs','tools/linux/loaded_handler_adapter_check.py']
     report=dict(schema='c6-linux-loaded-notification-owner-v1',checks_passed=True,original_execution=False,
                 gamecore_sha256=GAME_SHA,checker_sha256=sha(Path(__file__).read_bytes()),
                 snapshot_sha256=sha(core),snapshot_bytes=len(core),owner_range=[76400871,76405580],owner_bytes=len(span),owner_sha256=sha(span),
                 owner_trace_sha256=result['owner_trace_sha256'],collections=64,records=12,slot_zero_next_id=49,empty_other_slots=63,
-                duplicate_numeric_id_first_match_checked=True,all_saved_fields_rechecked_at_install=True,
+                numeric_id_first_match_lookup_checked=True,actual_numeric_ids_unique=True,
+                duplicate_precedence_test_profile="core source-only tests; actual twelve numeric IDs are unique",all_saved_fields_rechecked_at_install=True,
                 notification_reads_survive_unit_activity_write=True,replay_after_advancement_rejected_without_revision_change=True,
                 decoded_players=result['players'],decoded_units=result['units'],decoded_formations=result['formations'],
                 candidate_sha256=result['candidate_sha256'],retained_candidate=result['retained_candidate'],retained_source_snapshot=result['retained_source_snapshot'],
