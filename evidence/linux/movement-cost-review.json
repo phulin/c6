@@ -1,0 +1,33 @@
+{
+  "schema": "c6-linux-movement-cost-independent-review-v1",
+  "review_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "reviewed_sources": {
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "tools/linux/movement_cost_audit.py": "6e379c0348cf3bce2476a54dc57eadd87fc9bc0a621ea8f9772cc01eae4d040c",
+    "evidence/linux/movement-cost.json": "c0874e7fd0708041f8dd43471cf682e4e69414ca516a195453a8bb3aa3d7ee48"
+  },
+  "checks": {
+    "static_audit_reproduced_exactly": true,
+    "method_fingerprints": 37,
+    "phase_order_targets": 9,
+    "isolated_rust_tests_passed": 6,
+    "shore_source_completion_destination_assignment_confirmed": true,
+    "ordered_route_float_selection_confirmed": true,
+    "wrapping_q8_clamp_order_confirmed": true,
+    "formation_missing_members_and_escort_confirmed": true
+  },
+  "numerical_scope": "Linux x86-64 binary32; round-to-nearest, masked FP exceptions, DAZ/FTZ off; output bits only",
+  "native_original_execution": false,
+  "native_differential_parity": false,
+  "world_query_resolution_proven": false,
+  "complete_affected_state_or_rng_proven": false,
+  "full_movement_acceptance": false,
+  "limits": [
+    "Resolved-query-fact scalar arithmetic only",
+    "No original native corpus yet",
+    "No complete world/rules/modifier/ZOC resolver or movement legality",
+    "No unit movement, full live action or turn support",
+    "Unknown save bytes remain unmasked/unclassified"
+  ]
+}
