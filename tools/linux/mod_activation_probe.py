@@ -1018,6 +1018,10 @@ def main():
     env={k:v for k,v in os.environ.items() if not k.startswith(('LD_','C6_'))}
     env.update({'LD_PRELOAD':str(preload),'LD_LIBRARY_PATH':f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}',
                 'C6_HOST_ASSETS':str(assets),'C6_RULES_SOURCE_ROOT':str(view) if view else str(host.parent/'steamassets'),'C6_HOST_USERDATA':str(userdata),'C6_HOST_LUA':'1'})
+    if args.full_manager_fixture:
+        # The exact observer plan binds this retained file's path/dev/inode,
+        # not merely the bytes of an equivalent temporary link output.
+        env['LD_PRELOAD']=str(archived_preload)
     if args.launch_host:env['C6_MOD_FILESYSTEM']='1'
     if args.prepare_main_thread:env['C6_MOD_PREPARE_MAIN_THREAD']='1'
     if args.saved_configuration:env['C6_SAVED_CONFIGURATION']=str(args.saved_configuration.resolve())
