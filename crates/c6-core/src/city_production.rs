@@ -338,6 +338,14 @@ impl BuildQueue {
     pub const VERSION: i32 = 16;
     /// Decode only at an independently established structural boundary.
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
+        Ok((value, consumed))
+    }
+    /// Returns the actual aggregate dynamic-item charge for enclosing codecs.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
         let mut r = Reader {
             bytes,
             pos: 0,
@@ -391,7 +399,7 @@ impl BuildQueue {
                 })
             })?,
         };
-        Ok((value, r.pos))
+        Ok((value, r.pos, r.budget.items))
     }
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         let (value, consumed) = Self::decode_prefix(bytes, limits)?;
@@ -401,6 +409,10 @@ impl BuildQueue {
         Ok(value)
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        Ok(self.encode_with_items(limits)?.0)
+    }
+    /// Returns bytes and their actual aggregate dynamic-item charge together.
+    pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let mut w = Writer {
             bytes: Vec::new(),
             budget: Budget { limits, items: 0 },
@@ -449,7 +461,7 @@ impl BuildQueue {
             v.district_hash.write(w)?;
             v.modifier.write(w)
         })?;
-        Ok(w.bytes)
+        Ok((w.bytes, w.budget.items))
     }
 }
 
@@ -515,6 +527,29 @@ mod tests {
             word(&mut b, value);
         }
         b
+    }
+    #[test]
+    fn charged_prefix_budget_composition() {
+        let bytes = fixture();
+        let mut carrier = bytes.clone();
+        carrier.extend_from_slice(&[99; 20]);
+        let limits = Limits {
+            max_bytes: bytes.len(),
+            max_items: 37,
+        };
+        let (value, consumed, items) =
+            BuildQueue::decode_prefix_with_items(&carrier, limits).unwrap();
+        assert_eq!((consumed, items), (bytes.len(), 37));
+        assert_eq!(
+            value.encode_with_items(limits).unwrap(),
+            (bytes.clone(), 37)
+        );
+        let exhausted = Limits {
+            max_items: 37 - 1,
+            ..limits
+        };
+        assert!(BuildQueue::decode_prefix_with_items(&carrier, exhausted).is_err());
+        assert!(value.encode_with_items(exhausted).is_err());
     }
     #[test]
     fn current_source_grammar_and_raw_branches() {
@@ -758,6 +793,14 @@ impl Writer {
 impl Buildings {
     pub const VERSION: i32 = 10;
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
+        Ok((value, consumed))
+    }
+    /// Returns the actual aggregate dynamic-item charge for enclosing codecs.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
         let mut r = Reader {
             bytes,
             pos: 0,
@@ -808,7 +851,7 @@ impl Buildings {
                 })
             })?,
         };
-        Ok((value, r.pos))
+        Ok((value, r.pos, r.budget.items))
     }
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         let (value, consumed) = Self::decode_prefix(bytes, limits)?;
@@ -818,6 +861,10 @@ impl Buildings {
         Ok(value)
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        Ok(self.encode_with_items(limits)?.0)
+    }
+    /// Returns bytes and their actual aggregate dynamic-item charge together.
+    pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let mut w = Writer {
             bytes: Vec::new(),
             budget: Budget { limits, items: 0 },
@@ -855,7 +902,7 @@ impl Buildings {
             v.building_hash.write(w)?;
             w.localized_text(&v.name)
         })?;
-        Ok(w.bytes)
+        Ok((w.bytes, w.budget.items))
     }
 }
 
@@ -931,6 +978,29 @@ mod buildings_tests {
             localized(&mut b, true);
         }
         (b, slot_version, name_version)
+    }
+    #[test]
+    fn charged_prefix_budget_composition() {
+        let bytes = fixture().0;
+        let mut carrier = bytes.clone();
+        carrier.extend_from_slice(&[99; 20]);
+        let limits = Limits {
+            max_bytes: bytes.len(),
+            max_items: 41,
+        };
+        let (value, consumed, items) =
+            Buildings::decode_prefix_with_items(&carrier, limits).unwrap();
+        assert_eq!((consumed, items), (bytes.len(), 41));
+        assert_eq!(
+            value.encode_with_items(limits).unwrap(),
+            (bytes.clone(), 41)
+        );
+        let exhausted = Limits {
+            max_items: 41 - 1,
+            ..limits
+        };
+        assert!(Buildings::decode_prefix_with_items(&carrier, exhausted).is_err());
+        assert!(value.encode_with_items(exhausted).is_err());
     }
     #[test]
     fn complete_source_buildings_nonempty_grammar() {
