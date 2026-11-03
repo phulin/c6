@@ -1,5 +1,7 @@
 # Linux SkipTurn first conditional state diagnostic
 
+The later [quiescent execution and exact three-record footprint](linux-skip-turn-state-success.md) are recorded separately. This page preserves the first failed attempt and its initial-state contract.
+
 The first separately admitted Core command **has no observed SkipTurn execution**. It queued one genuine command, but original Receive and UnitOperation execution were never observed. Native result 230 and incomplete controller teardown remain failures. The [checked artifact report](../evidence/linux/skip-turn-state-execute-failure-1.json) validates that diagnostic; `artifact_checks_passed` does not mean a native action passed. Rust still supports bounded primitives, wire transport and rules/registry components; complete gameplay state, actions and turns remain unimplemented.
 
 This is the [conditional Core component](linux-core-component.md), configuration `5f87646b4b0ff97f755918703a70bc1062e04d33e9d57565c157a1edb1c6d18c`, against Linux XP2 SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa` and its pinned host. It bypasses original host admission by supplying that component's stated preconditions. Full-host admission, full action acceptance and gameplay parity remain false/zero. The separate host loading-deferral failure remains unresolved.
