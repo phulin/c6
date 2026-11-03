@@ -3202,6 +3202,28 @@
     },
     "candidate_and_all_sources_verified": true,
     "peer_codec_findings_closed_in": "8e303f1",
-    "owner_producer_profile_metadata_not_yet_provided": true
+    "owner_producer_profile_metadata_not_yet_provided": false
+  },
+  "final_owner_profile": {
+    "metadata_commit": "29303a1",
+    "source_commit": "27e51ee11ee359ea6b4695539f35a4ea51e28766",
+    "candidate_sha256": "eaa764103859146eacd82ec22bc353f1a9193e8cecba089b886d0e9c56be00ff",
+    "archive": "target/frozen/core-player-techs-prefix/27e51ee11ee359ea6b4695539f35a4ea51e28766",
+    "candidate_report_and_all_sources_verified": true,
+    "rust_cargo_sources_verified_against_git": 66,
+    "python_sources_verified_against_git": 151,
+    "combined_source_manifest_sha256": "18a2721bc832c092e1f8840619c7fda6960b41264aff02b71c42cb60a03ee569",
+    "method_fingerprints": 1023,
+    "audit_source_sha256": "061e9ccf38b218b0d5dc7e2d74d4d34d39d95fd183d541a8e50ee727b32e5ea7",
+    "fixtures_match_independent_cursor_items_prefix_tail_digests": true,
+    "source_only_relocations": {
+      "metadata_extra_bytes": 20,
+      "settled_continent_extra_bytes": 4,
+      "passed": true
+    },
+    "unit_prefix_and_unexported_treasury_units_not_consumed_by_this_stage": true,
+    "core_player_and_exported_lib_identical_to_accepted_bbc689a": true,
+    "original_records_replayed_again_for_metadata": false,
+    "metadata_release": true
   }
 }
