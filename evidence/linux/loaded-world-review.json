@@ -1,0 +1,62 @@
+{
+  "schema": "c6-loaded-world-independent-review-v1",
+  "status": "bounded_ownership_and_field_query_checks_passed_lifecycle_followup_required",
+  "source_commit": "3b733db0dde5ee05c46a42b76bfb4d9c1e071e21",
+  "source_file_count": 1499,
+  "source_manifest_sha256": "88a5a2d45606f4f8017785067b64b8da755e4354b8ad5fffda700807bdc16b56",
+  "base_candidate_source_sha256": "55f9324dd9d4cc424cddeb2c8432d4baf9a7f207e73b40e6ef503944d382005f",
+  "base_candidate_sha256": "5cc571d21717eedbeb3b6891c4d9ab9ad4c2d749dce80b338c5886d784edfde0",
+  "review_generated_source_sha256": "043c4cf14cf9e548492d8ae7d31d842ec11e026dfc7c07226398aa199e8cda82",
+  "review_executable_sha256": "64d570cc6368ccfa05c2df8323913d077ab4729a9bca5590e3aac177063bd4a2",
+  "review_result_sha256": "b0bab88a1084db91cf7efef63c5be9c56080a91ca981fb6299c32c96d3565902",
+  "review_artifact_directory": "/tmp/c6-loaded-world-review-3b733db",
+  "path_adapter_sha256": "87e3b61271eaeef1fb6f959fedeace75e70bbf35955329f130ab6576f1e10bb5",
+  "raw_observation_sha256": "f9035540d3862cb6fb16a08db47cd3895cfec398561b818a59bf9449f7ef0603",
+  "target_module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "target_host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "role": "ReadInputCore",
+  "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "source_bytes": 80657462,
+  "consumed": 71027796,
+  "items": 10678503,
+  "tail_bytes": 9629666,
+  "tail_sha256": "645d2472c5f6bc1f4fe1460d706b4dc7acb346178a316669a6d528953ff0083c",
+  "counts": {
+    "players": 43,
+    "units": 1262,
+    "formations": 1250,
+    "cities": 245,
+    "districts": 1284,
+    "barbarian_instances": 197,
+    "free_city_instances": 55,
+    "busy_units": 0,
+    "positive_moves_units": 705,
+    "signed_mutation_probes": 6
+  },
+  "comparisons": {
+    "complete_map_including_layer_cell_reference_order": true,
+    "complete_ordered_unit_and_formation_values": true,
+    "slot_and_allocator_metadata": true,
+    "low16_lookup_borrowed_record_identity": true,
+    "every_retained_core_player_units_field": true,
+    "retained_ai_and_global_components": true,
+    "unknown_tail_equal": true,
+    "independent_query_counts": true,
+    "actual_owned_unit_mutation_reflected": true,
+    "missing_runtime_explicit": true
+  },
+  "limits": {
+    "comparison_oracle": "second direct decode by existing codec, not new original-code parity",
+    "review_process_measurements_valid": false,
+    "review_original_code_execution": false,
+    "complete_live_world": false,
+    "native_read_effects_complete": false,
+    "gameplay_rng_transition_parity": false,
+    "action_or_turn_parity": false,
+    "frozen_lifecycle_gaps": [
+      "reinitialization replaces mutated runtime",
+      "control rebind discards runtime",
+      "raw type/formation/array changes can leave stale sidecar fields"
+    ]
+  }
+}
