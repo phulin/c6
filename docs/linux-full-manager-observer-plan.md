@@ -26,3 +26,9 @@ python3 tools/linux/full_manager_observer_plan_audit.py \
 ```
 
 The remaining concrete inputs are the actual final CLI-prepared preload/configuration/module/source identities, a reviewed stack/source packet using these regenerated own prefixes, and fresh private capture paths/sole-runner supervision. No static unknown-HKS completeness requirement is added. Callback identities/effects, full VM/GC state, complete gameplay RNG and native action parity remain unaccepted; Save production or byte-identical rewriting is not an action gate.
+
+## Actual CLI-built static assembly
+
+`full_manager_observer_plan_assemble.py` binds an actual `c6-linux-full-manager-preload-built-v1` report to a freshly extracted fragment. It verifies every declared source plus runner, actual preload, original host/Core and declared libc identities, then emits the raw static plan and stack/source packet. The real adapter validator is exercised offline with an explicitly synthetic temporary envelope; that envelope is deleted and is never represented as the normal CLI-prepared native gate.
+
+The first actual CLI-linked preload is SHA-256 `7c6c5b25a593202bf4d03c69d8b66e46830855503c373bf9b8c70b12a586d310`. Its initial 92-source binding and complete owned-prefix bundle are retained under the private native-1 evidence directory and summarized in [the assembly evidence](../evidence/linux/full-manager-final-static-plan-source.json). This initial bundle remains historical while the sole runner fixes its Python supervisor. Driver/runner source changes require a fresh source-map/stack packet and plan hash even when the C/preload/frame identities do not change. No original execution or native admission follows from assembly.
