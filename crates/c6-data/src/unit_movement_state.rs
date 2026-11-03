@@ -314,6 +314,15 @@ fn territory_bonus(state: &LoadedState, unit: &Unit, plot: &Plot) -> Result<i32,
     }
 }
 
+/// Original CInstance::IsEmbarked (0x2c12ca0): this activity suppresses
+/// embarkation without changing the saved flag. Keep the hash value exact.
+pub fn unit_is_embarked(unit: &Unit) -> bool {
+    effective_embarked(unit.e_activity, unit.b_embarked)
+}
+fn effective_embarked(activity: i32, saved_embarked: bool) -> bool {
+    activity != 0x5ff1_bbdf && saved_embarked
+}
+
 /// Original Unit.GetMaxMoves(), including signed wrapping integer arithmetic.
 /// Unused pure plot branches may be elided only when their contribution is zero.
 pub fn unit_max_moves(state: &LoadedState, unit: &Unit, inputs: &Inputs<'_>) -> Result<i32, Error> {
@@ -332,18 +341,18 @@ pub fn unit_max_moves(state: &LoadedState, unit: &Unit, inputs: &Inputs<'_>) -> 
         return Err(Error::Definition("Unit initialized index"));
     }
     let owner = player(state, unit.e_owner)?;
-    let base =
-        if runtime.domain != 1 && unit.b_embarked && !unit.k_combat_modifers.b_fight_while_embarked
-        {
-            definitions
-                .embarked_base
-                .wrapping_add(owner.units.embarked_movement_modifier)
-        } else {
-            *definitions
-                .base_moves
-                .get(index)
-                .ok_or(Error::Definition("Unit BaseMoves"))?
-        };
+    let embarked = unit_is_embarked(unit);
+    let base = if runtime.domain != 1 && embarked && !unit.k_combat_modifers.b_fight_while_embarked
+    {
+        definitions
+            .embarked_base
+            .wrapping_add(owner.units.embarked_movement_modifier)
+    } else {
+        *definitions
+            .base_moves
+            .get(index)
+            .ok_or(Error::Definition("Unit BaseMoves"))?
+    };
     let mut moves = base
         .wrapping_add(unit.k_movement_modifiers.i_extra_moves)
         .wrapping_add(current_diplomatic_movement(
@@ -351,7 +360,7 @@ pub fn unit_max_moves(state: &LoadedState, unit: &Unit, inputs: &Inputs<'_>) -> 
             state.retained().core.current_turn,
         ));
     let modifiers = &unit.k_movement_modifiers;
-    if (unit.b_embarked || modifiers.i_clear_terrain_start_movement == 0)
+    if (embarked || modifiers.i_clear_terrain_start_movement == 0)
         && modifiers.i_friendly_territory_start_movement == 0
         && modifiers.i_enemy_territory_start_movement == 0
     {
@@ -361,7 +370,7 @@ pub fn unit_max_moves(state: &LoadedState, unit: &Unit, inputs: &Inputs<'_>) -> 
         if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
             return Err(Error::Map);
         }
-        if !unit.b_embarked
+        if !embarked
             && modifiers.i_clear_terrain_start_movement != 0
             && plot_movement_cost(state, plot, definitions)? == 1
         {
@@ -384,6 +393,15 @@ pub fn unit_has_moved(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn activity_suppresses_effective_embarkation_without_changing_saved_flag() {
+        for saved in [false, true] {
+            assert!(!effective_embarked(0x5ff1_bbdf, saved));
+            for activity in [0, -1, i32::MIN, i32::MAX, 0x5ff1_bbde, 0x5ff1_bbe0] {
+                assert_eq!(effective_embarked(activity, saved), saved);
+            }
+        }
+    }
     #[test]
     fn diplomatic_sources_inclusive_expiry_and_signed_wrapping() {
         let turns = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
