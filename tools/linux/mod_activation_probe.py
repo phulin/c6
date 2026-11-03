@@ -372,6 +372,9 @@ def main():
     movement_audit_paths=[]
     if movement_mode:
         movement_audit_paths=[ROOT/'tools/linux/movement_probe_audit.py',ROOT/('evidence/linux/movement-cost-probe-xp2-contract.json' if args.movement_cost_xp2_map else 'evidence/linux/movement-cost-probe-diagnostic-contract.json' if args.movement_cost_diagnostic else 'evidence/linux/movement-cost-probe-contract.json'),ROOT/'tools/linux/game_load_state_audit.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
+        admission_audit=ROOT/'tools/linux/oracle_admission_cache_audit.py'
+        admission_contract=json.loads(subprocess.check_output([sys.executable,str(admission_audit)],cwd=ROOT,text=True))
+        movement_audit_paths.append(admission_audit)
         movement_contract=json.loads(movement_audit_paths[1].read_text())
         for name,sha in movement_contract['sources'].items():
             if digest(ROOT/name)!=sha:raise SystemExit('movement source identity mismatch: '+name)
@@ -414,7 +417,7 @@ def main():
         bootstrap_sha='b898657a0e88837be77ecdfa89516494ce3e325ddb43bcc6bb1bca4e9e02d89d'
         committed_bootstrap=subprocess.check_output(['git','show',bootstrap_commit+':'+bootstrap_source],cwd=ROOT)
         if hashlib.sha256(committed_bootstrap).hexdigest()!=bootstrap_sha or digest(ROOT/bootstrap_source)!=bootstrap_sha:raise SystemExit('movement committed localization bridge differs from accepted source')
-        movement_profile={'mode':movement_mode,'admission_diagnostic':args.movement_cost_diagnostic,'xp2_map_revision':args.movement_cost_xp2_map,'max_formations':args.movement_cost_max_formations,'query_options':0,'actual_move_options_available':False,'contract':movement_contract,'frozen_artifacts':frozen,'candidate_frozen_before_original_execution':True,'candidate_source_manifest':{'path':str(candidate_manifest_path.relative_to(ROOT)),'sha256':digest(candidate_manifest_path),'source_reference_commit':candidate_source_commit},'bootstrap_source':{'path':bootstrap_source,'sha256':bootstrap_sha,'commit':bootstrap_commit,'accepted_native_configuration':'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'},'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'quiescence':'original controller/context idle plus acquired/released native Game facade lock barrier; unknown/work fatal before poststate/teardown'}
+        movement_profile={'admission_binding_cache':{'revision':'movement-scope-immutable-bindings-v1','audit':admission_contract,'native_acceptance_pending':True},'mode':movement_mode,'admission_diagnostic':args.movement_cost_diagnostic,'xp2_map_revision':args.movement_cost_xp2_map,'max_formations':args.movement_cost_max_formations,'query_options':0,'actual_move_options_available':False,'contract':movement_contract,'frozen_artifacts':frozen,'candidate_frozen_before_original_execution':True,'candidate_source_manifest':{'path':str(candidate_manifest_path.relative_to(ROOT)),'sha256':digest(candidate_manifest_path),'source_reference_commit':candidate_source_commit},'bootstrap_source':{'path':bootstrap_source,'sha256':bootstrap_sha,'commit':bootstrap_commit,'accepted_native_configuration':'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'},'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'quiescence':'original controller/context idle plus acquired/released native Game facade lock barrier; unknown/work fatal before poststate/teardown'}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
