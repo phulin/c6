@@ -16,6 +16,7 @@ pub enum Error {
     InvalidBool(u8),
     DefinitionMapping,
     BuildTechsRequired,
+    FallbackUnknown,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -261,10 +262,12 @@ impl Graph {
     pub fn has_tech(&self, tech: i32) -> bool {
         self.node(tech).is_some_and(|node| node.active)
     }
-    /// The constructed owner has an empty +0x110 fallback vector; the
-    /// projected Clear/Read/Validate/no-rebuild path never modifies that field.
-    /// This does not import an arbitrary already-mutated live owner.
-    pub fn prerequisites(&self, tech: i32) -> &[i32] {
-        self.node(tech).map_or(&[], |node| &node.prerequisites)
+    /// A found node owns its serialized/remapped prerequisite vector. For an
+    /// absent node native code returns owner +0x110, whose actual pre-Read
+    /// lifetime is not captured by this wire projection.
+    pub fn prerequisites(&self, tech: i32) -> Result<&[i32], Error> {
+        self.node(tech)
+            .map(|node| node.prerequisites.as_slice())
+            .ok_or(Error::FallbackUnknown)
     }
 }

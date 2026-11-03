@@ -107,8 +107,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     assert!(!graph.has_tech(-1));
     assert!(!graph.has_tech(2));
-    assert_eq!(graph.prerequisites(1), [0]);
-    assert!(graph.prerequisites(99).is_empty());
+    assert_eq!(graph.prerequisites(1)?, [0]);
+    assert_eq!(graph.prerequisites(99), Err(Error::FallbackUnknown));
+    assert_eq!(graph.prerequisites(-1), Err(Error::FallbackUnknown));
     assert_eq!(graph.nodes()[0].prerequisites, [2, 2]);
     assert_eq!(graph.nodes()[0].cost_raw, i32::MIN);
     for n in 0..b.len() {
