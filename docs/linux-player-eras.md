@@ -54,3 +54,10 @@ world import, gameplay state, action execution or turns. All player decisions
 remain external. Unknown save bytes remain unclassified and unmasked; the
 recorded raw Save→Load difference is still 89,198 bytes. No original game code
 is executed and no private evidence or proprietary disassembly is written.
+
+Validated candidate source `9f9891a` passes 43 records (516 bytes) in each
+canonical stream, 86 records total. Every record roundtrips byte-for-byte; all
+truncations and the 11-byte cap fail. Both isolated source tests pass. The
+complete source commit, archive, source manifest, binary and harness identities
+are recorded in `evidence/linux/player-eras.json`. These offline source records
+are not a live initialized-game or native-Read acceptance test.

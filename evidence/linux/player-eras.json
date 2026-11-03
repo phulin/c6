@@ -1,0 +1,353 @@
+{
+  "schema": "c6-linux-player-eras-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "current_version": 2,
+  "version_address": "0x2f5ded8",
+  "methods": [
+    {
+      "address": "0x2aef1b0",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::EraTypes, GameCore::Player::Eras>::load(Serialization::IStream&)",
+      "sha256": "7ee2369e7a7be2d4f91ca488e5901a36d155b7f648fd0fbb2c0a2cec40313df9"
+    },
+    {
+      "address": "0x2d510b0",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> const&)",
+      "sha256": "a53222fe1ac63af8f4e0ba9d013a019338f774f95ec270948f74020b6a345894"
+    },
+    {
+      "address": "0x2aeed00",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<GameCore::EraTypes, GameCore::Player::Eras>, GameCore::EraTypes>(Serialization::IStream&, FAutoVariable<GameCore::EraTypes, GameCore::Player::Eras>&, int, int&&, GameCore::EraTypes&&)",
+      "sha256": "a0184602a9d52b040a68a308bf1da24c04864b7c9d0d3eefe35299ba00f51317"
+    },
+    {
+      "address": "0x2d51080",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Era> const&)",
+      "sha256": "9a6dce189a54362122658819c2dcb40c5ccbe9afd2c202d92e7cf9d253ce615d"
+    },
+    {
+      "address": "0x2aee400",
+      "size": 66,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Eras const&)",
+      "sha256": "93c799a67928cbbce16bae245d7c7cecf66ed21acc870a342da9a86f91e77809"
+    },
+    {
+      "address": "0x2d4eda0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::EraTypes const&)",
+      "sha256": "e246d7b03b8b87e64a140a859d261d190aed6aacf1f69d421667e19c8910889d"
+    },
+    {
+      "address": "0x2aee450",
+      "size": 97,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Eras&)",
+      "sha256": "495267ea19bb024f9029aaff583368ea04ff55f221a730b69729250d6707b461"
+    },
+    {
+      "address": "0x2d4edd0",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::EraTypes&)",
+      "sha256": "a7695171a09cc43289748975d8d653be8e0ddc5594aa8e7c1ce88fffd435c54b"
+    },
+    {
+      "address": "0x2aee750",
+      "size": 28,
+      "name": "GameCore::Player::Eras::Reset()",
+      "sha256": "58ac0652157cf362ccbfec77d0edc9955333613f9ddc4574c0e6c86e88411d5a"
+    },
+    {
+      "address": "0x2aef1f0",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::EraTypes, GameCore::Player::Eras>::save(Serialization::OStream&) const",
+      "sha256": "3988666dc64dd03ce8fa3652a6e5122bea51155e4f698ab6515f24fd71104a32"
+    },
+    {
+      "address": "0x2036930",
+      "size": 8,
+      "name": "GameCore::Player::Instance::GetEras() const",
+      "sha256": "b38de34690aced1000a31e455940c58b29439104413f8a3d08a90027fb739674"
+    },
+    {
+      "address": "0x2aeecc0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::EraTypes, GameCore::Player::Eras>(Serialization::OStream&, FAutoVariable<GameCore::EraTypes, GameCore::Player::Eras> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2aeece0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::EraTypes, GameCore::Player::Eras>(Serialization::IStream&, FAutoVariable<GameCore::EraTypes, GameCore::Player::Eras>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    }
+  ],
+  "concrete_bindings": [
+    {
+      "site": "0x2aef1ba",
+      "plt": "0x1ef07b0",
+      "body": "0x2d4edd0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2d510b8",
+      "plt": "0x1f08c60",
+      "body": "0x21de190",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d510c6",
+      "plt": "0x1f83f90",
+      "body": "0x2059240",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2aeed0e",
+      "plt": "0x1f56670",
+      "body": "0x2aeede0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aeed18",
+      "plt": "0x1f4be00",
+      "body": "0x2aeece0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d5108d",
+      "plt": "0x1f33f70",
+      "body": "0x2d51730",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d5109e",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee411",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee420",
+      "plt": "0x1f4d9e0",
+      "body": "0x2aeecc0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee432",
+      "plt": "0x1f4d9e0",
+      "body": "0x2aeecc0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d4eda8",
+      "plt": "0x1f0c300",
+      "body": "0x2213b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d4edb5",
+      "plt": "0x1e31d80",
+      "body": "0x2d51080",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee462",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee471",
+      "plt": "0x1f4be00",
+      "body": "0x2aeece0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee4a1",
+      "plt": "0x1f977f0",
+      "body": "0x2aeed00",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d4ede3",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d4edec",
+      "plt": "0x1f0c300",
+      "body": "0x2213b70",
+      "kind": "call"
+    },
+    {
+      "site": "0x2d4edf6",
+      "plt": "0x1e9e3e0",
+      "body": "0x2d510b0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aee765",
+      "plt": "0x1f56670",
+      "body": "0x2aeede0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2aef1fa",
+      "plt": "0x1e91950",
+      "body": "0x2d4eda0",
+      "kind": "jmp"
+    },
+    {
+      "site": "0x2b4f101",
+      "plt": "0x1e03540",
+      "body": "0x2036930",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b4f10c",
+      "plt": "0x1e75d00",
+      "body": "0x2aee400",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b4f114",
+      "plt": "0x1f6db60",
+      "body": "0x1fcd0f0",
+      "kind": "call"
+    },
+    {
+      "site": "0x2b4f11f",
+      "plt": "0x1e397e0",
+      "body": "0x2b92910",
+      "kind": "call"
+    }
+  ],
+  "dwarf_sha256": "21987f0cb7a073ef99b80eefa2a2ab7805f2a0f0dbe640206067b3a8db1b900d",
+  "candidate_source_commit": "9f9891a1c26b6006b85be176186fb26c822e8f84",
+  "candidate_archive_sha256": "e83a9dce5f0cf322763c0e4483751c083e8327021da4e6456780239bfeffc8a7",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "b427fec41eee6f35de9f7d99914a28a707938adb9a4baa36242cbd051e2a52ce",
+    "crates/c6-core/src/core_stream.rs": "330f8a1e555f63daf89c28456040d792e5ddfc61610e71c61c50097f8cddd1b9",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "e6aa72edb692b3a721c0afd1c74a415d46d2852dffe6c68acf5112e9c1be9ffa",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+    "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
+    "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+    "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+    "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+    "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
+    "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+    "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+    "crates/c6-core/src/player_units.rs": "a87c2b6e43fe06850670e2cde1b6fc4e13f455e80b724befec324e9a4a900ef5",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+    "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
+    "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
+    "tools/linux/player_eras_audit.py": "195014bf34ea26cb4fd2f005576991d4284f830e2b454aab5c3cdbf3ee08d991"
+  },
+  "candidate_sha256": "d984d3931d052dbf79aebe3f5fe9cc01e5980da8a7a752b566f9f0b903a323bb",
+  "harness_sha256": "f33686c387b6505735ee09c68d2567fee68aa421a2e4df2546139afc50829082",
+  "audit_source_sha256": "195014bf34ea26cb4fd2f005576991d4284f830e2b454aab5c3cdbf3ee08d991",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": 43,
+      "record_bytes": 516,
+      "first_observed_range": [
+        5191951,
+        5191963
+      ],
+      "ordered_record_digests_sha256": "f15d1e9c17288fe0c2a1b3ac973c4eb6a9a736ee64db2be59097d4e653f7c66e",
+      "typed_observations_sha256": "b074be145187187de3c0d86334e2b3afd745b4e9f0aa0830ba586772f2183fc2"
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": 43,
+      "record_bytes": 516,
+      "first_observed_range": [
+        5191951,
+        5191963
+      ],
+      "ordered_record_digests_sha256": "f15d1e9c17288fe0c2a1b3ac973c4eb6a9a736ee64db2be59097d4e653f7c66e",
+      "typed_observations_sha256": "b074be145187187de3c0d86334e2b3afd745b4e9f0aa0830ba586772f2183fc2"
+    }
+  ],
+  "source_only_tests": 2,
+  "exact_native_record_byte_item_caps_checked": true,
+  "one_short_native_record_byte_cap_rejected": true,
+  "item_cap": "zero fixed-scalar charge; one-short cap inapplicable",
+  "native_every_truncation_rejected": true,
+  "validation_cuts": "adjacent Units end and matching-parent Trade start; Eras has no direct owner hook",
+  "allocation_policy": "aggregate serialized bytes; zero collection items; no dynamic typed storage; fallible wire output reservation",
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_eras_wire": true,
+  "legacy_versions": false,
+  "definition_remapping": false,
+  "native_read_fixups": false,
+  "native_current_read_reset": false,
+  "native_current_read_callbacks": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "next_player_component": "Trade",
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "attribution_reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_role": "discovery_only"
+}
