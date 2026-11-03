@@ -1,5 +1,6 @@
 //! Bounded Linux XP2 City service-component wire records, not live-state application.
-//! Resources admits7/10 with explicit omitted-list effects; other components
+//! Resources admits7/10 with explicit omitted-list effects; Combat admits6/7
+//! with an explicit HP-modifier0 default. Other components
 //! retain their separately checked current versions.
 //! Target SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! W/R: Religion 0x28c28e0/0x28c29b0, Resources 0x28c6190/0x28c6270,
@@ -342,11 +343,11 @@ impl Resources {
         }
     }
 }
-record!(Combat, COMBAT_VERSION, {
+record!(Combat, COMBAT_VERSION, legacy 6, wire_version, {
  outer_defense_strength_modifier:i32, inner_defense_strength_modifier:i32,
  ranged_strike_strength_modifier:i32, siege_protection:bool, anti_air_defense_bonus:i32,
  city_combat_bonus:i32, city_friendly_combat_bonus:i32, attack_range_modifier:i32,
- hit_points_modifier:i32,
+ hit_points_modifier:i32 => (7, 7),
 });
 record!(Trade, TRADE_VERSION, {
  constructed_trading_posts:Vec<bool>, num_foreign_routes_passing_through:i32,
@@ -517,6 +518,56 @@ mod tests {
             }
             v
         }};
+    }
+    #[test]
+    fn combat6_omits_only_hit_points_with_explicit_zero() {
+        let mut bytes = Vec::new();
+        ints(&mut bytes, &[6, -1, 2, -3]);
+        bytes.push(1);
+        ints(&mut bytes, &[4, -5, 6, -7]);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 0,
+        };
+        let (value, used, items) = Combat::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 0));
+        assert_eq!(value.wire_version, 6);
+        assert_eq!(value.hit_points_modifier, 0);
+        assert_eq!(value.attack_range_modifier, -7);
+        assert!(value.siege_protection);
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Combat::decode_prefix(&bytes[..n], limits).is_err(), "{n}");
+        }
+        assert_eq!(
+            Combat::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: end - 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [5i32, 8] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Combat::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 7,
+                    actual: version
+                })
+            );
+        }
+        let mut bad = bytes.clone();
+        bad[16] = 2;
+        assert_eq!(Combat::decode_prefix(&bad, limits), Err(Error::InvalidBool));
+        let current = Combat::decode(&combat(), Limits::default()).unwrap();
+        assert_eq!(current.hit_points_modifier, i32::MIN);
+        assert_eq!(current.encode(Limits::default()).unwrap(), combat());
     }
     #[test]
     fn resources7_omitted_lists_keep_proven_initialization_effects() {
