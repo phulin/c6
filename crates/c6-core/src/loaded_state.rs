@@ -97,6 +97,8 @@ mod tests {
             diplomacy_manager_source: None,
             player_notifications: None,
             player_notifications_source: None,
+            trade_graph: None,
+            trade_graph_source: None,
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -686,6 +688,98 @@ mod tests {
                 .has_been_activated
         );
     }
+    fn trade_graph_carrier(frame: &[u8]) -> (LoadedState, ComponentSnapshotWitness, [u8; 32]) {
+        use sha2::{Digest, Sha256};
+        let mut s = state();
+        let start = s.source_image().len();
+        let mut image = s.source_image().to_vec();
+        image.extend_from_slice(frame);
+        s.binding.core_sha256 = Sha256::digest(&image).into();
+        s.image = CoreImage::Unique(image);
+        let witness = ComponentSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: s.binding.core_sha256,
+            snapshot_bytes: s.source_image().len(),
+            owner_trace_sha256: [5; 32],
+            owner_range: [start, start + frame.len()],
+            decoded_prefix_bytes: frame.len(),
+        };
+        (s, witness, Sha256::digest(frame).into())
+    }
+    #[test]
+    fn trade_graph_admission_rejects_mismatched_frames_atomically() {
+        let bytes = crate::trade::Graph::new(42, vec![])
+            .unwrap()
+            .encode(crate::trade::Limits::default())
+            .unwrap();
+        for case in 0..8 {
+            let (mut s, mut witness, mut hash) = trade_graph_carrier(&bytes);
+            match case {
+                0 => witness.source_role = core_player::initialization::WireRole::ReadInputCore,
+                1 => witness.snapshot_sha256[0] ^= 1,
+                2 => witness.snapshot_bytes += 1,
+                3 => witness.owner_trace_sha256 = [0; 32],
+                4 => witness.owner_range[1] = usize::MAX,
+                5 => witness.decoded_prefix_bytes -= 1,
+                6 => hash[0] ^= 1,
+                _ => witness.owner_range.reverse(),
+            }
+            assert!(s
+                .install_trade_graph(witness, hash, crate::trade::Limits::default())
+                .is_err());
+            assert!(s.trade_graph().is_err());
+            assert!(s.trade_graph_source().is_none());
+            assert_eq!(s.revision(), 0);
+        }
+        let mut trailing = bytes;
+        trailing.push(0);
+        let (mut s, witness, hash) = trade_graph_carrier(&trailing);
+        assert!(matches!(
+            s.install_trade_graph(witness, hash, crate::trade::Limits::default()),
+            Err(Error::TradeGraph(crate::trade_graph_state::Error::Codec(
+                crate::trade::Error::TrailingBytes
+            )))
+        ));
+        assert!(s.trade_graph().is_err());
+        assert!(s.trade_graph_source().is_none());
+    }
+    #[test]
+    fn trade_graph_owner_survives_unrelated_writes_but_cannot_be_replayed_or_late_installed() {
+        let bytes = crate::trade::Graph::new(42, vec![])
+            .unwrap()
+            .encode(crate::trade::Limits::default())
+            .unwrap();
+        let (mut s, witness, hash) = trade_graph_carrier(&bytes);
+        s.install_trade_graph(witness.clone(), hash, crate::trade::Limits::default())
+            .unwrap();
+        assert_eq!(s.revision(), 0);
+        assert!(matches!(
+            s.install_trade_graph(witness.clone(), hash, crate::trade::Limits::default()),
+            Err(Error::AlreadyBound)
+        ));
+        let player = &s.world.players()[0];
+        let owner = player.owner();
+        let id = player.formation_records().unwrap()[0].value.id;
+        s.initialize_formations().unwrap();
+        s.formation_with_runtime_mut(owner, id)
+            .unwrap()
+            .0
+            .moves_remaining_raw = 7;
+        assert_eq!(s.revision(), 1);
+        assert_eq!(s.trade_graph().unwrap().graph().total_edges_created(), 42);
+        assert_eq!(s.trade_graph_source(), Some(&witness));
+        let (mut late, witness, hash) = trade_graph_carrier(&bytes);
+        late.initialize_formations().unwrap();
+        late.formation_with_runtime_mut(owner, id)
+            .unwrap()
+            .0
+            .moves_remaining_raw = 7;
+        assert!(matches!(
+            late.install_trade_graph(witness, hash, crate::trade::Limits::default()),
+            Err(Error::NotPristine)
+        ));
+        assert!(late.trade_graph().is_err());
+    }
     #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
@@ -742,6 +836,7 @@ pub enum Error {
     GameRelations(crate::game_diplomatic_relations::Error),
     DiplomacyManager(crate::diplomacy_manager::Error),
     PlayerNotifications(crate::player_notifications_owner::Error),
+    TradeGraph(crate::trade_graph_state::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -753,6 +848,7 @@ impl std::error::Error for Error {}
 pub enum MissingInput {
     ManagerSlots,
     PlayerNotifications,
+    TradeGraph,
     PlayerConfiguration(i32),
     PlayerTurnActive(i32),
     Player(i32),
@@ -933,6 +1029,8 @@ pub struct LoadedState {
     diplomacy_manager_source: Option<ObservedSnapshotWitness>,
     player_notifications: Option<crate::player_notifications_owner::Owner>,
     player_notifications_source: Option<ComponentSnapshotWitness>,
+    trade_graph: Option<crate::trade_graph_state::GraphState>,
+    trade_graph_source: Option<ComponentSnapshotWitness>,
 }
 fn reserved<T>(n: usize) -> Result<Vec<T>, Error> {
     n.checked_mul(std::mem::size_of::<T>())
@@ -1052,6 +1150,8 @@ impl LoadedState {
             diplomacy_manager_source: None,
             player_notifications: None,
             player_notifications_source: None,
+            trade_graph: None,
+            trade_graph_source: None,
         })
     }
     pub fn world(&self) -> &world::World {
@@ -1132,6 +1232,57 @@ impl LoadedState {
         self.game_relations = Some(owner);
         self.game_relations_source = Some(witness);
         Ok(())
+    }
+    /// Admit one complete, explicitly attributed Graph frame. The producer
+    /// verifies actual owner-trace attribution and resource/module identities;
+    /// this layer verifies the exact source-image/range/hash once, then owns
+    /// immutable source-rebuilt logical keys and paths. No broad prefix parse.
+    pub fn install_trade_graph(
+        &mut self,
+        witness: ComponentSnapshotWitness,
+        frame_sha256: [u8; 32],
+        limits: crate::trade::Limits,
+    ) -> Result<(), Error> {
+        use sha2::{Digest, Sha256};
+        if self.trade_graph.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+            || witness.snapshot_sha256 != self.binding.core_sha256
+            || witness.snapshot_bytes != self.image.as_ref().len()
+            || witness.owner_trace_sha256 == [0; 32]
+            || witness.owner_range[0] >= witness.owner_range[1]
+            || witness.decoded_prefix_bytes != witness.owner_range[1] - witness.owner_range[0]
+        {
+            return Err(Error::Binding);
+        }
+        let frame = self
+            .image
+            .as_ref()
+            .get(witness.owner_range[0]..witness.owner_range[1])
+            .ok_or(Error::Binding)?;
+        if <[u8; 32]>::from(Sha256::digest(frame)) != frame_sha256 {
+            return Err(Error::Binding);
+        }
+        let graph = crate::trade_graph_state::GraphState::decode(frame, limits)
+            .map_err(Error::TradeGraph)?;
+        self.trade_graph = Some(graph);
+        self.trade_graph_source = Some(witness);
+        Ok(())
+    }
+    /// Point queries do not scan source hashes or consult a global revision.
+    /// Graph remains owned across unrelated Unit writes. Any future operation
+    /// affecting this graph must apply its exact edits or reject before success.
+    pub fn trade_graph(&self) -> Result<&crate::trade_graph_state::GraphState, Error> {
+        self.trade_graph
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::TradeGraph))
+    }
+    pub fn trade_graph_source(&self) -> Option<&ComponentSnapshotWitness> {
+        self.trade_graph_source.as_ref()
     }
     /// Admit the complete saved notification owner once, without inferring live
     /// lock/default-blocking/pool/subtype state. The producer authenticates the

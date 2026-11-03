@@ -398,3 +398,7 @@ pub mod trade_read_order;
 pub mod diplomacy_manager;
 
 pub mod player_notifications_owner;
+
+pub mod trade_graph_state;
+
+pub mod game_techs;
