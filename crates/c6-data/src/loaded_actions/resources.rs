@@ -13,7 +13,7 @@ use crate::{
 };
 use c6_core::{
     core_player::initialization::{WireBinding, WireRole},
-    loaded_state::{ControlInputs, LoadedState, PlayerControls},
+    loaded_state::{ControlInputs, LoadedState, ObservedSnapshotWitness, PlayerControls},
     movement_world::{DefinitionLookup, DefinitionTable},
     skip_turn::placement::{UnitProperties, WarRelations},
     unit_initialization::UnitDefinition,
@@ -32,6 +32,7 @@ pub enum Error {
     Shape(&'static str),
     Definitions(crate::unit_operation_manager::Error),
     World(c6_core::movement_world::MissingInput),
+    State(c6_core::loaded_state::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -316,7 +317,10 @@ impl Resources {
         target_runtime: &[u8],
     ) -> Result<Bound<'a>, Error> {
         self.bind_identity(state.binding(), target_runtime)?;
-        Ok(Bound { resources: self })
+        Ok(Bound {
+            resources: self,
+            binding: state.binding().clone(),
+        })
     }
     fn bind_identity(&self, binding: &WireBinding, target_runtime: &[u8]) -> Result<(), Error> {
         let runtime = parse(target_runtime)?;
@@ -339,6 +343,7 @@ impl Resources {
 /// Only immutable resource methods are available after cross-profile binding.
 pub struct Bound<'a> {
     resources: &'a Resources,
+    binding: WireBinding,
 }
 impl Bound<'_> {
     /// Reuse only the immutable resource comparison after a caller has admitted
@@ -377,53 +382,103 @@ impl Bound<'_> {
     pub fn configured_phase_hash(&self) -> u32 {
         self.resources.configured_phase_hash
     }
-    /// Fresh saved-snapshot diagnostics only. Matching immutable resources do
-    /// not permit transplanting mutable war/membership/turn/pause fields into a
-    /// ReadInputCore, native3 live state, or a World already advanced by actions.
-    /// The caller must use an untouched decode of this associated SavedOutput.
-    pub fn snapshot_diagnostic<'a>(
-        &'a self,
-        state: &LoadedState,
-    ) -> Result<SnapshotDiagnostic<'a>, Error> {
-        self.snapshot_binding(state.binding())?;
-        Ok(SnapshotDiagnostic {
+    /// Admit mutable captured state exactly once on a pristine matching image.
+    /// The observed source remains SavedOutput provenance even when its bytes
+    /// were framed by a separately attributed native Read; decode role is kept.
+    /// This installs controls, and transfers one owned mutable war sidecar.
+    pub fn admit_observed_snapshot(&self, state: &mut LoadedState) -> Result<SnapshotState, Error> {
+        if !state.is_pristine() {
+            return Err(Error::State(c6_core::loaded_state::Error::NotPristine));
+        }
+        if state.binding() != &self.binding {
+            return Err(Error::Identity("snapshot destination binding differs"));
+        }
+        self.snapshot_binding(state.binding(), state.source_image())?;
+        let facts = SnapshotFacts {
             resources: self.resources,
             binding: state.binding().clone(),
-        })
+        };
+        let controls = facts.controls()?;
+        let witness = ObservedSnapshotWitness {
+            source_role: WireRole::SavedOutputCore,
+            snapshot_sha256: digest_literal(SNAPSHOT),
+            snapshot_bytes: 80_657_462,
+            capture_runtime_sha256: digest_literal(
+                "e70d0b5f9fdd62d720f6c6929165da7a4f2e290c382b89bf595171b1f935e62a",
+            ),
+            capture_facts_sha256: digest_literal(
+                "b4922e0312310664d7ba59034d32b3118ab3ea78cdad45321926fa73e9cefc23",
+            ),
+            capture_configuration_sha256: digest_literal(
+                "9022128238f6209173eec2532b47405721780f1e2a105808ee9084306ebc2f33",
+            ),
+        };
+        // Prepare owned data before consuming core's one-shot admission. A
+        // failure never leaves reusable controls or a half-installed sidecar.
+        let sidecar = SnapshotState {
+            war_types: self.resources.war_types.clone(),
+            war_player_count: self.resources.war_player_count,
+            plot_unit_limit: self.resources.plot_unit_limit,
+            provenance: facts.provenance(),
+        };
+        state
+            .bind_observed_snapshot_controls(witness, controls)
+            .map_err(Error::State)?;
+        Ok(sidecar)
     }
-    fn snapshot_binding(&self, binding: &WireBinding) -> Result<(), Error> {
-        if binding.role != WireRole::SavedOutputCore
-            || binding
-                .core_sha256
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>()
-                != SNAPSHOT
+    fn snapshot_binding(&self, binding: &WireBinding, source: &[u8]) -> Result<(), Error> {
+        if binding.core_sha256 != digest_literal(SNAPSHOT)
+            || source.len() != 80_657_462
+            || hash(source) != SNAPSHOT
         {
             return Err(Error::Identity(
-                "mutable facts require associated SavedOutput diagnostic",
+                "mutable facts require full matching associated snapshot bytes",
             ));
         }
         Ok(())
     }
 }
-/// Original mutable facts stay visibly separate from the static definition view.
-/// This is not native Read/live-state acceptance and supplies no script backend.
-pub struct SnapshotDiagnostic<'a> {
+fn digest_literal(value: &str) -> [u8; 32] {
+    std::array::from_fn(|i| {
+        u8::from_str_radix(&value[i * 2..i * 2 + 2], 16).expect("compiled original digest")
+    })
+}
+/// Authoritative mutable sidecar transferred once from its original snapshot.
+/// Keep it with the LoadedState on which it was admitted. This is state access,
+/// not an API for reissuing the original controls or war vector after mutation.
+/// No native Read/live-state acceptance or script backend is established.
+pub struct SnapshotState {
+    war_types: Vec<i32>,
+    war_player_count: i32,
+    plot_unit_limit: i32,
+    provenance: Value,
+}
+impl SnapshotState {
+    pub fn relations(&self) -> WarRelations<'_> {
+        WarRelations {
+            player_count: self.war_player_count,
+            war_types: &self.war_types,
+        }
+    }
+    /// Direct access to this owned gameplay state for a faithful provider. It
+    /// does not implement or admit any diplomatic operation by itself.
+    pub fn war_types_mut(&mut self) -> &mut [i32] {
+        &mut self.war_types
+    }
+    pub fn plot_unit_limit(&self) -> i32 {
+        self.plot_unit_limit
+    }
+    pub fn provenance(&self) -> &Value {
+        &self.provenance
+    }
+}
+// Only the one-shot installation path can construct original controls.
+struct SnapshotFacts<'a> {
     resources: &'a Resources,
     binding: WireBinding,
 }
-impl SnapshotDiagnostic<'_> {
-    pub fn relations(&self) -> WarRelations<'_> {
-        WarRelations {
-            player_count: self.resources.war_player_count,
-            war_types: &self.resources.war_types,
-        }
-    }
-    pub fn plot_unit_limit(&self) -> i32 {
-        self.resources.plot_unit_limit
-    }
-    pub fn controls(&self) -> Result<ControlInputs, Error> {
+impl SnapshotFacts<'_> {
+    fn controls(&self) -> Result<ControlInputs, Error> {
         let mut mapping = [-1; 65];
         let mut present = [false; 65];
         let mut players = Vec::new();
@@ -492,8 +547,8 @@ impl SnapshotDiagnostic<'_> {
             pause_storage: Some(pause),
         })
     }
-    pub fn provenance(&self) -> Value {
-        json!({"scope":"associated_saved_snapshot_diagnostic","snapshot_sha256":SNAPSHOT,"mutable_state_transferred_to_read_or_live":false,"script_callbacks_inspected":false,"native3_live_state_acceptance":false,"mutable_source_facts":{"placement":"b4922e0312310664d7ba59034d32b3118ab3ea78cdad45321926fa73e9cefc23","manager":"3fd5b6e64b5f81e06fc06187b9dae53691ddb536a6fc0b03f6f728d759dea585"},"same_saved_snapshot_independent_capture_processes":true,"unsaved_controls_are_not_native3_admission":true})
+    fn provenance(&self) -> Value {
+        json!({"scope":"associated_saved_snapshot_diagnostic","snapshot_sha256":SNAPSHOT,"decode_role_unchanged":true,"observed_controls_source_role":"SavedOutputCore","native_read_process_controls_claimed":false,"script_callbacks_inspected":false,"native3_live_state_acceptance":false,"mutable_source_facts":{"placement":"b4922e0312310664d7ba59034d32b3118ab3ea78cdad45321926fa73e9cefc23","manager":"3fd5b6e64b5f81e06fc06187b9dae53691ddb536a6fc0b03f6f728d759dea585"},"same_saved_snapshot_independent_capture_processes":true,"unsaved_controls_are_not_native3_admission":true})
     }
 }
 
@@ -528,9 +583,6 @@ mod tests {
                 content_inputs_sha256: [0; 32],
             },
         }
-    }
-    fn digest_literal(value: &str) -> [u8; 32] {
-        std::array::from_fn(|i| u8::from_str_radix(&value[i * 2..i * 2 + 2], 16).unwrap())
     }
     #[test]
     #[ignore = "requires admitted private placement/Manager capture artifacts; no original execution"]
@@ -576,25 +628,28 @@ mod tests {
     }
     #[test]
     #[ignore = "requires admitted private placement/Manager capture artifacts; no original execution"]
-    fn mutable_capture_facts_cannot_initialize_read_input_or_different_snapshot() {
+    fn mutable_snapshot_binding_checks_full_bytes_and_keeps_observed_source_separate() {
         let (placement, manager) = roots();
         let resources = Resources::from_closed_captures(&placement, &manager).unwrap();
+        let runtime = parse(&std::fs::read(manager.join("runtime.json")).unwrap()).unwrap();
+        let b = binding(&runtime, WireRole::ReadInputCore, digest_literal(SNAPSHOT));
         let bound = Bound {
             resources: &resources,
+            binding: b.clone(),
         };
-        let runtime = parse(&std::fs::read(manager.join("runtime.json")).unwrap()).unwrap();
-        let mut b = binding(&runtime, WireRole::ReadInputCore, digest_literal(SNAPSHOT));
-        assert!(bound.snapshot_binding(&b).is_err());
-        b.role = WireRole::SavedOutputCore;
-        b.core_sha256 = [0; 32];
-        assert!(bound.snapshot_binding(&b).is_err());
-        b.core_sha256 = digest_literal(SNAPSHOT);
-        bound.snapshot_binding(&b).unwrap();
-        let snapshot = SnapshotDiagnostic {
+        let source = std::fs::read(placement.join("save.bin")).unwrap();
+        bound.snapshot_binding(&b, &source).unwrap();
+        assert!(bound
+            .snapshot_binding(&b, &source[..source.len() - 1])
+            .is_err());
+        let mut wrong = b.clone();
+        wrong.core_sha256 = [0; 32];
+        assert!(bound.snapshot_binding(&wrong, &source).is_err());
+        let facts = SnapshotFacts {
             resources: &resources,
             binding: b,
         };
-        let controls = snapshot.controls().unwrap();
+        let controls = facts.controls().unwrap();
         assert_eq!(controls.players.len(), 43);
         assert_eq!(
             controls
@@ -604,12 +659,10 @@ mod tests {
                 .count(),
             1
         );
+        assert_eq!(controls.binding.role, WireRole::ReadInputCore); // destination decode role survives
         assert_eq!(controls.processing_automation, Some(-1));
         assert_eq!(controls.pause_storage, Some(0));
-        assert_eq!(snapshot.relations().war_types.len(), 2016);
-        assert_eq!(
-            snapshot.provenance()["native3_live_state_acceptance"],
-            false
-        );
+        assert_eq!(resources.war_types.len(), 2016);
+        assert_eq!(facts.provenance()["native3_live_state_acceptance"], false);
     }
 }
