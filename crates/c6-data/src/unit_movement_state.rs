@@ -7,7 +7,7 @@ use crate::{
     Rules, SqlValue,
 };
 use c6_core::{
-    core_player::initialization::{InputIdentities, WireBinding},
+    core_player::initialization::InputIdentities,
     loaded_components::RetainedPlayer,
     loaded_state::{Error as StateError, LoadedState},
     map::{Map, Plot, PlotFlag},
@@ -27,7 +27,7 @@ pub enum Error {
     Player(i32),
     Map,
     District,
-    AllianceState,
+    Relations(c6_core::game_diplomatic_relations::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -90,6 +90,9 @@ impl Definitions {
         bound: &Bound<'_>,
         rules_runtime: &[u8],
     ) -> Result<Self, Error> {
+        if bound.destination_binding() != state.binding() {
+            return Err(Error::Binding);
+        }
         unit_initialization_definitions::Definitions::validate_resources(
             rules,
             bound,
@@ -155,44 +158,10 @@ fn parameter(rules: &Rules, name: &'static str) -> Result<i32, Error> {
     }
 }
 
-/// Actual Game.DiplomaticRelations alliance vector first words, in its native
-/// triangular order. This is mutable state, never a HasAllied answer. A capture
-/// can be used only at its admitted LoadedState revision; updates must rebind.
-#[derive(Clone, Copy)]
-pub struct AllianceState<'a> {
-    pub binding: &'a WireBinding,
-    pub revision: u64,
-    pub player_count: i32,
-    pub alliance_types: &'a [i32],
-}
-impl AllianceState<'_> {
-    fn allied(&self, state: &LoadedState, a: i32, b: i32) -> Result<bool, Error> {
-        if self.binding != state.binding() || self.revision != state.revision() {
-            return Err(Error::Binding);
-        }
-        allied(self.player_count, self.alliance_types, a, b)
-    }
-}
-fn allied(n: i32, values: &[i32], a: i32, b: i32) -> Result<bool, Error> {
-    if a == b {
-        return Ok(false);
-    }
-    let total = n.wrapping_sub(1).wrapping_mul(n) >> 1;
-    if total < 0 || values.len() != total as usize {
-        return Err(Error::AllianceState);
-    }
-    let high = a.max(b);
-    let triangle = high.wrapping_add(1).wrapping_mul(high) >> 1;
-    let index = a.min(b).wrapping_sub(triangle).wrapping_add(total);
-    values
-        .get(index as usize)
-        .map(|v| *v != -1)
-        .ok_or(Error::AllianceState)
-}
-
+/// Static definition inputs only. Mutable alliances are owned by LoadedState
+/// and remain current across unrelated Unit queue/timer/activity writes.
 pub struct Inputs<'a> {
     pub definitions: &'a Definitions,
-    pub alliances: Option<AllianceState<'a>>,
 }
 fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
     state
@@ -305,12 +274,7 @@ fn plot_movement_cost(
     }
     Ok(cost)
 }
-fn territory_bonus(
-    state: &LoadedState,
-    unit: &Unit,
-    plot: &Plot,
-    inputs: &Inputs<'_>,
-) -> Result<i32, Error> {
+fn territory_bonus(state: &LoadedState, unit: &Unit, plot: &Plot) -> Result<i32, Error> {
     let friendly = unit
         .k_movement_modifiers
         .i_friendly_territory_start_movement;
@@ -334,8 +298,12 @@ fn territory_bonus(
     if friendly == enemy {
         return Ok(friendly);
     }
-    let alliances = inputs.alliances.as_ref().ok_or(Error::AllianceState)?;
-    if alliances.allied(state, unit.e_owner, owner)? {
+    if state
+        .game_relations()
+        .map_err(Error::State)?
+        .is_allied(unit.e_owner, owner)
+        .map_err(Error::Relations)?
+    {
         Ok(friendly)
     } else {
         Ok(enemy)
@@ -395,7 +363,7 @@ pub fn unit_max_moves(state: &LoadedState, unit: &Unit, inputs: &Inputs<'_>) -> 
         {
             moves = moves.wrapping_add(modifiers.i_clear_terrain_start_movement);
         }
-        moves = moves.wrapping_add(territory_bonus(state, unit, plot, inputs)?);
+        moves = moves.wrapping_add(territory_bonus(state, unit, plot)?);
     }
     Ok(moves)
 }
@@ -442,12 +410,5 @@ mod tests {
             i32::MIN
         );
         assert_eq!(diplomatic_bonus(&[row(2, 100, 9)], &[0; 10], 0), 0);
-    }
-    #[test]
-    fn alliances_use_actual_triangular_values_and_same_player_shortcut() {
-        assert!(!allied(0, &[], 2, 2).unwrap());
-        assert!(allied(3, &[4, -1, -1], 0, 2).unwrap());
-        assert!(!allied(3, &[4, -1, -1], 0, 1).unwrap());
-        assert!(matches!(allied(3, &[], 0, 1), Err(Error::AllianceState)));
     }
 }
