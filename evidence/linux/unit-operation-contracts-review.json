@@ -1,0 +1,285 @@
+{
+  "schema": "c6-linux-unit-operation-contracts-independent-review-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "immutable_sources": {
+    "manager": {
+      "commit": "6126bab4758fd9dd4e14ce703ed7e3d7a5e94353",
+      "files": {
+        "crates/c6-core/src/unit_operation_legality.rs": "50a0d57a5b5324477f9de2c975a8248550b7188d2abe7d1e58e5bf7cf9ff4d68",
+        "tools/linux/unit_operation_manager_audit.py": "5cdc10e0bb744da40c82b64dc920b9d040429da8a2d18829a802b94b2fa17737",
+        "evidence/linux/unit-operation-manager.json": "d2d1860804e6b00c289ab5102c81f4e99f634b6e1981358836947f7ab78d1c11"
+      }
+    },
+    "aftermath": {
+      "commit": "14ada2f5969529af0ed6cb49c5e092be68d6399d",
+      "files": {
+        "crates/c6-core/src/unit_operation_aftermath.rs": "5ca5a4fbfa05a5af6d194790dd20bc7d3fda26798665856d8713d6229d706a96",
+        "tools/linux/unit_operation_aftermath_audit.py": "997c15b0e4acaf6b1807e8ae44442971eb501be2b5867e019d492d9765f3e4be",
+        "evidence/linux/unit-operation-aftermath.json": "71208cc777d7fd5f44f94252c22077c3d7efdb5906eb2ead4be53f79b4f4928f"
+      }
+    },
+    "reporting": {
+      "commit": "f5b16f142cd15501ba256825e6b3c1697f215fd3",
+      "files": {
+        "crates/c6-core/src/reporting_dirty_components.rs": "f1fde81ff4f0cb1b31fc3b67935d855034adc7dc1e20956ab241adf10459e3f8",
+        "tools/linux/skip_turn_reporting_closure_audit.py": "5830471c5307f6d7daab35a157a57054bf8a787f2d22c5e8a2ed0ab002d4d6fa",
+        "evidence/linux/skip-turn-reporting-closure.json": "f2e5d83cdb4294dc8096e7b6a96aa4870ae2d5bbd65dd54876b33439a1dc2772"
+      }
+    }
+  },
+  "independent_full_gamecore_methods": [
+    {
+      "name": "Manager.CanStart",
+      "rva": "0x2da20f0",
+      "bytes": 579,
+      "sha256": "573164c5e12ad82eeb6761d2492634ae376ae6de63526a3b94cf0608d8550927"
+    },
+    {
+      "name": "Manager.CanCurrentOperationBeInterrupted",
+      "rva": "0x2da2a60",
+      "bytes": 116,
+      "sha256": "6b2b1cbb8b18460cf4fb4f4f7a8000cd6f42ae2108cab549666eb1a387772ebe"
+    },
+    {
+      "name": "UnitOperation.Execute",
+      "rva": "0x2d28a00",
+      "bytes": 176,
+      "sha256": "5855bdbd2ae7837445bd71020d7b9f11f713997b487f3ba8b5dfc65c7d046e26"
+    },
+    {
+      "name": "Diplomacy.ProcessPending",
+      "rva": "0x2913510",
+      "bytes": 178,
+      "sha256": "ed5dc2a1bf712220260dc946a9e16358d750f0b35b407e563edf790c9f3e2f57"
+    },
+    {
+      "name": "Diplomacy.ProcessPendingSessionStatement",
+      "rva": "0x2911900",
+      "bytes": 166,
+      "sha256": "6fd2f96ae52b08c464dc928bc908bb511d6f8f15294a467a46e609c010316b7e"
+    },
+    {
+      "name": "Session.RemoveNextPendingStatement",
+      "rva": "0x2917270",
+      "bytes": 227,
+      "sha256": "248c35ba6a613b87fb070882bdc1e2d0fd03f2a2b77fbd358d264ab158ad74f1"
+    },
+    {
+      "name": "Player.UpdateEndTurnBlocking",
+      "rva": "0x2b5bd70",
+      "bytes": 155,
+      "sha256": "8f538f3279686211e26ca7d445cb225beb6a031bba7198eb033ca942cce207f5"
+    },
+    {
+      "name": "Player.SetEndTurnBlocking",
+      "rva": "0x2b5be10",
+      "bytes": 82,
+      "sha256": "e20044c8a217e29d4f7fc297bffbfe836f656c7b99b7ed7db376bef55f18d521"
+    },
+    {
+      "name": "Notification.Update",
+      "rva": "0x2d2f360",
+      "bytes": 103,
+      "sha256": "58ea20bc985c8329a6026aba44f6f333bbac22709a3b308e93667c772fb73d2a"
+    },
+    {
+      "name": "Notification.SendAutoNotify",
+      "rva": "0x2d2f4b0",
+      "bytes": 236,
+      "sha256": "f5fb1fb0d34e558a55fd16682cdbcdb260abaea93799e353155e51cfeddf89ab"
+    },
+    {
+      "name": "Notification.ProcessAutoActivate",
+      "rva": "0x2d2f5a0",
+      "bytes": 151,
+      "sha256": "b920adcb274714c96a02dbb4498d7348a2b39849645faffc124dba1fe542b294"
+    },
+    {
+      "name": "PlayerNotifications.GetBlocking",
+      "rva": "0x2d31060",
+      "bytes": 201,
+      "sha256": "261606a6e330578b124b6d16e439e042ab07ed740c1761f14d657bb338f795d4"
+    },
+    {
+      "name": "PlayerNotifications.DismissExpired",
+      "rva": "0x2d31130",
+      "bytes": 161,
+      "sha256": "0b3f5b2ecb7b0630c573b8a2ed6c3c37cf8a65da5f6f630a1d0a471f807dca45"
+    },
+    {
+      "name": "Instance.IsExpired",
+      "rva": "0x2d2e250",
+      "bytes": 50,
+      "sha256": "7abbd8a56f6b5af7410114d7cd39d0002d468c4bec00ff3683fab8640d8d66a7"
+    }
+  ],
+  "independent_full_host_methods": [
+    {
+      "name": "DirtyComponents.Add",
+      "rva": "0x32b5950",
+      "bytes": 86,
+      "sha256": "1f4235247163eba5152a3010fbb5f27a940bf74284dd888757f30869529dd3c2"
+    },
+    {
+      "name": "ComponentsArray.SetDirty",
+      "rva": "0x32b5f90",
+      "bytes": 66,
+      "sha256": "ae43abdb887ee6fd52a14001c01dca33c7c46ac9a7998e10134913cc240408b3"
+    },
+    {
+      "name": "ComponentID.Equal",
+      "rva": "0x2fb7350",
+      "bytes": 34,
+      "sha256": "565a5536704f1c2eda96270c96177cd8dea251e96a1c60e185c70c2ab5c49f80"
+    }
+  ],
+  "receiver_order_sites": [
+    {
+      "rva": "0x2d2f5ac",
+      "bytes": "e8ff8410ff4989c6",
+      "meaning": "Configuration retained before accepts callback"
+    },
+    {
+      "rva": "0x2d2f5e4",
+      "bytes": "e8e7f613ff4989c7",
+      "meaning": "PlayerNotifications retained before network query"
+    },
+    {
+      "rva": "0x2d2f60e",
+      "bytes": "4c89ff89ee",
+      "meaning": "Activation rescan reuses captured PlayerNotifications"
+    },
+    {
+      "rva": "0x2d2f53e",
+      "bytes": "e88df713ff4989c4",
+      "meaning": "Factory result followed by captured PlayerNotifications"
+    },
+    {
+      "rva": "0x2d2f569",
+      "bytes": "4889e74c89e64889da",
+      "meaning": "Add uses same captured collection after Send"
+    },
+    {
+      "rva": "0x2b5bd99",
+      "bytes": "89c54c89f7",
+      "meaning": "Blocking result precedes another original Player ID read"
+    },
+    {
+      "rva": "0x2b5be24",
+      "bytes": "899fa8070000",
+      "meaning": "Store on original Player receiver before GetID/local query"
+    }
+  ],
+  "checked_base_and_xp2_manager_virtual_bindings": [
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0x68",
+      "target": "0x2d2f000"
+    },
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0x98",
+      "target": "0x2d2f360"
+    },
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0xa0",
+      "target": "0x2d2f330"
+    },
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0x108",
+      "target": "0x2d2f4a0"
+    },
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0x110",
+      "target": "0x2d2f4b0"
+    },
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0x118",
+      "target": "0x2d2f5a0"
+    },
+    {
+      "addresspoint": "0x3af6300",
+      "slot": "0x120",
+      "target": "0x2d2f640"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0x68",
+      "target": "0x2d2f000"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0x98",
+      "target": "0x2d2f360"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0xa0",
+      "target": "0x2d2f330"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0x108",
+      "target": "0x2d2f4a0"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0x110",
+      "target": "0x2d2f4b0"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0x118",
+      "target": "0x2d2f5a0"
+    },
+    {
+      "addresspoint": "0x3afb660",
+      "slot": "0x120",
+      "target": "0x2d2f640"
+    }
+  ],
+  "driver_sha256": "0d11a574c89e786c9f023ff8e5124b698097f365b302d5b14d07337033ef491f",
+  "review_verdict": "Bounded source control-flow contracts accepted conditionally on faithful live providers; no native gameplay acceptance.",
+  "reviewed_checkpoints": {
+    "manager": "6126bab",
+    "aftermath_initial_rejected": "a6eccef",
+    "aftermath_repaired": "14ada2f",
+    "reporting": "f5b16f1"
+  },
+  "repaired_findings": [
+    "Configuration/collection/Manager/Owner receiver capture order and repeated owner ID reads",
+    "Node cursor identity separate from notification object identity; captured list end"
+  ],
+  "independently_run_tests": {
+    "manager_grouped_tests": 5,
+    "aftermath_grouped_tests": 12,
+    "reporting_grouped_tests": 2,
+    "failures": 0
+  },
+  "independently_rerun_implementation_audits": {
+    "manager_full_methods": 42,
+    "manager_call_edges": 56,
+    "aftermath_full_methods": 12,
+    "reporting_full_methods": 23,
+    "reporting_call_sites": 5,
+    "all_passed": true
+  },
+  "static_only": true,
+  "original_execution_performed": false,
+  "synthetic_tests_are_native_parity": false,
+  "live_providers_supplied": false,
+  "production_engine_gameplay_supported": false,
+  "complete_gameplay_state_action_rng_turns_supported": false,
+  "raw_save_load_failure_bytes": 89198,
+  "unknown_save_bytes_masked": false,
+  "allocation_scope": "Manager orchestration has no production allocation; providers retain original effects. No whole-action performance claim. Reporting capacity/allocation state remains unmodeled.",
+  "clone_limit": "Clone alone cannot roll back external/shared/global effects. Lower-level provider errors can retain partial effects.",
+  "external_policy": "All genuine player decisions require external policy; no native AI planning/deal/NPC/RNG blanket exclusion.",
+  "reporting_scope": "Concrete one-identity ordered fanout/dedup only; live registry/receivers/allocator and complete reporting consumers remain required."
+}
