@@ -6,7 +6,7 @@
   "preload_sha256": "ca4a1212111b0bcd3bd708bd4c6d9c3f2ec7f6ff59ccf732ea33996e68f79e5f",
   "candidate_manifest_sha256": "348ee77d2d1ea9c8eaaf74d1a5abc5e1228baca16bee8536b2fc56ad2604f186",
   "capture_path": "/home/phulin/c6-ghidra/evidence/linux-unit-operation-manager-metadata/native-1",
-  "runtime_sha256": null,
+  "runtime_sha256": "5b68cfff7a3c88033694df0ef5f882a43dc780700e5ca4b194e312ca115b3740",
   "checker_sources": {
     "tools/linux/unit_operation_manager_reconstruction_results.py": "584322e1ad0d635dff8c2e13fca4e577a45b97d2db02fc291f902b501958df9e",
     "tools/linux/map_state_audit.py": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b",
