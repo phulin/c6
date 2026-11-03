@@ -22,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--assets', type=Path, default=ROOT.parent / 'c6-assets-linux')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--raw-input', type=Path, help='optional immutable committed-source Rust-only prefix probe')
     args = parser.parse_args()
     module = args.assets / 'libGameCore_XP2.so'
     read = elf(module, TARGET)
@@ -57,6 +58,9 @@ def main():
         reference_revision='5af389445118bed2bdebf7a8a42b219c8fba5175', reference_role='discovery only',
         attribution='cru121 reference findings, CC BY 4.0',
         audit_source_sha256=sha(Path(__file__).read_bytes()))
+    if args.raw_input:
+        from game_header_versions_audit import raw_probe
+        report['raw_diagnostic'] = raw_probe(args.raw_input)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
     print(json.dumps(dict(checks_passed=True, output=str(args.output))))

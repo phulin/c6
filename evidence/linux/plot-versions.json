@@ -1,7 +1,7 @@
 {
   "actions": false,
   "attribution": "cru121 reference findings, CC BY 4.0",
-  "audit_source_sha256": "6119c7428517c5ab1bc72414db25bcb61a96980be6a59615b00aa108eca05433",
+  "audit_source_sha256": "5dee8c14ae0627a16153ae591d9b9af6afe5657c9fe6d7c556963923e08c4023",
   "collection_wire": "i32 version, u32 count, consecutive unversioned records",
   "complete_gameplay_state": false,
   "constructor_findings": {
@@ -62,6 +62,28 @@
   "native_differential_fixture_added": false,
   "native_heap_and_definition_reconstruction": false,
   "original_code_executed": false,
+  "raw_diagnostic": {
+    "candidate_sha256": "f60884a080cf40a0f599ec4dff1e4daa0ee8236be663a584983390ec50417be1",
+    "complete_raw_load": false,
+    "generated_lock_sha256": "76ef40053c1a96f3214e48bc308c3158c8013e98874f4b371c0a2c2d10d7c50f",
+    "generated_manifest_sha256": "e97cb6f0fe1a52093e62f07f2b56ddf2e90980e7938d3a11fdf288fca5ff042d",
+    "next_semantic_boundary": {
+      "actual_version": 6,
+      "expected_version": 7,
+      "identified_by": "Rust candidate GDB stack: FeatureComponent::read at map/components.rs:177, child Reader.pos=0",
+      "owner": "Map.Component.Feature"
+    },
+    "original_code_executed": false,
+    "probe_source_sha256": "7bbf7d51622130ca334a4ca886eb4cf2418652b659003ab70d6e877f148567c6",
+    "raw_input_bytes": 76556938,
+    "raw_input_sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
+    "result_lines": [
+      "prefix_error Map(UnsupportedVersion { expected: 7, actual: 6 })"
+    ],
+    "retained_source_archive": "target/linux/game-header-versions/0ebbbdcf8ad34bf09661ab9f364ee5ce/committed-source.tar",
+    "source_archive_sha256": "c0861cd558536460b097002c12dcc154e36283ace15c0ccc17ae676eab29c898",
+    "source_revision": "dd19808b9941da4ad0d75a0142721f165378ad34"
+  },
   "reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
   "reference_role": "discovery only",
   "schema": "c6-linux-plot-versions-v1",
