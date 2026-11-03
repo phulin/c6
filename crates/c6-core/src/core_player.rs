@@ -1,7 +1,10 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Districts.
-//! Stops before unframed NameManager; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete Culture.
+//! Stops before unframed Espionage; this is not a Player/world/gameplay importer.
 use crate::unit::{self, Formation, Limits, PlotCoord};
-use crate::{city, map, player_components as pc, player_diplomacy, player_districts};
+use crate::{
+    city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
+    player_name_manager,
+};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
@@ -17,6 +20,8 @@ pub enum Error {
     City(city::Error),
     Diplomacy(player_diplomacy::Error),
     Districts(player_districts::Error),
+    NameManager(player_name_manager::Error),
+    Culture(player_culture::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -59,6 +64,14 @@ pub struct PlayerHeader {
     pub project_hash: u32,
     pub final_scalar: i32,
 }
+impl PlayerHeader {
+    /// Saved Player47 m_bIsAlive (first ordered bool); this does not establish
+    /// initialized validity, configuration, team/human status or Read fixups.
+    /// Exact Linux source contract: docs/linux-player-header-control.md.
+    pub fn saved_is_alive(&self) -> bool {
+        self.ordered_flags[0]
+    }
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct Cities {
     pub records: map::Recycled<city::City>,
@@ -87,13 +100,15 @@ pub struct FirstPlayer {
     pub cities: Cities,
     pub diplomacy: player_diplomacy::Diplomacy,
     pub districts: player_districts::Districts,
+    pub name_manager: player_name_manager::NameManager,
+    pub culture: player_culture::Culture,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerNameManager,
+    PlayerEspionage,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -101,7 +116,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerNameManager.
+    /// No complete Player entry has been consumed at PlayerEspionage.
     pub unfinished_player_entries: u32,
 }
 
@@ -385,6 +400,14 @@ impl Prefix {
                 player_districts::Districts::decode_prefix_with_items,
                 Error::Districts,
             )?;
+            let name_manager = r.component(
+                player_name_manager::NameManager::decode_prefix_with_items,
+                Error::NameManager,
+            )?;
+            let culture = r.component(
+                player_culture::Culture::decode_prefix_with_items,
+                Error::Culture,
+            )?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -395,10 +418,12 @@ impl Prefix {
                 cities,
                 diplomacy,
                 districts,
+                name_manager,
+                culture,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerNameManager
+            Boundary::PlayerEspionage
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -514,6 +539,246 @@ mod tests {
         value.visibility_source_hashes = vec![u32::MAX, 0x80000000];
         value
     }
+    // Arbitrary explicit source-wire fields; no runtime constructor defaults.
+    fn culture_carrier() -> player_culture::Culture {
+        use crate::player_culture as pculture;
+        pculture::Culture {
+            current_government_hash: 3735879680,
+            post_anarchy_government_hash: 3735879681,
+            anarchy_end_turn: -9998,
+            turn_adopted: -9997,
+            modified_boost: -9996,
+            government_change_considered: true,
+            government_unlocked: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            government_usage_count: vec![
+                unit::HashValue {
+                    definition_hash: 0x80000000,
+                    value: i32::MIN,
+                },
+                unit::HashValue {
+                    definition_hash: 0x80000000,
+                    value: i32::MAX,
+                },
+            ],
+            last_government_used: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: 0x80000000,
+            }],
+            policy_unlocked: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            policy_purchased: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            policy_has_been_enacted: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            policy_is_in_place: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            policy_banned: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            active_policies: pculture::GovernmentSlots {
+                entries: vec![pculture::GovernmentSlot {
+                    policy_hash: u32::MAX,
+                    slot_ordinal: -3,
+                }],
+            },
+            modified_slots: pculture::GovernmentSlots {
+                entries: vec![pculture::GovernmentSlot {
+                    policy_hash: u32::MAX,
+                    slot_ordinal: -3,
+                }],
+            },
+            modified_removed_slots: pculture::GovernmentSlots {
+                entries: vec![pculture::GovernmentSlot {
+                    policy_hash: u32::MAX,
+                    slot_ordinal: -3,
+                }],
+            },
+            has_civic: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            boost_triggered: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            cultural_progress_bits: vec![
+                unit::HashValue {
+                    definition_hash: 0x80000000,
+                    value: i32::MIN,
+                },
+                unit::HashValue {
+                    definition_hash: 0x80000000,
+                    value: i32::MAX,
+                },
+            ],
+            civic_queue_hashes: vec![u32::MAX, 0x80000000, 0],
+            cultural_overflow_bits: -9979,
+            culture_rate_change_bits: -9978,
+            civic_completed_this_turn: true,
+            civic_completed_this_turn_hash: 3735879704,
+            turn_last_policy_change: -9975,
+            num_random_civic_boosts_on_new_era: -9974,
+            free_civic_boost_wonder_era: -9973,
+            tourism_on_bits: vec![i32::MIN, -1, 0, i32::MAX],
+            dominant_over: vec![true, false, true],
+            turns_until_dominant: vec![i32::MIN, -1, 0, i32::MAX],
+            tourism_modifier: -9969,
+            cached_alliance_tourism_bonus_bits: -9968,
+            cached_alliance_culture_bonus_bits: -9967,
+            religious_tourism_reduction: -9966,
+            overall_tourism_reduction: -9965,
+            always_full_religious_tourism: -9964,
+            lifetime_culture_bits: -9963,
+            staycationers: -9962,
+            last_turn_staycationers: -9961,
+            last_turn_tourists_to: -9960,
+            tourists_from: vec![i32::MIN, -1, 0, i32::MAX],
+            extra_trade_route_tourism_modifier: -9958,
+            auto_themed_building_hash: 3735879723,
+            tourism_locations: vec![pculture::TourismLocation {
+                plot_index: -9,
+                lifetime_tourism: i32::MAX,
+                tourist_counts: vec![
+                    pculture::TouristCount {
+                        player_ordinal: 64,
+                        count: -11,
+                    },
+                    pculture::TouristCount {
+                        player_ordinal: 64,
+                        count: 12,
+                    },
+                ],
+            }],
+            culture_bomb_triggers: vec![pculture::CultureBombTrigger {
+                building_hash: 0x80000000,
+                district_hash: u32::MAX,
+                improvement_hash: 3,
+                captures_owned_territory: true,
+            }],
+            tourism_into_favor: vec![pculture::TourismIntoFavor {
+                tourism: -101,
+                favor: 102,
+            }],
+            culture_bomb_converts_city: true,
+            unlock_features: vec![pculture::FeatureUnlock {
+                feature_hash: u32::MAX,
+                civic_hash: 0x80000000,
+            }],
+            tourism_national_parks_modifier_bits: -9951,
+            great_work_object_tourism_modifiers: vec![pculture::GreatWorkObjectTourismModifier {
+                great_work_object_ordinal: -1,
+                tourism_modifier: i32::MIN,
+                no_tourism: true,
+            }],
+            policy_favor_list: vec![pculture::PolicyFavor {
+                policy_hash: 0xdeadbeef,
+                favor_per_turn: -13,
+            }],
+            building_favor_list: vec![pculture::BuildingFavor {
+                building_hash: u32::MAX,
+                favor_per_turn: 14,
+            }],
+            other_government_intolerance_multiplier_bits: -9947,
+            other_government_intolerance_modifier: -9946,
+            previous_government_policies: pculture::GovernmentSlots {
+                entries: vec![pculture::GovernmentSlot {
+                    policy_hash: u32::MAX,
+                    slot_ordinal: -3,
+                }],
+            },
+            num_civics_repeated: -9944,
+            auto_themed_buildings_with_x_slots: -9943,
+            auto_themed_wonders_with_x_slots: -9942,
+            all_great_works_tourism_modifier: -9941,
+            all_great_works_yield_modifier: -9940,
+            replaced_slots: vec![pculture::GovernmentSlotReplacement {
+                replaced_slot_ordinal: -1,
+                added_slot_ordinal: 7,
+                replaces_all: true,
+            }],
+            government_type_modified_slots: vec![pculture::GovernmentTypeSlotModifier {
+                government_hash: 0xdeadbeef,
+                slot_ordinal: -2,
+                delta: i32::MIN,
+            }],
+        }
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -563,17 +828,23 @@ mod tests {
         words(&mut out, &[0xfedcba98]);
         // Remaining creation/unit/tech/civic collections are empty.
         words(&mut out, &[0, 0, 0, 0]);
+        // NameManager2 has equal explicit signed and array lengths, then i16s.
+        words(&mut out, &[2, 3, 3]);
+        for v in [i16::MIN, -1, i16::MAX] {
+            out.extend(v.to_le_bytes());
+        }
+        out.extend(culture_carrier().encode(Limits::default()).unwrap());
         out
     }
     #[test]
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched NameManager");
+        trailing.extend_from_slice(b"untouched Espionage");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerNameManager);
+        assert_eq!(value.boundary, Boundary::PlayerEspionage);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -599,7 +870,7 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::Districts(player_districts::Error::ResourceLimit))
+            Err(Error::Culture(player_culture::Error::ResourceLimit))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -620,6 +891,13 @@ mod tests {
         assert_eq!(p.districts.records.free_links, [7, 3]);
         assert_eq!(p.districts.current_district_cost.len(), 2);
         assert_eq!(p.districts.creation_yields[0].yield_type, -1);
+        assert!(!p.header.saved_is_alive());
+        assert_eq!(
+            p.name_manager.citizen_name_usage_counts,
+            [i16::MIN, -1, i16::MAX]
+        );
+        assert_eq!(p.culture.tourism_locations[0].tourist_counts[1].count, 12);
+        assert_eq!(p.culture.government_type_modified_slots[0].delta, i32::MIN);
         assert_eq!(p.cities.building_build_overrides, [[111, 222], [111, 333]]);
         let exact = Limits {
             max_bytes: n,
@@ -642,7 +920,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::Districts(player_districts::Error::ResourceLimit))
+            Err(Error::Culture(player_culture::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -650,6 +928,46 @@ mod tests {
                 "end={end}"
             );
         }
+    }
+    #[test]
+    fn saved_alive_is_only_first_flag_and_nested_current_versions_are_required() {
+        let bytes = carrier();
+        let (mut value, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let player = value.first_player.as_mut().unwrap();
+        assert!(!player.header.saved_is_alive());
+        player.header.ordered_flags[0] = true;
+        assert!(player.header.saved_is_alive());
+        player.header.ordered_flags[1..].fill(false);
+        assert!(player.header.saved_is_alive());
+        let names = player.name_manager.encode(Limits::default()).unwrap();
+        let culture = player.culture.encode(Limits::default()).unwrap();
+        let names_start = n - culture.len() - names.len();
+        let culture_start = n - culture.len();
+        let changed = value.encode_prefix(Limits::default()).unwrap();
+        assert!(Prefix::decode_prefix(&changed, Limits::default())
+            .unwrap()
+            .0
+            .first_player
+            .unwrap()
+            .header
+            .saved_is_alive());
+        let mut malformed = bytes.clone();
+        malformed[names_start + 8..names_start + 12].copy_from_slice(&4u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::NameManager(
+                player_name_manager::Error::InvalidContainer
+            ))
+        ));
+        let mut malformed = bytes;
+        malformed[culture_start..culture_start + 4].copy_from_slice(&46u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::Culture(player_culture::Error::Version {
+                expected: 45,
+                actual: 46
+            }))
+        ));
     }
     #[test]
     fn empty_manager_stops_and_preserves_suffix() {
@@ -955,7 +1273,7 @@ impl Prefix {
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
                 (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerNameManager)
+                    | (1.., Some(_), Boundary::PlayerEspionage)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -1005,6 +1323,16 @@ impl Prefix {
                 player_districts::Districts::encode_with_items,
                 Error::Districts,
             )?;
+            w.component(
+                &p.name_manager,
+                player_name_manager::NameManager::encode_with_items,
+                Error::NameManager,
+            )?;
+            w.component(
+                &p.culture,
+                player_culture::Culture::encode_with_items,
+                Error::Culture,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -1047,7 +1375,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerNameManager;
+        v.boundary = Boundary::PlayerEspionage;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
