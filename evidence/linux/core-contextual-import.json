@@ -1,0 +1,121 @@
+{
+  "candidate_sha256": "a3bf423c5b71d9d1b13ef04cf0a1b89f60508c54648e1c256c2d7392bec2c57d",
+  "checker_source": "crates/c6-differential/src/bin/c6-core-contextual-candidate.rs",
+  "comparisons": {
+    "bytes_masked": 0,
+    "dynamic_item_charges_equal": true,
+    "historical_raw_save_load_difference_retained": 89198,
+    "own_stream_global_ai_reencoding_exact": true,
+    "own_stream_player_manager_reencoding_exact": true,
+    "tail_borrowed": true
+  },
+  "frozen_manifest_sha256": "82ab337797cd73d13512231fc3c456a278a411df80a5b28ac50991c0b7009f12",
+  "input_artifact_hash_manifest_sha256": "f75d928d1ac573de3eb83d0cb7d24fff4935d214ff94b306fdc70413238e7712",
+  "limits": {
+    "complete_world_import": false,
+    "gameplay_parity": false,
+    "initialization_reconstructed": false,
+    "input_85d_read_observed": false,
+    "live_database_snapshot_available": false,
+    "native_acceptance": false,
+    "native_read_effects_reproduced": false,
+    "native_rng_transition_parity": false,
+    "next_unparsed_owner": "Barbarian"
+  },
+  "path_adapter_sha256": "87e3b61271eaeef1fb6f959fedeace75e70bbf35955329f130ab6576f1e10bb5",
+  "preserved_failures": [
+    {
+      "capture": "native-2",
+      "cause": "path adapter source names differed from exact runtime-gate names",
+      "error": "Provenance",
+      "trial": 1
+    },
+    {
+      "capture": "native-3",
+      "cause": "path adapter source names differed from exact runtime-gate names",
+      "error": "Provenance",
+      "trial": 1
+    },
+    {
+      "capture": "native-2",
+      "cause": "first Military14 record reaches unsupported nested OperationDef5; current codec is OperationDef7",
+      "error": "MilitaryWire",
+      "first_military_range": [
+        6440270,
+        6443276
+      ],
+      "nested_relative_offset": 398,
+      "trial": 2
+    }
+  ],
+  "raw_observation_sha256": "f9035540d3862cb6fb16a08db47cd3895cfec398561b818a59bf9449f7ef0603",
+  "schema": "c6-contextual-import-trial-v1",
+  "source_commit": "4095ed2040f582884edf251d94048f8e8b92212b",
+  "source_file_count": 1421,
+  "source_manifest_sha256": "ffcf4959125b7ef1a3af0a6f74e3fad2a68e2e163207b544bcd77a2dc62e49fc",
+  "status": "successful_current_wire_trial_pending_independent_review",
+  "streams": [
+    {
+      "cities": 245,
+      "consumed": 70934595,
+      "core_bytes": 80657462,
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "districts": 1284,
+      "formations": 1250,
+      "global_ai_sha256": "d70893e3576acd575d02df74e7ddae85901e9f98311d24a2719f06c7744ed05b",
+      "items": 10665369,
+      "map_end": 4695864,
+      "output_id": null,
+      "player_manager_end": 70566134,
+      "players": 43,
+      "post_map_roundtrip_sha256": "8592f83f526e2b4bc0a905ad5f1071e41d6620e4cf61e526ec6812b97cdbd2f6",
+      "role": "ReadInputCore",
+      "stream_occurrence": "31",
+      "tail_bytes": 9722867,
+      "tail_sha256": "1930535134fb1df0a67d434d62a50697677ceaa89f602d0f829155bed4d4a050",
+      "units": 1262
+    },
+    {
+      "cities": 245,
+      "consumed": 70934595,
+      "core_bytes": 80657462,
+      "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "districts": 1284,
+      "formations": 1250,
+      "global_ai_sha256": "d70893e3576acd575d02df74e7ddae85901e9f98311d24a2719f06c7744ed05b",
+      "items": 10665369,
+      "map_end": 4695864,
+      "output_id": "2f686f6d652f7068756c696e2f63362d6768696472612f65766964656e63652f6c696e75782d6d696c69746172792d696e697469616c697a6174696f6e2f6e61746976652d332f736176652e62696e",
+      "player_manager_end": 70566134,
+      "players": 43,
+      "post_map_roundtrip_sha256": "8592f83f526e2b4bc0a905ad5f1071e41d6620e4cf61e526ec6812b97cdbd2f6",
+      "role": "SavedOutputCore",
+      "stream_occurrence": "32",
+      "tail_bytes": 9722867,
+      "tail_sha256": "3422f8289c3a9b964aa71796a787625e10ed4007ab19981b307eb63666b59879",
+      "units": 1262
+    },
+    {
+      "cities": 245,
+      "consumed": 70934595,
+      "core_bytes": 80657462,
+      "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "districts": 1284,
+      "formations": 1250,
+      "global_ai_sha256": "d70893e3576acd575d02df74e7ddae85901e9f98311d24a2719f06c7744ed05b",
+      "items": 10665369,
+      "map_end": 4695864,
+      "output_id": "2f686f6d652f7068756c696e2f63362d6768696472612f65766964656e63652f6c696e75782d6d696c69746172792d696e697469616c697a6174696f6e2f6e61746976652d332f7265706561742e62696e",
+      "player_manager_end": 70566134,
+      "players": 43,
+      "post_map_roundtrip_sha256": "8592f83f526e2b4bc0a905ad5f1071e41d6620e4cf61e526ec6812b97cdbd2f6",
+      "role": "SavedOutputCore",
+      "stream_occurrence": "33",
+      "tail_bytes": 9722867,
+      "tail_sha256": "3422f8289c3a9b964aa71796a787625e10ed4007ab19981b307eb63666b59879",
+      "units": 1262
+    }
+  ],
+  "successful_capture": "native-3",
+  "trial_stdout_sha256": "05403f83e84a5e673d8ac8de81ca630db898e8adac68091df8914fbbe42daed3"
+}
