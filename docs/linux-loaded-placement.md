@@ -34,7 +34,8 @@ and freeze manifest are preserved in
 [The comparison record](../evidence/linux/loaded-placement-comparison.json)
 pins the source, checker, capture manifest, target runtime and native answer
 digests. World revision remains zero after the read-only queries. Independent
-review of this new comparison is pending. Native3 Read remains decoding
+review `c917914` reproduced every ordered match, verified all source/input
+identities and passed twelve corruption/separation checks. Native3 Read remains decoding
 evidence; the mutable facts remain their actual observed SavedOutput snapshot
 view. Complete native Read, actions, turns and RNG parity remain unsupported.
 The recorded 89,198-byte raw difference remains unmasked.
