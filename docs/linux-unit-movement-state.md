@@ -90,16 +90,19 @@ war. Only categories1/3 add the corresponding Unit modifiers. WarTypes is not
 a substitute for actual alliance state.
 
 HasAllied delegates to Game.DiplomaticRelations.IsAllied (`0x2983170`), which
-compares the actual alliance relationship value against -1 using the native
-symmetric triangular index. The optional `AllianceState` supplies that complete
-raw value vector and player count, bound to the actual LoadedState binding and
-revision. It never supplies a precomputed HasAllied/HasMoved/MaxMoves result.
-Stale or absent required state rejects. This raw snapshot is admitted only for a
-direct query at that revision. A pre-entry snapshot is not current authority
-after SkipTurn performs Unit writes/reports; those full-entry cases require
-owned mutable Game.DiplomaticRelations or an actual phase-current authority. Nonzero equal friendly/enemy modifiers
-need no alliance distinction after ownership is established; zero contributions
-can similarly elide pure getters without supplying invented answers.
+compares the actual initialized alliance relationship value against -1 using the
+native symmetric triangular index. The query now reads the
+[owned Game.DiplomaticRelations component](linux-game-relations-inputs.md) directly
+from LoadedState. Its original saved hashes are initialized against admitted
+War/Alliance definitions before use. There is no pre-action raw snapshot input
+or global-revision rejection after unrelated Unit writes. Missing owned state
+still rejects when the actual modifiers require its value.
+
+Nonzero equal friendly/enemy modifiers need no alliance distinction after
+ownership is established; zero contributions can similarly elide pure getters
+without supplying invented answers. The original 1,059-query result remains a
+frozen diagnostic of the earlier missing-input boundary. The new owned-input
+check covers all 1,262 queries, with the native comparison limits below.
 
 ## Concrete admission and validation
 
@@ -113,7 +116,7 @@ indexes and SQL row identities remain distinct. BaseMoves, Terrain/Feature/
 Improvement movement values and global parameters are actual rules values.
 Unsupported numeric forms/ranges reject; no default3 or implicit zero appears.
 
-`Inputs { definitions, alliances }` then supports:
+`Inputs { definitions }` then supports:
 
 ```rust
 unit_max_moves(&state, &unit, &inputs)?;
@@ -129,18 +132,26 @@ Reproduce:
 
 ```sh
 python3 tools/linux/unit_movement_state_audit.py --private-output ../c6-ghidra/evidence/linux-unit-movement-state --output target/linux/unit-movement-state-source.json
-python3 tools/linux/unit_movement_state_check.py --output target/linux/unit-movement-state-check.json
+python3 tools/linux/game_relations_check.py --output target/linux/game-relations-query-input-check.json
 cargo test -p c6-data unit_movement_state --lib
 cargo clippy -p c6-data --all-targets -- -D warnings
 ```
 
-The real 1,262-Unit offline fixture supports 1,059 queries, with 666 HasMoved=true
-and 2,118 additional strict-Q8 boundary checks. It explicitly rejects 155 queries
-needing unavailable Game.DiplomaticRelations alliance state and 48 needing actual
-Manager slot validity for District lookup. No supplied values are guessed to
-turn these into successes. Unit wire values remain unchanged. Source-only tests
-also cover timing enum dispatch, inclusive expiry, ignored sources, wrapping
-sums/expiry and triangular alliance lookup.
+The frozen earlier [1,059-query report](../evidence/linux/unit-movement-state-check.json)
+retains its 155 missing-alliance and 48 missing-Manager-slot failures. Its exact
+source candidate and executable remain archived; it is not overwritten by this
+closure. The new [owned-input report](../evidence/linux/game-relations-query-input-check.json)
+admits the actual same-snapshot controls and owned initialized relationships:
+**1,262/1,262 queries**, 844 HasMoved=true, and 2,524 strict remaining-movement
+boundary checks. All 2,016 initialized War values match the independently captured
+native metadata. There are 26 initialized alliances from five actual definitions.
+
+Changed-turn words and the 74,616-byte unclassified owner suffix remain retained.
+A subsequent unrelated Unit write increments the LoadedState revision while the
+owned relationships and maximum-movement query remain valid. Unit wire values
+are unchanged. Source-only tests cover timing enum dispatch, inclusive expiry,
+ignored sources, and wrapping sums/expiry; the core relation module separately
+checks triangular lookup and native definition remapping boundaries.
 
 The sole native owner found no closed direct Unit.GetMaxMoves/HasMoved capture.
 Existing movement-cost captures observe Formation maxima and are not mislabeled
