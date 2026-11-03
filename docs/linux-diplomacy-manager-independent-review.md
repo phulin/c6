@@ -60,3 +60,31 @@ review cases, verifies source contents after the build and retains all inputs.
 For the corrected allocation API, it adds two cases for malformed/reordered
 inventories and exclusion of an actual allocation-slot64 occupant. It never
 patches the shared production files or launches the original program.
+
+## Corrective committed review
+
+The author corrected revision exhaustion in `431eead` and allocation admission
+in `13a7a4780aac981d15f5e997f1e9547c3538cde7`. The latter requires the complete
+actual65-slot allocation inventory, validates unique membership against the
+separate ID table, and checks the exact ordered ever-alive result from only
+slots0..63. Owner64 can appear in that scanned prefix. Any owner at allocation
+slot64 is retained in the inventory and excluded from this derived list.
+
+The [independent corrective report](../evidence/linux/diplomacy-manager-independent-review-13a7a47.json)
+records **13 passing targeted cases**, zero failures. All32 source-contract
+method bodies and10 selected instructions match the pinned original ELF.
+The private `candidate-13a7a47` directory retains the complete committed source
+archive (SHA `a781529f055ddf26a4691e55b326bbd4416fb91f0cd1050ecf8e7a6a91daf63b`),
+all1,656 checked source preimages, exact review-only patch/driver and executable
+(SHA `aa5044715785c7b85027a0011f0a32f65073c7b30b2289438b35f6281b9729e4`).
+No shared production source was patched by this review, and the initial failing
+reports remain unchanged. No remaining defect was found within this bounded
+source/admission/drain review.
+
+These checks do not supply a current original pending-state capture. A capture
+adapter still must attribute all current facts to the same dynamic context and
+boundary as its controls, rather than transplanting execute-3 observations or
+accepting save-hash equality. Full Statement behavior and gameplay effects,
+configuration mutation support and a genuine external-decision continuation
+remain unavailable. Neither these source-only tests nor the successful empty
+kernel path establish native full action, turn or RNG equivalence.
