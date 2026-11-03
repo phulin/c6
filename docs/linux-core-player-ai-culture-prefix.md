@@ -23,3 +23,5 @@ python3 tools/linux/core_player_ai_culture_prefix_audit.py \
 ```
 
 A fresh build requires an isolated committed source archive with explicit `--source-commit` and `--repository`; it refuses the mutable shared checkout. Same-archive workspace tests, strict workspace Clippy and the C ABI smoke check pass. Fixture-dependent source tests remain separately identified; the two original full-input corpus cases cover the composed importer. This work executes no original game code. Complete Player/world import, native Read effects, exact gameplay/RNG, actions and turns remain unsupported; retaining the remaining bytes does not permit advancing them. See [reference attribution](reference.md).
+
+Independent combined acceptance is recorded in [the prefix review](linux-core-player-ai-culture-prefix-review.md), commit `b562d3f`. It verifies the two complete prefix cases and all 276 frozen source identities. The later Homeland/Military-boundary source is separately reviewed in `867a009`; contextual all-Player decoding still requires genuine admitted initialization evidence.
