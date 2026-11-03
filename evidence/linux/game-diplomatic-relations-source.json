@@ -3,14 +3,42 @@
   "checks": {
     "alliance_enum_maps_hash_to_index": true,
     "alliance_enum_uses_definitions": true,
+    "alliance_find_direct_ordinal_first": true,
     "alliance_missing_definition_returns_minus_one": true,
+    "alliance_push_at_lower_bound": true,
+    "alliance_push_unsigned_less": true,
     "same_player_allied_false": true,
     "symmetric_signed_wrapping_index": true,
-    "war_enum_validates_hash": true
+    "war_enum_validates_hash": true,
+    "war_find_direct_ordinal_first": true,
+    "war_push_at_lower_bound": true,
+    "war_push_unsigned_less": true
   },
   "complete_state_action_turn_parity": false,
   "core_bytes": 80657462,
   "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "current_read_suffix": {
+    "after_first_alliance": "0x2980d07",
+    "enclosing_game_postload_closed": false,
+    "explicitly_revisits_war_or_first_alliance": false,
+    "return_address": "0x2980dea",
+    "transitive_callbacks_closed": false,
+    "wrapper_receivers": [
+      "0x230",
+      "0x258",
+      "0x280",
+      "0x2a8",
+      "0x2d0",
+      "0x2f8"
+    ]
+  },
+  "definition_find": {
+    "alliance_result": "resolved definition GetCollectionIndex",
+    "direct_ordinal_priority": true,
+    "fallback": "unsigned hash lower_bound; most recent insertion wins equal hash",
+    "key_domain": "u32",
+    "war_result": "resolved definition GetTypeHash, not original input key"
+  },
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "live_action_parity": false,
@@ -23,12 +51,36 @@
         "_ZN13SerializationrsERNS_7IStreamERN8GameCore13AllianceTypesE"
       ]
     },
+    "alliance_find": {
+      "address": "0x206f1a0",
+      "bytes": 109,
+      "sha256": "926625cf2edb5bb0f18895fbf2f8789551056652252e807b66338359994aab26",
+      "symbols": [
+        "_ZNK8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_8AllianceEE4FindEj"
+      ]
+    },
     "alliance_hash_to_index": {
       "address": "0x2bf6fc0",
       "bytes": 34,
       "sha256": "386735500c7995858c7a30fe496ce6d7242a7c2db038971e1dd5f23da9cf2da5",
       "symbols": [
         "_ZN13Serialization11HashToIndexIN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_8AllianceEEEEEijRKT_"
+      ]
+    },
+    "alliance_push": {
+      "address": "0x22aa2b0",
+      "bytes": 96,
+      "sha256": "8d3bc1e0734622fe8a322268477ea40b1a29ed3806d01cb5bdacf26933dcbe1a",
+      "symbols": [
+        "_ZN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_8AllianceEE9push_backEPS2_"
+      ]
+    },
+    "alliance_push_compare": {
+      "address": "0x22aa790",
+      "bytes": 36,
+      "sha256": "02e1e7a10cdc31282d8d79958ae73733bc1ceafaa7b95526446e75d6845d942b",
+      "symbols": [
+        "_ZZN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_8AllianceEE9push_backEPS2_ENKUlPKS2_S6_E_clES6_S6_"
       ]
     },
     "alliance_record_read": {
@@ -87,6 +139,46 @@
         "_ZN13SerializationrsERNS_7IStreamERN8GameCore4Game19DiplomaticRelationsE"
       ]
     },
+    "read_versioned_alliance": {
+      "address": "0x2987560",
+      "bytes": 38,
+      "sha256": "1d9d248442ee9e0e7882bca852ec769daa1589d0e413e4f1e6d306d1244b248b",
+      "symbols": [
+        "_ZN13Serialization13ReadVersionedI13FAutoVariableIN5Types6VectorIN8GameCore4Game22DiplomaticRelationshipINS4_13AllianceTypesEEENS2_11LinearAlloc7DefaultILj1ELj0EEEEENS5_19DiplomaticRelationsEERSE_EERNS_7IStreamESH_RT_iOiOT0_"
+      ]
+    },
+    "read_versioned_bool": {
+      "address": "0x2987410",
+      "bytes": 38,
+      "sha256": "7fe1220ebaddc9020d79df1af2fdec4116a7c68fe182333974f5502f66c6fa25",
+      "symbols": [
+        "_ZN13Serialization13ReadVersionedI13FAutoVariableIN5Types6VectorIN8GameCore4Game22DiplomaticRelationshipIbEENS2_11LinearAlloc7DefaultILj1ELj0EEEEENS5_19DiplomaticRelationsEERSD_EERNS_7IStreamESG_RT_iOiOT0_"
+      ]
+    },
+    "read_versioned_grievance": {
+      "address": "0x29875f0",
+      "bytes": 38,
+      "sha256": "6c74df58c8c4eee3ea4b423ed9eab38fe3527d77d9b1eff2c5d11aaa88693ba9",
+      "symbols": [
+        "_ZN13Serialization13ReadVersionedI13FAutoVariableIN5Types6VectorIN8GameCore4Game16GrievanceLogItemENS2_11LinearAlloc7DefaultILj1ELj0EEEEENS5_19DiplomaticRelationsEERSC_EERNS_7IStreamESF_RT_iOiOT0_"
+      ]
+    },
+    "read_versioned_int": {
+      "address": "0x2987590",
+      "bytes": 38,
+      "sha256": "8349e9d92b104dd20ae4f0d25409ba3805c4b459f4e3431293800adfc25d15a9",
+      "symbols": [
+        "_ZN13Serialization13ReadVersionedI13FAutoVariableIN5Types6VectorIN8GameCore4Game22DiplomaticRelationshipIiEENS2_11LinearAlloc7DefaultILj1ELj0EEEEENS5_19DiplomaticRelationsEERSD_EERNS_7IStreamESG_RT_iOiOT0_"
+      ]
+    },
+    "read_versioned_player": {
+      "address": "0x29875c0",
+      "bytes": 38,
+      "sha256": "1fb74d55e90b97e0dc70f6d0d93437ea7a6b35d4a9ce94f83e5dd64cee479c94",
+      "symbols": [
+        "_ZN13Serialization13ReadVersionedI13FAutoVariableIN5Types6VectorIN8GameCore4Game22DiplomaticRelationshipINS4_11PlayerTypesEEENS2_11LinearAlloc7DefaultILj1ELj0EEEEENS5_19DiplomaticRelationsEERSE_EERNS_7IStreamESH_RT_iOiOT0_"
+      ]
+    },
     "symmetric_alliance": {
       "address": "0x2988430",
       "bytes": 52,
@@ -109,6 +201,30 @@
       "sha256": "533defaedd931c588acec1b7da39410b64d10f09ef487df8ba875cf1556288b8",
       "symbols": [
         "_ZN13SerializationrsERNS_7IStreamERN8GameCore8WarTypesE"
+      ]
+    },
+    "war_find": {
+      "address": "0x295cfb0",
+      "bytes": 109,
+      "sha256": "554d35073c5e2d3a526a939ad1b2ab8fca1f8c09efc8f00a896d4239b46ee3a5",
+      "symbols": [
+        "_ZNK8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_3WarEE4FindEj"
+      ]
+    },
+    "war_push": {
+      "address": "0x2319150",
+      "bytes": 96,
+      "sha256": "469f3f5bdbffff8f523d049d066adc08a19d4e551b43dbec72f843520db3ef5d",
+      "symbols": [
+        "_ZN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_3WarEE9push_backEPS2_"
+      ]
+    },
+    "war_push_compare": {
+      "address": "0x2319630",
+      "bytes": 36,
+      "sha256": "91371734f830e4caee290db92e9d10f93b561f621bbd4e896fb6695f8cd51dff",
+      "symbols": [
+        "_ZZN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS0_3WarEE9push_backEPS2_ENKUlPKS2_S6_E_clES6_S6_"
       ]
     },
     "war_type": {

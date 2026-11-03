@@ -30,7 +30,16 @@ Alliance definition's actual collection index; a miss returns -1. WarTypes Read
 definition's type hash; a miss returns -1. Consequently decoding does **not**
 automatically make these saved words gameplay authority.
 `initialize_definitions(war_hashes, alliance_hash_and_index_pairs)` performs that
-one-shot load step using complete admitted native definition inputs. Raw hashes
+one-shot load step using complete admitted native-order definition inputs.
+The actual Alliance Find (`0x206f1a0`) and War Find (`0x295cfb0`) first treat an
+unsigned key below collection count as an ordinal, even when another definition
+has that small numeric hash. Otherwise they search the unsigned hash vector.
+Native insertion at lower_bound means the most recently inserted equal hash wins;
+duplicate hashes remain valid. War initialization returns the resolved definition's
+hash, so a small ordinal can canonicalize to a different number. Alliance
+initialization returns the resolved definition's actual collection index, which
+is distinct from the input key. Misses produce -1. Invalid definition inputs
+reject before either gameplay vector changes. Raw hashes
 remain in `read_prefix().saved_war` and `saved_alliances`. Until initialization,
 queries requiring those vectors reject. `from_war_values` separately admits
 already-initialized native metadata first words and retains unknown changed
@@ -70,8 +79,20 @@ cargo test -p c6-core game_diplomatic_relations --lib
 cargo clippy -p c6-core --lib -- -D warnings
 ```
 
+The saved-record comparison report pins the earlier `1841167` source candidate;
+it remains historical evidence for that decoder. The subsequent definition lookup
+correction is covered by the focused source tests and updated static audit. It
+does not claim a new native fixture comparison.
+
+After the first Alliance vector, the current Read's explicit suffix only supplies
+wrappers at +0x230, +0x258, +0x280, +0x2a8, +0x2d0 and +0x2f8, then returns.
+It does not explicitly revisit War +0x190 or the first Alliance +0x208 wrapper.
+Enclosing Game post-load and transitive callback equivalence remain unclosed;
+this prefix alone does not admit those effects.
+
 Tests cover reverse triangular order, signed sentinel behavior, preserved changed
-turns, explicit missing authority, original definition remapping and bounded
+turns, explicit missing authority, ordinal/hash collisions, duplicate precedence,
+unsigned hash extremes, atomic definition admission and bounded
 truncated/resource inputs. Full Core loading and bound rules admission remain the
 containing loader's responsibility. Native alliance query parity remains a gap;
 source-only query tests and saved-record comparisons do not close that gap.

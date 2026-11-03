@@ -21,7 +21,13 @@ METHODS = dict(read=0x29808e0, is_allied=0x2983170,
     alliance_record_read=0x29905e0, bool_record_read=0x2988c70,
     alliance_sequence_read=0x2990500, alliance_enum_read=0x2bf6c00,
     alliance_hash_to_index=0x2bf6fc0, war_enum_read=0x2d503a0,
-    war_validate_hash=0x2d514d0)
+    war_validate_hash=0x2d514d0,
+    alliance_find=0x206f1a0, war_find=0x295cfb0,
+    alliance_push=0x22aa2b0, war_push=0x2319150,
+    alliance_push_compare=0x22aa790, war_push_compare=0x2319630,
+    read_versioned_bool=0x2987410, read_versioned_alliance=0x2987560,
+    read_versioned_int=0x2987590, read_versioned_player=0x29875c0,
+    read_versioned_grievance=0x29875f0)
 
 
 def audit(assets, private, core_path, trace_path):
@@ -77,7 +83,13 @@ def audit(assets, private, core_path, trace_path):
         alliance_missing_definition_returns_minus_one='mov    $0xffffffff,%eax' in assembly['alliance_hash_to_index'],
         war_enum_validates_hash='ValidateHash' in assembly['war_enum_read'],
         same_player_allied_false='xor    %eax,%eax' in assembly['is_allied'],
-        symmetric_signed_wrapping_index='sar    $1,%esi' in assembly['symmetric_alliance'])
+        symmetric_signed_wrapping_index='sar    $1,%esi' in assembly['symmetric_alliance'],
+        alliance_find_direct_ordinal_first='jbe    206f1cb' in assembly['alliance_find'],
+        war_find_direct_ordinal_first='jbe    295cfdb' in assembly['war_find'],
+        alliance_push_at_lower_bound='Lower_bound::lower_bound' in assembly['alliance_push'],
+        war_push_at_lower_bound='Lower_bound::lower_bound' in assembly['war_push'],
+        alliance_push_unsigned_less='setb   %al' in assembly['alliance_push_compare'],
+        war_push_unsigned_less='setb   %al' in assembly['war_push_compare'])
     if not all(checks.values()):
         raise ValueError(checks)
     private.mkdir(parents=True,exist_ok=True)
@@ -90,6 +102,14 @@ def audit(assets, private, core_path, trace_path):
         prefix_bytes=pos, prefix_sha256=sha(owner[:pos]), unclassified_tail_bytes=len(owner)-pos,
         unclassified_tail_sha256=sha(owner[pos:]), saved_war=summary(rows['saved_war']),
         saved_alliances=summary(rows['saved_alliances']),
+        definition_find=dict(key_domain='u32', direct_ordinal_priority=True,
+            fallback='unsigned hash lower_bound; most recent insertion wins equal hash',
+            war_result='resolved definition GetTypeHash, not original input key',
+            alliance_result='resolved definition GetCollectionIndex'),
+        current_read_suffix=dict(after_first_alliance='0x2980d07',
+            wrapper_receivers=['0x230','0x258','0x280','0x2a8','0x2d0','0x2f8'],
+            return_address='0x2980dea', explicitly_revisits_war_or_first_alliance=False,
+            enclosing_game_postload_closed=False, transitive_callbacks_closed=False),
         alliance_runtime_values_compared=False, live_action_parity=False,
         complete_state_action_turn_parity=False)
 

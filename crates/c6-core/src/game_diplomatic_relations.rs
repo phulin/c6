@@ -95,6 +95,17 @@ fn total(n: i32) -> Result<usize, Error> {
     Ok(value as usize)
 }
 
+/// The native sorted hash vector inserts at lower_bound, so equal hashes
+/// resolve to the last insertion. Reverse search over native insertion order
+/// gives that same result without a second allocation. Ordinals take priority.
+fn native_definition_index<T>(values: &[T], key: u32, hash: impl Fn(&T) -> u32) -> Option<usize> {
+    if (key as usize) < values.len() {
+        Some(key as usize)
+    } else {
+        values.iter().rposition(|value| hash(value) == key)
+    }
+}
+
 impl GameDiplomaticRelations {
     /// Admit complete first words from actual owner metadata. This does not
     /// initialize absent alliances or changed turns, or assert snapshot identity.
@@ -113,8 +124,10 @@ impl GameDiplomaticRelations {
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
-    /// native definition inputs. WarTypes validates hashes; AllianceTypes maps
-    /// a found hash to its actual GetCollectionIndex. Both use -1 on misses.
+    /// native-order definition inputs. Find first treats keys below collection
+    /// count as ordinal indexes; other keys resolve the last inserted matching
+    /// unsigned hash. WarTypes returns the found definition's type hash;
+    /// AllianceTypes returns its actual GetCollectionIndex. Misses return -1.
     /// This one-shot load step is not a gameplay relation setter.
     pub fn initialize_definitions(
         &mut self,
@@ -124,32 +137,22 @@ impl GameDiplomaticRelations {
         if self.war.is_some() || self.alliances.is_some() {
             return Err(Error::AlreadyInitialized);
         }
-        if war_hashes
-            .iter()
-            .enumerate()
-            .any(|(i, h)| war_hashes[..i].contains(h))
-            || alliances.iter().enumerate().any(|(i, (h, n))| {
-                *n < 0
-                    || alliances[..i]
-                        .iter()
-                        .any(|(other, index)| h == other || n == index)
-            })
+        if u32::try_from(war_hashes.len()).is_err()
+            || u32::try_from(alliances.len()).is_err()
+            || alliances.iter().any(|(_, index)| *index < 0)
         {
             return Err(Error::DefinitionInputs);
         }
         let prefix = self.read_prefix.as_ref().ok_or(Error::DefinitionInputs)?;
         let mut war = prefix.saved_war.clone();
         for value in &mut war.values {
-            if !war_hashes.contains(&(*value as u32)) {
-                *value = -1;
-            }
+            *value = native_definition_index(war_hashes, *value as u32, |hash| *hash)
+                .map_or(-1, |index| war_hashes[index] as i32);
         }
         let mut alliance_values = prefix.saved_alliances.clone();
         for value in &mut alliance_values.values {
-            *value = alliances
-                .iter()
-                .find(|(hash, _)| *hash == *value as u32)
-                .map_or(-1, |(_, index)| *index);
+            *value = native_definition_index(alliances, *value as u32, |(hash, _)| *hash)
+                .map_or(-1, |index| alliances[index].1);
         }
         self.war = Some(war);
         self.alliances = Some(alliance_values);
@@ -393,13 +396,13 @@ mod tests {
         assert_eq!(s.alliance_type(-1, 0), Err(Error::InvalidPlayer(-1)));
     }
     #[test]
-    fn definition_misses_and_duplicate_input_reject_without_partial_authority() {
+    fn definition_misses_and_invalid_input_reject_without_partial_authority() {
         let bytes = fixture();
         let mut state = GameDiplomaticRelations::decode_prefix(&bytes, Limits::default())
             .unwrap()
             .state;
         assert_eq!(
-            state.initialize_definitions(&[0, 0], &[]),
+            state.initialize_definitions(&[0, 0], &[(100, -1)]),
             Err(Error::DefinitionInputs)
         );
         assert!(state.war().is_none());
@@ -414,6 +417,32 @@ mod tests {
         assert_eq!(
             state.read_prefix().unwrap().saved_alliances.values(),
             &[100, -1, i32::MIN]
+        );
+    }
+    #[test]
+    fn native_find_prioritizes_ordinal_then_last_duplicate_hash() {
+        let bytes = fixture();
+        let mut state = GameDiplomaticRelations::decode_prefix(&bytes, Limits::default())
+            .unwrap()
+            .state;
+        let saved = state.read_prefix.as_mut().unwrap();
+        saved.saved_war.values = vec![0, 77, 99];
+        saved.saved_alliances.values = vec![0, 77, 99];
+        let war = [0x7000_0001, 0, 77, 77];
+        let alliances = [(88, 8), (0, 6), (77, 7), (77, 12)];
+        state.initialize_definitions(&war, &alliances).unwrap();
+        assert_eq!(state.war().unwrap().values(), &[0x7000_0001, 77, -1]);
+        assert_eq!(state.alliances().unwrap().values(), &[8, 12, -1]);
+        // This also checks equal hashes remain distinct native definitions.
+        assert_eq!(native_definition_index(&war, 77, |h| *h), Some(3));
+        assert_eq!(native_definition_index(&war, 4, |h| *h), None);
+        assert_eq!(
+            native_definition_index(&[u32::MAX, 0x8000_0000], u32::MAX, |h| *h),
+            Some(0)
+        );
+        assert_eq!(
+            state.read_prefix().unwrap().saved_war.values(),
+            &[0, 77, 99]
         );
     }
     #[test]
