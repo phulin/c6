@@ -64,7 +64,7 @@ int main(void){
  void *module=(void *)1;
  assert(!c6_linux_current_handler_metadata_fields_begin(module,ctx,game,b,syscall(SYS_gettid)));
  assert(!c6_linux_current_handler_metadata_quiescent(module,ctx,game));
- const char *reasons[]={"controller_or_worker_unknown","controller_or_worker_unknown","controller_or_worker_unknown","context_or_game_unknown","context_or_game_unknown","native_lock_witness_changed","native_lock_witness_changed","game_or_message_work","game_or_message_work","game_or_message_work","game_or_message_work","ai_fast_false_unproven","message_list_not_empty","message_list_not_empty","context_or_game_unknown","scope_or_main_thread_unknown","context_or_game_unknown","object_extent_unknown","object_extent_unknown","object_extent_unknown","object_extent_unknown"};
+ const char *reasons[]={"controller_or_worker_unknown","controller_or_worker_unknown","controller_or_worker_unknown","context_or_game_unknown","context_or_game_unknown","native_lock_witness_changed","native_lock_witness_changed","game_or_message_work","game_or_message_work","game_or_message_work","game_or_message_work","ai_fast_false_unproven","message_list_not_empty","message_list_not_empty","context_or_game_unknown","scope_or_main_thread_unknown","field_unreadable","object_extent_unknown","object_extent_unknown","object_extent_unknown","object_extent_unknown"};
  for(unsigned test=0;test<21;test++){
   FILE *errors=tmpfile();assert(errors);
   pid_t child=fork();assert(child>=0);
@@ -88,7 +88,7 @@ int main(void){
     case 13:put(b+0x3c07368,0);break;
     case 14:put(n+0x28,0);break;
     case 15:scope.main_tid++;break;
-    case 16:scope.native_context=1;break;
+    case 16:scope.native_context=1;put((uintptr_t)ctx+8,1);break;
     case 17:scope.controller=UINTPTR_MAX-8;break;
     case 18:scope.context=(void *)(UINTPTR_MAX-8);break;
     case 19:scope.native_context=UINTPTR_MAX-8;break;
