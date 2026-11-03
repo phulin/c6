@@ -1,0 +1,25 @@
+# Independent movement world resolver review
+
+Review of checkpoint `4375255` found **no unresolved production defects in its declared bounded profile**. The Rust resolver agrees with the inspected Linux query instructions and typed Map contract for the cases below. This is static and source-test review, not native differential acceptance. Original movement execution, runtime/rules providers, complete live state, action execution and turns remain pending.
+
+[Review metadata](../evidence/linux/movement-world-review.json) pins the reviewed source, original XP2 module, static audit and additional native query methods. The reviewer re-ran the 29-method [static audit](../tools/linux/movement_world_audit.py), six resolver Rust tests and an independent isolated harness. No original game code was executed, and no production source, Ghidra project or private upload was changed.
+
+| Boundary | Independent check |
+| --- | --- |
+| Plot definition identity | Native Find/hash-to-index behavior, signed-short narrowing, and direct route-byte indexes remain distinct from SQL row IDs and wire hashes. |
+| IsWater | Runtime terrain indexes 15/16 take the native fast path; other indexes use the actual definition property, with false for genuine null lookup. |
+| District identity | CityAttributes carries a Player-owned district instance ID; its resolved district type supplies IsCity's `0x8a32007d` hash and FreeEmbark property. |
+| Missing inputs | Verified absent districts differ from unavailable runtime state. Required water-domain state returns an error when unavailable; land cases skip that unused provider. |
+| Unit import | Reset-to-false and ordered hash overlays preserve unknown-hash consumption and last duplicate wins. Terrain-ignore bounds use the invalid-terrain vector while reading the ignore-terrain vector. |
+| Formation lookup | `UINT_MAX` is rejected; low sixteen slot bits resolve members without invented generation equality. Missing members and escort aggregation remain separate for each predicate. |
+| Topology and rivers | Adjacency, direction, native wrapping quirks, crossing-mask bits and endpoint water/city guards match the inspected methods. |
+
+The independent topology harness checked **1,690,000 coordinate pairs** over every width/height pair from 1 through 12 and all four X/Y wrap profiles. Expected neighbors came from an independently expressed odd/even offset-neighbor table; expected directions came from axial deltas, the native X-only one-step wrap adjustment and directional sectors. This covers small dimensions, odd/even rows, wrap seams, half-width ties and nonadjacent destinations. These expected results derive from the source contract; no synthetic result is labeled a native oracle comparison.
+
+Targeted source cases also checked property-backed water outside the fast-path indexes, unknown terrain hashes, route presence with a null definition, signed-short index truncation, and a district instance ID deliberately different from its type index. Runtime-provider cases confirmed that known absence produces absent facts while unavailable district/domain inputs fail explicitly. Unit cases covered false initialization, direct-index arguments, duplicate hashes, unknown hashes, low-slot aliases with different upper generation bits, verified missing members and independent escort predicates. The original GetIgnoreShores/GetIgnoreRivers and indexed GetIgnoreCost loops were inspected directly, alongside CManager's validity/owning-player/Districts lookup chain and the river-crossing rule.
+
+The resolver borrows dense `y*width+x` Plot storage and requires positive dimensions and actual in-map coordinates. It does not reinterpret the Map codec's canonical lookup as a wrapped lookup. Its adjacency port uses both wrap flags, including native signed-remainder behavior; direction uses X wrapping only. Nonempty portal tables still return an explicit missing-input error for nonadjacent queries. A serialized entrance must not be substituted for the native source table; this reconstruction remains separate work.
+
+The definition tables require complete active native collection order and original getter values, including route binary32 bits. They do not authenticate caller-provided data or export actual registries. Unit import allocates its three native-count boolean arrays once; it has no separate caller import-allocation budget beyond the current signed-count restriction. Runtime Player/Units and District providers, complete/type data, rebuilt CityAttributes validDomains, configuration gates and nonempty portals remain required dependencies. Native corpus/state/RNG comparison must establish acceptance before these source-checked facts are treated as exact movement in an initialized world.
+
+The review preserves the complete simulator objective: the existing full-stream Save→Load difference remains **89,198 bytes**, with no unknown bytes masked, no planning-state exclusion inferred, and no movement action or turn acceptance claimed.

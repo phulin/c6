@@ -1,0 +1,111 @@
+{
+  "schema": "c6-linux-movement-world-independent-review-v1",
+  "implementation_commit": "4375255a7ce48bb694a2c3e8a2dafa19c9351b74",
+  "reviewed_source_sha256": {
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "docs/linux-movement-world.md": "d50a0c239e7589297125d21051fe5898fc50ef3df314d1cdaf0d2bbd8a7b6fe4",
+    "tools/linux/movement_world_audit.py": "f46a16b845b49319bd55e421cd32634152406ebc3db781078061abd525ab6f61",
+    "evidence/linux/movement-world.json": "4d2156a8f135e9dc6ed3764bdc6757f3e58c6c257b8b370f0afdb1d024a53ba3"
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "static_audit_sha256": "4d2156a8f135e9dc6ed3764bdc6757f3e58c6c257b8b370f0afdb1d024a53ba3",
+  "static_audit_methods": 29,
+  "additional_reviewed_native_methods": [
+    {
+      "address": "0x2bc81b0",
+      "bytes": 74,
+      "name": "CityAttributes::GetDistrictType",
+      "sha256": "f147b13b9c923cb7774f9f0ebe3858ef019da7c5ce7b4609fbaf6392251ea435"
+    },
+    {
+      "address": "0x2bc8320",
+      "bytes": 8,
+      "name": "CityAttributes::GetDistrict(DistrictID)",
+      "sha256": "e260cc42d331ac28d051f92f0f26d3c0a79ae6d9eacecbdb85efe784ca1cfdd0"
+    },
+    {
+      "address": "0x286e0b0",
+      "bytes": 93,
+      "name": "City::CManager::GetDistrict(ComponentID)",
+      "sha256": "c1691db37b45fa3441151d0fc7494058a260d898fcba8ac052721df8728f27f2"
+    },
+    {
+      "address": "0x208e9e0",
+      "bytes": 21,
+      "name": "Player::ComponentID::IsValid",
+      "sha256": "6b7ab1333e17d6c73ef1445fc18db84c1ff4ecc644a31115c46534e071f1d771"
+    },
+    {
+      "address": "0x293d4d0",
+      "bytes": 192,
+      "name": "Formation::GetIgnoreCost(Terrain)",
+      "sha256": "4b476bf066684ac658fc768cd256e8596ec55d63b364241aaa6952174059d64e"
+    },
+    {
+      "address": "0x293d590",
+      "bytes": 192,
+      "name": "Formation::GetIgnoreCost(Feature)",
+      "sha256": "b3d99573a43a6451c7f5fd4cd9d46829cc060477b7dc1cab1361e715265fb778"
+    },
+    {
+      "address": "0x293d6d0",
+      "bytes": 170,
+      "name": "Formation::GetIgnoreShores",
+      "sha256": "573d70a2f1180afe15049990cf2ad6f611535d707ff10cb44de05151085507c2"
+    },
+    {
+      "address": "0x293d830",
+      "bytes": 170,
+      "name": "Formation::GetIgnoreRivers",
+      "sha256": "ea33c8a9016a9e35fd02c7e9d3810482bba30a0fcaa8239e50d3a0fa30614110"
+    },
+    {
+      "address": "0x2bed3b0",
+      "bytes": 164,
+      "name": "Rules::Movement::IsRiverCrossing",
+      "sha256": "058e188bf62381d5cf654ca7152deda8908d8f51907afebc1bce0bb8a71f1170"
+    }
+  ],
+  "rust_tests_passed": 6,
+  "independent_source_checks": {
+    "geometry_pairs": 1690000,
+    "dimension_pairs": 144,
+    "wrap_profiles": 4,
+    "dimensions_range": [
+      1,
+      12
+    ],
+    "topology_reference": "Independent odd/even offset-neighbor table plus original signed remainder bounds; direction checked against axial deltas and original X-only one-step wrap sectors.",
+    "water_definition_cases": 6,
+    "signed_short_narrowing": true,
+    "route_index_and_null_definition": true,
+    "district_instance_identity": true,
+    "verified_absent_district_distinct_from_unavailable": true,
+    "missing_valid_domains_errors": true,
+    "land_path_skips_unused_domain_provider": true,
+    "unit_false_reset_and_hash_overlay": true,
+    "low16_slot_generation_behavior": true,
+    "formation_missing_members_and_per_predicate_escort": true,
+    "river_endpoint_guards": true,
+    "invalid_coordinates_error": true
+  },
+  "independent_harness_sha256": "d43d7a9a7cb210e5d3fe08444683b8044f74f0db0c7580ac28c8f9f26df12f97",
+  "typed_map_contract_sha256": "78a9a117a9a9e7eabb3b6c348b8c5f333156de2fd3e0268fa2edc97e2128e6a1",
+  "unresolved_defects": [],
+  "original_game_code_executed": false,
+  "native_differential_acceptance": false,
+  "accepted_scope": "Bounded read-only resolver over explicitly supplied typed state and active native-order definitions/runtime facts.",
+  "remaining_dependencies": [
+    "Independent original native movement resolver corpus",
+    "Actual ordered native registries/properties and module/rules/configuration gates at the provider boundary",
+    "Owning Player/Units and District runtime providers",
+    "Reconstructed CityAttributes validDomains",
+    "Nonempty portal source-table reconstruction",
+    "Import resource policy beyond the native signed-count domain",
+    "Movement legality, ZOC/budgets, action mutation, complete state and turns"
+  ],
+  "full_gameplay_parity": false,
+  "raw_save_load_different_bytes_retained": 89198,
+  "unknown_bytes_masked": 0,
+  "limits": "Static instruction review and Rust/source-only cases establish no initialized native world, rules export, movement action or full state/RNG equivalence. Native undefined storage access is explicitly rejected rather than emulated."
+}
