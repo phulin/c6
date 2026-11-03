@@ -88,7 +88,8 @@ pub fn domain_from_hash(hash: u32) -> i32 {
 
 /// Generic ReadIndexHashArray overlay. Unknown keys are consumed and ignored;
 /// known duplicates overwrite in stream order. Unmentioned destinations retain
-/// their supplied values. Validate all indexes before the first write.
+/// their supplied values. Resolve each pair once and cache validated indexes
+/// before the first write, including when the lookup uses interior mutability.
 pub fn overlay<T: Copy>(
     destination: &mut [T],
     pairs: &[HashValue<T>],
@@ -97,16 +98,19 @@ pub fn overlay<T: Copy>(
     if definitions.count() != destination.len() || destination.len() > i32::MAX as usize {
         return Err(Error::ArrayStorage);
     }
+    let mut indices = Vec::new();
+    indices
+        .try_reserve_exact(pairs.len())
+        .map_err(|_| Error::ResourceLimit)?;
     for pair in pairs {
-        if definitions
-            .find_index(pair.definition_hash)
-            .is_some_and(|i| i >= destination.len())
-        {
+        let index = definitions.find_index(pair.definition_hash);
+        if index.is_some_and(|i| i >= destination.len()) {
             return Err(Error::DefinitionIndex);
         }
+        indices.push(index);
     }
-    for pair in pairs {
-        if let Some(index) = definitions.find_index(pair.definition_hash) {
+    for (pair, index) in pairs.iter().zip(indices) {
+        if let Some(index) = index {
             destination[index] = pair.value;
         }
     }
@@ -287,6 +291,34 @@ mod tests {
             reset_overlay(&[pair(99, 4), pair(99, -6)], &Lookup, 0),
             Ok(vec![0, -6, 0])
         );
+    }
+    #[test]
+    fn overlay_uses_cached_indexes_when_provider_changes_between_calls() {
+        use std::cell::Cell;
+        struct Changing(Cell<usize>);
+        impl DefinitionLookup for Changing {
+            fn count(&self) -> usize {
+                3
+            }
+            fn find_index(&self, _: u32) -> Option<usize> {
+                let call = self.0.get();
+                self.0.set(call + 1);
+                Some(match call {
+                    0 => 0,
+                    1 => 1,
+                    2 => 0,
+                    _ => 9,
+                })
+            }
+            fn type_hash(&self, _: usize) -> Option<u32> {
+                None
+            }
+        }
+        let lookup = Changing(Cell::new(0));
+        let mut prior = [7, 8, 9];
+        overlay(&mut prior, &[pair(40, 4), pair(99, 5)], &lookup).unwrap();
+        assert_eq!(prior, [4, 5, 9]);
+        assert_eq!(lookup.0.get(), 2);
     }
     #[test]
     fn invalid_resolved_index_cannot_partially_mutate() {
