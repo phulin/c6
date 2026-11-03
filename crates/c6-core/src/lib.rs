@@ -376,3 +376,5 @@ pub mod player_ai_military;
 pub mod player_ai_tactical;
 
 pub mod player_ai_targets;
+
+pub mod player_ai_behavior_tree;
