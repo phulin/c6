@@ -27,3 +27,7 @@ python3 tools/linux/game_header_versions_audit.py \
 ```
 
 Earlier raw failures and the 89,198-byte Save→Load difference remain historical evidence without reclassification or masking. This work is Linux-specific; it establishes no Windows parity or cross-platform behavior equality.
+
+The retained raw diagnostic uses committed source `3cf410594d6ded1b7f446d3f21babd06202270a8` (a descendant of header implementation `47304cf`) and candidate SHA-256 `04b0a4a897b113c6e80c6b697566509e630feebada7119b208732bdc80a4508e`. On the original76,556,938-byte input `a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa`, the Game19 header passes and the next refusal is `Map(UnsupportedVersion { expected: 6, actual: 5 })`. The rejecting gate is the Map **Plots collection** version at `map.rs`'s `plots` record, rather than Map's outer v4 header. No Plot5 migration is implemented. The first-Player continuation is therefore not reached.
+
+Validation: all14 focused Core stream tests pass; the full c6-core suite passes435 tests with1 existing ignored test; c6-core all-target clippy passes with warnings denied. These are Rust/source checks, not native Load parity.

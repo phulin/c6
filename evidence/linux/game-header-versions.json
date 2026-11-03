@@ -27,6 +27,22 @@
   },
   "native_runtime_side_effects_reconstructed": false,
   "prefix_wire_delta": "none through Map entry",
+  "raw_diagnostic": {
+    "candidate_sha256": "04b0a4a897b113c6e80c6b697566509e630feebada7119b208732bdc80a4508e",
+    "complete_raw_load": false,
+    "generated_lock_sha256": "76ef40053c1a96f3214e48bc308c3158c8013e98874f4b371c0a2c2d10d7c50f",
+    "generated_manifest_sha256": "7e41c6289279c2ddaac38704d77214f6f81c5f22d2cb5b27ae3e6bb80ff2da76",
+    "original_code_executed": false,
+    "probe_source_sha256": "7bbf7d51622130ca334a4ca886eb4cf2418652b659003ab70d6e877f148567c6",
+    "raw_input_bytes": 76556938,
+    "raw_input_sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
+    "result_lines": [
+      "prefix_error Map(UnsupportedVersion { expected: 6, actual: 5 })"
+    ],
+    "retained_source_archive": "target/linux/game-header-versions/2fb104ff1e9444ac984c6ffa25be809e/committed-source.tar",
+    "source_archive_sha256": "953b1f2d7b964062a275267aed4f20e82b3da6474d94f3c1931fa60ffa0ac8a2",
+    "source_revision": "3cf410594d6ded1b7f446d3f21babd06202270a8"
+  },
   "rules_gate": {
     "address": "0x2d7aac9",
     "minimum": 14
