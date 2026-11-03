@@ -1,0 +1,34 @@
+{
+  "schema": "c6-linux-full-manager-predicate-preparation-v1",
+  "configuration_sha256": "7470f4ec047ea9cd44f5afd422fe549f06110112e3634e1d67cf0c19a003ef9c",
+  "prepared_sha256": "f829ee73f75b20886bad9631bb11dd44a94ce6792d158b03ac53f59d1e772343",
+  "preload_sha256": "7c6c5b25a593202bf4d03c69d8b66e46830855503c373bf9b8c70b12a586d310",
+  "static_plan_sha256": "2f7721b6ec85108a0d8c43d6b5dc5f98b90677484691c916a5cd8319ebeb7d44",
+  "source_archive_sha256": "40c292ce614531497a9b0d93c94fbe90da2873e6f7aac9d0e7d95d1b8da33e68",
+  "source_count": 92,
+  "source_git_checkpoint": "ddb293a",
+  "differing_from_git_paths": [],
+  "native_execution_performed": false,
+  "actor": {
+    "owner": 0,
+    "full_id": 15794187,
+    "visible_only": false,
+    "supplied_plot": null
+  },
+  "requested_predicate_calls": 1,
+  "observation_mode": "raw_unresolved",
+  "launch_plan_sha256": "f0e00d989af9d54420f4d8b23bbf309d9ec316adb04248f3084a1de473f95f8d",
+  "source_wiring_review": "ed67f33",
+  "Save_diagnostics_optional": true,
+  "Save_equality_is_gate": false,
+  "queued_work_zero_is_gate": false,
+  "script_effects_possible": true,
+  "complete_gameplay_state_rng_action_turn_parity": false,
+  "exact_native_profile_admission_pending": true,
+  "limits": [
+    "Source and offline preparation only; no original invocation yet.",
+    "Unknown protected Lua/GC frames remain unresolved; no heap decoding or empty-callback inference.",
+    "Known RNG endpoints are bounded observations, not a complete gameplay RNG inventory.",
+    "Original AI policy hard-stop hooks make a reached path unavailable; they are not accepted gameplay behavior."
+  ]
+}
