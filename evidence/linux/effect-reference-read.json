@@ -1,0 +1,239 @@
+{
+  "schema": "c6-linux-effect-reference-read-v1",
+  "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "host_address_kind": "ET_EXEC absolute virtual addresses; no host RVA conversion",
+  "closed_typed_report_sha256": "fbca2af7056d56e69330518617bc7e8e26af5446aa8fb5458dd5edd00b0754b6",
+  "native_execution": false,
+  "native_functions": {
+    "Instance_Write": {
+      "rva": "0x23f4b20",
+      "bytes": 580,
+      "sha256": "09ba1abc8d895c172f45067a8e23629b2e4cd1860a99e76a8f16565e3c910893"
+    },
+    "Instance_Read": {
+      "rva": "0x23f5e70",
+      "bytes": 858,
+      "sha256": "ba367a1764c14884b284ca480d703e10787f0538c025f0a88b0e431abf7b18fe"
+    },
+    "RequirementSystem_Write": {
+      "rva": "0x23f54c0",
+      "bytes": 644,
+      "sha256": "831533978d155dbb6ef65ab820f2d864a71078c4fc3efda611bdf6d38e80840a"
+    },
+    "RequirementSystem_Read": {
+      "rva": "0x23f7d20",
+      "bytes": 693,
+      "sha256": "794ad9d00ddbdabebf9ac50de8d4c36de56d3fddfe3f44383d0bc1ee64791d6b"
+    },
+    "Team_Write": {
+      "rva": "0x23efe00",
+      "bytes": 62,
+      "sha256": "be0d20f0717a5daafa48d04dfec0ec5a3ba9125f12386adcf59537c28c12ffec"
+    },
+    "Team_Read": {
+      "rva": "0x23efe40",
+      "bytes": 342,
+      "sha256": "0282163615a060627c250cb23d76ff60af58bf48a5750bba9f9b8c86c6e8fc02"
+    },
+    "Team_MakeObject": {
+      "rva": "0x233ef40",
+      "bytes": 31,
+      "sha256": "c143969e357f26aee95a14aacc6473407e4294c2d7987135ff87dcc06c7c62c5"
+    },
+    "Team_DefaultMakeObject": {
+      "rva": "0x242de20",
+      "bytes": 171,
+      "sha256": "7199177fe6c035bab26147b476ee51dad31694bd4db4ce206194e95cc6a269ea"
+    },
+    "ObjectPool_SetNextInstanceId": {
+      "rva": "0x23350d0",
+      "bytes": 3,
+      "sha256": "e57f6082d61fbfc2f1375ebe719921bae81e81ff55cb3522867874eaaf77ff16"
+    },
+    "ObjectPool_Share": {
+      "rva": "0x23353a0",
+      "bytes": 386,
+      "sha256": "08eec8fc8e9a35235a10ad139c64ca87ace1542917412dbcb188cb9eadc7aafb"
+    },
+    "ObjectPool_Append": {
+      "rva": "0x2335530",
+      "bytes": 565,
+      "sha256": "b32782ad4be21ae282991dd85be064b4ec2cbb8251121bb06f451d56bbd6c1ed"
+    },
+    "ModifierObject_GetInstanceId": {
+      "rva": "0x2335940",
+      "bytes": 4,
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1"
+    },
+    "ModifierObject_SetInstanceId": {
+      "rva": "0x2335950",
+      "bytes": 4,
+      "sha256": "16d722de6e6e0c0b5b7328dcabe0f5ecf0e1d191ce89414edf847c761c487641"
+    },
+    "VictoryManager_Read": {
+      "rva": "0x2a31870",
+      "bytes": 555,
+      "sha256": "e2e5ed46317812c27ce39801f0a9a4c436ea7052b74df91982341b3d4353fb41"
+    },
+    "VictoryManager_InitializePlayer": {
+      "rva": "0x2a32420",
+      "bytes": 2267,
+      "sha256": "474bb6190ab4d4bff9dc82a9583203b317a2812aa5c87e38caaf850f824f5d34"
+    },
+    "Game_Instance_Read": {
+      "rva": "0x2d7aaa0",
+      "bytes": 2540,
+      "sha256": "917d430f7b9c105932f394d62b2b75c83f698437ba89e7ce0ece979dad395873"
+    },
+    "ObjectPool_Constructor": {
+      "rva": "0x2335030",
+      "bytes": 83,
+      "sha256": "ec4bf14f7048f598e92fa0872629941fa1f21879f0a6385e1e190aefb707bfd6"
+    },
+    "ObjectPool_ClearObjects": {
+      "rva": "0x23289f0",
+      "bytes": 157,
+      "sha256": "07ae6bc83808e57882368b3baa585e652c30cdb90153bb2c6baad98abc73b598"
+    },
+    "ObjectPool_Trim": {
+      "rva": "0x23350e0",
+      "bytes": 342,
+      "sha256": "6a13d0f0b1db74192fe71664012c2bd4966b66b54b90041fe8baa297ab4b246f"
+    },
+    "ObjectPool_FindObject": {
+      "rva": "0x2335770",
+      "bytes": 104,
+      "sha256": "d2140b88a42189bc678bd4830234a779a17c164c83a4c580dac8a0e3866336e1"
+    },
+    "Team_Equal": {
+      "rva": "0x23efa90",
+      "bytes": 91,
+      "sha256": "d096ffc46399f53a081084860151957f4963e8dc85ecaf4e1fef9516a9e9618e"
+    },
+    "Team_IsTemporary": {
+      "rva": "0x23efc40",
+      "bytes": 3,
+      "sha256": "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+    },
+    "ModifierObject_CacheRequirement": {
+      "rva": "0x2335d50",
+      "bytes": 289,
+      "sha256": "62ed3e5057aeb75d842ea02300cbd1229ca558cb49da5c36a884bc5a38e862bd"
+    },
+    "ModifierObject_GetRequirement": {
+      "rva": "0x2335fb0",
+      "bytes": 161,
+      "sha256": "58c5c402d5e06466beeb985125632955f09cde7ee744e70e0cfc661e06f199e8"
+    },
+    "ModifierObject_LookupKeyHasher": {
+      "rva": "0x2336110",
+      "bytes": 26,
+      "sha256": "d473a8dba0e49256c4f6259ed130d3826f1d6de62028ad81a3b8438c8d60fff4"
+    },
+    "RequirementSystem_GetRequirement": {
+      "rva": "0x2336a40",
+      "bytes": 1127,
+      "sha256": "1aeb2174cf48432588dc0fcb8def81ac63766a95562ca3ee40086c0554cd7774"
+    },
+    "RequirementSystem_ReleaseTemporaryRequirements": {
+      "rva": "0x2338bf0",
+      "bytes": 86,
+      "sha256": "9211cade6be414ca9be7c0d4b48500267b169581d3873133a614532c0deb627b"
+    },
+    "RequirementSystem_Constructor": {
+      "rva": "0x2337d00",
+      "bytes": 196,
+      "sha256": "e4f4df5f432c70d1df2e5f8bc8c56287e843d851161196ba82f27a705d27147e"
+    },
+    "VictoryManager_InitializeGlobalDefeats": {
+      "rva": "0x2a31f00",
+      "bytes": 1022,
+      "sha256": "2e79535df68303466ec356ded7dbf2595a8053252921d5ecc9ce0d4329155406"
+    },
+    "VictoryManager_CullRequirements": {
+      "rva": "0x2a32320",
+      "bytes": 254,
+      "sha256": "433bed0346ef385bcf0d9a11fcefc13963a769b411a4b44f46656eabf3858923"
+    }
+  },
+  "fixture_identity": {
+    "initial_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "reloaded_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+    "bytes": 80657462,
+    "raw_save_load_different_bytes": 89198,
+    "gameeffects_different_bytes": 42
+  },
+  "static_findings": [
+    {
+      "source": "0x2335030; 0x23289f0; 0x23f5f46",
+      "finding": "Pool construction seeds permanent next=1 and temporary next=-1; ClearObjects clears both weak index sets without resetting counters. Instance v4 Read begins with Trim, not ClearObjects. Startup live roots and per-type weak-vector order remain relevant."
+    },
+    {
+      "source": "0x23353a0; 0x23efa90; 0x23efc40",
+      "finding": "Share selects permanent or temporary type map, locks weak entries in vector order and returns the first live equal object. Team is permanent; equality tests GUID and eTeam at object+0x110. A reused object retains its old instance ID; no Append or counter increment occurs."
+    },
+    {
+      "source": "0x2335530..0x233574f",
+      "finding": "Append selects type vector, may Trim on capacity exhaustion, assigns selected counter via virtual SetInstanceId, appends ID/weak tuple and type weak entry, then increments permanent or decrements temporary counter. Temporary branch rebases rbx by +0x38 at 0x23356a8 before common counter update at 0x2335744."
+    },
+    {
+      "source": "0x2335770..0x23357d8",
+      "finding": "FindObject(0) returns empty; positive IDs search permanent ID tuples; negative IDs search temporary tuples using negated ID. equal_range returns the first matching entry, then one weak lock; no search of later duplicates if that first entry expired."
+    },
+    {
+      "source": "0x23f5fba; 0x23f5fcd; 0x23efee6",
+      "finding": "Instance Read seeds permanent next with each serialized ID, then reads the object. Team Read requires eTeam!=-1 and membership in current WasEverAlive players before MakeObject. It does not directly force the returned object's ID or install an arbitrary old-to-new mapping."
+    },
+    {
+      "source": "0x23f7df5..0x23f7f45; 0x2336a40..0x2336ac5",
+      "finding": "Requirement v3 Read resolves context then subject by exact pool ID. GetRequirement rejects null context/subject or empty definition ID, then queries subject cache with context's instance ID. Reader restores state and temporarily roots a nonnull requirement only when virtual predicate slot+0x78 returns false; true skips both operations."
+    },
+    {
+      "source": "0x2335d50; 0x2335fb0; 0x2336110; 0x2336bd8..0x2336c27",
+      "finding": "Subject requirement cache key contains context instance ID, definition hash and definition string; the custom hasher consumes ID and hash. Successful new factory construction assigns and increments RequirementSystem's separate counter at system+0, caches requirement and appends its weak list. Cache hits bypass creation and this increment."
+    },
+    {
+      "source": "0x2338bf0; 0x23f6085; 0x23f60b6; 0x23f60d1",
+      "finding": "ReleaseTemporaryRequirements destroys roots in reverse vector order, then Instance destroys temporary object roots in reverse vector order, then Trim removes expired weak entries while retaining survivor order. Objects retained elsewhere survive; final save IDs do not identify which roots kept them alive."
+    },
+    {
+      "source": "0x2d7af5b..0x2d7b351",
+      "finding": "After effects, Game Read loads deals, notifications, summary and VictoryManager, restores map-derived data, initializes yield/tech/culture/heroes/analysis, invokes WasEverAlive player postload, rules and barbarian postload, then global defeats and Alive-order victory InitializePlayer. Any nested creation in these stages must be accounted for."
+    },
+    {
+      "source": "0x2a32420; 0x2a3298c; 0x2a32a8d",
+      "finding": "Victory InitializePlayer depends on WorldBuilder active, player validity/barbarian/free-city/major classification, existing victory entries and definition iteration. It creates/shares player and Team objects and requirements/sets, installs subscriptions and retains successful entries. Team creation order cannot be inferred from serialized Team order alone."
+    }
+  ],
+  "conditional_allocation_constraint": {
+    "last_initial_serialized_team_id": 87494,
+    "first_reloaded_serialized_team_id": 87505,
+    "observed_team_id_delta": 24,
+    "inference": "If last restored Team appends once (next=87495), no later setter/reset occurs, and first recreated Team is a new Append assigned 87505, exactly ten intervening permanent appends are required. None of these antecedents or their callers is established by final save bytes alone."
+  },
+  "passive_observation_protocol": {
+    "scope": "Capture both known fixtures independently from fresh process startup through Core Load and two Saves, without executing native AI decisions.",
+    "events": [
+      "Global monotonically sequenced thread/call-parent/stage events for pool constructor, ClearObjects, SetNextInstanceId, Share entry/return, Append entry/return, Trim entry/return and Team destruction; include all object types, not only Team.",
+      "Record pool identity, both counter values, requested saved ID/stream offset, actual GUID/eTeam when applicable, object/control-block identity and object instance ID before/after. Record candidate weak-vector order and actual Share selection, including expired entries; preserve every ID exactly.",
+      "At Game Read entry, Instance entry, requirements/modifiers entry/return, temporary-root release, Victory Read clear and each postload stage, snapshot weak indices, roots, RequirementSystem counter, requirement/cache identities and ordered Alive/WasEverAlive player/team lists.",
+      "Observe RequirementSystem GetRequirement/GetRequirementSet cache hit or factory creation, assigned runtime IDs, actual context/subject IDs, state restoration guard/result, temporary-root release and victory subscriptions. Trace actual last-strong-owner destruction; pointer reuse must use control-block/allocation generation, not bare address equality.",
+      "Record exact input/rules/configuration/provider identities and compare all affected state, including complete RNG records and observed RNG access/call counts across reconstruction. Factory/virtual callback and logging/service behavior must remain attributed dependencies."
+    ],
+    "observer_constraints": [
+      "Forward original calls once with untouched arguments, returns and exceptions; do not replace allocations or object/reference IDs.",
+      "Use bounded preallocated observer storage. Never call weak_ptr::lock, MakeObject, FindObject, gameplay getters with unknown side effects, or native GameEffects logging solely to inspect state. Observer-created strong references would alter precisely the lifetime being measured.",
+      "Retain instrumentation/code hashes and complete trace privately; public report contains digests, typed conclusions and gaps. Reject overflow, missing/nested event mismatch, thread loss or observer changes to known output hashes/cleanup."
+    ],
+    "acceptance": "Both uninstrumented known Save hashes and successful cleanup must reproduce; every counter write, reuse decision and destruction linking imported IDs to final IDs must be explained. Then derive source-closed Rust reconstruction and compare the full affected state in boundary fixtures, including future allocation/iteration observations."
+  },
+  "implementation_decision": "No Rust identity reconstruction is justified yet: native ownership/factory/postload allocation sequence and complete affected-state oracle are missing. A +24 transform, generic provider trait, or stable-key isomorphism would not implement original Load.",
+  "limits": [
+    "Static findings are reviewed target instruction semantics, not a runtime allocation trace or native differential pass.",
+    "Only the existing typed scope covers all 42 changed bytes; this adds no global reference census and excludes no AI-namespaced gameplay state.",
+    "ID-bearing cache keys establish a real identity dependency, not a proven future RNG/iteration divergence. Transitive factories/callbacks require further evidence.",
+    "Raw 89198-byte failure remains unmasked. Exact state import, full gameplay state/actions/turns and future behavior equivalence remain unimplemented."
+  ],
+  "canonical_fixture_recheck": "complete existing typed audit reproduced exactly"
+}
