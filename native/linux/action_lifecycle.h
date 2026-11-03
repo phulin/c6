@@ -12,4 +12,7 @@ int c6_linux_action_prepare_core_component(void *game_module, void *borrowed_con
  * Requires shared quiescence before/after the callback. Unknown/active movement
  * state terminates the isolated process with 184 before teardown. */
 int c6_linux_action_prepare_movement_cost(void *game_module, void *borrowed_context);
+/* Independent metadata callback/admission scope with the same fatal idle and
+ * clear-before-Uninitialize boundary as the movement query profile. */
+int c6_linux_action_prepare_domain_metadata(void *game_module, void *borrowed_context);
 #endif
