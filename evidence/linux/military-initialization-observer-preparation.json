@@ -1,0 +1,49 @@
+{
+  "schema": "c6-linux-military-observer-preparation-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "observer_sha256": "39a440f07a911c1ca33ee09de653297142c33e43fa96d4df6de529338cf95217",
+  "audit_sha256": "3e00f2d7abddbb587c292be631e4dd5bbe43ee92bc579ca4b6e34827def8bd3f",
+  "dwarf_sha256": "a896974fac24c52d5134f5f55b1121479527d7911c7923e3e7b655c1888044c3",
+  "extended_dwarf_sha256": "e78ead2c077c5ea96625681dfaa9cf0bc5736d8e93558c2c371d899d8bdfbc87",
+  "static_method_checks": 34,
+  "callback_protocol_tests": 23,
+  "callback_schema": "c6-linux-military-observation-v1",
+  "source_contract_commit": "78866b74ea27036a25185b3108e094eef4b7cb61",
+  "vector_abi": {
+    "data_pointer_offset": 0,
+    "capacity_u32_offset": 8,
+    "size_u32_offset": 16,
+    "element_type": "i32"
+  },
+  "checkpoints": {
+    "read_entry": "0x2145620",
+    "write_entry": "0x21453f0",
+    "initialize_entry": "0x2145be0",
+    "personality_return": "0x2145c07",
+    "leader_return": "0x2145c17",
+    "query_entry": "0x203ac30",
+    "count_entry": "0x2114220",
+    "hash_array_entry": "0x214d7b0",
+    "write_guard": "0x2145504",
+    "read_initialized": "0x2145669"
+  },
+  "original_execution": false,
+  "hooks_installed": false,
+  "genuine_snapshot_captured": false,
+  "runtime_profile_changed": false,
+  "capture_complete": false,
+  "gameplay_parity": false,
+  "missing": [
+    "runner hook integration and source/profile-reviewed ordinary-load capture",
+    "genuine prior/initialized/post-Read and actual writer snapshots for every owner",
+    "actual ordered definitions/defaults under matching rules lifetime",
+    "independent saved-output/canonical Core stream attribution review"
+  ],
+  "full_gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "unknown_bytes_masked": false
+}
