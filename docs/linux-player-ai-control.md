@@ -34,9 +34,11 @@ Native Read is a broader operation: Manager resolves `Globals::GetPlayer`, calls
 Reproduce structural comparison and committed candidate validation:
 
 ```sh
-python3 tools/linux/player_ai_control_audit.py --source-commit <committed-corrected-driver-and-export> --output target/linux/player-ai-control.json
+python3 tools/linux/player_ai_control_audit.py --source-commit 2f585b7 --output target/linux/player-ai-control.json
 ```
 
 The candidate comes from a Git archive and the driver verifies its own archived bytes. The driver requires the library export to be present in the committed archive and fails if it is absent. It verifies SHA-256 identities for all crate source files, manifests, lockfile and audit sources against that Git pin before building and checks that the build did not mutate those files. The comparison harness calls the actual exported crate module. It runs strict Clippy with the exported module, two focused source tests and decode/re-encode of all 86 actual records with exact byte/item caps, one-short caps, every truncation, strict trailing refusal and exact prefix consumption. This uses existing original Save outputs; no original game Read is executed and no proprietary data is written to the public repository.
 
 Historical preliminary validation of `5cdd76d` passed source-only strict Clippy, both focused Rust tests and all 86 original saved-record comparisons after injecting the export into extracted source. That archive did not contain the actual export and therefore is **not final frozen-source acceptance**. Its report remains unchanged for provenance. Final validation requires a descendant of export commit `506204d`, the committed corrected audit driver and a wholly unmodified archive; it is recorded separately in [the exported-source report](../evidence/linux/player-ai-control-exported.json).
+
+Final exported-source validation at `2f585b7` passed: two actual crate tests, strict Clippy and all 86 original saved-record comparisons through the actual exported library. The archive source was not changed; every recorded source SHA-256 was also rechecked directly against that Git pin. The historical preliminary report was preserved unchanged.
