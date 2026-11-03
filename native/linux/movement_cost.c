@@ -366,11 +366,22 @@ int c6_linux_movement_cost_probe(void *module,void *context) {
     /* Preserve the numerical environment; reject instead of silently changing it. */
     if(fegetround()!=FE_TONEAREST||(mxcsr&0xffc0)!=0x1f80)return 205;
     const void *map=a.map(),*parameters=a.parameters(),*rules=a.rules(),*game=a.game();
-    if(!map||!parameters||!rules||!game)return 206;
-    if(a.current_game()!=game||a.current_map()!=map||a.game_map(game)!=map)return 206;
+    if(!map||!parameters||!rules||!game){
+        fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure missing_receiver map %d parameters %d rules %d game %d\n",map!=NULL,parameters!=NULL,rules!=NULL,game!=NULL);return 206;
+    }
+    const void *observed=a.current_game();
+    if(observed!=game){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure globals_game actual %p expected %p\n",observed,game);return 206;}
+    observed=a.current_map();
+    if(observed!=map){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure singleton_map actual %p expected %p\n",observed,map);return 206;}
+    observed=a.game_map(game);
+    if(observed!=map){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure game_map actual %p expected %p\n",observed,map);return 206;}
     uintptr_t map_vptr=pointer_at(map,0);
-    if(map_vptr!=a.base+0x3ad5360||pointer_at((const void *)map_vptr,0x78)!=a.base+0x2a48ba0)return 206;
-    const void *manager=a.player_manager(game);if(!manager||!a.manager_initialized(manager))return 206;
+    if(map_vptr!=a.base+0x3ad5360){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure map_vptr actual 0x%" PRIxPTR " expected 0x%" PRIxPTR "\n",map_vptr,a.base+0x3ad5360);return 206;}
+    uintptr_t plot_target=pointer_at((const void *)map_vptr,0x78);
+    if(plot_target!=a.base+0x2a48ba0){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure map_get_plot actual 0x%" PRIxPTR " expected 0x%" PRIxPTR "\n",plot_target,a.base+0x2a48ba0);return 206;}
+    const void *manager=a.player_manager(game);
+    if(!manager){fputs("C6_LINUX_MOVEMENT_COST admission_failure missing_manager\n",stderr);return 206;}
+    if(!a.manager_initialized(manager)){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure manager_not_initialized manager %p\n",manager);return 206;}
     /* Original Manager.Initialize allocates 65 pointer slots at +0x20. The
      * matching DWARF vector and GetPlayer load establish its begin/end fields.
      * Check the real live extent before any unchecked original GetPlayer call. */
@@ -378,8 +389,10 @@ int c6_linux_movement_cost_probe(void *module,void *context) {
     memcpy(&player_begin,(const unsigned char *)manager+0x20,8);
     memcpy(&player_end,(const unsigned char *)manager+0x28,8);
     if(!player_begin||player_end<player_begin||(player_end-player_begin)%8
-       ||(player_end-player_begin)/8<64||(player_end-player_begin)/8>4096)return 206;
-    const void *sync=a.sync_random(game);if(!sync)return 206;
+       ||(player_end-player_begin)/8<64||(player_end-player_begin)/8>4096){
+        fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure player_table_extent begin 0x%" PRIxPTR " end 0x%" PRIxPTR "\n",player_begin,player_end);return 206;
+    }
+    const void *sync=a.sync_random(game);if(!sync){fputs("C6_LINUX_MOVEMENT_COST admission_failure missing_sync_random\n",stderr);return 206;}
     unsigned char rng_before[64];memcpy(rng_before,sync,32);memcpy(rng_before+32,a.map_random,32);
     /* Save controls precede all discovery/fact/cost calls; repeat saves retain raw
      * normalization differences and are never treated as hidden-byte exclusions. */
