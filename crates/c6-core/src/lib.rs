@@ -36,6 +36,7 @@ pub mod player_techs;
 pub mod player_trade;
 pub mod player_treasury;
 pub mod player_units;
+pub mod player_wmds;
 pub mod player_name_manager;
 pub mod player_prerequisites;
 pub mod plot_yield;
