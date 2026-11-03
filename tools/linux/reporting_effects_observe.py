@@ -43,6 +43,12 @@ def cid(raw):
     return list(struct.unpack('<hhI', raw))
 
 
+class ObservationReadError(ValueError):
+    def __init__(self, reason, **context):
+        self.context = context
+        super().__init__(reason)
+
+
 class Decoder:
     """Pure bounded memory reads; read callback never calls an inferior function."""
     def __init__(self, read, base):
@@ -51,11 +57,14 @@ class Decoder:
     def uint(self, address, size=8):
         return int.from_bytes(self.read(address, size), 'little')
 
-    def vector(self, address, width, limit):
+    def vector(self, address, width, limit, label):
         header = self.read(address, 24)
         begin, end, capacity = struct.unpack('<QQQ', header)
         if not begin <= end <= capacity or (end - begin) % width or (end - begin) // width > limit:
-            raise ValueError('invalid/out-of-profile vector header')
+            raise ObservationReadError('invalid/out-of-profile vector header', label=label,
+                address=hex(address), raw24=header.hex(), begin=hex(begin), end=hex(end), capacity=hex(capacity),
+                width=width, element_limit=limit, ordered_pointers=begin <= end <= capacity,
+                used_bytes=end - begin, used_bytes_divisible=(end - begin) % width == 0)
         return header, begin, (end - begin) // width
 
     def index_list(self, header):
@@ -74,8 +83,8 @@ class Decoder:
 
     def system(self, address):
         raw = self.read(address, 88)
-        _, ids_ptr, ids_count = self.vector(address + 0x28, 4, 4096)
-        _, objects_ptr, objects_count = self.vector(address + 0x40, 16, 4096)
+        _, ids_ptr, ids_count = self.vector(address + 0x28, 4, 4096, 'PlotYields.ObjectHandles')
+        _, objects_ptr, objects_count = self.vector(address + 0x40, 16, 4096, 'PlotYields.Objects')
         ids = list(struct.unpack('<' + 'I' * ids_count, self.read(ids_ptr, ids_count * 4))) if ids_count else []
         objects = self.read(objects_ptr, objects_count * 16) if objects_count else b''
         return dict(address=hex(address), raw88=raw.hex(), counter=int.from_bytes(raw[8:12], 'little'),
@@ -117,7 +126,7 @@ class Decoder:
             if not self.uint(edge + 0x140, 1):
                 continue
             raw = self.read(edge, 536)
-            path_header, path_ptr, count = self.vector(edge + 0x188, 4, 65536)
+            path_header, path_ptr, count = self.vector(edge + 0x188, 4, 65536, 'Trade.Edge.path edge=' + hex(edge))
             path_raw = self.read(path_ptr, count * 4) if count else b''
             row = dict(slot=slot, edge_pointer=hex(edge), edge_id=struct.unpack_from('<i', raw, 0xa8)[0],
                        route_id=struct.unpack_from('<i', raw, 0xc0)[0], origin=cid(raw[0xd0:0xd8]),
@@ -136,8 +145,8 @@ class Decoder:
 
     def monitor(self, receiver, expected):
         header = self.read(receiver, 48)
-        _, plot_ptr, plots = self.vector(receiver, 32, 10000)
-        _, trade_ptr, trades = self.vector(receiver + 24, 80, 1024)
+        _, plot_ptr, plots = self.vector(receiver, 32, 10000, 'YieldMonitor.PlotYields')
+        _, trade_ptr, trades = self.vector(receiver + 24, 80, 1024, 'YieldMonitor.TradeYields')
         plot_raw, trade_raw = self.read(plot_ptr, plots * 32), self.read(trade_ptr, trades * 80)
         plot_rows = [self.index_list(plot_raw[i * 32:(i + 1) * 32]) for i in range(plots)]
         trade_rows = []
@@ -219,7 +228,7 @@ def prepare(args):
                 selected.append(dict(owner=row['owner'], id=row['id']))
     if len(selected) != 1:
         raise ValueError('parent selected actor identity is ambiguous')
-    metadata = dict(schema='c6-linux-reporting-effects-observer-prepared-v1', checks_passed=True,
+    metadata = dict(schema='c6-linux-reporting-effects-observer-prepared-v1', checks_passed=True, diagnostic_only_revision=True,
         original_code_executed=False, native_capture_performed=False, source_sha256=sha(__file__),
         parent_runtime_sha256=sha(args.parent_runtime), parent_configuration_sha256=CONFIG_SHA,
         gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA, preload_sha256=PRELOAD_SHA,
@@ -280,7 +289,7 @@ def install_gdb(config_path):
                     raise ValueError('live checkpoint bytes differ: ' + self.kind)
                 return hit(self)
             except Exception as error:
-                emit(dict(stage='observer_error', checkpoint=self.kind, error=str(error), interval_open=bool(state['interval'])))
+                emit(dict(stage='observer_error', checkpoint=self.kind, error=str(error), details=getattr(error, 'context', None), interval_open=bool(state['interval'])))
                 return True
     def hit(point):
         decoder = Decoder(mem, state['base'])
@@ -297,6 +306,29 @@ def install_gdb(config_path):
             caller = decoder.uint(sp)
             if caller != state['base'] + 0x272361e:
                 raise ValueError('monitor caller differs from native cache delegate return')
+            # Preserve bounded context before any deep decode. This is a prefix,
+            # never a completed interval or a valid before/after observation.
+            emit(dict(stage='monitor_entry_prefix', thread=tid, receiver=hex(receiver), raw48=mem(receiver, 48).hex(),
+                      rsp=hex(sp), caller=hex(caller)))
+            bindings = dict(stage='monitor_binding_diagnostics', thread=tid, receiver=hex(receiver))
+            def probe(label, address, width):
+                try:
+                    raw = mem(address, width)
+                    value = int.from_bytes(raw, 'little')
+                    bindings[label] = dict(address=hex(address), width=width, raw=raw.hex(), value=hex(value) if width == 8 else value)
+                    return value
+                except Exception as error:
+                    bindings[label] = dict(address=hex(address), width=width, read_error=str(error))
+                    return None
+            probe('local_game_global', state['base'] + 0x3c051a8, 8)
+            game_slot = probe('target_GetGame_got_slot', state['base'] + 0x3b0ef18, 8)
+            if game_slot:
+                probe('target_GetGame_via_got', game_slot, 8)
+            probe('local_trade_component_index', state['base'] + 0x3c00510, 4)
+            index_slot = probe('target_TradeManager_index_got_slot', state['base'] + 0x3b09068, 8)
+            if index_slot:
+                probe('target_TradeManager_index_via_got', index_slot, 4)
+            emit(bindings)
             snapshot = decoder.monitor(receiver, cfg['expected_routes'])
             system = decoder.current_system()
             state['intervals'] += 1
@@ -422,6 +454,15 @@ def self_test():
         pass
     else:
         raise AssertionError('invalid IndexList accepted')
+    struct.pack_into('<QQQ', memory, 200, 300, 320, 310)
+    try:
+        decoder.vector(200, 4, 16, 'offline.bad_vector')
+    except ObservationReadError as error:
+        assert error.context['label'] == 'offline.bad_vector'
+        assert error.context['raw24'] == bytes(memory[200:224]).hex()
+        assert error.context['address'] == hex(200) and not error.context['ordered_pointers']
+    else:
+        raise AssertionError('invalid vector accepted')
     assert cid(struct.pack('<hhI', -1, 241, 0xffffffff)) == [-1, 241, 0xffffffff]
     assert changes(dict(plots=[1, 2], trades=[]), dict(plots=[1, 3], trades=[]))['plots_changed_rows'] == [1]
 
