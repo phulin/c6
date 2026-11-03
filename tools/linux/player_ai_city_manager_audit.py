@@ -46,6 +46,7 @@ def current_record(raw):
     pos, items = 0, 0
     out = bytearray()
     cuts = set()
+    collecting_cuts = True
     noncanonical = Counter()
     noncanonical_occurrences = []
     context = []
@@ -63,12 +64,16 @@ def current_record(raw):
         actual=atom('I')
         if actual!=expected: raise ValueError(f'version {actual}, expected {expected}, at {pos-4}')
     def seq(t,n):
-        nonlocal items
+        nonlocal items, collecting_cuts
         if n < 0 or n > len(raw)-pos: raise ValueError('hostile count')
         items += n
-        cuts.update((pos-4,pos))
-        for _ in range(n): walk(t)
-        cuts.add(pos)
+        collecting_parent = collecting_cuts
+        if collecting_parent: cuts.update((pos-4,pos))
+        for index in range(n):
+            collecting_cuts = collecting_parent and index in (0,n-1)
+            walk(t)
+        collecting_cuts = collecting_parent
+        if collecting_parent: cuts.add(pos)
     def walk(t):
         if len(t)==1:
             value=atom(t)
@@ -102,7 +107,8 @@ def current_record(raw):
     for _ in range(n): atom('I')
     cuts.update([0,1,2,3,4,7,8,12,16,20,24,pos-1])
     # Representative in-field cuts on the actual carrier in addition to every
-    # nested sequence count/data/end and CityBuild record boundary.
+    # nested sequence count/data/end in first/last repeated rows and every
+    # CityBuild record boundary.
     cuts.update(range(0,pos,max(1,pos//32)))
     if bytes(out)!=raw[:pos]: raise ValueError('typed reconstruction mismatch')
     return dict(player=player, consumed=pos, items=items, cuts=sorted(c for c in cuts if 0<=c<pos),
@@ -164,7 +170,7 @@ def candidate(pin, payload, record_count, cut_count):
         return dict(source_commit=pin,archive_sha256=sha(archive),module_sha256=sha(module.read_bytes()),
             driver_sha256=sha(driver.read_bytes()),harness_sha256=sha(HARNESS.encode()),candidate_sha256=sha((tmp/'candidate').read_bytes()),
             all_archived_sources_verified_unchanged=True,source_files=len(source_files),
-            native_records=record_count,actual_truncation_cuts=cut_count,exhaustive_actual_byte_prefixes=False,
+            native_records=record_count,actual_truncation_cuts=cut_count,exhaustive_actual_byte_prefixes=False,actual_cut_strategy="all CityBuild boundaries; nested containers in first/last repeated rows; 32 representative in-field cuts",
             source_tests=3,exhaustive_small_source_prefixes=True,exact_and_one_short_shared_byte_item_caps=True,
             strict_trailing_refused=True,prefix_consumption_exact=True,cargo_module_tests=True,strict_clippy=True)
 
