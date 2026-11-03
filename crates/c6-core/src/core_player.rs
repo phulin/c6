@@ -1,10 +1,11 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Culture.
-//! Stops before unframed Espionage; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete Techs.
+//! Stops before unframed Treasury; this is not a Player/world/gameplay importer.
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
+use crate::{player_espionage, player_religion, player_resources, player_stats, player_techs};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
@@ -22,6 +23,11 @@ pub enum Error {
     Districts(player_districts::Error),
     NameManager(player_name_manager::Error),
     Culture(player_culture::Error),
+    Espionage(player_espionage::Error),
+    Religion(player_religion::Error),
+    Resources(player_resources::Error),
+    Stats(player_stats::Error),
+    Techs(player_techs::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -102,13 +108,18 @@ pub struct FirstPlayer {
     pub districts: player_districts::Districts,
     pub name_manager: player_name_manager::NameManager,
     pub culture: player_culture::Culture,
+    pub espionage: player_espionage::Espionage,
+    pub religion: player_religion::Religion,
+    pub resources: player_resources::Resources,
+    pub stats: player_stats::Stats,
+    pub techs: player_techs::Techs,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerEspionage,
+    PlayerTreasury,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -116,7 +127,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerEspionage.
+    /// No complete Player entry has been consumed at PlayerTreasury.
     pub unfinished_player_entries: u32,
 }
 
@@ -408,6 +419,20 @@ impl Prefix {
                 player_culture::Culture::decode_prefix_with_items,
                 Error::Culture,
             )?;
+            let espionage = r.component(
+                player_espionage::Espionage::decode_prefix_with_items,
+                Error::Espionage,
+            )?;
+            let religion = r.component(
+                player_religion::Religion::decode_prefix_with_items,
+                Error::Religion,
+            )?;
+            let resources = r.component(
+                player_resources::Resources::decode_prefix_with_items,
+                Error::Resources,
+            )?;
+            let stats = r.component(player_stats::Stats::decode_prefix_with_items, Error::Stats)?;
+            let techs = r.component(player_techs::Techs::decode_prefix_with_items, Error::Techs)?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -420,10 +445,15 @@ impl Prefix {
                 districts,
                 name_manager,
                 culture,
+                espionage,
+                religion,
+                resources,
+                stats,
+                techs,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerEspionage
+            Boundary::PlayerTreasury
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -779,6 +809,333 @@ mod tests {
             }],
         }
     }
+    // Explicit arbitrary current-wire values, without runtime defaults.
+    fn tracked_carrier() -> crate::tracked_value::TrackedValue {
+        use crate::tracked_value::{Step, TrackedValue};
+        let leaf = TrackedValue {
+            value_q8: i32::MIN,
+            include_steps: false,
+            min_q8: Some(i32::MIN),
+            max_q8: Some(i32::MAX),
+            steps: vec![],
+        };
+        let label = map::LocalizedText {
+            base: vec![0, 255],
+            arguments: vec![
+                map::LocalizedArgument::Long64(i64::MIN),
+                map::LocalizedArgument::Float32Bits(0x7fc00042),
+            ],
+            named_arguments: vec![map::NamedArgument {
+                argument_index: 0,
+                name: vec![128],
+            }],
+        };
+        let branch = TrackedValue {
+            value_q8: 7,
+            include_steps: false,
+            min_q8: None,
+            max_q8: Some(9),
+            steps: vec![Step {
+                priority: -1,
+                id: u32::MAX,
+                label: label.clone(),
+                value: leaf,
+            }],
+        };
+        TrackedValue {
+            value_q8: i32::MAX,
+            include_steps: false,
+            min_q8: Some(-10),
+            max_q8: None,
+            steps: vec![Step {
+                priority: i32::MIN,
+                id: 0x80000000,
+                label,
+                value: branch,
+            }],
+        }
+    }
+    fn espionage_carrier() -> player_espionage::Espionage {
+        use crate::player_espionage as pmod;
+        pmod::Espionage {
+            spy_capacity: -999,
+            captured_spies: vec![pmod::CapturedSpy {
+                owning_player_ordinal: -998,
+                unit_type_hash: 3735879683,
+                name_index: -996,
+                level: -995,
+                promotion_hash: 3735879686,
+                promotion_hashes: vec![3735879687],
+            }],
+            off_map_spies: vec![pmod::OffMapSpy {
+                unit_type_hash: 3735879683,
+                name_index: -996,
+                level: -995,
+                experience_points: -994,
+                return_turn: -993,
+                return_x: -992,
+                return_y: -991,
+                return_city_owner_ordinal: -990,
+                ai_controller: 3735879691,
+                promotion_hashes: vec![3735879692],
+                old_unit_id: 3735879693,
+            }],
+            cities_with_sources: vec![pmod::CityWithSources {
+                player_ordinal: -996,
+                city_id: 3735879685,
+                expire_turn: -994,
+            }],
+            global_offense_bonus: -995,
+            global_defense_bonus: -994,
+            extra_steal_tech_boosts: -993,
+            mission_histories: vec![pmod::MissionHistoryRecord {
+                name_index: -992,
+                operation_hash: 3735879689,
+                target_city_id: 3735879690,
+                target_player_ordinal: -989,
+                target_plot_index: -988,
+                completion_turn: -987,
+                initial_result_ordinal: -986,
+                escape_result_ordinal: -985,
+                level_after_mission: -984,
+                loot_info: -983,
+            }],
+            counter_spy_yield_awards: vec![pmod::CounterSpyYieldAward {
+                yield_ordinal: -991,
+                amount: -990,
+                per_x_level: -989,
+            }],
+            target_city_spy_yield_percents: vec![pmod::TargetCitySpyYieldPercent {
+                yield_ordinal: -990,
+                percent: -989,
+            }],
+        }
+    }
+    fn religion_carrier() -> player_religion::Religion {
+        use crate::player_religion as pmod;
+        pmod::Religion {
+            faith_balance_q8: -999,
+            faith_rate_change_q8: -998,
+            pantheon_hash: 3735879683,
+            num_beliefs_earned: -996,
+            holy_city_coord: pmod::PlotCoord { x: -995, y: -994 },
+            belief_yields: vec![pmod::BeliefYield {
+                belief_yield_ordinal: -994,
+                yield_ordinal: -993,
+                amount: -992,
+                per_x_items: -991,
+                district_hash: 3735879690,
+            }],
+            building_yield_modifiers: vec![pmod::ReligionBuildingYieldModifier {
+                yield_ordinal: -993,
+                multiplier: -992,
+                founder_only: true,
+            }],
+            religion_building_discount: -992,
+            spread_distance: -991,
+            combat_loss: -990,
+            inquisition: -989,
+            gains_all_follower_beliefs: true,
+            founder_belief_of_majority_religion: true,
+            faith_per_peaceful_religion_founder: -986,
+            add_faith_harvest_modifier: -985,
+            add_faith_chop_modifier: -984,
+            add_faith_barbarian_plunder_modifier: -983,
+            adopts_ally_founded_religions: -982,
+            treat_ally_capital_as_holy_city: -981,
+            treat_holy_sites_as_holy_city: -980,
+            spread_multiplier: -979,
+            spread_enhancing_tech_hash: 3735879702,
+            tech_enabled_spread_multiplier: -977,
+            natural_wonder_relic: -976,
+            faith_from_dispersal: -975,
+            religious_pressure_per_great_person_activated: -974,
+            enable_wall_attack_whole_game_same_religion: -973,
+            enable_wall_attack_whole_game_same_religion_promotion_class: vec![unit::HashValue {
+                definition_hash: 0x80000000,
+                value: i32::MIN,
+            }],
+            start_inquisition_charges: -971,
+            spread_trade_route_pressure_destination_modifier: -970,
+            spread_trade_route_pressure_origin_modifier: -969,
+            great_person_founder_hash: 3735879712,
+            units_religion_strength_by_religion: vec![-967],
+        }
+    }
+    fn resources_carrier() -> player_resources::Resources {
+        use crate::player_resources as pmod;
+        pmod::Resources {
+            free_resource_visibility: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: true,
+            }],
+            extra_amenities_per_owned_luxury_resource: -998,
+            extra_amenities_per_owned_bonus_resource: -997,
+            full_access_one_strategic: true,
+            prevent_harvest_resource: -995,
+            resource_ownership: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: vec![-994],
+            }],
+            accumulated_resource_per_turn_q8: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -993,
+            }],
+            luxury_allocations: vec![pmod::CityResource {
+                city_id: 3735879688,
+                resource_hash: 3735879689,
+            }],
+            reserved_resources: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -991,
+            }],
+            banned_resources: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -990,
+            }],
+            no_cap_resources: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -989,
+            }],
+            export_resource_extracted: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -988,
+            }],
+            import_resource_extracted: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -987,
+            }],
+            free_resources_extracted: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -986,
+            }],
+            extra_accumulation_modifier: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -985,
+            }],
+            resource_stockpile_cap_modifier: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -984,
+            }],
+            unit_resource_demand_per_turn_q8: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -983,
+            }],
+            power_resource_demand_per_turn_q8: vec![pmod::ResourceEntry {
+                resource_hash: u32::MAX,
+                value: -982,
+            }],
+        }
+    }
+    fn stats_carrier() -> player_stats::Stats {
+        use crate::player_stats as pmod;
+        pmod::Stats {
+            max_melee_strength_trained: -999,
+            max_ranged_strength_trained: -998,
+            max_bombard_strength_trained: -997,
+            military_strength: -996,
+            military_strength_from_gold: -995,
+            air_military_strength: -994,
+            land_military_strength: -993,
+            naval_military_strength: -992,
+            barbarians_killed: -991,
+            barbarian_camps_cleared: -990,
+            tiles_pillaged: -989,
+            wmd_city_hits: -988,
+            cities_revolted: -987,
+            cities_annexed: -986,
+            total_cities_lost_to_disloyalty: -985,
+            total_cities_gained_from_disloyalty: -984,
+            total_number_of_alliances_formed: -983,
+            total_number_of_emergency_alliances_formed: -982,
+            gold_spent_levying: -981,
+            emergencies_joined: -980,
+            total_governors_appointed: -979,
+            total_governor_assignments: -978,
+            diplomatic_victory_points: tracked_carrier(),
+            last_turn_favor: -976,
+            current_turn_favor: -975,
+            lifetime_favor: -974,
+            science_victory_points_q8: -973,
+            science_victory_points_per_turn_q8: -972,
+            num_units_constructed: vec![unit::HashValue {
+                definition_hash: 0x80000000,
+                value: i32::MIN,
+            }],
+            num_projects_advanced: vec![unit::HashValue {
+                definition_hash: 0x80000000,
+                value: i32::MIN,
+            }],
+            wonders_lost_plots: vec![-969],
+            cached_yields_q8: vec![unit::HashValue {
+                definition_hash: 0x80000000,
+                value: i32::MIN,
+            }],
+            removed_feature_counts: [i32::MIN; 64],
+            national_park_counts: [i32::MIN; 64],
+            placed_forest_counts: [i32::MIN; 64],
+            known_wmd_counts: [i32::MIN; 64],
+            cleared_bandit_camp_counts: [i32::MIN; 64],
+            city_state_war_counts: [i32::MIN; 64],
+            players_revived: [i32::MIN; 64],
+            fertility_added_by_droughts: -960,
+            tiles_damaged_by_droughts: -959,
+            population_lost_by_droughts: -958,
+            units_killed_by_droughts: -957,
+            fertility_added_by_floods: -956,
+            tiles_damaged_by_floods: -955,
+            population_lost_by_floods: -954,
+            units_killed_by_floods: -953,
+            fertility_added_by_storms: -952,
+            tiles_damaged_by_storms: -951,
+            population_lost_by_storms: -950,
+            units_killed_by_storms: -949,
+            fertility_added_by_volcanos: -948,
+            tiles_damaged_by_volcanos: -947,
+            population_lost_by_volcanos: -946,
+            units_killed_by_volcanos: -945,
+        }
+    }
+    fn techs_carrier() -> player_techs::Techs {
+        use crate::player_techs as pmod;
+        pmod::Techs {
+            research_queue_hashes: vec![3735879681],
+            research_overflow_q8: -998,
+            science_rate_change_q8: -997,
+            modified_boost: -996,
+            has_tech: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            boost_triggered: crate::player_prerequisites::IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: u32::MAX,
+                        value: false,
+                    },
+                ],
+            },
+            research_progress_q8: vec![unit::HashValue {
+                definition_hash: 0x80000000,
+                value: i32::MIN,
+            }],
+            num_random_tech_boosts_on_new_era: -992,
+            num_techs_repeated: -991,
+            free_tech_boost_wonder_era: -990,
+        }
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -834,17 +1191,23 @@ mod tests {
             out.extend(v.to_le_bytes());
         }
         out.extend(culture_carrier().encode(Limits::default()).unwrap());
+        out.extend(espionage_carrier().encode(Limits::default()).unwrap());
+        out.extend(religion_carrier().encode(Limits::default()).unwrap());
+        out.extend(resources_carrier().encode(Limits::default()).unwrap());
+        out.extend(stats_carrier().encode(Limits::default()).unwrap());
+        out.extend(techs_carrier().encode(Limits::default()).unwrap());
+
         out
     }
     #[test]
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched Espionage");
+        trailing.extend_from_slice(b"untouched Treasury");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerEspionage);
+        assert_eq!(value.boundary, Boundary::PlayerTreasury);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -870,7 +1233,7 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::Culture(player_culture::Error::ResourceLimit))
+            Err(Error::Techs(player_techs::Error::ResourceLimit))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -898,6 +1261,15 @@ mod tests {
         );
         assert_eq!(p.culture.tourism_locations[0].tourist_counts[1].count, 12);
         assert_eq!(p.culture.government_type_modified_slots[0].delta, i32::MIN);
+        assert!(!p.stats.diplomatic_victory_points.include_steps);
+        assert_eq!(
+            p.stats.diplomatic_victory_points.steps[0].value.steps[0]
+                .value
+                .min_q8,
+            Some(i32::MIN)
+        );
+        assert!(p.techs.has_tech.pairs[0].value);
+        assert!(!p.techs.boost_triggered.pairs[1].value);
         assert_eq!(p.cities.building_build_overrides, [[111, 222], [111, 333]]);
         let exact = Limits {
             max_bytes: n,
@@ -920,7 +1292,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::Culture(player_culture::Error::ResourceLimit))
+            Err(Error::Techs(player_techs::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -941,8 +1313,13 @@ mod tests {
         assert!(player.header.saved_is_alive());
         let names = player.name_manager.encode(Limits::default()).unwrap();
         let culture = player.culture.encode(Limits::default()).unwrap();
-        let names_start = n - culture.len() - names.len();
-        let culture_start = n - culture.len();
+        let later_bytes = player.espionage.encode(Limits::default()).unwrap().len()
+            + player.religion.encode(Limits::default()).unwrap().len()
+            + player.resources.encode(Limits::default()).unwrap().len()
+            + player.stats.encode(Limits::default()).unwrap().len()
+            + player.techs.encode(Limits::default()).unwrap().len();
+        let names_start = n - later_bytes - culture.len() - names.len();
+        let culture_start = n - later_bytes - culture.len();
         let changed = value.encode_prefix(Limits::default()).unwrap();
         assert!(Prefix::decode_prefix(&changed, Limits::default())
             .unwrap()
@@ -966,6 +1343,52 @@ mod tests {
             Err(Error::Culture(player_culture::Error::Version {
                 expected: 45,
                 actual: 46
+            }))
+        ));
+    }
+    #[test]
+    fn rejects_malformed_stats_fixed_count_and_techs_version() {
+        let bytes = carrier();
+        let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let p = v.first_player.unwrap();
+        let techs = p.techs.encode(Limits::default()).unwrap();
+        let stats = p.stats.encode(Limits::default()).unwrap();
+        let stats_start = n - techs.len() - stats.len();
+        // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
+        // words, four counted vectors, then the first WriteArray<int,64>.
+        let tracked_bytes = p
+            .stats
+            .diplomatic_victory_points
+            .encode(Limits::default())
+            .unwrap()
+            .len();
+        let fixed_count = stats_start
+            + 4
+            + 22 * 4
+            + tracked_bytes
+            + 5 * 4
+            + 4
+            + 8 * p.stats.num_units_constructed.len()
+            + 4
+            + 8 * p.stats.num_projects_advanced.len()
+            + 4
+            + 4 * p.stats.wonders_lost_plots.len()
+            + 4
+            + 8 * p.stats.cached_yields_q8.len();
+        assert_eq!(&bytes[fixed_count..fixed_count + 4], &64u32.to_le_bytes());
+        let mut malformed = bytes.clone();
+        malformed[fixed_count..fixed_count + 4].copy_from_slice(&63u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::Stats(player_stats::Error::InvalidContainer))
+        ));
+        let mut malformed = bytes;
+        malformed[n - techs.len()..n - techs.len() + 4].copy_from_slice(&7u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::Techs(player_techs::Error::Version {
+                expected: 6,
+                actual: 7
             }))
         ));
     }
@@ -1273,7 +1696,7 @@ impl Prefix {
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
                 (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerEspionage)
+                    | (1.., Some(_), Boundary::PlayerTreasury)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -1333,6 +1756,31 @@ impl Prefix {
                 player_culture::Culture::encode_with_items,
                 Error::Culture,
             )?;
+            w.component(
+                &p.espionage,
+                player_espionage::Espionage::encode_with_items,
+                Error::Espionage,
+            )?;
+            w.component(
+                &p.religion,
+                player_religion::Religion::encode_with_items,
+                Error::Religion,
+            )?;
+            w.component(
+                &p.resources,
+                player_resources::Resources::encode_with_items,
+                Error::Resources,
+            )?;
+            w.component(
+                &p.stats,
+                player_stats::Stats::encode_with_items,
+                Error::Stats,
+            )?;
+            w.component(
+                &p.techs,
+                player_techs::Techs::encode_with_items,
+                Error::Techs,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -1375,7 +1823,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerEspionage;
+        v.boundary = Boundary::PlayerTreasury;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
