@@ -69,8 +69,17 @@ def main():
         assert registry['count'] == len(registry['entries']) == 28
         assert all(entry['index'] == i and entry['query'] == i
                    for i, entry in enumerate(registry['entries']))
+        terrain = next(row for row in native if row['kind'] == 'registry'
+                       and row['name'] == 'terrain')
+        assert terrain['count'] == len(terrain['entries']) == 17
+        assert all(entry['index'] == i and entry['query'] == i
+                   and type(entry['is_water']) is bool
+                   for i, entry in enumerate(terrain['entries']))
         request = dict(map_path=str(map_path),
                        district_hashes=[entry['hash'] for entry in registry['entries']],
+                       terrain_hashes=[entry['hash'] for entry in terrain['entries']],
+                       terrain_is_water=[entry['is_water'] for entry in terrain['entries']],
+                       terrain_movement_cost=[entry['integer_cost'] for entry in terrain['entries']],
                        district_prefixes=[list(data[row['start']:row['start'] + 45])
                                           for row in districts])
         request_path = temporary / 'input.json'
@@ -92,6 +101,8 @@ def main():
             expected = case[side]
             counts['endpoints'] += 1
             plot = plots[(expected['x'], expected['y'])]
+            if plot['is_water'] != expected['is_water']:
+                raise ValueError('derived Map/Terrain water differs from native endpoint')
             identity, owner = plot['district'], plot['owner']
             request_equal = (identity == expected['requested_district_id']
                              and owner == expected['district_owner']
@@ -135,7 +146,14 @@ def main():
                   expected_only=['runtime district presence, ID, type, completion, location'],
                   native_validity_scope='positive native lookup proves only queried player valid; sentinel misses bypass player lookup',
                   domain_masks_compared=0,
-                  domain_masks_unavailable='No actual District Canal/InternalOnly and Building order/CanalWonder/Bridge export; coastal, directional adjacency and Wonder completion closure also required',
+                  derived_queries=dict(water_native_endpoints_equal=counts['endpoints'],
+                      coastal_min_one_calculated_plots=len(plots),
+                      coastal_min_one_true_plots=sum(p['coastal_min_one'] for p in plots.values()),
+                      original_directional_neighbor_lists_calculated=len(plots),
+                      native_coastal_or_neighbor_comparison=False,
+                      wonder_completion_source_closed=True,
+                      native_wonder_completion_comparison=False),
+                  domain_masks_unavailable='No actual District Canal/InternalOnly and Building order/CanalWonder/Bridge export or complete player/container membership; source-derived coastal/neighbors/Wonder code awaits independent mask comparison',
                   native_domain_mask_required_endpoints=257,
                   full_gameplay_state_actions_turns=False,
                   raw_save_load_difference_preserved=89198)

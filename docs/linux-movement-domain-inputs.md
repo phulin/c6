@@ -43,34 +43,95 @@ general missing-slot or invalid-player behavior dynamically.
 
 `initialization_domains` composes the existing exact two-pass core rebuild with
 `map_is_water`, using actual Terrain definition order/properties and the original
-15/16 fast path. The provider must still supply exact IsCoastalLand(1), Wonder
-completion and original directional neighbors; required unavailable values remain
-named errors. It retains the existing Canal, neighboring City, signed-short
-Building remapping/Find, CanalWonder and independent Bridge completion behavior.
-It does not replace the coastal query with adjacent-water intuition or infer
-building presence from unremapped sparse City building rows. Source-only branch
-tests in core remain distinct from this native District comparison.
+15/16 fast path. The subsequent `MapDomainInputs` and `TypedDomainInputs` close
+the directional-neighbor, IsCoastalLand(1) and Wonder-completion queries from
+typed Map/City/Buildings. They retain the existing Canal, neighboring City,
+signed-short Building remapping/Find, CanalWonder and independent Bridge
+completion behavior. Required unavailable state remains a named error.
+
+The [static query audit](../tools/linux/movement_domain_inputs_audit.py) pins
+45 complete original method fingerprints and both native direction tables.
+Its [report](../evidence/linux/movement-domain-query-contracts.json) records
+source contracts separately from native runtime comparisons. The coastal query
+at `0x2bc9710` first rejects water at the source, then traverses directions 0–5.
+A neighbor qualifies only if it is water, its serialized Impassable flag is
+clear, and its actual **Landmass** pointer is nonnull with signed plot count at
+least one. Area size and the Landmass water flag are not queried. Plot.Read
+restores Landmass through `Container.Get(saved id)`; that lookup ignores upper
+generation bits and resolves the low-sixteen slot. The adapter uses the saved
+container slot, not the Landmass object's ID or an inferred connected component.
+An empty complete Landmass table proves a null lookup; an inconsistent table
+fails construction. Native PlotXToX/XToPlotX arithmetic, direction order, X/Y
+wrapping and the negative-multiple CoordRange quirk are retained. This adapter
+explicitly bounds canonical coordinates to the original signed-short range.
+
+`CityBuildings::is_wonder_complete` follows `CityAttributes.IsWonderComplete`
+at `0x2bc8100`: remap the saved Wonder hash, narrow to signed i16, reject packed
+-1, resolve the owning City using the actual core Registry, then call the
+equivalent of Buildings.HasBuilding. This tests **signed building location >=0**;
+it does not check pillage or require the stored location to equal this plot.
+The native Buildings reader calls Reset, which fills actual Building-count
+locations with -1. It then applies the serialized hash/value pairs in wire order:
+unknown hashes are ignored and repeated aliases overwrite. The production query
+reproduces that mapping without materializing a full location vector. Missing
+typed Buildings for a resolved City is an explicit MissingWonderCompletion error.
+Player validity and complete City/District container membership are separate
+requirements, not inferred from a typed City's owner.
+
+Five focused source tests cover prefix validation, coastal passability/null and
+nonpositive Landmass size, low-slot aliases independent of object IDs, direction
+order/wrap quirks, Building hash aliases/defaults/negative queries, pillage
+independence, Wonder guards and unavailable City state. These and the existing
+core branch tests are source-contract tests, not native coastal/Wonder/mask
+comparison. The new offline driver calculates coastal and ordered neighbors for
+all original Map plots and independently compares water at native endpoints.
 
 The existing authoritative movement export schema and original control3 JSONL
 provide Terrain/Feature/Improvement/Route/District registries only. District rows
 carry FreeEmbark, not Canal/InternalOnly. The data registry importer contains no
 Building collection loader/order proof. The newer complete City wire codec
 preserves Building location/pillage hashes, but it does not prove the original
-IsWonderComplete call chain or Building index order. Therefore zero masks are
-claimed calculated or compared here. SQL table iteration is not an alternative
-native collection export.
+Building index order. That order is still required to use the newly closed
+Wonder-completion calculation. Therefore zero complete masks are claimed
+calculated or compared here. SQL table iteration is not an alternative native
+collection export.
 
 The minimal next export for the sole original-code runner is:
 
-- Complete actual valid-player mapping for all 65 slots, independently of owners.
+- Complete actual PlayerManager mapping for all 65 slots, independently of owners:
+  slot, GetPlayerToIndex entry, IsValid result, GetValidPlayer nonnull result and
+  returned owner when present. Also provide actual complete per-player City and
+  District container ID membership (including empty containers), unless enclosing
+  serialized owner boundaries independently supply it. Grouping Districts by
+  their actual plot owner alone does not prove native container membership.
 - Actual District collection order/hash plus original Canal and InternalOnly
   getter results, including explicit absence of optional XP2 definitions.
 - Actual Building collection count/order/hash, CanalWonder and Bridge getter
   results, and the original Find mapping needed after signed-short narrowing.
-- Per attributed plot original IsCoastalLand(1), original six ordered neighbor
-  indices, and original IsWonderComplete results, alongside the existing raw mask
-  for comparison. These are named intermediate inputs until their typed-state
-  contracts are closed; raw masks remain expected outputs, never calculations.
+- Existing original raw masks for comparison. Original coastal/Wonder/neighbor
+  results may additionally validate the newly derived intermediates, but are
+  expected answers only; they are no longer required calculation inputs.
+
+The separate read-only export can enumerate actual initialized base collections
+with GetCount and At, then resolve optional XP2 definitions by the base type hash
+using the original XP2 Find. Represent XP2 absence explicitly, for example
+`{"status":"absent"}` versus `{"status":"present","canal":false}`;
+do not default a missing export to absent. The relevant audited entry points are:
+
+| Input | Linux entry points |
+| --- | --- |
+| Building collection / count / At / Find / type hash | `2213730` / `1fe2260` / `1fe4ad0` / `1ffb960` / `20a1260` |
+| District collection / count / At / type hash / InternalOnly | `2213a70` / `1fe2250` / `1fe2b00` / `21d56f0` / `1fe2500` |
+| Building XP2 collection / Find / CanalWonder / Bridge | `22137a0` / `20a11f0` / `2a3e3f0` / `28696c0` |
+| District XP2 collection / Find / Canal | `2213ae0` / `21d5680` / `21d5a40` |
+| PlayerManager GetPlayerToIndex / IsValid / GetValidPlayer | `2004680` / `2004fc0` / `2003940` |
+
+All addresses are module-relative hexadecimal addresses for the pinned target,
+not portable ABI constants. The property getters read fields and the collection
+queries read existing initialized tables; this export must not initialize rules,
+call policies or change gameplay. Its proposed metadata arrays carry explicit
+`query`, `index`, `hash`, actual property values and XP2 presence per definition.
+This plan does not authorize an original execution by the offline adapter task.
 
 Such exports need the same pinned module/host/profile and original owned Core
 association, closed execution, unchanged affected-state controls and RNG gates.
