@@ -1,0 +1,905 @@
+{
+  "schema": "c6-linux-player-diplomacy-blackboard-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": [
+    {
+      "address": "0x2ac90a0",
+      "size": 79,
+      "name": "FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "ae7e6d54aa8a3056fbdd87ac5ab1bba47abaddef477e8c2eaf805b86ad8636ea"
+    },
+    {
+      "address": "0x2ac9080",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>::load(Serialization::IStream&)",
+      "sha256": "b58646a1af9d88d3bf29b331da31cda6e5f0f1c6d1d635fd332fb947ea2a6663"
+    },
+    {
+      "address": "0x2ac9090",
+      "size": 9,
+      "name": "FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2adc9f0",
+      "size": 19,
+      "name": "void Serialization::EnumToStream<GameCore::DiplomaticVisibilityTypes>(Serialization::OStream&, GameCore::DiplomaticVisibilityTypes const&)",
+      "sha256": "8b5ec31424cd8e791a3b4643899b9ee5418475c3ff550fe8cad4a68da4ca51b5"
+    },
+    {
+      "address": "0x2adca40",
+      "size": 30,
+      "name": "void Serialization::EnumFromStream<GameCore::DiplomaticVisibilityTypes>(Serialization::IStream&, GameCore::DiplomaticVisibilityTypes&)",
+      "sha256": "ec61280a55d011602bb51b614f963852e48c9d50750aab3e440fc0a376fabfd3"
+    },
+    {
+      "address": "0x2ade9e0",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > >(Serialization::IStream&, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "ed8314994bcc09f0264521225791a04a45d89356bf4171288af1da13099d4b9e"
+    },
+    {
+      "address": "0x2addc30",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const>::SerializeFromSequenceContainer(Serialization::OStream&, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "496718026bcb62d895fa744086673ab4e5dcf237b4ea582ec3cc7b168e990de6"
+    },
+    {
+      "address": "0x2addc60",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const>::operator()(eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const&)",
+      "sha256": "cf1a47e3b4d694e577f2a621c55d8cbcb07ea172989f71072499d592b1bfb848"
+    },
+    {
+      "address": "0x2adeb80",
+      "size": 205,
+      "name": "void Serialization::SerializeToAssociativeContainer<eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> >(Serialization::IStream&, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>&)",
+      "sha256": "1b4729167f961f24a4b3bb70fd7f3a122d5a270a3d6c71fca9ac81bedc4b911f"
+    },
+    {
+      "address": "0x2adde40",
+      "size": 151,
+      "name": "void Serialization::SerializeToAssociativeContainer<eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> >(Serialization::IStream&, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator>&)",
+      "sha256": "6c5269d014aa4237e3914b512277d473e5b8b182542a2e7e46d23d98c341e03f"
+    },
+    {
+      "address": "0x2ade650",
+      "size": 151,
+      "name": "void Serialization::SerializeToAssociativeContainer<eastl::pair<long, Types::StaticArray<bool, 64ul> >, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> >(Serialization::IStream&, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator>&)",
+      "sha256": "9a753e8e514c2e7cba8ab5b61b6031017f17f1c7dc7cf60a2384bef84ef2df84"
+    },
+    {
+      "address": "0x2ade2a0",
+      "size": 151,
+      "name": "void Serialization::SerializeToAssociativeContainer<eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> >(Serialization::IStream&, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator>&)",
+      "sha256": "3a579fafc291e88e09a0b77ff175107ba9d93072f0190852d6920a12be1c226d"
+    },
+    {
+      "address": "0x2addd90",
+      "size": 46,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const>::SerializeFromAssociativeContainer(Serialization::OStream&, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const&)",
+      "sha256": "10f7ac8fd2aaa2df43d39f2c0f60148f6da296d6e080aafc93516716c7abbace"
+    },
+    {
+      "address": "0x2adddc0",
+      "size": 8,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const>::operator()(eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker> const&)",
+      "sha256": "d6ca1d6367d107a34af4e8b0074681485582e3a0afde18182b2a62e021d87558"
+    },
+    {
+      "address": "0x2add810",
+      "size": 46,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const>::SerializeFromAssociativeContainer(Serialization::OStream&, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const&)",
+      "sha256": "fb59c3f5f01c6e0b29c7cabd8bab578633a9d7d8b42de929ec0ef409c29a6cfa"
+    },
+    {
+      "address": "0x2add840",
+      "size": 8,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const>::operator()(eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> > const&)",
+      "sha256": "90f2dcb03d085b5a820a8dd3442b9ad183ae37da3aa8861d1f2703f60566a728"
+    },
+    {
+      "address": "0x2addb30",
+      "size": 46,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<bool, 64ul> >, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const>::SerializeFromAssociativeContainer(Serialization::OStream&, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const&)",
+      "sha256": "544e3ee5647a9466fa6ad881da4dcb1655495e7bd0335a1173a7450ea3594512"
+    },
+    {
+      "address": "0x2addb60",
+      "size": 8,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<bool, 64ul> >, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const>::operator()(eastl::pair<long, Types::StaticArray<bool, 64ul> > const&)",
+      "sha256": "3cfc93e271b9db9a9cd20f8d8047c9e8e50f4d465b6556c955471f16b91c5b16"
+    },
+    {
+      "address": "0x2add9b0",
+      "size": 46,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const>::SerializeFromAssociativeContainer(Serialization::OStream&, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const&)",
+      "sha256": "5565c71af4b2c99e030aebffd88580b67c87ebf8ee68283e3f37a34c05fd6a9c"
+    },
+    {
+      "address": "0x2add9e0",
+      "size": 8,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const>::operator()(eastl::pair<long, Types::StaticArray<unsigned int, 64ul> > const&)",
+      "sha256": "a462be7d363a393b4bef3dd8f20862ac4eaf38263114c350547c552dacd6c5bb"
+    },
+    {
+      "address": "0x2addfe0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(long&)",
+      "sha256": "5fee11815e1d068e54481092f72bd687140adcc68dd59830fd84910d17abfcab"
+    },
+    {
+      "address": "0x2add8f0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(long const&)",
+      "sha256": "0a72c29ed2372d7654b65a5833f26a5d2942142eb2b1a1af85c06046e1b3ef8e"
+    },
+    {
+      "address": "0x2c9afe0",
+      "size": 42,
+      "name": "Serialization::operator<<(Serialization::OStream&, FixedPointT<8u> const&)",
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704"
+    },
+    {
+      "address": "0x2ada390",
+      "size": 267,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DiplomacyBlackboard const&)",
+      "sha256": "85fb0ee056686346afad55e874c5c8681f4497e325e2fdc8b5db119cd5865869"
+    },
+    {
+      "address": "0x2ada7c0",
+      "size": 167,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::DiplomaticModifierTracker const&)",
+      "sha256": "f5421c788022689e8558c9caad1ca04cbf4c4bfac432df94276e06e739f38465"
+    },
+    {
+      "address": "0x2add8b0",
+      "size": 57,
+      "name": "Serialization::OStream& Serialization::operator<< <FixedPointT<8u>, 64ul>(Serialization::OStream&, Types::StaticArray<FixedPointT<8u>, 64ul> const&)",
+      "sha256": "1e8cf5135526b76bb870c41d7b0254cca4cb66b382893372fec26c117b7e4be5"
+    },
+    {
+      "address": "0x2adc8e0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> >(Serialization::OStream&, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "6cb3e11dce0f67cc5a26bbe5c33e7fbdcfe76c84a07dc4a19294e786a114e720"
+    },
+    {
+      "address": "0x1ff5430",
+      "size": 81,
+      "name": "Serialization::OStream& Serialization::operator<< <Platform::StaticHeapAllocator<5, 0>, (String::Encoding)0>(Serialization::OStream&, String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)0> const&)",
+      "sha256": "045813e437c3874ae9899508e422a1126cbd16d136f2af8ce3eff6603cb99cca"
+    },
+    {
+      "address": "0x2ac0e60",
+      "size": 57,
+      "name": "Serialization::OStream& Serialization::operator<< <bool, 64ul>(Serialization::OStream&, Types::StaticArray<bool, 64ul> const&)",
+      "sha256": "1c718422d7b2169aaebd4794682fe49b52d1d7bbb6fefa28def835130cafe9e1"
+    },
+    {
+      "address": "0x28a2450",
+      "size": 57,
+      "name": "Serialization::OStream& Serialization::operator<< <int, 64ul>(Serialization::OStream&, Types::StaticArray<int, 64ul> const&)",
+      "sha256": "1160044aac8668625b62e0243935cc139c38a02e730c536d3f29b877d8e5d554"
+    },
+    {
+      "address": "0x2adda40",
+      "size": 57,
+      "name": "Serialization::OStream& Serialization::operator<< <unsigned int, 64ul>(Serialization::OStream&, Types::StaticArray<unsigned int, 64ul> const&)",
+      "sha256": "985bfe70a0eecafb00022b9ef5e539b995a61d80dfd3d176facf0a8d2ab84224"
+    },
+    {
+      "address": "0x2addc70",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <unsigned int, GameCore::Player::DiplomaticModifierTracker>(Serialization::OStream&, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const&)",
+      "sha256": "5f32ffd16b610567211ff1e63dd24f0ae551f95af3c2af1b53a00128731ca6af"
+    },
+    {
+      "address": "0x2adde00",
+      "size": 37,
+      "name": "Serialization::OStream& Serialization::operator<< <unsigned int, GameCore::Player::DiplomaticModifierTracker>(Serialization::OStream&, eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker> const&)",
+      "sha256": "75a5220bfdbf6892ff264e784b5a0d844091648538d591ef73ce8811e1a3e39e"
+    },
+    {
+      "address": "0x2adc7c0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <long, Types::StaticArray<FixedPointT<8u>, 64ul> >(Serialization::OStream&, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const&)",
+      "sha256": "eb308c6c5ed1a112f8c9ca6636051f416bddda66b96ca0d47054cf65d5964cf4"
+    },
+    {
+      "address": "0x2add870",
+      "size": 41,
+      "name": "Serialization::OStream& Serialization::operator<< <long, Types::StaticArray<FixedPointT<8u>, 64ul> >(Serialization::OStream&, eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> > const&)",
+      "sha256": "b096ccd07cb7df66f19b8105d2e6722f102660785511baf6ae0023253d6cb544"
+    },
+    {
+      "address": "0x2adc880",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <long, Types::StaticArray<bool, 64ul> >(Serialization::OStream&, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const&)",
+      "sha256": "77cf170582c622064a29537a195823e09715c06c8b86c2fbed65d4fefaeeea09"
+    },
+    {
+      "address": "0x2addba0",
+      "size": 41,
+      "name": "Serialization::OStream& Serialization::operator<< <long, Types::StaticArray<bool, 64ul> >(Serialization::OStream&, eastl::pair<long, Types::StaticArray<bool, 64ul> > const&)",
+      "sha256": "d78329a337b7926c81954b97b33eb9c7dafe941cb82fa5cb1d82e6d3cdcddfb5"
+    },
+    {
+      "address": "0x2adc820",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <long, Types::StaticArray<unsigned int, 64ul> >(Serialization::OStream&, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const&)",
+      "sha256": "66dd754becf1995f1e081a79a14cae1e50ee96a3e550fea17d9f3e47f16bb56e"
+    },
+    {
+      "address": "0x2adda10",
+      "size": 41,
+      "name": "Serialization::OStream& Serialization::operator<< <long, Types::StaticArray<unsigned int, 64ul> >(Serialization::OStream&, eastl::pair<long, Types::StaticArray<unsigned int, 64ul> > const&)",
+      "sha256": "de3020d36481a0a50b5578143a641628fd1a6b36b7c9ec53e93f57631504dfc3"
+    },
+    {
+      "address": "0x2c9b010",
+      "size": 43,
+      "name": "Serialization::operator>>(Serialization::IStream&, FixedPointT<8u>&)",
+      "sha256": "5d47fcdfb3868524b3d8da8a2fab95de165678efa05f23c615963da12ddf010d"
+    },
+    {
+      "address": "0x2ada4a0",
+      "size": 791,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DiplomacyBlackboard&)",
+      "sha256": "6df4db2ba941c143f90f015a9dd2eb98cf963a2975eef6841980ffee0df51075"
+    },
+    {
+      "address": "0x2ada870",
+      "size": 186,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::DiplomaticModifierTracker&)",
+      "sha256": "c93982679cf586bd7d4b790b43f2135621782007cd9135c1c72edc9481741b1a"
+    },
+    {
+      "address": "0x2addfa0",
+      "size": 57,
+      "name": "Serialization::IStream& Serialization::operator>><FixedPointT<8u>, 64ul>(Serialization::IStream&, Types::StaticArray<FixedPointT<8u>, 64ul>&)",
+      "sha256": "b9d8a6dfabcd1c4570b7dd4a094e06bcfe63e339f9178bf88df136c1d3eff8ba"
+    },
+    {
+      "address": "0x2adc970",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> >(Serialization::IStream&, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "43a561bee4f1205e5fd916edfbe04fe2c28b59e868f3529ee7be7d7e1bf3f7f4"
+    },
+    {
+      "address": "0x1ff4d20",
+      "size": 298,
+      "name": "Serialization::IStream& Serialization::operator>><Platform::StaticHeapAllocator<5, 0>, (String::Encoding)0>(Serialization::IStream&, String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)0>&)",
+      "sha256": "7bef00c45e9a3eccd9989b48d1c8dbfe0b5ee20adb2ce7c5922995b76d6172af"
+    },
+    {
+      "address": "0x2ab4440",
+      "size": 57,
+      "name": "Serialization::IStream& Serialization::operator>><bool, 64ul>(Serialization::IStream&, Types::StaticArray<bool, 64ul>&)",
+      "sha256": "1ba69f9d8b0cdf64bcf3f2be80372b869a740e96a352b5b229c79f577c18bee3"
+    },
+    {
+      "address": "0x289d2c0",
+      "size": 57,
+      "name": "Serialization::IStream& Serialization::operator>><int, 64ul>(Serialization::IStream&, Types::StaticArray<int, 64ul>&)",
+      "sha256": "87942a1adf64ea74dd3b0cf2e1457098aff6df9ff9ead874df6b73ee1c6b7e1c"
+    },
+    {
+      "address": "0x2ade3b0",
+      "size": 57,
+      "name": "Serialization::IStream& Serialization::operator>><unsigned int, 64ul>(Serialization::IStream&, Types::StaticArray<unsigned int, 64ul>&)",
+      "sha256": "7960c6161ac617d002b840721267105cfd29809540535e5b0b08ada8c009c8b8"
+    },
+    {
+      "address": "0x2adeaf0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><unsigned int, GameCore::Player::DiplomaticModifierTracker>(Serialization::IStream&, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>&)",
+      "sha256": "fd9e05d1c378760863911e987df5a29d3960bd09220feb3fa4bf48819a83c717"
+    },
+    {
+      "address": "0x2adec80",
+      "size": 37,
+      "name": "Serialization::IStream& Serialization::operator>><unsigned int, GameCore::Player::DiplomaticModifierTracker>(Serialization::IStream&, eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>&)",
+      "sha256": "48f8517952bf56a643151297222b9d6e635300aedbabd602329a548ec73dfbdf"
+    },
+    {
+      "address": "0x2adc940",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><long, Types::StaticArray<FixedPointT<8u>, 64ul> >(Serialization::IStream&, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator>&)",
+      "sha256": "16f06c4c3884ed9007a8620a3f4255676f006e1c8b5f24317bb6657057eaa2af"
+    },
+    {
+      "address": "0x2addf00",
+      "size": 41,
+      "name": "Serialization::IStream& Serialization::operator>><long, Types::StaticArray<FixedPointT<8u>, 64ul> >(Serialization::IStream&, eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >&)",
+      "sha256": "8f5099c6d9362f2771ef6469957e224f24ed181348e150c7708eda80b343bc8f"
+    },
+    {
+      "address": "0x2adc960",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><long, Types::StaticArray<bool, 64ul> >(Serialization::IStream&, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator>&)",
+      "sha256": "f6cdea75212780a2a3cd74dbc852b1c3ff1cdbe0f37d898e4336e5df63742208"
+    },
+    {
+      "address": "0x2ade710",
+      "size": 41,
+      "name": "Serialization::IStream& Serialization::operator>><long, Types::StaticArray<bool, 64ul> >(Serialization::IStream&, eastl::pair<long, Types::StaticArray<bool, 64ul> >&)",
+      "sha256": "4f962527596dee2ba1e469ef4e6cc26a1d4028cedb60723b4455df6c9f9533a4"
+    },
+    {
+      "address": "0x2adc950",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><long, Types::StaticArray<unsigned int, 64ul> >(Serialization::IStream&, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator>&)",
+      "sha256": "6d81e14c32b620067e94034b87085e0a6011895bc522d9abab02c1ca2aeb1943"
+    },
+    {
+      "address": "0x2ade350",
+      "size": 41,
+      "name": "Serialization::IStream& Serialization::operator>><long, Types::StaticArray<unsigned int, 64ul> >(Serialization::IStream&, eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >&)",
+      "sha256": "11e09cec37f8262c7da1c3093b58ddfc1424e5871ef17421441c3ffb0619ef7c"
+    },
+    {
+      "address": "0x2addcd0",
+      "size": 184,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const> eastl::for_each<eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker>, eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker> const*, eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker> const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const> >(eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker>, eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker> const*, eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker> const&>, eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker>, eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker> const*, eastl::pair<unsigned int const, GameCore::Player::DiplomaticModifierTracker> const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<unsigned int, GameCore::Player::DiplomaticModifierTracker>, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const>)",
+      "sha256": "566f7b4433e107e613d9ad137776847046a19a6f8bc1230f8f71070115e41af8"
+    },
+    {
+      "address": "0x2add770",
+      "size": 158,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const> eastl::for_each<eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> > const*, eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> > const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const> >(eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> > const*, eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> > const&>, eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> > const*, eastl::pair<long const, Types::StaticArray<FixedPointT<8u>, 64ul> > const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<FixedPointT<8u>, 64ul> >, eastl::map<long, Types::StaticArray<FixedPointT<8u>, 64ul>, eastl::less<long>, eastl::allocator> const>)",
+      "sha256": "4c0833e885d215d69876c75d930a210a2b311bde86ba5dc32d137f02e4fee2eb"
+    },
+    {
+      "address": "0x2adda90",
+      "size": 155,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<bool, 64ul> >, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const> eastl::for_each<eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<bool, 64ul> >, eastl::pair<long const, Types::StaticArray<bool, 64ul> > const*, eastl::pair<long const, Types::StaticArray<bool, 64ul> > const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<bool, 64ul> >, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const> >(eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<bool, 64ul> >, eastl::pair<long const, Types::StaticArray<bool, 64ul> > const*, eastl::pair<long const, Types::StaticArray<bool, 64ul> > const&>, eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<bool, 64ul> >, eastl::pair<long const, Types::StaticArray<bool, 64ul> > const*, eastl::pair<long const, Types::StaticArray<bool, 64ul> > const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<bool, 64ul> >, eastl::map<long, Types::StaticArray<bool, 64ul>, eastl::less<long>, eastl::allocator> const>)",
+      "sha256": "f1230631de0f687e979bcf04fb39d21121f6cee1b082b4267dbdcf69c776f1ab"
+    },
+    {
+      "address": "0x2add910",
+      "size": 158,
+      "name": "Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const> eastl::for_each<eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> >, eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> > const*, eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> > const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const> >(eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> >, eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> > const*, eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> > const&>, eastl::rbtree_iterator<eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> >, eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> > const*, eastl::pair<long const, Types::StaticArray<unsigned int, 64ul> > const&>, Serialization::SerializeFromAssociativeContainer<eastl::pair<long, Types::StaticArray<unsigned int, 64ul> >, eastl::map<long, Types::StaticArray<unsigned int, 64ul>, eastl::less<long>, eastl::allocator> const>)",
+      "sha256": "65aaf5a34db32c076930ea5c5a38e48b1ee514290a16a825bffb464c0286a8a2"
+    },
+    {
+      "address": "0x2addbe0",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const> eastl::for_each<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const*, Serialization::SerializeFromSequenceContainer<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const> >(eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const*, eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const*, Serialization::SerializeFromSequenceContainer<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator> const, Types::Vector<eastl::map<unsigned int, GameCore::Player::DiplomaticModifierTracker, eastl::less<unsigned int>, eastl::allocator>, Types::LinearAlloc::Default<1u, 0u> > const>)",
+      "sha256": "d3c83ede0d0ad97f8936ab05cdd049cead4c0f6bee3bbe5e4969d7c65b05a104"
+    },
+    {
+      "address": "0x2ac90f0",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>::save(Serialization::OStream&) const",
+      "sha256": "e29324d7c538f3cfa8aaaac65e2c8e85ee026fdeb730e69fae66d6ae1edae5c8"
+    },
+    {
+      "address": "0x2ac9190",
+      "size": 1775,
+      "name": "FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "b434caf64e3c35cc5d6b3f16898cb90849eb0eb1be49f2f94c25729f36935a58"
+    },
+    {
+      "address": "0x2ac9100",
+      "size": 9,
+      "name": "FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2ab4210",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>(Serialization::OStream&, FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2ab4620",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>(Serialization::IStream&, FAutoVariable<GameCore::Player::DiplomacyBlackboard, GameCore::Player::Diplomacy>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    }
+  ],
+  "overload_bindings": [
+    {
+      "call": "0x2ada3a1",
+      "plt": "0x1f5fbd0",
+      "got": "0x3bd2cd0",
+      "target": "0x1fcc130"
+    },
+    {
+      "call": "0x2ada3ad",
+      "plt": "0x1ed96c0",
+      "got": "0x3b8fa48",
+      "target": "0x2adc7c0"
+    },
+    {
+      "call": "0x2ada3b9",
+      "plt": "0x1ef2fd0",
+      "got": "0x3b9c6d0",
+      "target": "0x2adc820"
+    },
+    {
+      "call": "0x2ada3c5",
+      "plt": "0x1e7fc20",
+      "got": "0x3b62cf8",
+      "target": "0x2adc880"
+    },
+    {
+      "call": "0x2ada3d4",
+      "plt": "0x1f03f90",
+      "got": "0x3ba4eb0",
+      "target": "0x2adc8e0"
+    },
+    {
+      "call": "0x2ada3e3",
+      "plt": "0x1e8d360",
+      "got": "0x3b69898",
+      "target": "0x2c9aba0"
+    },
+    {
+      "call": "0x2ada3f2",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada401",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada410",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada41f",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada42e",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada43d",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada44c",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada45b",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada46a",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada479",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada48b",
+      "plt": "0x1edf770",
+      "got": "0x3b92aa0",
+      "target": "0x28a2450"
+    },
+    {
+      "call": "0x2ada4bc",
+      "plt": "0x1e757d0",
+      "got": "0x3b5dad0",
+      "target": "0x1fcc1a0"
+    },
+    {
+      "call": "0x2ada4c8",
+      "plt": "0x1dfe900",
+      "got": "0x3b22368",
+      "target": "0x2adc940"
+    },
+    {
+      "call": "0x2ada4d4",
+      "plt": "0x1e800e0",
+      "got": "0x3b62f58",
+      "target": "0x2adc950"
+    },
+    {
+      "call": "0x2ada4e0",
+      "plt": "0x1e684a0",
+      "got": "0x3b57138",
+      "target": "0x2adc960"
+    },
+    {
+      "call": "0x2ada4ef",
+      "plt": "0x1e81150",
+      "got": "0x3b63790",
+      "target": "0x2adc970"
+    },
+    {
+      "call": "0x2ada51c",
+      "plt": "0x1ebf120",
+      "got": "0x3b82778",
+      "target": "0x1fd0ae0"
+    },
+    {
+      "call": "0x2ada53e",
+      "plt": "0x1f567e0",
+      "got": "0x3bce2d8",
+      "target": "0x1fcc8b0"
+    },
+    {
+      "call": "0x2ada553",
+      "plt": "0x1e19e40",
+      "got": "0x3b2fe08",
+      "target": "0x2002e40"
+    },
+    {
+      "call": "0x2ada578",
+      "plt": "0x1f567e0",
+      "got": "0x3bce2d8",
+      "target": "0x1fcc8b0"
+    },
+    {
+      "call": "0x2ada58d",
+      "plt": "0x1e19e40",
+      "got": "0x3b2fe08",
+      "target": "0x2002e40"
+    },
+    {
+      "call": "0x2ada5b6",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada5d5",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada5f4",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada617",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada63a",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada65d",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada680",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada6a6",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada6c0",
+      "plt": "0x1f78450",
+      "got": "0x3bdf110",
+      "target": "0x1fcc320"
+    },
+    {
+      "call": "0x2ada6d0",
+      "plt": "0x1fb94d0",
+      "got": "0x3b1c648",
+      "target": "0x1fe5240"
+    },
+    {
+      "call": "0x2ada6de",
+      "plt": "0x1f760e0",
+      "got": "0x3bddf58",
+      "target": "0x204bed0"
+    },
+    {
+      "call": "0x2ada710",
+      "plt": "0x1f75230",
+      "got": "0x3bdd800",
+      "target": "0x2adc9b0"
+    },
+    {
+      "call": "0x2ada731",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada754",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada777",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada79d",
+      "plt": "0x1f4c560",
+      "got": "0x3bc9198",
+      "target": "0x2adc980"
+    },
+    {
+      "call": "0x2ada7d1",
+      "plt": "0x1f5fbd0",
+      "got": "0x3bd2cd0",
+      "target": "0x1fcc130"
+    },
+    {
+      "call": "0x2ada7dc",
+      "plt": "0x1e012a0",
+      "got": "0x3b23838",
+      "target": "0x1fe1f90"
+    },
+    {
+      "call": "0x2ada7e8",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada7f4",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada800",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada80c",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada818",
+      "plt": "0x1f5fbd0",
+      "got": "0x3bd2cd0",
+      "target": "0x1fcc130"
+    },
+    {
+      "call": "0x2ada824",
+      "plt": "0x1f5fbd0",
+      "got": "0x3bd2cd0",
+      "target": "0x1fcc130"
+    },
+    {
+      "call": "0x2ada830",
+      "plt": "0x1f5fbd0",
+      "got": "0x3bd2cd0",
+      "target": "0x1fcc130"
+    },
+    {
+      "call": "0x2ada83c",
+      "plt": "0x1f90de0",
+      "got": "0x3beb5d8",
+      "target": "0x2c9afe0"
+    },
+    {
+      "call": "0x2ada848",
+      "plt": "0x1efe430",
+      "got": "0x3ba2100",
+      "target": "0x1ff5430"
+    },
+    {
+      "call": "0x2ada857",
+      "plt": "0x1fadaa0",
+      "got": "0x3bf9c38",
+      "target": "0x2adc9f0"
+    },
+    {
+      "call": "0x2ada87f",
+      "plt": "0x1e757d0",
+      "got": "0x3b5dad0",
+      "target": "0x1fcc1a0"
+    },
+    {
+      "call": "0x2ada88a",
+      "plt": "0x1f3f970",
+      "got": "0x3bc2ba0",
+      "target": "0x1fe2000"
+    },
+    {
+      "call": "0x2ada896",
+      "plt": "0x1f6fc00",
+      "got": "0x3bdace8",
+      "target": "0x2c9b010"
+    },
+    {
+      "call": "0x2ada8a2",
+      "plt": "0x1f6fc00",
+      "got": "0x3bdace8",
+      "target": "0x2c9b010"
+    },
+    {
+      "call": "0x2ada8ae",
+      "plt": "0x1f6fc00",
+      "got": "0x3bdace8",
+      "target": "0x2c9b010"
+    },
+    {
+      "call": "0x2ada8ba",
+      "plt": "0x1f6fc00",
+      "got": "0x3bdace8",
+      "target": "0x2c9b010"
+    },
+    {
+      "call": "0x2ada8c6",
+      "plt": "0x1e757d0",
+      "got": "0x3b5dad0",
+      "target": "0x1fcc1a0"
+    },
+    {
+      "call": "0x2ada8d2",
+      "plt": "0x1e757d0",
+      "got": "0x3b5dad0",
+      "target": "0x1fcc1a0"
+    },
+    {
+      "call": "0x2ada8de",
+      "plt": "0x1e757d0",
+      "got": "0x3b5dad0",
+      "target": "0x1fcc1a0"
+    },
+    {
+      "call": "0x2ada8ea",
+      "plt": "0x1f6fc00",
+      "got": "0x3bdace8",
+      "target": "0x2c9b010"
+    },
+    {
+      "call": "0x2ada90b",
+      "plt": "0x1fb3510",
+      "got": "0x3bfc970",
+      "target": "0x2adca10"
+    },
+    {
+      "call": "0x2ada91a",
+      "plt": "0x1f07b30",
+      "got": "0x3ba6c80",
+      "target": "0x2adca40"
+    }
+  ],
+  "audit_sha256": "ad3b2059d0c0e140d7c594f24b0dc18dc1900feca80877eb500d8d760960d630",
+  "version": 13,
+  "dwarf_sha256": "59de54d992760d445500ff78b0d2fb676323373d708bf5e296b6e428e15a8464",
+  "reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_layouts_sha256": "782a609234d9ec8c957530fc62dc71149d2f46298edf69857e2f6fbc0776e069",
+  "candidate_sha256": "e6cc67691231307708ddebeaa1f350e45b9d807c74dfca7391692c6390809b21",
+  "candidate_harness_sha256": "a1f19c2cb0a9f73886d1e33fca1d1959f0e937544688c197e2e04705c3ba64ec",
+  "candidate_sources": {
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "d247f6d1ce964af296671632d37ceace9b54f8820ae2515774d00f81c6388ec9",
+    "crates/c6-core/src/core_stream.rs": "eb9a630f4ef1672dec8e1e3f36d5350a7253315608c1014f71abe9ecacc2d367",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "1839c1f277a5d90db139843eb75d68cec8b5a5dbb7907f96290e605b40154596",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "14d5787e305a081ee9c84e8a3aa7bf20986fa43542aafe76f62e50b477cda0d7",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/skip_turn.rs": "657cb792c218840e8e1ff33500656714f1f62c0a86c855947d871de57d872ac7",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/world.rs": "a693d81e3d72ddb6ac66a97578e9dd27e577c573b5b8e919eee3697ff527c09d",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cases": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "blackboards": 43,
+      "standalone_trackers": 4237,
+      "unique_blackboard_payloads": 43,
+      "unique_tracker_payloads": 2587,
+      "blackboard_wire_bytes": 657873,
+      "tracker_wire_bytes": 356117,
+      "record_batch_sha256": "644887e043551ac0db44d82bb4764985236d0111b68e32706498226acb1592ef",
+      "records": 4280,
+      "bytes": 1013990,
+      "items": 338562,
+      "nested_trackers": 4237,
+      "nested_map_slots": 2752,
+      "array_map_entries": 669,
+      "standalone_tracker_name_bytes": 165452
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "blackboards": 43,
+      "standalone_trackers": 4237,
+      "unique_blackboard_payloads": 43,
+      "unique_tracker_payloads": 2587,
+      "blackboard_wire_bytes": 657873,
+      "tracker_wire_bytes": 356117,
+      "record_batch_sha256": "644887e043551ac0db44d82bb4764985236d0111b68e32706498226acb1592ef",
+      "records": 4280,
+      "bytes": 1013990,
+      "items": 338562,
+      "nested_trackers": 4237,
+      "nested_map_slots": 2752,
+      "array_map_entries": 669,
+      "standalone_tracker_name_bytes": 165452
+    }
+  ],
+  "item_policy": "dynamic container entries and raw string bytes; fixed arrays uncharged",
+  "original_game_execution": false,
+  "offline_rust_candidate_execution": true,
+  "unknown_bytes_masked": 0,
+  "scope": "Current wire records only. No native Read side effects, live diplomacy, planning exclusion, complete Core load or gameplay state/action/turn equivalence."
+}

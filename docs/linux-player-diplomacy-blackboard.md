@@ -1,0 +1,26 @@
+# Linux Player diplomacy blackboard wire records
+
+`player_diplomacy_blackboard` implements the complete current version **13** serialized `GameCore::Player::DiplomacyBlackboard` and `DiplomaticModifierTracker` records. This is typed wire transport only. It does not execute diplomacy, reproduce native object construction or Read side effects, load a complete Core, or implement gameplay state/actions/turns. No planning-only exclusion follows from these class names or fields. The existing raw Save→Load 89,198-byte mismatch remains unresolved and unmasked.
+
+The [audit](../tools/linux/player_diplomacy_blackboard_audit.py) and [report](../evidence/linux/player-diplomacy-blackboard.json) gate Linux Core SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa` and host `106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4`. They check complete method hashes, concrete ELF serializer overload bindings, the version constant and matching DWARF. No original code executes. A temporary Cargo harness imports the actual production codec source and `c6_core::unit`; its executable, harness and source identities are recorded. Original saved Blackboard and Tracker record boundaries are validation inputs from the existing hash-gated owner traces; production decoding uses neither trace nor saved offsets.
+
+Discovery names/layouts use cru121's *Civ6-GameCore-reference*, revision `5af389445118bed2bdebf7a8a42b219c8fba5175`, CC BY 4.0, with [attribution](reference.md). Exact target instructions, concrete overloads and DWARF establish the Linux contracts; historical Windows validation is not reused as Linux acceptance.
+
+The Blackboard writer is `0x2ada390` (267 bytes), reader `0x2ada4a0` (791 bytes); Tracker writer is `0x2ada7c0` (167 bytes), reader `0x2ada870` (186 bytes). Both writers use the current-version integer at `0x2f5d4fc`, whose value is 13. Only version 13 is supported. In particular, old Blackboard reader branches at versions ≤12 can generate first impressions through gameplay RNG; this codec refuses those records instead of inventing defaults or reproducing incomplete native Read behavior.
+
+Blackboard fields appear in this exact wire order:
+
+1. Version i32; three counted maps keyed by Linux `long`, containing respectively 64 raw FixedPointT<8> i32 words, 64 u32 values, and 64 canonical one-byte bools.
+2. A counted vector of counted maps keyed by raw u32, with complete Tracker values.
+3. Raw PlayerTypes i32, warmonger scratch value raw i32, warmonger scaling multiplier raw i32.
+4. Nine uncounted 64-element i32 arrays: one-sided trade value, broken promises, kept promises, no promises, first impressions, broken promise turn, broken pledges, kept pledges, no pledges.
+
+The `long` serializer at `0x2add8f0` writes **eight bytes**, verified directly; neither host-language default width nor Windows layout supplies this width. Fixed arrays have no version/count prefix. All scalar words are little endian. Public `LongArray<T>` and `ModifierEntry` vectors preserve serialized order, duplicate map keys and unknown key/enum values. This is lossless wire representation, not a claim that native map insertion preserves duplicate keys.
+
+Tracker order is version i32; active bool; current value, initial value, maximum value and increment raw FixedPointT<8> i32 words; increment turns, cooldown turns and accumulation-turn count i32; reduction raw FixedPointT<8> i32; encoding-0 string with u32 byte length and raw bytes; raw visibility i32. The string has no serialized terminator and receives no Unicode normalization. Its minimum wire size is 45 bytes.
+
+`DiplomacyBlackboard` (also named by the `Blackboard` alias) and `DiplomaticModifierTracker` expose strict `decode`/`encode`, prefix decoding and `decode_prefix_with_items`/`encode_with_items`, under `unit::Limits`. Item charges aggregate every dynamic map entry, vector slot and raw string byte across nested containers. Fixed arrays are uncharged items, bounded by their constant 64-element stack storage and record byte budget; callers composing with codecs that charge fixed arrays must retain these documented component-specific charges. Allocations use checked lengths and fallible reservation. Unsupported versions, truncated records, noncanonical bools, trailing bytes and exhausted resource budgets fail explicitly.
+
+Tests cover nonempty nested maps, duplicates and 64-bit key extremes, raw fixed-point and enum extremes, non-UTF8 string bytes, independent field-order checks, every truncated prefix, exact and insufficient aggregate budgets, trailing bytes and invalid bool/version refusal. Offline saved-record validation supplies original-record byte comparisons; it does not establish live diplomacy transitions, action execution or turn equivalence.
+
+The two canonical Core identities each validate 43 Blackboard records (657,873 bytes) containing 4,237 nested Trackers, plus 4,237 separately traced Tracker records (356,117 bytes). Tracker cuts overlap the Blackboard coverage. Both streams have the same selected-record batch hash, so they supply 43 distinct Blackboard payloads and 2,587 distinct Tracker payloads, not twice that independent coverage. Original-record comparisons retain every byte; no unknown bytes are masked.
