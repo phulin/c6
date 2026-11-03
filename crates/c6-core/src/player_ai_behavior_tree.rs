@@ -729,9 +729,9 @@ mod tests {
                 component_type: i16::MAX,
                 id: u32::MAX,
             };
-            let reference = |bit, value| Presence {
-                present: BoolByte(if mask & (1u8 << bit) == 0 { 0 } else { 0x80 }),
-                value: if mask & (1u8 << bit) == 0 {
+            let reference = |bit: u32, value: ComponentId| Presence {
+                present: BoolByte(if mask & (1u8 << bit) == 0u8 { 0 } else { 0x80 }),
+                value: if mask & (1u8 << bit) == 0u8 {
                     None
                 } else {
                     Some(value)
