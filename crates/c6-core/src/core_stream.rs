@@ -8,7 +8,7 @@
 //! Linux module SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! Unknown unframed Rules providers fail. CorePrefix stops after Map; the
 //! ThroughFirstPlayer composition continues through Religion and the first
-//! Player's Cities, stopping before Diplomacy (or after an empty Manager).
+//! Player's Districts, stopping before NameManager (or after an empty Manager).
 //! Each result borrows its untouched remaining tail without semantic exclusion.
 
 use crate::map::{self, Map};
@@ -244,8 +244,8 @@ impl std::fmt::Display for ThroughFirstPlayerError {
 }
 impl std::error::Error for ThroughFirstPlayerError {}
 
-/// Raw Core prefix through Game.Religion and the first Player's complete Cities.
-/// The first Player remains unfinished at Diplomacy; an empty Manager instead
+/// Raw Core prefix through Game.Religion and the first Player's complete Districts.
+/// The first Player remains unfinished at NameManager; an empty Manager instead
 /// stops at AfterEmptyPlayerManager. Neither boundary is a complete world import.
 #[derive(Debug, Eq, PartialEq)]
 pub struct ThroughFirstPlayer<'a> {
