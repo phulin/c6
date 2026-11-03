@@ -442,7 +442,10 @@ fn vector(v: &Value, limits: CaptureLimits) -> Result<VectorState> {
     let data = n(v, "data_pointer")?;
     require(capacity == 0 || data != 0, CaptureError::Vector)?;
     require(
-        data.checked_add(u64::from(capacity) * 4).is_some(),
+        u64::from(capacity)
+            .checked_mul(4)
+            .and_then(|bytes| data.checked_add(bytes))
+            .is_some(),
         CaptureError::Vector,
     )?;
     let mut typed = Vec::new();
@@ -927,6 +930,12 @@ fn stream_marker(
         CaptureError::Stream,
     )?;
     if event == 1 || event == 11 {
+        let buffer = n(row, "buffer")?;
+        let capacity = n(row, "size")?;
+        require(
+            buffer > 0 && buffer.checked_add(capacity).is_some(),
+            CaptureError::Stream,
+        )?;
         require(
             active.is_none() && !streams.iter().any(|s| s.occurrence == occurrence),
             CaptureError::Stream,
@@ -1092,6 +1101,9 @@ fn query_from(row: &Value) -> Result<QueryObservation> {
         },
     })
 }
+fn target_address(bias: u64, rva: u64) -> Result<u64> {
+    bias.checked_add(rva).ok_or(CaptureError::Frame)
+}
 fn process_record(
     record: &mut Record,
     event: &str,
@@ -1112,6 +1124,7 @@ fn process_record(
     }
     let root_id = record.frame.id.clone();
     let military = record.military;
+    let allowed_address = military.checked_add(0x158).ok_or(CaptureError::Owner)?;
     let stream = record.stream;
     match &mut record.progress {
         Progress::Read(read) => match event {
@@ -1126,7 +1139,7 @@ fn process_record(
                     cp.register("rdi")? == military
                         && cp.register("rsi")? == value.player.player_pointer
                         && value.military_pointer == military
-                        && cp.return_pc == Some(bias + 0x2145669),
+                        && cp.return_pc == Some(target_address(bias, 0x2145669)?),
                     CaptureError::Frame,
                 )?;
                 require(
@@ -1180,10 +1193,25 @@ fn process_record(
                     .as_ref()
                     .ok_or(CaptureError::Frame)?
                     .same(cp)?;
+                require(
+                    cp.register("rsp")?
+                        < read
+                            .initialize_frame
+                            .as_ref()
+                            .ok_or(CaptureError::Frame)?
+                            .entry_rsp,
+                    CaptureError::Frame,
+                )?;
+                if let Some(actual) = cp.return_pc {
+                    require(
+                        actual == target_address(bias, 0x2145c9b)?,
+                        CaptureError::Frame,
+                    )?;
+                }
                 let query = query_from(row)?;
                 require(
                     cp.register("rdi")? == query.handler_pointer
-                        && cp.register("rsi")? == military + 0x158
+                        && cp.register("rsi")? == allowed_address
                         && cp.register("rcx")? as u32 as i32 == query.civilization_i32
                         && cp.register("r8")? as u32 as i32 == query.handicap_i32,
                     CaptureError::Query,
@@ -1215,16 +1243,16 @@ fn process_record(
                 )?;
                 if read.leader == Some(-1) {
                     require(
-                        cp.return_pc == Some(bias + 0x2145dd2)
-                            && cp.register("rbx")? == military + 0x158,
+                        cp.return_pc == Some(target_address(bias, 0x2145dd2)?)
+                            && cp.register("rbx")? == allowed_address,
                         CaptureError::Frame,
                     )?;
                 } else {
                     let query = read.query.as_ref().ok_or(CaptureError::Query)?;
                     require(
-                        cp.return_pc == Some(bias + 0x203ac8b)
+                        cp.return_pc == Some(target_address(bias, 0x203ac8b)?)
                             && cp.register("rbx")? == query.handler_pointer
-                            && cp.register("rbp")? == military + 0x158
+                            && cp.register("rbp")? == allowed_address
                             && query.captured_definition_pointer == Some(defs.collection_pointer),
                         CaptureError::Query,
                     )?;
@@ -1348,6 +1376,20 @@ fn process_record(
                     guard.vectors.allowed.size_u32 != 0 && write.arrays < 3,
                     CaptureError::EventOrder,
                 )?;
+                require(
+                    cp.register("rsp")? < record.frame.entry_rsp,
+                    CaptureError::Frame,
+                )?;
+                if let Some(actual) = cp.return_pc {
+                    require(
+                        actual
+                            == target_address(
+                                bias,
+                                [0x2145526, 0x2145548, 0x214556a][write.arrays],
+                            )?,
+                        CaptureError::Frame,
+                    )?;
+                }
                 let (name, expected) = match write.arrays {
                     0 => ("allowed", &guard.vectors.allowed),
                     1 => ("per_war", &guard.vectors.per_war),
@@ -2727,5 +2769,131 @@ mod tests {
             admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly),
             Err(CaptureError::EventOrder)
         ));
+    }
+    #[test]
+    fn hostile_raw_pointers_and_frame_span_ends_error_without_unwind() {
+        let input = military(false)
+            .encode(crate::unit::Limits::default())
+            .unwrap();
+        let output = military(true)
+            .encode(crate::unit::Limits::default())
+            .unwrap();
+        let mut parsed = source_parsed(&input, &output);
+        let hostile = u64::MAX - 7;
+        for row in &mut parsed.rows {
+            match row["event"].as_str().unwrap() {
+                "read_entry" => row["military_pointer"] = json!(hostile),
+                "owner_installation_witness" => row["military_pointer"] = json!(hostile),
+                "checkpoint" if row["checkpoint"] == "read_entry" => {
+                    row["registers"]["rsi"] = json!(hostile)
+                }
+                "checkpoint" if row["checkpoint"] == "initialize_entry" => {
+                    row["registers"]["rdi"] = json!(hostile)
+                }
+                _ => {}
+            }
+            if row.get("snapshot").is_some_and(|s| !s.is_null()) {
+                row["snapshot"]["military_pointer"] = json!(hostile);
+            }
+        }
+        let outcome = std::panic::catch_unwind(|| {
+            admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly)
+        });
+        assert!(matches!(outcome, Ok(Err(CaptureError::Owner))));
+        let cp = Checkpoint {
+            row_index: 0,
+            name: "return".into(),
+            registers: json!({"rsp":0,"pc":9}),
+            frame: "frame".into(),
+            thread: json!([1, 2, 3]),
+            return_pc: None,
+        };
+        let frame = NativeFrame {
+            id: "frame".into(),
+            thread: json!([1, 2, 3]),
+            entry_rsp: u64::MAX - 3,
+            return_pc: 9,
+        };
+        assert!(matches!(
+            std::panic::catch_unwind(|| frame.returned(&cp)),
+            Ok(Err(CaptureError::Frame))
+        ));
+        assert_eq!(target_address(u64::MAX, 1), Err(CaptureError::Frame));
+        let raw = raw_vector(u64::MAX - 3, &[1, 2]);
+        assert!(matches!(
+            std::panic::catch_unwind(|| vector(&raw, CaptureLimits::default())),
+            Ok(Err(CaptureError::Vector))
+        ));
+    }
+    #[test]
+    fn allocated_stream_span_and_available_helper_metadata_refuse_contradictions() {
+        let input = military(false)
+            .encode(crate::unit::Limits::default())
+            .unwrap();
+        let output = military(true)
+            .encode(crate::unit::Limits::default())
+            .unwrap();
+        // The raw descriptor and readable row agree on a hostile buffer; the
+        // allocated-span check must still refuse without overflow/unwind.
+        let mut streams = Vec::new();
+        let mut active = None;
+        let row = json!({"schema":1,"marker_event":1,"occurrence":1,"context":1,"stream":2,"buffer":u64::MAX-3,"size":8,"offset":0,"path":"source","result":0});
+        let descriptor = MarkerDescriptor {
+            words: [1, 1, 1, 1, 2, u64::MAX - 3, 8, 3, 0, 0],
+        };
+        assert!(matches!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| stream_marker(
+                &row,
+                &mut streams,
+                &mut active,
+                &descriptor
+            ))),
+            Ok(Err(CaptureError::Stream))
+        ));
+        for helper in ["query_entry", "hash_array_entry"] {
+            for field in ["return", "stack"] {
+                let mut parsed = source_parsed(&input, &output);
+                let row = parsed
+                    .rows
+                    .iter_mut()
+                    .find(|r| r["event"] == "checkpoint" && r["checkpoint"] == helper)
+                    .unwrap();
+                if field == "return" {
+                    row["actual_entry_return_pc"] = json!(1);
+                } else {
+                    row["registers"]["rsp"] = json!(0x9000);
+                }
+                assert!(
+                    matches!(
+                        admit_parsed_with_origin(
+                            parsed,
+                            CaptureLimits::default(),
+                            Origin::SourceOnly
+                        ),
+                        Err(CaptureError::Frame)
+                    ),
+                    "{helper}/{field}"
+                );
+            }
+        }
+        // Optional future metadata is checked if supplied; absence remains
+        // explicit under the frozen producer's source-checked return guards.
+        let mut parsed = source_parsed(&input, &output);
+        let mut index = 0;
+        for row in &mut parsed.rows {
+            if row["event"] == "checkpoint" {
+                if row["checkpoint"] == "query_entry" {
+                    row["actual_entry_return_pc"] = json!(0x10000000 + 0x2145c9b);
+                }
+                if row["checkpoint"] == "hash_array_entry" {
+                    row["actual_entry_return_pc"] =
+                        json!(0x10000000 + [0x2145526u64, 0x2145548, 0x214556a][index]);
+                    index += 1;
+                }
+            }
+        }
+        assert!(
+            admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly).is_ok()
+        );
     }
 }
