@@ -34,7 +34,8 @@ def validate_facts(rows,elf):
  require(header['helper_direct_original_calls'] is False and header['predicate_results'] is False and header['caller_quiescence_callback_invoked'] is True,'scope overclaim')
  for key in ['module_loader_path_raw','module_canonical_path_raw']:require(bool(bytes.fromhex(header[key])),'missing path identity')
  methods=[]
- def method(m):
+ def method(m,wanted):
+  require((m['rva'],len(bytes.fromhex(m['live_code_raw']))) in wanted,'method complete target/length')
   require(m['owner_base']==base and m['actual_pointer']==base+m['rva'],'method owner/RVA identity')
   for flag in ['vtable_slot_mapping_matches_hashed_file','runtime_mapping_readable_executable','runtime_mapping_matches_hashed_file']:require(m[flag] is True,'method mapping witness absent')
   code=bytes.fromhex(m['live_code_raw']);require(bool(code) and code==elf.read(m['rva'],len(code)),'actual method bytes differ from pinned original')
@@ -42,32 +43,50 @@ def validate_facts(rows,elf):
  manager=next(r for r in rows if r['kind']=='manager');manager_raw=bytes.fromhex(manager['manager_raw']);require(len(manager_raw)==104,'Manager header cut')
  require(ptr(manager_raw,0)==base+0x3aff880,'Manager actual class')
  require(len(manager['live_methods'])==4 and [m['slot_offset'] for m in manager['live_methods']]==[0x88,0x98,0xa0,0xd8],'Manager method coverage')
- for m in manager['live_methods']:method(m)
+ component=bytes.fromhex(manager['component_vector_raw']);require(len(component)==24,'component vector header')
+ cb,ce,cc=ptr(component,0),ptr(component,8),ptr(component,16)
+ require(cb!=0 and cb<=ce<=cc and (ce-cb)%288==0 and (cc-cb)%288==0 and (cc-cb)//288<=4096 and 0<=manager['component_index']<(ce-cb)//288,'component vector shape/index')
+ for m,wanted in zip(manager['live_methods'],[(0x2da1650,82),(0x2da16f0,40),(0x2da1720,86),(0x2da2a60,116)]):method(m,{wanted})
  handlers={}
  for r in [r for r in rows if r['kind']=='handler']:
   require(r['slot']==len(handlers) and r['slot'] not in handlers,'handler slot order/duplicate');handlers[r['slot']]=r
   if r['pointer']:
    h=bytes.fromhex(r['handler_raw']);require(len(h)==16 and ptr(h,0)==r['vptr'] and u32(h,8)==r['runtime_id']==r['slot'] and u32(h,12)==r['operation_hash'],'handler header identity')
-   require(r['actual_method']['slot_offset']==0x20,'wrong handler method slot');method(r['actual_method'])
- require(ptr(manager_raw,32)-ptr(manager_raw,24)==8*len(handlers),'handler vector extent')
+   require(r['actual_method']['slot_offset']==0x20,'wrong handler method slot');method(r['actual_method'],{(0x2d95660,3),(0x2da0920,3)})
+ require(0<ptr(manager_raw,24)<=ptr(manager_raw,32)<=ptr(manager_raw,40) and ptr(manager_raw,32)-ptr(manager_raw,24)==8*len(handlers) and (ptr(manager_raw,40)-ptr(manager_raw,24))%8==0 and (ptr(manager_raw,40)-ptr(manager_raw,24))//8<=2048,'handler vector extent')
+ pm=next(r for r in rows if r['kind']=='player_manager');pmraw=bytes.fromhex(pm['header_raw'])
+ require(pm['pointer']!=0 and len(pmraw)==7416,'Player Manager header shape')
+ for offset,width in [(0x20,8),(0x1a08,4)]:
+  begin,end,cap=ptr(pmraw,offset),ptr(pmraw,offset+8),ptr(pmraw,offset+16)
+  require(begin!=0 and begin<=end<=cap and end-begin==65*width and cap-begin==65*width,'Player Manager 65-vector shape')
  slots=[r for r in rows if r['kind']=='player_slot'];require([r['query'] for r in slots]==list(range(65)),'65 slot order')
  resolved={}
  for r in slots:
   require(r['resolved']==(r['stored'] if r['mapping']!=-1 else 0),'source lookup projection')
   if r['resolved']:resolved[r['query']]=r['resolved']
  containers={r['owner']:r for r in rows if r['kind']=='unit_container'};require(len(containers)==43 and set(containers)==set(resolved),'Player/container coverage')
- members={};queues={};counts=Counter();units=set()
+ members={};queues={};counts=Counter();units=set();chains={owner:[] for owner in containers}
  for r in rows:
   if r['kind']=='unit_membership':
    key=(r['owner'],r['id']);require(key not in members and r['unit'] not in units,'duplicate Unit ID/instance');units.add(r['unit']);members[key]=r
    require(r['owner'] in containers and r['ordinal']==counts[r['owner']],'membership ordinal');counts[r['owner']]+=1
-   require(ptr(bytes.fromhex(r['entry_raw']),0)==r['unit'],'entry owner pointer')
+   link=bytes.fromhex(r['entry_raw']);require(len(link)==24 and ptr(link,0)==r['unit'],'entry owner pointer');chains[r['owner']].append(r)
   elif r['kind']=='unit_queue':
    key=(r['owner'],r['id']);require(key in members and key not in queues and members[key]['unit']==r['unit'],'queue member identity');queues[key]=r
    q=bytes.fromhex(r['queue_raw']);block=bytes.fromhex(r['block_allocation_raw'])
    require(len(q)==200 and u32(q,192)==r['count'] and u32(q,184)==r['capacity'] and ptr(q,176)==r['block'],'queue raw field identity')
    require(r['count']<=r['capacity'] and len(block)==r['capacity']*40,'queue full capacity cut')
-   if r['inline']:require(r['block']==r['queue'],'inline block owner')
+   address=r['queue'];capacity=r['capacity'];blockptr=r['block'];allocation=len(block)
+   require(address==r['unit']+0xc10 and address<=2**64-1-200,'queue native offset')
+   require(capacity<=65536 and bool(capacity)==bool(blockptr) and blockptr<=2**64-1-allocation,'queue block extent')
+   inlined=address<=blockptr<address+176
+   require(type(r['inline']) is bool and r['inline']==inlined,'queue inline flag')
+   if capacity:require(blockptr%16==0,'queue block alignment')
+   if inlined:
+    require(blockptr==(address+15)&~15 and capacity==4 and allocation<=176 and blockptr-address<=176-allocation,'inline block owner')
+    require(block==q[blockptr-address:blockptr-address+allocation],'inline allocation bytes')
+   elif capacity:
+    require(capacity>4 and not (blockptr<address+200 and address<blockptr+allocation),'external block owner')
    if r['count']:
     require(r['native_gethandler_return_observed'] is False and r['numeric_slot_selection_source_derived'] is True,'lookup inference relabeled as observed return')
     front=u32(block,0);require(front==r['native_front_bits'] and front in handlers,'raw native front')
@@ -75,6 +94,16 @@ def validate_facts(rows,elf):
     if h['pointer']:require(h['operation_hash']==r['numeric_slot_handler_hash'] and h['vptr']==r['numeric_slot_handler_vptr'] and h['actual_method']['actual_pointer']==r['numeric_slot_actual_target'],'selected handler identity')
  for owner,c in containers.items():
   raw=bytes.fromhex(c['container_raw']);require(len(raw)==72 and c['parent']==resolved[owner] and u32(raw,32)==counts[owner],'container count/parent')
+  begin,end,cap=ptr(raw,0),ptr(raw,8),ptr(raw,16)
+  require(begin<=end<=cap and (end-begin)%8==0 and (cap-begin)%8==0 and (cap-begin)//8<=8192 and ((end-begin)//8)*8>=counts[owner],'container block-vector shape')
+  chain=chains[owner];require(ptr(raw,56)==(chain[0]['entry'] if chain else 0) and ptr(raw,64)==(chain[-1]['entry'] if chain else 0),'container active endpoints')
+  block_pointers={}
+  for ordinal,r in enumerate(chain):
+   link=bytes.fromhex(r['entry_raw']);previous=chain[ordinal-1]['entry'] if ordinal else 0;following=chain[ordinal+1]['entry'] if ordinal+1<len(chain) else 0
+   require(ptr(link,8)==previous and ptr(link,16)==following,'active entry chain')
+   slot=r['id']&65535;index=slot//8
+   require(r['id']!=2**32-1 and index<(end-begin)//8 and r['block']<=2**64-1-192 and r['entry']==r['block']+(slot%8)*24,'entry block/slot arithmetic')
+   require(index not in block_pointers or block_pointers[index]==r['block'],'entry block identity');block_pointers[index]=r['block']
  require(set(members)==set(queues),'missing Unit queue')
  summary=next(r for r in rows if r['kind']=='roster_summary');require(summary=={'kind':'roster_summary','player_slots':65,'players':43,'units':1262},'roster summary')
  require(rows[-1]['manager']==manager['pointer'] and rows[-1]['handler_slots']==63 and rows[-1]['player_slots']==65,'completion mismatch')
@@ -93,8 +122,15 @@ def mutation_checks(rows,elf):
  mutate('unit_queue','block_allocation_raw',q['block_allocation_raw'][:-2],'queue full capacity cut')
  mutate('unit_queue','queue_raw',q['queue_raw'][:-2],'queue raw field identity')
  mutate('complete','handler_slots',64,'completion mismatch')
- for field,value,reason in [('actual_pointer',0,'method owner/RVA identity'),('live_code_raw','00','actual method bytes'),('runtime_mapping_matches_hashed_file',False,'method mapping witness absent')]:
+ for field,value,reason in [('actual_pointer',0,'method owner/RVA identity'),('live_code_raw','00','method complete target/length'),('runtime_mapping_matches_hashed_file',False,'method mapping witness absent')]:
   changed=copy.deepcopy(rows);next(r for r in changed if r['kind']=='manager')['live_methods'][0][field]=value;tests.append((changed,reason))
+ changed=copy.deepcopy(rows);m=next(r for r in changed if r['kind']=='manager')['live_methods'][0];m['live_code_raw']=m['live_code_raw'][:2];tests.append((changed,'method complete target/length'))
+ changed=copy.deepcopy(rows);r=next(r for r in changed if r['kind']=='unit_membership');link=bytearray.fromhex(r['entry_raw']);struct.pack_into('<Q',link,8,1);r['entry_raw']=link.hex();tests.append((changed,'active entry chain'))
+ changed=copy.deepcopy(rows);r=next(r for r in changed if r['kind']=='unit_membership');r['block']+=192;tests.append((changed,'entry block/slot arithmetic'))
+ changed=copy.deepcopy(rows);r=next(r for r in changed if r['kind']=='player_manager');r['header_raw']=r['header_raw'][:-2];tests.append((changed,'Player Manager header shape'))
+ changed=copy.deepcopy(rows);r=next(r for r in changed if r['kind']=='player_manager');h=bytearray.fromhex(r['header_raw']);struct.pack_into('<Q',h,0x28,ptr(h,0x20)+64*8);r['header_raw']=h.hex();tests.append((changed,'Player Manager 65-vector shape'))
+ changed=copy.deepcopy(rows);r=next(r for r in changed if r['kind']=='unit_queue' and r['count']);r['inline']=False;tests.append((changed,'queue inline flag'))
+ changed=copy.deepcopy(rows);r=next(r for r in changed if r['kind']=='unit_queue');r['queue']+=16;tests.append((changed,'queue native offset'))
  changed=copy.deepcopy(rows);changed.pop();tests.append((changed,'incomplete/unknown raw framing'))
  for changed,reason in tests:
   try:validate_facts(changed,elf)

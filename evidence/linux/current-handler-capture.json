@@ -1,7 +1,7 @@
 {
   "Save_continuous_lock_claimed": false,
   "actual_native_cleanup_footer": true,
-  "checker_sha256": "4f10482122b1eab1663a4230612bcea219043c509a26618b6025efc401378a49",
+  "checker_sha256": "43ed925cdfe0bdcf0144c6855987108e201b1f0d60149aeda5c9af27d87f647e",
   "complete_rng_inventory": false,
   "coverage": {
     "actual_method_instances": 67,
@@ -34,7 +34,7 @@
   "helper_or_guard_original_calls": false,
   "known_rng_bytes": 64,
   "known_rng_endpoints_equal": true,
-  "mutation_refusals": 13,
+  "mutation_refusals": 20,
   "original_execution_by_audit": false,
   "profile_sha256": "321c39581fd268b9e75d2efaa2a672e8662a3468573bc1cad8bfbec8e15e7045",
   "raw_passes": 2,

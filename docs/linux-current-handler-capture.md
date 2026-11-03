@@ -41,7 +41,7 @@ python3 tools/linux/current_handler_capture_audit.py \
 
 It verifies both raw passes, complete roster/queue framing, selected slot
 identities, retained method bytes, archived source/preload/configuration,
-observational Saves, known RNG and terminal controls. Thirteen targeted malformed
+observational Saves, known RNG and terminal controls. Twenty targeted malformed
 observation cases are refused. The audit executes no original code.
 
 The earlier `04ff` preparation remains unexecuted. The `9450` fixture ended with
