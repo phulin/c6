@@ -1,4 +1,6 @@
-//! Current Linux XP2 City BuildQueue (v16/node v2) and Buildings (v10) wire.
+//! Bounded Linux XP2 City BuildQueue (v14/v16, node v2) and Buildings (v10) wire.
+//! Legacy14 omits non-wonder multiplier (native Q8 raw256) and salvage (raw0);
+//! nested FeatureOverride/District modifier versions are independent14/16.
 //!
 //! Target SHA-256: a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! Original outer writer/read: 0x284c220/0x284c6e0; node: 0x284c5d0/0x284d070.
@@ -14,6 +16,7 @@ use crate::unit::{HashValue, Limits};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     TrailingBytes,
     ResourceLimit,
     Version {
@@ -81,11 +84,13 @@ pub const BUILD_TYPE_HASH: u32 = 0x2c0f4a46;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FeatureOverride {
+    pub wire_version: i32,
     pub district_hash: u32,
     pub feature_hash: u32,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DistrictBuildingProductionModifier {
+    pub wire_version: i32,
     pub district_hash: u32,
     pub modifier: i32,
 }
@@ -94,6 +99,7 @@ pub struct DistrictBuildingProductionModifier {
 /// Indexed arrays retain wire count/order; their counts are not registry sizes.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BuildQueue {
+    pub wire_version: i32,
     pub entries: Vec<QueueEntry>,
     /// YieldTypes uses raw i32 at 0x2d4fb70.
     pub yield_type: i32,
@@ -165,6 +171,16 @@ impl Reader<'_> {
         let data = self.bytes.get(self.pos..end).ok_or(Error::Truncated)?;
         self.pos = end;
         Ok(data.try_into().unwrap())
+    }
+    fn build_queue_version(&mut self) -> Result<i32, Error> {
+        let actual = i32::read(self)?;
+        match actual {
+            14 | 16 => Ok(actual),
+            _ => Err(Error::Version {
+                expected: 16,
+                actual,
+            }),
+        }
     }
     fn version(&mut self, expected: i32) -> Result<(), Error> {
         let actual = i32::read(self)?;
@@ -351,15 +367,20 @@ impl BuildQueue {
             pos: 0,
             budget: Budget { limits, items: 0 },
         };
-        r.version(Self::VERSION)?;
+        let wire_version = r.build_queue_version()?;
         let value = Self {
+            wire_version,
             entries: r.vector(QueueEntry::read)?,
             yield_type: i32::read(&mut r)?,
             wonder_production_multiplier: i32::read(&mut r)?,
             river_district_production_multiplier: i32::read(&mut r)?,
             river_wonder_production_multiplier: i32::read(&mut r)?,
             building_production_modifier: i32::read(&mut r)?,
-            building_non_wonder_production_modifier: i32::read(&mut r)?,
+            building_non_wonder_production_modifier: if wire_version == 16 {
+                i32::read(&mut r)?
+            } else {
+                256
+            },
             city_unit_production_modifier: i32::read(&mut r)?,
             district_production_modifier: i32::read(&mut r)?,
             adjacent_city_river_building_production_multiplier: i32::read(&mut r)?,
@@ -378,10 +399,15 @@ impl BuildQueue {
             extra_unit_copy: r.pairs()?,
             features_valid_wonders: r.pairs()?,
             production_overflow: i32::read(&mut r)?,
-            production_salvage: i32::read(&mut r)?,
+            production_salvage: if wire_version == 16 {
+                i32::read(&mut r)?
+            } else {
+                0
+            },
             feature_overrides: r.vector(|r| {
-                r.version(16)?;
+                let wire_version = r.build_queue_version()?;
                 Ok(FeatureOverride {
+                    wire_version,
                     district_hash: u32::read(r)?,
                     feature_hash: u32::read(r)?,
                 })
@@ -392,8 +418,9 @@ impl BuildQueue {
             ignore_strategic_resource_requirements: bool::read(&mut r)?,
             strategic_resource_requirement_modifier: i32::read(&mut r)?,
             district_building_production_modifiers: r.vector(|r| {
-                r.version(16)?;
+                let wire_version = r.build_queue_version()?;
                 Ok(DistrictBuildingProductionModifier {
+                    wire_version,
                     district_hash: u32::read(r)?,
                     modifier: i32::read(r)?,
                 })
@@ -413,6 +440,18 @@ impl BuildQueue {
     }
     /// Returns bytes and their actual aggregate dynamic-item charge together.
     pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        if self.wire_version != Self::VERSION
+            || self
+                .feature_overrides
+                .iter()
+                .any(|v| v.wire_version != Self::VERSION)
+            || self
+                .district_building_production_modifiers
+                .iter()
+                .any(|v| v.wire_version != Self::VERSION)
+        {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         let mut w = Writer {
             bytes: Vec::new(),
             budget: Budget { limits, items: 0 },
@@ -473,8 +512,11 @@ mod tests {
         out.extend_from_slice(&value.to_le_bytes());
     }
     fn fixture() -> Vec<u8> {
+        fixture_versions(16, 16)
+    }
+    fn fixture_versions(version: u32, nested: u32) -> Vec<u8> {
         let mut b = Vec::new();
-        word(&mut b, 16);
+        word(&mut b, version);
         word(&mut b, 7);
         for (n, tag) in [0i32, 1, 2, 3, -1, 4, i32::MIN].into_iter().enumerate() {
             word(&mut b, BUILD_TYPE_HASH.wrapping_add(n as u32));
@@ -493,6 +535,9 @@ mod tests {
             word(&mut b, 0x7fffffff);
         }
         for i in 0..10 {
+            if version == 14 && i == 5 {
+                continue;
+            }
             word(&mut b, 0x80000000 + i);
         }
         // All 13 initial indexed arrays populated, preserving duplicate keys.
@@ -508,9 +553,11 @@ mod tests {
             }
         }
         word(&mut b, 0x80000001); // overflow
-        word(&mut b, 0x7fffffff); // salvage
+        if version == 16 {
+            word(&mut b, 0x7fffffff);
+        } // salvage
         word(&mut b, 1); // FeatureOverride vector
-        for value in [16, u32::MAX, 0x12345678] {
+        for value in [nested, u32::MAX, 0x12345678] {
             word(&mut b, value);
         }
         for _ in 0..2 {
@@ -523,10 +570,76 @@ mod tests {
         b.push(1);
         word(&mut b, 0x87654321);
         word(&mut b, 1);
-        for value in [16, 0xdeadbeef, 0x80000000] {
+        for value in [nested, 0xdeadbeef, 0x80000000] {
             word(&mut b, value);
         }
         b
+    }
+    #[test]
+    fn buildqueue14_q8_one_and_salvage_zero_preserve_remaining_grammar() {
+        let mut bytes = fixture_versions(14, 14);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 37,
+        };
+        let (value, used, items) = BuildQueue::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 37));
+        assert_eq!(value.wire_version, 14);
+        assert_eq!(value.building_non_wonder_production_modifier, 256);
+        assert_eq!(value.production_salvage, 0);
+        let current = BuildQueue::decode(&fixture(), Limits::default()).unwrap();
+        assert_eq!(value.entries, current.entries);
+        assert_eq!(value.building_progress, current.building_progress);
+        assert_eq!(value.production_overflow, current.production_overflow);
+        assert_eq!(
+            value.strategic_resource_requirement_modifier,
+            current.strategic_resource_requirement_modifier
+        );
+        assert_eq!(value.feature_overrides[0].wire_version, 14);
+        assert_eq!(
+            value.district_building_production_modifiers[0].wire_version,
+            14
+        );
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(
+                BuildQueue::decode_prefix(&bytes[..n], limits).is_err(),
+                "{n}"
+            );
+        }
+        assert_eq!(
+            BuildQueue::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 36,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [13u32, 15, 17] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                BuildQueue::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 16,
+                    actual: version as i32
+                })
+            );
+        }
+        for (outer, nested) in [(14, 16), (16, 14)] {
+            let v =
+                BuildQueue::decode(&fixture_versions(outer, nested), Limits::default()).unwrap();
+            assert_eq!(v.wire_version, outer as i32);
+            assert_eq!(v.feature_overrides[0].wire_version, nested as i32);
+            assert_eq!(
+                v.district_building_production_modifiers[0].wire_version,
+                nested as i32
+            );
+        }
     }
     #[test]
     fn charged_prefix_budget_composition() {
