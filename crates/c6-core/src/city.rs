@@ -1,4 +1,6 @@
-//! Complete current Linux City v51 wire record assembled from verified codecs.
+//! Linux City v44/v51 wire record assembled from verified component codecs.
+//! Version44 omits fields with explicit zero-reset or unknown-retained effects;
+//! nested component versions remain independently checked.
 //!
 //! Wire completeness is not complete live City state, constructor/read fixups,
 //! gameplay/RNG equivalence, City execution or a complete Player/Core importer.
@@ -47,6 +49,8 @@ pub struct City {
     pub turn_city_founded: i32,
     pub allowed_improvement_hashes: Vec<u32>,
     pub population_change_on_creation: Vec<i32>,
+    /// See header.powered_yield_effect(): absent44 means definition-sized zero
+    /// reset, not an empty effective native array.
     pub yield_change_bonus_with_power_modifier: Vec<HashValue<i32>>,
 }
 struct Budget {
@@ -55,6 +59,21 @@ struct Budget {
     items: usize,
 }
 impl Budget {
+    fn powered_yields(
+        &mut self,
+        bytes: &[u8],
+        city_version: i32,
+    ) -> Result<Vec<HashValue<i32>>, Error> {
+        if city_version == 44 {
+            return Ok(Vec::new());
+        }
+        self.list(bytes, 8, |r, data| {
+            Ok(HashValue {
+                definition_hash: r.scalar(data)?,
+                value: r.scalar(data)? as i32,
+            })
+        })
+    }
     fn remaining(&self) -> Limits {
         Limits {
             max_bytes: self.limits.max_bytes.saturating_sub(self.pos),
@@ -184,12 +203,8 @@ impl City {
         let allowed_improvement_hashes = b.list(bytes, 4, |r, data| r.scalar(data))?;
         let population_change_on_creation =
             b.list(bytes, 4, |r, data| Ok(r.scalar(data)? as i32))?;
-        let yield_change_bonus_with_power_modifier = b.list(bytes, 8, |r, data| {
-            Ok(HashValue {
-                definition_hash: r.scalar(data)?,
-                value: r.scalar(data)? as i32,
-            })
-        })?;
+        let yield_change_bonus_with_power_modifier =
+            b.powered_yields(bytes, header.wire_version)?;
         Ok((
             Self {
                 header,
@@ -293,6 +308,51 @@ impl City {
 #[cfg(test)]
 mod budget_tests {
     use super::*;
+    #[test]
+    fn powered_tail44_consumes_nothing_51_preserves_pairs_and_budget() {
+        let bytes = [
+            1u32.to_le_bytes(),
+            u32::MAX.to_le_bytes(),
+            i32::MIN.to_le_bytes(),
+            99u32.to_le_bytes(),
+        ]
+        .concat();
+        let mut b = Budget {
+            limits: Limits {
+                max_bytes: 12,
+                max_items: 1,
+            },
+            pos: 0,
+            items: 0,
+        };
+        assert!(b.powered_yields(&bytes, 44).unwrap().is_empty());
+        assert_eq!((b.pos, b.items), (0, 0));
+        assert_eq!(
+            b.powered_yields(&bytes, 51).unwrap(),
+            [HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN
+            }]
+        );
+        assert_eq!((b.pos, b.items), (12, 1));
+        let mut b = Budget {
+            limits: Limits {
+                max_bytes: 12,
+                max_items: 0,
+            },
+            pos: 0,
+            items: 0,
+        };
+        assert_eq!(b.powered_yields(&bytes, 51), Err(Error::ResourceLimit));
+        for n in 0..12 {
+            let mut b = Budget {
+                limits: Limits::default(),
+                pos: 0,
+                items: 0,
+            };
+            assert!(b.powered_yields(&bytes[..n], 51).is_err());
+        }
+    }
     #[test]
     fn shared_component_budget_rejects_cumulative_overflow_and_preserves_tail() {
         // Independent source-only two-component carrier. Actual City record

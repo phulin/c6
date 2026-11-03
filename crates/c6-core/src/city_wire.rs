@@ -1,4 +1,6 @@
-//! Bounded current Linux XP2 City v51 pre-component header and Districts v4.
+//! Bounded Linux XP2 City v44/v51 pre-component header and Districts v4.
+//! Yield arrays require IndexSerializer version >0; the composed Core reader
+//! admits version1. Other versions and arbitrary live global modes are unsupported.
 //! This is wire transport, not a complete City codec, runtime definition remap,
 //! gameplay state reconstruction, action execution, or turns. The next unframed
 //! component after HeaderDistricts is Citizens, which is not consumed here.
@@ -14,8 +16,13 @@ use crate::unit::{HashValue, Limits};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
-    Version { expected: i32, actual: i32 },
+    Version {
+        expected: i32,
+        actual: i32,
+    },
     InvalidBool,
+    /// Legacy reads carry omitted state that cannot be written as current state.
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     Variant(VariantError),
@@ -83,6 +90,16 @@ impl<'a> Reader<'a> {
             Err(Error::Version { expected, actual })
         } else {
             Ok(())
+        }
+    }
+    fn city_version(&mut self) -> Result<i32, Error> {
+        let actual = self.i32()?;
+        match actual {
+            44 | 51 => Ok(actual),
+            _ => Err(Error::Version {
+                expected: 51,
+                actual,
+            }),
         }
     }
     fn array(&mut self) -> Result<[i32; 64], Error> {
@@ -309,7 +326,8 @@ pub struct DynamicAdjacencyBonus {
     pub district_hash: u32,
     pub feature_hash: u32,
     pub terrain_hash: u32,
-    pub improvement_hash: u32,
+    /// None means the nested44 read supplies native index -1 without a hash.
+    pub improvement_hash: Option<u32>,
     pub river: bool,
     pub adjacent_district: bool,
     pub appeal: i32,
@@ -320,12 +338,12 @@ pub struct DynamicAdjacencyBonus {
 }
 impl Wire for DynamicAdjacencyBonus {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(51)?;
+        let version = r.city_version()?;
         Ok(Self {
             district_hash: r.u32()?,
             feature_hash: r.u32()?,
             terrain_hash: r.u32()?,
-            improvement_hash: r.u32()?,
+            improvement_hash: if version >= 51 { Some(r.u32()?) } else { None },
             river: r.bool()?,
             adjacent_district: r.bool()?,
             appeal: r.i32()?,
@@ -336,11 +354,12 @@ impl Wire for DynamicAdjacencyBonus {
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        let improvement = self.improvement_hash.ok_or(Error::UnsupportedLegacyWrite)?;
         w.i32(51)?;
         w.u32(self.district_hash)?;
         w.u32(self.feature_hash)?;
         w.u32(self.terrain_hash)?;
-        w.u32(self.improvement_hash)?;
+        w.u32(improvement)?;
         w.bool(self.river)?;
         w.bool(self.adjacent_district)?;
         w.i32(self.appeal)?;
@@ -400,8 +419,20 @@ impl Wire for Districts {
     }
 }
 
+/// Read effect of a version-omitted field; an empty wire list is not a
+/// reconstructed native array or a known empty retained baseline.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OmittedFieldEffect {
+    Present,
+    ZeroResetDefinitionCountUnknown,
+    UnknownRetainedBaseline,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Header {
+    pub wire_version: i32,
+    /// Version37..44 temporary Q8 pairs; native discards this list after reading.
+    pub deprecated_yield_q8: Vec<HashValue<i32>>,
     pub id: u32,
     pub location_x: i32,
     pub location_y: i32,
@@ -459,10 +490,31 @@ pub struct Header {
     pub name: Vec<u8>,
     pub attributes: VariantMap,
 }
+impl Header {
+    /// Applies to per-building, per-wonder and faith-city yield lists.
+    pub fn omitted_yield_effect(&self) -> OmittedFieldEffect {
+        if self.wire_version == 44 {
+            OmittedFieldEffect::ZeroResetDefinitionCountUnknown
+        } else {
+            OmittedFieldEffect::Present
+        }
+    }
+    pub fn terrain_yield_effect(&self) -> OmittedFieldEffect {
+        if self.wire_version == 44 {
+            OmittedFieldEffect::UnknownRetainedBaseline
+        } else {
+            OmittedFieldEffect::Present
+        }
+    }
+    pub fn powered_yield_effect(&self) -> OmittedFieldEffect {
+        self.omitted_yield_effect()
+    }
+}
 impl Wire for Header {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(51)?;
+        let version = r.city_version()?;
         Ok(Self {
+            wire_version: version,
             id: r.u32()?,
             location_x: r.i32()?,
             location_y: r.i32()?,
@@ -486,6 +538,11 @@ impl Wire for Header {
             wonder_envoy: r.i32()?,
             delayed_death: r.bool()?,
             transferring: r.bool()?,
+            deprecated_yield_q8: if version == 44 {
+                r.indexed()?
+            } else {
+                Vec::new()
+            },
             yield_modifiers: r.indexed()?,
             follower_yield_modifiers: r.indexed()?,
             yield_modifiers_per_governor_title_q8: r.indexed()?,
@@ -494,11 +551,23 @@ impl Wire for Header {
             extra_yield_per_population_q8: r.indexed()?,
             allow_incoming_regional_stacking_counts: r.indexed()?,
             yield_per_unit_complete: r.indexed()?,
-            yield_per_building_complete: r.indexed()?,
-            yield_per_wonder_complete: r.indexed()?,
+            yield_per_building_complete: if version == 51 {
+                r.indexed()?
+            } else {
+                Vec::new()
+            },
+            yield_per_wonder_complete: if version == 51 {
+                r.indexed()?
+            } else {
+                Vec::new()
+            },
             yield_per_terrain_class_cities: r.indexed()?,
             project_yield_q8: r.indexed()?,
-            yield_modifier_from_faith_city: r.indexed()?,
+            yield_modifier_from_faith_city: if version == 51 {
+                r.indexed()?
+            } else {
+                Vec::new()
+            },
             happiness_modifiers: r.list(20, HappinessModifiers::read)?,
             terrain_modifiers: r.list(16, TerrainModifiers::read)?,
             improvement_valid_terrain: r.list(8, ImprovementValidTerrain::read)?,
@@ -506,8 +575,12 @@ impl Wire for Header {
                 .list(12, TerrainClassYieldImprovementModifiers::read)?,
             project_yield_project_hash: r.u32()?,
             housing_per_district: r.i32()?,
-            dynamic_bonuses: r.list(42, DynamicAdjacencyBonus::read)?,
-            yield_per_terrain_type: r.list(16, YieldPerTerrainType::read)?,
+            dynamic_bonuses: r.list(38, DynamicAdjacencyBonus::read)?,
+            yield_per_terrain_type: if version == 51 {
+                r.list(16, YieldPerTerrainType::read)?
+            } else {
+                Vec::new()
+            },
             max_unit_level: r.i32()?,
             unit_experience_modifier_q8: r.i32()?,
             attacks_per_turn: r.i32()?,
@@ -516,13 +589,16 @@ impl Wire for Header {
             yield_per_flood: r.indexed()?,
             espionage_defense_bonus: r.i32()?,
             project_production: r.bool()?,
-            prevent_bypass_outer_defenses: r.i32()?,
-            prevent_melee_attack_outer_defenses: r.i32()?,
+            prevent_bypass_outer_defenses: if version == 51 { r.i32()? } else { 0 },
+            prevent_melee_attack_outer_defenses: if version == 51 { r.i32()? } else { 0 },
             name: r.string()?,
             attributes: r.variants()?,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 51 || !self.deprecated_yield_q8.is_empty() {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         w.i32(51)?;
         w.u32(self.id)?;
         w.i32(self.location_x)?;
@@ -675,9 +751,12 @@ mod tests {
 
     // Independent literal current-header grammar: no component bytes included.
     fn empty_header_wire() -> Vec<u8> {
+        header_wire(51)
+    }
+    fn header_wire(version: i32) -> Vec<u8> {
         let mut bytes = Vec::new();
         let put = |bytes: &mut Vec<u8>, value: i32| bytes.extend(value.to_le_bytes());
-        put(&mut bytes, 51);
+        put(&mut bytes, version);
         for value in [0x12345678, -3, 7, 64, 63, -1, -1, 17, 6] {
             put(&mut bytes, value);
         }
@@ -693,7 +772,13 @@ mod tests {
             put(&mut bytes, value);
         }
         bytes.extend([1, 0]); // delayed death, transferring
-        for _ in 0..13 {
+        if version == 44 {
+            put(&mut bytes, 2); // discarded Q8 list: duplicate unknown hashes, raw bits
+            for value in [-1, i32::MIN, -1, -257] {
+                put(&mut bytes, value);
+            }
+        }
+        for _ in 0..if version == 44 { 10 } else { 13 } {
             put(&mut bytes, 0);
         } // yield index lists
         for _ in 0..4 {
@@ -701,9 +786,10 @@ mod tests {
         } // small nested record vectors
         put(&mut bytes, -1); // project hash
         put(&mut bytes, 9); // housing per district
-        for _ in 0..2 {
+        put(&mut bytes, 0); // dynamic
+        if version == 51 {
             put(&mut bytes, 0);
-        } // dynamic, terrain yield vectors
+        } // terrain yield vector
         for value in [10, -257, 11, 12] {
             put(&mut bytes, value);
         }
@@ -711,8 +797,10 @@ mod tests {
         put(&mut bytes, 0); // flood index list
         put(&mut bytes, 13); // espionage defense
         bytes.push(0); // project production
-        put(&mut bytes, 14);
-        put(&mut bytes, 15);
+        if version == 51 {
+            put(&mut bytes, 14);
+            put(&mut bytes, 15);
+        }
         put(&mut bytes, 3); // byte string; no terminator or UTF-8 assumption
         bytes.extend([b'X', 0, 0xff]);
         put(&mut bytes, 1); // VariantMap scalar tree
@@ -720,6 +808,118 @@ mod tests {
         put(&mut bytes, i32::MIN); // exact union bits
         put(&mut bytes, 0); // empty array tree
         bytes
+    }
+    #[test]
+    fn legacy44_omissions_discarded_pairs_and_exact_boundary() {
+        let mut bytes = header_wire(44);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let (value, n, items) =
+            Header::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        assert_eq!((n, items), (end, 6));
+        assert_eq!(value.wire_version, 44);
+        assert_eq!(
+            value.deprecated_yield_q8,
+            [
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: i32::MIN
+                },
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: -257
+                },
+            ]
+        );
+        assert!(value.yield_modifiers.is_empty());
+        assert!(value.yield_per_building_complete.is_empty());
+        assert!(value.yield_per_wonder_complete.is_empty());
+        assert!(value.yield_modifier_from_faith_city.is_empty());
+        assert_eq!(
+            value.omitted_yield_effect(),
+            OmittedFieldEffect::ZeroResetDefinitionCountUnknown
+        );
+        assert_eq!(
+            value.powered_yield_effect(),
+            OmittedFieldEffect::ZeroResetDefinitionCountUnknown
+        );
+        assert_eq!(
+            value.terrain_yield_effect(),
+            OmittedFieldEffect::UnknownRetainedBaseline
+        );
+        assert_eq!(
+            (
+                value.prevent_bypass_outer_defenses,
+                value.prevent_melee_attack_outer_defenses
+            ),
+            (0, 0)
+        );
+        assert_eq!(value.name, [b'X', 0, 0xff]);
+        assert_eq!(
+            value.encode(Limits::default()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        for n in 0..end {
+            assert!(
+                Header::decode_prefix(&bytes[..n], Limits::default()).is_err(),
+                "{n}"
+            );
+        }
+        let exact = Limits {
+            max_bytes: end,
+            max_items: items,
+        };
+        assert!(Header::decode_prefix(&bytes, exact).is_ok());
+        assert_eq!(
+            Header::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: items - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::Variant(VariantError::Limit))
+        );
+    }
+    #[test]
+    fn nested44_has_independent_version_and_no_improvement_hash() {
+        let mut bytes = Vec::new();
+        for value in [44i32, 11, 12, 13] {
+            bytes.extend(value.to_le_bytes());
+        }
+        bytes.extend([1, 0]);
+        for value in [-15i32, 16, 17, -18, 0] {
+            bytes.extend(value.to_le_bytes());
+        }
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            limits: Limits::default(),
+        };
+        let value = DynamicAdjacencyBonus::read(&mut r).unwrap();
+        assert_eq!(r.pos, bytes.len());
+        assert_eq!(value.improvement_hash, None);
+        assert_eq!(
+            (value.appeal, value.yield_hash, value.amount),
+            (-15, 16, -18)
+        );
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: Limits::default(),
+        };
+        assert_eq!(value.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        // Outer51 does not override the nested44 version.
+        let mut outer = empty_header_wire();
+        // Independent literal fixture: dynamic vector lies after 13 empty yield
+        // lists, four empty nested lists, project hash and housing.
+        let dynamic = 4 + 9 * 4 + 2 + 4 * 4 + 1 + 64 * 4 + 4 * 4 + 2 + 13 * 4 + 4 * 4 + 2 * 4;
+        outer[dynamic..dynamic + 4].copy_from_slice(&1u32.to_le_bytes());
+        outer.splice(dynamic + 4..dynamic + 4, bytes);
+        let h = Header::decode(&outer, Limits::default()).unwrap();
+        assert_eq!(h.wire_version, 51);
+        assert_eq!(h.dynamic_bonuses, [value]);
     }
     #[test]
     fn literal_header_and_district_boundary_preserve_scalars_and_bytes() {
@@ -804,7 +1004,7 @@ mod tests {
             district_hash: 11,
             feature_hash: 12,
             terrain_hash: 13,
-            improvement_hash: 14,
+            improvement_hash: Some(14),
             river: true,
             adjacent_district: false,
             appeal: -15,
