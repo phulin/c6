@@ -244,3 +244,45 @@ python3 tools/linux/movement_domain_inputs_check.py \
 Complete Linux gameplay state and RNG, external policy decision boundaries,
 actions and turns remain the objective. The recorded raw **89,198-byte Save→Load
 difference remains unresolved and unmasked**.
+
+## Bounded initialized fallback closure
+
+The source proof and its independent review now support an explicit new fresh
+single-canonical-Map-read context with positive geometry and checked `2*P<=65535`.
+This bounds constructed sparse indices, including pre-read orphan accounting;
+it does not infer arbitrary live allocator history from a serialized Map.
+See [the source proof](linux-city-attribute-default.md) and
+[review](linux-city-attribute-default-review.md). The original u32 allocation to
+u16 plot-index overflow remains explicit and unsupported by this bounded model.
+
+Source `533885b` was archived and built separately. The
+[successor manifest](../evidence/linux/movement-domain-default-candidate.json)
+pins candidate `87071e44…`, its exact committed source archive, and an explicit
+reuse binding to original capture manifest `2049aa23…`, candidate `e899e4d9…`,
+profile `b8fcda05…` and retained native-2 metadata. Those historical artifacts
+remain unchanged. The new operation takes no native default scalar answers;
+owned Option outputs remain intact, while `effective_initialized` resolves the
+reserved entry from original initialization mask0 and packed Wonder sentinel -1.
+
+The [offline comparison](../evidence/linux/movement-domain-default-native-2.json)
+retained all 6,996 rows and matched every effective signed raw mask, Wonder
+answer and three-domain getter group, with zero mismatches. All 6,996
+HasCityAttributes/coastal results and the 5,287 owned mask/Wonder groups also
+remain equal. The 1,709 fallback rows now have source-derived results and zero
+unavailable getters in this bounded profile. Expected raw values are comparison
+targets only. No new original execution occurred.
+
+Reproduce with:
+
+```sh
+python3 tools/linux/movement_domain_reconstruction_results.py \
+  --successor-manifest evidence/linux/movement-domain-default-candidate.json \
+  --output /tmp/c6-domain-default-comparison.json
+```
+
+The clean committed archive passed 22 data tests (four explicit private-fixture
+skips), nine focused movement tests, and strict data all-target clippy. Six
+comparator tests cover signed values, missing outputs, mismatches, dropped rows,
+and explicit fresh-context admission. This is bounded initialized getter parity;
+complete gameplay state/actions/turns and the raw 89,198-byte Save→Load failure
+remain unresolved.

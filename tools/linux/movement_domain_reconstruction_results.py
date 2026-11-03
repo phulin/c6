@@ -144,7 +144,7 @@ def make_request(data, native, map_path):
                                      city_records=[list(data[row['start']:row['end']]) for row in city]))
 
 
-def compare(calculated, expected, width, height):
+def compare(calculated, expected, width, height, fresh_defaults=False):
     count = width * height
     require(len(expected) == count and len(calculated['plots']) == count,
             'all plot rows must be retained')
@@ -154,6 +154,18 @@ def compare(calculated, expected, width, height):
     groups = {name: collections.Counter() for name in ['has_city_attributes', 'coastal_min_one',
                                                        'owned_wonder_complete', 'owned_raw_mask',
                                                        'owned_domain_queries']}
+    effective = reconstruction.get('effective_initialized')
+    if fresh_defaults:
+        require(type(effective) is dict and effective.get('phase') == 'fresh_single_canonical_map_read'
+                and 0 < count and 2 * count <= 65535
+                and effective.get('highest_allocated_index') == 2 * count
+                and len(effective.get('masks', [])) == count
+                and len(effective.get('wonder_complete', [])) == count,
+                'explicit bounded fresh-read outputs unavailable')
+        groups.update({name: collections.Counter() for name in
+                       ['effective_raw_mask', 'effective_wonder_complete', 'effective_domain_queries']})
+    else:
+        require(effective is None, 'fresh-read outputs require explicit successor binding')
     fallback_masks, fallback_wonders = collections.Counter(), collections.Counter()
     rows = []
     for index, (plot, target) in enumerate(zip(calculated['plots'], expected)):
@@ -184,6 +196,19 @@ def compare(calculated, expected, width, height):
             fallback_masks[raw] += 1
             fallback_wonders[target['wonder_complete']] += 1
             row['unavailable'] = ['reserved-entry raw mask/domain getters', 'reserved-entry Wonder getter']
+        if fresh_defaults:
+            effective_mask = effective['masks'][index]
+            effective_wonder = effective['wonder_complete'][index]
+            require(type(effective_mask) is int and -32768 <= effective_mask <= 32767
+                    and type(effective_wonder) is bool, 'effective getter output unavailable')
+            if plot['has_attributes']:
+                require(effective_mask == mask and effective_wonder == wonder,
+                        'effective getters changed independently reconstructed owned values')
+            checks.update(effective_raw_mask=effective_mask == raw,
+                          effective_wonder_complete=effective_wonder == target['wonder_complete'],
+                          effective_domain_queries=[bool(effective_mask & (1 << domain)) for domain in range(3)] == target['valid_domains'])
+            row.update(calculated_effective_mask=effective_mask,
+                       calculated_effective_wonder=effective_wonder, unavailable=[])
         for name, equal in checks.items():
             groups[name]['equal' if equal else 'mismatched'] += 1
         row['checks'] = checks
@@ -196,6 +221,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--capture', type=Path, default=ROOT.parent / 'c6-ghidra/evidence/linux-domain-metadata/native-2')
     parser.add_argument('--manifest', type=Path, default=ROOT / 'evidence/linux/movement-domain-reconstruction-candidate.json')
+    parser.add_argument('--successor-manifest', type=Path, help='explicit offline successor; original capture manifest is retained')
     parser.add_argument('--profile-sha256', default=PROFILE)
     parser.add_argument('--diagnostics', type=Path)
     parser.add_argument('--output', type=Path, required=True)
@@ -230,6 +256,18 @@ def main():
             and header['game_sha256'] == GAME and header['host_sha256'] == HOST
             and header['profile_sha256'] == args.profile_sha256 and header['player_slots'] == 65
             and header['expected_outputs_are_inputs'] is False, 'native metadata header differs')
+    comparison_manifest_path = args.manifest
+    capture_manifest = manifest
+    if args.successor_manifest:
+        manifest, candidate = candidate_gate(args.successor_manifest)
+        require(manifest.get('capture_reuse') == dict(
+                    original_manifest_sha256=digest(args.manifest),
+                    original_candidate_sha256=capture_manifest['candidate_sha256'],
+                    profile_sha256=args.profile_sha256,
+                    native_metadata_sha256=digest(native_path), core_sha256=CORE,
+                    operation='fresh_single_canonical_map_read'),
+                'successor does not bind exact historical capture/candidate and fresh-read operation')
+        comparison_manifest_path = args.successor_manifest
     count = header['map_width'] * header['map_height']
     require(summary['status'] == 0 and summary['plots'] == count and summary['known_rng_equal'] is True
             and summary['rng_before'] == summary['sync_rng_after'] + summary['map_rng_after'],
@@ -237,7 +275,10 @@ def main():
     data, controls = core_controls(capture, runtime)
     report = dict(schema='c6-linux-domain-reconstruction-comparison-v1', game_sha256=GAME, host_sha256=HOST,
                   profile_sha256=args.profile_sha256, candidate_source_commit=manifest['source_commit'],
-                  candidate_sha256=manifest['candidate_sha256'], manifest_sha256=digest(args.manifest),
+                  candidate_sha256=manifest['candidate_sha256'], manifest_sha256=digest(comparison_manifest_path),
+                  original_capture_manifest_sha256=digest(args.manifest),
+                  original_capture_candidate_sha256=capture_manifest['candidate_sha256'],
+                  offline_successor_comparison=args.successor_manifest is not None,
                   runtime_sha256=digest(runtime_path), prepared_sha256=digest(prepared_path),
                   native_metadata_sha256=digest(native_path), core_controls=controls,
                   owner_trace_sha256=TRACE, owner_trace_gzip_sha256=TRACE_GZIP,
@@ -254,6 +295,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix='c6-domain-reconstruction-') as temporary:
         temporary = Path(temporary)
         request = make_request(data, native, temporary / 'map.bin')
+        if args.successor_manifest:
+            request['fresh_single_map_read_defaults'] = True
         logical_request = dict(request, map_path='sha256:' + digest(temporary / 'map.bin'))
         report['candidate_input_projection_sha256'] = hashlib.sha256(canonical(logical_request)).hexdigest()
         report['genuine_inputs'] = dict(terrain_definitions=len(request['domain_metadata']['terrain']['entries']),
@@ -268,8 +311,8 @@ def main():
         completed = subprocess.run([str(candidate), str(request_path)], capture_output=True, text=True)
         require(completed.returncode == 0, 'frozen Rust reconstruction unavailable: ' + completed.stderr[:2000])
         calculated = parse(completed.stdout)
-    rows, groups, fallback_masks, fallback_wonders = compare(calculated, expected, header['map_width'], header['map_height'])
-    diagnostics = args.diagnostics or ROOT / 'target/linux/domain-metadata-comparisons' / digest(native_path) / (digest(args.manifest) + '.json')
+    rows, groups, fallback_masks, fallback_wonders = compare(calculated, expected, header['map_width'], header['map_height'], fresh_defaults=args.successor_manifest is not None)
+    diagnostics = args.diagnostics or ROOT / 'target/linux/domain-metadata-comparisons' / digest(native_path) / (digest(comparison_manifest_path) + '.json')
     diagnostic_bytes = (json.dumps(dict(rows=rows, complete_candidate_output=calculated), indent=2) + '\n').encode()
     diagnostics.parent.mkdir(parents=True, exist_ok=True)
     if diagnostics.exists():
@@ -278,16 +321,16 @@ def main():
         diagnostics.write_bytes(diagnostic_bytes)
     failed = [row for row in rows if not all(row['checks'].values())]
     report.update(status='compared', plots_accounted=len(rows), comparisons=groups,
-                  fallback_raw_masks=dict(unavailable=sum(fallback_masks.values()), observed_signed_values=fallback_masks),
-                  fallback_wonder=dict(unavailable=sum(fallback_wonders.values()), observed_values=fallback_wonders),
+                  fallback_raw_masks=dict(unavailable=0 if args.successor_manifest else sum(fallback_masks.values()), source_derived=sum(fallback_masks.values()) if args.successor_manifest else 0, observed_signed_values=fallback_masks),
+                  fallback_wonder=dict(unavailable=0 if args.successor_manifest else sum(fallback_wonders.values()), source_derived=sum(fallback_wonders.values()) if args.successor_manifest else 0, observed_values=fallback_wonders),
                   diagnostics_path=str(diagnostics), diagnostics_sha256=digest(diagnostics),
                   first_mismatches=failed[:5], all_owned_attribute_queries_equal=not failed,
                   owned_signed_mask_histogram=dict(collections.Counter(mask for mask in calculated['domain_reconstruction']['masks'] if mask is not None)),
                   owned_wonder_true=sum(wonder is True for wonder in calculated['domain_reconstruction']['wonder_complete']),
-                  full_all_plot_raw_mask_parity=False)
+                  full_all_plot_raw_mask_parity=args.successor_manifest is not None and not failed)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + '\n')
-    print(json.dumps(dict(plots=len(rows), comparisons=groups, fallback_unavailable=sum(fallback_masks.values()))))
+    print(json.dumps(dict(plots=len(rows), comparisons=groups, fallback_unavailable=0 if args.successor_manifest else sum(fallback_masks.values()))))
     if failed:
         raise SystemExit('typed domain reconstruction differs; preserve all failing rows')
 

@@ -56,6 +56,25 @@ class DomainComparisonTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compare(calculated, expected, 2, 1)
 
+    def test_explicit_effective_getters_compare_every_row_and_preserve_signs(self):
+        calculated, expected = fixture()
+        effective = dict(phase='fresh_single_canonical_map_read', highest_allocated_index=4,
+                         masks=[23, -1], wonder_complete=[False, True])
+        calculated['domain_reconstruction']['effective_initialized'] = effective
+        rows, groups, _, _ = compare(calculated, expected, 2, 1, fresh_defaults=True)
+        self.assertEqual(groups['effective_raw_mask'], dict(equal=2, mismatched=0))
+        self.assertEqual(rows[1]['calculated_effective_mask'], -1)
+        self.assertEqual(rows[1]['unavailable'], [])
+        effective['masks'][1] = 0
+        rows, groups, _, _ = compare(calculated, expected, 2, 1, fresh_defaults=True)
+        self.assertEqual(groups['effective_raw_mask'], dict(equal=1, mismatched=1))
+        self.assertFalse(rows[1]['checks']['effective_raw_mask'])
+        with self.assertRaises(ValueError):
+            compare(calculated, expected, 2, 1)
+        effective['masks'][0] = 22
+        with self.assertRaises(ValueError):
+            compare(calculated, expected, 2, 1, fresh_defaults=True)
+
     def test_duplicate_native_json_fields_are_rejected(self):
         with self.assertRaises(ValueError):
             parse('{"valid_domains_mask":0,"valid_domains_mask":23}')

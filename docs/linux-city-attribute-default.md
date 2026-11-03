@@ -151,3 +151,15 @@ absent getters from the original initialized mask0 and Wonder sentinel -1.
 The driver preserves owned Option outputs and adds an opt-in
 `effective_initialized` result. No successor native parity is claimed until its
 separately frozen candidate is compared against retained native-2 outputs.
+
+## Retained native-2 comparison
+
+The separate [successor freeze](../evidence/linux/movement-domain-default-candidate.json)
+from source `533885b` was compared offline with retained native-2, preserving the
+original capture manifest/profile and candidate identities. The
+[report](../evidence/linux/movement-domain-default-native-2.json) records exact
+agreement for all 6,996 effective signed raw masks and Wonder results, including
+all 1,709 reserved-entry fallbacks. No expected fallback values entered the
+candidate request. This closes those getters only under the bounded fresh-read
+operation contract; it does not establish an unconditional reserved-entry
+invariant or model allocator overflow for arbitrary live gameplay state.
