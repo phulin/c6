@@ -1,0 +1,911 @@
+//! Diagnostic loaded-world SkipTurn composition, never full action acceptance.
+//! Native Execute/TurnUnready, unrestricted script/report effects and full-world
+//! parity remain open. Only the addressed Unit is copied for legality borrowing;
+//! queue, activity, timer and Formation writes below change the loaded records.
+use crate::unit_operation_manager::{
+    OperationDefinitions, PhaseDefinitions, RuntimeOperationId, WorldPlayer,
+};
+use c6_core::{
+    loaded_state::{Error as StateError, LoadedState},
+    map::UnitReference,
+    messages::{HandlerId, OperationHash},
+    skip_turn::{
+        self,
+        legality::{self, ManagerOperation, ManagerQueries, ManagerQueryError, ManagerQueryState},
+        placement,
+    },
+    unit::{ComponentId, OperationNode, OperationParameters, Unit, MOVE_TO_HASH, SKIP_TURN_HASH},
+    unit_operation_aftermath as aftermath,
+    unit_operation_interruption::{Handler, ObservedRegistry},
+};
+
+const OPERATION: i32 = 0x490cc8e1;
+const AWAKE: i32 = 0x6b25012e;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Stage {
+    Preflight,
+    Legality,
+    Clear,
+    Insert,
+    Activation,
+    Start,
+    Delete,
+    Diplomacy,
+    Notifications,
+    DiagnosticComplete,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct IdentityReport {
+    pub event: u32,
+    pub subtype: u32,
+    pub identity: ComponentId,
+    pub first: Option<i32>,
+    pub second: Option<i32>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Event {
+    Stage(Stage),
+    Legality(bool),
+    Report(IdentityReport),
+}
+/// Stable report rows share the existing kernel/native differential shape.
+/// Stage and legality rows retain diagnostic boundaries; reporting rows alone
+/// must never be interpreted as delivered-subscriber or whole-action parity.
+pub fn trace_json(trace: &[Event]) -> serde_json::Value {
+    serde_json::Value::Array(trace.iter().map(|event|match event {
+        Event::Stage(stage)=>serde_json::json!({"kind":"stage","stage":format!("{stage:?}")}),
+        Event::Legality(allowed)=>serde_json::json!({"kind":"legality","allowed":allowed}),
+        Event::Report(r)=>{
+            let component=(u64::from(r.identity.id)<<32)|(u64::from(r.identity.component_type as u16)<<16)|u64::from(r.identity.owner as u16);
+            let ty=(u64::from(r.subtype)<<32)|u64::from(r.event);
+            serde_json::json!({"kind":"report","type_bits":format!("{ty:016x}"),"component_bits":format!("{component:016x}"),"first":r.first,"second":r.second})
+        }
+    }).collect())
+}
+#[derive(Debug)]
+pub enum Error {
+    State(StateError),
+    World(c6_core::world::MissingInput),
+    Manager(crate::unit_operation_manager::Error),
+    Placement(placement::Error),
+    Registry(c6_core::unit_operation_interruption::Error),
+    Kernel(skip_turn::Error),
+    Provider(&'static str),
+    Aftermath(aftermath::Error),
+    MissingUnit,
+    ActorIdentityChanged(Box<Unit>),
+    ConfigurationIdentity,
+    Unsupported(&'static str),
+}
+#[derive(Debug)]
+pub struct Failure {
+    pub error: Error,
+    pub trace: Vec<Event>,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "loaded SkipTurn diagnostic: {self:?}")
+    }
+}
+impl std::error::Error for Error {}
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} ({} completed trace entries)",
+            self.error,
+            self.trace.len()
+        )
+    }
+}
+impl std::error::Error for Failure {}
+
+/// Facts must describe this loaded context. Definition collection order and
+/// observed handler identities are independent authorities, never SQL ordinals.
+pub enum TransportScope {
+    /// Conditional stock Unit/Formation profile: no native resync or additional
+    /// dirty-list gameplay consumer. This does not exclude gameplay reports.
+    HeadlessLocalAuthority,
+}
+pub struct Inputs<'a, 'd> {
+    pub transport: TransportScope,
+    pub operations: &'a OperationDefinitions,
+    pub phases: &'a PhaseDefinitions,
+    pub handlers: &'a ObservedRegistry<'a>,
+    pub placement_definitions:
+        Option<&'a c6_core::movement_world::DefinitionTable<'d, Option<placement::UnitProperties>>>,
+    pub relations: Option<&'a placement::WarRelations<'a>>,
+    pub plot_unit_limit: Option<i32>,
+}
+
+/// Required synchronous identity-report delivery. Implementations may change the
+/// addressed Unit activity before the next original read. Other writes are
+/// retained, then return a partial-execution error. All actual consumers must run;
+/// collection alone is diagnostic evidence, never gameplay closure. Consumers
+/// needing other mutable world state must reject this Unit-scoped boundary.
+pub trait Reports {
+    fn send(&mut self, unit: &mut Unit, report: IdentityReport) -> Result<i32, Error>;
+}
+
+struct Queries<'a, 'd, 'q, Q> {
+    state: &'a LoadedState,
+    inputs: &'a Inputs<'a, 'd>,
+    external: &'q mut Q,
+}
+type QueryState<'a> = ManagerQueryState<'a, Unit, ()>;
+impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQueries<Unit>
+    for Queries<'_, '_, '_, Q>
+{
+    type Error = Error;
+    type Parameters = ();
+    type Player = i32;
+    type Game = ();
+    type Script = Q::Script;
+    type EngineUtility = Q::EngineUtility;
+    type Args = Q::Args;
+    type Handler = Handler;
+    type Plot = usize;
+    type Results = ();
+    fn allow_tactical_commands(
+        &mut self,
+        _: &mut QueryState<'_>,
+        owner: i32,
+    ) -> Result<bool, Error> {
+        self.inputs
+            .phases
+            .from_processor(&self.state.retained().core.phase_processor, owner)
+            .map_err(Error::Manager)
+    }
+    fn player(&mut self, _: &mut QueryState<'_>, owner: i32) -> Result<i32, Error> {
+        Ok(WorldPlayer::resolve(self.state.world(), owner, None)
+            .map_err(Error::Manager)?
+            .id())
+    }
+    fn turn_active(&mut self, _: &mut QueryState<'_>, player: i32) -> Result<bool, Error> {
+        self.state.turn_active(player).map_err(Error::State)
+    }
+    fn processing_automation(&mut self, _: &mut QueryState<'_>) -> Result<i32, Error> {
+        self.state.processing_automation().map_err(Error::State)
+    }
+    fn player_id(&mut self, _: &mut QueryState<'_>, player: i32) -> Result<i32, Error> {
+        Ok(player)
+    }
+    fn game(&mut self, _: &mut QueryState<'_>) -> Result<(), Error> {
+        Ok(())
+    }
+    fn player_human(&mut self, _: &mut QueryState<'_>, player: i32) -> Result<bool, Error> {
+        WorldPlayer::resolve(self.state.world(), player, None)
+            .map_err(Error::Manager)?
+            .is_human()
+            .map_err(Error::Manager)
+    }
+    fn paused(&mut self, _: &mut QueryState<'_>, _: ()) -> Result<bool, Error> {
+        Ok(self.state.pause_storage().map_err(Error::State)? != 0)
+    }
+    fn runtime_id(&mut self, _: &mut QueryState<'_>, hash: u32) -> Result<i32, Error> {
+        self.inputs
+            .handlers
+            .saved_hash_runtime_id(OperationHash(hash))
+            .map(|id| id.0)
+            .map_err(Error::Registry)
+    }
+    fn handler(&mut self, _: &mut QueryState<'_>, id: i32) -> Result<Option<Handler>, Error> {
+        self.inputs
+            .handlers
+            .handler(HandlerId(id))
+            .map_err(Error::Registry)
+    }
+    fn can_be_interrupted(
+        &mut self,
+        _: &mut QueryState<'_>,
+        handler: Handler,
+    ) -> Result<bool, Error> {
+        Ok(handler.can_be_interrupted())
+    }
+    fn operation_disabled(&mut self, s: &mut QueryState<'_>, id: i32) -> Result<bool, Error> {
+        let runtime = self
+            .state
+            .unit_runtime(s.unit.e_owner, s.unit.id)
+            .map_err(Error::State)?;
+        if runtime.operations_disabled.len() != self.inputs.operations.count() {
+            return Err(Error::Unsupported(
+                "live disabled-operation definition count",
+            ));
+        }
+        Ok(self
+            .inputs
+            .operations
+            .find_index(id as u32)
+            .is_some_and(|RuntimeOperationId(i)| runtime.operations_disabled[i as usize]))
+    }
+    fn script_system(&mut self, s: &mut QueryState<'_>) -> Result<Option<Q::Script>, Error> {
+        self.external.script_system(s).map_err(Error::Provider)
+    }
+    fn args_begin(&mut self, s: &mut QueryState<'_>) -> Result<Q::Args, Error> {
+        self.external.args_begin(s).map_err(Error::Provider)
+    }
+    fn args_push_int(
+        &mut self,
+        s: &mut QueryState<'_>,
+        a: &mut Q::Args,
+        v: i32,
+    ) -> Result<(), Error> {
+        self.external
+            .args_push_int(s, a, v)
+            .map_err(Error::Provider)
+    }
+    fn engine_utility(&mut self, s: &mut QueryState<'_>) -> Result<Q::EngineUtility, Error> {
+        self.external.engine_utility(s).map_err(Error::Provider)
+    }
+    fn has_game_core_lock(
+        &mut self,
+        s: &mut QueryState<'_>,
+        u: Q::EngineUtility,
+    ) -> Result<bool, Error> {
+        self.external
+            .has_game_core_lock(s, u)
+            .map_err(Error::Provider)
+    }
+    fn release_game_core_lock(
+        &mut self,
+        s: &mut QueryState<'_>,
+        u: Q::EngineUtility,
+    ) -> Result<(), Error> {
+        self.external
+            .release_game_core_lock(s, u)
+            .map_err(Error::Provider)
+    }
+    fn get_game_core_lock(
+        &mut self,
+        s: &mut QueryState<'_>,
+        u: Q::EngineUtility,
+    ) -> Result<(), Error> {
+        self.external
+            .get_game_core_lock(s, u)
+            .map_err(Error::Provider)
+    }
+    fn script_call_test_all(
+        &mut self,
+        s: &mut QueryState<'_>,
+        script: Q::Script,
+        a: &mut Q::Args,
+        event: &'static str,
+        initial: bool,
+    ) -> Result<legality::ScriptTestAllResult, Error> {
+        self.external
+            .script_call_test_all(s, script, a, event, initial)
+            .map_err(Error::Provider)
+    }
+    fn args_end(&mut self, s: &mut QueryState<'_>, a: Q::Args) -> Result<(), Error> {
+        self.external.args_end(s, a).map_err(Error::Provider)
+    }
+    fn unit_plot(&mut self, s: &mut QueryState<'_>) -> Result<Option<usize>, Error> {
+        Ok(
+            c6_core::movement_world::plot_at(self.state.world().map(), s.unit.k_location)
+                .ok()
+                .map(|(index, _)| index),
+        )
+    }
+    fn handler_can_start(
+        &mut self,
+        s: &mut QueryState<'_>,
+        h: Handler,
+        _: usize,
+        _: bool,
+        _: Option<&mut ()>,
+    ) -> Result<bool, Error> {
+        if self
+            .state
+            .world()
+            .player(s.unit.e_owner)
+            .map_err(Error::World)?
+            .unit(s.unit.id)
+            .map_err(Error::World)?
+            .is_none_or(|u| u.record != s.unit)
+        {
+            return Err(Error::Unsupported(
+                "script changed Unit before world-backed placement; effects retained",
+            ));
+        }
+        if h.identity().operation_hash != OperationHash(SKIP_TURN_HASH) {
+            return Err(Error::Unsupported("requested handler is not SkipTurn"));
+        }
+        let mut q = placement::Inputs {
+            world: self.state.world(),
+            definitions: self.inputs.placement_definitions,
+            relations: self.inputs.relations,
+            plot_unit_limit: self.inputs.plot_unit_limit,
+        };
+        legality::skip_turn_can_start(s.unit, &mut q).map_err(Error::Placement)
+    }
+}
+
+fn can_start<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    id: i32,
+) -> Result<bool, Error> {
+    let mut unit = state
+        .world()
+        .unit(reference)
+        .map_err(Error::World)?
+        .ok_or(Error::MissingUnit)?
+        .record
+        .clone();
+    let identity = (unit.e_owner, unit.id);
+    let mut operation = ManagerOperation {
+        runtime_id: id,
+        directive: -1,
+        parameters: (),
+        flags: 0,
+    };
+    let answer = legality::manager_can_start(
+        &mut unit,
+        &mut operation,
+        None,
+        false,
+        None,
+        &mut Queries {
+            state,
+            inputs,
+            external,
+        },
+    );
+    if (unit.e_owner, unit.id) != identity {
+        return Err(Error::ActorIdentityChanged(Box::new(unit)));
+    }
+    *state
+        .unit_mut(i32::from(reference.component_id().owner), reference.id)
+        .map_err(Error::State)? = unit;
+    if operation.runtime_id != id || operation.directive != -1 || operation.flags != 0 {
+        return Err(Error::Unsupported(
+            "script changed request outside diagnostic profile; Unit effects retained",
+        ));
+    }
+    answer.map_err(|e| match e {
+        ManagerQueryError::Provider(e) => e,
+        ManagerQueryError::MissingRequestedHandler(_) => {
+            Error::Unsupported("missing requested handler")
+        }
+    })
+}
+
+fn unit(state: &mut LoadedState, r: UnitReference) -> Result<&mut Unit, Error> {
+    state
+        .unit_mut(i32::from(r.component_id().owner), r.id)
+        .map_err(Error::State)
+}
+fn deliver_report(
+    unit: &mut Unit,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+    report: IdentityReport,
+) -> Result<i32, Error> {
+    trace.push(Event::Report(report));
+    let mut expected = unit.clone();
+    let value = reports.send(unit, report)?;
+    // This diagnostic kernel proves synchronous activity rereads. Broader
+    // callback writes remain in the real record, but cannot silently continue
+    // through a kernel whose node/formation receivers have narrower coverage.
+    expected.e_activity = unit.e_activity;
+    if unit != &expected {
+        return Err(Error::Unsupported(
+            "report changed Unit outside activity; effects retained",
+        ));
+    }
+    Ok(value)
+}
+fn report_unit(
+    unit: &mut Unit,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+    report: IdentityReport,
+) -> Result<(), Error> {
+    deliver_report(unit, reports, trace, report).map(|_| ())
+}
+
+fn report(
+    state: &mut LoadedState,
+    r: UnitReference,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+    report: IdentityReport,
+) -> Result<(), Error> {
+    report_unit(unit(state, r)?, reports, trace, report)
+}
+
+struct StartReports<'a, R> {
+    reports: &'a mut R,
+    trace: &'a mut Vec<Event>,
+    error: Option<Error>,
+}
+impl<R: Reports> skip_turn::StartEffects for StartReports<'_, R> {
+    fn mark_activity_dirty(&mut self, _: &Unit, _: u32) {
+        unreachable!("diagnostic local-authority profile omits transport dirty registration")
+    }
+    fn send(&mut self, u: &mut Unit, r: skip_turn::IdentityIntReport) -> i32 {
+        let report = IdentityReport {
+            event: r.event_hash,
+            subtype: r.subtype_hash,
+            identity: r.identity,
+            first: Some(r.value),
+            second: None,
+        };
+        match deliver_report(u, self.reports, self.trace, report) {
+            Ok(v) => v,
+            Err(e) => {
+                self.error = Some(e);
+                0
+            }
+        }
+    }
+}
+fn activity_unit(
+    unit: &mut Unit,
+    id: ComponentId,
+    value: i32,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    let mut e = StartReports {
+        reports,
+        trace,
+        error: None,
+    };
+    skip_turn::set_activity(unit, id, value, false, &mut e).map_err(Error::Kernel)?;
+    e.error.map_or(Ok(()), Err)
+}
+fn activity(
+    state: &mut LoadedState,
+    r: UnitReference,
+    id: ComponentId,
+    value: i32,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    activity_unit(unit(state, r)?, id, value, reports, trace)
+}
+fn start_unit(
+    unit: &mut Unit,
+    identity: ComponentId,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    // Split Start at its synchronous report boundary: the existing leaf's
+    // infallible hook cannot stop before SetActivityType on provider error.
+    report_unit(
+        unit,
+        reports,
+        trace,
+        IdentityReport {
+            event: 0x3d4006f2,
+            subtype: SKIP_TURN_HASH,
+            identity,
+            first: Some(0),
+            second: None,
+        },
+    )?;
+    activity_unit(unit, identity, skip_turn::HOLD, reports, trace)
+}
+
+fn deactivate(
+    state: &mut LoadedState,
+    r: UnitReference,
+    id: ComponentId,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    if unit(state, r)?.k_operations.nodes.is_empty() {
+        return Ok(());
+    }
+    if unit(state, r)?.e_activity == OPERATION {
+        activity(state, r, id, AWAKE, reports, trace)?;
+    }
+    unit(state, r)?.i_operation_timer = 0;
+    Ok(())
+}
+struct NoTransport;
+impl skip_turn::FormationEffects for NoTransport {
+    fn mark_dirty(&mut self, _: &c6_core::unit::Formation, _: u32) {
+        unreachable!()
+    }
+}
+fn clear_path(state: &mut LoadedState, r: UnitReference) -> Result<(), Error> {
+    let fid = unit(state, r)?.formation_id;
+    let (formation, _) = state
+        .formation_with_runtime_mut(i32::from(r.component_id().owner), fid)
+        .map_err(Error::State)?;
+    skip_turn::clear_path_cache(formation, false, false, &mut NoTransport);
+    Ok(())
+}
+fn pop(
+    state: &mut LoadedState,
+    r: UnitReference,
+    id: ComponentId,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    let local = state.retained().core.local_player;
+    let u = unit(state, r)?;
+    let hash = u
+        .k_operations
+        .nodes
+        .first()
+        .ok_or(Error::Unsupported("report consumer removed queue front"))?
+        .operation_hash;
+    let ready = u.e_owner == local
+        && u.e_automation == -1
+        && legality::can_move(u)
+        && u.k_operations.nodes.len() <= 1
+        && [OPERATION, AWAKE].contains(&u.e_activity);
+    report(
+        state,
+        r,
+        reports,
+        trace,
+        IdentityReport {
+            identity: id,
+            event: 0xa60328c5,
+            subtype: 0,
+            first: Some(hash as i32),
+            second: Some(i32::from(ready)),
+        },
+    )?;
+    deactivate(state, r, id, reports, trace)?;
+    let nodes = &mut unit(state, r)?.k_operations.nodes;
+    if nodes.is_empty() {
+        return Err(Error::Unsupported("report consumer removed queue front"));
+    }
+    nodes.remove(0);
+    if unit(state, r)?.k_operations.nodes.is_empty() {
+        clear_path(state, r)?;
+    }
+    if unit(state, r)?.k_operations.nodes.is_empty() {
+        report(
+            state,
+            r,
+            reports,
+            trace,
+            IdentityReport {
+                identity: id,
+                event: 0x383669f1,
+                subtype: 0,
+                first: None,
+                second: None,
+            },
+        )?;
+    }
+    Ok(())
+}
+
+/// Execute a diagnostic Manager/Add state phase in place. Error includes the
+/// completed prefix trace and DOES NOT roll back state or provider effects.
+/// The external Manager provider is used only for script/lock/argument methods;
+/// all player, phase, interruption, disabled, plot and handler reads above derive
+/// from actual loaded state and the supplied definitions. It must reject unknown
+/// scripting state, rather than returning a fabricated null ScriptSystem.
+///
+/// Local-authority transport dirtiness is excluded; network loadDelta/resync is
+/// unsupported. Reports remain synchronous obligations, even for stock profiles.
+pub fn skip_turn_state_phase<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>>(
+    state: &mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    reports: &mut impl Reports,
+) -> Result<Vec<Event>, Failure> {
+    let mut trace = vec![Event::Stage(Stage::Preflight)];
+    let result = (|| {
+        let observed = inputs.handlers.identity();
+        let configuration: String = state
+            .binding()
+            .inputs
+            .configuration_sha256
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        if configuration != observed.configuration_sha256 {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let id = inputs
+            .handlers
+            .saved_hash_runtime_id(OperationHash(SKIP_TURN_HASH))
+            .map_err(Error::Registry)?
+            .0;
+        let (u, runtime) = state
+            .unit_with_runtime_mut(i32::from(r.component_id().owner), r.id)
+            .map_err(Error::State)?;
+        let identity = runtime.archive.identity();
+        if i32::from(identity.owner) != u.e_owner || identity.id != u.id {
+            return Err(Error::Kernel(skip_turn::Error::IdentityMismatch));
+        }
+        if u.e_automation != -1 {
+            return Err(Error::Kernel(skip_turn::Error::UnsupportedAutomation));
+        }
+        if u.b_needs_movement_completion && !u.k_operations.nodes.is_empty() {
+            return Err(Error::Kernel(skip_turn::Error::MovementCompletionPending));
+        }
+        if u.k_operations.nodes.len() > 1
+            || u.k_operations.nodes.first().is_some_and(|n| {
+                n.operation_hash != MOVE_TO_HASH
+                    || !matches!(n.parameters, OperationParameters::MoveTo { .. })
+            })
+        {
+            return Err(Error::Kernel(skip_turn::Error::UnsupportedQueue));
+        }
+        if ![OPERATION, AWAKE].contains(&u.e_activity)
+            || (u.k_operations.nodes.is_empty() && u.e_activity == OPERATION)
+        {
+            return Err(Error::Kernel(skip_turn::Error::UnsupportedInitialActivity));
+        }
+        let (fid, uid, owner) = (u.formation_id, u.id, u.e_owner);
+        let (f, fr) = state
+            .formation_with_runtime_mut(i32::from(r.component_id().owner), fid)
+            .map_err(Error::State)?;
+        if f.owner != owner || f.unit_ids != [uid] {
+            return Err(Error::Kernel(skip_turn::Error::FormationMismatch));
+        }
+        if fr.evaluating_operation() {
+            return Err(Error::Unsupported("Formation is evaluating an operation"));
+        }
+        trace.push(Event::Stage(Stage::Legality));
+        let admitted = can_start(state, r, inputs, external, id)?;
+        trace.push(Event::Legality(admitted));
+        if !admitted {
+            return Ok(());
+        }
+        trace.push(Event::Stage(Stage::Clear));
+        if !unit(state, r)?.k_operations.nodes.is_empty() {
+            deactivate(state, r, identity, reports, &mut trace)?;
+            pop(state, r, identity, reports, &mut trace)?;
+            clear_path(state, r)?;
+        }
+        trace.push(Event::Stage(Stage::Insert));
+        let turn = state.retained().core.current_turn;
+        let u = unit(state, r)?;
+        u.k_operations.nodes.push(OperationNode {
+            operation_hash: SKIP_TURN_HASH,
+            directive: -1,
+            flags: 0,
+            push_turn: turn,
+            previous_activity: u.e_activity,
+            previous_automation: u.e_automation,
+            parameters: OperationParameters::None,
+        });
+        report(
+            state,
+            r,
+            reports,
+            &mut trace,
+            IdentityReport {
+                identity,
+                event: 0x15c35863,
+                subtype: 0,
+                first: Some(id),
+                second: None,
+            },
+        )?;
+        trace.push(Event::Stage(Stage::Activation));
+        let admitted = can_start(state, r, inputs, external, id)?;
+        trace.push(Event::Legality(admitted));
+        if !admitted {
+            return Err(Error::Kernel(skip_turn::Error::UnsupportedActivation));
+        }
+        let next = if legality::can_move(unit(state, r)?) {
+            OPERATION
+        } else {
+            skip_turn::HOLD
+        };
+        activity(state, r, identity, next, reports, &mut trace)?;
+        trace.push(Event::Stage(Stage::Start));
+        start_unit(unit(state, r)?, identity, reports, &mut trace)?;
+        trace.push(Event::Stage(Stage::Delete));
+        pop(state, r, identity, reports, &mut trace)?;
+        Ok(())
+    })();
+    match result {
+        Ok(()) => Ok(trace),
+        Err(error) => Err(Failure { error, trace }),
+    }
+}
+
+/// Compose the actual state phase with the existing in-place aftermath. The
+/// factory must borrow this same resulting LoadedState, preserving retained
+/// receivers and all gameplay/RNG effects; no whole-world Clone is required.
+/// DiagnosticComplete means this supplied provider chain returned, not accepted
+/// whole-action parity. Initial Manager rejection still runs native aftermath.
+#[allow(clippy::too_many_arguments)]
+pub fn diagnose_skip_turn<'s, Q, R, W, F>(
+    state: &'s mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    reports: &mut R,
+    make_aftermath: F,
+    owner: W::Owner,
+    budget: usize,
+) -> Result<Vec<Event>, Failure>
+where
+    Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
+    R: Reports,
+    W: aftermath::Diplomacy + aftermath::Blocking,
+    F: FnOnce(&'s mut LoadedState) -> W,
+{
+    let mut trace = skip_turn_state_phase(state, r, inputs, external, reports)?;
+    let mut provider = make_aftermath(state);
+    let mut budget = budget;
+    trace.push(Event::Stage(Stage::Diplomacy));
+    if let Err(error) = aftermath::process_pending(&mut provider, &mut budget) {
+        return Err(Failure {
+            error: Error::Aftermath(error),
+            trace,
+        });
+    }
+    trace.push(Event::Stage(Stage::Notifications));
+    if let Err(error) = aftermath::update_owner_blocking(&mut provider, owner, &mut budget) {
+        return Err(Failure {
+            error: Error::Aftermath(error),
+            trace,
+        });
+    }
+    trace.push(Event::Stage(Stage::DiagnosticComplete));
+    Ok(trace)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sha2::{Digest, Sha256};
+
+    #[test]
+    fn report_trace_preserves_signed_identity_bits_and_optional_arguments() {
+        let trace = trace_json(&[Event::Report(IdentityReport {
+            event: 0xe23b112d,
+            subtype: 0x80000001,
+            identity: ComponentId {
+                owner: -1,
+                component_type: -2,
+                id: 0xfedcba98,
+            },
+            first: Some(i32::MIN),
+            second: None,
+        })]);
+        assert_eq!(
+            trace,
+            serde_json::json!([{"kind":"report","type_bits":"80000001e23b112d","component_bits":"fedcba98fffeffff","first":i32::MIN,"second":null}])
+        );
+    }
+    // Private original records never enter the public repository. This source
+    // replay authenticates the existing fixture; it executes no original code.
+    fn fixture() -> Unit {
+        let manifest: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../evidence/linux/skip-turn-state-execute-3.json"
+        ))
+        .unwrap();
+        let path = std::env::var_os("C6_LOADED_ACTION_BEFORE_CORE")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+                    "../../../c6-ghidra/evidence/linux-core-component/native-execute-3/before.bin",
+                )
+            });
+        let core = std::fs::read(path).expect("original before Core fixture");
+        assert_eq!(
+            format!("{:x}", Sha256::digest(&core)),
+            manifest["original_core_saves"]["before"]["sha256"]
+                .as_str()
+                .unwrap()
+        );
+        let row = manifest["changed_owner_regions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["owner"] == "unit")
+            .unwrap();
+        let range = row["before_range"].as_array().unwrap();
+        let bytes = &core[range[0].as_u64().unwrap() as usize..range[1].as_u64().unwrap() as usize];
+        assert_eq!(
+            format!("{:x}", Sha256::digest(bytes)),
+            row["before_sha256"].as_str().unwrap()
+        );
+        Unit::decode(bytes, c6_core::unit::Limits::default()).unwrap()
+    }
+    struct Subscriber {
+        mode: u8,
+        calls: usize,
+    }
+    impl Reports for Subscriber {
+        fn send(&mut self, u: &mut Unit, _: IdentityReport) -> Result<i32, Error> {
+            self.calls += 1;
+            match self.mode {
+                0 => {
+                    u.e_activity = skip_turn::HOLD;
+                    Ok(19)
+                }
+                1 => {
+                    u.i_damage = u.i_damage.wrapping_add(1);
+                    Err(Error::Provider("unclosed report consumer"))
+                }
+                2 => {
+                    u.i_damage = u.i_damage.wrapping_add(1);
+                    Ok(23)
+                }
+                _ => Err(Error::Provider("unavailable report backend")),
+            }
+        }
+    }
+    fn identity(u: &Unit) -> ComponentId {
+        ComponentId {
+            owner: u.e_owner as i16,
+            component_type: 1,
+            id: u.id,
+        }
+    }
+    #[test]
+    #[ignore = "requires identity-gated private original Core fixture; source replay only"]
+    fn loaded_report_activity_reread_and_equal_value_suppression() {
+        let mut u = fixture();
+        let id = identity(&u);
+        u.e_activity = AWAKE;
+        let mut subscriber = Subscriber { mode: 0, calls: 0 };
+        let mut trace = Vec::new();
+        start_unit(&mut u, id, &mut subscriber, &mut trace).unwrap();
+        assert_eq!(u.e_activity, skip_turn::HOLD);
+        assert_eq!(subscriber.calls, 1); // start subscriber already wrote HOLD
+        assert_eq!(
+            trace,
+            vec![Event::Report(IdentityReport {
+                event: 0x3d4006f2,
+                subtype: SKIP_TURN_HASH,
+                identity: id,
+                first: Some(0),
+                second: None
+            })]
+        );
+    }
+    #[test]
+    #[ignore = "requires identity-gated private original Core fixture; source replay only"]
+    fn loaded_report_error_retains_effect_and_stops_before_activity() {
+        for mode in [1, 2] {
+            let mut u = fixture();
+            let id = identity(&u);
+            u.e_activity = AWAKE;
+            let damage = u.i_damage;
+            let mut subscriber = Subscriber { mode, calls: 0 };
+            let mut trace = Vec::new();
+            let error = start_unit(&mut u, id, &mut subscriber, &mut trace).unwrap_err();
+            assert!(matches!(error, Error::Provider(_) | Error::Unsupported(_)));
+            assert_eq!(u.i_damage, damage.wrapping_add(1));
+            assert_eq!(u.e_activity, AWAKE);
+            assert_eq!(subscriber.calls, 1);
+            assert_eq!(trace.len(), 1);
+        }
+    }
+    #[test]
+    #[ignore = "requires identity-gated private original Core fixture; source replay only"]
+    fn loaded_activity_assignment_precedes_failed_report() {
+        let mut u = fixture();
+        let id = identity(&u);
+        u.e_activity = AWAKE;
+        let mut subscriber = Subscriber { mode: 3, calls: 0 };
+        let mut trace = Vec::new();
+        assert!(matches!(
+            activity_unit(&mut u, id, skip_turn::HOLD, &mut subscriber, &mut trace),
+            Err(Error::Provider(_))
+        ));
+        assert_eq!(u.e_activity, skip_turn::HOLD);
+        assert_eq!(subscriber.calls, 1);
+        assert!(matches!(
+            trace[0],
+            Event::Report(IdentityReport {
+                event: 0xe23b112d,
+                first: Some(skip_turn::HOLD),
+                ..
+            })
+        ));
+    }
+}
