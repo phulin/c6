@@ -77,7 +77,9 @@ def main():
         request_path.write_text(json.dumps(request))
         completed = subprocess.run([str(args.candidate.resolve()), str(request_path)],
                                    check=True, capture_output=True, text=True)
-        calculated = json.loads(completed.stdout)
+        calculated_output = json.loads(completed.stdout)
+        calculated = calculated_output['records']
+        plots = {(p['x'], p['y']): p for p in calculated_output['plots']}
     records = {(r['owner'], r['id'] & 0xffff): r for r in calculated}
     assert len(records) == 1284
     counts = collections.Counter()
@@ -89,8 +91,12 @@ def main():
         for side in ('from', 'to'):
             expected = case[side]
             counts['endpoints'] += 1
-            identity = expected['requested_district_id']
-            if identity == 0xffffffff or expected['district_owner'] == -1:
+            plot = plots[(expected['x'], expected['y'])]
+            identity, owner = plot['district'], plot['owner']
+            request_equal = (identity == expected['requested_district_id']
+                             and owner == expected['district_owner']
+                             and plot['has_attributes'] == expected['has_city_attributes'])
+            if identity == 0xffffffff or owner == -1:
                 # Native generic ComponentID invalidity precedes player lookup.
                 actual = None
                 counts['sentinel_misses'] += 1
@@ -98,9 +104,9 @@ def main():
                 # Positive original lookup is a validity witness for THIS query.
                 # No completeness or validity inferred from serialized owners.
                 assert expected['district_resolved']
-                actual = records.get((expected['district_owner'], identity & 0xffff))
+                actual = records.get((owner, identity & 0xffff))
                 counts['positive_native_validity_witnesses'] += 1
-            equal = (actual is not None) == expected['district_resolved']
+            equal = request_equal and (actual is not None) == expected['district_resolved']
             if actual:
                 native_type = expected['definitions'][4]
                 equal &= actual['id'] == expected['actual_district_id']

@@ -23,6 +23,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "x":record.location.x,"y":record.location.y,"parent_city":record.parent_city,
             "type_index":record.type_index,"complete":record.complete}));
     }
-    println!("{}", serde_json::to_string(&records)?);
+    let plots: Vec<_> = map
+        .plots
+        .iter()
+        .enumerate()
+        .map(|(index, plot)| {
+            let city = plot.city_attributes.as_ref();
+            json!({"x": index % map.header.width as usize,
+            "y": index / map.header.width as usize,
+            "owner": city.map_or(-1, |a| i32::from(a.player)),
+            "district": city.map_or(u32::MAX, |a| a.district),
+            "has_attributes": city.is_some()})
+        })
+        .collect();
+    println!(
+        "{}",
+        serde_json::to_string(&json!({"records":records,"plots":plots}))?
+    );
     Ok(())
 }
