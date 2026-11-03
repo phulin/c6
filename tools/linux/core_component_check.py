@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 import struct
 from pathlib import Path
 
@@ -75,6 +76,34 @@ def raw_live_differences(left, right):
     return differences
 
 
+def startup_profile(config, stderr):
+    prepared = config.get('prepare_main_thread', False)
+    require(type(prepared) is bool, 'main-thread preparation flag is not boolean')
+    contract = config.get('main_thread_preparation_contract')
+    lines = stderr.splitlines()
+    records = [(i, line) for i, line in enumerate(lines) if line.startswith('C6_LINUX_MAIN_THREAD ')]
+    if not prepared:
+        require(contract is None and not records, 'legacy profile contains undeclared main-thread preparation')
+        return dict(prepare_main_thread=False, preparation_observed=False)
+    canonical_path = Path(__file__).resolve().parents[2] / 'evidence/linux/action-worker-abi.json'
+    require(contract == json.loads(canonical_path.read_text()) and contract['checks_passed'], 'main-thread preparation contract differs from reviewed original bytes')
+    require(config['sources'].get('evidence/linux/action-worker-abi.json') == digest(canonical_path), 'main-thread contract source identity missing')
+    require(len(records) == 2, 'main-thread preparation must enter and return exactly once')
+    enter = re.fullmatch(r'C6_LINUX_MAIN_THREAD prepare_enter flags (\d+) app_present 0 core_present 0 already_called 0', records[0][1])
+    returned = re.fullmatch(r'C6_LINUX_MAIN_THREAD prepare_return flags (\d+) app_present 0 core_present 0 process_scoped 1 paired_reset_not_proven 1', records[1][1])
+    require(enter is not None and returned is not None, 'main-thread preparation lifecycle/absence predicates differ')
+    flags_before, flags_after = int(enter[1]), int(returned[1])
+    require(0 <= flags_before <= 255 and 0 <= flags_after <= 255 and not flags_before & 1 and flags_after & 1, 'main-thread admission bit did not transition clear to set')
+    host_entries = [i for i, line in enumerate(lines) if line == 'C6_LINUX_MOD host_main_intercepted']
+    require(len(host_entries) == 1 and host_entries[0] < records[0][0] < records[1][0], 'preparation did not follow the fresh intercepted host entry')
+    boundaries = [i for i, line in enumerate(lines) if line.startswith('C6_LINUX_') and
+                  not line.startswith('C6_LINUX_MAIN_THREAD ') and line != 'C6_LINUX_MOD host_main_intercepted']
+    require(boundaries and all(i > records[1][0] for i in boundaries), 'main-thread preparation occurred after filesystem/TempHeap/App/Core observations')
+    return dict(prepare_main_thread=True, preparation_observed=True, exactly_once=True,
+                flags_before=flags_before, flags_after=flags_after, app_and_core_absent_before_and_after=True,
+                before_filesystem_tempheap_app_core=True, process_scoped=True, paired_reset_proven=False)
+
+
 def validate(path):
     run = json.loads(Path(path).read_text())
     config, paths = run['configuration'], run['execution_paths']
@@ -107,6 +136,7 @@ def validate(path):
     require(run['returncode'] == 0 and run['framework_cleanup_proven'] and run['client_cleanup_proven'], 'failed native diagnostic or incomplete cleanup')
     require(run['gameplay_parity'] is False, 'runtime report overclaims parity')
     stderr = run['stderr']
+    startup = startup_profile(config, stderr)
     require(not any(word in stderr for word in ('guarded_entry', 'failing_boundary', 'C6_LINUX_ACTION_DISPATCH ', 'C6_LINUX_ACTION_REGISTRATION ', 'request_enter', 'network_update_zero_enter')), 'policy guard or mixed full-host action route observed')
     readiness = [json.loads(line.split(' ', 1)[1]) for line in stderr.splitlines() if line.startswith('C6_LINUX_ACTION_EXECUTION {')]
     require([row['stage'] for row in readiness] == ['host_delivery_observation', 'cache_dispatch_observation'], 'native controller/cache readiness observations missing')
@@ -228,6 +258,7 @@ def validate(path):
                   isolated_artifact_paths=dict(userdata=paths['userdata'], command=component_paths['command'], trace=str(trace_path)),
                   preload_artifact_rechecked=bool(paths.get('preload')), saved_configuration_artifact_rechecked=bool(paths.get('saved_configuration')),
                   readiness_before=initial, readiness_after=final, component_observations=rows,
+                  main_thread_startup_profile=startup,
                   native_controller_cache_readiness=readiness,
                   bounded_live_observations=states, command=command, packets=packets,
                   native_encoded_actor=dict(message_key=hex(message_key), owner=encoded_owner, component_type=encoded_type, id=encoded_id),
@@ -262,11 +293,15 @@ def main():
                             for key in ('userdata', 'command', 'trace')), 'cross-run comparison reused process/artifact paths')
                 for key in ('assets', 'sources', 'preload_sha256', 'lower_core_stream', 'saved_configuration_sha256', 'dlc_descriptors', 'core_component_contract'):
                     require(config[key] == other_config[key], 'cross-run configuration differs: ' + key)
+                for key, default in (('prepare_main_thread', False), ('main_thread_preparation_contract', None)):
+                    require(config.get(key, default) == other_config.get(key, default), 'cross-run startup profile differs: ' + key)
                 require(result['selected'] == dict(other['selected'], mode='execute') and result['command'] == other['command'], 'cross-run actor/command differs')
                 require(result['original_core_saves']['before'] == other['original_core_saves']['before'] and typed_observation(result['bounded_live_observations'][0]) == typed_observation(other['bounded_live_observations'][0]), 'cross-run serialized or bounded typed initial state differs')
                 raw_differences = {'before': raw_live_differences(result['bounded_live_observations'][0], other['bounded_live_observations'][0])}
                 if expected_mode == 'execute':
                     require(result['original_core_saves']['after'] == other['original_core_saves']['after'] and typed_observation(result['bounded_live_observations'][2]) == typed_observation(other['bounded_live_observations'][2]), 'isolated repeated serialized or bounded typed effects differ')
+                    require(result['reporting_events'] == other['reporting_events'], 'isolated repeated selected reporting event order differs')
+                    result['isolated_repeat_selected_reporting_events_equal'] = True
                     raw_differences['after'] = raw_live_differences(result['bounded_live_observations'][2], other['bounded_live_observations'][2])
                 result[name] = True
                 result[name + '_runtime_sha256'] = other['runtime_report_sha256']
