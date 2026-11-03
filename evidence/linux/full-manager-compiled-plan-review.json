@@ -1,0 +1,53 @@
+{
+  "checks": {
+    "actual_draft_extraction_and_mutated_Manager_rejection": true,
+    "adapter_synthetic_cases": 29,
+    "all_actual_own_return_sites_and_marker_prefixes_checked": true,
+    "all_required_own_prefix_positions_missing_unknown_changed_refused": true,
+    "duplicate_Manager_continuation_refused": true,
+    "extractor_synthetic_cases": 7,
+    "new_independent_cases": 4,
+    "prior_reviewer_cases": 4,
+    "retained_binary_manifest_extractor_and_source_hashes_checked": true,
+    "verified_snapshot_path_replacement_rejection": true
+  },
+  "draft": {
+    "caller_prefix_frames": 8,
+    "compiled_symbols": 12,
+    "declared_C_preimages": 21,
+    "declared_header_preimages": 0,
+    "fragment_sha256": "9d9110b624857e3021291d9e0188cab9fd0a6ef2172517370cd255e725a433b4",
+    "function_bodies": 11,
+    "marker_phase_prefixes": 9,
+    "preload_sha256": "7c49002e25cda6c9efc3bad78d7c7957f6d2158c8780cecbbd7a1714496ecf70",
+    "retained_fragment": "target/linux/full-manager-draft/plan-fragment-v4/fragment.json",
+    "writable_main_tid_object_bytes": 8
+  },
+  "findings_resolved": [
+    "Pointer-result slot overwrite/address escape and partial-register/call clobber could previously invalidate indirect-call attribution. Committed extractor rejects those supported-O0 counterexamples.",
+    "ELF, disassembly and retained output previously reopened a replaceable source path. One verified immutable byte snapshot now supplies all three; input manifest is read once."
+  ],
+  "limits": [
+    "Draft manifest declares 21 C files but no headers; it does not prove final build dependency closure.",
+    "Final CLI-linked preload requires fresh extraction and independent exact prepared/source/module/configuration/stack-plan/path review. Draft addresses are not automatically admitted.",
+    "Raw mode preserves unresolved external startup and HKS frames; it does not decode callbacks, assert active Lua/GC zero, or establish complete VM/lock effects.",
+    "Actual main-entry TID and required contiguous owned caller prefix remain required; OS TID is not a core-lock token or Lua ASL ThreadHANDLE.",
+    "No original execution, native result, callback absence, whole-state/RNG/action/turn parity or Save parity is accepted."
+  ],
+  "native_profile_admitted": false,
+  "original_execution": false,
+  "reviewed_commits": {
+    "adapter_prefix": "3de03e9",
+    "extractor": "54bbd37",
+    "prior_adapter_review": "2515ae7"
+  },
+  "schema": "c6-linux-full-manager-compiled-plan-independent-review-v1",
+  "source_acceptance": true,
+  "sources": {
+    "tools/linux/full_manager_observer_plan.py": "1e7d3441692a53568810ac8741fed489b11712edd2033a6b23e1716e974cdb2f",
+    "tools/linux/full_manager_observer_plan_audit.py": "877be17117303e634615ee48a682cc454fffe8dfd85f292c0912e63bd364e3aa",
+    "tools/linux/full_manager_observer_runner.py": "809134d2bc9b50fdb755b85236c47ff1d99d4d3f8cc9736d21a9f8b3eb6d3803",
+    "tools/linux/full_manager_observer_runner_audit.py": "60f7e4f0444ac8cf96a1fadf9f378c618834b30ee2771686adb74c2ffbdd118c",
+    "tools/linux/full_manager_plan_review.py": "b7ce723c6aa8edb5abbbec9205f6efe951b0ed95bc2a229c9733877c63f7fc48"
+  }
+}
