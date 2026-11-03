@@ -36,7 +36,9 @@ def candidate(pin,records,expected_digest):
     with tempfile.TemporaryDirectory(prefix='c6-ai-tactical-') as tmp:
         tmp=Path(tmp);source=tmp/'source';source.mkdir()
         subprocess.run(['tar','-x','-C',str(source)],input=archive,check=True)
-        if (source/'tools/linux/player_ai_tactical_audit.py').read_bytes()!=Path(__file__).read_bytes():raise ValueError('driver not committed at pin')
+        actual_audit_sources=['tools/linux/player_ai_tactical_audit.py','tools/linux/player_ai_research_audit.py','tools/linux/player_wmds_audit.py']
+        for path in actual_audit_sources:
+            if (source/path).read_bytes()!=(ROOT/path).read_bytes():raise ValueError('actual audit source not committed at pin '+path)
         # Gate every archived regular source against its immutable Git content,
         # before and after all builds. Build artifacts are outside this set.
         paths=subprocess.check_output(['git','ls-tree','-r','--name-only',pin],cwd=ROOT,text=True).splitlines()
@@ -59,6 +61,8 @@ def candidate(pin,records,expected_digest):
         if count!=86 or digest!=expected_digest:raise ValueError('independent typed projection mismatch')
         for path,digest_source in identities.items():
             if sha((source/path).read_bytes())!=digest_source:raise ValueError('source changed during build '+path)
+        for path in actual_audit_sources:
+            if sha((ROOT/path).read_bytes())!=identities[path]:raise ValueError('actual audit source changed during build '+path)
         return dict(source_commit=pin,archive_sha256=sha(archive),sources=identities,harness_sha256=sha(HARNESS.encode()),candidate_sha256=sha((tmp/'candidate').read_bytes()),records=count,typed_projection_digest=digest,all_archived_sources_checked_before_and_after=True,exported_archive_unchanged=True,cargo_tests=True,clippy_strict_all_targets=True,native_truncation_cuts="all scalar/count/version boundaries and first interior bytes across every bounded actual row",source_carrier_every_truncation=True,exact_byte_item_caps=True,one_short_byte_item_caps=True,strict_trailing=True,prefix_tail=True)
 
 def main():
