@@ -1,0 +1,107 @@
+{
+  "ASL_registration_required": false,
+  "CCall_parent_PC": "0x3bf2308",
+  "GC_classification": "unresolved",
+  "Rust_provider_added": false,
+  "actual_parent_registers": [
+    "rsp",
+    "r14",
+    "r15",
+    "rbx"
+  ],
+  "adapter_audit_sha256": "9ad3f151dbc4b7a26c4bb1347210c027c46ca5e83ed1c1236d4b76689e167440",
+  "additional_locks": false,
+  "arbitrary_native_calls": false,
+  "checked_argument_layout_bodies": [
+    {
+      "address": "0x3245b40",
+      "name": "ArgsCount",
+      "sha256": "1a2ecf211c66613088260199646da57d0fb77aa50284ca0b5121a8be1e9407a1",
+      "size": 9
+    },
+    {
+      "address": "0x3245d10",
+      "name": "ArgsGetInt",
+      "sha256": "75b6c47a4e21230256e108a5d55043c22a529a3ae6ddec07c9396f0b79f04b1c",
+      "size": 81
+    },
+    {
+      "address": "0x3246670",
+      "name": "ArgsVectorCtor",
+      "sha256": "09b8d493cbbc78da74645c0fee3366a0bb9b5e5456500d299cd8a1ae3aff4655",
+      "size": 66
+    },
+    {
+      "address": "0x3246750",
+      "name": "ArgsVectorSize",
+      "sha256": "1c6dc39d1c7e9b73d24abadbd210d86aee248e730d3a47fd9c16d4f10af461f2",
+      "size": 7
+    },
+    {
+      "address": "0x3246810",
+      "name": "ArgsVectorAt",
+      "sha256": "bf4e8119e5fb04ef13273210fc059e1b76ba56ba812b8f82140781a6441057bc",
+      "size": 26
+    },
+    {
+      "address": "0x31d5a10",
+      "name": "VariantSetInt",
+      "sha256": "19acf61dde8576acabde9f7814b02ebd3c6dd30045a5f94457a1faf0c59427f2",
+      "size": 15
+    },
+    {
+      "address": "0x31d5a20",
+      "name": "ArrayVariantSetInt",
+      "sha256": "88d9556e1b0444dd7ac7132cb1f9ce5a80f7eafc6bdf5c2a32d8f718c74bd6c9",
+      "size": 11
+    },
+    {
+      "address": "0x31a2d10",
+      "name": "TypedVariantGetValue",
+      "sha256": "337222f0640328de908dacc52ced92ff844fe6d4f480a84a6e4aa98bb839dc80",
+      "size": 5
+    }
+  ],
+  "closed_replay_sha256": "476b6db0759cd2ce587ae6645d6b4b6647c058bbf6d7dbc5b8befb3cc6025b9b",
+  "complete_state_actions_rng_turns": false,
+  "empty_callback_inference": false,
+  "existing_adapter_checks": {
+    "hardware_target_lanes_at_most": 2,
+    "marker_ABI_88_bytes": true,
+    "marker_lanes": 1,
+    "outer_drain_only_breakpoint_mutation": true,
+    "synthetic_cases": 31
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "native_snapshot_created": false,
+  "natural_checkpoints": [
+    "acquired",
+    "resolved",
+    "before_release"
+  ],
+  "natural_resolved_PC": "0x36b3c44",
+  "original_execution": false,
+  "partial_sections_and_images_preserved": true,
+  "pending": [
+    "independent collector/adapter source review",
+    "fresh sole-runner source/compiled profile with script_snapshot opt-in and argument live body gates",
+    "actual captured callback registration/method storage and source-backed behavior/effects reconstruction"
+  ],
+  "rooted_lifetimes": "Actual selected synchronous CCall context/state/args before its release; singleton roots are separately observed, not assumed equal.",
+  "schema": "c6-linux-script-natural-snapshot-source-v1",
+  "sealed_native2_replay_equal_to_committed_report": true,
+  "semantic_state_or_callback_effects_admitted": false,
+  "snapshot_schema": "c6-linux-script-natural-snapshot-v1",
+  "source_checks_passed": true,
+  "source_files": {
+    "tools/linux/full_manager_observer_runner.py": "d1767064f175b05ee9cf623fc3dd40661e5c6b29a7e1f9e16f94a17e5368d6ab",
+    "tools/linux/script_hks_registry.py": "b37623e252bc2b3430025d238671e7b3b622189729527d0e8015ccc2484867ad",
+    "tools/linux/script_manager_observer.py": "dbb075556193864bada8859dcf1d491f569247614fa9190dacf1887bc9f9b177",
+    "tools/linux/script_state_snapshot.py": "2942e2ad2eacc4d8dd426beb1e6d9233e76a7fad81b0bbe0852adecab23c597e",
+    "tools/linux/script_state_snapshot_audit.py": "bbeb9c6f1b665fb7ebac31923dd8be876f192388ff1e655c725352ef966b2549",
+    "tools/linux/test_script_state_snapshot.py": "8cbdcde61bd9ad0a8641b9fbb5869fe07f1042d9a4a5af1e1001be8b67013f7b"
+  },
+  "synthetic_cases": 14,
+  "unknown_GC_blocks_raw_copy": false
+}

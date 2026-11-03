@@ -257,6 +257,15 @@ def runtime_module_contracts(configuration,prepared_preload):
 def validate_plan(plan):
     require(plan.get('schema')=='c6-linux-full-manager-observer-plan-v1','wrong full Manager plan schema')
     require(plan.get('profile_kind')=='genuine_lower_core_full_Manager','wrong observer profile scope')
+    if 'script_snapshot' in plan:
+        from script_state_snapshot import validate_spec
+        validate_spec(plan['script_snapshot'])
+        from script_state_snapshot import ARGUMENT_BODIES
+        require(all(any(row['module']==plan['host'] and row['relative_address']==address and
+                        row['size']==size and row['sha256']==sha for row in plan['live_bodies'])
+                    for _,address,size,sha in ARGUMENT_BODIES),
+                'natural snapshot argument layout source body gate absent')
+        require(plan.get('observation_mode')=='raw_unresolved','natural snapshot requires explicit unresolved GC mode')
     mode=plan.get('observation_mode')
     require(mode in ('raw_unresolved','source_closed_registry'),'explicit observation mode required')
     gate=plan['runtime_gate']
@@ -287,6 +296,9 @@ def validate_plan(plan):
     normalized[str((ROOT/'tools/linux/mod_activation_probe.py').resolve())]=cfg['runner_sha256']
     require(gate['source_files']==normalized,'source map differs from prepared configuration/runner')
     require(gate['source_files'],'missing frozen source closure')
+    if 'script_snapshot' in plan:
+        require(str(ROOT/'tools/linux/script_state_snapshot.py') in gate['source_files'],
+                'natural snapshot collector missing from frozen source closure')
     require(plan['preload'] in plan['modules'] and
             plan['modules'][plan['preload']]['sha256']==cfg['preload_sha256'] and
             str(Path(prepared['execution_paths']['preload']).resolve())==plan['preload'],
@@ -446,6 +458,11 @@ class Adapter:
         self.body_gate()
         self.observer=(RawContextTrace(self.read,emit,self.base) if self.raw_mode else
                        Observer(self.read,emit,self.base,self.profile,self.directory/'images'))
+        self.script_snapshot=None
+        if 'script_snapshot' in plan:
+            from script_state_snapshot import NaturalSnapshot
+            self.script_snapshot=NaturalSnapshot(self.read,emit,self.base,self.profile,
+                self.directory/'script-state',plan['script_snapshot'])
 
     def mappings(self):
         result=[]
@@ -547,6 +564,12 @@ class Adapter:
                 require(allow_unresolved,'unknown/unpinned executable parent frame')
                 result.append(dict(pc=pc,module=matches[0]['path'] if len(matches)==1 else None,
                                    relative_pc=None,name=name,classification='unresolved_parent'))
+            if getattr(self,'plan',{}).get('script_snapshot'):
+                registers={}
+                for register in ('rsp','r14','r15','rbx'):
+                    try:registers[register]=int(frame.read_register(register))
+                    except Exception:pass # unavailable unwind register remains unresolved
+                result[-1]['native_registers']=registers
             try:
                 frame=frame.older()
             except Exception as error:
@@ -674,6 +697,8 @@ class Adapter:
             if self.raw_mode and name in ('before_release','released'):
                 self.emit(dict(event='raw_original_Lua_release_endpoint',checkpoint=name,**self.lua_lock(),
                                ownership_transition_classification='unresolved',registry_decoded=False))
+            if self.script_snapshot is not None:
+                self.script_snapshot.capture(name,r,frames,self.observer.call)
             next_sites=self.observer.observe(name,r,thread,provenance)
             self.schedule.script(name,next_sites)
 

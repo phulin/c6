@@ -31,3 +31,27 @@ The minimal next passive observation is the already naturally reached `0x36b3c44
 - Raw collector-prefix/control bytes only where safely bounded and source-closed. GC classification remains unresolved; no flag is an idle proof. Lua Method/prototype/code and transitive environments still need further contracts if actual callback closures require them.
 
 This is an opt-in passive extension proposal, not a new capture or runtime admission. A fresh reviewed source/profile is required, and closed native-2 remains immutable. The eventual Rust provider must consume actual registration/method/behavior state and preserve lookup/allocation/callback/RNG effects; replaying native-2's nil/false/success as a constant is unsupported. The historical 89,198-byte raw Save→Load difference remains unclassified and unmasked; serialization equality is not an action gate.
+
+## Implemented opt-in passive collector (not yet captured)
+
+[script_state_snapshot.py](../tools/linux/script_state_snapshot.py) implements the proposed read-only extension in the existing hardware observer. A plan without `script_snapshot` keeps its old frame projection and raw protocol. Closed native-2 replays using its retained source preimages and reproduces the committed raw report unchanged. Its sealed files are not modified or reinterpreted as a newly decoded registry.
+
+The fresh static plan must set `observation_mode: "raw_unresolved"` and add this key (substitute the exact collector source SHA):
+
+```json
+{"script_snapshot":{"schema":"c6-linux-script-natural-snapshot-v1","phases":["acquired","resolved","before_release"],"byte_budget":16777216,"max_items":65536,"source_sha256":"<exact collector SHA-256>"}}
+```
+
+Bind that source in the prepared configuration's recursive source inventory and include all eight `ARGUMENT_BODIES` exported by the collector as host `live_bodies`, copied into the reviewed stack packet. Existing original module, main-thread, facade/guard, selected Manager, actual return-slot, code/mapping and all-stop checks remain active. The collector adds no breakpoint lane, target call, lock, field write or forced lookup. Source/ownership/ABI refusal stays separate from optional diagnostic incompleteness. A fresh sole-runner profile and independent review are still required; this implementation is not an extra permission requirement.
+
+At acquired/before-release, actual RSP must equal the retained selected CCall entry minus 24 and actual r14/r15 must retain that context/protected body; acquired also checks actual state in rbx. At resolved, current r14/rbx must match the selected context/state, and an actual unwound CCall continuation at `0x3bf2308` must expose that same entry-minus-24 RSP, context, body and state in its callee-saved registers. Unavailable registers or mismatches emit an unattributed diagnostic and copy no heap. Unknown intervening HKS/startup frames do not imply GC zero or block bounded copying when these actual selected-call facts exist. The original generic raw producer's unresolved event remains visible separately.
+
+Each selected observation copies independent bounded sections for current state/collector prefix, Lua lock plus pointed mutex, live arguments, raw named-event graph, and separate current singleton roots. At resolved it also decodes the actual top[-1] closure; a proven built-in TestAll includes its shared groups, native callback order/holes and raw weak-mode metatables. Current singleton roots are never substituted for the actual retained CCall state. Unsupported storage, unreadable detail, overlapping-byte disagreement or exhausted budget produces an explicitly partial private image and section errors; successfully copied independent facts survive. Diagnostic completeness does not supply an empty-registry result or replace/suppress the original predicate. Artifact/unsafe-source failures still follow the existing runner refusal/disposal protocol.
+
+Images live in fresh exclusive `capture/script-state/snapshot-NNNN-PHASE` directories. Their manifest retains the configuration, actual selected context/state/argument pointers, collector identity, exact segment hashes, partial status and unresolved GC. Replay only captured bytes with:
+
+```sh
+python3 tools/linux/script_state_snapshot.py --image /private/snapshot/image.json --output /tmp/decoded-script.json
+```
+
+The [source audit](../evidence/linux/script-state-snapshot-source.json) records 14 focused collector regressions, 31 existing adapter cases, eight newly pinned argument-layout bodies, and unchanged closed native-2 report replay. The collector preserves raw pthread mutex bytes and never interprets ASL NULL as unlocked or establishes a pthread return/owner status. Its copied graph is a stopped byte image, not proof of GC consistency, complete callback effects or transitive Lua Method/code behavior. Those actual bytes must guide the next semantic implementation; an observed nil result is never a Rust constant backend.
