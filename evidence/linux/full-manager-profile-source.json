@@ -465,8 +465,8 @@
   "raw_actor_pointer_is_untrusted_address_expectation": true,
   "schema": "c6-linux-full-manager-profile-source-v1",
   "source_sha256": {
-    "native/linux/action_lifecycle.c": "5e854eeb96016817c3918ecd2f9ce80972460f7097cd1e1c2e756e4a077d2f79",
-    "native/linux/action_lifecycle.h": "8e4552267b01681443447d1b79f7f4cfdd78900bf9d6d24dbefdacdccf3a9d0c",
+    "native/linux/action_lifecycle.c": "c6ceab3de52963c852ddb0039ec3955cb6c0b673dbdb5bf53afad42707f6d525",
+    "native/linux/action_lifecycle.h": "c63daf858458c3e0f6e20e15cdb8118a96cf30a6457c7c198b057f2c1e06d175",
     "native/linux/current_handler_interruption.c": "bcfc754a87a7a8666db72f2808e9587390345e0533a7eba657124683e75b90e6",
     "native/linux/current_handler_interruption.h": "8fc346ec121c6c00ab29b623093013e5bd67b43d5c800e756f8c5285460c9115",
     "native/linux/full_manager_fixture.c": "a92d43fb00545f20b76c26f98f933df75b03013b6b3a8f733a89711586206ef9",
