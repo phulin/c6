@@ -8,6 +8,7 @@ pub mod notifications;
 pub mod random_variants;
 pub mod requirements;
 pub mod rng;
+pub mod skip_turn;
 pub mod trade;
 pub mod unit;
 use rng::RandomState;

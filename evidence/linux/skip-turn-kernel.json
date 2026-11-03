@@ -1,0 +1,272 @@
+{
+  "schema": "c6-linux-skip-turn-rust-state-phase-v1",
+  "checks_passed": true,
+  "original_execution_performed": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "configuration_sha256": "d68604a55344b85212154f5abf20b2a109e2d65b34a582686226e1f3f520187a",
+  "state_report_sha256": "0cec6d5ad7cbbed2f2c0a2880c120ef095c2299ebc116bb517db209206e0ad09",
+  "native_runtime_sha256": "3d70f68837f3f52b2a3a9e1d439f364d6b81149fd84e177640ed082523ee8faf",
+  "native_startup_profile": {
+    "prepare_main_thread": true,
+    "preparation_observed": true,
+    "exactly_once": true,
+    "flags_before": 0,
+    "flags_after": 1,
+    "app_and_core_absent_before_and_after": true,
+    "before_filesystem_tempheap_app_core": true,
+    "process_scoped": true,
+    "paired_reset_proven": false
+  },
+  "native_component_checker_report_sha256": "4ab9894fc2ada3fc91edc1913240f09f4ca758ad05eb539e4a782fc8fb293c00",
+  "request_profile": {
+    "insert_mode": 0,
+    "append": false,
+    "from_user": false,
+    "source": "fresh_native_make_request_component"
+  },
+  "original_core_saves": {
+    "before": {
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    "after": {
+      "bytes": 80656254,
+      "sha256": "be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc"
+    },
+    "repeat": {
+      "bytes": 80656254,
+      "sha256": "be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc"
+    }
+  },
+  "original_command_sha256": "5c262073a0b62b252c10ca562ca765faff535bc0e6bdf78c4f41f331498f288a",
+  "candidate_sha256": "2113136fdca4b8aca46657125b2885653e503ee7826dd0567598d8388a3f6ca9",
+  "source_sha256": {
+    "crates/c6-core/src/skip_turn.rs": "2cb1fd97d1a0a392c48b8688fab0436db36438ce4430a14bc8c26d40e66fe233",
+    "crates/c6-core/examples/skip_turn_kernel.rs": "175586bf988921fff6a149bc2eeb1247966315c925e13a66ac7ef11be011875e",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "tools/linux/skip_turn_kernel_audit.py": "433e78012cce23eaaf6a7db9397ac2e7550a22c013852b1b0a353fb7a1c3586e"
+  },
+  "original_method_fingerprints_checked": 69,
+  "additional_cancellation_methods": [
+    {
+      "name": "MoveTo.Deactivate",
+      "address": "0x2da4b40",
+      "size": 41,
+      "sha256": "04ee26064c5370b4e2aacb053f6946f4a51d3726a3bba3e019cb4a84e6178be5"
+    },
+    {
+      "name": "Placement.CompleteMovement.Unit",
+      "address": "0x2c42ab0",
+      "size": 92,
+      "sha256": "7b2680f933866af5406bf9ad5c1c1464be1f5bcef2262e18e095e4338550c2c1"
+    },
+    {
+      "name": "Unit.GetNeedsMovementCompletion",
+      "address": "0x2c43a70",
+      "size": 7,
+      "sha256": "90d52fc37d9542093734f9bc623743bc129b9656431545615a03adaf0bd77fa0"
+    }
+  ],
+  "movement_completion_false_required": true,
+  "typed_record_comparisons": [
+    {
+      "owner": "unit",
+      "bytes": 4774,
+      "sha256": "70d8db374d99b5029cbfa77c1ac4ec8bb36eb6f03d56ce55c01846a4fec8786d",
+      "exact_record_equal": true
+    },
+    {
+      "owner": "formation",
+      "bytes": 56,
+      "sha256": "a744ba02f244cfe8b8255966e85229a0880de139fef7dce3d2e7c2ed6a446b78",
+      "exact_record_equal": true
+    }
+  ],
+  "full_unit_wire_fields_compared": 73,
+  "complete_formation_wire_record_compared": true,
+  "unit_dirty_registration_requests": [
+    11,
+    32,
+    72,
+    32,
+    72,
+    11,
+    11,
+    72,
+    32
+  ],
+  "unit_dirty_membership_matches_native": true,
+  "unit_native_dirty_iteration_order_modeled": false,
+  "formation_dirty_registration_requests": [
+    14,
+    15,
+    14,
+    15,
+    14,
+    15
+  ],
+  "formation_native_dirty_observed": false,
+  "ordered_effects": [
+    {
+      "kind": "unit_dirty",
+      "index": 11
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000e23b112d",
+      "component_bits": "00f1000b00010000",
+      "first": 1797587246,
+      "second": null
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 32
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000a60328c5",
+      "component_bits": "00f1000b00010000",
+      "first": 1477390184,
+      "second": 1
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 72
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 32
+    },
+    {
+      "kind": "formation_dirty",
+      "index": 14
+    },
+    {
+      "kind": "formation_dirty",
+      "index": 15
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000383669f1",
+      "component_bits": "00f1000b00010000",
+      "first": null,
+      "second": null
+    },
+    {
+      "kind": "formation_dirty",
+      "index": 14
+    },
+    {
+      "kind": "formation_dirty",
+      "index": 15
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 72
+    },
+    {
+      "kind": "report",
+      "type_bits": "0000000015c35863",
+      "component_bits": "00f1000b00010000",
+      "first": 36,
+      "second": null
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 11
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000e23b112d",
+      "component_bits": "00f1000b00010000",
+      "first": 1225574625,
+      "second": null
+    },
+    {
+      "kind": "report",
+      "type_bits": "2c6819083d4006f2",
+      "component_bits": "00f1000b00010000",
+      "first": 0,
+      "second": null
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 11
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000e23b112d",
+      "component_bits": "00f1000b00010000",
+      "first": 75236491,
+      "second": null
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000a60328c5",
+      "component_bits": "00f1000b00010000",
+      "first": 745019656,
+      "second": 0
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 72
+    },
+    {
+      "kind": "unit_dirty",
+      "index": 32
+    },
+    {
+      "kind": "formation_dirty",
+      "index": 14
+    },
+    {
+      "kind": "formation_dirty",
+      "index": 15
+    },
+    {
+      "kind": "report",
+      "type_bits": "00000000383669f1",
+      "component_bits": "00f1000b00010000",
+      "first": null,
+      "second": null
+    }
+  ],
+  "selected_historical_report_arguments_equal": true,
+  "historical_report_return_abi_correct": false,
+  "corrected_observer_event_parity": false,
+  "reporting_provider_delivery_executed": false,
+  "required_live_inputs": {
+    "turn_local": "original component observation",
+    "numeric_handler": "actual original command",
+    "can_move": "true branch inferred from original OPERATION activity before handler",
+    "busy": "false branch inferred from original handler reaching Start",
+    "activation_can_start": "true branch inferred from original handler reaching Start",
+    "unit_archive_attachments": "required by observed newly dirty activity/timer/queue indexes",
+    "formation_archive_attachments": "assumed attached for static edit-request comparison; no native dirty capture"
+  },
+  "synthetic_contract_checks": {
+    "kind": "checks",
+    "synthetic_no_native_fixture_cases": 16,
+    "iterations": 10000,
+    "elapsed_ns": 10736308
+  },
+  "synthetic_cases_have_native_fixtures": false,
+  "benchmark_scope": "Rust typed clone/queue transition/effect allocation/drop only; excludes codec, initialization, provider delivery, full legality, diplomacy, notification/player aftermath, turns and native original performance.",
+  "raw_core_difference": {
+    "common_bytes": 80656254,
+    "differing_common_bytes": 46037717,
+    "length_difference": 1208,
+    "total_differing_bytes": 46038925,
+    "masked_bytes": 0,
+    "unknown_bytes_classified": false
+  },
+  "historical_raw_save_load_failure_bytes": 89198,
+  "full_action_acceptance": 0,
+  "gameplay_parity": false,
+  "complete_live_affected_state": false,
+  "complete_rng_inventory": false,
+  "engine_gameplay_apply_supported": false,
+  "limits": "Coherent Unit/Formation wire-state phase and static ordered effect requests for an actual positive-path native fixture. Reporting dispatcher/provider calls synchronous callbacks whose actual registrations are uncaptured, so a live operation cannot accept this projection as complete. Full CanStart, archive pointer-tree state, omitted live state, diplomacy and player/notification aftermath remain required; all player decisions yield externally."
+}
