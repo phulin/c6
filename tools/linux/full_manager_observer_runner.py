@@ -228,6 +228,32 @@ class RawContextTrace:
         return self.expected
 
 
+def runtime_module_contracts(configuration,prepared_preload):
+    raw=configuration['lower_core_full_manager_observer'].get('runtime_module_paths')
+    require(isinstance(raw,dict) and set(raw)=={'host','preload','core','libc'},
+            'exact launch/env-derived four-role runtime_module_paths required')
+    paths={}
+    for role,path in raw.items():
+        require(isinstance(path,str) and Path(path).is_absolute() and str(Path(path).resolve())==path,
+                'canonical actual runtime path required: '+role)
+        paths[role]=path
+    configured=configuration.get('original_filesystem_profile',{}).get('launch_host')
+    require(isinstance(configured,str) and paths['host']==str(Path(configured).resolve()),
+            'runtime host differs from configured launch executable')
+    require(paths['preload']==str(Path(prepared_preload).resolve()),'runtime preload differs from actual prepared LD_PRELOAD file')
+    libc=configuration['runtime_dependencies']['libc.so.6']
+    require(paths['libc']==str(Path(libc['path']).resolve()),'runtime libc differs from LD_LIBRARY_PATH dependency resolution')
+    require(configuration['assets']['Civ6']==HOST_SHA and configuration['assets']['libGameCore_XP2.so']==GAME_SHA,
+            'runtime original host/Core content identity differs')
+    expected={'host':HOST_SHA,'core':GAME_SHA,'preload':configuration['preload_sha256'],'libc':libc['sha256']}
+    identities={}
+    for role,path in paths.items():
+        _,actual=file_version(path)
+        require(actual['sha256']==expected[role],'actual runtime file bytes differ: '+role)
+        identities[path]=dict(sha256=actual['sha256'],device=list(actual['device']),inode=actual['inode'])
+    return paths,identities
+
+
 def validate_plan(plan):
     require(plan.get('schema')=='c6-linux-full-manager-observer-plan-v1','wrong full Manager plan schema')
     require(plan.get('profile_kind')=='genuine_lower_core_full_Manager','wrong observer profile scope')
@@ -240,8 +266,18 @@ def validate_plan(plan):
             prepared.get('native_execution_performed') is False and 'returncode' in prepared and
             prepared['returncode'] is None,'report is not unexecuted native preparation')
     cfg=prepared['configuration']
+    runtime_paths,runtime_identities=runtime_module_contracts(cfg,prepared['execution_paths']['preload'])
     profile=hashlib.sha256(canonical(cfg)).hexdigest()
     require(profile==prepared['configuration_sha256']==gate['configuration_sha256'],'configuration identity')
+    require(plan['host']==runtime_paths['host'] and plan['core']==runtime_paths['core'] and
+            plan['preload']==runtime_paths['preload'] and plan.get('libc')==runtime_paths['libc'] and
+            all(plan['modules'].get(path)==identity
+            for path,identity in runtime_identities.items()),
+            'plan paths/dev/inodes differ from actual launch/env/cwd module contracts')
+    configured_host=cfg.get('original_filesystem_profile',{}).get('launch_host')
+    require(isinstance(configured_host,str) and Path(configured_host).is_absolute() and
+            plan['host']==str(Path(configured_host).resolve()),
+            'plan host differs from actual configured launch executable path')
     static={key:value for key,value in plan.items() if key!='runtime_gate'}
     bound=cfg['lower_core_full_manager_observer']
     require(static==bound['static_plan'] and digest(gate['static_plan_path'])==bound['static_plan_sha256'] and
@@ -390,6 +426,8 @@ class Adapter:
             require(str(Path(path).resolve())==path,'module path must be canonical')
             raw,retained=file_version(path)
             require(retained['sha256']==identity['sha256'],'module file identity changed')
+            require(identity.get('inode')==retained['inode'] and tuple(identity.get('device',()))==retained['device'],
+                    'declared prelaunch module device/inode changed')
             self.module_identity[path]=retained
             kind,loads=elf_contract(raw);self.loads[path]=loads
             rows=[row for row in self.mappings() if row['path']==path]

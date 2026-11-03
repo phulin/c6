@@ -250,8 +250,15 @@ class Tests(unittest.TestCase):
         marker=next(row for row in contracts if row['name']==producer.MARKER)
         main=next(row for row in contracts if row['name']=='mod_probe_main')
         witness=next(row for row in contracts if row['name']=='observed_mod_main_tid')
+        host=str((ROOT.parent/'c6-assets-linux/Civ6').resolve());core=str((ROOT.parent/'c6-assets-linux/libGameCore_XP2.so').resolve())
+        libc=str(Path('/usr/lib/x86_64-linux-gnu/libc.so.6').resolve())
+        runtime_paths=dict(host=host,core=core,preload=str(preload),libc=libc)
+        identities={}
+        for path in runtime_paths.values():
+            _,row=producer.file_version(path)
+            identities[path]=dict(sha256=row['sha256'],device=list(row['device']),inode=row['inode'])
         static=dict(schema='c6-linux-full-manager-observer-plan-v1',profile_kind='genuine_lower_core_full_Manager',observation_mode=mode,
-            host='/host',core='/core',preload=str(preload),modules={'/host':{'sha256':HOST_SHA},'/core':{'sha256':GAME_SHA},str(preload):{'sha256':producer.digest(preload)}},
+            host=host,core=core,preload=str(preload),libc=libc,modules=identities,
             caller_suffix_frames=[frame(str(preload),main['relative_address'])],marker_relative_address=marker['relative_address'],
             live_bodies=bodies,compiled_symbols=contracts,
             window_parent_prefixes={} if mode=='raw_unresolved' else {name:[[frame('/core',1)]] for name in producer.SITES},
@@ -264,9 +271,11 @@ class Tests(unittest.TestCase):
         review.write_text(json.dumps(packet))
         static['stack_contract_review']=dict(path=str(review),sha256=producer.digest(review))
         path=Path(temp)/'static.json';path.write_text(json.dumps(static))
-        cfg=dict(lower_core_full_manager_observer=dict(static_plan=static,static_plan_sha256=producer.digest(path)),
+        cfg=dict(lower_core_full_manager_observer=dict(static_plan=static,static_plan_sha256=producer.digest(path),runtime_module_paths=runtime_paths),
                  sources={str(Path(key).relative_to(ROOT)):value for key,value in sources.items() if not key.endswith('/mod_activation_probe.py')},
-                 runner_sha256=sources[str(ROOT/'tools/linux/mod_activation_probe.py')],preload_sha256=producer.digest(preload))
+                 runner_sha256=sources[str(ROOT/'tools/linux/mod_activation_probe.py')],preload_sha256=producer.digest(preload),
+                 original_filesystem_profile=dict(launch_host=host),assets={'Civ6':HOST_SHA,'libGameCore_XP2.so':GAME_SHA},
+                 runtime_dependencies={'libc.so.6':dict(path=libc,sha256=identities[libc]['sha256'])})
         profile=hashlib.sha256(producer.canonical(cfg)).hexdigest()
         report=Path(temp)/'report.json';report.write_text(json.dumps(dict(configuration=cfg,configuration_sha256=profile,
             schema='c6-linux-native-profile-prepared-v1',native_execution_performed=False,returncode=None,
@@ -431,6 +440,26 @@ class Tests(unittest.TestCase):
             guard.caller([frame('/preload',0x123)])
         with self.assertRaisesRegex(ValueError,'caller/parent'):
             guard.caller([frame('/wrong',0x123),frame('/preload',0x456)])
+
+    def test_same_hash_different_launch_path_refused_before_continue(self):
+        with tempfile.TemporaryDirectory(prefix='c6-launch-copy-') as temp:
+            plan=self.plan_fixture(temp)
+            plan['modules']['/other-copy']={'sha256':HOST_SHA}
+            plan['host']='/other-copy'
+            with self.assertRaisesRegex(ValueError,'launch/env/cwd module contracts'):
+                producer.validate_plan(plan)
+
+    def test_same_hash_wrong_core_libc_path_or_inode_refused_pre_continue(self):
+        with tempfile.TemporaryDirectory(prefix='c6-four-role-plan-') as temp:
+            plan=self.plan_fixture(temp)
+            for role in ('core','libc'):
+                original=plan[role];plan[role]='/other-same-hash-copy'
+                with self.assertRaisesRegex(ValueError,'launch/env/cwd module contracts'):
+                    producer.validate_plan(plan)
+                plan[role]=original
+            plan['modules'][plan['core']]['inode']+=1
+            with self.assertRaisesRegex(ValueError,'launch/env/cwd module contracts'):
+                producer.validate_plan(plan)
 
     def test_only_hardware_outer_drain_mutation(self):
         tree=ast.parse((ROOT/SOURCE).read_text())
