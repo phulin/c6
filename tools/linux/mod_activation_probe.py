@@ -79,6 +79,13 @@ def main():
     action_modes.add_argument('--military-initialization-observer',action='store_true')
     parser.add_argument('--military-observer-plan',type=Path)
     parser.add_argument('--military-observer-directory',type=Path)
+    action_modes.add_argument('--full-manager-fixture',action='store_true')
+    parser.add_argument('--full-manager-input',type=Path)
+    parser.add_argument('--full-manager-observer-plan',type=Path)
+    parser.add_argument('--full-manager-observer-directory',type=Path)
+    parser.add_argument('--full-manager-build-only',action='store_true')
+    for label in ('output','controls','metadata-before','metadata-control','metadata-after','metadata-repeat','snapshot-before','snapshot-control','snapshot-after','snapshot-repeat'):
+        parser.add_argument('--full-manager-'+label,type=Path)
     action_modes.add_argument('--current-handler-metadata',action='store_true')
     for label in ('output','repeat-output','control-output','before','control-save','after','repeat'):
         parser.add_argument('--current-handler-metadata-'+label,type=Path)
@@ -266,6 +273,39 @@ def main():
         if len(set(current_handler_paths.values()))!=7:parser.error('Current-handler metadata artifact paths must be distinct')
     elif any(getattr(args,'current_handler_metadata_'+label) for label in ('output','repeat_output','control_output','before','control_save','after','repeat')):
         parser.error('Current-handler metadata paths require separate current-handler mode')
+    full_manager_paths={};full_manager_input=None;full_manager_actor=None;full_manager_plan=None;full_manager_directory=None
+    if args.full_manager_fixture:
+        if args.full_manager_build_only:args.prepare_only=True
+        if not args.prepare_only and not args.expected_configuration:parser.error('full Manager execution requires exact reviewed configuration')
+        if not game_input or not args.prepare_main_thread or not args.cleanup or not args.full_manager_input or not args.full_manager_observer_directory or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir,args.game_load_observe)):
+            parser.error('full Manager requires separate ordinary loaded main-thread fixture, actor input and observer')
+        if not args.full_manager_build_only and not args.full_manager_observer_plan:parser.error('full Manager preparation requires compiled observer plan')
+        full_manager_input=args.full_manager_input.resolve()
+        def full_manager_unique(pairs):
+            result={}
+            for key,value in pairs:
+                if key in result:raise ValueError('duplicate full Manager input key')
+                result[key]=value
+            return result
+        full_manager_actor=json.loads(full_manager_input.read_text(),object_pairs_hook=full_manager_unique)
+        if set(full_manager_actor)!={'schema','actor_owner','actor_full_id','visible_only'} or full_manager_actor['schema']!='c6-linux-full-manager-predicate-input-v1' or type(full_manager_actor['actor_owner']) is not int or not 0<=full_manager_actor['actor_owner']<65 or type(full_manager_actor['actor_full_id']) is not int or not 0<=full_manager_actor['actor_full_id']<2**32-1 or type(full_manager_actor['visible_only']) is not bool:raise SystemExit('full Manager actor input differs; no expected answers permitted')
+        full_manager_directory=args.full_manager_observer_directory.resolve()
+        if not full_manager_directory.is_dir() or not full_manager_directory.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('full Manager observer directory must be fresh private storage')
+        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json','capture'):
+            if (full_manager_directory/name).exists():parser.error('full Manager observer outputs must be fresh')
+        if args.full_manager_observer_plan:full_manager_plan=args.full_manager_observer_plan.resolve()
+        for label in ('output','controls','metadata_before','metadata_control','metadata_after','metadata_repeat','snapshot_before','snapshot_control','snapshot_after','snapshot_repeat'):
+            path=getattr(args,'full_manager_'+label)
+            if path is None:
+                if label.startswith('snapshot_'):continue
+                parser.error('full Manager requires predicate/controls and four passive metadata paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('full Manager outputs must be fresh private paths')
+            full_manager_paths[label]=path
+        if len(set(full_manager_paths.values()))!=len(full_manager_paths):parser.error('full Manager output paths must be distinct')
+        if sum(name.startswith('snapshot_') for name in full_manager_paths) not in (0,4):parser.error('full Manager optional Save paths must be all or none')
+    elif args.full_manager_build_only or args.full_manager_input or args.full_manager_observer_plan or args.full_manager_observer_directory or any(getattr(args,'full_manager_'+label) for label in ('output','controls','metadata_before','metadata_control','metadata_after','metadata_repeat','snapshot_before','snapshot_control','snapshot_after','snapshot_repeat')):
+        parser.error('full Manager arguments require the separate full Manager mode')
     military_directory=None
     military_plan=None
     if args.military_initialization_observer:
@@ -274,7 +314,7 @@ def main():
         if not args.prepare_only and not args.expected_configuration:parser.error('Military original execution requires exact admitted expected configuration')
         military_directory=args.military_observer_directory.resolve()
         if not military_directory.is_dir() or not military_directory.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('Military observer directory must be private')
-        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json'):
+        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json','capture'):
             if (military_directory/name).exists():parser.error('Military observer runtime artifacts must be fresh')
         military_plan=args.military_observer_plan.resolve()
     elif args.military_observer_plan or args.military_observer_directory:
@@ -307,8 +347,8 @@ def main():
         if len(set(action_snapshots.values()))!=3:parser.error('action snapshot paths must be distinct')
     elif args.action_snapshot_before or args.action_snapshot_after or args.action_snapshot_repeat:
         parser.error('action snapshots require an explicit Skip Turn control/execute mode')
-    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata:
-        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata and not args.placement_metadata and not args.placement_handler_metadata and not args.unit_operation_manager_metadata and not args.current_handler_metadata) or args.action_execution_observe or not action_trace:
+    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture:
+        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata and not args.placement_metadata and not args.placement_handler_metadata and not args.unit_operation_manager_metadata and not args.current_handler_metadata and not args.full_manager_fixture) or args.action_execution_observe or not action_trace:
             parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
         if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
@@ -349,16 +389,18 @@ def main():
         captured_extra_sources=[ROOT/'tools/linux/game_load_second_capture_gate.py',ROOT/captured_gate['origin_summary']]
         expected_game_size=captured_gate['bytes'];expected_game_sha=captured_gate['sha256']
     if game_input:
-        if not all((args.attach_saved_session,args.update_constructor_callback,args.ui_constructor,args.game_save_output,args.game_save_repeat_output)):
+        if not all((args.attach_saved_session,args.update_constructor_callback,args.ui_constructor)) or (not args.full_manager_fixture and not all((args.game_save_output,args.game_save_repeat_output))):
             parser.error('--game-load-stream requires attached session, native update, UI constructor and both save output paths')
         if (not game_input.is_file() or game_input.stat().st_size!=expected_game_size or digest(game_input)!=expected_game_sha):
             raise SystemExit('lower Core stream identity mismatch')
         for label,path in (('save',args.game_save_output),('repeat',args.game_save_repeat_output)):
+            if path is None:continue
             path=path.resolve()
             if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
                 parser.error('game save outputs must be new files in an existing private c6-ghidra directory')
             game_outputs[label]=path
-        if game_outputs['save']==game_outputs['repeat']:parser.error('game save outputs must be distinct')
+        if len(set(game_outputs.values()))!=len(game_outputs):parser.error('game save outputs must be distinct')
+        if args.full_manager_fixture and len(game_outputs) not in (0,2):parser.error('full Manager outer Save diagnostics must be both or neither')
         if set(game_outputs.values())&set(action_snapshots.values()):parser.error('action snapshots and outer game Saves must be distinct')
         if combat_output in game_outputs.values():parser.error('combat output and game Saves must be distinct')
         if set(random_paths.values())&set(game_outputs.values()):parser.error('random damage and outer Save paths must be distinct')
@@ -368,6 +410,7 @@ def main():
         if set(placement_paths.values())&set(game_outputs.values()):parser.error('placement metadata and outer Save paths must be distinct')
         if set(manager_paths.values())&set(game_outputs.values()):parser.error('Manager metadata and outer Save paths must be distinct')
         if set(current_handler_paths.values())&set(game_outputs.values()):parser.error('current-handler metadata and outer Save paths must be distinct')
+        if set(full_manager_paths.values())&set(game_outputs.values()):parser.error('full Manager observations and outer Save paths must be distinct')
         if set(placement_handler_paths.values())&set(game_outputs.values()):parser.error('handler metadata and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
@@ -415,16 +458,29 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata:
+    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/action_event_audit.py',ROOT/'evidence/linux/action-event-abi.json',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
             subprocess.run([sys.executable,str(execution_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
             execution_audit=json.loads(result_path.read_text())
-        if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
+        execution_canonical=json.loads(execution_audit_paths[-1].read_text())
+        if execution_audit!=execution_canonical and args.full_manager_fixture:
+            # The FULL-only observational-end extension is an append-only
+            # source change, not an original cache ABI change. Verify its
+            # exact legacy prefix proof; do not relax any other contract.
+            policy=json.loads((ROOT/'evidence/linux/full-manager-trace-policy.json').read_text())
+            key='tools/linux/action_execution_trace.c'
+            expected=execution_canonical['event_observer_contract']['source_sha256'][key]
+            actual=execution_audit['event_observer_contract']['source_sha256'][key]
+            normalized=json.loads(json.dumps(execution_audit))
+            normalized['event_observer_contract']['source_sha256'][key]=expected
+            if not policy['legacy_source_prefix_unchanged'] or policy['legacy_source_sha256']!=expected or policy['source_sha256']!=actual or normalized!=execution_canonical:raise SystemExit('full Manager trace extension exceeds reviewed source delta')
+            execution_audit['full_manager_observational_trace_extension']=policy
+        elif execution_audit!=execution_canonical:raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata:
+    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture:
         for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -654,6 +710,20 @@ def main():
                 if packet!=json.loads(canonical.read_text()):raise SystemExit('current-handler source packet differs: '+str(tool))
                 packets.append(packet)
         current_handler_profile={'mode':'passive_current_handler_fields','packets':packets,'raw_passes':2,'internal_core_saves':4,'original_calls_in_helper_or_guard':False,'facade_acquisition_is_caller_scope':True,'Save_lock_continuity_claimed':False,'full_manager_called':False,'script_callbacks_called':False,'complete_rng_inventory':False,'native_acceptance_pending':True}
+    full_manager_profile=None;full_manager_audit_paths=[]
+    if args.full_manager_fixture:
+        full_manager_audit_paths=[ROOT/'tools/linux/full_manager_fixture_audit.py',ROOT/'evidence/linux/full-manager-fixture-source.json',ROOT/'tools/linux/full_manager_profile_guard_audit.py',ROOT/'evidence/linux/full-manager-profile-owner-source.json',ROOT/'tools/linux/full_manager_trace_policy_audit.py',ROOT/'evidence/linux/full-manager-trace-policy.json',ROOT/'tools/linux/full_manager_profile_audit.py',ROOT/'evidence/linux/full-manager-profile-source.json']
+        packets=[]
+        with tempfile.TemporaryDirectory(prefix='full-manager-audits-') as temporary:
+            for tool,canonical in zip(full_manager_audit_paths[::2],full_manager_audit_paths[1::2]):
+                target=Path(temporary)/(tool.stem+'.json')
+                subprocess.run([sys.executable,str(tool),'--output',str(target)],check=True,capture_output=True,text=True)
+                packet=json.loads(target.read_text())
+                if packet!=json.loads(canonical.read_text()):raise SystemExit('full Manager source contract differs: '+str(tool))
+                packets.append(packet)
+        static_plan=json.loads(full_manager_plan.read_text()) if full_manager_plan else None
+        if static_plan is not None and (static_plan.get('schema')!='c6-linux-full-manager-observer-plan-v1' or static_plan.get('profile_kind')!='genuine_lower_core_full_Manager' or static_plan.get('observation_mode')!='raw_unresolved' or 'runtime_gate' in static_plan):raise SystemExit('full Manager static plan scope differs')
+        full_manager_profile={'mode':'original_full_Manager_predicate_once','actor_input':full_manager_actor,'actor_input_sha256':digest(full_manager_input),'source_contracts':packets,'static_plan':static_plan,'static_plan_sha256':digest(full_manager_plan) if full_manager_plan else None,'script_effects_possible':True,'expected_outputs_used_as_inputs':False,'pure_query_claimed':False,'Save_diagnostics_are_optional':True,'Save_equality_is_gate':False,'queued_work_zero_is_gate':False,'complete_state_actions_rng_turns':False}
     military_profile=None
     military_audit_paths=[]
     if args.military_initialization_observer:
@@ -725,11 +795,11 @@ def main():
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
-    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
+    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
-    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata or args.full_manager_fixture else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
@@ -741,6 +811,7 @@ def main():
     placement_sources=[ROOT/'native/linux/placement_metadata.c',ROOT/'native/linux/placement_metadata_fixture.c'] if args.placement_metadata else []
     manager_sources=[ROOT/'native/linux/unit_operation_manager_metadata.c',ROOT/'native/linux/unit_operation_manager_metadata_fixture.c'] if args.unit_operation_manager_metadata else []
     current_handler_sources=[ROOT/'native/linux/current_handler_interruption.c',ROOT/'native/linux/current_handler_metadata_fixture.c',ROOT/'native/linux/current_handler_metadata_probe.c'] if args.current_handler_metadata else []
+    full_manager_sources=[ROOT/'native/linux/current_handler_interruption.c',ROOT/'native/linux/full_manager_profile_guard.c',ROOT/'native/linux/full_manager_profile.c',ROOT/'native/linux/full_manager_fixture.c'] if args.full_manager_fixture else []
     placement_handler_sources=[ROOT/'native/linux/placement_handler_metadata.c',ROOT/'native/linux/placement_handler_metadata_fixture.c',ROOT/'native/linux/skip_turn_handler_query.c'] if args.placement_handler_metadata else []
     configuration_sources=[]
     if args.saved_configuration:
@@ -787,6 +858,7 @@ def main():
               'lower_core_placement_handler_metadata':placement_handler_profile,
               'lower_core_unit_operation_manager_metadata':manager_profile,
               'lower_core_current_handler_metadata':current_handler_profile,
+              'lower_core_full_manager_observer':full_manager_profile,
               'lower_core_military_initialization_observer':military_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
@@ -839,6 +911,8 @@ def main():
         identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*manager_sources,ROOT/'native/linux/unit_operation_manager_metadata.h',ROOT/'native/linux/unit_operation_manager_metadata_fixture.h']})
     if current_handler_sources:
         identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*current_handler_sources,ROOT/'native/linux/current_handler_interruption.h',ROOT/'native/linux/current_handler_metadata_fixture.h']})
+    if full_manager_sources:
+        identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*full_manager_sources,ROOT/'native/linux/current_handler_interruption.h',ROOT/'native/linux/full_manager_profile_guard.h',ROOT/'native/linux/full_manager_fixture.h']})
     if core_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
@@ -846,6 +920,25 @@ def main():
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in captured_extra_sources:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in [*current_handler_audit_paths,ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/script_can_start_boundary_audit.py',ROOT/'tools/linux/unit_operation_manager_metadata_audit.py',ROOT/'tools/linux/current_handler_interruption_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'tools/linux/rules_launch_fixture.py',ROOT/'tools/assets/inventory.py'] if args.current_handler_metadata else []:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    if args.full_manager_fixture:
+        full_tools=['full_manager_driver','full_manager_observer_runner','script_manager_observer','script_hks_registry','military_observer_runner','save_lifecycle_audit','script_can_start_boundary_audit','script_vm_lifecycle_audit','script_hks_registry_audit','full_manager_fixture_audit','full_manager_profile_guard_audit','full_manager_trace_policy_audit','full_manager_profile_audit','current_handler_field_guard_audit','current_handler_interruption_metadata_audit','current_handler_interruption_audit','unit_operation_manager_metadata_audit','rules_launch_fixture','inspect_elf']
+        # Inventory repository imports recursively without executing them.
+        # Auditors run in child interpreters, so their imported source is part
+        # of the admitted producer rather than an implicit live dependency.
+        import ast
+        pending=[ROOT/'tools/linux'/f'{name}.py' for name in full_tools]
+        closure=set()
+        while pending:
+            path=pending.pop()
+            if path in closure:continue
+            closure.add(path)
+            for node in ast.walk(ast.parse(path.read_text())):
+                names=[node.module] if isinstance(node,ast.ImportFrom) and node.module else [item.name for item in node.names] if isinstance(node,ast.Import) else []
+                for name in names:
+                    candidate=ROOT/'tools/linux'/(name.split('.')[0]+'.py')
+                    if candidate.is_file() and candidate not in closure:pending.append(candidate)
+        for path in [*full_manager_audit_paths,*sorted(closure),ROOT/'tools/assets/inventory.py']:
+            identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
@@ -858,7 +951,7 @@ def main():
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*placement_sources,*placement_handler_sources,*manager_sources,*current_handler_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*placement_sources,*placement_handler_sources,*manager_sources,*current_handler_sources,*full_manager_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     if movement_profile:movement_profile['integrated_preload_sha256']=identity['preload_sha256']
     archived_preload=None
@@ -901,6 +994,12 @@ def main():
             if digest(archived_preload)!=digest(preload):raise SystemExit('current-handler immutable preload differs')
         else:
             with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
+    if args.full_manager_fixture:
+        archived_preload=full_manager_paths['output'].parent/'full-manager-preload.so'
+        if archived_preload.exists():
+            if digest(archived_preload)!=digest(preload):raise SystemExit('full Manager immutable preload differs')
+        else:
+            with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     if args.military_initialization_observer:
         archived_preload=military_directory/'military-stream-preload.so'
         if archived_preload.exists():
@@ -937,8 +1036,8 @@ def main():
     if normalization_trace:env['C6_SAVE_NORMALIZATION_TRACE']=str(normalization_trace)
     if game_input:
         env['C6_GAME_LOAD_STREAM']=str(game_input)
-        env['C6_GAME_SAVE_OUTPUT']=str(game_outputs['save'])
-        env['C6_GAME_SAVE_REPEAT_OUTPUT']=str(game_outputs['repeat'])
+        if 'save' in game_outputs:env['C6_GAME_SAVE_OUTPUT']=str(game_outputs['save'])
+        if 'repeat' in game_outputs:env['C6_GAME_SAVE_REPEAT_OUTPUT']=str(game_outputs['repeat'])
         if captured_gate:env['C6_GAME_LOAD_EXPECTED_SIZE']=str(expected_game_size)
         if args.game_load_observe:env['C6_GAME_LOAD_OBSERVE']='1'
         if args.action_observe:env['C6_ACTION_OBSERVE']='1'
@@ -957,6 +1056,10 @@ def main():
             for label,suffix in {'output':'OUTPUT','repeat_output':'REPEAT_OUTPUT','control_output':'CONTROL_OUTPUT','before':'SNAPSHOT_BEFORE','control_save':'SNAPSHOT_CONTROL','after':'SNAPSHOT_AFTER','repeat':'SNAPSHOT_REPEAT'}.items():
                 env['C6_UNIT_OPERATION_MANAGER_METADATA_'+suffix]=str(manager_paths[label])
             env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
+        if args.full_manager_fixture:
+            for label,suffix in {'output':'OUTPUT','controls':'CONTROL_OUTPUT','metadata_before':'METADATA_BEFORE','metadata_control':'METADATA_CONTROL','metadata_after':'METADATA_AFTER','metadata_repeat':'METADATA_REPEAT','snapshot_before':'SNAPSHOT_BEFORE','snapshot_control':'SNAPSHOT_CONTROL','snapshot_after':'SNAPSHOT_AFTER','snapshot_repeat':'SNAPSHOT_REPEAT'}.items():
+                if label in full_manager_paths:env['C6_FULL_MANAGER_FIXTURE_'+suffix]=str(full_manager_paths[label])
+            env.update(C6_FULL_MANAGER_FIXTURE='1',C6_FULL_MANAGER_FIXTURE_ACTOR_OWNER=str(full_manager_actor['actor_owner']),C6_FULL_MANAGER_FIXTURE_ACTOR_FULL_ID=str(full_manager_actor['actor_full_id']),C6_FULL_MANAGER_FIXTURE_VISIBLE_ONLY=str(int(full_manager_actor['visible_only'])),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
         if args.current_handler_metadata:
             for label,suffix in {'output':'OUTPUT','repeat_output':'REPEAT_OUTPUT','control_output':'CONTROL_OUTPUT','before':'SNAPSHOT_BEFORE','control_save':'SNAPSHOT_CONTROL','after':'SNAPSHOT_AFTER','repeat':'SNAPSHOT_REPEAT'}.items():
                 env['C6_CURRENT_HANDLER_METADATA_'+suffix]=str(current_handler_paths[label])
@@ -983,6 +1086,9 @@ def main():
     if args.expected_configuration and args.expected_configuration!=configuration_identity:
         raise SystemExit('configuration identity mismatch; native execution refused')
     timing_change=None
+    if args.full_manager_build_only:
+        args.output.write_text(json.dumps({'schema':'c6-linux-full-manager-preload-built-v1','native_execution_performed':False,'configuration_identity_incomplete':True,'preload':str(archived_preload),'preload_sha256':identity['preload_sha256'],'sources':identity['sources'],'runner_sha256':identity['runner_sha256'],'configuration_without_final_plan':identity},indent=2)+'\n')
+        print(json.dumps({'output':str(args.output),'build_only':True,'native_execution_performed':False,'preload_sha256':identity['preload_sha256']}));return
     if args.movement_cost_timing_baseline:
         baseline_path=args.movement_cost_timing_baseline.resolve()
         baseline=json.loads(baseline_path.read_text())
@@ -1001,13 +1107,22 @@ def main():
     if args.placement_handler_metadata:env['C6_PLACEMENT_HANDLER_METADATA_PROFILE_SHA256']=configuration_identity
     if args.unit_operation_manager_metadata:env['C6_UNIT_OPERATION_MANAGER_METADATA_PROFILE_SHA256']=configuration_identity
     if args.current_handler_metadata:env['C6_CURRENT_HANDLER_METADATA_PROFILE_SHA256']=configuration_identity
+    if args.full_manager_fixture:env['C6_FULL_MANAGER_FIXTURE_PROFILE_SHA256']=configuration_identity
     if args.military_initialization_observer:env['C6_MILITARY_STREAM_OBSERVER']='1'
     if args.prepare_only:
-        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()},'placement_handler_metadata':{k:str(v) for k,v in placement_handler_paths.items()},'unit_operation_manager_metadata':{k:str(v) for k,v in manager_paths.items()},'current_handler_metadata':{k:str(v) for k,v in current_handler_paths.items()},'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}} if military_directory else None},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
+        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()},'placement_handler_metadata':{k:str(v) for k,v in placement_handler_paths.items()},'unit_operation_manager_metadata':{k:str(v) for k,v in manager_paths.items()},'current_handler_metadata':{k:str(v) for k,v in current_handler_paths.items()},'full_manager':{'paths':{k:str(v) for k,v in full_manager_paths.items()},'observer_directory':str(full_manager_directory),'capture_directory':str(full_manager_directory/'capture'),'game_outputs':{k:str(v) for k,v in game_outputs.items()}} if full_manager_directory else None,'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}} if military_directory else None},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
         print(json.dumps({'output':str(args.output),'prepared_only':True,'native_execution_performed':False,'configuration_sha256':configuration_identity}))
         return
     try:
-        if args.military_initialization_observer:
+        if args.full_manager_fixture:
+            admitted_prepared=full_manager_directory.parent/'prepared.json'
+            admitted=json.loads(admitted_prepared.read_text())
+            if admitted['configuration']!=identity or admitted['configuration_sha256']!=configuration_identity or admitted.get('native_execution_performed') is not False:raise SystemExit('full Manager admitted preparation differs')
+            runtime_prepared=full_manager_directory/'runtime-prepared.json'
+            with runtime_prepared.open('xb') as stream:stream.write(admitted_prepared.read_bytes())
+            from full_manager_driver import run as full_manager_run
+            code,out,err=full_manager_run(host,env,work,args.timeout,full_manager_directory,runtime_prepared,full_manager_plan)
+        elif args.military_initialization_observer:
             runtime_prepared=military_directory/'runtime-prepared.json'
             admitted_prepared=military_directory/'prepared.json'
             admitted=json.loads(admitted_prepared.read_text())
@@ -1032,6 +1147,11 @@ def main():
         report['execution_paths']['military_observer']={'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}}
         report['execution_paths']['preload']=str(archived_preload)
         report['military_observer_artifacts']={q.name:{'sha256':digest(q),'bytes':q.stat().st_size} for q in military_directory.iterdir() if q.is_file() and q.name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json')}
+    if args.full_manager_fixture:
+        report['execution_paths']['full_manager']={'paths':{k:str(v) for k,v in full_manager_paths.items()},'observer_directory':str(full_manager_directory),'capture_directory':str(full_manager_directory/'capture'),'game_outputs':{k:str(v) for k,v in game_outputs.items()}}
+        report['execution_paths']['preload']=str(archived_preload)
+        report['full_manager_artifacts']={label:{'sha256':digest(path),'bytes':path.stat().st_size} for label,path in full_manager_paths.items() if path.is_file()}
+        report['full_manager_observer_artifacts']={str(path.relative_to(full_manager_directory)):{'sha256':digest(path),'bytes':path.stat().st_size} for path in full_manager_directory.rglob('*') if path.is_file()}
     report['supervisor_timing_change']=timing_change
     report.update(lifecycle_report(code,err))
     report['native_activation_selection']={}
