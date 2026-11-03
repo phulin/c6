@@ -27,6 +27,8 @@ pub mod player_districts;
 pub mod player_espionage;
 pub mod player_religion;
 pub mod player_resources;
+pub mod player_stats;
+pub mod player_techs;
 pub mod player_name_manager;
 pub mod player_prerequisites;
 pub mod plot_yield;
@@ -321,3 +323,5 @@ mod tests {
         ));
     }
 }
+
+pub mod tracked_value;
