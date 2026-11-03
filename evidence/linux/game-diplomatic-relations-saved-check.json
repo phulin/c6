@@ -1,0 +1,18 @@
+{
+  "alliance_runtime_comparison": false,
+  "checker_executable_sha256": "369d1494951e7d44b0baefbd3433b789582a3ab187f11be4f14f5705d9a0a02e",
+  "complete_state_action_turn_parity": false,
+  "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "original_execution": false,
+  "prefix_bytes": 121005,
+  "records_compared": 18144,
+  "schema": "c6-linux-game-diplomatic-relations-saved-check-v1",
+  "source_sha256": {
+    "crates/c6-core/src/game_diplomatic_relations.rs": "3cba575d3d47771cea011dc5e12b7adc8f4013acd650773d6d2092c7c83825ab",
+    "tools/linux/game_diplomatic_relations_audit.py": "29b3565c4a970594b667311c55c0d448c8aaecf4db649a7050571ebf48bad502",
+    "tools/linux/game_diplomatic_relations_check.rs": "c28e6184841abe717f72dc2ec680b71778aab4562bff8c3c552a45f1fecf09cb"
+  },
+  "unclassified_tail_bytes": 74616,
+  "vectors_compared": 9
+}

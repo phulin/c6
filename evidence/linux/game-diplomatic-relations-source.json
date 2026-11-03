@@ -1,0 +1,177 @@
+{
+  "alliance_runtime_values_compared": false,
+  "checks": {
+    "alliance_enum_maps_hash_to_index": true,
+    "alliance_enum_uses_definitions": true,
+    "alliance_missing_definition_returns_minus_one": true,
+    "same_player_allied_false": true,
+    "symmetric_signed_wrapping_index": true,
+    "war_enum_validates_hash": true
+  },
+  "complete_state_action_turn_parity": false,
+  "core_bytes": 80657462,
+  "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "live_action_parity": false,
+  "methods": {
+    "alliance_enum_read": {
+      "address": "0x2bf6c00",
+      "bytes": 58,
+      "sha256": "78b13e8b73468f5ea9e1c259c0da8e4ec4823ff1f85ebeee33ef55fd2355ed57",
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore13AllianceTypesE"
+      ]
+    },
+    "alliance_hash_to_index": {
+      "address": "0x2bf6fc0",
+      "bytes": 34,
+      "sha256": "386735500c7995858c7a30fe496ce6d7242a7c2db038971e1dd5f23da9cf2da5",
+      "symbols": [
+        "_ZN13Serialization11HashToIndexIN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_8AllianceEEEEEijRKT_"
+      ]
+    },
+    "alliance_record_read": {
+      "address": "0x29905e0",
+      "bytes": 41,
+      "sha256": "011b0a6bd80f7b392513d6ab20fccb44a2a4179b6774b540abe9cc3e99f5c310",
+      "symbols": [
+        "_ZN13SerializationrsIN8GameCore13AllianceTypesEEERNS_7IStreamES4_RNS1_4Game22DiplomaticRelationshipIT_EE"
+      ]
+    },
+    "alliance_sequence_read": {
+      "address": "0x2990500",
+      "bytes": 125,
+      "sha256": "69305726fa1b7594dadd3f3226640ecaf1a6493f124c864143b54d935feced2d",
+      "symbols": [
+        "_ZN13Serialization28SerializeToSequenceContainerIN8GameCore4Game22DiplomaticRelationshipINS1_13AllianceTypesEEEN5Types6VectorIS5_NS6_11LinearAlloc7DefaultILj1ELj0EEEEEEEvRNS_7IStreamERT0_"
+      ]
+    },
+    "alliance_type": {
+      "address": "0x2983b80",
+      "bytes": 22,
+      "sha256": "94f856b3228ff2698484074b32c4228e24002e3572667902b7bd976b9f610622",
+      "symbols": [
+        "_ZNK8GameCore4Game19DiplomaticRelations15GetAllianceTypeENS_11PlayerTypesES2_"
+      ]
+    },
+    "bool_record_read": {
+      "address": "0x2988c70",
+      "bytes": 41,
+      "sha256": "e7801263c0e5848aa0c257d55586ca77976036e5d51b4831b1d076f30ae8c642",
+      "symbols": [
+        "_ZN13SerializationrsIbEERNS_7IStreamES2_RN8GameCore4Game22DiplomaticRelationshipIT_EE"
+      ]
+    },
+    "is_allied": {
+      "address": "0x2983170",
+      "bytes": 29,
+      "sha256": "e1d11cc3557f22c0a0a802db50ff8d093a5c2263f8ebeebc78e66c67c7cdd930",
+      "symbols": [
+        "_ZNK8GameCore4Game19DiplomaticRelations8IsAlliedENS_11PlayerTypesES2_"
+      ]
+    },
+    "is_at_war": {
+      "address": "0x2983ba0",
+      "bytes": 31,
+      "sha256": "7feb0befd035aa90f70df5bdfcc528ef2cf2ea7ae223e19d1e1a93f5fcfb5661",
+      "symbols": [
+        "_ZNK8GameCore4Game19DiplomaticRelations7IsAtWarENS_11PlayerTypesES2_"
+      ]
+    },
+    "read": {
+      "address": "0x29808e0",
+      "bytes": 1432,
+      "sha256": "18602fa6e51c7c06566cc39de90ecfe578589e67e8d1ef8bf8518e5a75e6c16b",
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore4Game19DiplomaticRelationsE"
+      ]
+    },
+    "symmetric_alliance": {
+      "address": "0x2988430",
+      "bytes": 52,
+      "sha256": "92d4b63c6a44203d6f303f043f2d2298f6a33478b9d9889f344de5d73d0cd487",
+      "symbols": [
+        "_ZNK8GameCore4Game19DiplomaticRelations21GetSymmetricDealValueINS_13AllianceTypesEEEKT_NS_11PlayerTypesES6_RKN5Types6VectorINS0_22DiplomaticRelationshipIS4_EENS7_11LinearAlloc7DefaultILj1ELj0EEEEE"
+      ]
+    },
+    "symmetric_war": {
+      "address": "0x29885d0",
+      "bytes": 52,
+      "sha256": "4bd31b9475fc8fc65094489a8177b41a9f320506e9f8e1e302934d106e44d2e3",
+      "symbols": [
+        "_ZNK8GameCore4Game19DiplomaticRelations21GetSymmetricDealValueINS_8WarTypesEEEKT_NS_11PlayerTypesES6_RKN5Types6VectorINS0_22DiplomaticRelationshipIS4_EENS7_11LinearAlloc7DefaultILj1ELj0EEEEE"
+      ]
+    },
+    "war_enum_read": {
+      "address": "0x2d503a0",
+      "bytes": 58,
+      "sha256": "533defaedd931c588acec1b7da39410b64d10f09ef487df8ba875cf1556288b8",
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore8WarTypesE"
+      ]
+    },
+    "war_type": {
+      "address": "0x2980ea0",
+      "bytes": 22,
+      "sha256": "cd7e112c8038e343b83ae53130ae249f0756fe8f7654623fab8e10dc3f674370",
+      "symbols": [
+        "_ZNK8GameCore4Game19DiplomaticRelations10GetWarTypeENS_11PlayerTypesES2_"
+      ]
+    },
+    "war_validate_hash": {
+      "address": "0x2d514d0",
+      "bytes": 34,
+      "sha256": "22aa4160a9675527e569edfa35b73d533f52cd92b1ba7b5dbcc68e5eb0a84ed7",
+      "symbols": [
+        "_ZN13Serialization12ValidateHashIN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_3WarEEEEEjjRKT_"
+      ]
+    }
+  },
+  "original_execution": false,
+  "owner_frame": {
+    "call": 175316,
+    "depth": 1,
+    "end": 72688728,
+    "event": "owner",
+    "owner": "GameCore::Game::DiplomaticRelations",
+    "parent": 1,
+    "save": 1,
+    "start": 72493107
+  },
+  "owner_sha256": "393347b11100e83ca439a3967d851df8a543f55a006aa3b68b8a516098e9d34b",
+  "owner_trace_decompressed_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "player_count": 64,
+  "prefix_bytes": 121005,
+  "prefix_sha256": "757c912ba40bee8a7dd460d59cc2041c04c86d12b3fa638464caf063b87e41af",
+  "saved_alliances": {
+    "count": 2016,
+    "saved_first_words": {
+      "-1": 1990,
+      "-686676514": 5,
+      "-768844443": 5,
+      "-945164097": 6,
+      "1086560305": 4,
+      "1591607776": 6
+    },
+    "turns_sha256": "4048b981d0f09375341619ec3cc7bd73a5a3ec30f5c03b5f396fbf62e5c74e31",
+    "values_sha256": "4bf8b2fae941c0ba7f0e3cea8ea292fe4bf28a9335c2ceea6a5d0f19634a7a81",
+    "wire_sha256": "418c82037e6c0ead28287e59b19517572d0d4365a3d124bb792f2b38071d7dae"
+  },
+  "saved_war": {
+    "count": 2016,
+    "saved_first_words": {
+      "-1": 1965,
+      "-82274681": 3,
+      "1133958949": 45,
+      "1348783716": 3
+    },
+    "turns_sha256": "c639d1eb3e7bfd909e39c119887449b87ad3352b38059f623f25045b40ab967c",
+    "values_sha256": "db4fd7f3eb654acd449e69c39da5782e877a92c5af2637763df6a8a8c0fffa16",
+    "wire_sha256": "52af3e7f538d31cd4ab79e10a763ee0c889f450669f7e98b41bdfad870ec5b26"
+  },
+  "schema": "c6-linux-game-diplomatic-relations-source-v1",
+  "unclassified_tail_bytes": 74616,
+  "unclassified_tail_sha256": "477296473a50f6b014f4abe4544fca231abc06e445f1490bfbeab2e74d34b8c4",
+  "version": 16
+}
