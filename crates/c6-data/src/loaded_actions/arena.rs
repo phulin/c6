@@ -7,7 +7,9 @@
 use super::{Event, Failure};
 use c6_core::{
     core_player::initialization::WireBinding,
-    formation_initialization::{FormationRuntime, LogicalArchive},
+    formation_initialization::{
+        FormationRuntime, LogicalArchive, FORMATION_COMPONENT_TYPE, UNIT_COMPONENT_TYPE,
+    },
     loaded_state::{self, LoadedState},
     map::UnitReference,
     unit::{Formation, Unit},
@@ -88,14 +90,15 @@ impl ActorSnapshot {
         let link = unit_runtime
             .formation
             .ok_or(CaptureError::MissingFormation)?;
-        if unit.id != resolved_id
+        if reference.component_id().component_type != UNIT_COMPONENT_TYPE
+            || unit.id != resolved_id
             || unit.e_owner != reference.player()
             || u.id != unit.id
             || i32::from(u.owner) != unit.e_owner
-            || u.component_type != 1
+            || u.component_type != UNIT_COMPONENT_TYPE
             || f.id != formation.id
             || i32::from(f.owner) != formation.owner
-            || f.component_type != 44
+            || f.component_type != FORMATION_COMPONENT_TYPE
             || link.owner != formation.owner
             || link.requested_id != unit.formation_id
             || link.resolved_id != formation.id
@@ -285,6 +288,9 @@ pub struct RngEvidence {
 /// An attempt retains the original action failure and captures partial effects.
 /// Capture failures (for example changed runtime dependencies) are retained next
 /// to the outcome; they never erase the original error or restore a cloned World.
+/// This is an observation, not action acceptance. A failed action may leave partial
+/// state; discard or reconstruct that state before continuing gameplay.
+#[must_use = "inspect the action outcome and capture results before continuing gameplay"]
 #[derive(Debug)]
 pub struct ArenaAttempt {
     pub before: ActorSnapshot,
@@ -295,9 +301,15 @@ pub struct ArenaAttempt {
     pub rng_evidence: Option<Vec<RngEvidence>>,
 }
 impl ArenaAttempt {
-    /// Runs the actual caller-supplied action once against this same mutable state.
-    /// The closure may observe external RNG before/after its action and return it.
-    pub fn run(
+    /// Observes the actual caller-supplied action once against this same mutable state.
+    /// A pre-capture failure returns before calling the action. The closure may
+    /// observe external RNG before/after its action and return that evidence.
+    ///
+    /// Outer `Ok` means the attempt was recorded, not that a supported action was
+    /// accepted. Inspect `outcome`, both after-captures, and the bounded delta.
+    /// Any failed partial state must be discarded or reconstructed before gameplay
+    /// continues. This observer neither rolls back nor clones the World.
+    pub fn observe_in_place(
         state: &mut LoadedState,
         reference: UnitReference,
         action: impl FnOnce(&mut LoadedState) -> (Result<Vec<Event>, Failure>, Option<Vec<RngEvidence>>),
@@ -541,7 +553,8 @@ impl ActorRecords {
         unit: Unit,
         formation: Formation,
     ) -> Result<Self, CaptureError> {
-        if unit.id != reference.id
+        if reference.component_id().component_type != UNIT_COMPONENT_TYPE
+            || unit.id != reference.id
             || unit.e_owner != reference.player()
             || unit.formation_id != formation.id
             || unit.e_owner != formation.owner
@@ -584,7 +597,8 @@ impl RecordDelta {
     pub fn between(before: ActorRecords, after: ActorRecords) -> Result<Self, DeltaError> {
         // Revalidate public record fields, including membership, on every comparison.
         for records in [&before, &after] {
-            if records.unit.id != records.reference.id
+            if records.reference.component_id().component_type != UNIT_COMPONENT_TYPE
+                || records.unit.id != records.reference.id
                 || records.unit.e_owner != records.reference.player()
             {
                 return Err(DeltaError::ActorIdentity);
@@ -682,6 +696,44 @@ mod tests {
         assert_eq!(
             RecordDelta::between(r, after).unwrap_err(),
             DeltaError::ActorIdentity
+        );
+    }
+    #[test]
+    fn rejects_wrong_component_kind_and_public_record_tampering() {
+        let r = records();
+        let wrong_kind = UnitReference {
+            owner: (i32::from(FORMATION_COMPONENT_TYPE) << 16) | r.reference.player(),
+            id: r.reference.id,
+        };
+        assert_eq!(wrong_kind.player(), r.reference.player());
+        assert_eq!(wrong_kind.id, r.reference.id);
+        assert!(matches!(
+            ActorRecords::checked(wrong_kind, r.unit.clone(), r.formation.clone()),
+            Err(CaptureError::Identity)
+        ));
+        let mut after = r.clone();
+        after.reference = wrong_kind;
+        assert_eq!(
+            RecordDelta::between(r.clone(), after.clone()).unwrap_err(),
+            DeltaError::ActorIdentity
+        );
+        // Both endpoints can be publicly forged identically; equality alone must
+        // not bypass reference-kind validation.
+        assert_eq!(
+            RecordDelta::between(after.clone(), after).unwrap_err(),
+            DeltaError::ActorIdentity
+        );
+        let mut after = r.clone();
+        after.formation.unit_ids.clear();
+        assert_eq!(
+            RecordDelta::between(r.clone(), after).unwrap_err(),
+            DeltaError::FormationIdentity
+        );
+        let mut after = r.clone();
+        after.unit.formation_id += 1;
+        assert_eq!(
+            RecordDelta::between(r, after).unwrap_err(),
+            DeltaError::FormationIdentity
         );
     }
     #[test]
@@ -789,6 +841,22 @@ mod tests {
             fr,
         )
         .unwrap();
+        let wrong_kind = UnitReference {
+            owner: i32::from(FORMATION_COMPONENT_TYPE) << 16,
+            id: before.reference.id,
+        };
+        assert!(matches!(
+            ActorSnapshot::checked(
+                before.binding.clone(),
+                wrong_kind,
+                before.resolved_id,
+                before.unit.clone(),
+                before.unit_runtime.clone(),
+                before.formation.clone(),
+                before.formation_runtime.clone()
+            ),
+            Err(CaptureError::Identity)
+        ));
         let mut after = before.clone();
         // A synchronous provider can fail after an unsupported write; observation
         // must preserve that write and the original error rather than rolling back.
