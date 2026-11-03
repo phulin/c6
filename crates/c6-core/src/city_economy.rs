@@ -1,4 +1,4 @@
-//! Bounded Linux XP2 City Culture16/17, current Gold/Growth wire records only.
+//! Bounded Linux XP2 City Culture16/17, Gold10/11, current Growth wire records only.
 //! Culture16 explicitly defaults its absent green-energy tourism scalar to0.
 //! Nested Tourism/GreatWork16/17 versions are independent; older versions refuse.
 //!
@@ -142,12 +142,12 @@ impl Wire for bool {
         w.put(&[u8::from(*self)])
     }
 }
-impl Wire for HashValue<i32> {
-    const MIN_SIZE: usize = 8;
+impl<T: Wire> Wire for HashValue<T> {
+    const MIN_SIZE: usize = 4 + T::MIN_SIZE;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
         Ok(Self {
             definition_hash: u32::read(r)?,
-            value: i32::read(r)?,
+            value: T::read(r)?,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -188,7 +188,7 @@ impl<T: Wire> Wire for Vec<T> {
     }
 }
 macro_rules! record {
-    ($name:ident, $version:expr $(, legacy $legacy:expr, $version_field:ident)?, { $( $(#[$attr:meta])* $field:ident: $ty:ty $(=> $since:literal)? ),* $(,)? }) => {
+    ($name:ident, $version:expr $(, legacy $legacy:expr, $version_field:ident)?, { $( $(#[$attr:meta])* $field:ident: $ty:ty $(=> ($first:literal, $last:literal))? ),* $(,)? }) => {
         #[derive(Clone, Debug, Eq, PartialEq)]
         pub struct $name {
             $( pub $version_field: i32, )?
@@ -198,21 +198,25 @@ macro_rules! record {
             const MIN_SIZE: usize = {
                 let _minimum_version = $version;
                 $( let _minimum_version = $legacy; )?
-                4 $(+ if true $(&& _minimum_version >= $since)? { <$ty as Wire>::MIN_SIZE } else { 0 })*
+                4 $(+ if true $(&& _minimum_version >= $first && _minimum_version <= $last)? { <$ty as Wire>::MIN_SIZE } else { 0 })*
             };
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
                 let actual = i32::read(r)?;
                 if actual != $version $( && actual != $legacy )? { return Err(Error::Version { expected: $version, actual }); }
                 Ok(Self {
                     $( $version_field: actual, )?
-                    $( $field: if true $(&& actual >= $since)? { <$ty as Wire>::read(r)? }
+                    $( $field: if true $(&& actual >= $first && actual <= $last)? { <$ty as Wire>::read(r)? }
                         else { Default::default() }, )*
                 })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
                 $( if self.$version_field != $version { return Err(Error::UnsupportedLegacyWrite); } )?
                 ($version).write(w)?;
-                $( self.$field.write(w)?; )*
+                $( if true $(&& $version >= $first && $version <= $last)? {
+                    self.$field.write(w)?;
+                } else if self.$field != <$ty as Default>::default() {
+                    return Err(Error::UnsupportedLegacyWrite);
+                } )*
                 Ok(())
             }
         }
@@ -268,7 +272,7 @@ record!(Culture, CULTURE_VERSION, legacy 16, wire_version, {
     enhanced_tourism_modifier: i32,
     improvement_tourism_modifier: i32,
     national_park_tourism_modifier: i32,
-    tourism_from_green_energy_modifier: i32 => 17,
+    tourism_from_green_energy_modifier: i32 => (17, 17),
     tourism_modifiers: Vec<TourismModifier>,
     great_work_yield_modifiers: Vec<GreatWorkYieldModifier>,
     expended_great_person_tiles: i32,
@@ -278,18 +282,39 @@ record!(Culture, CULTURE_VERSION, legacy 16, wire_version, {
     loyalty_from_great_works_citizen_modifier: i32,
     no_culture_border_expansion: bool,
 });
-record!(Gold, GOLD_VERSION, {
+record!(Gold, GOLD_VERSION, legacy 10, wire_version, {
     plot_cost_modifier: i32,
     unit_cost_modifier: Vec<HashValue<i32>>,
     building_cost_modifier: Vec<HashValue<i32>>,
     district_cost_modifier: Vec<HashValue<i32>>,
     plot_cost_terrain_modifier: Vec<HashValue<i32>>,
     siphoned_gold: i32,
-    building_faith_purchase_enabled: Vec<HashValue<i32>>,
-    unit_faith_purchase_enabled: Vec<HashValue<i32>>,
+    /// Temporary bool arrays read and discarded by native <=10 path. No
+    /// conversion to the new integer counters is inferred from these values.
+    deprecated_building_faith_purchase: Vec<HashValue<bool>> => (10, 10),
+    deprecated_unit_faith_purchase: Vec<HashValue<bool>> => (10, 10),
+    building_faith_purchase_enabled: Vec<HashValue<i32>> => (11, 11),
+    unit_faith_purchase_enabled: Vec<HashValue<i32>> => (11, 11),
     can_purchase_districts: bool,
     gold_from_citizens: i32,
 });
+/// Native absent Gold10 counter lists assign0 at every actual definition's
+/// collection index. Wire transport has neither those registries nor an array
+/// baseline; no pairs does not imply an empty effective native array.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FaithPurchaseReadEffect {
+    PresentPairs,
+    ZeroForEachDefinitionRegistryUnknown,
+}
+impl Gold {
+    pub fn faith_purchase_read_effect(&self) -> FaithPurchaseReadEffect {
+        if self.wire_version == 10 {
+            FaithPurchaseReadEffect::ZeroForEachDefinitionRegistryUnknown
+        } else {
+            FaithPurchaseReadEffect::PresentPairs
+        }
+    }
+}
 record!(Growth, GROWTH_VERSION, {
     food_raw_q8: i32,
     other_growth_modifier_raw_q8: i32,
@@ -390,6 +415,98 @@ mod tests {
         pair(&mut b, u32::MAX, -64);
         pair(&mut b, u32::MAX, 64);
         b
+    }
+    #[test]
+    fn gold10_discards_bool_pairs_but_retains_wire_and_zero_effect() {
+        let mut bytes = Vec::new();
+        int(&mut bytes, 10);
+        int(&mut bytes, -7);
+        for i in 0..4 {
+            int(&mut bytes, 1);
+            pair(&mut bytes, 100 + i, -20 - i as i32);
+        }
+        int(&mut bytes, -9);
+        int(&mut bytes, 2);
+        bytes.extend(u32::MAX.to_le_bytes());
+        bytes.push(1);
+        bytes.extend(u32::MAX.to_le_bytes());
+        bytes.push(0);
+        int(&mut bytes, 1);
+        bytes.extend(0xdeadbeefu32.to_le_bytes());
+        bytes.push(1);
+        bytes.push(1);
+        int(&mut bytes, i32::MIN);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 7,
+        };
+        let (value, used, items) = Gold::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 7));
+        assert_eq!(value.wire_version, 10);
+        assert_eq!(
+            value.deprecated_building_faith_purchase,
+            [
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: true
+                },
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: false
+                },
+            ]
+        );
+        assert_eq!(
+            value.deprecated_unit_faith_purchase,
+            [HashValue {
+                definition_hash: 0xdeadbeef,
+                value: true
+            }]
+        );
+        assert!(value.building_faith_purchase_enabled.is_empty());
+        assert!(value.unit_faith_purchase_enabled.is_empty());
+        assert_eq!(
+            value.faith_purchase_read_effect(),
+            FaithPurchaseReadEffect::ZeroForEachDefinitionRegistryUnknown
+        );
+        assert!(value.can_purchase_districts);
+        assert_eq!(value.gold_from_citizens, i32::MIN);
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Gold::decode_prefix(&bytes[..n], limits).is_err(), "{n}");
+        }
+        assert_eq!(
+            Gold::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 6,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut bad = bytes.clone();
+        bad[68] = 2;
+        assert_eq!(Gold::decode_prefix(&bad, limits), Err(Error::InvalidBool));
+        for version in [9i32, 12] {
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Gold::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 11,
+                    actual: version
+                })
+            );
+        }
+        let current = Gold::decode(&gold_bytes(), Limits::default()).unwrap();
+        assert_eq!(
+            current.faith_purchase_read_effect(),
+            FaithPurchaseReadEffect::PresentPairs
+        );
+        assert!(current.deprecated_building_faith_purchase.is_empty());
+        assert_eq!(current.encode(Limits::default()).unwrap(), gold_bytes());
     }
     #[test]
     fn culture16_scalar_default_and_independent_nested_versions() {
