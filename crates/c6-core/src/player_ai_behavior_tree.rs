@@ -616,8 +616,10 @@ mod tests {
                     .collect(),
             })
             .collect();
-        let mut value = BehaviorTreeManager::default();
-        value.player_id = -1;
+        let mut value = BehaviorTreeManager {
+            player_id: -1,
+            ..BehaviorTreeManager::default()
+        };
         value.blackboard.string_table.entries.push(DataEntry {
             label_hash: u32::MAX,
             indices: [-1; 12],
