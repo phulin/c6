@@ -53,7 +53,10 @@ not a separately instrumented original writer oracle. No trace offsets enter
 production decoding. The report records both corpora and exact source identity.
 No original game code is executed by this audit.
 
-The next Player boundary is the inline Unit/Feature/Continent boolean hash
-arrays, followed by 15 AI blocks. Full Player/world import, exact gameplay state,
+The next Player boundary is conditional: `m_bWasEverAlive` at Player+0x278
+(the value of the bool archive wrapper at +0x268) is saved as header boolean
+index 1 by call `0x2b4ef3d`. The check at `0x2b4f1bc` jumps to `0x2b4f413`
+when false, skipping the Unit/Feature/Continent boolean hash arrays and all
+15 AI blocks. These blocks are present when the flag is true. Full Player/world import, exact gameplay state,
 actions and turns remain unsupported. Unknown save bytes remain unclassified
 and unmasked; the recorded raw Save→Load difference remains 89,198 bytes.
