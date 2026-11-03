@@ -1,4 +1,6 @@
-//! Current Linux XP2 City service-component wire records, not live-state application.
+//! Bounded Linux XP2 City service-component wire records, not live-state application.
+//! Resources admits7/10 with explicit omitted-list effects; other components
+//! retain their separately checked current versions.
 //! Target SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! W/R: Religion 0x28c28e0/0x28c29b0, Resources 0x28c6190/0x28c6270,
 //! Combat 0x2871980/0x2871a10, Trade 0x28c71e0/0x28c73f0,
@@ -29,6 +31,7 @@ pub enum Error {
     Truncated,
     Version { expected: i32, actual: i32 },
     InvalidBool,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
 }
@@ -179,20 +182,57 @@ impl<T: Wire> Wire for Vec<T> {
         Ok(())
     }
 }
+macro_rules! read_field {
+    ($ty:ty, $r:expr, $version:expr) => {
+        <$ty as Wire>::read($r)
+    };
+    ($ty:ty, $r:expr, $version:expr, $first:literal, $last:literal) => {
+        if ($first..=$last).contains(&$version) {
+            <$ty as Wire>::read($r)
+        } else {
+            Ok(<$ty as Default>::default())
+        }
+    };
+}
+macro_rules! write_field {
+    ($value:expr, $ty:ty, $w:expr, $version:expr) => {
+        $value.write($w)
+    };
+    ($value:expr, $ty:ty, $w:expr, $version:expr, $first:literal, $last:literal) => {
+        if ($first..=$last).contains(&$version) {
+            $value.write($w)
+        } else if $value == &<$ty as Default>::default() {
+            Ok(())
+        } else {
+            Err(Error::UnsupportedLegacyWrite)
+        }
+    };
+}
 macro_rules! record {
-    ($name:ident, $version:expr, { $( $(#[$attr:meta])* $field:ident: $ty:ty ),* $(,)? }) => {
+    ($name:ident, $version:expr $(, legacy $legacy:expr, $version_field:ident)?, { $( $(#[$attr:meta])* $field:ident: $ty:ty $(=> ($first:literal, $last:literal))? ),* $(,)? }) => {
         #[derive(Clone, Debug, Eq, PartialEq)]
-        pub struct $name { $( $(#[$attr])* pub $field: $ty, )* }
+        pub struct $name {
+            $( pub $version_field: i32, )?
+            $( $(#[$attr])* pub $field: $ty, )*
+        }
         impl Wire for $name {
-            const MIN_SIZE: usize = 4 $(+ <$ty as Wire>::MIN_SIZE)*;
+            const MIN_SIZE: usize = {
+                let _minimum_version = $version;
+                $( let _minimum_version = $legacy; )?
+                4 $(+ if true $(&& _minimum_version >= $first && _minimum_version <= $last)? { <$ty as Wire>::MIN_SIZE } else { 0 })*
+            };
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
                 let actual = i32::read(r)?;
-                if actual != $version { return Err(Error::Version { expected: $version, actual }); }
-                Ok(Self { $( $field: <$ty as Wire>::read(r)?, )* })
+                if actual != $version $( && actual != $legacy )? { return Err(Error::Version { expected: $version, actual }); }
+                Ok(Self {
+                    $( $version_field: actual, )?
+                    $( $field: read_field!($ty, r, actual $(, $first, $last)?)?, )*
+                })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
+                $( if self.$version_field != $version { return Err(Error::UnsupportedLegacyWrite); } )?
                 ($version).write(w)?;
-                $( self.$field.write(w)?; )*
+                $( write_field!(&self.$field, $ty, w, $version $(, $first, $last)?)?; )*
                 Ok(())
             }
         }
@@ -202,7 +242,8 @@ macro_rules! record {
                 let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
                 Ok((value, consumed))
             }
-            /// Return the aggregate dynamic-element charge for composing bounded records.
+            /// Also report aggregate dynamic elements consumed by this record.
+            /// Callers can subtract this count from a surrounding record budget.
             pub fn decode_prefix_with_items(bytes: &[u8], limits: Limits) -> Result<(Self, usize, usize), Error> {
                 let mut r = Reader { bytes, pos: 0, budget: Budget { limits, items: 0, allocated: 0 } };
                 let value = Self::read(&mut r)?;
@@ -216,7 +257,7 @@ macro_rules! record {
             pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
                 self.encode_with_items(limits).map(|(bytes, _)| bytes)
             }
-            /// Return encoded bytes and the aggregate dynamic-element charge.
+            /// Also report aggregate dynamic elements charged during encoding.
             pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
                 let mut w = Writer { bytes: Vec::new(), budget: Budget { limits, items: 0, allocated: 0 } };
                 self.write(&mut w)?;
@@ -225,7 +266,6 @@ macro_rules! record {
         }
     };
 }
-
 pub const RELIGION_VERSION: i32 = 5;
 pub const RESOURCES_VERSION: i32 = 10;
 pub const COMBAT_VERSION: i32 = 7;
@@ -264,13 +304,44 @@ record!(Religion, RELIGION_VERSION, {
  religious_combat_bonus:i32, extra_religious_heal:i32, religion_ignore_pressure:bool,
  religion_ignore_combat:bool, num_extra_promotions:i32, previous_real_religion_hash:u32,
 });
-record!(Resources, RESOURCES_VERSION, {
- city_id:CityId, harvest_bonus_modifier:i32, resource_yield_by_count:Vec<HashValue<i32>>,
- yield_by_number_of_resources:Vec<HashValue<i32>>, extra_accumulation_modifier:i32,
+record!(Resources, RESOURCES_VERSION, legacy 7, wire_version, {
+ city_id:CityId, harvest_bonus_modifier:i32, resource_yield_by_count:Vec<HashValue<i32>> => (9, 10),
+ yield_by_number_of_resources:Vec<HashValue<i32>> => (10, 10), extra_accumulation_modifier:i32,
  extra_accumulation_for_strategic_diversity_modifier:i32, extra_amenity_modifier:i32,
  extra_accumulation_terrain_modifier:Vec<HashValue<i32>>,
- extra_accumulation_specific_resource_modifier:Vec<HashValue<i32>>,
+ extra_accumulation_specific_resource_modifier:Vec<HashValue<i32>> => (8, 10),
 });
+/// Missing wire pairs do not describe an empty effective definition array.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResourceListReadEffect {
+    PresentPairs,
+    ZeroResetDefinitionCountUnknown,
+    ZeroResetByNativeInitializeDefinitionCountUnknown,
+    ZeroForEachDefinitionRegistryUnknown,
+}
+impl Resources {
+    pub fn resource_yield_by_count_effect(&self) -> ResourceListReadEffect {
+        if self.wire_version == 7 {
+            ResourceListReadEffect::ZeroResetDefinitionCountUnknown
+        } else {
+            ResourceListReadEffect::PresentPairs
+        }
+    }
+    pub fn yield_by_number_of_resources_effect(&self) -> ResourceListReadEffect {
+        if self.wire_version == 7 {
+            ResourceListReadEffect::ZeroResetByNativeInitializeDefinitionCountUnknown
+        } else {
+            ResourceListReadEffect::PresentPairs
+        }
+    }
+    pub fn specific_resource_accumulation_effect(&self) -> ResourceListReadEffect {
+        if self.wire_version == 7 {
+            ResourceListReadEffect::ZeroForEachDefinitionRegistryUnknown
+        } else {
+            ResourceListReadEffect::PresentPairs
+        }
+    }
+}
 record!(Combat, COMBAT_VERSION, {
  outer_defense_strength_modifier:i32, inner_defense_strength_modifier:i32,
  ranged_strike_strength_modifier:i32, siege_protection:bool, anti_air_defense_bonus:i32,
@@ -446,6 +517,104 @@ mod tests {
             }
             v
         }};
+    }
+    #[test]
+    fn resources7_omitted_lists_keep_proven_initialization_effects() {
+        let mut bytes = Vec::new();
+        ints(&mut bytes, &[7]);
+        id(&mut bytes);
+        ints(&mut bytes, &[-1, 31, 32, 33]);
+        pairs(&mut bytes, 44);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        let (value, used, items) = Resources::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 2));
+        assert_eq!(value.wire_version, 7);
+        assert_eq!(
+            (
+                value.city_id.owner,
+                value.city_id.component_type,
+                value.city_id.id
+            ),
+            (-7, 123, u32::MAX)
+        );
+        assert_eq!(
+            (
+                value.harvest_bonus_modifier,
+                value.extra_accumulation_modifier,
+                value.extra_accumulation_for_strategic_diversity_modifier,
+                value.extra_amenity_modifier
+            ),
+            (-1, 31, 32, 33)
+        );
+        assert!(value.resource_yield_by_count.is_empty());
+        assert!(value.yield_by_number_of_resources.is_empty());
+        assert!(value
+            .extra_accumulation_specific_resource_modifier
+            .is_empty());
+        assert_eq!(
+            value.resource_yield_by_count_effect(),
+            ResourceListReadEffect::ZeroResetDefinitionCountUnknown
+        );
+        assert_eq!(
+            value.yield_by_number_of_resources_effect(),
+            ResourceListReadEffect::ZeroResetByNativeInitializeDefinitionCountUnknown
+        );
+        assert_eq!(
+            value.specific_resource_accumulation_effect(),
+            ResourceListReadEffect::ZeroForEachDefinitionRegistryUnknown
+        );
+        assert_eq!(
+            value.extra_accumulation_terrain_modifier,
+            [
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: 44
+                },
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: -44
+                }
+            ]
+        );
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(
+                Resources::decode_prefix(&bytes[..n], limits).is_err(),
+                "{n}"
+            );
+        }
+        assert_eq!(
+            Resources::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [6i32, 8, 9, 11] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Resources::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 10,
+                    actual: version
+                })
+            );
+        }
+        let current = Resources::decode(&resources(), Limits::default()).unwrap();
+        assert_eq!(
+            current.resource_yield_by_count_effect(),
+            ResourceListReadEffect::PresentPairs
+        );
+        assert_eq!(current.encode(Limits::default()).unwrap(), resources());
     }
     #[test]
     fn service_records_nonempty_source_fixtures_and_refusals() {
