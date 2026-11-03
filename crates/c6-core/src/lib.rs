@@ -352,3 +352,5 @@ pub mod player_ai_control;
 pub mod player_tail;
 
 pub mod player_ai_influence_map;
+
+pub mod player_ai_culture;
