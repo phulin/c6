@@ -1,0 +1,122 @@
+{
+  "schema": "c6-linux-domain-reconstruction-comparison-v1",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "profile_sha256": "b8fcda058c1ff086e51ab9911cc81d00b58919cde3cb43ab6aca8ecd4d92c2e3",
+  "candidate_source_commit": "60507af3f3e434394d9716592789d0a9412e1ce7",
+  "candidate_sha256": "e899e4d95b4e0ef9e0ab2067cc3b6544b236ccb7e8641104730623b15dff5816",
+  "manifest_sha256": "2049aa23e0ec76e32010a5e30dd4d258149ad56da3cc4b1835184efedc6edb31",
+  "runtime_sha256": "28d4956c9e0ee0a6ab9ce78a8da0c095410f47fade0066589d34c880ea17475a",
+  "prepared_sha256": "841053624492d211687446c22a1825f99439adacf44137c8e4fa9a2ec2a6100d",
+  "native_metadata_sha256": "6e417c797d1e23cddb3361faddace2724c8f0fa8bed6a65b1557521379186980",
+  "core_controls": [
+    {
+      "role": "internal_before",
+      "filename": "before.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "raw_differences_from_before": 0
+    },
+    {
+      "role": "internal_control",
+      "filename": "control.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "raw_differences_from_before": 0
+    },
+    {
+      "role": "internal_after",
+      "filename": "after.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "raw_differences_from_before": 0
+    },
+    {
+      "role": "internal_repeat",
+      "filename": "after-repeat.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "raw_differences_from_before": 0
+    },
+    {
+      "role": "outer_save",
+      "filename": "save.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "raw_differences_from_before": 0
+    },
+    {
+      "role": "outer_repeat",
+      "filename": "repeat.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "raw_differences_from_before": 0
+    }
+  ],
+  "owner_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "owner_trace_gzip_sha256": "5dd8fb4dd50a9445f32d34d3cbadf9f0ceacba0670fe57fd50e544fe57e47093",
+  "checker_sha256": "6d2f2c59a9edff329c1594d06f896c1422fa6c9a2e59868f81d9086d49d0a62a",
+  "expected_outputs_used_as_inputs": false,
+  "original_game_execution_by_checker": false,
+  "complete_gameplay_state_actions_turns": false,
+  "unknown_bytes_masked": 0,
+  "historical_raw_save_load_difference_preserved": 89198,
+  "candidate_input_projection_sha256": "38099fffcdc2719ffddf921f59cb9f05c28862596a68a05e8461b930e1867952",
+  "genuine_inputs": {
+    "terrain_definitions": 17,
+    "district_definitions": 28,
+    "building_definitions": 109,
+    "player_slots": 65,
+    "resolved_players": 43,
+    "city_records": 245,
+    "district_records": 1284,
+    "membership_from_original_containers": true
+  },
+  "status": "compared",
+  "plots_accounted": 6996,
+  "comparisons": {
+    "has_city_attributes": {
+      "equal": 6996,
+      "mismatched": 0
+    },
+    "coastal_min_one": {
+      "equal": 6996,
+      "mismatched": 0
+    },
+    "owned_wonder_complete": {
+      "equal": 5287,
+      "mismatched": 0
+    },
+    "owned_raw_mask": {
+      "equal": 5287,
+      "mismatched": 0
+    },
+    "owned_domain_queries": {
+      "equal": 5287,
+      "mismatched": 0
+    }
+  },
+  "fallback_raw_masks": {
+    "unavailable": 1709,
+    "observed_signed_values": {
+      "0": 1709
+    }
+  },
+  "fallback_wonder": {
+    "unavailable": 1709,
+    "observed_values": {
+      "false": 1709
+    }
+  },
+  "diagnostics_path": "/home/phulin/c6/target/linux/domain-metadata-comparisons/6e417c797d1e23cddb3361faddace2724c8f0fa8bed6a65b1557521379186980/2049aa23e0ec76e32010a5e30dd4d258149ad56da3cc4b1835184efedc6edb31.json",
+  "diagnostics_sha256": "94601596aa3067f45c797929de5fa19308f9e79b1374dc0b6b968a92b8a131ce",
+  "first_mismatches": [],
+  "all_owned_attribute_queries_equal": true,
+  "owned_signed_mask_histogram": {
+    "22": 4781,
+    "23": 29,
+    "19": 477
+  },
+  "owned_wonder_true": 33,
+  "full_all_plot_raw_mask_parity": false
+}

@@ -1,12 +1,39 @@
 # Linux serialized movement input integration
 
-The production [adapter](../crates/c6-data/src/city_movement.rs) derives District
-identity, location, parent City, runtime type and completion from real serialized
-state. Its offline comparison matches **3,072 / 3,072 endpoints** in the accepted
-Linux fact control3: 1,282 positive resolutions across 298 distinct Districts and
-1,790 invalid-ID misses. This removes runtime type/completion as calculation
-inputs for this bounded comparison. It does not reconstruct the 257 required
-runtime domain-mask observations or establish complete gameplay state/actions/turns.
+The production [adapter](../crates/c6-data/src/city_movement.rs) independently
+reconstructs **5,287 owned CityAttributes masks and Wonder results**, all equal
+to original Linux native-2 observations, with zero mismatches. All **6,996**
+attribute-presence and coastal(min1) results also match. The
+[strict comparison](../tools/linux/movement_domain_reconstruction_results.py)
+and [report](../evidence/linux/movement-domain-reconstruction-native-2.json)
+retain every plot and signed raw mask. The **1,709** plots without owned
+attributes have explicit unavailable reserved-entry mask/Wonder results;
+observed native zero/false values are preserved, never supplied as calculations.
+Complete gameplay state/actions/turns and all-plot raw-mask parity remain false.
+
+The frozen corrected candidate `e899e4d9…`, source `60507af`, takes only real
+serialized Map/245 City/1,284 District records, actual native Terrain/District/
+Building collections (17/28/109 entries), and all 65 PlayerManager records with
+complete authoritative membership (43 resolved players). Expected coastal,
+Wonder and mask observations never enter its input JSON. Owned masks comprise
+4,781 values of 22, 477 of 19 and 29 of 23; 33 owned Wonder queries are true.
+This does not establish native coverage of every Canal/Bridge rule branch.
+
+The closed capture has actual profile `b8fcda05…`, native metadata `6e417c79…`
+and runtime report `28d4956c…`. The checker verifies the complete prepared/runtime
+configuration, pinned module/host, frozen candidate/archive/source, successful
+fixture and both cleanup boundaries, all six raw Core controls, complete native
+summary and both known RNG streams. All six Core streams are byte-identical
+`ff31f4c5…`, permitting exact reuse of the original owner trace. Its gzip artifact
+is `5dd8fb4d…`; the independently gated decompressed trace is `52872108…`.
+The resulting logical candidate-input projection is `38099fff…`. Full per-plot
+native and calculated outputs remain in content-addressed local diagnostics.
+
+The earlier District-only fact control3 matched **3,072 / 3,072 endpoints**:
+1,282 positive resolutions across 298 Districts and 1,790 invalid-ID misses.
+That bounded result removed runtime type/completion inputs while retaining
+the original domain-mask side inputs; the native-2 result above supersedes that
+mask limitation for owned attributes.
 
 `DistrictPrefix::decode_prefix` consumes the audited first 45 bytes of a District
 v15 record whose boundary was supplied independently by original serialization.
@@ -88,7 +115,7 @@ all original Map plots and independently compares water at native endpoints.
 The [follow-up report](../evidence/linux/movement-domain-derived-queries.json)
 records 6,996 calculated coastal/neighbor queries, including 243 true coastal
 results, and 3,072 / 3,072 water endpoints equal to original control3. Coastal,
-neighbor and Wonder results have no new native runtime comparison here. Its
+neighbor and Wonder results had no new native runtime comparison at that checkpoint. Its
 candidate was built from a clean archive of `5d2dfc7` at
 `/tmp/c6-movement-domain-5d2dfc7`; isolated data tests pass 18 with four explicit
 fixture-dependent skips, and strict all-target data clippy passes.
@@ -99,11 +126,11 @@ carry FreeEmbark, not Canal/InternalOnly. The data registry importer contains no
 Building collection loader/order proof. The newer complete City wire codec
 preserves Building location/pillage hashes, but it does not prove the original
 Building index order. That order is still required to use the newly closed
-Wonder-completion calculation. Therefore zero complete masks are claimed
-calculated or compared here. SQL table iteration is not an alternative native
-collection export.
+Wonder-completion calculation. Those original packets alone could not support
+complete masks; the separate native-2 export supplies the required genuine
+metadata. SQL table iteration is not an alternative native collection export.
 
-The minimal next export for the sole original-code runner is:
+The separate native-2 export supplies:
 
 - Complete actual PlayerManager mapping for all 65 slots, independently of owners:
   slot, GetPlayerToIndex entry, IsValid result, GetValidPlayer nonnull result and
@@ -140,7 +167,7 @@ call policies or change gameplay. Its proposed metadata arrays carry explicit
 `query`, `index`, `hash`, actual property values and XP2 presence per definition.
 This plan does not authorize an original execution by the offline adapter task.
 
-The next candidate accepts the genuine `d090532` exporter schema through typed
+The corrected candidate accepts the genuine `d090532` exporter schema through typed
 `NativeDomainDefinitions`, `NativeTerrainDefinitions` and `WorldInstances`.
 Definitions require complete Count/At order, actual collection index, original
 Find(hash) and Find(query) results. The bounded importer verifies these against
@@ -168,13 +195,13 @@ Any missing prerequisite aborts without a partial output or skipped plot.
 Absent CityAttributes produce an explicit absent mask entry; this is distinct
 from an unsupported plot. The source fixture tests the full composition with
 different container/member owners and stale requested generations. This does not
-replace the still-pending original all-plot comparison.
+extend the stated native coverage to reserved-entry fallback state.
 The follow-up candidate also represents auxiliary Wonder results as absent for
 plots without owned attributes. A direct Wonder query there returns
 MissingWonderCompletion: original GetCityAttributes may return reserved entry0,
 whose later mutations have not been closed. Neither an absent mask nor an absent
 Wonder result may be converted to a zero/false native fallback answer. A future
-comparison must report those fallback queries as unavailable explicitly.
+comparison reports those fallback queries as unavailable explicitly.
 
 The [historical reconstruction manifest](../evidence/linux/movement-domain-reconstruction-candidate-65d71d4.json)
 freezes source `65d71d4`, clean Git archive SHA-256 `399a64bc…`, and candidate
