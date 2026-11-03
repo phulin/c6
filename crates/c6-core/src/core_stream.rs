@@ -370,8 +370,12 @@ impl<'a> ThroughPlayerManager<'a> {
                 .min(shared.max_items - core.items_used),
         };
         let (player_prefix, player_bytes, player_items) =
-            crate::core_player::Prefix::decode_player_manager_conditional(
-                core.tail, effective, binding, contexts,
+            crate::core_player::Prefix::decode_player_manager_conditional_at(
+                core.tail,
+                effective,
+                binding,
+                contexts,
+                core.map_end,
             )
             .map_err(ThroughPlayerManagerError::Player)?;
         let consumed = core
