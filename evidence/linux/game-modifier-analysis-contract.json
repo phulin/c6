@@ -1,0 +1,2559 @@
+{
+  "schema": "c6-linux-game-modifier-analysis-contract-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "method": "Read-only exact ELF method/call/PLT-slot/version and matching DWARF audit",
+  "writer": {
+    "address": "0x20e3660",
+    "size": 997,
+    "version": 17
+  },
+  "reader": {
+    "address": "0x20e3a50",
+    "size": 1523
+  },
+  "methods": [
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcc140",
+      "size": 7,
+      "name": "GameCore::Player::Instance::GetID() const",
+      "sha256": "e997d06cf0d3f9b3bb89701ec15a7b1b096198fdc4b0dc87fc0ca29c37f6dadc"
+    },
+    {
+      "address": "0x1fcc150",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+      "sha256": "9731ca1d2959dc0f406a684267a29d425c9bf7ea2f127425123508fbc2ed2d3b"
+    },
+    {
+      "address": "0x1fcc1a0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)",
+      "sha256": "c6cf9d3175d5134bd8d7b3d396184fd7b9abd3f7ca364cbdc38a1794ce742775"
+    },
+    {
+      "address": "0x1fcc1b0",
+      "size": 12,
+      "name": "GameCore::Player::Manager::GetPlayer(GameCore::PlayerTypes)",
+      "sha256": "47fe7c239b1abbb63533198084d4b834d08e20f997a7b46ccce8700c65b4a2fb"
+    },
+    {
+      "address": "0x1fcc1c0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)",
+      "sha256": "5edd23b31cc38a2cc74b61c4b33889da2f35c69f9ce10ee24f2899eb7e91af01"
+    },
+    {
+      "address": "0x1fcd740",
+      "size": 32,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::clear()",
+      "sha256": "1c9847eddcf42328846620077a04e7cab3fa7bc7ae77f461c05184f2cc41a2a0"
+    },
+    {
+      "address": "0x1fcd7d0",
+      "size": 5,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::begin() const",
+      "sha256": "5042e5f30d6a690da58e89ba23dbce53117a565d68ae61f3c26261671c92a765"
+    },
+    {
+      "address": "0x1fcd7e0",
+      "size": 4,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "address": "0x1fcdb20",
+      "size": 25,
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)",
+      "sha256": "43f291f25ae0e59e98bf6b96e5341ed0345d1627c75c056bac01ada2cfd2f796"
+    },
+    {
+      "address": "0x1fd1080",
+      "size": 4,
+      "name": "GameCore::Player::ComponentID::GetID() const",
+      "sha256": "4703e829cd2c504bae1968b685216f9f191e08f6e2e2a6f3be0a737a92c43721"
+    },
+    {
+      "address": "0x1fe1f90",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)",
+      "sha256": "441a140d71c552a6ced859e0e9efa0994c519cad451b975cbb5fc13e8025cd3f"
+    },
+    {
+      "address": "0x1fe1fa0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Resource> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Resource> const&)",
+      "sha256": "87ca14d4e4fc124b181ba99258a0860e40ec36d111b53045467e0f01bba6d5d1"
+    },
+    {
+      "address": "0x1fe1fd0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> const&)",
+      "sha256": "b430e29bbc8350689b66d38971c62532dbbe0a9c882dbb96cf258ebacd87b84f"
+    },
+    {
+      "address": "0x1fe2000",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)",
+      "sha256": "8354dc947302541cc1e97c714b223e16c8e9f086c7d09ad77b437291a622809d"
+    },
+    {
+      "address": "0x1fe21f0",
+      "size": 14,
+      "name": "GameCore::Player::ComponentID::ComponentID()",
+      "sha256": "a5184cacf555e2da043cf526b6d3b6116038743d94e93bc28ca61ecea202dbfc"
+    },
+    {
+      "address": "0x1fe2200",
+      "size": 26,
+      "name": "GameCore::City::IInstance::GetComponentID() const",
+      "sha256": "daa8152880488f56c4abaf01bd542858aa6f35fd0a18ebec401d9073ba78057a"
+    },
+    {
+      "address": "0x1fe5ca0",
+      "size": 30,
+      "name": "void Serialization::EnumFromStream<GameCore::PlayerTypes>(Serialization::IStream&, GameCore::PlayerTypes&)",
+      "sha256": "64a2263c6cb95736e735600c61a22e07f12969b393675bb416f45dcabee8ff95"
+    },
+    {
+      "address": "0x1fe5e80",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<bool, bool>(Serialization::IStream&, bool&, int, int&&, bool&&)",
+      "sha256": "57e8e97c7be2741a1dc218f74049b9cf7a99191cffd41785ce1aa9dd4c6518e5"
+    },
+    {
+      "address": "0x1fe6b70",
+      "size": 4,
+      "name": "GameCore::Player::ComponentID::GetOwner() const",
+      "sha256": "eea57f4eeb9f601ec3b1154cc785380880eae152e709e8156a9039bd8e939aa9"
+    },
+    {
+      "address": "0x1fe7900",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(bool const&)",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x1fe81a0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(bool&)",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    },
+    {
+      "address": "0x1ff5700",
+      "size": 44,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::Vector()",
+      "sha256": "20648c93f23bf061670f3db3a143675a7005dc4825da856b487574684cbe0349"
+    },
+    {
+      "address": "0x1ff61f0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><unsigned int, Types::LinearAlloc::Default<1u, 0u> >(Serialization::IStream&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "7afbe9a950c1d79e1fd93aabdaf26e16cf5e89ff7b89de4a62add3a7598b29b9"
+    },
+    {
+      "address": "0x1ff6200",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<unsigned int, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > >(Serialization::IStream&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "db836a9369ae025a9cc36324802e64d01fbfe230f74a28c57f041c41d33813e6"
+    },
+    {
+      "address": "0x1ff6280",
+      "size": 19,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::reserve(unsigned long)",
+      "sha256": "ccc8ffb5b7c4e7bc3603f56555e04b28081b5e33ec9f8f2564611922085ca8ea"
+    },
+    {
+      "address": "0x1ff62a0",
+      "size": 44,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::push_back()",
+      "sha256": "f8781a64edb0f70e84c79f700646c795673685e86d8e15653e0085361ed98988"
+    },
+    {
+      "address": "0x1ff62d0",
+      "size": 21,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::back()",
+      "sha256": "632a345563dd8ea8f5d2cf040d1e684774c41eb0244e0a48577a592a26ccd617"
+    },
+    {
+      "address": "0x1ff62f0",
+      "size": 91,
+      "name": "Serialization::OStream& Serialization::operator<< <unsigned int, Types::LinearAlloc::Default<1u, 0u> >(Serialization::OStream&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "476fbcac3fff471c3959fc4a414507918bb1f6ea71fdf889b874c81a46421ce3"
+    },
+    {
+      "address": "0x1ff6350",
+      "size": 71,
+      "name": "Serialization::SerializeFromSequenceContainer<unsigned int const, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const> eastl::for_each<unsigned int const*, Serialization::SerializeFromSequenceContainer<unsigned int const, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const> >(unsigned int const*, unsigned int const*, Serialization::SerializeFromSequenceContainer<unsigned int const, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const>)",
+      "sha256": "3550beaf4fe9a53c57b5e48302397f9c00fd4e3911cd8145dd4cd86a536af78c"
+    },
+    {
+      "address": "0x1ff63a0",
+      "size": 18,
+      "name": "Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >::end() const",
+      "sha256": "d24556e12caef78b88a8aed299be346071cdddeecbe2745e3719d47202f6db33"
+    },
+    {
+      "address": "0x1ff63c0",
+      "size": 46,
+      "name": "Serialization::SerializeFromSequenceContainer<unsigned int const, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const>::SerializeFromSequenceContainer(Serialization::OStream&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "7fd2b9fa1d7e744e641d8b921c3d9ba728d1b9ae0f8af8ca666892e6ba0e84c1"
+    },
+    {
+      "address": "0x1ff63f0",
+      "size": 8,
+      "name": "Serialization::SerializeFromSequenceContainer<unsigned int const, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> > const>::operator()(unsigned int const&)",
+      "sha256": "c4a2bafd5a2b4e3f2ab880a5b036ef521543e3530632dbc2506a743d23bfe41a"
+    },
+    {
+      "address": "0x1ff8e80",
+      "size": 21,
+      "name": "GameCore::Player::ComponentID::ComponentID(GameCore::Player::ComponentID const&)",
+      "sha256": "574ca5ba9db429a6a5a90e019d12cd702ad1b683b676123b9edeb6e55212c0d6"
+    },
+    {
+      "address": "0x2002480",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)",
+      "sha256": "23f9d1493d61ddb5d8df9b32f1d08543a6eabe7d8b75c1ff9463c7772bc52442"
+    },
+    {
+      "address": "0x20024c0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "dafb3aecb2908606aaceb1a0e7e4829c3b36c03c4127d40bef8cbf7fd7918c6d"
+    },
+    {
+      "address": "0x20024f0",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "f607bba3c44cfadb81e87f8bee69f39e86eb834d2fc0b6ca043bce343e4df2cd"
+    },
+    {
+      "address": "0x2002750",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> const&)",
+      "sha256": "f9c016f8938c1e5bd223d7dc032ddd32298e58b21dcdd57f1371a102854e09c5"
+    },
+    {
+      "address": "0x2002780",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Unit> const&)",
+      "sha256": "474cea602fe4e91719bec7b48293e2dbb2a31c0616e983ff51dc33cf37583f98"
+    },
+    {
+      "address": "0x20030c0",
+      "size": 19,
+      "name": "void Serialization::EnumToStream<GameCore::PlayerTypes>(Serialization::OStream&, GameCore::PlayerTypes const&)",
+      "sha256": "53e00befd8655db0c427919039335f3534f6be53858eb37a84c25490081ba08b"
+    },
+    {
+      "address": "0x2004fc0",
+      "size": 51,
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const",
+      "sha256": "31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038"
+    },
+    {
+      "address": "0x20093f0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><float>(float&)",
+      "sha256": "51003a632d7bc3a8e1c9922c292a112ef2b1fbea2b76377069657aaa9ddc35a3"
+    },
+    {
+      "address": "0x2009400",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(float&)",
+      "sha256": "162448178ea2853cec3bc120666181791a5fcd9db6c09a632121344a61a9c261"
+    },
+    {
+      "address": "0x200de10",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)",
+      "sha256": "1939672915ff2e1e1959ad3cb086cd005b04c5645547e821f3467cc46aec1555"
+    },
+    {
+      "address": "0x200dea0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)",
+      "sha256": "9c052610b9e747d5ba228307932c28b24648909ede4dfa6660a7d4073661d79c"
+    },
+    {
+      "address": "0x200e200",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "175d86dbe583455f87afaeec42db117ecf32444a8129b3fbd0f1e2306ca31abc"
+    },
+    {
+      "address": "0x200e300",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Civic> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Civic> const&)",
+      "sha256": "7dffe823af43a1ef66fd8005148909a935ee64615854520f37db17064376084b"
+    },
+    {
+      "address": "0x200e340",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Civic> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Civic> const&)",
+      "sha256": "30966cd539108e54de0b986564596f601bea6de6428eb6fe4e1e72eaa9c6189f"
+    },
+    {
+      "address": "0x2035490",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatWorkObjectType> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatWorkObjectType> const&)",
+      "sha256": "8aefd90e0f2647e88fa7dc3d124a56baff5d6a5e7819d1054c8f39f3919367c3"
+    },
+    {
+      "address": "0x2035630",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Policy> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Policy> const&)",
+      "sha256": "d437eb0126eb7cfa477b825d656e1ba8961da5ac2c579f6f66aec4831c68617e"
+    },
+    {
+      "address": "0x2035660",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GovernmentSlot> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GovernmentSlot> const&)",
+      "sha256": "e0bfcbde489df2d82efc9fe9edb5035da3bfcf5fcf3fc4c1570a9f15e3d13923"
+    },
+    {
+      "address": "0x20356c0",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GovernmentSlot> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GovernmentSlot> const&, int, int&&, int&&)",
+      "sha256": "88e15c0ce1f66c1edd265340f3ab88585e4d102b4a7a138eb77cb79eaa68fb39"
+    },
+    {
+      "address": "0x2035750",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Improvement> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Improvement> const&)",
+      "sha256": "67cbdda95ab1e62dd546173c095c798de3dfc38b6c45cfeee8e4d3d70794c250"
+    },
+    {
+      "address": "0x2035780",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Improvement> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Improvement> const&)",
+      "sha256": "022092141a2bc75b9de63a7cb602f1169131ad2a3a53e9ad03abc2e9be64792d"
+    },
+    {
+      "address": "0x20e3660",
+      "size": 997,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::AI::GameModifierAnalysis const&)",
+      "sha256": "4b572f3b68823acb99ec5c237a8a255934a93cd3cd8a96196d5f4c01b5412f5e"
+    },
+    {
+      "address": "0x20e3a50",
+      "size": 1523,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::AI::GameModifierAnalysis&)",
+      "sha256": "18c5e8104f560248549006784219bddca5beab68d5326cdc2fe169c8bc8c2a89"
+    },
+    {
+      "address": "0x20e7cc0",
+      "size": 156,
+      "name": "GameCore::AI::GameModifierAnalysis::GameModifierAnalysis()",
+      "sha256": "84f2a1bd368775116b15b067617ca9b271d8ee9ccc1d92c0c3940a8fc1809e4d"
+    },
+    {
+      "address": "0x20e80d0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Belief> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Belief> const&)",
+      "sha256": "0ca83f046480dcd37cbda7d104720efaeb6a8cc9689c7f16e41167417a67f25e"
+    },
+    {
+      "address": "0x20e8100",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Difficulty> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Difficulty> const&)",
+      "sha256": "3b29c91d0a99feb27b4807e5d2e35f6b4dfe0b1c9995bc14728b955435e4e7de"
+    },
+    {
+      "address": "0x20e8130",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::MinorCivBonus> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::MinorCivBonus> const&)",
+      "sha256": "a560edd5df226a25c3074ae777c6e5a5a0e6e45f73a7418ebc348b671fa69bf8"
+    },
+    {
+      "address": "0x20e8160",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "2a0ffdb40f495fa6c05ce7a9f0b19767be589f826a14de8ba7b086d3e7234811"
+    },
+    {
+      "address": "0x20e8190",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Governor> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Governor> const&)",
+      "sha256": "aed00456573c6f22bf893e0b97c3a08d26eb8e918347b7ffd9956bfb92863261"
+    },
+    {
+      "address": "0x20e81c0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Government> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Government> const&)",
+      "sha256": "3dfc2e8e724fb95f48ccbf1e15fd73518e03f352fb8942902768d0ae24938ec2"
+    },
+    {
+      "address": "0x20e81f0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Project> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Project> const&)",
+      "sha256": "12545b05a4862e4985988aeca84dd2bc2b599740b47b5a8d5b007730b4ec318e"
+    },
+    {
+      "address": "0x20e8220",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&)",
+      "sha256": "be5fa6e8bd93ef5c4812c3ef44ca17df213d840b557521d1d14456415db16034"
+    },
+    {
+      "address": "0x20e8250",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> const&)",
+      "sha256": "49d50d829c3dd5a764b13b4395e63b81560960c8e05bc10a0a5ee8208d488cf1"
+    },
+    {
+      "address": "0x20e8280",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)",
+      "sha256": "c3455c01ec6f10476e969f484c0b179f0946eee1faa29479657134922725224d"
+    },
+    {
+      "address": "0x20e82b0",
+      "size": 19,
+      "name": "void Serialization::EnumToStream<GameCore::ReligionTypes>(Serialization::OStream&, GameCore::ReligionTypes const&)",
+      "sha256": "50ff09c522f898ea8aa2a28e13e2baa91561357e0924d58c26fc755e3623e02e"
+    },
+    {
+      "address": "0x20e82d0",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <float>(float const&)",
+      "sha256": "fcd58fecc874fad08c98ce8808408c091b35b1b461e1c1f99d801848224e8d07"
+    },
+    {
+      "address": "0x20e82e0",
+      "size": 26,
+      "name": "GameCore::Unit::IInstance::GetComponentID() const",
+      "sha256": "4dd57984270bbcfbc8ea3273d4dce7454e1a80b27cc975a263084961359155b2"
+    },
+    {
+      "address": "0x20e8300",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Belief> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Belief> const&)",
+      "sha256": "cce3a95b3aadb3e96ed3075085c48dec059c4e3757e6ae90a950255d452ebcc7"
+    },
+    {
+      "address": "0x20e8330",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> const&, int, int&&, int&&)",
+      "sha256": "26f29cbd4d46edfb44ca38ea5263deeb2abe8f3ca64a48186353953dab672cdf"
+    },
+    {
+      "address": "0x20e8360",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Difficulty> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Difficulty> const&, int, int&&, int&&)",
+      "sha256": "f57452b399b38f6de2bf9b452e25829f9b37a3ef2c783b80a87c884d2a22b80b"
+    },
+    {
+      "address": "0x20e8390",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::MinorCivBonus> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::MinorCivBonus> const&, int, int&&, int&&)",
+      "sha256": "d48ac53327348609697a4a6593aed7d19a00bfff514eb002c691a55f71a87758"
+    },
+    {
+      "address": "0x20e83c0",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "f845c681d586b1747a7ef50ff6e12d05359e9200b67d2b8f0a060216e7c0aa90"
+    },
+    {
+      "address": "0x20e83f0",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Yield> const&)",
+      "sha256": "9edaab095db829ce45ed51319d3bb74c4a7a8814ebe823d651c17d7ef93c0a7d"
+    },
+    {
+      "address": "0x20e8420",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Resource> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Resource> const&, int, int&&, int&&)",
+      "sha256": "7d0acf6ad0030647e2bec720ff97ac04ea14594dab79bbd7985537bac418ff97"
+    },
+    {
+      "address": "0x20e8450",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatWorkObjectType> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatWorkObjectType> const&, int, int&&, int&&)",
+      "sha256": "4a1d320026bd77544c5eb6464822fba57bd02afdeb86b71e4b4cb1ab8a072e8a"
+    },
+    {
+      "address": "0x20e8480",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Policy> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Policy> const&, int, int&&, int&&)",
+      "sha256": "75f9a48d9cc04a239afd4cc3515e4b2167e407e9d51be3bc444f184ec82888e2"
+    },
+    {
+      "address": "0x20e84b0",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Governor> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Governor> const&, int, int&&, int&&)",
+      "sha256": "17880c73e040eb2a18cfbc74947ae009743f1a1c053fb3bf082605d9a44920d5"
+    },
+    {
+      "address": "0x20e84e0",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Government> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Government> const&, int, int&&, int&&)",
+      "sha256": "f3a0278f1099b0b131d34616a4ce4c825028700dc12064484fdf42681af0544a"
+    },
+    {
+      "address": "0x20e8510",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Project> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Project> const&, int, int&&, int&&)",
+      "sha256": "a99b1b7d3ced8d822395cbb4bd9976243d8ccd5d283f6653e89bd1d2fc732f01"
+    },
+    {
+      "address": "0x20e8540",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> const&, int, int&&, int&&)",
+      "sha256": "32b85a2e10f7cb646271a9f1f0f01de7d6ead07013054501fb4697088ae643da"
+    },
+    {
+      "address": "0x20e8570",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> const&, int, int&&, int&&)",
+      "sha256": "b659a0a0524036e5e077c9d8aab9745f71dd42b347b8f5b1278cbde1b05bd21b"
+    },
+    {
+      "address": "0x20e85a0",
+      "size": 45,
+      "name": "int Serialization::ReadHashToIndexVersioned<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&, int, int&&, int&&)",
+      "sha256": "8091556da083c71a30c3779d34b57ae2348eb98a58c3c541ce9ee06df6087c5c"
+    },
+    {
+      "address": "0x20e85d0",
+      "size": 30,
+      "name": "void Serialization::EnumFromStream<GameCore::ReligionTypes>(Serialization::IStream&, GameCore::ReligionTypes&)",
+      "sha256": "05282117b7d1592079ef112127dc4d29b42d63811255e76a929f31519fe4a442"
+    },
+    {
+      "address": "0x20e85f0",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::Player::ComponentID, GameCore::Player::ComponentID>(Serialization::IStream&, GameCore::Player::ComponentID&, int, int&&, GameCore::Player::ComponentID&&)",
+      "sha256": "326beb2673b34d4b8fed34479e9d113a98e2a46d692e18b36c09d07c48acf535"
+    },
+    {
+      "address": "0x20e8bd0",
+      "size": 19,
+      "name": "GameCore::AI::CollectionIndexData::CollectionIndexData()",
+      "sha256": "fb450f1646048d7c76ef02d8fcb9a3895c65b5fa60dd87f37c5e77265dbc916d"
+    },
+    {
+      "address": "0x20e9e30",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(float const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2144990",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><short>(short&)",
+      "sha256": "fcb9926377812eb599dd6355ba5034296d824db7b711b95bf20e7d6805cf1b15"
+    },
+    {
+      "address": "0x2144b50",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <short>(short const&)",
+      "sha256": "b3a4ba0fe53a97a6f965db0493686a4226c6c361fae059c0f8d8b9ad2ae39fc0"
+    },
+    {
+      "address": "0x2166b20",
+      "size": 5,
+      "name": "GameCore::Player::ComponentID::GetType() const",
+      "sha256": "95ee76ad5ef3f7beb741691cc3bd97bc5001575b0174515a9c173973dbfcba98"
+    },
+    {
+      "address": "0x21f17e0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetResourceDefinitions()",
+      "sha256": "52a02d1fa4fec90cdc9212584a7305450af2c168f7b9839abafa2548916281e3"
+    },
+    {
+      "address": "0x22136d0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetBeliefDefinitions()",
+      "sha256": "3571d14d6a18c1fddb1c8b6de412730b45cc3cd9f646c61cf5c1e546714403a8"
+    },
+    {
+      "address": "0x2213730",
+      "size": 16,
+      "name": "GameCore::Definitions::GetBuildingDefinitions()",
+      "sha256": "d2851eafc27b252aa8bd74a7eb2b970b3e1d7e86b5136eb91d59256f6c6bdb3c"
+    },
+    {
+      "address": "0x2213850",
+      "size": 16,
+      "name": "GameCore::Definitions::GetCivicDefinitions()",
+      "sha256": "21d827e1b18ce1beb4961b2ac50ad247dbf0e2ad65fce7a36d2398946ffc8d96"
+    },
+    {
+      "address": "0x2213990",
+      "size": 16,
+      "name": "GameCore::Definitions::GetDifficultyDefinitions()",
+      "sha256": "17c0a12675d3b30b1f744519a4e850397a3703c1d290094ce22f7dc80da7ab5c"
+    },
+    {
+      "address": "0x2213a70",
+      "size": 16,
+      "name": "GameCore::Definitions::GetDistrictDefinitions()",
+      "sha256": "76069daea712b3cc371592979e8763a1242553529523d5162fe6887ed2e45320"
+    },
+    {
+      "address": "0x2213bf0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetFeatureDefinitions()",
+      "sha256": "645198b6de478f971e361793fcc0a551924cfd4946c0ad862e75c4a6e1242597"
+    },
+    {
+      "address": "0x2213cf0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetGovernmentDefinitions()",
+      "sha256": "95b7ec070eb4981e30866ec36b79de752cdfddf07ddd75c40a8d88829556334c"
+    },
+    {
+      "address": "0x2213d30",
+      "size": 16,
+      "name": "GameCore::Definitions::GetGovernmentSlotDefinitions()",
+      "sha256": "63a1354854ad39f2d7b019ebe2f6325ea264633e16bf3474d9a5ab233f2238a0"
+    },
+    {
+      "address": "0x2213d50",
+      "size": 16,
+      "name": "GameCore::Definitions::GetGovernorDefinitions()",
+      "sha256": "b680f731edd8835d65717998b214c74416b8cc21e7f205b0b5a4a1dc1c908f39"
+    },
+    {
+      "address": "0x2213df0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetGreatPersonClassDefinitions()",
+      "sha256": "0a6c18917fd2dc9988dc8f248f85f72e2e92776310b97178aac414c6fb91e4cf"
+    },
+    {
+      "address": "0x2213e70",
+      "size": 16,
+      "name": "GameCore::Definitions::GetGreatWorkObjectTypeDefinitions()",
+      "sha256": "a0b4005a870170fa9dd82a638d966a5517956a3f2ebd4b12764e09e19196c0e8"
+    },
+    {
+      "address": "0x2213ee0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetImprovementDefinitions()",
+      "sha256": "e5dcaa6a4c7c61621d62bae40c50d047135862a38dc6b9ca106920b44c38c0b6"
+    },
+    {
+      "address": "0x2214070",
+      "size": 16,
+      "name": "GameCore::Definitions::GetMinorCivBonusDefinitions()",
+      "sha256": "7d1bb1ab18ce56823d5c30f1e0053213a7571e90a8c5d493a850b265fe6232f2"
+    },
+    {
+      "address": "0x2214210",
+      "size": 16,
+      "name": "GameCore::Definitions::GetPolicyDefinitions()",
+      "sha256": "b350e20390066f99aaef504608ef4d85090e6036f6f77c912d2ac3ba62ece73a"
+    },
+    {
+      "address": "0x2214260",
+      "size": 16,
+      "name": "GameCore::Definitions::GetProjectDefinitions()",
+      "sha256": "80b5cb4f9704c13ee0f21892c1f7caf955b6d63d1d21622d620b0dc30de8826a"
+    },
+    {
+      "address": "0x22146f0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetTechnologyDefinitions()",
+      "sha256": "e5f6b9ccc77ab304df2b37bd3addefa140b79bc50eacb658aecabeef2814251e"
+    },
+    {
+      "address": "0x22147d0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetUnitDefinitions()",
+      "sha256": "50972c441f7d9688de53a6ce66c2ea294e57945c392776946ce3ca7419bc4c65"
+    },
+    {
+      "address": "0x2214890",
+      "size": 16,
+      "name": "GameCore::Definitions::GetUnitOperationDefinitions()",
+      "sha256": "81ad939829e9d0aef09dc6a8231f2738c147082b41f1061727f64f0cc3dbb701"
+    },
+    {
+      "address": "0x22148c0",
+      "size": 16,
+      "name": "GameCore::Definitions::GetUnitPromotionClassDefinitions()",
+      "sha256": "38fbd5dcad128f86109c71156097e6e678cc15d6148163d2a3267b5aaebe9494"
+    },
+    {
+      "address": "0x2214970",
+      "size": 16,
+      "name": "GameCore::Definitions::GetYieldDefinitions()",
+      "sha256": "b8ca8e6827d817397e9b8e220661a4b605b3b138aa25525476db4f02761e9218"
+    },
+    {
+      "address": "0x26b87a0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::AI::GameModifierAnalysis, GameCore::AI::BehaviorTree::BehaviorTree>(Serialization::IStream&, FAutoVariable<GameCore::AI::GameModifierAnalysis, GameCore::AI::BehaviorTree::BehaviorTree>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x26b88e0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::AI::GameModifierAnalysis, GameCore::AI::BehaviorTree::BehaviorTree>(Serialization::OStream&, FAutoVariable<GameCore::AI::GameModifierAnalysis, GameCore::AI::BehaviorTree::BehaviorTree> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x286dc00",
+      "size": 57,
+      "name": "GameCore::City::CManager::GetCity(GameCore::Player::ComponentID const&)",
+      "sha256": "5b7fb30d1c1ed64fa169933871cb06809ecf1f1b38a261a78bea94956b8fb281"
+    },
+    {
+      "address": "0x286e0b0",
+      "size": 93,
+      "name": "GameCore::City::CManager::GetDistrict(GameCore::Player::ComponentID const&)",
+      "sha256": "c1691db37b45fa3441151d0fc7494058a260d898fcba8ac052721df8728f27f2"
+    },
+    {
+      "address": "0x290b8a0",
+      "size": 16,
+      "name": "GameCore::Context::Globals::GetMap()",
+      "sha256": "f9cc044c211daf36f0dded8b1f757467b802002036f72bcadb87134ff66be7a8"
+    },
+    {
+      "address": "0x290b930",
+      "size": 22,
+      "name": "GameCore::Context::Globals::GetPlayer(GameCore::PlayerTypes)",
+      "sha256": "4f70fef1af78b8dea71c792f71f54727722e3e9f4509f9e764e536223739daaf"
+    },
+    {
+      "address": "0x291d3b0",
+      "size": 53,
+      "name": "GameCore::District::Instance::GetComponentID() const",
+      "sha256": "375fcfbe3325e22c56a6e49fa6540a14e874f5b423b91596f339746d9102dd58"
+    },
+    {
+      "address": "0x2b30480",
+      "size": 7,
+      "name": "GameCore::Player::Instance::IsInitialized() const",
+      "sha256": "e1f84be58445280e096e10dd36a7c465c90745a4aaf7dcca8ce6a319e21c5d56"
+    },
+    {
+      "address": "0x2b53260",
+      "size": 8,
+      "name": "GameCore::Player::Manager::GetInstance()",
+      "sha256": "3767e99c9e2a663768e78a24c0669349430acf05be01ce1ee8f273e1f62679e7"
+    },
+    {
+      "address": "0x2c15810",
+      "size": 93,
+      "name": "GameCore::Unit::CManager::GetUnit(GameCore::Player::ComponentID const&)",
+      "sha256": "39ba0dbaa5365853cdddb366d64b750bb340c938b431d9c10fef5c5a57e29db9"
+    },
+    {
+      "address": "0x2c9aba0",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::PlayerTypes const&)",
+      "sha256": "e3aa2b85edbfcad11d2fe4b8d720bad7d662e88d8461f7994ba25444ae60c6d1"
+    },
+    {
+      "address": "0x2c9abd0",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::PlayerTypes&)",
+      "sha256": "2cc19dccb1ce5ba3727486d694c79a0b5c90c1d7658cf975ce07ade2572a6ee7"
+    },
+    {
+      "address": "0x2c9ac60",
+      "size": 95,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::ComponentID const&)",
+      "sha256": "bd29bea4faf93d9428367ceceb01e636f498a5a209f6d011e3a69664a921fdff"
+    },
+    {
+      "address": "0x2c9acc0",
+      "size": 76,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::ComponentID&)",
+      "sha256": "7021044d9575aaff00e08945164f5c91ba17cd8de1eedafd8c6781e3c69060be"
+    },
+    {
+      "address": "0x2c9ad10",
+      "size": 95,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::CityID const&)",
+      "sha256": "a0462572e6b0309d6de60c35fd14f41c3cb054c915751ab1103d279b6f0d981c"
+    },
+    {
+      "address": "0x2c9adc0",
+      "size": 95,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::UnitID const&)",
+      "sha256": "fac47f5edb84475fdb01bd75dd403a326ce14ed2f4062d541ba6f2495a36be32"
+    },
+    {
+      "address": "0x2c9b100",
+      "size": 11,
+      "name": "GameCore::Player::ComponentID::Set(GameCore::PlayerTypes, unsigned int, GameCore::Player::ComponentID::Type)",
+      "sha256": "cb4c434e7692669068d42f77251a91039bc80797654608f3bdbd62f534f7478f"
+    }
+  ],
+  "bindings": [
+    {
+      "site": "0x20e367d",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3684",
+      "plt": "0x1ea46f0",
+      "slot": "0x3b75260",
+      "body": "0x22136d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3691",
+      "plt": "0x1e21cf0",
+      "slot": "0x3b33d60",
+      "body": "0x20e80d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3699",
+      "plt": "0x1e7c250",
+      "slot": "0x3b61010",
+      "body": "0x2213730",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36a6",
+      "plt": "0x1e5d6a0",
+      "slot": "0x3b51a38",
+      "body": "0x200dea0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36ae",
+      "plt": "0x1f22c90",
+      "slot": "0x3bb4530",
+      "body": "0x2213850",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36bb",
+      "plt": "0x1eff2d0",
+      "slot": "0x3ba2850",
+      "body": "0x200e340",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36c3",
+      "plt": "0x1f23800",
+      "slot": "0x3bb4ae8",
+      "body": "0x2213a70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36d0",
+      "plt": "0x1f009f0",
+      "slot": "0x3ba33e0",
+      "body": "0x20024c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36d8",
+      "plt": "0x1e9cba0",
+      "slot": "0x3b714b8",
+      "body": "0x2213bf0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36e5",
+      "plt": "0x1ed44b0",
+      "slot": "0x3b8d140",
+      "body": "0x1fe1fd0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36ed",
+      "plt": "0x1e9d690",
+      "slot": "0x3b71a30",
+      "body": "0x2213990",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e36fa",
+      "plt": "0x1e64da0",
+      "slot": "0x3b555b8",
+      "body": "0x20e8100",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3702",
+      "plt": "0x1ef55e0",
+      "slot": "0x3b9d9d8",
+      "body": "0x2213ee0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e370f",
+      "plt": "0x1ed4e60",
+      "slot": "0x3b8d618",
+      "body": "0x2035750",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3717",
+      "plt": "0x1e21ee0",
+      "slot": "0x3b33e58",
+      "body": "0x2214070",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3724",
+      "plt": "0x1f0b6e0",
+      "slot": "0x3ba8a58",
+      "body": "0x20e8130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e372c",
+      "plt": "0x1f7b1f0",
+      "slot": "0x3be07e0",
+      "body": "0x22146f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3739",
+      "plt": "0x1e4f5c0",
+      "slot": "0x3b4a9c8",
+      "body": "0x200e200",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3741",
+      "plt": "0x1e12df0",
+      "slot": "0x3b2c5e0",
+      "body": "0x22147d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e374e",
+      "plt": "0x1f21600",
+      "slot": "0x3bb39e8",
+      "body": "0x2002750",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3756",
+      "plt": "0x1e12df0",
+      "slot": "0x3b2c5e0",
+      "body": "0x22147d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3763",
+      "plt": "0x1f21600",
+      "slot": "0x3bb39e8",
+      "body": "0x2002750",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e376b",
+      "plt": "0x1f5ee30",
+      "slot": "0x3bd2600",
+      "body": "0x2214970",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3778",
+      "plt": "0x1f8fcd0",
+      "slot": "0x3bead50",
+      "body": "0x20e8160",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3780",
+      "plt": "0x1e4bf70",
+      "slot": "0x3b48ea0",
+      "body": "0x21f17e0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e378d",
+      "plt": "0x1ea92b0",
+      "slot": "0x3b77840",
+      "body": "0x1fe1fa0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3795",
+      "plt": "0x1e72310",
+      "slot": "0x3b5c070",
+      "body": "0x2213e70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37a2",
+      "plt": "0x1fb4b90",
+      "slot": "0x3bfd4b0",
+      "body": "0x2035490",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37aa",
+      "plt": "0x1e958b0",
+      "slot": "0x3b6db40",
+      "body": "0x2214210",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37b7",
+      "plt": "0x1e4f110",
+      "slot": "0x3b4a770",
+      "body": "0x2035630",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37bf",
+      "plt": "0x1f56560",
+      "slot": "0x3bce198",
+      "body": "0x2213d50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37cc",
+      "plt": "0x1eec370",
+      "slot": "0x3b990a0",
+      "body": "0x20e8190",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37d4",
+      "plt": "0x1e3eb40",
+      "slot": "0x3b42488",
+      "body": "0x2213cf0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37e1",
+      "plt": "0x1f696d0",
+      "slot": "0x3bd7a50",
+      "body": "0x20e81c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37e9",
+      "plt": "0x1e74ef0",
+      "slot": "0x3b5d660",
+      "body": "0x2213d30",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37f6",
+      "plt": "0x1e80280",
+      "slot": "0x3b63028",
+      "body": "0x2035660",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e37fe",
+      "plt": "0x1fa6760",
+      "slot": "0x3bf6298",
+      "body": "0x2214260",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e380b",
+      "plt": "0x1e3ec00",
+      "slot": "0x3b424e8",
+      "body": "0x20e81f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3813",
+      "plt": "0x1f8abd0",
+      "slot": "0x3be84d0",
+      "body": "0x2213df0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3820",
+      "plt": "0x1f4ff40",
+      "slot": "0x3bcae88",
+      "body": "0x20e8220",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3828",
+      "plt": "0x1ebfbe0",
+      "slot": "0x3b82cd8",
+      "body": "0x2214890",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3835",
+      "plt": "0x1eef650",
+      "slot": "0x3b9aa10",
+      "body": "0x20e8250",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e383d",
+      "plt": "0x1f1f8f0",
+      "slot": "0x3bb2b60",
+      "body": "0x22148c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e384a",
+      "plt": "0x1eb01c0",
+      "slot": "0x3b7afc8",
+      "body": "0x20e8280",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3856",
+      "plt": "0x1ea9310",
+      "slot": "0x3b77870",
+      "body": "0x20030c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3862",
+      "plt": "0x1f591b0",
+      "slot": "0x3bcf7c0",
+      "body": "0x20e82b0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e386e",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e387a",
+      "plt": "0x1f446f0",
+      "slot": "0x3bc5260",
+      "body": "0x2c9ac60",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3889",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3898",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e38a7",
+      "plt": "0x1f5dca0",
+      "slot": "0x3bd1d38",
+      "body": "0x20e82d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e38b6",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e38c5",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e38d4",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e38e3",
+      "plt": "0x1f43cd0",
+      "slot": "0x3bc4d50",
+      "body": "0x1ff62f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e38f2",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3901",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3910",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3924",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e393a",
+      "plt": "0x1fb23b0",
+      "slot": "0x3bfc0c0",
+      "body": "0x1fe2200",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3945",
+      "plt": "0x1eb2f20",
+      "slot": "0x3b7c678",
+      "body": "0x2c9ad10",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3959",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e396f",
+      "plt": "0x1eb1070",
+      "slot": "0x3b7b720",
+      "body": "0x291d3b0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e397d",
+      "plt": "0x1eac0e0",
+      "slot": "0x3b78f58",
+      "body": "0x1ff8e80",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3988",
+      "plt": "0x1f446f0",
+      "slot": "0x3bc5260",
+      "body": "0x2c9ac60",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e399f",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e39b0",
+      "plt": "0x1fb0810",
+      "slot": "0x3bfb2f0",
+      "body": "0x1fcc140",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e39be",
+      "plt": "0x1e8d360",
+      "slot": "0x3b69898",
+      "body": "0x2c9aba0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e39d5",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e39f4",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a0b",
+      "plt": "0x1e012a0",
+      "slot": "0x3b23838",
+      "body": "0x1fe1f90",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a27",
+      "plt": "0x1f16bf0",
+      "slot": "0x3bae4e0",
+      "body": "0x20e82e0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a32",
+      "plt": "0x1e7d930",
+      "slot": "0x3b61b80",
+      "body": "0x2c9adc0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a67",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a6c",
+      "plt": "0x1ea46f0",
+      "slot": "0x3b75260",
+      "body": "0x22136d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a77",
+      "plt": "0x1f08d50",
+      "slot": "0x3ba7590",
+      "body": "0x20e8300",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a7f",
+      "plt": "0x1e7c250",
+      "slot": "0x3b61010",
+      "body": "0x2213730",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a8a",
+      "plt": "0x1ed4500",
+      "slot": "0x3b8d168",
+      "body": "0x200de10",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a93",
+      "plt": "0x1f22c90",
+      "slot": "0x3bb4530",
+      "body": "0x2213850",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3a9e",
+      "plt": "0x1eff870",
+      "slot": "0x3ba2b20",
+      "body": "0x200e300",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3aa7",
+      "plt": "0x1f23800",
+      "slot": "0x3bb4ae8",
+      "body": "0x2213a70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ab2",
+      "plt": "0x1f84e50",
+      "slot": "0x3be5610",
+      "body": "0x20024f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3abb",
+      "plt": "0x1e9cba0",
+      "slot": "0x3b714b8",
+      "body": "0x2213bf0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ae4",
+      "plt": "0x1ead400",
+      "slot": "0x3b798e8",
+      "body": "0x20e8330",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3aed",
+      "plt": "0x1e9d690",
+      "slot": "0x3b71a30",
+      "body": "0x2213990",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b16",
+      "plt": "0x1fb3870",
+      "slot": "0x3bfcb20",
+      "body": "0x20e8360",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b1f",
+      "plt": "0x1ef55e0",
+      "slot": "0x3b9d9d8",
+      "body": "0x2213ee0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b2a",
+      "plt": "0x1eb9710",
+      "slot": "0x3b7fa70",
+      "body": "0x2035780",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b33",
+      "plt": "0x1e21ee0",
+      "slot": "0x3b33e58",
+      "body": "0x2214070",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b5c",
+      "plt": "0x1ebf1d0",
+      "slot": "0x3b827d0",
+      "body": "0x20e8390",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b65",
+      "plt": "0x1f7b1f0",
+      "slot": "0x3be07e0",
+      "body": "0x22146f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b70",
+      "plt": "0x1f874b0",
+      "slot": "0x3be6940",
+      "body": "0x20e83c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b79",
+      "plt": "0x1e12df0",
+      "slot": "0x3b2c5e0",
+      "body": "0x22147d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b84",
+      "plt": "0x1f816b0",
+      "slot": "0x3be3a40",
+      "body": "0x2002780",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b8d",
+      "plt": "0x1e12df0",
+      "slot": "0x3b2c5e0",
+      "body": "0x22147d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3b98",
+      "plt": "0x1f816b0",
+      "slot": "0x3be3a40",
+      "body": "0x2002780",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ba1",
+      "plt": "0x1f5ee30",
+      "slot": "0x3bd2600",
+      "body": "0x2214970",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3bac",
+      "plt": "0x1e7f250",
+      "slot": "0x3b62810",
+      "body": "0x20e83f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3bb5",
+      "plt": "0x1e4bf70",
+      "slot": "0x3b48ea0",
+      "body": "0x21f17e0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3bde",
+      "plt": "0x1f8e5c0",
+      "slot": "0x3bea1c8",
+      "body": "0x20e8420",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3be7",
+      "plt": "0x1e72310",
+      "slot": "0x3b5c070",
+      "body": "0x2213e70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3c10",
+      "plt": "0x1e7ea50",
+      "slot": "0x3b62410",
+      "body": "0x20e8450",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3c20",
+      "plt": "0x1e958b0",
+      "slot": "0x3b6db40",
+      "body": "0x2214210",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3c49",
+      "plt": "0x1eaa0a0",
+      "slot": "0x3b77f38",
+      "body": "0x20e8480",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3c52",
+      "plt": "0x1f56560",
+      "slot": "0x3bce198",
+      "body": "0x2213d50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3c7b",
+      "plt": "0x1f9c460",
+      "slot": "0x3bf1118",
+      "body": "0x20e84b0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3c84",
+      "plt": "0x1e3eb40",
+      "slot": "0x3b42488",
+      "body": "0x2213cf0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3cad",
+      "plt": "0x1f636c0",
+      "slot": "0x3bd4a48",
+      "body": "0x20e84e0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3cb6",
+      "plt": "0x1e74ef0",
+      "slot": "0x3b5d660",
+      "body": "0x2213d30",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3cdf",
+      "plt": "0x1fb2560",
+      "slot": "0x3bfc198",
+      "body": "0x20356c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ce8",
+      "plt": "0x1fa6760",
+      "slot": "0x3bf6298",
+      "body": "0x2214260",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3d11",
+      "plt": "0x1f6daa0",
+      "slot": "0x3bd9c38",
+      "body": "0x20e8510",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3d1a",
+      "plt": "0x1f8abd0",
+      "slot": "0x3be84d0",
+      "body": "0x2213df0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3d43",
+      "plt": "0x1e03a20",
+      "slot": "0x3b24bf8",
+      "body": "0x20e8540",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3d4c",
+      "plt": "0x1ebfbe0",
+      "slot": "0x3b82cd8",
+      "body": "0x2214890",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3d75",
+      "plt": "0x1fb5900",
+      "slot": "0x3bfdb68",
+      "body": "0x20e8570",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3d7e",
+      "plt": "0x1f1f8f0",
+      "slot": "0x3bb2b60",
+      "body": "0x22148c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3da7",
+      "plt": "0x1e08a00",
+      "slot": "0x3b273e8",
+      "body": "0x20e85a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3db7",
+      "plt": "0x1e592e0",
+      "slot": "0x3b4f858",
+      "body": "0x1fe5ca0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3dc3",
+      "plt": "0x1f4c840",
+      "slot": "0x3bc9308",
+      "body": "0x20e85d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3dcf",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3dec",
+      "plt": "0x1ec5980",
+      "slot": "0x3b85ba8",
+      "body": "0x1fe21f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e01",
+      "plt": "0x1f65df0",
+      "slot": "0x3bd5de0",
+      "body": "0x20e85f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e10",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e1f",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e2e",
+      "plt": "0x1e74310",
+      "slot": "0x3b5d070",
+      "body": "0x20093f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e3d",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e4c",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e79",
+      "plt": "0x1fb67c0",
+      "slot": "0x3bfe2c8",
+      "body": "0x2002480",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3e88",
+      "plt": "0x1ed6340",
+      "slot": "0x3b8e088",
+      "body": "0x1ff61f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3eb2",
+      "plt": "0x1e5ab10",
+      "slot": "0x3b50470",
+      "body": "0x1fe5e80",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ec1",
+      "plt": "0x1f3f970",
+      "slot": "0x3bc2ba0",
+      "body": "0x1fe2000",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ed0",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3edd",
+      "plt": "0x1f3f970",
+      "slot": "0x3bc2ba0",
+      "body": "0x1fe2000",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3ef1",
+      "plt": "0x1ec5980",
+      "slot": "0x3b85ba8",
+      "body": "0x1fe21f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3efc",
+      "plt": "0x1fa2730",
+      "slot": "0x3bf4280",
+      "body": "0x2c9acc0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f01",
+      "plt": "0x1e81590",
+      "slot": "0x3b639b0",
+      "body": "0x2b53260",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f0c",
+      "plt": "0x1f37400",
+      "slot": "0x3bbe8e8",
+      "body": "0x1fe6b70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f16",
+      "plt": "0x1f59220",
+      "slot": "0x3bcf7f8",
+      "body": "0x2004fc0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f1f",
+      "plt": "0x1e81590",
+      "slot": "0x3b639b0",
+      "body": "0x2b53260",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f2c",
+      "plt": "0x1f37400",
+      "slot": "0x3bbe8e8",
+      "body": "0x1fe6b70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f36",
+      "plt": "0x1e97ac0",
+      "slot": "0x3b6ec48",
+      "body": "0x1fcc1b0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f3e",
+      "plt": "0x1e220a0",
+      "slot": "0x3b33f38",
+      "body": "0x2b30480",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f4c",
+      "plt": "0x1f11e70",
+      "slot": "0x3babe20",
+      "body": "0x286dc00",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f5d",
+      "plt": "0x1f3f970",
+      "slot": "0x3bc2ba0",
+      "body": "0x1fe2000",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f71",
+      "plt": "0x1ec5980",
+      "slot": "0x3b85ba8",
+      "body": "0x1fe21f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f7c",
+      "plt": "0x1fa2730",
+      "slot": "0x3bf4280",
+      "body": "0x2c9acc0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f84",
+      "plt": "0x1eb3f60",
+      "slot": "0x3b7ce98",
+      "body": "0x286e0b0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3f95",
+      "plt": "0x1f3f970",
+      "slot": "0x3bc2ba0",
+      "body": "0x1fe2000",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3fa9",
+      "plt": "0x1faa940",
+      "slot": "0x3bf8388",
+      "body": "0x2c9abd0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3fb2",
+      "plt": "0x1f84f90",
+      "slot": "0x3be56b0",
+      "body": "0x290b930",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3fc6",
+      "plt": "0x1f3f970",
+      "slot": "0x3bc2ba0",
+      "body": "0x1fe2000",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3fda",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e3fdf",
+      "plt": "0x1e77230",
+      "slot": "0x3b5e800",
+      "body": "0x290b8a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e4000",
+      "plt": "0x1f3f970",
+      "slot": "0x3bc2ba0",
+      "body": "0x1fe2000",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e4014",
+      "plt": "0x1ec5980",
+      "slot": "0x3b85ba8",
+      "body": "0x1fe21f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e401f",
+      "plt": "0x1fa2730",
+      "slot": "0x3bf4280",
+      "body": "0x2c9acc0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e4027",
+      "plt": "0x1e34320",
+      "slot": "0x3b3d078",
+      "body": "0x2c15810",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ac6d",
+      "plt": "0x1f37400",
+      "slot": "0x3bbe8e8",
+      "body": "0x1fe6b70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ac7f",
+      "plt": "0x1f040f0",
+      "slot": "0x3ba4f60",
+      "body": "0x2144b50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ac87",
+      "plt": "0x1f53740",
+      "slot": "0x3bcca88",
+      "body": "0x2166b20",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ac96",
+      "plt": "0x1f040f0",
+      "slot": "0x3ba4f60",
+      "body": "0x2144b50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ac9e",
+      "plt": "0x1f74f10",
+      "slot": "0x3bdd670",
+      "body": "0x1fd1080",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9acaf",
+      "plt": "0x1e20270",
+      "slot": "0x3b33020",
+      "body": "0x1fcc150",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9accf",
+      "plt": "0x1f2ee40",
+      "slot": "0x3bba608",
+      "body": "0x2144990",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9acda",
+      "plt": "0x1f2ee40",
+      "slot": "0x3bba608",
+      "body": "0x2144990",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ace7",
+      "plt": "0x1e57840",
+      "slot": "0x3b4eb08",
+      "body": "0x1fcc1c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9acfc",
+      "plt": "0x1e33e40",
+      "slot": "0x3b3ce08",
+      "body": "0x2c9b100",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ad1d",
+      "plt": "0x1f37400",
+      "slot": "0x3bbe8e8",
+      "body": "0x1fe6b70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ad2f",
+      "plt": "0x1f040f0",
+      "slot": "0x3ba4f60",
+      "body": "0x2144b50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ad37",
+      "plt": "0x1f53740",
+      "slot": "0x3bcca88",
+      "body": "0x2166b20",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ad46",
+      "plt": "0x1f040f0",
+      "slot": "0x3ba4f60",
+      "body": "0x2144b50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ad4e",
+      "plt": "0x1f74f10",
+      "slot": "0x3bdd670",
+      "body": "0x1fd1080",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ad5f",
+      "plt": "0x1e20270",
+      "slot": "0x3b33020",
+      "body": "0x1fcc150",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9adcd",
+      "plt": "0x1f37400",
+      "slot": "0x3bbe8e8",
+      "body": "0x1fe6b70",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9addf",
+      "plt": "0x1f040f0",
+      "slot": "0x3ba4f60",
+      "body": "0x2144b50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ade7",
+      "plt": "0x1f53740",
+      "slot": "0x3bcca88",
+      "body": "0x2166b20",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9adf6",
+      "plt": "0x1f040f0",
+      "slot": "0x3ba4f60",
+      "body": "0x2144b50",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9adfe",
+      "plt": "0x1f74f10",
+      "slot": "0x3bdd670",
+      "body": "0x1fd1080",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x2c9ae0f",
+      "plt": "0x1e20270",
+      "slot": "0x3b33020",
+      "body": "0x1fcc150",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff61f4",
+      "plt": "0x1f64090",
+      "slot": "0x3bd4f30",
+      "body": "0x1ff6200",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6211",
+      "plt": "0x1f19490",
+      "slot": "0x3baf930",
+      "body": "0x1fcd740",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6226",
+      "plt": "0x1e57840",
+      "slot": "0x3b4eb08",
+      "body": "0x1fcc1c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6237",
+      "plt": "0x1e239d0",
+      "slot": "0x3b34bd0",
+      "body": "0x1ff6280",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6253",
+      "plt": "0x1f33100",
+      "slot": "0x3bbc768",
+      "body": "0x1ff62a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff625b",
+      "plt": "0x1efa1e0",
+      "slot": "0x3b9ffd8",
+      "body": "0x1ff62d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6266",
+      "plt": "0x1e57840",
+      "slot": "0x3b4eb08",
+      "body": "0x1fcc1c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6304",
+      "plt": "0x1e683b0",
+      "slot": "0x3b570c0",
+      "body": "0x1fcd7d0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff630f",
+      "plt": "0x1e07690",
+      "slot": "0x3b26a30",
+      "body": "0x1ff63a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6322",
+      "plt": "0x1f2bc40",
+      "slot": "0x3bb8d08",
+      "body": "0x1ff63c0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff6337",
+      "plt": "0x1e14850",
+      "slot": "0x3b2d310",
+      "body": "0x1ff6350",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff63d2",
+      "plt": "0x1f581d0",
+      "slot": "0x3bcefd0",
+      "body": "0x1fcd7e0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff63e3",
+      "plt": "0x1e20270",
+      "slot": "0x3b33020",
+      "body": "0x1fcc150",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1ff63f3",
+      "plt": "0x1e20270",
+      "slot": "0x3b33020",
+      "body": "0x1fcc150",
+      "opcode": "0xe9"
+    },
+    {
+      "site": "0x1fe81bf",
+      "plt": "0x1e03670",
+      "slot": "0x3b24a20",
+      "body": "0x1fcdb20",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x200941f",
+      "plt": "0x1e03670",
+      "slot": "0x3b24a20",
+      "body": "0x1fcdb20",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e7cd6",
+      "plt": "0x1ec5980",
+      "slot": "0x3b85ba8",
+      "body": "0x1fe21f0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e7d23",
+      "plt": "0x1f9a5f0",
+      "slot": "0x3bf01e0",
+      "body": "0x1ff5700",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e7d57",
+      "plt": "0x1f53b20",
+      "slot": "0x3bccc78",
+      "body": "0x20e8bd0",
+      "opcode": "0xe9"
+    },
+    {
+      "site": "0x20030cc",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e82bc",
+      "plt": "0x1f5fbd0",
+      "slot": "0x3bd2cd0",
+      "body": "0x1fcc130",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x1fe5cad",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    },
+    {
+      "site": "0x20e85dd",
+      "plt": "0x1e757d0",
+      "slot": "0x3b5dad0",
+      "body": "0x1fcc1a0",
+      "opcode": "0xe8"
+    }
+  ],
+  "dwarf_sha256": "c6b87e6ca92ae1544908502974cf4d9fec0ac846b5cc3c27bc8bc8440ad87ba3",
+  "object_size": 224,
+  "fields": [
+    {
+      "name": "version",
+      "wire": "i32-le",
+      "current": 17
+    },
+    {
+      "name": "Belief",
+      "object_offset": 0,
+      "wire": "definition-hash32-le",
+      "collection": "Belief",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Building",
+      "object_offset": 4,
+      "wire": "definition-hash32-le",
+      "collection": "Building",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Civic",
+      "object_offset": 24,
+      "wire": "definition-hash32-le",
+      "collection": "Civic",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "District",
+      "object_offset": 28,
+      "wire": "definition-hash32-le",
+      "collection": "District",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Feature",
+      "object_offset": 32,
+      "wire": "definition-hash32-le",
+      "collection": "Feature",
+      "reader_version_threshold": 14,
+      "version_default": -1
+    },
+    {
+      "name": "Handicap",
+      "object_offset": 52,
+      "wire": "definition-hash32-le",
+      "collection": "Difficulty",
+      "reader_version_threshold": 3,
+      "version_default": -1
+    },
+    {
+      "name": "Improvement",
+      "object_offset": 56,
+      "wire": "definition-hash32-le",
+      "collection": "Improvement",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "MinorCivType",
+      "object_offset": 60,
+      "wire": "definition-hash32-le",
+      "collection": "MinorCivBonus",
+      "reader_version_threshold": 13,
+      "version_default": -1
+    },
+    {
+      "name": "Technology",
+      "object_offset": 80,
+      "wire": "definition-hash32-le",
+      "collection": "Technology",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Unit1",
+      "object_offset": 92,
+      "wire": "definition-hash32-le",
+      "collection": "Unit",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Unit2",
+      "object_offset": 96,
+      "wire": "definition-hash32-le",
+      "collection": "Unit",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Yield",
+      "object_offset": 100,
+      "wire": "definition-hash32-le",
+      "collection": "Yield",
+      "reader_version_threshold": null,
+      "version_default": null
+    },
+    {
+      "name": "Resource",
+      "object_offset": 76,
+      "wire": "definition-hash32-le",
+      "collection": "Resource",
+      "reader_version_threshold": 6,
+      "version_default": -1
+    },
+    {
+      "name": "GreatWorkObject",
+      "object_offset": 48,
+      "wire": "definition-hash32-le",
+      "collection": "GreatWorkObjectType",
+      "reader_version_threshold": 7,
+      "version_default": -1
+    },
+    {
+      "name": "Policy",
+      "object_offset": 68,
+      "wire": "definition-hash32-le",
+      "collection": "Policy",
+      "reader_version_threshold": 8,
+      "version_default": -1
+    },
+    {
+      "name": "Governor",
+      "object_offset": 36,
+      "wire": "definition-hash32-le",
+      "collection": "Governor",
+      "reader_version_threshold": 17,
+      "version_default": -1
+    },
+    {
+      "name": "Government",
+      "object_offset": 40,
+      "wire": "definition-hash32-le",
+      "collection": "Government",
+      "reader_version_threshold": 9,
+      "version_default": -1
+    },
+    {
+      "name": "GovernmentSlot",
+      "object_offset": 44,
+      "wire": "definition-hash32-le",
+      "collection": "GovernmentSlot",
+      "reader_version_threshold": 9,
+      "version_default": -1
+    },
+    {
+      "name": "Project",
+      "object_offset": 104,
+      "wire": "definition-hash32-le",
+      "collection": "Project",
+      "reader_version_threshold": 11,
+      "version_default": -1
+    },
+    {
+      "name": "GreatPersonClass",
+      "object_offset": 108,
+      "wire": "definition-hash32-le",
+      "collection": "GreatPersonClass",
+      "reader_version_threshold": 12,
+      "version_default": -1
+    },
+    {
+      "name": "UnitOperation",
+      "object_offset": 84,
+      "wire": "definition-hash32-le",
+      "collection": "UnitOperation",
+      "reader_version_threshold": 15,
+      "version_default": -1
+    },
+    {
+      "name": "UnitPromotionClass",
+      "object_offset": 88,
+      "wire": "definition-hash32-le",
+      "collection": "UnitPromotionClass",
+      "reader_version_threshold": 16,
+      "version_default": -1
+    },
+    {
+      "name": "Opponent",
+      "object_offset": 64,
+      "wire": "i32-le"
+    },
+    {
+      "name": "Religion",
+      "object_offset": 72,
+      "wire": "i32-le"
+    },
+    {
+      "name": "Count",
+      "object_offset": 8,
+      "wire": "i32-le"
+    },
+    {
+      "name": "CityId",
+      "object_offset": 16,
+      "wire": "component-id"
+    },
+    {
+      "name": "StartTurn",
+      "object_offset": 180,
+      "wire": "i32-le"
+    },
+    {
+      "name": "TimeHorizon",
+      "object_offset": 184,
+      "wire": "i32-le"
+    },
+    {
+      "name": "DiscountRate",
+      "object_offset": 188,
+      "wire": "f32-raw-le"
+    },
+    {
+      "name": "ExpectedBonusValue",
+      "object_offset": 192,
+      "wire": "i32-le"
+    },
+    {
+      "name": "ExpectedTurnsToMeet",
+      "object_offset": 196,
+      "wire": "i32-le"
+    },
+    {
+      "name": "AnalysisDepth",
+      "object_offset": 200,
+      "wire": "i32-le"
+    },
+    {
+      "name": "UnitList",
+      "object_offset": 152,
+      "wire": "u32-count + ordered u32-le items"
+    },
+    {
+      "name": "BestImprovement",
+      "object_offset": 176,
+      "wire": "raw-u8"
+    },
+    {
+      "name": "CollectionIndex.FoundItem",
+      "object_offset": 204,
+      "wire": "raw-u8"
+    },
+    {
+      "name": "CollectionIndex.IteratorIndex",
+      "object_offset": 208,
+      "wire": "i32-le"
+    },
+    {
+      "name": "City",
+      "object_offset": 112,
+      "wire": "presence-u8 + payload iff nonzero",
+      "payload": "component-id"
+    },
+    {
+      "name": "DistrictInstance",
+      "object_offset": 120,
+      "wire": "presence-u8 + payload iff nonzero",
+      "payload": "component-id"
+    },
+    {
+      "name": "Player",
+      "object_offset": 128,
+      "wire": "presence-u8 + payload iff nonzero",
+      "payload": "i32-le"
+    },
+    {
+      "name": "Plot",
+      "object_offset": 136,
+      "wire": "presence-u8 + payload iff nonzero",
+      "payload": "i32-le"
+    },
+    {
+      "name": "Unit",
+      "object_offset": 144,
+      "wire": "presence-u8 + payload iff nonzero",
+      "payload": "component-id"
+    }
+  ],
+  "component_id": {
+    "bytes": 8,
+    "fields": [
+      "owner:i16-le",
+      "type:i16-le",
+      "id:u32-le"
+    ]
+  },
+  "v17_size": "151 + 4*UnitList_count + 8*(City_present+DistrictInstance_present+Unit_present) + 4*(Player_present+Plot_present)",
+  "bool_semantics": "ReadObject/WriteObject transfer one raw byte; presence writer generates 0/1; reader tests byte !=0",
+  "float_semantics": "DiscountRate transfers four raw IEEE754 bytes, with no conversion or canonicalization",
+  "q8_fields": [],
+  "unit_list_semantics": "u32 count; preserve unsigned item bits and order; native read clears vector before reserve/push",
+  "definition_semantics": "WriteIndexToHash and ReadHashToIndex resolve through named definition collections; wire hashes must not be treated as native indices",
+  "version_limits": "Only v17 grammar specified here; historical thresholds recorded as source leads; Policy read is specially skipped when version==9",
+  "not_serialized": [
+    "CollectionIndex.IteratorIndex2",
+    "CollectionIndex.IteratorIndex3",
+    "pointer addresses",
+    "allocation/capacity",
+    "object padding"
+  ],
+  "read_effects": {
+    "absent_optional": "leave existing destination pointer unchanged",
+    "City": "read ComponentID; only assign GetCity result if owner IsValid and owner player IsInitialized; otherwise leave destination unchanged",
+    "DistrictInstance": "assign City::CManager::GetDistrict(ComponentID)",
+    "Player": "assign Context::Globals::GetPlayer(PlayerTypes)",
+    "Plot": "assign Globals::GetMap virtual slot +0x48 using signed plot index",
+    "Unit": "assign Unit::CManager::GetUnit(ComponentID)",
+    "initialization": "constructor separately initializes pointers to null; reader does not call constructor or reset"
+  },
+  "fixtures": [],
+  "fixture_gap": "No native execution or captured owner cuts in this research-only audit",
+  "original_execution": false,
+  "native_load_effects_reproduced": false,
+  "hook_counts_inferred": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "planning_only_exclusion_proven": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "private_writes": false,
+  "audit_source_sha256": "b851edcca16e7b0b0f3a4544b48f1db7025b608fceb9fa0753e0876c8a6671a3",
+  "attribution": "Independent analysis of supplied pinned Linux ELF symbols, bytes and matching DWARF; no proprietary disassembly archived"
+}
