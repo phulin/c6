@@ -81,8 +81,8 @@ impl NameManager {
         counts
             .try_reserve_exact(count)
             .map_err(|_| Error::ResourceLimit)?;
-        for bytes in raw.chunks_exact(2) {
-            counts.push(i16::from_le_bytes([bytes[0], bytes[1]]));
+        for bytes in raw.as_chunks::<2>().0 {
+            counts.push(i16::from_le_bytes(*bytes));
         }
         Ok((
             Self {
