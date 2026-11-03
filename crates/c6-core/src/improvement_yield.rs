@@ -45,7 +45,6 @@ pub struct ImprovementYieldDefinition<'a> {
 
 #[derive(Clone, Copy)]
 pub struct OrderedImprovementYieldDefinitions<'a> {
-    lookup: &'a dyn DefinitionLookup,
     definitions: &'a [ImprovementYieldDefinition<'a>],
     bonuses: OrderedImprovementDefinitions<'a>,
 }
@@ -66,7 +65,6 @@ impl<'a> OrderedImprovementYieldDefinitions<'a> {
             }
         }
         Ok(Self {
-            lookup,
             definitions,
             bonuses: OrderedImprovementDefinitions::new(lookup, bonuses)?,
         })
@@ -87,20 +85,6 @@ impl<'a> OrderedImprovementYieldDefinitions<'a> {
     /// Inspect an actual native collection index without hash resolution.
     pub fn at(&self, index: i32) -> Option<&'a ImprovementYieldDefinition<'a>> {
         self.definitions.get(index as u32 as usize)
-    }
-
-    fn find(
-        self,
-        improvement: u32,
-    ) -> Result<Option<&'a ImprovementYieldDefinition<'a>>, ImprovementYieldError> {
-        self.lookup
-            .find_index(improvement)
-            .map_or(Ok(None), |index| {
-                self.definitions
-                    .get(index)
-                    .map(Some)
-                    .ok_or(ImprovementYieldError::DefinitionIndex)
-            })
     }
 }
 
@@ -137,6 +121,7 @@ pub struct ImprovementYieldPlot {
 }
 
 /// Original 0x2a3ee50 arithmetic for a null contribution-list argument.
+/// Improvement is a direct native collection index, never a type hash.
 /// Base uses the first matching row; adjacency and bonus helpers retain all rows.
 /// Modifiers are deliberately absent: native calls that helper only with a
 /// nonnull contribution list. Invalid-player handling belongs to each callee;
@@ -150,7 +135,7 @@ pub fn improvement_player_yield(
     requested_yield: i32,
     plot: Option<u32>,
 ) -> Result<i32, ImprovementYieldError> {
-    let Some(definition) = rules.find(improvement)? else {
+    let Some(definition) = rules.at(improvement as i32) else {
         return Ok(0);
     };
     let mut raw = 0i32;
@@ -372,14 +357,14 @@ mod tests {
     }
 
     #[test]
-    fn first_base_all_adjacency_both_bonuses_and_native_hash_lookup() {
+    fn first_base_all_adjacency_both_bonuses_and_native_index_lookup() {
         let adj = Adj::default();
         with_rules(
             &[base(90, 0), base(7, 1), base(999, 1)],
             &[idx(0), idx(1), idx(0)],
             |rules| {
                 assert_eq!(
-                    improvement_player_yield(rules, &State, &adj, 4, 77, 1, Some(8)),
+                    improvement_player_yield(rules, &State, &adj, 4, 1, 1, Some(8)),
                     Ok(21)
                 );
                 assert_eq!(
@@ -397,6 +382,58 @@ mod tests {
             },
         );
     }
+    #[test]
+    fn out_of_range_hash_returns_zero_before_rows_or_providers() {
+        struct Forbidden;
+        impl PrerequisiteState for Forbidden {
+            fn is_valid_player(&self, _: i32) -> Result<bool, BonusMissingInput> {
+                panic!("unexpected player query")
+            }
+            fn acquired_mask(
+                &self,
+                _: i32,
+                _: PrerequisiteKind,
+            ) -> Result<&[bool], BonusMissingInput> {
+                panic!("unexpected mask query")
+            }
+            fn globally_available(
+                &self,
+                _: PrerequisiteKind,
+                _: i32,
+            ) -> Result<bool, BonusMissingInput> {
+                panic!("unexpected availability query")
+            }
+        }
+        impl ImprovementAdjacency for Forbidden {
+            fn player_adjacency_yield(
+                &self,
+                _: i32,
+                _: NativeDefinitionIndex,
+                _: i32,
+                _: Option<u32>,
+            ) -> Result<i32, ImprovementYieldError> {
+                panic!("unexpected adjacency query")
+            }
+        }
+        let entries = [ImprovementYieldDefinition {
+            type_hash: 77,
+            base: None,
+            adjacency: None,
+        }; 2];
+        let bonus = [ImprovementDefinition {
+            type_hash: 77,
+            bonus_yield_changes: None,
+        }; 2];
+        let rules = OrderedImprovementYieldDefinitions::new(&Lookup, &entries, &bonus).unwrap();
+        // Lookup.find_index(77) would select index 1, but native uses At.
+        for key in [2, 77, u32::MAX] {
+            assert_eq!(
+                improvement_player_yield(rules, &Forbidden, &Forbidden, 4, key, 1, None),
+                Ok(0)
+            );
+        }
+    }
+
     #[test]
     fn wrapper_guards_and_political_owner() {
         let adj = Adj::default();
@@ -429,7 +466,7 @@ mod tests {
                     rules,
                     &State,
                     &adj,
-                    77,
+                    1,
                     1,
                     Some(ImprovementYieldPlot {
                         id: 8,
@@ -441,7 +478,7 @@ mod tests {
             assert_eq!(adj.calls.borrow()[0].0, 6);
             // No blanket invalid-player guard suppresses base/adjacency.
             assert_eq!(
-                improvement_player_yield(rules, &State, &adj, -1, 77, 1, None),
+                improvement_player_yield(rules, &State, &adj, -1, 1, 1, None),
                 Ok(10)
             );
         });
@@ -450,7 +487,7 @@ mod tests {
     fn wrapping_and_signed_shift_after_full_sum() {
         with_rules(&[base(0x7f_ffff, 1)], &[], |rules| {
             assert_eq!(
-                improvement_player_yield(rules, &State, &Adj::default(), 4, 77, 1, None),
+                improvement_player_yield(rules, &State, &Adj::default(), 4, 1, 1, None),
                 Ok(-8_388_599)
             );
         });
@@ -460,11 +497,11 @@ mod tests {
         };
         with_rules(&[base(-1, 0), base(0, 1)], &[], |rules| {
             assert_eq!(
-                improvement_player_yield(rules, &State, &adj, 4, 77, -1, None),
+                improvement_player_yield(rules, &State, &adj, 4, 1, -1, None),
                 Ok(-1)
             );
             assert_eq!(
-                improvement_player_yield(rules, &State, &Adj::default(), 4, 77, -1, None),
+                improvement_player_yield(rules, &State, &Adj::default(), 4, 1, -1, None),
                 Err(ImprovementYieldError::Normalization { yield_index: 0 })
             );
         });
@@ -477,7 +514,7 @@ mod tests {
         };
         with_rules(&[], &[idx(0)], |rules| {
             assert_eq!(
-                improvement_player_yield(rules, &State, &adj, 4, 77, 1, None),
+                improvement_player_yield(rules, &State, &adj, 4, 1, 1, None),
                 Err(ImprovementYieldError::AdjacencyState { definition: 0 })
             );
         });
@@ -492,8 +529,8 @@ mod tests {
         }; 2];
         let rules = OrderedImprovementYieldDefinitions::new(&Lookup, &entries, &bonus).unwrap();
         assert_eq!(
-            improvement_player_yield(rules, &State, &adj, 4, 77, 1, None),
-            Err(ImprovementYieldError::BaseReferences { improvement: 77 })
+            improvement_player_yield(rules, &State, &adj, 4, 1, 1, None),
+            Err(ImprovementYieldError::BaseReferences { improvement: 1 })
         );
         let entries = [ImprovementYieldDefinition {
             type_hash: 77,
@@ -502,8 +539,8 @@ mod tests {
         }; 2];
         let rules = OrderedImprovementYieldDefinitions::new(&Lookup, &entries, &bonus).unwrap();
         assert_eq!(
-            improvement_player_yield(rules, &State, &adj, 4, 77, 1, None),
-            Err(ImprovementYieldError::AdjacencyReferences { improvement: 77 })
+            improvement_player_yield(rules, &State, &adj, 4, 1, 1, None),
+            Err(ImprovementYieldError::AdjacencyReferences { improvement: 1 })
         );
     }
 }
