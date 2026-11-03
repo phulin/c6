@@ -1,7 +1,6 @@
 # Original friendly-formation count fixture
 
-This separate read-only fixture is under preparation. It has not executed original
-count queries or established count parity. It adds no complete gameplay/action or
+The [first count-only capture controls](../evidence/linux/placement-metadata-native-capture-1.json) passed: 17,584 count rows, 1,262 binding rows, six identical full Core saves, unchanged observed RNG objects and clean teardown. Complete membership coverage and count parity await the independent offline checker. It adds no complete gameplay/action or
 turn support. The accepted domain and movement captures remain immutable.
 
 `--placement-metadata` is mutually exclusive with actions, Core commands, domain
@@ -13,6 +12,8 @@ a reviewed frozen Rust manifest and six distinct private artifact paths:
 - `--placement-metadata-expected-output`: original count-only answers.
 - `--placement-metadata-before`, `--placement-metadata-control-save`,
   `--placement-metadata-after`, `--placement-metadata-repeat`: four full Core saves.
+
+Core alive is the actual native Core field, not an inferred saved-header value. A source-gated saved-header cross-check is separate.
 
 Two outer full saves remain separate. `--prepare-only` builds and gates identity
 without executing original code. The profile records its helper/audit sources,
