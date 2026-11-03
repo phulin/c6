@@ -1,0 +1,375 @@
+{
+  "schema": "c6-linux-ai-boost-contract-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "method": "read-only static ELF method/call/relocation/version/DWARF checks",
+  "methods": [
+    {
+      "address": "0x218bfe0",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::Research>::load(Serialization::IStream&)",
+      "sha256": "c47831e8dcf960191917a312dce43da1a02cc7e8b2fe024ad8a14a1251d8e56e"
+    },
+    {
+      "address": "0x2042fe0",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::CultureAi>::load(Serialization::IStream&)",
+      "sha256": "b3719a6d30c2f9c6ffcd5315b032a5c8aec94a66d868b2ea540c2d9cbda90119"
+    },
+    {
+      "address": "0x20437e0",
+      "size": 77,
+      "name": "FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::CultureAi>::reset()",
+      "sha256": "7910f8a510df15ab12dac6c65a3949bbc8168560f56f8742edda54b5fd708254"
+    },
+    {
+      "address": "0x1fcdad0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(int&)",
+      "sha256": "09ddfd4d815a2204789075821ff06a3e8d881dc2bae4791ff3f746206deb3230"
+    },
+    {
+      "address": "0x1fcdbb0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(unsigned int&)",
+      "sha256": "b5c97ed9421b7f58e0ea8a7e2989ec1c05dd9c16a79416af11d59bd45e57dc3e"
+    },
+    {
+      "address": "0x1fcc1a0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)",
+      "sha256": "c6cf9d3175d5134bd8d7b3d396184fd7b9abd3f7ca364cbdc38a1794ce742775"
+    },
+    {
+      "address": "0x1fcc1c0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)",
+      "sha256": "5edd23b31cc38a2cc74b61c4b33889da2f35c69f9ce10ee24f2899eb7e91af01"
+    },
+    {
+      "address": "0x1fcdac0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x1fcdba0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(unsigned int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcc150",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+      "sha256": "9731ca1d2959dc0f406a684267a29d425c9bf7ea2f127425123508fbc2ed2d3b"
+    },
+    {
+      "address": "0x2c9aba0",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::PlayerTypes const&)",
+      "sha256": "e3aa2b85edbfcad11d2fe4b8d720bad7d662e88d8461f7994ba25444ae60c6d1"
+    },
+    {
+      "address": "0x1fc9580",
+      "size": 173,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::AI::BoostManager const&)",
+      "sha256": "eef31e007cb7ce39ca344ffe3f306121410929be3026af00301b35bae29c714f"
+    },
+    {
+      "address": "0x2028c60",
+      "size": 444,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::AI::CultureAi const&)",
+      "sha256": "45c6a6d52c4e9a042b4e0c188e61c95d4169fcad784c3a7cc1bf4244598da3b1"
+    },
+    {
+      "address": "0x2c9abd0",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::PlayerTypes&)",
+      "sha256": "2cc19dccb1ce5ba3727486d694c79a0b5c90c1d7658cf975ce07ade2572a6ee7"
+    },
+    {
+      "address": "0x1fc9630",
+      "size": 197,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::AI::BoostManager&)",
+      "sha256": "1126f3ef4c21220cdc8443db4ebb7f9fb9dcc1a760c594ace32a7091073146fd"
+    },
+    {
+      "address": "0x2028e20",
+      "size": 1227,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::AI::CultureAi&)",
+      "sha256": "6b4f8de366f68cd51529bb1df13246923c96379bf3949f24a823a6136bf49264"
+    },
+    {
+      "address": "0x1fc9700",
+      "size": 203,
+      "name": "GameCore::AI::BoostManager::Initialize(GameCore::Player::Instance*, unsigned int)",
+      "sha256": "4ae7683cb9f2f81047459f809fabb0ddbe7c6a323042ab84f039bc399ff1e903"
+    },
+    {
+      "address": "0x1fc98a0",
+      "size": 62,
+      "name": "GameCore::AI::BoostManager::BoostManager()",
+      "sha256": "0d9352eff089ad4085fe634a7d5dd8a3a6d1bcc1d8f3c8a12d6e2b14117fc9f4"
+    },
+    {
+      "address": "0x2183e40",
+      "size": 473,
+      "name": "GameCore::AI::Research::Read(Serialization::IStream&)",
+      "sha256": "7920af77ab2594085727dce5587ae51dc393a93d9ab0b8e2921a89147a944cfb"
+    },
+    {
+      "address": "0x218c050",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::Research>::save(Serialization::OStream&) const",
+      "sha256": "6262d46a1130a613bff9954667328a0289c51bd5bcb5c6f95ef0c87393fdbdd8"
+    },
+    {
+      "address": "0x2043050",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::CultureAi>::save(Serialization::OStream&) const",
+      "sha256": "1661fe110811fda80cb9e5ee5de9f1af1ed322e0f7b2cd9dcfcc5b7882e4bde6"
+    },
+    {
+      "address": "0x2183d20",
+      "size": 241,
+      "name": "GameCore::AI::Research::Write(Serialization::OStream&) const",
+      "sha256": "ded8c844d3235828ac71e40b77e8cf6b086d069a9953a5e6031fa3a217fb38dd"
+    },
+    {
+      "address": "0x218a590",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::AI::BoostManager, GameCore::AI::Research>(Serialization::OStream&, FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::Research> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x20357e0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::AI::BoostManager, GameCore::AI::CultureAi>(Serialization::OStream&, FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::CultureAi> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x218a460",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::AI::BoostManager, GameCore::AI::Research>(Serialization::IStream&, FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::Research>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2035bf0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::AI::BoostManager, GameCore::AI::CultureAi>(Serialization::IStream&, FAutoVariable<GameCore::AI::BoostManager, GameCore::AI::CultureAi>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    }
+  ],
+  "bindings": [
+    {
+      "site": "0x2028cbf",
+      "plt": "0x1f9d220",
+      "body": "0x20357e0"
+    },
+    {
+      "site": "0x2028ea4",
+      "plt": "0x1e24ee0",
+      "body": "0x2035bf0"
+    },
+    {
+      "site": "0x1fc959c",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x1fc95b5",
+      "plt": "0x1e8d360",
+      "body": "0x2c9aba0"
+    },
+    {
+      "site": "0x1fc95c1",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x1fc95de",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x1fc9606",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x1fc9612",
+      "plt": "0x1f5fbd0",
+      "body": "0x1fcc130"
+    },
+    {
+      "site": "0x1fc9645",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x1fc9652",
+      "plt": "0x1faa940",
+      "body": "0x2c9abd0"
+    },
+    {
+      "site": "0x1fc9672",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x1fc967f",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x1fc96b6",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x1fc96ca",
+      "plt": "0x1e757d0",
+      "body": "0x1fcc1a0"
+    },
+    {
+      "site": "0x1fc96e2",
+      "plt": "0x1ede0a0",
+      "body": "0x1fc9700"
+    },
+    {
+      "site": "0x2183df4",
+      "plt": "0x1f9ed30",
+      "body": "0x218a590"
+    },
+    {
+      "site": "0x2183fcc",
+      "plt": "0x1ee6cf0",
+      "body": "0x218a460"
+    }
+  ],
+  "tail_bindings": [
+    {
+      "site": "0x2042fea",
+      "plt": "0x1f1bfa0",
+      "body": "0x1fc9630"
+    },
+    {
+      "site": "0x204305a",
+      "plt": "0x1e1e4e0",
+      "body": "0x1fc9580"
+    },
+    {
+      "site": "0x218bfea",
+      "plt": "0x1f1bfa0",
+      "body": "0x1fc9630"
+    },
+    {
+      "site": "0x218c05a",
+      "plt": "0x1e1e4e0",
+      "body": "0x1fc9580"
+    }
+  ],
+  "virtual_bindings": [
+    {
+      "slot": "0x3a081d8",
+      "body": "0x2042fe0"
+    },
+    {
+      "slot": "0x3a081f0",
+      "body": "0x2043050"
+    },
+    {
+      "slot": "0x3a201c8",
+      "body": "0x218bfe0"
+    },
+    {
+      "slot": "0x3a201e0",
+      "body": "0x218c050"
+    }
+  ],
+  "dwarf_sha256": "c0abc499a27bdfcdca02bcd44052bd57c02e45554a598e9a6fe7dca26599471e",
+  "culture_current_version": 15,
+  "boost_current_version": 1,
+  "wire_bytes": "16 + 8 * managed_count",
+  "fields": [
+    {
+      "name": "version",
+      "wire": "i32-le",
+      "current": 1,
+      "reader": "consumed without validation or branching"
+    },
+    {
+      "name": "player",
+      "wire": "PlayerTypes/i32-le",
+      "reader": "resolve through Player::Manager::GetPlayer"
+    },
+    {
+      "name": "m_allowedActiveBoosts",
+      "wire": "u32-le",
+      "object_offset": "0x38"
+    },
+    {
+      "name": "managed_count",
+      "wire": "u32-le",
+      "role": "count, not maximum active boosts"
+    },
+    {
+      "name": "m_managedBoosts",
+      "wire": "managed_count ordered records",
+      "record": [
+        {
+          "name": "BehaviorTreeControlId",
+          "wire": "u32-le",
+          "identity": "GameCore::IDType",
+          "object_offset": 0
+        },
+        {
+          "name": "BoostUniquenessHash",
+          "wire": "i32-le",
+          "identity": "raw signed hash",
+          "object_offset": 4
+        }
+      ]
+    }
+  ],
+  "no_q8_fields": true,
+  "no_civic_or_tech_indices": true,
+  "no_definition_hash_remapping": true,
+  "research_same_nested_binding_proven": true,
+  "native_read_appends_managed_records": true,
+  "native_read_resets_manager": false,
+  "reset_is_separate_method": "0x20437e0",
+  "native_read_effects": [
+    "Resolve and overwrite player pointer",
+    "Overwrite allowed-active count",
+    "Reserve and append managed records in source order",
+    "Initialize(player, allowed): reserve managed capacity; when personality exists, query leader boost support and set up support functions"
+  ],
+  "not_serialized": [
+    "m_supportFunctions",
+    "native player pointer",
+    "vector allocation/capacity"
+  ],
+  "fixtures": [],
+  "fixture_gap": "No BoostManager owner cuts or native fixture execution were used in this research-only audit",
+  "original_execution": false,
+  "native_read_effects_reproduced": false,
+  "private_writes": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "planning_only_exclusion_proven": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "audit_source_sha256": "8ece646fe03b3cf8fc6156144fe6c0a917680312f62bd4ac0cd93d12fc9b357e",
+  "attribution": "Independent analysis of pinned supplied Linux ELF symbols, bytes and matching DWARF; no external reference material reproduced"
+}
