@@ -74,8 +74,8 @@ impl Improvements {
         plot_indices
             .try_reserve_exact(n)
             .map_err(|_| Error::ResourceLimit)?;
-        for word in payload.chunks_exact(4) {
-            plot_indices.push(i32::from_le_bytes(word.try_into().unwrap()));
+        for word in payload.as_chunks::<4>().0 {
+            plot_indices.push(i32::from_le_bytes(*word));
         }
         Ok((
             Self {
