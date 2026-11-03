@@ -1,5 +1,6 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Governors.
-//! Stops before unframed CulturalIdentity; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete CulturalIdentity.
+//! Stops before unframed Heroes; this is not a Player/world/gameplay importer.
+use crate::player_cultural_identity;
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
@@ -42,6 +43,7 @@ pub enum Error {
     Wmds(player_wmds::Error),
     Improvements(player_improvements::Error),
     Governors(player_governors::Error),
+    CulturalIdentity(player_cultural_identity::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -137,13 +139,14 @@ pub struct FirstPlayer {
     pub wmds: player_wmds::Wmds,
     pub improvements: player_improvements::Improvements,
     pub governors: player_governors::Governors,
+    pub cultural_identity: player_cultural_identity::CulturalIdentity,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerCulturalIdentity,
+    PlayerHeroes,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -151,7 +154,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerCulturalIdentity.
+    /// No complete Player entry has been consumed at PlayerHeroes.
     pub unfinished_player_entries: u32,
 }
 
@@ -485,6 +488,10 @@ impl Prefix {
                 player_governors::Governors::decode_prefix_with_items,
                 Error::Governors,
             )?;
+            let cultural_identity = r.component(
+                player_cultural_identity::CulturalIdentity::decode_prefix_with_items,
+                Error::CulturalIdentity,
+            )?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -512,10 +519,11 @@ impl Prefix {
                 wmds,
                 improvements,
                 governors,
+                cultural_identity,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerCulturalIdentity
+            Boundary::PlayerHeroes
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -1571,6 +1579,25 @@ mod tests {
             diplomatic_favor: -4990,
         }
     }
+    // All fourteen signed current-wire fields, with no runtime defaults.
+    fn cultural_identity_carrier() -> player_cultural_identity::CulturalIdentity {
+        player_cultural_identity::CulturalIdentity {
+            extra_capital_pressure_radius: i32::MIN,
+            identity_per_turn_for_domestic_trade_route_origin_raw: -5999,
+            martial_law_modifier: -5998,
+            post_combat_foreign_loyalty: -5997,
+            post_combat_local_loyalty: -5996,
+            additional_golden_age_post_combat_loyalty: -5995,
+            post_pillage_foreign_loyalty: -5994,
+            post_pillage_local_loyalty: -5993,
+            get_skip_free_city_step: -5992,
+            foreign_identity_per_turn_from_nearby_great_works_raw: -5991,
+            domestic_identity_per_turn_from_nearby_great_works_raw: -5990,
+            foreign_identity_per_turn_from_nearby_wonders_raw: -5989,
+            domestic_identity_per_turn_from_nearby_wonders_raw: -5988,
+            always_loyal_coastal_home_continent_count: -5987,
+        }
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -1645,6 +1672,11 @@ mod tests {
         out.extend(wmds_carrier().encode(Limits::default()).unwrap());
         out.extend(improvements_carrier().encode(Limits::default()).unwrap());
         out.extend(governors_carrier().encode(Limits::default()).unwrap());
+        out.extend(
+            cultural_identity_carrier()
+                .encode(Limits::default())
+                .unwrap(),
+        );
 
         out
     }
@@ -1652,11 +1684,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched CulturalIdentity");
+        trailing.extend_from_slice(b"untouched Heroes");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerCulturalIdentity);
+        assert_eq!(value.boundary, Boundary::PlayerHeroes);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1743,6 +1775,22 @@ mod tests {
         assert_eq!(p.governors.entries[0].index, 2);
         assert_eq!(p.governors.entries[0].governor.name, [0, 255, 128]);
         assert_eq!(p.governors.free_links, [9, 9, u32::MAX]);
+        assert_eq!(p.cultural_identity.extra_capital_pressure_radius, i32::MIN);
+        assert_eq!(
+            p.cultural_identity
+                .foreign_identity_per_turn_from_nearby_great_works_raw,
+            -5991
+        );
+        assert_eq!(
+            p.cultural_identity
+                .encode_with_items(Limits {
+                    max_bytes: 60,
+                    max_items: 0
+                })
+                .unwrap()
+                .1,
+            0
+        );
         assert_eq!(
             p.quests
                 .encode_with_items(Limits {
@@ -1828,7 +1876,12 @@ mod tests {
             + player.quests.encode(Limits::default()).unwrap().len()
             + player.wmds.encode(Limits::default()).unwrap().len()
             + player.improvements.encode(Limits::default()).unwrap().len()
-            + player.governors.encode(Limits::default()).unwrap().len();
+            + player.governors.encode(Limits::default()).unwrap().len()
+            + player
+                .cultural_identity
+                .encode(Limits::default())
+                .unwrap()
+                .len();
 
         let names_start = n - later_bytes - culture.len() - names.len();
         let culture_start = n - later_bytes - culture.len();
@@ -1877,7 +1930,8 @@ mod tests {
             + p.quests.encode(Limits::default()).unwrap().len()
             + p.wmds.encode(Limits::default()).unwrap().len()
             + p.improvements.encode(Limits::default()).unwrap().len()
-            + p.governors.encode(Limits::default()).unwrap().len();
+            + p.governors.encode(Limits::default()).unwrap().len()
+            + p.cultural_identity.encode(Limits::default()).unwrap().len();
 
         let stats_start = n - after_techs - techs.len() - stats.len();
         // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
@@ -1926,6 +1980,7 @@ mod tests {
         let p = v.first_player.unwrap();
         let units = p.units.encode(Limits::default()).unwrap();
         let start = n
+            - p.cultural_identity.encode(Limits::default()).unwrap().len()
             - p.wmds.encode(Limits::default()).unwrap().len()
             - p.improvements.encode(Limits::default()).unwrap().len()
             - p.governors.encode(Limits::default()).unwrap().len()
@@ -1979,7 +2034,7 @@ mod tests {
         )
         .unwrap();
         let prefix = &value.player_prefix;
-        assert_eq!(prefix.boundary, Boundary::PlayerCulturalIdentity);
+        assert_eq!(prefix.boundary, Boundary::PlayerHeroes);
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
         let post_map = &bytes[value.core.consumed..];
         assert_eq!(encoded, post_map[..encoded.len()]);
@@ -2036,7 +2091,12 @@ mod tests {
             + player.quests.encode(Limits::default()).unwrap().len()
             + player.wmds.encode(Limits::default()).unwrap().len()
             + player.improvements.encode(Limits::default()).unwrap().len()
-            + player.governors.encode(Limits::default()).unwrap().len();
+            + player.governors.encode(Limits::default()).unwrap().len()
+            + player
+                .cultural_identity
+                .encode(Limits::default())
+                .unwrap()
+                .len();
 
         let eras = player.eras;
         let (encoded, era_items) = eras
@@ -2085,7 +2145,8 @@ mod tests {
             + p.quests.encode(Limits::default()).unwrap().len()
             + p.wmds.encode(Limits::default()).unwrap().len()
             + p.improvements.encode(Limits::default()).unwrap().len()
-            + p.governors.encode(Limits::default()).unwrap().len();
+            + p.governors.encode(Limits::default()).unwrap().len()
+            + p.cultural_identity.encode(Limits::default()).unwrap().len();
 
         bytes[n - later - trade.len()..n - later - trade.len() + 4]
             .copy_from_slice(&36u32.to_le_bytes());
@@ -2104,7 +2165,8 @@ mod tests {
         let p = v.first_player.unwrap();
         let later = p.wmds.encode(Limits::default()).unwrap().len()
             + p.improvements.encode(Limits::default()).unwrap().len()
-            + p.governors.encode(Limits::default()).unwrap().len();
+            + p.governors.encode(Limits::default()).unwrap().len()
+            + p.cultural_identity.encode(Limits::default()).unwrap().len();
         let quests = p.quests;
         let (encoded, quest_items) = quests
             .encode_with_items(Limits {
@@ -2128,15 +2190,12 @@ mod tests {
     fn governor_nested_version_is_not_skipped() {
         let mut bytes = carrier();
         let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
-        let governors = v
-            .first_player
-            .unwrap()
-            .governors
-            .encode(Limits::default())
-            .unwrap();
+        let p = v.first_player.unwrap();
+        let later = p.cultural_identity.encode(Limits::default()).unwrap().len();
+        let governors = p.governors.encode(Limits::default()).unwrap();
         // Governors6 header: points, recycled version/bits/capacity/live count,
         // then first explicit slot followed immediately by Governor16.
-        let first_instance = n - governors.len() + 28;
+        let first_instance = n - later - governors.len() + 28;
         assert_eq!(
             &bytes[first_instance..first_instance + 4],
             &16u32.to_le_bytes()
@@ -2148,6 +2207,30 @@ mod tests {
                 expected: 16,
                 actual: 17
             }))
+        ));
+    }
+    #[test]
+    fn cultural_identity_zero_item_scalar_tail_requires_current_version() {
+        let mut bytes = carrier();
+        let (v, n, items) = Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        let identity = v.first_player.unwrap().cultural_identity;
+        let (encoded, identity_items) = identity
+            .encode_with_items(Limits {
+                max_bytes: 60,
+                max_items: 0,
+            })
+            .unwrap();
+        assert_eq!((encoded.len(), identity_items), (60, 0));
+        assert!(items > 0);
+        bytes[n - encoded.len()..n - encoded.len() + 4].copy_from_slice(&11u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bytes, Limits::default()),
+            Err(Error::CulturalIdentity(
+                player_cultural_identity::Error::Version {
+                    expected: 10,
+                    actual: 11
+                }
+            ))
         ));
     }
     #[test]
@@ -2454,7 +2537,7 @@ impl Prefix {
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
                 (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerCulturalIdentity)
+                    | (1.., Some(_), Boundary::PlayerHeroes)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -2581,6 +2664,11 @@ impl Prefix {
                 player_governors::Governors::encode_with_items,
                 Error::Governors,
             )?;
+            w.component(
+                &p.cultural_identity,
+                player_cultural_identity::CulturalIdentity::encode_with_items,
+                Error::CulturalIdentity,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -2623,7 +2711,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerCulturalIdentity;
+        v.boundary = Boundary::PlayerHeroes;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
