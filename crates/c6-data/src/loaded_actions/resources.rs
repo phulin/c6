@@ -341,6 +341,17 @@ pub struct Bound<'a> {
     resources: &'a Resources,
 }
 impl Bound<'_> {
+    /// Reuse only the immutable resource comparison after a caller has admitted
+    /// a separately pinned rules capture. This does not issue mutable facts.
+    pub(crate) fn validate_static_runtime(&self, runtime_bytes: &[u8]) -> Result<(), Error> {
+        let runtime = parse(runtime_bytes)?;
+        if identity(&runtime)? != self.resources.identity {
+            return Err(Error::Identity(
+                "actual static resource/content/configuration mismatch",
+            ));
+        }
+        Ok(())
+    }
     pub fn placement_definitions(
         &self,
     ) -> Result<DefinitionTable<'_, Option<UnitProperties>>, Error> {
