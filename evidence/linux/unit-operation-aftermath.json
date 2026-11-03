@@ -1,11 +1,18 @@
 {
-  "schema": "c6-linux-unit-operation-aftermath-v1",
+  "schema": "c6-linux-unit-operation-aftermath-v2",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "static_only": true,
   "native_execution": false,
-  "source_sha256": "4f081cb5572311d8029e25001c7c40ebdd52a71a4b0e644ec176825211af8553",
-  "audit_sha256": "77915517a0c105ae1c2fc0253466c35ac9fc9887d2865b359eacb44f05077f63",
+  "source_sha256": "5ca5a4fbfa05a5af6d194790dd20bc7d3fda26798665856d8713d6229d706a96",
+  "retained_receivers": [
+    "Configuration captured before accepts; collection before network query; retained on every Find",
+    "Collection captured after Create, retained for redundancy and Add across Send",
+    "Manager Get/Edit/Get captured before each owner ID read; actual Owner retained for store/report",
+    "Definition collection and per-pass notification collection retained across callbacks",
+    "Native node cursor distinct from object identity; retain end cursor across callbacks"
+  ],
+  "audit_sha256": "997c15b0e4acaf6b1807e8ae44442971eb501be2b5867e019d492d9765f3e4be",
   "inherited_branches_sha256": "580745fd4028d7011c9da658428bd2e1770b5bbfdd5cc2e01caa43b874545d34",
   "methods": [
     {
@@ -278,6 +285,46 @@
       "meaning": "Blocking-change report type55f15a7b"
     },
     {
+      "rva": "0x2d2f5b1",
+      "bytes": "4989c6",
+      "meaning": "Retain configuration before accepts callback"
+    },
+    {
+      "rva": "0x2d2f5e9",
+      "bytes": "4989c7",
+      "meaning": "Retain collection before network getter"
+    },
+    {
+      "rva": "0x2d2f5ec",
+      "bytes": "4c89f7",
+      "meaning": "Network getter uses retained configuration"
+    },
+    {
+      "rva": "0x2d2f60e",
+      "bytes": "4c89ff",
+      "meaning": "Each Find uses retained collection"
+    },
+    {
+      "rva": "0x2d2f543",
+      "bytes": "4989c4",
+      "meaning": "Retain collection before redundancy and Send"
+    },
+    {
+      "rva": "0x2d2f56c",
+      "bytes": "4c89e6",
+      "meaning": "Add uses same captured collection after Send"
+    },
+    {
+      "rva": "0x2b5bd74",
+      "bytes": "4989fe",
+      "meaning": "Retain actual player receiver for Update"
+    },
+    {
+      "rva": "0x2b5be24",
+      "bytes": "899fa8070000",
+      "meaning": "Store same player receiver before GetID"
+    },
+    {
       "rva": "0x2913584",
       "bytes": "beffffffff",
       "meaning": "ProcessPending other-player sentinel -1"
@@ -390,6 +437,66 @@
   ],
   "calls": [
     {
+      "rva": "0x2d2f5ac",
+      "target": "0x1e37ab0",
+      "meaning": "Capture configuration before accepts"
+    },
+    {
+      "rva": "0x2d2f5e4",
+      "target": "0x1e6ecd0",
+      "meaning": "Capture collection before network query"
+    },
+    {
+      "rva": "0x2d2f5ef",
+      "target": "0x1f4b370",
+      "meaning": "Retained configuration network getter"
+    },
+    {
+      "rva": "0x2d2f53e",
+      "target": "0x1e6ecd0",
+      "meaning": "Capture collection before redundancy/Send/Add"
+    },
+    {
+      "rva": "0x2b5bd77",
+      "target": "0x1f85f10",
+      "meaning": "Capture Manager Get before owner GetID"
+    },
+    {
+      "rva": "0x2b5bd8d",
+      "target": "0x1fb0810",
+      "meaning": "Owner GetID for initial blocking"
+    },
+    {
+      "rva": "0x2b5bd9e",
+      "target": "0x1fb0810",
+      "meaning": "Owner GetID for real turn-complete lookup"
+    },
+    {
+      "rva": "0x2b5bdb7",
+      "target": "0x1f359d0",
+      "meaning": "Capture Manager Edit before owner GetID"
+    },
+    {
+      "rva": "0x2b5bdcd",
+      "target": "0x1fb0810",
+      "meaning": "Owner GetID for Update"
+    },
+    {
+      "rva": "0x2b5bdd9",
+      "target": "0x1f85f10",
+      "meaning": "Capture Manager Get before owner GetID after Update"
+    },
+    {
+      "rva": "0x2b5bdef",
+      "target": "0x1fb0810",
+      "meaning": "Owner GetID for final blocking"
+    },
+    {
+      "rva": "0x2b5be2a",
+      "target": "0x1fb0810",
+      "meaning": "Owner GetID after owner blocking store"
+    },
+    {
       "rva": "0x2d28a8c",
       "target": "0x1f2e780",
       "meaning": "Mandatory ProcessPending after Add"
@@ -470,6 +577,6 @@
   "actual_provider_parity": false,
   "complete_affected_state_rng_parity": false,
   "full_action_turn_parity": false,
-  "historical_save_load_raw_difference_unclassified_bytes": 89198,
+  "historical_save_load_raw_difference_unresolved_bytes": 89198,
   "attribution": "docs/reference.md; exact target bytes authoritative; no original code executed."
 }

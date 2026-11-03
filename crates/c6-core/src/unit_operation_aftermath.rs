@@ -93,64 +93,105 @@ fn spend(budget: &mut usize) -> Result<(), Error> {
 /// as required by the original captured begin/end pointer iteration.
 pub trait Notifications {
     type Object: Copy;
-    fn accepts_notifications(&mut self, owner: i32) -> Result<bool, Error>;
-    fn definition_count(&mut self) -> Result<usize, Error>;
+    type Cursor: Copy + Eq;
+    type Manager: Copy;
+    type Configuration: Copy;
+    type Collection: Copy;
+    type Definitions: Copy;
+    fn configuration(&mut self) -> Result<Self::Configuration, Error>;
+    fn definitions(&mut self) -> Result<Self::Definitions, Error>;
+    /// `edit=false` is GetPlayerNotifications, `true` is EditPlayerNotifications.
+    fn collection(
+        &mut self,
+        manager: Self::Manager,
+        owner: i32,
+        edit: bool,
+    ) -> Result<Self::Collection, Error>;
+    fn accepts_notifications(&mut self, manager: Self::Manager, owner: i32) -> Result<bool, Error>;
+    fn definition_count(&mut self, definitions: Self::Definitions) -> Result<usize, Error>;
     /// Read each flag/hash at its actual short-circuit point. Non-auto
     /// definitions never invoke GetTypeHash.
-    fn definition_is_auto(&mut self, index: usize) -> Result<bool, Error>;
-    fn definition_hash(&mut self, index: usize) -> Result<u32, Error>;
+    fn definition_is_auto(
+        &mut self,
+        definitions: Self::Definitions,
+        index: usize,
+    ) -> Result<bool, Error>;
+    fn definition_hash(
+        &mut self,
+        definitions: Self::Definitions,
+        index: usize,
+    ) -> Result<u32, Error>;
     /// Exact Create(type, owner, true, null), including registered factory effects.
-    fn create_auto(&mut self, hash: u32, owner: i32) -> Result<Option<Self::Object>, Error>;
-    fn redundant(&mut self, owner: i32, object: Self::Object) -> Result<bool, Error>;
+    fn create_auto(
+        &mut self,
+        manager: Self::Manager,
+        hash: u32,
+        owner: i32,
+    ) -> Result<Option<Self::Object>, Error>;
+    fn redundant(
+        &mut self,
+        collection: Self::Collection,
+        object: Self::Object,
+    ) -> Result<bool, Error>;
     fn release(&mut self, object: Self::Object) -> Result<(), Error>;
     fn send(&mut self, object: Self::Object) -> Result<(), Error>;
-    fn add(&mut self, owner: i32, object: Self::Object) -> Result<(), Error>;
-    fn play_by_cloud(&mut self) -> Result<bool, Error>;
+    fn add(&mut self, collection: Self::Collection, object: Self::Object) -> Result<(), Error>;
+    fn play_by_cloud(&mut self, configuration: Self::Configuration) -> Result<bool, Error>;
     /// None is a null real manager game pointer. Called only in cloud mode.
-    fn manager_game_local_player(&mut self) -> Result<Option<i32>, Error>;
+    fn manager_game_local_player(&mut self, manager: Self::Manager) -> Result<Option<i32>, Error>;
     fn owner_turn_active(&mut self, owner: i32) -> Result<bool, Error>;
-    fn network_multiplayer(&mut self) -> Result<bool, Error>;
+    fn network_multiplayer(&mut self, configuration: Self::Configuration) -> Result<bool, Error>;
     /// Exact selection; existing notification_lifecycle::find_auto_activate is
     /// available for its verified base profile, including live signed locks.
     fn find_auto_activate(
         &mut self,
-        owner: i32,
+        collection: Self::Collection,
         threshold: i32,
     ) -> Result<Option<Self::Object>, Error>;
     fn locked(&mut self, object: Self::Object) -> Result<bool, Error>;
     fn activate(&mut self, object: Self::Object, argument: bool) -> Result<(), Error>;
-    fn first(&mut self, owner: i32) -> Result<Option<Self::Object>, Error>;
-    fn next(&mut self, owner: i32, current: Self::Object) -> Result<Option<Self::Object>, Error>;
+    /// A cursor is a native list-node identity, distinct from Object. Capture
+    /// end once; next follows the current node link after synchronous effects.
+    fn begin(&mut self, collection: Self::Collection) -> Result<Self::Cursor, Error>;
+    fn end(&mut self, collection: Self::Collection) -> Result<Self::Cursor, Error>;
+    fn object(&mut self, cursor: Self::Cursor) -> Result<Self::Object, Error>;
+    fn next(&mut self, current: Self::Cursor) -> Result<Self::Cursor, Error>;
     fn dismissed(&mut self, object: Self::Object) -> Result<bool, Error>;
     fn expired(&mut self, object: Self::Object) -> Result<bool, Error>;
     /// Actual Dismiss, including synchronous event 9ad1c020 after setting198.
     fn dismiss(&mut self, object: Self::Object) -> Result<(), Error>;
     /// Full ordered Release-before-erase, with concrete destructor/pool effects.
     /// notification_lifecycle::cleanup_in_place supports its verified profile.
-    fn cleanup(&mut self, owner: i32) -> Result<(), Error>;
+    fn cleanup(&mut self, collection: Self::Collection) -> Result<(), Error>;
     fn needed(&mut self, object: Self::Object) -> Result<bool, Error>;
     fn blocking(&mut self, object: Self::Object) -> Result<i32, Error>;
     fn severity(&mut self, object: Self::Object) -> Result<i32, Error>;
 }
 
-pub fn send_auto_notify<W: Notifications>(w: &mut W, owner: i32) -> Result<(), Error> {
-    if !w.accepts_notifications(owner)? {
+pub fn send_auto_notify<W: Notifications>(
+    w: &mut W,
+    manager: W::Manager,
+    owner: i32,
+) -> Result<(), Error> {
+    if !w.accepts_notifications(manager, owner)? {
         return Ok(());
     }
-    let end = w.definition_count()?;
+    let definitions = w.definitions()?;
+    let end = w.definition_count(definitions)?;
     for index in 0..end {
-        if !w.definition_is_auto(index)? {
+        if !w.definition_is_auto(definitions, index)? {
             continue;
         }
-        let hash = w.definition_hash(index)?;
-        let Some(object) = w.create_auto(hash, owner)? else {
+        let hash = w.definition_hash(definitions, index)?;
+        let Some(object) = w.create_auto(manager, hash, owner)? else {
             continue;
         };
-        if w.redundant(owner, object)? {
+        let collection = w.collection(manager, owner, true)?;
+        if w.redundant(collection, object)? {
             w.release(object)?;
         } else {
             w.send(object)?;
-            w.add(owner, object)?;
+            w.add(collection, object)?;
         }
     }
     Ok(())
@@ -158,14 +199,21 @@ pub fn send_auto_notify<W: Notifications>(w: &mut W, owner: i32) -> Result<(), E
 
 pub fn process_auto_activate<W: Notifications>(
     w: &mut W,
+    manager: W::Manager,
     owner: i32,
     budget: &mut usize,
 ) -> Result<(), Error> {
-    if !w.accepts_notifications(owner)? || !w.owner_turn_active(owner)? {
+    let configuration = w.configuration()?;
+    if !w.accepts_notifications(manager, owner)? || !w.owner_turn_active(owner)? {
         return Ok(());
     }
-    let threshold = if w.network_multiplayer()? { 3 } else { 0 };
-    while let Some(object) = w.find_auto_activate(owner, threshold)? {
+    let collection = w.collection(manager, owner, true)?;
+    let threshold = if w.network_multiplayer(configuration)? {
+        3
+    } else {
+        0
+    };
+    while let Some(object) = w.find_auto_activate(collection, threshold)? {
         if w.locked(object)? {
             break;
         }
@@ -175,14 +223,19 @@ pub fn process_auto_activate<W: Notifications>(
     Ok(())
 }
 
-pub fn dismiss_expired<W: Notifications>(w: &mut W, owner: i32) -> Result<(), Error> {
-    let mut current = w.first(owner)?;
-    while let Some(object) = current {
+pub fn dismiss_expired<W: Notifications>(
+    w: &mut W,
+    collection: W::Collection,
+) -> Result<(), Error> {
+    let mut current = w.begin(collection)?;
+    let end = w.end(collection)?;
+    while current != end {
+        let object = w.object(current)?;
         if !w.dismissed(object)? && w.expired(object)? {
             w.dismiss(object)?
         }
         // Read the next link after the virtual callback, as the original does.
-        current = w.next(owner, object)?;
+        current = w.next(current)?;
     }
     Ok(())
 }
@@ -190,23 +243,32 @@ pub fn dismiss_expired<W: Notifications>(w: &mut W, owner: i32) -> Result<(), Er
 /// 0x2d2f360: cloud gates are read *after* all auto-notification callbacks.
 pub fn update_notifications<W: Notifications>(
     w: &mut W,
+    manager: W::Manager,
     owner: i32,
     budget: &mut usize,
 ) -> Result<(), Error> {
-    send_auto_notify(w, owner)?;
-    if !w.play_by_cloud()? || w.manager_game_local_player()? == Some(owner) {
-        process_auto_activate(w, owner, budget)?;
+    send_auto_notify(w, manager, owner)?;
+    let configuration = w.configuration()?;
+    if !w.play_by_cloud(configuration)? || w.manager_game_local_player(manager)? == Some(owner) {
+        process_auto_activate(w, manager, owner, budget)?;
     }
-    dismiss_expired(w, owner)?;
-    w.cleanup(owner)
+    let collection = w.collection(manager, owner, true)?;
+    dismiss_expired(w, collection)?;
+    let collection = w.collection(manager, owner, true)?;
+    w.cleanup(collection)
 }
 
 /// 0x2d31060: nonzero blocking among needed records, first unsigned-severity
 /// maximum. Read both severities at comparison time and re-read chosen blocking.
-pub fn notification_blocking<W: Notifications>(w: &mut W, owner: i32) -> Result<i32, Error> {
-    let mut current = w.first(owner)?;
+pub fn notification_blocking<W: Notifications>(
+    w: &mut W,
+    collection: W::Collection,
+) -> Result<i32, Error> {
+    let mut current = w.begin(collection)?;
+    let end = w.end(collection)?;
     let mut selected = None;
-    while let Some(object) = current {
+    while current != end {
+        let object = w.object(current)?;
         if w.needed(object)? && w.blocking(object)? != 0 {
             let replace = match selected {
                 None => true,
@@ -216,7 +278,7 @@ pub fn notification_blocking<W: Notifications>(w: &mut W, owner: i32) -> Result<
                 selected = Some(object)
             }
         }
-        current = w.next(owner, object)?;
+        current = w.next(current)?;
     }
     match selected {
         Some(object) => w.blocking(object),
@@ -231,19 +293,27 @@ pub fn base_expired(added: i32, delta: i32, current_turn: i32) -> bool {
 }
 
 pub trait Blocking: Notifications {
-    fn turn_complete(&mut self, owner: i32) -> Result<bool, Error>;
-    fn owner_blocking(&mut self, owner: i32) -> Result<i32, Error>;
-    fn store_owner_blocking(&mut self, owner: i32, blocking: i32) -> Result<(), Error>;
+    type Owner: Copy;
+    /// Original global Manager Get/Edit; each call returns a captured receiver.
+    fn notification_manager(&mut self, edit: bool) -> Result<Self::Manager, Error>;
+    fn owner_id(&mut self, owner: Self::Owner) -> Result<i32, Error>;
+    fn turn_complete(&mut self, owner_id: i32) -> Result<bool, Error>;
+    fn owner_blocking(&mut self, owner: Self::Owner) -> Result<i32, Error>;
+    fn store_owner_blocking(&mut self, owner: Self::Owner, blocking: i32) -> Result<(), Error>;
     fn local_player(&mut self) -> Result<i32, Error>;
-    /// Exact Type,int,int overload; store precedes local check and Send.
     fn blocking_changed(&mut self, event: u32, old: i32, new: i32) -> Result<(), Error>;
 }
 
-pub fn set_owner_blocking<W: Blocking>(w: &mut W, owner: i32, value: i32) -> Result<(), Error> {
+pub fn set_owner_blocking<W: Blocking>(
+    w: &mut W,
+    owner: W::Owner,
+    value: i32,
+) -> Result<(), Error> {
     let old = w.owner_blocking(owner)?;
     if old != value {
         w.store_owner_blocking(owner, value)?;
-        if owner == w.local_player()? {
+        let id = w.owner_id(owner)?;
+        if id == w.local_player()? {
             w.blocking_changed(BLOCKING_CHANGED, old, value)?
         }
     }
@@ -252,13 +322,22 @@ pub fn set_owner_blocking<W: Blocking>(w: &mut W, owner: i32, value: i32) -> Res
 
 pub fn update_owner_blocking<W: Blocking>(
     w: &mut W,
-    owner: i32,
+    owner: W::Owner,
     budget: &mut usize,
 ) -> Result<(), Error> {
-    let mut value = notification_blocking(w, owner)?;
-    if !w.turn_complete(owner)? {
-        update_notifications(w, owner, budget)?;
-        value = notification_blocking(w, owner)?;
+    let manager = w.notification_manager(false)?;
+    let id = w.owner_id(owner)?;
+    let collection = w.collection(manager, id, false)?;
+    let mut value = notification_blocking(w, collection)?;
+    let id = w.owner_id(owner)?;
+    if !w.turn_complete(id)? {
+        let manager = w.notification_manager(true)?;
+        let id = w.owner_id(owner)?;
+        update_notifications(w, manager, id, budget)?;
+        let manager = w.notification_manager(false)?;
+        let id = w.owner_id(owner)?;
+        let collection = w.collection(manager, id, false)?;
+        value = notification_blocking(w, collection)?;
     }
     set_owner_blocking(w, owner, value)
 }
@@ -273,7 +352,7 @@ pub fn update_owner_blocking<W: Blocking>(
 /// This does not include request TurnUnready, Add, or a resumable policy yield.
 pub fn after_add<W: Diplomacy + Blocking + Clone>(
     world: &W,
-    owner: i32,
+    owner: W::Owner,
     diagnostic_budget: usize,
 ) -> Result<W, Error> {
     let mut candidate = world.clone();
@@ -313,6 +392,16 @@ mod tests {
         send_changes_cloud: bool,
         blocking_calls: usize,
         change_final_blocking: bool,
+        trace_handles: bool,
+        configuration_global: usize,
+        collection_global: usize,
+        replace_on_accepts: bool,
+        replace_on_network: bool,
+        replace_on_activation: bool,
+        replace_on_send: bool,
+        owner_id_reads: usize,
+        manager_reads: usize,
+        object_aliases: Vec<usize>,
     }
     impl World {
         fn event(&mut self, text: impl Into<String>) {
@@ -364,25 +453,54 @@ mod tests {
     }
     impl Notifications for World {
         type Object = usize;
-        fn accepts_notifications(&mut self, _: i32) -> Result<bool, Error> {
+        type Cursor = Option<usize>;
+        type Manager = usize;
+        type Configuration = usize;
+        type Collection = usize;
+        type Definitions = usize;
+        fn configuration(&mut self) -> Result<usize, Error> {
+            if self.trace_handles {
+                self.event(format!("configuration{}", self.configuration_global));
+            }
+            Ok(self.configuration_global)
+        }
+        fn definitions(&mut self) -> Result<usize, Error> {
+            Ok(0)
+        }
+        fn collection(&mut self, manager: usize, owner: i32, edit: bool) -> Result<usize, Error> {
+            if self.trace_handles {
+                self.event(format!(
+                    "collection{}:{manager}:{owner}:{edit}",
+                    self.collection_global
+                ));
+            }
+            Ok(self.collection_global)
+        }
+        fn accepts_notifications(&mut self, _: usize, _: i32) -> Result<bool, Error> {
             self.event("accepts");
+            if self.replace_on_accepts {
+                self.configuration_global += 1;
+            }
             Ok(true)
         }
-        fn definition_count(&mut self) -> Result<usize, Error> {
+        fn definition_count(&mut self, _: Self::Definitions) -> Result<usize, Error> {
             Ok(self.definitions.len())
         }
-        fn definition_is_auto(&mut self, i: usize) -> Result<bool, Error> {
+        fn definition_is_auto(&mut self, _: usize, i: usize) -> Result<bool, Error> {
             Ok(self.definitions[i].0)
         }
-        fn definition_hash(&mut self, i: usize) -> Result<u32, Error> {
+        fn definition_hash(&mut self, _: usize, i: usize) -> Result<u32, Error> {
             assert!(self.definitions[i].0);
             Ok(self.definitions[i].1)
         }
-        fn create_auto(&mut self, hash: u32, _: i32) -> Result<Option<usize>, Error> {
+        fn create_auto(&mut self, _: usize, hash: u32, _: i32) -> Result<Option<usize>, Error> {
             self.event(format!("create{hash}"));
             Ok(if hash == 2 { None } else { Some(hash as usize) })
         }
-        fn redundant(&mut self, _: i32, object: usize) -> Result<bool, Error> {
+        fn redundant(&mut self, collection: usize, object: usize) -> Result<bool, Error> {
+            if self.trace_handles {
+                self.event(format!("redundant_collection{collection}"));
+            }
             Ok(object == 1)
         }
         fn release(&mut self, object: usize) -> Result<(), Error> {
@@ -391,20 +509,29 @@ mod tests {
         }
         fn send(&mut self, object: usize) -> Result<(), Error> {
             self.event(format!("send{object}"));
+            if self.replace_on_send {
+                self.collection_global += 1;
+            }
             if self.send_changes_cloud {
                 self.cloud = true;
             }
             Ok(())
         }
-        fn add(&mut self, _: i32, object: usize) -> Result<(), Error> {
+        fn add(&mut self, collection: usize, object: usize) -> Result<(), Error> {
+            if self.trace_handles {
+                self.event(format!("add_collection{collection}"));
+            }
             self.event(format!("add{object}"));
             Ok(())
         }
-        fn play_by_cloud(&mut self) -> Result<bool, Error> {
+        fn play_by_cloud(&mut self, configuration: Self::Configuration) -> Result<bool, Error> {
+            if self.trace_handles {
+                self.event(format!("cloud_configuration{configuration}"));
+            }
             self.event("cloud");
             Ok(self.cloud)
         }
-        fn manager_game_local_player(&mut self) -> Result<Option<i32>, Error> {
+        fn manager_game_local_player(&mut self, _: Self::Manager) -> Result<Option<i32>, Error> {
             self.event("manager_local");
             Ok(Some(self.local))
         }
@@ -412,11 +539,27 @@ mod tests {
             self.event("active");
             Ok(true)
         }
-        fn network_multiplayer(&mut self) -> Result<bool, Error> {
+        fn network_multiplayer(
+            &mut self,
+            configuration: Self::Configuration,
+        ) -> Result<bool, Error> {
+            if self.trace_handles {
+                self.event(format!("network_configuration{configuration}"));
+            }
+            if self.replace_on_network {
+                self.collection_global += 1;
+            }
             self.event("network");
-            Ok(false)
+            Ok(configuration == 1)
         }
-        fn find_auto_activate(&mut self, _: i32, threshold: i32) -> Result<Option<usize>, Error> {
+        fn find_auto_activate(
+            &mut self,
+            collection: usize,
+            threshold: i32,
+        ) -> Result<Option<usize>, Error> {
+            if self.trace_handles {
+                self.event(format!("find_collection{collection}"));
+            }
             self.event(format!("find{threshold}"));
             Ok(self.records.iter().position(|r| !r.activated))
         }
@@ -424,15 +567,26 @@ mod tests {
             Ok(false)
         }
         fn activate(&mut self, object: usize, argument: bool) -> Result<(), Error> {
+            if self.replace_on_activation {
+                self.collection_global += 1;
+            }
             assert!(!argument);
             self.records[object].activated = true;
             self.event(format!("activate{object}"));
             Ok(())
         }
-        fn first(&mut self, _: i32) -> Result<Option<usize>, Error> {
+        fn begin(&mut self, _: usize) -> Result<Option<usize>, Error> {
             Ok((!self.records.is_empty()).then_some(0))
         }
-        fn next(&mut self, _: i32, current: usize) -> Result<Option<usize>, Error> {
+        fn end(&mut self, _: usize) -> Result<Option<usize>, Error> {
+            Ok(None)
+        }
+        fn object(&mut self, cursor: Option<usize>) -> Result<usize, Error> {
+            let index = cursor.ok_or(Error::Unsupported("end cursor dereference"))?;
+            Ok(self.object_aliases.get(index).copied().unwrap_or(index))
+        }
+        fn next(&mut self, current: Option<usize>) -> Result<Option<usize>, Error> {
+            let current = current.ok_or(Error::Unsupported("end cursor increment"))?;
             Ok((current + 1 < self.records.len()).then_some(current + 1))
         }
         fn dismissed(&mut self, object: usize) -> Result<bool, Error> {
@@ -454,7 +608,7 @@ mod tests {
             self.records.push(record);
             Ok(())
         }
-        fn cleanup(&mut self, _: i32) -> Result<(), Error> {
+        fn cleanup(&mut self, _: usize) -> Result<(), Error> {
             self.event("cleanup");
             self.records.retain(|r| !r.dismissed);
             Ok(())
@@ -476,14 +630,35 @@ mod tests {
         }
     }
     impl Blocking for World {
+        type Owner = usize;
+        fn notification_manager(&mut self, edit: bool) -> Result<usize, Error> {
+            self.manager_reads += 1;
+            if self.trace_handles {
+                self.event(format!("manager{}:{edit}", self.manager_reads));
+            }
+            Ok(self.manager_reads)
+        }
+        fn owner_id(&mut self, owner: usize) -> Result<i32, Error> {
+            self.owner_id_reads += 1;
+            if self.trace_handles {
+                self.event(format!("owner_id{owner}:{}", self.owner_id_reads));
+                Ok(self.owner_id_reads as i32)
+            } else {
+                Ok(owner as i32)
+            }
+        }
+
         fn turn_complete(&mut self, _: i32) -> Result<bool, Error> {
             self.event("complete");
             Ok(self.complete)
         }
-        fn owner_blocking(&mut self, _: i32) -> Result<i32, Error> {
+        fn owner_blocking(&mut self, _: usize) -> Result<i32, Error> {
             Ok(self.blocking)
         }
-        fn store_owner_blocking(&mut self, _: i32, value: i32) -> Result<(), Error> {
+        fn store_owner_blocking(&mut self, owner: usize, value: i32) -> Result<(), Error> {
+            if self.trace_handles {
+                self.event(format!("store_owner{owner}"));
+            }
             self.blocking = value;
             self.event(format!("store{value}"));
             Ok(())
@@ -575,7 +750,7 @@ mod tests {
         };
         w.records[0].expired = true;
         w.records[0].activated = false;
-        update_notifications(&mut w, 0, &mut 10).unwrap();
+        update_notifications(&mut w, 0, 0, &mut 10).unwrap();
         assert_eq!(
             w.log,
             [
@@ -602,7 +777,7 @@ mod tests {
             ..World::default()
         };
         w.records[0].activated = false;
-        update_notifications(&mut w, 0, &mut 10).unwrap();
+        update_notifications(&mut w, 0, 0, &mut 10).unwrap();
         assert_eq!(
             w.log,
             [
@@ -692,11 +867,128 @@ mod tests {
         assert_eq!(w, before);
     }
     #[test]
+    fn node_cursors_distinguish_repeated_object_entries() {
+        let mut w = World {
+            records: vec![World::record(3, 2), World::record(0, 0)],
+            object_aliases: vec![0, 0],
+            ..World::default()
+        };
+        assert_eq!(notification_blocking(&mut w, 0), Ok(2));
+        // Two distinct nodes read the same object, then the selected getter.
+        assert_eq!(w.log.iter().filter(|s| *s == "block0").count(), 3);
+    }
+    #[test]
     fn expiry_signed_wrap_boundaries() {
         assert!(!base_expired(0, 0, i32::MAX));
         assert!(!base_expired(0, -1, i32::MAX));
         assert!(!base_expired(3, 2, 4));
         assert!(base_expired(3, 2, 5));
         assert!(base_expired(i32::MAX, 1, i32::MIN));
+    }
+
+    #[test]
+    fn captures_configuration_before_accepts_and_collection_before_network_and_activation() {
+        let mut w = World {
+            trace_handles: true,
+            replace_on_accepts: true,
+            replace_on_network: true,
+            replace_on_activation: true,
+            records: vec![World::record(0, 0)],
+            ..World::default()
+        };
+        w.records[0].activated = false;
+        process_auto_activate(&mut w, 7, 2, &mut 5).unwrap();
+        assert_eq!(
+            w.log,
+            [
+                "configuration0",
+                "accepts",
+                "active",
+                "collection0:7:2:true",
+                "network_configuration0",
+                "network",
+                "find_collection0",
+                "find0",
+                "activate0",
+                "find_collection0",
+                "find0"
+            ]
+        );
+        assert_eq!(w.configuration_global, 1);
+        assert_eq!(w.collection_global, 2);
+    }
+
+    #[test]
+    fn send_retains_collection_for_add_then_next_definition_reacquires() {
+        let mut w = World {
+            trace_handles: true,
+            replace_on_send: true,
+            definitions: vec![(true, 3), (true, 4)],
+            ..World::default()
+        };
+        send_auto_notify(&mut w, 7, 2).unwrap();
+        assert_eq!(
+            w.log,
+            [
+                "accepts",
+                "create3",
+                "collection0:7:2:true",
+                "redundant_collection0",
+                "send3",
+                "add_collection0",
+                "add3",
+                "create4",
+                "collection1:7:2:true",
+                "redundant_collection1",
+                "send4",
+                "add_collection1",
+                "add4"
+            ]
+        );
+        assert_eq!(w.collection_global, 2);
+    }
+
+    #[test]
+    fn owner_receiver_survives_repeated_id_reads_and_manager_lookup_precedes_id() {
+        let mut w = World {
+            trace_handles: true,
+            records: vec![World::record(0, 4)],
+            local: 5,
+            ..World::default()
+        };
+        update_owner_blocking(&mut w, 99, &mut 5).unwrap();
+        let observed: Vec<&str> = w
+            .log
+            .iter()
+            .filter(|s| {
+                s.starts_with("manager")
+                    || s.starts_with("owner_id")
+                    || s.starts_with("collection")
+                    || s.starts_with("store")
+                    || s.starts_with("changed")
+            })
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            observed,
+            [
+                "manager1:false",
+                "owner_id99:1",
+                "collection0:1:1:false",
+                "owner_id99:2",
+                "manager2:true",
+                "owner_id99:3",
+                "collection0:2:3:true",
+                "collection0:2:3:true",
+                "collection0:2:3:true",
+                "manager3:false",
+                "owner_id99:4",
+                "collection0:3:4:false",
+                "store_owner99",
+                "store4",
+                "owner_id99:5",
+                "changed0:4"
+            ]
+        );
     }
 }
