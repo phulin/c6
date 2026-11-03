@@ -1,0 +1,432 @@
+{
+  "schema": "c6-linux-gpp-influence-quests-wmds-independent-review-v1",
+  "checks_passed": true,
+  "source_commit": "8a99f1fba96a5f189545751c323a4a6ce2f35e11",
+  "archive_sha256": "1a2c134994ef6d9e8c63122c8993e1dced1c5a4e2817ea29f0284f94728a428e",
+  "review_script_sha256": "60c252060f6cde1e8a44a8aa7b30b2b691fd5424027bb60c6b772c38c05d78c2",
+  "source_sha256": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/lib.rs": "a0f9be518cda7e6f9f572be62f74882809e34e6ae818d23b0634189ec0a68d6c",
+    "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+    "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
+    "crates/c6-core/src/player_quests.rs": "8cd4a8374ac45f7934b8801cbea927708201603672506edb739e507e7c37a2f7",
+    "crates/c6-core/src/player_wmds.rs": "5948c879fe976edbb68a79f0dbf81bfeb0bf4e6f16f0a23ab6a898860c53bef2",
+    "tools/linux/player_great_people_points_audit.py": "bf9e090c446fcd7e9e79e47af5a4fd07e05ffc7f4d72281421ddca426c291d1a",
+    "tools/linux/player_influence_audit.py": "d1963b5d8295c50bd9fb2b94b5268d051ed45e578af2610bac941e91789cc252",
+    "tools/linux/player_quests_audit.py": "7bdc9e4289b40d35b2e46e5c2ff9086a6ca908a7273de698f266fe5c046a3388",
+    "tools/linux/player_wmds_audit.py": "33c3e854945a1a576e25a168b197ca10975c61681d4d096d12bc6cfcfc7f268c"
+  },
+  "candidates": {
+    "great_people_points": {
+      "harness_sha256": "3579f6b659faea645e54d073b80ed4da389a5ab84c0e613693ca7130df758f5b",
+      "candidate_sha256": "0778af57372e3ee1ec19464fc687965c914d786991087ee60ca502a409742ccc"
+    },
+    "influence": {
+      "harness_sha256": "d34f9d5a53cac5b90f81ac4d49abde5eaafb2749bede1c8eaa802ca1b050ad86",
+      "candidate_sha256": "1719ef3515e6fb4c7913b8f280d4a0860978d86392deec03601a2e0d2e2da70a"
+    },
+    "quests": {
+      "harness_sha256": "f69b34bc8f01f0323c1da97c218f2b89bb229a192d9a13bdefd81ceb54c6e006",
+      "candidate_sha256": "1fddc12470667b82e13c564511c206dbd5a433da91ee2059a2604645f7dbd19b"
+    },
+    "wmds": {
+      "harness_sha256": "12059f11236eb90898527354ffb9624eb8bb4c2ef384ee6aca90352b6797a4b5",
+      "candidate_sha256": "c1f23c71180d56c64954816598a0d327e439c97aca966472e0a90d9aecafbf3f"
+    }
+  },
+  "static_contracts": {
+    "great_people_points": {
+      "methods": 105,
+      "bindings": 344,
+      "virtuals": 7,
+      "method_manifest_sha256": "d9bfd58f0c5d9e6e29be0becfd5e04bdbf1d5b2597b0fbaa1991574797414bf9",
+      "dwarf_sha256": "e65bcf17c5e3af0841501f4de6261d6e07bf0bd121fe902460150e102c37922b"
+    },
+    "influence": {
+      "methods": 76,
+      "bindings": 294,
+      "virtuals": 14,
+      "method_manifest_sha256": "16d3eb6f9ab3802dfef35cb6346f8b156ea2b043aa0c007b774caea43b7665b5",
+      "dwarf_sha256": "2ab5f671653ffe1817a31cd5d2a0d2e2a9c6abd46abf53042d71930dfc3086bb"
+    },
+    "quests": {
+      "methods": 11,
+      "bindings": 29,
+      "virtuals": 0,
+      "method_manifest_sha256": "f1c838c8d7d2ff3a8510282772bc06591451e5b2d9db726c29237701f6f7582e",
+      "dwarf_sha256": "561d807198a87bc6cb65d4fbe8a18aa8b6240d46658bb7a958a710452c5fc1a9"
+    },
+    "wmds": {
+      "methods": 13,
+      "bindings": 27,
+      "virtuals": 0,
+      "method_manifest_sha256": "984058c01c2e9cd791878a75bfdee81f9b6eadea601ed7400ae6cabb6c4142c4",
+      "dwarf_sha256": "19cce2aa08df00719939eddd9c4f066b412cebf77ff10f90a1fa7af119987637"
+    }
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "source_tests": {
+    "great_people_points": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 248 filtered out; finished in 0.00s",
+    "influence": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 248 filtered out; finished in 0.00s",
+    "quests": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 248 filtered out; finished in 0.00s",
+    "wmds": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 248 filtered out; finished in 0.00s"
+  },
+  "synthetics": {
+    "great_people_points": {
+      "bytes": 300,
+      "items": 27,
+      "hostile_mutations_with_huge_limits": 24
+    },
+    "influence": {
+      "bytes": 296,
+      "items": 36,
+      "hostile_mutations_with_huge_limits": 17
+    },
+    "quests": {
+      "bytes": 8,
+      "items": 0,
+      "hostile_mutations_with_huge_limits": 1
+    },
+    "wmds": {
+      "bytes": 32,
+      "items": 3,
+      "hostile_mutations_with_huge_limits": 2
+    }
+  },
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "components": {
+        "great_people_points": {
+          "records": 43,
+          "bytes": 18834,
+          "items": 2064,
+          "byte_item_shapes": [
+            [
+              438,
+              48
+            ]
+          ],
+          "first_field_shapes": [
+            [
+              "points_total",
+              9
+            ],
+            [
+              "points_earned_this_turn",
+              9
+            ],
+            [
+              "bonus_points_per_turn",
+              9
+            ],
+            [
+              "patronage_discount_percent",
+              6
+            ],
+            [
+              "bonus_points_per_turn_percent",
+              9
+            ],
+            [
+              "yield_modifier_per_earned_great_person",
+              6
+            ],
+            [
+              "yield_change_per_earned_great_person_class",
+              0
+            ],
+            [
+              "great_person_boost_list",
+              0
+            ],
+            [
+              "great_person_class_no_points",
+              0
+            ]
+          ],
+          "ordered_record_digests_sha256": "95ee6104f74c45c155b761439e3a7241d8a7e52e6e65cc996f8b245c25bddaf7",
+          "boundary_evidence": "actual component serializer owner cuts"
+        },
+        "influence": {
+          "records": 43,
+          "bytes": 91375,
+          "items": 22790,
+          "byte_item_shapes": [
+            [
+              2125,
+              530
+            ]
+          ],
+          "first_field_shapes": [
+            [
+              "tokens_received",
+              64
+            ],
+            [
+              "virtual_tokens_received",
+              64
+            ],
+            [
+              "disallow_tokens_from",
+              64
+            ],
+            [
+              "yield_per_given_token",
+              6
+            ],
+            [
+              "yield_modifier_per_tributary",
+              6
+            ],
+            [
+              "yield_per_tributary",
+              6
+            ],
+            [
+              "open_borders_count",
+              64
+            ],
+            [
+              "levy_discount_percent_by_player",
+              0
+            ],
+            [
+              "copy_luxuries_count",
+              64
+            ],
+            [
+              "copy_strategics_count",
+              64
+            ],
+            [
+              "tokens_received_modifier",
+              64
+            ],
+            [
+              "max_tokens_received",
+              64
+            ]
+          ],
+          "ordered_record_digests_sha256": "6cece2e3540445fcb0080393e19fadbe6ddcc2e48ffc4465b86e1fe6324f1d81",
+          "boundary_evidence": "actual component serializer owner cuts"
+        },
+        "quests": {
+          "records": 43,
+          "bytes": 344,
+          "items": 0,
+          "byte_item_shapes": [
+            [
+              8,
+              0
+            ]
+          ],
+          "first_field_shapes": [],
+          "ordered_record_digests_sha256": "60e3d9b068f17b67210c7f461d411132144de7ac5dff03039fe78011b615cabc",
+          "boundary_evidence": "actual component serializer owner cuts"
+        },
+        "wmds": {
+          "records": 43,
+          "bytes": 1032,
+          "items": 86,
+          "byte_item_shapes": [
+            [
+              24,
+              2
+            ]
+          ],
+          "first_field_shapes": [
+            [
+              "weapons",
+              2
+            ]
+          ],
+          "ordered_record_digests_sha256": "bb82d256c762d483bdd5bd5578cce94978c8e6788810af2c14b2643a9a41a5f4",
+          "boundary_evidence": "Quests-end to enclosing Player-end contextual suffix; independent unsigned-count extent; no WMD owner hook"
+        }
+      }
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "components": {
+        "great_people_points": {
+          "records": 43,
+          "bytes": 18834,
+          "items": 2064,
+          "byte_item_shapes": [
+            [
+              438,
+              48
+            ]
+          ],
+          "first_field_shapes": [
+            [
+              "points_total",
+              9
+            ],
+            [
+              "points_earned_this_turn",
+              9
+            ],
+            [
+              "bonus_points_per_turn",
+              9
+            ],
+            [
+              "patronage_discount_percent",
+              6
+            ],
+            [
+              "bonus_points_per_turn_percent",
+              9
+            ],
+            [
+              "yield_modifier_per_earned_great_person",
+              6
+            ],
+            [
+              "yield_change_per_earned_great_person_class",
+              0
+            ],
+            [
+              "great_person_boost_list",
+              0
+            ],
+            [
+              "great_person_class_no_points",
+              0
+            ]
+          ],
+          "ordered_record_digests_sha256": "95ee6104f74c45c155b761439e3a7241d8a7e52e6e65cc996f8b245c25bddaf7",
+          "boundary_evidence": "actual component serializer owner cuts"
+        },
+        "influence": {
+          "records": 43,
+          "bytes": 91375,
+          "items": 22790,
+          "byte_item_shapes": [
+            [
+              2125,
+              530
+            ]
+          ],
+          "first_field_shapes": [
+            [
+              "tokens_received",
+              64
+            ],
+            [
+              "virtual_tokens_received",
+              64
+            ],
+            [
+              "disallow_tokens_from",
+              64
+            ],
+            [
+              "yield_per_given_token",
+              6
+            ],
+            [
+              "yield_modifier_per_tributary",
+              6
+            ],
+            [
+              "yield_per_tributary",
+              6
+            ],
+            [
+              "open_borders_count",
+              64
+            ],
+            [
+              "levy_discount_percent_by_player",
+              0
+            ],
+            [
+              "copy_luxuries_count",
+              64
+            ],
+            [
+              "copy_strategics_count",
+              64
+            ],
+            [
+              "tokens_received_modifier",
+              64
+            ],
+            [
+              "max_tokens_received",
+              64
+            ]
+          ],
+          "ordered_record_digests_sha256": "6cece2e3540445fcb0080393e19fadbe6ddcc2e48ffc4465b86e1fe6324f1d81",
+          "boundary_evidence": "actual component serializer owner cuts"
+        },
+        "quests": {
+          "records": 43,
+          "bytes": 344,
+          "items": 0,
+          "byte_item_shapes": [
+            [
+              8,
+              0
+            ]
+          ],
+          "first_field_shapes": [],
+          "ordered_record_digests_sha256": "60e3d9b068f17b67210c7f461d411132144de7ac5dff03039fe78011b615cabc",
+          "boundary_evidence": "actual component serializer owner cuts"
+        },
+        "wmds": {
+          "records": 43,
+          "bytes": 1032,
+          "items": 86,
+          "byte_item_shapes": [
+            [
+              24,
+              2
+            ]
+          ],
+          "first_field_shapes": [
+            [
+              "weapons",
+              2
+            ]
+          ],
+          "ordered_record_digests_sha256": "bb82d256c762d483bdd5bd5578cce94978c8e6788810af2c14b2643a9a41a5f4",
+          "boundary_evidence": "Quests-end to enclosing Player-end contextual suffix; independent unsigned-count extent; no WMD owner hook"
+        }
+      }
+    }
+  ],
+  "independent_projection": "Python wire grammar and dynamic-item algebra versus every Rust typed scalar/count/hash/Q8/bool token; nested GPP versions checked explicitly",
+  "each_record_checks": [
+    "every truncated prefix",
+    "exact and one-short byte budgets",
+    "exact and one-short nonzero item budgets; zero-item Quests explicitly valid",
+    "one MiB unparsed tail accepted at exact prefix caps and rejected by strict decode",
+    "two concatenated records with exact and one-short shared items"
+  ],
+  "native_branch_gaps": [
+    "GPP nonempty yield-change, earned-boost and no-points vectors are source-only",
+    "Influence nonempty levy-discount-percent-by-player vector is source-only",
+    "WMD consumed boundary is count-derived inside contextual native suffix, not an independently hooked WMD end"
+  ],
+  "native_read_initialize_reset_remapping_reproduced": false,
+  "callbacks": false,
+  "original_execution": false,
+  "private_writes": false,
+  "full_43_players": false,
+  "full_gameplay_state": false,
+  "all_gameplay_rng": false,
+  "actions": false,
+  "turns": false,
+  "raw_save_load_difference_bytes": 89198,
+  "unknown_bytes_masked": false,
+  "whole_prefix_acceptance": "separate frozen producer/composition review"
+}
