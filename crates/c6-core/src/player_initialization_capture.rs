@@ -1445,7 +1445,10 @@ fn admit_parsed_with_origin(
     let mut bound_outputs = std::collections::BTreeMap::new();
     for (row_index, row) in parsed.rows.iter().enumerate() {
         let event = s(row, "event")?;
-        require(!ended, CaptureError::EventOrder)?;
+        require(
+            !ended && (!final_gate || event == "capture_end"),
+            CaptureError::EventOrder,
+        )?;
         if event == "installed" {
             require(
                 marker_pc.is_none()
@@ -1601,7 +1604,16 @@ fn admit_parsed_with_origin(
         if event == "final_live_original_method_fingerprints_equal" {
             // Source-closed runner checks 29 Initialize dependencies +5 wire methods.
             require(
-                n(row, "method_count")? == 34 && streams.iter().all(|s| s.finished),
+                begun
+                    && !final_gate
+                    && !records.is_empty()
+                    && !streams.is_empty()
+                    && current.is_none()
+                    && pending.is_none()
+                    && pending_marker.is_none()
+                    && active.is_none()
+                    && n(row, "method_count")? == 34
+                    && streams.iter().all(|s| s.finished),
                 CaptureError::Incomplete,
             )?;
             final_gate = true;
@@ -1700,6 +1712,7 @@ fn admit_parsed_with_origin(
             continue;
         }
         let cp = if event == "read_initialized" {
+            require(pending.is_none(), CaptureError::EventOrder)?;
             None
         } else {
             let cp = pending.take().ok_or(CaptureError::Frame)?;
@@ -2630,6 +2643,89 @@ mod tests {
         assert!(matches!(
             admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly),
             Err(CaptureError::Stream)
+        ));
+    }
+    #[test]
+    fn final_fingerprint_is_terminal_and_read_ready_precedes_return_checkpoint() {
+        let input = military(false)
+            .encode(crate::unit::Limits::default())
+            .unwrap();
+        let output = military(true)
+            .encode(crate::unit::Limits::default())
+            .unwrap();
+        for position in [0, 1, 2] {
+            let mut parsed = source_parsed(&input, &output);
+            let index = parsed
+                .rows
+                .iter()
+                .position(|r| r["event"] == "final_live_original_method_fingerprints_equal")
+                .unwrap();
+            let gate = parsed.rows.remove(index);
+            let index = match position {
+                0 => 0,
+                1 => {
+                    parsed
+                        .rows
+                        .iter()
+                        .position(|r| r["event"] == "observer_begin")
+                        .unwrap()
+                        + 1
+                }
+                _ => {
+                    parsed
+                        .rows
+                        .iter()
+                        .position(|r| r["event"] == "stream_marker" && r["marker_event"] == 11)
+                        .unwrap()
+                        - 1
+                }
+            };
+            parsed.rows.insert(index, gate);
+            assert!(
+                admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly)
+                    .is_err(),
+                "early gate {position}"
+            );
+        }
+        for event in [
+            "checkpoint",
+            "stream_marker",
+            "final_live_original_method_fingerprints_equal",
+            "late_diagnostic",
+        ] {
+            let mut parsed = source_parsed(&input, &output);
+            let index = parsed
+                .rows
+                .iter()
+                .position(|r| r["event"] == "capture_end")
+                .unwrap();
+            parsed
+                .rows
+                .insert(index, json!({"event":event,"method_count":34}));
+            assert!(
+                matches!(
+                    admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly),
+                    Err(CaptureError::EventOrder)
+                ),
+                "aftergate {event}"
+            );
+        }
+        let mut parsed = source_parsed(&input, &output);
+        let index = parsed
+            .rows
+            .iter()
+            .position(|r| r["event"] == "checkpoint" && r["checkpoint"] == "read_return")
+            .unwrap();
+        let cp = parsed.rows.remove(index);
+        let ready = parsed
+            .rows
+            .iter()
+            .position(|r| r["event"] == "read_initialized")
+            .unwrap();
+        parsed.rows.insert(ready, cp);
+        assert!(matches!(
+            admit_parsed_with_origin(parsed, CaptureLimits::default(), Origin::SourceOnly),
+            Err(CaptureError::EventOrder)
         ));
     }
 }
