@@ -1,0 +1,571 @@
+{
+  "checks": {
+    "activity_assignment_inserts_then_writes": true,
+    "all_49_clear_slots_are_ret": true,
+    "load_delta_calls_live_wrapper_load": true,
+    "queue_edit_only_tree_insert_and_return": true,
+    "snapshot_input_applies_live_values": true,
+    "snapshot_input_invokes_desync_callback": true,
+    "snapshot_output_serializes_dirty_union": true,
+    "sync_saves_hash_and_dirty_indices": true
+  },
+  "complete_state_action_turn_parity": false,
+  "direct_consumers": {
+    "Civ6": [
+      {
+        "caller": "00000000039d54c2 <FGameSyncManager::SentGameSyncCheck(bool)@@Base>:",
+        "site": "0x39d553c",
+        "target": "FAutoArchive::calculateDataHash() const@@Base"
+      },
+      {
+        "caller": "00000000039d54c2 <FGameSyncManager::SentGameSyncCheck(bool)@@Base>:",
+        "site": "0x39d5559",
+        "target": "FAutoArchive::getDeltaIndexes() const@@Base"
+      },
+      {
+        "caller": "00000000039d5aa2 <FGameSyncManager::HandleNetGameSyncSnapshot(NetGameSyncSnapshot&)@@Base>:",
+        "site": "0x39d82f7",
+        "target": "FAutoArchive::loadDelta(Serialization::IStream&, std::__1::vector<unsigned int, std::__1::allocator<unsigned int> >*)@@Base"
+      },
+      {
+        "caller": "00000000039d5aa2 <FGameSyncManager::HandleNetGameSyncSnapshot(NetGameSyncSnapshot&)@@Base>:",
+        "site": "0x39d836d",
+        "target": "FAutoArchive::GetDeltaDesyncCallback(unsigned int)@@Base"
+      },
+      {
+        "caller": "00000000039d96de <FGameSyncManager::TriggerGameSyncComplete()@@Base>:",
+        "site": "0x39d98f7",
+        "target": "FAutoArchive::clearDelta()@@Base"
+      },
+      {
+        "caller": "00000000039d998e <FGameSyncManager::ProcessNetGameSyncCheck(NetGameSyncCheck&)@@Base>:",
+        "site": "0x39d9ae0",
+        "target": "FAutoArchive::calculateDataHash() const@@Base"
+      },
+      {
+        "caller": "00000000039dadbc <FGameSyncManager::SetSnapshotDeltaArchive(NetGameSyncSnapshot&, Serialization::HeapMemoryOStream<(Platform::eMPoolType)37, 0u, 4096ul>&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >&, unsigned long, FAutoArchive*)@@Base>:",
+        "site": "0x39dae1d",
+        "target": "FAutoArchive::saveDeltaUnion(Serialization::OStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> >&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >) const@@Base"
+      },
+      {
+        "caller": "0000000003c45b3c <FAutoArchive::saveDelta(Serialization::OStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> >&) const@@Base>:",
+        "site": "0x3c45b40",
+        "target": "FAutoArchive::saveDelta(Serialization::OStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> >&, std::__1::set<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >&) const@@Base"
+      },
+      {
+        "caller": "0000000003c45c2c <FAutoArchive::saveDeltaUnion(Serialization::OStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> >&, Types::Vector<unsigned int, Types::LinearAlloc::Default<1u, 0u> >) const@@Base>:",
+        "site": "0x3c45cd5",
+        "target": "FAutoArchive::saveDelta(Serialization::OStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> >&, std::__1::set<FAutoVariableBase*, std::__1::less<FAutoVariableBase*>, std::__1::allocator<FAutoVariableBase*> >&) const@@Base"
+      },
+      {
+        "caller": "0000000003c46036 <FAutoArchive::loadDelta(Serialization::IStream&, std::__1::vector<unsigned int, std::__1::allocator<unsigned int> >*)@@Base>:",
+        "site": "0x3c4604f",
+        "target": "FAutoArchive::clearDelta()@@Base"
+      }
+    ],
+    "libGameCore_XP2.so": []
+  },
+  "game_methods": {
+    "activity_assignment": {
+      "address": "0x2da4010",
+      "bytes": 60,
+      "sha256": "5e7ff9e24f4b6e516dc369f54fa923a18af6f417eb115f3b919293f500ffed73",
+      "symbols": [
+        "_Z16CopyAssignmentDoIN8GameCore17UnitActivityTypesE13FAutoVariableIS1_NS0_4Unit9CInstanceEEEvRT0_RKT_NSt3__117integral_constantIbLb1EEE"
+      ]
+    },
+    "queue_edit": {
+      "address": "0x2da3100",
+      "bytes": 52,
+      "sha256": "abedbd715649e178ddc9cbac813c7321e699b8f3fd5e933ce43f33e4d5654c5e",
+      "symbols": [
+        "_ZN13FAutoVariableIN8GameCore4Unit10Operations14OperationQueueENS1_8InstanceEE4editEv"
+      ]
+    }
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_methods": {
+    "clear_delta": {
+      "address": "0x3c45d18",
+      "bytes": 133,
+      "sha256": "8c603234dfd50040d8f55ac5f574ab2ee5fff303694e332b985e95af37c2d0fb",
+      "symbols": [
+        "_ZN12FAutoArchive10clearDeltaEv"
+      ]
+    },
+    "data_hash": {
+      "address": "0x3c45e82",
+      "bytes": 177,
+      "sha256": "930050b3feaa6338b5d00028470409e648543b3db31b3b3acb0b4720700f4579",
+      "symbols": [
+        "_ZNK12FAutoArchive17calculateDataHashEv"
+      ]
+    },
+    "delta_hash": {
+      "address": "0x3c45d9e",
+      "bytes": 228,
+      "sha256": "c88b5209e86f6d76d1c20df752ef8c2ad9d2ecbf6f4143ca7a6770b2e8c8b2ad",
+      "symbols": [
+        "_ZNK12FAutoArchive18calculateDeltaHashEv"
+      ]
+    },
+    "delta_indices": {
+      "address": "0x3c45f34",
+      "bytes": 217,
+      "sha256": "c8f7b970f932e563c94d1d3450df151bfe3926639f3691719a7377c9dbe7608f",
+      "symbols": [
+        "_ZNK12FAutoArchive15getDeltaIndexesEv"
+      ]
+    },
+    "desync_callback": {
+      "address": "0x3c470fc",
+      "bytes": 75,
+      "sha256": "17710dac5431deb11f746ac4cdf8df83045d3e9eacf51ee2348dd3a99f84eec8",
+      "symbols": [
+        "_ZN12FAutoArchive22GetDeltaDesyncCallbackEj"
+      ]
+    },
+    "has_deltas": {
+      "address": "0x3c46fca",
+      "bytes": 9,
+      "sha256": "b502655cd4436694df21a37b3b55c00de4fbdfe96c424612133999ad993721ab",
+      "symbols": [
+        "_ZNK12FAutoArchive9hasDeltasEv"
+      ]
+    },
+    "load_delta": {
+      "address": "0x3c46036",
+      "bytes": 350,
+      "sha256": "189ca26edb4ac63fd69d8875c0d064390c137c5c81768c3e29309a2ce2365788",
+      "symbols": [
+        "_ZN12FAutoArchive9loadDeltaERN13Serialization7IStreamEPNSt3__16vectorIjNS3_9allocatorIjEEEE"
+      ]
+    },
+    "process_sync_check": {
+      "address": "0x39d998e",
+      "bytes": 5138,
+      "sha256": "cefc61ab4e900f1d68543caae2da387861391d5e5be72860cc1724523d2aaeb3",
+      "symbols": [
+        "_ZN16FGameSyncManager23ProcessNetGameSyncCheckER16NetGameSyncCheck"
+      ]
+    },
+    "receive_snapshot": {
+      "address": "0x39d5aa2",
+      "bytes": 14184,
+      "sha256": "4b97f3aa127c6527a77b6788f4ea9c6837ec77e7a7f0d2f44b6531984e352488",
+      "symbols": [
+        "_ZN16FGameSyncManager25HandleNetGameSyncSnapshotER19NetGameSyncSnapshot"
+      ]
+    },
+    "save_delta": {
+      "address": "0x3c45b46",
+      "bytes": 230,
+      "sha256": "aeaa86aaf9a4d84066a366e7c39822085532660dec059ccc37ef770206ec240a",
+      "symbols": [
+        "_ZNK12FAutoArchive9saveDeltaERN13Serialization7OStreamERN5Types6VectorINS3_4pairI18AutoVariableStringS6_EENS3_11LinearAlloc7DefaultILj1ELj0EEEEERNSt3__13setIP17FAutoVariableBaseNSD_4lessISG_EENSD_9allocatorISG_EEEE"
+      ]
+    },
+    "save_delta_union": {
+      "address": "0x3c45c2c",
+      "bytes": 235,
+      "sha256": "46fc3b60f70b153430be3aa65fef679742adaf6f08ace1132039eb6d030b48db",
+      "symbols": [
+        "_ZNK12FAutoArchive14saveDeltaUnionERN13Serialization7OStreamERN5Types6VectorINS3_4pairI18AutoVariableStringS6_EENS3_11LinearAlloc7DefaultILj1ELj0EEEEENS4_IjSA_EE"
+      ]
+    },
+    "sent_sync_check": {
+      "address": "0x39d54c2",
+      "bytes": 839,
+      "sha256": "ef53769d8a9ba29131bf5becb092227b6ed8e897d6c93141599ff3b1bd545dd2",
+      "symbols": [
+        "_ZN16FGameSyncManager17SentGameSyncCheckEb"
+      ]
+    },
+    "snapshot_delta": {
+      "address": "0x39dadbc",
+      "bytes": 295,
+      "sha256": "cd1c02bc2a44ec3b38b8a1e6745170db1aae25d7c7d4b352e8eb5e9b3c4caea6",
+      "symbols": [
+        "_ZN16FGameSyncManager23SetSnapshotDeltaArchiveER19NetGameSyncSnapshotRN13Serialization17HeapMemoryOStreamILN8Platform10eMPoolTypeE37ELj0ELm4096EEERN5Types6VectorIjNS8_11LinearAlloc7DefaultILj1ELj0EEEEEmP12FAutoArchive"
+      ]
+    },
+    "sync_complete": {
+      "address": "0x39d96de",
+      "bytes": 656,
+      "sha256": "d2302145cac22d932d4f8661bcdd892c4f9ef93bff8da9e2404b428e2b4aeb20",
+      "symbols": [
+        "_ZN16FGameSyncManager23TriggerGameSyncCompleteEv"
+      ]
+    }
+  },
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "original_execution": false,
+  "schema": "c6-linux-load-archive-gameplay-scope-v1",
+  "scope": {
+    "conditions": [
+      "local in-process gameplay state is authoritative",
+      "native snapshot/delta resynchronization is unsupported",
+      "no blanket exclusion of other archive classes or reporting dirty components"
+    ],
+    "direct_scan_is_complete_indirect_inline_proof": false,
+    "dirty_baseline_capture_required_for_local_gameplay": false,
+    "excluded_from_local_gameplay_acceptance": [
+      "native dirty-pointer baseline/order",
+      "native sync registration bookkeeping",
+      "native archive delta/hash wire production",
+      "native pointer/capacity allocation"
+    ],
+    "retained": [
+      "all logical field values and ordered gameplay mutations",
+      "actual reports and gameplay-affecting subscribers",
+      "gameplay RNG and action legality",
+      "source-required gameplay cache/projection updates"
+    ],
+    "snapshot_input_is_gameplay_mutating": true
+  },
+  "typed_clear_slots": [
+    {
+      "bytes": 1,
+      "clear_delta": "0x293f000",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<unsigned int, GameCore::Formation::Instance>",
+      "vtable": "0x3ac71b8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x293fa10",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance>",
+      "vtable": "0x3ac7278"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2940440",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::PlayerTypes, GameCore::Formation::Instance>",
+      "vtable": "0x3ac7338"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2940e50",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<FixedPointT<8u>, GameCore::Formation::Instance>",
+      "vtable": "0x3ac73f8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2941880",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance>",
+      "vtable": "0x3ac74b8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2942280",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<bool, GameCore::Formation::Instance>",
+      "vtable": "0x3ac7578"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2942ca0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance>",
+      "vtable": "0x3ac7638"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2943a30",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance>",
+      "vtable": "0x3ac76f8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c130a0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::UnitAutomateTypes, GameCore::Unit::CInstance>",
+      "vtable": "0x3ae5178"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c13aa0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::UnitActivityTypes, GameCore::Unit::CInstance>",
+      "vtable": "0x3ae5238"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c144a0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::DomainTypes, GameCore::Unit::CInstance>",
+      "vtable": "0x3ae52f8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c14ea0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<bool, GameCore::Unit::CInstance>",
+      "vtable": "0x3ae53b8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c1d1e0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<unsigned int, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae58a8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c1dbe0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::UnitTypes, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5968"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c1e5e0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::UnitAITypes, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5a28"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c1eff0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::PlotCoord, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5ae8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c1fa20",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::DirectionTypes, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5ba8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c20420",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5c68"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c20e50",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Data::VariantMap, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5d28"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c218f0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Data::TypedVariantMap, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5de8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c22390",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<bool, GameCore::Unit::IInstance>",
+      "vtable": "0x3ae5ea8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c2d690",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::MilitaryFormationTypes, GameCore::Unit::Instance>",
+      "vtable": "0x3ae5fd8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c2e090",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<unsigned int, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6098"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c2ea60",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::PlotCoord, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6158"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c2f490",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<bool, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6218"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c2feb0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>",
+      "vtable": "0x3ae62d8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c30980",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6398"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c31460",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Types::HashTable<unsigned char, 1u, 0u>, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6458"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c320e0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<int, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6518"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c32af0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<FixedPointT<8u>, GameCore::Unit::Instance>",
+      "vtable": "0x3ae65d8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c33520",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<bool, GameCore::Unit::Religion>",
+      "vtable": "0x3ae6698"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c33f10",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::PlayerTypes, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6758"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c34910",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::HealthModifiers, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6818"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c35310",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::HealthReligionModifiers, GameCore::Unit::Instance>",
+      "vtable": "0x3ae68d8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c35d10",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::CombatModifiers, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6998"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c36740",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::MovementModifiers, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6a58"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c37140",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::SightModifiers, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6b18"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c37b70",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6bd8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c38a70",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::AttackRangeModifiers, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6c98"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c394a0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Archaeology, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6d58"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c39f80",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Espionage, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6e18"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3aa20",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Experience, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6ed8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3b530",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::GreatPerson, GameCore::Unit::Instance>",
+      "vtable": "0x3ae6f98"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3c020",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Religion, GameCore::Unit::Instance>",
+      "vtable": "0x3ae7058"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3cac0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::RockBand, GameCore::Unit::Instance>",
+      "vtable": "0x3ae7118"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3d660",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Trade, GameCore::Unit::Instance>",
+      "vtable": "0x3ae71d8"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3e160",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Operations::OperationQueue, GameCore::Unit::Instance>",
+      "vtable": "0x3ae7298"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3f0e0",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>, GameCore::Unit::Instance>",
+      "vtable": "0x3ae7358"
+    },
+    {
+      "bytes": 1,
+      "clear_delta": "0x2c3fe10",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "type": "FAutoVariable<GameCore::Unit::Hero, GameCore::Unit::Instance>",
+      "vtable": "0x3ae7418"
+    }
+  ]
+}
