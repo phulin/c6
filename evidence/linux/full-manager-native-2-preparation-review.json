@@ -1,0 +1,113 @@
+{
+  "checks": {
+    "actual_prepared_adapter_validate_plan": true,
+    "actual_real_ldd_driver_preflight": true,
+    "adapter_synthetic_cases": 31,
+    "archived_current_committed_preimages_equal": 92,
+    "caller_frames": 8,
+    "compiled_symbols": 12,
+    "direct_project_C_header_includes_closed": true,
+    "driver_same_hash_path_and_other_refusal_cases": 10,
+    "final_link_reextraction_matches": true,
+    "four_roles_canonical_paths_SHA_device_inode_checked": true,
+    "independent_actual_plan_inode_refusals": 4,
+    "independent_assembler_refusals": 3,
+    "launch_expected_profile_input_actor_bindings": true,
+    "marker_phases": 9,
+    "observer_and_trace_empty_at_admission": true,
+    "runtime_dependencies_rehashed": 29,
+    "unique_absent_outputs": 12
+  },
+  "corrected_sources": [
+    "bce246e",
+    "f6b3c33",
+    "51b2f70",
+    "0803623"
+  ],
+  "identities": {
+    "configuration_file_sha256": "1fe9d8999de6d0dcff8c6703eaa8340c002510e1c08b975a849a719c1a7d0e43",
+    "launch_plan_sha256": "29d1688ff4a3bbd0db6991eeaf4a07ede1ba36d1953a93fda067136aa2bdf7c2",
+    "plan_sha256": "fb9b8d168997e3f57adaba0241c5a7781e7fffcf4b87a3cdea24a57ecf2b7000",
+    "preload_sha256": "7c6c5b25a593202bf4d03c69d8b66e46830855503c373bf9b8c70b12a586d310",
+    "prepared_sha256": "02b4fd7e28fa79676ca9f5b25593dba0952ba28999ae7cfe69fc0c7f7009ce0e",
+    "profile_sha256": "27ee77e3bf3aed48f957e13d41a314cf7a9c413f5ccb0e1793fe7d4826987116",
+    "source_archive_sha256": "3c342865c3a341754a006f8b9400526a9d6a05805b247a99c46eaf52ef955e04",
+    "source_checkpoint": "0803623",
+    "stack_contract_sha256": "36c95ad5c1337a09f0da7ccec2cb609f4f9b43b0d4a06a6187fe56b5c75e4cb5"
+  },
+  "limits": [
+    "Admission is for exact one-call preparation only, not native predicate outcome or complete state/actions/RNG/turn parity.",
+    "Raw HKS/startup attribution remains unresolved; actual main-TID/own-prefix and known mapping/code gates remain required. No callback absence or VM/GC safety inference.",
+    "Known RNG and optional Save observations are bounded diagnostics.",
+    "Sole runner must immediately recheck source identities, frozen launch plan and fresh paths. Closed native results, failure disposal and successful original cleanup remain separate."
+  ],
+  "native_execution_by_reviewer": false,
+  "native_result_accepted": false,
+  "preparation_admitted": true,
+  "prepared_directory": "/home/phulin/c6-ghidra/evidence/linux-full-manager-predicate/native-2",
+  "prior_native_1": {
+    "native_cleanup_proven": false,
+    "parity_accepted": false,
+    "predicate_invoked": false,
+    "retained_observation": "runner_refused: wrong original host executable",
+    "review_correction": "Prior8c2ca59 checked identical host/preload bytes but missed actual launch/mapping paths. Native1 was refused before the predicate; prior evidence remains immutable. Corrected four-role launch and device/inode contracts now refuse same-hash path substitutions.",
+    "runtime_returncode": 239,
+    "runtime_sha256": "a8d62a2b74a24be12fb2892da372477e6fa637d972f9cf9ad6358b9b96c7a5ca"
+  },
+  "reused_reviews": [
+    "2515ae7",
+    "0faaabd",
+    "ed67f33"
+  ],
+  "runtime_module_file_identities": {
+    "/home/phulin/c6-assets-linux/libGameCore_XP2.so": {
+      "device": [
+        253,
+        1
+      ],
+      "inode": 683418,
+      "sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa"
+    },
+    "/home/phulin/c6-ghidra/evidence/linux-full-manager-predicate/native-2/full-manager-preload.so": {
+      "device": [
+        253,
+        1
+      ],
+      "inode": 3017714,
+      "sha256": "7c6c5b25a593202bf4d03c69d8b66e46830855503c373bf9b8c70b12a586d310"
+    },
+    "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6": {
+      "device": [
+        253,
+        1
+      ],
+      "inode": 923633,
+      "sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4"
+    },
+    "/usr/lib/x86_64-linux-gnu/libc.so.6": {
+      "device": [
+        253,
+        1
+      ],
+      "inode": 55202,
+      "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+    }
+  },
+  "runtime_module_paths": {
+    "core": "/home/phulin/c6-assets-linux/libGameCore_XP2.so",
+    "host": "/home/phulin/c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/Civ6",
+    "libc": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+    "preload": "/home/phulin/c6-ghidra/evidence/linux-full-manager-predicate/native-2/full-manager-preload.so"
+  },
+  "schema": "c6-linux-full-manager-native-2-preparation-independent-review-v1",
+  "scope": {
+    "Save_equality_is_gate": false,
+    "actor_full_id": 15794187,
+    "actor_owner": 0,
+    "callback_effects_possible": true,
+    "mode": "raw_unresolved",
+    "predicate_calls": 1,
+    "queued_work_zero_is_gate": false,
+    "visible_only": false
+  }
+}
