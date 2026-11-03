@@ -25,7 +25,7 @@ fn main() {
  while at<all.len() { let n=u32::from_le_bytes(all[at..at+4].try_into().unwrap()) as usize;at+=4;let raw=&all[at..at+n];at+=n;
  let (v,used,items)=CultureAi::decode_prefix_with_items(raw,Limits{max_bytes:n,max_items:n}).unwrap();assert_eq!(used,n);
  p_CultureAi(&v,&mut digest);let exact=Limits{max_bytes:n,max_items:items};assert_eq!(CultureAi::decode(raw,exact).unwrap(),v);assert_eq!(v.encode_with_items(exact).unwrap(),(raw.to_vec(),items));
- for end in 0..n {assert!(CultureAi::decode(&raw[..end],exact).is_err());}
+ let cuts=u32::from_le_bytes(all[at..at+4].try_into().unwrap()) as usize;at+=4;for _ in 0..cuts{let end=u32::from_le_bytes(all[at..at+4].try_into().unwrap()) as usize;at+=4;assert!(end<n);assert!(CultureAi::decode(&raw[..end],exact).is_err());}
  let short=Limits{max_bytes:n-1,..exact};assert_eq!(CultureAi::decode(raw,short),Err(Error::ResourceLimit));assert_eq!(v.encode(short),Err(Error::ResourceLimit));
  if items>0 {let short=Limits{max_items:items-1,..exact};assert_eq!(CultureAi::decode(raw,short),Err(Error::ResourceLimit));assert_eq!(v.encode(short),Err(Error::ResourceLimit));}
  let mut tail=raw.to_vec();tail.extend_from_slice(&[91;128]);assert_eq!(CultureAi::decode(&tail,exact),Err(Error::Trailing));assert_eq!(CultureAi::decode_prefix_with_items(&tail,exact).unwrap(),(v,n,items));records+=1;
@@ -33,28 +33,32 @@ fn main() {
 }'''
 
 def projection(raw):
-    pos=0;items=0;values=[];rebuilt=bytearray();counts={}
-    def scalar(t,emit=True):
+    pos=0;items=0;values=[];rebuilt=bytearray();counts={};cuts=set()
+    def scalar(t,emit=True,tracked=True):
         nonlocal pos
         fmt={'i':'<i','u':'<I','b':'<B'}[t];n=struct.calcsize(fmt)
+        if tracked:cuts.update([pos,pos+1] if n>1 else [pos])
         v=struct.unpack_from(fmt,raw,pos)[0];pos+=n
+        if tracked:cuts.add(pos)
         rebuilt.extend(struct.pack(fmt,v))
         if emit:values.append(v)
         return v
-    def read(t):
+    def read(t,tracked=True):
         nonlocal items
-        if t in ('i','u','b'):return scalar(t)
+        if t in ('i','u','b'):return scalar(t,tracked=tracked)
         if t.startswith('['):
-            n=scalar('u');items+=n
-            return [read(t[1:-1]) for _ in range(n)]
-        if t.startswith('{'):return dict(hash=scalar('u'),value=read(t[1:-1]))
+            n=scalar('u',tracked=tracked);items+=n
+            result=[read(t[1:-1],tracked and j in (0,n-1)) for j in range(n)]
+            if tracked:cuts.add(pos)
+            return result
+        if t.startswith('{'):return dict(hash=scalar('u',tracked=tracked),value=read(t[1:-1],tracked))
         version,fields=SCHEMAS[t]
         counts[t]=counts.get(t,0)+1
-        if version is not None and scalar('u',False)!=version:raise ValueError('version '+t)
-        return {name:read(kind) for name,kind in fields}
+        if version is not None and scalar('u',False,tracked)!=version:raise ValueError('version '+t)
+        return {name:read(kind,tracked) for name,kind in fields}
     value=read('CultureAi')
     if pos!=len(raw) or rebuilt!=raw:raise ValueError('typed extent/repacking')
-    return value,items,values,counts
+    return value,items,values,counts,sorted(n for n in cuts if n<len(raw))
 
 def candidate(pin,records,expected_digest):
     pin=subprocess.check_output(['git','rev-parse',pin+'^{commit}'],cwd=ROOT,text=True).strip()
@@ -83,7 +87,7 @@ def candidate(pin,records,expected_digest):
         if count!=86 or digest!=expected_digest:raise ValueError('independent typed projection mismatch')
         for path,digest_source in identities.items():
             if sha((source/path).read_bytes())!=digest_source:raise ValueError('source changed during build '+path)
-        return dict(source_commit=pin,archive_sha256=sha(archive),sources=identities,harness_sha256=sha(HARNESS.encode()),candidate_sha256=sha((tmp/'candidate').read_bytes()),records=count,typed_projection_digest=digest,all_archived_sources_checked_before_and_after=True,exported_archive_unchanged=True,cargo_tests=True,clippy_strict_all_targets=True,every_truncation=True,exact_byte_item_caps=True,one_short_byte_item_caps=True,strict_trailing=True,prefix_tail=True)
+        return dict(source_commit=pin,archive_sha256=sha(archive),sources=identities,harness_sha256=sha(HARNESS.encode()),candidate_sha256=sha((tmp/'candidate').read_bytes()),records=count,typed_projection_digest=digest,all_archived_sources_checked_before_and_after=True,exported_archive_unchanged=True,cargo_tests=True,clippy_strict_all_targets=True,native_truncation_cuts="all count fields and containers; scalar boundaries plus first interior byte in first/last repeated row; no middle repeated rows",source_carrier_every_truncation=True,exact_byte_item_caps=True,one_short_byte_item_caps=True,strict_trailing=True,prefix_tail=True)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--source-commit');p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux');p.add_argument('--private-root',type=Path,default=ROOT.parent/'c6-ghidra');a=p.parse_args()
@@ -107,7 +111,7 @@ def main():
             parent=owners[owner['parent']]
             if parent['owner']!='GameCore::Player::Instance':raise ValueError('parent')
             version,player=struct.unpack_from('<Ii',data,parent['start'])
-            raw=data[owner['start']:owner['end']];value,items,values,counts=projection(raw)
+            raw=data[owner['start']:owner['end']];value,items,values,counts,cuts=projection(raw)
             if version!=47 or value['player_id']!=player:raise ValueError('identity')
             for v in values:
                 for b in struct.pack('<q',v):digest=((digest^b)*1099511628211)&((1<<64)-1)
@@ -118,8 +122,9 @@ def main():
                 if actual.get('GameCore::AI::'+t,0)!=counts.get(t,0):raise ValueError('nested owner count '+t)
             following=[x for x in owners.values() if x['parent']==owner['parent'] and x['start']==owner['end']]
             if len(following)!=1 or following[0]['owner']!='GameCore::AI::Diplomatic':raise ValueError('next boundary')
-            corpus.extend(struct.pack('<I',len(raw))+raw)
-            rows.append(dict(player=player,start=owner['start'],end=owner['end'],bytes=len(raw),items=items,counts=counts,sha256=sha(raw),direct_child_hook_counts=actual))
+            cut_bytes=struct.pack('<'+str(len(cuts))+'I',*cuts)
+            corpus.extend(struct.pack('<I',len(raw))+raw+struct.pack('<I',len(cuts))+cut_bytes)
+            rows.append(dict(player=player,start=owner['start'],end=owner['end'],bytes=len(raw),items=items,truncation_cuts=len(cuts),truncation_cuts_sha256=sha(cut_bytes),counts=counts,sha256=sha(raw),direct_child_hook_counts=actual))
         if len(rows)!=43:raise ValueError('record count')
         reports.append(dict(core_sha256=identity,trace_sha256=trace_sha,owner_hook_inventory=inventory,records=rows))
     report=dict(schema='c6-linux-player-ai-culture-v1',checks_passed=True,gamecore_sha256=GAME_SHA,methods=METHODS,dwarf_sha256=DWARF_SHA,wire_schemas=SCHEMAS,audit_source_sha256=sha(Path(__file__).read_bytes()),fixtures=reports,typed_projection_digest=digest,complete_current_saved_wire=True,legacy_versions=False,definition_remapping=False,native_read_effects=False,original_execution=False,private_writes=False,planning_only_exclusion_proven=False,gameplay_rng_in_scope=True,full_player=False,world_import=False,actions=False,turns=False,next_player_component='AI::Diplomatic',unknown_save_bytes_masked=False,recorded_raw_save_load_difference_bytes=89198,attribution_reference_revision='5af389445118bed2bdebf7a8a42b219c8fba5175',validation_cuts='Actual CultureAi owner hooks only for comparison; production parser consumes complete source grammar')
