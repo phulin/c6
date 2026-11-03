@@ -28,7 +28,7 @@ def audit(module, host_path):
     tables=[(int(x.split()[0],16),x.split()[-1]) for x in lines
             if '_ZTVN8GameCore9Reporting12Notification' in x and not x.split()[-1].endswith('7ManagerE')]
     if len(tables)!=39: raise ValueError('notification subtype inventory differs')
-    slots={8:'deleting_destructor',0x20:'release',0x28:'is_expired',0x30:'is_needed',0x40:'auto_expires',0x50:'get_blocking',0x78:'initialize',0x88:'activate',0x98:'dismiss'}
+    slots={8:'deleting_destructor',0x20:'release',0x28:'is_expired',0x30:'is_valid_for_phase',0x38:'is_needed',0x40:'auto_expires',0x50:'get_blocking',0x78:'initialize',0x88:'activate',0x98:'dismiss'}
     dwarf=subprocess.check_output(['gdb','-q','-nx','-batch',str(module),'-ex',"ptype /o 'GameCore::Reporting::Notification::Instance'",'-ex',"ptype /o 'GameCore::Reporting::Notification::PlayerNotifications'",'-ex',"ptype /o 'GameCore::Reporting::Notification::Manager'",'-ex',"ptype /o 'GameCore::Reporting::Notification::PoolType'"],text=True)
     for field in ['m_szMessage','m_szSummary','m_eDefaultEndTurnBlockingType','m_pkParent','m_iLockCount','m_bDismissed','m_bIsExpired','total size (bytes):  416','total size (bytes):  864','total size (bytes):  576']:
         if field not in dwarf: raise ValueError('exact target DWARF field missing: '+field)
@@ -70,7 +70,7 @@ def audit(module, host_path):
             ('game',0x2d2e29d,'ff5028','IsNeeded actual expiration'),
             ('game',0x2d2e3b8,'80bb9801000000','blocking dismissed gate'),
             ('game',0x2d2e3ce,'8bab30010000','omitted blocking field130'),
-            ('game',0x2d310c1,'ff5030','blocking actual IsNeeded'),
+            ('game',0x2d310c1,'ff5030','blocking actual IsValidForPhase'),
             ('game',0x2d310ce,'ff5050','blocking actual GetEndTurnBlocking'),
             ('game',0x2d310ee,'7603','unsigned severity first tie retained'),
             ('game',0x2d31115,'ff5050','final chosen blocking reevaluation'),
@@ -98,7 +98,7 @@ def audit(module, host_path):
     methods=[('game','Instance.Release',0x2d2de30,0x42),('game','Instance.Destruct',0x2d2d780,0x37),
              ('game','Instance.CreatePooled',0x2d2e5b0,0x7a),('game','Instance.Initialize',0x2d2d7e0,0x520),
              ('game','Pool.Clear',0x2d2e670,0x50),('game','Instance.IsExpired',0x2d2e250,0x32),
-             ('game','Instance.AutoExpires',0x2d2e2b0,0xb),('game','Instance.IsNeeded',0x2d2e290,0x1c),
+             ('game','Instance.IsValidForPhase',0x2d29200,3),('game','Instance.AutoExpires',0x2d2e2b0,0xb),('game','Instance.IsNeeded',0x2d2e290,0x1c),
              ('game','Instance.GetBlocking',0x2d2e3b0,0x2d),('game','PlayerNotifications.GetBlocking',0x2d31060,0xc9),
              ('game','Instance.Dismiss',0x2d2e450,0x45),('game','Instance.GetLock',0x2d2e4d0,0x10),
              ('game','Instance.ReleaseLock',0x2d2e4e0,0x18),('game','PlayerDefeated.Activate',0x2d314a0,0x7d),
@@ -107,7 +107,7 @@ def audit(module, host_path):
              ('host','VectorMap.FindEntry',0x3964dd0,0x3e),('host','VectorMap.GetVariant',0x3964e80,0x35),
              ('host','VectorMap.Destruct',0x3964cc0,0x50),('host','TypedVariant.DestroySelf',0x395dd10,0xb6),
              ('host','Localization.Destruct',0x3be0800,0x3a),('host','Translate.NotificationActivated',0x3212d00,0xa4)]
-    return dict(schema='c6-linux-notification-lifecycle-static-v1',checks_passed=True,static_only=True,native_execution=False,
+    return dict(schema='c6-linux-notification-lifecycle-static-v2',supersedes_slot30_label='Historical v1 incorrectly labeled IsValidForPhase(+0x30) as IsNeeded; actual IsNeeded is +0x38',checks_passed=True,static_only=True,native_execution=False,
         gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,source_audit_sha256=sha(Path(__file__).read_bytes()),
         inherited_aftermath_source_sha256=sha((ROOT/'tools/linux/skip_turn_state_aftermath_audit.py').read_bytes()),
         inherited_selection_contract=parent['selection'],update_order=parent['update_order'],
@@ -134,9 +134,9 @@ def audit(module, host_path):
           limit='Logical retained ownership can be modeled without native addresses. Full pool-state elimination requires initialized subtype/reset and ID assignment/lifetime proof; no such blanket exclusion is claimed.'),
         expiration=dict(base='delta18c>0 && signed current_game_turn >= wrapping_i32(added188+delta18c)',
                         native_rng_directly_called=False,subtype_overrides=30,base_vtables=9),
-        blocking=dict(base_needed='!(flag19a && actual virtual IsExpired)',
+        blocking=dict(reducer_does_not_directly_call_IsNeeded=True,base_phase_valid='true, target0x2d29200 at slot0x30',base_needed='!(flag19a && actual virtual IsExpired)',
           base_value='dismissed || actual virtual IsExpired ? 0 : live blocking130',
-          reduction='first nonzero blocking among actual IsNeeded candidates; replace only with strictly greater UNSIGNED severity; evaluate selected blocking again',
+          reduction='first nonzero blocking among actual IsValidForPhase candidates; replace only with strictly greater UNSIGNED severity; evaluate selected blocking again',
           omitted_instance_field='signed enum/raw int130',omitted_player_field='old blocking7a8',
           event='55f15a7b old,new only when changed and owner is local'),
         activation=dict(base_vtables=37,base='write19e=true; general event025f6cfd(ID eab69e5a, incoming bool78a2f946)',

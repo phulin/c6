@@ -163,7 +163,7 @@ pub trait Notifications {
     /// Full ordered Release-before-erase, with concrete destructor/pool effects.
     /// notification_lifecycle::cleanup_in_place supports its verified profile.
     fn cleanup(&mut self, collection: Self::Collection) -> Result<(), Error>;
-    fn needed(&mut self, object: Self::Object) -> Result<bool, Error>;
+    fn valid_for_phase(&mut self, object: Self::Object) -> Result<bool, Error>;
     fn blocking(&mut self, object: Self::Object) -> Result<i32, Error>;
     fn severity(&mut self, object: Self::Object) -> Result<i32, Error>;
 }
@@ -258,7 +258,7 @@ pub fn update_notifications<W: Notifications>(
     w.cleanup(collection)
 }
 
-/// 0x2d31060: nonzero blocking among needed records, first unsigned-severity
+/// 0x2d31060: nonzero blocking among phase-valid records, first unsigned-severity
 /// maximum. Read both severities at comparison time and re-read chosen blocking.
 pub fn notification_blocking<W: Notifications>(
     w: &mut W,
@@ -269,7 +269,7 @@ pub fn notification_blocking<W: Notifications>(
     let mut selected = None;
     while current != end {
         let object = w.object(current)?;
-        if w.needed(object)? && w.blocking(object)? != 0 {
+        if w.valid_for_phase(object)? && w.blocking(object)? != 0 {
             let replace = match selected {
                 None => true,
                 Some(previous) => (w.severity(object)? as u32) > (w.severity(previous)? as u32),
@@ -370,7 +370,8 @@ mod tests {
     struct Record {
         severity: i32,
         blocking: i32,
-        needed: bool,
+        phase_valid: bool,
+        actual_needed: bool,
         expired: bool,
         dismissed: bool,
         activated: bool,
@@ -411,7 +412,8 @@ mod tests {
             Record {
                 severity,
                 blocking,
-                needed: true,
+                phase_valid: true,
+                actual_needed: true,
                 expired: false,
                 dismissed: false,
                 activated: true,
@@ -613,8 +615,8 @@ mod tests {
             self.records.retain(|r| !r.dismissed);
             Ok(())
         }
-        fn needed(&mut self, object: usize) -> Result<bool, Error> {
-            Ok(self.records[object].needed)
+        fn valid_for_phase(&mut self, object: usize) -> Result<bool, Error> {
+            Ok(self.records[object].phase_valid)
         }
         fn blocking(&mut self, object: usize) -> Result<i32, Error> {
             self.blocking_calls += 1;
@@ -876,6 +878,21 @@ mod tests {
         assert_eq!(notification_blocking(&mut w, 0), Ok(2));
         // Two distinct nodes read the same object, then the selected getter.
         assert_eq!(w.log.iter().filter(|s| *s == "block0").count(), 3);
+    }
+    #[test]
+    fn reducer_uses_phase_validity_separately_from_actual_is_needed() {
+        let mut w = World {
+            records: vec![World::record(0, 4)],
+            ..World::default()
+        };
+        w.records[0].actual_needed = false;
+        assert_eq!(notification_blocking(&mut w, 0), Ok(4));
+        assert_eq!(w.log, ["block0", "block0"]);
+        w.records[0].actual_needed = true;
+        w.records[0].phase_valid = false;
+        w.log.clear();
+        assert_eq!(notification_blocking(&mut w, 0), Ok(0));
+        assert!(w.log.is_empty());
     }
     #[test]
     fn expiry_signed_wrap_boundaries() {

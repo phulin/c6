@@ -4,7 +4,7 @@
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "static_only": true,
   "native_execution": false,
-  "source_sha256": "5ca5a4fbfa05a5af6d194790dd20bc7d3fda26798665856d8713d6229d706a96",
+  "source_sha256": "61b33abf48a8d4cf3f52af69ec94cfb3b46d4d48cf3b0554801c2cbd6d72c922",
   "retained_receivers": [
     "Configuration captured before accepts; collection before network query; retained on every Find",
     "Collection captured after Create, retained for redundancy and Add across Send",
@@ -12,7 +12,7 @@
     "Definition collection and per-pass notification collection retained across callbacks",
     "Native node cursor distinct from object identity; retain end cursor across callbacks"
   ],
-  "audit_sha256": "997c15b0e4acaf6b1807e8ae44442971eb501be2b5867e019d492d9765f3e4be",
+  "audit_sha256": "48efae1b6150f1da786b46541efef27b3023addc0e3351e94a232b8f40399e51",
   "inherited_branches_sha256": "580745fd4028d7011c9da658428bd2e1770b5bbfdd5cc2e01caa43b874545d34",
   "methods": [
     {
@@ -407,7 +407,7 @@
     {
       "rva": "0x2d310c1",
       "bytes": "ff5030",
-      "meaning": "Blocking calls actual IsNeeded"
+      "meaning": "Blocking calls actual IsValidForPhase"
     },
     {
       "rva": "0x2d310ce",
@@ -570,7 +570,7 @@
     "Reporting/cache/translator/prepublish/queued-event consumers and complete state/RNG effects"
   ],
   "reuse": "Selection and logical cleanup providers may use notification_lifecycle only for its verified profile; combined activation_and_cleanup cannot replace Update.",
-  "next_provider_closure": "Bind captured owner notification objects to concrete expiry/needed/blocking virtual methods with live +130 blocking and actual current-turn input, then close SendAutoNotify factory inventory.",
+  "next_provider_closure": "Bind captured owner notification objects to concrete expiry/phase-valid/blocking virtual methods with live +130 blocking and actual current-turn input, then close SendAutoNotify factory inventory.",
   "rollback": "Only after_add with fully isolated owned Clone; lower level functions can mutate before error. Native/global/shared effects are outside clone isolation.",
   "request_order": "Prior TurnUnready and manager Add belong to caller. This boundary always follows Add when Execute found a unit, including rejected Add. No whole request/action implemented.",
   "native_boundary_matrix_complete": false,
