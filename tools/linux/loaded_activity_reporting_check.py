@@ -48,7 +48,7 @@ def main():
             path=snapshot/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data);path.chmod(0o444)
         (retained/'source-manifest.json').write_text(json.dumps(before,sort_keys=True,indent=2)+'\n')
         package=retained/'check';package.mkdir();manifest=package/'Cargo.toml' 
-        manifest.write_text('[package]\nname="loaded-activity-reporting-check"\nversion="0.0.0"\nedition="2021"\n'
+        manifest.write_text('[workspace]\n[package]\nname="loaded-activity-reporting-check"\nversion="0.0.0"\nedition="2021"\n'
                             '[dependencies]\nserde_json="1"\nc6-core={path='+json.dumps(str(snapshot/'crates/c6-core'))+'}\n'
                             'c6-data={path='+json.dumps(str(snapshot/'crates/c6-data'))+'}\n'
                             '[[bin]]\nname="check"\npath='+json.dumps(str(snapshot/'tools/linux/loaded_activity_reporting_check.rs'))+'\n')
