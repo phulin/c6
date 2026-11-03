@@ -62,6 +62,10 @@ The next implementation must use these inputs and predicates rather than the cap
 
 The static method identities and 39 inherited notification writer slots are recorded in the report. Raw original instructions are private under `evidence/linux-skip-turn-state/execute-3-contracts/`; these new raw files have not been committed or pushed. The notification codec owner has the frozen schema and observed slices. End-turn continuation, subtype effects, live lock counts, complete event delivery/subscribers, formation dirty state and complete RNG still block an accepted full Rust action.
 
+The separate [generic aftermath contract](../evidence/linux/skip-turn-state-aftermath.json) checks 39 exact original branch sites and all eight relevant virtual bindings for both base and XP2 notification managers. It names the required live/rules inputs and specifies selection/cleanup without fixture IDs. Reproduce with `python3 tools/linux/skip_turn_state_aftermath_audit.py --output target/linux/skip-turn-state-aftermath.json`. This is static evidence; no native boundary matrix or Rust operation is supplied.
+
+That contract also retains a second conditional reporting gap: changed owner blocking state `+0x7a8` sends `Event::Send(Type,int,int)`, event `0x55f15a7b`, with old/new enums at `0x2b5be54`. The existing nine identity-event hooks cannot establish whether this overload ran. The selected live observer does not read the blocking field, so matching Player stream bytes alone must not substitute for its complete live contract.
+
 ## Reproduction and validation
 
 ```sh
