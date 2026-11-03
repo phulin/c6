@@ -34,7 +34,9 @@ fields in this record.
 method bytes, concrete PLT bindings, virtual slots, version and DWARF. It builds
 one committed source archive, including the actual module and audit driver;
 no working-tree recovery supplies candidate inputs. The pinned canonical streams
-and owner traces supply validation cuts only. Every complete Eras record in both
+and owner traces supply validation cuts only. Eras has no direct owner hook;
+matching-parent Units ends and Trade starts independently bracket its 12 bytes,
+consistent with the verified Player call order. Every complete Eras record in both
 streams must decode and re-encode identically, succeed at exact byte/zero-item
 caps, reject every truncation and reject the one-short byte cap. Source tests
 also cover nonempty unequal hashes, sentinel patterns, duplicates, every short
