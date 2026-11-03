@@ -859,6 +859,20 @@ impl LoadedState {
         if !row.units[index].dependencies.matches(found.record) {
             return Err(Error::RuntimeDependenciesChanged);
         }
+        let current = self
+            .world
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(found.record.formation_id)
+            .map_err(Error::World)?;
+        match (row.units[index].value.formation, current) {
+            (None, None) => {}
+            (Some(saved), Some(actual))
+                if saved.owner == actual.record.owner
+                    && saved.requested_id == actual.requested_id
+                    && saved.resolved_id == actual.resolved_id => {}
+            _ => return Err(Error::RuntimeDependenciesChanged),
+        }
         Ok(&row.units[index].value)
     }
     pub fn formation_runtime(&self, owner: i32, id: u32) -> Result<&FormationRuntime, Error> {
