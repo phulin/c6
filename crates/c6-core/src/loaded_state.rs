@@ -95,6 +95,8 @@ mod tests {
             game_relations_source: None,
             diplomacy_manager: None,
             diplomacy_manager_source: None,
+            player_notifications: None,
+            player_notifications_source: None,
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -536,6 +538,154 @@ mod tests {
             .unwrap();
         assert!(last.diplomacy_manager().unwrap().ever_alive().is_empty());
     }
+    fn notification_source() -> (
+        LoadedState,
+        ComponentSnapshotWitness,
+        Vec<crate::notifications::PlayerNotifications>,
+    ) {
+        let mut state = state();
+        let mut collections: Vec<_> = (0..64)
+            .map(|owner| crate::notifications::PlayerNotifications {
+                owner,
+                next_id: 0,
+                records: vec![],
+            })
+            .collect();
+        collections[0]
+            .records
+            .push(crate::notifications::Notification {
+                id: crate::notifications::ComponentId {
+                    owner: 0,
+                    component_type: 38,
+                    id: 7,
+                },
+                ..crate::notifications::Notification::default()
+            });
+        let start = state.image.as_ref().len();
+        let CoreImage::Unique(bytes) = &mut state.image else {
+            unreachable!()
+        };
+        bytes.extend(1u32.to_le_bytes());
+        bytes.extend(64u32.to_le_bytes());
+        for player in &collections {
+            bytes.extend(
+                player
+                    .encode(crate::notifications::Limits::default())
+                    .unwrap(),
+            );
+        }
+        state.binding = crate::core_stream::tests::context_binding(bytes);
+        let witness = ComponentSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: state.binding.core_sha256,
+            snapshot_bytes: bytes.len(),
+            owner_trace_sha256: [5; 32],
+            owner_range: [start, bytes.len()],
+            decoded_prefix_bytes: bytes.len() - start,
+        };
+        (state, witness, collections)
+    }
+    #[test]
+    fn notifications_require_pristine_exact_one_time_source_admission() {
+        let (mut state, witness, collections) = notification_source();
+        let mut bad = witness.clone();
+        bad.snapshot_sha256[0] ^= 1;
+        assert!(matches!(
+            state.install_player_notifications(bad, collections.clone()),
+            Err(Error::Binding)
+        ));
+        let mut bad = collections.clone();
+        bad[0].next_id = 99;
+        assert!(matches!(
+            state.install_player_notifications(witness.clone(), bad),
+            Err(Error::Binding)
+        ));
+        assert!(state.player_notifications().is_err());
+        assert_eq!(state.revision(), 0);
+        let mut bad = witness.clone();
+        bad.owner_range[1] = usize::MAX;
+        assert!(matches!(
+            state.install_player_notifications(bad, collections.clone()),
+            Err(Error::Binding)
+        ));
+        state
+            .install_player_notifications(witness.clone(), collections.clone())
+            .unwrap();
+        assert_eq!(
+            state.player_notifications().unwrap().collections(),
+            collections.as_slice()
+        );
+        assert_eq!(state.player_notifications_source(), Some(&witness));
+        assert!(matches!(
+            state.install_player_notifications(witness, collections),
+            Err(Error::AlreadyBound)
+        ));
+        let (mut advanced, witness, collections) = notification_source();
+        advanced.revision = 1;
+        assert!(matches!(
+            advanced.install_player_notifications(witness, collections),
+            Err(Error::NotPristine)
+        ));
+    }
+    #[test]
+    fn notification_mutation_is_indexed_identity_checked_and_atomic_on_revision_exhaustion() {
+        let (mut state, witness, collections) = notification_source();
+        let id = collections[0].records[0].id;
+        state
+            .install_player_notifications(witness.clone(), collections)
+            .unwrap();
+        let mut wrong = id;
+        wrong.id ^= 1;
+        assert!(state.notification_record_mut(0, 0, wrong).is_err());
+        assert!(state.set_notification_next_id(64, 2).is_err());
+        assert_eq!(state.revision(), 0);
+        state
+            .notification_record_mut(0, 0, id)
+            .unwrap()
+            .has_been_activated = true;
+        state.set_notification_next_id(0, 8).unwrap();
+        assert_eq!(state.revision(), 2);
+        assert_eq!(state.player_notifications_source(), Some(&witness));
+        // Another collection mutation advances the shared revision without
+        // invalidating the current record or its original source witness.
+        state.set_notification_next_id(63, 1).unwrap();
+        assert_eq!(state.revision(), 3);
+        assert!(
+            state
+                .player_notifications()
+                .unwrap()
+                .record(0, 0)
+                .unwrap()
+                .has_been_activated
+        );
+        state.revision = u64::MAX;
+        assert!(matches!(
+            state.notification_record_mut(0, 0, id),
+            Err(Error::ResourceLimit)
+        ));
+        assert!(matches!(
+            state.set_notification_next_id(0, 99),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(state.revision(), u64::MAX);
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .collection(0)
+                .unwrap()
+                .next_id,
+            8
+        );
+        assert!(
+            state
+                .player_notifications()
+                .unwrap()
+                .record(0, 0)
+                .unwrap()
+                .has_been_activated
+        );
+    }
     #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
@@ -591,6 +741,7 @@ pub enum Error {
     NotPristine,
     GameRelations(crate::game_diplomatic_relations::Error),
     DiplomacyManager(crate::diplomacy_manager::Error),
+    PlayerNotifications(crate::player_notifications_owner::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -601,6 +752,7 @@ impl std::error::Error for Error {}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MissingInput {
     ManagerSlots,
+    PlayerNotifications,
     PlayerConfiguration(i32),
     PlayerTurnActive(i32),
     Player(i32),
@@ -779,6 +931,8 @@ pub struct LoadedState {
     game_relations_source: Option<ComponentSnapshotWitness>,
     diplomacy_manager: Option<crate::diplomacy_manager::Manager>,
     diplomacy_manager_source: Option<ObservedSnapshotWitness>,
+    player_notifications: Option<crate::player_notifications_owner::Owner>,
+    player_notifications_source: Option<ComponentSnapshotWitness>,
 }
 fn reserved<T>(n: usize) -> Result<Vec<T>, Error> {
     n.checked_mul(std::mem::size_of::<T>())
@@ -896,6 +1050,8 @@ impl LoadedState {
             game_relations_source: None,
             diplomacy_manager: None,
             diplomacy_manager_source: None,
+            player_notifications: None,
+            player_notifications_source: None,
         })
     }
     pub fn world(&self) -> &world::World {
@@ -975,6 +1131,89 @@ impl LoadedState {
             .map_err(Error::GameRelations)?;
         self.game_relations = Some(owner);
         self.game_relations_source = Some(witness);
+        Ok(())
+    }
+    /// Admit the complete saved notification owner once, without inferring live
+    /// lock/default-blocking/pool/subtype state. The producer authenticates the
+    /// owner trace; this layer checks exact source bytes and binding consistency.
+    pub fn install_player_notifications(
+        &mut self,
+        witness: ComponentSnapshotWitness,
+        collections: Vec<crate::notifications::PlayerNotifications>,
+    ) -> Result<(), Error> {
+        if self.player_notifications.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+            || witness.snapshot_sha256 != self.binding.core_sha256
+            || witness.snapshot_bytes != self.image.as_ref().len()
+            || witness.owner_trace_sha256 == [0; 32]
+            || witness.owner_range[0] >= witness.owner_range[1]
+            || witness.owner_range[1] - witness.owner_range[0] != witness.decoded_prefix_bytes
+        {
+            return Err(Error::Binding);
+        }
+        let bytes = self
+            .image
+            .as_ref()
+            .get(witness.owner_range[0]..witness.owner_range[1])
+            .ok_or(Error::Binding)?;
+        let owner = crate::player_notifications_owner::Owner::from_decoded(collections)
+            .map_err(Error::PlayerNotifications)?;
+        let defaults = crate::notifications::Limits::default();
+        let limits = crate::notifications::Limits {
+            max_bytes: defaults.max_bytes.min(bytes.len()),
+            max_records: defaults.max_records.min(self.limits.max_roster_records),
+            max_items: defaults.max_items.min(self.limits.max_runtime_array_items),
+            max_depth: defaults.max_depth,
+        };
+        if !owner
+            .matches_source(bytes, limits)
+            .map_err(Error::PlayerNotifications)?
+        {
+            return Err(Error::Binding);
+        }
+        self.player_notifications = Some(owner);
+        self.player_notifications_source = Some(witness);
+        Ok(())
+    }
+    pub fn player_notifications(&self) -> Result<&crate::player_notifications_owner::Owner, Error> {
+        self.player_notifications
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))
+    }
+    pub fn player_notifications_source(&self) -> Option<&ComponentSnapshotWitness> {
+        self.player_notifications_source.as_ref()
+    }
+    /// Reserve the global revision before exposing mutable saved record fields.
+    /// Identity/index failures leave both the revision and records unchanged.
+    pub fn notification_record_mut(
+        &mut self,
+        slot: i32,
+        index: usize,
+        expected_id: crate::notifications::ComponentId,
+    ) -> Result<&mut crate::notifications::Notification, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let record = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .record_mut(slot, index, expected_id)
+            .map_err(Error::PlayerNotifications)?;
+        self.revision = next;
+        Ok(record)
+    }
+    pub fn set_notification_next_id(&mut self, slot: i32, value: u32) -> Result<(), Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .set_next_id(slot, value)
+            .map_err(Error::PlayerNotifications)?;
+        self.revision = next;
         Ok(())
     }
     /// Install current pending-session state only from the same observed dynamic

@@ -396,3 +396,5 @@ pub mod game_random_wire;
 pub mod trade_read_order;
 
 pub mod diplomacy_manager;
+
+pub mod player_notifications_owner;
