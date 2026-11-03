@@ -43,6 +43,26 @@ Black-box inputs/results and checked aggregate checksums resist optimization.
 The evidence keeps raw sample durations, repetitions, median, p10/p90 and extrema.
 These are repeated warm-cache queries on one fixture and one host, with shared
 host scheduling noise; they do not establish broader scaling or workload costs.
+Timing includes loop, black-box and checksum overhead.
+
+The [first result](../evidence/linux/placement-query-benchmark-native-1.json) used
+Rust 1.98.1 on an AMD EPYC 7642 host. It validated every native count/binding row
+before measuring 8,648 Unit and 8,711 Formation present-position queries.
+After removing the benchmark metadata, its complete parsed output equals the
+accepted frozen candidate output, including unchanged typed-state controls.
+
+| Mode | Median ns/case | p10–p90 ns/case |
+| --- | ---: | ---: |
+| Actor lookup | 17.64 | 17.49–18.25 |
+| Layer and target membership | 34.74 | 34.45–35.83 |
+| Unit count with prepared candidates | 52.81 | 49.78–55.27 |
+| Formation maximum with prepared candidates | 71.50 | 70.82–75.64 |
+| Actor lookup, layer, membership and count | 117.16 | 114.89–125.77 |
+
+Count/filter work and Formation member traversal cost more than the separate
+actor lookup in this fixture. These component timings are evidence for where to
+investigate if placement becomes material in a larger implemented workload; they
+do not justify changing exact query behavior or predicting action/turn throughput.
 
 Reproduce using a create-only build directory and output report:
 
