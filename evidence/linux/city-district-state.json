@@ -2,6 +2,23 @@
   "schema": "c6-linux-city-district-movement-state-v1",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "production_registry": {
+    "source": "crates/c6-core/src/city_district.rs",
+    "source_sha256": "a8383f6f794668b8552148e60fa1013c208757cf6bfd8148cb24e5f691054d28",
+    "lookup": "borrowed sorted native low16 slots; preserve requested/resolved IDs and actual owner",
+    "unavailable_distinct_from_complete_missing": true,
+    "movement_runtime_adapter": true,
+    "initialization_rebuild": "base then XP2 augmentation, plot order; bounded fallible mask allocation",
+    "external_rebuild_dependencies": [
+      "IsWater",
+      "IsCoastalLand(1)",
+      "IsWonderComplete",
+      "original directional neighbors"
+    ],
+    "later_incremental_updates_implemented": false,
+    "complete_city_district_codec": false,
+    "native_comparison": false
+  },
   "core_prefix_metadata": {
     "definition_enumeration_mappings": false,
     "metadata": "two numeric compatibility values and one GUID string",
@@ -434,6 +451,42 @@
       "size": 12,
       "name": "GameCore::IndexSerializer::LoadVersion",
       "sha256": "814a4c9eb1631167536e0a585e613e070b286b3815881d2b9b01950a1ab2df61"
+    },
+    {
+      "address": "0x1ffb930",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)",
+      "sha256": "aef8a22d38a41aa430f31d3a7b9315abb5de415033479baf1722557685f5d707"
+    },
+    {
+      "address": "0x1ffbbd0",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "d33e4a5fb4dadf218364b8a20da36838ab796c11f42bc2b47327f41c0ff5a465"
+    },
+    {
+      "address": "0x1ffb960",
+      "size": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>::Find(unsigned int) const",
+      "sha256": "81c8f59f047a39dbd88358cb829ef615f0fb9db2c737051e03bbf333f5a3ba06"
+    },
+    {
+      "address": "0x1ffbc00",
+      "size": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::Find(unsigned int) const",
+      "sha256": "b720a1edc9281bc19df2a5fa2d1db43b2e3c09493372d0f970d1fe598f6181d8"
+    },
+    {
+      "address": "0x1fccc60",
+      "size": 4,
+      "name": "GameCore::Definition::Building::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "address": "0x1fcccf0",
+      "size": 4,
+      "name": "GameCore::Definition::District::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
     }
   ],
   "byte_contracts": [

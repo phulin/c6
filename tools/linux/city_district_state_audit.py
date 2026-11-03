@@ -416,6 +416,9 @@ BYTES = [
 # Core compatibility metadata is not a definition-index registry.
 METHODS += [(43040224, 286, 'GameCore::Context::Instance::MakeMetaData', '14a02ebd6f619fd85ed06f5b3d86b8f07f2e9021296900fbdb53e2074564fc9a'), (43040512, 246, 'GameCore::Context::Instance::ReadMetaData', '4362a58cea537d57fcd8815e6b1071c065278365709672169640b0a393ed9d29'), (47399552, 12, 'GameCore::IndexSerializer::SaveVersion', '49010e3b612c9b4de140c013c3e725ff3a66df236b02af883f40d88ea071c961'), (47399568, 12, 'GameCore::IndexSerializer::LoadVersion', '814a4c9eb1631167536e0a585e613e070b286b3815881d2b9b01950a1ab2df61')]
 
+# Concrete District/Building serialized hash remapping providers.
+METHODS += [(33536304, 34, 'int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)', 'aef8a22d38a41aa430f31d3a7b9315abb5de415033479baf1722557685f5d707'), (33536976, 34, 'int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)', 'd33e4a5fb4dadf218364b8a20da36838ab796c11f42bc2b47327f41c0ff5a465'), (33536352, 109, 'GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>::Find(unsigned int) const', '81c8f59f047a39dbd88358cb829ef615f0fb9db2c737051e03bbf333f5a3ba06'), (33537024, 109, 'GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::Find(unsigned int) const', 'b720a1edc9281bc19df2a5fa2d1db43b2e3c09493372d0f970d1fe598f6181d8'), (33344608, 4, 'GameCore::Definition::Building::GetCollectionIndex() const', 'ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a'), (33344752, 4, 'GameCore::Definition::District::GetCollectionIndex() const', 'ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a')]
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')
@@ -468,6 +471,16 @@ def main():
     observed = fixtures(args.private_root)
     report = dict(schema='c6-linux-city-district-movement-state-v1',checks_passed=True,
         gamecore_sha256=GAME_SHA,
+        production_registry=dict(
+            source='crates/c6-core/src/city_district.rs',
+            source_sha256=sha((ROOT/'crates/c6-core/src/city_district.rs').read_bytes()),
+            lookup='borrowed sorted native low16 slots; preserve requested/resolved IDs and actual owner',
+            unavailable_distinct_from_complete_missing=True,
+            movement_runtime_adapter=True,
+            initialization_rebuild='base then XP2 augmentation, plot order; bounded fallible mask allocation',
+            external_rebuild_dependencies=['IsWater','IsCoastalLand(1)','IsWonderComplete','original directional neighbors'],
+            later_incremental_updates_implemented=False,
+            complete_city_district_codec=False,native_comparison=False),
         core_prefix_metadata=dict(definition_enumeration_mappings=False,
             metadata='two numeric compatibility values and one GUID string',
             keys=['fd1bbf76','4e33fe49','f4e540d8'],
