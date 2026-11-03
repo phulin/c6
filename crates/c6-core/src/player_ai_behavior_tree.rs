@@ -730,8 +730,8 @@ mod tests {
                 id: u32::MAX,
             };
             let reference = |bit, value| Presence {
-                present: BoolByte(if mask & (1 << bit) == 0 { 0 } else { 0x80 }),
-                value: if mask & (1 << bit) == 0 {
+                present: BoolByte(if mask & (1u8 << bit) == 0 { 0 } else { 0x80 }),
+                value: if mask & (1u8 << bit) == 0 {
                     None
                 } else {
                     Some(value)
