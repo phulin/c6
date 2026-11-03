@@ -16,6 +16,8 @@ pub mod rng;
 pub mod skip_turn;
 pub mod trade;
 pub mod unit;
+pub mod world;
+pub mod yields;
 use rng::RandomState;
 use std::collections::BTreeMap;
 
