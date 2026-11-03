@@ -19,6 +19,8 @@ use c6_core::{
     unit_operation_interruption::{Handler, ObservedRegistry},
 };
 
+pub mod handlers;
+pub mod reporting;
 pub mod resources;
 
 const OPERATION: i32 = 0x490cc8e1;
@@ -77,6 +79,7 @@ pub enum Error {
     Manager(crate::unit_operation_manager::Error),
     Placement(placement::Error),
     Registry(c6_core::unit_operation_interruption::Error),
+    HandlerObservation(handlers::Error),
     Kernel(skip_turn::Error),
     Movement(crate::unit_movement_state::Error),
     Provider(&'static str),
@@ -136,16 +139,32 @@ pub struct Inputs<'a, 'd> {
 /// needing other mutable world state must reject this Unit-scoped boundary.
 pub trait Reports {
     fn send(&mut self, unit: &mut Unit, report: IdentityReport) -> Result<i32, Error>;
+    /// Authoritative loaded-world callback boundary. Providers needing real
+    /// world lookups override this; the default preserves the Unit-only API.
+    fn send_loaded(
+        &mut self,
+        state: &mut LoadedState,
+        reference: UnitReference,
+        report: IdentityReport,
+    ) -> Result<i32, Error> {
+        self.send(unit(state, reference)?, report)
+    }
 }
 
-struct Queries<'a, 'd, 'q, Q> {
+#[derive(Clone, Copy)]
+enum HandlerAuthority<'a, 'capture> {
+    DecoderBinding,
+    ObservedSnapshot(&'a handlers::BoundHandlers<'capture>),
+}
+struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
     inputs: &'a Inputs<'a, 'd>,
     external: &'q mut Q,
+    authority: HandlerAuthority<'h, 'capture>,
 }
 type QueryState<'a> = ManagerQueryState<'a, Unit, ()>;
 impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQueries<Unit>
-    for Queries<'_, '_, '_, Q>
+    for Queries<'_, '_, '_, '_, '_, Q>
 {
     type Error = Error;
     type Parameters = ();
@@ -194,11 +213,18 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
         Ok(self.state.pause_storage().map_err(Error::State)? != 0)
     }
     fn runtime_id(&mut self, _: &mut QueryState<'_>, hash: u32) -> Result<i32, Error> {
-        self.inputs
-            .handlers
-            .saved_hash_runtime_id(OperationHash(hash))
-            .map(|id| id.0)
-            .map_err(Error::Registry)
+        match self.authority {
+            HandlerAuthority::DecoderBinding => self
+                .inputs
+                .handlers
+                .saved_hash_runtime_id(OperationHash(hash))
+                .map(|id| id.0)
+                .map_err(Error::Registry),
+            HandlerAuthority::ObservedSnapshot(source) => source
+                .runtime_id(hash)
+                .map(|id| id.0)
+                .map_err(Error::HandlerObservation),
+        }
     }
     fn handler(&mut self, _: &mut QueryState<'_>, id: i32) -> Result<Option<Handler>, Error> {
         self.inputs
@@ -321,10 +347,24 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
         if h.identity().operation_hash != OperationHash(SKIP_TURN_HASH) {
             return Err(Error::Unsupported("requested handler is not SkipTurn"));
         }
+        // An installed owned component is the only live authority. Never use
+        // an older independently mutable captured vector after this handoff.
+        let owned_relations = if self.state.game_relations_source().is_some() {
+            let owner = self.state.game_relations().map_err(Error::State)?;
+            let war = owner
+                .war()
+                .ok_or(Error::Unsupported("owned Game war types not initialized"))?;
+            Some(placement::WarRelations {
+                player_count: owner.player_count(),
+                war_types: war.values(),
+            })
+        } else {
+            None
+        };
         let mut q = placement::Inputs {
             world: self.state.world(),
             definitions: self.inputs.placement_definitions,
-            relations: self.inputs.relations,
+            relations: owned_relations.as_ref().or(self.inputs.relations),
             plot_unit_limit: self.inputs.plot_unit_limit,
         };
         legality::skip_turn_can_start(s.unit, &mut q).map_err(Error::Placement)
@@ -337,6 +377,7 @@ fn can_start<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>>(
     inputs: &Inputs<'_, '_>,
     external: &mut Q,
     id: i32,
+    authority: HandlerAuthority<'_, '_>,
 ) -> Result<bool, Error> {
     let mut unit = state
         .world()
@@ -362,6 +403,7 @@ fn can_start<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>>(
             state,
             inputs,
             external,
+            authority,
         },
     );
     if (unit.e_owner, unit.id) != identity {
@@ -396,6 +438,7 @@ fn unit(state: &mut LoadedState, r: UnitReference) -> Result<&mut Unit, Error> {
         .unit_mut(i32::from(r.component_id().owner), r.id)
         .map_err(Error::State)
 }
+#[cfg(test)]
 fn deliver_report(
     unit: &mut Unit,
     reports: &mut impl Reports,
@@ -416,6 +459,7 @@ fn deliver_report(
     }
     Ok(value)
 }
+#[cfg(test)]
 fn report_unit(
     unit: &mut Unit,
     reports: &mut impl Reports,
@@ -432,14 +476,26 @@ fn report(
     trace: &mut Vec<Event>,
     report: IdentityReport,
 ) -> Result<(), Error> {
-    report_unit(unit(state, r)?, reports, trace, report)
+    let mut expected = unit_ref(state, r)?.clone();
+    trace.push(Event::Report(report));
+    reports.send_loaded(state, r, report)?;
+    let actual = unit_ref(state, r)?;
+    expected.e_activity = actual.e_activity;
+    if actual != &expected {
+        return Err(Error::Unsupported(
+            "report changed Unit outside activity; effects retained",
+        ));
+    }
+    Ok(())
 }
 
+#[cfg(test)]
 struct StartReports<'a, R> {
     reports: &'a mut R,
     trace: &'a mut Vec<Event>,
     error: Option<Error>,
 }
+#[cfg(test)]
 impl<R: Reports> skip_turn::StartEffects for StartReports<'_, R> {
     fn mark_activity_dirty(&mut self, _: &Unit, _: u32) {
         unreachable!("diagnostic local-authority profile omits transport dirty registration")
@@ -461,6 +517,7 @@ impl<R: Reports> skip_turn::StartEffects for StartReports<'_, R> {
         }
     }
 }
+#[cfg(test)]
 fn activity_unit(
     unit: &mut Unit,
     id: ComponentId,
@@ -476,6 +533,19 @@ fn activity_unit(
     skip_turn::set_activity(unit, id, value, false, &mut e).map_err(Error::Kernel)?;
     e.error.map_or(Ok(()), Err)
 }
+/// Split the pure setter leaf at its only reporting boundary, then deliver
+/// synchronously through the authoritative World after dropping the Unit borrow.
+/// The internal recorder represents no subscriber or native reporting result.
+struct LoadedActivityBoundary(Option<skip_turn::IdentityIntReport>);
+impl skip_turn::StartEffects for LoadedActivityBoundary {
+    fn mark_activity_dirty(&mut self, _: &Unit, _: u32) {
+        unreachable!("local transport registration omitted")
+    }
+    fn send(&mut self, _: &mut Unit, report: skip_turn::IdentityIntReport) -> i32 {
+        self.0 = Some(report);
+        0
+    }
+}
 fn activity(
     state: &mut LoadedState,
     r: UnitReference,
@@ -484,8 +554,50 @@ fn activity(
     reports: &mut impl Reports,
     trace: &mut Vec<Event>,
 ) -> Result<(), Error> {
-    activity_unit(unit(state, r)?, id, value, reports, trace)
+    let mut boundary = LoadedActivityBoundary(None);
+    skip_turn::set_activity(unit(state, r)?, id, value, false, &mut boundary)
+        .map_err(Error::Kernel)?;
+    if let Some(report) = boundary.0 {
+        self::report(
+            state,
+            r,
+            reports,
+            trace,
+            IdentityReport {
+                event: report.event_hash,
+                subtype: report.subtype_hash,
+                identity: report.identity,
+                first: Some(report.value),
+                second: None,
+            },
+        )?;
+    }
+    Ok(())
 }
+fn start_loaded(
+    state: &mut LoadedState,
+    r: UnitReference,
+    identity: ComponentId,
+    reports: &mut impl Reports,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    report(
+        state,
+        r,
+        reports,
+        trace,
+        IdentityReport {
+            event: 0x3d4006f2,
+            subtype: SKIP_TURN_HASH,
+            identity,
+            first: Some(0),
+            second: None,
+        },
+    )?;
+    activity(state, r, identity, skip_turn::HOLD, reports, trace)
+}
+
+#[cfg(test)]
 fn start_unit(
     unit: &mut Unit,
     identity: ComponentId,
@@ -658,6 +770,45 @@ pub fn skip_turn_state_phase<Q: ManagerQueries<Unit, Parameters = (), Error = &'
     external: &mut Q,
     reports: &mut impl Reports,
 ) -> Result<Vec<Event>, Failure> {
+    skip_turn_state_phase_impl(
+        state,
+        r,
+        inputs,
+        external,
+        reports,
+        HandlerAuthority::DecoderBinding,
+    )
+}
+/// Same diagnostic algorithm with a separately admitted actual handler capture.
+/// The capture's own ObservationIdentity is preserved; no observer profile is
+/// relabeled as the destination's native Read process or lookup oracle.
+pub fn skip_turn_state_phase_observed<
+    Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    source: &handlers::BoundHandlers<'_>,
+    external: &mut Q,
+    reports: &mut impl Reports,
+) -> Result<Vec<Event>, Failure> {
+    skip_turn_state_phase_impl(
+        state,
+        r,
+        inputs,
+        external,
+        reports,
+        HandlerAuthority::ObservedSnapshot(source),
+    )
+}
+fn skip_turn_state_phase_impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>>(
+    state: &mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    reports: &mut impl Reports,
+    authority: HandlerAuthority<'_, '_>,
+) -> Result<Vec<Event>, Failure> {
     let mut trace = vec![Event::Stage(Stage::ExecuteLookup)];
     let result = (|| {
         if state.world().unit(r).map_err(Error::World)?.is_none() {
@@ -668,22 +819,32 @@ pub fn skip_turn_state_phase<Q: ManagerQueries<Unit, Parameters = (), Error = &'
             return Ok(());
         }
         trace.push(Event::Stage(Stage::Preflight));
-        let observed = inputs.handlers.identity();
-        let configuration: String = state
-            .binding()
-            .inputs
-            .configuration_sha256
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect();
-        if configuration != observed.configuration_sha256 {
-            return Err(Error::ConfigurationIdentity);
-        }
-        let id = inputs
-            .handlers
-            .saved_hash_runtime_id(OperationHash(SKIP_TURN_HASH))
-            .map_err(Error::Registry)?
-            .0;
+        let id = match authority {
+            HandlerAuthority::DecoderBinding => {
+                let observed = inputs.handlers.identity();
+                let configuration: String = state
+                    .binding()
+                    .inputs
+                    .configuration_sha256
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect();
+                if configuration != observed.configuration_sha256 {
+                    return Err(Error::ConfigurationIdentity);
+                }
+                inputs
+                    .handlers
+                    .saved_hash_runtime_id(OperationHash(SKIP_TURN_HASH))
+                    .map_err(Error::Registry)?
+                    .0
+            }
+            HandlerAuthority::ObservedSnapshot(source) => {
+                source
+                    .validate_execution(state, inputs.handlers, inputs.operations)
+                    .map_err(Error::HandlerObservation)?;
+                source.requested_skip_turn().0
+            }
+        };
         let u = unit_ref(state, r)?;
         let runtime = state.unit_runtime(r.player(), r.id).map_err(Error::State)?;
         let identity = runtime.archive.identity();
@@ -789,7 +950,7 @@ pub fn skip_turn_state_phase<Q: ManagerQueries<Unit, Parameters = (), Error = &'
             continue_skip_turn(state, r, reports, &mut trace)?;
             return Ok(());
         }
-        let admitted = can_start(state, r, inputs, external, id)?;
+        let admitted = can_start(state, r, inputs, external, id, authority)?;
         trace.push(Event::Legality(admitted));
         if !admitted {
             let actor = unit_ref(state, r)?;
@@ -827,7 +988,7 @@ pub fn skip_turn_state_phase<Q: ManagerQueries<Unit, Parameters = (), Error = &'
         };
         activity(state, r, identity, next, reports, &mut trace)?;
         trace.push(Event::Stage(Stage::Start));
-        start_unit(unit(state, r)?, identity, reports, &mut trace)?;
+        start_loaded(state, r, identity, reports, &mut trace)?;
         trace.push(Event::Stage(Stage::Delete));
         pop(state, r, identity, reports, &mut trace)?;
         Ok(())
@@ -861,7 +1022,69 @@ where
     W: aftermath::Diplomacy + aftermath::Blocking,
     F: FnOnce(&'s mut LoadedState) -> W,
 {
-    let mut trace = skip_turn_state_phase(state, r, inputs, external, reports)?;
+    diagnose_skip_turn_impl(
+        state,
+        r,
+        inputs,
+        external,
+        reports,
+        make_aftermath,
+        owner,
+        budget,
+        HandlerAuthority::DecoderBinding,
+    )
+}
+/// Execute the same post-Add composition using actual observed handler/code
+/// bindings and explicitly source-reconstructed queue IDs, never hash answers.
+#[allow(clippy::too_many_arguments)]
+pub fn diagnose_skip_turn_observed<'s, Q, R, W, F>(
+    state: &'s mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    source: &handlers::BoundHandlers<'_>,
+    external: &mut Q,
+    reports: &mut R,
+    make_aftermath: F,
+    owner: W::Owner,
+    budget: usize,
+) -> Result<Vec<Event>, Failure>
+where
+    Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
+    R: Reports,
+    W: aftermath::Diplomacy + aftermath::Blocking,
+    F: FnOnce(&'s mut LoadedState) -> W,
+{
+    diagnose_skip_turn_impl(
+        state,
+        r,
+        inputs,
+        external,
+        reports,
+        make_aftermath,
+        owner,
+        budget,
+        HandlerAuthority::ObservedSnapshot(source),
+    )
+}
+#[allow(clippy::too_many_arguments)]
+fn diagnose_skip_turn_impl<'s, Q, R, W, F>(
+    state: &'s mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    reports: &mut R,
+    make_aftermath: F,
+    owner: W::Owner,
+    budget: usize,
+    authority: HandlerAuthority<'_, '_>,
+) -> Result<Vec<Event>, Failure>
+where
+    Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
+    R: Reports,
+    W: aftermath::Diplomacy + aftermath::Blocking,
+    F: FnOnce(&'s mut LoadedState) -> W,
+{
+    let mut trace = skip_turn_state_phase_impl(state, r, inputs, external, reports, authority)?;
     if trace
         .iter()
         .any(|event| matches!(event, Event::UnitAbsent { .. }))

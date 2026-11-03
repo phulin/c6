@@ -425,6 +425,7 @@ impl Bound<'_> {
             war_player_count: self.resources.war_player_count,
             plot_unit_limit: self.resources.plot_unit_limit,
             provenance: facts.provenance(),
+            destination: state.binding().clone(),
         };
         state
             .bind_observed_snapshot_controls(witness, controls)
@@ -457,8 +458,52 @@ pub struct SnapshotState {
     war_player_count: i32,
     plot_unit_limit: i32,
     provenance: Value,
+    destination: WireBinding,
+}
+/// Metadata remaining after the original captured war payload is retired in
+/// favor of the single owned Game.DiplomaticRelations authority.
+pub struct SnapshotMetadata {
+    plot_unit_limit: i32,
+    provenance: Value,
+}
+impl SnapshotMetadata {
+    pub fn plot_unit_limit(&self) -> i32 {
+        self.plot_unit_limit
+    }
+    pub fn provenance(&self) -> &Value {
+        &self.provenance
+    }
 }
 impl SnapshotState {
+    /// Compare the original capture with the newly initialized component, then
+    /// consume this duplicate mutable payload before any gameplay advancement.
+    pub fn handoff_owned_relations(
+        mut self,
+        state: &LoadedState,
+    ) -> Result<SnapshotMetadata, Error> {
+        if !state.is_pristine() {
+            return Err(Error::State(c6_core::loaded_state::Error::NotPristine));
+        }
+        if state.binding() != &self.destination {
+            return Err(Error::Identity("war authority destination"));
+        }
+        let owner = state.game_relations().map_err(Error::State)?;
+        let war = owner
+            .war()
+            .ok_or(Error::Identity("owned war types not initialized"))?;
+        if owner.player_count() != self.war_player_count
+            || war.values() != self.war_types.as_slice()
+        {
+            return Err(Error::Identity("all native-capture/owned war words"));
+        }
+        self.provenance["war_authority"] = json!("owned_game_diplomatic_relations");
+        self.provenance["captured_mutable_war_payload_retired"] = json!(true);
+        self.provenance["native_war_words_compared"] = json!(self.war_types.len());
+        Ok(SnapshotMetadata {
+            plot_unit_limit: self.plot_unit_limit,
+            provenance: self.provenance,
+        })
+    }
     pub fn relations(&self) -> WarRelations<'_> {
         WarRelations {
             player_count: self.war_player_count,
