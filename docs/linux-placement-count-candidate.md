@@ -23,6 +23,8 @@ Output schema is `c6-linux-placement-count-results-v1`: `count_results`, `unit_b
 
 All actual Unit and Formation memberships are traversed, including orphan Formations, which is broader than just Unit-reachable Formations. Computed Unit definition/Formation bindings are separate outputs for native comparison. Handler results are separately computed from actual player/rules facts; unsupported live inputs remain explicit. This first native profile has no reviewed genuine SkipTurn handler receiver, so every handler result is explicitly native-uncompared. It cannot establish full Manager::CanStart, script vetoes, reporting consumers or action execution.
 
+The offline `player_alive_saved_crosscheck.py` can independently compare actual Core alive fields with flag0 from all43 attributed Player47 headers in the existing exact Core/trace pairs. It parses only the complete98-byte headers and never claims complete Player payload import or configuration/mapping recovery. A report without fresh native metadata explicitly records that the actual-Core comparison remains unavailable; no candidate input or frozen manifest changes.
+
 Before and after queries the candidate checks complete supplied Map/Unit/Formation wire hashes; mutable handler projection is checked against its original Unit. This covers supplied typed records only, without claiming complete native live state/RNG purity. The native runner must independently capture/repeat original count queries and raw Save/RNG controls. The raw 89,198-byte Save→Load inequality remains unmasked.
 
 Freeze committed source with:
