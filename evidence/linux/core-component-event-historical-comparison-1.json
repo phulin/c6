@@ -1,0 +1,200 @@
+{
+  "schema": "c6-linux-corrected-reporting-historical-comparison-v1",
+  "method": "Read-only comparison of checked native reports; no new native execution",
+  "corrected_configuration_sha256": "b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b",
+  "historical_configuration_sha256": "d68604a55344b85212154f5abf20b2a109e2d65b34a582686226e1f3f520187a",
+  "historical_checked_report_sha256": "4ab9894fc2ada3fc91edc1913240f09f4ca758ad05eb539e4a782fc8fb293c00",
+  "corrected_runtime_report_sha256": "504571fe4cb8f194189bccc86940b820720d2f375de74cffedb9ccdb525c2029",
+  "same_native_command": true,
+  "same_complete_before_after_repeat_core_stream_identities": true,
+  "same_selected_typed_before_after": true,
+  "historical_selected_nine_send_entries_equal": true,
+  "additional_original_send_entries": [
+    {
+      "event": "report_value_value",
+      "sequence": 10,
+      "type_bits": "00000000025f6cfd",
+      "values": [
+        {
+          "key": 3937836634,
+          "variant_type": 1024,
+          "modifiers": 0,
+          "element_size": 8,
+          "element_count": 1,
+          "count_flags_raw": 553648129,
+          "kind": "component_id",
+          "component_bits": "0000002f00260000",
+          "typed_capture_supported": true
+        },
+        {
+          "key": 2023946566,
+          "variant_type": 1,
+          "modifiers": 0,
+          "element_size": 0,
+          "element_count": 0,
+          "count_flags_raw": 0,
+          "kind": "bool",
+          "value": false,
+          "typed_capture_supported": true
+        }
+      ]
+    },
+    {
+      "event": "report_type",
+      "sequence": 11,
+      "type_bits": "000000009ea4c222"
+    }
+  ],
+  "original_reporting_returns": [
+    {
+      "event": "report_forward_return",
+      "sequence": 1,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 2,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 3,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 4,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 5,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 6,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 7,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 8,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 9,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 10,
+      "result": 0,
+      "input_unchanged": true
+    },
+    {
+      "event": "report_forward_return",
+      "sequence": 11,
+      "result": 0,
+      "input_unchanged": true
+    }
+  ],
+  "raw_live_differences": {
+    "before": [
+      {
+        "object": "game_sync_random",
+        "left_raw": "88714fbc07730000afa7fd3370150e0000000000000000000100000000000000",
+        "right_raw": "88718f67e9730000afa7fd3370150e0000000000000000000100000000000000",
+        "differing_offsets": [
+          2,
+          3,
+          4
+        ],
+        "masked_bytes": 0,
+        "semantic_classification_complete": false
+      },
+      {
+        "object": "map_generator_random",
+        "left_raw": "88714fbc07730000000000000000000001000000000000000000000000000000",
+        "right_raw": "88718f67e9730000000000000000000001000000000000000000000000000000",
+        "differing_offsets": [
+          2,
+          3,
+          4
+        ],
+        "masked_bytes": 0,
+        "semantic_classification_complete": false
+      },
+      {
+        "object": "queue[0]",
+        "left_raw": "13000000ffffffff3039203e000000007040203e00000000081000004f0200002e01256bffffffff",
+        "right_raw": "13000000ffffffffb0db8a3d0000000070e18a3d00000000081000004f0200002e01256bffffffff",
+        "differing_offsets": [
+          8,
+          9,
+          10,
+          11,
+          17,
+          18,
+          19
+        ],
+        "masked_bytes": 0,
+        "semantic_classification_complete": false
+      }
+    ],
+    "after": [
+      {
+        "object": "game_sync_random",
+        "left_raw": "88714fbc07730000afa7fd3370150e0000000000000000000100000000000000",
+        "right_raw": "88718f67e9730000afa7fd3370150e0000000000000000000100000000000000",
+        "differing_offsets": [
+          2,
+          3,
+          4
+        ],
+        "masked_bytes": 0,
+        "semantic_classification_complete": false
+      },
+      {
+        "object": "map_generator_random",
+        "left_raw": "88714fbc07730000000000000000000001000000000000000000000000000000",
+        "right_raw": "88718f67e9730000000000000000000001000000000000000000000000000000",
+        "differing_offsets": [
+          2,
+          3,
+          4
+        ],
+        "masked_bytes": 0,
+        "semantic_classification_complete": false
+      }
+    ]
+  },
+  "raw_core_difference": {
+    "common_bytes": 80656254,
+    "differing_common_bytes": 46037717,
+    "length_difference": 1208,
+    "total_differing_bytes": 46038925,
+    "masked_bytes": 0,
+    "unknown_bytes_classified": false
+  },
+  "complete_initial_live_state_equivalence_proven": false,
+  "complete_event_inventory": false,
+  "host_admission_proven": false,
+  "full_action_acceptance": 0,
+  "gameplay_parity": false,
+  "limits": "Corrected int-return source plus fresh controlled/repeated native observations reproduce historical bounded state and exact Core streams. All observed returns are0; nonzero returns are not exercised by this fixture. Synchronous cache/pre-publish/subscriber state and complete gameplay RNG remain unresolved; raw bytes are unmasked."
+}

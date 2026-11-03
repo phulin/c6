@@ -30,6 +30,32 @@ The nine recorded entries correspond to five known original caller sites. SetAct
 
 Old raw runs, observed queue/action/state outcomes and conditional limitations are preserved. Their reporting scope remains incomplete and their ABI declarations remain defective. A corrected fresh control/execution/repeat must establish the new observer profile and compare its bounded outcomes; no corrected native result is claimed by this source/static checkpoint. Full-host admission, complete affected state/RNG and Rust action parity remain unproven.
 
+## Corrected closed native profile
+
+The [corrected control](../evidence/linux/core-component-event-control-1.json), configuration `99cee7e75ef9f6d302247a11202901b79c1c0fbc5dfad9a49af28c69396df5c1`, and [corrected execution with fresh repeat](../evidence/linux/core-component-event-execute-1.json), configuration `b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b`, pass the standalone checker and exact sixteen bindings. Control emits no captured Send entries, queues no command and leaves all five Core Saves at `ff31f4...`, with successful native cleanup. Execution and its isolated repeat each queue/receive/execute one original command, establish worker completion/Join/parking before observation, and report successful native cleanup.
+
+Both executions capture this same ordered Send-entry sequence. Every entry has a balanced original **int return of 0**, and every captured input remains unchanged across that original call.
+
+| Sequence | Original event hash | Actual payload |
+|---|---|---|
+| 1 | `e23b112d` | selected unit, activity `1797587246` |
+| 2 | `a60328c5` | selected unit, operation hash `1477390184`, readiness `1` |
+| 3 | `383669f1` | selected unit |
+| 4 | `15c35863` | selected unit, operation ID `36` |
+| 5 | `e23b112d` | selected unit, activity `1225574625` |
+| 6 | `3d4006f2`, subtype `2c681908` | selected unit, integer `0` |
+| 7 | `e23b112d` | selected unit, activity `75236491` |
+| 8 | `a60328c5` | selected unit, operation hash `745019656`, readiness `0` |
+| 9 | `383669f1` | selected unit |
+| 10 | `025f6cfd` | key `eab69e5a`: actual ComponentID bits `0000002f00260000` (owner 0/type 38/notification ID 47); key `78a2f946`: actual bool `false` |
+| 11 | `9ea4c222` | no additional arguments; after UnitOperation return and queue pop |
+
+The selected unit is the freshly discovered native owner-0 ID 15794187, identity bits `00f1000b00010000`. Activation's original userdata has variant type 1024, element size eight, count one and raw count/flags `0x21000001`; its bool is scalar type 1 with zero size/count metadata. The Type/int/int blocker overload is genuinely bound but emits no captured entry in these runs. These observations do not turn that conditional branch into universally unsupported or irrelevant behavior.
+
+The [historical comparison](../evidence/linux/core-component-event-historical-comparison-1.json) verifies that the corrected profile reproduces the earlier native command, complete before/after/repeat Core stream identities, first nine selected entry payloads and explicitly bounded typed unit/queue/two-RNG observations. Post-Core output is the identical 80,656,254-byte `be08f44a4b83bd7eaa8d15a24443731764705c32961c570697bc3bb1736097bc` stream. All raw differences remain unmasked, including the 46,038,925-byte positional before/after difference and raw cross-process object differences. Full live-state equivalence is not asserted. This reproduces the bounded transition with corrected reporting ABI; it does not retroactively make the old declarations correct. Nonzero reporting returns are not exercised by this fixture.
+
+Caller PCs, actual reporting enabled/suspended observations, cache-handler/pre-publish targets and complete synchronous subscriber effects were not added to this frozen profile. Original code proves synchronous callback surfaces, so Send entry/return captures must not be described as pure queued delivery. Those remain separate focused observations and exact gameplay-state requirements. Complete event inventory, full-host admission and Rust gameplay parity remain false.
+
 Run the static checks without executing original code:
 
 ```sh
