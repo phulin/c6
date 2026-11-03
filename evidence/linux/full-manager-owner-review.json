@@ -1,0 +1,67 @@
+{
+  "actual_main_lock_mapping_vm_ancestry_proven": false,
+  "checks": {
+    "field_only_guard_contains_no_actor_pointer": true,
+    "gcc_analyzer": true,
+    "observational_209_only_relaxation_full_profile_only": true,
+    "opaque_lock_token_not_converted_to_os_tid": true,
+    "original_game_modules_loaded_for_execution": false,
+    "queued_effects_and_positive_ai_counter_preserved": true,
+    "real_public_guard_admission_with_mock_dso": true,
+    "strict_c": true,
+    "structural_207_io_208_and_hard_stop_198_remain_failures": true,
+    "ubsan_no_recovery": true
+  },
+  "independent_case_counts": {
+    "lifecycle_selector_and_errors": 9,
+    "missing_cached_witness": 1,
+    "public_owner_and_refusals": 29,
+    "trace_policy_and_hard_stops": 14
+  },
+  "independent_results": {
+    "lifecycle": "lifecycle case 0 passed\nlifecycle case 1 passed\nlifecycle case 2 passed\nlifecycle case 3 passed\nlifecycle case 4 passed\nlifecycle case 5 passed\nlifecycle case 6 passed\nlifecycle case 7 passed\nlifecycle case 8 passed",
+    "missing_witness": "guard case 0: main_entry_unwitnessed",
+    "owner": "guard case 0: public-entry cycle, queued effects preserved\nguard case 1: duplicate_or_missing_admission\nguard case 2: scope_or_main_thread_unknown\nguard case 3: controller_or_worker_unknown\nguard case 4: controller_or_worker_unknown\nguard case 5: controller_or_worker_unknown\nguard case 6: controller_or_worker_unknown\nguard case 7: context_or_game_owner_changed\nguard case 8: context_or_game_owner_changed\nguard case 9: context_or_game_owner_changed\nguard case 10: context_or_game_owner_changed\nguard case 11: context_or_game_owner_changed\nguard case 12: context_or_game_owner_changed\nguard case 13: retained_native_lock_changed\nguard case 14: retained_native_lock_changed\nguard case 15: retained_native_lock_changed\nguard case 16: retained_native_lock_changed\nguard case 17: locked_begin_identity_unknown\nguard case 18: locked_begin_identity_unknown\nguard case 19: locked_begin_identity_unknown\nguard case 20: unlocked_boundary_unknown\nguard case 21: retained_native_lock_changed\nguard case 22: admission_identity_changed\nguard case 23: admission_identity_changed\nguard case 24: admission_identity_changed\nguard case 25: owner_changed_during_observation\nguard case 26: scope_or_main_thread_unknown\nguard case 27: object_extent_unknown\nguard case 28: field_unreadable",
+    "trace": "14 independent trace structural/IO/counter/legacy/hard-stop cases passed"
+  },
+  "legacy_trace_source_prefix_unchanged": true,
+  "legacy_trace_source_sha256": "435cccc7730d92c1deee29ba253434ad6a6e9cc9df97f11dbf022697c9fabba7",
+  "mock_executable_sha256": {
+    "lifecycle": "ce5e0784c55314d9fbab40bbc55d289773492f541a1dff069234bf952ccdc025",
+    "missing_witness": "f9b1b5afeb156fb46bfeec166c1f77f8f02190c9acd257c914d88ba371db7989",
+    "owner": "257b3321beb952d1e4e7981c64495cea54f7b569a22f090d2dcfecbe7e05082a",
+    "trace": "506117420466deb0ea64dffec7c0d41d7b63f6324a64b1df625a0b07b3b038c9"
+  },
+  "native_predicate_or_complete_state_action_turn_parity": false,
+  "original_execution": false,
+  "producer_audits": {
+    "full_manager_profile_guard_audit": {
+      "checks_passed": true,
+      "sha256": "815cd8fdf630c49dd4930e0c74feefe977d3526e3b35f9bb749c0f58afb28056"
+    },
+    "full_manager_trace_policy_audit": {
+      "checks_passed": true,
+      "sha256": "d946c146ab82b26b458a4552b673416c10c8ccb3a30883641c3c1e377bcc6c86"
+    }
+  },
+  "reviewed_checkpoints": [
+    "55302c3",
+    "eefe52c",
+    "e262004"
+  ],
+  "runtime_profile_admitted": false,
+  "schema": "c6-linux-full-manager-owner-independent-review-v1",
+  "source_sha256": {
+    "native/linux/action_lifecycle.c": "5e854eeb96016817c3918ecd2f9ce80972460f7097cd1e1c2e756e4a077d2f79",
+    "native/linux/action_lifecycle.h": "8e4552267b01681443447d1b79f7f4cfdd78900bf9d6d24dbefdacdccf3a9d0c",
+    "native/linux/full_manager_profile_guard.c": "57bfc48108d523002fdcefc1aa8bfde42cf20063a5657ed735f6b356f396b0a7",
+    "native/linux/full_manager_profile_guard.h": "49391b079163ed04744268a8c797c709fa6bbd772be3ed0887d48d279515cc75",
+    "native/linux/mod_activation.c": "09ed53e32af9e9700aea83458f532158e1150b75f33bee766a7d723bf773a8c6",
+    "tools/linux/action_execution_trace.c": "0ca51b8b7d29c246a9f8172685cfb31b8d6b71d2501956666ad47c149968513a",
+    "tools/linux/full_manager_lifecycle_review.c": "1ad7ba930b3aa4c277937f2b0b807d2ebc7d61482ec38bbe3a299d7769636c7f",
+    "tools/linux/full_manager_owner_review.c": "d8f31814dfbd66cf1cce86a8265a4b266b3909d9c97aea3b65b8ddf225d446a4",
+    "tools/linux/full_manager_owner_review.py": "082d77b31d30ac8092e841954fea48f4f4f1d6ae1ee64e4d9cfc15a8d2db9371",
+    "tools/linux/full_manager_trace_review.c": "2ae0b3f1aad059feb9cf13f962d6d44d477c95d4bcb732dd4752afce816f8bc5"
+  },
+  "source_stable_during_checks": true
+}
