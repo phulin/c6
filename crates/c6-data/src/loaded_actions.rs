@@ -19,6 +19,7 @@ use c6_core::{
     unit_operation_interruption::{Handler, ObservedRegistry},
 };
 
+pub mod arena;
 pub mod choose_tech;
 pub mod city_range_attack;
 pub mod command_units;
@@ -1229,7 +1230,7 @@ mod tests {
     }
     // Synthetic wire-shaped input for report-order/mutation regressions only.
     // It makes no claim about a native initialized Unit or complete gameplay.
-    fn synthetic_unit() -> Unit {
+    pub(super) fn synthetic_unit() -> Unit {
         c6_core::unit::Unit {
             id: 0,
             e_type_index: 0,
