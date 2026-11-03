@@ -59,6 +59,45 @@ the current-interruption/aftermath modules. Start is split at its report boundar
 so an unavailable report consumer stops before the following activity write;
 the existing leaf's infallible hook cannot express such a failure.
 
+## Concrete captured resources
+
+`loaded_actions::resources::Resources::from_closed_captures` consumes the actual
+closed placement/Manager `native-1` facts and validates their admitted terminal
+runtime, configuration-file and fact hashes. It reads **116 actual Unit
+definitions**, **63 native-order operation definitions** and the four observed
+selected phase slots. No expected CanStart/count result or saved byte mask enters
+this adapter. The original disabled vectors remain comparison targets; this
+loader does not install those observed outputs instead of initializing state.
+
+`Resources::bind` checks the target runtime's canonical configuration identity
+against the loaded binding, then compares actual module/host assets, content
+gate, saved configuration, DLC descriptors and observed activated mods/components.
+These values match for the closed resource captures and the existing native3
+runtime even though their observer profile hashes differ. Immutable definitions
+can therefore be used conditionally in that admitted resource configuration.
+This check does not authenticate a new execution or establish an unchanged live
+rules database after unsupported callbacks/configuration changes.
+
+Mutable war relations, Manager membership and Player/control facts stay behind
+`Bound::snapshot_diagnostic`. That method requires an untouched decode tagged
+`SavedOutputCore` with the exact associated snapshot
+`ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884`.
+It explicitly rejects `ReadInputCore`, including the original Read input
+`a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa`,
+and different snapshots. Provenance names the independent placement/Manager fact
+artifacts and their shared saved-snapshot diagnostic association. This does not
+establish same-process unsaved controls or native3 live-state identity. The
+returned 43 Player configurations retain the actual one-human roster; pause=0
+and automation=-1 remain those captured diagnostic values. WarTypes retains its
+actual 2,016-element triangular storage. None of these mutable facts is exposed
+through the cross-profile immutable definition view.
+
+The resource adapter supplies Unit domain/placement and operation/phase inputs.
+It does not fabricate omitted ability/terrain/feature/GreatPerson collection
+orders required by complete Unit initialization, runtime handler virtual slots,
+scripting callbacks or diplomacy/notification behavior. Missing providers remain
+explicit execution gaps.
+
 ## Diagnostic boundaries and partial failures
 
 The scripting provider currently receives the sole mutable addressed Unit
@@ -120,7 +159,9 @@ public original metadata before decoding. Override the path with
 `C6_LOADED_ACTION_BEFORE_CORE`. They execute no original code. They check Start's
 synchronous activity reread/equality suppression; retained callback mutations
 and stop on unsupported/error; and assignment-before-report failure. These
-three pinned-record source replays pass. The ordinary test checks exact packed
+three pinned-record source replays pass. Two additional closed-resource tests
+check actual cross-profile reuse, changed-resource rejection, and rejection of
+mutable-state transplantation to Read input/different snapshots. The ordinary test checks exact packed
 signed identity bits and optional report arguments. No full loaded-world/native
 SkipTurn acceptance or complete affected-state comparison is claimed.
 

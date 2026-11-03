@@ -19,6 +19,8 @@ use c6_core::{
     unit_operation_interruption::{Handler, ObservedRegistry},
 };
 
+pub mod resources;
+
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
 
