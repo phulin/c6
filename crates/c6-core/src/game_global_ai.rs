@@ -489,7 +489,7 @@ mod tests {
                 actual: 3
             })
         );
-        for offset in [8, 16, 24] {
+        for offset in [8, 16, 24, 32, 48] {
             let mut bad = raw.clone();
             bad[offset..offset + 4].copy_from_slice(&99u32.to_le_bytes());
             assert!(matches!(
@@ -497,6 +497,15 @@ mod tests {
                 Err(Error::Version { .. })
             ));
         }
+        let mut bad = raw.clone();
+        bad[60..64].copy_from_slice(&10u32.to_le_bytes());
+        assert_eq!(
+            GlobalAi::decode(&bad, limits()),
+            Err(Error::ArrayLength {
+                expected: 11,
+                actual: 10
+            })
+        );
         let mut bad = raw;
         bad[28..32].copy_from_slice(&u32::MAX.to_le_bytes());
         assert_eq!(GlobalAi::decode(&bad, limits()), Err(Error::ResourceLimit));

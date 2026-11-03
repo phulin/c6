@@ -113,7 +113,7 @@ def current_record(raw):
         children.append(dict(owner='GameCore::AI::Religious',start=begin,end=pos))
         return value
     version(4);wrapped=take('I');version(1);mayhem=take('I');version(1);factory=take('I')
-    version(1);esp=vector(espionage,37)
+    version(1);esp=vector(espionage,33)
     version(2);religion=vector(religious,5)
     scalar=take('i');values=vector(lambda:take('i'),4);a=vector(hash_q8,8);b=vector(hash_q8,8)
     if pos != len(raw) or reconstructed != raw: raise ValueError('extent/typed reconstruction mismatch')
