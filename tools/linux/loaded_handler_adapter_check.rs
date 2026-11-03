@@ -226,6 +226,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         private.join("linux-rules/mod-activation-xp2-constructor-final-1/report.json"),
     )?;
     let definitions = Definitions::from_rules(&rules, &bound, &rules_runtime)?;
+    let notification_definitions =
+        actions::notifications::Definitions::from_rules(&rules, &bound, &rules_runtime)?;
+    let notification_rows: Vec<_>=notification_definitions.ordered().iter().enumerate().map(|(index,d)|serde_json::json!({
+        "collection_index":index,"row_id":d.row_id.0,"type_hash":d.type_hash,"notification_type":d.notification_type,
+        "auto_activate":d.auto_activate,"auto_notify":d.auto_notify,"expires_end_of_next_turn":d.expires_end_of_next_turn,
+        "expires_end_of_turn":d.expires_end_of_turn,"group_type":d.group_type,"icon":d.icon,"message":d.message,
+        "severity_type":d.severity_type,"show_icon_single_player":d.show_icon_single_player,"sub_type":d.sub_type,
+        "summary":d.summary,"visible_in_ui":d.visible_in_ui
+    })).collect();
+    for d in notification_definitions.ordered() {
+        assert_eq!(notification_definitions.find(d.type_hash), Some(d));
+    }
     let identities = state.binding().inputs.clone();
     state.initialize_rosters(&InitializationInputs {
         identities: &identities,
@@ -361,7 +373,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(capture.admit(&state, &bound).is_err());
     println!(
         "{}",
-        serde_json::json!({"schema":"c6-linux-loaded-observed-handler-adapter-check-v1","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"initial_actor_facts":initial_actor_facts,"prefix_elapsed_ns":prefix_elapsed_ns,"timing_scope":"single diagnostic attempt ending at first unavailable report; excludes decode, rules, capture admission and all-roster comparisons; not full-action throughput","per_attempt_validation":"63 immutable definition/slot pairs; no module hashing or all-Unit scans","partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"required_reporting_backend_available":false,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
+        serde_json::json!({"schema":"c6-linux-loaded-observed-handler-adapter-check-v1","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"notification_definitions":notification_rows,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"initial_actor_facts":initial_actor_facts,"prefix_elapsed_ns":prefix_elapsed_ns,"timing_scope":"single diagnostic attempt ending at first unavailable report; excludes decode, rules, capture admission and all-roster comparisons; not full-action throughput","per_attempt_validation":"63 immutable definition/slot pairs; no module hashing or all-Unit scans","partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"required_reporting_backend_available":false,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
     );
     Ok(())
 }

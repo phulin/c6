@@ -20,6 +20,7 @@ use c6_core::{
 };
 
 pub mod handlers;
+pub mod notifications;
 pub mod reporting;
 pub mod resources;
 
