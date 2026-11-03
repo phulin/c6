@@ -136,9 +136,18 @@
   "script_callbacks_called": false,
   "turn_completion_called": false,
   "raw_fields_are_not_expected_predicate_answers": true,
-  "reconstruction_comparison_pending": true,
+  "reconstruction_comparison_pending": false,
   "full_manager_parity": false,
   "complete_state_action_rng_turns_supported": false,
   "historical_raw_save_load_difference_bytes": 89198,
-  "raw_private_upload_authorized": false
+  "raw_private_upload_authorized": false,
+  "bounded_reconstruction_equal": true,
+  "reconstruction_result_commit": "74f8368",
+  "reconstruction_report_sha256": "364584dd4feccaa9efcb714ce172047f4efa8fcea5d77a8fa685057016b0d538",
+  "reconstruction_independent_review_commit": "3155f18",
+  "observed_disabled_values": {
+    "total_bytes": 79506,
+    "all_zero": true,
+    "nonzero_disabled_flags_native_coverage": false
+  }
 }
