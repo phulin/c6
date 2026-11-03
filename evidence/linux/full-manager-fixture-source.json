@@ -350,6 +350,20 @@
     }
   ],
   "checks": {
+    "compiled_marker_contracts": [
+      {
+        "CET_branch": true,
+        "optimization": "-O0",
+        "raw": "f30f1efac3900f0b",
+        "sha256": "05c67caf3f53599a96c3f5655b9ede9c25405481c8082775e77a8ce3579231a0"
+      },
+      {
+        "CET_branch": true,
+        "optimization": "-O2",
+        "raw": "f30f1efac30f0b660f1f840000000000",
+        "sha256": "d88664084b5b4b037a62a2c90fbd9a543a105830235afdbd1b4fcc21580d08c5"
+      }
+    ],
     "gcc_analyzer": true,
     "strict_c": true,
     "synthetic_summary": "4 synthetic genuine-ABI lifetime branches including complete facade acquire/release; 3 exact fatal refusals; no original execution",
@@ -380,10 +394,10 @@
   "sources": {
     "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
     "native/linux/context_stream.h": "20cc3f198f5460b00a732ddb3047f069b3592cd6de6c485dadcd5562d674962b",
-    "native/linux/full_manager_fixture.c": "421b823351d40d5edf54260a44c26a9291113f6c65322f4346a302df05583d86",
+    "native/linux/full_manager_fixture.c": "a92d43fb00545f20b76c26f98f933df75b03013b6b3a8f733a89711586206ef9",
     "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
     "tools/linux/current_handler_caller_audit.py": "9b4d17f51569b0f81e2e7ab026d14fdf37350b8fa16db4e329c48b49a168c0b2",
-    "tools/linux/full_manager_fixture_audit.py": "679062c6ebf4c68791da4a8590807cb063038e77f950a0b00943248257b7850b",
+    "tools/linux/full_manager_fixture_audit.py": "9442f855c48ba52fa362ec6210b82f4a79b4489be1618608ba26d8ea204b4bea",
     "tools/linux/map_state_audit.py": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b",
     "tools/linux/movement_probe_audit.py": "f00bb872d6f253ed9cdc3f40fe9431ec02101cbb772dced612ec58a8ed8cc5cf",
     "tools/linux/placement_metadata_audit.py": "f019a7e236f4bd2881d6746203e475b664fe023efd3fd29a4c8a5554bc272174",

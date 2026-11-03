@@ -51,9 +51,10 @@ static void *binding(void *module,const char *name,uintptr_t expected,void *base
     if((uintptr_t)p!=expected||!dladdr(p,&owner)||owner.dli_fbase!=base)fatal("original_binding_unknown");
     return p;
 }
-__attribute__((noinline,visibility("default")))
-void c6_linux_full_manager_fixture_marker(const C6FullManagerObservation *observation) {
-    __asm__ volatile("" : : "r"(observation) : "memory");
+__attribute__((naked,noinline,used,visibility("default")))
+void c6_linux_full_manager_fixture_marker(
+    const C6FullManagerObservation *observation __attribute__((unused))) {
+    __asm__ volatile("ret");
 }
 static void notify(const C6FullManagerFixtureAdmission *a,C6FullManagerFixtureResult *r,
                    C6FullManagerObservation *o,C6FullManagerPhase phase,FILE *out) {

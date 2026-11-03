@@ -69,6 +69,17 @@ def main():
         test.write_text('#include "'+str(ROOT/SOURCE)+'"\n'+HARNESS)
         flags=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wconversion','-Wshadow']
         subprocess.run(flags+['-fanalyzer','-c',str(ROOT/SOURCE),'-o',str(work/'fixture.o')],check=True)
+        marker_contracts=[]
+        for optimization in ('-O0','-O2'):
+            marker_object=work/('marker'+optimization+'.o')
+            subprocess.run(flags+[optimization,'-fcf-protection=branch','-c',str(ROOT/SOURCE),'-o',str(marker_object)],check=True)
+            listing=subprocess.check_output(['objdump','-d',str(marker_object)],text=True)
+            body=listing.split('<c6_linux_full_manager_fixture_marker>:',1)[1].split('\n\n',1)[0]
+            raw=bytes.fromhex(' '.join(match.group(1) for match in re.finditer(
+                r'^\s*[0-9a-f]+:\s+((?:[0-9a-f]{2}\s+)+)',body,re.M)))
+            if not (raw.startswith(bytes.fromhex('f30f1efac3')) or raw.startswith(b'\xc3')):
+                raise ValueError('compiled own marker is not return-only at '+optimization)
+            marker_contracts.append(dict(optimization=optimization,CET_branch=True,raw=raw.hex(),sha256=sha(raw)))
         subprocess.run(flags+['-O2','-fsanitize=undefined',str(test),'-ldl','-o',str(work/'test')],check=True)
         result=subprocess.run([str(work/'test')],capture_output=True,text=True)
         if result.returncode:
@@ -86,7 +97,7 @@ def main():
         checked_methods=[dict(name=n,address=hex(a),size=z,sha256=h) for n,a,z,h in methods],
         checked_exports=[dict(field=f,symbol=s,address=a) for f,s,a in bindings],
         checks=dict(strict_c=True,gcc_analyzer=True,ubsan_synthetic_lifetime=True,
-                    synthetic_summary=result.stdout.strip()),
+                    synthetic_summary=result.stdout.strip(),compiled_marker_contracts=marker_contracts),
         original_calls=['genuine Context.GetGame facade acquisition/release',
                         'original Manager registry and Player/Unit membership lookup',
                         'original Operation construction/complete Manager.CanStart/destruction',
