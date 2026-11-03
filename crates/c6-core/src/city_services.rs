@@ -199,9 +199,14 @@ macro_rules! record {
         impl $name {
             /// Decode only at an independently established structural boundary.
             pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+                let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
+                Ok((value, consumed))
+            }
+            /// Return the aggregate dynamic-element charge for composing bounded records.
+            pub fn decode_prefix_with_items(bytes: &[u8], limits: Limits) -> Result<(Self, usize, usize), Error> {
                 let mut r = Reader { bytes, pos: 0, budget: Budget { limits, items: 0, allocated: 0 } };
                 let value = Self::read(&mut r)?;
-                Ok((value, r.pos))
+                Ok((value, r.pos, r.budget.items))
             }
             pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
                 let (value, consumed) = Self::decode_prefix(bytes, limits)?;
@@ -209,9 +214,13 @@ macro_rules! record {
                 Ok(value)
             }
             pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+                self.encode_with_items(limits).map(|(bytes, _)| bytes)
+            }
+            /// Return encoded bytes and the aggregate dynamic-element charge.
+            pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
                 let mut w = Writer { bytes: Vec::new(), budget: Budget { limits, items: 0, allocated: 0 } };
                 self.write(&mut w)?;
-                Ok(w.bytes)
+                Ok((w.bytes, w.budget.items))
             }
         }
     };
@@ -499,5 +508,31 @@ mod tests {
             max_items: 27,
         };
         assert_eq!(Trade::decode(&trade(), limits), Err(Error::ResourceLimit));
+    }
+    #[test]
+    fn item_accounting_composes_without_consuming_following_records() {
+        let bytes = trade();
+        let mut followed = bytes.clone();
+        followed.extend(combat());
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: 31,
+        };
+        let (value, consumed, items) = Trade::decode_prefix_with_items(&followed, exact).unwrap();
+        assert_eq!((consumed, items), (bytes.len(), 31));
+        assert_eq!(value.encode_with_items(exact).unwrap(), (bytes, 31));
+        let short = Limits {
+            max_items: 30,
+            ..exact
+        };
+        assert_eq!(
+            Trade::decode_prefix_with_items(&followed, short),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(value.encode_with_items(short), Err(Error::ResourceLimit));
+        let (value, consumed, items) =
+            Combat::decode_prefix_with_items(&combat(), Limits::default()).unwrap();
+        assert_eq!((consumed, items), (combat().len(), 0));
+        assert_eq!(value.encode_with_items(Limits::default()).unwrap().1, 0);
     }
 }
