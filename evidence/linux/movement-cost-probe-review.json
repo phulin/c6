@@ -100,5 +100,39 @@
     "prior_failure_predicate_identified": false,
     "release_recommendation": "one fresh fact-only admission diagnostic under newly frozen integrated preload/configuration; no cost run or unchanged retry",
     "original_code_executed_by_reviewer": false
+  },
+  "xp2_map_functional_correction_review": {
+    "commit": "a969de3",
+    "source_sha256": "3360ec15482d7b95e3167e7e94fdae4a71ba9dae88d42cf4a8bc088d0d348baf",
+    "audit_sha256": "f00bb872d6f253ed9cdc3f40fe9431ec02101cbb772dced612ec58a8ed8cc5cf",
+    "contract_sha256": "03c12bdf33d23e8a6cb12d79c50cb5d3363951e2180a06e4838220483e80a0fb",
+    "frozen_builds": {
+      "native_helper": {
+        "path": "target/linux/libc6-movement-cost-probe-xp2-map-v2.so",
+        "bytes": 33120,
+        "sha256": "d13acf6c458f1601bd1d16c76d04a2c667d8db4cebbc5ce0190dbd355a231adc"
+      },
+      "candidate": {
+        "path": "target/frozen/movement-cost-probe/d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718/candidate",
+        "bytes": 585952,
+        "sha256": "d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718"
+      }
+    },
+    "failed_configuration_sha256": "1b6295920ec319cbcc415cb39c1d7ebd079c615928f352d363845864f2f82bbd",
+    "prior_status": 206,
+    "prior_corpus_cases": 0,
+    "failed_predicate": "base Map vptr expected where actual original XP2 Map vptr is present",
+    "expected_map_address_point": "0x3afb160",
+    "get_plot_slot_target": "0x2a48ba0",
+    "exact_xp2_factory_constructor_and_inherited_layout_verified": true,
+    "plot_city_attributes_and_formation_archive_construction_verified": true,
+    "arbitrary_subclasses_admitted": false,
+    "original_method_contracts": 139,
+    "constructor_glob_dat_contracts": 4,
+    "terrain_water_export": "original 0x2bcadc0 reads definition byte+0x48 bit0x10; functional addition",
+    "strict_c_syntax_passed": true,
+    "static_and_frozen_build_contract_reproduced": true,
+    "release_recommendation": "corrected fresh fact-only control under newly gated integrated preload/configuration; no cost run",
+    "original_code_executed_by_reviewer": false
   }
 }
