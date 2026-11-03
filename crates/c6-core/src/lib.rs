@@ -342,3 +342,7 @@ pub mod unit_operation_aftermath;
 pub mod reporting_dirty_components;
 
 pub mod player_governors;
+
+pub mod player_heroes;
+
+pub mod unit_operation_notification_provider;
