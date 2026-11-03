@@ -1,11 +1,12 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete CulturalIdentity.
-//! Stops before unframed Heroes; this is not a Player/world/gameplay importer.
-use crate::player_cultural_identity;
+//! Bounded post-Map Core wire prefix through the first Player's complete Heroes and conditional bool tables.
+//! Yields at the exact conditional AIControl or inline-tail boundary; no gameplay.
+use crate::player_prerequisites::{self, IndexedBools};
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
+use crate::{player_cultural_identity, player_heroes};
 use crate::{
     player_eras, player_great_people_points, player_influence, player_quests, player_trade,
 };
@@ -44,6 +45,8 @@ pub enum Error {
     Improvements(player_improvements::Error),
     Governors(player_governors::Error),
     CulturalIdentity(player_cultural_identity::Error),
+    Heroes(player_heroes::Error),
+    IndexedBools(player_prerequisites::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -93,6 +96,11 @@ impl PlayerHeader {
     pub fn saved_is_alive(&self) -> bool {
         self.ordered_flags[0]
     }
+    /// Saved Player47 m_bWasEverAlive, controlling the post-Heroes wire branch.
+    /// It does not establish initialized validity, configuration or AI policy.
+    pub fn saved_was_ever_alive(&self) -> bool {
+        self.ordered_flags[1]
+    }
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Cities {
@@ -109,6 +117,14 @@ pub struct Cities {
     pub banned_district_building_hashes: Vec<u32>,
     pub banned_project_hashes: Vec<u32>,
     pub building_build_overrides: Vec<[u32; 2]>,
+}
+/// Present exactly when the saved Player47 WasEverAlive flag is true.
+/// Definition-table wire order/hash identities are preserved without remapping.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PostHeroesArrays {
+    pub unit_definitions: IndexedBools,
+    pub feature_definitions: IndexedBools,
+    pub continent_definitions: IndexedBools,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct FirstPlayer {
@@ -140,13 +156,19 @@ pub struct FirstPlayer {
     pub improvements: player_improvements::Improvements,
     pub governors: player_governors::Governors,
     pub cultural_identity: player_cultural_identity::CulturalIdentity,
+    pub heroes: player_heroes::Heroes,
+    pub post_heroes_arrays: Option<PostHeroesArrays>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerHeroes,
+    /// WasEverAlive=true: all three tables consumed; AI Control is next.
+    AIControl,
+    /// WasEverAlive=false: jump to properties at native writer0x2b4f413.
+    /// This is inside the later inline tail, not its true-branch start.
+    PlayerInlineTail,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -154,7 +176,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerHeroes.
+    /// Neither nonempty boundary closes a complete Player entry.
     pub unfinished_player_entries: u32,
 }
 
@@ -241,6 +263,29 @@ impl<'a> Reader<'a> {
             out.push(read(self)?);
         }
         Ok(out)
+    }
+    fn indexed_bools(&mut self) -> Result<IndexedBools, Error> {
+        let start = self.pos;
+        let count = self.u32()? as usize;
+        self.charge(0, count)?;
+        self.raw(count.checked_mul(5).ok_or(Error::ResourceLimit)?)?;
+        let wire = self.pos - start;
+        let storage = count
+            .checked_mul(std::mem::size_of::<unit::HashValue<bool>>())
+            .filter(|b| *b <= isize::MAX as usize)
+            .ok_or(Error::ResourceLimit)?;
+        // Wire bytes/items have already spent the shared budget. IndexedBools'
+        // separate typed-vector check may require more bytes than its 5B pair.
+        let (value, used) = IndexedBools::decode_prefix(
+            &self.bytes[start..self.pos],
+            Limits {
+                max_bytes: wire.max(storage),
+                max_items: count,
+            },
+        )
+        .map_err(Error::IndexedBools)?;
+        debug_assert_eq!(used, wire);
+        Ok(value)
     }
     fn hashes(&mut self) -> Result<Vec<u32>, Error> {
         self.list(4, Self::u32)
@@ -492,6 +537,19 @@ impl Prefix {
                 player_cultural_identity::CulturalIdentity::decode_prefix_with_items,
                 Error::CulturalIdentity,
             )?;
+            let heroes = r.component(
+                player_heroes::Heroes::decode_prefix_with_items,
+                Error::Heroes,
+            )?;
+            let post_heroes_arrays = if header.saved_was_ever_alive() {
+                Some(PostHeroesArrays {
+                    unit_definitions: r.indexed_bools()?,
+                    feature_definitions: r.indexed_bools()?,
+                    continent_definitions: r.indexed_bools()?,
+                })
+            } else {
+                None
+            };
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -520,12 +578,14 @@ impl Prefix {
                 improvements,
                 governors,
                 cultural_identity,
+                heroes,
+                post_heroes_arrays,
             })
         };
-        let boundary = if first_player.is_some() {
-            Boundary::PlayerHeroes
-        } else {
-            Boundary::AfterEmptyPlayerManager
+        let boundary = match first_player.as_ref() {
+            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIControl,
+            Some(_) => Boundary::PlayerInlineTail,
+            None => Boundary::AfterEmptyPlayerManager,
         };
         Ok((
             Self {
@@ -1598,6 +1658,63 @@ mod tests {
             always_loyal_coastal_home_continent_count: -5987,
         }
     }
+    // Arbitrary full current saved Heroes fields, without runtime defaults.
+    fn heroes_carrier() -> player_heroes::Heroes {
+        use crate::player_heroes as pmod;
+        pmod::Heroes {
+            discovered: vec![pmod::DiscoveredHero {
+                hero_class_hash: 3203334144,
+                discovered: true,
+            }],
+            goody_hut_discovery_chance: -6999,
+            player_influence_chances: vec![i32::MIN, -1, i32::MAX],
+            player_suzerain_count: vec![i32::MIN, -1, i32::MAX],
+            discovery_order: vec![pmod::DiscoveryWeight {
+                hero_class_hash: 3203334148,
+                weight: -6995,
+            }],
+            claims: vec![pmod::Claim {
+                hero_class_hash: 3203334149,
+                claim_era_hash: 3203334150,
+                claim_turn: -6993,
+                last_appearance_era_hash: 3203334152,
+            }],
+        }
+    }
+    fn post_heroes_arrays_carrier() -> PostHeroesArrays {
+        fn table(hash: u32) -> IndexedBools {
+            IndexedBools {
+                pairs: vec![
+                    unit::HashValue {
+                        definition_hash: hash,
+                        value: true,
+                    },
+                    unit::HashValue {
+                        definition_hash: hash,
+                        value: false,
+                    },
+                ],
+            }
+        }
+        PostHeroesArrays {
+            unit_definitions: table(u32::MAX),
+            feature_definitions: table(0x80000000),
+            continent_definitions: table(7),
+        }
+    }
+    fn after_cultural_identity_bytes(p: &FirstPlayer) -> usize {
+        let mut bytes = p.heroes.encode(Limits::default()).unwrap().len();
+        if let Some(a) = &p.post_heroes_arrays {
+            for table in [
+                &a.unit_definitions,
+                &a.feature_definitions,
+                &a.continent_definitions,
+            ] {
+                bytes += table.encode(Limits::default()).unwrap().len();
+            }
+        }
+        bytes
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -1677,6 +1794,15 @@ mod tests {
                 .encode(Limits::default())
                 .unwrap(),
         );
+        out.extend(heroes_carrier().encode(Limits::default()).unwrap());
+        let arrays = post_heroes_arrays_carrier();
+        for table in [
+            &arrays.unit_definitions,
+            &arrays.feature_definitions,
+            &arrays.continent_definitions,
+        ] {
+            out.extend(table.encode(Limits::default()).unwrap());
+        }
 
         out
     }
@@ -1684,11 +1810,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched Heroes");
+        trailing.extend_from_slice(b"untouched AIControl");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerHeroes);
+        assert_eq!(value.boundary, Boundary::AIControl);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1714,7 +1840,9 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::Governors(player_governors::Error::ResourceLimit))
+            Err(Error::IndexedBools(
+                player_prerequisites::Error::ResourceLimit
+            ))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -1775,6 +1903,25 @@ mod tests {
         assert_eq!(p.governors.entries[0].index, 2);
         assert_eq!(p.governors.entries[0].governor.name, [0, 255, 128]);
         assert_eq!(p.governors.free_links, [9, 9, u32::MAX]);
+        assert!(p.header.saved_was_ever_alive());
+        assert_eq!(p.heroes.claims.len(), 1);
+        assert_eq!(
+            p.post_heroes_arrays
+                .as_ref()
+                .unwrap()
+                .unit_definitions
+                .pairs[0]
+                .definition_hash,
+            u32::MAX
+        );
+        assert!(
+            !p.post_heroes_arrays
+                .as_ref()
+                .unwrap()
+                .unit_definitions
+                .pairs[1]
+                .value
+        );
         assert_eq!(p.cultural_identity.extra_capital_pressure_radius, i32::MIN);
         assert_eq!(
             p.cultural_identity
@@ -1837,7 +1984,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::Governors(player_governors::Error::ResourceLimit))
+            Err(Error::ResourceLimit)
         ));
         for end in 0..n {
             assert!(
@@ -1854,7 +2001,7 @@ mod tests {
         assert!(!player.header.saved_is_alive());
         player.header.ordered_flags[0] = true;
         assert!(player.header.saved_is_alive());
-        player.header.ordered_flags[1..].fill(false);
+        player.header.ordered_flags[2..].fill(false);
         assert!(player.header.saved_is_alive());
         let names = player.name_manager.encode(Limits::default()).unwrap();
         let culture = player.culture.encode(Limits::default()).unwrap();
@@ -1881,7 +2028,8 @@ mod tests {
                 .cultural_identity
                 .encode(Limits::default())
                 .unwrap()
-                .len();
+                .len()
+            + after_cultural_identity_bytes(player);
 
         let names_start = n - later_bytes - culture.len() - names.len();
         let culture_start = n - later_bytes - culture.len();
@@ -1931,7 +2079,8 @@ mod tests {
             + p.wmds.encode(Limits::default()).unwrap().len()
             + p.improvements.encode(Limits::default()).unwrap().len()
             + p.governors.encode(Limits::default()).unwrap().len()
-            + p.cultural_identity.encode(Limits::default()).unwrap().len();
+            + p.cultural_identity.encode(Limits::default()).unwrap().len()
+            + after_cultural_identity_bytes(&p);
 
         let stats_start = n - after_techs - techs.len() - stats.len();
         // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
@@ -1980,6 +2129,7 @@ mod tests {
         let p = v.first_player.unwrap();
         let units = p.units.encode(Limits::default()).unwrap();
         let start = n
+            - after_cultural_identity_bytes(&p)
             - p.cultural_identity.encode(Limits::default()).unwrap().len()
             - p.wmds.encode(Limits::default()).unwrap().len()
             - p.improvements.encode(Limits::default()).unwrap().len()
@@ -2034,7 +2184,17 @@ mod tests {
         )
         .unwrap();
         let prefix = &value.player_prefix;
-        assert_eq!(prefix.boundary, Boundary::PlayerHeroes);
+        let first = prefix.first_player.as_ref().unwrap();
+        let expected = if first.header.saved_was_ever_alive() {
+            Boundary::AIControl
+        } else {
+            Boundary::PlayerInlineTail
+        };
+        assert_eq!(prefix.boundary, expected);
+        assert_eq!(
+            first.post_heroes_arrays.is_some(),
+            first.header.saved_was_ever_alive()
+        );
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
         let post_map = &bytes[value.core.consumed..];
         assert_eq!(encoded, post_map[..encoded.len()]);
@@ -2096,7 +2256,8 @@ mod tests {
                 .cultural_identity
                 .encode(Limits::default())
                 .unwrap()
-                .len();
+                .len()
+            + after_cultural_identity_bytes(player);
 
         let eras = player.eras;
         let (encoded, era_items) = eras
@@ -2146,7 +2307,8 @@ mod tests {
             + p.wmds.encode(Limits::default()).unwrap().len()
             + p.improvements.encode(Limits::default()).unwrap().len()
             + p.governors.encode(Limits::default()).unwrap().len()
-            + p.cultural_identity.encode(Limits::default()).unwrap().len();
+            + p.cultural_identity.encode(Limits::default()).unwrap().len()
+            + after_cultural_identity_bytes(&p);
 
         bytes[n - later - trade.len()..n - later - trade.len() + 4]
             .copy_from_slice(&36u32.to_le_bytes());
@@ -2166,7 +2328,8 @@ mod tests {
         let later = p.wmds.encode(Limits::default()).unwrap().len()
             + p.improvements.encode(Limits::default()).unwrap().len()
             + p.governors.encode(Limits::default()).unwrap().len()
-            + p.cultural_identity.encode(Limits::default()).unwrap().len();
+            + p.cultural_identity.encode(Limits::default()).unwrap().len()
+            + after_cultural_identity_bytes(&p);
         let quests = p.quests;
         let (encoded, quest_items) = quests
             .encode_with_items(Limits {
@@ -2191,7 +2354,8 @@ mod tests {
         let mut bytes = carrier();
         let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
         let p = v.first_player.unwrap();
-        let later = p.cultural_identity.encode(Limits::default()).unwrap().len();
+        let later = p.cultural_identity.encode(Limits::default()).unwrap().len()
+            + after_cultural_identity_bytes(&p);
         let governors = p.governors.encode(Limits::default()).unwrap();
         // Governors6 header: points, recycled version/bits/capacity/live count,
         // then first explicit slot followed immediately by Governor16.
@@ -2213,7 +2377,9 @@ mod tests {
     fn cultural_identity_zero_item_scalar_tail_requires_current_version() {
         let mut bytes = carrier();
         let (v, n, items) = Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
-        let identity = v.first_player.unwrap().cultural_identity;
+        let p = v.first_player.unwrap();
+        let later = after_cultural_identity_bytes(&p);
+        let identity = p.cultural_identity;
         let (encoded, identity_items) = identity
             .encode_with_items(Limits {
                 max_bytes: 60,
@@ -2222,7 +2388,8 @@ mod tests {
             .unwrap();
         assert_eq!((encoded.len(), identity_items), (60, 0));
         assert!(items > 0);
-        bytes[n - encoded.len()..n - encoded.len() + 4].copy_from_slice(&11u32.to_le_bytes());
+        bytes[n - later - encoded.len()..n - later - encoded.len() + 4]
+            .copy_from_slice(&11u32.to_le_bytes());
         assert!(matches!(
             Prefix::decode_prefix(&bytes, Limits::default()),
             Err(Error::CulturalIdentity(
@@ -2231,6 +2398,110 @@ mod tests {
                     actual: 11
                 }
             ))
+        ));
+    }
+    #[test]
+    fn saved_was_ever_alive_controls_both_branches_and_model_consistency() {
+        let bytes = carrier();
+        let (mut v, n, items) =
+            Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        let p = v.first_player.as_mut().unwrap();
+        assert!(p.header.saved_was_ever_alive());
+        let arrays = p.post_heroes_arrays.take().unwrap();
+        let tables = [
+            &arrays.unit_definitions,
+            &arrays.feature_definitions,
+            &arrays.continent_definitions,
+        ];
+        let array_bytes: usize = tables
+            .iter()
+            .map(|a| a.encode(Limits::default()).unwrap().len())
+            .sum();
+        let array_items: usize = tables.iter().map(|a| a.pairs.len()).sum();
+        p.header.ordered_flags[1] = false;
+        assert!(!p.header.saved_was_ever_alive());
+        v.boundary = Boundary::PlayerInlineTail;
+        let (encoded, charged) = v.encode_prefix_with_items(Limits::default()).unwrap();
+        assert_eq!(
+            (encoded.len(), charged),
+            (n - array_bytes, items - array_items)
+        );
+        let mut trailing = encoded.clone();
+        trailing.extend([255, 255, 255, 255]);
+        let exact = Limits {
+            max_bytes: encoded.len(),
+            max_items: charged,
+        };
+        for short in [
+            Limits {
+                max_bytes: encoded.len() - 1,
+                ..exact
+            },
+            Limits {
+                max_items: charged - 1,
+                ..exact
+            },
+        ] {
+            assert!(Prefix::decode_prefix_with_items(&trailing, short).is_err());
+            assert!(v.encode_prefix(short).is_err());
+        }
+        let (decoded, consumed, used) = Prefix::decode_prefix_with_items(&trailing, exact).unwrap();
+        assert_eq!((decoded, consumed, used), (v, encoded.len(), charged));
+        let (mut v, _, _) = Prefix::decode_prefix_with_items(&encoded, exact).unwrap();
+        v.first_player.as_mut().unwrap().post_heroes_arrays = Some(arrays);
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+        let arrays = v
+            .first_player
+            .as_mut()
+            .unwrap()
+            .post_heroes_arrays
+            .take()
+            .unwrap();
+        v.first_player.as_mut().unwrap().header.ordered_flags[1] = true;
+        v.boundary = Boundary::AIControl;
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+        v.first_player.as_mut().unwrap().post_heroes_arrays = Some(arrays);
+        assert_eq!(v.encode_prefix(Limits::default()).unwrap(), bytes);
+    }
+    #[test]
+    fn true_branch_bool_hash_tables_validate_counts_and_canonical_bools() {
+        let bytes = carrier();
+        let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let a = v.first_player.unwrap().post_heroes_arrays.unwrap();
+        let array_bytes = a.unit_definitions.encode(Limits::default()).unwrap().len()
+            + a.feature_definitions
+                .encode(Limits::default())
+                .unwrap()
+                .len()
+            + a.continent_definitions
+                .encode(Limits::default())
+                .unwrap()
+                .len();
+        let mut invalid_bool = bytes.clone();
+        invalid_bool[n - 1] = 2;
+        assert!(matches!(
+            Prefix::decode_prefix(&invalid_bool, Limits::default()),
+            Err(Error::IndexedBools(
+                player_prerequisites::Error::InvalidBool
+            ))
+        ));
+        let mut excessive = bytes;
+        excessive[n - array_bytes..n - array_bytes + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&excessive, Limits::default()),
+            Err(Error::ResourceLimit)
         ));
     }
     #[test]
@@ -2533,12 +2804,18 @@ impl Prefix {
     /// Encode exactly the supported prefix, without an unsupported Player tail.
     /// Inconsistent boundary/count/first-entry combinations are rejected.
     pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        let expected_boundary = match self.first_player.as_ref() {
+            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIControl,
+            Some(_) => Boundary::PlayerInlineTail,
+            None => Boundary::AfterEmptyPlayerManager,
+        };
         if self.unfinished_player_entries != self.player_count
-            || !matches!(
-                (self.player_count, self.first_player.as_ref(), self.boundary),
-                (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerHeroes)
-            )
+            || (self.player_count == 0) != self.first_player.is_none()
+            || self.boundary != expected_boundary
+            || self
+                .first_player
+                .as_ref()
+                .is_some_and(|p| p.header.saved_was_ever_alive() != p.post_heroes_arrays.is_some())
         {
             return Err(Error::InvalidPrefix);
         }
@@ -2669,6 +2946,24 @@ impl Prefix {
                 player_cultural_identity::CulturalIdentity::encode_with_items,
                 Error::CulturalIdentity,
             )?;
+            w.component(
+                &p.heroes,
+                player_heroes::Heroes::encode_with_items,
+                Error::Heroes,
+            )?;
+            if let Some(arrays) = &p.post_heroes_arrays {
+                for table in [
+                    &arrays.unit_definitions,
+                    &arrays.feature_definitions,
+                    &arrays.continent_definitions,
+                ] {
+                    w.component(
+                        table,
+                        |value, limits| Ok((value.encode(limits)?, value.pairs.len())),
+                        Error::IndexedBools,
+                    )?;
+                }
+            }
         }
         Ok((w.bytes, w.items))
     }
@@ -2711,7 +3006,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerHeroes;
+        v.boundary = Boundary::AIControl;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
