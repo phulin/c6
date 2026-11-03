@@ -22,6 +22,7 @@ impl std::error::Error for Error {}
 #[derive(Debug, Eq, PartialEq)]
 pub struct OwnedCore {
     pub context_version: i32,
+    pub game_version: i32,
     pub metadata: unit::variants::TypedVariantMap,
     pub game_processor: core_stream::GameProcessor,
     pub player_processor: core_stream::PlayerProcessor,
@@ -139,6 +140,7 @@ pub struct RetainedPlayer {
 pub fn split_core(core: core_stream::CorePrefix<'_>) -> (map::Map, OwnedCore) {
     let core_stream::CorePrefix {
         context_version,
+        game_version,
         metadata,
         game_processor,
         player_processor,
@@ -159,6 +161,7 @@ pub fn split_core(core: core_stream::CorePrefix<'_>) -> (map::Map, OwnedCore) {
         map,
         OwnedCore {
             context_version,
+            game_version,
             metadata,
             game_processor,
             player_processor,

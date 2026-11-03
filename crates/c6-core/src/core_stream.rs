@@ -96,6 +96,8 @@ pub struct PhaseProcessor {
 pub struct CorePrefix<'a> {
     /// Supported outer wire version (4 or 5); independent of Game/Map versions.
     pub context_version: i32,
+    /// Supported Game header version; this does not select or relax tail schemas.
+    pub game_version: i32,
     /// V4 has no metadata bytes: this is its constructed empty map, not inferred
     /// producer compatibility. V5 preserves the complete encoded metadata map.
     pub metadata: TypedVariantMap,
@@ -149,7 +151,17 @@ impl<'a> CorePrefix<'a> {
             }
         };
         r.version("IndexSerializer", 1)?;
-        r.version("Game", 22)?;
+        // Game::Read has the same header through Map for these two versions:
+        // both take its Rules >=14 branch. Nested serializers retain their own
+        // strict version gates; no absent fields or legacy tail are inferred.
+        let game_version = r.i32()?;
+        if !matches!(game_version, 19 | 22) {
+            return Err(Error::UnsupportedVersion {
+                section: "Game",
+                expected: 22,
+                actual: game_version,
+            });
+        }
         r.version("Rules", 1)?;
         let count = r.u32()?;
         if count != 1 {
@@ -230,6 +242,7 @@ impl<'a> CorePrefix<'a> {
         r.take(consumed)?;
         Ok(Self {
             context_version,
+            game_version,
             metadata,
             game_processor,
             player_processor,
@@ -786,13 +799,86 @@ pub(crate) mod tests {
     #[test]
     fn context_v4_stops_at_unsupported_inner_game_version() {
         let mut header = Vec::new();
-        words(&mut header, &[4, 1, 19]);
+        words(&mut header, &[4, 1, 20]);
         assert_eq!(
             CorePrefix::decode(&header, map::Limits::default()),
             Err(Error::UnsupportedVersion {
                 section: "Game",
                 expected: 22,
-                actual: 19
+                actual: 20
+            })
+        );
+    }
+    #[test]
+    fn game_v19_header_matches_v22_without_relaxing_nested_gates() {
+        let (v22, start, end) = fixture(&TypedVariantMap::default(), &VariantMap::default());
+        let mut v19 = v22.clone();
+        // Context5 + empty metadata + IndexSerializer; this fixture offset is
+        // test construction only and is never used by the decoder.
+        let game_at = 4
+            + TypedVariantMap::default()
+                .encode(variants::Limits::default())
+                .unwrap()
+                .0
+                .len()
+            + 4;
+        v19[game_at..game_at + 4].copy_from_slice(&19i32.to_le_bytes());
+        let current = CorePrefix::decode(&v22, map::Limits::default()).unwrap();
+        let mut old = CorePrefix::decode(&v19, map::Limits::default()).unwrap();
+        assert_eq!(old.game_version, 19);
+        assert_eq!(current.game_version, 22);
+        assert_eq!((old.map_start, old.map_end), (start, end));
+        old.game_version = 22;
+        assert_eq!(old, current);
+        let exact = map::Limits {
+            max_bytes: old.consumed,
+            max_items: old.items_used,
+            max_allocation: old.logical_allocation_used,
+            ..map::Limits::default()
+        };
+        assert!(CorePrefix::decode(&v19, exact).is_ok());
+        for limits in [
+            map::Limits {
+                max_bytes: exact.max_bytes - 1,
+                ..exact
+            },
+            map::Limits {
+                max_items: exact.max_items - 1,
+                ..exact
+            },
+            map::Limits {
+                max_allocation: exact.max_allocation - 1,
+                ..exact
+            },
+        ] {
+            assert!(CorePrefix::decode(&v19, limits).is_err());
+        }
+        for cut in 0..old.consumed {
+            assert!(
+                CorePrefix::decode(&v19[..cut], exact).is_err(),
+                "v19 cut {cut}"
+            );
+        }
+        for version in [i32::MIN, 0, 14, 18, 20, 21, 23, i32::MAX] {
+            let mut unsupported = v19.clone();
+            unsupported[game_at..game_at + 4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                CorePrefix::decode(&unsupported, exact),
+                Err(Error::UnsupportedVersion {
+                    section: "Game",
+                    expected: 22,
+                    actual: version,
+                })
+            );
+        }
+        let mut bad_rules = v19.clone();
+        bad_rules[game_at + 4..game_at + 8].copy_from_slice(&2i32.to_le_bytes());
+        assert_eq!(
+            CorePrefix::decode(&bad_rules, exact),
+            Err(Error::UnsupportedVersion {
+                section: "Rules",
+                expected: 1,
+                actual: 2,
             })
         );
     }
