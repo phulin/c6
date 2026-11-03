@@ -1,7 +1,6 @@
 # Genuine registered SkipTurn handler fixture
 
-This separate profile is under preparation. No original handler comparison has
-run. It retains the accepted count producer's complete Unit/Formation traversal,
+The [original capture controls](../evidence/linux/placement-handler-native-capture-1.json) passed, and [independent comparison](linux-skip-turn-handler-results.md) accepted all 10,012 handler, 17,584 count and 1,262 binding rows. It retains the accepted count producer's complete Unit/Formation traversal,
 registry/relations inputs and count calls under a new profile and source identity.
 The original count helper, 902 capture, 58171 candidate and reports stay immutable.
 

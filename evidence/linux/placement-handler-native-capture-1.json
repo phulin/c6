@@ -1,0 +1,110 @@
+{
+  "schema": "c6-linux-handler-native-capture-v1",
+  "capture_completed": true,
+  "runtime_report_path": "/home/phulin/c6-ghidra/evidence/linux-placement-handler-metadata/native-1/runtime.json",
+  "runtime_report_sha256": "797da02551d12f3da75e7b5fe9b75a1808faf09d25cfc0c66e9875d3bc3f2b47",
+  "configuration_sha256": "2aaaa540bd072e5ba80c98e2c2ca8a2064f1fc2f3a32be4826b3b7a71bd1178a",
+  "preload_sha256": "942f32dc44136714f7d9abddc0d3a77a2a65d2fbfe5e70a4b9219d96240c6a93",
+  "native_returncode": 0,
+  "facts_output": {
+    "filename": "facts.jsonl",
+    "sha256": "cbf1f4543aadb9dd2eee46c4d799d43bf38b628fd4d39f43e238bc3b951d9ff3",
+    "bytes": 189252
+  },
+  "counts_output": {
+    "filename": "expected-counts.jsonl",
+    "sha256": "9bf26ee9f92bcfd87f8a93f0290dd77e8168e559ff114c54ca3f62bb5b1f1a0d",
+    "bytes": 3910340
+  },
+  "handlers_output": {
+    "filename": "expected-handlers.jsonl",
+    "sha256": "483f566e2468ad5d0d77bd1a8192261dab5aa8056bd55751953a3848de07b1ff",
+    "bytes": 2490861
+  },
+  "count_records": {
+    "header": 1,
+    "unit_binding_expected": 1262,
+    "count_expected": 17584,
+    "summary": 1
+  },
+  "handler_records": {
+    "header": 1,
+    "handler_no_call_control": 4,
+    "handler_expected": 10012,
+    "summary": 1
+  },
+  "handler_allowed": {
+    "true": 9628,
+    "false": 384
+  },
+  "operation_identity": [
+    {
+      "kind": "operation_identity",
+      "source": "original_registered_handler_getters",
+      "operation_id": 36,
+      "operation_hash": 745019656,
+      "original_leaf_called": false
+    }
+  ],
+  "six_full_core_saves": {
+    "before": {
+      "filename": "before.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "control": {
+      "filename": "control.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "after": {
+      "filename": "after.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "repeat": {
+      "filename": "after-repeat.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "outer_save": {
+      "filename": "save.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    },
+    "outer_repeat": {
+      "filename": "repeat.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "bytes": 80657462
+    }
+  },
+  "bytes_masked": 0,
+  "known_complete_rng_objects_observed": 2,
+  "known_rng_raw_endpoints_equal": true,
+  "complete_rng_inventory": false,
+  "trace": {
+    "sha256": "6c937ffdf6bc5e9700df700ae5dedc1f114319319c0ef1591bf2712f51ed9ed5",
+    "record_kinds": {
+      "begin": 1,
+      "original_virtual_binding": 1,
+      "original_PLT_binding": 16,
+      "end": 1
+    },
+    "end": {
+      "event": "end",
+      "queued": 0,
+      "received": 0,
+      "unit_executed": 0,
+      "reports": 0
+    },
+    "meaning": "Known interposed bindings verified and their observed queue/receive/execute/report counters stayed zero. This is not all-code or all-AI purity."
+  },
+  "framework_cleanup_proven": true,
+  "client_cleanup_proven": true,
+  "candidate_comparison_commit": "87d538e",
+  "independent_comparison_review_commit": "98e0087",
+  "full_manager_legality": false,
+  "native_action_execution": false,
+  "complete_state_actions_turns": false,
+  "raw_local_only": true
+}
