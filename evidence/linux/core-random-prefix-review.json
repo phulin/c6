@@ -1,0 +1,237 @@
+{
+  "schema": "c6-linux-through-random-independent-review-v1",
+  "accepted": true,
+  "source_commit": "fa3f76de711e34140a2be8efc15dba89ba418ca3",
+  "api_commit": "f82ac96d029dbfdd2baf0f9cfdad7d6b9407c512",
+  "owner_checkpoint": "55c2e45",
+  "prior_accepted_profile": "c27b6fb",
+  "candidate_sha256": "8e78142ad71ec2ec5188d4006b0efc8d67f36f2c27abf9a57271138126626dbc",
+  "source_archive_sha256": "a5692e5b3c6957bdcc0b48255ee6737e79761daf7b624ac4ca4f2d24f3c97c69",
+  "source_manifest_sha256": "0954ae024847ee8d0ed49d09bb0b0d81150794850b97b2936cf058334edc9b92",
+  "frozen_manifest_sha256": "2b0ff5199aebdf41433d2e9a4854452dbce3a671c2daefb58ee82f91040f9cf6",
+  "archive_regular_files": 1445,
+  "all_archived_regular_files_unchanged": true,
+  "actual_exports": true,
+  "source_injection": false,
+  "source_recovery": false,
+  "native3_artifacts_unchanged_from_prior_acceptance": true,
+  "input_artifact_hash_manifest_sha256": "f75d928d1ac573de3eb83d0cb7d24fff4935d214ff94b306fdc70413238e7712",
+  "path_adapter_sha256": "87e3b61271eaeef1fb6f959fedeace75e70bbf35955329f130ab6576f1e10bb5",
+  "owner_stdout_sha256": "1570c62406fbb2110eaaa4cbda4b1779587893178c50cee1186511af92a24c0b",
+  "independent": {
+    "candidate_sha256": "5d7509f1ee1138c0b420cccda73a7afdec20db1ec52523a2d09beb6ac1359994",
+    "full_rng_inventory": false,
+    "original_execution": false,
+    "rng_transition_parity": false,
+    "roles": [
+      {
+        "barbarian_instances": 197,
+        "consumed": 71027796,
+        "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+        "exact_one_short_caps_tested": true,
+        "free_cities_instances": 55,
+        "global_ai_end": 70934595,
+        "items": 10678503,
+        "new_owners": [
+          {
+            "end": 70963412,
+            "items": 704,
+            "sha256": "22b8e191c94faa59a4c992b9404282bbd0d21b0f371c69ef51bab5ae25301185",
+            "start": 70934595
+          },
+          {
+            "end": 71027778,
+            "items": 12430,
+            "sha256": "273b8a90c5a0e69792765c8d957a6ca935f75bde1d3b48aa91b0f4a1f0ac7579",
+            "start": 70963412
+          },
+          {
+            "end": 71027796,
+            "items": 0,
+            "sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+            "start": 71027778
+          }
+        ],
+        "output_id": null,
+        "random": {
+          "calls": 922992,
+          "resets": 0,
+          "seed": 872261551,
+          "synchronous_byte": 1
+        },
+        "role": "ReadInputCore",
+        "stream_occurrence": "1",
+        "tail_bytes": 9629666,
+        "tail_sha256": "645d2472c5f6bc1f4fe1460d706b4dc7acb346178a316669a6d528953ff0083c"
+      },
+      {
+        "barbarian_instances": 197,
+        "consumed": 71027796,
+        "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+        "exact_one_short_caps_tested": true,
+        "free_cities_instances": 55,
+        "global_ai_end": 70934595,
+        "items": 10678503,
+        "new_owners": [
+          {
+            "end": 70963412,
+            "items": 704,
+            "sha256": "22b8e191c94faa59a4c992b9404282bbd0d21b0f371c69ef51bab5ae25301185",
+            "start": 70934595
+          },
+          {
+            "end": 71027778,
+            "items": 12430,
+            "sha256": "273b8a90c5a0e69792765c8d957a6ca935f75bde1d3b48aa91b0f4a1f0ac7579",
+            "start": 70963412
+          },
+          {
+            "end": 71027796,
+            "items": 0,
+            "sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+            "start": 71027778
+          }
+        ],
+        "output_id": "/home/phulin/c6-ghidra/evidence/linux-military-initialization/native-3/save.bin",
+        "random": {
+          "calls": 922992,
+          "resets": 0,
+          "seed": 872261551,
+          "synchronous_byte": 1
+        },
+        "role": "SavedOutputCore",
+        "stream_occurrence": "2",
+        "tail_bytes": 9629666,
+        "tail_sha256": "db2afe8e0c07abc20670ed9427af9d7964e8093360eda60551f825274efde2ad"
+      },
+      {
+        "barbarian_instances": 197,
+        "consumed": 71027796,
+        "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+        "exact_one_short_caps_tested": false,
+        "free_cities_instances": 55,
+        "global_ai_end": 70934595,
+        "items": 10678503,
+        "new_owners": [
+          {
+            "end": 70963412,
+            "items": 704,
+            "sha256": "22b8e191c94faa59a4c992b9404282bbd0d21b0f371c69ef51bab5ae25301185",
+            "start": 70934595
+          },
+          {
+            "end": 71027778,
+            "items": 12430,
+            "sha256": "273b8a90c5a0e69792765c8d957a6ca935f75bde1d3b48aa91b0f4a1f0ac7579",
+            "start": 70963412
+          },
+          {
+            "end": 71027796,
+            "items": 0,
+            "sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+            "start": 71027778
+          }
+        ],
+        "output_id": "/home/phulin/c6-ghidra/evidence/linux-military-initialization/native-3/repeat.bin",
+        "random": {
+          "calls": 922992,
+          "resets": 0,
+          "seed": 872261551,
+          "synchronous_byte": 1
+        },
+        "role": "SavedOutputCore",
+        "stream_occurrence": "3",
+        "tail_bytes": 9629666,
+        "tail_sha256": "db2afe8e0c07abc20670ed9427af9d7964e8093360eda60551f825274efde2ad"
+      }
+    ],
+    "schema": "independent-through-random-review-v1",
+    "world_import": false
+  },
+  "independent_harness_source": "use c6_core::{core_player::{initialization::{self as init,capture::*}},core_stream::{ThroughRandom,ThroughRandomError},map,unit};\nuse sha2::{Digest,Sha256};use serde_json::{Value,json};use std::{collections::{BTreeMap,BTreeSet},path::Path};\nfn digest(b:&[u8])->[u8;32]{Sha256::digest(b).into()}\nfn hex(b:&[u8])->String{b.iter().map(|x|format!(\"{x:02x}\")).collect()}\nfn main(){let arg=std::env::args().nth(1).unwrap();let m:Value=serde_json::from_slice(&std::fs::read(&arg).unwrap()).unwrap();let base=Path::new(&arg).parent().unwrap();let mut bytes=BTreeMap::new();for k in [\"observations_jsonl\",\"runtime_plan_json\",\"static_plan_json\",\"prepared_report_json\",\"exit_json\",\"target_module\",\"target_host\",\"input_save\",\"input_core\"]{bytes.insert(k,std::fs::read(base.join(m[k].as_str().unwrap())).unwrap());}\nlet load=|key:&str|->BTreeMap<String,Vec<u8>>{m[key].as_object().unwrap().iter().map(|(k,v)|(k.clone(),std::fs::read(base.join(v.as_str().unwrap())).unwrap())).collect()};let outputs=load(\"outputs\");let sources=load(\"source_files\");\nlet named_outputs:Vec<_>=outputs.iter().map(|(name,bytes)|NamedArtifact{name,bytes}).collect();let named_sources:Vec<_>=sources.iter().map(|(name,bytes)|NamedArtifact{name,bytes}).collect();\nlet capture=admit_capture(CaptureArtifacts{observations_jsonl:&bytes[\"observations_jsonl\"],runtime_plan_json:&bytes[\"runtime_plan_json\"],static_plan_json:&bytes[\"static_plan_json\"],prepared_report_json:&bytes[\"prepared_report_json\"],exit_json:&bytes[\"exit_json\"],target_module:&bytes[\"target_module\"],target_host:&bytes[\"target_host\"],input_save:&bytes[\"input_save\"],input_core:&bytes[\"input_core\"],outputs:&named_outputs,source_files:&named_sources},CaptureLimits::default()).unwrap();assert!(!capture.native_acceptance());assert_eq!(capture.snapshots().len(),129);\nlet mut bindings=vec![];for s in capture.snapshots(){let role=s.captured_role().unwrap();assert_eq!(role.capture.raw_observation_sha256,digest(&bytes[\"observations_jsonl\"]));assert!(!s.initialization_reconstructed());if !bindings.contains(&role.binding){bindings.push(role.binding.clone());}}\nassert_eq!(bindings.len(),3);let shared=map::Limits{max_bytes:256*1024*1024,max_items:64*1024*1024,..map::Limits::default()};let limit=unit::Limits{max_bytes:128*1024*1024,max_items:64*1024*1024};let mut seen=BTreeSet::new();let mut results=vec![];\nfor binding in bindings{\nlet raw=match binding.role{init::WireRole::ReadInputCore=>&bytes[\"input_core\"],init::WireRole::SavedOutputCore=>outputs.get(std::str::from_utf8(binding.output_id.as_ref().unwrap()).unwrap()).unwrap()};assert_eq!(digest(raw),binding.core_sha256);let provider=capture.for_binding(&binding);let p=ThroughRandom::decode(raw,shared,limit,binding.clone(),&provider).unwrap();assert_eq!(p.global_ai.consumed,70934595);assert_eq!(p.consumed,71027796);assert_eq!(p.items_used,10678503);assert!(p.global_ai.players.player_prefix.complete_player_manager_wire());assert_eq!(p.barbarian.instances.len(),197);assert_eq!(p.free_cities.instances.len(),55);assert_eq!(p.tail,&raw[p.consumed..]);assert!(std::ptr::eq(p.tail.as_ptr(),raw[p.consumed..].as_ptr()));\nlet parts=[p.barbarian.encode_with_items(limit).unwrap(),p.free_cities.encode_with_items(limit).unwrap(),p.random.encode_with_items(limit).unwrap()];let mut cursor=p.global_ai.consumed;let mut items=p.global_ai.items_used;let mut ranges=vec![];for (wire,charge)in &parts{assert_eq!(wire,&raw[cursor..cursor+wire.len()]);ranges.push(json!({\"start\":cursor,\"end\":cursor+wire.len(),\"items\":charge,\"sha256\":hex(&digest(wire))}));cursor+=wire.len();items+=charge;}assert_eq!(cursor,p.consumed);assert_eq!(items,p.items_used);assert_eq!(parts[2].1,0);let random_start=p.consumed-18;let rw=&raw[random_start..p.consumed];let word=|i|u32::from_le_bytes(rw[i..i+4].try_into().unwrap());assert_eq!(word(0),1);assert_eq!(rw[17],0);assert_eq!(p.random.record.seed,word(4));assert_eq!(p.random.record.calls,word(8));assert_eq!(p.random.record.resets,word(12));assert_eq!(p.random.record.synchronous_byte,rw[16]);assert_eq!(p.random.encode_with_items(unit::Limits{max_bytes:18,max_items:0}).unwrap(),(rw.to_vec(),0));\nlet caps=seen.insert(binding.core_sha256);if caps{let exact=map::Limits{max_bytes:p.consumed,max_items:p.items_used,max_allocation:p.global_ai.players.core.logical_allocation_used,..shared};let post=unit::Limits{max_bytes:p.consumed-p.global_ai.players.core.map_end,max_items:p.items_used-p.global_ai.players.core.items_used};assert!(ThroughRandom::decode(raw,exact,post,binding.clone(),&provider).is_ok());\nfor(short_shared,short_post)in[(map::Limits{max_bytes:exact.max_bytes-1,..exact},post),(exact,unit::Limits{max_bytes:post.max_bytes-1,..post})]{assert!(matches!(ThroughRandom::decode(raw,short_shared,short_post,binding.clone(),&provider),Err(ThroughRandomError::Random(c6_core::game_random_wire::Error::ResourceLimit))));}\nfor(short_shared,short_post)in[(map::Limits{max_items:exact.max_items-1,..exact},post),(exact,unit::Limits{max_items:post.max_items-1,..post})]{assert!(ThroughRandom::decode(raw,short_shared,short_post,binding.clone(),&provider).is_err());}}\nresults.push(json!({\"role\":format!(\"{:?}\",binding.role),\"core_sha256\":hex(&binding.core_sha256),\"stream_occurrence\":std::str::from_utf8(&binding.occurrence_id).unwrap(),\"output_id\":binding.output_id.as_ref().map(|b|std::str::from_utf8(b).unwrap()),\"global_ai_end\":p.global_ai.consumed,\"consumed\":p.consumed,\"items\":p.items_used,\"new_owners\":ranges,\"barbarian_instances\":p.barbarian.instances.len(),\"free_cities_instances\":p.free_cities.instances.len(),\"random\":{\"seed\":word(4),\"calls\":word(8),\"resets\":word(12),\"synchronous_byte\":rw[16]},\"tail_sha256\":hex(&digest(p.tail)),\"tail_bytes\":p.tail.len(),\"exact_one_short_caps_tested\":caps}));}\nprintln!(\"{}\",json!({\"schema\":\"independent-through-random-review-v1\",\"candidate_sha256\":hex(&digest(&std::fs::read(std::env::current_exe().unwrap()).unwrap())),\"roles\":results,\"original_execution\":false,\"full_rng_inventory\":false,\"rng_transition_parity\":false,\"world_import\":false}));}\n",
+  "independent_harness_sha256": "e8f6811dfb9a24efbc66ec954fac74edd8e047f3e54fac085ef84c3896299149",
+  "tests": {
+    "core_stream_pass": 11,
+    "strict_core_all_targets_clippy": true,
+    "locked_offline_build": true,
+    "earlier_closed_full_player_tests_not_repeated": true
+  },
+  "findings": [],
+  "codecs": [
+    {
+      "module": "game_barbarian.rs",
+      "source_commit": "d401fb587522087e8a2c55f60ecb30378ed3905f",
+      "accepted_review": "60ea00a",
+      "sha256": "4762bd90e3b25ae9ca0b01ce30719e98e632bda6295650da9783e26920c0e909",
+      "exact_source_match": true
+    },
+    {
+      "module": "game_free_cities.rs",
+      "source_commit": "194711e2f055328637563d2e5aa0eb52d4682651",
+      "accepted_review": "a1cf9d2",
+      "sha256": "995dfa4c8f798ef2c2c66287e37a5ef6b2c8d9e88db25dbc83b10ce9b186e11b",
+      "exact_source_match": true
+    },
+    {
+      "module": "game_random_wire.rs",
+      "source_commit": "f82e791bbbea54e113f527c5cf0e735f884cdc6e",
+      "accepted_review": "206e19e",
+      "sha256": "d8fc55268532631fa9dd04520190e9bc956812664ccd96231a8e86760a8233cb",
+      "exact_source_match": true
+    }
+  ],
+  "comparison_cuts": {
+    "barbarian": [
+      70934595,
+      70963412
+    ],
+    "free_cities": [
+      70963412,
+      71027778
+    ],
+    "sync_random": [
+      71027778,
+      71027796
+    ],
+    "next_trade": [
+      71027796,
+      71497442
+    ],
+    "trace_sha256": [
+      "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369"
+    ],
+    "reused_original_save_cuts_by_canonical_core_sha256": true,
+    "new_native_read_hook_claimed": false,
+    "cuts_supplied_to_production_parser": false
+  },
+  "limits": {
+    "shared_and_post_map_aggregate_bytes_items": true,
+    "minimum_of_checked_remaining_limits": true,
+    "new_items": 13134,
+    "random_items": 0,
+    "random_at_exact_zero_item_credit_passes": true,
+    "one_short_bytes_rejects_at_random": true,
+    "new_full_image_hash": false,
+    "borrowed_suffix_spends_no_wire_credit": true,
+    "map_allocation_depth_scope_unchanged": true,
+    "aggregate_heap_cap": false
+  },
+  "scope": {
+    "native3_ff31_read": true,
+    "native3_two_distinct_85d_write_occurrences": true,
+    "85d_read": false,
+    "native2_legacy_operation_def5": "unsupported failure retained",
+    "read_fixups_or_npc_upkeep_reproduced": false,
+    "complete_rng_inventory": false,
+    "rng_transition_parity": false,
+    "complete_world_import": false,
+    "gameplay_actions_turns": false,
+    "save_writer_production_claim": false,
+    "raw_difference_bytes_retained": 89198,
+    "unknown_bytes_masked": 0,
+    "original_execution_by_review": false,
+    "push": false
+  },
+  "through_random_implementation_sha256": "df3ce4bfe592120798276a5f5cc2ce49c874924768321208a69c312d8ba2d502"
+}
