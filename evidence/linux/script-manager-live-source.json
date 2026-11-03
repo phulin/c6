@@ -1,0 +1,25 @@
+{
+  "schema": "c6-linux-script-manager-live-v1",
+  "source_checks_passed": true,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checked_body_count": 30,
+  "sites": {
+    "dispatch": "0x2ce79e9",
+    "ccall_entry": "0x3bf22e0",
+    "acquired": "0x3bf22fa",
+    "resolved": "0x36b3c44",
+    "protected_return": "0x3bf2308",
+    "before_release": "0x3bf2329",
+    "released": "0x3bf2335",
+    "wrapper_return": "0x2ce79ff"
+  },
+  "original_execution": false,
+  "native_window_hit": false,
+  "full_manager_supported": false,
+  "callback_effects_supported": false,
+  "complete_state_actions_rng_turns_supported": false,
+  "historical_raw_save_load_difference_bytes": 89198,
+  "unknown_bytes_masked": 0,
+  "observer_source_sha256": "e2db60ffafa447918e67f53ecab2aa7a1bbb90020016b3213e5c5d055c05fe8d"
+}
