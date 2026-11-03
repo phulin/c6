@@ -97,7 +97,7 @@ def current_record(raw):
     capacity=atom('I'); count=atom('I'); items+=count
     for _ in range(count):
         cuts.add(pos); atom('i'); walk('build'); cuts.add(pos)
-    current_id_bits=atom('I'); n=atom('I'); first_free=atom('I'); last_free=atom('I')
+    current_id_bits=atom('I'); cuts.add(pos); n=atom('I'); cuts.add(pos); first_free=atom('I'); last_free=atom('I'); cuts.add(pos)
     items+=n
     for _ in range(n): atom('I')
     cuts.update([0,1,2,3,4,7,8,12,16,20,24,pos-1])
@@ -231,6 +231,10 @@ def main():
     report=dict(schema='c6-linux-player-ai-city-manager-v1',checks_passed=True,gamecore_sha256=GAME_SHA,
         audit_source_sha256=sha(Path(__file__).read_bytes()),methods=methods,virtual_bindings=VIRTUALS,
         dwarf_sha256=sha(dwarf.encode()),grammar=SCHEMA,fixtures=fixtures,
+        raw_bool_proof=dict(native_write_object='0x1fe7900',width=1,normalization=False,logical_truth_semantics_proven=False,
+            has_district=dict(object_offset='0x51',writer_call='0x1fd2dc9',reader_call='0x1fd2ef9',schema_field='plot[11]',noncanonical_count_per_fixture=1067),
+            evaluate_wonders=dict(object_offset='0x6c',writer_call='0x1fd2d5f',reader_call='0x1fd2e93',schema_field='plot[3]',noncanonical_count_per_fixture=60),
+            surrounding_grammar_independently_reconstructed=True,nested_native_owner_extents_compared=True,next_culture_ai_version_checked=15),
         current_versions=dict(city_manager=2,city_build=17,recycled=65537,trade_city=3,trade_connection=1,unit_efficiency=4,plot_evaluation=1,reservation=1,control_handle=1),
         original_execution=False,native_read_side_effects_reproduced=False,planning_only_exclusions=[],
         transitive_rng_audit_complete=False,unknown_bytes_masked=0,recorded_raw_save_load_difference_bytes=89198,
