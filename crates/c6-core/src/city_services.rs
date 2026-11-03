@@ -1,6 +1,7 @@
 //! Bounded Linux XP2 City service-component wire records, not live-state application.
 //! Resources admits7/10 with explicit omitted-list effects; Combat admits6/7
-//! with an explicit HP-modifier0 default. Other components
+//! with an explicit HP-modifier0 default. Trade admits10/12 with omitted
+//! Yield-list zero effects. Other components
 //! retain their separately checked current versions.
 //! Target SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! W/R: Religion 0x28c28e0/0x28c29b0, Resources 0x28c6190/0x28c6270,
@@ -349,7 +350,7 @@ record!(Combat, COMBAT_VERSION, legacy 6, wire_version, {
  city_combat_bonus:i32, city_friendly_combat_bonus:i32, attack_range_modifier:i32,
  hit_points_modifier:i32 => (7, 7),
 });
-record!(Trade, TRADE_VERSION, {
+record!(Trade, TRADE_VERSION, legacy 10, wire_version, {
  constructed_trading_posts:Vec<bool>, num_foreign_routes_passing_through:i32,
  flat_yield_bonus_to_others_for_domestic:Vec<HashValue<i32>>,
  flat_yield_bonus_to_others:Vec<HashValue<i32>>,
@@ -362,10 +363,26 @@ record!(Trade, TRADE_VERSION, {
  flat_yield_bonus_for_domestic:Vec<HashValue<i32>>,
  flat_yield_bonus_for_international:Vec<HashValue<i32>>,
  yield_from_foreign_routes_passing_through:Vec<HashValue<i32>>,
- yield_per_local_luxury_resource_for_international:Vec<HashValue<i32>>,
- yield_per_local_strategic_resource_for_international:Vec<HashValue<i32>>,
- yield_per_major_trade_partner:Vec<HashValue<i32>>,
+ yield_per_local_luxury_resource_for_international:Vec<HashValue<i32>> => (11, 12),
+ yield_per_local_strategic_resource_for_international:Vec<HashValue<i32>> => (11, 12),
+ yield_per_major_trade_partner:Vec<HashValue<i32>> => (12, 12),
 });
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TradeLateYieldReadEffect {
+    PresentPairs,
+    ZeroForEachYieldDefinitionRegistryUnknown,
+}
+impl Trade {
+    /// Applies to local Luxury/Strategic international yields and major-partner
+    /// yields. No wire pairs at10 does not mean an empty native Yield array.
+    pub fn later_yield_arrays_read_effect(&self) -> TradeLateYieldReadEffect {
+        if self.wire_version == 10 {
+            TradeLateYieldReadEffect::ZeroForEachYieldDefinitionRegistryUnknown
+        } else {
+            TradeLateYieldReadEffect::PresentPairs
+        }
+    }
+}
 record!(PlayerIdentityPresence, CULTURAL_IDENTITY_VERSION, {
  player:i32, identity_total_raw_q8:i32, rejected_city:bool,
 });
@@ -518,6 +535,81 @@ mod tests {
             }
             v
         }};
+    }
+    #[test]
+    fn trade10_omits_three_late_yield_lists_with_per_definition_zero() {
+        let mut bytes = Vec::new();
+        ints(&mut bytes, &[10, 3]);
+        bytes.extend([1, 0, 1]);
+        ints(&mut bytes, &[-1]);
+        for i in 1..=11 {
+            pairs(&mut bytes, i);
+        }
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 25,
+        };
+        let (value, used, items) = Trade::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 25));
+        assert_eq!(value.wire_version, 10);
+        assert_eq!(value.constructed_trading_posts, [true, false, true]);
+        assert_eq!(
+            value.yield_from_foreign_routes_passing_through,
+            [
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: 11
+                },
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: -11
+                }
+            ]
+        );
+        assert!(value
+            .yield_per_local_luxury_resource_for_international
+            .is_empty());
+        assert!(value
+            .yield_per_local_strategic_resource_for_international
+            .is_empty());
+        assert!(value.yield_per_major_trade_partner.is_empty());
+        assert_eq!(
+            value.later_yield_arrays_read_effect(),
+            TradeLateYieldReadEffect::ZeroForEachYieldDefinitionRegistryUnknown
+        );
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Trade::decode_prefix(&bytes[..n], limits).is_err(), "{n}");
+        }
+        assert_eq!(
+            Trade::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 24,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [9i32, 11, 13] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Trade::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 12,
+                    actual: version
+                })
+            );
+        }
+        let current = Trade::decode(&trade(), Limits::default()).unwrap();
+        assert_eq!(
+            current.later_yield_arrays_read_effect(),
+            TradeLateYieldReadEffect::PresentPairs
+        );
+        assert_eq!(current.encode(Limits::default()).unwrap(), trade());
     }
     #[test]
     fn combat6_omits_only_hit_points_with_explicit_zero() {
