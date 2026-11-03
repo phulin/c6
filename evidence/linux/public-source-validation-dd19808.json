@@ -1,0 +1,215 @@
+{
+  "all_checks_passed": true,
+  "c_abi_rust_shared_library_sha256": "f6a2b035c59cab2f2f683a61dbf504c98f9134ed9d484a4f855d5e0b0b73fe2f",
+  "cargo_offline_locked_wrapper_sha256": "fd25854dce559cd722e0407e66aaee0452f63b5dae78fd572e49ca2d4e7009b3",
+  "commands": [
+    {
+      "command": [
+        "/home/phulin/.cargo/bin/cargo",
+        "test",
+        "--workspace",
+        "--offline",
+        "--locked"
+      ],
+      "elapsed_seconds": 75.843,
+      "returncode": 0,
+      "stage": "workspace_tests",
+      "stderr": {
+        "bytes": 4695,
+        "path": "workspace_tests.stderr",
+        "sha256": "8120f0d4e17ce82e4a3b13583b3febc663d8ca9272564b17db464aaea1be8e81"
+      },
+      "stdout": {
+        "bytes": 47038,
+        "path": "workspace_tests.stdout",
+        "sha256": "a311d22c597a1b0339ce56480ac6ec728d7ca9f826faae38823a6ff591a0fc63"
+      }
+    },
+    {
+      "command": [
+        "/home/phulin/.cargo/bin/cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "elapsed_seconds": 16.508,
+      "returncode": 0,
+      "stage": "workspace_clippy",
+      "stderr": {
+        "bytes": 1312,
+        "path": "workspace_clippy.stderr",
+        "sha256": "b201c4ad9c1abbfe53a5c146fd3eddf8db1b1cec2e369956d412076a09754aaa"
+      },
+      "stdout": {
+        "bytes": 0,
+        "path": "workspace_clippy.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": [
+        "bash",
+        "tools/check/c_abi_smoke.sh"
+      ],
+      "elapsed_seconds": 49.233,
+      "returncode": 0,
+      "stage": "c_abi_smoke",
+      "stderr": {
+        "bytes": 738,
+        "path": "c_abi_smoke.stderr",
+        "sha256": "73aa47eeb0021121a98a68e432d1e475d1fdec2dfdfcb5742f102241551c4a7a"
+      },
+      "stdout": {
+        "bytes": 158,
+        "path": "c_abi_smoke.stdout",
+        "sha256": "c8b40502a7052ae68758fe56dee39c1820d6ad821e2e4c08f430213d8c9417fc"
+      }
+    }
+  ],
+  "compiled_input_manifest_sha256": "135354e5d83a5ffa5f59bdcb518db042d27865255f41931dcea7b8a274f5cd94",
+  "compiled_input_paths": 177,
+  "complete_state_actions_turns_rng": false,
+  "dependency_external_source_files": 299,
+  "dependency_identities_sha256": "c92a266312466e24f80377c54e8e0f25fdc97d005a43db76555c0c81cbfae962",
+  "dependency_registry_packages": 46,
+  "git_tree": "0826a29bf63d55e52bfb2fd12c2f2cdfe4778792",
+  "isolated_build_directory": "/tmp/c6-public-source-validation/dd19808b9941da4ad0d75a0142721f165378ad34",
+  "native_gameplay_or_action_comparison": false,
+  "original_engine_execution": false,
+  "pin": "dd19808b9941da4ad0d75a0142721f165378ad34",
+  "pushed_by_this_validator": false,
+  "retained_artifacts": {
+    "c_abi_smoke.stderr": {
+      "bytes": 738,
+      "path": "c_abi_smoke.stderr",
+      "sha256": "73aa47eeb0021121a98a68e432d1e475d1fdec2dfdfcb5742f102241551c4a7a"
+    },
+    "c_abi_smoke.stdout": {
+      "bytes": 158,
+      "path": "c_abi_smoke.stdout",
+      "sha256": "c8b40502a7052ae68758fe56dee39c1820d6ad821e2e4c08f430213d8c9417fc"
+    },
+    "cargo-metadata.json": {
+      "bytes": 190167,
+      "path": "cargo-metadata.json",
+      "sha256": "fba805b60f48b0aebda633e89b2e22e8fddc7215bb6adbb6a2af8aea11fb8f20"
+    },
+    "compiled-input-manifest.json": {
+      "bytes": 41778,
+      "path": "compiled-input-manifest.json",
+      "sha256": "135354e5d83a5ffa5f59bdcb518db042d27865255f41931dcea7b8a274f5cd94"
+    },
+    "dependency-identities.json": {
+      "bytes": 137804,
+      "path": "dependency-identities.json",
+      "sha256": "c92a266312466e24f80377c54e8e0f25fdc97d005a43db76555c0c81cbfae962"
+    },
+    "finish-evidence.py": {
+      "bytes": 5102,
+      "path": "finish-evidence.py",
+      "sha256": "7e990abd3be4fc60483520091dd1faef3748a11df44b73e524f9a19356da544a"
+    },
+    "progress.json": {
+      "bytes": 1676,
+      "path": "progress.json",
+      "sha256": "b911cea10220abb8706391a673c10b1ccc9390857a1687f96ed0918b7fb0ead3"
+    },
+    "result.json": {
+      "bytes": 2920,
+      "path": "result.json",
+      "sha256": "2a1d54febf3dd3399637a85b2997017941bf86d8ef38aa0259b35e711ee33448"
+    },
+    "run-validation.py": {
+      "bytes": 4521,
+      "path": "run-validation.py",
+      "sha256": "4e4f97c8c1f4267bb7897c54480c1601a18016ca6fdd8d6f8ee4697bb89e5ffd"
+    },
+    "source-manifest.json": {
+      "bytes": 419224,
+      "path": "source-manifest.json",
+      "sha256": "82b192a75b2335f70e948fcaa7da4b1681dea9c8f135df9e8f19f1ac5dc0e2f8"
+    },
+    "source.tar": {
+      "bytes": 48158720,
+      "path": "source.tar",
+      "sha256": "6892f9f83e52f252dd46c919bb561720e1e3e282edb97915062e6ac98804f040"
+    },
+    "workspace_clippy.stderr": {
+      "bytes": 1312,
+      "path": "workspace_clippy.stderr",
+      "sha256": "b201c4ad9c1abbfe53a5c146fd3eddf8db1b1cec2e369956d412076a09754aaa"
+    },
+    "workspace_clippy.stdout": {
+      "bytes": 0,
+      "path": "workspace_clippy.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "workspace_tests.stderr": {
+      "bytes": 4695,
+      "path": "workspace_tests.stderr",
+      "sha256": "8120f0d4e17ce82e4a3b13583b3febc663d8ca9272564b17db464aaea1be8e81"
+    },
+    "workspace_tests.stdout": {
+      "bytes": 47038,
+      "path": "workspace_tests.stdout",
+      "sha256": "a311d22c597a1b0339ce56480ac6ec728d7ca9f826faae38823a6ff591a0fc63"
+    }
+  },
+  "retained_directory": "target/linux/public-source-validation/dd19808b9941da4ad0d75a0142721f165378ad34",
+  "retained_runner_result_sha256": "2a1d54febf3dd3399637a85b2997017941bf86d8ef38aa0259b35e711ee33448",
+  "runner_sha256": "4e4f97c8c1f4267bb7897c54480c1601a18016ca6fdd8d6f8ee4697bb89e5ffd",
+  "schema": "c6-linux-isolated-public-source-validation-v1",
+  "separate_python_and_native_source_checks_run": false,
+  "source_archive_sha256": "6892f9f83e52f252dd46c919bb561720e1e3e282edb97915062e6ac98804f040",
+  "source_files": 1768,
+  "source_files_changed_after_checks": [],
+  "source_manifest_sha256": "82b192a75b2335f70e948fcaa7da4b1681dea9c8f135df9e8f19f1ac5dc0e2f8",
+  "source_modes": {
+    "100644": 1761,
+    "100755": 7
+  },
+  "source_preimages_retained": true,
+  "test_executable_sha256": {
+    "target/debug/deps/c6_action_message_candidate-e3f4ee841fcccec1": "4178935aed0d2f075fd9ca019222c63cd6f20aff90028c49606343f820e83f97",
+    "target/debug/deps/c6_city_wire_candidate-d3f26146e17753d3": "8d30d83b42132410980decaf615ed0dbc4c8cc6ba8cd67024fca2c2b52cb1ace",
+    "target/debug/deps/c6_core-f8756589aac55580": "2674178fab0fc02c059375e7c2092c97989844965f8340492b8513f8f11ca33c",
+    "target/debug/deps/c6_core_contextual_candidate-bd780edcc1f82353": "4efd46d5d461c1a4e6974070b817fe5f1fba003f8a2ce6f436165206e401e52e",
+    "target/debug/deps/c6_core_player_ai_culture_prefix_candidate-2869e693af4379a8": "8e9d2a0294955fbc86471d961e52fc9b9c817d37466551b034bb1342782a7ac8",
+    "target/debug/deps/c6_core_player_cultural_identity_prefix_candidate-4a3d151659dfee87": "ddbcc76f5e9e3bdb54741449f4ba456834b9e145d4608a46a29d90f727cce730",
+    "target/debug/deps/c6_core_player_culture_prefix_candidate-ecdacafd864b9bf4": "864cbf77e1a573d5d5258512437cc042d559f35cb1260aa89ff023340a2b4886",
+    "target/debug/deps/c6_core_player_districts_prefix_candidate-259d1d5a1b9f2320": "e0718bf965c2a90caef385355ae5aa43e62eec5097175c0d15468d204e844464",
+    "target/debug/deps/c6_core_player_prefix_candidate-9036d9c5ff1c8376": "6831b8e604b4c8e6f1fc72d842c68f3a168241c7f603fc3a18db98bddb32dbc7",
+    "target/debug/deps/c6_core_player_techs_prefix_candidate-1a6b43e2be500c4d": "f42441083dae3ebcb7b3b00c43fa6c46f83e3537521bc73995e5be98947749aa",
+    "target/debug/deps/c6_core_player_units_prefix_candidate-75653af6665c9037": "658e48b9540d706016e7334995e7d0ec3d1815f74fef1343bd221f022018154d",
+    "target/debug/deps/c6_core_prefix_candidate-a753e2501d6628df": "c0f2ed0625d2cc08b9addabc0c73e17cdc586b4dbccf0219392262402777bbed",
+    "target/debug/deps/c6_data-0131f5aeda646c13": "c35ad2a6c67a1017288e0074405145a2a9a43018189d9d7e9c84bd6107ad43ff",
+    "target/debug/deps/c6_differential-012245e7795d9a03": "8192db0bf338efcc6faf85147876ef225688f8692c3b556698e307adcf4bd176",
+    "target/debug/deps/c6_differential-acfb8b3e44c5281b": "c2a9168d31d30afe020f4793cf75cb8f3530a94b7a96bf644716ee03cd55ac70",
+    "target/debug/deps/c6_ffi-532a61d38efcd8ed": "75b71ff6f8cb5b6b28cebefd5b2dc56bc1340e33822d032757d0f4325fc576a3",
+    "target/debug/deps/c6_linux_placement_count_candidate-bd548641c93e6e4d": "1467c23f7b6c808bd4d1fed056c0947f11b87a658e0fdcfa6e2e74aa350892f3",
+    "target/debug/deps/c6_loaded_placement_candidate-2ca900a68474e4b9": "67d38f772adec1cdd99ef05f69781e73b259980c184646f95f9106eff7d33a4c",
+    "target/debug/deps/c6_map_codec_candidate-c0e72c3db4c4d9d6": "db158ae9676a9186e22e6bb6d244b9c386c9b9b6f8bdcb77a492684504119aea",
+    "target/debug/deps/c6_movement_cost_bench-6041e2eff5184b31": "5a852930cf1fe79f007f250955d3d2cbb239cecb2c9e62db66d2a90aae9b9068",
+    "target/debug/deps/c6_movement_cost_candidate-7073b36950861230": "495b6266e76674d9f3e8f18f7d76e83948e0b2478553cfd463613ccf6185f575",
+    "target/debug/deps/c6_movement_world_candidate-ebe1cb11870740ef": "937b91afed08f2f018210fb3866753b46f1a5d56f1fc0334a93f7b1090bcaa14",
+    "target/debug/deps/c6_rng_candidate-c69d3792d288bb79": "ab395c63507942dded2706636caaae34791c296b3a56d43a9f283ef82eadd01c",
+    "target/debug/deps/c6_serialization_candidate-98e9f34c1c328614": "0837575cf7cb640a767ed09610500fa46bbe2c516efe4c1874793bf318aeff48"
+  },
+  "test_summary": {
+    "failed": 0,
+    "ignored": 12,
+    "passed": 481
+  },
+  "toolchain": {
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)"
+  },
+  "validation_artifact_finalizer_sha256": "7e990abd3be4fc60483520091dd1faef3748a11df44b73e524f9a19356da544a",
+  "wip_excluded": true
+}
