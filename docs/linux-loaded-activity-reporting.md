@@ -56,14 +56,14 @@ caller admission condition for the active profile, not evidence automatically
 obtained from Lua source hashes. Nonempty/custom Unit property copying, non-SkipTurn
 facade projections and subsequent event types remain explicit dependencies.
 
-The concrete implementation reads the actual authoritative LoadedState through
-`Reports::send_loaded`, after the setter releases its short actor borrow and
-before the next action operation. It uses no World clone, actor copyback or
-second mutable actor alias. At frozen checkpoint `577b700`, the generic callback
-interface still permits wider mutable access; the concrete reporter uses only
-an immutable state view. Other-world/RNG effects are unsupported and are not
-certified by this prefix check. A follow-up will restrict this diagnostic
-callback capability. Reports returning errors leave the performed prefix intact.
+The implementation receives an immutable authoritative world view through
+`Reports::send_loaded` and `ReportingContext::state`, after the setter has released
+its short actor borrow and before the next action operation. The context permits
+mutation only through its checked addressed-actor accessor; it does not expose
+other mutable World components or RNG. No World clone, actor copyback or second
+mutable actor alias is used. The old Unit-only entry rejects this provider because it
+cannot resolve the required owned-world inputs. Reports returning errors leave
+the already performed action prefix intact.
 
 The [focused source audit](../tools/linux/loaded_activity_reporting_audit.py)
 checks 273 inherited and additional method bodies against the pinned Linux XP2
@@ -130,6 +130,16 @@ return through the member-readiness guard. The next genuine stop is the Manager
 activation ScriptSystem provider; no later action report is manufactured.
 Its complete retained source and candidate/result are recorded by
 [the ordered check](../evidence/linux/loaded-ordered-reporting-check.json).
+
+The scoped follow-up also tests nine isolated source projections, one per
+captured Unit Send row. Each case uses a fresh reporting provider and an
+explicit actor queue/activity fixture based on the actual old MoveTo queue or
+the SkipTurn queue created before the scripting failure. These test setups
+occur after the genuine prefix has been recorded. Their rows remain a separate
+array and never extend the action trace. They test the previously unexercised
+SkipTurn OPERATION facade and empty-map parameter defaults, plus Started/HOLD
+and later deactivation/cleared shapes. They are source projection tests, not
+nine successful action calls or a native host-output comparison.
 
 ```sh
 python3 tools/linux/loaded_activity_reporting_audit.py --output target/linux/loaded-activity-reporting-source.json

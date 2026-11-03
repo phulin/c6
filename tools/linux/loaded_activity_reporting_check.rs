@@ -7,7 +7,7 @@ use c6_core::messages::{HandlerId, OperationHash};
 use c6_core::skip_turn::legality::{ManagerQueries, ManagerQueryState, ScriptTestAllResult};
 use c6_core::unit::{Unit, MOVE_TO_HASH, SKIP_TURN_HASH};
 use c6_data::loaded_actions::{
-    self as actions, handlers::Capture, resources::Resources, Error, IdentityReport, Reports,
+    self as actions, handlers::Capture, resources::Resources, Error, IdentityReport,
 };
 struct MissingScripts;
 impl ManagerQueries<Unit> for MissingScripts {
@@ -342,6 +342,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         plot_unit_limit: Some(snapshot.plot_unit_limit()),
         movement: Some(&movement),
     };
+    let initial_queue = state
+        .world()
+        .unit(reference)?
+        .ok_or("actor")?
+        .record
+        .k_operations
+        .clone();
     let mut script = MissingScripts;
     let mut reports = actions::reporting::Provider::new(
         &report_definitions,
@@ -361,6 +368,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "a genuine unsupported predicate or reporting consumer must stop this source fixture",
     );
     let error = format!("{:?}", failure.error);
+    assert!(matches!(
+        failure.error,
+        Error::Provider("genuine script/lock/args backend unavailable")
+    ));
+    assert_eq!(reports.pending_publications().len(), 4);
     assert!(reports.pending_publications().len() >= 2);
     assert_eq!(reports.pending_publications()[0].host_event, 35);
     assert_eq!(reports.pending_publications()[1].host_event, 70);
@@ -396,12 +408,100 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(reports.pending_publications().len(), publication_count);
     assert_eq!(reports.snapshot_observations().len(), snapshot_count);
     assert_eq!(state.revision(), revision);
+    // Independent source projection cases after recording the genuine failure.
+    // These explicit fixture setups are not action continuation and their rows
+    // must never be appended to partial_actual_entrypoint_trace.
+    let skip_queue = state
+        .world()
+        .unit(reference)?
+        .ok_or("actor")?
+        .record
+        .k_operations
+        .clone();
+    assert_eq!(skip_queue.nodes.len(), 1);
+    assert_eq!(skip_queue.nodes[0].operation_hash, SKIP_TURN_HASH);
+    let captured: serde_json::Value = serde_json::from_str(include_str!(
+        "../../evidence/linux/skip-turn-state-execute-3.json"
+    ))?;
+    let mut isolated = Vec::new();
+    let expected_host = [35, 70, 71, 67, 35, 68, 35, 70, 71];
+    let expected_operation = [
+        0,
+        MOVE_TO_HASH as i32,
+        0,
+        0,
+        SKIP_TURN_HASH as i32,
+        SKIP_TURN_HASH as i32,
+        0,
+        SKIP_TURN_HASH as i32,
+        0,
+    ];
+    let expected_value = [-1, 1, 0, 36, -1, 0, -1, 0, 0];
+    for (index, row) in captured["reporting_events"]
+        .as_array()
+        .ok_or("original report rows")?
+        .iter()
+        .enumerate()
+    {
+        let bits = u64::from_str_radix(row["type_bits"].as_str().ok_or("type bits")?, 16)?;
+        let component =
+            u64::from_str_radix(row["component_bits"].as_str().ok_or("component bits")?, 16)?;
+        let report = IdentityReport {
+            event: bits as u32,
+            subtype: (bits >> 32) as u32,
+            identity: c6_core::unit::ComponentId {
+                owner: component as i16,
+                component_type: (component >> 16) as i16,
+                id: (component >> 32) as u32,
+            },
+            first: row
+                .get("value")
+                .or_else(|| row.get("first"))
+                .and_then(serde_json::Value::as_i64)
+                .map(|x| x as i32),
+            second: row
+                .get("second")
+                .and_then(serde_json::Value::as_i64)
+                .map(|x| x as i32),
+        };
+        let actor = state.unit_mut(actor.0, actor.1)?;
+        actor.k_operations = if index < 2 {
+            initial_queue.clone()
+        } else {
+            skip_queue.clone()
+        };
+        if index == 2 || index == 8 {
+            actor.k_operations.nodes.clear();
+        }
+        actor.e_activity = match index {
+            0..=3 => 0x6b25012e,
+            4..=5 => 0x490cc8e1,
+            _ => 0x047c048b,
+        };
+        let mut projection = actions::reporting::Provider::new(
+            &report_definitions,
+            &movement,
+            actions::reporting::Scope::StockHeadlessNoAddedConsumers,
+        );
+        projection.bind_skip_turn_handler(&state, &authority, bound.operations())?;
+        projection.send_loaded_report(&state, reference, report)?;
+        assert_eq!(projection.pending_publications().len(), 1);
+        let publication = projection.pending_publications()[0];
+        assert_eq!(publication.host_event, expected_host[index]);
+        assert_eq!(publication.operation, expected_operation[index]);
+        assert_eq!(publication.value, expected_value[index]);
+        if publication.host_event == 35 {
+            assert_eq!(publication.activity_parameters, Some([-1; 4]));
+        }
+        isolated.push(serde_json::json!({"captured_row_index":index,"host_event":publication.host_event,"operation":publication.operation,"value":publication.value,"activity_operation":publication.activity_operation,"activity_parameters":publication.activity_parameters,"snapshot_paths":projection.snapshot_observations().iter().map(|s|format!("{:?}",s.path)).collect::<Vec<_>>(),"context_setup":"explicit isolated current-Unit queue/activity fixture; not action continuation"}));
+    }
+    assert_eq!(isolated.len(), 9);
     let publications = reports.pending_activity_publications();
     assert!(state.revision() > 0);
     assert!(capture.admit(&state, &bound).is_err());
     println!(
         "{}",
-        serde_json::json!({"schema":"c6-linux-loaded-ordered-reporting-check-v2","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"synchronous_activity_publications":publications.iter().map(|p|serde_json::json!({"owner":p.identity.owner,"id":p.identity.id,"activity":p.activity})).collect::<Vec<_>>(),"exact_remaining_consumer":error,"ordered_publications":reports.pending_publications().iter().map(|p|serde_json::json!({"host_event":p.host_event,"operation":p.operation,"value":p.value,"activity_operation":p.activity_operation})).collect::<Vec<_>>(),"snapshot_paths":reports.snapshot_observations().iter().map(|s|serde_json::json!({"activity":s.current_activity,"queue_nodes":s.queue_nodes,"path":format!("{:?}",s.path)})).collect::<Vec<_>>(),"actual_snapshot_path":{"path":format!("{:?}",observation.path),"pending_nodes":observation.queue_nodes,"remaining_q8":observation.remaining_q8,"activity":observation.current_activity},"negative_shape_identity_playback_checks":true,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
+        serde_json::json!({"schema":"c6-linux-loaded-scoped-ordered-reporting-check-v3","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"synchronous_activity_publications":publications.iter().map(|p|serde_json::json!({"owner":p.identity.owner,"id":p.identity.id,"activity":p.activity})).collect::<Vec<_>>(),"exact_remaining_consumer":error,"isolated_source_projection_cases":isolated,"isolated_cases_are_action_continuation":false,"callback_capability":"immutable authoritative World view and checked addressed actor only; wider World/RNG effects unsupported","host_publication_fields_have_native_capture_comparison":false,"ordered_publications":reports.pending_publications().iter().map(|p|serde_json::json!({"host_event":p.host_event,"operation":p.operation,"value":p.value,"activity_operation":p.activity_operation})).collect::<Vec<_>>(),"snapshot_paths":reports.snapshot_observations().iter().map(|s|serde_json::json!({"activity":s.current_activity,"queue_nodes":s.queue_nodes,"path":format!("{:?}",s.path)})).collect::<Vec<_>>(),"actual_snapshot_path":{"path":format!("{:?}",observation.path),"pending_nodes":observation.queue_nodes,"remaining_q8":observation.remaining_q8,"activity":observation.current_activity},"negative_shape_identity_playback_checks":true,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
     );
     Ok(())
 }

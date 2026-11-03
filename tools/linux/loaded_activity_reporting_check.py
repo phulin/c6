@@ -61,7 +61,14 @@ def main():
         if run.returncode:
             raise RuntimeError(run.stderr)
         result=json.loads(run.stdout)
-        original=json.loads((ROOT/'evidence/linux/skip-turn-state-execute-3.json').read_text())['reporting_events']
+        original_raw=(ROOT/'evidence/linux/skip-turn-state-execute-3.json').read_bytes()
+        original_document=json.loads(original_raw)
+        original=original_document['reporting_events']
+        result['original_report_source_sha256']=hashlib.sha256(original_raw).hexdigest()
+        result['original_report_configuration_sha256']=original_document['configuration_sha256']
+        result['original_report_input_core']=original_document['original_core_saves']['before']
+        result['owned_snapshot_source_sha256']=result['authority']['associated_saved_snapshot_sha256']
+        result['comparison_scope']='actual executed Send scalar prefix only; isolated shape cases separate; original profiles remain distinct'
         expected=[dict(type_bits=r['type_bits'],component_bits=r['component_bits'],first=r.get('value',r.get('first')),second=r.get('second')) for r in original]
         attempted=[{k:r[k] for k in ('type_bits','component_bits','first','second')} for r in result['partial_actual_entrypoint_trace'] if r['kind']=='report']
         if attempted!=expected[:len(attempted)]: raise ValueError('source report prefix differs from original captured scalar rows')

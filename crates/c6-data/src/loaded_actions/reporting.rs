@@ -524,11 +524,10 @@ impl Reports for Provider<'_> {
     }
     fn send_loaded(
         &mut self,
-        state: &mut LoadedState,
-        reference: UnitReference,
+        context: &mut super::ReportingContext<'_>,
         report: IdentityReport,
     ) -> Result<i32, Error> {
-        self.send_loaded_report(state, reference, report)?;
+        self.send_loaded_report(context.state(), context.reference(), report)?;
         // Existing loaded continuation ignores this diagnostic hook result.
         Ok(0)
     }
