@@ -72,6 +72,18 @@ impl<'a> OrderedImprovementYieldDefinitions<'a> {
         })
     }
 
+    /// Check that another native registry has the same ordered type hashes.
+    /// This compares registry alignment, not rules/configuration identity or
+    /// equivalence of the provider's lookup implementation.
+    pub fn matches_lookup(self, lookup: &dyn DefinitionLookup) -> bool {
+        lookup.count() == self.definitions.len()
+            && self
+                .definitions
+                .iter()
+                .enumerate()
+                .all(|(index, definition)| lookup.type_hash(index) == Some(definition.type_hash))
+    }
+
     /// Inspect an actual native collection index without hash resolution.
     pub fn at(&self, index: i32) -> Option<&'a ImprovementYieldDefinition<'a>> {
         self.definitions.get(index as u32 as usize)
@@ -335,6 +347,30 @@ mod tests {
         ];
         f(OrderedImprovementYieldDefinitions::new(&Lookup, &entries, &bonus).unwrap())
     }
+    #[test]
+    fn registry_alignment_checks_count_and_every_hash() {
+        struct OtherLookup(&'static [u32]);
+        impl DefinitionLookup for OtherLookup {
+            fn count(&self) -> usize {
+                self.0.len()
+            }
+            fn type_hash(&self, index: usize) -> Option<u32> {
+                self.0.get(index).copied()
+            }
+            fn find_index(&self, _: u32) -> Option<usize> {
+                None
+            }
+        }
+        with_rules(&[], &[], |rules| {
+            assert!(rules.matches_lookup(&Lookup));
+            assert!(rules.matches_lookup(&OtherLookup(&[77, 77])));
+            assert!(!rules.matches_lookup(&OtherLookup(&[77])));
+            assert!(!rules.matches_lookup(&OtherLookup(&[77, 77, 77])));
+            assert!(!rules.matches_lookup(&OtherLookup(&[76, 77])));
+            assert!(!rules.matches_lookup(&OtherLookup(&[77, 76])));
+        });
+    }
+
     #[test]
     fn first_base_all_adjacency_both_bonuses_and_native_hash_lookup() {
         let adj = Adj::default();
