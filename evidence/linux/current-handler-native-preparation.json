@@ -16,7 +16,12 @@
   ],
   "guard_source_review": "2cb6cab",
   "lifecycle_checkpoint": "3aa3858",
+  "missing_source_gates": [
+    "tools/linux/rules_launch_fixture.py",
+    "tools/assets/inventory.py"
+  ],
   "native_execution": false,
+  "original_execution_admitted": false,
   "pending": [
     "independent exact preparation admission",
     "actual original terminal outcome",
@@ -52,5 +57,6 @@
   },
   "source_archive_sha256": "ad1b34fafe1d9896b7a71cda9d6b8e3c1e33e2fecdbe0f64d5e50b51af423250",
   "source_checkpoint": "5042bde",
-  "source_files": 69
+  "source_files": 69,
+  "status": "unexecuted_historical_preparation_missing_active_import_gates"
 }

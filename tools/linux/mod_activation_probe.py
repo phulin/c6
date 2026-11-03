@@ -845,7 +845,7 @@ def main():
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h',ROOT/'native/linux/action_registration.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in captured_extra_sources:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*current_handler_audit_paths,ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/script_can_start_boundary_audit.py',ROOT/'tools/linux/unit_operation_manager_metadata_audit.py',ROOT/'tools/linux/current_handler_interruption_audit.py',ROOT/'tools/linux/inspect_elf.py'] if args.current_handler_metadata else []:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*current_handler_audit_paths,ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/script_can_start_boundary_audit.py',ROOT/'tools/linux/unit_operation_manager_metadata_audit.py',ROOT/'tools/linux/current_handler_interruption_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'tools/linux/rules_launch_fixture.py',ROOT/'tools/assets/inventory.py'] if args.current_handler_metadata else []:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)

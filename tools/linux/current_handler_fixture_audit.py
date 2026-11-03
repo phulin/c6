@@ -27,6 +27,9 @@ def main():
   for extra,reason in [(['--prepare-only','--current-handler-metadata'],'separate main-thread Core cleanup fixture'),(['--prepare-only','--current-handler-metadata-output','/tmp/not-created'],'paths require separate'),(['--prepare-only','--current-handler-metadata','--unit-operation-manager-metadata'],'not allowed with argument'),(['--current-handler-metadata'],'requires exact reviewed configuration')]:
    result=subprocess.run([sys.executable,str(runner),'--output',str(work/'never-created.json'),*extra],capture_output=True,text=True)
    assert result.returncode==2 and reason in result.stderr,(extra,result.returncode,result.stderr)
+ runner_source=runner.read_text()
+ for dependency in ['tools/linux/rules_launch_fixture.py','tools/assets/inventory.py']:
+  assert "ROOT/'"+dependency+"'" in runner_source
  source=(ROOT/'native/linux/action_lifecycle.c').read_text()
  assert 'c6_linux_current_handler_metadata_caller_idle' in source
  assert '"c6_linux_current_handler_metadata_quiescent"' not in source
