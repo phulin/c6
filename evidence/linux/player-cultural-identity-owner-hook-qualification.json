@@ -1,0 +1,1158 @@
+{
+  "schema": "c6-linux-player-cultural-identity-owner-hook-qualification-v1",
+  "checks_passed": true,
+  "qualifies_report": "player-cultural-identity.json",
+  "qualified_report_sha256": "2ff05e75e067b53619690750d915ec7aaa26274840dca22879897cd62a628e7f",
+  "closed_candidate_source_commit": "24dd11d67beeddb77611f676bf40d2f7606b7fc4",
+  "correction": "The closed report and driver incorrectly state that no direct CulturalIdentity owner cuts exist. Both CulturalIdentity and Heroes have retained native owner hooks. The prior candidate located the same CulturalIdentity prefix structurally; this additive check independently verifies matching-parent native hook boundaries and the immediate Heroes entry.",
+  "native_owner_hooks_observed": true,
+  "native_next_schema_entry_observed": true,
+  "matching_parent_and_contiguous_boundaries_checked": true,
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "trace_relative_path": "evidence/linux-save-normalization/checkpoint-203-owners/trace-benchmark-1.jsonl.gz",
+      "records": 43,
+      "pairs": [
+        {
+          "parent_call": 327,
+          "cultural_identity_call": 1268,
+          "cultural_identity_range": [
+            5213599,
+            5213659
+          ],
+          "heroes_call": 1269,
+          "heroes_range": [
+            5213659,
+            5214199
+          ]
+        },
+        {
+          "parent_call": 7570,
+          "cultural_identity_call": 7781,
+          "cultural_identity_range": [
+            7328779,
+            7328839
+          ],
+          "heroes_call": 7782,
+          "heroes_range": [
+            7328839,
+            7329379
+          ]
+        },
+        {
+          "parent_call": 9326,
+          "cultural_identity_call": 11071,
+          "cultural_identity_range": [
+            8916056,
+            8916116
+          ],
+          "heroes_call": 11072,
+          "heroes_range": [
+            8916116,
+            8916656
+          ]
+        },
+        {
+          "parent_call": 17861,
+          "cultural_identity_call": 19521,
+          "cultural_identity_range": [
+            12399850,
+            12399910
+          ],
+          "heroes_call": 19522,
+          "heroes_range": [
+            12399910,
+            12400450
+          ]
+        },
+        {
+          "parent_call": 26443,
+          "cultural_identity_call": 27959,
+          "cultural_identity_range": [
+            15967898,
+            15967958
+          ],
+          "heroes_call": 27960,
+          "heroes_range": [
+            15967958,
+            15968498
+          ]
+        },
+        {
+          "parent_call": 34603,
+          "cultural_identity_call": 35768,
+          "cultural_identity_range": [
+            18923570,
+            18923630
+          ],
+          "heroes_call": 35769,
+          "heroes_range": [
+            18923630,
+            18924170
+          ]
+        },
+        {
+          "parent_call": 42347,
+          "cultural_identity_call": 43378,
+          "cultural_identity_range": [
+            21349525,
+            21349585
+          ],
+          "heroes_call": 43379,
+          "heroes_range": [
+            21349585,
+            21350125
+          ]
+        },
+        {
+          "parent_call": 49840,
+          "cultural_identity_call": 51556,
+          "cultural_identity_range": [
+            24553123,
+            24553183
+          ],
+          "heroes_call": 51557,
+          "heroes_range": [
+            24553183,
+            24553723
+          ]
+        },
+        {
+          "parent_call": 58629,
+          "cultural_identity_call": 60374,
+          "cultural_identity_range": [
+            28225093,
+            28225153
+          ],
+          "heroes_call": 60375,
+          "heroes_range": [
+            28225153,
+            28225693
+          ]
+        },
+        {
+          "parent_call": 66963,
+          "cultural_identity_call": 68463,
+          "cultural_identity_range": [
+            31466063,
+            31466123
+          ],
+          "heroes_call": 68464,
+          "heroes_range": [
+            31466123,
+            31466663
+          ]
+        },
+        {
+          "parent_call": 75511,
+          "cultural_identity_call": 77573,
+          "cultural_identity_range": [
+            35408259,
+            35408319
+          ],
+          "heroes_call": 77574,
+          "heroes_range": [
+            35408319,
+            35408859
+          ]
+        },
+        {
+          "parent_call": 84789,
+          "cultural_identity_call": 84937,
+          "cultural_identity_range": [
+            38383958,
+            38384018
+          ],
+          "heroes_call": 84938,
+          "heroes_range": [
+            38384018,
+            38384558
+          ]
+        },
+        {
+          "parent_call": 85830,
+          "cultural_identity_call": 86849,
+          "cultural_identity_range": [
+            39443769,
+            39443829
+          ],
+          "heroes_call": 86850,
+          "heroes_range": [
+            39443829,
+            39444369
+          ]
+        },
+        {
+          "parent_call": 93426,
+          "cultural_identity_call": 93629,
+          "cultural_identity_range": [
+            41697262,
+            41697322
+          ],
+          "heroes_call": 93630,
+          "heroes_range": [
+            41697322,
+            41697862
+          ]
+        },
+        {
+          "parent_call": 94703,
+          "cultural_identity_call": 95468,
+          "cultural_identity_range": [
+            42576135,
+            42576195
+          ],
+          "heroes_call": 95469,
+          "heroes_range": [
+            42576195,
+            42576735
+          ]
+        },
+        {
+          "parent_call": 101404,
+          "cultural_identity_call": 103201,
+          "cultural_identity_range": [
+            45184475,
+            45184535
+          ],
+          "heroes_call": 103202,
+          "heroes_range": [
+            45184535,
+            45185075
+          ]
+        },
+        {
+          "parent_call": 109940,
+          "cultural_identity_call": 111633,
+          "cultural_identity_range": [
+            48759543,
+            48759603
+          ],
+          "heroes_call": 111634,
+          "heroes_range": [
+            48759603,
+            48760143
+          ]
+        },
+        {
+          "parent_call": 118664,
+          "cultural_identity_call": 118806,
+          "cultural_identity_range": [
+            51698600,
+            51698660
+          ],
+          "heroes_call": 118807,
+          "heroes_range": [
+            51698660,
+            51699200
+          ]
+        },
+        {
+          "parent_call": 119718,
+          "cultural_identity_call": 119827,
+          "cultural_identity_range": [
+            52313743,
+            52313803
+          ],
+          "heroes_call": 119828,
+          "heroes_range": [
+            52313803,
+            52314343
+          ]
+        },
+        {
+          "parent_call": 120543,
+          "cultural_identity_call": 120650,
+          "cultural_identity_range": [
+            52833771,
+            52833831
+          ],
+          "heroes_call": 120651,
+          "heroes_range": [
+            52833831,
+            52834371
+          ]
+        },
+        {
+          "parent_call": 121548,
+          "cultural_identity_call": 121648,
+          "cultural_identity_range": [
+            53458495,
+            53458555
+          ],
+          "heroes_call": 121649,
+          "heroes_range": [
+            53458555,
+            53459095
+          ]
+        },
+        {
+          "parent_call": 122409,
+          "cultural_identity_call": 122534,
+          "cultural_identity_range": [
+            53994405,
+            53994465
+          ],
+          "heroes_call": 122535,
+          "heroes_range": [
+            53994465,
+            53995005
+          ]
+        },
+        {
+          "parent_call": 123472,
+          "cultural_identity_call": 123596,
+          "cultural_identity_range": [
+            54637126,
+            54637186
+          ],
+          "heroes_call": 123597,
+          "heroes_range": [
+            54637186,
+            54637726
+          ]
+        },
+        {
+          "parent_call": 124533,
+          "cultural_identity_call": 124658,
+          "cultural_identity_range": [
+            55293905,
+            55293965
+          ],
+          "heroes_call": 124659,
+          "heroes_range": [
+            55293965,
+            55294505
+          ]
+        },
+        {
+          "parent_call": 125641,
+          "cultural_identity_call": 125739,
+          "cultural_identity_range": [
+            55939653,
+            55939713
+          ],
+          "heroes_call": 125740,
+          "heroes_range": [
+            55939713,
+            55940253
+          ]
+        },
+        {
+          "parent_call": 126798,
+          "cultural_identity_call": 126922,
+          "cultural_identity_range": [
+            56599766,
+            56599826
+          ],
+          "heroes_call": 126923,
+          "heroes_range": [
+            56599826,
+            56600366
+          ]
+        },
+        {
+          "parent_call": 127936,
+          "cultural_identity_call": 128027,
+          "cultural_identity_range": [
+            57224039,
+            57224099
+          ],
+          "heroes_call": 128028,
+          "heroes_range": [
+            57224099,
+            57224639
+          ]
+        },
+        {
+          "parent_call": 128723,
+          "cultural_identity_call": 128839,
+          "cultural_identity_range": [
+            57740984,
+            57741044
+          ],
+          "heroes_call": 128840,
+          "heroes_range": [
+            57741044,
+            57741584
+          ]
+        },
+        {
+          "parent_call": 129763,
+          "cultural_identity_call": 129870,
+          "cultural_identity_range": [
+            58371259,
+            58371319
+          ],
+          "heroes_call": 129871,
+          "heroes_range": [
+            58371319,
+            58371859
+          ]
+        },
+        {
+          "parent_call": 130796,
+          "cultural_identity_call": 130948,
+          "cultural_identity_range": [
+            59021174,
+            59021234
+          ],
+          "heroes_call": 130949,
+          "heroes_range": [
+            59021234,
+            59021774
+          ]
+        },
+        {
+          "parent_call": 131903,
+          "cultural_identity_call": 132029,
+          "cultural_identity_range": [
+            59668527,
+            59668587
+          ],
+          "heroes_call": 132030,
+          "heroes_range": [
+            59668587,
+            59669127
+          ]
+        },
+        {
+          "parent_call": 132893,
+          "cultural_identity_call": 133008,
+          "cultural_identity_range": [
+            60305722,
+            60305782
+          ],
+          "heroes_call": 133009,
+          "heroes_range": [
+            60305782,
+            60306322
+          ]
+        },
+        {
+          "parent_call": 134089,
+          "cultural_identity_call": 134205,
+          "cultural_identity_range": [
+            60985957,
+            60986017
+          ],
+          "heroes_call": 134206,
+          "heroes_range": [
+            60986017,
+            60986557
+          ]
+        },
+        {
+          "parent_call": 135338,
+          "cultural_identity_call": 135453,
+          "cultural_identity_range": [
+            61652884,
+            61652944
+          ],
+          "heroes_call": 135454,
+          "heroes_range": [
+            61652944,
+            61653484
+          ]
+        },
+        {
+          "parent_call": 136342,
+          "cultural_identity_call": 136449,
+          "cultural_identity_range": [
+            62283136,
+            62283196
+          ],
+          "heroes_call": 136450,
+          "heroes_range": [
+            62283196,
+            62283736
+          ]
+        },
+        {
+          "parent_call": 137526,
+          "cultural_identity_call": 137642,
+          "cultural_identity_range": [
+            62934434,
+            62934494
+          ],
+          "heroes_call": 137643,
+          "heroes_range": [
+            62934494,
+            62935034
+          ]
+        },
+        {
+          "parent_call": 138520,
+          "cultural_identity_call": 138620,
+          "cultural_identity_range": [
+            63551614,
+            63551674
+          ],
+          "heroes_call": 138621,
+          "heroes_range": [
+            63551674,
+            63552214
+          ]
+        },
+        {
+          "parent_call": 139344,
+          "cultural_identity_call": 139452,
+          "cultural_identity_range": [
+            64080088,
+            64080148
+          ],
+          "heroes_call": 139453,
+          "heroes_range": [
+            64080148,
+            64080688
+          ]
+        },
+        {
+          "parent_call": 140373,
+          "cultural_identity_call": 140497,
+          "cultural_identity_range": [
+            64723922,
+            64723982
+          ],
+          "heroes_call": 140498,
+          "heroes_range": [
+            64723982,
+            64724522
+          ]
+        },
+        {
+          "parent_call": 141501,
+          "cultural_identity_call": 141652,
+          "cultural_identity_range": [
+            65401619,
+            65401679
+          ],
+          "heroes_call": 141653,
+          "heroes_range": [
+            65401679,
+            65402219
+          ]
+        },
+        {
+          "parent_call": 142580,
+          "cultural_identity_call": 142680,
+          "cultural_identity_range": [
+            66029197,
+            66029257
+          ],
+          "heroes_call": 142681,
+          "heroes_range": [
+            66029257,
+            66029797
+          ]
+        },
+        {
+          "parent_call": 143408,
+          "cultural_identity_call": 144036,
+          "cultural_identity_range": [
+            66992616,
+            66992676
+          ],
+          "heroes_call": 144037,
+          "heroes_range": [
+            66992676,
+            66993216
+          ]
+        },
+        {
+          "parent_call": 153116,
+          "cultural_identity_call": 153279,
+          "cultural_identity_range": [
+            69453391,
+            69453451
+          ],
+          "heroes_call": 153280,
+          "heroes_range": [
+            69453451,
+            69453991
+          ]
+        }
+      ]
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "trace_relative_path": "evidence/linux-save-normalization/checkpoint-203-owners/trace-captured-1.jsonl.gz",
+      "records": 43,
+      "pairs": [
+        {
+          "parent_call": 327,
+          "cultural_identity_call": 1268,
+          "cultural_identity_range": [
+            5213599,
+            5213659
+          ],
+          "heroes_call": 1269,
+          "heroes_range": [
+            5213659,
+            5214199
+          ]
+        },
+        {
+          "parent_call": 7570,
+          "cultural_identity_call": 7781,
+          "cultural_identity_range": [
+            7328779,
+            7328839
+          ],
+          "heroes_call": 7782,
+          "heroes_range": [
+            7328839,
+            7329379
+          ]
+        },
+        {
+          "parent_call": 9326,
+          "cultural_identity_call": 11071,
+          "cultural_identity_range": [
+            8916056,
+            8916116
+          ],
+          "heroes_call": 11072,
+          "heroes_range": [
+            8916116,
+            8916656
+          ]
+        },
+        {
+          "parent_call": 17861,
+          "cultural_identity_call": 19521,
+          "cultural_identity_range": [
+            12399850,
+            12399910
+          ],
+          "heroes_call": 19522,
+          "heroes_range": [
+            12399910,
+            12400450
+          ]
+        },
+        {
+          "parent_call": 26443,
+          "cultural_identity_call": 27959,
+          "cultural_identity_range": [
+            15967898,
+            15967958
+          ],
+          "heroes_call": 27960,
+          "heroes_range": [
+            15967958,
+            15968498
+          ]
+        },
+        {
+          "parent_call": 34603,
+          "cultural_identity_call": 35768,
+          "cultural_identity_range": [
+            18923570,
+            18923630
+          ],
+          "heroes_call": 35769,
+          "heroes_range": [
+            18923630,
+            18924170
+          ]
+        },
+        {
+          "parent_call": 42347,
+          "cultural_identity_call": 43378,
+          "cultural_identity_range": [
+            21349525,
+            21349585
+          ],
+          "heroes_call": 43379,
+          "heroes_range": [
+            21349585,
+            21350125
+          ]
+        },
+        {
+          "parent_call": 49840,
+          "cultural_identity_call": 51556,
+          "cultural_identity_range": [
+            24553123,
+            24553183
+          ],
+          "heroes_call": 51557,
+          "heroes_range": [
+            24553183,
+            24553723
+          ]
+        },
+        {
+          "parent_call": 58629,
+          "cultural_identity_call": 60374,
+          "cultural_identity_range": [
+            28225093,
+            28225153
+          ],
+          "heroes_call": 60375,
+          "heroes_range": [
+            28225153,
+            28225693
+          ]
+        },
+        {
+          "parent_call": 66963,
+          "cultural_identity_call": 68463,
+          "cultural_identity_range": [
+            31466063,
+            31466123
+          ],
+          "heroes_call": 68464,
+          "heroes_range": [
+            31466123,
+            31466663
+          ]
+        },
+        {
+          "parent_call": 75511,
+          "cultural_identity_call": 77573,
+          "cultural_identity_range": [
+            35408259,
+            35408319
+          ],
+          "heroes_call": 77574,
+          "heroes_range": [
+            35408319,
+            35408859
+          ]
+        },
+        {
+          "parent_call": 84789,
+          "cultural_identity_call": 84937,
+          "cultural_identity_range": [
+            38383958,
+            38384018
+          ],
+          "heroes_call": 84938,
+          "heroes_range": [
+            38384018,
+            38384558
+          ]
+        },
+        {
+          "parent_call": 85830,
+          "cultural_identity_call": 86849,
+          "cultural_identity_range": [
+            39443769,
+            39443829
+          ],
+          "heroes_call": 86850,
+          "heroes_range": [
+            39443829,
+            39444369
+          ]
+        },
+        {
+          "parent_call": 93426,
+          "cultural_identity_call": 93629,
+          "cultural_identity_range": [
+            41697262,
+            41697322
+          ],
+          "heroes_call": 93630,
+          "heroes_range": [
+            41697322,
+            41697862
+          ]
+        },
+        {
+          "parent_call": 94703,
+          "cultural_identity_call": 95468,
+          "cultural_identity_range": [
+            42576135,
+            42576195
+          ],
+          "heroes_call": 95469,
+          "heroes_range": [
+            42576195,
+            42576735
+          ]
+        },
+        {
+          "parent_call": 101404,
+          "cultural_identity_call": 103201,
+          "cultural_identity_range": [
+            45184475,
+            45184535
+          ],
+          "heroes_call": 103202,
+          "heroes_range": [
+            45184535,
+            45185075
+          ]
+        },
+        {
+          "parent_call": 109940,
+          "cultural_identity_call": 111633,
+          "cultural_identity_range": [
+            48759543,
+            48759603
+          ],
+          "heroes_call": 111634,
+          "heroes_range": [
+            48759603,
+            48760143
+          ]
+        },
+        {
+          "parent_call": 118664,
+          "cultural_identity_call": 118806,
+          "cultural_identity_range": [
+            51698600,
+            51698660
+          ],
+          "heroes_call": 118807,
+          "heroes_range": [
+            51698660,
+            51699200
+          ]
+        },
+        {
+          "parent_call": 119718,
+          "cultural_identity_call": 119827,
+          "cultural_identity_range": [
+            52313743,
+            52313803
+          ],
+          "heroes_call": 119828,
+          "heroes_range": [
+            52313803,
+            52314343
+          ]
+        },
+        {
+          "parent_call": 120543,
+          "cultural_identity_call": 120650,
+          "cultural_identity_range": [
+            52833771,
+            52833831
+          ],
+          "heroes_call": 120651,
+          "heroes_range": [
+            52833831,
+            52834371
+          ]
+        },
+        {
+          "parent_call": 121548,
+          "cultural_identity_call": 121648,
+          "cultural_identity_range": [
+            53458495,
+            53458555
+          ],
+          "heroes_call": 121649,
+          "heroes_range": [
+            53458555,
+            53459095
+          ]
+        },
+        {
+          "parent_call": 122409,
+          "cultural_identity_call": 122534,
+          "cultural_identity_range": [
+            53994405,
+            53994465
+          ],
+          "heroes_call": 122535,
+          "heroes_range": [
+            53994465,
+            53995005
+          ]
+        },
+        {
+          "parent_call": 123472,
+          "cultural_identity_call": 123596,
+          "cultural_identity_range": [
+            54637126,
+            54637186
+          ],
+          "heroes_call": 123597,
+          "heroes_range": [
+            54637186,
+            54637726
+          ]
+        },
+        {
+          "parent_call": 124533,
+          "cultural_identity_call": 124658,
+          "cultural_identity_range": [
+            55293905,
+            55293965
+          ],
+          "heroes_call": 124659,
+          "heroes_range": [
+            55293965,
+            55294505
+          ]
+        },
+        {
+          "parent_call": 125641,
+          "cultural_identity_call": 125739,
+          "cultural_identity_range": [
+            55939653,
+            55939713
+          ],
+          "heroes_call": 125740,
+          "heroes_range": [
+            55939713,
+            55940253
+          ]
+        },
+        {
+          "parent_call": 126798,
+          "cultural_identity_call": 126922,
+          "cultural_identity_range": [
+            56599766,
+            56599826
+          ],
+          "heroes_call": 126923,
+          "heroes_range": [
+            56599826,
+            56600366
+          ]
+        },
+        {
+          "parent_call": 127936,
+          "cultural_identity_call": 128027,
+          "cultural_identity_range": [
+            57224039,
+            57224099
+          ],
+          "heroes_call": 128028,
+          "heroes_range": [
+            57224099,
+            57224639
+          ]
+        },
+        {
+          "parent_call": 128723,
+          "cultural_identity_call": 128839,
+          "cultural_identity_range": [
+            57740984,
+            57741044
+          ],
+          "heroes_call": 128840,
+          "heroes_range": [
+            57741044,
+            57741584
+          ]
+        },
+        {
+          "parent_call": 129763,
+          "cultural_identity_call": 129870,
+          "cultural_identity_range": [
+            58371259,
+            58371319
+          ],
+          "heroes_call": 129871,
+          "heroes_range": [
+            58371319,
+            58371859
+          ]
+        },
+        {
+          "parent_call": 130796,
+          "cultural_identity_call": 130948,
+          "cultural_identity_range": [
+            59021174,
+            59021234
+          ],
+          "heroes_call": 130949,
+          "heroes_range": [
+            59021234,
+            59021774
+          ]
+        },
+        {
+          "parent_call": 131903,
+          "cultural_identity_call": 132029,
+          "cultural_identity_range": [
+            59668527,
+            59668587
+          ],
+          "heroes_call": 132030,
+          "heroes_range": [
+            59668587,
+            59669127
+          ]
+        },
+        {
+          "parent_call": 132893,
+          "cultural_identity_call": 133008,
+          "cultural_identity_range": [
+            60305722,
+            60305782
+          ],
+          "heroes_call": 133009,
+          "heroes_range": [
+            60305782,
+            60306322
+          ]
+        },
+        {
+          "parent_call": 134089,
+          "cultural_identity_call": 134205,
+          "cultural_identity_range": [
+            60985957,
+            60986017
+          ],
+          "heroes_call": 134206,
+          "heroes_range": [
+            60986017,
+            60986557
+          ]
+        },
+        {
+          "parent_call": 135338,
+          "cultural_identity_call": 135453,
+          "cultural_identity_range": [
+            61652884,
+            61652944
+          ],
+          "heroes_call": 135454,
+          "heroes_range": [
+            61652944,
+            61653484
+          ]
+        },
+        {
+          "parent_call": 136342,
+          "cultural_identity_call": 136449,
+          "cultural_identity_range": [
+            62283136,
+            62283196
+          ],
+          "heroes_call": 136450,
+          "heroes_range": [
+            62283196,
+            62283736
+          ]
+        },
+        {
+          "parent_call": 137526,
+          "cultural_identity_call": 137642,
+          "cultural_identity_range": [
+            62934434,
+            62934494
+          ],
+          "heroes_call": 137643,
+          "heroes_range": [
+            62934494,
+            62935034
+          ]
+        },
+        {
+          "parent_call": 138520,
+          "cultural_identity_call": 138620,
+          "cultural_identity_range": [
+            63551614,
+            63551674
+          ],
+          "heroes_call": 138621,
+          "heroes_range": [
+            63551674,
+            63552214
+          ]
+        },
+        {
+          "parent_call": 139344,
+          "cultural_identity_call": 139452,
+          "cultural_identity_range": [
+            64080088,
+            64080148
+          ],
+          "heroes_call": 139453,
+          "heroes_range": [
+            64080148,
+            64080688
+          ]
+        },
+        {
+          "parent_call": 140373,
+          "cultural_identity_call": 140497,
+          "cultural_identity_range": [
+            64723922,
+            64723982
+          ],
+          "heroes_call": 140498,
+          "heroes_range": [
+            64723982,
+            64724522
+          ]
+        },
+        {
+          "parent_call": 141501,
+          "cultural_identity_call": 141652,
+          "cultural_identity_range": [
+            65401619,
+            65401679
+          ],
+          "heroes_call": 141653,
+          "heroes_range": [
+            65401679,
+            65402219
+          ]
+        },
+        {
+          "parent_call": 142580,
+          "cultural_identity_call": 142680,
+          "cultural_identity_range": [
+            66029197,
+            66029257
+          ],
+          "heroes_call": 142681,
+          "heroes_range": [
+            66029257,
+            66029797
+          ]
+        },
+        {
+          "parent_call": 143408,
+          "cultural_identity_call": 144036,
+          "cultural_identity_range": [
+            66992616,
+            66992676
+          ],
+          "heroes_call": 144037,
+          "heroes_range": [
+            66992676,
+            66993216
+          ]
+        },
+        {
+          "parent_call": 153116,
+          "cultural_identity_call": 153279,
+          "cultural_identity_range": [
+            69453391,
+            69453451
+          ],
+          "heroes_call": 153280,
+          "heroes_range": [
+            69453451,
+            69453991
+          ]
+        }
+      ]
+    }
+  ],
+  "original_execution": false,
+  "codec_changed": false,
+  "closed_report_changed": false,
+  "private_writes": false,
+  "production_trace_offsets": false,
+  "full_player": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198
+}
