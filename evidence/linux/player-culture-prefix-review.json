@@ -2389,5 +2389,30 @@
   "world_import": false,
   "gameplay_state": false,
   "action_execution": false,
-  "turn_execution": false
+  "turn_execution": false,
+  "final_owner_profile": {
+    "commit": "2143fae",
+    "candidate_sha256": "7c563c56970ee8fcdfe6c0761d091a5361f909c6f95ce1d8415dc62cb2a2b8f0",
+    "closed_archive": "target/frozen/core-player-culture-prefix/7c563c56970ee8fcdfe6c0761d091a5361f909c6f95ce1d8415dc62cb2a2b8f0-69ce855cac97",
+    "source_manifest_sha256": "69ce855cac97f74d3f91bc403368164a10ed42079d34006bff810084e80b2ede",
+    "source_files_verified": 61,
+    "candidate_report_sources_all_verified": true,
+    "method_fingerprints": 681,
+    "audit_source_sha256": "0be7366499835923b15012f661861cb9424982fdbecb910bf639fa62caac2054",
+    "fixtures_match_independent_cursor_items_prefix_tail_digests": true,
+    "source_only_relocations": {
+      "metadata_extra_bytes": 20,
+      "settled_continent_extra_bytes": 4,
+      "passed": true
+    },
+    "production_implementations_unchanged_from_independent_58e166a": true,
+    "source_differences": [
+      "new Culture driver",
+      "core_stream documentation only",
+      "unexported Espionage/Religion/Resources source inventory"
+    ],
+    "old_59_source_archive_preserved": true,
+    "same_executable_hash_after_driver_comment_correction": true,
+    "metadata_release": true
+  }
 }
