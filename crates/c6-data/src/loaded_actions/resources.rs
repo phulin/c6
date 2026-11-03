@@ -346,6 +346,11 @@ pub struct Bound<'a> {
     binding: WireBinding,
 }
 impl Bound<'_> {
+    /// Decoder destination validated by this resource binding. Observed source
+    /// profiles keep their separate identities rather than adopting this role.
+    pub fn destination_binding(&self) -> &WireBinding {
+        &self.binding
+    }
     /// Reuse only the immutable resource comparison after a caller has admitted
     /// a separately pinned rules capture. This does not issue mutable facts.
     pub(crate) fn validate_static_runtime(&self, runtime_bytes: &[u8]) -> Result<(), Error> {
