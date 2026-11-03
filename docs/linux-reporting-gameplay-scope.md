@@ -120,9 +120,15 @@ delegates, translators, queued events, lock semantics or scripting callbacks.
 Those remain separate source/capture boundaries rather than a requirement to
 copy desktop receiver storage.
 
-Core tracked archive dirty-index history is a distinct dependency and is not
-excluded. The raw 89,198-byte Save→Load difference remains unclassified and
-unmasked; save production is not a gameplay action-acceptance gate.
+Core tracked archive dirty-index history is distinct from these host vectors.
+The newer [archive gameplay scope](linux-load-archive-gameplay-scope.md) excludes
+the pinned Unit/Formation native dirty-tree history and sync registration
+acceptance from local-authority action requirements, under its verified wrapper
+and no-resynchronization conditions. Actual field mutations, ordering and
+required report/subscriber effects remain exact; native snapshot resynchronization
+is gameplay-mutating and unsupported. The raw 89,198-byte Save→Load difference
+remains unclassified and unmasked; save production is not a gameplay
+action-acceptance gate.
 
 Reproduce with:
 
