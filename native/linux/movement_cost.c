@@ -77,7 +77,7 @@ typedef struct {
     N1 definition_count[5];
     I1 integer_cost[3];
     float (*route_cost)(const void *);
-    B1 free_embark;
+    B1 free_embark,terrain_water;
     I1 parameter[4];
     bool (*river_crossing)(const void *,const void *,const void *);
     bool (*bridge)(const void *,const void *,const void *);
@@ -141,6 +141,7 @@ static int bind_api(void *module,Api *a) {
     BIND(definition_count[2],0x1fe8290); BIND(definition_count[3],0x2300a80); BIND(definition_count[4],0x1fe8270);
     BIND(integer_cost[0],0x2bcad60); BIND(integer_cost[1],0x2bcad70); BIND(integer_cost[2],0x2bcad80);
     BIND(route_cost,0x2b98630); BIND(free_embark,0x2beefb0);
+    BIND(terrain_water,0x2bcadc0);
     BIND(parameter[0],0x2bcad50); BIND(parameter[1],0x2beef80);
     BIND(parameter[2],0x2beef90); BIND(parameter[3],0x2beefc0);
     BIND(river_crossing,0x2bed3b0); BIND(bridge,0x2bed460); BIND(slowed,0x2949740);
@@ -198,6 +199,7 @@ static int registry_json(FILE *out,const Api *a) {
             const void *definition=a->definition_at[kind](collection,i);if(!definition)return 202;
             fprintf(out,"%s{\"query\":%u,\"index\":%u,\"hash\":%u",i?",":"",i,a->definition_index[kind](definition),a->definition_hash[kind](definition));
             if(kind<3)fprintf(out,",\"integer_cost\":%d",a->integer_cost[kind](definition));
+            if(kind==0)fprintf(out,",\"is_water\":%s",boolean(a->terrain_water(definition)));
             if(kind==3){float value=a->route_cost(definition);uint32_t bits;memcpy(&bits,&value,4);fprintf(out,",\"float_bits\":%u",bits);}
             if(kind==4)fprintf(out,",\"free_embark\":%s",boolean(a->free_embark(definition)));
             fputc('}',out);
@@ -376,7 +378,7 @@ int c6_linux_movement_cost_probe(void *module,void *context) {
     observed=a.game_map(game);
     if(observed!=map){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure game_map actual %p expected %p\n",observed,map);return 206;}
     uintptr_t map_vptr=pointer_at(map,0);
-    if(map_vptr!=a.base+0x3ad5360){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure map_vptr actual 0x%" PRIxPTR " expected 0x%" PRIxPTR "\n",map_vptr,a.base+0x3ad5360);return 206;}
+    if(map_vptr!=a.base+0x3afb160){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure map_vptr actual 0x%" PRIxPTR " expected 0x%" PRIxPTR "\n",map_vptr,a.base+0x3afb160);return 206;}
     uintptr_t plot_target=pointer_at((const void *)map_vptr,0x78);
     if(plot_target!=a.base+0x2a48ba0){fprintf(stderr,"C6_LINUX_MOVEMENT_COST admission_failure map_get_plot actual 0x%" PRIxPTR " expected 0x%" PRIxPTR "\n",plot_target,a.base+0x2a48ba0);return 206;}
     const void *manager=a.player_manager(game);
@@ -398,7 +400,7 @@ int c6_linux_movement_cost_probe(void *module,void *context) {
      * normalization differences and are never treated as hidden-byte exclusions. */
     for(unsigned i=0;i<2;i++){rc=require_idle(&a,module,context);if(!rc)rc=c6_linux_context_save(module,context,paths[i]);if(!rc)rc=require_idle(&a,module,context);if(rc)return rc;}
     FILE *out=fopen(output,"wx");if(!out)return 207;
-    fprintf(out,"{\"kind\":\"header\",\"schema\":\"c6-linux-movement-cost-native-v1\",\"game_sha256\":\"a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa\",\"host_sha256\":\"106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4\",\"profile_sha256\":\"%s\",\"execute\":%s,\"options\":0,\"actual_move_options_available\":false,\"mxcsr\":%u,\"formation_limit\":%u,\"complete_affected_state\":false,\"complete_rng_inventory\":false}\n",profile,boolean(execute),mxcsr,limit);
+    fprintf(out,"{\"kind\":\"header\",\"schema\":\"c6-linux-movement-cost-native-v1\",\"probe_contract_revision\":\"xp2-map-and-terrain-water-2\",\"game_sha256\":\"a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa\",\"host_sha256\":\"106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4\",\"profile_sha256\":\"%s\",\"execute\":%s,\"options\":0,\"actual_move_options_available\":false,\"mxcsr\":%u,\"formation_limit\":%u,\"complete_affected_state\":false,\"complete_rng_inventory\":false}\n",profile,boolean(execute),mxcsr,limit);
     fprintf(out,"{\"kind\":\"attestation\",\"game\":\"0x%" PRIxPTR "\",\"globals_game\":\"0x%" PRIxPTR "\",\"map\":\"0x%" PRIxPTR "\",\"manager\":\"0x%" PRIxPTR "\",\"rules\":\"0x%" PRIxPTR "\",\"parameters\":\"0x%" PRIxPTR "\",\"player_table_slots\":%" PRIuPTR ",\"map_width\":%d,\"map_height\":%d,\"wrap_x\":%s,\"wrap_y\":%s,\"map_vptr\":",(uintptr_t)game,(uintptr_t)a.current_game(),(uintptr_t)map,(uintptr_t)manager,(uintptr_t)rules,(uintptr_t)parameters,(player_end-player_begin)/8,a.width(map),a.height(map),boolean(a.wrap_x(map)),boolean(a.wrap_y(map)));
     identity_json(out,map_vptr);fputs(",\"map_get_plot_target\":",out);identity_json(out,pointer_at((const void *)map_vptr,0x78));
     fputs(",\"quiescence_hook\":",out);identity_json(out,(uintptr_t)a.quiescent);fputs("}\n",out);

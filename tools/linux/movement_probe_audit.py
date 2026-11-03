@@ -529,6 +529,11 @@ ENTRYPOINTS = [('map',
   11,
   '_ZNK8GameCore10Definition8District12IsFreeEmbarkEv',
   'afc4ac11f25f4ee915256330f4b30992a2f2953b2d0092152c87a60ebcbaccf2'),
+ ('terrain_water',
+  45919680,
+  9,
+  '_ZNK8GameCore10Definition7Terrain7IsWaterEv',
+  'c5691f4fbd89c10e9133b30255a8717ea46d6779c23b18ea6fd992b19c406171'),
  ('parameter[0]',
   45919568,
   7,
@@ -648,7 +653,58 @@ SUPPORT = [('manager_initialize',
   33341872,
   12,
   '_ZN8GameCore6Player7Manager9GetPlayerENS_11PlayerTypesE',
-  '47fe7c239b1abbb63533198084d4b834d08e20f997a7b46ccce8700c65b4a2fb')]
+  '47fe7c239b1abbb63533198084d4b834d08e20f997a7b46ccce8700c65b4a2fb'),
+ ('xp2_game_create_map',
+  47677216,
+  114,
+  '_ZN8GameCore3XP24Game8Instance9CreateMapEv',
+  'dbe956df6bdd35b134d7a882c49c1612240a9cdc677475b541f43d6cbda4dacc'),
+ ('xp2_map_constructor',
+  47691120,
+  25,
+  '_ZN8GameCore3XP23Map8InstanceC1EPNS_4Game8InstanceE',
+  '4ef9ffb6a9c7cf6dd71f046dd2d72a3fc93f5d0bf8fd25d87018ed5bd4e44c35'),
+ ('plot_constructor',
+  45911152,
+  53,
+  '_ZN8GameCore3Map4Plot8InstanceC1Ev',
+  'e87704dc4307eb2e0205e0d27d308d93f5fb2bd434339b9567fc72d193666ba2'),
+ ('plot_copy_constructor',
+  44342432,
+  81,
+  '_ZN8GameCore3Map4Plot8InstanceC2ERKS2_',
+  'e94a2a9f7bc863ded447dfa5cdeb7939c588b47939fc6b749eebc24928714d60'),
+ ('city_attributes_constructor',
+  41663472,
+  32,
+  '_ZN8GameCore3Map4Plot14CityAttributesC2Ev',
+  '678fcdd56f78ea2f47ce6b9d44f35e598b66e1072bd4b45a808bec4629268595'),
+ ('city_attributes_copy_constructor',
+  37906560,
+  54,
+  '_ZN8GameCore3Map4Plot14CityAttributesC2ERKS2_',
+  '5498fdd816e88dd17f48fc22f16a1b65679b7126517455133fcbbb57999d3d49'),
+ ('city_attributes_move_constructor',
+  41663200,
+  54,
+  '_ZN8GameCore3Map4Plot14CityAttributesC2EOS2_',
+  '23e7cfed9518b1282c1440c0b631bcdcb56a039304fd25f47ec4f0b64967cc94'),
+ ('map_init_plots',
+  44334912,
+  294,
+  '_ZN8GameCore3Map8Instance9InitPlotsEv',
+  '87f8f77037c616b3ff4f3ed54404b26706934ffd9f8afca20b02426ea19f6cde'),
+ ('formation_constructor',
+  43235056,
+  1782,
+  '_ZN8GameCore9Formation8InstanceC1Ev',
+  'fcf174dc472e83a96e735bb44d324d8788a17870f71fcd700de035de2efa16c7'),
+ ('formation_archive_constructor',
+  43245200,
+  25,
+  '_ZN26FAutoArchiveClassContainerIN8GameCore9Formation8InstanceEEC2ERS2_RK18AutoVariableStringP18FGameSyncInterface',
+  'ab2738842f4fdf136f5bef6a89542ee22c291ec5c3b475a2fb28bf0371599b28')]
+CONSTRUCTION_VTABLES = [(61890832, 61845840, '_ZTVN8GameCore3XP23Map8InstanceE'), (61940920, 61744016, '_ZTVN8GameCore3Map4Plot8InstanceE'), (61981464, 61743952, '_ZTVN8GameCore3Map4Plot14CityAttributesE'), (61923856, 61632760, '_ZTV26FAutoArchiveClassContainerIN8GameCore9Formation8InstanceEE')]
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -681,11 +737,19 @@ def main():
                 f'--start-address={address}', f'--stop-address={address+size}',
                 str(a.assets / 'libGameCore_XP2.so')])
             (a.private_output / f'{address:x}.asm').write_bytes(output)
-    for slot, target in [(0x3ad5350 + 16 + 0x78, 0x2a48ba0),
+    for slot, target in [(0x3afb150 + 16 + 0x78, 0x2a48ba0),
                          (0x3ae2390 + 16 + 0x38, 0x2bca780),
                          (0x3ae2390 + 16 + 0x48, 0x2bca7b0)]:
         if game.relocated_pointer(slot) != target:
             raise ValueError('original movement owner virtual slot identity differs')
+    relocations = subprocess.check_output(['readelf', '-rW', str(a.assets / 'libGameCore_XP2.so')], text=True)
+    for slot, target, symbol in CONSTRUCTION_VTABLES:
+        pattern = (r'^0*' + f'{slot:x}' + r'\s+\S+\s+R_X86_64_GLOB_DAT\s+0*'
+                   + f'{target:x}' + r'\s+' + re.escape(symbol) + r' \+ 0$')
+        if not re.search(pattern, relocations, re.M):
+            raise ValueError('original concrete constructor vtable relocation differs: ' + symbol)
+    if 'map_vptr!=a.base+0x3afb160' not in source.read_text():
+        raise ValueError('probe must require the exact original XP2 Map address point')
     source_paths = ['tools/linux/movement_probe_audit.py', 'docs/linux-movement-cost-native.md', 'native/linux/movement_cost.c', 'native/linux/movement_cost.h',
                     'crates/c6-core/src/movement.rs',
                     'crates/c6-differential/src/bin/c6-movement-cost-candidate.rs']
@@ -698,12 +762,15 @@ def main():
     report = dict(schema='c6-linux-movement-cost-probe-contract-v1',
         game_sha256=GAME_SHA, host_sha256=HOST_SHA,
         sources={path: digest(ROOT / path) for path in source_paths},
-        original_entrypoints=methods, frozen_builds=builds,
+        original_entrypoints=methods,
+        construction_vtables=[dict(got=hex(slot), table=hex(target), address_point=hex(target+16), symbol=symbol) for slot,target,symbol in CONSTRUCTION_VTABLES],
+        correction='Native diagnostic2 observed XP2 Map point3afb160; old baseMap point3ad5360 guard was a probe defect. XP2 constructor preserves base subobject offset0; inherited GetPlot+78 target2a48ba0 unchanged.',
+        additive_export='probe_contract_revision xp2-map-and-terrain-water-2 exports original Terrain.IsWater in live terrain registry; immutable scalar Rust candidate unchanged.', frozen_builds=builds,
         native_execution=False,
         lifecycle='caller-gated loaded genuine Core, exact rules/DLC/mod/configuration manifest, quiescent native worker and policy/dispatch guards; four original Core saves plus separate fresh control/cost processes',
         ownership='borrowed original Unit/Formation/Plot/CityAttributes/District; native-constructed Values/FixedPoint/ID-vector outputs only; no move/turn operation or private game-field writes',
         options='zero caller-selected query options; genuine requested destination Plot as exception Plot; not the actual MoveTo options or executed movement',
-        owner_guards='original Manager IsInitialized and actual ID-to-player vector extent>=64 before scope0..63; Game/Globals/Map receiver equality; original Map/Plot/CityAttributes vptrs and called virtual targets; native quiescence hook before every Save/fact batch and after each cost call, nonzero _exits without post-state/cleanup',
+        owner_guards='original Manager IsInitialized and actual ID-to-player vector extent>=64 before scope0..63; Game/Globals/Map receiver equality; original XP2Map/Plot/CityAttributes vptrs and called virtual targets; native quiescence hook before every Save/fact batch and after each cost call, nonzero _exits without post-state/cleanup',
         numerical_environment='x86_64 binary32 FE_TONEAREST, masked exceptions, DAZ/FTZ off; reject rather than modify MXCSR',
         gaps=['no reviewed or executed original runtime profile yet',
               'runtime transitive symbol/provider binding observations still required',
