@@ -2,7 +2,7 @@
   "schema": "c6-linux-player-ai-state-roles-v1",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
-  "audit_source_sha256": "f5b707805ffee4853c03494e3420750f2a73c83cca367f4d0774627b3fb25b8c",
+  "audit_source_sha256": "ce9a5554667bc8572c58b3833f2fe87993c2a16e2b8439eee61c37cb977c01ee",
   "methods": [
     {
       "address": "0x201cf60",
@@ -9623,5 +9623,22 @@
   "actions": false,
   "turns": false,
   "reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
-  "reference_role": "discovery only"
+  "reference_role": "discovery only",
+  "planning_identity_candidate": {
+    "source_commit": "49d32e7851a7d6439b65262aae6eb3811cd17181",
+    "archive_sha256": "d78a8ec553bdab9fd7077a27b0970f2e1995e6228cf8b4b5df33e9028a748926",
+    "module_sha256": "0b1827b953da5fdbcc88349ea15186c4b7aa964b73275cfba8d618022c94d5f1",
+    "harness_sha256": "387b7721267e62c71b7194095691f1000ffeef9c753cbd83c7098e2053c4e9df",
+    "candidate_sha256": "6708de3ce9bdb03d063b448d77c23e7d475eeec627466901e00325e79d379884",
+    "records": 86,
+    "exact_native_record_byte_caps_checked": true,
+    "every_truncation_rejected": true,
+    "short_byte_caps_rejected": true,
+    "zero_item_cap_supported": true,
+    "source_tests": 2,
+    "strict_trailing_rejected": true,
+    "prefix_exact_consumption": true,
+    "original_execution": false,
+    "native_read_side_effects_reproduced": false
+  }
 }
