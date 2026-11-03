@@ -4,7 +4,7 @@ The supplied Linux XP2 profile is the sole execution and acceptance target for t
 
 The user has explicitly set the decision boundary: **all player decisions come from external policies**. Exact gameplay state/RNG and rules/upkeep remain required; only proven native AI planning internals are outside scope. AI-related gameplay data, diplomacy, deals and NPC state are not excluded by name. Unknown state remains unmasked. All 89,198 raw roundtrip byte differences now have a bounded classification, while complete live-state and behavioral equivalence remain unproven.
 
-**Native XP2 Core state loading now works under an identified diagnostic profile. The complete Rust simulator remains unimplemented.** Native read-only legality and a complete bounded no-action control now pass on actual loaded units. The first real Request/Network.Update attempt fails delivery without queueing or executing an action. Full-host saved-load finalization, complete live-state reconstruction, mutating action execution and complete turns remain unverified.
+**Native XP2 Core state loading now works under an identified diagnostic profile. The complete Rust simulator remains unimplemented.** Native read-only legality and a complete bounded no-action control now pass on actual loaded units. Original full-host Request delivery remains blocked by its loading gate. A separate conditional Core SkipTurn now executes in two isolated runs with matching post-state streams, quiescence and cleanup; its historical reporting observer has explicit ABI/overload limits and corrected-profile native validation is pending. Full-host finalization, complete affected-state parity and complete turns remain unverified.
 
 | Deliverable | Verified scope and remaining boundary |
 | --- | --- |
@@ -18,13 +18,17 @@ The user has explicitly set the decision boundary: **all player decisions come f
 | Read-only loaded game facade | Both input profiles report turn 592, phase 0, local player 0 and false pending/update/processing flags; serialized before/after equality passes |
 | Native actor/legality observation | All 36 actual player units visited; SkipTurn CanStart true for two; facade/readiness observations and Core Saves unchanged, cleanup passes; no request or action executed |
 | Native control/dispatch | Original controller/cache and control 6 pass with repeated live observations and five unchanged Core Saves; Request attempt returns 229 with no queued/received/executed message and observed state unchanged |
+| Conditional Core SkipTurn | Fresh native command queued/received/executed in two isolated runs; matching post-Save and complete synchronized cleanup; no full-host admission or complete reporting/provider-effect claim |
+| Bounded Rust SkipTurn state | Actual complete Unit/Formation record projection matches; legality/live fields/reporting delivery and broader aftermath remain outside support |
+| Additional typed wire components | Current-fixture RequirementSystem and notification records supported; no requirement evaluation or notification subscriber behavior |
+| Loaded Game-sync randomized damage | 80 real transitions match; all observed archive entries already dirty; first insertion and complete combat/RNG inventory unverified |
 | Whole-save request preparation | Original RequestLoad retains an owned full-container copy and reset releases it; CheckRequest/Begin and later host finalization unverified |
 | Observed serialized gameplay RNG | One complete 18-byte Game.m_kSyncRandom record is equal; all live RNG objects and omitted lock/lifecycle state remain unaudited |
 | Typed trade classification/codec | All keyed fields in 179 origins / 1,571 edges match; wire iteration order differs; Rust exactly roundtrips both native graphs and every traced Route boundary, not trade gameplay |
 | Unit/Formation/queue wire | 1,262 Unit and 1,250 Formation records repeated across two canonical streams; exact supported wire roundtrips and nested boundaries, no live object reconstruction |
 | Definition registries | Six actual Yield and 116 actual Unit definitions observed; all 40 Unit type hashes in the captures resolve against the benchmark Unit registry only |
 | Rust primitives | Isolated Linux Random/normal record and stateless coordinate validity/distance match original code |
-| Complete Rust state/actions/turns | Unsupported; no mutating native action or complete-turn differential comparison |
+| Complete Rust state/actions/turns | Unsupported; conditional native Core execution and Rust projections do not establish full action or turn parity |
 
 ## Diagnostic profile and limits
 
