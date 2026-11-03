@@ -9,6 +9,7 @@ use std::{collections::HashMap, fmt, fs, path::Path};
 pub mod city_movement;
 pub mod movement;
 pub mod registry;
+pub mod unit_operation_manager;
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
 const LINUX_BASE_MANIFEST: &str = include_str!("../../../evidence/linux/rules-base-snapshot.json");
