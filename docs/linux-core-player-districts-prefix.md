@@ -41,10 +41,10 @@ The audit gates exact Linux Core `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd88
 
 Source-only cases add 20 bytes of framed Context metadata or one four-byte settled-Continent entry. The decoder relocates subsequent boundaries, roundtrips the altered typed region and preserves the untouched tail. These are grammar checks, not new native gameplay fixtures. Exact/one-short limits, truncations, model inconsistencies and invalid versions/bools have focused tests and independent composition checks.
 
-Reproduce this source profile with:
+Replay this immutable local profile with (a source rebuild instead requires its exact committed source snapshot):
 
 ```sh
-python3 tools/linux/core_player_districts_prefix_audit.py --output target/linux/core-player-districts-prefix.json
+python3 tools/linux/core_player_districts_prefix_audit.py --frozen-profile target/frozen/core-player-districts-prefix/5edcd6dfd2cdf669600d06b571a6542cee440b610902f57ff46d899d3ff196b0 --output target/linux/core-player-districts-prefix.json
 cargo test -p c6-core core_player
 cargo test -p c6-core core_stream
 ```
