@@ -540,7 +540,8 @@
     "primary_pool_clear_reserve_before_callbacks": true,
     "game_read_map_wrapper": "0x2a46ff0,20bytes; one concrete Read",
     "one_saved_plot_vector_pass": true,
-    "saved_plot_length_must_equal_positive_dimensions": true
+    "saved_plot_length_must_equal_positive_dimensions": true,
+    "saved_plot_vector_resize_call_retained_without_length_change": true
   },
   "accepted_bound_conditions": [
     "positive width and height; P>0",
@@ -644,7 +645,8 @@
   "indirect_offset_190_inventory": {
     "target_internal_call_or_jmp_sites": 0,
     "exports_vtable_entry": "0x3af0200",
-    "exports_receiver_slot": "0x190"
+    "exports_receiver_slot": "0x190",
+    "scan_kind": "direct memory-operand call/jmp offset; not a universal register-held dispatch analysis"
   },
   "heterogeneous_indirect_offset_38_inventory": {
     "sites": 2992,
