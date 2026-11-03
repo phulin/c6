@@ -86,3 +86,14 @@ authentication. Consuming the snapshot claim prevents replay after simulation
 advancement. Reinitialization cannot restore old arrays or overwrite live
 Formation state. Five focused source tests cover these authority boundaries;
 actual-record mutation regressions and independent review remain separate.
+
+`install_game_relations` additionally accepts an explicitly attributed owner
+export from the same immutable snapshot. It checks the SavedOutput source,
+full image identity/length, bounded owner span and decoded prefix length,
+then calls the current component reader and native-order definition
+initializer once. The owning data adapter validates the original owner trace
+and resource preimages. This is not an offset-based general Core loader:
+the byte-zero consumed boundary stays unchanged and every unclassified suffix
+remains in the original image. Later relationship queries borrow the owned
+authority without a revision restriction. Reinstalling old captured values
+after advancement is rejected.

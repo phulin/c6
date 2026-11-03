@@ -91,6 +91,8 @@ mod tests {
             limits: AssemblyLimits::default(),
             revision: 0,
             observed_snapshot: None,
+            game_relations: None,
+            game_relations_source: None,
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -281,6 +283,33 @@ mod tests {
             Err(Error::AlreadyBound)
         ));
     }
+    #[test]
+    fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
+        let mut s = state();
+        let mut w = ComponentSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: s.binding.core_sha256,
+            snapshot_bytes: s.source_image().len(),
+            owner_trace_sha256: [5; 32],
+            owner_range: [0, usize::MAX],
+            decoded_prefix_bytes: 0,
+        };
+        assert!(matches!(
+            s.install_game_relations(w.clone(), &[], &[], unit::Limits::default()),
+            Err(Error::Binding)
+        ));
+        w.owner_range = [0, 1];
+        w.snapshot_sha256[0] ^= 1;
+        assert!(matches!(
+            s.install_game_relations(w, &[], &[], unit::Limits::default()),
+            Err(Error::Binding)
+        ));
+        assert!(matches!(
+            s.game_relations(),
+            Err(Error::Missing(MissingInput::GameRelations))
+        ));
+        assert!(s.is_pristine());
+    }
 }
 impl AsRef<[u8]> for CoreImage {
     fn as_ref(&self) -> &[u8] {
@@ -307,6 +336,7 @@ pub enum Error {
     AlreadyInitialized,
     AlreadyBound,
     NotPristine,
+    GameRelations(crate::game_diplomatic_relations::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -326,6 +356,7 @@ pub enum MissingInput {
     FormationRuntime,
     ProcessingAutomation,
     GamePause,
+    GameRelations,
 }
 
 /// Actual supplied live facts, distinct from saved flags and roster presence.
@@ -359,6 +390,16 @@ pub struct ObservedSnapshotWitness {
     pub capture_runtime_sha256: [u8; 32],
     pub capture_facts_sha256: [u8; 32],
     pub capture_configuration_sha256: [u8; 32],
+}
+/// A separately attributed component export, not a general Core section index.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ComponentSnapshotWitness {
+    pub source_role: core_player::initialization::WireRole,
+    pub snapshot_sha256: [u8; 32],
+    pub snapshot_bytes: usize,
+    pub owner_trace_sha256: [u8; 32],
+    pub owner_range: [usize; 2],
+    pub decoded_prefix_bytes: usize,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct AssemblyLimits {
@@ -479,6 +520,8 @@ pub struct LoadedState {
     limits: AssemblyLimits,
     revision: u64,
     observed_snapshot: Option<ObservedSnapshotWitness>,
+    game_relations: Option<crate::game_diplomatic_relations::GameDiplomaticRelations>,
+    game_relations_source: Option<ComponentSnapshotWitness>,
 }
 fn reserved<T>(n: usize) -> Result<Vec<T>, Error> {
     n.checked_mul(std::mem::size_of::<T>())
@@ -592,6 +635,8 @@ impl LoadedState {
             limits,
             revision: 0,
             observed_snapshot: None,
+            game_relations: None,
+            game_relations_source: None,
         })
     }
     pub fn world(&self) -> &world::World {
@@ -620,6 +665,58 @@ impl LoadedState {
     }
     pub fn observed_snapshot(&self) -> Option<&ObservedSnapshotWitness> {
         self.observed_snapshot.as_ref()
+    }
+    pub fn game_relations(
+        &self,
+    ) -> Result<&crate::game_diplomatic_relations::GameDiplomaticRelations, Error> {
+        self.game_relations
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::GameRelations))
+    }
+    pub fn game_relations_source(&self) -> Option<&ComponentSnapshotWitness> {
+        self.game_relations_source.as_ref()
+    }
+    /// Decode only an explicitly attributed source-owner export; the general
+    /// byte-zero reader's consumed boundary is unchanged. Definition inputs must
+    /// be admitted by the resource adapter, not guessed from saved words.
+    pub fn install_game_relations(
+        &mut self,
+        witness: ComponentSnapshotWitness,
+        war_hashes: &[u32],
+        alliances: &[(u32, i32)],
+        limits: unit::Limits,
+    ) -> Result<(), Error> {
+        if self.game_relations.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+            || witness.snapshot_sha256 != self.binding.core_sha256
+            || witness.snapshot_bytes != self.image.as_ref().len()
+            || witness.owner_range[0] >= witness.owner_range[1]
+        {
+            return Err(Error::Binding);
+        }
+        let bytes = self
+            .image
+            .as_ref()
+            .get(witness.owner_range[0]..witness.owner_range[1])
+            .ok_or(Error::Binding)?;
+        let decoded =
+            crate::game_diplomatic_relations::GameDiplomaticRelations::decode_prefix(bytes, limits)
+                .map_err(Error::GameRelations)?;
+        if decoded.consumed != witness.decoded_prefix_bytes {
+            return Err(Error::Binding);
+        }
+        let mut owner = decoded.state;
+        owner
+            .initialize_definitions(war_hashes, alliances)
+            .map_err(Error::GameRelations)?;
+        self.game_relations = Some(owner);
+        self.game_relations_source = Some(witness);
+        Ok(())
     }
     fn require_initial_controls(&self) -> Result<(), Error> {
         if self.controls.is_some() || self.observed_snapshot.is_some() {
