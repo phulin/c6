@@ -27,6 +27,7 @@ pub mod player_districts;
 pub mod player_eras;
 pub mod player_espionage;
 pub mod player_great_people_points;
+pub mod player_ai_identity;
 pub mod player_improvements;
 pub mod player_influence;
 pub mod player_quests;
