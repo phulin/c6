@@ -380,3 +380,5 @@ pub mod player_ai_targets;
 pub mod player_ai_behavior_tree;
 
 pub mod unit_operation_interruption;
+
+pub mod game_global_ai;
