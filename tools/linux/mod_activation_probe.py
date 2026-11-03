@@ -253,6 +253,7 @@ def main():
     if args.military_initialization_observer:
         if not game_input or not args.prepare_main_thread or not args.cleanup or not args.military_observer_plan or not args.military_observer_directory or not args.saved_configuration or not args.configure or not args.game_save_output or not args.game_save_repeat_output or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir,args.request_load_save,args.game_load_observe)):
             parser.error('Military observer requires separate ordinary main-thread Core Load/two Saves/cleanup fixture and frozen observer plan')
+        if not args.prepare_only and not args.expected_configuration:parser.error('Military original execution requires exact admitted expected configuration')
         military_directory=args.military_observer_directory.resolve()
         if not military_directory.is_dir() or not military_directory.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('Military observer directory must be private')
         for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json'):
@@ -947,7 +948,10 @@ def main():
     try:
         if args.military_initialization_observer:
             runtime_prepared=military_directory/'runtime-prepared.json'
-            runtime_prepared.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'execution_paths':{'preload':str(archived_preload),'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}}}},indent=2)+'\n')
+            admitted_prepared=military_directory/'prepared.json'
+            admitted=json.loads(admitted_prepared.read_text())
+            if admitted['configuration']!=identity or admitted['configuration_sha256']!=configuration_identity or admitted.get('native_execution_performed') is not False:raise SystemExit('Military admitted preparation differs')
+            with runtime_prepared.open('xb') as stream:stream.write(admitted_prepared.read_bytes())
             from military_observer_runner import run as military_run
             code,out,err=military_run(host,env,work,args.timeout,military_directory,runtime_prepared,military_plan)
         else:

@@ -94,7 +94,7 @@ def run(host,env,work,timeout,directory,prepared,plan):
     prepared_data=json.loads(Path(prepared).read_text());cfg=prepared_data['configuration']
     source_files={str(ROOT/name):value for name,value in cfg['sources'].items()};source_files[str(ROOT/'tools/linux/mod_activation_probe.py')]=cfg['runner_sha256']
     gate=dict(schema='c6-linux-military-caller-runtime-v1',report_path=str(prepared),report_sha256=sha(prepared),configuration_sha256=prepared_data['configuration_sha256'],source_files=source_files)
-    manifest=json.loads(Path(plan).read_text());manifest['runtime_gate']=gate
+    manifest=json.loads(Path(plan).read_text());require(manifest==cfg['lower_core_military_initialization_observer']['static_plan'] and sha(plan)==cfg['lower_core_military_initialization_observer']['static_plan_sha256'],'static plan drift after admission');manifest['runtime_gate']=gate
     runtime_plan=directory/'runtime-plan.json';runtime_plan.write_text(json.dumps(manifest,indent=2)+'\n')
     command=directory/'capture.gdb';lines=['set pagination off','set confirm off','set debuginfod enabled off','set breakpoint pending on','set non-stop off','set startup-with-shell off']
     for key,value in env.items():
