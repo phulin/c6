@@ -10,6 +10,7 @@ pub enum Error {
     InvalidBool(u8),
     Version { expected: u32, actual: u32 },
     InvalidContainer,
+    InvalidPrefix,
     OwnerMismatch { requested: i32, record: i32 },
     Formation(unit::Error),
     Component(pc::Error),
@@ -467,6 +468,10 @@ mod tests {
         assert_eq!(value.boundary, Boundary::PlayerDiplomacy);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
+        assert_eq!(
+            value.encode_prefix_with_items(Limits::default()).unwrap(),
+            (bytes.clone(), items)
+        );
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
         assert_eq!(p.header.owner, 64);
@@ -520,6 +525,14 @@ mod tests {
         assert_eq!((n, i), (24, 0));
         assert_eq!(v.boundary, Boundary::AfterEmptyPlayerManager);
         assert_eq!(v.unfinished_player_entries, 0);
+        assert_eq!(
+            v.encode_prefix_with_items(Limits {
+                max_bytes: 24,
+                max_items: 0
+            })
+            .unwrap(),
+            (bytes[..24].to_vec(), 0)
+        );
         assert!(v.first_player.is_none());
     }
     #[test]
@@ -612,5 +625,287 @@ mod tests {
             r.recycled(Reader::u32),
             Err(Error::InvalidContainer)
         ));
+    }
+}
+
+struct Writer {
+    bytes: Vec<u8>,
+    items: usize,
+    limits: Limits,
+}
+impl Writer {
+    fn remaining(&self) -> Limits {
+        Limits {
+            max_bytes: self.limits.max_bytes - self.bytes.len(),
+            max_items: self.limits.max_items - self.items,
+        }
+    }
+    fn charge(&mut self, n: usize) -> Result<(), Error> {
+        let items = self.items.checked_add(n).ok_or(Error::ResourceLimit)?;
+        if items > self.limits.max_items {
+            return Err(Error::ResourceLimit);
+        }
+        self.items = items;
+        Ok(())
+    }
+    fn raw(&mut self, bytes: &[u8]) -> Result<(), Error> {
+        if bytes.len() > self.remaining().max_bytes {
+            return Err(Error::ResourceLimit);
+        }
+        self.bytes
+            .try_reserve(bytes.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        self.bytes.extend_from_slice(bytes);
+        Ok(())
+    }
+    fn word(&mut self, v: u32) -> Result<(), Error> {
+        self.raw(&v.to_le_bytes())
+    }
+    fn int(&mut self, v: i32) -> Result<(), Error> {
+        self.word(v as u32)
+    }
+    fn boolean(&mut self, v: bool) -> Result<(), Error> {
+        self.raw(&[u8::from(v)])
+    }
+    fn coord(&mut self, v: PlotCoord) -> Result<(), Error> {
+        self.int(v.x)?;
+        self.int(v.y)
+    }
+    fn count(&mut self, n: usize) -> Result<(), Error> {
+        self.charge(n)?;
+        self.word(u32::try_from(n).map_err(|_| Error::ResourceLimit)?)
+    }
+    fn hashes(&mut self, v: &[u32]) -> Result<(), Error> {
+        self.count(v.len())?;
+        for h in v {
+            self.word(*h)?;
+        }
+        Ok(())
+    }
+    fn component<T, E>(
+        &mut self,
+        v: &T,
+        encode: impl FnOnce(&T, Limits) -> Result<(Vec<u8>, usize), E>,
+        error: impl FnOnce(E) -> Error,
+    ) -> Result<(), Error> {
+        let (bytes, items) = encode(v, self.remaining()).map_err(error)?;
+        self.charge(items)?;
+        self.raw(&bytes)
+    }
+    fn religion(&mut self, v: &Religion) -> Result<(), Error> {
+        self.word(7)?;
+        self.int(v.minimum_faith_for_next_pantheon)?;
+        self.int(v.next_pantheon_founder)?;
+        self.count(v.records.len())?;
+        for v in &v.records {
+            self.word(7)?;
+            self.word(v.religion_hash)?;
+            self.int(v.founder)?;
+            self.int(v.founded_turn)?;
+            self.coord(v.holy_city)?;
+            self.count(v.custom_name.len())?;
+            self.raw(&v.custom_name)?;
+            self.hashes(&v.belief_hashes)?;
+            self.hashes(&v.building_hashes)?;
+            self.hashes(&v.unit_hashes)?;
+            self.int(v.anyone_condemns_favor)?;
+            self.boolean(v.condemn_prohibited)?;
+            self.boolean(v.auto_spreads_to_new_cities)?;
+            self.boolean(v.awards_envoy)?;
+            self.int(v.awards_envoy_religious_pressure)?;
+        }
+        Ok(())
+    }
+    fn header(&mut self, v: &PlayerHeader) -> Result<(), Error> {
+        self.word(47)?;
+        self.int(v.owner)?;
+        self.coord(v.starting_plot)?;
+        for v in &v.ordered_scalars {
+            self.int(*v)?;
+        }
+        for v in &v.ordered_flags {
+            self.boolean(*v)?;
+        }
+        self.word(v.handicap_hash)?;
+        self.word(v.district_hash)?;
+        self.word(v.project_hash)?;
+        self.int(v.final_scalar)
+    }
+    fn formation(&mut self, v: &Formation) -> Result<(), Error> {
+        self.component(
+            v,
+            |v, l| {
+                let n = v
+                    .last_path
+                    .len()
+                    .checked_add(v.unit_ids.len())
+                    .ok_or(unit::Error::ResourceLimit)?;
+                Ok((v.encode(l)?, n))
+            },
+            Error::Formation,
+        )
+    }
+    fn recycled<T>(
+        &mut self,
+        v: &map::Recycled<T>,
+        mut write: impl FnMut(&mut Self, &T) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        if v.entries.len() > v.capacity as usize {
+            return Err(Error::InvalidContainer);
+        }
+        self.word(65537)?;
+        self.word(16)?;
+        self.word(v.capacity)?;
+        self.count(v.entries.len())?;
+        let mut slots = Vec::new();
+        slots
+            .try_reserve_exact(v.entries.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        for entry in &v.entries {
+            if entry.index < 0 || entry.index as u32 >= v.capacity {
+                return Err(Error::InvalidContainer);
+            }
+            slots.push(entry.index);
+            self.int(entry.index)?;
+            write(self, &entry.value)?;
+        }
+        slots.sort_unstable();
+        if slots.windows(2).any(|s| s[0] == s[1]) {
+            return Err(Error::InvalidContainer);
+        }
+        self.word(v.current_id_bits)?;
+        self.count(v.free_links.len())?;
+        self.word(v.free_head)?;
+        self.word(v.free_tail)?;
+        for link in &v.free_links {
+            self.word(*link)?;
+        }
+        Ok(())
+    }
+    fn cities(&mut self, v: &Cities) -> Result<(), Error> {
+        self.word(15)?;
+        self.recycled(&v.records, |w, v| {
+            w.component(v, city::City::encode_with_items, Error::City)
+        })?;
+        self.boolean(v.fresh_water_housing_bonus)?;
+        self.int(v.urban_defenses)?;
+        self.word(v.home_continent_hash)?;
+        self.hashes(&v.settled_continent_hashes)?;
+        self.word(v.peak_cities)?;
+        self.int(v.extra_starting_population_off_home_continent)?;
+        self.int(v.population_after_conquest)?;
+        self.hashes(&v.banned_building_hashes)?;
+        self.hashes(&v.banned_district_hashes)?;
+        self.hashes(&v.banned_district_building_hashes)?;
+        self.hashes(&v.banned_project_hashes)?;
+        self.count(v.building_build_overrides.len())?;
+        for pair in &v.building_build_overrides {
+            self.word(pair[0])?;
+            self.word(pair[1])?;
+        }
+        Ok(())
+    }
+}
+impl Prefix {
+    /// Encode exactly the supported prefix, without an unsupported Player tail.
+    /// Inconsistent boundary/count/first-entry combinations are rejected.
+    pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        if self.unfinished_player_entries != self.player_count
+            || !matches!(
+                (self.player_count, self.first_player.as_ref(), self.boundary),
+                (0, None, Boundary::AfterEmptyPlayerManager)
+                    | (1.., Some(_), Boundary::PlayerDiplomacy)
+            )
+        {
+            return Err(Error::InvalidPrefix);
+        }
+        let mut w = Writer {
+            bytes: Vec::new(),
+            items: 0,
+            limits,
+        };
+        w.religion(&self.religion)?;
+        w.word(1)?;
+        w.word(self.player_count)?;
+        if self.player_count as usize > w.remaining().max_items {
+            return Err(Error::ResourceLimit);
+        }
+        if let Some(p) = &self.first_player {
+            if p.requested_owner != p.header.owner {
+                return Err(Error::OwnerMismatch {
+                    requested: p.requested_owner,
+                    record: p.header.owner,
+                });
+            }
+            w.charge(1)?;
+            w.int(p.requested_owner)?;
+            w.header(&p.header)?;
+            w.word(1)?;
+            w.recycled(&p.formations, Writer::formation)?;
+            w.component(
+                &p.goody_hut,
+                pc::GoodyHut::encode_with_items,
+                Error::Component,
+            )?;
+            w.component(&p.bonuses, pc::Bonuses::encode_with_items, Error::Component)?;
+            w.component(
+                &p.congress,
+                pc::Congress::encode_with_items,
+                Error::Component,
+            )?;
+            w.cities(&p.cities)?;
+        }
+        Ok((w.bytes, w.items))
+    }
+    pub fn encode_prefix(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        self.encode_prefix_with_items(limits)
+            .map(|(bytes, _)| bytes)
+    }
+}
+
+#[cfg(test)]
+mod encode_tests {
+    use super::*;
+    #[test]
+    fn encoder_rejects_inconsistent_partial_boundary() {
+        let mut v = Prefix {
+            religion: Religion {
+                minimum_faith_for_next_pantheon: 0,
+                next_pantheon_founder: 0,
+                records: vec![],
+            },
+            player_count: 0,
+            first_player: None,
+            boundary: Boundary::AfterEmptyPlayerManager,
+            unfinished_player_entries: 0,
+        };
+        assert_eq!(
+            v.encode_prefix_with_items(Limits {
+                max_bytes: 24,
+                max_items: 0
+            })
+            .unwrap()
+            .0
+            .len(),
+            24
+        );
+        assert!(matches!(
+            v.encode_prefix(Limits {
+                max_bytes: 23,
+                max_items: 0
+            }),
+            Err(Error::ResourceLimit)
+        ));
+        v.boundary = Boundary::PlayerDiplomacy;
+        assert_eq!(
+            v.encode_prefix(Limits::default()),
+            Err(Error::InvalidPrefix)
+        );
+        v.boundary = Boundary::AfterEmptyPlayerManager;
+        v.player_count = 1;
+        assert_eq!(
+            v.encode_prefix(Limits::default()),
+            Err(Error::InvalidPrefix)
+        );
     }
 }
