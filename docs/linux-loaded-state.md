@@ -97,3 +97,9 @@ the byte-zero consumed boundary stays unchanged and every unclassified suffix
 remains in the original image. Later relationship queries borrow the owned
 authority without a revision restriction. Reinstalling old captured values
 after advancement is rejected.
+
+## End-turn blocking field
+
+`player_end_turn_blocking` and `store_player_end_turn_blocking` access retained Player header word14, corresponding to native Player+0x7a8. EndTurnBlockingTypes Read (`0x2c9afb0`) and Write (`0x2c9af80`) use raw signed-int streams; there is no hash/index remapping. The native setter (`0x2b5be10`) compares before storing and publishes its optional event only afterward. The owned setter returns false without changing revision for an equal value, reserves a checked revision before a changed value, and preserves the word on exhaustion or invalid owner. It publishes no reports and requires no native archive baseline. Orchestration still owns the optional local-player report and synchronous subscriber effects.
+
+The focused source-only regression covers signed extreme words, no-op behavior, missing owner and revision exhaustion. This setter is not complete blocking recalculation, notification processing or whole action acceptance.

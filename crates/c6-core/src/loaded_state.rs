@@ -951,6 +951,35 @@ mod tests {
         assert!(late.game_techs().is_err());
     }
     #[test]
+    fn blocking_store_preserves_raw_words_and_checks_revision_before_write() {
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let before = state.player_end_turn_blocking(owner).unwrap();
+        assert!(!state.store_player_end_turn_blocking(owner, before).unwrap());
+        assert_eq!(state.revision(), 0);
+        assert!(state
+            .store_player_end_turn_blocking(owner, i32::MIN)
+            .unwrap());
+        assert_eq!(state.player_end_turn_blocking(owner).unwrap(), i32::MIN);
+        assert_eq!(state.revision(), 1);
+        assert!(!state
+            .store_player_end_turn_blocking(owner, i32::MIN)
+            .unwrap());
+        assert_eq!(state.revision(), 1);
+        assert!(state.store_player_end_turn_blocking(-1, 7).is_err());
+        assert_eq!(state.revision(), 1);
+        state.revision = u64::MAX;
+        assert!(matches!(
+            state.store_player_end_turn_blocking(owner, i32::MAX),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(state.player_end_turn_blocking(owner).unwrap(), i32::MIN);
+        assert_eq!(state.revision(), u64::MAX);
+        assert!(!state
+            .store_player_end_turn_blocking(owner, i32::MIN)
+            .unwrap());
+    }
+    #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
         let mut w = ComponentSnapshotWitness {
@@ -1801,6 +1830,40 @@ impl LoadedState {
         self.world.player_slot_present = Some(controls.player_slots);
         self.controls = Some(controls);
         Ok(())
+    }
+    /// Current raw EndTurnBlockingTypes word. Native Read/Write uses plain i32,
+    /// with no definition remap; the source setter's field is Player+0x7a8.
+    pub fn player_end_turn_blocking(&self, owner: i32) -> Result<i32, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        self.retained
+            .players
+            .iter()
+            .find(|player| player.header.owner == owner)
+            .map(|player| player.header.ordered_scalars[14])
+            .ok_or(Error::Missing(MissingInput::Player(owner)))
+    }
+    /// Source field mutation only: reserve revision, then store before the
+    /// caller's optional blocking-change report. Publishing is not done here.
+    /// Returns false for the native same-value early return.
+    pub fn store_player_end_turn_blocking(
+        &mut self,
+        owner: i32,
+        value: i32,
+    ) -> Result<bool, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        let index = self
+            .retained
+            .players
+            .iter()
+            .position(|player| player.header.owner == owner)
+            .ok_or(Error::Missing(MissingInput::Player(owner)))?;
+        if self.retained.players[index].header.ordered_scalars[14] == value {
+            return Ok(false);
+        }
+        let revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.retained.players[index].header.ordered_scalars[14] = value;
+        self.revision = revision;
+        Ok(true)
     }
     pub fn player_controls(&self, owner: i32) -> Result<&PlayerControls, Error> {
         self.controls
