@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
+pub mod city_movement;
 pub mod movement;
 pub mod registry;
 
