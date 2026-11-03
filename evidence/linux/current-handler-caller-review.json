@@ -1,0 +1,125 @@
+{
+  "schema": "c6-linux-current-handler-caller-independent-review-v1",
+  "source_checkpoints": [
+    "62c1311",
+    "f4bb76a",
+    "def3546"
+  ],
+  "source_review_passed": true,
+  "native_profile_admitted": false,
+  "caller_packet_sha256": "33b6f832ac30873c81e8ab2f32c935ed1c4908024c03412d057dbdbb367f61fa",
+  "field_packet_sha256": "e89857d86cf4f6e7df4a818f0dfd776afb4c9fbbda7e5ca1a2faf8ff7832584e",
+  "sources": {
+    "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
+    "native/linux/context_stream.h": "20cc3f198f5460b00a732ddb3047f069b3592cd6de6c485dadcd5562d674962b",
+    "native/linux/current_handler_interruption.c": "59fe2c33f63422fb2b22b66905e5b5460d8f5a6056339cb29de7112c44cf1631",
+    "native/linux/current_handler_interruption.h": "513560c244125f2789e97572505df54d27d5987f241852756d68fd61a0a432cb",
+    "native/linux/current_handler_metadata_fixture.c": "aa4c60ae7643f98819484e3040e489aa9402e6bfbc8b908080e13a7248513fb6",
+    "native/linux/current_handler_metadata_fixture.h": "f83a4aecb5833597eef96fc42d414ee7d392d6b311d10861765b16f06e74c65c",
+    "native/linux/current_handler_metadata_probe.c": "90d16d9c7d28910b3e2b42c0cb05269b12a40fe485dda35ab1ca854c74b3436c",
+    "native/linux/mod_activation.c": "433614f45caeca8114b626630c4351720477e05ae361d4cd030b043fde40f8be",
+    "native/linux/stream_observation.h": "04720ac56f8c98abd3c8340da66f21199a5c42c27036cfac2c012316d8eb2b00",
+    "tools/linux/current_handler_caller_audit.py": "9b4d17f51569b0f81e2e7ab026d14fdf37350b8fa16db4e329c48b49a168c0b2",
+    "tools/linux/current_handler_field_guard_audit.py": "3e619fe93683975d1b30a35d12b4bcd1418c23055a877d05266ff6204adf4f2d"
+  },
+  "canonical_caller_packet_exactly_reproduced": true,
+  "canonical_locked_unlocked_field_packet_exactly_reproduced": true,
+  "caller_complete_method_contracts": 7,
+  "field_complete_method_contracts": 24,
+  "caller_checks": {
+    "gcc_analyzer": true,
+    "strict_c": true,
+    "targeted_fatal_reasons_checked": true,
+    "ubsan_pre_original_refusals": 6
+  },
+  "field_checks": {
+    "accepted_idle_scope": true,
+    "accepted_unlocked_caller_end": true,
+    "child_main_tid_rebound": true,
+    "gcc_analyzer": true,
+    "refusal_cases": 21,
+    "strict_c": true,
+    "targeted_fatal_reasons_checked": true,
+    "ubsan": true
+  },
+  "supplemental_Save_root_contracts": [
+    {
+      "name": "Exports.Context.Save",
+      "address": "0x2c7d230",
+      "bytes": 16,
+      "sha256": "eae3c66df15bba8f35893513dbda9de889d1d2701a3cb41869b5d017b73af27d"
+    },
+    {
+      "name": "Context.Instance.Write",
+      "address": "0x290bbf0",
+      "bytes": 161,
+      "sha256": "96913cdfb9ded76f82d174aee6a76dda5636bac24c69532258b7d5c7e5279763"
+    }
+  ],
+  "caller_order": [
+    "Copy seven distinct path strings and validate the hexadecimal profile hash",
+    "Validate Context/module base and exact acquire/delete bindings",
+    "Require the own main-entry OS TID before acquisition",
+    "Preflight initialized Controller, no worker, zero native lock fields, same Context and initialized native Context/Game",
+    "Read actual utility GOT/object/vptr/GetLock+0x40/ReleaseLock+0x38 and concrete facade Destroy+0x8",
+    "Call original Context.GetGame to create an owned facade and acquire through original utility",
+    "Verify actual facade vptr, reference count1 and native Game; begin locked field scope",
+    "Copy64 known RNG bytes before controls",
+    "Run two original Save observations with field-guard endpoints",
+    "Run two independent passive helper calls with the same retained Game and distinct exclusive outputs",
+    "Run two original Save observations with field-guard endpoints",
+    "Perform final guard and copy64 known RNG bytes; emit summary/error status",
+    "End locked field scope; revalidate facade count1, Destroy slot and utility release bindings",
+    "Release only the created facade through ICvUnknown delete/Destroy/DecrementReference/destructor/utility Release; require zero native owner/depth and no worker"
+  ],
+  "ownership": {
+    "main_witness": "owninterceptedmain-entry OS TID only, not native locktoken",
+    "actualutilitybindingchecked_beforefactory": true,
+    "created_facade_retained_until_after_bothhelpers_andfourSaves": true,
+    "borrowedContext_Game_Player_Unit_Manager_released": false,
+    "actualfacadeDestroy_slot_checked_beforefactory_andrelease": true,
+    "release_utility_binding_and_refcount_rechecked": true,
+    "postrelease_zero_owner_depth_required": true
+  },
+  "interval_limits": {
+    "passive_helper_guard_intervals": "original-call-free, createdfacade retained, fieldguard preservesactual token/depth",
+    "inside_original_Save": "separate original-call interval; endpoints checked, no claim that full transitive Save never releases/reacquires lock",
+    "known_RNG": "two32-byte objects sampled at aggregate callerbefore/after only; no intermediate endpoint dumps/allRNG claim",
+    "successful_lifetime_executed_in_synthetic_tests": false,
+    "synthetic_cases_scope": "six targeted pre-original argument refusals; static body/source review covers intended success order"
+  },
+  "closed_findings": [
+    "Controller initialized field now checked beforeoriginalfactory",
+    "concretefacadeDestroy virtual+8 andfullDestroy/DecrementReference methods now gated",
+    "facade/utility/refcount reboundchecked beforeRelease",
+    "Context.Save stream sources included in sourcepacket",
+    "six argumentrefusals now asserttargetedreasons instead ofgenericexit240"
+  ],
+  "separate_unlocked_lifecycle_callbacks": {
+    "two_argument_ABI": [
+      "admission_begin",
+      "caller_idle",
+      "admission_end"
+    ],
+    "requires_zero_owner_depth": true,
+    "cannot_substitute_for_three_argument_locked_helper_quiescent": true,
+    "locked_scope_nonzero_requirement_preserved": true,
+    "loader_lifecycle_integration_independently_admitted": false
+  },
+  "future_native_requirements": [
+    "Exact compiled preload/config/module/host/source/dependency/rules identities and admitted live vptr/GOT/PLT/source bindings",
+    "Real caller/lifecycle main-entry and original facade acquisition/release witnesses, retaining all owners through stable observation intervals",
+    "Loader/build/source projection and disjoint two-argument unlocked lifecycle ABI review; helper callback remains three-argument and locked",
+    "Seven fresh distinct private internal paths, two outer Save observations and actual terminal cleanup; forced disposal is not successful cleanup",
+    "Compare all affected gameplay/runtime state, RNG, ordering and logical identity; Save diagnostics omit unsaved runtime state"
+  ],
+  "original_execution_by_reviewer": false,
+  "loader_profile_or_run_admitted": false,
+  "current_handler_native_dispatch_accepted": false,
+  "full_Manager_called": false,
+  "script_callback_acceptance": false,
+  "complete_gameplay_state_actions_rng_turns_supported": false,
+  "save_identity_is_action_gate": false,
+  "unknown_save_bytes_masked": false,
+  "historical_raw_save_load_difference_bytes": 89198
+}
