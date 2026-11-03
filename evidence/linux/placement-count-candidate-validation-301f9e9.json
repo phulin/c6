@@ -1,0 +1,113 @@
+{
+  "schema": "c6-linux-placement-count-candidate-validation-v1",
+  "source_commit": "301f9e9d188f6a5ac815914218d0380f51b25938",
+  "candidate_sha256": "58171fb1398b148cfc1e94fc882b79723a9571d193cd6d9c375c3c51fb68f59a",
+  "candidate_manifest_sha256": "e2925853cea2eaee831e1c2ba57421957a02d659e9822b750c28c2ffee1cc6c4",
+  "source_snapshot_sha256": "560bb94b98da8a187118e6cbc82f60d279e6d008c12884bd07a1b878c1b6b559",
+  "validation_source": "exact complete committed archive; shared WIP excluded",
+  "workspace_tests_passed": true,
+  "test_cases": 228,
+  "workspace_strict_clippy_passed": true,
+  "c_abi_smoke_passed": true,
+  "source_contract_identical": true,
+  "logs": {
+    "tests": {
+      "path": "/tmp/c6-placement-count-301f9e9-tests.log",
+      "sha256": "67a59e02631dca41651f52ba5ba4e8e4f8a2dd8a935179bfd009566d953dd1e0"
+    },
+    "clippy": {
+      "path": "/tmp/c6-placement-count-301f9e9-clippy.log",
+      "sha256": "7336ee340e52029e1d19b7abbcdeb85859b3cfbbc69673683d18a3e09432e2d7"
+    },
+    "abi": {
+      "path": "/tmp/c6-placement-count-301f9e9-abi.log",
+      "sha256": "176066f1d8c9436a75b619b16e9668589d37d97983f1e8fb6bac113b2ccd7b35"
+    }
+  },
+  "release_protocol_prechecks": [
+    {
+      "case": "oracle_answers",
+      "kind": "synthetic_rejection_only",
+      "input_path": "/tmp/c6-placement-301f-protocol-prechecks/oracle_answers.json",
+      "input_sha256": "0cd15b65e9d7afa433fed4a8623cf90a96919f343124f1eb0c603708ed1cce2e",
+      "command": [
+        "/home/phulin/c6/target/linux/placement-count-candidate-301f9e9/source/target/release/c6-linux-placement-count-candidate",
+        "/tmp/c6-placement-301f-protocol-prechecks/oracle_answers.json",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "exit_code": 1,
+      "stdout_empty": true,
+      "expected_error_observed": true,
+      "stderr_sha256": "d79f7ba578e67c42a2045c189f299bf9682051a03644c32f617cac4f09377f99"
+    },
+    {
+      "case": "duplicate_field",
+      "kind": "synthetic_rejection_only",
+      "input_path": "/tmp/c6-placement-301f-protocol-prechecks/duplicate_field.json",
+      "input_sha256": "a9fdc517d574639c372e7a9509b3a23ca3d45f6acde4c9a571bbaf373b0de6e9",
+      "command": [
+        "/home/phulin/c6/target/linux/placement-count-candidate-301f9e9/source/target/release/c6-linux-placement-count-candidate",
+        "/tmp/c6-placement-301f-protocol-prechecks/duplicate_field.json",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "exit_code": 1,
+      "stdout_empty": true,
+      "expected_error_observed": true,
+      "stderr_sha256": "f05a857d88f119787a0159f30f3bf8db53e885d80ff0be1ca8c181f85e943580"
+    },
+    {
+      "case": "missing_null_slot_facts",
+      "kind": "synthetic_rejection_only",
+      "input_path": "/tmp/c6-placement-301f-protocol-prechecks/missing_null_slot_facts.json",
+      "input_sha256": "67a2e4d5dce605587e1597e9aa3656e0f53f82aa132cd8b30335535e014b5823",
+      "command": [
+        "/home/phulin/c6/target/linux/placement-count-candidate-301f9e9/source/target/release/c6-linux-placement-count-candidate",
+        "/tmp/c6-placement-301f-protocol-prechecks/missing_null_slot_facts.json",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "exit_code": 1,
+      "stdout_empty": true,
+      "expected_error_observed": true,
+      "stderr_sha256": "96c26dd97d47b838ba8777a184b66cfbadbff37a1ce859432e8291460ff60437"
+    },
+    {
+      "case": "wrong_external_identity",
+      "kind": "synthetic_rejection_only",
+      "input_path": "/tmp/c6-placement-301f-protocol-prechecks/wrong_external_identity.json",
+      "input_sha256": "8e3585ca8230b317cf113aea9fab585e0d4eaaff912e96801d839ba655e02ff8",
+      "command": [
+        "/home/phulin/c6/target/linux/placement-count-candidate-301f9e9/source/target/release/c6-linux-placement-count-candidate",
+        "/tmp/c6-placement-301f-protocol-prechecks/wrong_external_identity.json",
+        "2222222222222222222222222222222222222222222222222222222222222222",
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "exit_code": 1,
+      "stdout_empty": true,
+      "expected_error_observed": true,
+      "stderr_sha256": "84b0d075c388bcf42ef229ba54b46b4898646293ef110a2a3e87e875ff131d52"
+    },
+    {
+      "case": "path_escape",
+      "kind": "synthetic_rejection_only",
+      "input_path": "/tmp/c6-placement-301f-protocol-prechecks/path_escape.json",
+      "input_sha256": "510f620e967c51c8fcf38649c0f08904006ef6ca64d89dc943cf78485a592619",
+      "command": [
+        "/home/phulin/c6/target/linux/placement-count-candidate-301f9e9/source/target/release/c6-linux-placement-count-candidate",
+        "/tmp/c6-placement-301f-protocol-prechecks/path_escape.json",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "exit_code": 1,
+      "stdout_empty": true,
+      "expected_error_observed": true,
+      "stderr_sha256": "87c97e8a865175dab07e55fb5c2e201fe925d5653615584c7411d42ce6751b5d"
+    }
+  ],
+  "native_execution": false,
+  "native_count_comparison": false,
+  "native_handler_comparison": false,
+  "complete_state_actions_turns": false
+}
