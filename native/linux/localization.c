@@ -11,6 +11,7 @@
 
 static void *database;
 static bool initialized;
+static bool database_owned;
 static void *symbol(const char *name) {
     void *address=dlsym(RTLD_DEFAULT,name);
     if(!address) fprintf(stderr,"C6_LINUX_LOCALIZATION missing_symbol %s\n",name);
@@ -38,10 +39,19 @@ int c6_linux_initialize_localization(void) {
     fprintf(stderr,"C6_LINUX_LOCALIZATION negative_null_inputs %d %d dictionary_null %d\n",
             null_icu_rejected,null_db_rejected,*global_dictionary==NULL);
     if(!null_icu_rejected||!null_db_rejected||*global_dictionary) return 4;
-    /* Original Civ6App::SetupDatabase allocation site uses 0x18 bytes. */
-    database=allocate(0x18);
-    if(!database) return 5;
-    construct(database);
+    void *(*app_database)(void)=dlsym(RTLD_DEFAULT,"c6_linux_get_host_localization_database");
+    if(app_database){
+        database=app_database();
+        if(!database)return 5;
+        database_owned=false;
+    }else{
+        /* Lower-level standalone fixture only: original allocation/constructor. */
+        database=allocate(0x18);
+        if(!database)return 5;
+        construct(database);
+        database_owned=true;
+    }
+    fprintf(stderr,"C6_LINUX_LOCALIZATION database_owner %s\n",database_owned?"standalone":"original_App");
     char *previous=getcwd(NULL,0);
     if(!previous||chdir(cwd)) { free(previous); return 6; }
     fprintf(stderr,"C6_LINUX_LOCALIZATION database_initialize_enter\n");
@@ -52,6 +62,13 @@ int c6_linux_initialize_localization(void) {
     if(!db_ok||restored) return 7;
     void *db=connection(database);
     if(!db) return 8;
+    if(!database_owned){
+        void **application=dlsym(RTLD_DEFAULT,"g_pkApplication");
+        void *(*app_connection)(void*)=dlsym(RTLD_DEFAULT,"_ZN7Civ6App33GetLocalizationDatabaseConnectionEv");
+        bool matches=application&&*application&&app_connection&&app_connection(*application)==db;
+        fprintf(stderr,"C6_LINUX_LOCALIZATION app_connection_matches %d\n",matches);
+        if(!matches)return 12;
+    }
     fprintf(stderr,"C6_LINUX_LOCALIZATION initialize_enter\n");
     initialized=initialize(wide_icu,db,"en_US",false,NULL);
     fprintf(stderr,"C6_LINUX_LOCALIZATION initialize_return %d dictionary_nonnull %d\n",initialized,*global_dictionary!=NULL);
@@ -84,7 +101,15 @@ int c6_linux_shutdown_localization(void) {
     void **dictionary=symbol("_ZN12Localization14m_pkDictionaryE");
     if(!shutdown||!destruct||!release||!dictionary) return 1;
     if(initialized) { shutdown(); initialized=false; }
-    if(database) { destruct(database); release(database); database=NULL; }
+    if(database){
+        if(database_owned){destruct(database);release(database);}
+        else{
+            void *(*app_database)(void)=dlsym(RTLD_DEFAULT,"c6_linux_get_host_localization_database");
+            if(!app_database||app_database()!=database)return 3;
+        }
+        database=NULL;
+        database_owned=false;
+    }
     fprintf(stderr,"C6_LINUX_LOCALIZATION shutdown_return dictionary_null %d\n",*dictionary==NULL);
     return *dictionary ? 2 : 0;
 }
