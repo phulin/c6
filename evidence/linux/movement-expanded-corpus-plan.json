@@ -1,0 +1,40 @@
+{
+  "schema": "c6-linux-movement-expanded-corpus-plan-v1",
+  "tool_sha256": "26b024c8bb2bf66a20fa0f9faad19c2dfbddc746a6c350919e35daefb9181c4d",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "helper_sha256": "d13acf6c458f1601bd1d16c76d04a2c667d8db4cebbc5ce0190dbd355a231adc",
+  "candidate_sha256": "d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718",
+  "expected_configuration_sha256": {
+    "control": "ca3b7f99da6ccc334fc573d17e1bede01bffce3cf46f6f519ecda213756cc263",
+    "execute": "55cddc3140ad426931c6966deb945c11f557b0d86909b1417387e0ace2776736"
+  },
+  "configuration_delta": {
+    "/lower_core_movement_cost/max_formations": {
+      "before": 256,
+      "after": 4096
+    }
+  },
+  "runner_arguments": [
+    "--movement-cost-max-formations",
+    "4096"
+  ],
+  "timeout_seconds": 900,
+  "scan_bounds": {
+    "owners": [
+      0,
+      63
+    ],
+    "formation_budget": 4096,
+    "unit_id_vector_hard_bound_per_owner": 1000000,
+    "directions_per_placed_formation": [
+      0,
+      5
+    ]
+  },
+  "original_code_execution_performed": false,
+  "coverage_only": true,
+  "complete_gameplay_state_actions_turns": false,
+  "full_rng_inventory": false,
+  "native_expanded_acceptance_pending": true
+}
