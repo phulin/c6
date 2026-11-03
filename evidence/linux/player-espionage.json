@@ -1137,15 +1137,17 @@
     "crates/c6-core/src/world.rs": "ff30a11433e8044b9c4a20c26d617c954605462106482427a3b593c53b8b6474",
     "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
   },
-  "candidate_sha256": "5f6adf53399e1b8333ae4b9a112732658eeca06492b20093837b704970aeb228",
+  "candidate_sha256": "d61476d1e0ea3bee6b8a19865997f3aaf5d02c2748641bf39c56f888674ce767",
   "harness_sha256": "e072a305b1149e0255ff827f19e912f7204e50f2b38b4353ea54a744abb7173f",
-  "audit_source_sha256": "f246337569226f16da0339a8ecb0b6edae43f00a05beeb9fa9c454c6b8a94ea7",
+  "audit_source_sha256": "1c56c1bb1e3a947049e73d5b42afa50de6a61cd7204836cdc5c0ca1657c01ebc",
   "fixtures": [
     {
       "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
       "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
       "records": 43,
       "record_bytes": 31380,
+      "record_bytes_meaning": "sum_of_all_records_in_this_stream",
+      "first_record_bytes": 500,
       "first_observed_range": [
         4995296,
         4995796
@@ -1158,6 +1160,8 @@
       "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
       "records": 43,
       "record_bytes": 31380,
+      "record_bytes_meaning": "sum_of_all_records_in_this_stream",
+      "first_record_bytes": 500,
       "first_observed_range": [
         4995296,
         4995796
