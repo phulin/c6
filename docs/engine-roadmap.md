@@ -1,5 +1,7 @@
 # Exact engine slices and full-engine gates
 
+> Historical Windows discovery record. Its DLL addresses, tests and proposed milestones are frozen evidence, not current Linux acceptance or an active execution plan. See [current implementation status](status.md) and [Linux target policy](targets.md) for the supplied Linux-only state/action/turn goal and remaining gaps.
+
 Evidence basis: supplied XP2 FinalRelease DLL SHA-256 `324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c`, image base `0x180000000`; cru121 *Civ6-GameCore-reference*, revision `5af389445118bed2bdebf7a8a42b219c8fba5175` ([CC BY 4.0](https://github.com/cru121/civ6-gamecore-reference/blob/5af389445118bed2bdebf7a8a42b219c8fba5175/LICENSE)). Local reference is an index; original instructions and fresh native observations take priority. This document adapts reference names and separates those names from proven behavior.
 
 ## Completed bounded discovery
