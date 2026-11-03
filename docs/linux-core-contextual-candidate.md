@@ -20,13 +20,15 @@ The path-only JSON manifest requires these string fields:
 - `prepared_report_json`, `exit_json`
 - `target_module`, `target_host`, `input_save`, `input_core`
 - `outputs`: object mapping actual original output IDs to Core artifact paths
-- `source_files`: object mapping original repository-relative source names to
-  their exact frozen source artifact paths
+- `source_files`: object mapping the exact source names in the frozen runtime
+  gate to their exact frozen source artifact paths
 
 Paths are resolved relative to the manifest. The Save container and incoming
 Core are separate inputs. Output names must match the original output binding;
 pointer equality or matching hashes do not merge stream roles or lifetimes.
-The source map includes the original runner source. A separate finalized
+The source map includes the original runner source. Source names are identities,
+not path aliases: a runtime gate using absolute names requires those same names,
+even when the artifact copies are stored under repository-relative paths. A separate finalized
 artifact manifest can retain size/hash metadata and be translated to this path
 view without changing any closed capture artifact.
 
