@@ -140,6 +140,36 @@ call policies or change gameplay. Its proposed metadata arrays carry explicit
 `query`, `index`, `hash`, actual property values and XP2 presence per definition.
 This plan does not authorize an original execution by the offline adapter task.
 
+The next candidate accepts the genuine `d090532` exporter schema through typed
+`NativeDomainDefinitions`, `NativeTerrainDefinitions` and `WorldInstances`.
+Definitions require complete Count/At order, actual collection index, original
+Find(hash) and Find(query) results. The bounded importer verifies these against
+the supported native index-or-hash and duplicate-precedence contract; a different
+collection layout fails explicitly. Missing XP2 status/property fields, incomplete
+tables, unknown fields and contradictory native lookups are errors. Terrain
+includes actual IsWater and movement cost from the same original definition.
+
+`WorldInstances` requires all 65 explicit player records and complete native
+City/District membership, then joins every member to a real serialized City or
+District record by actual owner and full ID. The **player query** chooses the
+container; the member's actual owner remains separate. Stale requested upper-ID
+bits still resolve by low-sixteen slot. Every serialized record must be consumed
+exactly once, duplicate slots fail, and empty complete containers remain empty.
+The current bounded importer rejects valid mappings with a null player pointer
+as an unsupported context; it does not invent membership for them.
+
+The offline driver receives only Map bytes, owner-bounded District/City bytes,
+the three genuine definition packets and full player/member inputs. Its strict
+input structs contain no `plot_expected` observations. Full reconstruction mode
+sets `require_domain_metadata:true`; absent metadata is an error. It decodes all
+Cities with the complete current City codec, constructs the production Registry,
+derives coastal/Wonder queries and invokes the unchanged core two-pass rebuild.
+Any missing prerequisite aborts without a partial output or skipped plot.
+Absent CityAttributes produce an explicit absent mask entry; this is distinct
+from an unsupported plot. The source fixture tests the full composition with
+different container/member owners and stale requested generations. This does not
+replace the still-pending original all-plot comparison.
+
 Such exports need the same pinned module/host/profile and original owned Core
 association, closed execution, unchanged affected-state controls and RNG gates.
 No original game code was executed for this task. Initialization rebuild also

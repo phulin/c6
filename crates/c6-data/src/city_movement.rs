@@ -1,13 +1,18 @@
 //! Serialized Linux movement identity projection. Not full District state or
 //! domain reconstruction: native definition order and player validity are inputs.
+use crate::registry::LinuxDefinitionHashRegistry;
 use c6_core::city::City;
 use c6_core::city_district::{self, CityRecord, DistrictRecord};
+use c6_core::city_district::{
+    BuildingDomainProperties, DistrictDomainProperties, PlayerRegistry, SlotTable, PLAYER_COUNT,
+};
 use c6_core::city_district::{DomainMask, DomainRebuildInputs, RebuildDefinitions, Registry};
 use c6_core::city_production::Buildings;
 use c6_core::city_wire::Header;
 use c6_core::map::{CityAttributes, Landmass, Map, PlotFlag};
 use c6_core::movement_world::{DefinitionLookup, DefinitionTable, TerrainProperties};
 use c6_core::unit::PlotCoord;
+use serde::Deserialize;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -20,6 +25,10 @@ pub enum Error {
     LandmassTable,
     CityTable,
     ResourceLimit,
+    MetadataRegistry,
+    MetadataPlayer,
+    Membership,
+    UnmatchedSerializedInstance,
     Registry(city_district::Error),
 }
 impl std::fmt::Display for Error {
@@ -28,6 +37,398 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+
+/// Genuine definition metadata only. Native plot_expected fields have no type
+/// here and cannot populate any prerequisite of the calculation.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DomainRegistryExport {
+    pub kind: String,
+    pub name: String,
+    pub count: u32,
+    pub complete: bool,
+    pub entries: Vec<DomainDefinitionExport>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DomainDefinitionExport {
+    pub query: u32,
+    pub index: u32,
+    pub hash: u32,
+    pub find_index: Option<u32>,
+    pub direct_index: Option<u32>,
+    pub internal_only: Option<bool>,
+    pub xp2: Xp2Export,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Xp2Export {
+    Absent {},
+    Present {
+        is_canal: Option<bool>,
+        canal_wonder: Option<bool>,
+        bridge: Option<bool>,
+    },
+}
+pub struct NativeDomainDefinitions {
+    districts: LinuxDefinitionHashRegistry,
+    district_properties: Vec<DistrictDomainProperties>,
+    buildings: LinuxDefinitionHashRegistry,
+    building_properties: Vec<BuildingDomainProperties>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TerrainRegistryExport {
+    pub kind: String,
+    pub name: String,
+    pub count: u32,
+    pub complete: bool,
+    pub entries: Vec<TerrainDefinitionExport>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TerrainDefinitionExport {
+    pub query: u32,
+    pub index: u32,
+    pub hash: u32,
+    pub find_index: Option<u32>,
+    pub direct_index: Option<u32>,
+    pub is_water: bool,
+    pub movement_cost: i32,
+}
+pub struct NativeTerrainDefinitions {
+    lookup: LinuxDefinitionHashRegistry,
+    properties: Vec<TerrainProperties>,
+}
+impl NativeTerrainDefinitions {
+    pub fn from_export(export: &TerrainRegistryExport) -> Result<Self, Error> {
+        if export.kind != "registry"
+            || export.name != "terrain"
+            || !export.complete
+            || export.count > 65536
+            || export.count as usize != export.entries.len()
+        {
+            return Err(Error::MetadataRegistry);
+        }
+        let lookup = LinuxDefinitionHashRegistry::from_native_order(
+            export.entries.iter().map(|entry| entry.hash).collect(),
+        );
+        let mut properties = Vec::new();
+        properties
+            .try_reserve_exact(export.entries.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        for (position, entry) in export.entries.iter().enumerate() {
+            if entry.query as usize != position
+                || entry.index != entry.query
+                || entry.direct_index != Some(entry.index)
+                || entry.find_index.map(|index| index as usize) != lookup.find_index(entry.hash)
+            {
+                return Err(Error::MetadataRegistry);
+            }
+            properties.push(TerrainProperties {
+                is_water: entry.is_water,
+                movement_cost: entry.movement_cost,
+            });
+        }
+        Ok(Self { lookup, properties })
+    }
+    pub fn as_core(&self) -> Result<DefinitionTable<'_, TerrainProperties>, Error> {
+        DefinitionTable::new(&self.lookup, &self.properties).map_err(|_| Error::MetadataRegistry)
+    }
+}
+impl NativeDomainDefinitions {
+    /// Count/At, collection-index and original Find observations must agree with
+    /// the currently supported collection contract. Exotic layouts are errors.
+    /// Source/module/profile authentication remains the enclosing import gate.
+    pub fn from_exports(exports: &[DomainRegistryExport]) -> Result<Self, Error> {
+        if exports.len() != 2 {
+            return Err(Error::MetadataRegistry);
+        }
+        let find = |name| {
+            let mut matches = exports.iter().filter(|export| export.name == name);
+            let export = matches.next().ok_or(Error::MetadataRegistry)?;
+            if matches.next().is_some() {
+                return Err(Error::MetadataRegistry);
+            }
+            Ok(export)
+        };
+        let district = find("district")?;
+        let building = find("building")?;
+        fn lookup(export: &DomainRegistryExport) -> Result<LinuxDefinitionHashRegistry, Error> {
+            if export.kind != "registry"
+                || !export.complete
+                || export.count > 65536
+                || export.count as usize != export.entries.len()
+            {
+                return Err(Error::MetadataRegistry);
+            }
+            let lookup = LinuxDefinitionHashRegistry::from_native_order(
+                export.entries.iter().map(|entry| entry.hash).collect(),
+            );
+            for (position, entry) in export.entries.iter().enumerate() {
+                if entry.query as usize != position
+                    || entry.index != entry.query
+                    || entry.direct_index != Some(entry.index)
+                    || entry.find_index.map(|index| index as usize) != lookup.find_index(entry.hash)
+                {
+                    return Err(Error::MetadataRegistry);
+                }
+            }
+            Ok(lookup)
+        }
+        let districts = lookup(district)?;
+        let buildings = lookup(building)?;
+        let mut district_properties = Vec::new();
+        district_properties
+            .try_reserve_exact(district.entries.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        for entry in &district.entries {
+            let internal_only = entry.internal_only.ok_or(Error::MetadataRegistry)?;
+            let canal = match entry.xp2 {
+                Xp2Export::Absent {} => false,
+                Xp2Export::Present {
+                    is_canal: Some(canal),
+                    canal_wonder: None,
+                    bridge: None,
+                } => canal,
+                _ => return Err(Error::MetadataRegistry),
+            };
+            district_properties.push(DistrictDomainProperties {
+                canal,
+                internal_only,
+            });
+        }
+        let mut building_properties = Vec::new();
+        building_properties
+            .try_reserve_exact(building.entries.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        for entry in &building.entries {
+            if entry.internal_only.is_some() {
+                return Err(Error::MetadataRegistry);
+            }
+            let properties = match entry.xp2 {
+                Xp2Export::Absent {} => BuildingDomainProperties {
+                    canal_wonder: false,
+                    bridge: false,
+                },
+                Xp2Export::Present {
+                    is_canal: None,
+                    canal_wonder: Some(canal_wonder),
+                    bridge: Some(bridge),
+                } => BuildingDomainProperties {
+                    canal_wonder,
+                    bridge,
+                },
+                _ => return Err(Error::MetadataRegistry),
+            };
+            building_properties.push(properties);
+        }
+        Ok(Self {
+            districts,
+            district_properties,
+            buildings,
+            building_properties,
+        })
+    }
+    pub fn district_lookup(&self) -> &dyn DefinitionLookup {
+        &self.districts
+    }
+    pub fn building_lookup(&self) -> &dyn DefinitionLookup {
+        &self.buildings
+    }
+    pub fn as_core(&self) -> Result<RebuildDefinitions<'_>, Error> {
+        Ok(RebuildDefinitions {
+            districts: DefinitionTable::new(&self.districts, &self.district_properties)
+                .map_err(|_| Error::MetadataRegistry)?,
+            buildings: DefinitionTable::new(&self.buildings, &self.building_properties)
+                .map_err(|_| Error::MetadataRegistry)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlayerMetadata {
+    pub kind: String,
+    pub query: u32,
+    pub mapped_index: i32,
+    pub is_valid: bool,
+    pub resolved: bool,
+    pub actual_owner: Option<i32>,
+    pub cities: Option<MembershipExport>,
+    pub districts: Option<MembershipExport>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MembershipExport {
+    pub count: u32,
+    pub entries: Vec<MembershipEntry>,
+    pub complete: bool,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MembershipEntry {
+    pub ordinal: u32,
+    pub id: u32,
+    pub slot: u32,
+    pub actual_owner: i32,
+}
+impl MembershipExport {
+    fn validate(&self) -> Result<(), Error> {
+        if !self.complete || self.count > 65536 || self.count as usize != self.entries.len() {
+            return Err(Error::Membership);
+        }
+        for (ordinal, entry) in self.entries.iter().enumerate() {
+            if entry.ordinal as usize != ordinal
+                || entry.id == u32::MAX
+                || entry.slot != entry.id & 65535
+            {
+                return Err(Error::Membership);
+            }
+        }
+        Ok(())
+    }
+}
+#[derive(Default)]
+struct PlayerRecords {
+    cities: Vec<CityRecord>,
+    districts: Vec<DistrictRecord>,
+}
+/// Owns only lookup projections. Native container membership chooses the player
+/// table, independently of each object's actual owner. No traversal is discarded
+/// from the source metadata; these tables sort by slot solely for Find queries.
+pub struct WorldInstances {
+    records: [PlayerRecords; PLAYER_COUNT],
+    resolved: [bool; PLAYER_COUNT],
+}
+impl WorldInstances {
+    pub fn from_metadata(
+        map: &Map,
+        cities: &[City],
+        prefixes: &[DistrictPrefix],
+        players: &[PlayerMetadata],
+        definitions: &NativeDomainDefinitions,
+        max_records: usize,
+    ) -> Result<Self, Error> {
+        if players.len() != PLAYER_COUNT {
+            return Err(Error::MetadataPlayer);
+        }
+        if cities
+            .len()
+            .checked_add(prefixes.len())
+            .is_none_or(|count| count > max_records)
+        {
+            return Err(Error::ResourceLimit);
+        }
+        let mut city_sources: Vec<_> = cities
+            .iter()
+            .map(|city| city_record(&city.header))
+            .collect();
+        let mut district_sources = Vec::new();
+        district_sources
+            .try_reserve_exact(prefixes.len())
+            .map_err(|_| Error::ResourceLimit)?;
+        for prefix in prefixes {
+            district_sources.push(prefix.movement_record(map, definitions.district_lookup())?);
+        }
+        city_sources.sort_unstable_by_key(|record| (record.owner, record.id));
+        district_sources.sort_unstable_by_key(|record| (record.owner, record.id));
+        if city_sources
+            .windows(2)
+            .any(|pair| (pair[0].owner, pair[0].id) == (pair[1].owner, pair[1].id))
+            || district_sources
+                .windows(2)
+                .any(|pair| (pair[0].owner, pair[0].id) == (pair[1].owner, pair[1].id))
+        {
+            return Err(Error::UnmatchedSerializedInstance);
+        }
+        let mut seen_cities = vec![false; city_sources.len()];
+        let mut seen_districts = vec![false; district_sources.len()];
+        let mut records: [PlayerRecords; PLAYER_COUNT] =
+            std::array::from_fn(|_| PlayerRecords::default());
+        let mut resolved = [false; PLAYER_COUNT];
+        for (query, player) in players.iter().enumerate() {
+            if player.kind != "player"
+                || player.query as usize != query
+                || player.is_valid != (player.mapped_index != -1)
+                || player.resolved != player.is_valid
+            {
+                return Err(Error::MetadataPlayer);
+            }
+            if !player.resolved {
+                if player.actual_owner.is_some()
+                    || player.cities.is_some()
+                    || player.districts.is_some()
+                {
+                    return Err(Error::MetadataPlayer);
+                }
+                continue;
+            }
+            if player.actual_owner.is_none() {
+                return Err(Error::MetadataPlayer);
+            }
+            resolved[query] = true;
+            let city_members = player.cities.as_ref().ok_or(Error::Membership)?;
+            let district_members = player.districts.as_ref().ok_or(Error::Membership)?;
+            city_members.validate()?;
+            district_members.validate()?;
+            records[query]
+                .cities
+                .try_reserve_exact(city_members.entries.len())
+                .map_err(|_| Error::ResourceLimit)?;
+            records[query]
+                .districts
+                .try_reserve_exact(district_members.entries.len())
+                .map_err(|_| Error::ResourceLimit)?;
+            for member in &city_members.entries {
+                let index = city_sources
+                    .binary_search_by_key(&(member.actual_owner, member.id), |record| {
+                        (record.owner, record.id)
+                    })
+                    .map_err(|_| Error::UnmatchedSerializedInstance)?;
+                if std::mem::replace(&mut seen_cities[index], true) {
+                    return Err(Error::Membership);
+                }
+                records[query].cities.push(city_sources[index]);
+            }
+            for member in &district_members.entries {
+                let index = district_sources
+                    .binary_search_by_key(&(member.actual_owner, member.id), |record| {
+                        (record.owner, record.id)
+                    })
+                    .map_err(|_| Error::UnmatchedSerializedInstance)?;
+                if std::mem::replace(&mut seen_districts[index], true) {
+                    return Err(Error::Membership);
+                }
+                records[query].districts.push(district_sources[index]);
+            }
+            records[query]
+                .cities
+                .sort_unstable_by_key(|record| record.id as u16);
+            records[query]
+                .districts
+                .sort_unstable_by_key(|record| record.id as u16);
+            SlotTable::new(&records[query].cities).map_err(Error::Registry)?;
+            SlotTable::new(&records[query].districts).map_err(Error::Registry)?;
+        }
+        if seen_cities.contains(&false) || seen_districts.contains(&false) {
+            return Err(Error::UnmatchedSerializedInstance);
+        }
+        Ok(Self { records, resolved })
+    }
+    pub fn registry(&self) -> Result<Registry<'_>, Error> {
+        let mut players = [PlayerRegistry::Invalid; PLAYER_COUNT];
+        for (query, records) in self.records.iter().enumerate() {
+            if self.resolved[query] {
+                players[query] = PlayerRegistry::Valid {
+                    cities: Some(SlotTable::new(&records.cities).map_err(Error::Registry)?),
+                    districts: Some(SlotTable::new(&records.districts).map_err(Error::Registry)?),
+                };
+            }
+        }
+        Ok(Registry::new(players))
+    }
+}
 
 /// First 45 bytes of an independently owner-bounded District v15 record.
 /// Later bytes are deliberately unconsumed; no scanning for plausible IDs.
@@ -247,7 +648,7 @@ impl DomainRebuildInputs for MapDomainInputs<'_, '_> {
 /// Borrowed complete typed City objects; does not infer native player validity.
 /// The separate core Registry controls actual player/container availability.
 pub struct CityBuildings<'a> {
-    cities: Vec<&'a City>,
+    cities: Vec<(CityRecord, &'a Buildings)>,
 }
 impl<'a> CityBuildings<'a> {
     pub fn new(cities: &'a [City], max_cities: usize) -> Result<Self, Error> {
@@ -258,26 +659,29 @@ impl<'a> CityBuildings<'a> {
         records
             .try_reserve_exact(cities.len())
             .map_err(|_| Error::ResourceLimit)?;
-        records.extend(cities);
-        records.sort_unstable_by_key(|city| (city.header.owner, city.header.id as u16));
-        if records.iter().any(|city| city.header.id == u32::MAX)
+        records.extend(
+            cities
+                .iter()
+                .map(|city| (city_record(&city.header), &city.buildings)),
+        );
+        records.sort_unstable_by_key(|(city, _)| (city.owner, city.id as u16));
+        if records.iter().any(|(city, _)| city.id == u32::MAX)
             || records.windows(2).any(|pair| {
-                (pair[0].header.owner, pair[0].header.id as u16)
-                    == (pair[1].header.owner, pair[1].header.id as u16)
+                (pair[0].0.owner, pair[0].0.id as u16) == (pair[1].0.owner, pair[1].0.id as u16)
             })
         {
             return Err(Error::CityTable);
         }
         Ok(Self { cities: records })
     }
-    fn find(&self, resolved: &CityRecord) -> Option<&City> {
+    fn find(&self, resolved: &CityRecord) -> Option<&Buildings> {
         let key = (resolved.owner, resolved.id as u16);
         let index = self
             .cities
-            .binary_search_by_key(&key, |city| (city.header.owner, city.header.id as u16))
+            .binary_search_by_key(&key, |(city, _)| (city.owner, city.id as u16))
             .ok()?;
-        let city = self.cities[index];
-        (city_record(&city.header) == *resolved).then_some(city)
+        let (city, buildings) = self.cities[index];
+        (city == *resolved).then_some(buildings)
     }
     /// Exact CityAttributes.IsWonderComplete: signed-short type, owning City,
     /// then HasBuilding. Pillage and equality of building location to this plot
@@ -299,7 +703,7 @@ impl<'a> CityBuildings<'a> {
         let city = self
             .find(found.record)
             .ok_or(city_district::Error::MissingWonderCompletion { plot })?;
-        Ok(building_location(&city.buildings, index, definitions)? >= 0)
+        Ok(building_location(city, index, definitions)? >= 0)
     }
 }
 fn saved_index(hash: u32, definitions: &dyn DefinitionLookup) -> Result<i32, city_district::Error> {
@@ -499,6 +903,239 @@ mod tests {
             yield_change_from_features: vec![],
             building_name_overrides: vec![],
         }
+    }
+    fn source_exports() -> Vec<DomainRegistryExport> {
+        ["district", "building"]
+            .into_iter()
+            .map(|name| DomainRegistryExport {
+                kind: "registry".into(),
+                name: name.into(),
+                count: 1,
+                complete: true,
+                entries: vec![DomainDefinitionExport {
+                    query: 0,
+                    index: 0,
+                    hash: if name == "district" {
+                        city_district::CITY_CENTER_HASH
+                    } else {
+                        100
+                    },
+                    find_index: Some(0),
+                    direct_index: Some(0),
+                    internal_only: (name == "district").then_some(false),
+                    xp2: Xp2Export::Absent {},
+                }],
+            })
+            .collect()
+    }
+    fn source_players() -> Vec<PlayerMetadata> {
+        (0..PLAYER_COUNT)
+            .map(|query| PlayerMetadata {
+                kind: "player".into(),
+                query: query as u32,
+                mapped_index: -1,
+                is_valid: false,
+                resolved: false,
+                actual_owner: None,
+                cities: None,
+                districts: None,
+            })
+            .collect()
+    }
+    fn membership(entries: Vec<MembershipEntry>) -> MembershipExport {
+        MembershipExport {
+            count: entries.len() as u32,
+            entries,
+            complete: true,
+        }
+    }
+    #[test]
+    fn source_metadata_world_uses_container_query_and_all_serialized_records() {
+        let definitions = NativeDomainDefinitions::from_exports(&source_exports()).unwrap();
+        let lookup = LinuxDefinitionHashRegistry::from_native_order(vec![100, 200]);
+        let properties = [
+            TerrainProperties {
+                is_water: false,
+                movement_cost: 1,
+            },
+            TerrainProperties {
+                is_water: true,
+                movement_cost: 1,
+            },
+        ];
+        let terrains = DefinitionTable::new(&lookup, &properties).unwrap();
+        let mut map = map();
+        for (plot, owner, district) in [(4, 1, 0xdead0005), (5, 2, u32::MAX)] {
+            map.plots[plot].flags.set(PlotFlag::HasCityAttributes, true);
+            map.plots[plot].city_attributes = Some(CityAttributes {
+                working_city: u32::MAX,
+                owning_city: u32::MAX,
+                district,
+                player: owner,
+                wonder_building_hash: u32::MAX,
+            });
+        }
+        map.plots[5].terrain_hash = 200;
+        map.plots[5].landmass_id = 1;
+        let prefixes = [DistrictPrefix {
+            id: 0x10005,
+            location: PlotCoord { x: 2, y: 1 },
+            parent_city: u32::MAX,
+            type_hash: city_district::CITY_CENTER_HASH,
+            complete: true,
+        }];
+        let mut players = source_players();
+        players[1] = PlayerMetadata {
+            kind: "player".into(),
+            query: 1,
+            mapped_index: 0,
+            is_valid: true,
+            resolved: true,
+            actual_owner: Some(41),
+            cities: Some(membership(vec![])),
+            districts: Some(membership(vec![MembershipEntry {
+                ordinal: 0,
+                id: 0x10005,
+                slot: 5,
+                actual_owner: 2,
+            }])),
+        };
+        let instances =
+            WorldInstances::from_metadata(&map, &[], &prefixes, &players, &definitions, 1).unwrap();
+        let registry = instances.registry().unwrap();
+        let found = registry
+            .find_district(city_district::ComponentId::district(1, 0xabcd0005))
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.record.owner, 2); // Actual owner is not the container query1.
+        assert_eq!(found.record.id, 0x10005); // Upper requested counter is ignored.
+        assert!(registry
+            .find_district(city_district::ComponentId::district(2, 0x10005))
+            .unwrap()
+            .is_none());
+        let cities = CityBuildings::new(&[], 0).unwrap();
+        let inputs = TypedDomainInputs {
+            map: MapDomainInputs::new(&map, &terrains).unwrap(),
+            registry: &registry,
+            cities: &cities,
+            building_definitions: definitions.building_lookup(),
+        };
+        let masks = city_district::rebuild_valid_domains(
+            &map,
+            &registry,
+            &definitions.as_core().unwrap(),
+            &inputs,
+            9,
+        )
+        .unwrap();
+        assert_eq!(masks[4], Some(DomainMask(23)));
+        assert_eq!(masks[5], Some(DomainMask(19)));
+        assert_eq!(masks.iter().filter(|mask| mask.is_some()).count(), 2);
+        players[1].districts = Some(membership(vec![]));
+        assert!(matches!(
+            WorldInstances::from_metadata(&map, &[], &prefixes, &players, &definitions, 1),
+            Err(Error::UnmatchedSerializedInstance)
+        ));
+        assert!(matches!(
+            WorldInstances::from_metadata(&map, &[], &prefixes, &players[..64], &definitions, 1),
+            Err(Error::MetadataPlayer)
+        ));
+        assert!(matches!(
+            WorldInstances::from_metadata(&map, &[], &prefixes, &players, &definitions, 0),
+            Err(Error::ResourceLimit)
+        ));
+    }
+    #[test]
+    fn source_metadata_rejects_unknown_properties_and_lookup_disagreement() {
+        let mut exports = source_exports();
+        exports[0].entries[0].xp2 = Xp2Export::Present {
+            is_canal: None,
+            canal_wonder: None,
+            bridge: None,
+        };
+        assert!(matches!(
+            NativeDomainDefinitions::from_exports(&exports),
+            Err(Error::MetadataRegistry)
+        ));
+        exports = source_exports();
+        exports[1].entries[0].find_index = None;
+        assert!(matches!(
+            NativeDomainDefinitions::from_exports(&exports),
+            Err(Error::MetadataRegistry)
+        ));
+        exports = source_exports();
+        exports[0].complete = false;
+        assert!(matches!(
+            NativeDomainDefinitions::from_exports(&exports),
+            Err(Error::MetadataRegistry)
+        ));
+        assert!(serde_json::from_value::<Xp2Export>(
+            serde_json::json!({"status":"absent","is_canal":false})
+        )
+        .is_err());
+        assert!(serde_json::from_value::<DomainRegistryExport>(serde_json::json!({"kind":"registry","name":"district","count":0,"complete":true,"entries":[],"valid_domains_mask":23})).is_err());
+        let mut terrain = TerrainRegistryExport {
+            kind: "registry".into(),
+            name: "terrain".into(),
+            count: 1,
+            complete: true,
+            entries: vec![TerrainDefinitionExport {
+                query: 0,
+                index: 0,
+                hash: 100,
+                find_index: Some(0),
+                direct_index: Some(0),
+                is_water: true,
+                movement_cost: 7,
+            }],
+        };
+        let definitions = NativeTerrainDefinitions::from_export(&terrain).unwrap();
+        assert_eq!(
+            definitions.as_core().unwrap().at(0).unwrap().movement_cost,
+            7
+        );
+        terrain.entries[0].direct_index = Some(1);
+        assert!(matches!(
+            NativeTerrainDefinitions::from_export(&terrain),
+            Err(Error::MetadataRegistry)
+        ));
+    }
+    #[test]
+    fn source_wonder_uses_owning_city_not_building_plot_or_pillage() {
+        let lookup = LinuxDefinitionHashRegistry::from_native_order(vec![100]);
+        let records = [CityRecord {
+            id: 9,
+            owner: 0,
+            location: PlotCoord { x: 1, y: 1 },
+        }];
+        let mut state = buildings();
+        state.building_locations.push(HashValue {
+            definition_hash: 100,
+            value: 123,
+        });
+        state.pillaged.push(HashValue {
+            definition_hash: 100,
+            value: true,
+        });
+        let cities = CityBuildings {
+            cities: vec![(records[0], &state)],
+        };
+        let mut players = [PlayerRegistry::Invalid; PLAYER_COUNT];
+        players[0] = PlayerRegistry::Valid {
+            cities: Some(SlotTable::new(&records).unwrap()),
+            districts: None,
+        };
+        let registry = Registry::new(players);
+        let attributes = CityAttributes {
+            working_city: u32::MAX,
+            owning_city: 0xabcd0009,
+            district: u32::MAX,
+            player: 0,
+            wonder_building_hash: 100,
+        };
+        assert!(cities
+            .is_wonder_complete(&attributes, &registry, &lookup, 4)
+            .unwrap());
     }
     #[test]
     fn source_coastal_requires_passable_water_nonnull_landmass_and_positive_count() {
