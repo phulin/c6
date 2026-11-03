@@ -1,0 +1,575 @@
+{
+  "checks_passed": true,
+  "focused_capture": {
+    "active_human_predicate": "Alive Player.Manager entries: sum bool(IsTurnActive) only when actual IsHuman is true",
+    "checkpoints": [
+      {
+        "capture": "AL unsigned suspended result; R14D event hash; RBX vector map; enabled byte game+3c00649/cache-enabled game+3bffce8",
+        "image": "game",
+        "instruction_bytes": "84c0754a",
+        "name": "vector_suspended_return",
+        "rva": "0x2d4a521"
+      },
+      {
+        "capture": "EAX signed count; RBX real YieldMonitor receiver; raw48 includes plot begin/end/capacity at0/8/10 and trade at18/20/28",
+        "image": "game",
+        "instruction_bytes": "85c07411",
+        "name": "yield_monitor_active_human_result",
+        "rva": "0x2c66439"
+      },
+      {
+        "capture": "RDI actual facade; RAX vtable; targets u64[RAX+b0] and u64[RAX+b8]; raw first32 facade bytes",
+        "image": "host",
+        "instruction_bytes": "ff90b0000000",
+        "name": "activity_facade_operation_type",
+        "rva": "0x320b701"
+      },
+      {
+        "capture": "RDI actual facade; RAX vtable; target u64[RAX+b8]; RSI caller-owned output map",
+        "image": "host",
+        "instruction_bytes": "ff90b8000000",
+        "name": "activity_facade_operation_params",
+        "rva": "0x320b722"
+      }
+    ],
+    "maximum_simultaneous_hardware_breakpoints": 4,
+    "nonzero_active_humans": "Run plot-yield check then trade-yield check; empty cached vectors alone do not prove no work",
+    "plot_collection": "receiver+0/8/10 native vector header; 32-byte per-plot IndexList records",
+    "trade_collection": "receiver+18/20/28 native vector header; collection contents retained as live cache, never planning-only by name",
+    "zero_active_humans": "OnMessagesProcessed returns without plot/trade checks"
+  },
+  "full_host_admission": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "gameplay_parity": false,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "kernel_admission": {
+    "accept_live_action": false,
+    "complete_reporting_effects_proven": false,
+    "requirement": "Bind actual enabled/suspended/cache flags, invoked cache handler targets and receivers, translator identities, pre-publish subscribers and all transitive effects; reject unsupported environments before mutation."
+  },
+  "limits": "Static plan for one conditional Linux component replay. Complete gameplay state/action/turns remain unimplemented. Unserialized live state and complete RNG remain unresolved; the raw Save-to-Load 89198-byte failure remains unclassified and unmasked.",
+  "live_callback_inventory_observed": false,
+  "methods": [
+    {
+      "bytes": 149,
+      "image": "game",
+      "name": "Send.Type",
+      "rva": "0x2d49430",
+      "sha256": "261df2cf341d0de0f60e7fd1055f2f5b1d9d706e7be567497673c0d083adf22f"
+    },
+    {
+      "bytes": 165,
+      "image": "game",
+      "name": "Send.Identity",
+      "rva": "0x2d494d0",
+      "sha256": "c4442f27d4aef52737d8aa4f462c3a99d2575d484f09ee088673f20c020fe54c"
+    },
+    {
+      "bytes": 196,
+      "image": "game",
+      "name": "Send.IdentityInt",
+      "rva": "0x2d49580",
+      "sha256": "f7c2eed021070f37bf9da17af534c4f6c69702aa4588b02afe7693dbd777976a"
+    },
+    {
+      "bytes": 209,
+      "image": "game",
+      "name": "Send.IdentityIntInt",
+      "rva": "0x2d49650",
+      "sha256": "e66ac378f4f4ad435dd54f9b721091e94d079f86486f5619a67afa2bdb4a2e4c"
+    },
+    {
+      "bytes": 390,
+      "image": "game",
+      "name": "YieldMonitor.TradeRouteCallback",
+      "rva": "0x2c66a30",
+      "sha256": "8824db1f610cb852929455f4aadd16fab18ff0ccef10faf17b0c5ddc42a5026f"
+    },
+    {
+      "bytes": 52,
+      "image": "game",
+      "name": "Plot.GetYield",
+      "rva": "0x2bc9650",
+      "sha256": "04b9421afd53b980c258b7a2fe67d09281b778fd591c9a26822f5d57017c80e6"
+    },
+    {
+      "bytes": 3498,
+      "image": "game",
+      "name": "Rules.Yields.GetYield",
+      "rva": "0x2bf5ad0",
+      "sha256": "5249f66e85d4f15aaac4e11747aa594dce491cdf8d30e9dc8301aac63606c293"
+    },
+    {
+      "bytes": 114,
+      "image": "game",
+      "name": "Trade.GetOriginYield",
+      "rva": "0x2c11920",
+      "sha256": "a277d2f0c94bffbc199aeb70e384639fa64e342b031f3f34dfb09ac48557bee9"
+    },
+    {
+      "bytes": 114,
+      "image": "game",
+      "name": "Trade.GetDestinationYield",
+      "rva": "0x2c119a0",
+      "sha256": "159f65a16166b5765bdca1c82332425d06f99d5092a7ca1d384b4e1c780ce0a5"
+    },
+    {
+      "bytes": 619,
+      "image": "game",
+      "name": "Rules.TradeOriginYield",
+      "rva": "0x2be3b70",
+      "sha256": "2550e0aca97480257e05acda10839a0cc147b08b2bbdb50111d366ec70a14558"
+    },
+    {
+      "bytes": 599,
+      "image": "game",
+      "name": "Rules.TradeDestinationYield",
+      "rva": "0x2be4120",
+      "sha256": "39e3774e9ba7005981c4be1238e1584b1249cbc12447c99d443aa4d6faa529a4"
+    },
+    {
+      "bytes": 1071,
+      "image": "game",
+      "name": "Trade.CalculateOriginYieldFromPath",
+      "rva": "0x2c08a80",
+      "sha256": "017bf28a4cfde9c9d2b8ce3fc759d9d9398a10359776b7784ca2e5b5f428f93e"
+    },
+    {
+      "bytes": 32,
+      "image": "game",
+      "name": "Player.IsHuman",
+      "rva": "0x2b31530",
+      "sha256": "7b956c7055aea66551b2309c8d001e35a098fc6e19355bd959b5a46241245c95"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Player.IsTurnActive",
+      "rva": "0x2021030",
+      "sha256": "f44ea052578d46f191ac4e546446f30a3022dc5085b44ee6b9378719eabb8c5b"
+    },
+    {
+      "bytes": 3,
+      "image": "game",
+      "name": "Parameters.EmptyWriteMap",
+      "rva": "0x28199e0",
+      "sha256": "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+    },
+    {
+      "bytes": 10,
+      "image": "game",
+      "name": "BaseHandler.MakeParameters",
+      "rva": "0x2d96820",
+      "sha256": "4a080e1d3228adaba022121941edd876d67c955314aae49ba237a100ce45b8f9"
+    },
+    {
+      "bytes": 86,
+      "image": "game",
+      "name": "Operations.Manager.GetHandlerIdFromHash",
+      "rva": "0x2da1720",
+      "sha256": "e67620512f7440c1ca5486dc10569f19d23e2e7bc7ff46a97d7174146b9a7a86"
+    },
+    {
+      "bytes": 27,
+      "image": "game",
+      "name": "Cache.Unit.FillConstants",
+      "rva": "0x28050e0",
+      "sha256": "53852ca07f6afd23d568e707d8d33ac4666b50fd8535acdc1e395971ce288e5e"
+    },
+    {
+      "bytes": 1068,
+      "image": "game",
+      "name": "Cache.Unit.FillVariants",
+      "rva": "0x2805100",
+      "sha256": "365cd17dbd1d6db36a319e27cbc41d8eb1240922755baca85d5a1afba94af23a"
+    },
+    {
+      "bytes": 95,
+      "image": "game",
+      "name": "Exports.Unit.GetOperationType",
+      "rva": "0x2c93be0",
+      "sha256": "7efef445eccdf00b74972505363d3101c961cc45167fa60e8097b139277c548e"
+    },
+    {
+      "bytes": 75,
+      "image": "game",
+      "name": "Exports.Unit.GetOperationParams",
+      "rva": "0x2c93c40",
+      "sha256": "20678e7a3ffa9b5dd203af39611c9a07a2f7ebd4c94b9bdb467ab304facb3516"
+    },
+    {
+      "bytes": 116,
+      "image": "game",
+      "name": "Processor.ActiveHumanCount",
+      "rva": "0x2b5c6a0",
+      "sha256": "daa5d53f3126a728f8b8e9723814f245951a81b1e226f2d0bb99dd982e3780f5"
+    },
+    {
+      "bytes": 15,
+      "image": "game",
+      "name": "YieldMonitor.Constructor",
+      "rva": "0x2c66bc0",
+      "sha256": "4f423685ff840a09b71787d49acc24c1a2a21021cd8d41a0fb1ecaaeabda16bf"
+    },
+    {
+      "bytes": 253,
+      "image": "game",
+      "name": "YieldMonitor.InitializePlot",
+      "rva": "0x2c660f0",
+      "sha256": "c864035a013cccf8458e72d528ea6052b32f8bedcf847707f03a157f2f909f36"
+    },
+    {
+      "bytes": 190,
+      "image": "game",
+      "name": "YieldMonitor.InitializeTrade",
+      "rva": "0x2c661f0",
+      "sha256": "ae5754a9a20a3f091bc93914228963afcf4875ce83982c50669d8cca86bbc0e9"
+    },
+    {
+      "bytes": 127,
+      "image": "game",
+      "name": "Unit.GetName",
+      "rva": "0x2c28d20",
+      "sha256": "79bacf5a454ab94d2f58b804d839513eda3da066b0a5ca184a03f23dad125156"
+    },
+    {
+      "bytes": 44,
+      "image": "game",
+      "name": "MoveTo.GetOperationType",
+      "rva": "0x2da42b0",
+      "sha256": "a03163dec5144c3f7c925950fb63f0814108b220231e6e3ca7b3a4c2a4beb6d0"
+    },
+    {
+      "bytes": 44,
+      "image": "game",
+      "name": "SkipTurn.GetOperationType",
+      "rva": "0x2dac880",
+      "sha256": "2c3050193784b8e592e39ce4b33ca991587e30de056919b29ee611c9b68e7169"
+    },
+    {
+      "bytes": 143,
+      "image": "game",
+      "name": "Event.SendVectorMap",
+      "rva": "0x2d4a500",
+      "sha256": "c95a0bbe9b2dac3683bee31fe6484410b6d592f2aa8a252a0950154f026a9665"
+    },
+    {
+      "bytes": 31,
+      "image": "game",
+      "name": "Cache.StaticThunk",
+      "rva": "0x2708590",
+      "sha256": "bf3b15476236fd282872eb69d663c895ac7307576f13a709741e75a0a34cbf7a"
+    },
+    {
+      "bytes": 5,
+      "image": "game",
+      "name": "Cache.StaticFunctionGetter",
+      "rva": "0x27085f0",
+      "sha256": "929c23452cedc988ea59a8e51d08db931cf4835d3f04a62bb0297543f053a9b4"
+    },
+    {
+      "bytes": 4,
+      "image": "game",
+      "name": "Cache.StaticFunctionCast",
+      "rva": "0x2708600",
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21"
+    },
+    {
+      "bytes": 9,
+      "image": "game",
+      "name": "Cache.Unit.OnUpdate",
+      "rva": "0x27ff430",
+      "sha256": "3a537d2d8ee7579d85fc3cddd98dcf9dacb0751b52962d0d828cce3f86cab63e"
+    },
+    {
+      "bytes": 114,
+      "image": "game",
+      "name": "Cache.Unit.PublishUpdate",
+      "rva": "0x27ff860",
+      "sha256": "4c779cabd97a4d5df671007fc54218756fd544a2c360106ee2d77a15f54f8832"
+    },
+    {
+      "bytes": 222,
+      "image": "game",
+      "name": "Cache.Unit.Add",
+      "rva": "0x27ff2d0",
+      "sha256": "8316ba976ec1953a1e5e902a2ef9547183b958ce2730a1111eb90c9fabe2a8bd"
+    },
+    {
+      "bytes": 32,
+      "image": "game",
+      "name": "YieldMonitor.OnMessagesProcessed",
+      "rva": "0x2c66430",
+      "sha256": "16eb58439fb9776125a47258b120a738d099914227f6f85389a023331e991da9"
+    },
+    {
+      "bytes": 333,
+      "image": "game",
+      "name": "YieldMonitor.CheckPlot",
+      "rva": "0x2c665f0",
+      "sha256": "0f1a191dda92973708f6ec1de0ec41dbb829c192651d4d84aca1310738fb2dd2"
+    },
+    {
+      "bytes": 82,
+      "image": "game",
+      "name": "YieldMonitor.CheckTrade",
+      "rva": "0x2c668b0",
+      "sha256": "870260314ca6bc625d0c2e7f7d43f8649b6a8c7f5490a9bd7a2b6f8e7da52d6c"
+    },
+    {
+      "bytes": 464,
+      "image": "host",
+      "name": "Translate.UnitActivityChanged",
+      "rva": "0x320b670",
+      "sha256": "8146efa08292f7944b55bf877ebd0e21fe21545d0ea040026bd12a3a69dddfa0"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationAdded",
+      "rva": "0x320cb30",
+      "sha256": "1d3f3b2efb7fb26efde6010fa4b12c49c61ebcdd79ac34ef1158eb69e1babdbd"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationStarted",
+      "rva": "0x320cbb0",
+      "sha256": "f90d14aff6faab476906f61c58ce3b8f23ce1b988b160e485db56b9eaf6f46d3"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationDeactivated",
+      "rva": "0x320ccb0",
+      "sha256": "ee34adf5b4541fa747307546a7899469539c7866e8dac8a697e588cb75d1eb04"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationsCleared",
+      "rva": "0x320cd30",
+      "sha256": "acb9af301f7b99cb48c3f333496bf43d61ed5555de81e6600520ebe5957e1758"
+    },
+    {
+      "bytes": 164,
+      "image": "host",
+      "name": "Translate.NotificationActivated",
+      "rva": "0x3212d00",
+      "sha256": "7944888c67752fca156ddafb165bb7680992ff27bc3af4623e545b5ff9a84daa"
+    },
+    {
+      "bytes": 86,
+      "image": "host",
+      "name": "DirtyComponents.Add",
+      "rva": "0x32b5950",
+      "sha256": "1f4235247163eba5152a3010fbb5f27a940bf74284dd888757f30869529dd3c2"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Event.IsEnabled",
+      "rva": "0x2d49180",
+      "sha256": "59b106f733bf15ae469e4e147126b4065ff4e8f5e07baab5dfb9487997e68c68"
+    },
+    {
+      "bytes": 5,
+      "image": "game",
+      "name": "Event.IsSuspended",
+      "rva": "0x2d49190",
+      "sha256": "83276920b6b626251d072ef15c3476ab42c3b8c4ed95428fce539b2faf89850c"
+    },
+    {
+      "bytes": 45,
+      "image": "game",
+      "name": "Globals.IsUnserializing",
+      "rva": "0x290bb30",
+      "sha256": "771f43a0efb13454645a0870b507ef7336f72a248ac496e7bce153ef6e7864b0"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Cache.AreUpdatesEnabled",
+      "rva": "0x2723640",
+      "sha256": "4f7ea77a0e05ec97922128597c34b3d00f9c47ffdf47e0cd4ea54fed4eb8ed5a"
+    },
+    {
+      "bytes": 79,
+      "image": "game",
+      "name": "Event.SendMap",
+      "rva": "0x2d4a4b0",
+      "sha256": "c1888c434ab05b22459602c065edeb08c79ab33480cb0beb070bf92fcc89ade5"
+    },
+    {
+      "bytes": 238,
+      "image": "game",
+      "name": "Cache.Send",
+      "rva": "0x2723550",
+      "sha256": "c224d2f00939be39974ab16bfc564f2877cef2ece1e8a94e972e243d5dbced20"
+    },
+    {
+      "bytes": 73,
+      "image": "game",
+      "name": "Cache.FastDelegate3.Invoke",
+      "rva": "0x2724730",
+      "sha256": "c028ee1789ac606906c75f4f49514de738c8fe72ebe2ecdce5813c6f6e76880c"
+    },
+    {
+      "bytes": 2492,
+      "image": "host",
+      "name": "EngineUtility.SendEvent",
+      "rva": "0x32b4260",
+      "sha256": "24826057267fc9c5a6028051e2eed6dbffea87bb34c1de4600f00ae968c370d9"
+    },
+    {
+      "bytes": 129,
+      "image": "host",
+      "name": "Translate.Dispatch",
+      "rva": "0x3214c50",
+      "sha256": "84bcf221705b2d35e2ff59079cec7c5b22cd7c10afb65c5774642d5c5c7ca910"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish71",
+      "rva": "0x32176b0",
+      "sha256": "4bcd0436d2ba72ae44f4d885d4864d5b1880f9f0a84c833a62179ce2f99187cd"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish257",
+      "rva": "0x321cac0",
+      "sha256": "4fe4c9ea0083b660eb82a946d1b96f27d7f6cb8d218714ca6a48b287c2e33819"
+    },
+    {
+      "bytes": 5,
+      "image": "host",
+      "name": "PrePublish.Get",
+      "rva": "0x2fd7db0",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish71.Invoke",
+      "rva": "0x3228580",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish257.Invoke",
+      "rva": "0x3237c40",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 4,
+      "image": "host",
+      "name": "PrePublish71.GetThis",
+      "rva": "0x32285f0",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "bytes": 9,
+      "image": "host",
+      "name": "PrePublish71.GetMember",
+      "rva": "0x3228600",
+      "sha256": "1e4ed268bbb17635735f00271500035a8dd2732548b89d3a643d52d7ac4f299d"
+    }
+  ],
+  "native_execution": false,
+  "parent_configuration_sha256": "b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b",
+  "passive_capture": {
+    "checkpoints": [
+      {
+        "capture": "AL actual IsSuspended result; EBP event hash; RBX map; read enabled game+3c00649/cache updates game+3bffce8",
+        "image": "game",
+        "instruction_bytes": "84c0740c",
+        "name": "suspended_return",
+        "rva": "0x2d4a4c6"
+      },
+      {
+        "capture": "RAX resolved callback; RDI adjusted receiver; ESI event; RDX EventData; RCX map; retain stack return and backtrace",
+        "image": "game",
+        "instruction_bytes": "ffe0",
+        "name": "cache_delegate_tail",
+        "rva": "0x2724777"
+      },
+      {
+        "capture": "RAX actual translator including null; event u32[RSP+0xc]; R15 EventData; R14 map",
+        "image": "host",
+        "instruction_bytes": "4885c0740c",
+        "name": "registered_translator",
+        "rva": "0x3214cb0"
+      },
+      {
+        "capture": "RDI DispatchData; subscriber u64[RDI+0x10]; caller u64[RSP]; raw delegate24 and backtrace when nonnull",
+        "image": "host",
+        "instruction_bytes": "488b4710c3",
+        "name": "prepublish_getter",
+        "rva": "0x2fd7db0"
+      }
+    ],
+    "game_code_patches": false,
+    "inferior_calls": false,
+    "inferior_field_writes": false,
+    "limits": [
+      "Selected typed Send overloads bypass both chosen map/vector checkpoints; actual flag values were not captured",
+      "Disabled reporting path misses suspended-return checkpoint",
+      "Missing translator registration misses registered-translator checkpoint",
+      "Pre-publish subscriber pointer proves registration, not actual callback invocation",
+      "Raw delegate resolution requires exact target ABI and does not classify transitive writes",
+      "Hardware stops change scheduling; replay must compare command, streams, typed state and cleanup",
+      "Loader instrumentation must be reported separately"
+    ],
+    "maximum_simultaneous_hardware_breakpoints": 4,
+    "preserve": [
+      "Raw callback/receiver/object addresses",
+      "Module ASLR bases and pointer RVAs separately",
+      "Unclassified bytes and cross-process differences",
+      "Read errors and missed checkpoint coverage"
+    ]
+  },
+  "schema": "c6-linux-reporting-provider-static-v3",
+  "selected_typed_sender_methods": [
+    {
+      "bytes": 239,
+      "name": "Send.ValueValue",
+      "rva": "0x2d4a9a0",
+      "sha256": "6c10753489e9561b949dc7d044fcfc4341265597c58f39d7944149a5afc67259"
+    },
+    {
+      "bytes": 149,
+      "name": "Send.Type",
+      "rva": "0x2d49430",
+      "sha256": "261df2cf341d0de0f60e7fd1055f2f5b1d9d706e7be567497673c0d083adf22f"
+    },
+    {
+      "bytes": 165,
+      "name": "Send.Identity",
+      "rva": "0x2d494d0",
+      "sha256": "c4442f27d4aef52737d8aa4f462c3a99d2575d484f09ee088673f20c020fe54c"
+    },
+    {
+      "bytes": 196,
+      "name": "Send.IdentityInt",
+      "rva": "0x2d49580",
+      "sha256": "f7c2eed021070f37bf9da17af534c4f6c69702aa4588b02afe7693dbd777976a"
+    },
+    {
+      "bytes": 209,
+      "name": "Send.IdentityIntInt",
+      "rva": "0x2d49650",
+      "sha256": "e66ac378f4f4ad435dd54f9b721091e94d079f86486f5619a67afa2bdb4a2e4c"
+    },
+    {
+      "bytes": 203,
+      "name": "Send.TypeIntInt",
+      "rva": "0x2d49f70",
+      "sha256": "aea0072a2473016e436e12da9e82c6be1bb2457339daa4e906fd1cb1e1da39a2"
+    }
+  ],
+  "source_audit_sha256": "316c694cee89f9a1adecc715259e962abf6ecaa41440f03ec1a635cece8c1244",
+  "static_only": true
+}
