@@ -98,6 +98,7 @@ def main():
     parser.add_argument('--game-save-output',type=Path)
     parser.add_argument('--game-save-repeat-output',type=Path)
     parser.add_argument('--timeout',type=int,default=30)
+    parser.add_argument('--movement-cost-timing-baseline',type=Path)
     parser.add_argument('--localization',action='store_true')
     parser.add_argument('--cleanup',action='store_true')
     parser.add_argument('--client-only',action='store_true')
@@ -110,7 +111,7 @@ def main():
     if args.ui_constructor and not args.localization:parser.error('--ui-constructor requires original localization')
     if args.attach_saved_session and not all((args.network,args.saved_configuration,args.cleanup)):
         parser.error('--attach-saved-session requires network, saved configuration and cleanup')
-    if not 1<=args.timeout<=600:parser.error('--timeout must be between 1 and 600 seconds')
+    if not 1<=args.timeout<=900:parser.error('--timeout must be between 1 and 900 seconds')
     game_input=args.game_load_stream.resolve() if args.game_load_stream else None
     action_mode='execute' if args.action_skip_turn or args.action_skip_turn_registered else 'control' if args.action_skip_turn_control or args.action_skip_turn_registered_control else None
     registered_action=args.action_skip_turn_registered or args.action_skip_turn_registered_control
@@ -156,6 +157,7 @@ def main():
     if args.movement_cost_diagnostic and args.movement_cost_xp2_map:parser.error('movement probe revisions must be separate')
     if args.movement_cost_xp2_map and not movement_mode:parser.error('XP2 movement probe revision requires a movement mode')
     if args.movement_cost_diagnostic and movement_mode!='control':parser.error('movement admission diagnostic requires fact-only control mode')
+    if args.movement_cost_timing_baseline and (movement_mode!='execute' or args.timeout!=900):parser.error('movement timing baseline requires cost mode and900s supervisor')
     movement_paths={}
     if movement_mode:
         if not game_input or not args.prepare_main_thread or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
@@ -648,6 +650,19 @@ def main():
     configuration_identity=hashlib.sha256(json.dumps(identity,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     if args.expected_configuration and args.expected_configuration!=configuration_identity:
         raise SystemExit('configuration identity mismatch; native execution refused')
+    timing_change=None
+    if args.movement_cost_timing_baseline:
+        baseline_path=args.movement_cost_timing_baseline.resolve()
+        baseline=json.loads(baseline_path.read_text())
+        if baseline['returncode']!=124 or baseline['configuration']['lower_core_movement_cost']['mode']!='execute':raise SystemExit('timing baseline must be the preserved cost timeout')
+        prior_hash=hashlib.sha256(json.dumps(baseline['configuration'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        if prior_hash!=baseline['configuration_sha256']:raise SystemExit('timing baseline configuration hash mismatch')
+        prior=dict(baseline['configuration']);current=dict(identity)
+        changed={key for key in set(prior)|set(current) if prior.get(key)!=current.get(key)}
+        if changed!={'timeout_seconds','runner_sha256'} or prior['timeout_seconds']!=180 or current['timeout_seconds']!=900:
+            raise SystemExit('movement timing retry changes more than supervisor budget/runner: '+str(sorted(changed)))
+        timing_change={'schema':'c6-movement-cost-supervisor-only-change-v1','baseline_runtime_sha256':digest(baseline_path),'baseline_configuration_sha256':prior_hash,'configuration_sha256':configuration_identity,'allowed_changed_keys':sorted(changed),'native_source_helper_preload_candidate_inputs_identical':True,'previous_timeout_seconds':180,'timeout_seconds':900,'full_case_count_from_control':1536,'max_formations':args.movement_cost_max_formations,'quiescence_checks_weakened':False,'partial_run_accepted':False}
+        (movement_paths['output'].parent/'supervisor-timing-change.json').write_text(json.dumps(timing_change,indent=2)+'\n')
     if movement_mode:env['C6_MOVEMENT_COST_PROFILE_SHA256']=configuration_identity
     if args.prepare_only:
         args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
@@ -666,6 +681,7 @@ def main():
             'returncode':code,'stdout':out,'stderr':err,'framework_boundary_returned':code==0 and 'boundary_return result 0' in err,
             'framework_cleanup_proven':code==0 and 'cleanup_return 0' in err,'client_cleanup_proven':code==0 and 'client_shutdown_only_return unpublished 1' in err,'xp2_activation_proven':False,'initialized_game':False,'gameplay_parity':False,
             'limits':'Original host content-transition diagnostic only; selected module path and actual active-vtable module are distinct observations. Constructor-state callback is not saved Request/Begin semantics. No initialized-game or gameplay parity proof. Teardown is measured only when requested and its marker is present.'}
+    report['supervisor_timing_change']=timing_change
     report.update(lifecycle_report(code,err))
     report['native_activation_selection']={}
     report['native_backup_events']=[]
