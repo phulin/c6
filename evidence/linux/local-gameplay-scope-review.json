@@ -1,0 +1,169 @@
+{
+  "acceptance": {
+    "bounded_metadata_exclusions": true,
+    "complete_action_turn_parity": false,
+    "gameplay_callbacks_reports_order_rng_remain_required": true,
+    "indirect_inline_whole_program_absence_proven": false,
+    "local_authoritative_state_required": true,
+    "native_parity": false,
+    "native_resync_unsupported_required": true,
+    "original_execution": false,
+    "source_hashes_prove_active_profile": false,
+    "stock_profile_without_added_gameplay_dirty_consumer_required": true
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "independent_direct_target_checks": [
+    {
+      "site": "0x39d553c",
+      "target": "0x3c45e82"
+    },
+    {
+      "site": "0x39d5559",
+      "target": "0x3c45f34"
+    },
+    {
+      "site": "0x39dae1d",
+      "target": "0x3c45c2c"
+    },
+    {
+      "site": "0x39d82f7",
+      "target": "0x3c46036"
+    },
+    {
+      "site": "0x39d836d",
+      "target": "0x3c470fc"
+    },
+    {
+      "site": "0x39d98f7",
+      "target": "0x3c45d18"
+    },
+    {
+      "site": "0x32b7824",
+      "target": "0x32b6280"
+    }
+  ],
+  "indirect_dispatch_sites": [
+    "0x3c45d3b",
+    "0x3c4615f",
+    "0x39d83be"
+  ],
+  "manually_reviewed_stock_functions": [
+    "UnitFlag.GetUnit",
+    "UnitFlag.UpdateReadyState",
+    "UnitFlag.SetDim",
+    "UnitFlag.UpdateDimmedState",
+    "UnitFlag.UpdateFlagType",
+    "OnEventPlaybackComplete"
+  ],
+  "native_getters_not_blanket_classified_pure": [
+    "IsHuman",
+    "IsReadyToSelect",
+    "IsEmbarked",
+    "GetFortifyTurns"
+  ],
+  "rerun_audits": {
+    "load_archive_gameplay_scope": {
+      "checks": {
+        "activity_assignment_inserts_then_writes": true,
+        "all_49_clear_slots_are_ret": true,
+        "load_delta_calls_live_wrapper_load": true,
+        "queue_edit_only_tree_insert_and_return": true,
+        "snapshot_input_applies_live_values": true,
+        "snapshot_input_invokes_desync_callback": true,
+        "snapshot_output_serializes_dirty_union": true,
+        "sync_saves_hash_and_dirty_indices": true
+      },
+      "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "host_direct_consumers": 10,
+      "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "sha256": "621483d8e131b745a4842b7dfd0db23f1685c9d97c2c429b8d5722ec51df95ce",
+      "typed_clear_slots": 49,
+      "xp2_direct_consumers": 0
+    },
+    "reporting_gameplay_scope": {
+      "captured_send_inventory": [
+        {
+          "calls": 3,
+          "event": "UnitActivityChanged",
+          "hash": "e23b112d",
+          "stock_consumer": "UnitFlag visual refresh"
+        },
+        {
+          "calls": 2,
+          "event": "UnitOperationDeactivated",
+          "hash": "a60328c5",
+          "stock_consumer": "UnitFlag visual refresh"
+        },
+        {
+          "calls": 2,
+          "event": "UnitOperationsCleared",
+          "hash": "383669f1",
+          "stock_consumer": "No literal stock registration"
+        },
+        {
+          "calls": 1,
+          "event": "UnitOperationAdded",
+          "hash": "15c35863",
+          "stock_consumer": "No literal stock registration"
+        },
+        {
+          "calls": 1,
+          "event": "UnitOperationStarted",
+          "hash": "3d4006f2",
+          "stock_consumer": "No literal stock registration"
+        },
+        {
+          "calls": 1,
+          "event": "NotificationActivated",
+          "hash": "025f6cfd",
+          "stock_consumer": "No literal stock registration"
+        },
+        {
+          "calls": 1,
+          "event": "Queue complete",
+          "hash": "9ea4c222",
+          "stock_consumer": "No literal stock registration"
+        }
+      ],
+      "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "lua_sources": [
+        {
+          "path": "Base/assets/ui/unitflagmanager.lua",
+          "sha256": "053c28decfefda03ba198bb49e45d8fd3daaba82b1f9846e26d1463511db267f"
+        },
+        {
+          "path": "Base/assets/ui/worldview/citybannermanager.lua",
+          "sha256": "b151d5570fa1fb148c48757242943ffdeab1e0c42a674cd143b8784c85d6d298"
+        },
+        {
+          "path": "DLC/expansion1/ui/citybanners/citybannermanager.lua",
+          "sha256": "83e0ef08ce0c8d6b9c265ec3ef7ec9d723827bad21ad9f93c4b427babcdba91a"
+        },
+        {
+          "path": "DLC/expansion2/ui/citybanners/citybannermanager.lua",
+          "sha256": "d5567524fa954fa0dd2f255bba2f2ab4230bb27546019de01a67e0a963bf5f9d"
+        },
+        {
+          "path": "DLC/polandscenario/ui/unitflagmanager.lua",
+          "sha256": "c2b7e8b15185692750b6bf734c56e1eab739f6021335a5bc7896b79953ed1195"
+        }
+      ],
+      "methods": 40,
+      "selected_direct_references": 27,
+      "sha256": "31d08f421df213b8c5299925fe98f9dca71fe337b1c85232dc2991a6bf8fde26"
+    }
+  },
+  "reviewed_commits": [
+    "bad86dafcbd08e1f55ca2f811e97fbbd86964e90",
+    "08998a5105b4bedac093730bd44bced079aa0a50"
+  ],
+  "schema": "c6-linux-local-gameplay-scope-review-v1",
+  "source_sha256": {
+    "docs/linux-reporting-effects-observation.md": "0338c471553b05ea45c1156a13c88cc691e8988eae4d1667395af8608e27fadb",
+    "evidence/linux/reporting-provider-passive-1.json": "5bf06ea463cab04021134c6e9e7689b18db932f3452379a4096f9dbbfa6d4357",
+    "evidence/linux/skip-turn-reporting-closure.json": "f2e5d83cdb4294dc8096e7b6a96aa4870ae2d5bbd65dd54876b33439a1dc2772",
+    "tools/linux/local_gameplay_scope_review.py": "ac13ad3346ca51d7558907649c1ad017cbe263b61fa0e53fe9889e6a58a40b1e"
+  }
+}
