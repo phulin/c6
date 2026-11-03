@@ -198,13 +198,14 @@ def first_player_fixtures(private, executable):
         incoming.write_bytes(data)
         row = json.loads(run([str(checker), str(incoming), str(output)], text=True))
         incoming.unlink()
-        row.update(stream_sha256=identity, heroes_encoded_sha256=sha(output.read_bytes()),
-                   byte_zero_source_grammar=True, offsets_borrowed_from_other_fixture=False,
+        row.update(stream_sha256=identity,
+                   heroes_encoded_sha256=sha(output.read_bytes()) if row['parsed'] else None,
+                   byte_zero_source_grammar_attempted=True, offsets_borrowed_from_other_fixture=False,
                    native_rebuild_reached_or_skipped='not observed; header/order parsing does not establish manager/configuration gates')
         rows.append(row)
     return dict(records=rows, candidate_sha256=sha(checker.read_bytes()),
                 dependency_lock_sha256=sha((source/'Cargo.lock').read_bytes()),
-                exact_first_player_heroes_records_equal=rows[0]['heroes_encoded_sha256'] == rows[1]['heroes_encoded_sha256'],
+                exact_first_player_heroes_records_equal=(rows[0]['heroes_encoded_sha256'] == rows[1]['heroes_encoded_sha256']) if all(r['parsed'] for r in rows) else None,
                 remaining_players_raw_read_heroes_framing=False)
 
 
@@ -234,9 +235,9 @@ def main():
         original_execution=False, gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA,
         methods=[dict(address=hex(a), size=n, name=name, sha256=sha(elf.read(a,n))) for a,n,name in METHODS],
         candidate=candidate_identity, saved_fixture=saved, byte_zero_first_player_comparison=first,
-        incoming_raw_read=dict(sha256=RAW, bytes=len(raw), first_player_heroes_source_framing_available=True,
+        incoming_raw_read=dict(sha256=RAW, bytes=len(raw), first_player_heroes_source_framing_available=first['records'][0]['parsed'],
             all_players_heroes_owner_framing_available=False,
-            actual_rebuild_reached_or_skipped='unresolved native manager/configuration/registry gates; first player parsed directly from byte zero'),
+            actual_rebuild_reached_or_skipped='unresolved; retain exact byte-zero parser support result and native manager/configuration/registry gaps'),
         builder=builder, activated_databases=databases,
         empty_class_collection_rng_proof='If the runtime collection is the fresh collection populated solely by the pinned zero-row builder result, every rebuild consumes zero RNG draws, independent of earlier gate outcomes.',
         runtime_collection_database_binding_admitted=False,
@@ -250,7 +251,7 @@ def main():
     require(not args.output.exists(), 'refusing to overwrite retained report')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2)+'\n')
-    print(json.dumps(dict(checks_passed=True, saved_records=len(saved['records']), empty_saved_orders=saved['zero_orders'], incoming_read_first_player_heroes_framing=True)))
+    print(json.dumps(dict(checks_passed=True, saved_records=len(saved['records']), empty_saved_orders=saved['zero_orders'], incoming_read_first_player_heroes_framing=first['records'][0]['parsed'])))
 
 
 if __name__ == '__main__':

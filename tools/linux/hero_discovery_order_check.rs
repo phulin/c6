@@ -48,7 +48,7 @@ fn main() {
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     let bytes = std::fs::read(&args[1]).unwrap();
-    let prefix = c6_core::core_stream::ThroughFirstPlayer::decode(
+    let decoded = c6_core::core_stream::ThroughFirstPlayer::decode(
         &bytes,
         c6_core::map::Limits {
             max_bytes: bytes.len(),
@@ -60,8 +60,17 @@ fn main() {
             max_bytes: bytes.len(),
             max_items: 20_000_000,
         },
-    )
-    .unwrap();
+    );
+    let prefix = match decoded {
+        Ok(prefix) => prefix,
+        Err(error) => {
+            println!(
+                "{{\"parsed\":false,\"unsupported_boundary\":{:?}}}",
+                format!("{error:?}")
+            );
+            return;
+        }
+    };
     let player = prefix.player_prefix.first_player.as_ref().unwrap();
     let heroes = &player.heroes;
     let encoded = heroes
@@ -71,7 +80,7 @@ fn main() {
         })
         .unwrap();
     std::fs::write(&args[2], &encoded).unwrap();
-    println!("{{\"player\":{},\"header_ordered_flags\":{:?},\"discovery_order_records\":{},\"discovered_records\":{},\"claims_records\":{},\"encoded_heroes_bytes\":{},\"consumed\":{},\"boundary\":\"{:?}\"}}", player.header.owner, player.header.ordered_flags, heroes.discovery_order.len(), heroes.discovered.len(), heroes.claims.len(), encoded.len(), prefix.consumed, prefix.player_prefix.boundary);
+    println!("{{\"parsed\":true,\"player\":{},\"header_ordered_flags\":{:?},\"discovery_order_records\":{},\"discovered_records\":{},\"claims_records\":{},\"encoded_heroes_bytes\":{},\"consumed\":{},\"boundary\":\"{:?}\"}}", player.header.owner, player.header.ordered_flags, heroes.discovery_order.len(), heroes.discovered.len(), heroes.claims.len(), encoded.len(), prefix.consumed, prefix.player_prefix.boundary);
 }
 
 #[cfg(test)]
