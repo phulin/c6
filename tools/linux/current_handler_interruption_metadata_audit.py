@@ -25,6 +25,9 @@ EXTRA = [
     ('RecycledUnit.End.const', 0x2021b60, 17),
     ('RecycledUnit.Find.const', 0x2baa650, 84),
     ('PlayerManager.IsValidRange', 0x2005000, 7),
+    ('QueueInline.GetAlignedBuffer', 0x2c3ebe0, 9),
+    ('QueueInline.AllocLinearBlock', 0x2c3ef20, 172),
+    ('QueueVector.ctor', 0x2da6bb0, 66),
 ]
 
 
@@ -63,10 +66,13 @@ int main(int argc,char **argv){
  assert(!read_self(1,copied,sizeof copied)&&!read_self(UINTPTR_MAX,copied,sizeof copied));
  size_t n=9;assert(span(8,40,8,4,&n)&&n==4);assert(!span(40,8,8,4,&n));
  assert(!span(0,8,8,4,&n)&&!span(8,41,8,4,&n)&&!span(8,48,8,4,&n)&&!span(8,8,0,0,&n));
- unsigned char q[QUEUE_BYTES]={0};uintptr_t qaddr=(uintptr_t)q,block;size_t allocation;bool inlined;
+ _Alignas(16) unsigned char q[QUEUE_BYTES]={0};uintptr_t qaddr=(uintptr_t)q,block;size_t allocation;bool inlined;
  assert(queue_shape(qaddr,q,&allocation,&block,&inlined)&&allocation==0&&block==0&&!inlined);
  putptr(q,176,qaddr);put32(q,184,4);put32(q,192,1);
  assert(queue_shape(qaddr,q,&allocation,&block,&inlined)&&allocation==160&&block==qaddr&&inlined);
+ putptr(q,176,qaddr+16);assert(!queue_shape(qaddr,q,&allocation,&block,&inlined));
+ putptr(q,176,(qaddr+16));assert(queue_shape(qaddr+1,q,&allocation,&block,&inlined));
+ putptr(q,176,qaddr);put32(q,184,1);assert(!queue_shape(qaddr,q,&allocation,&block,&inlined));
  put32(q,184,5);assert(!queue_shape(qaddr,q,&allocation,&block,&inlined));
  put32(q,184,4);putptr(q,176,qaddr+17);assert(!queue_shape(qaddr,q,&allocation,&block,&inlined));
  putptr(q,176,UINTPTR_MAX-3);assert(!queue_shape(qaddr,q,&allocation,&block,&inlined));
@@ -79,7 +85,7 @@ int main(int argc,char **argv){
  Image image={0};FILE *out=tmpfile();assert(out);
  assert(unit_queue(out,&image,(uintptr_t)unit,13,0xa5a50012,(uintptr_t)native_manager,handlers,20)==0);
  rewind(out);char text[4096]={0};assert(fread(text,1,sizeof text-1,out)>0);
- assert(strstr(text,"\"native_front_bits\":18")&&strstr(text,"\"current_handler\":0"));
+ assert(strstr(text,"\"native_front_bits\":18")&&strstr(text,"\"observed_numeric_slot_pointer\":0"));
  native_slots[18]=1;assert(unit_queue(out,&image,(uintptr_t)unit,13,0xa5a50012,(uintptr_t)native_manager,handlers,20)==247);native_slots[18]=0;
  put32(queue,0,20);assert(unit_queue(out,&image,(uintptr_t)unit,13,0xa5a50012,(uintptr_t)native_manager,handlers,20)==247);
  put32(queue,0,0x8374d954);assert(unit_queue(out,&image,(uintptr_t)unit,13,0xa5a50012,(uintptr_t)native_manager,handlers,20)==247);
@@ -115,6 +121,7 @@ int main(int argc,char **argv){
  image=(Image){.fd=fileno(file),.count=1,.segments={{.lo=(uintptr_t)mapped,.hi=(uintptr_t)mapped+3,.offset=0,.flags=PF_R|PF_X}}};
  assert(runtime_code_mapping(&image,(uintptr_t)mapped,3));
  assert(!mprotect(mapped,4096,PROT_READ));assert(!runtime_code_mapping(&image,(uintptr_t)mapped,3));
+ assert(runtime_file_mapping(&image,(uintptr_t)mapped,3,false));
  assert(!munmap(mapped,4096));assert(!fclose(file));return 0;
 }
 ''')
@@ -143,6 +150,7 @@ int main(int argc,char **argv){
                 wrong_slot_parent_and_active_list_tail_refused=True,
                 live_code_mismatch_and_nonexecuting_segment_refused=True,
                 actual_runtime_code_map_permissions_and_file_owner_required=True,
+                actual_vtable_slot_map_readability_and_file_owner_required=True,
                 unknown_idle_fatal_exit=240, original_execution=False,
                 synthetic_fixtures_are_not_native_binding_acceptance=True)
 
@@ -174,6 +182,8 @@ def main():
                               (0x20e0710, '488d87100c0000c3'),
                               (0x20e35f0, '488b07c3'),
                               (0x2005000, '83fe410f92c0c3'),
+                              (0x2c3ebe0, '488d470f4883e0f0c3'),
+                              (0x2c3ef45, 'c744240804000000'),
                               (0x2da11f0, '488d0c9b488d04c8')]:
         require(game.read(address, len(expected) // 2).hex() == expected, 'field instruction mismatch')
     for offset, target in [(0x88, 0x2da1650), (0x98, 0x2da16f0), (0xa0, 0x2da1720), (0xd8, 0x2da2a60)]:
@@ -221,13 +231,16 @@ def main():
             recycled_bytes=72, block_entries=8, block_entry_bytes=24,
             unit_vptr_rva='0x3ae5f80', unit_id_offset=184, unit_owner_offset=304,
             unit_queue_offset=3088, queue_bytes=200, queue_block_offset=176,
-            queue_capacity_offset=184, queue_count_offset=192, node_bytes=40),
+            queue_capacity_offset=184, queue_count_offset=192, node_bytes=40,
+            initialized_empty_block=dict(pointer=0, capacity=0),
+            inline_block=dict(pointer="align_up(queue_address,16)", capacity=4),
+            out_of_line_block=dict(pointer_alignment=16, minimum_capacity=5)),
         helper_original_calls=[], caller_callback='required strict retained-context idle admission; separately source/profile gated',
         runtime_requirements=['whole actual module file and /proc/self/exe hashes match pinned target',
             'actual live Manager slots and supported complete code bytes match hashed original file',
             'actual live handler +0x20 target belongs to mapped executable original module and matches complete leaf bytes',
             'all65 mapped Player slots and complete original active Unit container membership',
-            'native current node raw bits resolve to bounded actual vector slot; non-index current identities explicitly unsupported',
+            'native front bits select a bounded observed vector slot by source-derived numeric indexing; no native GetHandler return observed',
             'unmasked native queue header and entire native block capacity bytes retained; no parameter dereference',
             'same-context callback and retained original owner lock/lifetime; no original getters or predicates called by helper'],
         tests=tests,
@@ -235,6 +248,7 @@ def main():
             'retained Context/Game/root/session lifetimes and main-thread native lock',
             'two full passes, six unmasked Saves, known64 RNG endpoint bytes and terminal cleanup',
             'same-context serializer ownership/hash evidence and independently observed reverse-map answers',
+            'live transitive PLT/GOT destinations and original getter equivalence remain unvalidated; matching Manager bodies alone is insufficient',
             'independent pre-answer checker/profile admission before sole future native capture'],
         full_manager_supported=False, complete_state_action_rng_turns_supported=False,
         historical_raw_save_load_failure_bytes=89198,

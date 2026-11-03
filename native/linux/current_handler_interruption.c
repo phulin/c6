@@ -117,8 +117,8 @@ static const Segment *segment(const Image *im,uintptr_t p,size_t n,unsigned flag
     return NULL;
 }
 /* ELF PT_LOAD flags alone do not prove current mprotect state or file owner. */
-static bool runtime_code_mapping(const Image *im,uintptr_t p,size_t n){
-    const Segment *s=segment(im,p,n,PF_R|PF_X);struct stat file;
+static bool runtime_file_mapping(const Image *im,uintptr_t p,size_t n,bool executable){
+    const Segment *s=segment(im,p,n,PF_R|(executable?PF_X:0u));struct stat file;
     if(!s||fstat(im->fd,&file))return false;
     FILE *maps=fopen("/proc/self/maps","r");if(!maps)return false;
     char line[4096],permissions[5];bool found=false;unsigned major_id,minor_id;
@@ -126,7 +126,7 @@ static bool runtime_code_mapping(const Image *im,uintptr_t p,size_t n){
     while(fgets(line,sizeof line,maps)){
         if(sscanf(line,"%llx-%llx %4s %llx %x:%x %llu",&lo,&hi,permissions,&offset,&major_id,&minor_id,&inode)!=7)continue;
         if(p<lo||p>=hi||n>hi-p)continue;
-        found=permissions[0]=='r'&&permissions[2]=='x'&&inode==(uintmax_t)file.st_ino&&
+        found=permissions[0]=='r'&&(!executable||permissions[2]=='x')&&inode==(uintmax_t)file.st_ino&&
             major_id==major(file.st_dev)&&minor_id==minor(file.st_dev)&&
             offset+p-lo==s->offset+p-s->lo;
         break;
@@ -134,6 +134,7 @@ static bool runtime_code_mapping(const Image *im,uintptr_t p,size_t n){
     if(fclose(maps))return false;
     return found;
 }
+static bool runtime_code_mapping(const Image *im,uintptr_t p,size_t n){return runtime_file_mapping(im,p,n,true);}
 static bool original_code(const Image *im,uintptr_t p,size_t n,unsigned char *live){
     const Segment *s=segment(im,p,n,PF_R|PF_X);unsigned char expected[128];
     if(!s||n>sizeof expected||!read_self(p,live,n))return false;
@@ -149,9 +150,9 @@ static void idle(const C6CurrentHandlerInterruptionAdmission *a){
  * and compare complete live code to the independently SHA-gated file image. */
 static bool method(FILE *out,const Image *im,uintptr_t table,size_t offset,uintptr_t rva,size_t size){
     uintptr_t actual;unsigned char code[128];
-    if(offset>SIZE_MAX-8||!extent(table,offset+8)||!segment(im,table+offset,8,PF_R)||!read_self(table+offset,&actual,8)||actual!=im->base+rva||!runtime_code_mapping(im,actual,size)||!original_code(im,actual,size,code))return false;
+    if(offset>SIZE_MAX-8||!extent(table,offset+8)||!runtime_file_mapping(im,table+offset,8,false)||!read_self(table+offset,&actual,8)||actual!=im->base+rva||!runtime_code_mapping(im,actual,size)||!original_code(im,actual,size,code))return false;
     Dl_info owner={0};if(!dladdr((void *)actual,&owner)||owner.dli_fbase!=(void *)im->base)return false;
-    fprintf(out,"{\"slot_offset\":%zu,\"actual_pointer\":%" PRIuPTR ",\"owner_base\":%" PRIuPTR ",\"rva\":%" PRIuPTR ",\"runtime_mapping_readable_executable\":true,\"runtime_mapping_matches_hashed_file\":true,\"live_code_raw\":",offset,actual,(uintptr_t)owner.dli_fbase,rva);raw(out,code,size);fputc('}',out);return true;
+    fprintf(out,"{\"slot_offset\":%zu,\"actual_pointer\":%" PRIuPTR ",\"owner_base\":%" PRIuPTR ",\"rva\":%" PRIuPTR ",\"vtable_slot_mapping_matches_hashed_file\":true,\"runtime_mapping_readable_executable\":true,\"runtime_mapping_matches_hashed_file\":true,\"live_code_raw\":",offset,actual,(uintptr_t)owner.dli_fbase,rva);raw(out,code,size);fputc('}',out);return true;
 }
 typedef struct {uintptr_t pointer,target,slot_address;unsigned char raw[16];} HandlerSnapshot;
 static int registry(FILE *out,const Image *im,uintptr_t game,uintptr_t *manager_out,HandlerSnapshot **handlers_out,size_t *count_out){
@@ -191,9 +192,12 @@ static int registry(FILE *out,const Image *im,uintptr_t game,uintptr_t *manager_
 static bool queue_shape(uintptr_t address,const unsigned char q[QUEUE_BYTES],size_t *allocation,uintptr_t *block,bool *inlined){
     if(!extent(address,QUEUE_BYTES))return false;
     uint32_t count=u32(q,192),capacity=u32(q,184);uintptr_t p=ptr(q,176);
-    if(count>capacity||capacity>LIMIT||(!p&&capacity)||(capacity&&!extent(p,(size_t)capacity*NODE_BYTES)))return false;
+    if(count>capacity||capacity>LIMIT||(!capacity&&p)||(!p&&capacity)||(capacity&&!extent(p,(size_t)capacity*NODE_BYTES)))return false;
     *allocation=(size_t)capacity*NODE_BYTES;*block=p;
     *inlined=p>=address&&p<address+176;
+    if(capacity&&(p&15u))return false;
+    if(*inlined&&(p!=((address+15u)&~(uintptr_t)15u)||capacity!=4u))return false;
+    if(capacity&&!*inlined&&capacity<=4u)return false;
     if(*inlined&&(*allocation>176||p-address>176-*allocation))return false;
     if(*allocation&&!(*inlined)&&(p<address+QUEUE_BYTES&&address<p+*allocation))return false;
     return true;
@@ -219,11 +223,11 @@ static int unit_queue(FILE *out,const Image *im,uintptr_t unit,int32_t owner,uin
            !span(ptr(current_vector,0),ptr(current_vector,16),8,MANAGER_SLOTS,&current_capacity)||current_count>current_capacity||
            ptr(current_vector,0)+(size_t)current*8!=handlers[current].slot_address||
            !read_self(handlers[current].slot_address,&actual,8)||actual!=handlers[current].pointer){free(storage);return 247;}
-        fprintf(out,",\"native_front_bits\":%u,\"current_handler\":%" PRIuPTR,current,handlers[current].pointer);
+        fprintf(out,",\"native_gethandler_return_observed\":false,\"numeric_slot_selection_source_derived\":true,\"native_front_bits\":%u,\"observed_numeric_slot_pointer\":%" PRIuPTR,current,handlers[current].pointer);
         if(handlers[current].pointer){
             unsigned char h[16];if(!read_self(handlers[current].pointer,h,sizeof h)||i32(h,8)!=(int32_t)current||memcmp(h,handlers[current].raw,sizeof h)){free(storage);return 247;}
             uintptr_t target;if(!segment(im,ptr(h,0)+0x20,8,PF_R)||!read_self(ptr(h,0)+0x20,&target,8)||target!=handlers[current].target){free(storage);return 247;}
-            fprintf(out,",\"current_handler_hash\":%u,\"current_handler_vptr\":%" PRIuPTR ",\"current_actual_target\":%" PRIuPTR,u32(h,12),ptr(h,0),target);
+            fprintf(out,",\"numeric_slot_handler_hash\":%u,\"numeric_slot_handler_vptr\":%" PRIuPTR ",\"numeric_slot_actual_target\":%" PRIuPTR,u32(h,12),ptr(h,0),target);
         }
     }
     fputs("}\n",out);free(storage);return 0;

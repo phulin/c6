@@ -193,6 +193,24 @@
       "rva": "0x2005000",
       "bytes": 7,
       "sha256": "1bda6fddb3180619888eb42cbb75a05d0877b5498c502ebb72ec289b4e0ba7a1"
+    },
+    {
+      "name": "QueueInline.GetAlignedBuffer",
+      "rva": "0x2c3ebe0",
+      "bytes": 9,
+      "sha256": "dde0e79854590e510fd43ea083dd2ebd5e28228f9aa2cf6fc500cfb3064c2394"
+    },
+    {
+      "name": "QueueInline.AllocLinearBlock",
+      "rva": "0x2c3ef20",
+      "bytes": 172,
+      "sha256": "fb23e039fd4cbb4695f21e5c3c84267adc1cd3482ed243527c0d2972155782e0"
+    },
+    {
+      "name": "QueueVector.ctor",
+      "rva": "0x2da6bb0",
+      "bytes": 66,
+      "sha256": "c534cd88db37cad836ab03f8846fb9c02b442b0758b92e54695e2bc1344deb57"
     }
   ],
   "target_dwarf_sha256": "e331d3ae600ddc6785782f876b31db9725be34e23b17239ab67e27119ec7b2ae",
@@ -225,7 +243,19 @@
     "queue_block_offset": 176,
     "queue_capacity_offset": 184,
     "queue_count_offset": 192,
-    "node_bytes": 40
+    "node_bytes": 40,
+    "initialized_empty_block": {
+      "pointer": 0,
+      "capacity": 0
+    },
+    "inline_block": {
+      "pointer": "align_up(queue_address,16)",
+      "capacity": 4
+    },
+    "out_of_line_block": {
+      "pointer_alignment": 16,
+      "minimum_capacity": 5
+    }
   },
   "helper_original_calls": [],
   "caller_callback": "required strict retained-context idle admission; separately source/profile gated",
@@ -234,7 +264,7 @@
     "actual live Manager slots and supported complete code bytes match hashed original file",
     "actual live handler +0x20 target belongs to mapped executable original module and matches complete leaf bytes",
     "all65 mapped Player slots and complete original active Unit container membership",
-    "native current node raw bits resolve to bounded actual vector slot; non-index current identities explicitly unsupported",
+    "native front bits select a bounded observed vector slot by source-derived numeric indexing; no native GetHandler return observed",
     "unmasked native queue header and entire native block capacity bytes retained; no parameter dereference",
     "same-context callback and retained original owner lock/lifetime; no original getters or predicates called by helper"
   ],
@@ -252,6 +282,7 @@
     "wrong_slot_parent_and_active_list_tail_refused": true,
     "live_code_mismatch_and_nonexecuting_segment_refused": true,
     "actual_runtime_code_map_permissions_and_file_owner_required": true,
+    "actual_vtable_slot_map_readability_and_file_owner_required": true,
     "unknown_idle_fatal_exit": 240,
     "original_execution": false,
     "synthetic_fixtures_are_not_native_binding_acceptance": true
@@ -261,15 +292,16 @@
     "retained Context/Game/root/session lifetimes and main-thread native lock",
     "two full passes, six unmasked Saves, known64 RNG endpoint bytes and terminal cleanup",
     "same-context serializer ownership/hash evidence and independently observed reverse-map answers",
+    "live transitive PLT/GOT destinations and original getter equivalence remain unvalidated; matching Manager bodies alone is insufficient",
     "independent pre-answer checker/profile admission before sole future native capture"
   ],
   "full_manager_supported": false,
   "complete_state_action_rng_turns_supported": false,
   "historical_raw_save_load_failure_bytes": 89198,
   "source_sha256": {
-    "native/linux/current_handler_interruption.c": "0df30f0bc7f93783f1d07916faade138e601a2046e612f2eb3c56e8bd2e80eaa",
+    "native/linux/current_handler_interruption.c": "6a480669a9868b9b96334cbe42ba5f432f5e2c5a762a8e1bfde4b1de01cddffa",
     "native/linux/current_handler_interruption.h": "705fcc9d02f59d5a9ef2ccdb5ff65deb4df1d1abf718ca6ca3b0d8ba676ae589",
-    "tools/linux/current_handler_interruption_metadata_audit.py": "210e36acdd2d23f6d1c50b7a9585ee850c40a45c007528adb2b5b7df98ad8a5f",
+    "tools/linux/current_handler_interruption_metadata_audit.py": "2afeca25c7b81cf1fe7e114a169517b890c31fe26ec416bc653cfaf1639edcfb",
     "tools/linux/unit_operation_manager_metadata_audit.py": "da62ff2eae1c6de6ed34a0cb9929e431bae5e55a6d213e72c48f4de7f6107c96",
     "tools/linux/current_handler_interruption_audit.py": "2087b35196c52418552a228b5b0d50d48ffef05a81030c03cfb6b45678e6fc09"
   }
