@@ -1,0 +1,300 @@
+{
+  "schema": "c6-linux-player-techs-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "current_version": 6,
+  "version_address": "0x2f685e4",
+  "methods": [
+    {
+      "address": "0x2b8eb90",
+      "size": 67,
+      "name": "FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>::dummyLoadDelta(Serialization::IStream&)",
+      "sha256": "2b0a1944b140865d9b2cb3c6057b79457cf01e37be0f280a4a638a7c1ba89001"
+    },
+    {
+      "address": "0x2b8eb70",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>::load(Serialization::IStream&)",
+      "sha256": "2a25fb352e651e85a85ab07e925fbc78c5376ca7777eb104c038936e86ea8616"
+    },
+    {
+      "address": "0x2b8eb80",
+      "size": 9,
+      "name": "FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>::loadDelta(Serialization::IStream&)",
+      "sha256": "167c0fdc50d578e181c5dddff2172f571505e7e00cb3cf946d8dc5f0b4ead6fa"
+    },
+    {
+      "address": "0x2016480",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "bbba3422fa0bd6194a1c30c88ee7b8e77f8f7f0733c020e55d5c967202a1dd21"
+    },
+    {
+      "address": "0x20166e0",
+      "size": 66,
+      "name": "unsigned int Serialization::IndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "ff8dfe200251d2bcc9ff280ba3b4dcc5a7c69ec8ca304022f0971b19b81e6907"
+    },
+    {
+      "address": "0x20e83c0",
+      "size": 36,
+      "name": "int Serialization::ReadHashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::IStream&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "f845c681d586b1747a7ef50ff6e12d05359e9200b67d2b8f0a060216e7c0aa90"
+    },
+    {
+      "address": "0x200e200",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "175d86dbe583455f87afaeec42db117ecf32444a8129b3fbd0f1e2306ca31abc"
+    },
+    {
+      "address": "0x2b8de60",
+      "size": 157,
+      "name": "bool Serialization::ReadIndexHashArray<FixedPointT<8u>, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::IStream&, FixedPointT<8u>*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "6cc21bd5aee5a51c276450691b384a9e359d688a69ba01d4caef3e0c9e3a285c"
+    },
+    {
+      "address": "0x218fd60",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::IStream&, bool*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "40b036252c1824179cc68526958d444b6d22db6d9791ec360d73dfacc11e3083"
+    },
+    {
+      "address": "0x2b8dd50",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<FixedPointT<8u>, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::OStream&, FixedPointT<8u> const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "a7b88d3c271637165513b272f7dc875930f9a5beba54df77bdedd83fbd961326"
+    },
+    {
+      "address": "0x218fe50",
+      "size": 138,
+      "name": "bool Serialization::WriteIndexHashArray<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(Serialization::OStream&, bool const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "ff63bebb8b64f6198886ad14a9b928b9e9201b097a4a00784c99e9f8335d6249"
+    },
+    {
+      "address": "0x2c9afe0",
+      "size": 42,
+      "name": "Serialization::operator<<(Serialization::OStream&, FixedPointT<8u> const&)",
+      "sha256": "bbd0553ff77e4be5a896850082327f68662e870164f4771d58a0e5c73c7d5704"
+    },
+    {
+      "address": "0x2b89f90",
+      "size": 242,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Techs const&)",
+      "sha256": "a1eee5b85bf91e347826bbf1fc76bdaa2c7f54e983e55d9bde95e9b36055e8d6"
+    },
+    {
+      "address": "0x2d4eef0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::TechTypes const&)",
+      "sha256": "e8b21f56f96030386a4c9aac4582d7fce63120854b0a642cf15392ac5210cdad"
+    },
+    {
+      "address": "0x2b8f680",
+      "size": 105,
+      "name": "Serialization::OStream& Serialization::operator<< <GameCore::TechTypes>(Serialization::OStream&, GameCore::Utilities::Queue<GameCore::TechTypes, 4> const&)",
+      "sha256": "2dd86784c6563fd6019e4f3ebef2beda5df8e6765f432da6037bebb0168b8c58"
+    },
+    {
+      "address": "0x2c9b010",
+      "size": 43,
+      "name": "Serialization::operator>>(Serialization::IStream&, FixedPointT<8u>&)",
+      "sha256": "5d47fcdfb3868524b3d8da8a2fab95de165678efa05f23c615963da12ddf010d"
+    },
+    {
+      "address": "0x2b8a090",
+      "size": 494,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Techs&)",
+      "sha256": "eadb0d0289bb1cdefd1870b3bccac5a6022119147595fdd84327e634156b6553"
+    },
+    {
+      "address": "0x2d4ef20",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::TechTypes&)",
+      "sha256": "047050d264acc31d6a4477873412f54329d63a12b971850fa8ca7602c1cfa31c"
+    },
+    {
+      "address": "0x2b8f610",
+      "size": 108,
+      "name": "Serialization::IStream& Serialization::operator>><GameCore::TechTypes>(Serialization::IStream&, GameCore::Utilities::Queue<GameCore::TechTypes, 4>&)",
+      "sha256": "a27a57c1df6d34ec421b4f58135f77b4bfa3f0ae886f433bd73677c5e840cbba"
+    },
+    {
+      "address": "0x2b8ebe0",
+      "size": 15,
+      "name": "FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>::save(Serialization::OStream&) const",
+      "sha256": "4ec8ebead703d66071bc76f0235c8df8e98a5b527acde0698e7ead5ed0090f0b"
+    },
+    {
+      "address": "0x2b8ec80",
+      "size": 1815,
+      "name": "FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>::compare(Serialization::IStream&, Types::Vector<Types::pair<AutoVariableString, AutoVariableString>, Types::LinearAlloc::Default<1u, 0u> > const&) const",
+      "sha256": "79638e031e71d4624484bcff28d82cbf7839e1934ab29bc8b42d4b17eef03daf"
+    },
+    {
+      "address": "0x2b8ebf0",
+      "size": 9,
+      "name": "FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>::saveDelta(Serialization::OStream&) const",
+      "sha256": "d36ea3021ffa47b529ed32deccaac19d2e06c32d8eaaf12802f2a9502f727aaa"
+    },
+    {
+      "address": "0x2b8dd10",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Player::Techs>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Techs> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b8dcf0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>(Serialization::OStream&, FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b8dd30",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Techs>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Techs> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b8de00",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><FixedPointT<8u>, GameCore::Player::Techs>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Techs>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b8dde0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>(Serialization::IStream&, FAutoVariable<GameCore::Utilities::Queue<GameCore::TechTypes, 4>, GameCore::Player::Techs>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    }
+  ],
+  "direct_calls": [
+    {
+      "address": "0x2b4f0ad",
+      "target": "0x1eb9310"
+    },
+    {
+      "address": "0x2b4f0c0",
+      "target": "0x1f4cb40"
+    },
+    {
+      "address": "0x2b4f0d3",
+      "target": "0x1f84390"
+    },
+    {
+      "address": "0x2b4f0e6",
+      "target": "0x1f66d50"
+    },
+    {
+      "address": "0x2b4f0f9",
+      "target": "0x1f35f50"
+    }
+  ],
+  "dwarf_sha256": "ce973bd273feb8e10f2dbaaceb8c3818d3dfcf58f1e9fa352a231d8eea3db15d",
+  "candidate_source_commit": "5057bac33cb4b61215efd4ebf0482f69150c068e",
+  "candidate_archive_sha256": "eeb7816e0d2dbdc6a8216446fcde0239247efe60b885c261180685b366efb3db",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "ea03a7dc61befcea08c3a348d5f8adcfb4395915b0b31515f706ea6b58afed23",
+    "crates/c6-core/src/core_stream.rs": "d061cdab17dbd186e3fc0d6b5ee31baa9d4d2828bad2f159950a2ee5c8010b72",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "1b647ce16d8249e3dc07924fe68d4d636fa8092ccbb34e8abf4736ad6fc0b435",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+    "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+    "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+    "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+    "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/src/unit_placement.rs": "71e8e28102e31f4debc295dc2716983b2523695c0483a5945c9af240275bbd28",
+    "crates/c6-core/src/world.rs": "ff30a11433e8044b9c4a20c26d617c954605462106482427a3b593c53b8b6474",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
+  },
+  "candidate_sha256": "6031f840959490adae679fb750593e52af999d7e66d2c2d64b355c8bd66def25",
+  "harness_sha256": "8bee03e967e4fd5168ba9b4a78e870c0cf6c3092621d8611b11d5ec38aba5253",
+  "audit_source_sha256": "c745d5224c848f7fe0b70537ac8adb30576f355a84f7d942b7f776038e450b54",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": 43,
+      "record_bytes": 61662,
+      "first_observed_range": [
+        5005854,
+        5007288
+      ],
+      "ordered_record_digests_sha256": "58ba33dcead681cc17b3f87a75d86901ac0f08f1eeddc2d811a108157a1c9b68",
+      "typed_observations_sha256": "81ed2773e48be469ff591a8b2aa591afb5d68253078a0638f9accdd015ec5703"
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": 43,
+      "record_bytes": 61662,
+      "first_observed_range": [
+        5005854,
+        5007288
+      ],
+      "ordered_record_digests_sha256": "58ba33dcead681cc17b3f87a75d86901ac0f08f1eeddc2d811a108157a1c9b68",
+      "typed_observations_sha256": "81ed2773e48be469ff591a8b2aa591afb5d68253078a0638f9accdd015ec5703"
+    }
+  ],
+  "source_only_tests": 5,
+  "exact_native_record_byte_item_caps_checked": true,
+  "one_short_native_record_caps_rejected": true,
+  "every_native_record_prefix_rejected": true,
+  "allocation_policy": "checked per-vector storage; aggregate consumed wire bytes and items",
+  "original_execution": false,
+  "private_writes": false,
+  "complete_current_techs_wire": true,
+  "definition_remapping": false,
+  "native_read_fixups": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "next_player_component": "Treasury",
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198
+}
