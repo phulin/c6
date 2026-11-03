@@ -1,0 +1,126 @@
+{
+  "acceptance": "static-source-only",
+  "complete_unit_initialization": false,
+  "domain_hash_to_runtime": {
+    "0x44c22cdb": 4,
+    "0x5397d46f": 1,
+    "0x643eada3": 0,
+    "0xb6e1baac": 2,
+    "0xc03bbd2f": 3
+  },
+  "full_state_action_turn_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": {
+    "abilities_overlay": {
+      "address": "0x2c2a7a0",
+      "bytes": 149,
+      "sha256": "69488a602ef29b65f66ed665e4be5a45701788d85a9d694cc46e8b02f24c8776",
+      "symbols": [
+        "_ZN13Serialization18ReadIndexHashArrayIiN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_11UnitAbilityEEEEEbRNS_7IStreamEPT_RKT0_"
+      ]
+    },
+    "concrete_post_load": {
+      "address": "0x2c12d00",
+      "bytes": 19,
+      "sha256": "5a9347cbc48de5fb33deba3be4527993a6cf6a7692be18090a23adfb5f9e44c7",
+      "symbols": [
+        "_ZN8GameCore4Unit9CInstance18InitializePostLoadEv"
+      ]
+    },
+    "definition_domain_hash": {
+      "address": "0x1fe5870",
+      "bytes": 4,
+      "sha256": "77205cdc9a7bd9bf1f7e6ff1fdda57017736a90fa0063ff3b0d23ffeea318cab",
+      "symbols": [
+        "_ZNK8GameCore10Definition4Unit13GetDomainHashEv"
+      ]
+    },
+    "great_person_overlay": {
+      "address": "0x2b13a80",
+      "bytes": 149,
+      "sha256": "184f9626aa3f4fc8b78aceef0e22ae287bb13c285bb39a94943750a5523e7c24",
+      "symbols": [
+        "_ZN13Serialization18ReadIndexHashArrayIiN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_16GreatPersonClassEEEEEbRNS_7IStreamEPT_RKT0_"
+      ]
+    },
+    "initialize_definition": {
+      "address": "0x2c1c6e0",
+      "bytes": 87,
+      "sha256": "d3e05bf90be350eb8f482e319ca09f5b3b1f3cc9ef950a7182844c422c512714",
+      "symbols": [
+        "_ZN8GameCore4Unit9IInstance20InitializeDefinitionENS_9UnitTypesE"
+      ]
+    },
+    "initialize_domain": {
+      "address": "0x2c12bc0",
+      "bytes": 130,
+      "sha256": "331b2d226ee95e10cba7019e9e688fe20f93ddb7f1bc0f2dda0bca88ca7e5867",
+      "symbols": [
+        "_ZN8GameCore4Unit9CInstance16InitializeDomainEv"
+      ]
+    },
+    "interface_post_load": {
+      "address": "0x2c1c850",
+      "bytes": 11,
+      "sha256": "5498b517d76fe29a543e1d4169543884d999e1ebf85494e7c05463b47a2d28d8",
+      "symbols": [
+        "_ZN8GameCore4Unit9IInstance18InitializePostLoadEv"
+      ]
+    },
+    "terrain_overlay": {
+      "address": "0x2c2a8e0",
+      "bytes": 149,
+      "sha256": "3b00754a0ac9e4cf4e460b88fcde735885d394f3317cbd16c52388c86377c173",
+      "symbols": [
+        "_ZN13Serialization18ReadIndexHashArrayIbN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_7TerrainEEEEEbRNS_7IStreamEPT_RKT0_"
+      ]
+    },
+    "unit_hash_read": {
+      "address": "0x2d4ec80",
+      "bytes": 58,
+      "sha256": "d2f6a44260938ca04b9c2055201efa60f4b0ad7cd539089934501f6a40e139be",
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore9UnitTypesE"
+      ]
+    },
+    "unit_read": {
+      "address": "0x2c231f0",
+      "bytes": 3011,
+      "sha256": "e39f2c7b9a358527bbf3ceed7ff41d9c5f5dccfcf6cb3f5802bafbc0d0f2d202",
+      "symbols": [
+        "_ZN13SerializationrsERNS_7IStreamERN8GameCore4Unit8InstanceE"
+      ]
+    },
+    "unit_reset": {
+      "address": "0x2c23dc0",
+      "bytes": 809,
+      "sha256": "fab99e5056724f13df7ff04fc63deb460993434b984b0e5ac28682bcb97f076b",
+      "symbols": [
+        "_ZN8GameCore4Unit8Instance5ResetEv"
+      ]
+    }
+  },
+  "native_comparison": false,
+  "overlay": {
+    "duplicate": "last_resolved_write",
+    "unknown": "consume_without_write",
+    "untouched": "preserve_destination"
+  },
+  "reset_arrays": {
+    "abilities": 0,
+    "great_person_points": 0,
+    "great_person_strength": 0,
+    "ignore_feature": false,
+    "ignore_terrain": false,
+    "invalid_terrain": false
+  },
+  "schema": "c6-linux-unit-live-initialization-v1",
+  "unknown_domain": -1,
+  "virtual_post_load": {
+    "domain_slot": "0x38",
+    "read_slot": "0x28",
+    "sha256": "5b6fb58e61fa475939767d68a446f97f1bff02c0e5935a3ea8bb51e6515783d8",
+    "vtable": "0x3ae5f70"
+  }
+}
