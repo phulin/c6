@@ -1,6 +1,7 @@
 //! Bounded post-Map Core wire prefix through the first Player's complete Heroes and conditional AI prefix.
-//! Yields at the exact conditional AICityManager or inline-tail boundary; no gameplay.
+//! Yields at the exact conditional AICityManager or a source-proven complete false-branch Player; no gameplay.
 use crate::player_prerequisites::{self, IndexedBools};
+use crate::player_tail;
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
@@ -51,6 +52,7 @@ pub enum Error {
     AIControl(player_ai_control::Error),
     AIInfluenceMap(player_ai_influence_map::Error),
     AIPlanning(player_ai_identity::Error),
+    Tail(player_tail::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -165,6 +167,8 @@ pub struct FirstPlayer {
     pub ai_control: Option<player_ai_control::ControlManager>,
     pub ai_influence_map: Option<player_ai_influence_map::InfluenceMap>,
     pub ai_planning: Option<player_ai_identity::PlanningManagerIdentity>,
+    /// Complete common suffix only for the false WasEverAlive branch.
+    pub tail: Option<player_tail::Tail>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
@@ -173,9 +177,10 @@ pub enum Boundary {
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
     /// WasEverAlive=true: all three tables and current Control/InfluenceMap/Planning records consumed.
     AICityManager,
-    /// WasEverAlive=false: jump to properties at native writer0x2b4f413.
-    /// This is inside the later inline tail, not its true-branch start.
-    PlayerInlineTail,
+    /// First false-branch wire Player closed; next explicit requested ID is unread.
+    NextPlayerEntry,
+    /// The sole false-branch wire Player and its enclosing Manager are closed.
+    AfterPlayerManager,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -183,7 +188,8 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// Neither nonempty boundary closes a complete Player entry.
+    /// Counts unfinished Manager entries; a complete false-branch first wire
+    /// Player is subtracted, while actual true-branch imports remain partial.
     pub unfinished_player_entries: u32,
 }
 
@@ -575,6 +581,23 @@ impl Prefix {
             } else {
                 (None, None, None)
             };
+            let tail = if header.saved_was_ever_alive() {
+                None
+            } else {
+                Some(r.component(
+                    |bytes, limits| {
+                        player_tail::Tail::decode_prefix_with_items(
+                            bytes,
+                            player_tail::Context {
+                                player_version: 47,
+                                was_ever_alive: false,
+                            },
+                            limits,
+                        )
+                    },
+                    Error::Tail,
+                )?)
+            };
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -608,20 +631,27 @@ impl Prefix {
                 ai_control,
                 ai_influence_map,
                 ai_planning,
+                tail,
             })
         };
         let boundary = match first_player.as_ref() {
             Some(p) if p.header.saved_was_ever_alive() => Boundary::AICityManager,
-            Some(_) => Boundary::PlayerInlineTail,
+            Some(_) if player_count > 1 => Boundary::NextPlayerEntry,
+            Some(_) => Boundary::AfterPlayerManager,
             None => Boundary::AfterEmptyPlayerManager,
         };
+        let completed = u32::from(
+            first_player
+                .as_ref()
+                .is_some_and(|p| !p.header.saved_was_ever_alive()),
+        );
         Ok((
             Self {
                 religion,
                 player_count,
                 first_player,
                 boundary,
-                unfinished_player_entries: player_count,
+                unfinished_player_entries: player_count - completed,
             },
             r.pos,
             r.items,
@@ -1741,7 +1771,20 @@ mod tests {
                 bytes += table.encode(Limits::default()).unwrap().len();
             }
         }
-        bytes + after_post_heroes_arrays_bytes(p)
+        bytes
+            + after_post_heroes_arrays_bytes(p)
+            + p.tail.as_ref().map_or(0, |value| {
+                value
+                    .encode(
+                        player_tail::Context {
+                            player_version: 47,
+                            was_ever_alive: false,
+                        },
+                        Limits::default(),
+                    )
+                    .unwrap()
+                    .len()
+            })
     }
     // Complete arbitrary current control contracts; no native initialization.
     fn ai_control_carrier() -> player_ai_control::ControlManager {
@@ -1827,6 +1870,30 @@ mod tests {
             + p.ai_planning
                 .as_ref()
                 .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
+    }
+    // Common false-branch saved tail; all fields explicit, no runtime defaults.
+    fn false_tail_carrier() -> player_tail::Tail {
+        player_tail::Tail {
+            alive: None,
+            properties: unit::variants::TypedVariantMap {
+                header: unit::variants::KeyedHeader::Count,
+                entries: vec![],
+            },
+            improvement_replacements: vec![
+                unit::HashValue {
+                    definition_hash: u32::MAX,
+                    value: 0x80000000,
+                },
+                unit::HashValue {
+                    definition_hash: u32::MAX,
+                    value: 7,
+                },
+            ],
+            random_event_hashes: vec![u32::MAX, 0x80000000],
+            terrain_work_impassable: vec![i32::MIN, -1],
+            random_event_no_unit_damage: vec![i32::MAX],
+            random_event_modified_damage_opposing_player: vec![-7],
+        }
     }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
@@ -2316,7 +2383,11 @@ mod tests {
         let expected = if first.header.saved_was_ever_alive() {
             Boundary::AICityManager
         } else {
-            Boundary::PlayerInlineTail
+            if prefix.player_count > 1 {
+                Boundary::NextPlayerEntry
+            } else {
+                Boundary::AfterPlayerManager
+            }
         };
         assert_eq!(prefix.boundary, expected);
         assert_eq!(
@@ -2335,6 +2406,11 @@ mod tests {
             first.ai_planning.is_some(),
             first.header.saved_was_ever_alive()
         );
+        assert_eq!(
+            prefix.first_player_complete(),
+            !first.header.saved_was_ever_alive()
+        );
+        assert_eq!(first.tail.is_some(), !first.header.saved_was_ever_alive());
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
         let post_map = &bytes[value.core.consumed..];
         assert_eq!(encoded, post_map[..encoded.len()]);
@@ -2568,16 +2644,32 @@ mod tests {
             .map(|a| a.encode(Limits::default()).unwrap().len())
             .sum();
         let array_items: usize = tables.iter().map(|a| a.pairs.len()).sum();
+        let tail = false_tail_carrier();
+        let (tail_bytes, tail_items) = tail
+            .encode_with_items(
+                player_tail::Context {
+                    player_version: 47,
+                    was_ever_alive: false,
+                },
+                Limits::default(),
+            )
+            .unwrap();
+        p.tail = Some(tail);
         p.header.ordered_flags[1] = false;
         assert!(!p.header.saved_was_ever_alive());
-        v.boundary = Boundary::PlayerInlineTail;
+        v.boundary = Boundary::NextPlayerEntry;
+        v.unfinished_player_entries = v.player_count - 1;
+        assert!(v.first_player_complete());
         let (encoded, charged) = v.encode_prefix_with_items(Limits::default()).unwrap();
         assert_eq!(
             (encoded.len(), charged),
-            (n - array_bytes - ai_bytes, items - array_items - ai_items)
+            (
+                n - array_bytes - ai_bytes + tail_bytes.len(),
+                items - array_items - ai_items + tail_items
+            )
         );
         let mut trailing = encoded.clone();
-        trailing.extend([255, 255, 255, 255]);
+        words(&mut trailing, &[7, 47]); // next requested ID + Player version remain unread
         let exact = Limits {
             max_bytes: encoded.len(),
             max_items: charged,
@@ -2596,6 +2688,11 @@ mod tests {
             assert!(v.encode_prefix(short).is_err());
         }
         let (decoded, consumed, used) = Prefix::decode_prefix_with_items(&trailing, exact).unwrap();
+        assert!(decoded.first_player_complete());
+        assert_eq!(
+            &trailing[consumed..],
+            &[7u32.to_le_bytes(), 47u32.to_le_bytes()].concat()
+        );
         assert_eq!((decoded, consumed, used), (v, encoded.len(), charged));
         let (mut v, _, _) = Prefix::decode_prefix_with_items(&encoded, exact).unwrap();
         v.first_player.as_mut().unwrap().post_heroes_arrays = Some(arrays);
@@ -2622,7 +2719,9 @@ mod tests {
             }),
             Err(Error::InvalidPrefix)
         );
+        v.unfinished_player_entries = v.player_count;
         let p = v.first_player.as_mut().unwrap();
+        p.tail = None;
         p.post_heroes_arrays = Some(arrays);
         p.ai_control = Some(ai_control);
         p.ai_influence_map = Some(ai_map);
@@ -2710,6 +2809,91 @@ mod tests {
             }))
         ));
         v.first_player.as_mut().unwrap().ai_influence_map = None;
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+    }
+    #[test]
+    fn complete_false_player_closes_single_entry_manager_and_checks_context() {
+        let (mut v, _) = Prefix::decode_prefix(&carrier(), Limits::default()).unwrap();
+        let p = v.first_player.as_mut().unwrap();
+        p.header.ordered_flags[1] = false;
+        p.post_heroes_arrays = None;
+        p.ai_control = None;
+        p.ai_influence_map = None;
+        p.ai_planning = None;
+        p.tail = Some(false_tail_carrier());
+        v.player_count = 1;
+        v.unfinished_player_entries = 0;
+        v.boundary = Boundary::AfterPlayerManager;
+        assert!(v.first_player_complete());
+        let (encoded, items) = v.encode_prefix_with_items(Limits::default()).unwrap();
+        let exact = Limits {
+            max_bytes: encoded.len(),
+            max_items: items,
+        };
+        let mut trailing = encoded.clone();
+        trailing.extend([91, 92, 93]);
+        let (decoded, used, charged) = Prefix::decode_prefix_with_items(&trailing, exact).unwrap();
+        assert_eq!((used, charged), (encoded.len(), items));
+        assert_eq!(&trailing[used..], &[91, 92, 93]);
+        assert_eq!(decoded.boundary, Boundary::AfterPlayerManager);
+        assert_eq!(decoded.unfinished_player_entries, 0);
+        assert!(decoded.first_player_complete());
+        assert_eq!(
+            decoded.encode_prefix_with_items(exact).unwrap(),
+            (encoded.clone(), items)
+        );
+        let tail_bytes = v
+            .first_player
+            .as_ref()
+            .unwrap()
+            .tail
+            .as_ref()
+            .unwrap()
+            .encode(
+                player_tail::Context {
+                    player_version: 47,
+                    was_ever_alive: false,
+                },
+                Limits::default(),
+            )
+            .unwrap()
+            .len();
+        for end in encoded.len() - tail_bytes..encoded.len() {
+            assert!(Prefix::decode_prefix(&encoded[..end], Limits::default()).is_err());
+        }
+        v.unfinished_player_entries = 1;
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+        v.unfinished_player_entries = 0;
+        v.boundary = Boundary::NextPlayerEntry;
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+        v.boundary = Boundary::AfterPlayerManager;
+        // Deliberately invalid false-context model: a true-only tail section.
+        v.first_player
+            .as_mut()
+            .unwrap()
+            .tail
+            .as_mut()
+            .unwrap()
+            .alive = Some(player_tail::AliveTail::default());
+        assert!(!v.first_player_complete());
         assert_eq!(
             v.encode_prefix(Limits {
                 max_bytes: 0,
@@ -3015,15 +3199,32 @@ impl Writer {
     }
 }
 impl Prefix {
+    /// Completeness of this first serialized wire entry only, not live state.
+    /// The real true branch is still partial at AI.CityManager.
+    pub fn first_player_complete(&self) -> bool {
+        self.first_player.as_ref().is_some_and(|p| {
+            !p.header.saved_was_ever_alive()
+                && p.tail.as_ref().is_some_and(|tail| tail.alive.is_none())
+                && p.post_heroes_arrays.is_none()
+                && p.ai_control.is_none()
+                && p.ai_influence_map.is_none()
+                && p.ai_planning.is_none()
+        })
+    }
     /// Encode exactly the supported prefix, without an unsupported Player tail.
     /// Inconsistent boundary/count/first-entry combinations are rejected.
     pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let expected_boundary = match self.first_player.as_ref() {
             Some(p) if p.header.saved_was_ever_alive() => Boundary::AICityManager,
-            Some(_) => Boundary::PlayerInlineTail,
+            Some(_) if self.player_count > 1 => Boundary::NextPlayerEntry,
+            Some(_) => Boundary::AfterPlayerManager,
             None => Boundary::AfterEmptyPlayerManager,
         };
-        if self.unfinished_player_entries != self.player_count
+        let expected_unfinished = self
+            .player_count
+            .checked_sub(u32::from(self.first_player_complete()))
+            .ok_or(Error::InvalidPrefix)?;
+        if self.unfinished_player_entries != expected_unfinished
             || (self.player_count == 0) != self.first_player.is_none()
             || self.boundary != expected_boundary
             || self.first_player.as_ref().is_some_and(|p| {
@@ -3035,6 +3236,8 @@ impl Prefix {
                 ]
                 .iter()
                 .any(|present| *present != p.header.saved_was_ever_alive())
+                    || p.tail.is_some() == p.header.saved_was_ever_alive()
+                    || p.tail.as_ref().is_some_and(|tail| tail.alive.is_some())
             })
         {
             return Err(Error::InvalidPrefix);
@@ -3203,6 +3406,21 @@ impl Prefix {
                     value,
                     player_ai_identity::PlanningManagerIdentity::encode_with_items,
                     Error::AIPlanning,
+                )?;
+            }
+            if let Some(value) = &p.tail {
+                w.component(
+                    value,
+                    |value, limits| {
+                        value.encode_with_items(
+                            player_tail::Context {
+                                player_version: 47,
+                                was_ever_alive: false,
+                            },
+                            limits,
+                        )
+                    },
+                    Error::Tail,
                 )?;
             }
         }
