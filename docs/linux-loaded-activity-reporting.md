@@ -1,7 +1,7 @@
 # Loaded Unit activity reporting
 
-`loaded_actions::reporting` resolves a concrete part of the first synchronous
-SkipTurn reporting path over the authoritative `LoadedState`. It is a bounded
+`loaded_actions::reporting` resolves concrete synchronous Unit lifecycle
+SkipTurn reporting paths over the authoritative `LoadedState`. It is a bounded
 source implementation, not complete action acceptance. Complete gameplay state,
 actions, turns, affected-state comparison and gameplay RNG remain unfinished.
 
@@ -44,7 +44,7 @@ operation facade getters. Type.subtype is zero; EventData's separate Unit type
 seven CacheUpdated275 prepublish callbacks are already proven null by the
 [closed reporting capture](linux-skip-turn-reporting-closure.md). Their absence
 is scoped to that admitted stock reporting path. The provider retains an ordered
-typed event35 publication at the original translation point; it does not invent
+typed publication at the original translation point; it does not invent
 its later subscribers or move synchronous work to action completion.
 `drain_playback` explicitly rejects unavailable queued consumers.
 
@@ -53,8 +53,8 @@ consumer proof. Stock UnitFlag dirty vectors are separately omitted under the
 [stock gameplay scope](linux-reporting-gameplay-scope.md). Neither omission
 creates an empty registration table. `Scope::StockHeadlessNoAddedConsumers` is a
 caller admission condition for the active profile, not evidence automatically
-obtained from Lua source hashes. Nonempty/custom Unit property copying, operation
-facade projection and subsequent event types remain explicit dependencies.
+obtained from Lua source hashes. Nonempty/custom Unit property copying, non-SkipTurn
+facade projections and subsequent event types remain explicit dependencies.
 
 The implementation receives the actual authoritative world through
 `Reports::send_loaded`, after the setter has released its short actor borrow and
@@ -80,15 +80,44 @@ successful callback defaults. Its result records the exact next unsupported
 consumer and ordered activity publications. Source replay does not establish a
 new native differential action comparison.
 
-The actual first report occurs while owner 0 / Unit 15,794,187 still retains its
+Historical checkpoint `9491031` checks the first report while owner 0 /
+Unit 15,794,187 still retains its
 single old MoveTo queue node. It has AWAKE activity and remaining moves 256 Q8.
 The original member-readiness pending-operation guard therefore returns false,
 so this first snapshot never reaches CanCyclePast or HoldCycling. One event35
 publication is prepared, and the real action prefix advances to
-UnitOperationDeactivated `a60328c5`, which this provider explicitly does not yet
-handle. The loaded check records this branch instead of claiming it exercised
+UnitOperationDeactivated `a60328c5`, which that checkpoint did not yet handle. The loaded check records this branch instead of claiming it exercised
 the implemented adjacency evaluator. Shape/identity rejection and unavailable
 playback drain preserve both the pending publication and authoritative state.
+
+The source extension additionally implements the observed deactivated, cleared,
+added and started translators (host events 70, 71, 67 and 68). It retains their
+literal scalar copies: Added/Started use Type.subtype and first; Deactivated/
+Cleared use first and second. EventData1 initializes absent scalar fields to
+zero. Added's captured subtype 0 / first 36 stays exactly that; the adapter does
+not replace it with a guessed operation hash. Cleared, Added and Started perform
+their actual synchronous Unit snapshot effect check before host translation;
+Deactivated has no observed cache callback.
+
+For an OPERATION activity, the provider resolves the actual current queue at
+that boundary and requires an admitted current SkipTurn handler and its concrete
+empty parameter writer. It returns the original SkipTurn hash; a genuinely empty
+queue returns zero. Fresh host activity output initializes operation to zero and
+all four optional parameter values to -1. Unknown front handlers or parameter
+writers reject instead of synthesizing a facade. Host events retain their
+original common order. These are source-derived fields; the original nine typed
+Send scalar rows did not capture computed host publication or snapshot output.
+
+The subsequent checker retains full immutable source preimages, a source
+manifest, generated Cargo manifest/lock and candidate binary under
+`target/linux/loaded-activity-reporting-candidates/`. This supersedes the first
+checker's reconstruction limit: its temporary full source directory was deleted,
+and its recorded shared `loaded_actions.rs` hash differs from the checkpoint's
+Git blob. That historical report remains unchanged and is not a reproducible
+source rebuild claim. New whole-entrypoint comparison covers only the prefix
+actually executed before the genuine script/report failure. Additional isolated
+report-shape fixtures remain separate from that prefix. Neither comparison
+establishes native affected-state or RNG equivalence.
 
 ```sh
 python3 tools/linux/loaded_activity_reporting_audit.py --output target/linux/loaded-activity-reporting-source.json

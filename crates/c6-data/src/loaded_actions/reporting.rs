@@ -20,6 +20,10 @@ use c6_core::{
 };
 
 const ACTIVITY_CHANGED: u32 = 0xe23b112d;
+const OPERATION_DEACTIVATED: u32 = 0xa60328c5;
+const OPERATIONS_CLEARED: u32 = 0x383669f1;
+const OPERATION_ADDED: u32 = 0x15c35863;
+const OPERATION_STARTED: u32 = 0x3d4006f2;
 const AWAKE: i32 = 0x6b25012e;
 const OPERATION: i32 = 0x490cc8e1;
 
@@ -91,13 +95,35 @@ pub struct ActivityPublication {
     pub activity: i32,
 }
 
+/// Logical host publication fields, prepared in original Send order. EventData1
+/// initializes missing scalar parameters to zero; activity operation defaults
+/// are the distinct constructor values, retained below.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Publication {
+    pub host_event: u32,
+    pub source: IdentityReport,
+    pub operation: i32,
+    pub value: i32,
+    pub activity_operation: Option<u32>,
+    pub activity_parameters: Option<[i32; 4]>,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ReadinessPath {
     MemberNotReady,
     OtherFormationMemberNotReady,
     NoFormation,
     CyclePastGuard,
-    AdjacentMove,
+    AdjacentMove(AdjacentMoveWitness),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AdjacentMoveWitness {
+    pub direction: u8,
+    pub location: PlotCoord,
+    pub has_moved: bool,
+    pub plot_cost: Option<i32>,
+    pub remaining_integer: i32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -118,7 +144,8 @@ pub enum Scope {
 pub struct Provider<'a> {
     definitions: &'a Definitions,
     movement: &'a unit_movement_state::Inputs<'a>,
-    publications: Vec<ActivityPublication>,
+    publications: Vec<Publication>,
+    skip_turn_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
 }
 impl<'a> Provider<'a> {
@@ -131,11 +158,46 @@ impl<'a> Provider<'a> {
             definitions,
             movement,
             publications: Vec::new(),
+            skip_turn_handler: None,
             snapshots: Vec::new(),
         }
     }
-    pub fn pending_activity_publications(&self) -> &[ActivityPublication] {
+    pub fn pending_publications(&self) -> &[Publication] {
         &self.publications
+    }
+    pub fn pending_activity_publications(&self) -> Vec<ActivityPublication> {
+        self.publications
+            .iter()
+            .filter(|p| p.host_event == 35)
+            .map(|p| ActivityPublication {
+                identity: p.source.identity,
+                activity: p.source.first.expect("validated activity"),
+            })
+            .collect()
+    }
+    /// Admit the current actual handler registry, not a fabricated hash lookup.
+    pub fn bind_skip_turn_handler(
+        &mut self,
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        let registry = authority.registry().map_err(Error::HandlerObservation)?;
+        authority
+            .validate_execution(state, &registry, operations)
+            .map_err(Error::HandlerObservation)?;
+        let id = authority
+            .runtime_id(c6_core::unit::SKIP_TURN_HASH)
+            .map_err(Error::HandlerObservation)?;
+        let handler = registry
+            .handler(id)
+            .map_err(Error::Registry)?
+            .ok_or(Error::Provider("actual SkipTurn facade handler absent"))?;
+        if handler.identity().operation_hash.0 != c6_core::unit::SKIP_TURN_HASH {
+            return Err(Error::Provider("actual SkipTurn facade handler identity"));
+        }
+        self.skip_turn_handler = Some(id.0);
+        Ok(())
     }
     pub fn snapshot_observations(&self) -> &[SnapshotObservation] {
         &self.snapshots
@@ -146,7 +208,7 @@ impl<'a> Provider<'a> {
             "host event35 queued playback consumers unavailable",
         ))
     }
-    pub fn send_loaded_activity(
+    pub fn send_loaded_report(
         &mut self,
         state: &LoadedState,
         reference: UnitReference,
@@ -155,18 +217,47 @@ impl<'a> Provider<'a> {
         if state.binding() != &self.definitions.binding {
             return Err(Error::ConfigurationIdentity);
         }
-        if report.event != ACTIVITY_CHANGED {
-            return Err(Error::Provider(
-                "activity provider supports only UnitActivityChanged",
-            ));
-        }
-        // Type.subtype is zero. EventData's separate identity type 6447c33d
-        // comes from decoding the Unit ComponentID, not Type.subtype.
-        if report.subtype != 0 || report.first.is_none() || report.second.is_some() {
-            return Err(Error::Provider(
-                "UnitActivityChanged typed identity/int shape",
-            ));
-        }
+        let (host_event, snapshot) = match report.event {
+            ACTIVITY_CHANGED
+                if report.subtype == 0 && report.first.is_some() && report.second.is_none() =>
+            {
+                (35, true)
+            }
+            OPERATION_DEACTIVATED
+                if report.subtype == 0 && report.first.is_some() && report.second.is_some() =>
+            {
+                (70, false)
+            }
+            OPERATIONS_CLEARED
+                if report.subtype == 0 && report.first.is_none() && report.second.is_none() =>
+            {
+                (71, true)
+            }
+            OPERATION_ADDED
+                if report.subtype == 0 && report.first.is_some() && report.second.is_none() =>
+            {
+                (67, true)
+            }
+            OPERATION_STARTED
+                if report.subtype == c6_core::unit::SKIP_TURN_HASH
+                    && report.first.is_some()
+                    && report.second.is_none() =>
+            {
+                (68, true)
+            }
+            ACTIVITY_CHANGED
+            | OPERATION_DEACTIVATED
+            | OPERATIONS_CLEARED
+            | OPERATION_ADDED
+            | OPERATION_STARTED => {
+                return Err(Error::Provider("Unit reporting typed argument shape"))
+            }
+            _ => {
+                return Err(Error::Provider(
+                    "Unit reporting consumer unavailable for this event",
+                ))
+            }
+        };
         let unit = state
             .world()
             .unit(reference)
@@ -179,33 +270,57 @@ impl<'a> Provider<'a> {
         if runtime.archive.identity() != report.identity {
             return Err(Error::Provider("activity reporting actual Unit identity"));
         }
-        if !unit.k_properties.entries.is_empty() {
-            return Err(Error::Provider(
-                "Unit snapshot nonempty/custom property copy effects",
-            ));
+        if snapshot {
+            if !unit.k_properties.entries.is_empty() {
+                return Err(Error::Provider(
+                    "Unit snapshot nonempty/custom property copy effects",
+                ));
+            }
+            let path = self.check_snapshot_query_effects(state, unit)?;
+            self.snapshots.push(SnapshotObservation {
+                identity: report.identity,
+                current_activity: unit.e_activity,
+                queue_nodes: unit.k_operations.nodes.len(),
+                remaining_q8: unit.x_moves_remaining,
+                path,
+            });
         }
-        // The concrete output queue/consumer proof permits dropping its values,
-        // but the producer's effectful readiness branch must still be resolved.
-        let path = self.check_snapshot_query_effects(state, unit)?;
-        self.snapshots.push(SnapshotObservation {
-            identity: report.identity,
-            current_activity: unit.e_activity,
-            queue_nodes: unit.k_operations.nodes.len(),
-            remaining_q8: unit.x_moves_remaining,
-            path,
-        });
-        let activity = report.first.expect("shape checked");
-        if activity == OPERATION {
-            return Err(Error::Provider(
-                "event35 operation facade projection unavailable",
-            ));
+        // UnitActivityChanged's constructor initializes activity=-1 and
+        // operation=0 in one u64 store; its four parameter fields are -1.
+        let mut activity_operation = (host_event == 35).then_some(0);
+        if host_event == 35 && report.first == Some(OPERATION) {
+            activity_operation = Some(match unit.k_operations.nodes.first() {
+                None => 0,
+                Some(node)
+                    if node.operation_hash == c6_core::unit::SKIP_TURN_HASH
+                        && matches!(node.parameters, c6_core::unit::OperationParameters::None) =>
+                {
+                    self.skip_turn_handler.ok_or(Error::Provider(
+                        "actual SkipTurn facade handler binding unavailable",
+                    ))?;
+                    // Original handler +10 returns the SkipTurn hash; concrete
+                    // parameter writer +28 is RET and leaves the fresh map empty.
+                    c6_core::unit::SKIP_TURN_HASH
+                }
+                Some(_) => {
+                    return Err(Error::Provider(
+                        "event35 current front facade type/parameter writer unavailable",
+                    ))
+                }
+            });
         }
-        // CacheUpdated275 and event35 prepublish callbacks were actually NULL
-        // on this closed stock reporting path. Their later queued consumers are
-        // not called here. The no-UI reflected Unit stream itself is omitted.
-        self.publications.push(ActivityPublication {
-            identity: report.identity,
-            activity,
+        let (operation, value) = match host_event {
+            67 | 68 => (report.subtype as i32, report.first.unwrap_or(0)),
+            70 | 71 => (report.first.unwrap_or(0), report.second.unwrap_or(0)),
+            _ => (activity_operation.unwrap_or(0) as i32, -1),
+        };
+        self.publications.push(Publication {
+            host_event,
+            source: report,
+            operation,
+            value,
+            activity_operation,
+            activity_parameters: (host_event == 35).then_some([-1; 4]),
         });
         Ok(())
     }
@@ -256,13 +371,17 @@ impl<'a> Provider<'a> {
         {
             return Ok(ReadinessPath::CyclePastGuard);
         }
-        if self.has_adjacent_move(state, unit)? {
-            return Ok(ReadinessPath::AdjacentMove);
+        if let Some(witness) = self.has_adjacent_move(state, unit)? {
+            return Ok(ReadinessPath::AdjacentMove(witness));
         }
         Err(Error::Provider("CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable"))
     }
 
-    fn has_adjacent_move(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
+    fn has_adjacent_move(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+    ) -> Result<Option<AdjacentMoveWitness>, Error> {
         let map = state.world().map();
         if map.header.width <= 0 || map.header.height <= 0 {
             return Err(Error::Provider("HasAdjacentMove Map dimensions"));
@@ -297,16 +416,28 @@ impl<'a> Provider<'a> {
             if !unit_movement_state::unit_has_moved(state, unit, self.movement)
                 .map_err(Error::Movement)?
             {
-                return Ok(true);
+                return Ok(Some(AdjacentMoveWitness {
+                    direction: direction as u8,
+                    location: coord,
+                    has_moved: false,
+                    plot_cost: None,
+                    remaining_integer: unit.x_moves_remaining >> 8,
+                }));
             }
             let cost =
                 unit_movement_state::plot_movement_cost(state, plot, self.movement.definitions)
                     .map_err(Error::Movement)?;
             if cost <= unit.x_moves_remaining >> 8 {
-                return Ok(true);
+                return Ok(Some(AdjacentMoveWitness {
+                    direction: direction as u8,
+                    location: coord,
+                    has_moved: true,
+                    plot_cost: Some(cost),
+                    remaining_integer: unit.x_moves_remaining >> 8,
+                }));
             }
         }
-        Ok(false)
+        Ok(None)
     }
 
     fn placement_valid(
@@ -397,7 +528,7 @@ impl Reports for Provider<'_> {
         reference: UnitReference,
         report: IdentityReport,
     ) -> Result<i32, Error> {
-        self.send_loaded_activity(state, reference, report)?;
+        self.send_loaded_report(state, reference, report)?;
         // Existing loaded continuation ignores this diagnostic hook result.
         Ok(0)
     }

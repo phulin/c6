@@ -348,6 +348,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &movement,
         actions::reporting::Scope::StockHeadlessNoAddedConsumers,
     );
+    reports.bind_skip_turn_handler(&state, &authority, bound.operations())?;
     let failure = actions::skip_turn_state_phase_observed(
         &mut state,
         reference,
@@ -356,13 +357,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut script,
         &mut reports,
     )
-    .expect_err("genuine report backend must remain unsupported");
+    .expect_err(
+        "a genuine unsupported predicate or reporting consumer must stop this source fixture",
+    );
     let error = format!("{:?}", failure.error);
-    assert!(matches!(
-        failure.error,
-        Error::Provider("activity provider supports only UnitActivityChanged")
-    ));
-    assert_eq!(reports.pending_activity_publications().len(), 1);
+    assert!(reports.pending_publications().len() >= 2);
+    assert_eq!(reports.pending_publications()[0].host_event, 35);
+    assert_eq!(reports.pending_publications()[1].host_event, 70);
+    assert_eq!(reports.pending_publications()[1].operation, 1477390184);
+    assert_eq!(reports.pending_publications()[1].value, 1);
     let observation = reports.snapshot_observations()[0];
     assert_eq!(observation.identity.owner, 0);
     assert_eq!(observation.identity.id, 15794187);
@@ -373,10 +376,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         observation.path,
         actions::reporting::ReadinessPath::MemberNotReady
     );
-    let actions::Event::Report(next) = failure.trace.last().expect("next report") else {
-        panic!("missing next report")
-    };
-    assert_eq!(next.event, 0xa60328c5);
     let completed = IdentityReport {
         event: 0xe23b112d,
         subtype: 0,
@@ -384,27 +383,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         first: Some(0x6b25012e),
         second: None,
     };
+    let publication_count = reports.pending_publications().len();
+    let snapshot_count = reports.snapshot_observations().len();
     let revision = state.revision();
     let mut bad = completed;
     bad.subtype = 1;
-    assert!(reports
-        .send_loaded_activity(&state, reference, bad)
-        .is_err());
+    assert!(reports.send_loaded_report(&state, reference, bad).is_err());
     bad = completed;
     bad.identity.id ^= 1;
-    assert!(reports
-        .send_loaded_activity(&state, reference, bad)
-        .is_err());
+    assert!(reports.send_loaded_report(&state, reference, bad).is_err());
     assert!(reports.drain_playback().is_err());
-    assert_eq!(reports.pending_activity_publications().len(), 1);
-    assert_eq!(reports.snapshot_observations().len(), 1);
+    assert_eq!(reports.pending_publications().len(), publication_count);
+    assert_eq!(reports.snapshot_observations().len(), snapshot_count);
     assert_eq!(state.revision(), revision);
     let publications = reports.pending_activity_publications();
     assert!(state.revision() > 0);
     assert!(capture.admit(&state, &bound).is_err());
     println!(
         "{}",
-        serde_json::json!({"schema":"c6-linux-loaded-activity-reporting-check-v1","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"synchronous_activity_publications":publications.iter().map(|p|serde_json::json!({"owner":p.identity.owner,"id":p.identity.id,"activity":p.activity})).collect::<Vec<_>>(),"exact_remaining_consumer":error,"actual_snapshot_path":{"path":format!("{:?}",observation.path),"pending_nodes":observation.queue_nodes,"remaining_q8":observation.remaining_q8,"activity":observation.current_activity},"negative_shape_identity_playback_checks":true,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
+        serde_json::json!({"schema":"c6-linux-loaded-ordered-reporting-check-v2","players":43,"units":1262,"formations":1250,"actual_handler_slots":63,"initialized_runtime_queues":1262,"numeric_fronts_compared":308,"known_node_fields_compared":true,"source_leaf_true_fronts":source_true,"source_leaf_false_fronts":source_false,"empty_queues":954,"authority":authority.provenance(),"decode_role_unchanged":true,"source_actor":{"owner":actor.0,"id":actor.1},"partial_actual_entrypoint_trace":actions::trace_json(&failure.trace),"synchronous_activity_publications":publications.iter().map(|p|serde_json::json!({"owner":p.identity.owner,"id":p.identity.id,"activity":p.activity})).collect::<Vec<_>>(),"exact_remaining_consumer":error,"ordered_publications":reports.pending_publications().iter().map(|p|serde_json::json!({"host_event":p.host_event,"operation":p.operation,"value":p.value,"activity_operation":p.activity_operation})).collect::<Vec<_>>(),"snapshot_paths":reports.snapshot_observations().iter().map(|s|serde_json::json!({"activity":s.current_activity,"queue_nodes":s.queue_nodes,"path":format!("{:?}",s.path)})).collect::<Vec<_>>(),"actual_snapshot_path":{"path":format!("{:?}",observation.path),"pending_nodes":observation.queue_nodes,"remaining_q8":observation.remaining_q8,"activity":observation.current_activity},"negative_shape_identity_playback_checks":true,"successful_callback_stubs_used":false,"original_execution":false,"native_predicate_or_action_comparison":false,"full_live_affected_state_rng_parity":false})
     );
     Ok(())
 }
