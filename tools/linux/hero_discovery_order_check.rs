@@ -112,6 +112,7 @@ mod checks {
         allowance: u32,
         era: Option<i32>,
         missing_claim: bool,
+        synthetic_reset_baseline_available: bool,
         claim: ClaimInputs,
     }
     impl Inputs for SyntheticInputs {
@@ -141,6 +142,23 @@ mod checks {
         fn ordered_hero_definitions(&self) -> Result<Vec<HeroDefinition>, Error> {
             Ok(self.definitions.clone())
         }
+        fn discovered_by_native_index(
+            &self,
+            heroes: &Heroes,
+            definitions: &[HeroDefinition],
+        ) -> Result<Vec<bool>, Error> {
+            if !self.synthetic_reset_baseline_available {
+                return Err(Error::Missing("existing discovered indexed baseline"));
+            }
+            // Synthetic lifecycle only: a known Reset produced this false vector.
+            // This supplies no captured production initialization authority.
+            Ok(project_discovered_read(
+                definitions,
+                &vec![false; definitions.len()],
+                &heroes.discovered,
+            )?
+            .by_native_index)
+        }
         fn claim_inputs(&self, _: i32) -> Result<ClaimInputs, Error> {
             if self.missing_claim {
                 Err(Error::Missing("city domain eligibility"))
@@ -163,7 +181,7 @@ mod checks {
         };
         let inputs = SyntheticInputs {
             definitions: vec![HeroDefinition {
-                native_index: 9,
+                native_index: 0,
                 type_hash: 10,
                 discovery_min_era_chronology: None,
             }],
@@ -175,6 +193,7 @@ mod checks {
             allowance: 1,
             era: Some(5),
             missing_claim: false,
+            synthetic_reset_baseline_available: true,
             claim: ClaimInputs {
                 valid_class: true,
                 claim_player: -1,
@@ -227,11 +246,11 @@ mod checks {
                 Effect::EditAndClearDiscoveryOrder,
                 Effect::EditGameRandom,
                 Effect::GameRandomDraw {
-                    native_index: 9,
+                    native_index: 0,
                     bound: 20
                 },
                 Effect::Append {
-                    native_index: 9,
+                    native_index: 0,
                     type_hash: 10,
                     weight: 90
                 },
@@ -403,6 +422,107 @@ mod checks {
                 ..h
             },
             untouched
+        );
+    }
+
+    #[test]
+    fn discovered_projection_is_indexed_last_write_and_preserves_existing_baseline() {
+        let definitions = vec![
+            HeroDefinition {
+                native_index: 0,
+                type_hash: 99,
+                discovery_min_era_chronology: None,
+            },
+            // A small hash collides with the other class's index: Find(0) still
+            // addresses index 0, never this hash-matching class at index 1.
+            HeroDefinition {
+                native_index: 1,
+                type_hash: 0,
+                discovery_min_era_chronology: None,
+            },
+        ];
+        let pair = |hero_class_hash, discovered| DiscoveredHero {
+            hero_class_hash,
+            discovered,
+        };
+        let out = project_discovered_read(
+            &definitions,
+            &[false, true],
+            &[pair(99, true), pair(0, false), pair(77, true)],
+        )
+        .unwrap();
+        assert_eq!(out.by_native_index, vec![false, true]);
+        assert_eq!(out.discarded_wire_positions, vec![2]);
+        assert_eq!(
+            project_discovered_read(
+                &definitions,
+                &[true, false],
+                &[
+                    pair(99, false),
+                    pair(0, true),
+                    pair(1, true),
+                    pair(1, false),
+                ]
+            )
+            .unwrap()
+            .by_native_index,
+            vec![true, false]
+        );
+        assert!(matches!(
+            project_discovered_read(&definitions, &[], &[]),
+            Err(Error::InvalidDiscoveredShape {
+                expected: 2,
+                actual: 0
+            })
+        ));
+        let mut bad = definitions.clone();
+        bad[0].native_index = 9;
+        assert_eq!(
+            project_discovered_read(&bad, &[false, false], &[]),
+            Err(Error::InvalidDefinitionIdentity)
+        );
+    }
+
+    #[test]
+    fn duplicate_wire_true_false_does_not_skip_and_missing_baseline_is_atomic() {
+        let (mut h, mut p, r) = fixture();
+        h.discovered = vec![
+            DiscoveredHero {
+                hero_class_hash: 10,
+                discovered: true,
+            },
+            DiscoveredHero {
+                hero_class_hash: 10,
+                discovered: false,
+            },
+        ];
+        let out = plan_rebuild(&h, &p, &r).unwrap();
+        assert_eq!(out.discovery_order.len(), 1);
+        assert_ne!(out.random_after, r);
+        h.discovered.reverse();
+        let out = plan_rebuild(&h, &p, &r).unwrap();
+        assert!(out.discovery_order.is_empty());
+        assert_eq!(out.random_after, r);
+        p.synthetic_reset_baseline_available = false;
+        let before = h.clone();
+        let mut actual = r.clone();
+        assert_eq!(
+            rebuild(&mut h, &p, &mut actual),
+            Err(Error::Missing("existing discovered indexed baseline"))
+        );
+        assert_eq!(h, before);
+        assert_eq!(actual, r);
+        p.definitions.clear();
+        let out = rebuild(&mut h, &p, &mut actual).unwrap();
+        assert!(h.discovery_order.is_empty());
+        assert_eq!(actual, r);
+        assert_eq!(
+            out,
+            vec![
+                Effect::EditAndClearDiscoveryOrder,
+                Effect::SortDescending,
+                Effect::LogRebuiltOrder
+            ]
         );
     }
 }

@@ -59,6 +59,25 @@ permutations are not ported. The implementation rejects those lists before
 committing state. Definition indices and hashes remain separate identities;
 duplicate indices/hashes are rejected.
 
+Discovery checks require a complete actual bool vector indexed by native
+collection index. The planner no longer interprets an arbitrary saved pair
+list as any matching true value. Collection indices must be contiguous in
+native iteration order; SQL rowid and hash carriers remain distinct identities.
+`project_discovered_read` models `ReadIndexHashArray<bool>` at `0x265b900`:
+each carrier below collection count addresses that index before any hash search,
+and larger carriers resolve through `Find` at `0x265b730`. Mapped duplicates
+overwrite in wire order, so true followed by false leaves false. Unresolved
+carriers are consumed into the native discard slot and their positions are
+reported; the original typed wire pairs remain intact.
+
+The helper requires the exact existing indexed baseline. Hero Read at
+`0x269b3a0` never resets it, so absent entries preserve existing values.
+`Initialize` calls `Reset` at `0x269b9f9`; Reset clears/resizes the bool vector
+false to the actual definition count and clears discovery order. An all-false
+baseline therefore requires separately proven initialization/reset history.
+Missing baseline or malformed vector shape fails before mutation. Empty native
+collections and earlier rebuild short circuits do not request a bool snapshot.
+
 `rebuild` prepares effects and a cloned owner, then commits both Heroes order
 and actual borrowed owner atomically. The RandomState adapter reuses the
 independently [Linux-validated primitive](linux-random.md); it preserves resets,
@@ -93,8 +112,9 @@ audit walks its source-backed Quests/WMD/Improvements/Governors/CulturalIdentity
 grammar into all 43 Heroes records and compares each typed re-encoding. It also
 builds the full core library from the same frozen archive and uses
 `core_stream::ThroughFirstPlayer` to attempt both streams directly from byte zero.
-The frozen current grammar rejects raw Context version 4 (expected 5) before
-Heroes; it must not be patched or relabeled as a successful import. Successful
+The historical frozen `421456b` grammar rejected raw Context version 4 (expected
+5) before Heroes; that report remains retained without relabeling it as a
+successful import. New candidates preserve their exact support boundary. Successful
 parses retain six header booleans, Heroes identity and continuation boundary. Raw
 Read has no all-player Heroes framing here, and neither SavedOutput offsets
 nor post-load flags are borrowed to claim which original rebuild gates ran.
@@ -102,6 +122,12 @@ The next fixture contract is exact raw-Read player/Heroes framing, actual native
 manager roster/order and configuration/capability/definition collection identity,
 plus matching initialized native before/after observations of order and Game
 RNG when exercising a nonempty eligible class branch.
+
+There is also a native legacy Player guard: `0x2b4fc2d` compares the Player
+record version against 47 and the signed-less branch at `0x2b4fc32` skips
+Heroes Read to `0x2b4fc47`. The skip performs no Reset; existing initialized
+Heroes values survive. This must be applied to an actually framed Player
+version, never inferred from the enclosing Game version 19 alone.
 
 Native Save bytes remain decoding diagnostics. Unknown bytes stay unclassified
 and unmasked, including the recorded 89,198-byte Save→Load failure. This work

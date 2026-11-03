@@ -43,6 +43,15 @@ METHODS = [
     (0x2254960, 285, 'HeroClassCollectionBuilder.BuildCollection'),
     (0x2246d30, 15, 'HeroClassCollectionWithTypeIndex.constructor'),
     (0x2213eb0, 16, 'Definitions.GetHeroClassDefinitions'),
+    (0x269b3a0, 283, 'Player.Heroes.Read_without_Reset'),
+    (0x269ba50, 270, 'Player.Heroes.Reset'),
+    (0x269b9a0, 172, 'Player.Heroes.Initialize'),
+    (0x265b700, 34, 'HeroClass.HashToIndex'),
+    (0x265b730, 109, 'HeroClass.Find_small_index_before_hash'),
+    (0x265b900, 149, 'HeroClass.ReadIndexHashArray_bool_last_write'),
+    (0x2953330, 19, 'HeroClass.GetIndex'),
+    (0x2959e30, 94, 'HeroClass.GetTypeIndexT'),
+    (0x2b4fc2d, 26, 'Player.Read_Heroes_version47_guard'),
 ]
 OWNED_SOURCES = [
     'crates/c6-core/src/hero_discovery_order.rs',
@@ -80,6 +89,11 @@ def source_gate(module):
     require(count == b'SELECT count(*) from HeroClasses', 'class count query differs')
     require(rows.endswith(b'FROM HeroClasses ORDER BY rowid'), 'class builder order differs')
     require(elf.read(0x2246d30, 15).hex() == '0f57c00f1147200f1147100f1107c3', 'fresh class collection differs')
+    require(elf.read(0x2b4fc2d, 7).hex() == '837c240c2f7c13', 'Player47 Hero guard differs')
+    elf.call(0x2b4fc42, 0x1f5edd0)
+    elf.call(0x269b3de, 0x1eb9050)
+    elf.call(0x265b952, 0x1e81570)
+    elf.call(0x269b9f9, 0x1eb6f80)
     return elf, dict(count_sql_sha256=sha(count), rows_sql_sha256=sha(rows),
                      table='HeroClasses', order='rowid', fresh_collection_pointer_storage_zero=True,
                      zero_rows_append_zero_definitions=True,
@@ -246,6 +260,18 @@ def main():
             native_archive_edits='ordered diagnostic effects; physical pointer trees not required for local value mutation',
             source_queries='fallible interfaces; synthetic tests confer no captured configuration/eligibility authority',
             production_loaded_state_bridge=False, original_native_rebuild_oracle=False),
+        discovered_read_projection=dict(live_indexed_snapshot_required=True,
+            existing_indexed_baseline_required=True, read_resets_baseline=False,
+            reset_baseline_only_with_separately_proven_initialize_or_reset=True,
+            carrier_less_than_collection_count_is_direct_index=True,
+            duplicate_mapped_entries='last write wins in wire order',
+            missing_carriers='read into discard slot; raw wire entries retained',
+            complete_contiguous_native_collection_indices_required=True,
+            empty_collection_requires_no_discovered_snapshot=True),
+        legacy_player_heroes_guard=dict(player_version_minimum=47, compare='0x2b4fc2d',
+            signed_less_branch='0x2b4fc32', skipped_destination='0x2b4fc47',
+            heroes_read_call='0x2b4fc42', skipped_branch_resets_heroes=False,
+            raw_player_version_not_inferred_from_game_version=True),
         full_state_actions_turns=False, save_writer=False, unknown_bytes_masked=False,
         recorded_raw_save_load_failure_bytes=89198)
     require(not args.output.exists(), 'refusing to overwrite retained report')

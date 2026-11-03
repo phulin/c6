@@ -4,7 +4,7 @@
 //! does not admit a loaded-state bridge. A saved Heroes record is not such a provider. In
 //! particular, arbitrary provider booleans are not captured native authority.
 //! Missing inputs must fail before a caller commits any gameplay/archive effects.
-use crate::player_heroes::{DiscoveryWeight, Heroes};
+use crate::player_heroes::{DiscoveredHero, DiscoveryWeight, Heroes};
 
 pub const CAPABILITY: u32 = 0x82ef_2304;
 pub const MAX_INSERTION_SORT_RECORDS: usize = 28;
@@ -13,6 +13,7 @@ pub const MAX_INSERTION_SORT_RECORDS: usize = 28;
 pub enum Error {
     Missing(&'static str),
     InvalidDefinitionIdentity,
+    InvalidDiscoveredShape { expected: usize, actual: usize },
     SortUnsupported { records: usize },
     InvalidRandomResult(u16),
     ResourceLimit,
@@ -23,6 +24,66 @@ pub struct HeroDefinition {
     pub native_index: i32,
     pub type_hash: u32,
     pub discovery_min_era_chronology: Option<i32>,
+}
+
+fn validate_definitions(definitions: &[HeroDefinition]) -> Result<(), Error> {
+    for (index, definition) in definitions.iter().enumerate() {
+        if usize::try_from(definition.native_index).ok() != Some(index)
+            || definitions[..index]
+                .iter()
+                .any(|other| other.type_hash == definition.type_hash)
+        {
+            return Err(Error::InvalidDefinitionIdentity);
+        }
+    }
+    Ok(())
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DiscoveredProjection {
+    pub by_native_index: Vec<bool>,
+    /// Native Read consumes these values into its discard slot. The caller
+    /// retains the original wire pairs; this does not mask unknown save bytes.
+    pub discarded_wire_positions: Vec<usize>,
+}
+
+/// Native ReadIndexHashArray<bool> projection, not a live-state admission.
+/// Read does NOT reset the bool vector: an exact existing indexed baseline is
+/// mandatory. Only a separately proven Reset permits an all-false baseline.
+/// Find first treats carrier<count as an index, then searches larger hashes.
+/// Repeated mapped entries overwrite in wire order, including true→false.
+pub fn project_discovered_read(
+    definitions: &[HeroDefinition],
+    existing_by_native_index: &[bool],
+    wire: &[DiscoveredHero],
+) -> Result<DiscoveredProjection, Error> {
+    validate_definitions(definitions)?;
+    if existing_by_native_index.len() != definitions.len() {
+        return Err(Error::InvalidDiscoveredShape {
+            expected: definitions.len(),
+            actual: existing_by_native_index.len(),
+        });
+    }
+    let mut projection = DiscoveredProjection {
+        by_native_index: existing_by_native_index.to_vec(),
+        discarded_wire_positions: Vec::new(),
+    };
+    for (position, entry) in wire.iter().enumerate() {
+        let carrier = entry.hero_class_hash;
+        let index = if u64::from(carrier) < definitions.len() as u64 {
+            Some(carrier as usize)
+        } else {
+            definitions
+                .iter()
+                .position(|definition| definition.type_hash == carrier)
+        };
+        if let Some(index) = index {
+            projection.by_native_index[index] = entry.discovered;
+        } else {
+            projection.discarded_wire_positions.push(position);
+        }
+    }
+    Ok(projection)
 }
 
 /// Query results from the actual city methods, in native city iteration order.
@@ -79,6 +140,14 @@ pub trait Inputs {
     /// None means the native current-era lookup returned null, not unknown.
     fn current_era_chronology(&self) -> Result<Option<i32>, Error>;
     fn ordered_hero_definitions(&self) -> Result<Vec<HeroDefinition>, Error>;
+    /// Complete actual indexed bool state, not any(true) over saved hash pairs.
+    /// A wire projection requires its exact existing baseline; unknown baseline
+    /// or remapping authority must return Missing, never default to false.
+    fn discovered_by_native_index(
+        &self,
+        heroes: &Heroes,
+        definitions: &[HeroDefinition],
+    ) -> Result<Vec<bool>, Error>;
     fn claim_inputs(&self, native_index: i32) -> Result<ClaimInputs, Error>;
 }
 
@@ -170,25 +239,19 @@ pub fn plan_rebuild<R: GameRandomOwner>(
         return Ok(plan);
     };
     let definitions = inputs.ordered_hero_definitions()?;
-    for (i, definition) in definitions.iter().enumerate() {
-        if definition.native_index < 0
-            || definitions[..i].iter().any(|other| {
-                other.native_index == definition.native_index
-                    || other.type_hash == definition.type_hash
-            })
-        {
-            return Err(Error::InvalidDefinitionIdentity);
-        }
+    validate_definitions(&definitions)?;
+    let discovered = if definitions.is_empty() {
+        Vec::new()
+    } else {
+        inputs.discovered_by_native_index(heroes, &definitions)?
+    };
+    if discovered.len() != definitions.len() {
+        return Err(Error::InvalidDiscoveredShape {
+            expected: definitions.len(),
+            actual: discovered.len(),
+        });
     }
-    let undiscovered = definitions
-        .iter()
-        .filter(|definition| {
-            !heroes
-                .discovered
-                .iter()
-                .any(|entry| entry.hero_class_hash == definition.type_hash && entry.discovered)
-        })
-        .count();
+    let undiscovered = discovered.iter().filter(|value| !**value).count();
     if undiscovered > MAX_INSERTION_SORT_RECORDS {
         return Err(Error::SortUnsupported {
             records: undiscovered,
@@ -197,12 +260,8 @@ pub fn plan_rebuild<R: GameRandomOwner>(
     plan.discovery_order
         .try_reserve_exact(undiscovered)
         .map_err(|_| Error::ResourceLimit)?;
-    for definition in definitions {
-        if heroes
-            .discovered
-            .iter()
-            .any(|entry| entry.hero_class_hash == definition.type_hash && entry.discovered)
-        {
+    for (index, definition) in definitions.into_iter().enumerate() {
+        if discovered[index] {
             continue;
         }
         let claim = inputs.claim_inputs(definition.native_index)?;
