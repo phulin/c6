@@ -11,6 +11,10 @@
 #include <unistd.h>
 #include <string.h>
 
+/* Own OS main-entry witness; it is not a native Platform thread ID. */
+static long observed_mod_main_tid;
+long c6_linux_mod_main_thread_tid(void) { return observed_mod_main_tid; }
+
 static void *constructed_client;
 static void *constructed_framework;
 static void *constructed_content_paths;
@@ -421,6 +425,7 @@ static int prepare_original_main_thread(void) {
     return (*flags&1)?0:165;
 }
 static int mod_probe_main(int argc,char **argv,char **envp) {
+    if (getenv("C6_CURRENT_HANDLER_METADATA")) observed_mod_main_tid=syscall(SYS_gettid);
     actual_main_argc=argc;
     actual_main_argv=argv;
     (void)envp;

@@ -1,0 +1,59 @@
+{
+  "checks": {
+    "gcc_analyzer": true,
+    "strict_c": true,
+    "ubsan_pre_original_refusals": 6
+  },
+  "enclosing_original_calls": [
+    "Exports.Context.GetGame facade acquisition",
+    "Context.Save observational controls",
+    "created facade Release"
+  ],
+  "methods": [
+    {
+      "address": "0x2c7cae0",
+      "bytes": 92,
+      "sha256": "0bee95a94a869e776ee221963d7e80aa885739a6d73aff21785121122d1a2c9f"
+    },
+    {
+      "address": "0x2c85ce0",
+      "bytes": 92,
+      "sha256": "981ad8a20e2991f4cb6211bc5b349ea550efa2dbc6d59625e4d9b69897b2d519"
+    },
+    {
+      "address": "0x2c85d80",
+      "bytes": 56,
+      "sha256": "9fd728c0f0fe56b64e0fbacaeb0c28e9f73723000c86c57ec6e708ee5f3ae1b3"
+    },
+    {
+      "address": "0x290bba0",
+      "bytes": 22,
+      "sha256": "ad7d214f06fbbe64670982468ad970bc59593dbb904cc8cf29764bd75e59f480"
+    },
+    {
+      "address": "0x2d7b4d0",
+      "bytes": 8,
+      "sha256": "f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b"
+    }
+  ],
+  "native_execution": false,
+  "original_calls_in_helper_or_guard": false,
+  "pending": [
+    "independent acquisition/Save lifetime review",
+    "loader/lifecycle mode and source projection",
+    "exact source/mapping/profile/dependency gates before any original run",
+    "two outer Save controls and actual terminal cleanup"
+  ],
+  "preparation_admission": false,
+  "schema": "c6-linux-current-handler-caller-source-v1",
+  "sources": {
+    "native/linux/current_handler_interruption.c": "59fe2c33f63422fb2b22b66905e5b5460d8f5a6056339cb29de7112c44cf1631",
+    "native/linux/current_handler_interruption.h": "513560c244125f2789e97572505df54d27d5987f241852756d68fd61a0a432cb",
+    "native/linux/current_handler_metadata_fixture.c": "a29d5380c648de5e216e812e46772c040428bbac749b8ef7d57383480ed0d945",
+    "native/linux/current_handler_metadata_fixture.h": "42f6b2f886c80bfb3541af0cb60fd08b730315c3d42de4c41ffe12324151fe61",
+    "native/linux/current_handler_metadata_probe.c": "54609e52d8229132824feb6a8b52dfdb76959253fc981aa6fabd381259266335",
+    "native/linux/mod_activation.c": "433614f45caeca8114b626630c4351720477e05ae361d4cd030b043fde40f8be",
+    "tools/linux/current_handler_caller_audit.py": "3182ae3eaf1db897770560392de4e0762d7076e079ed225024d9fe7130c8f678",
+    "tools/linux/current_handler_field_guard_audit.py": "5d32fd592822a4c4dfaf94c56fa2220c44ede9c28e3772acf94ea6c552522474"
+  }
+}
