@@ -1,0 +1,229 @@
+{
+  "checks": {
+    "gcc_analyzer": true,
+    "mutating_save_stubs_before_actor_resolution": true,
+    "original_facade_dispatch_and_operation_dwarf": true,
+    "protected_unit_page_after_query": true,
+    "strict_c": true,
+    "ubsan_no_recovery": true
+  },
+  "complete_state_action_turn_acceptance": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "independent_lifetime_cases": [
+    {
+      "case": 0,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 1,
+      "saves": 0
+    },
+    {
+      "case": 1,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 1,
+      "saves": 4
+    },
+    {
+      "case": 2,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 1,
+      "saves": 0
+    },
+    {
+      "case": 3,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 4,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 5,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 1,
+      "saves": 0
+    },
+    {
+      "case": 6,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 1,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 2
+    },
+    {
+      "case": 7,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 1,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 2
+    },
+    {
+      "case": 8,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 0,
+      "facades_acquired": 1,
+      "facades_released": 1,
+      "queries": 1,
+      "saves": 4
+    },
+    {
+      "case": 9,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 0,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 10,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 1,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 11,
+      "constructed": 1,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 1,
+      "facades_released": 0,
+      "queries": 1,
+      "saves": 0
+    },
+    {
+      "case": 12,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 240,
+      "facades_acquired": 1,
+      "facades_released": 0,
+      "queries": 1,
+      "saves": 0
+    },
+    {
+      "case": 13,
+      "constructed": 1,
+      "destroyed": 1,
+      "exit": 240,
+      "facades_acquired": 1,
+      "facades_released": 0,
+      "queries": 1,
+      "saves": 0
+    },
+    {
+      "case": 14,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 0,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 15,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 0,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 16,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 0,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 0
+    },
+    {
+      "case": 17,
+      "constructed": 0,
+      "destroyed": 0,
+      "exit": 240,
+      "facades_acquired": 0,
+      "facades_released": 0,
+      "queries": 0,
+      "saves": 0
+    }
+  ],
+  "native_manager_parity": false,
+  "original_execution": false,
+  "original_modules_loaded_for_execution": false,
+  "producer_audit": {
+    "checked_exports": 14,
+    "checked_method_bodies": 46,
+    "checks": {
+      "gcc_analyzer": true,
+      "strict_c": true,
+      "synthetic_summary": "4 synthetic genuine-ABI lifetime branches including complete facade acquire/release; 3 exact fatal refusals; no original execution",
+      "ubsan_synthetic_lifetime": true
+    }
+  },
+  "remaining": [
+    "concrete field-only guard source and exact runner/profile admission",
+    "actual mapped/live code and owner/main-entry/lock witnesses",
+    "hardware observer lifecycle and safe original script windows",
+    "actual Save/callback/VM effects and complete affected gameplay/RNG comparison"
+  ],
+  "reviewed_checkpoints": [
+    "25646c0",
+    "9099b51"
+  ],
+  "runtime_profile_admitted": false,
+  "schema": "c6-linux-full-manager-fixture-independent-review-v1",
+  "source_sha256": {
+    "native/linux/full_manager_fixture.c": "421b823351d40d5edf54260a44c26a9291113f6c65322f4346a302df05583d86",
+    "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
+    "tools/linux/full_manager_fixture_audit.py": "679062c6ebf4c68791da4a8590807cb063038e77f950a0b00943248257b7850b",
+    "tools/linux/full_manager_fixture_review.c": "920660c75dcce68d19823b5ab04cc0e4a2eb940aeb9c935d8b369806fad0fa5c",
+    "tools/linux/full_manager_fixture_review.py": "0e1da229c7237a5e8cb42654ee98eb725e995550cdd2c166944d7173e489506b"
+  },
+  "source_stable_during_checks": true,
+  "synthetic_executable_sha256": "2c46cd3ff3b4e9dd872a4d645e3249d2067d7ad1be48c7f80e9b8f1d6df2df25"
+}
