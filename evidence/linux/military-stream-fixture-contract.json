@@ -1,0 +1,79 @@
+{
+  "schema": "c6-linux-military-stream-fixture-v1",
+  "baseline_commit": "cd4b227798688c1f17c85c685c2d422c98242095",
+  "original_stream_source_projection_equal": true,
+  "original_getter_call_count_and_order_preserved": true,
+  "marker_record_bytes": 80,
+  "marker_optional_endbr64_bytes": 4,
+  "marker_toy_actual_descriptor_equal": true,
+  "toy_gdb_test_is_original_execution": false,
+  "guard_test_groups": 14,
+  "stop_mutation_injection_groups": 3,
+  "hardware_lanes": 4,
+  "software_game_breakpoints": false,
+  "gdb_loader_rendezvous_instrumentation": true,
+  "stream_native_accessor_contracts": [
+    {
+      "owner": "host",
+      "address": "0x3c5411e",
+      "bytes": "488b4708c3"
+    },
+    {
+      "owner": "host",
+      "address": "0x3c54124",
+      "bytes": "488b4710c3"
+    },
+    {
+      "owner": "host",
+      "address": "0x3c54130",
+      "bytes": "488b4718c3"
+    },
+    {
+      "owner": "host",
+      "address": "0x3c54386",
+      "bytes": "488b4708c3"
+    },
+    {
+      "owner": "host",
+      "address": "0x3c5438c",
+      "bytes": "488b4710c3"
+    },
+    {
+      "owner": "host",
+      "address": "0x31d1720",
+      "bytes": "8a470bc3"
+    },
+    {
+      "owner": "host",
+      "address": "0x31d18a0",
+      "bytes": "807f04007411488b3d5b782c034885ff7405e9f935000031c0c3"
+    },
+    {
+      "owner": "game",
+      "address": "0x1fcc320",
+      "bytes": "488b05f12bb401488b00c3"
+    },
+    {
+      "owner": "game",
+      "address": "0x2d7b4d0",
+      "bytes": "488d87f8000000c3"
+    }
+  ],
+  "known_rng_global_rvas": {
+    "Game_global": "0x3c051a8",
+    "Game_GOT": "0x3b0ef18",
+    "sync_offset": "0xf8",
+    "Map_random": "0x3c072f0",
+    "bytes_each": 32
+  },
+  "source_sha256": {
+    "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
+    "native/linux/stream_observation.h": "04720ac56f8c98abd3c8340da66f21199a5c42c27036cfac2c012316d8eb2b00",
+    "tools/linux/military_observer_runner.py": "b8579e0e4463c2411c4868f8c21b10f7ef323c70d7746acb6ff50a3cb8c351d0",
+    "tools/linux/military_stream_fixture_audit.py": "0dc13d7b6f079ad3828e772c3b9020dee2f653bd98cb12bc68544691de058610",
+    "tools/linux/mod_activation_probe.py": "e54ec15e328fb381671b68d75b6722916a3afa50b240909579844dafc10c6577"
+  },
+  "original_execution": false,
+  "native_capture": false,
+  "full_gameplay": false
+}

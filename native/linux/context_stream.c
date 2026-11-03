@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "context_stream.h"
+#include "stream_observation.h"
 #include <dlfcn.h>
 #include <signal.h>
 #include <link.h>
@@ -9,6 +10,17 @@
 #include <string.h>
 #include <ucontext.h>
 #include <unistd.h>
+
+/* Passive marker profile only. This function calls no game code and writes no
+ * native object. Debuggers stop with a hardware execution breakpoint here. */
+__attribute__((naked,noinline,used,visibility("default")))
+void c6_linux_stream_observation_marker(const C6StreamObservation *event __attribute__((unused))) {
+    __asm__("ret");
+}
+_Static_assert(sizeof(uintptr_t)==8,"Linux x86_64 passive marker");
+_Static_assert(sizeof(C6StreamObservation)==80,"passive marker record ABI");
+static uint64_t observation_occurrence;
+#define OBSERVE(stage) do { if(observe) { observed.event=(stage); __asm__ __volatile__("" : : "m"(observed) : "memory"); c6_linux_stream_observation_marker(&observed); } } while(0)
 
 /* Actual host constructors initialize vptr + 0x20-byte MemoryBuffer.
  * Evidence: private linux-runtime/memory-{i,o}stream-constructors.txt and
@@ -141,6 +153,10 @@ int c6_linux_context_load_sized(void *game,void *context,const char *path,size_t
     void *stream=native_allocate(NATIVE_STREAM_SIZE);if(!stream){free(payload);return 67;}
     input_construct(stream,payload,count);
     if(input_size(stream)!=count||input_offset(stream)!=0||input_bytes(stream)!=payload)return 68;
+    int observe=getenv("C6_MILITARY_STREAM_OBSERVER")!=NULL;
+    C6StreamObservation observed={.schema=1,.occurrence=observe?++observation_occurrence:0,
+        .context=(uintptr_t)context,.stream=(uintptr_t)stream,.buffer=(uintptr_t)payload,
+        .size=count,.path=(uintptr_t)path};
     active_input=stream;
     struct sigaction observer={0},old_segv,old_abrt,old_bus;
     observer.sa_sigaction=stream_fault;observer.sa_flags=SA_SIGINFO;
@@ -148,12 +164,17 @@ int c6_linux_context_load_sized(void *game,void *context,const char *path,size_t
     if(sigaction(SIGSEGV,&observer,&old_segv)||sigaction(SIGABRT,&observer,&old_abrt)||
        sigaction(SIGBUS,&observer,&old_bus))return 69;
     fprintf(stderr,"C6_LINUX_STREAM load_enter size %zu\n",count);
+    OBSERVE(1);
     int result=load(context,stream);
+    size_t loaded_offset=input_offset(stream);
+    observed.result=(uint64_t)(int64_t)result;observed.offset=loaded_offset;OBSERVE(2);
     fprintf(stderr,"C6_LINUX_STREAM load_return result %d offset %zu size %zu\n",
-            result,input_offset(stream),count);
+            result,loaded_offset,count);
     sigaction(SIGSEGV,&old_segv,NULL);sigaction(SIGABRT,&old_abrt,NULL);sigaction(SIGBUS,&old_bus,NULL);
     active_input=NULL;
+    OBSERVE(3);
     input_destruct(stream);native_free(stream);free(payload);
+    OBSERVE(4);
     return result==0?0:70;
 }
 
@@ -165,6 +186,10 @@ int c6_linux_context_save(void *game,void *context,const char *path){
     void *buffer=malloc(SAVE_CAPACITY),*stream=native_allocate(NATIVE_STREAM_SIZE);
     if(!buffer||!stream)return 72;
     output_construct(stream,buffer,SAVE_CAPACITY);
+    int observe=getenv("C6_MILITARY_STREAM_OBSERVER")!=NULL;
+    C6StreamObservation observed={.schema=1,.occurrence=observe?++observation_occurrence:0,
+        .context=(uintptr_t)context,.stream=(uintptr_t)stream,.buffer=(uintptr_t)buffer,
+        .size=SAVE_CAPACITY,.path=(uintptr_t)path};
     int (*trace_end)(void *)=NULL;
     if(getenv("C6_SAVE_NORMALIZATION_TRACE")) {
         int (*trace_begin)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_save_normalization_begin");
@@ -174,7 +199,9 @@ int c6_linux_context_save(void *game,void *context,const char *path){
         if(traced){output_destruct(stream);free(buffer);return traced;}
     }
     fprintf(stderr,"C6_LINUX_STREAM save_enter capacity %u\n",SAVE_CAPACITY);
+    OBSERVE(11);
     int result=save(context,stream);size_t size=output_offset(stream);
+    observed.result=(uint64_t)(int64_t)result;observed.size=size;observed.offset=size;OBSERVE(12);
     fprintf(stderr,"C6_LINUX_STREAM save_return result %d size %zu\n",result,size);
     int trace_result=trace_end?trace_end(stream):0;
     if(trace_end)fprintf(stderr,"C6_LINUX_STREAM normalization_end_return %d\n",trace_result);
@@ -184,6 +211,9 @@ int c6_linux_context_save(void *game,void *context,const char *path){
         if(file){int written=fwrite(buffer,1,size,file)==size;int closed=fclose(file)==0;
             status=written&&closed?0:74;}
     }
+    observed.result=(uint64_t)(int64_t)(trace_result?trace_result:status);OBSERVE(13);
+    OBSERVE(14);
     output_destruct(stream);free(buffer);
+    OBSERVE(15);
     return trace_result?trace_result:status;
 }

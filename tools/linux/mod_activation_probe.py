@@ -76,6 +76,9 @@ def main():
     action_modes.add_argument('--movement-cost',action='store_true')
     action_modes.add_argument('--domain-metadata',action='store_true')
     action_modes.add_argument('--placement-metadata',action='store_true')
+    action_modes.add_argument('--military-initialization-observer',action='store_true')
+    parser.add_argument('--military-observer-plan',type=Path)
+    parser.add_argument('--military-observer-directory',type=Path)
     action_modes.add_argument('--unit-operation-manager-metadata',action='store_true')
     parser.add_argument('--unit-operation-manager-candidate-manifest',type=Path)
     for label in ('output','repeat-output','control-output','before','control-save','after','repeat'):
@@ -245,6 +248,18 @@ def main():
         if len(set(manager_paths.values()))!=7:parser.error('Manager metadata artifact paths must be distinct')
     elif args.unit_operation_manager_candidate_manifest or any(getattr(args,'unit_operation_manager_metadata_'+label) for label in ('output','repeat_output','control_output','before','control_save','after','repeat')):
         parser.error('Manager metadata paths require separate Manager mode')
+    military_directory=None
+    military_plan=None
+    if args.military_initialization_observer:
+        if not game_input or not args.prepare_main_thread or not args.cleanup or not args.military_observer_plan or not args.military_observer_directory or not args.saved_configuration or not args.configure or not args.game_save_output or not args.game_save_repeat_output or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir,args.request_load_save,args.game_load_observe)):
+            parser.error('Military observer requires separate ordinary main-thread Core Load/two Saves/cleanup fixture and frozen observer plan')
+        military_directory=args.military_observer_directory.resolve()
+        if not military_directory.is_dir() or not military_directory.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('Military observer directory must be private')
+        for name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json'):
+            if (military_directory/name).exists():parser.error('Military observer runtime artifacts must be fresh')
+        military_plan=args.military_observer_plan.resolve()
+    elif args.military_observer_plan or args.military_observer_directory:
+        parser.error('Military observer paths require separate observer mode')
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -596,6 +611,22 @@ def main():
             committed=subprocess.check_output(['git','show',manifest['source_commit']+':'+name],cwd=ROOT)
             if hashlib.sha256(committed).hexdigest()!=sha:raise SystemExit('Manager candidate committed source differs: '+name)
         manager_profile={'mode':'read_only_manager_raw_metadata','contract':manager_contract,'fixture_contract':fixture_contract,'reconstruction_manifest':manifest,'reconstruction_manifest_sha256':digest(manifest_path),'raw_passes':2,'internal_core_saves':4,'expected_outputs_used_as_inputs':False,'disabled_vectors_are_reconstruction_targets':True,'phase_and_controls_are_raw_inputs':True,'full_manager_called':False,'script_callbacks_called':False,'complete_rng_inventory':False,'native_acceptance_pending':True}
+    military_profile=None
+    military_audit_paths=[]
+    if args.military_initialization_observer:
+        military_audit_paths=[ROOT/'tools/linux/military_initialization_observer.py',ROOT/'tools/linux/military_initialization_observer_audit.py',ROOT/'evidence/linux/military-initialization-observer-preparation.json',ROOT/'tools/linux/military_observer_runner.py',ROOT/'tools/linux/military_stream_fixture_audit.py',ROOT/'evidence/linux/military-stream-fixture-contract.json']
+        plan=json.loads(military_plan.read_text())
+        if plan['schema']!='c6-linux-military-observer-plan-v1' or plan['observer_sha256']!=digest(military_audit_paths[0]) or plan.get('runtime_gate') is not None:raise SystemExit('Military static observer plan differs')
+        with tempfile.TemporaryDirectory(prefix='military-observer-audit-') as temporary:
+            generated=Path(temporary)/'plan.json';packet=Path(temporary)/'packet.json'
+            subprocess.run([sys.executable,str(military_audit_paths[0]),'--module',str(assets/'libGameCore_XP2.so'),'--host',str(args.launch_host.absolute() if args.launch_host else assets/'Civ6'),'--output',str(generated)],check=True,capture_output=True,text=True)
+            if json.loads(generated.read_text())!=plan:raise SystemExit('Military static plan differs from pinned target/host bytes')
+            subprocess.run([sys.executable,str(military_audit_paths[1]),'--assets',str(assets),'--output',str(packet)],check=True,capture_output=True,text=True)
+            if json.loads(packet.read_text())!=json.loads(military_audit_paths[2].read_text()):raise SystemExit('Military observer source/protocol packet differs')
+        from military_stream_fixture_audit import audit as military_fixture_audit
+        fixture=military_fixture_audit(assets,args.launch_host.absolute() if args.launch_host else assets/'Civ6')
+        if fixture!=json.loads(military_audit_paths[-1].read_text()):raise SystemExit('Military stream fixture differs')
+        military_profile={'mode':'ordinary_load_save_passive','input_save_artifact':{'path':str(args.saved_configuration.resolve()),'bytes':args.saved_configuration.stat().st_size,'sha256':digest(args.saved_configuration),'kind':'whole_file_supplied_to_saved_configuration_loader'},'input_core_artifact':{'path':str(game_input),'bytes':game_input.stat().st_size,'sha256':digest(game_input),'kind':'actual_MemoryIStream_payload'},'save_to_core_extraction_binding_proven':False,'runtime_policy_counters_available':False,'policy_scope':'source-only ordinary Load/Save invocation; no claims of runtime policy-call absence','static_plan':plan,'static_plan_sha256':digest(military_plan),'fixture_contract':fixture,'hardware_breakpoints':4,'software_game_breakpoints':False,'gdb_internal_loader_rendezvous':True,'inferior_calls':False,'game_field_writes':False,'extra_original_queries':False,'dirty_getter_called':False,'sql_added':False,'source_profile_review_required':True,'nested_Read_initialization_only':True,'rules_database_snapshot_unavailable':True,'complete_state_action_rng_turns_supported':False}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
@@ -710,6 +741,7 @@ def main():
               'lower_core_placement_metadata':placement_profile,
               'lower_core_placement_handler_metadata':placement_handler_profile,
               'lower_core_unit_operation_manager_metadata':manager_profile,
+              'lower_core_military_initialization_observer':military_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -727,7 +759,8 @@ def main():
     if lifecycle_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*lifecycle_sources,ROOT/'native/linux/save_lifecycle.h']})
     if game_sources:
-        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*game_sources,ROOT/'native/linux/game_load.h',ROOT/'native/linux/context_stream.h']})
+        identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*game_sources,ROOT/'native/linux/game_load.h',ROOT/'native/linux/context_stream.h',ROOT/'native/linux/stream_observation.h']})
+    if args.military_initialization_observer:identity['sources']['native/linux/stream_observation.h']=digest(ROOT/'native/linux/stream_observation.h')
     if request_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*request_sources,ROOT/'native/linux/request_load.h']})
     if action_sources:
@@ -768,7 +801,7 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*domain_audit_paths,*placement_audit_paths,*placement_handler_audit_paths,*manager_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*domain_audit_paths,*placement_audit_paths,*placement_handler_audit_paths,*manager_audit_paths,*military_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
@@ -810,6 +843,12 @@ def main():
         archived_preload=manager_paths['output'].parent/'unit-operation-manager-metadata-preload.so'
         if archived_preload.exists():
             if digest(archived_preload)!=digest(preload):raise SystemExit('Manager immutable preload differs')
+        else:
+            with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
+    if args.military_initialization_observer:
+        archived_preload=military_directory/'military-stream-preload.so'
+        if archived_preload.exists():
+            if digest(archived_preload)!=digest(preload):raise SystemExit('Military immutable preload differs')
         else:
             with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
@@ -900,13 +939,20 @@ def main():
     if args.placement_metadata:env['C6_PLACEMENT_METADATA_PROFILE_SHA256']=configuration_identity
     if args.placement_handler_metadata:env['C6_PLACEMENT_HANDLER_METADATA_PROFILE_SHA256']=configuration_identity
     if args.unit_operation_manager_metadata:env['C6_UNIT_OPERATION_MANAGER_METADATA_PROFILE_SHA256']=configuration_identity
+    if args.military_initialization_observer:env['C6_MILITARY_STREAM_OBSERVER']='1'
     if args.prepare_only:
-        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()},'placement_handler_metadata':{k:str(v) for k,v in placement_handler_paths.items()},'unit_operation_manager_metadata':{k:str(v) for k,v in manager_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
+        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()},'placement_handler_metadata':{k:str(v) for k,v in placement_handler_paths.items()},'unit_operation_manager_metadata':{k:str(v) for k,v in manager_paths.items()},'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}} if military_directory else None},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
         print(json.dumps({'output':str(args.output),'prepared_only':True,'native_execution_performed':False,'configuration_sha256':configuration_identity}))
         return
     try:
-        run=subprocess.run([str(host)],cwd=work,env=env,text=True,capture_output=True,timeout=args.timeout)
-        code,out,err=run.returncode,run.stdout,run.stderr
+        if args.military_initialization_observer:
+            runtime_prepared=military_directory/'runtime-prepared.json'
+            runtime_prepared.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'execution_paths':{'preload':str(archived_preload),'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}}}},indent=2)+'\n')
+            from military_observer_runner import run as military_run
+            code,out,err=military_run(host,env,work,args.timeout,military_directory,runtime_prepared,military_plan)
+        else:
+            run=subprocess.run([str(host)],cwd=work,env=env,text=True,capture_output=True,timeout=args.timeout)
+            code,out,err=run.returncode,run.stdout,run.stderr
     except subprocess.TimeoutExpired as exc:
         decode=lambda x:x.decode(errors='replace') if isinstance(x,bytes) else x or ''
         code,out,err=124,decode(exc.stdout),decode(exc.stderr)
@@ -917,6 +963,10 @@ def main():
             'returncode':code,'stdout':out,'stderr':err,'framework_boundary_returned':code==0 and 'boundary_return result 0' in err,
             'framework_cleanup_proven':code==0 and 'cleanup_return 0' in err,'client_cleanup_proven':code==0 and 'client_shutdown_only_return unpublished 1' in err,'xp2_activation_proven':False,'initialized_game':False,'gameplay_parity':False,
             'limits':'Original host content-transition diagnostic only; selected module path and actual active-vtable module are distinct observations. Constructor-state callback is not saved Request/Begin semantics. No initialized-game or gameplay parity proof. Teardown is measured only when requested and its marker is present.'}
+    if args.military_initialization_observer:
+        report['execution_paths']['military_observer']={'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}}
+        report['execution_paths']['preload']=str(archived_preload)
+        report['military_observer_artifacts']={q.name:{'sha256':digest(q),'bytes':q.stat().st_size} for q in military_directory.iterdir() if q.is_file() and q.name in ('observations.jsonl','transcript.txt','exit.json','capture.gdb','runtime-plan.json','runtime-prepared.json','supervisor.json','inferior.json','disposal.json')}
     report['supervisor_timing_change']=timing_change
     report.update(lifecycle_report(code,err))
     report['native_activation_selection']={}
