@@ -473,8 +473,29 @@ pub struct PlayerVisibility {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct UnitReference {
+    /// Raw first ComponentID wire word: signed owner low16, component type high16.
+    /// Retained for wire compatibility; this is not a plain PlayerTypes value.
     pub owner: i32,
     pub id: u32,
+}
+impl UnitReference {
+    pub fn component_id(self) -> crate::unit::ComponentId {
+        crate::unit::ComponentId {
+            owner: self.owner as i16,
+            component_type: (self.owner as u32 >> 16) as i16,
+            id: self.id,
+        }
+    }
+    pub fn player(self) -> i32 {
+        i32::from(self.owner as i16)
+    }
+    pub fn from_component_id(id: crate::unit::ComponentId) -> Self {
+        Self {
+            owner: (u32::from(id.owner as u16) | (u32::from(id.component_type as u16) << 16))
+                as i32,
+            id: id.id,
+        }
+    }
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnitCell {

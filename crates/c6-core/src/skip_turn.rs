@@ -3,13 +3,15 @@
 //!
 //! The caller must implement archive registration and synchronous reporting
 //! subscribers through the required hooks. No no-op subscriber implementation is
-//! supplied. Manager legality, queue replacement/activation, diplomacy and
+//! supplied. Full manager legality, diplomacy and
 //! notification aftermath remain outside this boundary. `Engine::apply` does not
 //! route gameplay actions here. See docs/linux-skip-turn-kernel.md.
 use crate::unit::{ComponentId, Formation, PlotCoord, Unit, SKIP_TURN_HASH};
 
 #[path = "unit_operation_legality.rs"]
 pub mod legality;
+#[path = "unit_placement.rs"]
+pub mod placement;
 
 pub const HOLD: i32 = 0x047c048b;
 pub const ACTIVITY_DIRTY_INDEX: u32 = 11;

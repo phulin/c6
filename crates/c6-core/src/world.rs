@@ -10,6 +10,7 @@ use crate::unit::{Formation, Unit};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MissingInput {
     Player { owner: i32 },
+    PlayerRegistry,
     Units { owner: i32 },
     Formations { owner: i32 },
     InvalidDimensions,
@@ -78,6 +79,12 @@ pub struct Player {
     owner: i32,
     units: Option<Collection<Unit>>,
     formations: Option<Collection<Formation>>,
+    /// Actual Configuration::Player slot status; SS_TAKEN is 3.
+    pub slot_status: Option<i32>,
+    /// Actual Configuration::Player team; -1 is NO_TEAM.
+    pub team: Option<i32>,
+    /// Actual Core Player::IsAlive field, distinct from configuration lifecycle.
+    pub is_alive: Option<bool>,
     pub technologies: Option<Vec<bool>>,
     pub civics: Option<Vec<bool>>,
 }
@@ -100,6 +107,9 @@ impl Player {
             owner,
             units: units.map(Collection::new).transpose()?,
             formations: formations.map(Collection::new).transpose()?,
+            slot_status: None,
+            team: None,
+            is_alive: None,
             technologies: None,
             civics: None,
         })
@@ -321,8 +331,25 @@ impl World {
         };
         Ok(&self.map.units.layers[layer].cells[cell].units)
     }
+    /// Original Manager validity, independent of imported record presence.
+    pub fn player_is_valid(&self, owner: i32) -> Result<bool, MissingInput> {
+        if owner as u32 >= 65 {
+            return Ok(false);
+        }
+        let mapping = self
+            .player_mapping
+            .as_ref()
+            .ok_or(MissingInput::PlayerRegistry)?;
+        Ok(mapping[owner as usize] != -1)
+    }
+    /// Original CManager::GetUnit: invalid identity/player returns absent. Type
+    /// bits do not gate this lookup; layer membership equality retains them.
     pub fn unit(&self, reference: UnitReference) -> Result<Option<Found<'_, Unit>>, MissingInput> {
-        self.player(reference.owner)?.unit(reference.id)
+        let owner = reference.player();
+        if owner == -1 || reference.id == u32::MAX || !self.player_is_valid(owner)? {
+            return Ok(None);
+        }
+        self.player(owner)?.unit(reference.id)
     }
 }
 
@@ -580,6 +607,11 @@ mod tests {
                 .collect::<Vec<_>>(),
             [3, 1]
         );
+        let mut world = world;
+        let mut mapping = [-1; 65];
+        mapping[7] = 0;
+        mapping[2] = 1;
+        world.player_mapping = Some(mapping);
         let candidates = world.plot_units(3, 1).unwrap();
         assert_eq!(
             candidates.iter().map(|r| r.owner).collect::<Vec<_>>(),
