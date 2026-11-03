@@ -140,7 +140,7 @@ def candidate(pin, records):
         source_paths = ['Cargo.toml', 'Cargo.lock', 'crates/c6-core/Cargo.toml',
                         'tools/linux/game_global_ai_audit.py', 'tools/linux/player_wmds_audit.py']
         source_paths += [str(path.relative_to(source)) for path in
-                         sorted((source/'crates/c6-core/src').rglob('*.rs'))]
+                         sorted((source/'crates/c6-core').rglob('*.rs'))]
         source_hashes = {}
         for path in source_paths:
             archived = (source/path).read_bytes()
@@ -162,7 +162,7 @@ def candidate(pin, records):
         if n != 2:
             raise ValueError('candidate record count differs')
         for path, digest in source_hashes.items():
-            if sha((source/path).read_bytes()) != digest:
+            if sha((source/path).read_bytes()) != digest or sha(subprocess.check_output(['git', 'show', pin+':'+path], cwd=ROOT)) != digest:
                 raise ValueError('candidate build mutated archived source: '+path)
         return dict(source_commit=pin, archive_sha256=sha(archive),
                     module_sha256=sha(module.read_bytes()), driver_sha256=sha(driver.read_bytes()),
