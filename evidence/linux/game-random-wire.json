@@ -1,0 +1,433 @@
+{
+  "schema": "c6-linux-game-random-wire-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "methods": [
+    {
+      "address": "0x1fe81a0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(bool&)",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    },
+    {
+      "address": "0x2d48ab0",
+      "size": 164,
+      "name": "GameCore::Random::Read(Serialization::IStream&)",
+      "sha256": "f52dd24eb9c66c1efe8a5c2f5e877f4f041bbbef5ea5485bf26e8d7561f76dff"
+    },
+    {
+      "address": "0x2d48a00",
+      "size": 20,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Random const&)",
+      "sha256": "02a0a632a63777a780ef4a70e733f8a8b20e12872840e22cc565048c88d078c6"
+    },
+    {
+      "address": "0x2d48a20",
+      "size": 105,
+      "name": "GameCore::Random::Write(Serialization::OStream&) const",
+      "sha256": "efacb133bcd6a82530012164e75ac795ff5b0e7c2baf9a63695ea672dea33539"
+    },
+    {
+      "address": "0x1fcdba0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(unsigned int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x2d48a90",
+      "size": 20,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Random&)",
+      "sha256": "c244375841148ffffffdbe02089217238675fcaa06e9b353d9a5b8cfae1fecdf"
+    },
+    {
+      "address": "0x1fcdbb0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(unsigned int&)",
+      "sha256": "b5c97ed9421b7f58e0ea8a7e2989ec1c05dd9c16a79416af11d59bd45e57dc3e"
+    },
+    {
+      "address": "0x1fe7900",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(bool const&)",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x2d7b4d0",
+      "size": 8,
+      "name": "GameCore::Game::Instance::GetSyncRandom() const",
+      "sha256": "f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b"
+    },
+    {
+      "address": "0x2662460",
+      "size": 12,
+      "name": "GameCore::Game::Instance::EditSyncRandom()",
+      "sha256": "7cd63912e413a46606b7e3335de3d364622c11c6d78db119b19e2e7e348778e6"
+    },
+    {
+      "address": "0x2d7a88e",
+      "size": 51,
+      "name": "Game parent current writer FreeCities/Random/Trade boundary",
+      "sha256": "fa183b45d4cd6ab12fe14c5be77e34d4bfb5b5bc1aba7987d5095d3d03e6e6bb"
+    },
+    {
+      "address": "0x2d7acdf",
+      "size": 35,
+      "name": "Game parent reader Random/Trade boundary",
+      "sha256": "903fd480466252191f3b31fed06d7a87e2a3204f9b1847e636fe8409e682fffa"
+    }
+  ],
+  "outer_bindings": [
+    {
+      "site": "0x1fe81bf",
+      "plt": "0x1e03670",
+      "body": "0x1fcdb20"
+    },
+    {
+      "site": "0x2d48abf",
+      "plt": "0x1e37290",
+      "body": "0x2d48c30"
+    },
+    {
+      "site": "0x2d48acc",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2d48ad8",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2d48ae4",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2d48af0",
+      "plt": "0x1e57840",
+      "body": "0x1fcc1c0"
+    },
+    {
+      "site": "0x2d48afc",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000"
+    },
+    {
+      "site": "0x2d48b09",
+      "plt": "0x1f3f970",
+      "body": "0x1fe2000"
+    },
+    {
+      "site": "0x2d48b1d",
+      "plt": "0x1f9a5f0",
+      "body": "0x1ff5700"
+    },
+    {
+      "site": "0x2d48b28",
+      "plt": "0x1ed6340",
+      "body": "0x1ff61f0"
+    },
+    {
+      "site": "0x2d48b4f",
+      "plt": "0x1f76d40",
+      "body": "0x0"
+    },
+    {
+      "site": "0x2d48a0a",
+      "plt": "0x1ed9bb0",
+      "body": "0x2d48a20"
+    },
+    {
+      "site": "0x2d48a3a",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x2d48a46",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x2d48a52",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x2d48a5e",
+      "plt": "0x1e20270",
+      "body": "0x1fcc150"
+    },
+    {
+      "site": "0x2d48a6a",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90"
+    },
+    {
+      "site": "0x2d48a7c",
+      "plt": "0x1e012a0",
+      "body": "0x1fe1f90"
+    },
+    {
+      "site": "0x2d48a9a",
+      "plt": "0x1e591d0",
+      "body": "0x2d48ab0"
+    },
+    {
+      "site": "0x1fcdbcf",
+      "plt": "0x1e03670",
+      "body": "0x1fcdb20"
+    },
+    {
+      "site": "0x2d7a88e",
+      "plt": "0x1e606c0",
+      "body": "0x294dd50"
+    },
+    {
+      "site": "0x2d7a899",
+      "plt": "0x1f07650",
+      "body": "0x294d890"
+    },
+    {
+      "site": "0x2d7a8a1",
+      "plt": "0x1f8f1e0",
+      "body": "0x2d7b4d0"
+    },
+    {
+      "site": "0x2d7a8ac",
+      "plt": "0x1eca350",
+      "body": "0x2d48a00"
+    },
+    {
+      "site": "0x2d7a8b1",
+      "plt": "0x1e8de30",
+      "body": "0x2c051d0"
+    },
+    {
+      "site": "0x2d7a8bc",
+      "plt": "0x1e8eac0",
+      "body": "0x2c050b0"
+    },
+    {
+      "site": "0x2d7ace2",
+      "plt": "0x1fa1ca0",
+      "body": "0x2662460"
+    },
+    {
+      "site": "0x2d7aced",
+      "plt": "0x1f710a0",
+      "body": "0x2d48a90"
+    },
+    {
+      "site": "0x2d7acf2",
+      "plt": "0x1fa2840",
+      "body": "0x2c051f0"
+    },
+    {
+      "site": "0x2d7acfd",
+      "plt": "0x1f58e30",
+      "body": "0x2c05100"
+    }
+  ],
+  "fixtures": [
+    {
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "core_bytes": 80657462,
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "wire_sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+      "start": 71027778,
+      "end": 71027796,
+      "bytes": 18,
+      "version": 1,
+      "seed": 872261551,
+      "calls": 922992,
+      "resets": 0,
+      "synchronous_byte": 1,
+      "legacy_flag": 0,
+      "items": 0,
+      "parent": "GameCore::Game::Instance",
+      "all_nested_native_cuts_compared": true,
+      "next_owner": {
+        "owner": "GameCore::Trade::Manager",
+        "start": 71027796,
+        "end": 71497442
+      }
+    },
+    {
+      "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "core_bytes": 80657462,
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "wire_sha256": "14e06540adb7b0ff9890eda7a6c2affa6577d2ba1ad823c831e3cee20c4d9141",
+      "start": 71027778,
+      "end": 71027796,
+      "bytes": 18,
+      "version": 1,
+      "seed": 872261551,
+      "calls": 922992,
+      "resets": 0,
+      "synchronous_byte": 1,
+      "legacy_flag": 0,
+      "items": 0,
+      "parent": "GameCore::Game::Instance",
+      "all_nested_native_cuts_compared": true,
+      "next_owner": {
+        "owner": "GameCore::Trade::Manager",
+        "start": 71027796,
+        "end": 71497442
+      }
+    }
+  ],
+  "candidate": {
+    "source_commit": "f82e791bbbea54e113f527c5cf0e735f884cdc6e",
+    "archive_sha256": "2a1e2037b2bfb905eb0e0b426e98a41a254deea565f691121bab005b61bf2a4e",
+    "module_sha256": "d8fc55268532631fa9dd04520190e9bc956812664ccd96231a8e86760a8233cb",
+    "driver_sha256": "29717b1ee6736871f20d2ef3851bce61e1cfe0aa3c6c07f0b38a448fbf27c593",
+    "harness_sha256": "d17db6b89be755fbe4ffffd9d42dc489c2951e7b1f581d6615dedbe185a2f358",
+    "executable_sha256": "2cd1cd3cf7c8ccb1b9405303f0d8e7ba353b3cbea8115d679482a555bcaca722",
+    "records": 2,
+    "source_tests": 3,
+    "strict_clippy": true,
+    "full_typed_projection_compared": true,
+    "isolated_export_added": false,
+    "source_files_sha256": {
+      "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+      "Cargo.lock": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
+      "crates/c6-core/Cargo.toml": "0bcf7b157c27f3c87ae75b43c36cb5d622f6360a4fa9fb2efbdccd346143c0dc",
+      "tools/linux/game_random_wire_audit.py": "29717b1ee6736871f20d2ef3851bce61e1cfe0aa3c6c07f0b38a448fbf27c593",
+      "tools/linux/player_wmds_audit.py": "33c3e854945a1a576e25a168b197ca10975c61681d4d096d12bc6cfcfc7f268c",
+      "crates/c6-core/benches/rng.rs": "5b0fe73942c72568b8e014f8a04509aa9c8ba7675629de3163a97305a7af8e4d",
+      "crates/c6-core/examples/combat_kernel.rs": "96f9ec265cda68abccc811f9428d6db56f13296a75fa9c09d9cdd2b22d4d11d1",
+      "crates/c6-core/examples/combat_random.rs": "db3ed036d45c264a0cf18399cf0f2cec716b8cbb4f7d7dd595e16875ff3fb4b7",
+      "crates/c6-core/examples/notification_state_phase.rs": "0dcb3a0924777d2c5be2778b27c2b7187556f0af99d4486ba8a1862c6752b407",
+      "crates/c6-core/examples/notifications_codec.rs": "d63880fefb6ef7f57e1d6d31410fe20736c8f8bddc8ce0216354e853233298f4",
+      "crates/c6-core/examples/player_components_codec.rs": "7e7ac21e1d5103e0096a6556591e4ce270c50706adc51eeb413a97301961529d",
+      "crates/c6-core/examples/random_variants.rs": "cc9ebf741400dde71d53b70a6ec5c5ebe931af18cbfe09ddd9d43b7349d8f483",
+      "crates/c6-core/examples/requirements_codec.rs": "bd51b065fa9003a29aa32292144a036d9204fbf5eff1e7aaba5dd4c567cba4ff",
+      "crates/c6-core/examples/skip_turn_kernel.rs": "32dcb6b708d0acab0032c031ce23a89fe4bcac2d8e148e4a42acc154208ae30d",
+      "crates/c6-core/examples/trade_codec.rs": "64ce051ee11da327f1a2950883f911d7a90e4613dacc3a7e7c5466b79150d01e",
+      "crates/c6-core/examples/trade_read_order.rs": "0a8efedefe6d8084ae3d72ebb478c962a94427d973099d8f074100d50f753091",
+      "crates/c6-core/examples/unit_codec.rs": "9194562771c056761e67bf5dee252767f495378a6794ebe2a6fd7d1c74c6e982",
+      "crates/c6-core/examples/unit_placement.rs": "3a190aea3574e4dc4be65d6de53f547ca2da01b999a735896034d5077b409254",
+      "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+      "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+      "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+      "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+      "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+      "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+      "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+      "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+      "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+      "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+      "crates/c6-core/src/core_player.rs": "5e2d85dbdc0a5d68220848e0e0dd625a2fff624a38cff94ba4aca4094c342d1d",
+      "crates/c6-core/src/core_stream.rs": "cea1863222cdf206c1ec9fb15aeaeada249cb8a62c5a02a9af21e38c23d21122",
+      "crates/c6-core/src/game_barbarian.rs": "4762bd90e3b25ae9ca0b01ce30719e98e632bda6295650da9783e26920c0e909",
+      "crates/c6-core/src/game_free_cities.rs": "995dfa4c8f798ef2c2c66287e37a5ef6b2c8d9e88db25dbc83b10ce9b186e11b",
+      "crates/c6-core/src/game_global_ai.rs": "11fd165c35e84d21c745caf517fe9d4b7717d940e45f534ef02f49d086cae902",
+      "crates/c6-core/src/game_random_wire.rs": "d8fc55268532631fa9dd04520190e9bc956812664ccd96231a8e86760a8233cb",
+      "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+      "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+      "crates/c6-core/src/lib.rs": "98f019731668e2f22362eb672ad638ae08319472fa56ef192cd51df343544f38",
+      "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+      "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+      "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+      "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+      "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+      "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+      "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+      "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+      "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+      "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+      "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+      "crates/c6-core/src/player_ai_behavior_tree.rs": "6d6babd71f41469eecfd1630bfb69ae1b3dc6bab9d15ef6f9b6ec9b58ace3427",
+      "crates/c6-core/src/player_ai_city_manager.rs": "689504987c69eb3a555e4e05d0bc1d2cd01f889ad4336339a16900e80265bf85",
+      "crates/c6-core/src/player_ai_control.rs": "384ebe1f36a529e1119f6f8dcb51090a8e3507b1ac4fbd596f46dbba73a96229",
+      "crates/c6-core/src/player_ai_culture.rs": "ae23342a4ed82bbd8e2740a3299d17282e0da903283cccf1143de78579c7d8ff",
+      "crates/c6-core/src/player_ai_diplomatic.rs": "a499949d81cfb82657e5fedafd42259900e6c5066315141d6ed940df99da0ee5",
+      "crates/c6-core/src/player_ai_economic.rs": "e98e0a9da59abc122b340d81ce8ec4e6754a3e693e4eb5efe6d9edad3194efd6",
+      "crates/c6-core/src/player_ai_governors.rs": "2c70bacd561c4c65de4024ff581c8794f32eb632e7f9078e068ab79afdc9b88d",
+      "crates/c6-core/src/player_ai_grand_strategic.rs": "5fb4cbd61b44a36a4d57579ffb0f13b582f219d21912e953a5f434126fbecf77",
+      "crates/c6-core/src/player_ai_homeland.rs": "a4b44f24c0ef30c37b686dc4384d155dbd2112d287b424dd0a66c446ba7405e4",
+      "crates/c6-core/src/player_ai_identity.rs": "0b1827b953da5fdbcc88349ea15186c4b7aa964b73275cfba8d618022c94d5f1",
+      "crates/c6-core/src/player_ai_influence_map.rs": "57f5d72e2d8a1b3e35b813515e364ea0f61a35a42a4fa84ab994af2fbb1b2418",
+      "crates/c6-core/src/player_ai_military.rs": "44671c110f4baf67a009bb767e79e1e0be6dbc1f2d91190d8a30492bead54e92",
+      "crates/c6-core/src/player_ai_military_operations.rs": "d3dc8e719d38c4e918025f686b0a015548208d0283308c66ce6283758cec902d",
+      "crates/c6-core/src/player_ai_research.rs": "5df87d9a482fe707b0d34e54786800ad5fb3dea0ea47cb9520e9be326b68b643",
+      "crates/c6-core/src/player_ai_tactical.rs": "ea253bbd0c47aca2b6d3fa00d88f9b4222b5da0b728533dab1c48f4b3ff7d4e1",
+      "crates/c6-core/src/player_ai_targets.rs": "316654da12d9de6bdb468d9f0e08367549cbc6b9b44ec28d357e8465aebf875d",
+      "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+      "crates/c6-core/src/player_cultural_identity.rs": "c87ccd7989b3fb1aaebbf13d319ab86c667745376d30f1a5b65372d26ef63e34",
+      "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+      "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+      "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+      "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+      "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
+      "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+      "crates/c6-core/src/player_governors.rs": "1362500016008ff6444b1fa28599ec52e60a4807c69a87b7573451f3b58b9133",
+      "crates/c6-core/src/player_great_people_points.rs": "0ed60c2b0891444de9a3b036fbb32b1f30609a5a3adecc42637630ab6fbe62da",
+      "crates/c6-core/src/player_heroes.rs": "aeec1006dd9184562387fb3d04ea79ce7e323bde73bb32bfed9fcc19b70995a6",
+      "crates/c6-core/src/player_improvements.rs": "a427c0bb1b4d24e67ab6e050d949e297c80771ee89d4811132741ae0e650d484",
+      "crates/c6-core/src/player_influence.rs": "3eaf72669a51c0f51081b384c9e8e27d2b9f9fd3a627b67a37c7851d341ace7c",
+      "crates/c6-core/src/player_initialization.rs": "9611d018a56d1f02d4e353f28ef8a4c3e2cb75c4c28457a2e1b018be84c6a09b",
+      "crates/c6-core/src/player_initialization_capture.rs": "19f2ec84d0d32a77b8e38cfa6905240ac83fdbd13230c1de7e9403871f0fb082",
+      "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+      "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+      "crates/c6-core/src/player_quests.rs": "8cd4a8374ac45f7934b8801cbea927708201603672506edb739e507e7c37a2f7",
+      "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+      "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+      "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
+      "crates/c6-core/src/player_tail.rs": "45f90c3afa702f5c3dfe09bf03f0802683104243f0d381bb2f60abb815c16387",
+      "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
+      "crates/c6-core/src/player_trade.rs": "371d7f198f475a3103609e555063c05feb983471e57215d92fe6e9496ef70702",
+      "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+      "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
+      "crates/c6-core/src/player_wmds.rs": "5948c879fe976edbb68a79f0dbf81bfeb0bf4e6f16f0a23ab6a898860c53bef2",
+      "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+      "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+      "crates/c6-core/src/reporting_dirty_components.rs": "f1fde81ff4f0cb1b31fc3b67935d855034adc7dc1e20956ab241adf10459e3f8",
+      "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+      "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+      "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+      "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+      "crates/c6-core/src/tracked_value.rs": "ba376826d591eb55811f543bd17ceeb8bc493b6caaa3ad8537c0d862d44de3c1",
+      "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+      "crates/c6-core/src/trade_read_order.rs": "76b24251ef1b5377cef37814713357a8df89c23d15d1069005869ad3745cf6de",
+      "crates/c6-core/src/turn_completion.rs": "b43ad8ff48d48290788df6a6b475ea678b0c77c61d71540c17333648c2d69dc5",
+      "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+      "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+      "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+      "crates/c6-core/src/unit_operation_aftermath.rs": "61b33abf48a8d4cf3f52af69ec94cfb3b46d4d48cf3b0554801c2cbd6d72c922",
+      "crates/c6-core/src/unit_operation_interruption.rs": "b8ff42e5c5750f908077bd2773208cfa45e9a26ba79ecf9ebe2fbef242f4a931",
+      "crates/c6-core/src/unit_operation_legality.rs": "ff8938badf64155229e60984995ea680244e94658edccc1ecba959e327167cd3",
+      "crates/c6-core/src/unit_operation_notification_provider.rs": "0f93a963706f82662048fdc606f761caa503e18d39457bf679d880ae1f644a8f",
+      "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
+      "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+      "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
+    },
+    "every_source_hash_verified_against_git_pin": true,
+    "actual_exported_crate_tests": true,
+    "candidate_uses_exported_crate": true,
+    "archive_source_mutations": false,
+    "exact_byte_cap_and_zero_item_credit": true,
+    "bounded_native_versions_and_legacy_flags": true,
+    "bounded_native_truncations_rejected": true,
+    "short_byte_caps_rejected": true,
+    "strict_trailing_rejected": true,
+    "exact_prefix_consumption": true
+  },
+  "reused_codec": "rng::native_serialization::SerializedRandomRecord",
+  "prior_native_parity": "evidence/linux/random-parity.json",
+  "prior_native_parity_sha256": "11c0aabb6c8a87a35ed628fa5d778a9a5b5bf7bc88eaeaf59a1262e375e26fdd",
+  "complete_observed_game_sync_random_records": true,
+  "complete_current_normal_random_wire": true,
+  "complete_live_random_object": false,
+  "complete_gameplay_rng_inventory": false,
+  "original_execution": false,
+  "private_writes": false,
+  "native_read_side_effects": false,
+  "gameplay_state": false,
+  "world_import": false,
+  "actions": false,
+  "turns": false,
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "next_component": "GameCore::Trade::Manager"
+}
