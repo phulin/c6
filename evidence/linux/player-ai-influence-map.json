@@ -1253,5 +1253,20 @@
   "full_player": false,
   "world_import": false,
   "actions": false,
-  "turns": false
+  "turns": false,
+  "candidate": {
+    "source_commit": "506204d8420234676e34ac8315cc32e3db6937d6",
+    "archive_sha256": "3cb7b9bd55dff14d7f2557b0c7cec812083a2fbbc0da83a5a38f58168eef580d",
+    "module_sha256": "57f5d72e2d8a1b3e35b813515e364ea0f61a35a42a4fa84ab994af2fbb1b2418",
+    "harness_sha256": "b33f49184dfc41bf2b71345f6be431981783f8c3c1bd2aff798bbffe540205d2",
+    "candidate_sha256": "3876203c54badda7baf0c208790034d2f531f18f30c5bd6e5473e6e77ae5d91b",
+    "records": 86,
+    "exported_archive_cargo_tests": true,
+    "exported_archive_clippy": true,
+    "every_truncation": true,
+    "exact_byte_item_limits": true,
+    "one_short_byte_item_limits": true,
+    "strict_trailing": true,
+    "shared_tail_prefix": true
+  }
 }
