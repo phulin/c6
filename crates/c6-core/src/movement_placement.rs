@@ -202,3 +202,413 @@ mod tests {
         assert_eq!(formation_result([Ok::<_, &str>(Some(1))], |_| Ok(2)), Ok(2));
     }
 }
+
+/// Definition state needed by the shore selector's visibility branch.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DefenderDefinition {
+    Unresolved,
+    Absent,
+    Present { team_visibility: bool },
+}
+
+/// An actual resolved candidate from the destination's ordered layer list.
+/// The owning context must establish these fields, not synthesize records.
+pub struct ShoreDefender<T> {
+    pub unit: T,
+    pub owner: i32,
+    pub delayed_death: bool,
+    pub location: Option<crate::unit::PlotCoord>,
+    pub definition: DefenderDefinition,
+    pub religious_strength: Option<i32>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DefenderError<E> {
+    Candidate(E),
+    VisibilityContext,
+    Location,
+    Definition,
+    SubjectReligiousStrength,
+    CandidateReligiousStrength,
+    CombatStrength(E),
+}
+
+/// Ordered GetBestDefender selection for the shore placement flags only.
+/// `visibility_present` describes the actual visibility context pointer, not
+/// whether a plot is visible. Unknown context/records remain errors.
+///
+/// The caller supplies the actual destination layer list after the subject's
+/// normal layer lookup. This does not infer occupancy from Unit locations. Each
+/// comparison evaluates candidate GetCombat(false), then incumbent again; ties
+/// retain the incumbent. The first eligible candidate needs no combat query.
+/// Subject religion is an actual source-closed getter result, not a policy.
+/// All potentially effectful query support must be admitted before invocation;
+/// this component provides no whole-action Unsupported rollback.
+pub fn select_shore_defender<T, E>(
+    candidates: impl IntoIterator<Item = Result<Option<ShoreDefender<T>>, E>>,
+    subject_owner: i32,
+    visibility_present: Option<bool>,
+    subject_religious_strength: Option<i32>,
+    mut combat_false: impl FnMut(&T) -> Result<i32, E>,
+) -> Result<Option<T>, DefenderError<E>> {
+    let mut best: Option<ShoreDefender<T>> = None;
+    for candidate in candidates {
+        let Some(candidate) = candidate.map_err(DefenderError::Candidate)? else {
+            continue;
+        };
+        if candidate.delayed_death || candidate.owner == subject_owner {
+            continue;
+        }
+        if visibility_present.ok_or(DefenderError::VisibilityContext)? {
+            let location = candidate.location.ok_or(DefenderError::Location)?;
+            if !crate::skip_turn::placement::coordinate_valid(location) {
+                continue;
+            }
+            match candidate.definition {
+                DefenderDefinition::Absent => continue,
+                DefenderDefinition::Present {
+                    team_visibility: true,
+                } => continue,
+                DefenderDefinition::Present {
+                    team_visibility: false,
+                } => {}
+                DefenderDefinition::Unresolved => return Err(DefenderError::Definition),
+            }
+        }
+        if subject_religious_strength.ok_or(DefenderError::SubjectReligiousStrength)? > 0
+            && candidate
+                .religious_strength
+                .ok_or(DefenderError::CandidateReligiousStrength)?
+                > 0
+        {
+            return Ok(Some(candidate.unit));
+        }
+        if let Some(incumbent) = &best {
+            let strength = combat_false(&candidate.unit).map_err(DefenderError::CombatStrength)?;
+            let old_strength =
+                combat_false(&incumbent.unit).map_err(DefenderError::CombatStrength)?;
+            if strength > old_strength {
+                best = Some(candidate);
+            }
+        } else {
+            best = Some(candidate);
+        }
+    }
+    Ok(best.map(|candidate| candidate.unit))
+}
+
+#[cfg(test)]
+mod defender_tests {
+    use super::*;
+    fn unit(id: i32, owner: i32) -> ShoreDefender<i32> {
+        ShoreDefender {
+            unit: id,
+            owner,
+            delayed_death: false,
+            location: Some(crate::unit::PlotCoord { x: 0, y: 0 }),
+            definition: DefenderDefinition::Present {
+                team_visibility: false,
+            },
+            religious_strength: None,
+        }
+    }
+    #[test]
+    fn actual_empty_and_filtered_occupancy_need_no_strength_or_invented_units() {
+        let empty: [Result<Option<ShoreDefender<i32>>, &str>; 0] = [];
+        assert_eq!(
+            select_shore_defender(empty, 4, None, None, |_| Err("unreached")),
+            Ok(None)
+        );
+        let mut dead = unit(3, 7);
+        dead.delayed_death = true;
+        let candidates: Vec<Result<_, &str>> = vec![Ok(None), Ok(Some(unit(1, 4))), Ok(Some(dead))];
+        assert_eq!(
+            select_shore_defender(candidates, 4, None, None, |_| Err("unreached")),
+            Ok(None)
+        );
+    }
+    #[test]
+    fn single_eligible_candidate_needs_no_definition_strength_proxy() {
+        let candidates: Vec<Result<_, &str>> = vec![Ok(Some(unit(1, 7)))];
+        assert_eq!(
+            select_shore_defender(candidates, 4, Some(true), Some(0), |_| Err(
+                "no supported combat"
+            )),
+            Ok(Some(1))
+        );
+    }
+    #[test]
+    fn visibility_uses_location_definition_and_team_flag_not_map_visibility() {
+        let mut invalid = unit(1, 7);
+        invalid.location = Some(crate::unit::PlotCoord { x: -9999, y: 0 });
+        invalid.definition = DefenderDefinition::Unresolved;
+        let mut missing = unit(2, 7);
+        missing.definition = DefenderDefinition::Absent;
+        let mut team = unit(3, 7);
+        team.definition = DefenderDefinition::Present {
+            team_visibility: true,
+        };
+        let candidates: Vec<Result<_, &str>> = vec![
+            Ok(Some(invalid)),
+            Ok(Some(missing)),
+            Ok(Some(team)),
+            Ok(Some(unit(4, 7))),
+        ];
+        assert_eq!(
+            select_shore_defender(candidates, 4, Some(true), Some(0), |_| Err("unreached")),
+            Ok(Some(4))
+        );
+        let mut unqueried = unit(5, 7);
+        unqueried.location = None;
+        unqueried.definition = DefenderDefinition::Unresolved;
+        assert_eq!(
+            select_shore_defender(
+                [Ok::<_, &str>(Some(unqueried))],
+                4,
+                Some(false),
+                Some(0),
+                |_| Err("unreached")
+            ),
+            Ok(Some(5))
+        );
+    }
+    #[test]
+    fn ordered_strength_queries_keep_first_tie_and_read_incumbent_again() {
+        let candidates: Vec<Result<_, &str>> = vec![
+            Ok(Some(unit(1, 7))),
+            Ok(Some(unit(2, 8))),
+            Ok(Some(unit(3, 9))),
+        ];
+        let mut calls = Vec::new();
+        let result = select_shore_defender(candidates, 4, Some(true), Some(-1), |id| {
+            calls.push(*id);
+            Ok(if *id == 3 { -1 } else { 17 })
+        });
+        assert_eq!(result, Ok(Some(1)));
+        assert_eq!(calls, vec![2, 1, 3, 1]);
+    }
+    #[test]
+    fn first_religious_match_returns_immediately_preserving_order() {
+        let mut first = unit(1, 7);
+        first.religious_strength = Some(3);
+        let candidates = [Ok(Some(first)), Err("unreached later lookup")];
+        assert_eq!(
+            select_shore_defender(candidates, 4, Some(true), Some(1), |_| Err(
+                "unreached combat"
+            )),
+            Ok(Some(1))
+        );
+    }
+    #[test]
+    fn unknown_lookups_visibility_and_required_combat_are_not_absence() {
+        assert_eq!(
+            select_shore_defender(
+                [Err::<Option<ShoreDefender<i32>>, _>("unknown")],
+                4,
+                None,
+                None,
+                |_| Ok(0)
+            ),
+            Err(DefenderError::Candidate("unknown"))
+        );
+        assert_eq!(
+            select_shore_defender([Ok::<_, &str>(Some(unit(1, 7)))], 4, None, Some(0), |_| Ok(
+                0
+            )),
+            Err(DefenderError::VisibilityContext)
+        );
+        let candidates = [Ok::<_, &str>(Some(unit(1, 7))), Ok(Some(unit(2, 8)))];
+        assert_eq!(
+            select_shore_defender(candidates, 4, Some(true), Some(0), |_| Err(
+                "combat unresolved"
+            )),
+            Err(DefenderError::CombatStrength("combat unresolved"))
+        );
+    }
+}
+
+/// Actual definition query state for GetCombat(false), distinct from unknown.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CombatDefinition {
+    Absent,
+    Present {
+        strength: i32,
+        use_max_melee_trained: bool,
+    },
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CombatMissing {
+    Definition,
+    MaxMeleeTrained,
+    Embarked,
+    FightEmbarked,
+    FormationClass,
+    Hero,
+    Era,
+    EmbarkedEraStrength,
+    Modifier,
+    MilitaryFormation,
+    FormationBonus,
+    ModifiedFormationBonus,
+    EraModifier,
+}
+/// Source getter values. This is arithmetic over actual resolved state, not a
+/// substitute for resolving the gameplay getters or admitting their effects.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct CombatFacts {
+    pub definition: Option<CombatDefinition>,
+    pub max_melee_trained: Option<i32>,
+    pub embarked: Option<bool>,
+    pub fight_while_embarked: Option<bool>,
+    pub formation_class: Option<i32>,
+    pub hero: Option<bool>,
+    pub era: Option<i32>,
+    pub embarked_era_strength: Option<i32>,
+    pub modifier: Option<i32>,
+    pub military_formation: Option<i32>,
+    /// Corps/army global parameter selected by military_formation1/2.
+    pub formation_bonus: Option<i32>,
+    /// Actual owner GetModifiedArmyCorpsStrength(domain!=0, formation==1).
+    pub modified_formation_bonus: Option<i32>,
+    pub era_modifier: Option<i32>,
+}
+
+// ADD followed immediately by JLE uses signed-overflow flags, unlike comparing
+// the wrapped value with zero. Two sign-extended i32 addends fit exactly in i64.
+fn add_is_positive(a: i32, b: i32) -> bool {
+    i64::from(a) + i64::from(b) > 0
+}
+
+pub fn combat_strength_false(f: &CombatFacts) -> Result<i32, CombatMissing> {
+    let mut base = match f.definition.ok_or(CombatMissing::Definition)? {
+        CombatDefinition::Absent => 0,
+        CombatDefinition::Present {
+            strength,
+            use_max_melee_trained,
+        } => {
+            if use_max_melee_trained {
+                strength.max(f.max_melee_trained.ok_or(CombatMissing::MaxMeleeTrained)?)
+            } else {
+                strength
+            }
+        }
+    };
+    if f.embarked.ok_or(CombatMissing::Embarked)?
+        && !f.fight_while_embarked.ok_or(CombatMissing::FightEmbarked)?
+    {
+        let class = f.formation_class.ok_or(CombatMissing::FormationClass)?;
+        if class != 2
+            && class != 1
+            && !f.hero.ok_or(CombatMissing::Hero)?
+            && f.era.ok_or(CombatMissing::Era)? != -1
+        {
+            base = f
+                .embarked_era_strength
+                .ok_or(CombatMissing::EmbarkedEraStrength)?;
+        }
+    }
+    let modifier = f.modifier.ok_or(CombatMissing::Modifier)?.max(0);
+    let mut strength = base.wrapping_add(modifier);
+    if !add_is_positive(base, modifier) {
+        return Ok(strength);
+    }
+    let formation = f
+        .military_formation
+        .ok_or(CombatMissing::MilitaryFormation)?;
+    if formation == 1 || formation == 2 {
+        let bonus = f.formation_bonus.ok_or(CombatMissing::FormationBonus)?;
+        let adjusted = f
+            .modified_formation_bonus
+            .ok_or(CombatMissing::ModifiedFormationBonus)?;
+        let addition = bonus.wrapping_add(adjusted);
+        let positive = add_is_positive(strength, addition);
+        strength = strength.wrapping_add(addition);
+        if !positive {
+            return Ok(strength);
+        }
+    }
+    Ok(strength.wrapping_add(f.era_modifier.ok_or(CombatMissing::EraModifier)?))
+}
+
+#[cfg(test)]
+mod combat_tests {
+    use super::*;
+    fn base(value: i32) -> CombatFacts {
+        CombatFacts {
+            definition: Some(CombatDefinition::Present {
+                strength: value,
+                use_max_melee_trained: false,
+            }),
+            embarked: Some(false),
+            modifier: Some(0),
+            ..CombatFacts::default()
+        }
+    }
+    #[test]
+    fn nonpositive_strength_skips_unreached_formation_and_era_inputs() {
+        for value in [i32::MIN, -1, 0] {
+            assert_eq!(combat_strength_false(&base(value)), Ok(value));
+        }
+        let mut f = base(17);
+        f.modifier = Some(-30);
+        f.military_formation = Some(0);
+        f.era_modifier = Some(2);
+        assert_eq!(combat_strength_false(&f), Ok(19));
+    }
+    #[test]
+    fn embarked_override_and_trained_max_are_independent_of_base_definition() {
+        let mut f = base(8);
+        f.definition = Some(CombatDefinition::Present {
+            strength: 8,
+            use_max_melee_trained: true,
+        });
+        f.max_melee_trained = Some(12);
+        f.embarked = Some(true);
+        f.fight_while_embarked = Some(false);
+        f.formation_class = Some(0);
+        f.hero = Some(false);
+        f.era = Some(3);
+        f.embarked_era_strength = Some(7);
+        f.military_formation = Some(0);
+        f.era_modifier = Some(1);
+        assert_eq!(combat_strength_false(&f), Ok(8));
+        f.formation_class = Some(2);
+        assert_eq!(combat_strength_false(&f), Ok(13));
+        f.definition = Some(CombatDefinition::Absent);
+        f.formation_class = Some(0);
+        assert_eq!(combat_strength_false(&f), Ok(8));
+    }
+    #[test]
+    fn add_overflow_flags_preserve_reached_queries_and_wrapped_results() {
+        let mut f = base(i32::MAX);
+        f.modifier = Some(1);
+        assert_eq!(
+            combat_strength_false(&f),
+            Err(CombatMissing::MilitaryFormation)
+        );
+        f.military_formation = Some(0);
+        f.era_modifier = Some(3);
+        assert_eq!(combat_strength_false(&f), Ok(i32::MIN.wrapping_add(3)));
+        let mut f = base(1);
+        f.military_formation = Some(1);
+        f.formation_bonus = Some(i32::MAX);
+        f.modified_formation_bonus = Some(1);
+        assert_eq!(combat_strength_false(&f), Ok(i32::MIN.wrapping_add(1)));
+    }
+    #[test]
+    fn formation_addition_order_and_missing_getters_are_not_defaults() {
+        let mut f = base(10);
+        f.military_formation = Some(2);
+        f.formation_bonus = Some(7);
+        f.modified_formation_bonus = Some(-3);
+        f.era_modifier = Some(-2);
+        let before = f;
+        assert_eq!(combat_strength_false(&f), Ok(12));
+        assert_eq!(f, before);
+        f.modified_formation_bonus = None;
+        assert_eq!(
+            combat_strength_false(&f),
+            Err(CombatMissing::ModifiedFormationBonus)
+        );
+    }
+}
