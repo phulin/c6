@@ -1,0 +1,183 @@
+{
+  "checks_passed": true,
+  "full_host_admission": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "gameplay_parity": false,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "kernel_admission": {
+    "accept_live_action": false,
+    "complete_reporting_effects_proven": false,
+    "requirement": "Bind actual enabled/suspended/cache flags, invoked cache handler targets and receivers, translator identities, pre-publish subscribers and all transitive effects; reject unsupported environments before mutation."
+  },
+  "limits": "Static plan for one conditional Linux component replay. Complete gameplay state/action/turns remain unimplemented. Unserialized live state and complete RNG remain unresolved; the raw Save-to-Load 89198-byte failure remains unclassified and unmasked.",
+  "live_callback_inventory_observed": false,
+  "methods": [
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Event.IsEnabled",
+      "rva": "0x2d49180",
+      "sha256": "59b106f733bf15ae469e4e147126b4065ff4e8f5e07baab5dfb9487997e68c68"
+    },
+    {
+      "bytes": 5,
+      "image": "game",
+      "name": "Event.IsSuspended",
+      "rva": "0x2d49190",
+      "sha256": "83276920b6b626251d072ef15c3476ab42c3b8c4ed95428fce539b2faf89850c"
+    },
+    {
+      "bytes": 45,
+      "image": "game",
+      "name": "Globals.IsUnserializing",
+      "rva": "0x290bb30",
+      "sha256": "771f43a0efb13454645a0870b507ef7336f72a248ac496e7bce153ef6e7864b0"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Cache.AreUpdatesEnabled",
+      "rva": "0x2723640",
+      "sha256": "4f7ea77a0e05ec97922128597c34b3d00f9c47ffdf47e0cd4ea54fed4eb8ed5a"
+    },
+    {
+      "bytes": 79,
+      "image": "game",
+      "name": "Event.SendMap",
+      "rva": "0x2d4a4b0",
+      "sha256": "c1888c434ab05b22459602c065edeb08c79ab33480cb0beb070bf92fcc89ade5"
+    },
+    {
+      "bytes": 238,
+      "image": "game",
+      "name": "Cache.Send",
+      "rva": "0x2723550",
+      "sha256": "c224d2f00939be39974ab16bfc564f2877cef2ece1e8a94e972e243d5dbced20"
+    },
+    {
+      "bytes": 73,
+      "image": "game",
+      "name": "Cache.FastDelegate3.Invoke",
+      "rva": "0x2724730",
+      "sha256": "c028ee1789ac606906c75f4f49514de738c8fe72ebe2ecdce5813c6f6e76880c"
+    },
+    {
+      "bytes": 2492,
+      "image": "host",
+      "name": "EngineUtility.SendEvent",
+      "rva": "0x32b4260",
+      "sha256": "24826057267fc9c5a6028051e2eed6dbffea87bb34c1de4600f00ae968c370d9"
+    },
+    {
+      "bytes": 129,
+      "image": "host",
+      "name": "Translate.Dispatch",
+      "rva": "0x3214c50",
+      "sha256": "84bcf221705b2d35e2ff59079cec7c5b22cd7c10afb65c5774642d5c5c7ca910"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish71",
+      "rva": "0x32176b0",
+      "sha256": "4bcd0436d2ba72ae44f4d885d4864d5b1880f9f0a84c833a62179ce2f99187cd"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish257",
+      "rva": "0x321cac0",
+      "sha256": "4fe4c9ea0083b660eb82a946d1b96f27d7f6cb8d218714ca6a48b287c2e33819"
+    },
+    {
+      "bytes": 5,
+      "image": "host",
+      "name": "PrePublish.Get",
+      "rva": "0x2fd7db0",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish71.Invoke",
+      "rva": "0x3228580",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish257.Invoke",
+      "rva": "0x3237c40",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 4,
+      "image": "host",
+      "name": "PrePublish71.GetThis",
+      "rva": "0x32285f0",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "bytes": 9,
+      "image": "host",
+      "name": "PrePublish71.GetMember",
+      "rva": "0x3228600",
+      "sha256": "1e4ed268bbb17635735f00271500035a8dd2732548b89d3a643d52d7ac4f299d"
+    }
+  ],
+  "native_execution": false,
+  "parent_configuration_sha256": "b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b",
+  "passive_capture": {
+    "checkpoints": [
+      {
+        "capture": "AL actual IsSuspended result; EBP event hash; RBX map; read enabled game+3c00649/cache updates game+3bffce8",
+        "image": "game",
+        "instruction_bytes": "84c0740c",
+        "name": "suspended_return",
+        "rva": "0x2d4a4c6"
+      },
+      {
+        "capture": "RAX resolved callback; RDI adjusted receiver; ESI event; RDX EventData; RCX map; retain stack return and backtrace",
+        "image": "game",
+        "instruction_bytes": "ffe0",
+        "name": "cache_delegate_tail",
+        "rva": "0x2724777"
+      },
+      {
+        "capture": "RAX actual translator including null; event u32[RSP+0xc]; R15 EventData; R14 map",
+        "image": "host",
+        "instruction_bytes": "4885c0740c",
+        "name": "registered_translator",
+        "rva": "0x3214cb0"
+      },
+      {
+        "capture": "RDI DispatchData; subscriber u64[RDI+0x10]; caller u64[RSP]; raw delegate24 and backtrace when nonnull",
+        "image": "host",
+        "instruction_bytes": "488b4710c3",
+        "name": "prepublish_getter",
+        "rva": "0x2fd7db0"
+      }
+    ],
+    "game_code_patches": false,
+    "inferior_calls": false,
+    "inferior_field_writes": false,
+    "limits": [
+      "Disabled reporting path misses suspended-return checkpoint",
+      "Missing translator registration misses registered-translator checkpoint",
+      "Pre-publish subscriber pointer proves registration, not actual callback invocation",
+      "Raw delegate resolution requires exact target ABI and does not classify transitive writes",
+      "Hardware stops change scheduling; replay must compare command, streams, typed state and cleanup",
+      "Loader instrumentation must be reported separately"
+    ],
+    "maximum_simultaneous_hardware_breakpoints": 4,
+    "preserve": [
+      "Raw callback/receiver/object addresses",
+      "Module ASLR bases and pointer RVAs separately",
+      "Unclassified bytes and cross-process differences",
+      "Read errors and missed checkpoint coverage"
+    ]
+  },
+  "schema": "c6-linux-reporting-provider-static-v1",
+  "source_audit_sha256": "ebc3aa53872285ada0921d85ca90d1781169e728811aab77f3708869256aa9f4",
+  "static_only": true
+}
