@@ -47,3 +47,25 @@ metadata without cloning. A real fixture assembly/profile and its startup
 measurement are separate validation, not action timing. Production Civ VI
 save writing is not required; complete executable live state, RNG, actions and
 turns are not asserted by this ownership adapter.
+
+## First attributed fixture assembly
+
+The unchanged `3b733db` candidate imported the actual ff31 Core image using the
+closed Native3 Read framing. It moved the source buffer and assembled all
+43 Players, 1,262 Units and 1,250 Formations; 245 Cities and 1,284 Districts
+remain in the retained components. Independent review `99cb71d` compared every
+retained field, full Map, ordered rosters/values and allocator links. Pure
+field queries independently agree on zero busy Units and 705 Units with moves.
+
+Decode plus assembly took **0.157825059 seconds** in this one fixture run. RSS
+was 99,048 KiB before and 172,648 KiB after. The 963,456 KiB process peak includes
+earlier capture admission and original module images; it is not assembly-only
+memory. The measurement excludes actions and artifact admission. It is a
+single-run startup observation, not a gameplay performance benchmark.
+
+[The exact evidence](../evidence/linux/loaded-world-assembly.json) preserves
+the source/executable/input identities. Missing live controls and runtime
+initialization remain explicit. Review found reinitialization/rebinding and
+stale-runtime hazards in the original API; those are being fixed in a separate
+successor, without rewriting this frozen assembly result. Native3 Read
+attribution is not merged with another capture's mutable snapshot facts.
