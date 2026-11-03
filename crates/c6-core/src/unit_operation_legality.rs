@@ -99,6 +99,8 @@ pub struct ManagerQueryState<'a, U, P> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ScriptTestAllResult {
     /// Original CallTestAll return bit, independently of its out-parameter.
+    /// For the proven host backend this reports a protected non-nil result,
+    /// not whether callbacks ran.
     pub called: bool,
     pub value: bool,
 }
@@ -122,6 +124,7 @@ pub trait ManagerQueries<U: ManagerUnitState> {
     type Player: Copy;
     type Game: Copy;
     type Script: Copy;
+    type EngineUtility: Copy;
     type Args;
     type Handler: Copy;
     type Plot: Copy;
@@ -203,9 +206,40 @@ pub trait ManagerQueries<U: ManagerUnitState> {
         args: &mut Self::Args,
         value: i32,
     ) -> Result<(), Self::Error>;
-    /// Execute Lua::Utility::CallTestAll, including engine-utility lock/unlock
-    /// and actual script callbacks; initial out-value is false.
-    fn call_test_all(
+    /// Resolve the current original utility separately at every native fetch.
+    /// Missing/unverified receiver state is unsupported, never a false lock bit.
+    fn engine_utility(
+        &mut self,
+        s: &mut ManagerQueryState<'_, U, Self::Parameters>,
+    ) -> Result<Self::EngineUtility, Self::Error>;
+    /// Original utility +0x30; concrete host implementation refetches active
+    /// controller and tests whether the observing thread owns its core lock.
+    fn has_game_core_lock(
+        &mut self,
+        s: &mut ManagerQueryState<'_, U, Self::Parameters>,
+        utility: Self::EngineUtility,
+    ) -> Result<bool, Self::Error>;
+    /// Original utility +0x38: RELEASE one held core-lock level before Lua.
+    /// Concrete backend refetches the active controller independently.
+    fn release_game_core_lock(
+        &mut self,
+        s: &mut ManagerQueryState<'_, U, Self::Parameters>,
+        utility: Self::EngineUtility,
+    ) -> Result<(), Self::Error>;
+    /// Original utility +0x40: ACQUIRE one core-lock level after normal Lua return.
+    /// Concrete backend refetches the active controller independently.
+    fn get_game_core_lock(
+        &mut self,
+        s: &mut ManagerQueryState<'_, U, Self::Parameters>,
+        utility: Self::EngineUtility,
+    ) -> Result<(), Self::Error>;
+    /// Retained original ScriptSystem +0x80, including faithful VM state,
+    /// separate VM critical-section/protected-call behavior, actual callbacks
+    /// and both return/out-value bits. This is the direct call, without utility
+    /// wrapping. Presence alone proves neither a valid VM nor empty callbacks;
+    /// unclosed providers must error. A native protected failure that returns
+    /// normally must retain its actual bits, not become an unsupported error.
+    fn script_call_test_all(
         &mut self,
         s: &mut ManagerQueryState<'_, U, Self::Parameters>,
         script: Self::Script,
@@ -230,6 +264,34 @@ pub trait ManagerQueries<U: ManagerUnitState> {
         visible_only: bool,
         results: Option<&mut Self::Results>,
     ) -> Result<bool, Self::Error>;
+}
+
+/// Complete Lua::Utility::CallTestAll wrapper (0x2ce79b0). Retain the first lock
+/// bit, not the first utility receiver: release/reacquire each refetch utility.
+/// ScriptSystem identity remains the originally passed receiver across effects.
+/// The native body has no exception-safe reacquire path. A provider error stops
+/// before subsequent calls, preserving effects; it is not a native false result
+/// or a claim to emulate C++ exceptions or Rust panic unwinding.
+pub fn script_test_all<U: ManagerUnitState, Q: ManagerQueries<U>>(
+    s: &mut ManagerQueryState<'_, U, Q::Parameters>,
+    q: &mut Q,
+    script: Q::Script,
+    args: &mut Q::Args,
+    event: &'static str,
+    initial_value: bool,
+) -> Result<ScriptTestAllResult, Q::Error> {
+    let utility = q.engine_utility(s)?;
+    let held = q.has_game_core_lock(s, utility)?;
+    if held {
+        let utility = q.engine_utility(s)?;
+        q.release_game_core_lock(s, utility)?;
+    }
+    let result = q.script_call_test_all(s, script, args, event, initial_value)?;
+    if held {
+        let utility = q.engine_utility(s)?;
+        q.get_game_core_lock(s, utility)?;
+    }
+    Ok(result)
 }
 
 /// Original Manager::CanCurrentOperationBeInterrupted (0x2da2a60). Only an
@@ -314,10 +376,11 @@ pub fn manager_can_start<U: ManagerUnitState, Q: ManagerQueries<U>>(
                     q.args_push_int(s, &mut args, id)?;
                     let requested = s.operation.runtime_id;
                     q.args_push_int(s, &mut args, requested)?;
-                    q.call_test_all(s, script, &mut args, "CanStartOperation", false)
+                    script_test_all(s, q, script, &mut args, "CanStartOperation", false)
                 })();
-                // Native RAII cleanup also occurs during an exception. On provider
-                // failure, preserve its error while still executing cleanup effects.
+                // Manager has an original Args destructor cleanup path. Result
+                // errors retain that explicit cleanup, without adding a utility
+                // reacquire guarantee or claiming C++/panic unwind equivalence.
                 let cleanup = q.args_end(s, args);
                 let test = test?;
                 cleanup?;
@@ -387,6 +450,10 @@ mod manager_tests {
         requested_present: bool,
         plot: bool,
         script_answer: ScriptTestAllResult,
+        lock_held: bool,
+        current_utility: i32,
+        current_script: i32,
+        replace_globals: bool,
     }
     impl Default for Queries {
         fn default() -> Self {
@@ -402,6 +469,10 @@ mod manager_tests {
                 current_present: true,
                 requested_present: true,
                 plot: true,
+                lock_held: false,
+                current_utility: 10,
+                current_script: 1,
+                replace_globals: false,
                 script_answer: ScriptTestAllResult {
                     called: true,
                     value: true,
@@ -420,6 +491,7 @@ mod manager_tests {
         type Player = i32;
         type Game = i32;
         type Script = i32;
+        type EngineUtility = i32;
         type Args = Vec<i32>;
         type Handler = i32;
         type Plot = i32;
@@ -490,7 +562,7 @@ mod manager_tests {
         }
         fn script_system(&mut self, _: &mut State<'_>) -> Result<Option<i32>, Self::Error> {
             self.note("script");
-            Ok(self.script.then_some(1))
+            Ok(self.script.then_some(self.current_script))
         }
         fn args_begin(&mut self, _: &mut State<'_>) -> Result<Vec<i32>, Self::Error> {
             self.note("args_begin");
@@ -516,7 +588,55 @@ mod manager_tests {
             }
             Ok(())
         }
-        fn call_test_all(
+        fn engine_utility(&mut self, _: &mut State<'_>) -> Result<i32, Self::Error> {
+            self.note(&format!("utility:{}", self.current_utility));
+            if self.stop == "utility_error" {
+                return Err("utility");
+            }
+            Ok(self.current_utility)
+        }
+        fn has_game_core_lock(
+            &mut self,
+            _: &mut State<'_>,
+            utility: i32,
+        ) -> Result<bool, Self::Error> {
+            self.note(&format!("has:{utility}"));
+            if self.stop == "has_error" {
+                return Err("has");
+            }
+            if self.replace_globals {
+                self.current_utility = 11;
+            }
+            Ok(self.lock_held)
+        }
+        fn release_game_core_lock(
+            &mut self,
+            _: &mut State<'_>,
+            utility: i32,
+        ) -> Result<(), Self::Error> {
+            self.note(&format!("release:{utility}"));
+            self.lock_held = false;
+            if self.replace_globals {
+                self.current_script = 2;
+            }
+            if self.stop == "release_error" {
+                return Err("release");
+            }
+            Ok(())
+        }
+        fn get_game_core_lock(
+            &mut self,
+            _: &mut State<'_>,
+            utility: i32,
+        ) -> Result<(), Self::Error> {
+            self.note(&format!("get:{utility}"));
+            self.lock_held = true;
+            if self.stop == "get_error" {
+                return Err("get");
+            }
+            Ok(())
+        }
+        fn script_call_test_all(
             &mut self,
             s: &mut State<'_>,
             script: i32,
@@ -528,6 +648,10 @@ mod manager_tests {
             assert_eq!(event, "CanStartOperation");
             assert!(!initial);
             self.note("test_all");
+            if self.replace_globals {
+                self.current_utility = 12;
+                self.current_script = 3;
+            }
             if self.mutate {
                 s.unit.timer = 100;
                 s.unit.owner = 99;
@@ -695,16 +819,21 @@ mod manager_tests {
             (true, false, false),
             (true, true, true),
         ] {
-            let mut q = Queries {
-                script: true,
-                script_answer: ScriptTestAllResult { called, value },
-                ..Default::default()
-            };
-            assert_eq!(run(&mut subject(), &mut q, true), Ok(allowed));
-            let end = q.trace.iter().position(|x| x == "args_end").unwrap();
-            assert_eq!(q.trace.iter().any(|x| x == "plot"), allowed);
-            if allowed {
-                assert_eq!(q.trace[end + 1], "plot");
+            for lock_held in [false, true] {
+                let mut q = Queries {
+                    script: true,
+                    lock_held,
+                    script_answer: ScriptTestAllResult { called, value },
+                    ..Default::default()
+                };
+                assert_eq!(run(&mut subject(), &mut q, true), Ok(allowed));
+                let end = q.trace.iter().position(|x| x == "args_end").unwrap();
+                assert_eq!(q.trace.iter().any(|x| x == "plot"), allowed);
+                assert_eq!(q.trace.iter().any(|x| x == "get:10"), lock_held);
+                assert_eq!(q.lock_held, lock_held);
+                if allowed {
+                    assert_eq!(q.trace[end + 1], "plot");
+                }
             }
         }
         let mut q = Queries {
@@ -719,10 +848,16 @@ mod manager_tests {
             manager_can_start(&mut s, &mut o, Some(9), false, Some(&mut results), &mut q),
             Ok(true)
         );
-        assert!(q
-            .trace
-            .windows(5)
-            .any(|w| w == ["push:2", "push:-1", "push:77", "test_all", "args_end"]));
+        assert!(q.trace.windows(7).any(|w| w
+            == [
+                "push:2",
+                "push:-1",
+                "push:77",
+                "utility:10",
+                "has:10",
+                "test_all",
+                "args_end"
+            ]));
         assert_eq!(q.trace.last().unwrap(), "can_start:88:9:false");
         assert!(!q.trace.iter().any(|x| x == "plot"));
         assert_eq!((s.timer, s.owner, o.runtime_id), (100, 99, 88));
@@ -738,6 +873,75 @@ mod manager_tests {
                 Err(ManagerQueryError::Provider(error))
             );
             assert_eq!(q.trace.last().unwrap(), "args_end");
+        }
+    }
+    #[test]
+    fn manager_script_utility_refetch_and_retained_script() {
+        for held in [false, true] {
+            let mut q = Queries {
+                script: true,
+                lock_held: held,
+                replace_globals: true,
+                ..Default::default()
+            };
+            assert_eq!(run(&mut subject(), &mut q, true), Ok(true));
+            let mut expected = vec![
+                "player:2",
+                "game",
+                "disabled:36",
+                "script",
+                "args_begin",
+                "push:2",
+                "push:5",
+                "push:36",
+                "utility:10",
+                "has:10",
+            ];
+            if held {
+                expected.extend(["utility:11", "release:11"]);
+            }
+            expected.push("test_all");
+            if held {
+                expected.extend(["utility:12", "get:12"]);
+            }
+            expected.extend(["args_end", "plot", "handler:36", "can_start:36:4:true"]);
+            assert_eq!(q.trace, expected);
+            // Has replaced the global utility; Release replaced the global
+            // script; ScriptSystem call still asserted its captured receiver 1.
+            assert_eq!(q.current_script, 3);
+            assert_eq!(q.lock_held, held);
+        }
+    }
+    #[test]
+    fn manager_script_utility_errors_do_not_invent_reacquire() {
+        for (stop, error, called, released, acquired) in [
+            ("utility_error", "utility", false, false, false),
+            ("has_error", "has", false, false, false),
+            ("release_error", "release", false, true, false),
+            ("script_error", "script", true, true, false),
+            ("get_error", "get", true, true, true),
+        ] {
+            let mut q = Queries {
+                script: true,
+                lock_held: true,
+                replace_globals: true,
+                stop,
+                ..Default::default()
+            };
+            assert_eq!(
+                run(&mut subject(), &mut q, true),
+                Err(ManagerQueryError::Provider(error))
+            );
+            assert_eq!(q.trace.last().unwrap(), "args_end");
+            assert_eq!(q.trace.iter().any(|v| v == "test_all"), called);
+            assert_eq!(q.trace.iter().any(|v| v == "release:11"), released);
+            assert_eq!(q.trace.iter().any(|v| v == "get:12"), acquired);
+            assert_eq!(
+                q.trace.iter().filter(|v| v.starts_with("get:")).count(),
+                usize::from(acquired)
+            );
+            assert_eq!(q.lock_held, !released || acquired);
+            assert!(!q.trace.iter().any(|v| v == "plot"));
         }
     }
     #[test]

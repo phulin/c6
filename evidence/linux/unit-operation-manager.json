@@ -1,5 +1,5 @@
 {
-  "schema": "c6-linux-unit-operation-manager-v1",
+  "schema": "c6-linux-unit-operation-manager-v2",
   "checks_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
@@ -256,6 +256,73 @@
       "address": "0x2c432a0",
       "size": 322,
       "sha256": "c78099a9a470bf120e00faa147c00660d78abdb0603819d5020fde18450899e4"
+    },
+    {
+      "name": "Globals.GetEngineUtility",
+      "address": "0x2103fb0",
+      "size": 11,
+      "sha256": "59b6f2e75371fdf357fc76b0c6c01f3474c417235008ae006a55c4f883433ce4"
+    }
+  ],
+  "host_utility_methods": [
+    {
+      "name": "EngineUtility.Constructor",
+      "address": "0x32b3b90",
+      "size": 150,
+      "sha256": "fdb95cf9751a43fecb8c78083c77ff6e56ad2f329b2ecb84e737b2344b7852a7"
+    },
+    {
+      "name": "EngineUtility.HasGameCoreLock",
+      "address": "0x32b3da0",
+      "size": 24,
+      "sha256": "8048736dcb7c1f33746aeab7e54b92df6f825c06512c37847f13c3f958498776"
+    },
+    {
+      "name": "EngineUtility.ReleaseGameCoreLock",
+      "address": "0x32b3d60",
+      "size": 22,
+      "sha256": "257d7c9d356de1f649b0ca2394024341abe3b88c655630f0f43df9cda22d670f"
+    },
+    {
+      "name": "EngineUtility.GetGameCoreLock",
+      "address": "0x32b3d40",
+      "size": 22,
+      "sha256": "9394d1eaa3cd10aad54c138f38dbe484621b0f48d78dfd14fb0e14b1de441406"
+    },
+    {
+      "name": "Controller.HasLock",
+      "address": "0x31d2a40",
+      "size": 20,
+      "sha256": "6dd4a791f87419007b573e362d56f00750cf684694a909976a660b5d092ab3c4"
+    },
+    {
+      "name": "Controller.ReleaseLock",
+      "address": "0x31d2a00",
+      "size": 50,
+      "sha256": "bc8780bf02eda320da19787506a92b14ffbf1536ec99a10d43adb3be160b3c0d"
+    },
+    {
+      "name": "Controller.GetLock",
+      "address": "0x31d2440",
+      "size": 1459,
+      "sha256": "fa88d916251d8c16793b899effec00d1240e83486e2e7b5e8a153b5672079594"
+    }
+  ],
+  "checked_host_utility_bindings": [
+    {
+      "slot": "0x30",
+      "target": "0x32b3da0",
+      "name": "HasGameCoreLock"
+    },
+    {
+      "slot": "0x38",
+      "target": "0x32b3d60",
+      "name": "ReleaseGameCoreLock"
+    },
+    {
+      "slot": "0x40",
+      "target": "0x32b3d40",
+      "name": "GetGameCoreLock"
     }
   ],
   "checked_direct_call_edges": [
@@ -503,8 +570,8 @@
     }
   ],
   "source_sha256": {
-    "crates/c6-core/src/unit_operation_legality.rs": "50a0d57a5b5324477f9de2c975a8248550b7188d2abe7d1e58e5bf7cf9ff4d68",
-    "tools/linux/unit_operation_manager_audit.py": "5cdc10e0bb744da40c82b64dc920b9d040429da8a2d18829a802b94b2fa17737"
+    "crates/c6-core/src/unit_operation_legality.rs": "ff8938badf64155229e60984995ea680244e94658edccc1ecba959e327167cd3",
+    "tools/linux/unit_operation_manager_audit.py": "9c387092d0bcf88bf7ce86ac51959f32a9ddaa614534c757e43e59e8dfd9c02d"
   },
   "ordering": [
     "busy",
@@ -520,6 +587,16 @@
     "actual registered requested handler",
     "handler CanStart"
   ],
+  "script_utility_order": [
+    "fetch current utility",
+    "HasGameCoreLock; retain bit",
+    "if held: refetch utility, ReleaseGameCoreLock",
+    "retained ScriptSystem CallTestAll",
+    "if held on normal return: refetch utility, GetGameCoreLock"
+  ],
+  "utility_wrapper_exception_safe_reacquire": false,
+  "actual_utility_receiver_observed": false,
+  "script_vm_lock_and_callback_provider_still_required": true,
   "script_veto": "CallTestAll.called && !out_value; out_value initially false; destruction before branch",
   "interruption": "empty/missing front/same actual runtime ID/missing current handler permit; otherwise actual current handler CanBeInterrupted",
   "unknown_dependencies": [
@@ -527,10 +604,10 @@
     "retained actual Player/Game receivers and mutable live state",
     "actual registry runtime IDs, handler bindings and virtual overrides",
     "live disabled IndexList definition mapping/validity/value",
-    "script allocation, int pushes, engine utility locking, callbacks and current-system destruction",
+    "actual utility receiver/bindings, script allocation, int pushes, VM critical section/protected calls, callbacks and current-system destruction",
     "current plot lookup and complete handler live providers/results"
   ],
-  "synthetic_manager_test_functions": 5,
+  "synthetic_manager_test_functions": 7,
   "native_manager_boundary_fixtures_available": false,
   "manager_orchestration_allocates": false,
   "provider_allocations_and_effects_retained": true,
