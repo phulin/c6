@@ -1,0 +1,94 @@
+{
+  "schema": "c6-linux-military-observer-85d-preparation-independent-review-v1",
+  "review_passed": true,
+  "source_commit": "0999039",
+  "profile_sha256": "450387b547ff8b61eaeaf24a2b52d0576b0543698aa9f5891357274296bb598c",
+  "prepared_sha256": "9d1e02eb6c94e925091d75ce953651502e976c62fe8e2ec35460642fe1337ea2",
+  "configuration_file_sha256": "286eb345eda56e4c432b5dc808065b75eaca81795fff022f3d65e30518195f14",
+  "preload_sha256": "e96e49a9aca79692d2b6e8d9840ad49633967c3d2d9592bd8dc6934acceb43fe",
+  "source_preimages_sha256": "029b3a2c4f759a3203bcf866e3bc8c6901bf4ecdcab4603af3b28f96c796b6b5",
+  "static_plan_sha256": "eab23db140a28633809b11c0601222154690bbfca2696afda2382dda823d3cbf",
+  "runner_sha256": "6ef96ab3c9122356e5adacc17eaf2b3c685e6dc51ecf7af0c9a2df8408c243a8",
+  "native_sources": 36,
+  "tar_preimages_verified": 37,
+  "runtime_dependencies_verified": 29,
+  "all_actual_assets_and_inputs_rehashed": true,
+  "all_current_archived_tar_preimages_equal": true,
+  "exact_configuration_delta_verified": true,
+  "observer_native_machinery_and_controls_unchanged": true,
+  "origin_runtime_and_summary_retained_byte_exact": true,
+  "input_core": {
+    "path": "/home/phulin/c6-ghidra/evidence/linux-military-initialization/native-3/save.bin",
+    "bytes": 80657462,
+    "sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+    "kind": "actual_MemoryIStream_payload"
+  },
+  "whole_configuration_save": {
+    "path": "/home/phulin/c6-assets-linux/Base/assets/benchmark/saves/xp2benchmark.civ6save",
+    "bytes": 7348717,
+    "sha256": "a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8",
+    "kind": "whole_file_supplied_to_saved_configuration_loader"
+  },
+  "prediction_reference_sha256": "c7902840fe83efb30d118234f89692954b5aa6ea5155fa582864edb49bfbd215",
+  "preanswer_manifest_sha256": "2957dce152ff0f4c284ead3f04b930c8fd298cd0ef10c20a7c86d16740d3ddf5",
+  "candidate_sha256": "2bca7e60eb81ebfaa8d585b9f2c87c4a320a4e0cfba0d4536e8a8b8367455a45",
+  "prediction_sha256": "38f3e34a0004bdca3249ec82b1f96cb4f528e78b151a3fa1c2f179921012bff2",
+  "prediction_bytes": 469638,
+  "prediction_frozen_at_utc": "2026-11-03T14:22:39Z",
+  "whole_core_prediction": false,
+  "predicted_output_used_as_original_input": false,
+  "actual_fresh_outputs_absent": [
+    "runtime.json",
+    "runtime-prepared.json",
+    "save.bin",
+    "repeat.bin",
+    "observations.jsonl",
+    "supervisor.json",
+    "inferior.json",
+    "exit.json",
+    "disposal.json"
+  ],
+  "stage": "pre-execution preparation only",
+  "original_execution_by_reviewer": false,
+  "candidate_execution_by_reviewer": false,
+  "actual_next_output_comparison": false,
+  "raw_return_pc_scope": {
+    "independent_retained_entry_pc_replay": [
+      "Read",
+      "Write",
+      "Initialize",
+      "count"
+    ],
+    "query_and_array_helper_entry_caller_pc": "checked by frozen producer, not emitted as retained raw actual_entry_return_pc; no independent raw-PC replay claim"
+  },
+  "limits": [
+    "one ordinary raw85d Core Load and two own Saves only",
+    "no initialized85d Read context or C answer exists at this preparation review",
+    "conditional Trade Graph serialization-order prediction only; no whole-Core prediction",
+    "no typed Rust snapshot admission, native backend or gameplay/state/action/turn acceptance",
+    "raw RNG baseline and Save guards remain limited; dynamic policy counters unavailable",
+    "historical89198 unmasked byte discrepancy remains unresolved"
+  ],
+  "independent_fixture_audit_exactly_reproduced": true,
+  "synthetic_guard_groups": 15,
+  "unsafe_stop_negative_groups": 3,
+  "synthetic_actual_gdb_marker_abi_passed": true,
+  "independent_gate_tests": {
+    "actual_origin_gate_passed": true,
+    "independent_corruption_refusals": [
+      "schema",
+      "profile",
+      "input_hash",
+      "input_size",
+      "returncode",
+      "cleanup",
+      "shutdown",
+      "pair",
+      "classification",
+      "runtime_binding",
+      "target",
+      "writer_lifetime"
+    ]
+  },
+  "old_benchmark_and_ff31_branches_unchanged": true
+}
