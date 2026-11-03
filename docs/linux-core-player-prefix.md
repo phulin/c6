@@ -73,7 +73,7 @@ The absolute consumed boundary is **4,907,389** on both originals; the remaining
 Reproduce using:
 
 ```sh
-python3 tools/linux/core_player_prefix_audit.py --output target/linux/core-player-prefix.json
+python3 tools/linux/core_player_prefix_audit.py --frozen-profile target/frozen/core-player-prefix/2578ba02fc7c001cd8dfc1cafe39f33de064194e04f08bebdfa4640ba1e93742 --output target/linux/core-player-prefix.json
 cargo test -p c6-core core_player
 cargo test -p c6-core core_stream
 ```
@@ -94,3 +94,5 @@ The six scoped source tests now exercise the larger boundary. Their synthetic ca
 A separate offline Rust harness parsed and byte-identically re-encoded both immutable original streams through **292,438 post-Map bytes**, with exact encoder/decoder agreement at **43,794 dynamic items**. Exact cumulative budgets accept; one-less byte/item budgets refuse. The independently derived absolute stop is **4,988,302**, at first Player.Districts end / Player.NameManager start. Both fixtures still have 43 unfinished Player entries, 35 first-player Formations and 11 first-player Cities. The historical Cities-only candidate `2578ba02fc7c001cd8dfc1cafe39f33de064194e04f08bebdfa4640ba1e93742`, its report and review remain immutable evidence for their earlier stop; these new results are a distinct extended profile, whose reproducible integrated audit is maintained by the coordinator.
 
 No original code executes for this integration. Full Player/world import, native state normalization, complete gameplay state/RNG, action execution and turns remain unsupported; the 89,198-byte raw Save→Load difference remains unmasked.
+
+The current whole-input profile is documented in [Core prefix through first Player Districts](linux-core-player-districts-prefix.md). The command above now explicitly replays the earlier immutable Cities-stop candidate and checks every archived source hash; it does not rebuild the advancing current API under the old boundary label.

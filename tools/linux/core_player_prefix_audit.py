@@ -182,7 +182,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')
     p.add_argument('--private-root',type=Path,default=ROOT.parent/'c6-ghidra')
-    p.add_argument('--output',type=Path,required=True);args = p.parse_args()
+    p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--frozen-profile',type=Path,help='Replay an immutable historical candidate/report/source archive instead of rebuilding current code')
+    args = p.parse_args()
     modules = dict(gamecore=Elf(args.assets/'libGameCore_XP2.so',GAME_SHA),host=Elf(args.assets/'Civ6',HOST_SHA))
     methods = list(dict.fromkeys(PREFIX_METHODS + [('gamecore',*x) for x in CITY_METHODS+PLAYER_METHODS+TAIL_METHODS]))
     for module,a,n,name,digest in methods:
@@ -194,11 +196,24 @@ def main():
     paths = [ROOT/'Cargo.toml',ROOT/'Cargo.lock',ROOT/'crates/c6-core/Cargo.toml',ROOT/'crates/c6-data/Cargo.toml',
         ROOT/'crates/c6-differential/Cargo.toml',ROOT/'crates/c6-differential/src/bin/c6-core-player-prefix-candidate.rs',
         *sorted((ROOT/'crates/c6-core/src').rglob('*.rs')),*sorted((ROOT/'crates/c6-data/src').rglob('*.rs'))]
-    sources = {str(x.relative_to(ROOT)):sha(x.read_bytes()) for x in paths}
-    subprocess.run(['cargo','build','--offline','-p','c6-differential','--bin','c6-core-player-prefix-candidate'],cwd=ROOT,check=True)
-    if sources != {str(x.relative_to(ROOT)):sha(x.read_bytes()) for x in paths}:
-        raise ValueError('sources changed during build')
-    candidate = ROOT/'target/debug/c6-core-player-prefix-candidate';cases = [];inputs = []
+    if args.frozen_profile:
+        archived = json.loads((args.frozen_profile/'report.json').read_text())
+        if archived['schema']!='c6-linux-rust-core-first-player-prefix-v1' or not archived['checks_passed']:
+            raise ValueError('wrong historical profile')
+        sources = archived['candidate_sources']
+        for name,digest in sources.items():
+            if sha((args.frozen_profile/'sources'/name).read_bytes())!=digest:
+                raise ValueError('frozen source differs: '+name)
+        candidate = args.frozen_profile/'candidate'
+        if sha(candidate.read_bytes())!=archived['candidate_sha256']:
+            raise ValueError('frozen candidate identity differs')
+    else:
+        sources = {str(x.relative_to(ROOT)):sha(x.read_bytes()) for x in paths}
+        subprocess.run(['cargo','build','--offline','-p','c6-differential','--bin','c6-core-player-prefix-candidate'],cwd=ROOT,check=True)
+        if sources != {str(x.relative_to(ROOT)):sha(x.read_bytes()) for x in paths}:
+            raise ValueError('sources changed during build')
+        candidate = ROOT/'target/debug/c6-core-player-prefix-candidate'
+    cases = [];inputs = []
     with tempfile.TemporaryDirectory(prefix='c6-core-player-prefix-') as directory:
         directory = Path(directory)
         def run(data,label):
@@ -260,6 +275,7 @@ def main():
     report = dict(schema='c6-linux-rust-core-first-player-prefix-v1',checks_passed=True,gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,
         methods=[dict(module=m,address=hex(a),size=n,name=name,sha256=d) for m,a,n,name,d in methods],
         save_bindings=[dict(table=hex(t),slot='0x28',target=hex(a)) for t,a in BINDINGS],
+        frozen_candidate_replay=bool(args.frozen_profile),
         candidate_sha256=sha(candidate.read_bytes()),candidate_sources=sources,audit_source_sha256=sha(Path(__file__).read_bytes()),
         independent_indexer_sha256=sha((ROOT/'tools/linux/core_stream_index.py').read_bytes()),fixtures=cases,
         raw_stream_byte_differences=sum(a!=b for a,b in zip(*inputs))+abs(len(inputs[0])-len(inputs[1])),unknown_bytes_masked=0,
