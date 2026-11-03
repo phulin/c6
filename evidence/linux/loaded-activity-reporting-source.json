@@ -1,0 +1,1950 @@
+{
+  "schema": "c6-linux-loaded-activity-reporting-source-v1",
+  "checks_passed": true,
+  "original_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "parents": {
+    "unit-event-effects.json": "a4d2bf10ab89ec32ec74b8242e9c32565f5185e6cb4325ffbe13e558b51ffa03",
+    "unit-event-consumers.json": "f2f41595a031845ac42bac956e229ec5a8fd3c90537a330dea9a0681ee67429c",
+    "reporting-gameplay-scope.json": "31d08f421df213b8c5299925fe98f9dca71fe337b1c85232dc2991a6bf8fde26",
+    "reporting-provider-static.json": "d43f80990999745fb06de53b9225120d0375f86a50bd9f701bb778d89da20405",
+    "skip-turn-reporting-closure.json": "f2e5d83cdb4294dc8096e7b6a96aa4870ae2d5bbd65dd54876b33439a1dc2772"
+  },
+  "methods": [
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnUnitUpdateEvent(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff430",
+      "bytes": 9,
+      "sha256": "3a537d2d8ee7579d85fc3cddd98dcf9dacb0751b52962d0d828cce3f86cab63e"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::PublishUpdate(unsigned int, GameCore::Player::ComponentID const&)",
+      "rva": "0x27ff860",
+      "bytes": 114,
+      "sha256": "4c779cabd97a4d5df671007fc54218756fd544a2c360106ee2d77a15f54f8832"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Add(GameCore::Cache::Unit::EventStream::Command, GameCore::Unit::Instance const*, unsigned int, bool)",
+      "rva": "0x27ff2d0",
+      "bytes": 222,
+      "sha256": "8316ba976ec1953a1e5e902a2ef9547183b958ce2730a1111eb90c9fabe2a8bd"
+    },
+    {
+      "name": "Unit.FillVariants",
+      "image": "game",
+      "rva": "0x2805100",
+      "bytes": 1068,
+      "sha256": "365cd17dbd1d6db36a319e27cbc41d8eb1240922755baca85d5a1afba94af23a"
+    },
+    {
+      "name": "Unit.KeyedAlloc",
+      "image": "game",
+      "rva": "0x27ffb20",
+      "bytes": 74,
+      "sha256": "0bbfb84c4250496d2e472ad6eb2de059fc8c4fb0d7f664c91e2f3e76d53f824f"
+    },
+    {
+      "name": "CacheEventStreamID.Ctor",
+      "image": "game",
+      "rva": "0x2707010",
+      "bytes": 6,
+      "sha256": "0e446b8c0d57bbdbb861e488c14603c4a0730b95d656bfa1a9a96f39d9c79904"
+    },
+    {
+      "name": "Upgrade.UnitType",
+      "image": "game",
+      "rva": "0x2c48bd0",
+      "bytes": 107,
+      "sha256": "293e1e1ffa7cbb7da356a97ac64555592a6eb998cc16ff53163ceb21bd17f2dd"
+    },
+    {
+      "name": "Upgrade.GoldCost",
+      "image": "game",
+      "rva": "0x2c48c40",
+      "bytes": 148,
+      "sha256": "4059b3d97a05e2b8e7947aea45886ec2b65d6453326d395578331b91f5cc5abc"
+    },
+    {
+      "name": "Upgrade.ResourceCost",
+      "image": "game",
+      "rva": "0x2c49160",
+      "bytes": 470,
+      "sha256": "24824b7856a69969fd11f7c59e430fce32d688a7addfdbef8d5c832f6694d7e9"
+    },
+    {
+      "name": "Upgrade.ResourceType",
+      "image": "game",
+      "rva": "0x2c49340",
+      "bytes": 62,
+      "sha256": "3176a154b6533e23e8a21b6f93dbfc165ef916593e580480790a58e1ef800f5c"
+    },
+    {
+      "name": "Rules.AvailableUpgrade",
+      "image": "game",
+      "rva": "0x2bf4080",
+      "bytes": 120,
+      "sha256": "5e75598ea426c9b8ce3ab4671d2d4c5c536b767f201f6e12555034d8ba9608eb"
+    },
+    {
+      "name": "Rules.NextUpgrade",
+      "image": "game",
+      "rva": "0x2bf4100",
+      "bytes": 141,
+      "sha256": "cdfa4cfe889827d44a3aed6c529e38b5da167d4719742a9deeef9b5ba35a6795"
+    },
+    {
+      "name": "Rules.UpgradePrerequisites",
+      "image": "game",
+      "rva": "0x2bf4190",
+      "bytes": 111,
+      "sha256": "1355bb26f31e0c4140c938c14e58fde9ce5511c5ee65ff504c53b72f9dbca2ca"
+    },
+    {
+      "name": "Rules.UpgradeCycle",
+      "image": "game",
+      "rva": "0x2bf4200",
+      "bytes": 89,
+      "sha256": "d9277ecffb320036c75543a34157b2000f866a1afa333f0fdb2711e8d5a77618"
+    },
+    {
+      "name": "Rules.UpgradeGoldCost",
+      "image": "game",
+      "rva": "0x2bf4260",
+      "bytes": 761,
+      "sha256": "d31e601f9740252fd66f8f374d97ad3a7d89c4520d844ab089232df62e5e5af3"
+    },
+    {
+      "name": "Player.Units.GetCost",
+      "image": "game",
+      "rva": "0x2ba5960",
+      "bytes": 20,
+      "sha256": "c0886e76cc923d56721ff4fe44173d61eea4e5b44060cc9bf9e340e576cf0fcb"
+    },
+    {
+      "name": "Player.Units.ResourceCost",
+      "image": "game",
+      "rva": "0x2ba5b10",
+      "bytes": 75,
+      "sha256": "f5cf8db36f85fd2f701e3c247179013acc61e0159df49ed97954cdf1a707974c"
+    },
+    {
+      "name": "Player.Units.BuildMapping",
+      "image": "game",
+      "rva": "0x1fccc80",
+      "bytes": 31,
+      "sha256": "cffcb7d93947369ea6db4b4da3051d46b64836a96ee96786a64c3c797182a395"
+    },
+    {
+      "name": "Player.HasTech",
+      "image": "game",
+      "rva": "0x2b8ac60",
+      "bytes": 79,
+      "sha256": "cf4a3cabd3f3b09872b8bd16197980410160d0ae810aae1d63a423ea68c32ec3"
+    },
+    {
+      "name": "Player.HasCivic",
+      "image": "game",
+      "rva": "0x2a73e70",
+      "bytes": 86,
+      "sha256": "d61b6ae94c24981349cecd699fed49fa57c413f81d7d15787f33a3996dfe4f68"
+    },
+    {
+      "name": "Unit.ReadyAutomate",
+      "image": "game",
+      "rva": "0x2c28320",
+      "bytes": 29,
+      "sha256": "41a783d4c78f515481d9a654f615ac1660a1670a584307c7c57dc5f7a5788f34"
+    },
+    {
+      "name": "Unit.ReadySelect",
+      "image": "game",
+      "rva": "0x2c27ff0",
+      "bytes": 41,
+      "sha256": "c345987083c39c3761a62bd7fae9422544fb3ef6a6af6f466501b5427efd63d4"
+    },
+    {
+      "name": "Unit.ReadyMove",
+      "image": "game",
+      "rva": "0x2c28020",
+      "bytes": 201,
+      "sha256": "280297bd6918999c46f4c44759658d6fcb3e2f06f8fdc9b25812c49d878e1a79"
+    },
+    {
+      "name": "Unit.MemberReadyMove",
+      "image": "game",
+      "rva": "0x2c28180",
+      "bytes": 93,
+      "sha256": "00dccb21217631272d6d151aca2a6d19f11ae80de1256b825ef717a23b72a2d9"
+    },
+    {
+      "name": "Unit.CanCyclePast",
+      "image": "game",
+      "rva": "0x2c280f0",
+      "bytes": 138,
+      "sha256": "066ca53a42eace4984de8ce02dd8da66bde0e6c2ca1cb60eddfc177a45b8a505"
+    },
+    {
+      "name": "Unit.HasAdjacentMove",
+      "image": "game",
+      "rva": "0x2c28200",
+      "bytes": 278,
+      "sha256": "ba351b37f2649d3681fd1ca8da6a547eb030e17ae09d903f6e855d3eafc37767"
+    },
+    {
+      "name": "Unit.NeedsAttention",
+      "image": "game",
+      "rva": "0x2b5cb10",
+      "bytes": 7,
+      "sha256": "40f200d62972ac9dc2112babd503ee3ca31f8ae1254d21ad1ced07d7093ddd97"
+    },
+    {
+      "name": "Unit.CanMove",
+      "image": "game",
+      "rva": "0x2c27930",
+      "bytes": 60,
+      "sha256": "b46d22d98040b2db4bf384a1374692b3025952b8424b16a70323c73ca8718c57"
+    },
+    {
+      "name": "Unit.PlacementValid",
+      "image": "game",
+      "rva": "0x2c424c0",
+      "bytes": 1509,
+      "sha256": "618ddc91db1abfef3bc277898e1d0a40df4be1855223064af82bd31b90ff04db"
+    },
+    {
+      "name": "Combat.BestDefender",
+      "image": "game",
+      "rva": "0x28c9e70",
+      "bytes": 684,
+      "sha256": "6076d68a8b161cff1729aa03f057b9e8ce5521ede95d8527b9020e0e3e229fe5"
+    },
+    {
+      "name": "Combat.BetterDefender",
+      "image": "game",
+      "rva": "0x2bdfdb0",
+      "bytes": 61,
+      "sha256": "b72ba2a95f3e67e1f6a086567db4f1f084b84cda0405380f31fc4f75d10e6704"
+    },
+    {
+      "name": "Commands.HoldCycling",
+      "image": "game",
+      "rva": "0x2d8bb00",
+      "bytes": 296,
+      "sha256": "a3cc416b6001fe0f9a702518c8045cbb47aa1c3b6439dffdddefd3b89c382c92"
+    },
+    {
+      "name": "Operations.HoldCycling",
+      "image": "game",
+      "rva": "0x2da2b90",
+      "bytes": 321,
+      "sha256": "1f8f4468bb121b59b779e27f0f93350c79ce9a8d2743e587b6ea2ddad342f2f0"
+    },
+    {
+      "name": "Unit.MaxDamage",
+      "image": "game",
+      "rva": "0x2c27600",
+      "bytes": 48,
+      "sha256": "28fa111b8b63e9bc6ac3f5649fb338c64aeddb2ec9bb8f128af0994d9607f70a"
+    },
+    {
+      "name": "Plot.IsImpassable",
+      "image": "game",
+      "rva": "0x1fe24c0",
+      "bytes": 9,
+      "sha256": "3fd84bb2c4a4c605a3da98cd0d4a7a18e5de2047bf236b71d8f775f6f6fadc70"
+    },
+    {
+      "name": "Unit.InvalidTerrain",
+      "image": "game",
+      "rva": "0x2c27c30",
+      "bytes": 60,
+      "sha256": "821d3356ee2f97d324d2b7d1c31584e08524f710137c52369a59c1ea91d40199"
+    },
+    {
+      "name": "Unit.CanEmbark",
+      "image": "game",
+      "rva": "0x2c27a90",
+      "bytes": 185,
+      "sha256": "c2bbc1e5471ede85fba788e0e2ee023d04ecbbeaab16a02b6875e85dafdcb498"
+    },
+    {
+      "name": "Player.Units.CanEmbark",
+      "image": "game",
+      "rva": "0x2ba5c70",
+      "bytes": 459,
+      "sha256": "a79be58fd4c8305925598f5bb70f6747659cd8cd7785a72465f8f9563d115a16"
+    },
+    {
+      "name": "Player.Units.EmbarkPass",
+      "image": "game",
+      "rva": "0x2ba5e40",
+      "bytes": 72,
+      "sha256": "2ec01126e269d179ab1a2bdd8640eb01400abd1996ab095b3ebb5c52a7799616"
+    },
+    {
+      "name": "Diplomacy.BlockedEntry",
+      "image": "game",
+      "rva": "0x2ab1010",
+      "bytes": 20,
+      "sha256": "ed450c281adea73e9c2426990110c0d2073bbcdb99d71a83289abebe931c4118"
+    },
+    {
+      "name": "Diplomacy.OpenBorders",
+      "image": "game",
+      "rva": "0x2aa8730",
+      "bytes": 67,
+      "sha256": "f09718ffb680abbf7352813c3991866ec3d631231f36782c5e4bc69ce3f8123a"
+    },
+    {
+      "name": "Diplomacy.Allied",
+      "image": "game",
+      "rva": "0x2aa78a0",
+      "bytes": 51,
+      "sha256": "4ebc866c4937554b572f9ca2935f4d0e48fca65d72029cb2a6983e4826627ea1"
+    },
+    {
+      "name": "Diplomacy.PermanentAlliance",
+      "image": "game",
+      "rva": "0x2aa78e0",
+      "bytes": 51,
+      "sha256": "bbecefa2920b0a1877855a1dcbe4412982324e94c4d735c3234ce817e9f8e1a2"
+    },
+    {
+      "name": "Diplomacy.War",
+      "image": "game",
+      "rva": "0x2aa4bb0",
+      "bytes": 91,
+      "sha256": "95598b7b9fe28eedb4e31712dd005eb94d2f1eb389c1db8d5f8d210b30196122"
+    },
+    {
+      "name": "Diplomacy.EnforceBorders",
+      "image": "game",
+      "rva": "0x2166c40",
+      "bytes": 7,
+      "sha256": "0d9112df8939c9bcb2617a35b3e4832801f01dde2b5c4f1facafe5fe3455914a"
+    },
+    {
+      "name": "Relations.Allied",
+      "image": "game",
+      "rva": "0x2983170",
+      "bytes": 29,
+      "sha256": "e1d11cc3557f22c0a0a802db50ff8d093a5c2263f8ebeebc78e66c67c7cdd930"
+    },
+    {
+      "name": "Relations.PermanentAlliance",
+      "image": "game",
+      "rva": "0x2983880",
+      "bytes": 19,
+      "sha256": "3b42ffaa892380c62ff71a5ac07314317daba0c868eccc134ec56865e44c2901"
+    },
+    {
+      "name": "Relations.War",
+      "image": "game",
+      "rva": "0x2983ba0",
+      "bytes": 31,
+      "sha256": "7feb0befd035aa90f70df5bdfcc528ef2cf2ea7ae223e19d1e1a93f5fcfb5661"
+    },
+    {
+      "name": "Relations.WarLookup",
+      "image": "game",
+      "rva": "0x29885d0",
+      "bytes": 52,
+      "sha256": "4bd31b9475fc8fc65094489a8177b41a9f320506e9f8e1e302934d106e44d2e3"
+    },
+    {
+      "name": "Relations.AllianceLookup",
+      "image": "game",
+      "rva": "0x2988430",
+      "bytes": 52,
+      "sha256": "92d4b63c6a44203d6f303f043f2d2298f6a33478b9d9889f344de5d73d0cd487"
+    },
+    {
+      "name": "Relations.BoolLookup",
+      "image": "game",
+      "rva": "0x2988140",
+      "bytes": 52,
+      "sha256": "654c5680e4f10a6e298c5a7dd4ce8c914dd18f45115ca35f5af36c6f46ef7b44"
+    },
+    {
+      "name": "Plot.CityAttributes",
+      "image": "game",
+      "rva": "0x2bca780",
+      "bytes": 12,
+      "sha256": "e1a598f85f49a28e29144ddf86739e2601b0294590320845586249ce08532b8a"
+    },
+    {
+      "name": "Plot.HasCityAttributes",
+      "image": "game",
+      "rva": "0x2bca7b0",
+      "bytes": 9,
+      "sha256": "465525d3e6485a0fa870265793fdd0e49577850a4fb46c4514eb2bb42fd126d2"
+    },
+    {
+      "name": "CityAttributes.Get",
+      "image": "game",
+      "rva": "0x2a42500",
+      "bytes": 50,
+      "sha256": "d9b066e28f35789167afe32cdf72cfc7287e0678e5b4f1f5324427a3260b862d"
+    },
+    {
+      "name": "CityAttributes.SparseIndex",
+      "image": "game",
+      "rva": "0x27bb7c0",
+      "bytes": 11,
+      "sha256": "58d254619e5a5128732de0f553b8caf77db1bcd0d080fcb921f4f5f067855f84"
+    },
+    {
+      "name": "CityAttributes.VectorIndex",
+      "image": "game",
+      "rva": "0x27bbba0",
+      "bytes": 19,
+      "sha256": "45e68acdc8f7288c3321b2eb8542ec618f436233928f00054ad5282353e9381f"
+    },
+    {
+      "name": "CityAttributes.DomainValid",
+      "image": "game",
+      "rva": "0x2bc8350",
+      "bytes": 20,
+      "sha256": "aa94b9e935091bc509d768556124eacb14865e3338f42fd71f2db093a7fe8169"
+    },
+    {
+      "name": "CityAttributes.DomainMask",
+      "image": "game",
+      "rva": "0x2bc8370",
+      "bytes": 25,
+      "sha256": "16b028f1d852ff0059b080d174fd3453e30ab797f1984112b533acef3461a6be"
+    },
+    {
+      "name": "District.Resolve",
+      "image": "game",
+      "rva": "0x286e0b0",
+      "bytes": 93,
+      "sha256": "c1691db37b45fa3441151d0fc7494058a260d898fcba8ac052721df8728f27f2"
+    },
+    {
+      "name": "District.At",
+      "image": "game",
+      "rva": "0x286e150",
+      "bytes": 113,
+      "sha256": "fece5e2ccd95f7ce4353ef41420067a4aafdb4ae2830062bafa615fa44df778e"
+    },
+    {
+      "name": "District.PlayerFind",
+      "image": "game",
+      "rva": "0x2ae12e0",
+      "bytes": 12,
+      "sha256": "a460913eb67325a8287de3200d8f7ffbafa73204508ea8b9e7ee045a2d34d50f"
+    },
+    {
+      "name": "District.ContainerFind",
+      "image": "game",
+      "rva": "0x2ae4290",
+      "bytes": 84,
+      "sha256": "851cd5df1a54fadad43fca32535d1e082d5159169247e367345f165b5a4c4419"
+    },
+    {
+      "name": "District.BaseDefense",
+      "image": "game",
+      "rva": "0x291f950",
+      "bytes": 268,
+      "sha256": "ca00bd8dacfc609c304e95d3482b349207894b5441b03f6c9dd7d01c81c9b309"
+    },
+    {
+      "name": "District.Defensible",
+      "image": "game",
+      "rva": "0x291f660",
+      "bytes": 70,
+      "sha256": "466aa0ea4bc6b2126926f5afeaeece8fc907a82e4b7012794c559bdc8d5c8176"
+    },
+    {
+      "name": "District.CityCenter",
+      "image": "game",
+      "rva": "0x291e6a0",
+      "bytes": 67,
+      "sha256": "4471cb9e59c15ac21445e1181b674232bf6777a1939204d8d49a28ee03109353"
+    },
+    {
+      "name": "District.MaxDamage",
+      "image": "game",
+      "rva": "0x291f6b0",
+      "bytes": 162,
+      "sha256": "51e4408ed22d459c5bcedbff4dae863b4b6f53faf212c5dead45ee8b6b892a42"
+    },
+    {
+      "name": "District.Complete",
+      "image": "game",
+      "rva": "0x1fe24b0",
+      "bytes": 7,
+      "sha256": "04de6938c59bb5009eaa15a67bf3dad4db82acf731c120a7b6fb5ba3ce334419"
+    },
+    {
+      "name": "District.Pillaged",
+      "image": "game",
+      "rva": "0x291eb20",
+      "bytes": 7,
+      "sha256": "d2e1e923f91a89ab76f04f17b4cc251b878d300e218ad876b1b9770fc9f26a17"
+    },
+    {
+      "name": "GameCore::Combat::Manager::IsUnitVisible(GameCore::PlayerTypes, GameCore::Unit::Instance const*, unsigned int)",
+      "image": "game",
+      "rva": "0x28cecc0",
+      "bytes": 259,
+      "sha256": "cb02678c88bda93799c3e35560e04abaaf3e2b7303e0372fa2cfa4ccf11f78fd"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetLocationLayer() const",
+      "image": "game",
+      "rva": "0x2c1c790",
+      "bytes": 136,
+      "sha256": "e45e60d49000512d47997c7d10c6eaaa573ad63882c6d3955f98b94c5c0e9efe"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetUnits(GameCore::PlotCoord const&, unsigned int) const",
+      "image": "game",
+      "rva": "0x213d060",
+      "bytes": 16,
+      "sha256": "3ddf6e242b78b07d414c3bdd8d3a8b4996f47c9e36fb1d4cd409b777313eae9f"
+    },
+    {
+      "name": "GameCore::Unit::CManager::EditUnit(GameCore::Player::ComponentID const&)",
+      "image": "game",
+      "rva": "0x2c15870",
+      "bytes": 93,
+      "sha256": "3f84b7fce94637f07984aea26f83cc8ffe20ef8418983603b43a8dbcd040585d"
+    },
+    {
+      "name": "GameCore::Context::Globals::GetPlayerVisibility(GameCore::PlayerTypes)",
+      "image": "game",
+      "rva": "0x290b9b0",
+      "bytes": 20,
+      "sha256": "999aed03c31a8e440f1108836a04103f0e22b8e4b190c1237d7eb5b7cca0b3c1"
+    },
+    {
+      "name": "GameCore::Unit::CombatModifiers::CanBypassCombatUnits() const",
+      "image": "game",
+      "rva": "0x28e04e0",
+      "bytes": 4,
+      "sha256": "eaadc2e89026be8cb470ff124a4552261005b7825ea7240f030576828b189d29"
+    },
+    {
+      "name": "GameCore::Unit::CInstance::IsDelayedDeath() const",
+      "image": "game",
+      "rva": "0x2004610",
+      "bytes": 7,
+      "sha256": "de39d18aef461f4a12fa7245f72e2ac4d148e47ec1e6b9dda49c15036b7dc5c4"
+    },
+    {
+      "name": "GameCore::Unit::Instance::GetReligion() const",
+      "image": "game",
+      "rva": "0x20e0900",
+      "bytes": 8,
+      "sha256": "f8dae205409553f7d655afdd41f906ae5b9ce28189bc647f85a8ae99062aab0f"
+    },
+    {
+      "name": "GameCore::Unit::Religion::GetReligiousStrength() const",
+      "image": "game",
+      "rva": "0x213ce90",
+      "bytes": 4,
+      "sha256": "4628fb538250bfc88b327da2acefeb54924dfb050ac98dcea105347fb07d6367"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetLocation() const",
+      "image": "game",
+      "rva": "0x2004620",
+      "bytes": 8,
+      "sha256": "61b33a4e80d42ad12d675e3ed3406e3a8ba8dbe8c05d5d1536e26f429cb7203f"
+    },
+    {
+      "name": "GameCore::PlotCoord::PlotCoord(GameCore::PlotCoord const&)",
+      "image": "game",
+      "rva": "0x1fe4d10",
+      "bytes": 12,
+      "sha256": "b213dbc80a85b61f5b724eb0d51605c414734f6c92c236da2bdcf40b43af3f05"
+    },
+    {
+      "name": "GameCore::PlotCoord::IsValid() const",
+      "image": "game",
+      "rva": "0x1fe2340",
+      "bytes": 22,
+      "sha256": "8aa1013da5016cf18bf96ce8be0b0c3b75c0e03c3681e9ea9349e97db360631f"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetOwner() const",
+      "image": "game",
+      "rva": "0x2004670",
+      "bytes": 7,
+      "sha256": "189fcf2dedb49f72260462d7135b85f6b2ee4f66daf2924b7e6167a33f461382"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetDefinition() const",
+      "image": "game",
+      "rva": "0x20037c0",
+      "bytes": 8,
+      "sha256": "35da7d0536cc9e6f0aab7895aa188cb81cf78155f8002f7c268df4052120f8f3"
+    },
+    {
+      "name": "GameCore::Definition::Unit::IsTeamVisibility() const",
+      "image": "game",
+      "rva": "0x27f5320",
+      "bytes": 12,
+      "sha256": "469702f6c55c2c42af2557ba58e9240543239dc1348521fb0a3e4cc270141175"
+    },
+    {
+      "name": "GameCore::Map::GetInstance()",
+      "image": "game",
+      "rva": "0x2a474d0",
+      "bytes": 8,
+      "sha256": "68847c41d9d77afebbecb6ec8ec11fa5b801320f1dd7fa58a249fa22cb94d681"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetComponentID() const",
+      "image": "game",
+      "rva": "0x20e82e0",
+      "bytes": 26,
+      "sha256": "4dd57984270bbcfbc8ea3273d4dce7454e1a80b27cc975a263084961359155b2"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetUnitLayerID(GameCore::Player::ComponentID const&, int, int) const",
+      "image": "game",
+      "rva": "0x2a4e990",
+      "bytes": 160,
+      "sha256": "0c6978a4a1b77b224a8d03d274849472ae7129181c30dfbfd74325d375b20e21"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetUnits(int, int, unsigned int) const",
+      "image": "game",
+      "rva": "0x2a4e6c0",
+      "bytes": 118,
+      "sha256": "032dbeb462279ba6d24b0cf9eab171f396017aa6a403814b73cdaf74ec5e9011"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::IsValid() const",
+      "image": "game",
+      "rva": "0x208e9e0",
+      "bytes": 21,
+      "sha256": "6b7ab1333e17d6c73ef1445fc18db84c1ff4ecc644a31115c46534e071f1d771"
+    },
+    {
+      "name": "GameCore::Player::Manager::Edit()",
+      "image": "game",
+      "rva": "0x2b53290",
+      "bytes": 8,
+      "sha256": "2d87a19f581ba6bcba5e05e0ecc51c4a06bcb1db2f1ebdc534b97804370939e4"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::GetPlayer() const",
+      "image": "game",
+      "rva": "0x1fd0e30",
+      "bytes": 4,
+      "sha256": "eea57f4eeb9f601ec3b1154cc785380880eae152e709e8156a9039bd8e939aa9"
+    },
+    {
+      "name": "GameCore::Player::Manager::EditValidPlayer(GameCore::PlayerTypes)",
+      "image": "game",
+      "rva": "0x2427d30",
+      "bytes": 39,
+      "sha256": "c7894f0eb3f037c2de1b91e201b10cb06dd6bc17ab94833959c3f22729218007"
+    },
+    {
+      "name": "GameCore::Player::Instance::GetUnits() const",
+      "image": "game",
+      "rva": "0x1fccc70",
+      "bytes": 8,
+      "sha256": "881c20b86cb02a6b25219fefe1ac158db460204e9e4bc34be216221471420a51"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::GetID() const",
+      "image": "game",
+      "rva": "0x1fd1080",
+      "bytes": 4,
+      "sha256": "4703e829cd2c504bae1968b685216f9f191e08f6e2e2a6f3be0a737a92c43721"
+    },
+    {
+      "name": "GameCore::Player::Units::Find(unsigned int) const",
+      "image": "game",
+      "rva": "0x2ba5580",
+      "bytes": 12,
+      "sha256": "d198a658e55262febda648055233f9b1d2069441377f889fb95313bd318f7091"
+    },
+    {
+      "name": "GameCore::Context::Globals::GetMap()",
+      "image": "game",
+      "rva": "0x290b8a0",
+      "bytes": 16,
+      "sha256": "f9cc044c211daf36f0dded8b1f757467b802002036f72bcadb87134ff66be7a8"
+    },
+    {
+      "name": "GameCore::Map::Instance::GetPlayerVisibility(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2a48740",
+      "bytes": 15,
+      "sha256": "a4b57eb480e58cbe317fd9fc0ae18be99ba36c4ba8c55fa5e55d56b6ade6bfb0"
+    },
+    {
+      "name": "GameCore::TPlotCoord2<int>::TPlotCoord2(int, int)",
+      "image": "game",
+      "rva": "0x1fcda00",
+      "bytes": 6,
+      "sha256": "0e446b8c0d57bbdbb861e488c14603c4a0730b95d656bfa1a9a96f39d9c79904"
+    },
+    {
+      "name": "GameCore::Player::UnitID::UnitID(GameCore::PlayerTypes, unsigned int)",
+      "image": "game",
+      "rva": "0x20bcfc0",
+      "bytes": 10,
+      "sha256": "d5e35bf64814cd22ffa58215a152329f4f4647676e2d5f856506b87e5dee4af5"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::begin() const",
+      "image": "game",
+      "rva": "0x2a4ec50",
+      "bytes": 5,
+      "sha256": "f69d3862cb41ad0108c40c2f55d2ccb5db826864ea167b5778b50a41905ebffd"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::end() const",
+      "image": "game",
+      "rva": "0x2a4ec60",
+      "bytes": 21,
+      "sha256": "76fc0bc489e66558290a53c71c1f2fb05d3bcbb78771ec458b56fd89aaedbc1c"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGridEntry::GetGrid() const",
+      "image": "game",
+      "rva": "0x27c4550",
+      "bytes": 5,
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGrid::Contains(GameCore::Player::ComponentID const&, int, int) const",
+      "image": "game",
+      "rva": "0x2a4e170",
+      "bytes": 43,
+      "sha256": "e15baf01568fcf6d53511fc1d01e9c1ca52e273524ec165ec9d94867264aabfc"
+    },
+    {
+      "name": "GameCore::Map::UnitContainer::GetLayerIndexID(int) const",
+      "image": "game",
+      "rva": "0x2a4e5b0",
+      "bytes": 65,
+      "sha256": "c7baec6a5ab030c89ecb7ed9df95adfac5ad273493aa8b4afe252e31f69703bc"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGrid::Get(int, int) const",
+      "image": "game",
+      "rva": "0x2a4e030",
+      "bytes": 10,
+      "sha256": "090091f5ddac7731eb9caa0e9085d7ca6803d830485fdb29067eeea22366ed40"
+    },
+    {
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2004fc0",
+      "bytes": 51,
+      "sha256": "31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038"
+    },
+    {
+      "name": "RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::Find(unsigned int) const",
+      "image": "game",
+      "rva": "0x2baa650",
+      "bytes": 84,
+      "sha256": "23187b5ffe8639ccf9e9f356f40d40c171a4e81ef1d4488b412aa1262744a899"
+    },
+    {
+      "name": "GameCore::Context::Globals::GetGame()",
+      "image": "game",
+      "rva": "0x1fcc320",
+      "bytes": 11,
+      "sha256": "440d8ec0711321eeaafb3479cabd65b277a965561733cb61087722b09b561205"
+    },
+    {
+      "name": "GameCore::Game::Instance::GetMap()",
+      "image": "game",
+      "rva": "0x1fe2220",
+      "bytes": 8,
+      "sha256": "60f333d9f21930ce93b03ef00947904c289d6d58010da000d11efa92c55ef289"
+    },
+    {
+      "name": "GameCore::Map::Player::Visibility::Manager::GetVisibility(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2bc18c0",
+      "bytes": 66,
+      "sha256": "26ab66b819e2442996e7a8229cfe986ce58b596267cbbbd1377b7432df46705f"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::ComponentID(GameCore::PlayerTypes, unsigned int, GameCore::Player::ComponentID::Type)",
+      "image": "game",
+      "rva": "0x1fe4710",
+      "bytes": 11,
+      "sha256": "cb4c434e7692669068d42f77251a91039bc80797654608f3bdbd62f534f7478f"
+    },
+    {
+      "name": "Types::ptr64<GameCore::Map::SparseComponentIDGridEntry>::operator GameCore::Map::SparseComponentIDGridEntry*() const",
+      "image": "game",
+      "rva": "0x27c45f0",
+      "bytes": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "GameCore::Map::ComponentIDFixedVector::Find(GameCore::Player::ComponentID const&) const",
+      "image": "game",
+      "rva": "0x2a4ede0",
+      "bytes": 77,
+      "sha256": "7c24aa478239b5cc0dd1cfc85c19584d754c3e16c6857a442e8744aa2977e94f"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+      "image": "game",
+      "rva": "0x2a4ec40",
+      "bytes": 4,
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "name": "Types::Vector<GameCore::Map::SparseComponentIDGridEntry, Types::LinearAlloc::Default<1u, 0u> >::operator[](unsigned long) const",
+      "image": "game",
+      "rva": "0x2a4efe0",
+      "bytes": 18,
+      "sha256": "d1ca49f2892bd567de76e47f45a2e92141b5e5249517077a28769ffaf7c347b7"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGridEntry::GetID() const",
+      "image": "game",
+      "rva": "0x2a4ec80",
+      "bytes": 3,
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "name": "GameCore::Map::SparseComponentIDGrid::Get(unsigned int) const",
+      "image": "game",
+      "rva": "0x2a4e010",
+      "bytes": 24,
+      "sha256": "fc2a2c196cfb04ed6165cab3f5aefff32ed0224cdee525fea1ff6154ad47f47e"
+    },
+    {
+      "name": "GameCore::Player::Manager::IsValidRange(GameCore::PlayerTypes) const",
+      "image": "game",
+      "rva": "0x2005000",
+      "bytes": 7,
+      "sha256": "1bda6fddb3180619888eb42cbb75a05d0877b5498c502ebb72ec289b4e0ba7a1"
+    },
+    {
+      "name": "eastl::vector<int, eastl::fixed_vector_allocator<4ul, 65ul, 4ul, 0ul, true, eastl::allocator> >::operator[](unsigned int) const",
+      "image": "game",
+      "rva": "0x2005010",
+      "bytes": 10,
+      "sha256": "48c12c9fd19f4c5e8d91d38427f3559a3d4ddf082db8166c368193439b627a63"
+    },
+    {
+      "name": "eastl::vector<RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::BlockHeader*, eastl::allocator>::size() const",
+      "image": "game",
+      "rva": "0x20bd180",
+      "bytes": 12,
+      "sha256": "8375e78d364001210bb02186b4a5388e8e09554d7905f614c75f29f2692f7228"
+    },
+    {
+      "name": "eastl::vector<RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::BlockHeader*, eastl::allocator>::operator[](unsigned int) const",
+      "image": "game",
+      "rva": "0x20bd190",
+      "bytes": 10,
+      "sha256": "a21856896b0de6639267126f1fbdba85430b87d5a32a2dafd3b5b94e381f24cf"
+    },
+    {
+      "name": "Types::Vector<GameCore::Player::ComponentID, Types::LinearAlloc::DefaultInline<GameCore::Player::ComponentID, 8u, 1u, 51u> >::begin() const",
+      "image": "game",
+      "rva": "0x2167950",
+      "bytes": 9,
+      "sha256": "85541dbeab7af4da9dfb001f9e45869cd2f1346a7374ee52eb993f46393a79d3"
+    },
+    {
+      "name": "Types::Vector<GameCore::Player::ComponentID, Types::LinearAlloc::DefaultInline<GameCore::Player::ComponentID, 8u, 1u, 51u> >::end() const",
+      "image": "game",
+      "rva": "0x2167960",
+      "bytes": 22,
+      "sha256": "9d32072ac170d9069ad5fcdd29ded79598bfc879666cacae8f6222d117c10415"
+    },
+    {
+      "name": "GameCore::Player::ComponentID::operator==(GameCore::Player::ComponentID const&) const",
+      "image": "game",
+      "rva": "0x2006720",
+      "bytes": 34,
+      "sha256": "565a5536704f1c2eda96270c96177cd8dea251e96a1c60e185c70c2ab5c49f80"
+    },
+    {
+      "name": "Types::ptr64<GameCore::Player::ComponentID>::operator GameCore::Player::ComponentID*() const",
+      "image": "game",
+      "rva": "0x21685d0",
+      "bytes": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "GameCore::Unit::Instance::IsKindOf(unsigned int) const",
+      "image": "game",
+      "rva": "0x2c26a90",
+      "bytes": 6,
+      "sha256": "1841c462c002d4015f18698e6f708f340efad3bbe9db6d6aae6823b5f7bd6793"
+    },
+    {
+      "name": "GameCore::Map::Instance::GetUnits() const",
+      "image": "game",
+      "rva": "0x2a48750",
+      "bytes": 8,
+      "sha256": "1616e363aa6cd3367e0deef5507cdde0dcbbe5998fc4a5f1c90146ad80a46b60"
+    },
+    {
+      "image": "host",
+      "name": "Map.Ctor",
+      "rva": "0x395f070",
+      "bytes": 124,
+      "sha256": "88ef146bf7cc119692ceb6363ed7eb31b05e1b25734903162c34b355bfca021e"
+    },
+    {
+      "name": "TypedMap.ConstFind",
+      "image": "host",
+      "rva": "0x395f3b0",
+      "bytes": 90,
+      "sha256": "2788514beee59158d6cd2b816679fb774a19df417cc647a83564e156c77f6b36"
+    },
+    {
+      "name": "TypedMap.ConstTreeFind",
+      "image": "host",
+      "rva": "0x3962060",
+      "bytes": 51,
+      "sha256": "3807ac541af5e04676e513023bfdfdb0a728d0dcbd4ab63d364b26abf20da6af"
+    },
+    {
+      "image": "host",
+      "name": "Map.Copy",
+      "rva": "0x39612d0",
+      "bytes": 1012,
+      "sha256": "f71b9cdad0085a05f3b14af721c3ece0f69ae91313fd576e6999a140b6c0b207"
+    },
+    {
+      "image": "game",
+      "name": "Unit.DynamicProperties",
+      "rva": "0x2421a00",
+      "bytes": 8,
+      "sha256": "595c95fd2489378bcf114ae4dce1ad07f3b8e2c8cecfc31fdc22b7dcdcf01de5"
+    },
+    {
+      "image": "game",
+      "name": "Unit.PropertyWrapperCtor",
+      "rva": "0x2c1ca10",
+      "bytes": 69,
+      "sha256": "88cdd9f643185e32c5e8011837438c673c9e9b858a71c1c589ba543d17605f0f"
+    },
+    {
+      "image": "game",
+      "name": "Event.EntryCtor",
+      "rva": "0x27ffae0",
+      "bytes": 61,
+      "sha256": "b6389638e8bbc872f5af59bdcae113ca929686698a0eac2108f055317be555a1"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Dispatcher::Receive(GameCore::Events::CacheEventData const&)",
+      "rva": "0x2723e40",
+      "bytes": 170,
+      "sha256": "b6ae44114e33cea2e63a0b948562a1bc0b38c68e3d9c0f3c1d06acf09e6734ca"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Map::Instance::EditUnits()",
+      "rva": "0x27c42e0",
+      "bytes": 8,
+      "sha256": "4dced0472b6374b8afe877c38c627062e83f7209048396c95b00accb444ac9aa"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Initialize()",
+      "rva": "0x27fe7d0",
+      "bytes": 76,
+      "sha256": "8ffbefadbfcc213713baf933efe429c1e1011f68b6889285e8636845f08c6ffe"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Uninitialize()",
+      "rva": "0x27ff200",
+      "bytes": 12,
+      "sha256": "cf0d126931cd65f54a79786d63d41043c25e9f4528418d078f3ad020b35b1a80"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::PublishCreate(unsigned int, GameCore::Player::ComponentID const&, unsigned int)",
+      "rva": "0x27ff8e0",
+      "bytes": 174,
+      "sha256": "b50a158d2143bcbf91ffbe5fff6d47ef8d77685d458904b4132c01b57751722e"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::PublishDestroy(unsigned int, GameCore::Player::ComponentID const&)",
+      "rva": "0x27ff990",
+      "bytes": 94,
+      "sha256": "7f7e22fc92a9a4ea00d69415e27093d5da03d58d646d67d0c90151c3eed5e526"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::RegisterEvents()",
+      "rva": "0x27fe820",
+      "bytes": 2522,
+      "sha256": "c67884e2e1f640b9697008a838f03c1e527dda20c5fe862e6039286a6b128ad8"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnCivicCompleted(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff7a0",
+      "bytes": 5,
+      "sha256": "80ed40a539d25cb72a650ac8eaad0a007b7ed0ab7d9d54e9b5e4c228d4a20416"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnGoodyHutReward(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff7d0",
+      "bytes": 47,
+      "sha256": "c156d046ce287b89556baa0172d28916d2311ce71e47cdf34c001f95962f590d"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::UnregisterEvents()",
+      "rva": "0x27ff210",
+      "bytes": 1,
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnUnitCacheUpdate(GameCore::Events::CacheEventData const&)",
+      "rva": "0x27ff440",
+      "bytes": 18,
+      "sha256": "0feffe7b7f30e497f3a225a0319324507fd12fab7009246d797f9a0f64e4f3a2"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnUnitCreateEvent(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff460",
+      "bytes": 12,
+      "sha256": "51e01e7b9b618a5beb876d99f8adc363f7d3c78c12fe1e6933038f7d6f464a14"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnPlayerAgeChanged(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff7b0",
+      "bytes": 5,
+      "sha256": "4aaf630ff09bb03f23b854ddff3e275fc14b2642413d55a93a12be75d1c09e38"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnUnitDestroyEvent(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff470",
+      "bytes": 9,
+      "sha256": "4c35a3f262597b7d24b5d65af48095a7499beaf308fab22af92dd7912b94fee4"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnResearchCompleted(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff790",
+      "bytes": 5,
+      "sha256": "f3db490171058c7f3b1b3172191a1178bb80d60e0f2a576543e7c52b54eeeca0"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnUnitAbilityChanged(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff830",
+      "bytes": 47,
+      "sha256": "be0e974be3ca51bbcb86acd0a394bfdf1483712aa6e70cea25c9d074da0daa5d"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnBarbarianSpottedCity(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff800",
+      "bytes": 47,
+      "sha256": "8394652060bcd7f0a828aa21712c3672315a68bed41cce272d5f48be136ade87"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnFormationUpdateEvent(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff480",
+      "bytes": 270,
+      "sha256": "f46d341e8ad9c99639626f9bd7cf542b9032afe3f467c49dd1debe66d2d469b3"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnPlayerDarkAgeChanged(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff7c0",
+      "bytes": 5,
+      "sha256": "aea9d72a0c4296138a5c56dfb5bd2bd5481990ccfa5eac88c8925ace5a6ca39b"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnPlayerUnitsUpdateEvent(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff590",
+      "bytes": 192,
+      "sha256": "2480ce226fb64978103de69b94435aaa8a230a3422361cb0bc125f44b0b63c4a"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnGovernmentPolicyChanged(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff730",
+      "bytes": 45,
+      "sha256": "ac6be6d89ebdca222d06ab201520ebd7b802d610637edb21a0a42d2b2d832a1c"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnGovernmentPolicyObsoleted(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff760",
+      "bytes": 45,
+      "sha256": "37a07edbf6c41be49ccd410100b2c7a78537e3cdb8435774341d34316bea4bb3"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::OnLocalPlayerUnitsUpdateEvent(unsigned int, GameCore::Events::EventData1 const*, Data::TypedVariantMap const*)",
+      "rva": "0x27ff650",
+      "bytes": 224,
+      "sha256": "a4547da9b4fbf1b1fefc370236392d943349019391a1ec219852fb3bc4115efe"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Clear()",
+      "rva": "0x27ff420",
+      "bytes": 12,
+      "sha256": "10c18f7272e1e726c8fc7d56887e76383424ee771643b813b615f44178a2c9ec"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Destroy(unsigned int)",
+      "rva": "0x27ff410",
+      "bytes": 16,
+      "sha256": "0b41ff378501bf0d0fb25f9022312e56450bd9a1d47b53a3179a0e7ff451e760"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Process(unsigned int)",
+      "rva": "0x27ff3b0",
+      "bytes": 96,
+      "sha256": "5c0384987c751fbae1952b820bc512c1988ae602a25401c1fb42d1dca91acd2f"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::Manager()",
+      "rva": "0x27ffa70",
+      "bytes": 25,
+      "sha256": "683ef7838923c356ad8ad960323b7a9bfe94fd917c3a153c25ec37116cb89a03"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::Instance::Update(GameCore::Cache::Unit::EventStream::Entry const&, bool)",
+      "rva": "0x28056c0",
+      "bytes": 83,
+      "sha256": "aadc2216970c0fa4bb4d87c96f6ed00c772bb15e13a1e3c3239e18b194d16458"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Player::Units::Update(GameCore::Cache::Unit::EventStream::Entry const&, bool)",
+      "rva": "0x27f3500",
+      "bytes": 562,
+      "sha256": "7f15b56a714800dc4b97f988671f125f0a73060630505d5b1a5a3fef97348dc6"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Exports::Context::UpdateCache(GameCore::Events::CacheEventData const&)",
+      "rva": "0x2c7d3d0",
+      "bytes": 8,
+      "sha256": "d37727371e359dabb5af52818444752d72c03b61e2a22f922adf53cfb8ba7e3f"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::GetName() const",
+      "rva": "0x27ff220",
+      "bytes": 8,
+      "sha256": "8e3f1edd392fa6de62cb670b5f8fdbf85872712866553b4cd432d49daff9390a"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Unit::EventStream::Manager::GetStatus(eastl::list<GameCore::Cache::System::EventStream::EntryStatus, eastl::allocator>&) const",
+      "rva": "0x27ff230",
+      "bytes": 149,
+      "sha256": "8da1b1e4a3527404bd151e337c9bb2f5e41ae4542406764894746d7ecd848140"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Dispatcher::Uninitialize()",
+      "rva": "0x27230d0",
+      "bytes": 277,
+      "sha256": "c5724c2a3c99c6603e6ec2366ee26364001ff66a777bf30ca09ea32d3aebaf9b"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Dispatcher::LogStatus()",
+      "rva": "0x2723f40",
+      "bytes": 123,
+      "sha256": "6c26ca943d8eee81dc1a2ec7796a817ec81e0acba824c513fec12b6c7054893f"
+    },
+    {
+      "image": "game",
+      "name": "void GameCore::Cache::EventStreamPolicy::FreeNode<GameCore::Cache::KeyedBlockContainer<GameCore::Cache::BlockAllocatorEventStreamNodePolicy<GameCore::Cache::Unit::EventStream::Entry>, 4992> >(GameCore::Cache::KeyedBlockContainer<GameCore::Cache::BlockAllocatorEventStreamNodePolicy<GameCore::Cache::Unit::EventStream::Entry>, 4992>&, unsigned int)",
+      "rva": "0x27ffc10",
+      "bytes": 77,
+      "sha256": "631fec10868c222fa73ad41a7315618b75ac54f435b22a9512222834b00c4216"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::KeyedBlockContainer<GameCore::Cache::BlockAllocatorEventStreamNodePolicy<GameCore::Cache::Unit::EventStream::Entry>, 4992>::clear()",
+      "rva": "0x27ffc60",
+      "bytes": 132,
+      "sha256": "0ea2493e0f99acf6017a369272b7bff9d7728678de21a444a174a189104e91ab"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::KeyedBlockContainer<GameCore::Cache::BlockAllocatorEventStreamNodePolicy<GameCore::Cache::Unit::EventStream::Entry>, 4992>::KeyedBlockContainer()",
+      "rva": "0x27ff9f0",
+      "bytes": 92,
+      "sha256": "7091abef99264b7db9be57f635308a453d98f11ab4606252bce121aff9a26de9"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::KeyedBlockContainer<GameCore::Cache::BlockAllocatorEventStreamNodePolicy<GameCore::Cache::Unit::EventStream::Entry>, 4992>::operator[](unsigned int)",
+      "rva": "0x27ffbf0",
+      "bytes": 25,
+      "sha256": "6bb3683961829c544b5c9a63a73b2f996adf5db04b479dbd798a84841bc59f8b"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Map::UnitContainer::UnitContainer()",
+      "rva": "0x27c40e0",
+      "bytes": 5,
+      "sha256": "a5a51bb6e7aea594791532625b76cfc5d4038462ac57be8014af6b2f72be2980"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Map::Instance::Instance(GameCore::Cache::Game::Instance*)",
+      "rva": "0x27c2f00",
+      "bytes": 299,
+      "sha256": "cf786bdd064525339a503df6ee976022de52e323769f3461023c8d46d276e72e"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Game::Instance::EditPlayer(GameCore::PlayerTypes)",
+      "rva": "0x2722750",
+      "bytes": 9,
+      "sha256": "9283bb60dde26e2abcd03739b171a2f7142480b700fa5a62bcdb2474dcd8e218"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Game::Instance::CreateMap()",
+      "rva": "0x2763940",
+      "bytes": 114,
+      "sha256": "d4ee0c4f889ed19bd6acef04ab95cc998ae105ec2299fc11bf09a7153c89c592"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Player::Instance::EditUnits()",
+      "rva": "0x27e28f0",
+      "bytes": 13,
+      "sha256": "44af0b3a6e670180b5b08c70de5ed8ba8188467d8b90431d7f0f7e0615f002ac"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Context::Instance::EditPlayer(GameCore::PlayerTypes)",
+      "rva": "0x27223f0",
+      "bytes": 24,
+      "sha256": "1e6f67c816477253f8b892307b6e58ae10fb9fd7939fabe9e16de7ffa790f4e6"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Context::Instance::EditMap()",
+      "rva": "0x27223d0",
+      "bytes": 20,
+      "sha256": "198fd3a699ee29be42763887f9c013d2277b41abfa0cd4aa4c4e849258cdf080"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::Context::Instance::EditGame()",
+      "rva": "0x27223c0",
+      "bytes": 5,
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Exports::Unit::Unit(GameCore::Cache::Unit::Instance const*)",
+      "rva": "0x2c936e0",
+      "bytes": 75,
+      "sha256": "d1cedbecc3bb70448b250c8dd73d7602edc09241f0a623dfdcb4f2ef85e6ea4b"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Exports::Unit::Unit(GameCore::Unit::Instance*)",
+      "rva": "0x2c93690",
+      "bytes": 75,
+      "sha256": "86ae3ab82ebc72959dfbe03907aa5f5d72cbd8a27bf583c4028443d79d74fb48"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::KeyedBlockContainer<GameCore::Cache::BlockAllocatorEventStreamNodePolicy<GameCore::Cache::Unit::EventStream::Entry>, 4992>::max_allocated() const",
+      "rva": "0x27ffad0",
+      "bytes": 4,
+      "sha256": "2d0e49cd82f8c206723e1306f82df85a230ca3a9f3d4d6aa6a3668272263923b"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::System::EventStream::IComponentManager::CachingEventPlaybackComplete() const",
+      "rva": "0x27f9020",
+      "bytes": 417,
+      "sha256": "024f602e59cd5d526cd942801e4426be06e2473e9c558790bd0614ca7124dc9e"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Cache::System::EventStream::IComponentManager::LogStatus() const",
+      "rva": "0x27f8e60",
+      "bytes": 412,
+      "sha256": "2060ec1824982c7b690e89df2a29531958a847cef4ea374625bb004fb76904d3"
+    },
+    {
+      "image": "game",
+      "name": "GameCore::Exports::Unit::GetLocation() const",
+      "rva": "0x2c938d0",
+      "bytes": 48,
+      "sha256": "671023bb9a2b9c2ee9e764bd72a6a05b77f4653ca24c0d0304700e01f9f251a2"
+    },
+    {
+      "image": "host",
+      "name": "Map.Clear",
+      "rva": "0x39611c0",
+      "bytes": 261,
+      "sha256": "8ac7169ba8fe6abd2d1c247e16d26d02196511562fcfca1b9cd2cf0d256314be"
+    },
+    {
+      "image": "host",
+      "name": "Map.SetManager",
+      "rva": "0x395f300",
+      "bytes": 173,
+      "sha256": "2583c8ec79b31352b67fa672db309c17280d7cdd17b8a06a09841b790cc5e28e"
+    },
+    {
+      "image": "host",
+      "name": "Container.SetManagerBase",
+      "rva": "0x3968b60",
+      "bytes": 17,
+      "sha256": "b1b70c5068952371ae1aab6c927b2eb3ed27422950c91677670ce5bd0c2d7dc0"
+    },
+    {
+      "image": "host",
+      "name": "Map.Serialize",
+      "rva": "0x3961e50",
+      "bytes": 196,
+      "sha256": "e45d5808a5c8cc683ef5a06060228f21ad81ed49d6d12a9043e4255e0236b1da"
+    },
+    {
+      "address": "0x32b6520",
+      "bytes": 10,
+      "name": "bool eastl::operator==<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&>(eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&> const&, eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&> const&)",
+      "sha256": "eb0bb8fcfb7acf4cf64bda1925b26421c44526881c7acd0a81ab699ff90c628a",
+      "image": "host",
+      "rva": "0x32b6520"
+    },
+    {
+      "address": "0x32b6590",
+      "bytes": 10,
+      "name": "bool eastl::operator!=<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&>(eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&> const&, eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&> const&)",
+      "sha256": "4b032646ef472c6686889453fcf82f99a755f060d996a86069bb8e95c2093b1e",
+      "image": "host",
+      "rva": "0x32b6590"
+    },
+    {
+      "address": "0x32b7730",
+      "bytes": 71,
+      "name": "int GameCore::Lua::MethodWrapper<GameCore::Utility::Lua::IDirtyComponents, GameCore::Utility::DirtyComponents>::BasicLuaMethod<unsigned int>(lua_State*, unsigned int (GameCore::Utility::DirtyComponents::*)() const)",
+      "sha256": "2b21668a1f107df5351464c432584bc08a4c3fa93bd3a802b8966f0ed074f65f",
+      "image": "host",
+      "rva": "0x32b7730"
+    },
+    {
+      "address": "0x32b5940",
+      "bytes": 13,
+      "name": "GameCore::Utility::DirtyComponents::RemoveEvent(unsigned int)",
+      "sha256": "96fd8e3223589eaaa292adaff4a323f66ab73b93f21062a88a3a28e66bc694ec",
+      "image": "host",
+      "rva": "0x32b5940"
+    },
+    {
+      "address": "0x32b5950",
+      "bytes": 86,
+      "name": "GameCore::Utility::DirtyComponents::Add(GameCore::Player::ComponentID const&)",
+      "sha256": "1f4235247163eba5152a3010fbb5f27a940bf74284dd888757f30869529dd3c2",
+      "image": "host",
+      "rva": "0x32b5950"
+    },
+    {
+      "address": "0x32b5a10",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponents::Clear()",
+      "sha256": "9fde4c4da22929e96642b8720f7445a01a3607ca73fe8b736cba87fa0995c08a",
+      "image": "host",
+      "rva": "0x32b5a10"
+    },
+    {
+      "address": "0x32b59b0",
+      "bytes": 86,
+      "name": "GameCore::Utility::DirtyComponents::Remove(GameCore::Player::ComponentID const&)",
+      "sha256": "d70198f1622403ce682c31bfbb3e2bb701c83fda6fe91fd95566d0d74fd4b8ac",
+      "image": "host",
+      "rva": "0x32b59b0"
+    },
+    {
+      "address": "0x32b5930",
+      "bytes": 13,
+      "name": "GameCore::Utility::DirtyComponents::AddEvent(unsigned int)",
+      "sha256": "82a7d6aa9cd467eccbfdf5f0231798a9613a270814f8a4f1ea8c3745060410f9",
+      "image": "host",
+      "rva": "0x32b5930"
+    },
+    {
+      "address": "0x32b65f0",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponents::DirtyComponents()",
+      "sha256": "f51f85a75831afc4e2c94aad727a14e696a5c01fa738248befe57cfff6cd8eb0",
+      "image": "host",
+      "rva": "0x32b65f0"
+    },
+    {
+      "address": "0x32b6600",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponents::~DirtyComponents()",
+      "sha256": "48d0f4e1d3ac6ff9cdbc9af0178f55d9978e4fe8b7ad9a58cd40019db9880ef2",
+      "image": "host",
+      "rva": "0x32b6600"
+    },
+    {
+      "address": "0x32b5ec0",
+      "bytes": 41,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::Add(GameCore::Utility::DirtyComponents*)",
+      "sha256": "3505f300feccea7e45edea492126c9cbb8d819bc4a42bc2ed5f4e5f72842bd60",
+      "image": "host",
+      "rva": "0x32b5ec0"
+    },
+    {
+      "address": "0x32b5f40",
+      "bytes": 76,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::Remove(GameCore::Utility::DirtyComponents*)",
+      "sha256": "8b19e87d7ddd7b8d262de4d8a9450b05c87edf2ff59fd153322bfc66ea56305f",
+      "image": "host",
+      "rva": "0x32b5f40"
+    },
+    {
+      "address": "0x32b5f90",
+      "bytes": 66,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::SetDirty(GameCore::Player::ComponentID const&)",
+      "sha256": "ae43abdb887ee6fd52a14001c01dca33c7c46ac9a7998e10134913cc240408b3",
+      "image": "host",
+      "rva": "0x32b5f90"
+    },
+    {
+      "address": "0x32b6bc0",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::ComponentsArray(GameCore::Utility::DirtyComponentsManager::ComponentsArray const&)",
+      "sha256": "ec7d2aa54ab353ae3e298f2752ca2bce4eae1ebdb8c1ddeefde03cd044576859",
+      "image": "host",
+      "rva": "0x32b6bc0"
+    },
+    {
+      "address": "0x32b6350",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::ComponentsArray()",
+      "sha256": "97fe96b8568b19c3d9bef4f89725d47f0f91769ff3c97752c5213d74e29dc4e1",
+      "image": "host",
+      "rva": "0x32b6350"
+    },
+    {
+      "address": "0x32b6270",
+      "bytes": 12,
+      "name": "GameCore::Utility::DirtyComponentsManager::GetRequestCount()",
+      "sha256": "3c8f9d667f805fe9778ade0ca7c78cbbdbae204973945d1b0ce0051e1f1953ea",
+      "image": "host",
+      "rva": "0x32b6270"
+    },
+    {
+      "address": "0x32b5fe0",
+      "bytes": 243,
+      "name": "GameCore::Utility::DirtyComponentsManager::RegisterForEvent(unsigned int, GameCore::Utility::DirtyComponents*)",
+      "sha256": "25a20e8e048bd180be88aeac2cf867db4cfb69de40d34460d32d7d071f50aa9a",
+      "image": "host",
+      "rva": "0x32b5fe0"
+    },
+    {
+      "address": "0x32b6200",
+      "bytes": 100,
+      "name": "GameCore::Utility::DirtyComponentsManager::GetEventCompoments(unsigned int)",
+      "sha256": "9c914c37466f2772d71d3e074e95aec9fb3256dbe2a7c8b8972558811ad06328",
+      "image": "host",
+      "rva": "0x32b6200"
+    },
+    {
+      "address": "0x32b60e0",
+      "bytes": 111,
+      "name": "GameCore::Utility::DirtyComponentsManager::UnregisterForEvent(unsigned int, GameCore::Utility::DirtyComponents*)",
+      "sha256": "cb4c5dcef4cad8ad135b6ca8dde8b71b110e36456a4edc51acf81608fd9d8362",
+      "image": "host",
+      "rva": "0x32b60e0"
+    },
+    {
+      "address": "0x32b6150",
+      "bytes": 162,
+      "name": "GameCore::Utility::DirtyComponentsManager::UnregisterForAllEvents(GameCore::Utility::DirtyComponents*)",
+      "sha256": "44712ea75fc00f5d512b2e48d461341d94b97ea193870d431ce7a4462c80a197",
+      "image": "host",
+      "rva": "0x32b6150"
+    },
+    {
+      "address": "0x32b6280",
+      "bytes": 130,
+      "name": "GameCore::Utility::DirtyComponentsManager::Create()",
+      "sha256": "51531c8b299da6d3a797fe7878da24b1dfddb4eb2f7d69bb49958ca7eee12189",
+      "image": "host",
+      "rva": "0x32b6280"
+    },
+    {
+      "address": "0x32b6310",
+      "bytes": 51,
+      "name": "GameCore::Utility::DirtyComponentsManager::Destroy(GameCore::Utility::DirtyComponents*)",
+      "sha256": "0a1012a9a6d54576fc5222dc6a3c3570b457908f2eb2116d38ca650ba434faf8",
+      "image": "host",
+      "rva": "0x32b6310"
+    },
+    {
+      "address": "0x32b77d0",
+      "bytes": 8,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::GetTypeName()",
+      "sha256": "03297539e9c6caf8cbf8a740c7610adcb30d8199eb5961f96c3254285d67320c",
+      "image": "host",
+      "rva": "0x32b77d0"
+    },
+    {
+      "address": "0x32b7050",
+      "bytes": 275,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::PushMethods(lua_State*, int)",
+      "sha256": "0a799490681b1f7edf66aba9115d43e469d9e166e88faa8ca92496d211491d90",
+      "image": "host",
+      "rva": "0x32b7050"
+    },
+    {
+      "address": "0x32b71c0",
+      "bytes": 310,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::lMembersAux(lua_State*)",
+      "sha256": "f22912269c19a04549787bb1413a3d80ded3a6cf9badae357f72a7c91161f145",
+      "image": "host",
+      "rva": "0x32b71c0"
+    },
+    {
+      "address": "0x32b7340",
+      "bytes": 498,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::lAddComponent(lua_State*)",
+      "sha256": "db16c49178edc11a8c070d8987812ad7487cbd97efbf6616ce08799324413757",
+      "image": "host",
+      "rva": "0x32b7340"
+    },
+    {
+      "address": "0x32b7540",
+      "bytes": 5,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::HandleMissingInstance(lua_State*)",
+      "sha256": "d228fa3863e1d89c8e1143c99efea41151ab00372e66725f9b659c02c5cd2014",
+      "image": "host",
+      "rva": "0x32b7540"
+    },
+    {
+      "address": "0x32b7600",
+      "bytes": 14,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::lClear(lua_State*)",
+      "sha256": "d0bc8945b2fa2372ca5f8422cda234dcb71030246cdd92c358e3c7029071a6ce",
+      "image": "host",
+      "rva": "0x32b7600"
+    },
+    {
+      "address": "0x32b7170",
+      "bytes": 66,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::lMembers(lua_State*)",
+      "sha256": "d1f2f66f453f3f69c0e87dd02dc08d4b3455660988ff189ef7ad3925dd925b02",
+      "image": "host",
+      "rva": "0x32b7170"
+    },
+    {
+      "address": "0x32b7300",
+      "bytes": 62,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::lAddEvent(lua_State*)",
+      "sha256": "11953c5f8d10c08eaa6bdf372ad9e9116d1eb789750245d28f3d5d4c972cac20",
+      "image": "host",
+      "rva": "0x32b7300"
+    },
+    {
+      "address": "0x32b75f0",
+      "bytes": 14,
+      "name": "GameCore::Utility::Lua::IDirtyComponents::lGetCount(lua_State*)",
+      "sha256": "ccb2bd8cf7b2c99817b207b5e3b826b9d2c70d8dc4e4bc0be5254d32ccb13edc",
+      "image": "host",
+      "rva": "0x32b75f0"
+    },
+    {
+      "address": "0x32b77e0",
+      "bytes": 3,
+      "name": "GameCore::Utility::Lua::IDirtyComponentsManager::GetInstance(lua_State*, int)",
+      "sha256": "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf",
+      "image": "host",
+      "rva": "0x32b77e0"
+    },
+    {
+      "address": "0x36af680",
+      "bytes": 8,
+      "name": "GameCore::Utility::Lua::IDirtyComponentsManager::GetInstanceName()",
+      "sha256": "ef8d673a8da2be8548d8fec1d2c07b99e934faedd703746ae50ca5d870add80d",
+      "image": "host",
+      "rva": "0x36af680"
+    },
+    {
+      "address": "0x32b77f0",
+      "bytes": 46,
+      "name": "GameCore::Utility::Lua::IDirtyComponentsManager::RegisterMembers(lua_State*)",
+      "sha256": "6a092c53e455910ffaa0bf6371bc44b540307eee540340098cacf89c09d09b6a",
+      "image": "host",
+      "rva": "0x32b77f0"
+    },
+    {
+      "address": "0x32b7820",
+      "bytes": 27,
+      "name": "GameCore::Utility::Lua::IDirtyComponentsManager::lCreate(lua_State*)",
+      "sha256": "2062ab7726e52c1cbda69984688bd7c14497a3d386528959c34c4ab566c603ea",
+      "image": "host",
+      "rva": "0x32b7820"
+    },
+    {
+      "address": "0x32b7840",
+      "bytes": 28,
+      "name": "GameCore::Utility::Lua::IDirtyComponentsManager::lDestroy(lua_State*)",
+      "sha256": "cc0f28ef537121171975863858ab91cdf6bbe5cdfb551106d1d89013c209da76",
+      "image": "host",
+      "rva": "0x32b7840"
+    },
+    {
+      "address": "0x32b76f0",
+      "bytes": 4,
+      "name": "GameCore::Utility::DirtyComponents::GetArray() const",
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21",
+      "image": "host",
+      "rva": "0x32b76f0"
+    },
+    {
+      "address": "0x32b7780",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponents::GetCount() const",
+      "sha256": "f2caa9e32b1dce79ce64efba5806a764e131b9d00f8f88603f6b8002f83abcf3",
+      "image": "host",
+      "rva": "0x32b7780"
+    },
+    {
+      "address": "0x32b5ef0",
+      "bytes": 66,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::Contains(GameCore::Utility::DirtyComponents*) const",
+      "sha256": "f220f44bc3da71e1e8cfb38517ba6583b5b90760cf62e30031e9357c5014c275",
+      "image": "host",
+      "rva": "0x32b5ef0"
+    },
+    {
+      "address": "0x32b65e0",
+      "bytes": 5,
+      "name": "GameCore::Utility::DirtyComponentsManager::ComponentsArray::GetCount() const",
+      "sha256": "f51f85a75831afc4e2c94aad727a14e696a5c01fa738248befe57cfff6cd8eb0",
+      "image": "host",
+      "rva": "0x32b65e0"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Event.IsEnabled",
+      "rva": "0x2d49180",
+      "sha256": "59b106f733bf15ae469e4e147126b4065ff4e8f5e07baab5dfb9487997e68c68"
+    },
+    {
+      "bytes": 5,
+      "image": "game",
+      "name": "Event.IsSuspended",
+      "rva": "0x2d49190",
+      "sha256": "83276920b6b626251d072ef15c3476ab42c3b8c4ed95428fce539b2faf89850c"
+    },
+    {
+      "bytes": 45,
+      "image": "game",
+      "name": "Globals.IsUnserializing",
+      "rva": "0x290bb30",
+      "sha256": "771f43a0efb13454645a0870b507ef7336f72a248ac496e7bce153ef6e7864b0"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "Cache.AreUpdatesEnabled",
+      "rva": "0x2723640",
+      "sha256": "4f7ea77a0e05ec97922128597c34b3d00f9c47ffdf47e0cd4ea54fed4eb8ed5a"
+    },
+    {
+      "bytes": 79,
+      "image": "game",
+      "name": "Event.SendMap",
+      "rva": "0x2d4a4b0",
+      "sha256": "c1888c434ab05b22459602c065edeb08c79ab33480cb0beb070bf92fcc89ade5"
+    },
+    {
+      "bytes": 238,
+      "image": "game",
+      "name": "Cache.Send",
+      "rva": "0x2723550",
+      "sha256": "c224d2f00939be39974ab16bfc564f2877cef2ece1e8a94e972e243d5dbced20"
+    },
+    {
+      "bytes": 73,
+      "image": "game",
+      "name": "Cache.FastDelegate3.Invoke",
+      "rva": "0x2724730",
+      "sha256": "c028ee1789ac606906c75f4f49514de738c8fe72ebe2ecdce5813c6f6e76880c"
+    },
+    {
+      "address": "0x32b4260",
+      "bytes": 2492,
+      "name": "GameCore::EngineUtility::SendEvent(unsigned int, Data::TypedVariantMap const&)",
+      "sha256": "24826057267fc9c5a6028051e2eed6dbffea87bb34c1de4600f00ae968c370d9",
+      "image": "host",
+      "rva": "0x32b4260"
+    },
+    {
+      "bytes": 129,
+      "image": "host",
+      "name": "Translate.Dispatch",
+      "rva": "0x3214c50",
+      "sha256": "84bcf221705b2d35e2ff59079cec7c5b22cd7c10afb65c5774642d5c5c7ca910"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish71",
+      "rva": "0x32176b0",
+      "sha256": "4bcd0436d2ba72ae44f4d885d4864d5b1880f9f0a84c833a62179ce2f99187cd"
+    },
+    {
+      "bytes": 80,
+      "image": "host",
+      "name": "Publish257",
+      "rva": "0x321cac0",
+      "sha256": "4fe4c9ea0083b660eb82a946d1b96f27d7f6cb8d218714ca6a48b287c2e33819"
+    },
+    {
+      "bytes": 5,
+      "image": "host",
+      "name": "PrePublish.Get",
+      "rva": "0x2fd7db0",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish71.Invoke",
+      "rva": "0x3228580",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 55,
+      "image": "host",
+      "name": "PrePublish257.Invoke",
+      "rva": "0x3237c40",
+      "sha256": "944c22fb0150baa67577d729b0484122b93f9c6c0780cd9fe6f89833979a4421"
+    },
+    {
+      "bytes": 4,
+      "image": "host",
+      "name": "PrePublish71.GetThis",
+      "rva": "0x32285f0",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "bytes": 9,
+      "image": "host",
+      "name": "PrePublish71.GetMember",
+      "rva": "0x3228600",
+      "sha256": "1e4ed268bbb17635735f00271500035a8dd2732548b89d3a643d52d7ac4f299d"
+    },
+    {
+      "address": "0x32b5bf0",
+      "bytes": 33,
+      "name": "eastl::VectorBase<GameCore::Player::ComponentID, eastl::allocator>::DoAllocate(unsigned int)",
+      "sha256": "645661c2006cc4e01df6d88753c4f58210d6ac241aa1264098d0a925dc67494c",
+      "image": "host",
+      "rva": "0x32b5bf0"
+    },
+    {
+      "address": "0x32b5be0",
+      "bytes": 14,
+      "name": "eastl::VectorBase<GameCore::Player::ComponentID, eastl::allocator>::GetNewCapacity(unsigned int)",
+      "sha256": "74b4efe75a71f994cc00a3e8f12fe4ede9f2846102c2370b886358446eb38445",
+      "image": "host",
+      "rva": "0x32b5be0"
+    },
+    {
+      "address": "0x32b5ca0",
+      "bytes": 29,
+      "name": "eastl::VectorBase<GameCore::Player::ComponentID, eastl::allocator>::DoFree(GameCore::Player::ComponentID*, unsigned int)",
+      "sha256": "c544a1ab95eaefacc3ca7ce9ab0d6fe34f3171eb3a149b11ef1f9c9f29e9c771",
+      "image": "host",
+      "rva": "0x32b5ca0"
+    },
+    {
+      "address": "0x32b5c20",
+      "bytes": 104,
+      "name": "GameCore::Player::ComponentID* eastl::uninitialized_move_ptr<GameCore::Player::ComponentID*, GameCore::Player::ComponentID*, GameCore::Player::ComponentID*>(GameCore::Player::ComponentID*, GameCore::Player::ComponentID*, GameCore::Player::ComponentID*)",
+      "sha256": "383a8cba7a87ee62516fc83daee158bdea0a2f76cc73f9f06d08ff72ad65a5c0",
+      "image": "host",
+      "rva": "0x32b5c20"
+    },
+    {
+      "address": "0x32b6530",
+      "bytes": 18,
+      "name": "eastl::rbtree<unsigned int, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::less<unsigned int>, eastl::allocator, eastl::use_first<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray> >, true, true>::end()",
+      "sha256": "5afc92c1900a083a912413b2ad3101653f192506e80d13232cebd4a8e77bcc55",
+      "image": "host",
+      "rva": "0x32b6530"
+    },
+    {
+      "address": "0x32b6450",
+      "bytes": 197,
+      "name": "eastl::rbtree<unsigned int, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::less<unsigned int>, eastl::allocator, eastl::use_first<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray> >, true, true>::find(unsigned int const&)",
+      "sha256": "a7e485163b693373202bdfb44d5a69d41b5e58eb40f5f8b76cde944e44342a0f",
+      "image": "host",
+      "rva": "0x32b6450"
+    },
+    {
+      "address": "0x32b5ac0",
+      "bytes": 264,
+      "name": "eastl::vector<GameCore::Player::ComponentID, eastl::allocator>::DoInsertValue(GameCore::Player::ComponentID*, GameCore::Player::ComponentID const&)",
+      "sha256": "b42711d6119fb92b51a97bd0a710628f7914569eaf64ba8612d85f0e6522c00f",
+      "image": "host",
+      "rva": "0x32b5ac0"
+    },
+    {
+      "address": "0x32b5c90",
+      "bytes": 1,
+      "name": "eastl::vector<GameCore::Player::ComponentID, eastl::allocator>::DoDestroyValues(GameCore::Player::ComponentID*, GameCore::Player::ComponentID*)",
+      "sha256": "ae3f4619b0413d70d3004b9131c3752153074e45725be13b9a148978895e359e",
+      "image": "host",
+      "rva": "0x32b5c90"
+    },
+    {
+      "address": "0x32b5a30",
+      "bytes": 5,
+      "name": "eastl::vector<GameCore::Player::ComponentID, eastl::allocator>::end()",
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e",
+      "image": "host",
+      "rva": "0x32b5a30"
+    },
+    {
+      "address": "0x32b5a20",
+      "bytes": 4,
+      "name": "eastl::vector<GameCore::Player::ComponentID, eastl::allocator>::begin()",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23",
+      "image": "host",
+      "rva": "0x32b5a20"
+    },
+    {
+      "address": "0x32b5a40",
+      "bytes": 40,
+      "name": "eastl::vector<GameCore::Player::ComponentID, eastl::allocator>::push_back(GameCore::Player::ComponentID const&)",
+      "sha256": "51ddb2cfadaf9eaa6839c687459a06e0c1414c64bde307982b87ef8ffc85231a",
+      "image": "host",
+      "rva": "0x32b5a40"
+    },
+    {
+      "address": "0x32b63f0",
+      "bytes": 5,
+      "name": "eastl::vector<GameCore::Utility::DirtyComponents*, eastl::allocator>::end()",
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e",
+      "image": "host",
+      "rva": "0x32b63f0"
+    },
+    {
+      "address": "0x32b63e0",
+      "bytes": 4,
+      "name": "eastl::vector<GameCore::Utility::DirtyComponents*, eastl::allocator>::begin()",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23",
+      "image": "host",
+      "rva": "0x32b63e0"
+    },
+    {
+      "address": "0x2feaef0",
+      "bytes": 21,
+      "name": "GameCore::Player::ComponentID::ComponentID(GameCore::Player::ComponentID const&)",
+      "sha256": "574ca5ba9db429a6a5a90e019d12cd702ad1b683b676123b9edeb6e55212c0d6",
+      "image": "host",
+      "rva": "0x2feaef0"
+    },
+    {
+      "address": "0x32b6580",
+      "bytes": 8,
+      "name": "eastl::rbtree_iterator<eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>*, eastl::pair<unsigned int const, GameCore::Utility::DirtyComponentsManager::ComponentsArray>&>::operator*() const",
+      "sha256": "111da43af27d403431aff85821d27c6dfb0439f92612e03048c4c92b35072f05",
+      "image": "host",
+      "rva": "0x32b6580"
+    },
+    {
+      "address": "0x32b5620",
+      "bytes": 6,
+      "name": "GameCore::Events::ParameterUsageDefinition::ChangesObject() const",
+      "sha256": "d9678be4ad44a05b93261ee381e5f56a64f924f4c8aa45ce90022721be5e4aa0",
+      "image": "host",
+      "rva": "0x32b5620"
+    },
+    {
+      "address": "0x2fb7350",
+      "bytes": 34,
+      "name": "GameCore::Player::ComponentID::operator==(GameCore::Player::ComponentID const&) const",
+      "sha256": "565a5536704f1c2eda96270c96177cd8dea251e96a1c60e185c70c2ab5c49f80",
+      "image": "host",
+      "rva": "0x2fb7350"
+    },
+    {
+      "name": "Plot.IsWater",
+      "image": "game",
+      "rva": "0x2bc97d0",
+      "bytes": 80,
+      "sha256": "c935f8d2ca7eddae13a2d74b29312b175126f21390531088f67149d29098383b"
+    },
+    {
+      "name": "Plot.GetOwner",
+      "image": "game",
+      "rva": "0x1fe23d0",
+      "bytes": 41,
+      "sha256": "d40d1bd008ab26ed6eac1cc16bfd19ecf84925b3ce6bf6ef79d1d97e1520ce05"
+    },
+    {
+      "name": "Unit.GetMovesRemaining",
+      "image": "game",
+      "rva": "0x213cc90",
+      "bytes": 21,
+      "sha256": "cacb37411e9aab85d6dd05c1d07fb2f2a36acd2877aeee83ac8bd09f08e92c13"
+    },
+    {
+      "name": "Map.GetAdjacentPlotLocation",
+      "image": "game",
+      "rva": "0x2426a30",
+      "bytes": 193,
+      "sha256": "d010168af2f392f555b334004652a99f16bcdde8611afe908b2e30d007c8536d"
+    }
+  ],
+  "source_sha256": "ea88cd34b98d26236ffba8fbdd6b1729e11f095169146b41d0e57196ded88a3b",
+  "audit_sha256": "2fe80f8dfd6793b8838f3c388de7665e9cadb693c387cd31d8ed51b5aee94f99",
+  "first_event": "e23b112d",
+  "synchronous_receiver": "27ff430 -> 27ff860 -> 27ff2d0 -> 2805100",
+  "original_query_order": "snapshot readiness before host event35 translation; six native-order neighbors; placement before HasMoved before conditional Plot movement cost",
+  "excluded_output": "concrete reflected Unit snapshot stream and stock UnitFlag dirty vectors only",
+  "actual_null_prepublish": "CacheUpdated275 seven; activity35 three; other actual captured callbacks remain as parent evidence",
+  "next_effectful_readiness_branch": "HasAdjacentMove=false -> command HoldCycling -> if false operation HoldCycling",
+  "captured_adjacent_result_used_as_computation": false,
+  "queued_event35_consumers_available": false,
+  "full_action_acceptance": false,
+  "complete_state_actions_turns": false,
+  "complete_rng": false,
+  "historical_raw_save_load_failure_bytes": 89198
+}
