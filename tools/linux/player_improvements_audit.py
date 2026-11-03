@@ -130,10 +130,11 @@ def main():
         (tmp/'candidate.rs').write_text(harness)
         cmd=['rustc','--edition=2021','-Dwarnings','-O',str(tmp/'candidate.rs'),'--extern','c6_core='+str(source/'target/release/libc6_core.rlib'),'-L','dependency='+str(source/'target/release/deps')]
         subprocess.run(cmd+['-o',str(tmp/'candidate')],check=True)
-        manifest = '[package]\nname="c6-player-improvements-audit"\nversion="0.0.0"\nedition="2021"\n[workspace]\n[dependencies]\nc6-core={path=' + json.dumps(str(source/'crates/c6-core')) + '}\n[[bin]]\nname="candidate"\npath="candidate.rs"\n'
-        (tmp/'Cargo.toml').write_text(manifest)
-        subprocess.run(['cargo','test','--offline','--manifest-path',str(tmp/'Cargo.toml')],check=True)
-        subprocess.run(['cargo','clippy','--offline','--manifest-path',str(tmp/'Cargo.toml'),'--all-targets','--','-D','warnings'],check=True)
+        manifest = '[package]\nname="c6-player-improvements-audit"\nversion="0.0.0"\nedition="2021"\n[workspace]\n[dependencies]\nc6-core={path=' + json.dumps(str(source/'crates/c6-core')) + '}\n[[bin]]\nname="candidate"\npath="../candidate.rs"\n'
+        harness_crate=tmp/'cargo-harness';harness_crate.mkdir()
+        (harness_crate/'Cargo.toml').write_text(manifest)
+        subprocess.run(['cargo','test','--offline','--manifest-path',str(harness_crate/'Cargo.toml')],check=True)
+        subprocess.run(['cargo','clippy','--offline','--manifest-path',str(harness_crate/'Cargo.toml'),'--all-targets','--','-D','warnings'],check=True)
         candidate_sha=sha((tmp/'candidate').read_bytes())
         for identity,trace_name,trace_sha in FIXTURES:
             data=gzip.decompress((args.private_root/'evidence/linux-game-load/canonical'/(identity+'.bin.gz')).read_bytes())
