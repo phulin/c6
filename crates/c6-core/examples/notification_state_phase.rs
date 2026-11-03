@@ -121,6 +121,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &args[3],
         result.state.notifications.encode(Limits::default())?,
     )?;
+    // Replay public production selection/base-activation leaves separately so
+    // captured native branch-time inputs/results can be compared. These probes
+    // are diagnostics and remain outside both measured phase timings.
+    let mut replay = state.clone();
+    let mut replay_delivery = UndeliveredProjection::default();
+    for scan in 0..=state.notifications.records.len() {
+        for (record, live) in replay.notifications.records.iter().zip(&replay.live) {
+            let mut probe = replay.clone();
+            probe.notifications.records = vec![record.clone()];
+            probe.live = vec![live.clone()];
+            probe.live[0].lock_count = 1;
+            let auto =
+                life::find_auto_activate(&probe, i32::MIN, gates.network_multiplayer)?.is_some();
+            // A locked singleton avoids HasBeenActivated's candidate suppression.
+            // At MAX threshold, observed lower-severity fixtures isolate override.
+            if record.severity == i32::MAX {
+                return Err("diagnostic override probe requires below-MAX severity".into());
+            }
+            let override_value = if auto {
+                Some(
+                    life::find_auto_activate(&probe, i32::MAX, gates.network_multiplayer)?
+                        .is_some(),
+                )
+            } else {
+                None
+            };
+            let override_json = override_value.map_or("null".to_owned(), |v| v.to_string());
+            let pool = live
+                .pool_binding
+                .map_or("null".to_owned(), |p| p.0.to_string());
+            let definition = match live.definition_icon {
+                DefinitionIcon::Unobserved => -2,
+                DefinitionIcon::MissingDefinition => -1,
+                DefinitionIcon::ShowInSinglePlayer(v) => i32::from(v),
+            };
+            println!("{{\"kind\":\"eligibility\",\"scan\":{scan},\"object\":{},\"owner\":{},\"component_type\":{},\"id\":{},\"type_hash\":{},\"severity\":{},\"dismissed\":{},\"native_auto_activate\":{},\"native_is_expired\":{},\"activated\":{},\"lock_count\":{},\"pool\":{pool},\"definition\":{definition},\"is_auto_activate\":{auto},\"effective_override\":{override_json}}}",live.object.0,record.id.owner,record.id.component_type,record.id.id,record.type_hash,record.severity,record.is_dismissed,record.native_19d,record.native_19c,record.has_been_activated,live.lock_count);
+        }
+        let selected = life::find_auto_activate(
+            &replay,
+            if gates.network_multiplayer { 3 } else { 0 },
+            gates.network_multiplayer,
+        )?;
+        let object = selected.map_or("null".to_owned(), |index| {
+            replay.live[index].object.0.to_string()
+        });
+        let locked = selected.is_some_and(|index| replay.live[index].lock_count > 0);
+        println!(
+            "{{\"kind\":\"selection\",\"scan\":{scan},\"object\":{object},\"locked\":{locked}}}"
+        );
+        let Some(index) = selected else {
+            break;
+        };
+        if locked {
+            break;
+        }
+        life::activate_base_in_place(&mut replay, index, false, &mut replay_delivery)?;
+    }
+    life::cleanup_in_place(&mut replay)?;
+    assert_eq!(
+        replay, result.state,
+        "public leaf replay and composed phase disagree"
+    );
     for r in &result.delivery.reports {
         println!("{{\"kind\":\"undelivered_activation\",\"event\":{},\"identity_key\":{},\"owner\":{},\"component_type\":{},\"id\":{},\"bool_key\":{},\"argument\":{}}}",r.event_hash,r.identity_key,r.identity.owner,r.identity.component_type,r.identity.id,r.bool_key,r.activation_argument);
     }
