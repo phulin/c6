@@ -11,12 +11,13 @@ SCHEMAS = {'CityPlanner': (2, [('player_id', 'i'), ('expansion_score', 'i'), ('t
 HARNESS = 'use c6_core::{unit::Limits,player_ai_grand_strategic::*};\nfn mix(h:&mut u64,v:i64){for b in v.to_le_bytes(){*h=(*h^u64::from(b)).wrapping_mul(1099511628211)}}\n#[allow(non_snake_case)] fn p_CityPlanner(v:&CityPlanner,h:&mut u64){mix(h,v.player_id as i64);mix(h,v.expansion_score as i64);mix(h,v.turns_since_city_founding as i64);}\n#[allow(non_snake_case)] fn p_CitySettleSiteEvaluation(v:&CitySettleSiteEvaluation,h:&mut u64){mix(h,v.x as i64);mix(h,v.y as i64);mix(h,v.score_q8 as i64);}\n#[allow(non_snake_case)] fn p_PlotEvaluation(v:&PlotEvaluation,h:&mut u64){mix(h,v.x as i64);mix(h,v.y as i64);mix(h,v.my_nearest_city as i64);mix(h,v.nearest_enemy_city as i64);mix(h,v.danger as i64);mix(h,v.cultural_pressure as i64);mix(h,v.is_coastal_raw as i64);mix(h,v.has_fresh_water_raw as i64);mix(h,v.is_valid_raw as i64);mix(h,v.new_resources_in_inner_ring as i64);mix(h,v.plot_score_q8 as i64);mix(h,v.inner_ring_yield.len() as i64);for v in &v.inner_ring_yield{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.full_city_yield.len() as i64);for v in &v.full_city_yield{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.num_terrains.len() as i64);for v in &v.num_terrains{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.num_resources_inner_ring.len() as i64);for v in &v.num_resources_inner_ring{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.num_resources.len() as i64);for v in &v.num_resources{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.num_features.len() as i64);for v in &v.num_features{mix(h,v.hash as i64);mix(h,v.value as i64);}}\n#[allow(non_snake_case)] fn p_RegionEvaluator(v:&RegionEvaluator,h:&mut u64){mix(h,v.player_id as i64);mix(h,v.region_id as i64);mix(h,v.evaluations.len() as i64);for v in &v.evaluations{p_CitySettleSiteEvaluation(&v,h);}p_PlotEvaluation(&v.intermediate_data,h);mix(h,v.has_positive_eval_raw as i64);}\n#[allow(non_snake_case)] fn p_VictoryStrategy(v:&VictoryStrategy,h:&mut u64){mix(h,v.player_id as i64);mix(h,v.pursuing_strategies.len() as i64);for v in &v.pursuing_strategies{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.forbidden_strategies.len() as i64);for v in &v.forbidden_strategies{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.must_change_state.len() as i64);for v in &v.must_change_state{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.meets_exclusive_condition.len() as i64);for v in &v.meets_exclusive_condition{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.next_turn_change_allowed.len() as i64);for v in &v.next_turn_change_allowed{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.yield_priorities_q8.len() as i64);for v in &v.yield_priorities_q8{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.pseudo_yield_priorities_saved_as_yield_hash_q8.len() as i64);for v in &v.pseudo_yield_priorities_saved_as_yield_hash_q8{mix(h,v.hash as i64);mix(h,v.value as i64);}}\n#[allow(non_snake_case)] fn p_UnitEfficiencyInfo(v:&UnitEfficiencyInfo,h:&mut u64){mix(h,v.unit_hash as i64);mix(h,v.max_damage as i64);mix(h,v.is_obsolete_raw as i64);mix(h,v.is_ranged_raw as i64);mix(h,v.is_naval_raw as i64);mix(h,v.has_zone_of_control_raw as i64);mix(h,v.civ_unique_raw as i64);mix(h,v.exclude_from_efficiency_calculation_raw as i64);mix(h,v.can_build_raw as i64);mix(h,v.speed as i64);mix(h,v.range as i64);mix(h,v.main_combat_strength as i64);mix(h,v.defense as i64);mix(h,v.num_in_use as i64);mix(h,v.efficiency_against_all_enemies_q8 as i64);mix(h,v.efficiency_against_everyone_q8 as i64);mix(h,v.efficiency_against_player_q8.len() as i64);for v in &v.efficiency_against_player_q8{mix(h,*v as i64);}mix(h,v.raw_efficiency_q8 as i64);mix(h,v.maintenance_resource_hash as i64);mix(h,v.num_resource_needed as i64);}\n#[allow(non_snake_case)] fn p_UnitProduction(v:&UnitProduction,h:&mut u64){mix(h,v.player_id as i64);mix(h,v.offense_units.len() as i64);for v in &v.offense_units{p_UnitEfficiencyInfo(&v,h);}mix(h,v.has_targets_raw as i64);}\n#[allow(non_snake_case)] fn p_GrandStrategic(v:&GrandStrategic,h:&mut u64){mix(h,v.player_id as i64);p_CityPlanner(&v.city_planner,h);mix(h,v.primary_regions.len() as i64);for v in &v.primary_regions{mix(h,*v as i64);}mix(h,v.expansion_regions.len() as i64);for v in &v.expansion_regions{mix(h,*v as i64);}mix(h,v.tertiary_regions.len() as i64);for v in &v.tertiary_regions{mix(h,*v as i64);}mix(h,v.settle_cities.len() as i64);for v in &v.settle_cities{p_RegionEvaluator(&v,h);}mix(h,v.done_island_check_raw as i64);mix(h,v.is_on_island_raw as i64);mix(h,v.commemorate_era_raw as i64);p_VictoryStrategy(&v.victory_manager,h);mix(h,v.pseudo_yield_priority_boost_q8.len() as i64);for v in &v.pseudo_yield_priority_boost_q8{mix(h,v.hash as i64);mix(h,v.value as i64);}mix(h,v.pseudo_yield_adjustments_q8.len() as i64);for v in &v.pseudo_yield_adjustments_q8{mix(h,v.hash as i64);mix(h,v.value as i64);}p_UnitProduction(&v.unit_production,h);mix(h,v.yield_sensitivity_boost_q8.len() as i64);for v in &v.yield_sensitivity_boost_q8{mix(h,v.hash as i64);mix(h,v.value as i64);}}\nfn main() {\n let args:Vec<_>=std::env::args().collect();let all=std::fs::read(&args[1]).unwrap();let mut at=0;let mut records=0;let mut digest=14695981039346656037u64;\n while at<all.len() { let n=u32::from_le_bytes(all[at..at+4].try_into().unwrap()) as usize;at+=4;let raw=&all[at..at+n];at+=n;\n let (v,used,items)=GrandStrategic::decode_prefix_with_items(raw,Limits{max_bytes:n,max_items:n}).unwrap();assert_eq!(used,n);\n p_GrandStrategic(&v,&mut digest);let exact=Limits{max_bytes:n,max_items:items};assert_eq!(GrandStrategic::decode(raw,exact).unwrap(),v);assert_eq!(v.encode_with_items(exact).unwrap(),(raw.to_vec(),items));\n let cuts=u32::from_le_bytes(all[at..at+4].try_into().unwrap()) as usize;at+=4;for _ in 0..cuts{let end=u32::from_le_bytes(all[at..at+4].try_into().unwrap()) as usize;at+=4;assert!(end<n);assert!(GrandStrategic::decode(&raw[..end],exact).is_err());}\n let short=Limits{max_bytes:n-1,..exact};assert_eq!(GrandStrategic::decode(raw,short),Err(Error::ResourceLimit));assert_eq!(v.encode(short),Err(Error::ResourceLimit));\n if items>0 {let short=Limits{max_items:items-1,..exact};assert_eq!(GrandStrategic::decode(raw,short),Err(Error::ResourceLimit));assert_eq!(v.encode(short),Err(Error::ResourceLimit));}\n let mut tail=raw.to_vec();tail.extend_from_slice(&[91;128]);assert_eq!(GrandStrategic::decode(&tail,exact),Err(Error::Trailing));assert_eq!(GrandStrategic::decode_prefix_with_items(&tail,exact).unwrap(),(v,n,items));records+=1;\n } assert_eq!(records,86);println!("{records} {digest}");\n}'
 
 def projection(raw,strict=True):
-    pos=0;items=0;values=[];rebuilt=bytearray();counts={};cuts=set()
+    pos=0;items=0;values=[];rebuilt=bytearray();counts={};cuts=set();ranges={};bool_storage={}
     def scalar(t,emit=True,tracked=True):
         nonlocal pos
         fmt={'i':'<i','u':'<I','b':'<B'}[t];n=struct.calcsize(fmt)
         if tracked:cuts.update([pos,pos+1] if n>1 else [pos])
         v=struct.unpack_from(fmt,raw,pos)[0];pos+=n
+        if t=='b':bool_storage[v]=bool_storage.get(v,0)+1
         if tracked:cuts.add(pos)
         rebuilt.extend(struct.pack(fmt,v))
         if emit:values.append(v)
@@ -30,13 +31,16 @@ def projection(raw,strict=True):
             if tracked:cuts.add(pos)
             return result
         if t.startswith('{'):return dict(hash=scalar('u',tracked=tracked),value=read(t[1:-1],tracked))
+        begin=pos
         version,fields=SCHEMAS[t]
         counts[t]=counts.get(t,0)+1
         if version is not None and scalar('u',False,tracked)!=version:raise ValueError('version '+t)
-        return {name:read(kind,tracked) for name,kind in fields}
+        value={name:read(kind,tracked) for name,kind in fields}
+        ranges.setdefault(t,[]).append((begin,pos))
+        return value
     value=read('GrandStrategic')
     if (strict and pos!=len(raw)) or rebuilt!=raw[:pos]:raise ValueError('typed extent/repacking')
-    return value,items,values,counts,sorted(n for n in cuts if n<pos),pos
+    return value,items,values,counts,sorted(n for n in cuts if n<pos),pos,ranges,bool_storage
 
 def candidate(pin,records,expected_digest):
     pin=subprocess.check_output(['git','rev-parse',pin+'^{commit}'],cwd=ROOT,text=True).strip()
@@ -65,7 +69,7 @@ def candidate(pin,records,expected_digest):
         if count!=86 or digest!=expected_digest:raise ValueError('independent typed projection mismatch')
         for path,digest_source in identities.items():
             if sha((source/path).read_bytes())!=digest_source:raise ValueError('source changed during build '+path)
-        return dict(source_commit=pin,archive_sha256=sha(archive),sources=identities,harness_sha256=sha(HARNESS.encode()),candidate_sha256=sha((tmp/'candidate').read_bytes()),records=count,typed_projection_digest=digest,all_archived_sources_checked_before_and_after=True,exported_archive_unchanged=True,cargo_tests=True,clippy_strict_all_targets=True,native_truncation_cuts="all count fields and containers; scalar boundaries plus first interior byte in first/last repeated row; no middle repeated rows",source_carrier_every_truncation=True,exact_byte_item_caps=True,one_short_byte_item_caps=True,strict_trailing=True,prefix_tail=True)
+        return dict(source_commit=pin,archive_sha256=sha(archive),sources=identities,harness_sha256=sha(HARNESS.encode()),candidate_sha256=sha((tmp/'candidate').read_bytes()),records=count,typed_projection_digest=digest,all_archived_sources_checked_before_and_after=True,exported_archive_unchanged=True,cargo_tests=True,clippy_strict_all_targets=True,native_truncation_cuts="selected count/scalar/container boundaries and first interior bytes, recursively first/last repeated rows; bounded middle-row omission",source_carrier_every_truncation=True,exact_byte_item_caps=True,one_short_byte_item_caps=True,strict_trailing=True,prefix_tail=True)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--source-commit');p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux');p.add_argument('--private-root',type=Path,default=ROOT.parent/'c6-ghidra');a=p.parse_args()
@@ -91,7 +95,7 @@ def main():
             parent=owners[owner['parent']]
             if parent['owner']!='GameCore::Player::Instance':raise ValueError('parent')
             version,player=struct.unpack_from('<Ii',data,parent['start'])
-            value,items,values,counts,cuts,used=projection(data[owner['start']:parent['end']],False)
+            value,items,values,counts,cuts,used,ranges,bool_storage=projection(data[owner['start']:parent['end']],False)
             owner['end']=owner['start']+used
             raw=data[owner['start']:owner['end']]
             if struct.unpack_from('<Ii',data,owner['end'])!=(1,player):raise ValueError('next Homeland identity/version')
@@ -100,7 +104,10 @@ def main():
             if version!=47 or value['player_id']!=player:raise ValueError('identity')
             for v in values:
                 for b in struct.pack('<q',v):digest=((digest^b)*1099511628211)&((1<<64)-1)
-            children=[x for x in owners.values() if x['parent']==owner['call']]
+            children=[x for x in owners.values() if x['parent']==owner['parent'] and owner['start']<=x['start'] and x['end']<=owner['end']]
+            for kind in ['VictoryStrategy','PlotEvaluation','UnitEfficiencyInfo']:
+                hooked=sorted((x['start']-owner['start'],x['end']-owner['start']) for x in children if x['owner']=='GameCore::AI::'+kind)
+                if hooked!=sorted(ranges.get(kind,[])):raise ValueError('typed nested hook extent '+kind)
             actual={}
             for x in children:actual[x['owner']]=actual.get(x['owner'],0)+1
             # Hook inventory is independently reported; typed extent does not rely on child cuts.
@@ -108,7 +115,7 @@ def main():
             if following:raise ValueError('unexpected hook at unhooked Homeland boundary')
             cut_bytes=struct.pack('<'+str(len(cuts))+'I',*cuts)
             corpus.extend(struct.pack('<I',len(raw))+raw+struct.pack('<I',len(cuts))+cut_bytes)
-            rows.append(dict(player=player,start=owner['start'],end=owner['end'],bytes=len(raw),items=items,truncation_cuts=len(cuts),truncation_cuts_sha256=sha(cut_bytes),counts=counts,sha256=sha(raw),direct_child_hook_counts=actual))
+            rows.append(dict(player=player,start=owner['start'],end=owner['end'],bytes=len(raw),items=items,truncation_cuts=len(cuts),truncation_cuts_sha256=sha(cut_bytes),counts=counts,sha256=sha(raw),contextual_nested_hook_counts=actual,raw_bool_storage_histogram=bool_storage,nested_hook_extents_match_typed=True))
         if len(rows)!=43:raise ValueError('record count')
         reports.append(dict(core_sha256=identity,trace_sha256=trace_sha,owner_hook_inventory=inventory,records=rows))
     report=dict(schema='c6-linux-player-ai-grand-strategic-v1',checks_passed=True,gamecore_sha256=GAME_SHA,methods=METHODS,dwarf_sha256=DWARF_SHA,wire_schemas=SCHEMAS,audit_source_sha256=sha(Path(__file__).read_bytes()),fixtures=reports,typed_projection_digest=digest,complete_current_saved_wire=True,legacy_versions=False,definition_remapping=False,native_read_effects=False,original_execution=False,private_writes=False,planning_only_exclusion_proven=False,gameplay_rng_in_scope=True,full_player=False,world_import=False,actions=False,turns=False,next_player_component='AI::Homeland',unknown_save_bytes_masked=False,recorded_raw_save_load_difference_bytes=89198,attribution_reference_revision='5af389445118bed2bdebf7a8a42b219c8fba5175',validation_cuts='No GrandStrategic/Homeland hook. Decode exact grammar from Governors.end; validate unique enclosed VictoryStrategy and succeeding Homeland v1/player identity.')
