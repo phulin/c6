@@ -8,7 +8,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 
-static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session,bool core_component) {
+static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session,bool core_component,bool movement_cost) {
     if(!module||!context)return 194;
     void **active=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController21ms_pkActiveControllerE");
     bool (*initialized)(void *)=dlsym(RTLD_DEFAULT,"_ZN18GameCoreController13IsInitializedEv");
@@ -40,12 +40,21 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
         fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_cache_enter\n");
         initialize_cache(controller);
         fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE initialize_cache_return\n");
-        result=c6_linux_action_execution(module,context);
-        if(!result)result=c6_linux_action_observe(module,context);
-        if(!result&&dispatch)result=c6_linux_action_dispatch(module,context,execute);
-        if(!result&&core_component){
-            int (*component)(void *,void *,bool)=dlsym(RTLD_DEFAULT,"c6_linux_core_component");
-            result=component?component(module,context,execute):251;
+        if(movement_cost){
+            bound=NULL;get_context(&bound,controller);
+            if(*active!=controller||!initialized(controller)||bound!=context||executing(controller))result=197;
+            else {
+                int (*probe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_movement_cost_probe");
+                result=probe?probe(module,context):251;
+            }
+        } else {
+            result=c6_linux_action_execution(module,context);
+            if(!result)result=c6_linux_action_observe(module,context);
+            if(!result&&dispatch)result=c6_linux_action_dispatch(module,context,execute);
+            if(!result&&core_component){
+                int (*component)(void *,void *,bool)=dlsym(RTLD_DEFAULT,"c6_linux_core_component");
+                result=component?component(module,context,execute):251;
+            }
         }
     }
     fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_enter result %d\n",result);
@@ -58,16 +67,21 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
 }
 
 int c6_linux_action_prepare_observe(void *module,void *context) {
-    return prepare(module,context,false,false,false,false);
+    return prepare(module,context,false,false,false,false,false);
 }
 int c6_linux_action_prepare_dispatch(void *module,void *context,bool execute) {
-    return prepare(module,context,true,execute,false,false);
+    return prepare(module,context,true,execute,false,false,false);
 }
 int c6_linux_action_prepare_registered_dispatch(void *module,void *context,bool execute) {
-    return prepare(module,context,true,execute,true,false);
+    return prepare(module,context,true,execute,true,false,false);
 }
 /* A separate component experiment admits trusted original command bytes at
  * the Core ingress. It never claims successful host transport/readiness. */
 int c6_linux_action_prepare_core_component(void *module,void *context,bool execute) {
-    return prepare(module,context,false,execute,false,true);
+    return prepare(module,context,false,execute,false,true,false);
+}
+/* Read-only query profile. The callback owns its quiescent observations around
+ * each internal Save and query block; this wrapper never schedules a worker. */
+int c6_linux_action_prepare_movement_cost(void *module,void *context) {
+    return prepare(module,context,false,false,false,false,true);
 }
