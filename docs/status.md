@@ -11,14 +11,15 @@ The supplied Linux XP2 profile is the sole execution and acceptance target. The 
 | Native-checked primitives | Random/normal records, stateless coordinates, average damage, bounded loaded-sync randomized damage | Scoped original-code comparisons; complete combat/RNG lifecycle absent |
 | Bounded SkipTurn phase | Unit/Formation state projection | Matches captured native records; legality, callbacks and complete aftermath absent |
 | Owned World | Map, ordered Players and optional complete Unit/Formation collections; native low-16-slot lookups | Source-reviewed ownership/query infrastructure; supplied records are not full Core import |
-| Movement numerical functions | Values construction/finalization, nine ordered phases, formation ignore aggregation, ZOC minimum selection | Source-reviewed over resolved facts; no accepted complete native cost run |
+| Movement numerical functions | Values construction/finalization, nine phases, formation ignore aggregation, ZOC minimum selection | 1,536 recorded native queries and 13,824 phase states match; complete world queries and actions absent |
 | Improvement prerequisite yields | GetPlayerBonusTechYieldFrom and civic analogue, ordered wrapping FixedPoint8 arithmetic | Source-reviewed supplied-input contract; initialized native differential acceptance absent |
 | Movement-world facts | Unit/member/Formation facts, native definition identities, plot/edge queries | 1,536 actual edges pass all three groups; observed District/domain side inputs remain required |
 | Map wire import | Map4/Plot6 plus all six components, 4,693,980 native bytes | Exact current-fixture roundtrip and structural extraction; live Read fixups absent |
 | Other wire components | Unit/Formation/queues, Trade, RequirementSystem, notifications, Player Goody_Hut/Bonuses/Congress | Supported current records only; complete owners and omitted live state absent |
 | Prerequisite providers | Acquired bool hash arrays and complete post-Validate global-node projection into World | Supplied-input adapter; real complete owner/provider capture absent |
 | City/District movement projection | Native ID/owner lookup and source-backed initial domain-mask rebuild branches | Partial registry, not full City; coastal/Wonder inputs and native rebuild acceptance absent |
-| City and broader yields | City header/Districts/Citizens and plot/improvement yield source work | Partial checkpoints; complete City state and initialized native GetYield comparison absent |
+| Plot/improvement yields | Source-reviewed outer GetYield and numerical improvement composition, including corrected direct-index lookup | Live providers and initialized native numerical comparison absent |
+| City wire composition | Bounded header/Districts/Citizens and additional component codecs | Full-record native-stream/static review pending; complete live City state absent |
 | Reporting/notifications | Corrected Send/return controls and captured notification/passive4 state checks | Bounded captured effects; complete transitive callbacks/purity absent |
 | Full state/actions/turns | No complete gameplay implementation | General `Engine::apply`, EndTurn, external-decision progression and whole-world/RNG parity unsupported |
 | Desktop/network integration | Original loading/receive gate documented | Unresolved optional host admission, separate from authoritative gameplay semantics |
@@ -37,7 +38,15 @@ The [independently reviewed control3 comparison](linux-movement-world-control.md
 
 Actual district type/completion and raw signed-i16 validDomains masks are named runtime side inputs. Their presence does not prove complete registry import or mask reconstruction from Save. The [City/District registry review](linux-city-district-review.md) accepts source lookup and initialization branches, while coastal/Wonder inputs, later construction/transfer updates and native rebuild comparisons remain missing.
 
-The [nine-phase scalar movement evaluator](linux-movement-cost-review.md) is source-reviewed over resolved query facts. [Native cost run1](../evidence/linux/movement-cost-timeout-1.json) timed out at 180 seconds after 588 complete rows, without final Saves, RNG captures or cleanup. Its prefix is diagnostic only; the unchanged full-corpus rerun with a 900-second budget is pending. No numerical movement acceptance follows until the actual complete result and required controls are reviewed. Movement legality, spatial ZOC, execution and complete affected-state/RNG parity remain separate gaps.
+The completed [native movement-cost comparison](linux-movement-cost-results.md) and [independent review](linux-movement-cost-native-review.md#accepted-native-cost-query-corpus) accept all 1,536 ordered queries and 13,824 phase states with zero scalar, accumulator or formation-ignore mismatches. Ten named whole-Core comparisons each span 80,657,462 bytes with zero differences and zero masked bytes. All six Saves in each process share SHA-256 `ff31f4c5…`; both observed 32-byte Random objects are unchanged, and native/controller/framework cleanup completes. This accepts arithmetic over original recorded facts. Complete world-query reconstruction, intermediate cache/provider effects, all gameplay RNG, legality, movement execution and turns remain outside acceptance.
+
+The [first 180-second run](../evidence/linux/movement-cost-timeout-1.json) remains failed history: 588 complete rows without final Saves/RNG or cleanup. The successful 900-second rerun preserved its fixture, native calls, guards and frozen candidate. The [separate prepared-fact benchmark](linux-movement-cost-benchmark.md) reports median 23.81 ns/edge without ZOC and 24.33 ns/edge with ZOC. Input capture, world queries, actions and turns are excluded; instrumented native elapsed time is not a latency benchmark.
+
+## Yield and City source progress
+
+The [plot-yield review](linux-plot-yield-review.md) accepts the outer GetYield translation and improvement composition within their explicit typed-input/provider contract. It verifies first-match versus all-row behavior, wrapping FixedPoint8 arithmetic, source query order and the corrected direct-index improvement lookup. Live visibility, property, City/Player, adjacency and climate providers remain incomplete; no initialized native numerical GetYield parity is claimed.
+
+City wire composition is provisional. The owner reports both-stream roundtrips for 490 City records and 5,880 child boundaries, but the assembly/audit checkpoint and independent review have not closed. The accepted structural-import milestone remains the first Cities boundary; bounded codecs do not establish live City reconstruction or gameplay.
 
 ## Typed Map milestone
 
@@ -65,7 +74,7 @@ Native non-byte-idempotent loading is target behavior, not a defect to patch or 
 
 1. Extend structural import through complete Players, rosters and remaining gameplay systems, retaining identities, order, typed values and unsupported forms explicitly.
 2. Finish authoritative SkipTurn callbacks/aftermath and complete affected-state/RNG comparisons, using the proven presentation-only exclusions rather than replicating native heap output.
-3. Validate and implement movement, general Game actions and other rules with Linux-native fixtures; retain actual gameplay eligibility and ordered continuation.
+3. Connect accepted movement arithmetic to complete world queries, validate movement legality/actions, and implement general Game actions with Linux-native fixtures and ordered continuation.
 4. Complete deterministic branching and full external-decision turn progression across every player and gameplay subsystem.
 5. Measure initialization, memory and action/turn throughput only for implemented paths. Existing codec/data/arithmetic timings are not full-game benchmarks.
 
