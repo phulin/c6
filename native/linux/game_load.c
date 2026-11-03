@@ -25,42 +25,84 @@ static void *movement_symbol(void *owner,const char *name,uintptr_t expected,voi
     return symbol;
 }
 
-int c6_linux_movement_cost_quiescent(void *module,void *context) {
+/* Single synchronous movement probe only. These are bindings, never snapshots
+ * of controller/context state. The caller holds its RTLD_NOLOAD reference. */
+typedef struct {
+    void *module,*context,*vptr,*base;
+    void **active;
+    bool (*initialized)(void *);
+    bool (*executing)(void *);
+    void *(*get_context)(void *,const void *);
+    bool (*context_initialized)(void *);
+    bool (*pending)(void *);
+    void *(*get_game)(void *);
+    void (*release)(void *);
+    bool (*needs_update)(const void *);
+    bool (*needs_advance)(const void *);
+    bool (*ai)(const void *);
+    bool (*processing)(const void *);
+} MovementBindings;
+static MovementBindings movement_bindings;
+
+static Dl_info movement_context_owner(void *module,void *context) {
     Dl_info info={0};
     if(!module||!context||!dladdr(*(void **)context,&info)||!info.dli_fbase||!info.dli_fname)
         movement_not_quiescent("context_owner_unknown");
     const char *leaf=strrchr(info.dli_fname,'/');leaf=leaf?leaf+1:info.dli_fname;
     if(strcmp(leaf,"libGameCore_XP2.so"))movement_not_quiescent("context_module_unknown");
+    return info;
+}
+
+int c6_linux_movement_cost_admission_begin(void *module,void *context) {
+    if(movement_bindings.module)movement_not_quiescent("admission_already_active");
+    Dl_info info=movement_context_owner(module,context);
     uintptr_t base=(uintptr_t)info.dli_fbase;
+    MovementBindings b={.module=module,.context=context,.vptr=*(void **)context,.base=info.dli_fbase};
 #define MOVEMENT_CORE(name,rva) movement_symbol(module,name,base+(rva),info.dli_fbase)
 #define MOVEMENT_HOST(name,address) movement_symbol(RTLD_DEFAULT,name,address,(void *)0x400000)
-    void **active=MOVEMENT_HOST("_ZN18GameCoreController21ms_pkActiveControllerE",0x6499100);
-    bool (*initialized)(void *)=MOVEMENT_HOST("_ZN18GameCoreController13IsInitializedEv",0x31d1720);
-    bool (*executing)(void *)=MOVEMENT_HOST("_ZN18GameCoreController11IsExecutingEv",0x31d18a0);
-    void *(*get_context)(void *,const void *)=MOVEMENT_HOST("_ZNK18GameCoreController10GetContextEv",0x31d5090);
-    bool (*context_initialized)(void *)=MOVEMENT_CORE("_ZN8GameCore7Exports7Context12IsInitialiedEv",0x2c7c9b0);
-    bool (*pending)(void *)=MOVEMENT_CORE("_ZN8GameCore7Exports7Context18HasPendingMessagesEv",0x2c7d340);
-    void *(*get_game)(void *)=MOVEMENT_CORE("_ZN8GameCore7Exports7Context7GetGameEv",0x2c7cae0);
-    void (*release)(void *)=MOVEMENT_CORE("_ZN8GameCore10Interfaces10ICvUnknowndlEPv",0x290bba0);
-    bool (*needs_update)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game11NeedsUpdateEv",0x2c86a60);
-    bool (*needs_advance)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game16NeedsTurnAdvanceEv",0x2c869f0);
-    bool (*ai)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game14IsAiProcessingEv",0x2c867e0);
-    bool (*processing)(const void *)=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game16IsTurnProcessingEv",0x2c86800);
+    b.active=MOVEMENT_HOST("_ZN18GameCoreController21ms_pkActiveControllerE",0x6499100);
+    b.initialized=MOVEMENT_HOST("_ZN18GameCoreController13IsInitializedEv",0x31d1720);
+    b.executing=MOVEMENT_HOST("_ZN18GameCoreController11IsExecutingEv",0x31d18a0);
+    b.get_context=MOVEMENT_HOST("_ZNK18GameCoreController10GetContextEv",0x31d5090);
+    b.context_initialized=MOVEMENT_CORE("_ZN8GameCore7Exports7Context12IsInitialiedEv",0x2c7c9b0);
+    b.pending=MOVEMENT_CORE("_ZN8GameCore7Exports7Context18HasPendingMessagesEv",0x2c7d340);
+    b.get_game=MOVEMENT_CORE("_ZN8GameCore7Exports7Context7GetGameEv",0x2c7cae0);
+    b.release=MOVEMENT_CORE("_ZN8GameCore10Interfaces10ICvUnknowndlEPv",0x290bba0);
+    b.needs_update=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game11NeedsUpdateEv",0x2c86a60);
+    b.needs_advance=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game16NeedsTurnAdvanceEv",0x2c869f0);
+    b.ai=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game14IsAiProcessingEv",0x2c867e0);
+    b.processing=MOVEMENT_CORE("_ZNK8GameCore7Exports4Game16IsTurnProcessingEv",0x2c86800);
 #undef MOVEMENT_CORE
 #undef MOVEMENT_HOST
-    void *controller=*active,*bound=NULL;
+    movement_bindings=b;
+    return 0;
+}
+
+int c6_linux_movement_cost_admission_end(void *module,void *context) {
+    if(!movement_bindings.module||movement_bindings.module!=module||movement_bindings.context!=context)
+        movement_not_quiescent("admission_scope_unknown");
+    movement_bindings=(MovementBindings){0};
+    return 0;
+}
+
+int c6_linux_movement_cost_quiescent(void *module,void *context) {
+    Dl_info info=movement_context_owner(module,context);
+    const MovementBindings *b=&movement_bindings;
+    if(!b->module||b->module!=module||b->context!=context||b->vptr!=*(void **)context||b->base!=info.dli_fbase)
+        movement_not_quiescent("admission_scope_unknown");
+    void *controller=*b->active,*bound=NULL;
     if(!controller)movement_not_quiescent("controller_unknown");
-    get_context(&bound,controller);
-    if(*active!=controller||bound!=context||!initialized(controller)||!context_initialized(context)||executing(controller)||pending(context))
+    b->get_context(&bound,controller);
+    if(*b->active!=controller||bound!=context||!b->initialized(controller)||!b->context_initialized(context)||b->executing(controller)||b->pending(context))
         movement_not_quiescent("controller_or_context_not_idle");
-    void *game=get_game(context);
+    void *game=b->get_game(context);
     if(!game)movement_not_quiescent("game_facade_unavailable");
-    bool work=needs_update(game)||needs_advance(game)||ai(game)||processing(game);
+    bool work=b->needs_update(game)||b->needs_advance(game)||b->ai(game)||b->processing(game);
     /* Only the acquired interface wrapper is owned. Both Context and its native
      * Game remain borrowed; no facade survives this check or any cost call. */
-    release(game);
-    bound=NULL;get_context(&bound,controller);
-    if(*active!=controller||bound!=context||!initialized(controller)||!context_initialized(context)||executing(controller)||pending(context)||work)
+    b->release(game);
+    bound=NULL;b->get_context(&bound,controller);
+    if(*b->active!=controller||bound!=context||!b->initialized(controller)||!b->context_initialized(context)||b->executing(controller)||b->pending(context)||work)
         movement_not_quiescent("game_or_controller_not_idle");
     return 0;
 }

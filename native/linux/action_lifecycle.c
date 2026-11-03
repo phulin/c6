@@ -60,13 +60,19 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
             if(!initialized(controller)||bound!=context||executing(controller))movement_fatal("post_cache_identity_or_state");
             int (*quiescent)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_movement_cost_quiescent");
             int (*probe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_movement_cost_probe");
-            if(!quiescent||!probe)movement_fatal("missing_movement_callback");
+            int (*admission_begin)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_movement_cost_admission_begin");
+            int (*admission_end)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_movement_cost_admission_end");
+            if(!quiescent||!probe||!admission_begin||!admission_end)movement_fatal("missing_movement_callback");
+            if(admission_begin(module,context))movement_fatal("admission_begin_failed");
             if(quiescent(module,context))movement_fatal("post_cache_not_quiescent");
             result=probe(module,context);
             if(quiescent(module,context))movement_fatal("post_probe_not_quiescent");
             if(*active!=controller)movement_fatal("controller_changed_during_probe");
             bound=NULL;get_context(&bound,controller);
             if(!initialized(controller)||bound!=context||executing(controller))movement_fatal("post_probe_identity_or_state");
+            /* Drop addresses before controller/cache teardown. An unknown/live
+             * path above still exits without poststate or Uninitialize. */
+            if(admission_end(module,context))movement_fatal("admission_end_failed");
         } else {
             result=c6_linux_action_execution(module,context);
             if(!result)result=c6_linux_action_observe(module,context);
