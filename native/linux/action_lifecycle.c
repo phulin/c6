@@ -17,11 +17,13 @@ typedef enum {
     QUERY_PLACEMENT_HANDLER_METADATA,
     QUERY_UNIT_OPERATION_MANAGER_METADATA,
     QUERY_CURRENT_HANDLER_METADATA,
-    QUERY_FULL_MANAGER_FIXTURE
+    QUERY_FULL_MANAGER_FIXTURE,
+    QUERY_UNIT_MOVEMENT_QUERY
 } QueryProfile;
 
 static _Noreturn void query_fatal(QueryProfile profile,const char *stage) {
-    const char *marker=profile==QUERY_FULL_MANAGER_FIXTURE?
+    const char *marker=profile==QUERY_UNIT_MOVEMENT_QUERY?
+        "C6_LINUX_UNIT_MOVEMENT_QUERY_LIFECYCLE":profile==QUERY_FULL_MANAGER_FIXTURE?
         "C6_LINUX_FULL_MANAGER_FIXTURE_LIFECYCLE":profile==QUERY_CURRENT_HANDLER_METADATA?
         "C6_LINUX_CURRENT_HANDLER_METADATA_LIFECYCLE":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?
         "C6_LINUX_UNIT_OPERATION_MANAGER_METADATA_LIFECYCLE":profile==QUERY_PLACEMENT_HANDLER_METADATA?
@@ -40,6 +42,8 @@ static int preparation_failure(QueryProfile profile,const char *stage,int legacy
 
 static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session,bool core_component,QueryProfile profile) {
     bool movement_cost=profile!=QUERY_NONE;
+    if(profile==QUERY_UNIT_MOVEMENT_QUERY)
+        fprintf(stderr,"C6_LINUX_UNIT_MOVEMENT_QUERY_LIFECYCLE mode unit_movement_queries action_requested 0\n");
     if(profile==QUERY_FULL_MANAGER_FIXTURE)
         fprintf(stderr,"C6_LINUX_FULL_MANAGER_FIXTURE_LIFECYCLE mode full_manager_fixture predicate_once 1 script_effects_possible 1\n");
     if(profile==QUERY_CURRENT_HANDLER_METADATA)
@@ -64,11 +68,11 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
     int (*trace_begin)(void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_begin");
     int (*trace_end)(unsigned)=dlsym(RTLD_DEFAULT,"c6_linux_action_trace_end");
     if(!trace_begin||!trace_end)return preparation_failure(profile,"missing_trace_symbol",202);
-    /* Only this effectful predicate profile observes trace counters without a
-     * zero/equality expectation; structural and I/O failures still propagate. */
-    int (*trace_end_observational)(void)=profile==QUERY_FULL_MANAGER_FIXTURE?
+    /* These profiles observe trace counters without a zero/equality
+     * expectation; structural and I/O failures still propagate. */
+    int (*trace_end_observational)(void)=(profile==QUERY_FULL_MANAGER_FIXTURE||profile==QUERY_UNIT_MOVEMENT_QUERY)?
         dlsym(RTLD_DEFAULT,"c6_linux_action_trace_end_observational"):NULL;
-    if(profile==QUERY_FULL_MANAGER_FIXTURE&&!trace_end_observational)
+    if((profile==QUERY_FULL_MANAGER_FIXTURE||profile==QUERY_UNIT_MOVEMENT_QUERY)&&!trace_end_observational)
         return preparation_failure(profile,"missing_observational_trace_symbol",202);
     void *controller=*active,*bound=NULL;
     if(!controller)return preparation_failure(profile,"missing_controller",196);
@@ -100,28 +104,32 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
              * owned by each probe's genuine facade lifetime. Full-Manager's
              * caller_idle verifies ownership, allowing legitimate queued effects;
              * it does not require the passive metadata profile's idle state. */
-            int (*caller_idle)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_FULL_MANAGER_FIXTURE?
+            int (*caller_idle)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_UNIT_MOVEMENT_QUERY?
+                "c6_linux_unit_movement_query_profile_caller_idle":profile==QUERY_FULL_MANAGER_FIXTURE?
                 "c6_linux_full_manager_profile_caller_idle":profile==QUERY_CURRENT_HANDLER_METADATA?
                 "c6_linux_current_handler_metadata_caller_idle":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?
                 "c6_linux_unit_operation_manager_metadata_quiescent":profile==QUERY_PLACEMENT_HANDLER_METADATA?
                 "c6_linux_placement_handler_metadata_quiescent":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_quiescent":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_quiescent":"c6_linux_movement_cost_quiescent");
-            int (*probe)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_FULL_MANAGER_FIXTURE?
+            int (*probe)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_UNIT_MOVEMENT_QUERY?
+                "c6_linux_unit_movement_query_profile_probe":profile==QUERY_FULL_MANAGER_FIXTURE?
                 "c6_linux_full_manager_profile_probe":profile==QUERY_CURRENT_HANDLER_METADATA?
                 "c6_linux_current_handler_metadata_probe":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?
                 "c6_linux_unit_operation_manager_metadata_fixture_probe":profile==QUERY_PLACEMENT_HANDLER_METADATA?
                 "c6_linux_placement_handler_metadata_probe":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_probe":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_probe":"c6_linux_movement_cost_probe");
-            int (*admission_begin)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_FULL_MANAGER_FIXTURE?
+            int (*admission_begin)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_UNIT_MOVEMENT_QUERY?
+                "c6_linux_unit_movement_query_profile_admission_begin":profile==QUERY_FULL_MANAGER_FIXTURE?
                 "c6_linux_full_manager_profile_admission_begin":profile==QUERY_CURRENT_HANDLER_METADATA?
                 "c6_linux_current_handler_metadata_admission_begin":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?
                 "c6_linux_unit_operation_manager_metadata_admission_begin":profile==QUERY_PLACEMENT_HANDLER_METADATA?
                 "c6_linux_placement_handler_metadata_admission_begin":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_admission_begin":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_admission_begin":"c6_linux_movement_cost_admission_begin");
-            int (*admission_end)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_FULL_MANAGER_FIXTURE?
+            int (*admission_end)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_UNIT_MOVEMENT_QUERY?
+                "c6_linux_unit_movement_query_profile_admission_end":profile==QUERY_FULL_MANAGER_FIXTURE?
                 "c6_linux_full_manager_profile_admission_end":profile==QUERY_CURRENT_HANDLER_METADATA?
                 "c6_linux_current_handler_metadata_admission_end":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?
                 "c6_linux_unit_operation_manager_metadata_admission_end":profile==QUERY_PLACEMENT_HANDLER_METADATA?
@@ -129,7 +137,7 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
                 "c6_linux_placement_metadata_admission_end":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_admission_end":"c6_linux_movement_cost_admission_end");
             if(!caller_idle||!probe||!admission_begin||!admission_end)query_fatal(profile,
-                profile==QUERY_FULL_MANAGER_FIXTURE?"missing_full_manager_fixture_callback":profile==QUERY_CURRENT_HANDLER_METADATA?"missing_current_handler_metadata_callback":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?"missing_unit_operation_manager_metadata_callback":profile==QUERY_PLACEMENT_HANDLER_METADATA?"missing_placement_handler_metadata_callback":profile==QUERY_PLACEMENT_METADATA?"missing_placement_metadata_callback":profile==QUERY_DOMAIN_METADATA?"missing_domain_metadata_callback":"missing_movement_callback");
+                profile==QUERY_UNIT_MOVEMENT_QUERY?"missing_unit_movement_query_callback":profile==QUERY_FULL_MANAGER_FIXTURE?"missing_full_manager_fixture_callback":profile==QUERY_CURRENT_HANDLER_METADATA?"missing_current_handler_metadata_callback":profile==QUERY_UNIT_OPERATION_MANAGER_METADATA?"missing_unit_operation_manager_metadata_callback":profile==QUERY_PLACEMENT_HANDLER_METADATA?"missing_placement_handler_metadata_callback":profile==QUERY_PLACEMENT_METADATA?"missing_placement_metadata_callback":profile==QUERY_DOMAIN_METADATA?"missing_domain_metadata_callback":"missing_movement_callback");
             if(admission_begin(module,context))query_fatal(profile,"admission_begin_failed");
             if(caller_idle(module,context))query_fatal(profile,"post_cache_not_quiescent");
             result=probe(module,context);
@@ -157,7 +165,7 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
     bool clean=!initialized(controller)&&bound==NULL&&!executing(controller);
     if(movement_cost&&!clean)query_fatal(profile,"uninitialize_not_clean");
     fprintf(stderr,"C6_LINUX_ACTION_LIFECYCLE uninitialize_return initialized %d context_bound %d executing %d cleanup %d dispatch_mode %d requested_execution %d core_component_mode %d\n",initialized(controller),bound!=NULL,executing(controller),clean,dispatch,execute,core_component);
-    trace_result=profile==QUERY_FULL_MANAGER_FIXTURE?trace_end_observational():
+    trace_result=(profile==QUERY_FULL_MANAGER_FIXTURE||profile==QUERY_UNIT_MOVEMENT_QUERY)?trace_end_observational():
         trace_end((dispatch||core_component)&&execute?1:0);
     return result?result:!clean?200:trace_result;
 }
@@ -212,4 +220,10 @@ int c6_linux_action_prepare_current_handler_metadata(void *module,void *context)
  * separate from state observations and never impose pre-query state equality. */
 int c6_linux_action_prepare_full_manager_fixture(void *module,void *context) {
     return prepare(module,context,false,false,false,false,QUERY_FULL_MANAGER_FIXTURE);
+}
+
+/* Movement queries retain their own caller scope. The probe owns any facade
+ * acquisition/release; this wrapper makes no query purity or action claim. */
+int c6_linux_action_prepare_unit_movement_query(void *module,void *context) {
+    return prepare(module,context,false,false,false,false,QUERY_UNIT_MOVEMENT_QUERY);
 }

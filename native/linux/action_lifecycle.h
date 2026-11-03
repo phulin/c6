@@ -28,4 +28,8 @@ int c6_linux_action_prepare_current_handler_metadata(void *module,void *borrowed
  * locked three-/five-argument guards remain inside the probe's facade lifetime.
  * This lifecycle is source preparation, not gameplay/action/turn acceptance. */
 int c6_linux_action_prepare_full_manager_fixture(void *module,void *borrowed_context);
+/* Independent movement query caller scope with two-argument callbacks.
+ * Retained ownership is checked before admission ends and before Uninitialize;
+ * query observations do not establish purity or gameplay/action acceptance. */
+int c6_linux_action_prepare_unit_movement_query(void *module,void *borrowed_context);
 #endif
