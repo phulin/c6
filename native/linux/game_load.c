@@ -145,7 +145,10 @@ int c6_linux_game_load(void *context) {
     const char *repeat=getenv("C6_GAME_SAVE_REPEAT_OUTPUT");
     const char *sized=getenv("C6_GAME_LOAD_EXPECTED_SIZE");
     bool full_manager=getenv("C6_FULL_MANAGER_FIXTURE")!=NULL;
+    bool unit_movement=getenv("C6_UNIT_MOVEMENT_QUERY")!=NULL;
     bool full_manager_returned=false;
+    bool unit_movement_returned=false;
+    if(full_manager&&unit_movement)return 185;
     size_t expected_size=0;
     if(sized){
         char *end=NULL;errno=0;
@@ -154,7 +157,7 @@ int c6_linux_game_load(void *context) {
         expected_size=(size_t)parsed;
     }
     Dl_info module;
-    if(!context || !input || (!full_manager&&(!output||!repeat)) ||
+    if(!context || !input || (!full_manager&&!unit_movement&&(!output||!repeat)) ||
        !dladdr(*(void **)context,&module) || !module.dli_fname)return 160;
     const char *leaf=strrchr(module.dli_fname,'/');
     leaf=leaf?leaf+1:module.dli_fname;
@@ -180,6 +183,7 @@ int c6_linux_game_load(void *context) {
         if(!result && output){
             int saved=c6_linux_context_save(game,context,output);
             if(full_manager)fprintf(stderr,"C6_LINUX_FULL_MANAGER_SAVE diagnostic_before_status %d not_predicate_gate 1\n",saved);
+            else if(unit_movement)fprintf(stderr,"C6_LINUX_UNIT_MOVEMENT_SAVE diagnostic_before_status %d not_query_gate 1\n",saved);
             else result=saved;
         }
         if(!result && getenv("C6_GAME_LOAD_OBSERVE"))result=observe_loaded_state(game,context);
@@ -207,7 +211,14 @@ int c6_linux_game_load(void *context) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
-        if(!result && full_manager) {
+        if(!result && unit_movement) {
+            int (*queries)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_unit_movement_query");
+            if(!queries){
+                fprintf(stderr,"C6_LINUX_UNIT_MOVEMENT_QUERY_LIFECYCLE fatal missing_lifecycle process_discarded 1\n");
+                fflush(stderr);_exit(184);
+            }
+            result=queries(game,context);unit_movement_returned=true;
+        } else if(!result && full_manager) {
             int (*predicate)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_full_manager_fixture");
             if(!predicate){
                 fprintf(stderr,"C6_LINUX_FULL_MANAGER_FIXTURE_LIFECYCLE fatal missing_lifecycle process_discarded 1\n");
@@ -268,9 +279,10 @@ int c6_linux_game_load(void *context) {
             int (*execution_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_execution");
             result=execution_observe?execution_observe(game,context):169;
         }
-        if(repeat&&(!result||full_manager_returned)){
+        if(repeat&&(!result||full_manager_returned||unit_movement_returned)){
             int saved=c6_linux_context_save(game,context,repeat);
             if(full_manager)fprintf(stderr,"C6_LINUX_FULL_MANAGER_SAVE diagnostic_after_status %d not_predicate_gate 1\n",saved);
+            else if(unit_movement)fprintf(stderr,"C6_LINUX_UNIT_MOVEMENT_SAVE diagnostic_after_status %d not_query_gate 1\n",saved);
             else result=saved;
         }
         fprintf(stderr,"C6_LINUX_GAME_LOAD shutdown_enter\n");

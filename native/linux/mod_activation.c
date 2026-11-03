@@ -425,7 +425,7 @@ static int prepare_original_main_thread(void) {
     return (*flags&1)?0:165;
 }
 static int mod_probe_main(int argc,char **argv,char **envp) {
-    if (getenv("C6_CURRENT_HANDLER_METADATA")||getenv("C6_FULL_MANAGER_FIXTURE")) observed_mod_main_tid=syscall(SYS_gettid);
+    if (getenv("C6_CURRENT_HANDLER_METADATA")||getenv("C6_FULL_MANAGER_FIXTURE")||getenv("C6_UNIT_MOVEMENT_QUERY")) observed_mod_main_tid=syscall(SYS_gettid);
     actual_main_argc=argc;
     actual_main_argv=argv;
     (void)envp;
