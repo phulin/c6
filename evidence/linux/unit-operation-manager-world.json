@@ -1,0 +1,410 @@
+{
+  "schema": "c6-linux-unit-operation-manager-world-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "original_execution": false,
+  "methods": [
+    {
+      "name": "IndexList.Read",
+      "address": "0x2c3fac0",
+      "size": 67,
+      "sha256": "469860856d8494b9b1b61725ffddbf58184c9bceae2bbd2827770870f9e5205b"
+    },
+    {
+      "name": "IndexHash.Read",
+      "address": "0x2c3fb20",
+      "size": 149,
+      "sha256": "610cf73f5268b4f5a066c3c69567be2ed1c28e991458aeb7f128c4a3b3f3ea9c"
+    },
+    {
+      "name": "IndexList.Reset",
+      "address": "0x2c3fb10",
+      "size": 5,
+      "sha256": "22d3c6f46ccb861f9cb58deb039521cf102ea09aa55fd7abe060e0af78f1ea6f"
+    },
+    {
+      "name": "IndexList.DoReset",
+      "address": "0x2c3fbd0",
+      "size": 51,
+      "sha256": "a73bf58b8f4686456fb53d6a61112e44df6993edfa62e737f332cbcb6e1891e3"
+    },
+    {
+      "name": "IndexList.Get",
+      "address": "0x2c3fcf0",
+      "size": 4,
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21"
+    },
+    {
+      "name": "BoolVector.Size",
+      "address": "0x2007f30",
+      "size": 4,
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "name": "BoolVector.ConstData",
+      "address": "0x206ffe0",
+      "size": 5,
+      "sha256": "e54001fc66cad199ad6d854687800685c06eab4392fc86a83b8e136df1008f1e"
+    },
+    {
+      "name": "HashToIndex",
+      "address": "0x20e9f70",
+      "size": 34,
+      "sha256": "b1857e1ade1de689270eacaa15b82957c4a6eaccbf045d053fe6771b1017cad5"
+    },
+    {
+      "name": "Operation.FindIndex",
+      "address": "0x2c2c220",
+      "size": 27,
+      "sha256": "0987f96defd19d195435710a642c1e5fcee85058aee80d49076836b0190e8f2d"
+    },
+    {
+      "name": "Operation.IsDisabled",
+      "address": "0x2c297e0",
+      "size": 73,
+      "sha256": "de0f4942cf7c5e7e3e4fb4cd9ea1973ef50dc1b903add1ff673c871556839751"
+    },
+    {
+      "name": "Operation.IsValidIndex",
+      "address": "0x2c2c250",
+      "size": 23,
+      "sha256": "cfae545fe0031fd04ae072a8b013c6d5ba4739a1269f753a10ecc2b12655707f"
+    },
+    {
+      "name": "Operation.ConstAt",
+      "address": "0x2c2c740",
+      "size": 55,
+      "sha256": "e08593a7c1125bb9289d36e04c49770b7015123437fc7e131ea4c5661bfa2258"
+    },
+    {
+      "name": "Definitions.Count",
+      "address": "0x20e9bc0",
+      "size": 5,
+      "sha256": "10b6b99e5adb80723195bcee32ed25b405c7afc2575bdd0d413f2c463cf8de2d"
+    },
+    {
+      "name": "Definitions.Size",
+      "address": "0x20e9bd0",
+      "size": 12,
+      "sha256": "8375e78d364001210bb02186b4a5388e8e09554d7905f614c75f29f2692f7228"
+    },
+    {
+      "name": "Phase.Initialize",
+      "address": "0x2a54700",
+      "size": 181,
+      "sha256": "23621eded7d30d7320575912b08ea3affa64b3112114a84eb7a5a24b24de7147"
+    },
+    {
+      "name": "Phase.Comparator",
+      "address": "0x2a55800",
+      "size": 36,
+      "sha256": "a0e446f71325e9a8ac038ce669e34600daa0f096c7267797d03c819f3e6346de"
+    },
+    {
+      "name": "Phase.GetCurrent",
+      "address": "0x2a55230",
+      "size": 35,
+      "sha256": "234514ebec562e9eaf779528d82ee52914ca963c8b8559bc4ef6469203e72e5e"
+    },
+    {
+      "name": "Phase.Tactical",
+      "address": "0x2a54f30",
+      "size": 37,
+      "sha256": "794ae6ccbdb27984a0baa907c011cab9858884f434482532c7d853791350169b"
+    },
+    {
+      "name": "Phase.GetActive",
+      "address": "0x2a55ba0",
+      "size": 5,
+      "sha256": "b811adb2d88317c4120dc7c33dd574a1678d7f98965dd45cb6cf6745cafe2e73"
+    },
+    {
+      "name": "Phase.GetType",
+      "address": "0x2a55cf0",
+      "size": 4,
+      "sha256": "8e1eb1e8ee76f9d9fd9091b8e14772902a0c006899df4ef599bf389b61b64d35"
+    },
+    {
+      "name": "Phase.GetOrder",
+      "address": "0x2a562c0",
+      "size": 4,
+      "sha256": "de9f36dc140db6f626d63850679aba7ae4d76e6d68a564a1b411de985292fe18"
+    },
+    {
+      "name": "Phase.RowId",
+      "address": "0x23237a0",
+      "size": 4,
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "name": "Segment.RowId",
+      "address": "0x2323810",
+      "size": 4,
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "name": "Segment.Tactical",
+      "address": "0x2a55bc0",
+      "size": 8,
+      "sha256": "06059c117d2525723825777083e470ee9220181f3044fd23f4b764be0ac6b038"
+    },
+    {
+      "name": "Phase.VectorBegin",
+      "address": "0x2a55b60",
+      "size": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "Phase.VectorEnd",
+      "address": "0x2a55b70",
+      "size": 5,
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "name": "Phase.Builder",
+      "address": "0x221a820",
+      "size": 389,
+      "sha256": "2b2569629afa4f05ff751ed87d8ecad015dd04b507d5b74411b7137efd2b5459"
+    },
+    {
+      "name": "Phase.BuilderSql",
+      "address": "0x221a9c0",
+      "size": 8,
+      "sha256": "5f2e3ec97837279b0c7973f1f18441d2f3b86c3e92cbec55b193decd25f61077"
+    },
+    {
+      "name": "Segment.Builder",
+      "address": "0x221aad0",
+      "size": 424,
+      "sha256": "902e20a599d3e8e9028532794282e4d39b8f61c6640343434814d0e6b48110ce"
+    },
+    {
+      "name": "Segment.BuilderSql",
+      "address": "0x221ac90",
+      "size": 8,
+      "sha256": "a0b58ff8f68287a35f3f6451f8cb7f0fe7fa57a36387bc8a414a8e5698cfc853"
+    },
+    {
+      "name": "Phase.ActiveResolver",
+      "address": "0x2272f30",
+      "size": 245,
+      "sha256": "90ae5e43365bd3c5cbacc8999ad6328f5952e30774ceae17fbe2d8df0d5d3e5f"
+    },
+    {
+      "name": "Phase.ActiveSql",
+      "address": "0x2323790",
+      "size": 8,
+      "sha256": "7d6529ffbfc79f249d248423d4ed687d8129683b03581b554d5f2820654f4d2c"
+    },
+    {
+      "name": "Phase.AssignActive",
+      "address": "0x2323800",
+      "size": 5,
+      "sha256": "6b052b6073ac8eb0730958849dd25b6e080178cd182ea1f3a164f8884608afdc"
+    },
+    {
+      "name": "Phase.SetActive",
+      "address": "0x2323820",
+      "size": 5,
+      "sha256": "84653c07fca1d0feeb30649cdb5b6bff351959cf87f7542200eb23c319e3c779"
+    },
+    {
+      "name": "Segment.SetTactical",
+      "address": "0x22731d0",
+      "size": 15,
+      "sha256": "7effd3148f19cc3c93c537209406a75149c58f9eccd97b32c4684f974ff9ecb6"
+    },
+    {
+      "name": "Player.TurnActive",
+      "address": "0x2021030",
+      "size": 7,
+      "sha256": "f44ea052578d46f191ac4e546446f30a3022dc5085b44ee6b9378719eabb8c5b"
+    },
+    {
+      "name": "Player.GetId",
+      "address": "0x1fcc140",
+      "size": 7,
+      "sha256": "e997d06cf0d3f9b3bb89701ec15a7b1b096198fdc4b0dc87fc0ca29c37f6dadc"
+    },
+    {
+      "name": "Global.GetPlayer",
+      "address": "0x290b930",
+      "size": 22,
+      "sha256": "4f70fef1af78b8dea71c792f71f54727722e3e9f4509f9e764e536223739daaf"
+    },
+    {
+      "name": "Game.GetPlayer",
+      "address": "0x2661ae0",
+      "size": 15,
+      "sha256": "07eb0641e390978eef06ae34398421fbd03a7269d9a3beb028451ee230f40061"
+    },
+    {
+      "name": "Game.Paused",
+      "address": "0x281b720",
+      "size": 7,
+      "sha256": "bf1c7941b3b62b57c2112fc90a57e28fbe0b8e7ab2b783e84a7c6731d061630f"
+    },
+    {
+      "name": "Player.ProcessingAutomation",
+      "address": "0x2b5c3c0",
+      "size": 7,
+      "sha256": "750b0f58d460bdbe162c9ce1512bdd6a141a3527ce526bc67ef708695777aafb"
+    },
+    {
+      "name": "Script.GetSystem",
+      "address": "0x2171660",
+      "size": 11,
+      "sha256": "0d5bf15629235063deb60052f71390c42fd80e98a458e0775078bcd7bb77e07e"
+    },
+    {
+      "name": "Config.TurnPhase",
+      "address": "0x28e4870",
+      "size": 51,
+      "sha256": "2ae899c84fc261748e99f2f6198cb0b9c6528623b1268aa8912cd7bfc8e36fc7"
+    },
+    {
+      "name": "Config.Network",
+      "address": "0x28e48b0",
+      "size": 81,
+      "sha256": "a785856ac0f0e8391e79e5cafeb5ee3b889d22211129933e6657a59fb4c4a57e"
+    },
+    {
+      "name": "Player.Instance.IsAlive",
+      "address": "0x2003cb0",
+      "size": 7,
+      "sha256": "3002fe1bd5eaf1a0e1fa05cede54870c8999f7e31479aef1a8dfdcc00460032d"
+    },
+    {
+      "name": "Player bool operator<<",
+      "address": "0x2b502b0",
+      "size": 21,
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "name": "Player bool operator>>",
+      "address": "0x2b50590",
+      "size": 21,
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "name": "Player bool load",
+      "address": "0x2b3e140",
+      "size": 15,
+      "sha256": "6cec740fce0026f8bfec042c04cef3c6787a67ca02d451b186eece9a4c2943ac"
+    },
+    {
+      "name": "Player bool save",
+      "address": "0x2b3e180",
+      "size": 15,
+      "sha256": "52db51217991d6485b972e2fd724ce7fe3c20ab77e9c25fc13ae01d04404515c"
+    },
+    {
+      "name": "Player.Instance.GetTeam",
+      "address": "0x2b31af0",
+      "size": 15,
+      "sha256": "91b3ec5a8477dc9a77ac40ae060e9bd8eef5f4fc57051363a323183f8eea15f9"
+    },
+    {
+      "name": "Player.Instance.IsHuman",
+      "address": "0x2b31530",
+      "size": 32,
+      "sha256": "7b956c7055aea66551b2309c8d001e35a098fc6e19355bd959b5a46241245c95"
+    },
+    {
+      "name": "Configuration.Player.Instance.IsHuman",
+      "address": "0x28ec230",
+      "size": 14,
+      "sha256": "a98088b62436c799ea309acd50c5ee744fd7ad1846e1be89d12429e6ffb9015a"
+    },
+    {
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Instance const&)",
+      "address": "0x2b4ee00",
+      "size": 1679,
+      "sha256": "cbeacc8a90c5fa8853e90d6971174683990e8bbee2c91c00a9be1bb2023d8593"
+    },
+    {
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Instance&)",
+      "address": "0x2b4f490",
+      "size": 3518,
+      "sha256": "6cafd8cbdf97f8acc05be3175d60823c706339e01e84c9b757aa63009ef0f3ed"
+    },
+    {
+      "name": "Unit.PostLoad",
+      "address": "0x2c1c850",
+      "size": 11,
+      "sha256": "5498b517d76fe29a543e1d4169543884d999e1ebf85494e7c05463b47a2d28d8"
+    },
+    {
+      "name": "UnitTypes.Read",
+      "address": "0x2d4ec80",
+      "size": 58,
+      "sha256": "d2f6a44260938ca04b9c2055201efa60f4b0ad7cd539089934501f6a40e139be"
+    },
+    {
+      "name": "UnitTypes.HashToIndex",
+      "address": "0x1ffc120",
+      "size": 34,
+      "sha256": "26ec484a59dc05ceb242dc6d0e5d36fef9e8cfc39abd042b918b16ea8db67122"
+    },
+    {
+      "name": "Unit.Read",
+      "address": "0x2c231f0",
+      "size": 3011,
+      "sha256": "e39f2c7b9a358527bbf3ceed7ff41d9c5f5dccfcf6cb3f5802bafbc0d0f2d202"
+    },
+    {
+      "name": "UnitType.Get",
+      "address": "0x1fe4ef0",
+      "size": 7,
+      "sha256": "110c1e76bddb14dc8632d99b080ee2b717407fc8733d1e38f768c4b8c6d66a73"
+    }
+  ],
+  "checked_call_edges": 76,
+  "dwarf_sha256": "82018620d88bfb16c1692e402d2c3b7b9ba4e4fc8a02b8b9ad9c016ee2a2d401",
+  "source_commit": "7e6421d",
+  "source_sha256": {
+    "crates/c6-data/src/unit_operation_manager.rs": "cd51111d72a42e77991a442b84d52afb7e2ab1311cbab809aceb92dfadf18aae",
+    "crates/c6-data/src/lib.rs": "13fc68887f18a420315bdb39b4cde1c55f413311a0300e603373b7dfb0ec1980"
+  },
+  "audit_sha256": "836c5f18daaf2b485149f80990689a9be7bf65f61eca7e8308a397a567e41d07",
+  "driver_sha256": "ee24ee68a0d86369b574be329cb8a9f171d2000794435ae431ce4b1095d92ff8",
+  "replay_binary_sha256": "4d7391c7592b211fad4c26a4926daaca1b9bf74195b6a22b72178188470b815e",
+  "rules_files": {
+    "configuration.sqlite": "482de044f9a9fbed23b89183359c1b550b61ad2b3dfd33db4a7cc4f3b6e01b65",
+    "gameplay.sqlite": "c880adaedcfd6da7808302b3b76bb9cad7d3188b35ae78e780cff7b56e04477e"
+  },
+  "registry_input_sha256": "d8a43667523e9385bfa9ac35594027609b26d7755551c0bab46d226917899901",
+  "placement_input_sha256": "79167949acf5e3482f0782bcc973b4ef5e56119ef1af0d10771f56b6b62950d0",
+  "canonical_header_core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "units": 1262,
+  "definition_slots": 63,
+  "saved_disabled_pairs": 79506,
+  "unknown_saved_keys": 0,
+  "resulting_true_slots": 0,
+  "all_units_unchanged": true,
+  "phase_slots_reconstructed": 14,
+  "phase_configuration_types": 4,
+  "phase_tactical_false": 10,
+  "actual_configured_phase_captured": false,
+  "players": 43,
+  "human_players": 1,
+  "saved_turn_active_headers": 1,
+  "independent_source_model_equal": true,
+  "native_live_disabled_compared": false,
+  "native_tactical_compared": false,
+  "composite_inputs_are_full_manager_profile": false,
+  "unresolved": [
+    "actual configured/current runtime phase and ordered runtime vector under same context",
+    "current live disabled vector after mutations",
+    "Game pause rawbyte and processingAutomation rawenum",
+    "all Player live-turnactive/header crosschecks",
+    "actual script registration/callback/args/engine-lock effects",
+    "current handler interruption and full requested-handler effects"
+  ],
+  "private_reconstruction_path": "/home/phulin/c6-ghidra/evidence/linux-unit-operation-manager-world/replay-opg46ylc/reconstruction.json",
+  "private_reconstruction_sha256": "01bbd61aab065a63fe46a57c42d464e2ce8813dc6af3f2685c79bb3a1f75f6f9",
+  "full_manager_native_acceptance": false,
+  "complete_state_actions_rng_turns": false,
+  "raw_save_load_difference_bytes": 89198
+}
