@@ -221,7 +221,7 @@ class Tests(unittest.TestCase):
     def test_unexpected_stop_persists_failure_and_leaves_disposal_to_owner(self):
         self.fake_drain(unexpected=True)
 
-    def plan_fixture(self,temp):
+    def plan_fixture(self,temp,mode="source_closed_registry"):
         sources={str((ROOT/name).resolve()):hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in
             [SOURCE,'tools/linux/script_manager_observer.py','tools/linux/script_hks_registry.py',
              'tools/linux/military_observer_runner.py','tools/linux/save_lifecycle_audit.py',
@@ -249,16 +249,16 @@ class Tests(unittest.TestCase):
                                size=row['size'],sha256=hashlib.sha256(raw[offset:offset+row['size']]).hexdigest()))
         marker=next(row for row in contracts if row['name']==producer.MARKER)
         witness=next(row for row in contracts if row['name']=='observed_mod_main_tid')
-        static=dict(schema='c6-linux-full-manager-observer-plan-v1',profile_kind='genuine_lower_core_full_Manager',
+        static=dict(schema='c6-linux-full-manager-observer-plan-v1',profile_kind='genuine_lower_core_full_Manager',observation_mode=mode,
             host='/host',core='/core',preload=str(preload),modules={'/host':{'sha256':HOST_SHA},'/core':{'sha256':GAME_SHA},str(preload):{'sha256':producer.digest(preload)}},
             caller_suffix_frames=[frame(str(preload),123)],marker_relative_address=marker['relative_address'],
             live_bodies=bodies,compiled_symbols=contracts,
-            window_parent_prefixes={name:[[frame('/core',1)]] for name in producer.SITES},
+            window_parent_prefixes={} if mode=='raw_unresolved' else {name:[[frame('/core',1)]] for name in producer.SITES},
             marker_parent_frames={str(phase):[[frame(str(preload),marker['relative_address'])]] for phase in range(1,10)},
             main_entry_witness=dict(module=str(preload),relative_address=witness['relative_address']))
         review=Path(temp)/'review.json'
         packet=dict(schema='c6-linux-full-manager-stack-contract-v1',reviewed_sources=sources,
-            no_VM_or_GC_parent_frames_source_closed=True,**{key:static[key] for key in
+            no_VM_or_GC_parent_frames_source_closed=mode=='source_closed_registry',observation_mode=mode,**{key:static[key] for key in
             ('caller_suffix_frames','window_parent_prefixes','marker_parent_frames','live_bodies','main_entry_witness','compiled_symbols')})
         review.write_text(json.dumps(packet))
         static['stack_contract_review']=dict(path=str(review),sha256=producer.digest(review))
@@ -372,6 +372,57 @@ class Tests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'missing compiled caller'):
                 producer.compiled_contracts(plan,raw)
 
+    def test_raw_plan_needs_no_predicted_HKS_prefix_or_GC_zero(self):
+        with tempfile.TemporaryDirectory(prefix='c6-plan-raw-') as temp:
+            plan=self.plan_fixture(temp,mode='raw_unresolved')
+            self.assertEqual(plan['window_parent_prefixes'],{})
+            producer.validate_plan(plan)
+
+    def test_raw_known_native_context_protocol_never_decodes_HKS(self):
+        memory={};rows=[];base=0x10000000;wrapper=0x9000-152
+        def put(address,raw):
+            memory.update({address+index:byte for index,byte in enumerate(raw)})
+        def q(address,value):put(address,struct.pack('<Q',value))
+        def read(address,size):return bytes(memory[address+index] for index in range(size))
+        put(0x2000,b'CanStartOperation\0');q(0x3000,0x53a63a8)
+        put(0x4000,struct.pack('<QQQBB',0x2000,0x462e7b4,0x5000,0,0))
+        put(0x6000,b'\x00');put(0x7000,bytes(range(128)))
+        q(wrapper+56,base+0x2da22a0);q(wrapper-72,0x36b40e1);q(wrapper-8,base+0x2ce79ff)
+        observer=producer.RawContextTrace(read,rows.append,base)
+        def point(name,**r):
+            r['pc']=producer.SITES[name]+(base if name in producer.GAME_SITES else 0)
+            return observer.observe(name,r,(77,77,0))
+        with mock.patch.object(producer,'Observer',side_effect=AssertionError('HKS decoder must remain suppressed')):
+            point('dispatch',rsp=wrapper,r12=0x2000,r13=0x3000,r15=0x5000,r14=0x6000)
+            point('ccall_entry',rsp=wrapper-72,rdi=0x7000,rsi=0x36b3bc0,rdx=0x4000)
+            point('acquired',rsp=wrapper-96,rbx=0x7000,r14=0x4000,r15=0x36b3bc0)
+            # A nested generic CCall return is retained and does not become the selected result.
+            self.assertEqual(point('protected_return',rsp=wrapper-192,r14=0x4500,rax=9),('resolved','protected_return'))
+            point('resolved',rsp=wrapper-96,rbx=0x7000,r14=0x4000)
+            point('protected_return',rsp=wrapper-96,r14=0x4000,rax=0)
+            point('before_release',rsp=wrapper-96,r14=0x4000,rbx=1)
+            point('released',rsp=wrapper-96,r14=0x4000)
+            point('wrapper_return',rsp=wrapper,rax=0)
+            self.assertTrue(observer.close())
+        encoded=json.dumps(rows)
+        self.assertNotIn('active_lua_parent_frames',encoded)
+        self.assertNotIn('active_gc_parent_frames',encoded)
+        self.assertIn('actual_CCall_state_header_raw',encoded)
+        self.assertTrue(all(not row.get('registry_decoded',False) for row in rows))
+        self.assertTrue(all(not row.get('callback_absence_proven',False) for row in rows))
+
+    def test_raw_partial_internal_unwind_preserved(self):
+        adapter,row=self.real_mapping_adapter()
+        unknown=SimpleNamespace(pc=lambda:0x3000,name=lambda:None,
+            older=lambda:(_ for _ in ()).throw(ValueError('synthetic missing CFI')))
+        adapter.gdb=SimpleNamespace(newest_frame=lambda:SimpleNamespace(pc=lambda:0x1001,name=lambda:'known',older=lambda:unknown))
+        frames=adapter.frame_rows(allow_unresolved=True)
+        self.assertEqual(frames[1]['classification'],'unresolved_parent')
+        self.assertEqual(frames[2]['classification'],'partial_unwind')
+        row['inode']=99
+        with self.assertRaisesRegex(ValueError,'owner'):
+            adapter.frame_rows(allow_unresolved=True)
+
     def test_only_hardware_outer_drain_mutation(self):
         tree=ast.parse((ROOT/SOURCE).read_text())
         stop=next(node for node in ast.walk(tree) if isinstance(node,ast.FunctionDef) and node.name=='stop')
@@ -425,7 +476,7 @@ int main(void){return 0;}
                             outer_drain_only_breakpoint_mutation=True),
                 launch_profile_or_native_capture_created=False,
                 pending=['exact future compiled preload marker/caller/main-entry witness contracts',
-                         'source-closed complete caller and natural-window parent-frame prefixes',
+                         'source-closed compiled caller/main ownership; internal HKS prefixes optional in raw_unresolved',
                          'distinct guard/loader/profile and independent adapter integration review',
                          'sole runner actual native outcomes and all affected callback/state/RNG comparison'],
                 full_manager_native_parity=False,complete_state_actions_rng_turns=False,

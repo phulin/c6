@@ -643,7 +643,7 @@
     "marker_ABI_88_bytes": true,
     "marker_lanes": 1,
     "outer_drain_only_breakpoint_mutation": true,
-    "synthetic_cases": 25
+    "synthetic_cases": 28
   },
   "complete_state_actions_rng_turns": false,
   "full_manager_native_parity": false,
@@ -652,15 +652,15 @@
   "original_execution": false,
   "pending": [
     "exact future compiled preload marker/caller/main-entry witness contracts",
-    "source-closed complete caller and natural-window parent-frame prefixes",
+    "source-closed compiled caller/main ownership; internal HKS prefixes optional in raw_unresolved",
     "distinct guard/loader/profile and independent adapter integration review",
     "sole runner actual native outcomes and all affected callback/state/RNG comparison"
   ],
   "schema": "c6-linux-full-manager-observer-runner-source-v1",
   "sources": {
     "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
-    "tools/linux/full_manager_observer_runner.py": "86c946ddec95d295f1c2a2203b211b17a2eca2ba2bd77c65dca4be2233929d66",
-    "tools/linux/full_manager_observer_runner_audit.py": "4e4dac1b0a2d4e6aa0a1be9fb74c1ec1a66da368b3557ac8cd6eb46ec391e3e2",
+    "tools/linux/full_manager_observer_runner.py": "1fa96f9198e03ebf8e43382103728ba76211883e6d38118dcbbc498481511bd8",
+    "tools/linux/full_manager_observer_runner_audit.py": "98c10c4a61bf6ab97610eb0cb3ad7c43b06acf0e5a1a7127dd3073beb5046818",
     "tools/linux/military_observer_runner.py": "4b61cba5aa3223830388cbca2b8b289741c7517decef52016470d03773a8d3d2",
     "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916",
     "tools/linux/script_can_start_boundary_audit.py": "b8abdc88a1e8d99aeed490e0e43ee4c90c22c8a2c18581f0a431f8da7761f201",

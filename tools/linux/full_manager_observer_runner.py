@@ -149,9 +149,88 @@ class Schedule:
         self.allowed=bool(r['rax']&255)
 
 
+class RawContextTrace:
+    """Known native return/context protocol only; no HKS/registry decoder."""
+    def __init__(self,read,emit,base):
+        self.read,self.emit,self.base=read,emit,base
+        self.expected=('dispatch',);self.call=None;self.ordinal=0;self.failed=False
+    def number(self,address):
+        return struct.unpack('<Q',self.read(address,8))[0]
+    def fail(self,reason):
+        self.failed=True
+        self.emit(dict(event='raw_trace_failure',reason=str(reason),pending_sites=self.expected,
+                       partial_call=self.call,callback_absence_proven=False))
+    def close(self):
+        if self.call is not None:
+            self.fail('terminal incomplete known native CCall/lock interval')
+        self.emit(dict(event='raw_trace_terminal',protocol_complete=not self.failed,
+                       registry_decoded=False,VM_GC_parent_classification='unresolved',
+                       callback_absence_proven=False))
+        return not self.failed
+    def observe(self,name,r,thread,provenance=None):
+        require(name in self.expected,'unmatched raw native checkpoint')
+        require(r['pc']==SITES[name]+(self.base if name in GAME_SITES else 0),'wrong raw native PC')
+        if name=='dispatch':
+            require(self.number(r['rsp']+56)==self.base+0x2da22a0,'wrong actual Manager continuation')
+            require(self.read(r['r12'],18)==b'CanStartOperation\0' and self.number(r['r13'])==0x53a63a8,
+                    'wrong concrete ScriptSystem/event identity')
+            self.ordinal+=1
+            self.call=dict(thread=thread,wrapper_rsp=r['rsp'],args=r['r15'],out=r['r14'],event_pointer=r['r12'])
+            self.expected=('ccall_entry',)
+        else:
+            call=self.call
+            require(thread==call['thread'],'different selected native caller thread')
+            # Nested protected calls may naturally hit the same generic PC.
+            # Retain them without mistaking them for the selected CCall.
+            if name not in ('ccall_entry','wrapper_return') and 'entry_rsp' in call and (
+                    r['rsp']!=call['entry_rsp']-24 or r['r14']!=call['context']):
+                self.emit(dict(event='unattributed_nested_native_checkpoint',checkpoint=name,
+                               registers=r,registry_decoded=False,callback_absence_proven=False))
+                return self.expected
+            if name=='ccall_entry':
+                require(r['rsp']==call['wrapper_rsp']-72 and self.number(r['rsp'])==0x36b40e1 and
+                        self.number(r['rsp']+64)==self.base+0x2ce79ff and r['rsi']==0x36b3bc0,
+                        'wrong concrete CCall frame/return/body')
+                context=self.read(r['rdx'],26)
+                require(struct.unpack_from('<QQQ',context)==(call['event_pointer'],0x462e7b4,call['args']),
+                        'wrong actual named-event context')
+                require(r['rdi']>0,'unsafe null actual CCall state')
+                call.update(entry_rsp=r['rsp'],state=r['rdi'],context=r['rdx'])
+                self.expected=('acquired',)
+            elif name=='acquired':
+                require(r['rbx']==call['state'] and r['r15']==0x36b3bc0,'wrong retained CCall state/body')
+                self.expected=('resolved','protected_return')
+            elif name=='resolved':
+                require(r['rbx']==call['state'],'wrong actual resolved-call state')
+                self.expected=('protected_return',)
+            elif name=='protected_return':
+                call['protected_status_raw_u32']=r['rax']&0xffffffff
+                self.expected=('before_release',)
+            elif name=='before_release':
+                call['protected_success_raw_u8']=r['rbx']&255
+                self.expected=('released',)
+            elif name=='released':
+                self.expected=('wrapper_return',)
+            elif name=='wrapper_return':
+                require(r['rsp']==call['wrapper_rsp'],'wrong native wrapper return stack')
+                self.emit(dict(event='raw_actual_CallTestAll_return',return_bit=bool(r['rax']&255),
+                               out_value_raw=self.read(call['out'],1).hex(),**call,
+                               registry_decoded=False,callback_absence_proven=False))
+                self.call=None;self.expected=('dispatch',)
+            if self.call is not None and name in ('ccall_entry','acquired','resolved','before_release'):
+                self.emit(dict(event='raw_actual_CCall_context',checkpoint=name,
+                    context_raw26=self.read(call['context'],26).hex(),
+                    actual_CCall_state_header_raw=self.read(call['state'],0x80).hex(),
+                    initialized_main_VM_or_GC_safe_proven=False,registry_decoded=False,
+                    VM_GC_parent_classification='unresolved',callback_absence_proven=False))
+        return self.expected
+
+
 def validate_plan(plan):
     require(plan.get('schema')=='c6-linux-full-manager-observer-plan-v1','wrong full Manager plan schema')
     require(plan.get('profile_kind')=='genuine_lower_core_full_Manager','wrong observer profile scope')
+    mode=plan.get('observation_mode')
+    require(mode in ('raw_unresolved','source_closed_registry'),'explicit observation mode required')
     gate=plan['runtime_gate']
     require(digest(gate['report_path'])==gate['report_sha256'],'runtime report changed')
     prepared=json.loads(Path(gate['report_path']).read_text())
@@ -187,14 +266,16 @@ def validate_plan(plan):
     require(plan['modules'][plan['host']]['sha256']==HOST_SHA and plan['modules'][plan['core']]['sha256']==GAME_SHA,
             'wrong original module identities')
     require(plan['caller_suffix_frames'] and plan['live_bodies'],'missing source-reviewed stack/code contracts')
-    require(all(plan['window_parent_prefixes'].get(name) for name in SITES),
-            'missing source-closed natural-window parent prefix')
+    if mode=='source_closed_registry':
+        require(all(plan['window_parent_prefixes'].get(name) for name in SITES),
+                'missing source-closed natural-window parent prefix')
     require(all(plan['marker_parent_frames'].get(str(phase)) for phase in range(1,10)),
             'missing source-closed fixture marker parent frames')
     review=plan['stack_contract_review']
     require(digest(review['path'])==review['sha256'],'compiled caller stack review changed')
     packet=json.loads(Path(review['path']).read_text())
     require(packet['schema']=='c6-linux-full-manager-stack-contract-v1' and
+            packet['observation_mode']==mode and
             packet['caller_suffix_frames']==plan['caller_suffix_frames'] and
             packet['window_parent_prefixes']==plan['window_parent_prefixes'] and
             packet['marker_parent_frames']==plan['marker_parent_frames'] and
@@ -202,7 +283,7 @@ def validate_plan(plan):
             packet['compiled_symbols']==plan['compiled_symbols'] and
             packet['main_entry_witness']==plan['main_entry_witness'] and
             packet['reviewed_sources']==gate['source_files'] and
-            packet['no_VM_or_GC_parent_frames_source_closed'] is True,
+            (mode=='raw_unresolved' or packet['no_VM_or_GC_parent_frames_source_closed'] is True),
             'missing source-closed main-entry/caller stack contract')
     require(any(row['module']==plan['preload'] and row['relative_address']==plan['marker_relative_address']
                 and row['size']>=1 for row in plan['live_bodies']),'compiled marker body contract absent')
@@ -289,6 +370,7 @@ class Adapter:
     def __init__(self,gdb,plan,directory,emit):
         self.gdb,self.plan,self.directory,self.emit=gdb,plan,Path(directory),emit
         self.prepared,self.profile=validate_plan(plan)
+        self.raw_mode=plan['observation_mode']=='raw_unresolved'
         require(not gdb.parameter('non-stop'),'GDB all-stop mode required')
         self.pid=gdb.selected_inferior().pid
         require(self.pid>0,'no original inferior')
@@ -314,7 +396,8 @@ class Adapter:
         self.marker_row=None
         self.pre_lock=None
         self.body_gate()
-        self.observer=Observer(self.read,emit,self.base,self.profile,self.directory/'images')
+        self.observer=(RawContextTrace(self.read,emit,self.base) if self.raw_mode else
+                       Observer(self.read,emit,self.base,self.profile,self.directory/'images'))
 
     def mappings(self):
         result=[]
@@ -394,19 +477,35 @@ class Adapter:
             require(hashlib.sha256(self.executable(row['module'],address,row['size'])).hexdigest()==row['sha256'],
                     'live method/marker/trampoline body changed: '+row['name'])
 
-    def frame_rows(self):
+    def frame_rows(self,allow_unresolved=False):
         self.stopped()
         frame=self.gdb.newest_frame()
         result=[]
         while frame is not None:
-            require(len(result)<128,'unwind exceeds bounded frame depth')
-            pc=int(frame.pc())
+            try:
+                require(len(result)<128,'unwind exceeds bounded frame depth')
+                pc=int(frame.pc());name=frame.name()
+            except Exception as error:
+                if not allow_unresolved:
+                    raise
+                result.append(dict(pc=None,module=None,relative_pc=None,classification='partial_unwind',reason=str(error)))
+                break
             matches=[row for row in self.mappings() if row['low']<=pc<row['high'] and 'x' in row['permissions']]
-            require(len(matches)==1 and matches[0]['path'] in self.bias,'unknown/unpinned executable parent frame')
-            path=matches[0]['path']
-            self.executable(path,pc,1)
-            result.append(dict(pc=pc,module=path,relative_pc=pc-self.bias[path],name=frame.name()))
-            frame=frame.older()
+            if len(matches)==1 and matches[0]['path'] in self.bias:
+                path=matches[0]['path']
+                self.executable(path,pc,1) # known-owner mapping failures remain fatal
+                result.append(dict(pc=pc,module=path,relative_pc=pc-self.bias[path],name=name))
+            else:
+                require(allow_unresolved,'unknown/unpinned executable parent frame')
+                result.append(dict(pc=pc,module=matches[0]['path'] if len(matches)==1 else None,
+                                   relative_pc=None,name=name,classification='unresolved_parent'))
+            try:
+                frame=frame.older()
+            except Exception as error:
+                if not allow_unresolved:
+                    raise
+                result.append(dict(pc=None,module=None,relative_pc=None,classification='partial_unwind',reason=str(error)))
+                break
         require(result,'empty actual unwind')
         return result
 
@@ -419,7 +518,10 @@ class Adapter:
 
     def checkpoint(self,name,r,thread):
         self.stopped()
-        frames=self.frame_rows()
+        target_module=(self.plan['preload'] if name in ('marker','manager_return') else
+                       self.plan['core'] if name in GAME_SITES or name=='manager_entry' else self.plan['host'])
+        self.executable(target_module,r['pc'],1)
+        frames=self.frame_rows(allow_unresolved=self.raw_mode and name not in ('marker','manager_entry','manager_return'))
         require(self.marker_thread is None or thread==self.marker_thread,'different thread than original caller marker')
         self.emit(dict(event='checkpoint',checkpoint=name,registers=r,thread=list(thread),frames=frames))
         if name=='marker':
@@ -473,32 +575,57 @@ class Adapter:
                            callback_absence_proven=False))
         else:
             require(self.schedule.manager_active,'Lua point outside genuine selected Manager invocation')
-            index=self.frames.descendant(frames)
+            index=None
+            try:
+                index=self.frames.descendant(frames)
+            except ValueError:
+                if not self.raw_mode:
+                    raise
             prefixes=self.plan['window_parent_prefixes'].get(name,[])
-            require(prefixes and any(len(prefix)==index+1 and
+            classified=bool(index is not None and prefixes and any(len(prefix)==index+1 and
                     all(same_frame(actual,expected) for actual,expected in zip(frames,prefix))
-                    for prefix in prefixes),
-                    'actual protected/VM/GC parent prefix differs from source-closed window')
+                    for prefix in prefixes))
+            if not self.raw_mode:
+                require(classified,'actual protected/VM/GC parent prefix differs from source-closed window')
+            self.emit(dict(event='actual_protected_parent_prefix',checkpoint=name,
+                           frames=frames[:index+1] if index is not None else frames,
+                           source_closed=classified,VM_GC_classification='source_closed' if classified else 'unresolved',
+                           registry_decoding_enabled=not self.raw_mode))
             if name=='dispatch':
-                require(index==1,'unexpected wrapper/Manager parent chain')
+                # Pinned Manager prologue (48+40), call (8), wrapper (56).
+                # This identifies the selected outer Manager even when an
+                # internal HKS unwind is incomplete or a nested query exists.
+                require(r['rsp']==self.schedule.entry_rsp-152,'dispatch is not selected outer Manager stack')
+                if not self.raw_mode:
+                    require(index==1,'unexpected wrapper/Manager parent chain')
             if name=='ccall_entry':
-                require(index==3 and frames[1]['pc']==0x36b40e1 and
-                        frames[2]['pc']==self.base+0x2ce79ff,'concrete CCall direct parents differ')
+                if not self.raw_mode:
+                    require(index==3 and frames[1]['pc']==0x36b40e1 and
+                            frames[2]['pc']==self.base+0x2ce79ff,'concrete CCall direct parents differ')
                 self.pre_lock=self.lua_lock()
-                require(self.pre_lock['recursion']==0 and self.pre_lock['owner_ASL_ThreadHANDLE_pointer']==0 and
-                        self.pre_lock['pthread_mutex_pointer']!=0,'unwitnessed parent Lua ownership')
+                if not self.raw_mode:
+                    require(self.pre_lock['recursion']==0 and self.pre_lock['owner_ASL_ThreadHANDLE_pointer']==0 and
+                            self.pre_lock['pthread_mutex_pointer']!=0,'unwitnessed parent Lua ownership')
                 self.emit(dict(event='before_original_Lua_acquisition',**self.pre_lock))
             if name=='acquired':
                 lock=self.lua_lock()
-                require(self.pre_lock is not None and lock['recursion']==1 and
-                        lock['owner_ASL_ThreadHANDLE_pointer']!=0 and
-                        lock['pthread_mutex_pointer']==self.pre_lock['pthread_mutex_pointer'],
-                        'original Lua acquisition/mutex provenance differs')
-                self.emit(dict(event='original_Lua_acquired',**lock,owner_is_OS_or_core_thread_ID=False))
-            provenance=dict(configuration_sha256=self.profile,scope='genuine_lower_core_full_Manager',
-                            all_threads_stopped=True,active_lua_parent_frames=0,active_gc_parent_frames=0,
-                            actual_complete_parent_frames=frames,
-                            source_review_sha256=self.plan['stack_contract_review']['sha256'])
+                if not self.raw_mode:
+                    require(self.pre_lock is not None and lock['recursion']==1 and
+                            lock['owner_ASL_ThreadHANDLE_pointer']!=0 and
+                            lock['pthread_mutex_pointer']==self.pre_lock['pthread_mutex_pointer'],
+                            'original Lua acquisition/mutex provenance differs')
+                self.emit(dict(event='original_Lua_Enter_returned' if self.raw_mode else 'original_Lua_acquired',
+                               **lock,owner_is_OS_or_core_thread_ID=False,
+                               ownership_transition_classification='unresolved' if self.raw_mode else 'source_closed_baseline'))
+            provenance=None
+            if not self.raw_mode:
+                provenance=dict(configuration_sha256=self.profile,scope='genuine_lower_core_full_Manager',
+                                all_threads_stopped=True,active_lua_parent_frames=0,active_gc_parent_frames=0,
+                                actual_complete_parent_frames=frames,
+                                source_review_sha256=self.plan['stack_contract_review']['sha256'])
+            if self.raw_mode and name in ('before_release','released'):
+                self.emit(dict(event='raw_original_Lua_release_endpoint',checkpoint=name,**self.lua_lock(),
+                               ownership_transition_classification='unresolved',registry_decoded=False))
             next_sites=self.observer.observe(name,r,thread,provenance)
             self.schedule.script(name,next_sites)
 
@@ -507,7 +634,8 @@ class Adapter:
                 'incomplete original fixture/Manager/observer lifetime')
         require(self.observer.close(),'producer observer terminal refusal')
         self.emit(dict(event='adapter_terminal',natural_Lua_calls=self.observer.ordinal,
-                       registry_images_captured=self.observer.ordinal>0,callback_effects_accepted=False,
+                       registry_images_captured=not self.raw_mode and self.observer.ordinal>0,
+                       observation_mode=self.plan['observation_mode'],callback_effects_accepted=False,
                        callback_absence_proven=False,native_parity_accepted=False))
 
 
