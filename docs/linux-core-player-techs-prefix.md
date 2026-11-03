@@ -1,0 +1,11 @@
+# Direct Core prefix through first Player Techs
+
+Source checkpoint: `core_stream::ThroughFirstPlayer` now composes all known schemas through the first Player's complete Techs component and returns the explicit **Player.Treasury** boundary. The source implementation is `bbc689a`; independently accepted composition/codecs are recorded by `f8f721d`, `8e303f1` and `9cbc3fd`. This still leaves all 43 Player entries unfinished. No complete world, native Read application, gameplay action or turn support is claimed.
+
+The separate driver and audit are committed before the producer run. The audit refuses a shared-workspace build: it requires an isolated archive, an explicit source commit and a read-only repository used to verify every Rust/Cargo and Python audit source blob against that commit. Asset modules and canonical saved-record inputs are independently hash gated. No posthoc recovery from a mutable tree is permitted for this profile.
+
+The completed independent source proof on both original streams gives absolute cursor **5,007,288**, post-Map bytes **311,424**, dynamic post-Map items **46,881**, and total items **2,004,977**. Treasury's native entry matches this cursor. The earlier internal Resources end **5,002,571** remains checked. Entire post-Map SHA-256 is `3c95e4082d1183ad429e0de654ee945984b7766d978e99723cfb607a3c04cfeb`. These are validation outputs, never parser constants.
+
+The driver adds exact shared/Player byte/item limits and one-short rejection checks to the whole-input byte roundtrip. The audit independently compares every new component's complete original bytes plus acquired-tech hash/bool pairs. Native owner cuts are validation-only and never enter the library. Unknown tail bytes remain borrowed and unmasked; the full original Save→Load difference is still **89,198 bytes**.
+
+Producer report/candidate metadata will be added after the committed isolated run. Existing Cities/Districts/Culture profiles remain immutable. Native player validity, configuration Team/SlotStatus, separate Game.DiplomaticRelations, definition remapping, native Read fixups and all gameplay RNG remain independent requirements. Allocation policies remain component-specific and explicit; addressable typed storage is not silently conflated with serialized bytes. The library executes no native AI policy choices or UI bootstrap.
