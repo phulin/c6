@@ -27,7 +27,7 @@ ADMISSION = {
     'successor_manifest_sha256': '85510356806319f5ed77e639649caf4034a3bbf3511699695cc80cc674355132',
     'preload_sha256': '942f32dc44136714f7d9abddc0d3a77a2a65d2fbfe5e70a4b9219d96240c6a93',
     'native_source_commit': 'b6b3143',
-    'runtime_sha256': None,
+    'runtime_sha256': '797da02551d12f3da75e7b5fe9b75a1808faf09d25cfc0c66e9875d3bc3f2b47',
 }
 
 
