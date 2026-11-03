@@ -1,0 +1,475 @@
+{
+  "schema": "c6-linux-unit-operation-aftermath-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "static_only": true,
+  "native_execution": false,
+  "source_sha256": "4f081cb5572311d8029e25001c7c40ebdd52a71a4b0e644ec176825211af8553",
+  "audit_sha256": "77915517a0c105ae1c2fc0253466c35ac9fc9887d2865b359eacb44f05077f63",
+  "inherited_branches_sha256": "580745fd4028d7011c9da658428bd2e1770b5bbfdd5cc2e01caa43b874545d34",
+  "methods": [
+    {
+      "name": "UnitOperation.Execute",
+      "rva": "0x2d28a00",
+      "bytes": 176,
+      "sha256": "5855bdbd2ae7837445bd71020d7b9f11f713997b487f3ba8b5dfc65c7d046e26"
+    },
+    {
+      "name": "Diplomacy.ProcessPending",
+      "rva": "0x2913510",
+      "bytes": 178,
+      "sha256": "ed5dc2a1bf712220260dc946a9e16358d750f0b35b407e563edf790c9f3e2f57"
+    },
+    {
+      "name": "Diplomacy.ProcessPendingSessionStatement",
+      "rva": "0x2911900",
+      "bytes": 166,
+      "sha256": "6fd2f96ae52b08c464dc928bc908bb511d6f8f15294a467a46e609c010316b7e"
+    },
+    {
+      "name": "Session.RemoveNextPendingStatement",
+      "rva": "0x2917270",
+      "bytes": 227,
+      "sha256": "248c35ba6a613b87fb070882bdc1e2d0fd03f2a2b77fbd358d264ab158ad74f1"
+    },
+    {
+      "name": "Player.UpdateEndTurnBlocking",
+      "rva": "0x2b5bd70",
+      "bytes": 155,
+      "sha256": "8f538f3279686211e26ca7d445cb225beb6a031bba7198eb033ca942cce207f5"
+    },
+    {
+      "name": "Player.SetEndTurnBlocking",
+      "rva": "0x2b5be10",
+      "bytes": 82,
+      "sha256": "e20044c8a217e29d4f7fc297bffbfe836f656c7b99b7ed7db376bef55f18d521"
+    },
+    {
+      "name": "Notification.Update",
+      "rva": "0x2d2f360",
+      "bytes": 103,
+      "sha256": "58ea20bc985c8329a6026aba44f6f333bbac22709a3b308e93667c772fb73d2a"
+    },
+    {
+      "name": "Notification.SendAutoNotify",
+      "rva": "0x2d2f4b0",
+      "bytes": 236,
+      "sha256": "f5fb1fb0d34e558a55fd16682cdbcdb260abaea93799e353155e51cfeddf89ab"
+    },
+    {
+      "name": "Notification.ProcessAutoActivate",
+      "rva": "0x2d2f5a0",
+      "bytes": 151,
+      "sha256": "b920adcb274714c96a02dbb4498d7348a2b39849645faffc124dba1fe542b294"
+    },
+    {
+      "name": "PlayerNotifications.GetBlocking",
+      "rva": "0x2d31060",
+      "bytes": 201,
+      "sha256": "261606a6e330578b124b6d16e439e042ab07ed740c1761f14d657bb338f795d4"
+    },
+    {
+      "name": "PlayerNotifications.DismissExpired",
+      "rva": "0x2d31130",
+      "bytes": 161,
+      "sha256": "0b3f5b2ecb7b0630c573b8a2ed6c3c37cf8a65da5f6f630a1d0a471f807dca45"
+    },
+    {
+      "name": "Instance.IsExpired",
+      "rva": "0x2d2e250",
+      "bytes": 50,
+      "sha256": "7abbd8a56f6b5af7410114d7cd39d0002d468c4bec00ff3683fab8640d8d66a7"
+    }
+  ],
+  "branch_checks": [
+    {
+      "rva": "0x2b5bdb5",
+      "bytes": "7546",
+      "meaning": "Owner turn-complete skips notification Update"
+    },
+    {
+      "rva": "0x2d2f006",
+      "bytes": "ff5050",
+      "meaning": "AcceptsNotifications calls IsInitialized virtual slot50"
+    },
+    {
+      "rva": "0x2d2f00b",
+      "bytes": "7411",
+      "meaning": "Uninitialized rejects notifications"
+    },
+    {
+      "rva": "0x2d2f01c",
+      "bytes": "7404",
+      "meaning": "Non-uninitializing game continues to human configuration predicate"
+    },
+    {
+      "rva": "0x2d2f36b",
+      "bytes": "ff9010010000",
+      "meaning": "Update begins SendAutoNotify"
+    },
+    {
+      "rva": "0x2d2f380",
+      "bytes": "7412",
+      "meaning": "Non-PlayByCloud permits autoactivation"
+    },
+    {
+      "rva": "0x2d2f389",
+      "bytes": "7417",
+      "meaning": "PlayByCloud missing game skips autoactivation"
+    },
+    {
+      "rva": "0x2d2f392",
+      "bytes": "750e",
+      "meaning": "PlayByCloud nonlocal owner skips autoactivation"
+    },
+    {
+      "rva": "0x2d2f39c",
+      "bytes": "ff9018010000",
+      "meaning": "Conditional ProcessAutoActivate"
+    },
+    {
+      "rva": "0x2d2f3aa",
+      "bytes": "ff9008010000",
+      "meaning": "Update then DismissExpired"
+    },
+    {
+      "rva": "0x2d2f3b3",
+      "bytes": "488b8020010000",
+      "meaning": "Update tail invokes Cleanup"
+    },
+    {
+      "rva": "0x2d2f5bd",
+      "bytes": "ff5068",
+      "meaning": "ProcessAutoActivate requires AcceptsNotifications"
+    },
+    {
+      "rva": "0x2d2f5c2",
+      "bytes": "7468",
+      "meaning": "Rejected notifications stop activation pass"
+    },
+    {
+      "rva": "0x2d2f5dd",
+      "bytes": "744d",
+      "meaning": "Inactive player stops activation pass"
+    },
+    {
+      "rva": "0x2d2f5f7",
+      "bytes": "8d2c40",
+      "meaning": "Severity threshold equals network multiplayer bool times3"
+    },
+    {
+      "rva": "0x2d2f603",
+      "bytes": "31f6",
+      "meaning": "Virtual Activate receives false"
+    },
+    {
+      "rva": "0x2d2f608",
+      "bytes": "ff9088000000",
+      "meaning": "Invoke candidate actual Activate virtual slot88"
+    },
+    {
+      "rva": "0x2d2f62a",
+      "bytes": "74d4",
+      "meaning": "Unlocked candidate activates then selection repeats; locked stops"
+    },
+    {
+      "rva": "0x2d30f44",
+      "bytes": "be6f9762c3",
+      "meaning": "Optional severity override keyc362976f"
+    },
+    {
+      "rva": "0x2d30f6e",
+      "bytes": "7505",
+      "meaning": "True override bypasses signed severity comparison"
+    },
+    {
+      "rva": "0x2d30f73",
+      "bytes": "7c2b",
+      "meaning": "Signed below-threshold severity rejects candidate"
+    },
+    {
+      "rva": "0x2d30f7f",
+      "bytes": "753d",
+      "meaning": "Eligible locked record returns immediately"
+    },
+    {
+      "rva": "0x2d30f84",
+      "bytes": "751a",
+      "meaning": "Keep first eligible unlocked candidate"
+    },
+    {
+      "rva": "0x2d30f90",
+      "bytes": "4c0f44ed",
+      "meaning": "Retain candidate only when HasBeenActivated is false"
+    },
+    {
+      "rva": "0x2d30fbb",
+      "bytes": "4c89ed",
+      "meaning": "Return retained candidate after complete scan"
+    },
+    {
+      "rva": "0x2d2e200",
+      "bytes": "753d",
+      "meaning": "IsAutoActivate returns true for already-activated record"
+    },
+    {
+      "rva": "0x2d2e211",
+      "bytes": "7521",
+      "meaning": "Network case uses native19d flag"
+    },
+    {
+      "rva": "0x2d2e232",
+      "bytes": "740b",
+      "meaning": "Non-network existing definition without single-player icon returns true"
+    },
+    {
+      "rva": "0x2d2e234",
+      "bytes": "80bb9d01000000",
+      "meaning": "Remaining IsAutoActivate cases use native bool19d"
+    },
+    {
+      "rva": "0x2d31195",
+      "bytes": "7519",
+      "meaning": "DismissExpired skips already-dismissed record"
+    },
+    {
+      "rva": "0x2d3119d",
+      "bytes": "ff5028",
+      "meaning": "Call actual virtual expiration predicate"
+    },
+    {
+      "rva": "0x2d311a2",
+      "bytes": "740c",
+      "meaning": "Not expired advances without Dismiss"
+    },
+    {
+      "rva": "0x2d311aa",
+      "bytes": "ff9098000000",
+      "meaning": "Expired invokes actual virtual Dismiss"
+    },
+    {
+      "rva": "0x2d31245",
+      "bytes": "7439",
+      "meaning": "Cleanup retains non-dismissed record"
+    },
+    {
+      "rva": "0x2d31252",
+      "bytes": "ff5020",
+      "meaning": "Cleanup calls actual virtual Release before erase"
+    },
+    {
+      "rva": "0x2b5be22",
+      "bytes": "7435",
+      "meaning": "Equal blocking state skips store and report"
+    },
+    {
+      "rva": "0x2b5be24",
+      "bytes": "899fa8070000",
+      "meaning": "Store new blocking state at native7a8"
+    },
+    {
+      "rva": "0x2b5be3a",
+      "bytes": "751d",
+      "meaning": "Nonlocal owner skips blocking-change report"
+    },
+    {
+      "rva": "0x2b5be41",
+      "bytes": "be7b5af155",
+      "meaning": "Blocking-change report type55f15a7b"
+    },
+    {
+      "rva": "0x2913584",
+      "bytes": "beffffffff",
+      "meaning": "ProcessPending other-player sentinel -1"
+    },
+    {
+      "rva": "0x2913589",
+      "bytes": "ba01000000",
+      "meaning": "ProcessPending OUTGOING direction 1"
+    },
+    {
+      "rva": "0x2913595",
+      "bytes": "ebe9",
+      "meaning": "Drain repeats without another IsAI getter"
+    },
+    {
+      "rva": "0x2911920",
+      "bytes": "83fb01",
+      "meaning": "Manager outgoing direction check"
+    },
+    {
+      "rva": "0x2911941",
+      "bytes": "4183feff",
+      "meaning": "Manager optional other-player sentinel"
+    },
+    {
+      "rva": "0x2911984",
+      "bytes": "7514",
+      "meaning": "Removed statement enters ProcessStatement"
+    },
+    {
+      "rva": "0x2917287",
+      "bytes": "83f901",
+      "meaning": "Removal supports outgoing direction only"
+    },
+    {
+      "rva": "0x29172e3",
+      "bytes": "4439f8",
+      "meaning": "Removal requires statement source player"
+    },
+    {
+      "rva": "0x29172ec",
+      "bytes": "7443",
+      "meaning": "Any destination short-circuits GetToPlayer"
+    },
+    {
+      "rva": "0x2917351",
+      "bytes": "ebcc",
+      "meaning": "Return removed pointer after list erase"
+    },
+    {
+      "rva": "0x2d2f51a",
+      "bytes": "b9010000004531c0",
+      "meaning": "Create(hash,owner,true,null)"
+    },
+    {
+      "rva": "0x2d2f52a",
+      "bytes": "ff93d0000000",
+      "meaning": "Actual manager Create virtual"
+    },
+    {
+      "rva": "0x2d2f536",
+      "bytes": "7448",
+      "meaning": "Null factory result advances"
+    },
+    {
+      "rva": "0x2d2f556",
+      "bytes": "7408",
+      "meaning": "Redundancy selects release versus send/Add"
+    },
+    {
+      "rva": "0x2d2f55b",
+      "bytes": "ff5120",
+      "meaning": "Redundant release virtual"
+    },
+    {
+      "rva": "0x2d2f563",
+      "bytes": "ff9180000000",
+      "meaning": "Nonredundant Send virtual before Add"
+    },
+    {
+      "rva": "0x2d310c1",
+      "bytes": "ff5030",
+      "meaning": "Blocking calls actual IsNeeded"
+    },
+    {
+      "rva": "0x2d310ce",
+      "bytes": "ff5050",
+      "meaning": "Blocking checks actual blocking getter"
+    },
+    {
+      "rva": "0x2d310ee",
+      "bytes": "7603",
+      "meaning": "Unsigned severity ties retain first candidate"
+    },
+    {
+      "rva": "0x2d31115",
+      "bytes": "ff5050",
+      "meaning": "Selected blocking getter re-evaluated"
+    },
+    {
+      "rva": "0x2d2e26b",
+      "bytes": "8b8b8c010000038b88010000",
+      "meaning": "Expiry wrapping delta plus added"
+    },
+    {
+      "rva": "0x2d2e279",
+      "bytes": "0f9dc0",
+      "meaning": "Expiry signed current-turn comparison"
+    }
+  ],
+  "calls": [
+    {
+      "rva": "0x2d28a8c",
+      "target": "0x1f2e780",
+      "meaning": "Mandatory ProcessPending after Add"
+    },
+    {
+      "rva": "0x2913533",
+      "target": "0x1f07a60",
+      "meaning": "Copy ever-alive player handle vector"
+    },
+    {
+      "rva": "0x2913579",
+      "target": "0x1f5f8e0",
+      "meaning": "Read current IsAI once per player"
+    },
+    {
+      "rva": "0x2913590",
+      "target": "0x1f04c20",
+      "meaning": "Repeated ProcessPendingSessionStatement"
+    },
+    {
+      "rva": "0x291197c",
+      "target": "0x1f48180",
+      "meaning": "Remove before processing statement"
+    },
+    {
+      "rva": "0x291199d",
+      "target": "0x1f3ccf0",
+      "meaning": "ProcessStatement provider"
+    },
+    {
+      "rva": "0x29172de",
+      "target": "0x1f70bb0",
+      "meaning": "Statement GetFromPlayer"
+    },
+    {
+      "rva": "0x29172f1",
+      "target": "0x1f72ac0",
+      "meaning": "Statement GetToPlayer"
+    },
+    {
+      "rva": "0x291734c",
+      "target": "0x1fae2d0",
+      "meaning": "Erase pending list node"
+    },
+    {
+      "rva": "0x2d2f572",
+      "target": "0x1e19180",
+      "meaning": "Add after Send"
+    },
+    {
+      "rva": "0x2b5be54",
+      "target": "0x1e8db60",
+      "meaning": "Blocking changed Type,int,int overload"
+    }
+  ],
+  "implemented": [
+    "Outgoing pending-statement first matching removal and ordered live session drain",
+    "Full notification Update control order including factory/null/redundancy branches",
+    "Live post-callback cloud gate and activation rescan control",
+    "Expiration scan with dismissed short circuit and next-link read after callback",
+    "Unsigned severity first-tie blocking reduction and final virtual getter reread",
+    "Owner complete gate, post-update reduction, store-before-local-report ordering",
+    "Verified base IsExpired wrapping signed arithmetic helper"
+  ],
+  "providers_required": [
+    "Actual ever-alive player handle inventory and mutable IsAI state",
+    "Full statement identities/payload/ownership, ProcessStatement routing/history/subtypes/RNG and external decisions",
+    "Actual definition array, factory registration and subtype Create/Send/Add/Release",
+    "Actual notification list links, virtual predicates and activation/dismissal effects",
+    "Actual manager/configuration/player live gates and owner blocking storage",
+    "Reporting/cache/translator/prepublish/queued-event consumers and complete state/RNG effects"
+  ],
+  "reuse": "Selection and logical cleanup providers may use notification_lifecycle only for its verified profile; combined activation_and_cleanup cannot replace Update.",
+  "next_provider_closure": "Bind captured owner notification objects to concrete expiry/needed/blocking virtual methods with live +130 blocking and actual current-turn input, then close SendAutoNotify factory inventory.",
+  "rollback": "Only after_add with fully isolated owned Clone; lower level functions can mutate before error. Native/global/shared effects are outside clone isolation.",
+  "request_order": "Prior TurnUnready and manager Add belong to caller. This boundary always follows Add when Execute found a unit, including rejected Add. No whole request/action implemented.",
+  "native_boundary_matrix_complete": false,
+  "actual_provider_parity": false,
+  "complete_affected_state_rng_parity": false,
+  "full_action_turn_parity": false,
+  "historical_save_load_raw_difference_unclassified_bytes": 89198,
+  "attribution": "docs/reference.md; exact target bytes authoritative; no original code executed."
+}
