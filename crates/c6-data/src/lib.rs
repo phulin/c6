@@ -10,6 +10,7 @@ pub mod city_movement;
 pub mod loaded_actions;
 pub mod movement;
 pub mod registry;
+pub mod unit_initialization_definitions;
 pub mod unit_operation_manager;
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
