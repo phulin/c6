@@ -1,0 +1,44 @@
+# Linux Manager CanStart provider contract
+
+`skip_turn::legality::manager_can_start` implements the complete target Linux XP2 Manager::CanStart control flow, with explicit fallible live providers. It also implements the original current-operation interruption branching. This is a source-backed predicate/provider contract, **not native Manager parity or accepted action execution**. Concrete phase/player/script/disabled-operation/plot/registered-handler providers remain required; none has a default implementation. Full gameplay state, actions, all RNG and turns remain unimplemented.
+
+The target is the supplied Linux XP2 module SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`. Target symbols, full original method bytes and existing [SkipTurn](linux-skip-turn.md), [handler legality](linux-unit-operation-legality.md) and [registry](linux-operation-registry.md) evidence establish the contracts. Raw method inspection stays under `../c6-ghidra/evidence/linux-unit-operation-manager/`; the public report contains identities and conclusions only. Historical cru121 material remains discovery-only under [existing attribution](reference.md).
+
+The manager at `0x2da20f0` executes the following order:
+
+1. Reject a signed positive operation timer, including for visible-only queries.
+2. Unless visible-only, read the Unit owner and query tactical-command permission. Rejection stops before Player lookup.
+3. Read the owner again and retain the actual original Player receiver. For visible-only, still obtain the original Game receiver and proceed. Otherwise require active turn or equality between automation-processing player and the retained Player's actual ID. Obtain Game before querying that Player's human flag; only a human queries and rejects paused state.
+4. Read the operation queue. A nonempty queue queries original current-operation interruption using the requested runtime ID at that boundary.
+5. Reread the requested runtime ID and query disabled-operation state.
+6. Resolve the actual script system. If present, construct an original args handle, push current owner, current Unit ID bits as signed int, and current requested runtime ID in that order. Call `CallTestAll("CanStartOperation", args, false)`, destroy the handle, then veto only when the call-return bit is true and the pre-destruction out-value is false.
+7. Use the supplied Plot receiver if present. Otherwise query the Unit's current Plot after script destruction and reject null.
+8. Reread the requested runtime ID, obtain its actual registered handler, then invoke its CanStart with the referenced operation, selected Plot, unchanged visible-only flag and original optional results receiver.
+
+Visible-only bypasses tactical, active-turn/automation and human-pause gates. It does not bypass busy, interruption, disabled operations, script calls, plot resolution or handler checks. Movement is not an additional manager gate. A provided Plot is retained across script effects, while fallback current Plot is resolved afterward. A script that changes timer or owner does not cause earlier gates or retained Player lookup to rerun.
+
+`ManagerOperation<P>` holds live numeric runtime identity, directive, typed parameters and flags. This is separate from serialized `OperationNode::operation_hash`; no fixed SkipTurn runtime ID is assumed. Pure queue hash-to-runtime translation must use actual loaded registration identity and fail when unavailable. `ManagerUnitState` is implemented directly over typed `Unit` timer/owner/ID/queue fields; its getter methods must remain pure. The smaller test subject exercises ordering, not native object reconstruction.
+
+Original CanCurrentOperationBeInterrupted at `0x2da2a60` permits an empty queue, null front, or current runtime ID equal to the captured requested ID. Otherwise it borrows the current operation's actual handler; a missing current handler permits interruption, while an existing handler dispatches its CanBeInterrupted virtual. The requested operation's handler does not answer this question. The reference SkipTurn binding uses BaseHandler::CanBeInterrupted (`0x2d95660`), which returns true; other handlers remain actual provider obligations. The generic orchestration assumes the verified original Manager override, rather than silently replacing an unknown Manager virtual implementation.
+
+The target IsOperationDisabled (`0x2c297e0`) first obtains operation definitions and FindIndex, then tests the live disabled IndexList's validity and value. Invalid index returns false in this original method. A wire hash/boolean list alone is not sufficient evidence for its live identity mapping, validity/capacity or default behavior; the corresponding provider remains explicit.
+
+IsAllowTacticalCommands (`0x2a54f30`) does not consume its PlayerTypes parameter in this target. It obtains current phase definition and active segment; missing either returns true, otherwise it calls the segment's tactical flag. The provider must preserve actual phase/definition identity rather than treating this as a supplied admission boolean. Turn-active, automation-processing, Player human and Game pause getters are separately pinned and separately queried, preserving receiver retention and conditional calls.
+
+Script providers retain the actual allocation and callback boundaries. Args constructor (`0x2d3e750`) refetches the current script system and invokes its CreateArgs slot `+0x38`. Destruction (`0x2d3e7b0`) refetches the then-current script system and invokes DestroyArgs `+0x48`; it must not automatically reuse the initially captured system. Each integer push uses the actual args interface slot `+0x20`. CallTestAll (`0x2ce79b0`) queries engine utility slot `+0x30`, conditionally locks through `+0x38`, invokes the retained script system's slot `+0x80`, then conditionally unlocks through the current utility's `+0x40`. These can have synchronous gameplay effects. `args_begin`, each push, the utility call and `args_end` receive mutable subject/operation state so later reads see those effects. On provider error after successful args construction, cleanup still runs; prior effects and the first error remain. Such errors mean unsupported/missing context, not native false or legal.
+
+Original Unit::GetPlot (`0x2c1c820`) obtains the actual Map and dispatches its `+0x68` coordinate lookup using current Unit location. The final native manager dereferences the requested handler without a null check. The Rust contract therefore returns explicit `MissingRequestedHandler(id)` for that unsupported context, rather than fabricating a false answer or invoking a placeholder. This differs from the original interruption method's explicit missing-current-handler true branch.
+
+There are five synthetic manager test functions covering early rejection order; signed timer boundaries; visible-only bypasses; automation equality and nonhuman pause bypass; current versus requested handler identity and missing-current-handler behavior; all four script return/out-value combinations; cleanup on provider error; ordered pushes and state changes between them; destruction effects before later operation lookup; provided versus missing fallback Plot; requested-handler absence; and results forwarding. They are source-derived tests with no corresponding native Manager boundary fixtures. Existing handler captures or helper acceptance do not validate the complete manager predicate.
+
+Reproduce without original execution:
+
+```sh
+python3 tools/linux/unit_operation_manager_audit.py --output target/linux/unit-operation-manager.json
+cargo test -p c6-core skip_turn::legality::manager_tests
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+bash tools/check/c_abi_smoke.sh
+```
+
+The [audit](../evidence/linux/unit-operation-manager.json) gates the full 579-byte Manager method including exception cleanup, complete interruption/disabled/phase/script-lifetime methods, 56 direct call edges, four concrete virtual bindings, exact script event name and decisive branch instructions. It describes unclosed live providers explicitly. The manager orchestration uses borrowed typed state and static generic dispatch with no allocation or trace collection; actual provider/script allocations and effects remain required. No benchmark measures a full action, no frozen candidate/helper/profile changes are included, and the raw **89,198-byte** Save→Load failure remains unclassified and unmasked.

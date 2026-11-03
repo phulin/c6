@@ -1,0 +1,540 @@
+{
+  "schema": "c6-linux-unit-operation-manager-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "original_execution_performed": false,
+  "methods": [
+    {
+      "name": "Manager.CanStart",
+      "address": "0x2da20f0",
+      "size": 579,
+      "sha256": "573164c5e12ad82eeb6761d2492634ae376ae6de63526a3b94cf0608d8550927"
+    },
+    {
+      "name": "Manager.CanCurrentOperationBeInterrupted",
+      "address": "0x2da2a60",
+      "size": 116,
+      "sha256": "6b2b1cbb8b18460cf4fb4f4f7a8000cd6f42ae2108cab549666eb1a387772ebe"
+    },
+    {
+      "name": "Unit.IsOperationDisabled",
+      "address": "0x2c297e0",
+      "size": 73,
+      "sha256": "de0f4942cf7c5e7e3e4fb4cd9ea1973ef50dc1b903add1ff673c871556839751"
+    },
+    {
+      "name": "Phase.IsAllowTacticalCommands",
+      "address": "0x2a54f30",
+      "size": 37,
+      "sha256": "794ae6ccbdb27984a0baa907c011cab9858884f434482532c7d853791350169b"
+    },
+    {
+      "name": "Phase.CurrentDefinition",
+      "address": "0x2a55230",
+      "size": 35,
+      "sha256": "234514ebec562e9eaf779528d82ee52914ca963c8b8559bc4ef6469203e72e5e"
+    },
+    {
+      "name": "Phase.ActiveSegment",
+      "address": "0x2a55ba0",
+      "size": 5,
+      "sha256": "b811adb2d88317c4120dc7c33dd574a1678d7f98965dd45cb6cf6745cafe2e73"
+    },
+    {
+      "name": "Segment.AllowTactical",
+      "address": "0x2a55bc0",
+      "size": 8,
+      "sha256": "06059c117d2525723825777083e470ee9220181f3044fd23f4b764be0ac6b038"
+    },
+    {
+      "name": "Player.ProcessingAutomation",
+      "address": "0x2b5c3c0",
+      "size": 7,
+      "sha256": "750b0f58d460bdbe162c9ce1512bdd6a141a3527ce526bc67ef708695777aafb"
+    },
+    {
+      "name": "Player.IsTurnActive",
+      "address": "0x2021030",
+      "size": 7,
+      "sha256": "f44ea052578d46f191ac4e546446f30a3022dc5085b44ee6b9378719eabb8c5b"
+    },
+    {
+      "name": "Player.IsHuman",
+      "address": "0x2b31530",
+      "size": 32,
+      "sha256": "7b956c7055aea66551b2309c8d001e35a098fc6e19355bd959b5a46241245c95"
+    },
+    {
+      "name": "Game.IsPaused",
+      "address": "0x281b720",
+      "size": 7,
+      "sha256": "bf1c7941b3b62b57c2112fc90a57e28fbe0b8e7ab2b783e84a7c6731d061630f"
+    },
+    {
+      "name": "Unit.GetPlot",
+      "address": "0x2c1c820",
+      "size": 34,
+      "sha256": "70482659dd93faebc86071ffed12f087fac73975901d7d2ea272edf981fad99a"
+    },
+    {
+      "name": "Queue.Size",
+      "address": "0x2702f00",
+      "size": 5,
+      "sha256": "ac6738f18aec9e8ecc5485d5a8d50fb556201d33e235a6e801311cc7a366a268"
+    },
+    {
+      "name": "Queue.GetAt",
+      "address": "0x2da1050",
+      "size": 38,
+      "sha256": "2b7cb3be8910ab9acbe185c49e7173f71569af10e9bb11a3a3114b30fa358060"
+    },
+    {
+      "name": "Unit.GetQueue",
+      "address": "0x20e0710",
+      "size": 8,
+      "sha256": "eaee35c24a14cd015937e182b1d93f582e7715eea23c0cddbb987495a6431719"
+    },
+    {
+      "name": "Definition.FindIndex",
+      "address": "0x2c2c220",
+      "size": 27,
+      "sha256": "0987f96defd19d195435710a642c1e5fcee85058aee80d49076836b0190e8f2d"
+    },
+    {
+      "name": "Disabled.IsValidIndex",
+      "address": "0x2c2c250",
+      "size": 23,
+      "sha256": "cfae545fe0031fd04ae072a8b013c6d5ba4739a1269f753a10ecc2b12655707f"
+    },
+    {
+      "name": "Disabled.AtConst",
+      "address": "0x2c2c740",
+      "size": 55,
+      "sha256": "e08593a7c1125bb9289d36e04c49770b7015123437fc7e131ea4c5661bfa2258"
+    },
+    {
+      "name": "Script.CallTestAll",
+      "address": "0x2ce79b0",
+      "size": 116,
+      "sha256": "47ad40fd9efa7ddcbe88b6bc4de3eff8c174262c6cc031ce76d78e63094c431e"
+    },
+    {
+      "name": "Script.ArgsCtor",
+      "address": "0x2d3e750",
+      "size": 35,
+      "sha256": "d6f72c2fe605bd69ac48758eeaf43eedc6f85fafe066e76184f3456c3d17f9f9"
+    },
+    {
+      "name": "Script.ArgsDtor",
+      "address": "0x2d3e7b0",
+      "size": 36,
+      "sha256": "924ad43ce8225ccfead12de01459448e302fcc12f42fa61aee6706163e07c27d"
+    },
+    {
+      "name": "Script.System",
+      "address": "0x2171660",
+      "size": 11,
+      "sha256": "0d5bf15629235063deb60052f71390c42fd80e98a458e0775078bcd7bb77e07e"
+    },
+    {
+      "name": "Script.ArgsGet",
+      "address": "0x2171670",
+      "size": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "Script.ArgsArrow",
+      "address": "0x21de280",
+      "size": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "BaseHandler.CanBeInterrupted",
+      "address": "0x2d95660",
+      "size": 3,
+      "sha256": "e18aacce29affcdddaa5f641ac1ec12552e0fe9d066e6408941b1792818b8619"
+    },
+    {
+      "name": "Unit.IsBusy",
+      "address": "0x2c27360",
+      "size": 13,
+      "sha256": "670e18b08c2b17b2781aa026faf057fdb0fc2963f7bef934e590da5fda8cad30"
+    },
+    {
+      "name": "Unit.OperationTimer",
+      "address": "0x2c2c2c0",
+      "size": 7,
+      "sha256": "f556d300a8d89adaffc772457586759f83790839af4114aed582c498ec6d9a90"
+    },
+    {
+      "name": "Unit.CanMove",
+      "address": "0x2c27930",
+      "size": 60,
+      "sha256": "b46d22d98040b2db4bf384a1374692b3025952b8424b16a70323c73ca8718c57"
+    },
+    {
+      "name": "Unit.MovesRemaining",
+      "address": "0x213cc90",
+      "size": 21,
+      "sha256": "cacb37411e9aab85d6dd05c1d07fb2f2a36acd2877aeee83ac8bd09f08e92c13"
+    },
+    {
+      "name": "FixedPoint.CopyCtor",
+      "address": "0x1fcc8c0",
+      "size": 5,
+      "sha256": "0dbb0cb08dfc52a8874d7e85a1b0b4bc164f0b6501356e0185faffc434c3cd8b"
+    },
+    {
+      "name": "FixedPoint.Copy",
+      "address": "0x1fcdc00",
+      "size": 8,
+      "sha256": "775143daff273e7ffd54aaf1fdd8ee35101783a6286e5c6a3d9b76fed694472a"
+    },
+    {
+      "name": "FixedPoint.IntCtor",
+      "address": "0x1fcc8b0",
+      "size": 5,
+      "sha256": "a5050360463a3fe04639a9ad47d842d6a2c680138f54cfbbbe95eaf24f73e912"
+    },
+    {
+      "name": "FixedPoint.IntAssign",
+      "address": "0x1fcdc10",
+      "size": 9,
+      "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f"
+    },
+    {
+      "name": "FixedPoint.Greater",
+      "address": "0x1fe2b30",
+      "size": 8,
+      "sha256": "ab00271575857734f9deafa1606796d9d87586ae02bc14e6486fe4c79f0cb86d"
+    },
+    {
+      "name": "SkipTurn.CanStart",
+      "address": "0x2dac950",
+      "size": 218,
+      "sha256": "43cc02ab9b2f7976450820d0b623b903f2f90b2029a6431463776996245a8f83"
+    },
+    {
+      "name": "Unit.IsHuman",
+      "address": "0x2c1c740",
+      "size": 32,
+      "sha256": "f8f8d2a77f089f5a5bda429951a2d12c52171701aeae66ecf4b57e7c08c234a5"
+    },
+    {
+      "name": "Unit.FortifyTurns",
+      "address": "0x20f33b0",
+      "size": 7,
+      "sha256": "414030f95dfa6ad16a2d09baf4b1e503e3ed605578cbea5f0ab0d9822f1e3030"
+    },
+    {
+      "name": "Unit.Activity",
+      "address": "0x265b300",
+      "size": 7,
+      "sha256": "e39c923bce0c545f73489d73292f45689f4114aa9f2c4d56131f54a161c3a0a6"
+    },
+    {
+      "name": "Unit.Espionage",
+      "address": "0x206dfd0",
+      "size": 8,
+      "sha256": "5c7112bbb45d99c13d453ce214e766b9173d04cbc39a957d4a90882a926953eb"
+    },
+    {
+      "name": "Espionage.Operation",
+      "address": "0x206dfe0",
+      "size": 4,
+      "sha256": "464ad404f57fdf46d34aca82663f5924e733344590a2d76cd2ff81e199b23f83"
+    },
+    {
+      "name": "Placement.FormationFriendlyCount",
+      "address": "0x2c433f0",
+      "size": 184,
+      "sha256": "4906e83b115c6514f33383cb3c172897b42ca41380facd5fd9f11b46adad1048"
+    },
+    {
+      "name": "Placement.UnitFriendlyCount",
+      "address": "0x2c432a0",
+      "size": 322,
+      "sha256": "c78099a9a470bf120e00faa147c00660d78abdb0603819d5020fde18450899e4"
+    }
+  ],
+  "checked_direct_call_edges": [
+    {
+      "address": "0x2da2113",
+      "target": "0x1e64fa0"
+    },
+    {
+      "address": "0x2da2128",
+      "target": "0x1e41bc0"
+    },
+    {
+      "address": "0x2da212f",
+      "target": "0x1e36f10"
+    },
+    {
+      "address": "0x2da214e",
+      "target": "0x1e41bc0"
+    },
+    {
+      "address": "0x2da2155",
+      "target": "0x1f84f90"
+    },
+    {
+      "address": "0x2da2162",
+      "target": "0x1dfea70"
+    },
+    {
+      "address": "0x2da216c",
+      "target": "0x1e317a0"
+    },
+    {
+      "address": "0x2da2175",
+      "target": "0x1f6dae0"
+    },
+    {
+      "address": "0x2da2180",
+      "target": "0x1fb0810"
+    },
+    {
+      "address": "0x2da218e",
+      "target": "0x1dfea70"
+    },
+    {
+      "address": "0x2da2199",
+      "target": "0x1e87800"
+    },
+    {
+      "address": "0x2da21a5",
+      "target": "0x1e119f0"
+    },
+    {
+      "address": "0x2da21b5",
+      "target": "0x1e43a20"
+    },
+    {
+      "address": "0x2da21bd",
+      "target": "0x1f22ec0"
+    },
+    {
+      "address": "0x2da21ef",
+      "target": "0x1e88eb0"
+    },
+    {
+      "address": "0x2da21fc",
+      "target": "0x1f614b0"
+    },
+    {
+      "address": "0x2da2215",
+      "target": "0x1e9b140"
+    },
+    {
+      "address": "0x2da221d",
+      "target": "0x1f89d80"
+    },
+    {
+      "address": "0x2da222f",
+      "target": "0x1e41bc0"
+    },
+    {
+      "address": "0x2da2241",
+      "target": "0x1f89d80"
+    },
+    {
+      "address": "0x2da2253",
+      "target": "0x1e42f80"
+    },
+    {
+      "address": "0x2da2265",
+      "target": "0x1f89d80"
+    },
+    {
+      "address": "0x2da2284",
+      "target": "0x1f3abb0"
+    },
+    {
+      "address": "0x2da229b",
+      "target": "0x1f41e00"
+    },
+    {
+      "address": "0x2da22b1",
+      "target": "0x1f55710"
+    },
+    {
+      "address": "0x2da22d0",
+      "target": "0x1e9ef10"
+    },
+    {
+      "address": "0x2da2326",
+      "target": "0x1f55710"
+    },
+    {
+      "address": "0x2da232e",
+      "target": "0x1f76d40"
+    },
+    {
+      "address": "0x2da2a6f",
+      "target": "0x1e43a20"
+    },
+    {
+      "address": "0x2da2a77",
+      "target": "0x1f22ec0"
+    },
+    {
+      "address": "0x2da2a83",
+      "target": "0x1e43a20"
+    },
+    {
+      "address": "0x2da2a8d",
+      "target": "0x1e44c30"
+    },
+    {
+      "address": "0x2da2a9a",
+      "target": "0x1e43a20"
+    },
+    {
+      "address": "0x2da2aa4",
+      "target": "0x1e44c30"
+    },
+    {
+      "address": "0x2c297e8",
+      "target": "0x1ebfbe0"
+    },
+    {
+      "address": "0x2c297f2",
+      "target": "0x1ebe140"
+    },
+    {
+      "address": "0x2c29805",
+      "target": "0x1e0f750"
+    },
+    {
+      "address": "0x2c29813",
+      "target": "0x1faadb0"
+    },
+    {
+      "address": "0x2a54f31",
+      "target": "0x1f26780"
+    },
+    {
+      "address": "0x2a54f3e",
+      "target": "0x1f2dc70"
+    },
+    {
+      "address": "0x2a55243",
+      "target": "0x1edfa20"
+    },
+    {
+      "address": "0x2b31534",
+      "target": "0x1e37ab0"
+    },
+    {
+      "address": "0x2b31542",
+      "target": "0x1f72ff0"
+    },
+    {
+      "address": "0x2c1c824",
+      "target": "0x1eef550"
+    },
+    {
+      "address": "0x2da1058",
+      "target": "0x1e6ecf0"
+    },
+    {
+      "address": "0x2da1066",
+      "target": "0x1f535d0"
+    },
+    {
+      "address": "0x2c2c221",
+      "target": "0x1e67090"
+    },
+    {
+      "address": "0x2c2c253",
+      "target": "0x1ebc020"
+    },
+    {
+      "address": "0x2c2c25b",
+      "target": "0x1e6e4b0"
+    },
+    {
+      "address": "0x2c2c74f",
+      "target": "0x1e6e4b0"
+    },
+    {
+      "address": "0x2ce79c7",
+      "target": "0x1f310a0"
+    },
+    {
+      "address": "0x2ce79db",
+      "target": "0x1f310a0"
+    },
+    {
+      "address": "0x2ce7a05",
+      "target": "0x1f310a0"
+    },
+    {
+      "address": "0x2d3e75b",
+      "target": "0x1f614b0"
+    },
+    {
+      "address": "0x2d3e7b4",
+      "target": "0x1f614b0"
+    },
+    {
+      "address": "0x2d3e7cf",
+      "target": "0x1fcd1f0"
+    }
+  ],
+  "checked_virtual_bindings": [
+    {
+      "address": "0x3aff958",
+      "target": "0x2da2a60"
+    },
+    {
+      "address": "0x3aff908",
+      "target": "0x2da1650"
+    },
+    {
+      "address": "0x3b00dc8",
+      "target": "0x2dac950"
+    },
+    {
+      "address": "0x3b00dd0",
+      "target": "0x2d95660"
+    }
+  ],
+  "source_sha256": {
+    "crates/c6-core/src/unit_operation_legality.rs": "50a0d57a5b5324477f9de2c975a8248550b7188d2abe7d1e58e5bf7cf9ff4d68",
+    "tools/linux/unit_operation_manager_audit.py": "5cdc10e0bb744da40c82b64dc920b9d040429da8a2d18829a802b94b2fa17737"
+  },
+  "ordering": [
+    "busy",
+    "nonvisible tactical",
+    "actual owner Player",
+    "nonvisible turn or automation",
+    "Game lookup",
+    "nonvisible human pause",
+    "nonempty queue interruption",
+    "disabled operation",
+    "script lookup/args/ordered integer pushes/CallTestAll/destruction/veto",
+    "supplied plot or actual current plot",
+    "actual registered requested handler",
+    "handler CanStart"
+  ],
+  "script_veto": "CallTestAll.called && !out_value; out_value initially false; destruction before branch",
+  "interruption": "empty/missing front/same actual runtime ID/missing current handler permit; otherwise actual current handler CanBeInterrupted",
+  "unknown_dependencies": [
+    "current phase and active segment",
+    "retained actual Player/Game receivers and mutable live state",
+    "actual registry runtime IDs, handler bindings and virtual overrides",
+    "live disabled IndexList definition mapping/validity/value",
+    "script allocation, int pushes, engine utility locking, callbacks and current-system destruction",
+    "current plot lookup and complete handler live providers/results"
+  ],
+  "synthetic_manager_test_functions": 5,
+  "native_manager_boundary_fixtures_available": false,
+  "manager_orchestration_allocates": false,
+  "provider_allocations_and_effects_retained": true,
+  "full_action_supported": false,
+  "complete_state_action_rng_turns_supported": false,
+  "historical_raw_save_load_failure_bytes": 89198
+}
