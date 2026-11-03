@@ -17,14 +17,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(&a[2], value.encode(l)?)?;
     let mut boundaries = String::new();
     for (r, span) in value.records.iter().zip(&ranges) {
-        let summary_start = span.start + 33;
-        let summary_end = summary_start + r.summary.base.len();
-        let message_start = summary_end + 11;
+        let message_start = span.start + 33;
         let message_end = message_start + r.message.base.len();
-        let parameters_start = message_end + 35;
+        let summary_start = message_end + 11;
+        let summary_end = summary_start + r.summary.base.len();
+        let parameters_start = summary_end + 35;
         let parameters_end = span.end - 2;
         boundaries.push_str(&format!(
-            "{},{},{},{},{},{},{summary_start},{summary_end},{message_start},{message_end},{parameters_start},{parameters_end}\n",
+            "{},{},{},{},{},{},{message_start},{message_end},{summary_start},{summary_end},{parameters_start},{parameters_end}\n",
             span.start, span.end, r.id.id, r.type_hash, r.is_dismissed, r.has_been_activated
         ));
     }

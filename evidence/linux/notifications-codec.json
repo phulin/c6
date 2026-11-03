@@ -288,6 +288,38 @@
     ],
     "general_activation_event_hash": "025f6cfd",
     "activation_event_overload_captured": false,
+    "selected_identity_reporting_calls": [
+      {
+        "call_rva": "0x2da1897",
+        "plt_rva": "0x1fb5910",
+        "event": "e23b112d",
+        "subsequent_use": "SetActivityType void epilogue"
+      },
+      {
+        "call_rva": "0x2d9650b",
+        "plt_rva": "0x1eea180",
+        "event": "a60328c5",
+        "subsequent_use": "Immediate xor eax,eax returns false"
+      },
+      {
+        "call_rva": "0x2da1d5d",
+        "plt_rva": "0x1eaf290",
+        "event": "383669f1",
+        "subsequent_use": "PopFront void epilogue"
+      },
+      {
+        "call_rva": "0x2da263f",
+        "plt_rva": "0x1fb5910",
+        "event": "15c35863",
+        "subsequent_use": "Original GetSize call overwrites eax before compare"
+      },
+      {
+        "call_rva": "0x2dac91d",
+        "plt_rva": "0x1fb5910",
+        "event": "3d4006f2",
+        "subsequent_use": "Original Manager.Edit call overwrites rax before use"
+      }
+    ],
     "omitted_live_lock_count": {
       "offset": "0x194",
       "predicate": "signed i32 > 0",
@@ -295,7 +327,7 @@
     },
     "unclassified_scalar_names": "Native offsets retain unknown semantics; no guessed bool/int labels."
   },
-  "independent_state_report_sha256": "48e87861e30452a43b6abfce4957270951baf7f6aa80a2db27a1e5c8c73ca0cb",
+  "independent_state_report_sha256": "fc6f88d9f33173fdc738dba53423dfe0957dffdfc8c6292c64caa54bda98492f",
   "fixtures": {
     "before": {
       "independent_typed_boundaries_checked": true,
@@ -315,12 +347,12 @@
           "activated": false,
           "sha256": "5b6caa312c26393ac112d4a1388a85a204d58d0616a7efca3f347bccadc277a7",
           "summary_range": [
-            49,
-            78
-          ],
-          "message_range": [
             89,
             265
+          ],
+          "message_range": [
+            49,
+            78
           ],
           "parameters_range": [
             300,
@@ -336,12 +368,12 @@
           "activated": false,
           "sha256": "57068186aca7ef64e0bb13ab8f7be2f5c9ef4776c291b3bfdeacb705eba6e5fc",
           "summary_range": [
-            339,
-            356
-          ],
-          "message_range": [
             367,
             501
+          ],
+          "message_range": [
+            339,
+            356
           ],
           "parameters_range": [
             536,
@@ -357,12 +389,12 @@
           "activated": false,
           "sha256": "1de8043e228970bd700bc1b4f6b654e64f70c0fb531cb92a6ca79852fc8ccaba",
           "summary_range": [
-            575,
-            594
-          ],
-          "message_range": [
             605,
             718
+          ],
+          "message_range": [
+            575,
+            594
           ],
           "parameters_range": [
             753,
@@ -378,12 +410,12 @@
           "activated": false,
           "sha256": "33d2e78fbc2b6ff60b3c87926ed68c85cb1f14be82cab44074b528c76c429b89",
           "summary_range": [
-            792,
-            806
-          ],
-          "message_range": [
             817,
             946
+          ],
+          "message_range": [
+            792,
+            806
           ],
           "parameters_range": [
             981,
@@ -399,12 +431,12 @@
           "activated": true,
           "sha256": "8ce3e19147beb461a9e05940d1f226b72320ede69d23b9a5248b72128bc4dc20",
           "summary_range": [
-            1020,
-            1034
-          ],
-          "message_range": [
             1045,
             1300
+          ],
+          "message_range": [
+            1020,
+            1034
           ],
           "parameters_range": [
             1335,
@@ -420,12 +452,12 @@
           "activated": false,
           "sha256": "e55cfc43fb5ca033f23923436b8c9ff750232c6379bdd051f1d5a2420da3304d",
           "summary_range": [
-            1374,
-            1388
-          ],
-          "message_range": [
             1399,
             1659
+          ],
+          "message_range": [
+            1374,
+            1388
           ],
           "parameters_range": [
             1694,
@@ -441,12 +473,12 @@
           "activated": false,
           "sha256": "1bcae9d9c2121dfee909cb1ba8f89ec6b6cdf3f6d0191b5775a13d3d5b5835b5",
           "summary_range": [
-            1733,
-            1761
-          ],
-          "message_range": [
             1772,
             1942
+          ],
+          "message_range": [
+            1733,
+            1761
           ],
           "parameters_range": [
             1977,
@@ -462,12 +494,12 @@
           "activated": true,
           "sha256": "6afb5351aa8d6f5e200ec8635bf7ad919ef80ab46e48410f483ae2dfdbaf649a",
           "summary_range": [
-            2016,
-            2030
-          ],
-          "message_range": [
             2041,
             2293
+          ],
+          "message_range": [
+            2016,
+            2030
           ],
           "parameters_range": [
             2328,
@@ -483,12 +515,12 @@
           "activated": false,
           "sha256": "c71ca1b7f9ab1b4431801ea9556e9865f5f8c06bd26750278a7c37590e91b5f3",
           "summary_range": [
-            2367,
-            2381
-          ],
-          "message_range": [
             2392,
             2652
+          ],
+          "message_range": [
+            2367,
+            2381
           ],
           "parameters_range": [
             2687,
@@ -504,12 +536,12 @@
           "activated": false,
           "sha256": "e8d983d7c06e437db85a1f8c4225e79d7d7e20ae2f30ea098c6a8d946e49b7e0",
           "summary_range": [
-            2726,
-            2740
-          ],
-          "message_range": [
             2751,
             3009
+          ],
+          "message_range": [
+            2726,
+            2740
           ],
           "parameters_range": [
             3044,
@@ -525,12 +557,12 @@
           "activated": false,
           "sha256": "1138e363a2d9bf89c778e5d0ab0aeb446443de60d11b010a673c24f76b576520",
           "summary_range": [
-            3083,
-            3123
-          ],
-          "message_range": [
             3134,
             3295
+          ],
+          "message_range": [
+            3083,
+            3123
           ],
           "parameters_range": [
             3330,
@@ -546,12 +578,12 @@
           "activated": false,
           "sha256": "e211e19ab9730189e558350385aa2e69d276a6b5afc3779bca5c5b8b289e75c6",
           "summary_range": [
-            3439,
-            3467
-          ],
-          "message_range": [
             3478,
             3652
+          ],
+          "message_range": [
+            3439,
+            3467
           ],
           "parameters_range": [
             3687,
@@ -563,8 +595,8 @@
         "records": 12,
         "bytes": 3693,
         "iterations": 1000,
-        "decode_ns": 4600,
-        "encode_ns": 10513,
+        "decode_ns": 2219,
+        "encode_ns": 5036,
         "all_truncated_prefixes_rejected": true
       },
       "byte_exact": true
@@ -587,12 +619,12 @@
           "activated": false,
           "sha256": "5b6caa312c26393ac112d4a1388a85a204d58d0616a7efca3f347bccadc277a7",
           "summary_range": [
-            49,
-            78
-          ],
-          "message_range": [
             89,
             265
+          ],
+          "message_range": [
+            49,
+            78
           ],
           "parameters_range": [
             300,
@@ -608,12 +640,12 @@
           "activated": false,
           "sha256": "57068186aca7ef64e0bb13ab8f7be2f5c9ef4776c291b3bfdeacb705eba6e5fc",
           "summary_range": [
-            339,
-            356
-          ],
-          "message_range": [
             367,
             501
+          ],
+          "message_range": [
+            339,
+            356
           ],
           "parameters_range": [
             536,
@@ -629,12 +661,12 @@
           "activated": false,
           "sha256": "1de8043e228970bd700bc1b4f6b654e64f70c0fb531cb92a6ca79852fc8ccaba",
           "summary_range": [
-            575,
-            594
-          ],
-          "message_range": [
             605,
             718
+          ],
+          "message_range": [
+            575,
+            594
           ],
           "parameters_range": [
             753,
@@ -650,12 +682,12 @@
           "activated": false,
           "sha256": "33d2e78fbc2b6ff60b3c87926ed68c85cb1f14be82cab44074b528c76c429b89",
           "summary_range": [
-            792,
-            806
-          ],
-          "message_range": [
             817,
             946
+          ],
+          "message_range": [
+            792,
+            806
           ],
           "parameters_range": [
             981,
@@ -671,12 +703,12 @@
           "activated": false,
           "sha256": "1bcae9d9c2121dfee909cb1ba8f89ec6b6cdf3f6d0191b5775a13d3d5b5835b5",
           "summary_range": [
-            1020,
-            1048
-          ],
-          "message_range": [
             1059,
             1229
+          ],
+          "message_range": [
+            1020,
+            1048
           ],
           "parameters_range": [
             1264,
@@ -692,12 +724,12 @@
           "activated": false,
           "sha256": "c71ca1b7f9ab1b4431801ea9556e9865f5f8c06bd26750278a7c37590e91b5f3",
           "summary_range": [
-            1303,
-            1317
-          ],
-          "message_range": [
             1328,
             1588
+          ],
+          "message_range": [
+            1303,
+            1317
           ],
           "parameters_range": [
             1623,
@@ -713,12 +745,12 @@
           "activated": false,
           "sha256": "e8d983d7c06e437db85a1f8c4225e79d7d7e20ae2f30ea098c6a8d946e49b7e0",
           "summary_range": [
-            1662,
-            1676
-          ],
-          "message_range": [
             1687,
             1945
+          ],
+          "message_range": [
+            1662,
+            1676
           ],
           "parameters_range": [
             1980,
@@ -734,12 +766,12 @@
           "activated": true,
           "sha256": "68b2863f0b6d98add3d3458619a79a191c06f261fa77d918e77a0717ab49f80a",
           "summary_range": [
-            2019,
-            2059
-          ],
-          "message_range": [
             2070,
             2231
+          ],
+          "message_range": [
+            2019,
+            2059
           ],
           "parameters_range": [
             2266,
@@ -755,12 +787,12 @@
           "activated": false,
           "sha256": "e211e19ab9730189e558350385aa2e69d276a6b5afc3779bca5c5b8b289e75c6",
           "summary_range": [
-            2375,
-            2403
-          ],
-          "message_range": [
             2414,
             2588
+          ],
+          "message_range": [
+            2375,
+            2403
           ],
           "parameters_range": [
             2623,
@@ -772,12 +804,17 @@
         "records": 9,
         "bytes": 2629,
         "iterations": 1000,
-        "decode_ns": 3609,
-        "encode_ns": 8382,
+        "decode_ns": 3826,
+        "encode_ns": 8142,
         "all_truncated_prefixes_rejected": true
       },
       "byte_exact": true
     }
+  },
+  "text_field_labels": {
+    "first": "message",
+    "second": "summary",
+    "correction": "Target DWARF and compiled getters corroborate +20=message, +a0=summary; historical raw bytes unchanged"
   },
   "acceptance": {
     "component_wire_only": true,
@@ -787,8 +824,8 @@
   },
   "limits": "Only PlayerNotifications v1 and Instance v5; locale v1 zero arguments and supported typed variant branches. No factory creation, native Load normalization, selection, cleanup/destruction, activation event subscribers, complete gameplay state/action/turns. Performance measures codec only. Unknown save bytes and the separate 89,198-byte Save\u2192Load failure remain unclassified/unmasked.",
   "sources": {
-    "crates/c6-core/src/notifications.rs": "496a639ba891890f865ccb4d012d49a497b3ea6f1efb4f00dc91cab4ab3bc18a",
-    "crates/c6-core/examples/notifications_codec.rs": "220b7b051f85a9829e6bcd204042ae0d8df676b3618d62a351360fe00266a367",
-    "tools/linux/notifications_codec_audit.py": "0629bccdddb6674ea9daed545246afd1def925e42d5c3f2b5fef54131d97a56c"
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/examples/notifications_codec.rs": "d63880fefb6ef7f57e1d6d31410fe20736c8f8bddc8ce0216354e853233298f4",
+    "tools/linux/notifications_codec_audit.py": "d0746a7813a1c3aefed408e6669532228ad9a42703b8a47a25c8b1c704363aaf"
   }
 }

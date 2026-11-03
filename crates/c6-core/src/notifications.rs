@@ -61,8 +61,10 @@ pub struct Notification {
     pub id: ComponentId,
     pub type_hash: u32,
     pub severity: i32,
-    pub summary: LocalizedString,
+    /// Native +0x20; first localized string in Instance::Write.
     pub message: LocalizedString,
+    /// Native +0xa0; second localized string in Instance::Write.
+    pub summary: LocalizedString,
     pub location: [i32; 2],
     pub component: ComponentId,
     // Offset names deliberately retain unclassified semantics.
@@ -154,8 +156,8 @@ impl<'a> Reader<'a> {
         let id = self.component()?;
         let type_hash = self.u32()?;
         let severity = self.u32()? as i32;
-        let summary = self.string()?;
         let message = self.string()?;
+        let summary = self.string()?;
         let location = [self.u32()? as i32, self.u32()? as i32];
         let component = self.component()?;
         let native_188 = self.u32()? as i32;
@@ -177,8 +179,8 @@ impl<'a> Reader<'a> {
             id,
             type_hash,
             severity,
-            summary,
             message,
+            summary,
             location,
             component,
             native_188,
@@ -276,8 +278,8 @@ impl PlayerNotifications {
             w.component(r.id)?;
             w.word(r.type_hash)?;
             w.word(r.severity as u32)?;
-            w.string(&r.summary)?;
             w.string(&r.message)?;
+            w.string(&r.summary)?;
             for x in r.location {
                 w.word(x as u32)?;
             }
@@ -348,7 +350,10 @@ mod tests {
                 component_type: i16::MIN,
                 id: u32::MAX,
             },
-            summary: LocalizedString { base: vec![0, 255] },
+            message: LocalizedString { base: vec![0, 255] },
+            summary: LocalizedString {
+                base: b"sum".to_vec(),
+            },
             native_188: i32::MAX,
             is_dismissed: true,
             ..Default::default()
@@ -363,6 +368,9 @@ mod tests {
     fn preserves_order_duplicates_raw_strings_and_discriminators() {
         let v = fixture();
         let b = v.encode(Limits::default()).unwrap();
+        // Independently pinned native message/summary offsets in the first record.
+        assert_eq!(&b[49..51], &[0, 255]);
+        assert_eq!(&b[62..65], b"sum");
         assert_eq!(
             PlayerNotifications::decode(&b, Limits::default()).unwrap(),
             v
@@ -384,7 +392,7 @@ mod tests {
         let l = Limits {
             max_items: 5,
             ..Limits::default()
-        }; // 2 records plus 4 base bytes.
+        }; // 2 records plus 10 base bytes.
         assert_eq!(v.encode(l), Err(Error::ResourceLimit));
         let b = v.encode(Limits::default()).unwrap();
         assert_eq!(

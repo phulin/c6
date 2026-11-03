@@ -9,7 +9,7 @@ The container writer at `0x2d305c0` emits i32 version, i32 owner, u32 next ID, i
 | Version | i32, 5 |
 | Notification ID | +8; i16 owner, i16 component type, u32 ID |
 | Type, severity | +10/+14; u32/i32 |
-| Summary, message | +20/+a0; localized string |
+| Message, summary | +20/+a0; localized string |
 | Location, component | +120/+128; two i32 / ComponentID |
 | Scalars | +188/+18c; i32 each |
 | Flags | +198/+199/+19a; bool each |
@@ -17,6 +17,8 @@ The container writer at `0x2d305c0` emits i32 version, i32 owner, u32 next ID, i
 | Flags | +19b/+19c; bool each |
 | Parameters | +140; actual TypedVariantVectorMap Serialize(options=1) |
 | Flags | +19d/+19e; bool each |
+
+The text labels were corrected from target DWARF and compiled GetMessageA/GetSummary accessors: +20 is message, +a0 is summary. Earlier derived metadata reversed these names; serialized bytes and original raw captures are unchanged. This correction does not change the already-dismissed cleanup classification, which uses +198 rather than +19c. See the [lifecycle contract](linux-notification-lifecycle.md) for the newly classified live fields and flags.
 
 Only +198 (`IsDismissed`, getter `0x2722dd0`) and +19e (`HasBeenActivated`, getter `0x2d313c0`) receive semantic names. Unknown fields retain offset names. `IsLocked` at `0x2ab70e0` reads signed live +194 > 0; this field is absent from the writer. A decoded record cannot establish its lock state or reconstruct complete live notification state.
 

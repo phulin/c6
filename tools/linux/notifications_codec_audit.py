@@ -32,7 +32,7 @@ def audit(module, before, after, iterations):
             if out.read_bytes()!=owner: raise ValueError('roundtrip mismatch')
             rows=[]
             for line in bounds.read_text().splitlines():
-                a,b,id_,type_,dismissed,activated,ss,se,ms,me,ps,pe=line.split(',')
+                a,b,id_,type_,dismissed,activated,ms,me,ss,se,ps,pe=line.split(',')
                 a,b=int(a),int(b)
                 rows.append(dict(start=a,end=b,id=int(id_),type_hash=int(type_),dismissed=dismissed=='true',activated=activated=='true',sha256=digest(owner[a:b]),summary_range=[int(ss),int(se)],message_range=[int(ms),int(me)],parameters_range=[int(ps),int(pe)]))
             reference=json.loads((ROOT/'evidence/linux/skip-turn-state-execute-3.json').read_text())['notification_container'][label]['records']
@@ -43,6 +43,7 @@ def audit(module, before, after, iterations):
                 if row['sha256']!=ref['record_sha256']: raise ValueError('independent record hash differs')
             results[label]=dict(independent_typed_boundaries_checked=True,core_sha256=expected,owner_range=[start,end],owner_sha256=digest(owner),records=rows,checks=json.loads(result),byte_exact=True)
     return dict(schema='c6-linux-notifications-codec-v1',gamecore_sha256=GAME_SHA,original_contract=contract,independent_state_report_sha256=digest((ROOT/'evidence/linux/skip-turn-state-execute-3.json').read_bytes()),fixtures=results,
+                text_field_labels=dict(first='message',second='summary',correction='Target DWARF and compiled getters corroborate +20=message, +a0=summary; historical raw bytes unchanged'),
                 acceptance=dict(component_wire_only=True,original_code_executed=False,gameplay_parity=False,full_action_acceptance=0),
                 limits='Only PlayerNotifications v1 and Instance v5; locale v1 zero arguments and supported typed variant branches. No factory creation, native Load normalization, selection, cleanup/destruction, activation event subscribers, complete gameplay state/action/turns. Performance measures codec only. Unknown save bytes and the separate 89,198-byte Save→Load failure remain unclassified/unmasked.')
 

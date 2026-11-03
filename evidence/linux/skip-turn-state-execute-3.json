@@ -301,6 +301,13 @@
     "m_kLastPath",
     "m_kLastPathCacheLocation"
   ],
+  "notification_text_labels": {
+    "first": "message",
+    "second": "summary",
+    "native_message_offset": "0x20",
+    "native_summary_offset": "0xa0",
+    "correction": "Earlier derived metadata reversed text labels; corrected from target DWARF and compiled GetMessageA/GetSummary accessors. Serialized bytes and raw artifact identities are unchanged; dismissed198 cleanup classification remains unchanged."
+  },
   "notification_container": {
     "before": {
       "header": {
@@ -321,12 +328,12 @@
           "id": 17,
           "severity": 1,
           "summary_range": [
-            49,
-            78
-          ],
-          "message_range": [
             89,
             265
+          ],
+          "message_range": [
+            49,
+            78
           ],
           "location": [
             32,
@@ -373,8 +380,8 @@
           ],
           "bytes": 290,
           "record_sha256": "5b6caa312c26393ac112d4a1388a85a204d58d0616a7efca3f347bccadc277a7",
-          "summary_sha256": "5239cced50ad311a566da59d8eb726e1c89f0b8d8c322e36ec739fd3dc954799",
-          "message_sha256": "24ff9d6f7b525bf8251f29ded73b41401c64474665314f86ccd1e0bc651a1cea",
+          "summary_sha256": "24ff9d6f7b525bf8251f29ded73b41401c64474665314f86ccd1e0bc651a1cea",
+          "message_sha256": "5239cced50ad311a566da59d8eb726e1c89f0b8d8c322e36ec739fd3dc954799",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -388,12 +395,12 @@
           "id": 18,
           "severity": 1,
           "summary_range": [
-            339,
-            356
-          ],
-          "message_range": [
             367,
             501
+          ],
+          "message_range": [
+            339,
+            356
           ],
           "location": [
             -9999,
@@ -440,8 +447,8 @@
           ],
           "bytes": 236,
           "record_sha256": "57068186aca7ef64e0bb13ab8f7be2f5c9ef4776c291b3bfdeacb705eba6e5fc",
-          "summary_sha256": "984013fbd2b690cf36dcfff06aa022dc672aa342609fa20cf1e0b8e5394db2f0",
-          "message_sha256": "bf1225bbea95e42a9d1b25f84ae46f1064b6ffcca0dbc364332eef65294a1256",
+          "summary_sha256": "bf1225bbea95e42a9d1b25f84ae46f1064b6ffcca0dbc364332eef65294a1256",
+          "message_sha256": "984013fbd2b690cf36dcfff06aa022dc672aa342609fa20cf1e0b8e5394db2f0",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -455,12 +462,12 @@
           "id": 19,
           "severity": 1,
           "summary_range": [
-            575,
-            594
-          ],
-          "message_range": [
             605,
             718
+          ],
+          "message_range": [
+            575,
+            594
           ],
           "location": [
             -9999,
@@ -507,8 +514,8 @@
           ],
           "bytes": 217,
           "record_sha256": "1de8043e228970bd700bc1b4f6b654e64f70c0fb531cb92a6ca79852fc8ccaba",
-          "summary_sha256": "13f56271e400ac3f133376edb14a7830f668a6c3fb0706bc5c0cfec279aa1cdd",
-          "message_sha256": "1fd304da079f392f1afa9859a8c549a75cbb6692af1febbb1a5b8a06eb6cbdad",
+          "summary_sha256": "1fd304da079f392f1afa9859a8c549a75cbb6692af1febbb1a5b8a06eb6cbdad",
+          "message_sha256": "13f56271e400ac3f133376edb14a7830f668a6c3fb0706bc5c0cfec279aa1cdd",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -522,12 +529,12 @@
           "id": 20,
           "severity": 2,
           "summary_range": [
-            792,
-            806
-          ],
-          "message_range": [
             817,
             946
+          ],
+          "message_range": [
+            792,
+            806
           ],
           "location": [
             -9999,
@@ -574,8 +581,8 @@
           ],
           "bytes": 228,
           "record_sha256": "33d2e78fbc2b6ff60b3c87926ed68c85cb1f14be82cab44074b528c76c429b89",
-          "summary_sha256": "c34b73da3677079059341a9e6cb384db3260048a58a3af7195b031a02e7a66cb",
-          "message_sha256": "440a12b77302f504444f0011d74fc892dec7d28d26c5a5bf80a8d4658950f639",
+          "summary_sha256": "440a12b77302f504444f0011d74fc892dec7d28d26c5a5bf80a8d4658950f639",
+          "message_sha256": "c34b73da3677079059341a9e6cb384db3260048a58a3af7195b031a02e7a66cb",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -589,12 +596,12 @@
           "id": 23,
           "severity": 1,
           "summary_range": [
-            1020,
-            1034
-          ],
-          "message_range": [
             1045,
             1300
+          ],
+          "message_range": [
+            1020,
+            1034
           ],
           "location": [
             57,
@@ -641,8 +648,8 @@
           ],
           "bytes": 354,
           "record_sha256": "8ce3e19147beb461a9e05940d1f226b72320ede69d23b9a5248b72128bc4dc20",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "bcaa3a34a5507c7cd9271aac137feea441b5db23bdbdd86b3326e939122f3338",
+          "summary_sha256": "bcaa3a34a5507c7cd9271aac137feea441b5db23bdbdd86b3326e939122f3338",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -656,12 +663,12 @@
           "id": 42,
           "severity": 1,
           "summary_range": [
-            1374,
-            1388
-          ],
-          "message_range": [
             1399,
             1659
+          ],
+          "message_range": [
+            1374,
+            1388
           ],
           "location": [
             76,
@@ -708,8 +715,8 @@
           ],
           "bytes": 359,
           "record_sha256": "e55cfc43fb5ca033f23923436b8c9ff750232c6379bdd051f1d5a2420da3304d",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "a93eb68155768c7d0ea1beff9c2e4eb77f490815a431a59a686314ad1e367078",
+          "summary_sha256": "a93eb68155768c7d0ea1beff9c2e4eb77f490815a431a59a686314ad1e367078",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -723,12 +730,12 @@
           "id": 43,
           "severity": 1,
           "summary_range": [
-            1733,
-            1761
-          ],
-          "message_range": [
             1772,
             1942
+          ],
+          "message_range": [
+            1733,
+            1761
           ],
           "location": [
             91,
@@ -775,8 +782,8 @@
           ],
           "bytes": 283,
           "record_sha256": "1bcae9d9c2121dfee909cb1ba8f89ec6b6cdf3f6d0191b5775a13d3d5b5835b5",
-          "summary_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
-          "message_sha256": "94ea5559f816ff5b9d3a654498d03baf58542f5dcf5ba602c5f23bc94c66d846",
+          "summary_sha256": "94ea5559f816ff5b9d3a654498d03baf58542f5dcf5ba602c5f23bc94c66d846",
+          "message_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -790,12 +797,12 @@
           "id": 44,
           "severity": 1,
           "summary_range": [
-            2016,
-            2030
-          ],
-          "message_range": [
             2041,
             2293
+          ],
+          "message_range": [
+            2016,
+            2030
           ],
           "location": [
             14,
@@ -842,8 +849,8 @@
           ],
           "bytes": 351,
           "record_sha256": "6afb5351aa8d6f5e200ec8635bf7ad919ef80ab46e48410f483ae2dfdbaf649a",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "3a43ad41ae30d5ad79c23aec46688ae6ef2628648f313df4d03316991198f46a",
+          "summary_sha256": "3a43ad41ae30d5ad79c23aec46688ae6ef2628648f313df4d03316991198f46a",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -857,12 +864,12 @@
           "id": 45,
           "severity": 1,
           "summary_range": [
-            2367,
-            2381
-          ],
-          "message_range": [
             2392,
             2652
+          ],
+          "message_range": [
+            2367,
+            2381
           ],
           "location": [
             102,
@@ -909,8 +916,8 @@
           ],
           "bytes": 359,
           "record_sha256": "c71ca1b7f9ab1b4431801ea9556e9865f5f8c06bd26750278a7c37590e91b5f3",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "692da70d0733f88f91c9cfa8c481fed0d9a60fbbb7da8a868461bc60baf98dae",
+          "summary_sha256": "692da70d0733f88f91c9cfa8c481fed0d9a60fbbb7da8a868461bc60baf98dae",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -924,12 +931,12 @@
           "id": 46,
           "severity": 1,
           "summary_range": [
-            2726,
-            2740
-          ],
-          "message_range": [
             2751,
             3009
+          ],
+          "message_range": [
+            2726,
+            2740
           ],
           "location": [
             103,
@@ -976,8 +983,8 @@
           ],
           "bytes": 357,
           "record_sha256": "e8d983d7c06e437db85a1f8c4225e79d7d7e20ae2f30ea098c6a8d946e49b7e0",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "a2c9d83baf408469735f0ce4ba4ed53fbcd5eb86580fd1a7cfe2d209ce88c56f",
+          "summary_sha256": "a2c9d83baf408469735f0ce4ba4ed53fbcd5eb86580fd1a7cfe2d209ce88c56f",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -991,12 +998,12 @@
           "id": 47,
           "severity": 1,
           "summary_range": [
-            3083,
-            3123
-          ],
-          "message_range": [
             3134,
             3295
+          ],
+          "message_range": [
+            3083,
+            3123
           ],
           "location": [
             -9999,
@@ -1043,8 +1050,8 @@
           ],
           "bytes": 356,
           "record_sha256": "1138e363a2d9bf89c778e5d0ab0aeb446443de60d11b010a673c24f76b576520",
-          "summary_sha256": "c5096793410ac762ea9396c9d04f76b7db40b86b6bec603cfb031f1c577c2cef",
-          "message_sha256": "acdfac2be382327ef5762987d8c7a994b107baa6a06ed832d21b27083460a584",
+          "summary_sha256": "acdfac2be382327ef5762987d8c7a994b107baa6a06ed832d21b27083460a584",
+          "message_sha256": "c5096793410ac762ea9396c9d04f76b7db40b86b6bec603cfb031f1c577c2cef",
           "parameters_sha256": "b038fc8e20354e93a3b6c21838259e8158bc3fb44be016f3ba3d547762480d05"
         },
         {
@@ -1058,12 +1065,12 @@
           "id": 48,
           "severity": 1,
           "summary_range": [
-            3439,
-            3467
-          ],
-          "message_range": [
             3478,
             3652
+          ],
+          "message_range": [
+            3439,
+            3467
           ],
           "location": [
             18,
@@ -1110,8 +1117,8 @@
           ],
           "bytes": 287,
           "record_sha256": "e211e19ab9730189e558350385aa2e69d276a6b5afc3779bca5c5b8b289e75c6",
-          "summary_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
-          "message_sha256": "a3ffb1541e22effa2cab7d62611e01ae780f0fb6344a10f999b74b5cba3a4026",
+          "summary_sha256": "a3ffb1541e22effa2cab7d62611e01ae780f0fb6344a10f999b74b5cba3a4026",
+          "message_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         }
       ]
@@ -1135,12 +1142,12 @@
           "id": 17,
           "severity": 1,
           "summary_range": [
-            49,
-            78
-          ],
-          "message_range": [
             89,
             265
+          ],
+          "message_range": [
+            49,
+            78
           ],
           "location": [
             32,
@@ -1187,8 +1194,8 @@
           ],
           "bytes": 290,
           "record_sha256": "5b6caa312c26393ac112d4a1388a85a204d58d0616a7efca3f347bccadc277a7",
-          "summary_sha256": "5239cced50ad311a566da59d8eb726e1c89f0b8d8c322e36ec739fd3dc954799",
-          "message_sha256": "24ff9d6f7b525bf8251f29ded73b41401c64474665314f86ccd1e0bc651a1cea",
+          "summary_sha256": "24ff9d6f7b525bf8251f29ded73b41401c64474665314f86ccd1e0bc651a1cea",
+          "message_sha256": "5239cced50ad311a566da59d8eb726e1c89f0b8d8c322e36ec739fd3dc954799",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1202,12 +1209,12 @@
           "id": 18,
           "severity": 1,
           "summary_range": [
-            339,
-            356
-          ],
-          "message_range": [
             367,
             501
+          ],
+          "message_range": [
+            339,
+            356
           ],
           "location": [
             -9999,
@@ -1254,8 +1261,8 @@
           ],
           "bytes": 236,
           "record_sha256": "57068186aca7ef64e0bb13ab8f7be2f5c9ef4776c291b3bfdeacb705eba6e5fc",
-          "summary_sha256": "984013fbd2b690cf36dcfff06aa022dc672aa342609fa20cf1e0b8e5394db2f0",
-          "message_sha256": "bf1225bbea95e42a9d1b25f84ae46f1064b6ffcca0dbc364332eef65294a1256",
+          "summary_sha256": "bf1225bbea95e42a9d1b25f84ae46f1064b6ffcca0dbc364332eef65294a1256",
+          "message_sha256": "984013fbd2b690cf36dcfff06aa022dc672aa342609fa20cf1e0b8e5394db2f0",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1269,12 +1276,12 @@
           "id": 19,
           "severity": 1,
           "summary_range": [
-            575,
-            594
-          ],
-          "message_range": [
             605,
             718
+          ],
+          "message_range": [
+            575,
+            594
           ],
           "location": [
             -9999,
@@ -1321,8 +1328,8 @@
           ],
           "bytes": 217,
           "record_sha256": "1de8043e228970bd700bc1b4f6b654e64f70c0fb531cb92a6ca79852fc8ccaba",
-          "summary_sha256": "13f56271e400ac3f133376edb14a7830f668a6c3fb0706bc5c0cfec279aa1cdd",
-          "message_sha256": "1fd304da079f392f1afa9859a8c549a75cbb6692af1febbb1a5b8a06eb6cbdad",
+          "summary_sha256": "1fd304da079f392f1afa9859a8c549a75cbb6692af1febbb1a5b8a06eb6cbdad",
+          "message_sha256": "13f56271e400ac3f133376edb14a7830f668a6c3fb0706bc5c0cfec279aa1cdd",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1336,12 +1343,12 @@
           "id": 20,
           "severity": 2,
           "summary_range": [
-            792,
-            806
-          ],
-          "message_range": [
             817,
             946
+          ],
+          "message_range": [
+            792,
+            806
           ],
           "location": [
             -9999,
@@ -1388,8 +1395,8 @@
           ],
           "bytes": 228,
           "record_sha256": "33d2e78fbc2b6ff60b3c87926ed68c85cb1f14be82cab44074b528c76c429b89",
-          "summary_sha256": "c34b73da3677079059341a9e6cb384db3260048a58a3af7195b031a02e7a66cb",
-          "message_sha256": "440a12b77302f504444f0011d74fc892dec7d28d26c5a5bf80a8d4658950f639",
+          "summary_sha256": "440a12b77302f504444f0011d74fc892dec7d28d26c5a5bf80a8d4658950f639",
+          "message_sha256": "c34b73da3677079059341a9e6cb384db3260048a58a3af7195b031a02e7a66cb",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1403,12 +1410,12 @@
           "id": 43,
           "severity": 1,
           "summary_range": [
-            1020,
-            1048
-          ],
-          "message_range": [
             1059,
             1229
+          ],
+          "message_range": [
+            1020,
+            1048
           ],
           "location": [
             91,
@@ -1455,8 +1462,8 @@
           ],
           "bytes": 283,
           "record_sha256": "1bcae9d9c2121dfee909cb1ba8f89ec6b6cdf3f6d0191b5775a13d3d5b5835b5",
-          "summary_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
-          "message_sha256": "94ea5559f816ff5b9d3a654498d03baf58542f5dcf5ba602c5f23bc94c66d846",
+          "summary_sha256": "94ea5559f816ff5b9d3a654498d03baf58542f5dcf5ba602c5f23bc94c66d846",
+          "message_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1470,12 +1477,12 @@
           "id": 45,
           "severity": 1,
           "summary_range": [
-            1303,
-            1317
-          ],
-          "message_range": [
             1328,
             1588
+          ],
+          "message_range": [
+            1303,
+            1317
           ],
           "location": [
             102,
@@ -1522,8 +1529,8 @@
           ],
           "bytes": 359,
           "record_sha256": "c71ca1b7f9ab1b4431801ea9556e9865f5f8c06bd26750278a7c37590e91b5f3",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "692da70d0733f88f91c9cfa8c481fed0d9a60fbbb7da8a868461bc60baf98dae",
+          "summary_sha256": "692da70d0733f88f91c9cfa8c481fed0d9a60fbbb7da8a868461bc60baf98dae",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1537,12 +1544,12 @@
           "id": 46,
           "severity": 1,
           "summary_range": [
-            1662,
-            1676
-          ],
-          "message_range": [
             1687,
             1945
+          ],
+          "message_range": [
+            1662,
+            1676
           ],
           "location": [
             103,
@@ -1589,8 +1596,8 @@
           ],
           "bytes": 357,
           "record_sha256": "e8d983d7c06e437db85a1f8c4225e79d7d7e20ae2f30ea098c6a8d946e49b7e0",
-          "summary_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
-          "message_sha256": "a2c9d83baf408469735f0ce4ba4ed53fbcd5eb86580fd1a7cfe2d209ce88c56f",
+          "summary_sha256": "a2c9d83baf408469735f0ce4ba4ed53fbcd5eb86580fd1a7cfe2d209ce88c56f",
+          "message_sha256": "c67c49cb401797102002ab31aaafef1623ed69de0f58d92def49c1575f77adc4",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         },
         {
@@ -1604,12 +1611,12 @@
           "id": 47,
           "severity": 1,
           "summary_range": [
-            2019,
-            2059
-          ],
-          "message_range": [
             2070,
             2231
+          ],
+          "message_range": [
+            2019,
+            2059
           ],
           "location": [
             -9999,
@@ -1656,8 +1663,8 @@
           ],
           "bytes": 356,
           "record_sha256": "68b2863f0b6d98add3d3458619a79a191c06f261fa77d918e77a0717ab49f80a",
-          "summary_sha256": "c5096793410ac762ea9396c9d04f76b7db40b86b6bec603cfb031f1c577c2cef",
-          "message_sha256": "acdfac2be382327ef5762987d8c7a994b107baa6a06ed832d21b27083460a584",
+          "summary_sha256": "acdfac2be382327ef5762987d8c7a994b107baa6a06ed832d21b27083460a584",
+          "message_sha256": "c5096793410ac762ea9396c9d04f76b7db40b86b6bec603cfb031f1c577c2cef",
           "parameters_sha256": "b038fc8e20354e93a3b6c21838259e8158bc3fb44be016f3ba3d547762480d05"
         },
         {
@@ -1671,12 +1678,12 @@
           "id": 48,
           "severity": 1,
           "summary_range": [
-            2375,
-            2403
-          ],
-          "message_range": [
             2414,
             2588
+          ],
+          "message_range": [
+            2375,
+            2403
           ],
           "location": [
             18,
@@ -1723,8 +1730,8 @@
           ],
           "bytes": 287,
           "record_sha256": "e211e19ab9730189e558350385aa2e69d276a6b5afc3779bca5c5b8b289e75c6",
-          "summary_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
-          "message_sha256": "a3ffb1541e22effa2cab7d62611e01ae780f0fb6344a10f999b74b5cba3a4026",
+          "summary_sha256": "a3ffb1541e22effa2cab7d62611e01ae780f0fb6344a10f999b74b5cba3a4026",
+          "message_sha256": "2ce2f0a440ed702f498f05b082e7dafddab2f95a7199a9968cba3c2db6f29432",
           "parameters_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
         }
       ]
@@ -2449,9 +2456,9 @@
     "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
     "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8"
   },
-  "audit_source_sha256": "364e7864c908aaa4ea5d7bd89c4f5603bf5f4e203cbbe0283bcae7249527f9fe",
+  "audit_source_sha256": "0bf6285aeb86504c48d5abc2ca8d0dfca447f399552f7e5e2571deae68451614",
   "rust_decoder_sha256": "060695cc820f0b7e0e7f182d0c6ecac41805564bf2e203c7113cbf3e6cda4579",
-  "notification_decoder_sha256": "6e31aa3a18c03bd47f0440b9f40290aa57d0a48375dda773dfaaae7cd21ecadb",
+  "notification_decoder_sha256": "496bce55c71acd5b68535b8587342c3da65218d363ab42eb2e8a72dc01c6c335",
   "limits": "Complete byte footprint of this conditional fixture is classified by original writer ownership and typed records. Complete live affected state, Formation dirty history, notification activation event/subscribers, all gameplay RNG and universal external policy boundaries remain incomplete. No full-host acceptance, Rust SkipTurn transition parity, complete gameplay state/action/turn equivalence or presentation-only exclusion.",
   "isolated_repeat_runtime_sha256": "eabf262a0ca0c1e8f333b9d7ece17933fe8df666168403fcd32150cb04ffc5be",
   "isolated_repeat_identical_serialized_footprint": true,

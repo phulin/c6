@@ -44,7 +44,7 @@ fn main()->Result<(),Box<dyn std::error::Error>>{
   let start=r.p;let ty=r.u32();assert_eq!(r.u32(),5);
   let owner=i16::from_le_bytes(r.take(2).try_into().unwrap());
   let component_type=i16::from_le_bytes(r.take(2).try_into().unwrap());let id=r.u32();
-  assert_eq!(r.u32(),ty);let severity=r.i32();let summary=r.string();let message=r.string();
+  assert_eq!(r.u32(),ty);let severity=r.i32();let message=r.string();let summary=r.string();
   let location=[r.i32(),r.i32()];let component=r.take(8).to_vec();let ints=[r.i32(),r.i32()];
   let flags=r.take(3).to_vec();let i190=r.i32();let flags2=r.take(2).to_vec();
   let mut budget=DecodeBudget::new(Limits::default());
@@ -286,6 +286,7 @@ def audit(runtime, private_root, module):
                 formation_before=formations['before'], formation_after=formations['after'],
                 formation_path_before=[r for r in decoded['before'] if r['kind'] == 'formation_path_node'],
                 formation_only_changed_fields=['m_kLastPath', 'm_kLastPathCacheLocation'],
+                notification_text_labels=dict(first='message', second='summary', native_message_offset='0x20', native_summary_offset='0xa0', correction='Earlier derived metadata reversed text labels; corrected from target DWARF and compiled GetMessageA/GetSummary accessors. Serialized bytes and raw artifact identities are unchanged; dismissed198 cleanup classification remains unchanged.'),
                 notification_container=notification_details, removed_notifications=[r['id'] for r in removed],
                 changed_notification_fields=changed_notifications, notification_contract=contract,
                 unchanged_named_serialized_regions=unchanged_regions,
