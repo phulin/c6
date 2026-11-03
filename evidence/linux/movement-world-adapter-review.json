@@ -1,0 +1,73 @@
+{
+  "schema": "c6-linux-movement-world-adapter-review-v1",
+  "reviewed_source_commit": "0db5d51a3af1edab7c30afa138225ccf82da0f34",
+  "review_result": "no blocking defect found in source-only adapter scope",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "candidate_sha256": "63d15a41b4f87a6472f3a456479266ac078829a1709796dc15c1c11d466cd909",
+  "frozen_candidate_path": "/home/phulin/c6/target/movement-world-builds/0db5d51a3af1edab7c30afa138225ccf82da0f34/frozen/movement-world/63d15a41b4f87a6472f3a456479266ac078829a1709796dc15c1c11d466cd909/candidate",
+  "source_snapshot_identity": "08c6b54e37da99c8e651feb3d4909855c27d0d7b35847ed07e6e2a76fdf0b469",
+  "source_files_verified_against_git_and_snapshot": 43,
+  "source_manifest_matches_report": true,
+  "independent_rebuild": {
+    "source_archive": "/tmp/c6-movement-world-build-LRlpGs",
+    "command": "cargo build --locked --release -p c6-differential --bin c6-movement-world-candidate",
+    "binary_path": "/tmp/c6-movement-world-build-LRlpGs/target/release/c6-movement-world-candidate",
+    "sha256": "63d15a41b4f87a6472f3a456479266ac078829a1709796dc15c1c11d466cd909",
+    "matches_frozen_candidate": true,
+    "scope": "same toolchain and archive path, separate target directory; cross-toolchain reproducibility not established"
+  },
+  "toolchain": {
+    "rustc_verbose": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+    "cargo_verbose": "cargo 1.98.1 (797e8a9bc 2026-08-05)\nrelease: 1.98.1\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: x86_64-unknown-linux-gnu\nlibgit2: 1.9.4 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:OpenSSL/3.6.3)\nssl: OpenSSL 3.6.3 9 Jun 2026\nos: Ubuntu 24.4.0 (noble) [64-bit]\n"
+  },
+  "checks": [
+    {
+      "command": "cargo test --locked -p c6-data movement::tests",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "command": "cargo test --locked -p c6-data registry::tests",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 1,
+      "ignored_reason": "requires audited original Linux definition query report"
+    },
+    {
+      "command": "cargo test --locked -p c6-differential --bin c6-movement-world-candidate",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "command": "cargo test --locked -p c6-core movement_world",
+      "passed": 6,
+      "failed": 0
+    }
+  ],
+  "reviewed_contracts": [
+    "shared direct-index/hash lookup; last inserted equal hash wins; native order retained",
+    "hash-only imports invent neither names nor SQLite row identities",
+    "Unit requests use owner and low16 slot; actual full Unit ID compared independently",
+    "Formation case ID is native actual getter; selected saved Formation request uses low16 slot",
+    "missing source-dependent Terrain IsWater remains unsupported; runtime district/domain masks named as observed inputs",
+    "checker hashes exact JSONL/Core/owner trace association; serializer owner ranges supply records, never fixture IDs",
+    "43 frozen source/input files match exact reviewed Git commit; independent release hash matches"
+  ],
+  "native_comparison": null,
+  "original_code_executed_by_review": false,
+  "native_differential_acceptance": false,
+  "full_movement_parity": false,
+  "complete_state_actions_turns": false,
+  "unresolved_dependencies": [
+    "matched original serializer-owned Map/Unit/Formation ranges",
+    "reviewed actual trace/native/Core association",
+    "actual targeted runtime district/domain-mask observations",
+    "nonempty portal reconstruction",
+    "complete affected state/RNG comparison"
+  ],
+  "first_run_scalar_candidate_sha256": "d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718",
+  "first_run_scalar_candidate_verified_unchanged": true,
+  "raw_save_load_different_bytes_retained": 89198,
+  "unknown_bytes_masked": 0
+}
