@@ -1,0 +1,126 @@
+{
+  "actual_snapshot_paths": [
+    {
+      "activity": 1797587246,
+      "path": "MemberNotReady",
+      "queue_nodes": 1
+    },
+    {
+      "activity": 1797587246,
+      "path": "AdjacentMove(AdjacentMoveWitness { direction: 3, location: PlotCoord { x: 80, y: 57 }, has_moved: true, plot_cost: Some(1), remaining_integer: 1 })",
+      "queue_nodes": 0
+    },
+    {
+      "activity": 1797587246,
+      "path": "MemberNotReady",
+      "queue_nodes": 1
+    }
+  ],
+  "additional_methods": [
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationAdded",
+      "rva": "0x320cb30",
+      "sha256": "1d3f3b2efb7fb26efde6010fa4b12c49c61ebcdd79ac34ef1158eb69e1babdbd"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationStarted",
+      "rva": "0x320cbb0",
+      "sha256": "f90d14aff6faab476906f61c58ce3b8f23ce1b988b160e485db56b9eaf6f46d3"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationDeactivated",
+      "rva": "0x320ccb0",
+      "sha256": "ee34adf5b4541fa747307546a7899469539c7866e8dac8a697e588cb75d1eb04"
+    },
+    {
+      "bytes": 123,
+      "image": "host",
+      "name": "Translate.OperationsCleared",
+      "rva": "0x320cd30",
+      "sha256": "acb9af301f7b99cb48c3f333496bf43d61ed5555de81e6600520ebe5957e1758"
+    },
+    {
+      "bytes": 132,
+      "image": "host",
+      "name": "EventData1.Ctor",
+      "rva": "0x32b54f0",
+      "sha256": "d867586f001aeb91f98643bceb8446c309cc41d3a465ab01d850587caf153614"
+    },
+    {
+      "bytes": 29,
+      "image": "host",
+      "name": "ActivityData.Ctor",
+      "rva": "0x321e990",
+      "sha256": "676762dbd4199aec595ab39b09e25d919d5e8e7fb5dc44219b28638ff0877749"
+    },
+    {
+      "bytes": 95,
+      "image": "game",
+      "name": "Exports.Unit.GetOperationType",
+      "rva": "0x2c93be0",
+      "sha256": "7efef445eccdf00b74972505363d3101c961cc45167fa60e8097b139277c548e"
+    },
+    {
+      "bytes": 75,
+      "image": "game",
+      "name": "Exports.Unit.GetOperationParams",
+      "rva": "0x2c93c40",
+      "sha256": "20678e7a3ffa9b5dd203af39611c9a07a2f7ebd4c94b9bdb467ab304facb3516"
+    }
+  ],
+  "checkpoint": "evidence/linux/loaded-ordered-reporting-check.json",
+  "checkpoint_sha256": "31636e3f4d6fc477e9fcc459bb79e342ae2975af63ebde0ad72c4069a9911c76",
+  "exact_remaining_consumer": "Provider(\"genuine script/lock/args backend unavailable\")",
+  "exercised_host_events": [
+    35,
+    70,
+    71,
+    67
+  ],
+  "full_live_affected_state_rng_parity": false,
+  "independent_source_rebuild": {
+    "candidate_sha256": "92dadb7576d9aafe90b6a873da771efeeac4041203b441b475cd46339322b09d",
+    "fields_equal": 25,
+    "original_execution": false,
+    "output_sha256": "5ed1819afe42fb837ca85441a6e14d37b95e81d22b46429a371f152ce7498dee",
+    "rebuilt_from_retained_source": true,
+    "resolved_lock_sha256": "bc1abcff1443572a997139e1467c114803590feb4ea3b2b3f59a36036d2f2d8a"
+  },
+  "mutation_authority": "concrete provider queries immutable LoadedState; action prefix remains in same authoritative state on script failure",
+  "native_full_action_comparison": false,
+  "native_host_publication_values_compared": false,
+  "original_execution": false,
+  "original_send_evidence_sha256": "fc6f88d9f33173fdc738dba53423dfe0957dffdfc8c6292c64caa54bda98492f",
+  "original_send_scalar_rows_available": 9,
+  "original_send_scalar_rows_compared": 4,
+  "original_send_scalar_rows_equal": true,
+  "previous_266_method_body_checks_repeated": false,
+  "previous_review": "evidence/linux/loaded-activity-reporting-independent-review.json",
+  "producer_effects": "three snapshot readiness checks, including one source-computed adjacent-move success; HoldCycling not invoked",
+  "publication_event_order": [
+    35,
+    70,
+    71,
+    67
+  ],
+  "retained_build_manifest_sha256": "33f7e5c09450d2442350fdd5bd3992476def8295a54814095f7867b5fea98035",
+  "retained_candidate_sha256": "eb15160822a24373ef2e404af6f409f1d5a1cf8b25b691deb004a73611fbcf74",
+  "retained_resolved_lock_sha256": "bc1abcff1443572a997139e1467c114803590feb4ea3b2b3f59a36036d2f2d8a",
+  "retained_source_snapshot": "target/linux/loaded-activity-reporting-candidates/b369f6cd8e844bfb9a70cb761cf2686f/source",
+  "reviewer_source_sha256": "25a814711885ae335ffbd183cc14a0cb88432d18f59fa726b9c37220c9707ede",
+  "schema": "c6-linux-loaded-ordered-reporting-independent-review-v1",
+  "scope_admission": "stock headless profile with no added consumers is an explicit caller condition",
+  "source_manifest_sha256": "aa8ff6c0d1cedf65657d5fc86a3634a99cd7a0ebcff066a78c9ab3a560908240",
+  "source_preimages_checked": 167,
+  "source_translator_publications_compared": 4,
+  "unexercised_compiled_branches": [
+    "UnitOperationStarted host68",
+    "OPERATION activity facade projection"
+  ]
+}
