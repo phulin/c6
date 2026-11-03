@@ -384,3 +384,5 @@ pub mod unit_operation_interruption;
 pub mod game_global_ai;
 
 pub mod game_barbarian;
+
+pub mod game_free_cities;
