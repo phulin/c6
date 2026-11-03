@@ -1,9 +1,10 @@
 //! Bounded logical GameEvents graph for the pinned Linux host.
 //!
 //! This models source-backed factory/cache mutations and builtin TestAll control
-//! flow. It is not an HKS heap, allocator, collector, or callback VM. Unknown
-//! name-map entries are never interpreted as absent. See
-//! `docs/linux-script-event-registry.md` for the evidence and admission limits.
+//! flow. The cached three-integer no-listener frontier additionally evolves
+//! bounded allocator/collector accounting. This is not a complete HKS heap,
+//! collector, callback VM, action executor, or turn implementation. Unknown
+//! name-map entries are never interpreted as absent.
 
 use std::collections::BTreeMap;
 
@@ -120,6 +121,83 @@ pub struct ScriptEventRegistry {
     next_identity: u64,
 }
 
+/// Evolving ordinary-allocator projection for the source-closed cached,
+/// phase-zero, three-integer, no-listener call path. Initial state must establish
+/// the ordinary allocator context; custom allocator callbacks are unsupported.
+/// These are semantic GC obligations, not native addresses, allocator bins, or
+/// VM stack layouts.
+///
+/// Interned names must describe the current intern table, not names observed in
+/// an unrelated capture. This model cannot intern a missing string, advance a
+/// collector, or discharge temporary swept allocations.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CachedExecutionState {
+    pub call_capacity: CachedCallCapacity,
+    pub collector_phase: u32,
+    /// Native signed countdown, updated with 32-bit wrapping subtraction.
+    pub step_countdown: i32,
+    pub allocated_bytes: u64,
+    pub peak_allocated_bytes: u64,
+    pub collection_threshold: u64,
+    pub collection_inhibited: bool,
+    pub interned_names: std::collections::BTreeSet<String>,
+    /// Number of still-linked zero-upvalue protected-call closures created by
+    /// this projection. Each remains a 48-byte swept allocation after return.
+    /// Existing allocations remain represented in allocated_bytes.
+    pub protected_closure_obligations: u64,
+}
+
+/// Semantic capacity fact for this call shape, established from the initial VM
+/// state. Ordinary return preserves it. Other VM activity must invalidate or
+/// reestablish it. Unknown capacity cannot omit growth's allocation/GC effects.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CachedCallCapacity {
+    Unknown,
+    NoGrowthForThreeIntegers,
+}
+
+impl CachedExecutionState {
+    fn admit(&self, name: &str) -> Result<(), RegistryError> {
+        if self.call_capacity != CachedCallCapacity::NoGrowthForThreeIntegers {
+            return Err(RegistryError::UnsupportedEffect(
+                "unknown call growth effects",
+            ));
+        }
+        if self.collector_phase != 0 {
+            return Err(RegistryError::UnsupportedEffect(
+                "collector phase outside cached frontier",
+            ));
+        }
+        for key in ["GameEvents", name, "TestAll"] {
+            if !self.interned_names.contains(key) {
+                return Err(RegistryError::UnsupportedEffect("string intern miss"));
+            }
+        }
+        // checkStep(1) tests the OLD signed countdown and OLD allocation total.
+        if self.step_countdown <= 1
+            && self.allocated_bytes > self.collection_threshold
+            && !self.collection_inhibited
+        {
+            return Err(RegistryError::UnsupportedEffect("collector progression"));
+        }
+        if self.allocated_bytes.checked_add(48).is_none()
+            || self.protected_closure_obligations.checked_add(1).is_none()
+        {
+            return Err(RegistryError::UnsupportedEffect(
+                "cached allocation accounting overflow",
+            ));
+        }
+        Ok(())
+    }
+
+    fn allocate_protected_closure(&mut self) {
+        self.step_countdown = self.step_countdown.wrapping_sub(1);
+        self.allocated_bytes += 48;
+        self.peak_allocated_bytes = self.peak_allocated_bytes.max(self.allocated_bytes);
+        self.protected_closure_obligations += 1;
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProtectedCallbackResult {
     Returned(LuaValue),
@@ -179,9 +257,9 @@ impl Default for ScriptEventRegistry {
 }
 
 impl ScriptEventRegistry {
-    /// No graph seed or callback provider closes native HKS allocator/GC state.
-    /// Action adapters must reject live execution at this boundary until that
-    /// state has an implementation and native acceptance evidence.
+    /// General live execution remains unsupported. The separate cached-call
+    /// frontier requires explicit current collector/allocator state and does
+    /// not admit factories, collector progression, or callbacks.
     pub fn require_live_execution_support(&self) -> Result<(), RegistryError> {
         Err(RegistryError::UnsupportedEffect(
             "HKS allocator/GC live execution",
@@ -297,6 +375,72 @@ impl ScriptEventRegistry {
         })
     }
 
+    /// Import explicitly known cached event identities. This validates the
+    /// logical graph; it neither authenticates a fixture nor establishes HKS
+    /// collector, allocator, global-table, or string-intern state.
+    pub fn from_seed_with_cache(
+        seed: RegistrySeed,
+        cache: BTreeMap<String, EventIdentity>,
+    ) -> Result<Self, RegistryError> {
+        let mut registry = Self::from_seed(seed)?;
+        let mut owned: std::collections::BTreeSet<_> = registry
+            .shared_groups
+            .keys()
+            .chain(registry.local_groups.keys())
+            .copied()
+            .collect();
+        owned.extend(registry.local_groups.values().flat_map(|g| {
+            g.numeric_slots.values().filter_map(|v| match v {
+                LuaValue::Object(id) => Some(*id),
+                _ => None,
+            })
+        }));
+        owned.extend(registry.shared_groups.values().flat_map(|g| {
+            g.entries_in_native_order.iter().filter_map(|e| match e {
+                GroupEntry::NonTable(LuaValue::Object(id)) => Some(*id),
+                _ => None,
+            })
+        }));
+        let mut next_identity = registry.next_identity;
+        for (name, event) in &cache {
+            if registry.names.get(name) != Some(&KnownNameEntry::Shared(event.shared_group)) {
+                return Err(RegistryError::InvalidSeed("cache name/group mismatch"));
+            }
+            let group = registry
+                .shared_groups
+                .get(&event.shared_group)
+                .ok_or(RegistryError::UnknownObject(event.shared_group))?;
+            if !registry.local_groups.contains_key(&event.local_group)
+                || !group
+                    .entries_in_native_order
+                    .contains(&GroupEntry::Table(event.local_group))
+            {
+                return Err(RegistryError::InvalidSeed(
+                    "cache local group is not linked",
+                ));
+            }
+            if event.test_all != event.methods[5] {
+                return Err(RegistryError::InvalidSeed(
+                    "cache TestAll identity mismatch",
+                ));
+            }
+            for id in std::iter::once(event.event).chain(event.methods) {
+                if !owned.insert(id) {
+                    return Err(RegistryError::InvalidSeed(
+                        "cache object identities overlap",
+                    ));
+                }
+                next_identity = next_identity.max(
+                    id.0.checked_add(1)
+                        .ok_or(RegistryError::IdentityExhausted)?,
+                );
+            }
+        }
+        registry.cache = cache;
+        registry.next_identity = next_identity;
+        Ok(registry)
+    }
+
     pub fn cached_event(&self, name: &str) -> Option<EventIdentity> {
         self.cache.get(name).copied()
     }
@@ -307,6 +451,54 @@ impl ScriptEventRegistry {
 
     pub fn local_group(&self, id: ScriptObjectId) -> Option<&LocalGroup> {
         self.local_groups.get(&id)
+    }
+
+    /// Execute the bounded cached builtin TestAll path with its evolving
+    /// collector/allocator effects. A cache miss, string miss, nonempty reached
+    /// group, or collector progression is refused before any mutation.
+    ///
+    /// The typed cache supplies the existing builtin fields; names are not
+    /// treated as absent or synthesized. Native host stack/activation capacity
+    /// belongs to oracle-context admission, not the simulator's object model.
+    /// This is not support for complete live actions or arbitrary callbacks.
+    pub fn test_all_cached(
+        &self,
+        name: &str,
+        _arguments: [i32; 3],
+        effects: &mut CachedExecutionState,
+    ) -> Result<Option<bool>, RegistryError> {
+        if name.as_bytes().contains(&0) {
+            return Err(RegistryError::UnsupportedEffect(
+                "embedded NUL in native field name",
+            ));
+        }
+        let event = match self.cached_event(name) {
+            Some(event) => event,
+            None => {
+                if !self.names.contains_key(name) {
+                    return Err(RegistryError::UnknownNameMapEntry(name.to_owned()));
+                }
+                return Err(RegistryError::UnsupportedEffect("live event factory"));
+            }
+        };
+        let mut any_nonempty = false;
+        for entry in &self.shared_groups[&event.shared_group].entries_in_native_order {
+            if let GroupEntry::Table(local) = entry {
+                // Seed admission bounds objlen below i32::MAX. Thus the
+                // target's signed low-32-bit <=0 test is exactly objlen==0
+                // here, without silently reinterpreting unsupported lengths.
+                any_nonempty |= self.local_groups[local].objlen != 0;
+            }
+        }
+        if any_nonempty {
+            return Err(RegistryError::UnsupportedCallbackVm);
+        }
+        effects.admit(name)?;
+        // Source order: protected cclosure allocation precedes the three
+        // intern-hit field lookups and empty TestAll traversal. Phase zero
+        // intern hits and the reached empty groups have no further effects.
+        effects.allocate_protected_closure();
+        Ok(any_nonempty.then_some(true))
     }
 
     /// Source-backed ordinary lookup: indexer creates the shared group if known
@@ -529,6 +721,197 @@ impl ScriptEventRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn cached_seed() -> (RegistrySeed, BTreeMap<String, EventIdentity>) {
+        let mut registry = ScriptEventRegistry::from_seed(seed()).unwrap();
+        let event = registry.lookup("CanStartOperation").unwrap();
+        (
+            RegistrySeed {
+                names: registry.names,
+                shared_groups: registry.shared_groups,
+                local_groups: registry.local_groups,
+            },
+            [("CanStartOperation".into(), event)].into(),
+        )
+    }
+    fn cached_effects() -> CachedExecutionState {
+        CachedExecutionState {
+            call_capacity: CachedCallCapacity::NoGrowthForThreeIntegers,
+            collector_phase: 0,
+            step_countdown: 2,
+            allocated_bytes: 100,
+            peak_allocated_bytes: 120,
+            collection_threshold: 100,
+            collection_inhibited: false,
+            interned_names: ["GameEvents", "CanStartOperation", "TestAll"]
+                .map(str::to_owned)
+                .into(),
+            protected_closure_obligations: 0,
+        }
+    }
+
+    #[test]
+    fn cached_calls_evolve_collector_accounting_and_refuse_at_next_boundary() {
+        let (seed, cache) = cached_seed();
+        let registry = ScriptEventRegistry::from_seed_with_cache(seed, cache).unwrap();
+        let before = registry.clone();
+        let mut effects = cached_effects();
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0, 7, 36], &mut effects),
+            Ok(None)
+        );
+        assert_eq!(effects.step_countdown, 1);
+        assert_eq!(effects.allocated_bytes, 148);
+        assert_eq!(effects.peak_allocated_bytes, 148);
+        assert_eq!(effects.protected_closure_obligations, 1);
+        let stopped = effects.clone();
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0, 7, 36], &mut effects),
+            Err(RegistryError::UnsupportedEffect("collector progression"))
+        );
+        assert_eq!(effects, stopped);
+        assert_eq!(registry, before);
+    }
+
+    #[test]
+    fn cached_countdown_threshold_and_inhibit_match_preallocation_guards() {
+        let (seed, cache) = cached_seed();
+        let registry = ScriptEventRegistry::from_seed_with_cache(seed, cache).unwrap();
+        let mut effects = cached_effects();
+        effects.step_countdown = 1;
+        // Equality is checked before the allocation, so this call succeeds.
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0; 3], &mut effects),
+            Ok(None)
+        );
+        assert_eq!(effects.step_countdown, 0);
+        effects.collection_inhibited = true;
+        effects.step_countdown = i32::MIN;
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0; 3], &mut effects),
+            Ok(None)
+        );
+        assert_eq!(effects.step_countdown, i32::MAX);
+        assert_eq!(effects.allocated_bytes, 196);
+        assert_eq!(effects.protected_closure_obligations, 2);
+        // A wrapped positive subtraction result does not satisfy signed JG:
+        // overflow participates in the native condition.
+        effects.step_countdown = i32::MIN;
+        effects.collection_inhibited = false;
+        let before = effects.clone();
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0; 3], &mut effects),
+            Err(RegistryError::UnsupportedEffect("collector progression"))
+        );
+        assert_eq!(effects, before);
+        // Positive old countdown bypasses even an exceeded allocation limit.
+        effects.step_countdown = 2;
+        effects.peak_allocated_bytes = 1_000;
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0; 3], &mut effects),
+            Ok(None)
+        );
+        assert_eq!(effects.allocated_bytes, 244);
+        assert_eq!(effects.peak_allocated_bytes, 1_000);
+        assert_eq!(effects.protected_closure_obligations, 3);
+    }
+
+    #[test]
+    fn cached_preflight_gaps_preserve_both_states() {
+        let (seed, cache) = cached_seed();
+        let registry = ScriptEventRegistry::from_seed_with_cache(seed.clone(), cache).unwrap();
+        let uncached = ScriptEventRegistry::from_seed(seed).unwrap();
+        for (target, name, mut effects) in [
+            (&uncached, "CanStartOperation", cached_effects()),
+            (&registry, "unknown", cached_effects()),
+            (&registry, "CanStartOperation", {
+                let mut e = cached_effects();
+                e.call_capacity = CachedCallCapacity::Unknown;
+                e
+            }),
+            (&registry, "CanStartOperation", {
+                let mut e = cached_effects();
+                e.collector_phase = 2;
+                e
+            }),
+            (&registry, "CanStartOperation", {
+                let mut e = cached_effects();
+                e.interned_names.remove("TestAll");
+                e
+            }),
+            (&registry, "CanStartOperation", {
+                let mut e = cached_effects();
+                e.allocated_bytes = u64::MAX;
+                e
+            }),
+        ] {
+            let before = effects.clone();
+            let graph = target.clone();
+            assert!(target.test_all_cached(name, [0; 3], &mut effects).is_err());
+            assert_eq!(effects, before);
+            assert_eq!(*target, graph);
+        }
+    }
+
+    #[test]
+    fn cached_nonempty_group_is_refused_before_allocator_effects() {
+        let mut registry = callbacks();
+        registry.lookup("event").unwrap();
+        let before = registry.clone();
+        let mut effects = cached_effects();
+        effects.interned_names.insert("event".into());
+        let initial_effects = effects.clone();
+        assert_eq!(
+            registry.test_all_cached("event", [0; 3], &mut effects),
+            Err(RegistryError::UnsupportedCallbackVm)
+        );
+        assert_eq!(effects, initial_effects);
+        assert_eq!(registry, before);
+    }
+
+    #[test]
+    fn cached_seed_preserves_builtin_identity_and_reserves_future_ids() {
+        let (mut seed, cache) = cached_seed();
+        seed.names.insert("later".into(), KnownNameEntry::Absent);
+        let event = cache["CanStartOperation"];
+        let mut registry = ScriptEventRegistry::from_seed_with_cache(seed, cache).unwrap();
+        let before = registry.clone();
+        assert_eq!(registry.lookup("CanStartOperation"), Ok(event));
+        assert_eq!(registry, before);
+        assert_eq!(event.test_all, event.methods[5]);
+        let later = registry.lookup("later").unwrap();
+        assert!(later.shared_group.0 > event.methods.iter().map(|id| id.0).max().unwrap());
+    }
+
+    #[test]
+    fn cached_seed_rejects_contradictory_identities() {
+        let (seed, cache) = cached_seed();
+        let mut invalid = cache.clone();
+        invalid.get_mut("CanStartOperation").unwrap().test_all = ScriptObjectId(99);
+        assert_eq!(
+            ScriptEventRegistry::from_seed_with_cache(seed.clone(), invalid),
+            Err(RegistryError::InvalidSeed(
+                "cache TestAll identity mismatch"
+            ))
+        );
+        let mut invalid = cache.clone();
+        let event = invalid.get_mut("CanStartOperation").unwrap();
+        event.methods[0] = event.local_group;
+        assert_eq!(
+            ScriptEventRegistry::from_seed_with_cache(seed.clone(), invalid),
+            Err(RegistryError::InvalidSeed(
+                "cache object identities overlap"
+            ))
+        );
+        let mut invalid = cache;
+        invalid.get_mut("CanStartOperation").unwrap().local_group = ScriptObjectId(99);
+        assert_eq!(
+            ScriptEventRegistry::from_seed_with_cache(seed, invalid),
+            Err(RegistryError::InvalidSeed(
+                "cache local group is not linked"
+            ))
+        );
+    }
+
     fn seed() -> RegistrySeed {
         RegistrySeed {
             names: [("CanStartOperation".into(), KnownNameEntry::Absent)].into(),
