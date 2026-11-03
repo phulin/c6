@@ -15,6 +15,15 @@ from unit_archive_audit import registration_schema
 ROOT = Path(__file__).resolve().parents[2]
 GAME_METHODS = [
     (0x293B560, 0x181, 'Formation.Read'),
+    (0x2B510F0, 0x84, 'Player.Manager.Read'),
+    (0x2B51180, 0x82, 'Player.Manager.InitializePlayer'),
+    (0x2B519D0, 0x23C, 'Player.Manager.AllocateInstance'),
+    (0x2B4F490, 0xDBE, 'Player.Read'),
+    (0x2B51C10, 0x2A9, 'Player.Manager.InitializeLists'),
+    (0x2B51570, 0xC5, 'Player.Manager.ClearLists'),
+    (0x290B930, 0x16, 'Globals.GetPlayer'),
+    (0x2661AE0, 0xF, 'Game.GetPlayer'),
+    (0x1FCC1B0, 0xC, 'Player.Manager.GetPlayer'),
     (0x293ED20, 0x32, 'Formation.archive_base.constructor'),
     (0x293EE30, 0xBD, 'Formation.archive.setVariableName'),
     (0x293B6F0, 0x6F6, 'Formation.constructor'),
@@ -62,12 +71,20 @@ def main():
     for address, target in [(0x293B5BF, 0x1F70080), (0x293B682, 0x1E1D6B0),
                             (0x293B6CF, 0x1ECE0B0), (0x293DDD2, 0x1EB3DC0),
                             (0x293ED01, 0x1EB3DC0), (0x293D8EB, 0x1E1FBE0),
-                            (0x293D902, 0x1EA2B90), (0x2B0515D, 0x1E15E80)]:
+                            (0x293D902, 0x1EA2B90), (0x2B0515D, 0x1E15E80),
+                            (0x2B5114E, 0x1EAEDC0), (0x2B51159, 0x1F503A0),
+                            (0x2B5119A, 0x1E74160), (0x2B4F9CA, 0x1E58EE0),
+                            (0x2B4F9DD, 0x1F00530), (0x290B93F, 0x1EA2A50),
+                            (0x2661AE8, 0x1E97AC0)]:
         game.call(address, target)
     for address, expected in [(0x293DE80, bytes.fromhex('b92c000000')),
                               (0x20BCFC0, bytes.fromhex('b901000000')),
                               (0x293B674, bytes.fromhex('c6042400')),
-                              (0x2B05841, bytes.fromhex('440fb7fd'))]:
+                              (0x2B05841, bytes.fromhex('440fb7fd')),
+                              (0x2B51ADB, bytes.fromhex('498b442420')),
+                              (0x2B51AE0, bytes.fromhex('4c8934d8')),
+                              (0x1FCC1B3, bytes.fromhex('488b4f20')),
+                              (0x1FCC1B7, bytes.fromhex('488b04c1'))]:
         if game.read(address, len(expected)) != expected:
             raise ValueError(f'pinned instruction mismatch at {address:#x}')
     symbols = subprocess.check_output(['nm', '-D', '-S', '-C', str(game_path)], text=True)
@@ -95,6 +112,14 @@ def main():
         formation_component_type=44, unit_component_type=1,
         owner_minus_one_skips_lookup=True,
         other_owner_uses_actual_globals_lookup=True,
+        enclosing_player_owner_binding=dict(
+            requested_header_identity_must_match=True,
+            manager_publishes_player_before_player_read=True,
+            direct_owner_table_offset='0x20',
+            formation_read_follows_derived_list_refresh=True,
+            inferred_unrelated_slots=False,
+            cross_owner_without_provider='unknown, never assumed null',
+            blanket_manager_slot_capture_required=False),
         read_preserves_member_path_cache_order=True,
         collection_find_uses_low16_without_generation_comparison=True,
         collection_read_clears_deltas=False,

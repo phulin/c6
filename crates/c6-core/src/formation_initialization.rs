@@ -190,6 +190,15 @@ pub enum OwnerBinding {
     },
 }
 
+/// Failure of the narrow enclosing-Player Read lookup proof. Missing facts
+/// remain unknown; they are never converted to a native null lookup result.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OwnerLookupError {
+    EnclosingIdentityMismatch { requested: i32, record: i32 },
+    InvalidRequestedOwner(i32),
+    UnknownOwner(i32),
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FormationRuntime {
     pub archive: LogicalArchive,
@@ -197,6 +206,33 @@ pub struct FormationRuntime {
     evaluating_operation: bool,
 }
 impl FormationRuntime {
+    /// Bind only the Player whose Manager entry encloses this Formation Read.
+    /// Manager::AllocateInstance publishes that requested owner before Player
+    /// Read begins. The decoded entry must preserve requested/header identity.
+    /// This proves neither any other owner's slot nor Manager validity/control
+    /// mappings. Cross-owner records require the explicit `from_read` provider.
+    pub fn from_owning_player_read(
+        formation: &Formation,
+        requested_owner: i32,
+        record_owner: i32,
+    ) -> Result<Self, OwnerLookupError> {
+        if requested_owner != record_owner {
+            return Err(OwnerLookupError::EnclosingIdentityMismatch {
+                requested: requested_owner,
+                record: record_owner,
+            });
+        }
+        if !(0..65).contains(&requested_owner) {
+            return Err(OwnerLookupError::InvalidRequestedOwner(requested_owner));
+        }
+        Self::from_read(formation, |owner| {
+            if owner == requested_owner {
+                Ok(Some(record_owner))
+            } else {
+                Err(OwnerLookupError::UnknownOwner(owner))
+            }
+        })
+    }
     /// Apply the unsaved Read postlude without cloning or changing saved arrays.
     /// `lookup` must represent the admitted Globals player table, not a roster
     /// inferred from saved records. Its error rejects initialization.
@@ -361,6 +397,63 @@ mod tests {
         assert_eq!(f, before);
         assert_eq!(r.archive.dirty_calls(), trace);
     }
+    #[test]
+    fn enclosing_player_read_proves_only_its_own_published_owner() {
+        let mut f = formation();
+        let runtime = FormationRuntime::from_owning_player_read(&f, 2, 2).unwrap();
+        assert_eq!(
+            runtime.owner,
+            OwnerBinding::Lookup {
+                requested: 2,
+                resolved: Some(2)
+            }
+        );
+        assert_eq!(runtime.archive.dirty_calls(), [4, 13]);
+        assert_eq!(
+            FormationRuntime::from_owning_player_read(&f, 2, 3),
+            Err(OwnerLookupError::EnclosingIdentityMismatch {
+                requested: 2,
+                record: 3
+            })
+        );
+        assert_eq!(
+            FormationRuntime::from_owning_player_read(&f, 65, 65),
+            Err(OwnerLookupError::InvalidRequestedOwner(65))
+        );
+        f.owner = 3;
+        assert_eq!(
+            FormationRuntime::from_owning_player_read(&f, 2, 2),
+            Err(OwnerLookupError::UnknownOwner(3))
+        );
+        // A missing cross-owner proof is distinct from an actual null result.
+        assert_eq!(
+            FormationRuntime::from_read(&f, |_| Ok::<_, ()>(None))
+                .unwrap()
+                .owner,
+            OwnerBinding::Lookup {
+                requested: 3,
+                resolved: None
+            }
+        );
+        f.owner = -1;
+        assert_eq!(
+            FormationRuntime::from_owning_player_read(&f, 2, 2)
+                .unwrap()
+                .owner,
+            OwnerBinding::NoOwner
+        );
+        f.owner = 64;
+        assert_eq!(
+            FormationRuntime::from_owning_player_read(&f, 64, 64)
+                .unwrap()
+                .owner,
+            OwnerBinding::Lookup {
+                requested: 64,
+                resolved: Some(64)
+            }
+        );
+    }
+
     #[test]
     fn attachment_does_not_invent_unit_dirty_baseline() {
         let mut a = LogicalArchive::new(

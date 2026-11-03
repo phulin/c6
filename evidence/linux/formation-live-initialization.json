@@ -927,6 +927,60 @@
       "sha256": "5b123a18e008411f37fc3b7848a0929eab7dff3370a0a66107d373021913b82c"
     },
     {
+      "address": "0x2b510f0",
+      "size": 132,
+      "name": "Player.Manager.Read",
+      "sha256": "ab965247cffca1fbce8acb41ba7d7397770a9681a361847088e0feafcbc9e55d"
+    },
+    {
+      "address": "0x2b51180",
+      "size": 130,
+      "name": "Player.Manager.InitializePlayer",
+      "sha256": "6309b0829c021dd9f99c502c53866af4f887b21cf91033ccca37f4ca4d214393"
+    },
+    {
+      "address": "0x2b519d0",
+      "size": 572,
+      "name": "Player.Manager.AllocateInstance",
+      "sha256": "c5f24360daed4e27a8571784425b5dfdd74d395e1f23c2bd50183bd18926c9b6"
+    },
+    {
+      "address": "0x2b4f490",
+      "size": 3518,
+      "name": "Player.Read",
+      "sha256": "6cafd8cbdf97f8acc05be3175d60823c706339e01e84c9b757aa63009ef0f3ed"
+    },
+    {
+      "address": "0x2b51c10",
+      "size": 681,
+      "name": "Player.Manager.InitializeLists",
+      "sha256": "f44a53d6eec7a911236f45603209afbb46359149bb95f719b35479ca83d03429"
+    },
+    {
+      "address": "0x2b51570",
+      "size": 197,
+      "name": "Player.Manager.ClearLists",
+      "sha256": "6a3c42aabf7a88e3d478f4613210793f10835aba59d516655a9ac94ce103e066"
+    },
+    {
+      "address": "0x290b930",
+      "size": 22,
+      "name": "Globals.GetPlayer",
+      "sha256": "4f70fef1af78b8dea71c792f71f54727722e3e9f4509f9e764e536223739daaf"
+    },
+    {
+      "address": "0x2661ae0",
+      "size": 15,
+      "name": "Game.GetPlayer",
+      "sha256": "07eb0641e390978eef06ae34398421fbd03a7269d9a3beb028451ee230f40061"
+    },
+    {
+      "address": "0x1fcc1b0",
+      "size": 12,
+      "name": "Player.Manager.GetPlayer",
+      "sha256": "47fe7c239b1abbb63533198084d4b834d08e20f997a7b46ccce8700c65b4a2fb"
+    },
+    {
       "address": "0x293ed20",
       "size": 50,
       "name": "Formation.archive_base.constructor",
@@ -1172,14 +1226,23 @@
   "unit_component_type": 1,
   "owner_minus_one_skips_lookup": true,
   "other_owner_uses_actual_globals_lookup": true,
+  "enclosing_player_owner_binding": {
+    "requested_header_identity_must_match": true,
+    "manager_publishes_player_before_player_read": true,
+    "direct_owner_table_offset": "0x20",
+    "formation_read_follows_derived_list_refresh": true,
+    "inferred_unrelated_slots": false,
+    "cross_owner_without_provider": "unknown, never assumed null",
+    "blanket_manager_slot_capture_required": false
+  },
   "read_preserves_member_path_cache_order": true,
   "collection_find_uses_low16_without_generation_comparison": true,
   "collection_read_clears_deltas": false,
   "sync_manager_acceptance": "live input; SetID calls provider if present and ID is valid",
   "final_global_load_dirty_baseline": "not established here",
   "unit_initial_dirty_baseline": "unavailable; attachment alone does not imply empty",
-  "candidate_source_sha256": "8c3c8d8cc02172fef71b6c3ec621cc858006620e2d9fc440d2516f6c9b3cb5b7",
-  "audit_source_sha256": "0acd33261f03c7ec2c8dbd5d1d68c8cb6eb158b6f06a2b431dd6dcf7240853e4",
+  "candidate_source_sha256": "b65663aaf85d4ee95496b154548cb782ba6ef25825cb1c62d5e5453ee0794277",
+  "audit_source_sha256": "c246ff06e7ad98db653372c1d63dcdde1b1369b6f089307b629169946ad8f945",
   "full_gameplay_state": false,
   "accepted_action": false,
   "complete_turn": false,

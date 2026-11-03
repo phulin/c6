@@ -47,8 +47,9 @@ The runtime exposes evaluating-operation separately from saved Formation data.
 
 The owner postlude skips lookup only for signed owner -1. All other values go
 to the actual Globals::GetPlayer provider; a null result remains null. The
-initializer requires that provider explicitly and retains requested/resolved
-logical identity. Saved roster presence cannot supply the lookup table.
+general `from_read` initializer requires that provider explicitly and retains
+requested/resolved logical identity. A narrower enclosing-Player proof is
+available below; unrelated saved roster presence does not supply the table.
 Finally GetComponentID `0x293de70` constructs type 44 and SetID `0x3c470a6`
 assigns its bits to the archive. ComponentID constructor `0x1fe4710` stores the
 low sixteen bits of owner and type, followed by all 32 ID bits.
@@ -97,11 +98,46 @@ Archive attachment is distinct from sync-manager acceptance. SetID may remove
 an earlier accepted registration, writes the new identity, and calls a present
 sync interface's registration function for a valid ID. Acceptance is its actual
 return value. The initializer does not fabricate that provider or acceptance,
-and does not implement synchronous gameplay reporting subscribers. Those live
-providers, global load cleanup, Unit initial dirty history, Manager membership,
-registry/configuration identity and other action prerequisites remain explicit
+and does not implement synchronous gameplay reporting subscribers. The later
+[archive gameplay scope audit](linux-load-archive-gameplay-scope.md) establishes
+that native archive dirty history, pointer order and sync registration are
+optional transport diagnostics for this local headless gameplay boundary.
+Unavailable archive baseline diagnostics do not gate gameplay readiness.
+Actual value initialization, synchronous gameplay report subscribers, required
+Manager membership and registry/configuration identities remain action
 integration dependencies. Static attachment facts alone do not authorize
 accepted SkipTurn or replace its report execution with collected records.
+
+## Enclosing Player owner binding
+
+`FormationRuntime::from_owning_player_read` needs only the enclosing decoded
+Manager requested owner and Player header owner. It requires those identities
+to match in the native owner range 0–64, then binds a Formation whose owner is
+that same Player to the owned enclosing object. The existing consuming
+`loaded_components::split_player` already checks requested/header equality and
+each Formation's owner. This path needs no blanket 65-slot live capture or
+operation-manager controls.
+
+The proof is construction order, rather than an inference that every decoded
+roster entry was already present during every earlier lookup. Manager Read
+`0x2b510f0` reads one requested owner, calls InitializePlayer at `0x2b5114e`,
+and then reads that returned Player at `0x2b51159`. InitializePlayer calls
+AllocateInstance `0x2b519d0`; allocation publishes the object in the direct
+owner table (`Manager+0x20[requested]`, store `0x2b51ae0`) before it returns.
+Player Read refreshes derived lists at `0x2b4f9ca`, then reads its own Formations
+at `0x2b4f9dd`. InitializeLists `0x2b51c10` and ClearLists `0x2b51570` update
+derived lists/team grouping and leave that direct owner table intact.
+Globals::GetPlayer `0x290b930` calls Game::GetPlayer `0x2661ae0`, which calls
+Manager::GetPlayer `0x1fcc1b0`; the final function directly indexes that table.
+It does not consult the operation-manager validity mapping.
+
+For owner -1 the helper preserves the native no-lookup result. A Formation
+naming any other owner rejects as `UnknownOwner`, even if a later decoded
+Player names it. It cannot turn missing facts into a native null result.
+Actual cross-owner/null facts remain supported by the explicit `from_read`
+provider. Requested/header mismatch and out-of-range requested owners reject
+before producing a runtime sidecar. This narrow proof supplies none of the
+unrelated Manager slots, Configuration team/human status or player controls.
 
 ## Checks
 
@@ -111,10 +147,11 @@ python3 tools/linux/formation_initialization_audit.py \
 cargo test -p c6-core formation_initialization --lib
 ```
 
-Four source tests cover preservation of saved vectors, actual/null/no-owner
+Five source tests cover preservation of saved vectors, actual/null/no-owner
 lookup, owner narrowing and archive identity bits, unconditional repeated
 edits, unique dirty ordering, object mismatch without mutation and unavailable
-Unit baseline rejection. They are source tests, not a native differential
+Unit baseline rejection, plus narrow enclosing-owner proof and unknown/null
+separation. They are source tests, not a native differential
 oracle. Original Formation initialization fixtures and full affected-state
 comparison remain an acceptance gap. Unknown save bytes remain unmasked;
 the recorded raw Save→Load difference remains 89,198 bytes. Save production
