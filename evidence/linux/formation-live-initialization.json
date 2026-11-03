@@ -927,6 +927,18 @@
       "sha256": "5b123a18e008411f37fc3b7848a0929eab7dff3370a0a66107d373021913b82c"
     },
     {
+      "address": "0x293ed20",
+      "size": 50,
+      "name": "Formation.archive_base.constructor",
+      "sha256": "15f18bb0b47a8c20a9e293745bbf931d217a62606795985a3464429ebd8e6c20"
+    },
+    {
+      "address": "0x293ee30",
+      "size": 189,
+      "name": "Formation.archive.setVariableName",
+      "sha256": "1ebc4d8944c5f6a23a98d537ffe27f9663d6d7c550e4ecc991adfe8a60648621"
+    },
+    {
       "address": "0x293b6f0",
       "size": 1782,
       "name": "Formation.constructor",
@@ -1115,6 +1127,12 @@
   ],
   "host_methods": [
     {
+      "address": "0x3c45760",
+      "size": 347,
+      "name": "Archive.constructor",
+      "sha256": "51a405d25f47abe9e0d7391b73d588cd8e9e7952547eaf07a25996b9e145e883"
+    },
+    {
       "address": "0x3c459e8",
       "size": 39,
       "name": "Archive.add",
@@ -1161,7 +1179,7 @@
   "final_global_load_dirty_baseline": "not established here",
   "unit_initial_dirty_baseline": "unavailable; attachment alone does not imply empty",
   "candidate_source_sha256": "8c3c8d8cc02172fef71b6c3ec621cc858006620e2d9fc440d2516f6c9b3cb5b7",
-  "audit_source_sha256": "685d6aa9f3134f4fa2eb6bbbb1ceae2f24c4d2d9cb707eb05db1aa3bcf79e70e",
+  "audit_source_sha256": "0acd33261f03c7ec2c8dbd5d1d68c8cb6eb158b6f06a2b431dd6dcf7240853e4",
   "full_gameplay_state": false,
   "accepted_action": false,
   "complete_turn": false,

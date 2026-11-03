@@ -15,6 +15,8 @@ from unit_archive_audit import registration_schema
 ROOT = Path(__file__).resolve().parents[2]
 GAME_METHODS = [
     (0x293B560, 0x181, 'Formation.Read'),
+    (0x293ED20, 0x32, 'Formation.archive_base.constructor'),
+    (0x293EE30, 0xBD, 'Formation.archive.setVariableName'),
     (0x293B6F0, 0x6F6, 'Formation.constructor'),
     (0x293DDB0, 0x34, 'Formation.domain.edit'),
     (0x293ECE0, 0x34, 'Formation.bool.MoveAssignmentDo'),
@@ -31,6 +33,7 @@ GAME_METHODS = [
     (0x20BCFC0, 0xA, 'UnitID.constructor'),
 ]
 HOST_METHODS = [
+    (0x3C45760, 0x15B, 'Archive.constructor'),
     (0x3C459E8, 0x27, 'Archive.add'),
     (0x3C49C28, 0x3E, 'VariableBase.constructor'),
     (0x3C49C66, 0x3E, 'VariableBase.constructor_bool'),

@@ -22,7 +22,9 @@ the host base constructors `0x3c49c28`/`0x3c49c66` append the wrapper to the
 archive's registration vector through `0x3c459e8`. The bool constructor argument
 does not detach the wrapper: the host overload still registers unconditionally.
 The wrapper constructors then store the same archive as their edit target.
-Constructor order and inline address order agree. Archive header priority is 0.
+Constructor order and inline address order agree. Host archive constructor
+`0x3c45760` starts with an empty dirty-pointer tree; wrapper name metadata is
+registered separately. Archive header priority is 0.
 
 | Index | Logical wrapper |
 | --- | --- |
