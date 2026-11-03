@@ -99,3 +99,23 @@ independent caller/guard and complete new profile, retain exact linked helper
 and runtime/source preimages, run after the primary Manager profile closes,
 then retain original inputs/answers and compare against this frozen candidate.
 No original process was launched to prepare this packet.
+
+## Frozen preparation
+
+[evidence/linux/unit-movement-query-preparation.json](../evidence/linux/unit-movement-query-preparation.json)
+records candidate source commit `7ff7c0bbafb51a98283cc01c8a388df4e01aa871`.
+The private `linux-unit-movement-query/candidate-7ff7c0b` directory retains the
+46,694,400-byte committed source archive, all 1,631 source preimages (checked
+against the archive after building and made read-only), executable, ABI object,
+input artifacts/identities, plan and separate candidate input/answer files.
+The candidate executable SHA is
+`073366f97fb2307b77436187ea4b2eef106ca3d1e62fd710b999f7a170940e3a`;
+plan SHA is `e02780a35f79d94d5aea5eedab3e13770d8542c8fc20fbc123695eceac4aea5a`.
+
+Candidate evaluation succeeds for all 1,262 Units: 844 HasMoved=true, including
+21 records which are both unplaced and marked for delayed death. This snapshot
+contains no raw/effective embarkation disagreement, so it does not exercise
+the exceptional activity branch in original code. The focused source-level
+regression covers that predicate; direct native boundary validation is still
+unavailable. These counts describe candidate preparation only, not native
+parity or a replacement for the pending direct query run.
