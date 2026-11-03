@@ -1,4 +1,4 @@
-//! Current Linux XP2 City BuildQueue wire records (outer v16, node v2).
+//! Current Linux XP2 City BuildQueue (v16/node v2) and Buildings (v10) wire.
 //!
 //! Target SHA-256: a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! Original outer writer/read: 0x284c220/0x284c6e0; node: 0x284c5d0/0x284d070.
@@ -23,6 +23,7 @@ pub enum Error {
     NoncanonicalBool(u8),
     /// Tags 0..=3 require their corresponding typed payload.
     InvalidPayloadTag(i32),
+    Localization(crate::map::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -630,6 +631,377 @@ mod tests {
         word(&mut bad, u32::MAX);
         assert_eq!(
             BuildQueue::decode(&bad, Limits::default()),
+            Err(Error::ResourceLimit)
+        );
+    }
+}
+
+/// Buildings v10's explicit building/yield tuples use a Yield definition hash,
+/// unlike BuildQueue.yield_type and YieldChangeFromFeatures.yield_type.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BuildingYieldModifier {
+    pub building_hash: u32,
+    pub yield_hash: u32,
+    pub amount: i32,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GreatWorkSlot {
+    /// GreatWorkSlotTypes uses raw i32 (0x2d4ff30), not a definition hash.
+    pub slot_type: i32,
+    /// GreatWorkListIndex uses raw i32 (0x2d4fff0).
+    pub great_work_index: i32,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GreatWorkBuilding {
+    pub building_hash: u32,
+    pub slots: Vec<GreatWorkSlot>,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ExtraGreatWorkSlots {
+    pub building_hash: u32,
+    pub slot_type: i32,
+    pub count: i32,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct YieldChangeFromFeatures {
+    pub feature_hash: u32,
+    /// This nested provider writes a raw YieldTypes i32, unlike yield tuples.
+    pub yield_type: i32,
+    pub amount: i32,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BuildingName {
+    pub building_hash: u32,
+    pub name: crate::map::LocalizedText,
+}
+/// Original W/R 0x2862860/0x2862c70. Read invokes Reset and performs registry
+/// mapping/filtering; this codec preserves complete wire data separately.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Buildings {
+    pub building_locations: Vec<HashValue<i16>>,
+    pub pillaged: Vec<HashValue<bool>>,
+    /// Original vector<short> indexed by Building; values are raw i16.
+    pub era_created: Vec<HashValue<i16>>,
+    pub num_units_supported: Vec<HashValue<i16>>,
+    pub yield_modifiers: Vec<BuildingYieldModifier>,
+    pub yield_changes: Vec<BuildingYieldModifier>,
+    pub yield_changes_city_states: Vec<BuildingYieldModifier>,
+    pub wonder_yield_changes: Vec<HashValue<i32>>,
+    pub great_work_buildings: Vec<GreatWorkBuilding>,
+    pub extra_great_works: Vec<ExtraGreatWorkSlots>,
+    pub yield_change_from_features: Vec<YieldChangeFromFeatures>,
+    pub building_name_overrides: Vec<BuildingName>,
+}
+fn localization_limits(limits: Limits, bytes: usize, items: usize) -> crate::map::Limits {
+    crate::map::Limits {
+        max_bytes: limits.max_bytes.saturating_sub(bytes),
+        max_items: limits.max_items.saturating_sub(items),
+        max_allocation: limits.max_bytes,
+        max_depth: 64,
+    }
+}
+impl Reader<'_> {
+    fn building_yields(&mut self) -> Result<Vec<BuildingYieldModifier>, Error> {
+        self.vector(|r| {
+            Ok(BuildingYieldModifier {
+                building_hash: u32::read(r)?,
+                yield_hash: u32::read(r)?,
+                amount: i32::read(r)?,
+            })
+        })
+    }
+    fn localized_text(&mut self) -> Result<crate::map::LocalizedText, Error> {
+        let limits = localization_limits(self.budget.limits, self.pos, self.budget.items);
+        let end = self
+            .bytes
+            .len()
+            .min(self.pos.saturating_add(limits.max_bytes));
+        let (value, consumed, items) =
+            crate::map::LocalizedText::decode_prefix_with_items(&self.bytes[self.pos..end], limits)
+                .map_err(Error::Localization)?;
+        self.pos = self.pos.checked_add(consumed).ok_or(Error::ResourceLimit)?;
+        self.budget.items = self
+            .budget
+            .items
+            .checked_add(items)
+            .ok_or(Error::ResourceLimit)?;
+        if self.budget.items > self.budget.limits.max_items {
+            return Err(Error::ResourceLimit);
+        }
+        Ok(value)
+    }
+}
+impl Writer {
+    fn building_yields(&mut self, values: &[BuildingYieldModifier]) -> Result<(), Error> {
+        self.vector(values, |w, v| {
+            v.building_hash.write(w)?;
+            v.yield_hash.write(w)?;
+            v.amount.write(w)
+        })
+    }
+    fn localized_text(&mut self, value: &crate::map::LocalizedText) -> Result<(), Error> {
+        let limits = localization_limits(self.budget.limits, self.bytes.len(), self.budget.items);
+        let (bytes, items) = value
+            .encode_with_items(limits)
+            .map_err(Error::Localization)?;
+        self.budget.items = self
+            .budget
+            .items
+            .checked_add(items)
+            .ok_or(Error::ResourceLimit)?;
+        if self.budget.items > self.budget.limits.max_items {
+            return Err(Error::ResourceLimit);
+        }
+        self.put(&bytes)
+    }
+}
+impl Buildings {
+    pub const VERSION: i32 = 10;
+    pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            budget: Budget { limits, items: 0 },
+        };
+        r.version(Self::VERSION)?;
+        let value = Self {
+            building_locations: r.pairs()?,
+            pillaged: r.pairs()?,
+            era_created: r.pairs()?,
+            num_units_supported: r.pairs()?,
+            yield_modifiers: r.building_yields()?,
+            yield_changes: r.building_yields()?,
+            yield_changes_city_states: r.building_yields()?,
+            wonder_yield_changes: r.pairs()?,
+            great_work_buildings: r.vector(|r| {
+                Ok(GreatWorkBuilding {
+                    building_hash: u32::read(r)?,
+                    slots: r.vector(|r| {
+                        r.version(Self::VERSION)?;
+                        Ok(GreatWorkSlot {
+                            slot_type: i32::read(r)?,
+                            great_work_index: i32::read(r)?,
+                        })
+                    })?,
+                })
+            })?,
+            extra_great_works: r.vector(|r| {
+                Ok(ExtraGreatWorkSlots {
+                    building_hash: u32::read(r)?,
+                    slot_type: i32::read(r)?,
+                    count: i32::read(r)?,
+                })
+            })?,
+            yield_change_from_features: r.vector(|r| {
+                r.version(Self::VERSION)?;
+                Ok(YieldChangeFromFeatures {
+                    feature_hash: u32::read(r)?,
+                    yield_type: i32::read(r)?,
+                    amount: i32::read(r)?,
+                })
+            })?,
+            building_name_overrides: r.vector(|r| {
+                r.version(Self::VERSION)?;
+                Ok(BuildingName {
+                    building_hash: u32::read(r)?,
+                    name: r.localized_text()?,
+                })
+            })?,
+        };
+        Ok((value, r.pos))
+    }
+    pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
+        let (value, consumed) = Self::decode_prefix(bytes, limits)?;
+        if consumed != bytes.len() {
+            return Err(Error::TrailingBytes);
+        }
+        Ok(value)
+    }
+    pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        let mut w = Writer {
+            bytes: Vec::new(),
+            budget: Budget { limits, items: 0 },
+        };
+        Self::VERSION.write(&mut w)?;
+        w.pairs(&self.building_locations)?;
+        w.pairs(&self.pillaged)?;
+        w.pairs(&self.era_created)?;
+        w.pairs(&self.num_units_supported)?;
+        w.building_yields(&self.yield_modifiers)?;
+        w.building_yields(&self.yield_changes)?;
+        w.building_yields(&self.yield_changes_city_states)?;
+        w.pairs(&self.wonder_yield_changes)?;
+        w.vector(&self.great_work_buildings, |w, v| {
+            v.building_hash.write(w)?;
+            w.vector(&v.slots, |w, v| {
+                Self::VERSION.write(w)?;
+                v.slot_type.write(w)?;
+                v.great_work_index.write(w)
+            })
+        })?;
+        w.vector(&self.extra_great_works, |w, v| {
+            v.building_hash.write(w)?;
+            v.slot_type.write(w)?;
+            v.count.write(w)
+        })?;
+        w.vector(&self.yield_change_from_features, |w, v| {
+            Self::VERSION.write(w)?;
+            v.feature_hash.write(w)?;
+            v.yield_type.write(w)?;
+            v.amount.write(w)
+        })?;
+        w.vector(&self.building_name_overrides, |w, v| {
+            Self::VERSION.write(w)?;
+            v.building_hash.write(w)?;
+            w.localized_text(&v.name)
+        })?;
+        Ok(w.bytes)
+    }
+}
+
+#[cfg(test)]
+mod buildings_tests {
+    use super::*;
+    fn word(b: &mut Vec<u8>, v: u32) {
+        b.extend_from_slice(&v.to_le_bytes());
+    }
+    fn localized(b: &mut Vec<u8>, nested: bool) {
+        word(b, u32::MAX);
+        b.push(1);
+        word(b, 3);
+        b.extend_from_slice(b"a\0\xff");
+        b.push(if nested { 1 } else { 0 });
+        if nested {
+            b.push(5);
+            localized(b, false);
+        }
+        b.push(1);
+        word(b, 0);
+        b.push(1);
+        word(b, 1);
+        b.push(0xff);
+    }
+    // Hand-written source grammar, including each nonempty nested branch.
+    fn fixture() -> (Vec<u8>, usize, usize) {
+        let mut b = Vec::new();
+        word(&mut b, 10);
+        for index in 0..4 {
+            word(&mut b, 2);
+            for value in [0, 1] {
+                word(&mut b, 0xdeadbeef);
+                if index == 1 {
+                    b.push(value);
+                } else {
+                    b.extend_from_slice(&(0x8000u16 + value as u16).to_le_bytes());
+                }
+            }
+        }
+        for _ in 0..3 {
+            word(&mut b, 1);
+            word(&mut b, u32::MAX);
+            word(&mut b, 0xfedcba98);
+            word(&mut b, 0x80000000);
+        }
+        word(&mut b, 1);
+        word(&mut b, 0x87654321);
+        word(&mut b, 0x7fffffff);
+        word(&mut b, 1);
+        word(&mut b, 0xdeadbeef);
+        word(&mut b, 2);
+        let slot_version = b.len();
+        for index in [0x80000000, u32::MAX] {
+            word(&mut b, 10);
+            word(&mut b, 0x80000000);
+            word(&mut b, index);
+        }
+        word(&mut b, 1);
+        word(&mut b, 0xdeadbeef);
+        word(&mut b, 0x80000001);
+        word(&mut b, u32::MAX);
+        word(&mut b, 1);
+        word(&mut b, 10);
+        word(&mut b, 0xfedcba98);
+        word(&mut b, 0x80000000);
+        word(&mut b, 0x7fffffff);
+        word(&mut b, 2);
+        let name_version = b.len();
+        for _ in 0..2 {
+            word(&mut b, 10);
+            word(&mut b, 0xdeadbeef);
+            localized(&mut b, true);
+        }
+        (b, slot_version, name_version)
+    }
+    #[test]
+    fn complete_source_buildings_nonempty_grammar() {
+        let (bytes, _, _) = fixture();
+        let value = Buildings::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(value.building_locations[0].value, i16::MIN);
+        assert_eq!(value.era_created[1].value, -32767);
+        assert!(!value.pillaged[0].value);
+        assert!(value.pillaged[1].value);
+        assert_eq!(value.yield_modifiers[0].yield_hash, 0xfedcba98);
+        assert_eq!(
+            value.great_work_buildings[0].slots[0].great_work_index,
+            i32::MIN
+        );
+        assert_eq!(value.yield_change_from_features[0].yield_type, i32::MIN);
+        assert_eq!(value.extra_great_works[0].slot_type, i32::MIN + 1);
+        assert_eq!(value.building_name_overrides[0].name.base, b"a\0\xff");
+        assert_eq!(value.encode(Limits::default()).unwrap(), bytes);
+        for length in 0..bytes.len() {
+            assert!(
+                Buildings::decode(&bytes[..length], Limits::default()).is_err(),
+                "{length}"
+            );
+        }
+        let mut trailing = bytes.clone();
+        trailing.push(0);
+        assert_eq!(
+            Buildings::decode_prefix(&trailing, Limits::default())
+                .unwrap()
+                .1,
+            bytes.len()
+        );
+        assert_eq!(
+            Buildings::decode(&trailing, Limits::default()),
+            Err(Error::TrailingBytes)
+        );
+    }
+    #[test]
+    fn buildings_versions_and_aggregate_budget() {
+        let (bytes, slot_version, name_version) = fixture();
+        for offset in [0, slot_version, name_version] {
+            let mut bad = bytes.clone();
+            bad[offset..offset + 4].copy_from_slice(&1i32.to_le_bytes());
+            assert_eq!(
+                Buildings::decode(&bad, Limits::default()),
+                Err(Error::Version {
+                    expected: 10,
+                    actual: 1
+                })
+            );
+        }
+        let value = Buildings::decode(&bytes, Limits::default()).unwrap();
+        // Overall budget crosses recursive localized names; each individual
+        // component remains small enough to pass this policy in isolation.
+        let limits = Limits {
+            max_bytes: 100000,
+            max_items: 25,
+        };
+        assert!(Buildings::decode(&bytes, limits).is_err());
+        assert!(value.encode(limits).is_err());
+        let limits = Limits {
+            max_bytes: bytes.len() - 1,
+            max_items: 100000,
+        };
+        assert!(Buildings::decode(&bytes, limits).is_err());
+        assert!(value.encode(limits).is_err());
+        let mut bad = vec![];
+        word(&mut bad, 10);
+        word(&mut bad, u32::MAX);
+        assert_eq!(
+            Buildings::decode(&bad, Limits::default()),
             Err(Error::ResourceLimit)
         );
     }
