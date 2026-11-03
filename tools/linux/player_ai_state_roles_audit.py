@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
+import tempfile
 from player_wmds_audit import Elf, GAME_SHA, FIXTURES, relocation_symbols
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,11 +24,70 @@ BLOCKS = {'Control::Manager': [33673056, 33673376, 33673408, 33673088], 'Influen
 VERSIONS = {'Control::Manager': 2, 'InfluenceMap': 2, 'Planning::Manager': 1, 'CityManager': 2, 'CultureAi': 15, 'Diplomatic': 18, 'Economic': 4, 'Governors': 3, 'GrandStrategic': 12, 'Homeland': 1, 'Military': 14, 'Research': 4, 'Tactical': 2, 'Targets': 4, 'BehaviorTree::Manager': 1}
 
 
+HARNESS = r'''pub use c6_core::unit;
+#[path = "MODULE"] mod player_ai_identity;
+use player_ai_identity::{PlanningManagerIdentity as Identity, Error};
+fn main() {
+    let path = std::env::args().nth(1).unwrap();
+    let wire = std::fs::read(path).unwrap();
+    assert_eq!(wire.len() % 8, 0);
+    let limits = unit::Limits { max_bytes: 8, max_items: 0 };
+    for raw in wire.chunks_exact(8) {
+        let value = Identity::decode(raw, limits).unwrap();
+        assert_eq!(value.encode(limits).unwrap(), raw);
+        assert_eq!(value.encode_with_items(limits).unwrap().1, 0);
+        for end in 0..8 { assert_eq!(Identity::decode(&raw[..end], limits), Err(Error::Truncated)); }
+        let short = unit::Limits { max_bytes: 7, max_items: 0 };
+        assert_eq!(Identity::decode(raw, short), Err(Error::ResourceLimit));
+        assert_eq!(value.encode(short), Err(Error::ResourceLimit));
+        let mut suffix = raw.to_vec(); suffix.push(77);
+        assert_eq!(Identity::decode(&suffix, limits), Err(Error::Trailing));
+        assert_eq!(Identity::decode_prefix_with_items(&suffix, limits).unwrap(), (value, 8, 0));
+    }
+    println!("{}", wire.len()/8);
+}
+'''
+
+
+def audit_identity_candidate(source_commit, records):
+    pin = subprocess.check_output(['git', 'rev-parse', source_commit+'^{commit}'], cwd=ROOT, text=True).strip()
+    archive = subprocess.check_output(['git', 'archive', pin], cwd=ROOT)
+    with tempfile.TemporaryDirectory(prefix='c6-planning-identity-') as directory:
+        tmp = Path(directory)
+        source = tmp/'source'
+        source.mkdir()
+        subprocess.run(['tar', '-x', '-C', str(source)], input=archive, check=True)
+        driver = source/'tools/linux/player_ai_state_roles_audit.py'
+        if driver.read_bytes() != Path(__file__).read_bytes():
+            raise ValueError('identity driver must be committed with candidate')
+        module = source/'crates/c6-core/src/player_ai_identity.rs'
+        subprocess.run(['cargo', 'build', '--offline', '--release', '-p', 'c6-core'], cwd=source, check=True)
+        harness = HARNESS.replace('MODULE', str(module))
+        (tmp/'candidate.rs').write_text(harness)
+        command = ['rustc', '--edition=2021', '-Dwarnings', '-O', str(tmp/'candidate.rs'),
+            '--extern', 'c6_core='+str(source/'target/release/libc6_core.rlib'),
+            '-L', 'dependency='+str(source/'target/release/deps')]
+        subprocess.run(command+['-o', str(tmp/'candidate')], check=True)
+        subprocess.run(command+['--test', '-o', str(tmp/'tests')], check=True)
+        subprocess.run([str(tmp/'tests')], check=True)
+        (tmp/'records').write_bytes(records)
+        count = int(subprocess.check_output([str(tmp/'candidate'), str(tmp/'records')], text=True).strip())
+        if count != 86:
+            raise ValueError('candidate record count mismatch')
+        return dict(source_commit=pin, archive_sha256=sha(archive), module_sha256=sha(module.read_bytes()),
+            harness_sha256=sha(harness.encode()), candidate_sha256=sha((tmp/'candidate').read_bytes()),
+            records=count, exact_native_record_byte_caps_checked=True, every_truncation_rejected=True,
+            short_byte_caps_rejected=True, zero_item_cap_supported=True, source_tests=2,
+            strict_trailing_rejected=True, prefix_exact_consumption=True,
+            original_execution=False, native_read_side_effects_reproduced=False)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--assets', type=Path, default=ROOT.parent/'c6-assets-linux')
     p.add_argument('--private-root', type=Path, default=ROOT.parent/'c6-ghidra')
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--identity-source-commit', help='Build/test exact committed Planning identity codec offline')
     args = p.parse_args()
     game = Elf(args.assets/'libGameCore_XP2.so', GAME_SHA)
     relocations = relocation_symbols(game)
@@ -67,6 +127,7 @@ def main():
         if field not in dwarf:
             raise ValueError('missing DWARF field '+field)
     fixtures = []
+    identity_records = bytearray()
     for identity, trace_name, trace_sha in FIXTURES:
         data = gzip.decompress((args.private_root/'evidence/linux-game-load/canonical'/(identity+'.bin.gz')).read_bytes())
         trace = gzip.decompress((args.private_root/'evidence/linux-save-normalization/checkpoint-203-owners'/trace_name).read_bytes())
@@ -87,6 +148,7 @@ def main():
                 raise ValueError('Planning identity mismatch')
             if struct.pack('<Ii', version, player) != raw:
                 raise ValueError('Planning typed scalar reconstruction differs')
+            identity_records.extend(raw)
             records.append(dict(start=row['start'], end=row['end'], player=player, sha256=sha(raw)))
         if len(records) != 43:
             raise ValueError('Planning owner count mismatch')
@@ -110,6 +172,8 @@ def main():
         recorded_raw_save_load_difference_bytes=89198,
         full_player=False, gameplay_state=False, actions=False, turns=False,
         reference_revision='5af389445118bed2bdebf7a8a42b219c8fba5175', reference_role='discovery only')
+    if args.identity_source_commit:
+        report['planning_identity_candidate'] = audit_identity_candidate(args.identity_source_commit, identity_records)
     args.output.write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(dict(checks_passed=True, methods=len(methods), blocks=len(blocks), planning_records=sum(len(x['records']) for x in fixtures))))
 
