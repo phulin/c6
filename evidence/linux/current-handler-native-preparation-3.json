@@ -1,0 +1,68 @@
+{
+  "all_preimages_match_committed_head": true,
+  "caller_source_review": "133bebd",
+  "configuration_file_sha256": "fe6b65208f7b963d14211489f7c5c1f7311e77ca27766d3a3f82e7c1151c2f03",
+  "configuration_sha256": "321c39581fd268b9e75d2efaa2a672e8662a3468573bc1cad8bfbec8e15e7045",
+  "expected_fresh_outputs": [
+    "facts.jsonl",
+    "facts-repeat.jsonl",
+    "controls.jsonl",
+    "before.bin",
+    "control.bin",
+    "after.bin",
+    "after-repeat.bin",
+    "save.bin",
+    "repeat.bin"
+  ],
+  "guard_source_review": "2cb6cab",
+  "helper_checkpoint": "972b21c",
+  "launch_plan_sha256": "36b234324e3a709cef4fac31efec43928b11f4b52ef534f95ca5b0f22ccf7f58",
+  "lifecycle_checkpoint": "3aa3858",
+  "missing_source_gates": [],
+  "native_execution": false,
+  "original_execution_admitted": false,
+  "pending": [
+    "independent canonical identity-fix review",
+    "independent exact preparation admission",
+    "actual original terminal outcome and independent controls review"
+  ],
+  "preload_sha256": "7ac55e85a400f4281b9309ce67620cad32033d840c2d7003c804a9cbd2e7876a",
+  "preparation_only": true,
+  "prepared_sha256": "6dbdc72ad84737fe99071d600f7a6397a8ae78e075c6001048b6760bcb70185b",
+  "previous_preparation": {
+    "profile_sha256": "94509905930c5991ff0f6d96d0bcf6fd6be8b9b8c5d672bbd38b7a22651616dc",
+    "public_failure_summary": "evidence/linux/current-handler-control-failure-2.json",
+    "reproduced_necessary_blocker": "loader alias rejected by O_NOFOLLOW",
+    "status": "executed_fixture_unsupported_242",
+    "unrecorded_native_errno": true
+  },
+  "public_main_and_private_push_held": true,
+  "runner_archived_separately": true,
+  "runner_sha256": "528791321f1bc6b52ee4542168eab0b5c4c4c075cf0d568027c8c86c560cbb3a",
+  "schema": "c6-linux-current-handler-native-preparation-v1",
+  "scope": {
+    "Lua_calls_added": false,
+    "Save_lock_continuity_claimed": false,
+    "captures": [
+      "actual Manager/handler slots and full method bytes",
+      "complete stored Unit queue capacity bytes and native fronts",
+      "all65Player query slots and actual complete Unit membership"
+    ],
+    "complete_rng_inventory": false,
+    "helper_and_guard_original_calls": false,
+    "internal_observational_saves": 4,
+    "known_rng_bytes": 64,
+    "metadata_passes": 2,
+    "native_handler_or_Manager_calls": false,
+    "not_observed": [
+      "native GetHandler return",
+      "native current-handler interrupt return",
+      "full Manager predicate/action/turn"
+    ],
+    "outer_observational_saves": 2
+  },
+  "source_archive_sha256": "7b6a6b6012e9aa2e7094f2ffcc319508358dbd4fa13b0665e9c947945fd66fbc",
+  "source_checkpoint": "3370ad7",
+  "source_files": 71,
+  "status": "canonical_identity_corrected_preparation_pending_admission"
+}
