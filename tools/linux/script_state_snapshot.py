@@ -133,10 +133,14 @@ class NaturalSnapshot:
         identity=dict(configuration_sha256=self.profile,gamecore_base=hex(self.base),phase=phase,
             occurrence=self.ordinal,source_schema=SCHEMA,GC_classification='unresolved',
             selected_CCall_context=hex(call['context']),actual_CCall_state=hex(call['state']),
-            actual_CCall_arguments=hex(call['args']),collector_source_sha256=self.spec['source_sha256'],
+            actual_CCall_arguments=hex(call['args']),actual_event_pointer=hex(call['event_pointer']),collector_source_sha256=self.spec['source_sha256'],
             observation_boundary_accepted=False)
         result=None;failure=None
         try:
+            context=image.read(call['context'],26)
+            require(struct.unpack_from('<QQQ',context)==(call['event_pointer'],0x462e7b4,call['args']),
+                    'fresh selected CCall event/method/arguments tuple changed')
+            identity['context_raw26']=context.hex()
             result=decode(image,call['state'],call['args'],self.base,phase=='resolved')
             replay=decode(Image(image.merged(),image.limit),call['state'],call['args'],self.base,phase=='resolved')
             require(all(replay['sections'].get(key)==value for key,value in result['sections'].items()),
@@ -160,6 +164,11 @@ def main():
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args();manifest,image=load_image(args.image)
     require(manifest.get('source_schema')==SCHEMA,'not a natural-window image')
+    if 'context_raw26' in manifest:
+        context=image.read(int(manifest['selected_CCall_context'],0),26)
+        require(context.hex()==manifest['context_raw26'] and struct.unpack_from('<QQQ',context)==
+            (int(manifest['actual_event_pointer'],0),0x462e7b4,int(manifest['actual_CCall_arguments'],0)),
+            'retained selected CCall context tuple differs')
     result=decode(image,int(manifest['actual_CCall_state'],0),int(manifest['actual_CCall_arguments'],0),
         int(manifest['gamecore_base'],0),manifest['phase']=='resolved')
     args.output.write_text(json.dumps(dict(schema=SCHEMA,offline_decode=True,

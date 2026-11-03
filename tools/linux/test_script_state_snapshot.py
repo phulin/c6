@@ -19,7 +19,7 @@ def spec():
 
 
 def actual():
-    call=dict(context=0x2000,state=0x3000,args=0x4000,entry_rsp=0x10000)
+    call=dict(context=0x2000,state=0x3000,args=0x4000,event_pointer=0x6000,entry_rsp=0x10000)
     regs=dict(pc=SITES['resolved'],rsp=0xf000,r14=call['context'],rbx=call['state'],r15=0x36b3bc0)
     frames=[dict(pc=0x3bf2308,native_registers=dict(rsp=call['entry_rsp']-24,
         r14=call['context'],rbx=call['state'],r15=0x36b3bc0))]
@@ -81,7 +81,8 @@ class Tests(unittest.TestCase):
     def test_partial_capture_keeps_independent_mutex_and_offline_image(self):
         call,r,frames=actual();rows=[]
         lock=bytearray(64);struct.pack_into('<i',lock,12,1);struct.pack_into('<Q',lock,24,0x5000)
-        image=Image([(0x6ec9c70,lock),(0x5000,b'x'*40)]) # ASL handle stays zero
+        image=Image([(0x6ec9c70,lock),(0x5000,b'x'*40),
+            (call['context'],struct.pack('<QQQ',call['event_pointer'],0x462e7b4,call['args'])+b'\0\0')]) # ASL handle stays zero
         with tempfile.TemporaryDirectory() as root:
             observer=producer.NaturalSnapshot(image.read,rows.append,0,'a'*64,Path(root)/'fresh',spec())
             observer.capture('resolved',r,frames,call)
@@ -115,7 +116,8 @@ class Tests(unittest.TestCase):
         call,r,frames=actual();rows=[]
         with tempfile.TemporaryDirectory() as root:
             root=Path(root)
-            observer=producer.NaturalSnapshot(lambda p,n:bytes(n),rows.append,0,'a'*64,root/'fresh',spec())
+            context=struct.pack('<QQQ',call['event_pointer'],0x462e7b4,call['args'])+b'\0\0'
+            observer=producer.NaturalSnapshot(lambda p,n:context if p==call['context'] else bytes(n),rows.append,0,'a'*64,root/'fresh',spec())
             observer.capture('resolved',r,frames,call)
             manifest=next((root/'fresh').glob('*/image.json'));output=root/'decoded.json'
             with mock.patch('sys.argv',['snapshot','--image',str(manifest),'--output',str(output)]):
@@ -133,12 +135,27 @@ class Tests(unittest.TestCase):
 
     def test_budget_failure_retains_failure_image(self):
         call,r,frames=actual();rows=[]
+        context=struct.pack('<QQQ',call['event_pointer'],0x462e7b4,call['args'])+b'\0\0'
+        args=bytearray(0x1b8);struct.pack_into('<Q',args,0,0x53a6300)
+        struct.pack_into('<Q',args,0x1a0,0x9000);struct.pack_into('<I',args,0x1a8,100);struct.pack_into('<I',args,0x1b0,100)
+        def reader(p,n):
+            return context if p==call['context'] else bytes(args) if p==call['args'] else bytes(n)
         with tempfile.TemporaryDirectory() as root:
             options=spec();options['byte_budget']=1024
-            observer=producer.NaturalSnapshot(lambda p,n:bytes(n),rows.append,0,'a'*64,Path(root)/'fresh',options)
+            observer=producer.NaturalSnapshot(reader,rows.append,0,'a'*64,Path(root)/'fresh',options)
             observer.capture('resolved',r,frames,call)
             self.assertTrue(rows[0]['partial'])
+            self.assertIn('budget exhausted',rows[0]['decoder_result']['errors']['arguments'])
             self.assertTrue(list((Path(root)/'fresh').glob('*/image.json')))
+
+    def test_changed_fresh_context_tuple_prevents_pointee_reads(self):
+        call,r,frames=actual();rows=[];reader=mock.Mock(return_value=bytes(26))
+        with tempfile.TemporaryDirectory() as root:
+            observer=producer.NaturalSnapshot(reader,rows.append,0,'a'*64,Path(root)/'fresh',spec())
+            observer.capture('resolved',r,frames,call)
+            reader.assert_called_once_with(call['context'],26)
+            self.assertIn('tuple changed',rows[0]['decoder_failure'])
+            self.assertFalse(rows[0]['registry_absence_inferred'])
 
     def test_optin_frame_registers_do_not_change_legacy_projection(self):
         adapter=Adapter.__new__(Adapter);adapter.stopped=lambda:None

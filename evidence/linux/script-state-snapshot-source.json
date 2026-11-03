@@ -98,10 +98,10 @@
     "tools/linux/full_manager_observer_runner.py": "d1767064f175b05ee9cf623fc3dd40661e5c6b29a7e1f9e16f94a17e5368d6ab",
     "tools/linux/script_hks_registry.py": "b37623e252bc2b3430025d238671e7b3b622189729527d0e8015ccc2484867ad",
     "tools/linux/script_manager_observer.py": "dbb075556193864bada8859dcf1d491f569247614fa9190dacf1887bc9f9b177",
-    "tools/linux/script_state_snapshot.py": "2942e2ad2eacc4d8dd426beb1e6d9233e76a7fad81b0bbe0852adecab23c597e",
+    "tools/linux/script_state_snapshot.py": "e592532222d0e4c26afc341e36abf636cea44645e198a4c73eca8730b635e1e9",
     "tools/linux/script_state_snapshot_audit.py": "bbeb9c6f1b665fb7ebac31923dd8be876f192388ff1e655c725352ef966b2549",
-    "tools/linux/test_script_state_snapshot.py": "8cbdcde61bd9ad0a8641b9fbb5869fe07f1042d9a4a5af1e1001be8b67013f7b"
+    "tools/linux/test_script_state_snapshot.py": "cb8d399aa6806d2afd1da05b5c2c32feef7e7d27650066f166fc5c6edf174c4b"
   },
-  "synthetic_cases": 14,
+  "synthetic_cases": 15,
   "unknown_GC_blocks_raw_copy": false
 }
