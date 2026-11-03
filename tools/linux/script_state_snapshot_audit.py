@@ -11,6 +11,7 @@ import unittest
 from save_lifecycle_audit import Elf,HOST_SHA,GAME_SHA
 from script_state_snapshot import ARGUMENT_BODIES,SCHEMA
 from test_script_state_snapshot import Tests
+from test_script_snapshot_assemble import Tests as AssemblyTests
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -31,6 +32,8 @@ def main():
         bodies.append(dict(name=name,address=hex(address),size=size,sha256=expected))
     stream=io.StringIO();result=unittest.TextTestRunner(stream=stream).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
     if not result.wasSuccessful():raise ValueError(stream.getvalue())
+    assembly=unittest.TextTestRunner(stream=stream).run(unittest.defaultTestLoader.loadTestsFromTestCase(AssemblyTests))
+    if not assembly.wasSuccessful():raise ValueError(stream.getvalue())
     adapter=json.loads(args.adapter_audit.read_text())
     current=sha((ROOT/'tools/linux/full_manager_observer_runner.py').read_bytes())
     if adapter['sources']['tools/linux/full_manager_observer_runner.py']!=current:raise ValueError('adapter audit not current')
@@ -38,12 +41,13 @@ def main():
     if replay!=json.loads((ROOT/'evidence/linux/full-manager-raw-capture.json').read_text()):raise ValueError('closed native2 legacy report changed')
     sources=['tools/linux/script_state_snapshot.py','tools/linux/test_script_state_snapshot.py',
         'tools/linux/script_state_snapshot_audit.py','tools/linux/full_manager_observer_runner.py',
-        'tools/linux/script_manager_observer.py','tools/linux/script_hks_registry.py']
+        'tools/linux/script_manager_observer.py','tools/linux/script_hks_registry.py',
+        'tools/linux/full_manager_observer_plan_assemble.py','tools/linux/test_script_snapshot_assemble.py']
     report=dict(schema='c6-linux-script-natural-snapshot-source-v1',snapshot_schema=SCHEMA,
         source_checks_passed=True,original_execution=False,native_snapshot_created=False,
         host_sha256=HOST_SHA,gamecore_sha256=GAME_SHA,
         source_files={path:sha((ROOT/path).read_bytes()) for path in sources},
-        checked_argument_layout_bodies=bodies,synthetic_cases=result.testsRun,
+        checked_argument_layout_bodies=bodies,synthetic_cases=result.testsRun,assembly_optin_cases=assembly.testsRun,
         existing_adapter_checks=adapter['checks'],
         adapter_audit_sha256=sha(args.adapter_audit.read_bytes()),
         sealed_native2_replay_equal_to_committed_report=True,

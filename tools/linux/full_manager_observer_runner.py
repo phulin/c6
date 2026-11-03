@@ -326,6 +326,7 @@ def validate_plan(plan):
     packet=json.loads(Path(review['path']).read_text())
     require(packet['schema']=='c6-linux-full-manager-stack-contract-v1' and
             packet['observation_mode']==mode and
+            packet.get('script_snapshot')==plan.get('script_snapshot') and
             packet['caller_suffix_frames']==plan['caller_suffix_frames'] and
             packet['window_parent_prefixes']==plan['window_parent_prefixes'] and
             packet['marker_parent_frames']==plan['marker_parent_frames'] and

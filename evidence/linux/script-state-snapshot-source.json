@@ -9,9 +9,10 @@
     "r15",
     "rbx"
   ],
-  "adapter_audit_sha256": "9ad3f151dbc4b7a26c4bb1347210c027c46ca5e83ed1c1236d4b76689e167440",
+  "adapter_audit_sha256": "a4640bb85aa27a9794cc3d50f5a729e34ccca8d470bfd9a89677c60af74da9ad",
   "additional_locks": false,
   "arbitrary_native_calls": false,
+  "assembly_optin_cases": 3,
   "checked_argument_layout_bodies": [
     {
       "address": "0x3245b40",
@@ -95,11 +96,13 @@
   "snapshot_schema": "c6-linux-script-natural-snapshot-v1",
   "source_checks_passed": true,
   "source_files": {
-    "tools/linux/full_manager_observer_runner.py": "d1767064f175b05ee9cf623fc3dd40661e5c6b29a7e1f9e16f94a17e5368d6ab",
+    "tools/linux/full_manager_observer_plan_assemble.py": "741e4d2094c411e55216bee85f7a309b9022845045d5eda07fa6e53bdd06904a",
+    "tools/linux/full_manager_observer_runner.py": "8e5272eaa3e3766cb2959063f81341691f13757aa5128b769d70d8c4b96105a6",
     "tools/linux/script_hks_registry.py": "b37623e252bc2b3430025d238671e7b3b622189729527d0e8015ccc2484867ad",
     "tools/linux/script_manager_observer.py": "dbb075556193864bada8859dcf1d491f569247614fa9190dacf1887bc9f9b177",
     "tools/linux/script_state_snapshot.py": "e592532222d0e4c26afc341e36abf636cea44645e198a4c73eca8730b635e1e9",
-    "tools/linux/script_state_snapshot_audit.py": "bbeb9c6f1b665fb7ebac31923dd8be876f192388ff1e655c725352ef966b2549",
+    "tools/linux/script_state_snapshot_audit.py": "fdf15e06cea5590ec4d774e0f52a94c5a8d5d5840178a93b94b173b018ef5c64",
+    "tools/linux/test_script_snapshot_assemble.py": "9a17b58418349974fcb4b17b3c0e7f0d5341288b0f6d02f3ec04d8080a4a0249",
     "tools/linux/test_script_state_snapshot.py": "cb8d399aa6806d2afd1da05b5c2c32feef7e7d27650066f166fc5c6edf174c4b"
   },
   "synthetic_cases": 15,

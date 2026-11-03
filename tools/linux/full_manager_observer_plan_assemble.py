@@ -35,12 +35,32 @@ def launch_host(configuration,explicit=None,expected_sha256=HOST_SHA):
     return str(host)
 
 
+def add_script_snapshot(fields,host,sources):
+    """Add only the explicitly selected collector and its host layout gates."""
+    from script_state_snapshot import SCHEMA,PHASES,ARGUMENT_BODIES,validate_spec
+    source=str(ROOT/'tools/linux/script_state_snapshot.py');identity=digest(source)
+    require(sources.get(source)==identity,'opt-in collector absent/changed in actual built source inventory')
+    spec=dict(schema=SCHEMA,phases=list(PHASES),byte_budget=16*1024*1024,
+              max_items=65536,source_sha256=identity)
+    validate_spec(spec)
+    bodies=list(fields['live_bodies'])
+    for name,address,size,sha in ARGUMENT_BODIES:
+        row=dict(name=name,module=host,relative_address=address,size=size,sha256=sha)
+        matches=[old for old in bodies if old['module']==host and old['relative_address']==address]
+        require(not matches or all(old['size']==size and old['sha256']==sha for old in matches),
+                'conflicting argument layout body in compiled fragment')
+        if not matches:bodies.append(row)
+    return dict(fields,live_bodies=bodies,script_snapshot=spec)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--built-report',type=Path,required=True)
     parser.add_argument('--fragment',type=Path,required=True)
     parser.add_argument('--output-directory',type=Path,required=True)
     parser.add_argument('--launch-host',type=Path,help='Optional explicit check against configured actual launch path')
+    parser.add_argument('--script-snapshot',action='store_true',
+                        help='Opt in to reviewed bounded natural script-state images; GC stays unresolved')
     args=parser.parse_args()
     built_raw=args.built_report.read_bytes();built=json.loads(built_raw)
     require(built['schema']=='c6-linux-full-manager-preload-built-v1' and
@@ -64,9 +84,11 @@ def main():
     out=args.output_directory.resolve();out.mkdir(parents=True,exist_ok=False)
     fields=('caller_suffix_frames','marker_parent_frames','window_parent_prefixes','live_bodies',
             'compiled_symbols','main_entry_witness')
+    values={key:fragment[key] for key in fields}
+    if args.script_snapshot:values=add_script_snapshot(values,host,sources)
     packet=dict(schema='c6-linux-full-manager-stack-contract-v1',observation_mode='raw_unresolved',
         reviewed_sources=sources,no_VM_or_GC_parent_frames_source_closed=False,
-        **{key:fragment[key] for key in fields},original_execution=False,native_profile_admitted=False,
+        **values,original_execution=False,native_profile_admitted=False,
         construction='Actual immutable compiled owned-ELF facts; assembled for independent final plan review.',
         additional_startup_HKS_GC_frames='unresolved; no zero-parent or registry/effects inference',
         built_report_sha256=hashlib.sha256(built_raw).hexdigest(),
@@ -76,7 +98,7 @@ def main():
     plan=dict(schema='c6-linux-full-manager-observer-plan-v1',profile_kind='genuine_lower_core_full_Manager',
         observation_mode='raw_unresolved',host=host,core=core,preload=fragment['preload'],libc=runtime_paths['libc'],modules=modules,
         marker_relative_address=fragment['marker_relative_address'],
-        **{key:fragment[key] for key in fields},
+        **values,
         stack_contract_review=dict(path=str(packet_path),sha256=digest(packet_path)))
     compiled_contracts(plan,Path(plan['preload']).read_bytes())
     plan_path=out/'observer-plan.json';plan_path.write_text(json.dumps(plan,indent=2,sort_keys=True)+'\n')

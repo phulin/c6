@@ -55,3 +55,14 @@ python3 tools/linux/script_state_snapshot.py --image /private/snapshot/image.jso
 ```
 
 The [source audit](../evidence/linux/script-state-snapshot-source.json) records 15 focused collector regressions, 31 existing adapter cases, eight newly pinned argument-layout bodies, and unchanged closed native-2 report replay. The collector preserves raw pthread mutex bytes and never interprets ASL NULL as unlocked or establishes a pthread return/owner status. Its copied graph is a stopped byte image, not proof of GC consistency, complete callback effects or transitive Lua Method/code behavior. Those actual bytes must guide the next semantic implementation; an observed nil result is never a Rust constant backend.
+
+
+The sole runner can now assemble the opt-in without editing a generated plan:
+
+```sh
+python3 tools/linux/full_manager_observer_plan_assemble.py \
+  --built-report /private/fresh-built.json --fragment /private/fresh-fragment.json \
+  --output-directory /private/fresh-observer-bundle --script-snapshot
+```
+
+The flag requires the collector's exact current hash in the actual built source inventory, adds its default bounded spec and all eight argument-layout body gates to both plan and stack packet, and rejects conflicting existing body gates. The adapter requires packet/plan snapshot specs to match. Omitting the flag preserves the old raw-only field construction. Three focused assembly regressions cover immutable input/default separation, missing/changed inventory and conflicting body identities. This is offline construction, not profile admission or original execution.
