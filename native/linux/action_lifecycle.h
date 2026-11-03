@@ -8,6 +8,8 @@ int c6_linux_action_prepare_dispatch(void *game_module, void *borrowed_context, 
 int c6_linux_action_prepare_registered_dispatch(void *game_module, void *borrowed_context, bool execute);
 int c6_linux_action_prepare_core_component(void *game_module, void *borrowed_context, bool execute);
 /* Separate read-only movement-cost callback under original controller/cache
- * ownership and existing trace guards; no command dispatch or worker wake. */
+ * ownership and existing trace guards; no command dispatch or worker wake.
+ * Requires shared quiescence before/after the callback. Unknown/active movement
+ * state terminates the isolated process with 184 before teardown. */
 int c6_linux_action_prepare_movement_cost(void *game_module, void *borrowed_context);
 #endif
