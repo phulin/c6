@@ -46,7 +46,8 @@ python3 tools/linux/player_improvements_audit.py --source-commit COMMIT \
 ```
 
 The read-only audit gates GameCore and host hashes, builds one committed Git
-archive, verifies driver/source/candidate identity, and roundtrips all 43 Player
+archive, verifies driver/source/candidate identity, runs actual Cargo tests and
+strict Cargo Clippy on its isolated codec harness, and roundtrips all 43 Player
 records from each of both canonical streams. No Improvements owner hook exists:
 Quests-end and enclosing Player-end provide validation context, preceding WMD
 count grammar derives the record start, and Improvements count grammar
