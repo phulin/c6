@@ -371,19 +371,42 @@ pub struct Map {
 }
 impl Map {
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
-        Self::decode_inner(bytes, limits, false).map(|v| v.0)
+        Self::decode_inner(bytes, limits, false, false).map(|v| v.0)
     }
     pub fn decode_with_ranges(
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, Vec<FieldRange>), Error> {
-        Self::decode_inner(bytes, limits, true)
+        Self::decode_inner(bytes, limits, true, false).map(|(map, ranges, _, _)| (map, ranges))
+    }
+    /// Decode the complete supported Map at a known structural cursor. The
+    /// untouched caller tail is neither parsed nor charged against max_bytes.
+    /// Returns the dynamic item charge for a shared enclosing Core budget.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let clipped = bytes.len() > limits.max_bytes;
+        let input = &bytes[..bytes.len().min(limits.max_bytes)];
+        Self::decode_inner(input, limits, false, true)
+            .map(|(map, _, consumed, items)| (map, consumed, items))
+            .map_err(|error| {
+                if clipped && error == Error::Truncated {
+                    Error::ResourceLimit
+                } else {
+                    error
+                }
+            })
+    }
+    pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        Self::decode_prefix_with_items(bytes, limits).map(|(map, consumed, _)| (map, consumed))
     }
     fn decode_inner(
         bytes: &[u8],
         limits: Limits,
         ranges: bool,
-    ) -> Result<(Self, Vec<FieldRange>), Error> {
+        allow_trailing: bool,
+    ) -> Result<(Self, Vec<FieldRange>, usize, usize), Error> {
         let mut r = Reader::new(bytes, limits)?;
         r.collect_ranges = ranges;
         let header = r.record("header", |r| {
@@ -509,10 +532,10 @@ impl Map {
             components,
         };
         result.validate_dimensions()?;
-        if r.pos != bytes.len() {
+        if !allow_trailing && r.pos != bytes.len() {
             return Err(Error::TrailingBytes);
         }
-        Ok((result, r.ranges))
+        Ok((result, r.ranges, r.pos, r.items))
     }
     fn validate_dimensions(&self) -> Result<(), Error> {
         if self.header.width < 0 || self.header.height < 0 {
@@ -618,3 +641,84 @@ impl Map {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod prefix_tests {
+    use super::*;
+    fn empty<T>() -> Recycled<T> {
+        Recycled {
+            capacity: 0,
+            entries: vec![],
+            current_id_bits: 0,
+            free_head: 0,
+            free_tail: 0,
+            free_links: vec![],
+        }
+    }
+    #[test]
+    fn prefix_consumes_only_map_and_reports_shared_budget_without_changing_strict_decode() {
+        let map = Map {
+            header: Header {
+                width: 0,
+                height: 0,
+                top_latitude: 90,
+                bottom_latitude: -90,
+                wrap_x: false,
+                wrap_y: false,
+                map_size_hash: 0,
+                land_plots: 0,
+                owned_plots: 0,
+                natural_wonders: 0,
+                resource_counts: vec![DefinitionValue { hash: 7, value: -3 }],
+                land_resource_counts: vec![],
+            },
+            visibility: vec![],
+            areas: empty(),
+            landmasses: empty(),
+            regions: empty(),
+            chokepoints: empty(),
+            continents: vec![],
+            feature_layouts: empty(),
+            plots: vec![],
+            units: UnitContainer {
+                width: 0,
+                height: 0,
+                layers: vec![],
+            },
+            components: vec![],
+        };
+        let limits = Limits::default();
+        let wire = map.encode(limits).unwrap();
+        let mut carrier = wire.clone();
+        carrier.extend_from_slice(b"untouched-Core-tail");
+        let exact = Limits {
+            max_bytes: wire.len(),
+            ..limits
+        };
+        let (decoded, consumed, items) = Map::decode_prefix_with_items(&carrier, exact).unwrap();
+        assert_eq!(decoded, map);
+        assert_eq!(consumed, wire.len());
+        assert_eq!(items, 1);
+        assert_eq!(Map::decode(&wire, limits).unwrap(), map);
+        assert_eq!(Map::decode(&carrier, limits), Err(Error::TrailingBytes));
+        assert_eq!(Map::decode(&carrier, exact), Err(Error::ResourceLimit));
+        assert_eq!(
+            Map::decode_prefix_with_items(
+                &carrier,
+                Limits {
+                    max_items: items - 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert!(Map::decode_prefix(
+            &carrier,
+            Limits {
+                max_bytes: wire.len() - 1,
+                ..limits
+            }
+        )
+        .is_err());
+    }
+}
