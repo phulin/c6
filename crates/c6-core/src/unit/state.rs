@@ -1236,515 +1236,515 @@ impl Unit {
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
         Self::decode_prefix_with_items(bytes, limits).map(|(value, consumed, _)| (value, consumed))
     }
-    fn read_with_ranges(mut r: &mut Reader<'_>) -> Result<(Self, Vec<FieldRange>), Error> {
+    fn read_with_ranges(r: &mut Reader<'_>) -> Result<(Self, Vec<FieldRange>), Error> {
         r.version(28)?;
         let mut ranges = Vec::new();
         let start = r.pos;
-        let id = <u32>::read(&mut r)?;
+        let id = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_id",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_type_index = <u32>::read(&mut r)?;
+        let e_type_index = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eTypeIndex",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_ai_type = <i32>::read(&mut r)?;
+        let e_ai_type = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eAIType",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_controller = <u32>::read(&mut r)?;
+        let ai_controller = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiController",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_goal = <PlotCoord>::read(&mut r)?;
+        let ai_goal = <PlotCoord>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiGoal",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_location = <PlotCoord>::read(&mut r)?;
+        let k_location = <PlotCoord>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kLocation",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_facing_direction = <i32>::read(&mut r)?;
+        let e_facing_direction = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eFacingDirection",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_owner = <i32>::read(&mut r)?;
+        let e_owner = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eOwner",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_original_owner = <i32>::read(&mut r)?;
+        let e_original_owner = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eOriginalOwner",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_is_levied = <bool>::read(&mut r)?;
+        let b_is_levied = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIsLevied",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let formation_id = <u32>::read(&mut r)?;
+        let formation_id = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_formationID",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_military_formation = <i32>::read(&mut r)?;
+        let e_military_formation = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eMilitaryFormation",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_automation = <i32>::read(&mut r)?;
+        let e_automation = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eAutomation",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_activity = <i32>::read(&mut r)?;
+        let e_activity = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eActivity",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_damage = <i32>::read(&mut r)?;
+        let i_damage = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iDamage",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_fortify_turns = <i32>::read(&mut r)?;
+        let i_fortify_turns = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iFortifyTurns",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_upgrade_discount = <i32>::read(&mut r)?;
+        let i_upgrade_discount = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iUpgradeDiscount",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let x_moves_remaining = <i32>::read(&mut r)?;
+        let x_moves_remaining = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_xMovesRemaining",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_attacks_remaining = <i32>::read(&mut r)?;
+        let i_attacks_remaining = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iAttacksRemaining",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_operation_timer = <i32>::read(&mut r)?;
+        let i_operation_timer = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iOperationTimer",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_build_charges = <i32>::read(&mut r)?;
+        let i_build_charges = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iBuildCharges",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_park_charges = <i32>::read(&mut r)?;
+        let i_park_charges = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iParkCharges",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_action_charges = <i32>::read(&mut r)?;
+        let i_action_charges = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iActionCharges",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_air_slot_modifier = <i32>::read(&mut r)?;
+        let i_air_slot_modifier = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iAirSlotModifier",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_dominant_conquer = <bool>::read(&mut r)?;
+        let b_dominant_conquer = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bDominantConquer",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_barbarian_tribe_index = <i32>::read(&mut r)?;
+        let i_barbarian_tribe_index = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iBarbarianTribeIndex",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let e_barbarian_player_target = <i32>::read(&mut r)?;
+        let e_barbarian_player_target = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eBarbarianPlayerTarget",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_disaster_charges = <i32>::read(&mut r)?;
+        let i_disaster_charges = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iDisasterCharges",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_era_strength_modifier = <i32>::read(&mut r)?;
+        let i_era_strength_modifier = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iEraStrengthModifier",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_embarked = <bool>::read(&mut r)?;
+        let b_embarked = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bEmbarked",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_delayed_death = <bool>::read(&mut r)?;
+        let b_delayed_death = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bDelayedDeath",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_immobile = <bool>::read(&mut r)?;
+        let b_immobile = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bImmobile",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_processed_turn = <bool>::read(&mut r)?;
+        let b_processed_turn = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bProcessedTurn",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_needs_movement_completion = <bool>::read(&mut r)?;
+        let b_needs_movement_completion = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bNeedsMovementCompletion",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_eligible_to_heal = <bool>::read(&mut r)?;
+        let b_eligible_to_heal = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bEligibleToHeal",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_has_hidden_visibility = <bool>::read(&mut r)?;
+        let b_has_hidden_visibility = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bHasHiddenVisibility",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_hidden_visibility_forfeited = <bool>::read(&mut r)?;
+        let b_hidden_visibility_forfeited = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bHiddenVisibilityForfeited",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_ignore_terrain_cost = <bool>::read(&mut r)?;
+        let b_ignore_terrain_cost = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIgnoreTerrainCost",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_ignore_zoc = <bool>::read(&mut r)?;
+        let b_ignore_zoc = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIgnoreZOC",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_exert_zoc = <bool>::read(&mut r)?;
+        let b_exert_zoc = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bExertZOC",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_can_see_through_features = <bool>::read(&mut r)?;
+        let b_can_see_through_features = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bCanSeeThroughFeatures",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_can_see_through_terrain = <bool>::read(&mut r)?;
+        let b_can_see_through_terrain = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bCanSeeThroughTerrain",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_attack_after_moving = <bool>::read(&mut r)?;
+        let b_attack_after_moving = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bAttackAfterMoving",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_move_after_attacking = <i32>::read(&mut r)?;
+        let i_move_after_attacking = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iMoveAfterAttacking",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_needs_attention = <bool>::read(&mut r)?;
+        let b_needs_attention = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bNeedsAttention",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let b_ignore_resource_maintenance = <bool>::read(&mut r)?;
+        let b_ignore_resource_maintenance = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIgnoreResourceMaintenance",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_health_modifiers = <HealthModifiers>::read(&mut r)?;
+        let k_health_modifiers = <HealthModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kHealthModifiers",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_health_religion_modifiers = <HealthReligionModifiers>::read(&mut r)?;
+        let k_health_religion_modifiers = <HealthReligionModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kHealthReligionModifiers",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_combat_modifers = <CombatModifiers>::read(&mut r)?;
+        let k_combat_modifers = <CombatModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kCombatModifers",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_movement_modifiers = <MovementModifiers>::read(&mut r)?;
+        let k_movement_modifiers = <MovementModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kMovementModifiers",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_sight_modifiers = <SightModifiers>::read(&mut r)?;
+        let k_sight_modifiers = <SightModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kSightModifiers",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_attack_range_modifiers = <AttackRangeModifiers>::read(&mut r)?;
+        let k_attack_range_modifiers = <AttackRangeModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kAttackRangeModifiers",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_sight_plots = <Vec<SightPlotEntry>>::read(&mut r)?;
+        let k_sight_plots = <Vec<SightPlotEntry>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kSightPlots",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_abilities_possessed = <Vec<HashValue<i32>>>::read(&mut r)?;
+        let ai_abilities_possessed = <Vec<HashValue<i32>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiAbilitiesPossessed",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ab_invalid_terrain_types = <Vec<HashValue<bool>>>::read(&mut r)?;
+        let ab_invalid_terrain_types = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_abInvalidTerrainTypes",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ab_ignore_terrain_types = <Vec<HashValue<bool>>>::read(&mut r)?;
+        let ab_ignore_terrain_types = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_abIgnoreTerrainTypes",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ab_ignore_feature_types = <Vec<HashValue<bool>>>::read(&mut r)?;
+        let ab_ignore_feature_types = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_abIgnoreFeatureTypes",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_bonus_points_per_kill = <Vec<HashValue<i32>>>::read(&mut r)?;
+        let ai_bonus_points_per_kill = <Vec<HashValue<i32>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiBonusPointsPerKill",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_bonus_points_per_kill_strength = <Vec<HashValue<i32>>>::read(&mut r)?;
+        let ai_bonus_points_per_kill_strength = <Vec<HashValue<i32>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiBonusPointsPerKillStrength",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_bypass_walls_promotion_class = <Vec<HashValue<u8>>>::read(&mut r)?;
+        let ai_bypass_walls_promotion_class = <Vec<HashValue<u8>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiBypassWallsPromotionClass",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_enable_wall_attack_promotion_class = <Vec<HashValue<u8>>>::read(&mut r)?;
+        let ai_enable_wall_attack_promotion_class = <Vec<HashValue<u8>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiEnableWallAttackPromotionClass",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_experience = <Experience>::read(&mut r)?;
+        let k_experience = <Experience>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kExperience",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_great_person = <GreatPerson>::read(&mut r)?;
+        let k_great_person = <GreatPerson>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kGreatPerson",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_religion = <Religion>::read(&mut r)?;
+        let k_religion = <Religion>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kReligion",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_rock_band = <RockBand>::read(&mut r)?;
+        let k_rock_band = <RockBand>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kRockBand",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_trade = <Trade>::read(&mut r)?;
+        let k_trade = <Trade>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kTrade",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_archaeology = <Archaeology>::read(&mut r)?;
+        let k_archaeology = <Archaeology>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kArchaeology",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_espionage = <Espionage>::read(&mut r)?;
+        let k_espionage = <Espionage>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kEspionage",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_attributes = <VariantMap>::read(&mut r)?;
+        let k_attributes = <VariantMap>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kAttributes",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_operations = <OperationQueue>::read(&mut r)?;
+        let k_operations = <OperationQueue>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kOperations",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_operations_disabled = <Vec<HashValue<bool>>>::read(&mut r)?;
+        let k_operations_disabled = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kOperationsDisabled",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_hero = <Hero>::read(&mut r)?;
+        let k_hero = <Hero>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kHero",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_properties = <TypedVariantMap>::read(&mut r)?;
+        let k_properties = <TypedVariantMap>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kProperties",
             start,
