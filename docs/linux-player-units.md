@@ -94,3 +94,10 @@ A documentation review clarified the allocation-policy description after the
 closed audit run. The public report preserves the actual closed-run source,
 archive, candidate, harness and audit-tool identities and records the metadata
 correction explicitly. The corpus was not rerun for this wording change.
+
+The free-pass sequence alone has a signed i32 count (writer `0x2ba1bae`,
+reader `0x2ba2136` with sign extension at `0x2ba214a`). Its envelope adapter
+rejects negative/high-bit carriers before allocation even under maximal
+Limits, and encoding checks the length with `i32::try_from`. Other sequence
+count grammars remain unchanged. `--source-commit COMMIT` selects the actual
+immutable source checkpoint for a new isolated audit run.

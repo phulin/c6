@@ -15,7 +15,6 @@ from save_lifecycle_audit import Elf, GAME_SHA, HOST_SHA
 from player_districts_audit import FIXTURES
 from player_religion_audit import relocation_symbols
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE_PIN = '8119a34'
 METHODS = [(33448528,
   131,
   'bool Serialization::ReadIndexHashArrayVersioned<FixedPointT<8u>, FixedPointT<8u>, '
@@ -3071,6 +3070,7 @@ def main():
     p.add_argument('--assets', type=Path, default=ROOT.parent/'c6-assets-linux')
     p.add_argument('--private-root', type=Path, default=ROOT.parent/'c6-ghidra')
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--source-commit', required=True, help='Actual immutable source commit containing this codec and audit driver')
     args = p.parse_args()
     game = Elf(args.assets/'libGameCore_XP2.so', GAME_SHA)
     Elf(args.assets/'Civ6', HOST_SHA)
@@ -3097,7 +3097,7 @@ def main():
     dwarf = subprocess.check_output(command, text=True)
     if sha(dwarf.encode()) != DWARF_SHA:
         raise ValueError('matching DWARF changed')
-    pin = subprocess.check_output(['git', 'rev-parse', SOURCE_PIN+'^{commit}'], cwd=ROOT, text=True).strip()
+    pin = subprocess.check_output(['git', 'rev-parse', args.source_commit+'^{commit}'], cwd=ROOT, text=True).strip()
     reports = []
     with tempfile.TemporaryDirectory(prefix='c6-units-') as tmp:
         tmp = Path(tmp)
@@ -3150,7 +3150,7 @@ def main():
             if unit_count != 1262:
                 raise ValueError('unexpected nested Unit count')
             reports.append(dict(stream_sha256=identity, trace_sha256=trace_sha, records=len(cuts), record_bytes=total, nested_units=unit_count, nested_unit_bytes=unit_bytes, first_observed_range=[cuts[0]['start'], cuts[0]['end']], ordered_record_digests_sha256=sha(json.dumps(digests, separators=(',', ':')).encode()), typed_observations_sha256=sha(json.dumps(observations, separators=(',', ':')).encode())))
-    report = dict(schema='c6-linux-player-units-v1', checks_passed=True, gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA, current_version=22, version_address='0x2f69c10', methods=[dict(address=hex(a), size=n, name=name, sha256=h) for a, n, name, h in METHODS], concrete_bindings=[dict(site=hex(a), plt=hex(b), body=hex(c), kind=k) for a, b, c, k in BINDINGS], dwarf_sha256=sha(dwarf.encode()), candidate_source_commit=pin, candidate_archive_sha256=sha(archive), candidate_sources=sources, candidate_sha256=candidate_sha, harness_sha256=sha(harness.encode()), audit_source_sha256=sha(Path(__file__).read_bytes()), fixtures=reports, source_only_tests=3, exact_native_record_byte_item_caps_checked=True, one_short_native_record_caps_rejected=True, native_truncations='first 32 and final 256 prefixes of every envelope; before end of every nested Unit', synthetic_every_prefix_rejected=True, duplicate_and_invalid_slots_rejected=True, synthetic_full_id_and_owner_preserved=True, allocation_policy='envelope-owned allocations use checked addressable layout and fallible reserve; inherited Unit/state.rs sequence decoding uses Vec::with_capacity and its writer uses infallible Vec extension after existing count/wire checks; aggregate serialized bytes/items cover all Unit children; neither fully fallible nested allocation nor aggregate heap-byte bound is claimed', original_execution=False, private_writes=False, complete_current_units_wire=True, nested_unit_current_version=28, definition_remapping=False, native_read_fixups=False, full_player=False, world_import=False, gameplay_state=False, actions=False, turns=False, next_player_component='Eras', unknown_save_bytes_masked=False, recorded_raw_save_load_difference_bytes=89198)
+    report = dict(schema='c6-linux-player-units-v1', checks_passed=True, gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA, current_version=22, version_address='0x2f69c10', methods=[dict(address=hex(a), size=n, name=name, sha256=h) for a, n, name, h in METHODS], concrete_bindings=[dict(site=hex(a), plt=hex(b), body=hex(c), kind=k) for a, b, c, k in BINDINGS], dwarf_sha256=sha(dwarf.encode()), candidate_source_commit=pin, candidate_archive_sha256=sha(archive), candidate_sources=sources, candidate_sha256=candidate_sha, harness_sha256=sha(harness.encode()), audit_source_sha256=sha(Path(__file__).read_bytes()), fixtures=reports, source_only_tests=4, exact_native_record_byte_item_caps_checked=True, one_short_native_record_caps_rejected=True, native_truncations='first 32 and final 256 prefixes of every envelope; before end of every nested Unit', synthetic_every_prefix_rejected=True, signed_free_pass_negative_count_preallocation_refused=True, signed_free_pass_encoder_count_i32_checked=True, duplicate_and_invalid_slots_rejected=True, synthetic_full_id_and_owner_preserved=True, allocation_policy='envelope-owned allocations use checked addressable layout and fallible reserve; inherited Unit/state.rs sequence decoding uses Vec::with_capacity and its writer uses infallible Vec extension after existing count/wire checks; aggregate serialized bytes/items cover all Unit children; neither fully fallible nested allocation nor aggregate heap-byte bound is claimed', original_execution=False, private_writes=False, complete_current_units_wire=True, nested_unit_current_version=28, definition_remapping=False, native_read_fixups=False, full_player=False, world_import=False, gameplay_state=False, actions=False, turns=False, next_player_component='Eras', unknown_save_bytes_masked=False, recorded_raw_save_load_difference_bytes=89198)
     args.output.write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(dict(checks_passed=True, methods=len(METHODS), fixtures=reports)))
 

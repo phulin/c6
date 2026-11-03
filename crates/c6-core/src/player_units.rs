@@ -354,50 +354,226 @@ record!(DistrictFoundingUnits, 0, { key: u32, values: Vec<MapPair> });
 record!(RandomPromotionSelection, 22, { promotion_hash: u32, times_selected: i32 });
 record!(ProposedPromotion, 22, { promotion_hash: u32, unit_id: u32 });
 record!(BasePromotion, 22, { unit_hash: u32, promotion_hash: u32, count: i32 });
-record!(Units, 22, {
-    records: UnitTable,
-    current_unit_cost: Vec<HashValue<i32>>,
-    unit_production_multiplier_q8: Vec<HashValue<i32>>,
-    extra_unit_copy: Vec<HashValue<i32>>,
-    enable_wall_attack_whole_game_promotion_class: Vec<HashValue<i32>>,
-    unit_build_disabled: Vec<HashValue<bool>>,
-    no_settling_cities: bool,
-    no_foreign_heal: bool,
-    no_neutral_heal: bool,
-    add_on_district_founding: Vec<DistrictFoundingUnits>,
-    unit_free_pass_hashes: Vec<u32>,
-    unit_embarkation_pass_hashes: Vec<u32>,
-    extra_build_charges: i32,
-    extra_build_charges_by_unit: Vec<HashValue<i32>>,
-    extra_spread_charges: i32,
-    embarked_movement_modifier: i32,
-    upgrade_military_formation_on_city_conquest_count: i32,
-    promotion_selections: Vec<RandomPromotionSelection>,
-    proposed_promotions: Vec<ProposedPromotion>,
-    base_promotions: Vec<BasePromotion>,
-    unlimited_promotion_choice_unit_hashes: Vec<u32>,
-    land_corps_unlock_civic_hash: u32,
-    land_army_unlock_civic_hash: u32,
-    naval_corps_unlock_civic_hash: u32,
-    naval_army_unlock_civic_hash: u32,
-    land_corps_unlock_tech_hash: u32,
-    land_army_unlock_tech_hash: u32,
-    naval_corps_unlock_tech_hash: u32,
-    naval_army_unlock_tech_hash: u32,
-    peak_units: u32,
-    land_corps_modified_strength: i32,
-    land_army_modified_strength: i32,
-    naval_corps_modified_strength: i32,
-    naval_army_modified_strength: i32,
-    enable_wall_attack_whole_game: i32,
-    rock_band_album_sales_modifier: i32,
-    banned_production_yield: i32,
-    favored_production_yield: i32,
-    favored_production_modifier_q8: i32,
-    upgrade_cost_modifier_q8: i32,
-    current_unit_resource_cost: Vec<HashValue<i32>>,
-    unit_fuel_demands: Vec<HashValue<i32>>,
-});
+// Unlike the other sequence counts, native free-pass count is signed i32:
+// writer 0x2ba1bae; reader 0x2ba2136, sign extension 0x2ba214a.
+// Negative carriers are explicitly unsupported before any allocation/charge.
+fn read_free_pass_hashes(r: &mut Reader<'_>) -> Result<Vec<u32>, Error> {
+    let n = usize::try_from(i32::read(r)?).map_err(|_| Error::InvalidContainer)?;
+    r.charge(n)?;
+    let needed = n.checked_mul(4).ok_or(Error::ResourceLimit)?;
+    if needed > r.remaining().max_bytes {
+        return Err(Error::ResourceLimit);
+    }
+    if needed > r.data.len().saturating_sub(r.pos) {
+        return Err(Error::Truncated);
+    }
+    r.allocate::<u32>(n)?;
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(n)
+        .map_err(|_| Error::ResourceLimit)?;
+    for _ in 0..n {
+        values.push(u32::read(r)?);
+    }
+    Ok(values)
+}
+fn free_pass_count(n: usize) -> Result<i32, Error> {
+    i32::try_from(n).map_err(|_| Error::InvalidContainer)
+}
+fn write_free_pass_hashes(values: &[u32], w: &mut Writer) -> Result<(), Error> {
+    let n = free_pass_count(values.len())?;
+    w.charge(values.len())?;
+    n.write(w)?;
+    for value in values {
+        value.write(w)?;
+    }
+    Ok(())
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Units {
+    pub records: UnitTable,
+    pub current_unit_cost: Vec<HashValue<i32>>,
+    pub unit_production_multiplier_q8: Vec<HashValue<i32>>,
+    pub extra_unit_copy: Vec<HashValue<i32>>,
+    pub enable_wall_attack_whole_game_promotion_class: Vec<HashValue<i32>>,
+    pub unit_build_disabled: Vec<HashValue<bool>>,
+    pub no_settling_cities: bool,
+    pub no_foreign_heal: bool,
+    pub no_neutral_heal: bool,
+    pub add_on_district_founding: Vec<DistrictFoundingUnits>,
+    pub unit_free_pass_hashes: Vec<u32>,
+    pub unit_embarkation_pass_hashes: Vec<u32>,
+    pub extra_build_charges: i32,
+    pub extra_build_charges_by_unit: Vec<HashValue<i32>>,
+    pub extra_spread_charges: i32,
+    pub embarked_movement_modifier: i32,
+    pub upgrade_military_formation_on_city_conquest_count: i32,
+    pub promotion_selections: Vec<RandomPromotionSelection>,
+    pub proposed_promotions: Vec<ProposedPromotion>,
+    pub base_promotions: Vec<BasePromotion>,
+    pub unlimited_promotion_choice_unit_hashes: Vec<u32>,
+    pub land_corps_unlock_civic_hash: u32,
+    pub land_army_unlock_civic_hash: u32,
+    pub naval_corps_unlock_civic_hash: u32,
+    pub naval_army_unlock_civic_hash: u32,
+    pub land_corps_unlock_tech_hash: u32,
+    pub land_army_unlock_tech_hash: u32,
+    pub naval_corps_unlock_tech_hash: u32,
+    pub naval_army_unlock_tech_hash: u32,
+    pub peak_units: u32,
+    pub land_corps_modified_strength: i32,
+    pub land_army_modified_strength: i32,
+    pub naval_corps_modified_strength: i32,
+    pub naval_army_modified_strength: i32,
+    pub enable_wall_attack_whole_game: i32,
+    pub rock_band_album_sales_modifier: i32,
+    pub banned_production_yield: i32,
+    pub favored_production_yield: i32,
+    pub favored_production_modifier_q8: i32,
+    pub upgrade_cost_modifier_q8: i32,
+    pub current_unit_resource_cost: Vec<HashValue<i32>>,
+    pub unit_fuel_demands: Vec<HashValue<i32>>,
+}
+impl Wire for Units {
+    const MIN: usize = 4
+        + <UnitTable as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<bool>> as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <Vec<DistrictFoundingUnits> as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<RandomPromotionSelection> as Wire>::MIN
+        + <Vec<ProposedPromotion> as Wire>::MIN
+        + <Vec<BasePromotion> as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version(22)?;
+        Ok(Self {
+            records: <UnitTable as Wire>::read(r)?,
+            current_unit_cost: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            unit_production_multiplier_q8: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            extra_unit_copy: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            enable_wall_attack_whole_game_promotion_class: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            unit_build_disabled: <Vec<HashValue<bool>> as Wire>::read(r)?,
+            no_settling_cities: <bool as Wire>::read(r)?,
+            no_foreign_heal: <bool as Wire>::read(r)?,
+            no_neutral_heal: <bool as Wire>::read(r)?,
+            add_on_district_founding: <Vec<DistrictFoundingUnits> as Wire>::read(r)?,
+            unit_free_pass_hashes: read_free_pass_hashes(r)?,
+            unit_embarkation_pass_hashes: <Vec<u32> as Wire>::read(r)?,
+            extra_build_charges: <i32 as Wire>::read(r)?,
+            extra_build_charges_by_unit: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            extra_spread_charges: <i32 as Wire>::read(r)?,
+            embarked_movement_modifier: <i32 as Wire>::read(r)?,
+            upgrade_military_formation_on_city_conquest_count: <i32 as Wire>::read(r)?,
+            promotion_selections: <Vec<RandomPromotionSelection> as Wire>::read(r)?,
+            proposed_promotions: <Vec<ProposedPromotion> as Wire>::read(r)?,
+            base_promotions: <Vec<BasePromotion> as Wire>::read(r)?,
+            unlimited_promotion_choice_unit_hashes: <Vec<u32> as Wire>::read(r)?,
+            land_corps_unlock_civic_hash: <u32 as Wire>::read(r)?,
+            land_army_unlock_civic_hash: <u32 as Wire>::read(r)?,
+            naval_corps_unlock_civic_hash: <u32 as Wire>::read(r)?,
+            naval_army_unlock_civic_hash: <u32 as Wire>::read(r)?,
+            land_corps_unlock_tech_hash: <u32 as Wire>::read(r)?,
+            land_army_unlock_tech_hash: <u32 as Wire>::read(r)?,
+            naval_corps_unlock_tech_hash: <u32 as Wire>::read(r)?,
+            naval_army_unlock_tech_hash: <u32 as Wire>::read(r)?,
+            peak_units: <u32 as Wire>::read(r)?,
+            land_corps_modified_strength: <i32 as Wire>::read(r)?,
+            land_army_modified_strength: <i32 as Wire>::read(r)?,
+            naval_corps_modified_strength: <i32 as Wire>::read(r)?,
+            naval_army_modified_strength: <i32 as Wire>::read(r)?,
+            enable_wall_attack_whole_game: <i32 as Wire>::read(r)?,
+            rock_band_album_sales_modifier: <i32 as Wire>::read(r)?,
+            banned_production_yield: <i32 as Wire>::read(r)?,
+            favored_production_yield: <i32 as Wire>::read(r)?,
+            favored_production_modifier_q8: <i32 as Wire>::read(r)?,
+            upgrade_cost_modifier_q8: <i32 as Wire>::read(r)?,
+            current_unit_resource_cost: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            unit_fuel_demands: <Vec<HashValue<i32>> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        22u32.write(w)?;
+        self.records.write(w)?;
+        self.current_unit_cost.write(w)?;
+        self.unit_production_multiplier_q8.write(w)?;
+        self.extra_unit_copy.write(w)?;
+        self.enable_wall_attack_whole_game_promotion_class
+            .write(w)?;
+        self.unit_build_disabled.write(w)?;
+        self.no_settling_cities.write(w)?;
+        self.no_foreign_heal.write(w)?;
+        self.no_neutral_heal.write(w)?;
+        self.add_on_district_founding.write(w)?;
+        write_free_pass_hashes(&self.unit_free_pass_hashes, w)?;
+        self.unit_embarkation_pass_hashes.write(w)?;
+        self.extra_build_charges.write(w)?;
+        self.extra_build_charges_by_unit.write(w)?;
+        self.extra_spread_charges.write(w)?;
+        self.embarked_movement_modifier.write(w)?;
+        self.upgrade_military_formation_on_city_conquest_count
+            .write(w)?;
+        self.promotion_selections.write(w)?;
+        self.proposed_promotions.write(w)?;
+        self.base_promotions.write(w)?;
+        self.unlimited_promotion_choice_unit_hashes.write(w)?;
+        self.land_corps_unlock_civic_hash.write(w)?;
+        self.land_army_unlock_civic_hash.write(w)?;
+        self.naval_corps_unlock_civic_hash.write(w)?;
+        self.naval_army_unlock_civic_hash.write(w)?;
+        self.land_corps_unlock_tech_hash.write(w)?;
+        self.land_army_unlock_tech_hash.write(w)?;
+        self.naval_corps_unlock_tech_hash.write(w)?;
+        self.naval_army_unlock_tech_hash.write(w)?;
+        self.peak_units.write(w)?;
+        self.land_corps_modified_strength.write(w)?;
+        self.land_army_modified_strength.write(w)?;
+        self.naval_corps_modified_strength.write(w)?;
+        self.naval_army_modified_strength.write(w)?;
+        self.enable_wall_attack_whole_game.write(w)?;
+        self.rock_band_album_sales_modifier.write(w)?;
+        self.banned_production_yield.write(w)?;
+        self.favored_production_yield.write(w)?;
+        self.favored_production_modifier_q8.write(w)?;
+        self.upgrade_cost_modifier_q8.write(w)?;
+        self.current_unit_resource_cost.write(w)?;
+        self.unit_fuel_demands.write(w)?;
+        Ok(())
+    }
+}
 impl Units {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -719,5 +895,102 @@ mod tests {
             };
             assert!(BasePromotion::read(&mut r).is_err());
         }
+    }
+    #[test]
+    fn signed_free_pass_count_refuses_negative_before_allocation() {
+        let huge = Limits {
+            max_bytes: usize::MAX,
+            max_items: usize::MAX,
+        };
+        for count in [0x80000000u32, u32::MAX] {
+            let data = count.to_le_bytes();
+            let mut r = Reader {
+                data: &data,
+                pos: 0,
+                items: 0,
+                limits: huge,
+            };
+            assert_eq!(read_free_pass_hashes(&mut r), Err(Error::InvalidContainer));
+            assert_eq!((r.pos, r.items), (4, 0));
+        }
+        assert_eq!(free_pass_count(i32::MAX as usize), Ok(i32::MAX));
+        assert_eq!(
+            free_pass_count(i32::MAX as usize + 1),
+            Err(Error::InvalidContainer)
+        );
+        assert_eq!(free_pass_count(usize::MAX), Err(Error::InvalidContainer));
+        let values = vec![u32::MAX, 0x87654321];
+        let exact = Limits {
+            max_bytes: 12,
+            max_items: 2,
+        };
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: exact,
+        };
+        write_free_pass_hashes(&values, &mut w).unwrap();
+        assert_eq!(&w.data[..4], &2i32.to_le_bytes());
+        let mut r = Reader {
+            data: &w.data,
+            pos: 0,
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(read_free_pass_hashes(&mut r).unwrap(), values);
+        assert_eq!((r.pos, r.items), (12, 2));
+        for low in [
+            Limits {
+                max_bytes: 11,
+                ..exact
+            },
+            Limits {
+                max_items: 1,
+                ..exact
+            },
+        ] {
+            let mut r = Reader {
+                data: &w.data,
+                pos: 0,
+                items: 0,
+                limits: low,
+            };
+            assert_eq!(read_free_pass_hashes(&mut r), Err(Error::ResourceLimit));
+            let mut short = Writer {
+                data: Vec::new(),
+                items: 0,
+                limits: low,
+            };
+            assert_eq!(
+                write_free_pass_hashes(&values, &mut short),
+                Err(Error::ResourceLimit)
+            );
+        }
+        // Verify that the complete envelope dispatches this field through the
+        // signed adapter, rather than the ordinary u32-count Vec grammar.
+        let v = sample();
+        let mut prefix = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        22u32.write(&mut prefix).unwrap();
+        v.records.write(&mut prefix).unwrap();
+        v.current_unit_cost.write(&mut prefix).unwrap();
+        v.unit_production_multiplier_q8.write(&mut prefix).unwrap();
+        v.extra_unit_copy.write(&mut prefix).unwrap();
+        v.enable_wall_attack_whole_game_promotion_class
+            .write(&mut prefix)
+            .unwrap();
+        v.unit_build_disabled.write(&mut prefix).unwrap();
+        v.no_settling_cities.write(&mut prefix).unwrap();
+        v.no_foreign_heal.write(&mut prefix).unwrap();
+        v.no_neutral_heal.write(&mut prefix).unwrap();
+        v.add_on_district_founding.write(&mut prefix).unwrap();
+        prefix.data.extend_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(
+            Units::decode_prefix(&prefix.data, huge),
+            Err(Error::InvalidContainer)
+        );
     }
 }
