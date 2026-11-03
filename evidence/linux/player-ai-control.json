@@ -1512,7 +1512,23 @@
       ]
     }
   ],
-  "candidate": null,
+  "candidate": {
+    "source_commit": "5cdd76d2824aee6d5798ebe696e504ddd6171b2c",
+    "archive_sha256": "a3179547df1f560643af54da9460c1192738c54c99733eb47c3e2b78b3aae24a",
+    "module_sha256": "384ebe1f36a529e1119f6f8dcb51090a8e3507b1ac4fbd596f46dbba73a96229",
+    "driver_sha256": "ad2a04befb9ea9ff5d293901240723190ed4e45a09b786f888f448e015af534b",
+    "harness_sha256": "e0f1a167d08cdfacc411e45ecc88d57f49d849c4780a7018e008fc5fb78e3722",
+    "executable_sha256": "b28236971da8aab54457659cf3c55a3a6dfbceb4220bc925f7824b6fe58e1219",
+    "records": 86,
+    "source_tests": 2,
+    "strict_clippy": true,
+    "isolated_export_added": true,
+    "exact_byte_and_shared_item_caps": true,
+    "every_truncation_rejected": true,
+    "short_byte_and_item_caps_rejected": true,
+    "strict_trailing_rejected": true,
+    "exact_prefix_consumption": true
+  },
   "original_execution": false,
   "private_writes": false,
   "complete_current_control_wire": true,

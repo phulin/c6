@@ -34,7 +34,9 @@ Native Read is a broader operation: Manager resolves `Globals::GetPlayer`, calls
 Reproduce structural comparison and committed candidate validation:
 
 ```sh
-python3 tools/linux/player_ai_control_audit.py --source-commit <committed-codec-and-driver> --output target/linux/player-ai-control.json
+python3 tools/linux/player_ai_control_audit.py --source-commit 5cdd76d --output target/linux/player-ai-control.json
 ```
 
 The candidate comes from a Git archive and the driver verifies its own archived bytes. If the parent library export has not landed, the driver adds that export only inside the isolated archive and records this fact. It runs strict Clippy with the exported module, two focused source tests and decode/re-encode of all 86 actual records with exact byte/item caps, one-short caps, every truncation, strict trailing refusal and exact prefix consumption. This uses existing original Save outputs; no original game Read is executed and no proprietary data is written to the public repository.
+
+Committed-source validation of `5cdd76d` passed: strict Clippy, both focused Rust tests and all 86 original saved-record comparisons. The candidate report records the immutable source archive, actual module/driver, harness and executable identities. The parent library composition remains separate.
