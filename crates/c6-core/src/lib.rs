@@ -386,6 +386,7 @@ pub mod player_ai_behavior_tree;
 pub mod unit_operation_interruption;
 
 pub mod game_global_ai;
+pub mod game_diplomatic_relations;
 
 pub mod game_barbarian;
 
