@@ -1,0 +1,290 @@
+{
+  "schema": "c6-linux-movement-cost-static-v1",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "scope": "static phase/query contracts; no native execution or full movement acceptance",
+  "reference": {
+    "author": "cru121",
+    "revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+    "license": "CC BY 4.0",
+    "attribution": "docs/reference.md"
+  },
+  "rust_source_sha256": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+  "methods": [
+    {
+      "address": "0x2bed760",
+      "size": 293,
+      "name": "GameCore::Rules::Movement::Instance::AlongRoute(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "5000b9962213bc6a6090f6571bf0dc1d9fa07c2eb5fbc1b9eb8c9be951345e31"
+    },
+    {
+      "address": "0x2bed5a0",
+      "size": 70,
+      "name": "GameCore::Rules::Movement::Instance::ToPlotCity(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "729216c76745b54e0a3c92de5307b9faca0dc7ecfd11f771fe5a17d933eed678"
+    },
+    {
+      "address": "0x2bedbb0",
+      "size": 443,
+      "name": "GameCore::Rules::Movement::Instance::Disembarking(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "487f5047a89a542f21965179bc322b0c7daee7fbfbec3f58237b49c610d0d273"
+    },
+    {
+      "address": "0x2bed890",
+      "size": 91,
+      "name": "GameCore::Rules::Movement::Instance::CrossingRiver(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "c50b33e9117d8d7260cf305b20c987c073bcb4a9a80758ef37d273fe0a9d1a99"
+    },
+    {
+      "address": "0x2bed680",
+      "size": 123,
+      "name": "GameCore::Rules::Movement::Instance::ToPlotFeature(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "6881cff7897eb3ed8b756bb9fa4ceaf6842d745d635bcea26d82e242d24b58ea"
+    },
+    {
+      "address": "0x2bed5f0",
+      "size": 136,
+      "name": "GameCore::Rules::Movement::Instance::ToPlotTerrain(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "c719c27af20500fef89d8ad731b5a7659dd331611291de4850d3ffc3882e530b"
+    },
+    {
+      "address": "0x2bed8f0",
+      "size": 253,
+      "name": "GameCore::Rules::Movement::Instance::CrossingPortal(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "8733ffded244beaa59662feb06f72fb0262198cde712c0393127d1f852cf0290"
+    },
+    {
+      "address": "0x2bed3b0",
+      "size": 164,
+      "name": "GameCore::Rules::Movement::Instance::IsRiverCrossing(GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*)",
+      "sha256": "058e188bf62381d5cf654ca7152deda8908d8f51907afebc1bce0bb8a71f1170"
+    },
+    {
+      "address": "0x2bed700",
+      "size": 86,
+      "name": "GameCore::Rules::Movement::Instance::ToPlotImprovement(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "188c49f63afec8724fcd55cda72dfffb98be73576471c41b200c9736653d661a"
+    },
+    {
+      "address": "0x2bed460",
+      "size": 131,
+      "name": "GameCore::Rules::Movement::Instance::IsBridgeBetweenPlots(GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*)",
+      "sha256": "47cfe7f4683f14f2bff7cb383302bd1e2c333f3a4928dcb3432f7f310f039b1b"
+    },
+    {
+      "address": "0x2bed9f0",
+      "size": 437,
+      "name": "GameCore::Rules::Movement::Instance::Embarking(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "615c751c7ae459a3b722a124e811b35170f5f7b8bb2ec96de4fa6f4ef2c18863"
+    },
+    {
+      "address": "0x2945e70",
+      "size": 9,
+      "name": "GameCore::Formation::MovementCost::Values::ChangeRegularCost(FixedPointT<8u>)",
+      "sha256": "298590d1ce62a125eb46adc9cdeaf702fb40d2db270809da4ae86c69e023a0d4"
+    },
+    {
+      "address": "0x2945ee0",
+      "size": 9,
+      "name": "GameCore::Formation::MovementCost::Values::ChangeToPlotExitCost(FixedPointT<8u>)",
+      "sha256": "987e6e029348fd6371cfaa305a7b178516d6325fb90f2a29e12d045ef870572a"
+    },
+    {
+      "address": "0x2945e80",
+      "size": 48,
+      "name": "GameCore::Formation::MovementCost::Values::UpdateHardMinimumCost(FixedPointT<8u>)",
+      "sha256": "ce0db4b52b43e4a90796a7b849925e08ab310c3cf6044f4c83439172a8e55486"
+    },
+    {
+      "address": "0x2945eb0",
+      "size": 48,
+      "name": "GameCore::Formation::MovementCost::Values::UpdateSoftMaximumCost(FixedPointT<8u>)",
+      "sha256": "74a564fc7ceaa82adc7f0dedaaa893c9055ac1b52d48d7f3e163bb0d39ad34f8"
+    },
+    {
+      "address": "0x2945d40",
+      "size": 148,
+      "name": "GameCore::Formation::MovementCost::Values::Values(GameCore::Formation::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, int, FixedPointT<8u>, FixedPointT<8u>, FixedPointT<8u>, GameCore::Formation::MovementCost::Values::ZOCValue)",
+      "sha256": "22e8008e5e3b4f13f57a08bf4ea10cff7e5c32739290fe3af62b37f28bf33dc0"
+    },
+    {
+      "address": "0x2945cc0",
+      "size": 120,
+      "name": "GameCore::Formation::MovementCost::Values::Values()",
+      "sha256": "691b1584e7307ea3a2f31504b2c7235ae2c3d97e3415d9cf7a79aa39acd4fc23"
+    },
+    {
+      "address": "0x29484e0",
+      "size": 192,
+      "name": "GameCore::Formation::Movement::MovementCost(GameCore::Formation::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, int, FixedPointT<8u>, FixedPointT<8u>, unsigned int)",
+      "sha256": "5ed79d5b4197d5497244f9ca10c2d31007d5ee030a258a4693961013fcbcc824"
+    },
+    {
+      "address": "0x2949170",
+      "size": 188,
+      "name": "GameCore::Formation::Movement::MovementCost(GameCore::Formation::MovementCost::Values&, GameCore::Map::Plot::Instance const*, unsigned int)",
+      "sha256": "43b03228fec8f99f1d2b640ef0c692d680f1793ebafdbda1d9f5097a1b6f2555"
+    },
+    {
+      "address": "0x2949740",
+      "size": 246,
+      "name": "GameCore::Formation::Movement::IsSlowedByZOC(GameCore::Formation::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*)",
+      "sha256": "3557f6be33f2c7daa0713a78c44cd183625cf19180798007c4af4ec95ab63b14"
+    },
+    {
+      "address": "0x2949060",
+      "size": 257,
+      "name": "GameCore::Formation::Movement::IsSlowedByZOC(GameCore::Formation::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Pathfinder::Instance*)",
+      "sha256": "daed895cd245d74ddfe8e6671f667bd8570f7d6b4aae52f1e4bc489564bdab23"
+    },
+    {
+      "address": "0x2948430",
+      "size": 170,
+      "name": "GameCore::Formation::Movement::MovementCostNoZOC(GameCore::Formation::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Instance const*, int, FixedPointT<8u>, FixedPointT<8u>, unsigned int)",
+      "sha256": "5a403994301b30bf43a22552c95411be34a7fbcdae8e091f0da8718eb7b745d4"
+    },
+    {
+      "address": "0x2949850",
+      "size": 121,
+      "name": "GameCore::Formation::Movement::ApplyMovementRules(GameCore::Formation::MovementCost::Values&)",
+      "sha256": "16a77c160767a93b2bbc3f57c51f29e25b18a1a6514ceecbb2f78c698b43e20b"
+    },
+    {
+      "address": "0x2945de0",
+      "size": 140,
+      "name": "GameCore::Formation::MovementCost::Values::GetFinalCost() const",
+      "sha256": "b76d004b229001badcf6e0d60e55d03a161fcecbcf53bb01325ff6ddcfef3ce1"
+    },
+    {
+      "address": "0x2945ef0",
+      "size": 18,
+      "name": "GameCore::Formation::MovementCost::Values::GetToPlotExitCost() const",
+      "sha256": "d73bac889143cd51cd1d6c488a838d684ed97790725ca4856feee5d7762dbae8"
+    },
+    {
+      "address": "0x1fceb70",
+      "size": 64,
+      "name": "FixedPointT<8u>::operator=(float)",
+      "sha256": "c640b5871f9c6e63fa0091b2623c4e63923c161f53dcba21a6c489238b361402"
+    },
+    {
+      "address": "0x1fcdc10",
+      "size": 9,
+      "name": "FixedPointT<8u>::operator=(int)",
+      "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f"
+    },
+    {
+      "address": "0x1fe5330",
+      "size": 8,
+      "name": "FixedPointT<8u>::operator+=(FixedPointT<8u> const&)",
+      "sha256": "81e58c42b7d805beeed4b70b2cfd4565f3eaabb16e37e1baefa538f55502258f"
+    },
+    {
+      "address": "0x2becf40",
+      "size": 852,
+      "name": "GameCore::Rules::Movement::Instance::IsInEnemyZOC(GameCore::PlayerTypes, GameCore::DomainTypes, GameCore::ReligionTypes, GameCore::LayeredPlotCoord, GameCore::Map::Plot::Instance const*, bool)",
+      "sha256": "7928c9bd2a468d5b392bde01e1531419347b26e42f1b3c056ad845723b488f45"
+    },
+    {
+      "address": "0x1fe2b30",
+      "size": 8,
+      "name": "FixedPointT<8u>::operator>(FixedPointT<8u> const&) const",
+      "sha256": "ab00271575857734f9deafa1606796d9d87586ae02bc14e6486fe4c79f0cb86d"
+    },
+    {
+      "address": "0x1fe4bb0",
+      "size": 8,
+      "name": "FixedPointT<8u>::operator<(FixedPointT<8u> const&) const",
+      "sha256": "77df761629e8161df4d4d36cd655ed9337ef3b449ded7debc34049e32c284b77"
+    },
+    {
+      "address": "0x293d590",
+      "size": 192,
+      "name": "GameCore::Formation::Instance::GetIgnoreCost(GameCore::FeatureTypes) const",
+      "sha256": "b3d99573a43a6451c7f5fd4cd9d46829cc060477b7dc1cab1361e715265fb778"
+    },
+    {
+      "address": "0x293d4d0",
+      "size": 192,
+      "name": "GameCore::Formation::Instance::GetIgnoreCost(GameCore::TerrainTypes) const",
+      "sha256": "4b476bf066684ac658fc768cd256e8596ec55d63b364241aaa6952174059d64e"
+    },
+    {
+      "address": "0x293d830",
+      "size": 170,
+      "name": "GameCore::Formation::Instance::GetIgnoreRivers() const",
+      "sha256": "ea33c8a9016a9e35fd02c7e9d3810482bba30a0fcaa8239e50d3a0fa30614110"
+    },
+    {
+      "address": "0x293d6d0",
+      "size": 170,
+      "name": "GameCore::Formation::Instance::GetIgnoreShores() const",
+      "sha256": "573d70a2f1180afe15049990cf2ad6f611535d707ff10cb44de05151085507c2"
+    },
+    {
+      "address": "0x1fceb50",
+      "size": 5,
+      "name": "FixedPointT<8u>::FixedPointT(float)",
+      "sha256": "a8c01c4c23b78b6af9865efb0e3a9dbc7f7cfb973fc9bebd7cb33d4e75e36354"
+    },
+    {
+      "address": "0x1fcc8b0",
+      "size": 5,
+      "name": "FixedPointT<8u>::FixedPointT(int)",
+      "sha256": "a5050360463a3fe04639a9ad47d842d6a2c680138f54cfbbbe95eaf24f73e912"
+    }
+  ],
+  "phase_order": [
+    "city",
+    "terrain",
+    "feature",
+    "improvement",
+    "route",
+    "river",
+    "portal",
+    "embark",
+    "disembark"
+  ],
+  "plot_virtual_slots": [
+    {
+      "slot": "0x38",
+      "target": "0x2bca780",
+      "name": "GetCityAttributes"
+    },
+    {
+      "slot": "0x48",
+      "target": "0x2bca7b0",
+      "name": "HasCityAttributes"
+    }
+  ],
+  "layout_basis": "matching original Linux DWARF, corroborated by fingerprinted field-access methods",
+  "values_layout": {
+    "size": 64,
+    "formation": 0,
+    "from_plot": 8,
+    "to_plot": 16,
+    "base_moves": 24,
+    "max_moves": 28,
+    "moves_remaining": 32,
+    "exit_moves": 36,
+    "zoc": 40,
+    "hard_minimum": 44,
+    "soft_maximum": 48,
+    "regular": 52,
+    "to_plot_exit": 56
+  },
+  "final_cost": "max(min(regular, soft_maximum), hard_minimum); if <=0, replace with raw256",
+  "initial_accumulators": {
+    "hard_minimum": 0,
+    "soft_maximum": 2147483392,
+    "regular": 0,
+    "to_plot_exit": 0
+  },
+  "gaps": [
+    "live loaded-unit differential corpus",
+    "complete affected-state and RNG comparison",
+    "typed world/rules/modifier query integration",
+    "spatial ZOC callback and transitive queries",
+    "movement legality and state mutation are separate and unimplemented"
+  ]
+}

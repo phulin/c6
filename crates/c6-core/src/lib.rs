@@ -5,6 +5,7 @@ pub mod combat_random;
 pub mod geometry;
 pub mod map;
 pub mod messages;
+pub mod movement;
 pub mod notification_lifecycle;
 pub mod notifications;
 pub mod random_variants;
