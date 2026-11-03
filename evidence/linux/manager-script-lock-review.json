@@ -1,0 +1,62 @@
+{
+  "schema": "c6-linux-manager-script-lock-review-v1",
+  "status": "accepted_abstract_engine_utility_ordering_source_boundary",
+  "reviewed_commit": "7d3c026",
+  "source_proof_commit": "bb0791916a4c290338a7feb73e6fc78f4c888216",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "sources": {
+    "crates/c6-core/src/unit_operation_legality.rs": "ff8938badf64155229e60984995ea680244e94658edccc1ecba959e327167cd3",
+    "tools/linux/unit_operation_manager_audit.py": "9c387092d0bcf88bf7ce86ac51959f32a9ddaa614534c757e43e59e8dfd9c02d",
+    "evidence/linux/unit-operation-manager.json": "82951486ab72ccac91740ec0042dfd6f3961ae40903343818f3108eb82c0bc36",
+    "docs/linux-unit-operation-manager.md": "5024f3d00de081ca46771b91830a45b6fffffc844f36de28dea2e072387d5213"
+  },
+  "original_wrapper": {
+    "address": "0x2ce79b0",
+    "bytes": 116,
+    "sha256": "47ad40fd9efa7ddcbe88b6bc4de3eff8c174262c6cc031ce76d78e63094c431e"
+  },
+  "utility_host_source_address_point": "0x53a6c90",
+  "utility_slots": {
+    "0x30": {
+      "name": "HasGameCoreLock",
+      "target": "0x32b3da0"
+    },
+    "0x38": {
+      "name": "ReleaseGameCoreLock",
+      "target": "0x32b3d60"
+    },
+    "0x40": {
+      "name": "GetGameCoreLock",
+      "target": "0x32b3d40"
+    }
+  },
+  "checks": {
+    "complete_original_wrapper_independently_inspected": true,
+    "canonical_audit_report_equal": true,
+    "complete_method_contracts": 50,
+    "direct_call_edges": 56,
+    "concrete_host_utility_bindings": 3,
+    "isolated_exact_commit_manager_tests_passed": 7,
+    "first_has_bit_retained_once": true,
+    "release_and_reacquire_each_refetch_current_utility": true,
+    "initial_script_receiver_retained_across_effects": true,
+    "normal_false_return_still_reacquires_if_initially_held": true,
+    "provider_errors_preserve_prefix_effects_no_invented_reacquire": true,
+    "separate_manager_args_end_cleanup_on_result_error_preserved": true,
+    "all_provider_leaves_receive_mutable_state": true,
+    "separate_vm_critical_section_state_and_callback_obligations_explicit": true
+  },
+  "actual_live_utility_receiver_observed": false,
+  "native_manager_boundary_fixture": false,
+  "concrete_lua_backend_implemented": false,
+  "script_system_presence_implies_valid_vm": false,
+  "script_system_presence_implies_no_callbacks": false,
+  "native_protected_failure_is_not_provider_error": true,
+  "native_cpp_exception_or_rust_panic_unwind_parity": false,
+  "original_execution_by_reviewer": false,
+  "full_manager_can_start_acceptance": false,
+  "gameplay_action_acceptance": false,
+  "complete_state_actions_rng_turns": false,
+  "historical_raw_save_load_difference_bytes": 89198
+}
