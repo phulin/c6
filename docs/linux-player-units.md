@@ -69,3 +69,18 @@ validation inputs only; the codec uses source-derived counts and schemas.
 First observed Units bytes begin at 5,008,068; this is not a parser constant.
 The next Player schema is Eras, established by the enclosing writer's next
 serializer call at `0x2b4f10c` after Units at `0x2b4f0f9`.
+
+The frozen-source audit passed for source commit `8119a34`: 209 Linux method
+extents, 1,765 concrete PLT bindings and matching Units/promotion DWARF. Each
+canonical stream supplied 43 complete Units envelopes (6,422,174 bytes),
+including all 1,262 nested Units (6,137,501 bytes), with exact decode/encode
+bytes and independently attributed nested boundaries. Three source tests cover
+nonempty trailing carriers, allocator metadata, duplicate hashes, every
+synthetic truncation, versions, booleans and limits. Native checks cover exact
+and one-short byte/item limits, trailing/prefix behavior, duplicate/invalid
+slots, altered full Unit ID/owner preservation, the first 32 and final 256
+prefixes of each envelope and truncation before every nested Unit end. They do
+not claim every byte prefix of every large native envelope was tested.
+The [public report](../evidence/linux/player-units.json) records source,
+archive, candidate, harness and native record identities; it contains no
+proprietary payload or raw disassembly.
