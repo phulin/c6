@@ -394,3 +394,5 @@ pub mod game_free_cities;
 pub mod game_random_wire;
 
 pub mod trade_read_order;
+
+pub mod diplomacy_manager;

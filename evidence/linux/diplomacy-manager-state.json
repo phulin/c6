@@ -1,0 +1,22 @@
+{
+  "actual_pending_snapshot_admitted": false,
+  "current_capture_requirement": "same dynamic context, actual empty open-list witness, ordered ever-alive handles, complete pending actions",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "native_execution": false,
+  "schema": "c6-linux-diplomacy-manager-state-v1",
+  "source_contract_sha256": "d95ee4f5517826be6fc5f22cda107205e962c15c6eeacde0ed12c8168974b69b",
+  "sources": {
+    "crates/c6-core/src/diplomacy_manager.rs": "e49dde4f39aa7e4425b3d605b78a56d8a023406a6215965ca65023021389c5af",
+    "crates/c6-core/src/loaded_state.rs": "115f7221aaa6fdcdf0ab762258637387f7ea92f266522b39292150db56ea91a0",
+    "crates/c6-core/src/unit_operation_aftermath.rs": "61b33abf48a8d4cf3f52af69ec94cfb3b46d4d48cf3b0554801c2cbd6d72c922",
+    "docs/linux-diplomacy-manager-state.md": "c7604ebbcb248d6bf5f162c9374fcb61eb8c9ea191463fc90f11c0706e023fa2",
+    "tools/linux/diplomacy_manager_state_audit.py": "c5e3224da2ac04be003cc85a39bdd81854c9ecf988b16f47e554dd335af80f2d"
+  },
+  "target_methods_verified": 32,
+  "tests_scope": "source-only state/admission/reentrant drain",
+  "unsupported": [
+    "complete Statement routing/history/subtypes and external decisions",
+    "closed session history and active session routing",
+    "native full action/Read/RNG equivalence"
+  ]
+}

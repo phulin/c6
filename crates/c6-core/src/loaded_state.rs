@@ -93,6 +93,8 @@ mod tests {
             observed_snapshot: None,
             game_relations: None,
             game_relations_source: None,
+            diplomacy_manager: None,
+            diplomacy_manager_source: None,
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -283,6 +285,157 @@ mod tests {
             Err(Error::AlreadyBound)
         ));
     }
+    fn diplomacy_state() -> LoadedState {
+        let mut state = state();
+        state.retained.players[0].header.ordered_flags[1] = true;
+        let witness = witness(&state);
+        let mut controls = controls(&state);
+        controls.players[0].slot_status = 2; // source-only AI configuration
+        state
+            .bind_observed_snapshot_controls(witness.clone(), controls)
+            .unwrap();
+        let owner = state.world.players()[0].owner();
+        state.install_diplomacy_manager(crate::diplomacy_manager::PendingStateSnapshot {
+            witness,
+            ever_alive: vec![crate::diplomacy_manager::PlayerHandle { owner }],
+            open_sessions: crate::diplomacy_manager::EmptyOpenSessions::from_has_pending_session_statements(false).unwrap(),
+            pending_actions: vec![],
+        }).unwrap();
+        state
+    }
+    #[test]
+    fn diplomacy_snapshot_requires_current_dynamic_context_and_cannot_replay() {
+        let mut state = state();
+        let w = witness(&state);
+        let snapshot = || crate::diplomacy_manager::PendingStateSnapshot {
+            witness: w.clone(),
+            ever_alive: vec![],
+            open_sessions:
+                crate::diplomacy_manager::EmptyOpenSessions::from_has_pending_session_statements(
+                    false,
+                )
+                .unwrap(),
+            pending_actions: vec![],
+        };
+        assert!(matches!(
+            state.install_diplomacy_manager(snapshot()),
+            Err(Error::Binding)
+        ));
+        assert!(state.diplomacy_manager().is_err());
+        let mut state = diplomacy_state();
+        let source = state.diplomacy_manager_source().unwrap().clone();
+        assert_eq!(state.revision(), 0);
+        assert!(matches!(
+            state.install_diplomacy_manager(snapshot()),
+            Err(Error::AlreadyBound)
+        ));
+        state
+            .diplomacy_manager_mut()
+            .unwrap()
+            .pending_actions_mut()
+            .push(crate::diplomacy_manager::PendingAction {
+                id: 9,
+                from: 0,
+                to: 1,
+            });
+        assert_eq!(state.diplomacy_manager_source(), Some(&source));
+        assert_eq!(
+            state.diplomacy_manager().unwrap().pending_actions().len(),
+            1
+        );
+    }
+    struct StatementProcessor {
+        seen: Vec<u64>,
+        owner: i32,
+    }
+    impl crate::diplomacy_manager::ProcessStatement<LoadedState> for StatementProcessor {
+        fn process_statement(
+            &mut self,
+            world: &mut LoadedState,
+            statement: crate::diplomacy_manager::StatementHandle,
+        ) -> Result<(), crate::unit_operation_aftermath::Error> {
+            use crate::diplomacy_manager::StatementHandle;
+            use crate::unit_operation_aftermath::{Pending, Session};
+            self.seen.push(statement.0);
+            if statement.0 == 10 {
+                // Reentrant callback populates an earlier session. Next attempt
+                // must restart at the current head, not retain an old iterator.
+                world
+                    .diplomacy_manager_mut()
+                    .unwrap()
+                    .open_sessions_mut()
+                    .insert(
+                        0,
+                        Session {
+                            from: self.owner,
+                            to: 3,
+                            pending: vec![Pending {
+                                from: self.owner,
+                                to: 3,
+                                statement: StatementHandle(11),
+                            }],
+                        },
+                    );
+                Ok(())
+            } else {
+                Err(
+                    crate::unit_operation_aftermath::Error::ExternalDecisionRequired(
+                        "actual Statement subtype decision",
+                    ),
+                )
+            }
+        }
+    }
+    #[test]
+    fn diplomacy_drain_is_state_backed_and_requires_real_statement_provider() {
+        use crate::diplomacy_manager::StatementHandle;
+        use crate::unit_operation_aftermath::{Error as AftermathError, Pending, Session};
+        let mut state = diplomacy_state();
+        let owner = state.world.players()[0].owner();
+        let mut processor = StatementProcessor {
+            seen: vec![],
+            owner,
+        };
+        let mut budget = 0;
+        state
+            .process_pending_diplomacy(&mut processor, &mut budget)
+            .unwrap();
+        assert!(processor.seen.is_empty());
+        assert_eq!(state.revision(), 0); // Empty processing is a real read-only path.
+        state
+            .diplomacy_manager_mut()
+            .unwrap()
+            .open_sessions_mut()
+            .push(Session {
+                from: owner,
+                to: 2,
+                pending: vec![
+                    Pending {
+                        from: owner,
+                        to: 2,
+                        statement: StatementHandle(10),
+                    },
+                    Pending {
+                        from: owner,
+                        to: 2,
+                        statement: StatementHandle(12),
+                    },
+                ],
+            });
+        budget = 8;
+        assert_eq!(
+            state.process_pending_diplomacy(&mut processor, &mut budget),
+            Err(AftermathError::ExternalDecisionRequired(
+                "actual Statement subtype decision"
+            ))
+        );
+        assert_eq!(processor.seen, [10, 11]);
+        assert_eq!(budget, 6);
+        assert_eq!(
+            state.diplomacy_manager().unwrap().open_sessions()[1].pending[0].statement,
+            StatementHandle(12)
+        );
+    }
     #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
@@ -337,6 +490,7 @@ pub enum Error {
     AlreadyBound,
     NotPristine,
     GameRelations(crate::game_diplomatic_relations::Error),
+    DiplomacyManager(crate::diplomacy_manager::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -357,6 +511,7 @@ pub enum MissingInput {
     ProcessingAutomation,
     GamePause,
     GameRelations,
+    DiplomacyManager,
 }
 
 /// Actual supplied live facts, distinct from saved flags and roster presence.
@@ -522,6 +677,8 @@ pub struct LoadedState {
     observed_snapshot: Option<ObservedSnapshotWitness>,
     game_relations: Option<crate::game_diplomatic_relations::GameDiplomaticRelations>,
     game_relations_source: Option<ComponentSnapshotWitness>,
+    diplomacy_manager: Option<crate::diplomacy_manager::Manager>,
+    diplomacy_manager_source: Option<ObservedSnapshotWitness>,
 }
 fn reserved<T>(n: usize) -> Result<Vec<T>, Error> {
     n.checked_mul(std::mem::size_of::<T>())
@@ -637,6 +794,8 @@ impl LoadedState {
             observed_snapshot: None,
             game_relations: None,
             game_relations_source: None,
+            diplomacy_manager: None,
+            diplomacy_manager_source: None,
         })
     }
     pub fn world(&self) -> &world::World {
@@ -716,6 +875,124 @@ impl LoadedState {
             .map_err(Error::GameRelations)?;
         self.game_relations = Some(owner);
         self.game_relations_source = Some(witness);
+        Ok(())
+    }
+    /// Install current pending-session state only from the same observed dynamic
+    /// context as the admitted controls. Equal save bytes alone are insufficient.
+    /// The caller validates capture preimages; this API checks their consistency.
+    pub fn install_diplomacy_manager(
+        &mut self,
+        snapshot: crate::diplomacy_manager::PendingStateSnapshot,
+    ) -> Result<(), Error> {
+        if self.diplomacy_manager.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if self.observed_snapshot.as_ref() != Some(&snapshot.witness) {
+            return Err(Error::Binding);
+        }
+        let controls = self
+            .controls
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::ManagerSlots))?;
+        // Check complete membership against the admitted ID-to-pointer table,
+        // but preserve the observed allocation-slot order. InitializeLists scans
+        // a DIFFERENT allocation-slot table; sorting player IDs would be wrong.
+        // Do not infer pointer presence or allocation order from saved rosters.
+        let mut expected = reserved(64)?;
+        for owner in 0..64 {
+            if !controls.player_slots[owner] {
+                continue;
+            }
+            let record = self
+                .retained
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner as i32)
+                .ok_or(Error::Missing(MissingInput::Player(owner as i32)))?;
+            if record.header.saved_was_ever_alive() {
+                self.player_controls(owner as i32)?;
+                expected.push(crate::diplomacy_manager::PlayerHandle {
+                    owner: owner as i32,
+                });
+            }
+        }
+        if snapshot.ever_alive.len() != expected.len()
+            || expected
+                .iter()
+                .any(|player| !snapshot.ever_alive.contains(player))
+        {
+            return Err(Error::Binding);
+        }
+        let manager = crate::diplomacy_manager::Manager::from_observed_empty_sessions(
+            snapshot.open_sessions,
+            snapshot.ever_alive,
+            snapshot.pending_actions,
+        )
+        .map_err(Error::DiplomacyManager)?;
+        self.diplomacy_manager = Some(manager);
+        self.diplomacy_manager_source = Some(snapshot.witness);
+        Ok(())
+    }
+    pub fn diplomacy_manager(&self) -> Result<&crate::diplomacy_manager::Manager, Error> {
+        self.diplomacy_manager
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::DiplomacyManager))
+    }
+    pub fn diplomacy_manager_source(&self) -> Option<&ObservedSnapshotWitness> {
+        self.diplomacy_manager_source.as_ref()
+    }
+    /// Explicit mutation boundary for actual session/action providers. This does
+    /// not supply Statement payloads, policy choices or session routing rules.
+    pub fn diplomacy_manager_mut(
+        &mut self,
+    ) -> Result<&mut crate::diplomacy_manager::Manager, Error> {
+        if self.diplomacy_manager.is_none() {
+            return Err(Error::Missing(MissingInput::DiplomacyManager));
+        }
+        self.revision = self.revision.wrapping_add(1);
+        Ok(self.diplomacy_manager.as_mut().unwrap())
+    }
+    /// Exact outgoing drain over stable copied handles and current configuration
+    /// reads. Removal precedes the required synchronous ProcessStatement call.
+    /// Provider errors preserve already-performed effects, as in the kernel.
+    pub fn process_pending_diplomacy<P: crate::diplomacy_manager::ProcessStatement<Self>>(
+        &mut self,
+        processor: &mut P,
+        budget: &mut usize,
+    ) -> Result<(), crate::unit_operation_aftermath::Error> {
+        use crate::unit_operation_aftermath::Error as AftermathError;
+        let players = self
+            .diplomacy_manager()
+            .map_err(|_| AftermathError::Unsupported("Game.Diplomacy.Manager state"))?
+            .copy_ever_alive()
+            .map_err(|_| AftermathError::Unsupported("ever-alive handle copy allocation"))?;
+        for player in players {
+            let id = player.owner;
+            let controls = self
+                .player_controls(id)
+                .map_err(|_| AftermathError::Unsupported("current player configuration"))?;
+            // IsAI = !IsHuman; actual IsHuman is SlotStatus == SS_TAKEN (3).
+            if controls.slot_status == 3 {
+                continue;
+            }
+            loop {
+                // Empty reads do not advance revision. A real removal does.
+                let statement = self
+                    .diplomacy_manager
+                    .as_mut()
+                    .unwrap()
+                    .remove_next_outgoing(id);
+                let Some(statement) = statement else { break };
+                self.revision = self.revision.wrapping_add(1);
+                *budget = budget
+                    .checked_sub(1)
+                    .ok_or(AftermathError::DiagnosticBudgetExceeded)?;
+                processor.process_statement(self, statement)?;
+            }
+        }
         Ok(())
     }
     fn require_initial_controls(&self) -> Result<(), Error> {
