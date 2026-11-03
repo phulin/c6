@@ -3,8 +3,10 @@
 `c6-core-contextual-candidate` is an offline adapter for the production
 `core_player::initialization::capture::admit_capture` API. It never executes the
 original game. It checks supplied capture consistency, then imports each
-distinct admitted stream role from byte zero through Player.Manager and
-GlobalAi. Native execution attribution remains a separately reviewed claim.
+distinct admitted stream role from byte zero through Player.Manager, GlobalAi,
+Barbarian, FreeCities and the serialized sync Random record. Native execution
+attribution remains a separately reviewed claim. The immutable v1 profile
+stops after GlobalAi; v2's later prefix has a separate source/binary identity.
 
 Build from a single committed archive, preserving the executable and all source
 identities before supplying genuine capture artifacts:
@@ -44,7 +46,10 @@ Each role's complete Player.Manager and GlobalAi wire re-encoding must match
 its own source bytes and dynamic-item charges exactly. Output preserves the
 role, occurrence, actual Core digest, consumed offsets, borrowed-tail digest,
 ordered player identities and imported roster slots/Unit IDs. No unknown tail
-is skipped to manufacture a complete import; the next owner is Barbarian.
+is skipped to manufacture a complete import; the next owner in v2 is Trade.Manager.
+Version 2 additionally reports the decoded NPC instance counts and raw sync
+Random fields. Its retained roundtrip diagnostic is explicitly scoped to
+Player.Manager/GlobalAi; it is not a production save writer or a gameplay gate.
 No bytes are masked or normalized. Existing raw Save-to-Load differences remain
 unresolved unless a separate source-derived transition explains them.
 

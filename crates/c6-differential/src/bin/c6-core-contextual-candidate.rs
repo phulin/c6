@@ -1,7 +1,7 @@
 //! Offline finalized-capture consistency and contextual saved-wire import.
 //! Never executes original code or establishes native Read/gameplay semantics.
 use c6_core::core_player::initialization::{capture::*, WireBinding, WireRole};
-use c6_core::{core_stream::ThroughGlobalAi, map, unit};
+use c6_core::{core_stream::ThroughRandom, map, unit};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, io::Read, path::Path};
@@ -136,8 +136,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         let provider = capture.for_binding(binding);
         let parsed =
-            ThroughGlobalAi::decode(bytes, shared, player_limits, binding.clone(), &provider)?;
-        let players = &parsed.players;
+            ThroughRandom::decode(bytes, shared, player_limits, binding.clone(), &provider)?;
+        let players = &parsed.global_ai.players;
         let (encoded, items) = players
             .player_prefix
             .encode_prefix_with_items(player_limits)?;
@@ -146,9 +146,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             return Err("complete PlayerManager roundtrip/item charge differs".into());
         }
-        let (global, global_items) = parsed.global_ai.encode_with_items(player_limits)?;
-        if global != bytes[players.consumed..parsed.consumed]
-            || global_items + players.items_used != parsed.items_used
+        let (global, global_items) = parsed
+            .global_ai
+            .global_ai
+            .encode_with_items(player_limits)?;
+        if global != bytes[players.consumed..parsed.global_ai.consumed]
+            || global_items + players.items_used != parsed.global_ai.items_used
         {
             return Err("GlobalAi roundtrip/item charge differs".into());
         }
@@ -167,14 +170,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })).collect();
         streams.push(json!({"role":format!("{:?}",binding.role),"stream_occurrence":hex(&binding.occurrence_id),"output_id":binding.output_id.as_deref().map(hex),
             "core_sha256":hex(&binding.core_sha256),"core_bytes":bytes.len(),"map_end":players.core.map_end,
-            "player_manager_end":players.consumed,"consumed":parsed.consumed,"items":parsed.items_used,
+            "player_manager_end":players.consumed,"global_ai_end":parsed.global_ai.consumed,"consumed":parsed.consumed,"items":parsed.items_used,
             "post_map_roundtrip_sha256":hash(&encoded),"global_ai_sha256":hash(&global),"tail_sha256":hash(parsed.tail),"tail_bytes":parsed.tail.len(),
-            "rosters":roster,"initialization_reconstructed":false,"wire_roundtrip":true}));
+            "barbarian_instances":parsed.barbarian.instances.len(),
+            "free_city_instances":parsed.free_cities.instances.len(),
+            "sync_random_record":{"seed":parsed.random.record.seed,"calls":parsed.random.record.calls,"resets":parsed.random.record.resets,"synchronous_byte":parsed.random.record.synchronous_byte},
+            "rosters":roster,"initialization_reconstructed":false,"player_manager_global_ai_wire_roundtrip":true}));
     }
     println!(
         "{}",
         serde_json::to_string(
-            &json!({"schema":"c6-contextual-wire-candidate-v1","candidate_sha256":hash(&read(&std::env::current_exe()?,64*1024*1024)?),
+            &json!({"schema":"c6-contextual-wire-candidate-v2","candidate_sha256":hash(&read(&std::env::current_exe()?,64*1024*1024)?),
         "manifest_sha256":hash(&manifest_bytes),"raw_observation_sha256":hex(&capture.identity.raw_observation_sha256),
         "capture_consistency_checked":true,"native_acceptance":false,"complete_world_import":false,"gameplay_parity":false,"native_read_effects_reproduced":false,"streams":streams})
         )?
