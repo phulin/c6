@@ -27,7 +27,7 @@ than the original playback-dependent pending-message predicate. No queued entry
 or stale owner is dereferenced.
 
 The static packet pins complete original field accessor bodies and the existing
-native lock source contracts. Seventeen synthetic failures exercise changed
+native lock source contracts. Twenty-one synthetic failures exercise changed
 worker/context/game/lock/work/queue/thread and unreadable fields; GCC strict
 warnings, analyzer and UBSan pass. These fixtures contain no original execution.
 

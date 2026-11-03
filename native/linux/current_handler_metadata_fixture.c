@@ -31,6 +31,9 @@ static void copy_field(uintptr_t address,void *out,size_t count) {
     if(process_vm_readv(getpid(),&local,1,&remote,1,0)!=(ssize_t)count)
         fields_fatal("field_unreadable");
 }
+static void object_extent(uintptr_t p,size_t bytes) {
+    if(!p||bytes>UINTPTR_MAX-p)fields_fatal("object_extent_unknown");
+}
 static uintptr_t pointer(uintptr_t p) {uintptr_t v;copy_field(p,&v,sizeof v);return v;}
 static uint32_t word(uintptr_t p) {uint32_t v;copy_field(p,&v,sizeof v);return v;}
 static unsigned byte(uintptr_t p) {unsigned char v;copy_field(p,&v,sizeof v);return v;}
@@ -44,6 +47,10 @@ static void check_fields(const FieldScope *s) {
     if(!s->module||!s->context||!s->game||!s->base||!s->controller||
        !s->native_context||s->main_tid<=0||syscall(SYS_gettid)!=s->main_tid)
         fields_fatal("scope_or_main_thread_unknown");
+    object_extent(s->controller,0x4a8);
+    object_extent((uintptr_t)s->context,16);
+    object_extent(s->native_context,0x30);
+    object_extent((uintptr_t)s->game,0x2ad);
     if(pointer(0x6499100)!=s->controller||pointer(0x6499108)!=0||
        byte(s->controller+0xb)!=1||pointer(s->controller+0x450)!=(uintptr_t)s->context)
         fields_fatal("controller_or_worker_unknown");
@@ -64,7 +71,8 @@ static void check_fields(const FieldScope *s) {
     /* Conservative admission of the exact fast-false path only. A positive
      * processing counter requires the native Player loop, which is forbidden
      * in this passive scope; it is unsupported even if that loop might return false. */
-    if(!global_ai||(int32_t)word(global_ai+0x110)>0)
+    object_extent(global_ai,0x114);
+    if((int32_t)word(global_ai+0x110)>0)
         fields_fatal("ai_fast_false_unproven");
     empty_list(s->base+0x3c07348);
     empty_list(s->base+0x3c07360);
@@ -80,6 +88,8 @@ int c6_linux_current_handler_metadata_fields_begin(void *module,void *context,
     FieldScope s={.module=module,.context=context,.game=game,.base=base,.main_tid=main_tid};
     s.controller=pointer(0x6499100);
     if(!s.controller)fields_fatal("controller_absent");
+    object_extent(s.controller,0x4a8);
+    object_extent((uintptr_t)context,16);
     s.context_vptr=pointer((uintptr_t)context);
     s.native_context=pointer((uintptr_t)context+8);
     s.lock_owner=word(s.controller+0x4a0);

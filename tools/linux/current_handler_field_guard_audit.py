@@ -37,7 +37,7 @@ def main():
   ['native/linux/current_handler_metadata_fixture.c','native/linux/current_handler_metadata_fixture.h','tools/linux/current_handler_field_guard_audit.py']}
  report=dict(schema='c6-linux-current-handler-field-guard-source-v1',native_execution=False,
   integrated_admission=False,original_calls_in_guard=False,methods=methods,sources=sources,
-  synthetic=dict(accepted_idle_scope=True,refusal_cases=17,strict_c=True,gcc_analyzer=True,ubsan=True),
+  synthetic=dict(accepted_idle_scope=True,refusal_cases=21,strict_c=True,gcc_analyzer=True,ubsan=True),
   limits=['caller main-entry provenance and genuine facade acquisition still require integration',
           'file/mapping/runtime source gates and native lock ownership witness pending',
           'positive GlobalAi processing counter unsupported; both queue sentinels must be empty',
@@ -64,7 +64,7 @@ int main(void){
  void *module=(void *)1;
  assert(!c6_linux_current_handler_metadata_fields_begin(module,ctx,game,b,syscall(SYS_gettid)));
  assert(!c6_linux_current_handler_metadata_quiescent(module,ctx,game));
- for(unsigned test=0;test<17;test++){
+ for(unsigned test=0;test<21;test++){
   pid_t child=fork();assert(child>=0);
   if(!child){
    switch(test){
@@ -85,8 +85,12 @@ int main(void){
     case 14:put(n+0x28,0);break;
     case 15:scope.main_tid++;break;
     case 16:scope.native_context=1;break;
+    case 17:scope.controller=UINTPTR_MAX-8;break;
+    case 18:scope.context=(void *)(UINTPTR_MAX-8);break;
+    case 19:scope.native_context=UINTPTR_MAX-8;break;
+    case 20:put(g+0x258,UINTPTR_MAX-8);break;
    }
-   c6_linux_current_handler_metadata_quiescent(module,ctx,game);_exit(1);
+   check_fields(&scope);_exit(1);
   }
   int status;assert(waitpid(child,&status,0)==child);assert(WIFEXITED(status)&&WEXITSTATUS(status)==240);
  }

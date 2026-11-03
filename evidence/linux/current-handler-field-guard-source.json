@@ -151,14 +151,14 @@
   "original_calls_in_guard": false,
   "schema": "c6-linux-current-handler-field-guard-source-v1",
   "sources": {
-    "native/linux/current_handler_metadata_fixture.c": "0ebafbfd19c4cd1ef67d6b6715c879a7bc5caa4d4538bd0a8468dfb828d013f8",
+    "native/linux/current_handler_metadata_fixture.c": "a29d5380c648de5e216e812e46772c040428bbac749b8ef7d57383480ed0d945",
     "native/linux/current_handler_metadata_fixture.h": "42f6b2f886c80bfb3541af0cb60fd08b730315c3d42de4c41ffe12324151fe61",
-    "tools/linux/current_handler_field_guard_audit.py": "b84fe22dc456145b2bbebff1c1f3a3cb90c9ded51182f6a35f3d8a6efd26a39e"
+    "tools/linux/current_handler_field_guard_audit.py": "a9cb03fb5b3b241d8ddaafd21df101ee9e8956dce85be11d45b2d2e0261faf2a"
   },
   "synthetic": {
     "accepted_idle_scope": true,
     "gcc_analyzer": true,
-    "refusal_cases": 17,
+    "refusal_cases": 21,
     "strict_c": true,
     "ubsan": true
   }
