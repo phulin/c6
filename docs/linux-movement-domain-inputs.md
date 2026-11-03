@@ -190,6 +190,14 @@ Wonder and raw-mask parity remain unclaimed. This manifest is the runner's
 candidate identity gate, not acceptance of a new native execution profile.
 It remains preserved as history and is superseded for new comparison by the
 corrected candidate's explicit unavailable fallback-Wonder output.
+The [current manifest](../evidence/linux/movement-domain-reconstruction-candidate.json)
+freezes corrected source `60507af`, archive `37772c67…`, and candidate `e899e4d9…`
+(26,239,736 bytes) in `/tmp/c6-domain-reconstruction-60507af`. The
+[corrected preparation report](../evidence/linux/movement-domain-reconstruction-preparation-corrected.json)
+repeats the same bounded checks with 21 passing tests, four explicit skips and
+strict clippy. Reserved-entry raw masks and auxiliary Wonder results remain
+explicitly unavailable pending their own state/mutation proof; no native parity
+is claimed for those missing results.
 
 Such exports need the same pinned module/host/profile and original owned Core
 association, closed execution, unchanged affected-state controls and RNG gates.

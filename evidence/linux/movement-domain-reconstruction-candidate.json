@@ -1,13 +1,13 @@
 {
   "schema": "c6-linux-domain-reconstruction-candidate-v1",
-  "source_commit": "65d71d42dba26125075385f3dca09c16290c449f",
-  "source_snapshot_path": "/tmp/c6-domain-reconstruction-65d71d4/source.tar",
-  "source_snapshot_sha256": "399a64bc719beffa7a94b827042ce891b5a124c3e64efca56e966e8c6ff3fa65",
-  "source_snapshot_bytes": 24156160,
-  "source_build_directory": "/tmp/c6-domain-reconstruction-65d71d4/source",
-  "candidate_path": "/tmp/c6-domain-reconstruction-65d71d4/source/target/debug/examples/city_movement_inputs",
-  "candidate_sha256": "eeb2e43481c6fd7898a692a92b73fcb10418e080905ee8482e310df637622c4a",
-  "candidate_bytes": 26220480,
+  "source_commit": "60507af3f3e434394d9716592789d0a9412e1ce7",
+  "source_snapshot_path": "/tmp/c6-domain-reconstruction-60507af/source.tar",
+  "source_snapshot_sha256": "37772c6773d5b990ca95b691361683ad4d01ee22124da478497d7c159a26bc8e",
+  "source_snapshot_bytes": 24494080,
+  "source_build_directory": "/tmp/c6-domain-reconstruction-60507af/source",
+  "candidate_path": "/tmp/c6-domain-reconstruction-60507af/source/target/debug/examples/city_movement_inputs",
+  "candidate_sha256": "e899e4d95b4e0ef9e0ab2067cc3b6544b236ccb7e8641104730623b15dff5816",
+  "candidate_bytes": 26239736,
   "sources": {
     "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
     "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
@@ -23,7 +23,7 @@
     "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
     "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
     "crates/c6-core/src/core_player.rs": "ffe827b3e42506c3369b7ad11457bb2697d32863f17771d730f9d92c1c2216c5",
-    "crates/c6-core/src/core_stream.rs": "eb9a630f4ef1672dec8e1e3f36d5350a7253315608c1014f71abe9ecacc2d367",
+    "crates/c6-core/src/core_stream.rs": "5e533d2d6f720b820b4aa2c34f48667ed23586f58748340b2e6e3d9291291269",
     "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
     "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
     "crates/c6-core/src/lib.rs": "c46d42499ef34615ad777311042e86a47e4acb4542a8635e13f602bffb0e0a19",
@@ -57,8 +57,8 @@
     "crates/c6-core/src/world.rs": "a693d81e3d72ddb6ac66a97578e9dd27e577c573b5b8e919eee3697ff527c09d",
     "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
     "crates/c6-data/Cargo.toml": "1b4c6d42c49ecb82b18a09368858064b1c8c3f5022194d2a6f7c7171e282e659",
-    "crates/c6-data/examples/city_movement_inputs.rs": "f426dbd960f5bf9fb1565fdc493b0d41d5a95627f9d5773f5c8c368543caff11",
-    "crates/c6-data/src/city_movement.rs": "ecf506e0b589bec843c285963e9739b2c75bc9a8d3af605785696ec09e2edb73",
+    "crates/c6-data/examples/city_movement_inputs.rs": "7208b8b277a7679c7cc0345c2ef0d7401a9da2261784ed507f046e024f2be92f",
+    "crates/c6-data/src/city_movement.rs": "9ac1b014f3c665ae2d7a8c723af28c438c5e9b0187e1955be81a2b6b59b6e767",
     "crates/c6-data/src/lib.rs": "7190757767df78c257b65220141a2e41d386d96d0d5bf0d847e762069a540e12",
     "crates/c6-data/src/movement.rs": "76153d7e76bc3a06e9512caf548384f87a2f32f57ef835d1f60cb43ec7e88d8c",
     "crates/c6-data/src/registry.rs": "5c72f7427f6c6f102238a72e0c0d50caf4052d4007b7a4870cf77e1076cfa63c",
@@ -91,7 +91,8 @@
     "original_control3_district_endpoints_equal": 3072,
     "original_control3_water_endpoints_equal": 3072,
     "source_coastal_neighbor_plots_calculated": 6996,
-    "source_full_metadata_two_pass_fixture": true
+    "source_full_metadata_two_pass_fixture": true,
+    "explicit_absent_wonder_query_error_and_optional_output": true
   },
   "input_contract": {
     "require_domain_metadata": true,
@@ -114,12 +115,14 @@
       "valid_domains"
     ],
     "complete_instance_membership_required": true,
-    "unsupported_aborts_all_output": true
+    "unsupported_aborts_all_output": true,
+    "absent_owned_attribute_fallback_queries": "explicit unavailable raw mask and auxiliary Wonder, never zero/false inference"
   },
   "native_execution": false,
   "native_comparison": false,
   "native_comparison_scope": "new metadata/full domain reconstruction remains pending; prior bounded District/water controls only",
   "expected_outputs_used_as_inputs": false,
   "full_gameplay_state_actions_turns": false,
-  "raw_save_load_difference_preserved": 89198
+  "raw_save_load_difference_preserved": 89198,
+  "historical_manifest": "evidence/linux/movement-domain-reconstruction-candidate-65d71d4.json"
 }

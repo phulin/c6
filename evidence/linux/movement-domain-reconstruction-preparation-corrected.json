@@ -1,0 +1,48 @@
+{
+  "schema": "c6-linux-movement-domain-inputs-v1",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "profile_sha256": "dbe92853390379d3c268b6baf2e75d8feb02b7733e5383c846466cb3af325641",
+  "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "native_sha256": "b6f4243ee2fde1ae020e55cf5e5e3e853c87b7c268dcd5fada88393254bef276",
+  "candidate_sha256": "e899e4d95b4e0ef9e0ab2067cc3b6544b236ccb7e8641104730623b15dff5816",
+  "source_commit": "60507af3f3e434394d9716592789d0a9412e1ce7",
+  "sources": {
+    "crates/c6-data/src/city_movement.rs": "9ac1b014f3c665ae2d7a8c723af28c438c5e9b0187e1955be81a2b6b59b6e767",
+    "crates/c6-data/examples/city_movement_inputs.rs": "7208b8b277a7679c7cc0345c2ef0d7401a9da2261784ed507f046e024f2be92f",
+    "tools/linux/movement_domain_inputs_check.py": "30ae6367d4713dea7a770a832f208fc86c8f7d794a5825a6dc82b3079537cbab"
+  },
+  "district_records": 1284,
+  "unique_compared_districts": 298,
+  "comparison": {
+    "endpoints": 3072,
+    "positive_native_validity_witnesses": 1282,
+    "equal": 3072,
+    "sentinel_misses": 1790
+  },
+  "failures": [],
+  "calculated_inputs": [
+    "District v15 owner-bounded serialized prefix",
+    "typed Map actual District plot owner",
+    "actual native District registry order/hash mapping"
+  ],
+  "expected_only": [
+    "runtime district presence, ID, type, completion, location"
+  ],
+  "native_validity_scope": "positive native lookup proves only queried player valid; sentinel misses bypass player lookup",
+  "domain_masks_compared": 0,
+  "derived_queries": {
+    "water_native_endpoints_equal": 3072,
+    "coastal_min_one_calculated_plots": 6996,
+    "coastal_min_one_true_plots": 243,
+    "original_directional_neighbor_lists_calculated": 6996,
+    "native_coastal_or_neighbor_comparison": false,
+    "wonder_completion_source_closed": true,
+    "native_wonder_completion_comparison": false
+  },
+  "domain_masks_unavailable": "No actual District Canal/InternalOnly and Building order/CanalWonder/Bridge export or complete player/container membership; source-derived coastal/neighbors/Wonder code awaits independent mask comparison",
+  "native_domain_mask_required_endpoints": 257,
+  "full_gameplay_state_actions_turns": false,
+  "raw_save_load_difference_preserved": 89198
+}
