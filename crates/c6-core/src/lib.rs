@@ -30,6 +30,7 @@ pub mod player_religion;
 pub mod player_resources;
 pub mod player_stats;
 pub mod player_techs;
+pub mod player_trade;
 pub mod player_treasury;
 pub mod player_units;
 pub mod player_name_manager;
