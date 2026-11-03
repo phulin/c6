@@ -11,6 +11,8 @@ import sys
 import struct
 import subprocess
 import tarfile
+import tempfile
+import difflib
 from save_lifecycle_audit import Elf, GAME_SHA
 ROOT = Path(__file__).resolve().parents[2]
 CORE = 'ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884'
@@ -58,26 +60,67 @@ def audit(args):
     # archive is the provenance, not a hash-only claim about concurrent WIP.
     paths=['crates/c6-core/src/game_techs.rs','tools/linux/game_techs_check.rs',
            'tools/linux/game_techs_audit.py','tools/linux/save_lifecycle_audit.py']
+    recorded_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    preimages={relative:(ROOT/relative).read_bytes() for relative in paths}
+    differences=[]
+    for relative,data in preimages.items():
+        committed=subprocess.run(['git','show',recorded_commit+':'+relative],cwd=ROOT,capture_output=True)
+        before=committed.stdout if committed.returncode==0 else b''
+        if committed.returncode or before!=data:
+            differences.append(dict(path=relative,committed_sha256=sha(before) if committed.returncode==0 else None,
+                archived_sha256=sha(data),diff=''.join(difflib.unified_diff(
+                    before.decode().splitlines(keepends=True),data.decode().splitlines(keepends=True),
+                    fromfile=recorded_commit+':'+relative,tofile='archived:'+relative))))
+    def immutable(path,data):
+        if path.exists():
+            if path.read_bytes()!=data: raise ValueError('immutable artifact differs: '+str(path))
+        else:
+            with path.open('xb') as f: f.write(data)
     archive=io.BytesIO()
     with tarfile.open(fileobj=archive,mode='w') as tar:
-        for relative in paths:
-            data=(ROOT/relative).read_bytes(); info=tarfile.TarInfo(relative)
-            info.size=len(data);info.mode=0o644;info.mtime=0
+        for relative,data in preimages.items():
+            info=tarfile.TarInfo(relative);info.size=len(data);info.mode=0o644;info.mtime=0
             tar.addfile(info,io.BytesIO(data))
     archive_bytes=archive.getvalue();archive_sha=sha(archive_bytes)
     source_path=private/f'source-preimages-{archive_sha}.tar'
-    if source_path.exists() and source_path.read_bytes()!=archive_bytes:
-        raise ValueError('immutable archive differs')
-    source_path.write_bytes(archive_bytes)
+    immutable(source_path,archive_bytes)
+    source_tree=private/'sources'/archive_sha
+    source_tree.mkdir(parents=True,exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(source_path.read_bytes())) as tar:
+        if tar.getnames()!=paths: raise ValueError('archive members differ')
+        for member in tar:
+            data=tar.extractfile(member).read()
+            if data!=preimages[member.name]: raise ValueError('archived source differs')
+            target=source_tree/member.name;target.parent.mkdir(parents=True,exist_ok=True)
+            immutable(target,data)
     compiler=Path(shutil.which('rustc')).resolve()
-    binary=private/'game-techs-check'
-    subprocess.run(['rustc','--edition=2024','-D','warnings',
-        str(ROOT/'tools/linux/game_techs_check.rs'),'-o',str(binary)],check=True)
-    checked=subprocess.run([str(binary),str(owner_path)],check=True,capture_output=True,text=True)
-    decoded=json.loads(checked.stdout)
+    compiler_version=subprocess.check_output(['rustc','-Vv'],text=True)
     sysroot=Path(subprocess.check_output(['rustc','--print','sysroot'],text=True).strip())
     dependencies={str(p.relative_to(sysroot)):sha(p.read_bytes()) for p in sorted(sysroot.glob('lib/rustlib/*/lib/*.rlib'))}
-    return dict(schema='c6-linux-game-techs-source-v1',checks_passed=True,
+    flags=['--edition=2024','-D','warnings']
+    build_identity=dict(source_archive_sha256=archive_sha,compiler_sha256=sha(compiler.read_bytes()),
+        compiler_version=compiler_version,dependencies=dependencies,flags=flags)
+    build_sha=sha(json.dumps(build_identity,sort_keys=True).encode())
+    candidate_directory=private/'candidates'/archive_sha/build_sha
+    candidate_directory.mkdir(parents=True,exist_ok=True)
+    # Build from retained preimages. Never compile or link from the live checkout.
+    for relative,data in preimages.items():
+        if (source_tree/relative).read_bytes()!=data: raise ValueError('compiled preimage differs')
+    with tempfile.TemporaryDirectory(prefix='build-',dir=candidate_directory) as temporary:
+        pending=Path(temporary)/'game-techs-check'
+        subprocess.run(['rustc',*flags,str(source_tree/'tools/linux/game_techs_check.rs'),'-o',str(pending)],
+            cwd=source_tree,check=True)
+        executable=pending.read_bytes();executable_sha=sha(executable)
+        binary=candidate_directory/('game-techs-check-'+executable_sha)
+        immutable(binary,executable);binary.chmod(0o755)
+    for relative,data in preimages.items():
+        if (source_tree/relative).read_bytes()!=data: raise ValueError('compiled source changed')
+    checked=subprocess.run([str(binary),str(owner_path)],check=True,capture_output=True,text=True)
+    decoded=json.loads(checked.stdout)
+    differences_bytes=(json.dumps(dict(recorded_commit=recorded_commit,differences=differences),indent=2,sort_keys=True)+'\n').encode()
+    differences_path=source_tree/('recorded-commit-differences-'+sha(differences_bytes)+'.json')
+    immutable(differences_path,differences_bytes)
+    return dict(schema='c6-linux-game-techs-source-v2',checks_passed=True,
         gamecore_sha256=GAME_SHA,methods=[dict(name=n,address=a,bytes=s,sha256=h) for n,a,s,h in METHODS],
         calls=[dict(address=hex(a),target=hex(t)) for a,t in calls],wire_version=3,
         owner_layout='u32 version, u32 node count, nodes, u32 iteration count, TechTypes hashes',
@@ -89,10 +132,14 @@ def audit(args):
         original_diagnostic=dict(core_sha256=CORE,core_bytes=len(core),owner_trace_decompressed_sha256=TRACE,
             owner_range=[frame['start'],frame['end']],owner_sha256=sha(wire),decoded=decoded,
             native_registry_projection=False,meaning='saved owner grammar only; no live initialized graph comparison'),
-        candidate=dict(audit_python_version=sys.version,audit_python_sha256=sha(Path(sys.executable).resolve().read_bytes()),executable_sha256=sha(binary.read_bytes()),compiler_sha256=sha(compiler.read_bytes()),
+        candidate=dict(audit_python_version=sys.version,audit_python_sha256=sha(Path(sys.executable).resolve().read_bytes()),executable_sha256=sha(binary.read_bytes()),executable_path=str(binary.relative_to(ROOT.parent)),
+            source_tree=str(source_tree.relative_to(ROOT.parent)),build_identity_sha256=build_sha,build_identity=build_identity,
+            recorded_commit=recorded_commit,source_differences_path=str(differences_path.relative_to(ROOT.parent)),
+            source_differences_sha256=sha(differences_bytes),source_differences=differences,
+            compiled_preimages_verified=True,compiler_sha256=sha(compiler.read_bytes()),
             compiler_version=subprocess.check_output(['rustc','-Vv'],text=True),dependencies=dependencies,
             source_preimages_archive=str(source_path.relative_to(ROOT.parent)),source_preimages_sha256=archive_sha,
-            source_preimages=paths,test_dependencies='std-only API-shaped Limits/DefinitionLookup shims retained in checker; not full Core'),
+            source_preimages=paths,historical_limited_provenance='prior v1 mutable game-techs-check and source archives retained; not upgraded to frozen-tree build provenance',test_dependencies='std-only API-shaped Limits/DefinitionLookup shims retained in checker; not full Core'),
         tests='synthetic duplicate/positional lookup, stable unknown filtering, prereq/order preservation, cost bits, all truncations, exact/one-short byte/items, version/bool/trailing refusal, empty-after-filter rebuild gap; original owner decode',
         private_evidence=str(private.relative_to(ROOT.parent)),original_execution=False,native_differential_acceptance=False,
         complete_core_import=False,gameplay_parity=False,action_parity=False,turn_parity=False,
@@ -106,7 +153,14 @@ def main():
     p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')
     p.add_argument('--private-output',type=Path,default=ROOT.parent/'c6-ghidra/evidence/linux-game-techs')
     p.add_argument('--output',type=Path,required=True)
-    args=p.parse_args();result=audit(args)
+    args=p.parse_args()
+    if args.output.exists():
+        previous=args.output.read_bytes();historical=args.private_output/'historical-reports'
+        historical.mkdir(parents=True,exist_ok=True)
+        retained=historical/(sha(previous)+'.json')
+        if not retained.exists(): retained.write_bytes(previous)
+        elif retained.read_bytes()!=previous: raise ValueError('historical report differs')
+    result=audit(args)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
     print(json.dumps(dict(checks_passed=True,original_owner=result['original_diagnostic']['decoded'],original_execution=False)))
