@@ -1,0 +1,835 @@
+{
+  "appeal": {
+    "adjacent_appeal_definition_rows": 0,
+    "general_unowned_appeal_transitive_closure": false,
+    "owned_appeal": "direct signed16 cached read; exact requested yield and percent guards remain numeric inputs",
+    "unowned_improved_plots": 3,
+    "unowned_improvement_appeal_reference_candidates": 0,
+    "unowned_improvement_names": [
+      "IMPROVEMENT_BARBARIAN_CAMP"
+    ],
+    "unowned_plots": 1709,
+    "unowned_recomputation_excluded_under_definition_input_gate": true
+  },
+  "checks_passed": true,
+  "effect_contract": {
+    "focused_query_reporting_or_signals": false,
+    "focused_query_rng_consumption": false,
+    "focused_query_source_writes": false,
+    "monitor_cache_and_reporting": "separate caller-owned IndexList comparisons/updates/reporting; not a universal no-op",
+    "supported": "original monitor caller + typed native Map/property classes + matching exported definition inputs",
+    "unsupported": "reject differing relevant property graph, definition profile or concrete provider bindings before mutation"
+  },
+  "full_gameplay_state_actions_turns_implemented": false,
+  "full_host_action_admission": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "improvement": {
+    "actual_NUM_YIELD_TYPES_reobserved": false,
+    "adjacency_reference_projection_sha256": "148d722e3f9964924d015d0f5a81c0308389a13e8cf373fb1d54120f5426f5dc",
+    "adjacency_references_after_caller_yield_guard": 30,
+    "excluded_trait_reference_intersection": 0,
+    "hypothetical_map_changes": false,
+    "leaf_reads": [
+      "existing player/global tech and civic masks",
+      "existing revealed-resource layer signed16 values",
+      "original map geometry/plot fields",
+      "existing district IDs, definitions and completion/pillage bits"
+    ],
+    "nonnull_contribution_list": false,
+    "normalize_yields_path_excluded": true,
+    "numeric_inputs_still_required": true,
+    "present_definition_hashes": 25,
+    "query_result_implemented_in_rust": false,
+    "requested_yields": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source_mutations_in_supported_query_path": "none; explicit stores target stack temporaries or NULL-guarded optional output",
+    "temporary_modifier_path_excluded": true,
+    "tile_output_vector": false
+  },
+  "inputs": {
+    "live_definition_fields_captured_by_this_audit": false,
+    "map_parser_sha256": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b",
+    "map_sha256": "cd2ec75b4e342a6ebccc1b96889335352657b9ea67f83d5f6d56f6a94eaf2de9",
+    "native_activation_selections_equal": true,
+    "native_yield_export_sha256": "fa8c6d0919280b6cc6b9c557aab81b7b8879fb21c3ef9c037a3ac16bdc53146f",
+    "observation_configuration": "515f95429b6823d51248351d1c1731f548057ac62d15b142e3c57d4dc08a34b8",
+    "parent_runtime_sha256": "504571fe4cb8f194189bccc86940b820720d2f375de74cffedb9ccdb525c2029",
+    "rules_database_sha256": "c880adaedcfd6da7808302b3b76bb9cad7d3188b35ae78e780cff7b56e04477e",
+    "rules_report_sha256": "f23bfb47cf729bc44f44e1683c88f17ac75f191433dbeef1e5bd1b4e747d99ec",
+    "separate_diagnostic_configuration_ids": true,
+    "shared_saved_configuration_sha256": "a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8",
+    "shared_source_inventory_sha256": "4f5f1c64cd98cc6f6b39e2ac2a27a0b47f4292cef18e94732629cd188c7850b6"
+  },
+  "instruction_contracts": [
+    {
+      "bytes": "4531c0",
+      "image": "game",
+      "name": "NULL contribution list from actual GetYield",
+      "rva": "0x2bf6118"
+    },
+    {
+      "bytes": "480f44d8",
+      "image": "game",
+      "name": "NULL contribution selects NULL tile-output vector",
+      "rva": "0x2a3efaa"
+    },
+    {
+      "bytes": "48891c24",
+      "image": "game",
+      "name": "tile-output pointer forwarded on stack",
+      "rva": "0x2a3efd9"
+    },
+    {
+      "bytes": "4531c9",
+      "image": "game",
+      "name": "NULL hypothetical map changes",
+      "rva": "0x2a3efdd"
+    },
+    {
+      "bytes": "7460",
+      "image": "game",
+      "name": "NULL contribution skips list append",
+      "rva": "0x2a3f016"
+    },
+    {
+      "bytes": "7424",
+      "image": "game",
+      "name": "NULL contribution skips live temporary modifiers",
+      "rva": "0x2a3f097"
+    },
+    {
+      "bytes": "83fbff",
+      "image": "game",
+      "name": "only yield -1 enters adjacency normalization",
+      "rva": "0x2a3f961"
+    },
+    {
+      "bytes": "7532",
+      "image": "game",
+      "name": "specific yield skips normalization",
+      "rva": "0x2a3f964"
+    },
+    {
+      "bytes": "bef0957b87",
+      "image": "game",
+      "name": "query improvement property key",
+      "rva": "0x2bf61d6"
+    },
+    {
+      "bytes": "743c",
+      "image": "game",
+      "name": "missing property skips deeper yield-map conversion/read",
+      "rva": "0x2bf61e4"
+    },
+    {
+      "bytes": "ff5060",
+      "image": "game",
+      "name": "original plot load obtains mutable map",
+      "rva": "0x2bc8c16"
+    },
+    {
+      "bytes": "e8bc1530ff",
+      "image": "game",
+      "name": "original plot load reads typed map",
+      "rva": "0x2bc8c1f"
+    },
+    {
+      "bytes": "be00000004",
+      "image": "host",
+      "name": "typed map payload flag",
+      "rva": "0x3968174"
+    },
+    {
+      "bytes": "e8b66effff",
+      "image": "host",
+      "name": "nested payload directly constructs concrete typed map",
+      "rva": "0x39681b5"
+    },
+    {
+      "bytes": "ff90f0010000",
+      "image": "host",
+      "name": "nested map uses constructed read virtual",
+      "rva": "0x39681c7"
+    },
+    {
+      "bytes": "eb17",
+      "image": "game",
+      "name": "SQL NULL passes null appeal string to setter",
+      "rva": "0x21ffaf4"
+    },
+    {
+      "bytes": "31c0",
+      "image": "game",
+      "name": "null appeal string produces zero hash",
+      "rva": "0x21ff3f3"
+    },
+    {
+      "bytes": "b8ffffffff",
+      "image": "game",
+      "name": "unknown appeal hash resolves yield -1",
+      "rva": "0x21f1070"
+    },
+    {
+      "bytes": "7542",
+      "image": "game",
+      "name": "nonmatching appeal yield skips GetAppeal",
+      "rva": "0x2bf614d"
+    },
+    {
+      "bytes": "743f",
+      "image": "game",
+      "name": "empty definition query skips all row construction",
+      "rva": "0x224a24b"
+    }
+  ],
+  "methods": [
+    {
+      "bytes": 1077,
+      "image": "game",
+      "name": "Plot.Read",
+      "rva": "0x2bc8820",
+      "sha256": "d8c6bd76add824f31a23a544617d6b211f486a0854537d69ff4ff08eb78f0276"
+    },
+    {
+      "bytes": 123,
+      "image": "game",
+      "name": "Plot.EditProperties.load_construction",
+      "rva": "0x2bca850",
+      "sha256": "dedae75283379affd021f3acd5366ea38a63ad12e59932884764b2036a6276be"
+    },
+    {
+      "bytes": 199,
+      "image": "game",
+      "name": "Plot.EditPropertiesKind.construction",
+      "rva": "0x2bca8d0",
+      "sha256": "6eb511ba7f7e290e9c082a28d49692cdc9ae321f0043d55ebc07156411bad9cd"
+    },
+    {
+      "bytes": 19,
+      "image": "game",
+      "name": "Plot.GetProperties.const",
+      "rva": "0x2bca7f0",
+      "sha256": "c15288f31fc8f4fec71681360c57dfd1e606001b8613d3625d9f08cc1f4929e6"
+    },
+    {
+      "bytes": 52,
+      "image": "game",
+      "name": "Plot.GetPropertiesKind.const",
+      "rva": "0x2bca810",
+      "sha256": "d449003c2237ab81da7dc9508ed69c88ea1b18815acb8dbdc0d1c4c02bcc1947"
+    },
+    {
+      "bytes": 17,
+      "image": "game",
+      "name": "Improvement.GetProperties",
+      "rva": "0x2a3e7d0",
+      "sha256": "28f33affda3b468ee1e695f5ffa7c255f77cc47b5147c2036bd536fad5207c19"
+    },
+    {
+      "bytes": 27,
+      "image": "game",
+      "name": "TypedVariant.to_map.const",
+      "rva": "0x28e3e40",
+      "sha256": "cc7583b6bf5d0bb161ba009dca97725dd0ad5a282f06717f1628f0eb5b5691a9"
+    },
+    {
+      "bytes": 3498,
+      "image": "game",
+      "name": "Rules.GetYield",
+      "rva": "0x2bf5ad0",
+      "sha256": "5249f66e85d4f15aaac4e11747aa594dce491cdf8d30e9dc8301aac63606c293"
+    },
+    {
+      "bytes": 94,
+      "image": "game",
+      "name": "Improvement.GetYieldFrom",
+      "rva": "0x2a3ed90",
+      "sha256": "645eedbaa72e5279a96ffba3e0ced962cc4ce943dd35c5b769f8e3e1a67f19ee"
+    },
+    {
+      "bytes": 757,
+      "image": "game",
+      "name": "Improvement.GetPlayerYieldFrom",
+      "rva": "0x2a3ee50",
+      "sha256": "f75e801dbf601be97571a61978777c845cc21da43ae840992265ca1c3443e6b1"
+    },
+    {
+      "bytes": 2147,
+      "image": "game",
+      "name": "Improvement.GetPlayerYieldFrom.adjacency",
+      "rva": "0x2a3f150",
+      "sha256": "2bc83c3fa99ebe760d7076f6fa00ed2fc13baa475b5d7c8f6e7862b675315af1"
+    },
+    {
+      "bytes": 267,
+      "image": "game",
+      "name": "Improvement.BonusTech",
+      "rva": "0x2a3fd30",
+      "sha256": "4e88ea903a10e995089047c15fe4c64838ad782be69733321544cfcd54a18f98"
+    },
+    {
+      "bytes": 267,
+      "image": "game",
+      "name": "Improvement.BonusCivic",
+      "rva": "0x2a3fe40",
+      "sha256": "7fcdc9e73aac2cd148e91df4a58569b4cdca56063b27b3fa6a958617de44b9c1"
+    },
+    {
+      "bytes": 572,
+      "image": "game",
+      "name": "Improvement.IsBonusValid",
+      "rva": "0x2a3ff50",
+      "sha256": "c2d8b04d7cc2473744d97e682c308ed0b41ad8e8195301a6ab541767584896b8"
+    },
+    {
+      "bytes": 37,
+      "image": "game",
+      "name": "Plot.GetAppeal",
+      "rva": "0x2bc96c0",
+      "sha256": "20737c86df0be1bd3e5d522749073fefd0fe53a79a244ec0ae79e16b89afed0f"
+    },
+    {
+      "bytes": 1837,
+      "image": "game",
+      "name": "Improvement.BuildDefinition",
+      "rva": "0x21ff420",
+      "sha256": "68872fab10190f5d8bd01bda9724e75b7039ab38365e75aff395bd90ab996843"
+    },
+    {
+      "bytes": 8,
+      "image": "game",
+      "name": "Improvement.BuilderSQL",
+      "rva": "0x21ffb60",
+      "sha256": "651145ae4543a0ba78cbd73ee3d03ca3745bd46f632bc83701dbd87ba721c354"
+    },
+    {
+      "bytes": 120,
+      "image": "game",
+      "name": "Improvement.SetYieldFromAppeal.load_only",
+      "rva": "0x21ff3a0",
+      "sha256": "1b7091134025f092bb749be8b194a7e8651cf1c77a3c4f022f87d7519c8c03f7"
+    },
+    {
+      "bytes": 116,
+      "image": "game",
+      "name": "Definition.NameToYieldType",
+      "rva": "0x21f1070",
+      "sha256": "4d81d635b36ffc7819c8a81a7d79aa7c8b90dea8f1a91572fbaa28210f214fb7"
+    },
+    {
+      "bytes": 8,
+      "image": "game",
+      "name": "AdjacentAppeal.BuilderSQL",
+      "rva": "0x21e7f60",
+      "sha256": "5b47965ca29e40ca98ac28da60e97cb4344e21d4215142a5d6e1e6444740fb0b"
+    },
+    {
+      "bytes": 285,
+      "image": "game",
+      "name": "AdjacentAppeal.BuildCollection",
+      "rva": "0x224a1c0",
+      "sha256": "800eb69e65b6a3f76b4e572d47c427f5ce95e3b248daedcb336608632a590ba8"
+    },
+    {
+      "bytes": 56,
+      "image": "game",
+      "name": "Visibility.GetRevealedResourceType",
+      "rva": "0x2bc1990",
+      "sha256": "f8678e7ebf3d24bf4119383c4f77980da0f1c4b880167cab5f026a17a86dd28f"
+    },
+    {
+      "bytes": 66,
+      "image": "game",
+      "name": "Visibility.GetVisibility",
+      "rva": "0x2bc18c0",
+      "sha256": "26ab66b819e2442996e7a8229cfe986ce58b596267cbbbd1377b7432df46705f"
+    },
+    {
+      "bytes": 66,
+      "image": "game",
+      "name": "Visibility.GetLayerIndex",
+      "rva": "0x27f50c0",
+      "sha256": "a3e36db2fa19c899755360cda6b4f4fb252f102e16fa7f13429eeb02055f74f9"
+    },
+    {
+      "bytes": 19,
+      "image": "game",
+      "name": "Visibility.Layer.GetCount",
+      "rva": "0x2005450",
+      "sha256": "4e5878e49e25c82d97e5e5806a7aca92cc237095459b2381ec39a142c876a1b2"
+    },
+    {
+      "bytes": 79,
+      "image": "game",
+      "name": "Player.Techs.HasTech",
+      "rva": "0x2b8ac60",
+      "sha256": "cf4a3cabd3f3b09872b8bd16197980410160d0ae810aae1d63a423ea68c32ec3"
+    },
+    {
+      "bytes": 86,
+      "image": "game",
+      "name": "Player.Culture.HasCivic",
+      "rva": "0x2a73e70",
+      "sha256": "d61b6ae94c24981349cecd699fed49fa57c413f81d7d15787f33a3996dfe4f68"
+    },
+    {
+      "bytes": 24,
+      "image": "game",
+      "name": "Game.Techs.HasTech",
+      "rva": "0x2a2d160",
+      "sha256": "15b73ac27200be281d4dc5657f341244ff1f86e80e95a10d7d3c0dfeda4125a9"
+    },
+    {
+      "bytes": 24,
+      "image": "game",
+      "name": "Game.Culture.HasCivic",
+      "rva": "0x2978310",
+      "sha256": "6b922359c9946249e8f6cb842ea7af3d46d23608c32d0a8855aa1178528e759f"
+    },
+    {
+      "bytes": 14,
+      "image": "game",
+      "name": "BoolVector.index.const",
+      "rva": "0x1fe6b50",
+      "sha256": "f13ff4ca446e97d1c02ca5ef61a9e5e1703d4640688045c5ca379017e9371e79"
+    },
+    {
+      "bytes": 4,
+      "image": "game",
+      "name": "BoolVector.size.const",
+      "rva": "0x2007f30",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "bytes": 74,
+      "image": "game",
+      "name": "CityAttributes.GetDistrictType",
+      "rva": "0x2bc81b0",
+      "sha256": "f147b13b9c923cb7774f9f0ebe3858ef019da7c5ce7b4609fbaf6392251ea435"
+    },
+    {
+      "bytes": 71,
+      "image": "game",
+      "name": "CityAttributes.IsDistrictComplete",
+      "rva": "0x2bc8200",
+      "sha256": "f39bdadcfd60d365e1f4d7f4329fb250774fd1be088cdb4786c0becc43da2a3a"
+    },
+    {
+      "bytes": 71,
+      "image": "game",
+      "name": "CityAttributes.IsDistrictPillaged",
+      "rva": "0x2bc8250",
+      "sha256": "0bc7f06c70d75bce80133b50fb15fe5327c35e216b0c7fed4eb10223c36741cc"
+    },
+    {
+      "bytes": 101,
+      "image": "game",
+      "name": "CityAttributes.IsWonderComplete",
+      "rva": "0x2bc8100",
+      "sha256": "37423cc523509373a9a51a98ee65593b80645e94693ebfdba93a3df852036ea0"
+    },
+    {
+      "bytes": 8,
+      "image": "game",
+      "name": "CityAttributes.GetDistrict.native_binding",
+      "rva": "0x2bc8320",
+      "sha256": "e260cc42d331ac28d051f92f0f26d3c0a79ae6d9eacecbdb85efe784ca1cfdd0"
+    },
+    {
+      "bytes": 93,
+      "image": "game",
+      "name": "CityManager.GetDistrict",
+      "rva": "0x286e0b0",
+      "sha256": "c1691db37b45fa3441151d0fc7494058a260d898fcba8ac052721df8728f27f2"
+    },
+    {
+      "bytes": 12,
+      "image": "game",
+      "name": "Player.Districts.Find",
+      "rva": "0x2ae12e0",
+      "sha256": "a460913eb67325a8287de3200d8f7ffbafa73204508ea8b9e7ee045a2d34d50f"
+    },
+    {
+      "bytes": 84,
+      "image": "game",
+      "name": "District.IDContainer.Find",
+      "rva": "0x2ae4290",
+      "sha256": "851cd5df1a54fadad43fca32535d1e082d5159169247e367345f165b5a4c4419"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "District.IsComplete",
+      "rva": "0x1fe24b0",
+      "sha256": "04de6938c59bb5009eaa15a67bf3dad4db82acf731c120a7b6fb5ba3ce334419"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "District.IsPillaged",
+      "rva": "0x291eb20",
+      "sha256": "d2e1e923f91a89ab76f04f17b4cc251b878d300e218ad876b1b9770fc9f26a17"
+    },
+    {
+      "bytes": 7,
+      "image": "game",
+      "name": "District.GetType",
+      "rva": "0x1fe57d0",
+      "sha256": "ebf9ec5205f71d01bc09c02b78f779e470aced6d0adc6824d92a4d9fe716f035"
+    },
+    {
+      "bytes": 16,
+      "image": "game",
+      "name": "Map.GetAdjacentPlot.coord",
+      "rva": "0x1fe2450",
+      "sha256": "d49aaa6a8e22ce6c82d1f979740d9ee339fe37d6bceaa260971abb2e1a9a1ebe"
+    },
+    {
+      "bytes": 117,
+      "image": "game",
+      "name": "Map.GetAdjacentPlot.xy",
+      "rva": "0x1fe6bb0",
+      "sha256": "20d1b6cd6f0a199ffc43585e40fed52480a603425383291e73ba00e68f8f8e6e"
+    },
+    {
+      "bytes": 168,
+      "image": "game",
+      "name": "Map.GetPlot.xy",
+      "rva": "0x2a48a30",
+      "sha256": "55e2269824af4db4e69fd3c1525d033284cbe8890485439af00e1b97db203839"
+    },
+    {
+      "bytes": 27,
+      "image": "game",
+      "name": "Hexspace.PlotXToX",
+      "rva": "0x1fe6c30",
+      "sha256": "ef7fa80e635393c23fb28022e3b5776e0726ac8ba056e1e34756e729abd8a692"
+    },
+    {
+      "bytes": 27,
+      "image": "game",
+      "name": "Hexspace.XToPlotX",
+      "rva": "0x1fe6c70",
+      "sha256": "ecd5d792efcce060e5d9a9c8cf81309197f8be32e680337c624bde85ae851aba"
+    },
+    {
+      "bytes": 14,
+      "image": "game",
+      "name": "Direction.X",
+      "rva": "0x1fe6c50",
+      "sha256": "6970d362e7b883fd0bc6155fe3e8327590c9cd99d9e1870580cd8d72e61b0986"
+    },
+    {
+      "bytes": 14,
+      "image": "game",
+      "name": "Direction.Y",
+      "rva": "0x1fe6c60",
+      "sha256": "da454a67c04c94bd3a82f8a320cd534a2f8e8ac60ead40e66a3025f6ea10298e"
+    },
+    {
+      "bytes": 32,
+      "image": "game",
+      "name": "CityAttributes.constructor",
+      "rva": "0x27bbbf0",
+      "sha256": "678fcdd56f78ea2f47ce6b9d44f35e598b66e1072bd4b45a808bec4629268595"
+    },
+    {
+      "bytes": 39,
+      "image": "game",
+      "name": "CityAttributes.initialize",
+      "rva": "0x27bbc20",
+      "sha256": "8c63b3a6c242a1a59e3eecf7042bff0a94e03e0ba5d9c508ffe948370bc8799d"
+    },
+    {
+      "bytes": 50,
+      "image": "game",
+      "name": "CityAttributes.lookup",
+      "rva": "0x2a42500",
+      "sha256": "d9b066e28f35789167afe32cdf72cfc7287e0678e5b4f1f5324427a3260b862d"
+    },
+    {
+      "bytes": 6,
+      "image": "game",
+      "name": "Plot.IsImprovementPillaged",
+      "rva": "0x1fe2440",
+      "sha256": "af700d60344727ffe670fa9f8aa5e8b02a6fdbe9243c45d2428feced003839cc"
+    },
+    {
+      "bytes": 124,
+      "image": "host",
+      "name": "TypedVariantMap.constructor",
+      "rva": "0x395f070",
+      "sha256": "88ef146bf7cc119692ceb6363ed7eb31b05e1b25734903162c34b355bfca021e"
+    },
+    {
+      "bytes": 122,
+      "image": "host",
+      "name": "TypedVariantMap.manager_constructor",
+      "rva": "0x395f0f0",
+      "sha256": "e930cfe363710bf1526b918ee40fa709bdc4369fc7c406ed62e0bc1fd5c61188"
+    },
+    {
+      "bytes": 26,
+      "image": "host",
+      "name": "TypedVariantMap.stream_operator",
+      "rva": "0x3961f40",
+      "sha256": "cfba287e2777e4569362c54de11126a45f3f3b9c495fecb6c5cf6368a02e95db"
+    },
+    {
+      "bytes": 468,
+      "image": "host",
+      "name": "TypedKeyedContainer.Unserialize",
+      "rva": "0x3971330",
+      "sha256": "926471abf5f8aba34009e30e24c276adebac3f80a62beca98aaa8ad8bb9feaa8"
+    },
+    {
+      "bytes": 96,
+      "image": "host",
+      "name": "TypedVariant.Unserialize",
+      "rva": "0x395eff0",
+      "sha256": "f1ec89541fec21e498a19c155c3842c0197633f9d497ebb085193e82183d5ed9"
+    },
+    {
+      "bytes": 1033,
+      "image": "host",
+      "name": "ArrayVariant.Unserialize",
+      "rva": "0x3968060",
+      "sha256": "e0176b74687662be2b0c8941e82fdb88d604d35d1301dfcea20f6e21d65fc4b3"
+    },
+    {
+      "bytes": 43,
+      "image": "host",
+      "name": "TypedVariant.to_keyed.const",
+      "rva": "0x39673c0",
+      "sha256": "e4491a75c74608682f2ae19fd73ffa487af024a7f8a632bb409197dcaedb3a8d"
+    },
+    {
+      "bytes": 90,
+      "image": "host",
+      "name": "TypedVariantMap.FindVariant.const",
+      "rva": "0x395f3b0",
+      "sha256": "2788514beee59158d6cd2b816679fb774a19df417cc647a83564e156c77f6b36"
+    },
+    {
+      "bytes": 95,
+      "image": "host",
+      "name": "TypedVariantMap.GetVariant.const",
+      "rva": "0x395f480",
+      "sha256": "b264f2c22424685f2c0d51945a672854768f0363768ac961e0bd0de247274118"
+    },
+    {
+      "bytes": 26,
+      "image": "game",
+      "name": "Game.Techs.component_lookup",
+      "rva": "0x2a2c3f0",
+      "sha256": "be1a5f2cdb26e2434e288a6cb37438b910f8e2fce0984649c912ea5e746c11fd"
+    },
+    {
+      "bytes": 26,
+      "image": "game",
+      "name": "Game.Culture.component_lookup",
+      "rva": "0x29772c0",
+      "sha256": "a344f4b32312ca9961f5184e995ba93b5592886334ff8d09df8294516474409a"
+    },
+    {
+      "bytes": 42,
+      "image": "game",
+      "name": "Game.Component.lookup",
+      "rva": "0x264c060",
+      "sha256": "e864d685fed8e09fe6089b219d16d885221ad68c732a5c70a0d3a9d2167fac11"
+    },
+    {
+      "bytes": 8,
+      "image": "game",
+      "name": "Game.GetInstance",
+      "rva": "0x2660650",
+      "sha256": "f2da8e6d1cfad107964503183788ee3a3940ed4000767c930e4617053d2e59fb"
+    },
+    {
+      "bytes": 8,
+      "image": "game",
+      "name": "Player.Manager.Get",
+      "rva": "0x2b53270",
+      "sha256": "f272c8eeb341e5a4f0e8ddc7c942700a242845c100e7d826fc8b012207bdc8e2"
+    },
+    {
+      "bytes": 39,
+      "image": "game",
+      "name": "Player.Manager.GetValidPlayer",
+      "rva": "0x2003940",
+      "sha256": "58bb7297d06455fd64617c3472f7087054b4aa5fa1b28ab20ce94cb74db41648"
+    },
+    {
+      "bytes": 22,
+      "image": "game",
+      "name": "Globals.GetPlayer",
+      "rva": "0x290b930",
+      "sha256": "4f70fef1af78b8dea71c792f71f54727722e3e9f4509f9e764e536223739daaf"
+    },
+    {
+      "bytes": 57,
+      "image": "game",
+      "name": "CityManager.GetCity.ID",
+      "rva": "0x286dc00",
+      "sha256": "5b7fb30d1c1ed64fa169933871cb06809ecf1f1b38a261a78bea94956b8fb281"
+    },
+    {
+      "bytes": 60,
+      "image": "game",
+      "name": "CityManager.GetCity.owner_ID",
+      "rva": "0x286dc40",
+      "sha256": "dc94e53ae027e4fbbc2ebceb12ba12939c76adbe5faeaf3b5ce0e6e4362939b6"
+    },
+    {
+      "bytes": 12,
+      "image": "game",
+      "name": "Player.Cities.Find",
+      "rva": "0x2a597e0",
+      "sha256": "b22cb52aa75d16eb1e1f3e664d1ff67096a8a3683c2c7f2d54c009fa22a3e7a6"
+    },
+    {
+      "bytes": 84,
+      "image": "game",
+      "name": "City.IDContainer.Find",
+      "rva": "0x2a5cc90",
+      "sha256": "3e400de7612ac963b66e6e0630fd735acbe9c1f2588f74c1f26df97c50df008d"
+    },
+    {
+      "bytes": 22,
+      "image": "game",
+      "name": "Buildings.HasBuilding",
+      "rva": "0x2863e70",
+      "sha256": "a22810f0b2c8b67074499e681e299cb418bdaba0c8bd82823abb9f3ef26b9d77"
+    },
+    {
+      "bytes": 52,
+      "image": "game",
+      "name": "Buildings.GetBuildingLocation",
+      "rva": "0x2863e90",
+      "sha256": "83299fac67aad89284b4a3629c58868974a0f575e431a388b1ab17a4897529c2"
+    },
+    {
+      "bytes": 8,
+      "image": "game",
+      "name": "CityAttributes.GetCity.native_binding",
+      "rva": "0x2bc8310",
+      "sha256": "7d7ecf22e246b5e8c6db17f7bef9c58503b4d34ed920241b8aac33f7b84664a3"
+    },
+    {
+      "bytes": 28,
+      "image": "game",
+      "name": "Map.CoordRange",
+      "rva": "0x243bb00",
+      "sha256": "dc7e6d453df9764c167593b8c1b68adccf891a0f82332a4c04809768fd3b3136"
+    },
+    {
+      "bytes": 60,
+      "image": "game",
+      "name": "Map.IsPlot",
+      "rva": "0x2143670",
+      "sha256": "dd606c96cc4998d41447193d97ac79a88d424a7e5be21e46b94caa548f51ffd9"
+    },
+    {
+      "bytes": 24,
+      "image": "game",
+      "name": "Map.GetPlotIndex",
+      "rva": "0x21436b0",
+      "sha256": "f8a2e8693206a4f3f2fc492be80dbe1ddcceaa3ac67e629f37edc25cd7191e7d"
+    }
+  ],
+  "native_execution": false,
+  "private_evidence_local_only": true,
+  "properties": {
+    "const_query_allocates_or_inserts": false,
+    "deeper_yield_map_lookup_excluded": true,
+    "improvement_key": "d9a34c75",
+    "improvement_maps_empty": true,
+    "loading_mutations": "construction, insertion and ownership setup occur during load, separately from const GetYield",
+    "outer_and_improvement_map_concrete_binding": "host TypedVariantMap vtable+16 at0x53b3680",
+    "provenance": "original Plot.Read -> EditDynamicProperties -> direct concrete constructor; nested ArrayVariant.Unserialize directly constructs same class",
+    "queried_yield_modifier_key": "877b95f0",
+    "scope": "deserialized native property graph; arbitrary externally rebound subclasses are unsupported",
+    "serialized_plot_maps": 6
+  },
+  "raw_save_load_failure_bytes_unclassified": 89198,
+  "remaining": [
+    "Numeric implementation needs exact definitions/references, native integer/FixedPoint order and current player/global tech/civic/visibility/district inputs",
+    "Rules exports are separately identified original runs sharing source/configuration inputs; this audit does not capture every live definition field",
+    "General nonnull contribution/planning outputs, custom property subclasses and unowned appeal in other definitions remain separate domains",
+    "Other GetYield rule groups retain their existing contracts; this is not whole-engine getter purity or complete state/RNG proof"
+  ],
+  "schema": "c6-linux-reporting-yield-query-closure-v1",
+  "source_sha256": "52075012befe491ced3b96b1aa61ba0a8da78f9cd65296c817a73258243a4302",
+  "virtual_bindings": [
+    {
+      "image": "game",
+      "name": "native plot mutable map construction",
+      "slot": "0x60",
+      "table": "0x3ae2390",
+      "target": "0x2bca850"
+    },
+    {
+      "image": "game",
+      "name": "native plot const map access",
+      "slot": "0x50",
+      "table": "0x3ae2390",
+      "target": "0x2bca7f0"
+    },
+    {
+      "image": "game",
+      "name": "native plot keyed const access",
+      "slot": "0x58",
+      "table": "0x3ae2390",
+      "target": "0x2bca810"
+    },
+    {
+      "image": "game",
+      "name": "native CityAttributes district lookup",
+      "slot": "0x8",
+      "table": "0x3ae2350",
+      "target": "0x2bc8320"
+    },
+    {
+      "image": "game",
+      "name": "native CityAttributes city lookup",
+      "slot": "0x0",
+      "table": "0x3ae2350",
+      "target": "0x2bc8310"
+    },
+    {
+      "image": "game",
+      "name": "native Map xy lookup",
+      "slot": "0x68",
+      "table": "0x3ad5350",
+      "target": "0x2a48a30"
+    },
+    {
+      "image": "host",
+      "name": "constructed typed map const FindVariant",
+      "slot": "0x60",
+      "table": "0x53b3680",
+      "target": "0x395f3b0"
+    },
+    {
+      "image": "host",
+      "name": "constructed typed map const GetVariant",
+      "slot": "0x70",
+      "table": "0x53b3680",
+      "target": "0x395f480"
+    },
+    {
+      "image": "host",
+      "name": "constructed typed map read",
+      "slot": "0x1f0",
+      "table": "0x53b3680",
+      "target": "0x3971330"
+    }
+  ]
+}
