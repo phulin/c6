@@ -80,6 +80,7 @@ def main():
         configuration_sha256=PROFILE, profile_sha256=PROFILE, build_command=build,
         rustc_version=subprocess.check_output(['rustc','-Vv'],text=True).strip(),
         machine=subprocess.check_output(['uname','-m'],text=True).strip(),
+        cpu_model=next((line.split(':',1)[1].strip() for line in Path('/proc/cpuinfo').read_text().splitlines() if line.startswith('model name')), 'unavailable'),
         strict_release_clippy_passed=True, frozen_candidate_or_profile_modified=False)
     a.output.parent.mkdir(parents=True,exist_ok=True)
     with a.output.open('x') as f:

@@ -67,7 +67,8 @@ fn samples(name: &str, cases: usize, mut sweep: impl FnMut() -> u64) -> Value {
         "samples":21,"elapsed_ns":elapsed_ns,"ns_per_case_min":per_case[0],
         "ns_per_case_p10":per_case[2],"ns_per_case_median":per_case[10],
         "ns_per_case_p90":per_case[18],"ns_per_case_max":per_case[20],
-        "checksum":checksum,"checksum_per_sweep":expected})
+        "checksum_sha256":digest(&checksum.to_le_bytes()),
+        "checksum_per_sweep_sha256":digest(&expected.to_le_bytes())})
 }
 fn benchmark_queries(
     world: &World,
