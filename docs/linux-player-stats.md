@@ -18,7 +18,9 @@ pairs remain ordered raw u32 identities. Nothing resolves hashes to SQL ordinals
 
 TrackedValue v1 has its own typed codec. Its steps carry priority i32, ID u32,
 Localization::String, and another TrackedValue in that wire order. Both optional
-Q8 bounds and all nested values remain exact wire carriers. Native Read resets
+Q8 bounds and all nested values remain exact wire carriers. The nested codec
+limits tracked and localization recursion to depth 64 as an explicit resource
+policy, not a native gameplay restriction. Native Read resets
 and overlays initialized fields; older-version migrations, definition remapping,
 archive edits and live gameplay effects are separate from this transport.
 
@@ -42,7 +44,9 @@ record in both existing canonical streams. Hash-gated owner traces supply only
 offline validation cuts. The audit also runs source boundary tests for nonempty
 vectors, duplicate hashes, signed extremes, every truncated prefix, trailing
 bytes, bad versions and booleans, fixed-array framing and exact/one-short caps.
-This comparison is not a new native mutation oracle. Original game code is never
+The recorded isolated run passed eight combined Stats/TrackedValue boundary
+tests and round-tripped all 86 saved Stats records (282,098 total bytes) under
+exact and one-short budgets. This comparison is not a new native mutation oracle. Original game code is never
 executed, and no private artifact is modified.
 
 Discovery attribution: pinned `cru121` revision
