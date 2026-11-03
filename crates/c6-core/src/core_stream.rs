@@ -687,7 +687,7 @@ impl<'a> Reader<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use variants::{ArrayVariant, TypedEntry, TypedVariant, VariantPayload};
 
@@ -1091,7 +1091,7 @@ mod tests {
         ));
     }
 
-    fn context_binding(bytes: &[u8]) -> crate::core_player::initialization::WireBinding {
+    pub(crate) fn context_binding(bytes: &[u8]) -> crate::core_player::initialization::WireBinding {
         use crate::core_player::initialization::{
             DatabaseIdentity, InputIdentities, WireBinding, WireRole,
         };
@@ -1332,7 +1332,7 @@ mod tests {
             assert!(ThroughGlobalAi::decode(&bytes, a, b, binding.clone(), &contexts).is_err());
         }
     }
-    fn random_prefix_fixture() -> (Vec<u8>, [usize; 6], [usize; 3]) {
+    pub(crate) fn random_prefix_fixture() -> (Vec<u8>, [usize; 6], [usize; 3]) {
         use crate::{game_barbarian as b, game_free_cities as f, game_global_ai as g};
         // Arbitrary explicit saved values, not runtime constructor defaults.
         let global = g::GlobalAi {

@@ -14,6 +14,8 @@ pub mod core_stream;
 pub mod formation_initialization;
 pub mod geometry;
 pub mod improvement_yield;
+pub mod loaded_components;
+pub mod loaded_state;
 pub mod map;
 pub mod messages;
 pub mod movement;
