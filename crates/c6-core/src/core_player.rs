@@ -1,11 +1,13 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Trade.
-//! Stops before unframed GreatPeoplePoints; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete Quests.
+//! Stops before unframed Wmds; this is not a Player/world/gameplay importer.
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
-use crate::{player_eras, player_trade};
+use crate::{
+    player_eras, player_great_people_points, player_influence, player_quests, player_trade,
+};
 use crate::{player_espionage, player_religion, player_resources, player_stats, player_techs};
 use crate::{player_treasury, player_units};
 
@@ -34,6 +36,9 @@ pub enum Error {
     Units(player_units::Error),
     Eras(player_eras::Error),
     Trade(player_trade::Error),
+    GreatPeoplePoints(player_great_people_points::Error),
+    Influence(player_influence::Error),
+    Quests(player_quests::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -123,13 +128,16 @@ pub struct FirstPlayer {
     pub units: player_units::Units,
     pub eras: player_eras::Eras,
     pub trade: player_trade::Trade,
+    pub great_people_points: player_great_people_points::GreatPeoplePoints,
+    pub influence: player_influence::Influence,
+    pub quests: player_quests::Quests,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerGreatPeoplePoints,
+    PlayerWmds,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -137,7 +145,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerGreatPeoplePoints.
+    /// No complete Player entry has been consumed at PlayerWmds.
     pub unfinished_player_entries: u32,
 }
 
@@ -450,6 +458,18 @@ impl Prefix {
             let units = r.component(player_units::Units::decode_prefix_with_items, Error::Units)?;
             let eras = r.component(player_eras::Eras::decode_prefix_with_items, Error::Eras)?;
             let trade = r.component(player_trade::Trade::decode_prefix_with_items, Error::Trade)?;
+            let great_people_points = r.component(
+                player_great_people_points::GreatPeoplePoints::decode_prefix_with_items,
+                Error::GreatPeoplePoints,
+            )?;
+            let influence = r.component(
+                player_influence::Influence::decode_prefix_with_items,
+                Error::Influence,
+            )?;
+            let quests = r.component(
+                player_quests::Quests::decode_prefix_with_items,
+                Error::Quests,
+            )?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -471,10 +491,13 @@ impl Prefix {
                 units,
                 eras,
                 trade,
+                great_people_points,
+                influence,
+                quests,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerGreatPeoplePoints
+            Boundary::PlayerWmds
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -1374,6 +1397,79 @@ mod tests {
             domestic_trade_disabled_count: -2949,
         }
     }
+    // Explicit arbitrary saved-wire fields, not native initialization defaults.
+    fn great_people_points_carrier() -> player_great_people_points::GreatPeoplePoints {
+        player_great_people_points::GreatPeoplePoints {
+            player: -4000,
+            points_total: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            points_earned_this_turn: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            bonus_points_per_turn: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            free_great_person_points: -3996,
+            points_refund_percent: -3995,
+            no_patronage_faith: true,
+            no_patronage_gold: true,
+            patronage_discount_percent: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            bonus_points_per_turn_percent: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            yield_modifier_per_earned_great_person: vec![
+                (u32::MAX, i32::MIN),
+                (u32::MAX, i32::MAX),
+            ],
+            yield_change_per_earned_great_person_class: vec![
+                player_great_people_points::YieldChangePerEarnedGreatPersonClassOnResource {
+                    yield_hash: u32::MAX,
+                    great_person_class_hash: 0x80000000,
+                    resource_hash: 7,
+                    amount: i32::MIN,
+                },
+            ],
+            great_person_boost_list: vec![player_great_people_points::GreatPersonEarnedBoost {
+                great_person_class_hash: 0x80000000,
+                tech_boost: true,
+                other_players: false,
+            }],
+            great_person_class_no_points: vec![u32::MAX, 0x80000000],
+        }
+    }
+    // Explicit arbitrary saved-wire fields, not native initialization defaults.
+    fn influence_carrier() -> player_influence::Influence {
+        player_influence::Influence {
+            player: -4000,
+            points_earned: -3999,
+            base_points_per_turn: -3998,
+            not_earning_points: true,
+            points_threshold: -3996,
+            tokens_per_threshold: -3995,
+            tokens_to_give: -3994,
+            duplicate_first_tokens: -3993,
+            tokens_on_first_to_meet: -3992,
+            tokens_on_trade_route_started: -3991,
+            tokens_received: vec![i32::MIN, -1, i32::MAX],
+            virtual_tokens_received: vec![i32::MIN, -1, i32::MAX],
+            disallow_tokens_from: vec![true, false, true],
+            yield_per_given_token: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            suzerain: -3986,
+            suzerain_changed_count: -3985,
+            suzerain_unique_bonus_disabled_count: -3984,
+            levy_turn_counter: -3983,
+            yield_modifier_per_tributary: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            yield_per_tributary: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
+            open_borders_count: vec![i32::MIN, -1, i32::MAX],
+            levy_discount_percent_by_player: vec![i32::MIN, -1, i32::MAX],
+            copy_luxuries_count: vec![i32::MIN, -1, i32::MAX],
+            copy_strategics_count: vec![i32::MIN, -1, i32::MAX],
+            duplicate_tokens_when_rival_government: -3976,
+            duplicate_tokens_when_trade_route_to: -3975,
+            duplicate_tokens_when_same_religion: -3974,
+            suzerain_visibility_counter: -3973,
+            levy_discount_percent: -3972,
+            tokens_received_modifier: vec![i32::MIN, -1, i32::MAX],
+            max_tokens_received: vec![i32::MIN, -1, i32::MAX],
+        }
+    }
+    // Explicit arbitrary saved-wire fields, not native initialization defaults.
+    fn quests_carrier() -> player_quests::Quests {
+        player_quests::Quests { player: -4000 }
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -1438,6 +1534,13 @@ mod tests {
         out.extend(units_carrier().encode(Limits::default()).unwrap());
         words(&mut out, &[2, 0x80000000, u32::MAX]);
         out.extend(trade_carrier().encode(Limits::default()).unwrap());
+        out.extend(
+            great_people_points_carrier()
+                .encode(Limits::default())
+                .unwrap(),
+        );
+        out.extend(influence_carrier().encode(Limits::default()).unwrap());
+        out.extend(quests_carrier().encode(Limits::default()).unwrap());
 
         out
     }
@@ -1445,11 +1548,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched GreatPeoplePoints");
+        trailing.extend_from_slice(b"untouched Wmds");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerGreatPeoplePoints);
+        assert_eq!(value.boundary, Boundary::PlayerWmds);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1475,7 +1578,7 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::Trade(player_trade::Error::ResourceLimit))
+            Err(Error::Influence(player_influence::Error::ResourceLimit))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -1521,6 +1624,22 @@ mod tests {
         assert_eq!(p.eras.game_era_hash, u32::MAX);
         assert_eq!(p.trade.player, -3000);
         assert_eq!(p.trade.flat_yield_bonus_per_player[63], [(63, 31)]);
+        assert!(p.great_people_points.great_person_boost_list[0].tech_boost);
+        assert_eq!(
+            p.influence.levy_discount_percent_by_player,
+            [i32::MIN, -1, i32::MAX]
+        );
+        assert_eq!(p.quests.player, -4000);
+        assert_eq!(
+            p.quests
+                .encode_with_items(Limits {
+                    max_bytes: 8,
+                    max_items: 0
+                })
+                .unwrap()
+                .1,
+            0
+        );
         assert_eq!(
             p.trade.flat_origin_yield_per_terrain_for_domestic[0].1,
             [(9, -257), (9, 513)]
@@ -1557,7 +1676,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::Trade(player_trade::Error::ResourceLimit))
+            Err(Error::Influence(player_influence::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -1586,7 +1705,15 @@ mod tests {
             + player.treasury.encode(Limits::default()).unwrap().len()
             + player.units.encode(Limits::default()).unwrap().len()
             + player.eras.encode(Limits::default()).unwrap().len()
-            + player.trade.encode(Limits::default()).unwrap().len();
+            + player.trade.encode(Limits::default()).unwrap().len()
+            + player
+                .great_people_points
+                .encode(Limits::default())
+                .unwrap()
+                .len()
+            + player.influence.encode(Limits::default()).unwrap().len()
+            + player.quests.encode(Limits::default()).unwrap().len();
+
         let names_start = n - later_bytes - culture.len() - names.len();
         let culture_start = n - later_bytes - culture.len();
         let changed = value.encode_prefix(Limits::default()).unwrap();
@@ -1625,7 +1752,14 @@ mod tests {
         let after_techs = p.treasury.encode(Limits::default()).unwrap().len()
             + p.units.encode(Limits::default()).unwrap().len()
             + p.eras.encode(Limits::default()).unwrap().len()
-            + p.trade.encode(Limits::default()).unwrap().len();
+            + p.trade.encode(Limits::default()).unwrap().len()
+            + p.great_people_points
+                .encode(Limits::default())
+                .unwrap()
+                .len()
+            + p.influence.encode(Limits::default()).unwrap().len()
+            + p.quests.encode(Limits::default()).unwrap().len();
+
         let stats_start = n - after_techs - techs.len() - stats.len();
         // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
         // words, four counted vectors, then the first WriteArray<int,64>.
@@ -1673,6 +1807,12 @@ mod tests {
         let p = v.first_player.unwrap();
         let units = p.units.encode(Limits::default()).unwrap();
         let start = n
+            - p.great_people_points
+                .encode(Limits::default())
+                .unwrap()
+                .len()
+            - p.influence.encode(Limits::default()).unwrap().len()
+            - p.quests.encode(Limits::default()).unwrap().len()
             - p.trade.encode(Limits::default()).unwrap().len()
             - p.eras.encode(Limits::default()).unwrap().len()
             - units.len();
@@ -1717,7 +1857,7 @@ mod tests {
         )
         .unwrap();
         let prefix = &value.player_prefix;
-        assert_eq!(prefix.boundary, Boundary::PlayerGreatPeoplePoints);
+        assert_eq!(prefix.boundary, Boundary::PlayerWmds);
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
         let post_map = &bytes[value.core.consumed..];
         assert_eq!(encoded, post_map[..encoded.len()]);
@@ -1764,7 +1904,15 @@ mod tests {
         let bytes = carrier();
         let (v, n, items) = Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
         let player = v.first_player.as_ref().unwrap();
-        let trade_bytes = player.trade.encode(Limits::default()).unwrap().len();
+        let trade_bytes = player.trade.encode(Limits::default()).unwrap().len()
+            + player
+                .great_people_points
+                .encode(Limits::default())
+                .unwrap()
+                .len()
+            + player.influence.encode(Limits::default()).unwrap().len()
+            + player.quests.encode(Limits::default()).unwrap().len();
+
         let eras = player.eras;
         let (encoded, era_items) = eras
             .encode_with_items(Limits {
@@ -1801,18 +1949,44 @@ mod tests {
     fn complete_trade_tail_requires_current_version() {
         let mut bytes = carrier();
         let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
-        let trade = v
-            .first_player
-            .unwrap()
-            .trade
+        let p = v.first_player.unwrap();
+        let trade = p.trade.encode(Limits::default()).unwrap();
+        let later = p
+            .great_people_points
             .encode(Limits::default())
-            .unwrap();
-        bytes[n - trade.len()..n - trade.len() + 4].copy_from_slice(&36u32.to_le_bytes());
+            .unwrap()
+            .len()
+            + p.influence.encode(Limits::default()).unwrap().len()
+            + p.quests.encode(Limits::default()).unwrap().len();
+        bytes[n - later - trade.len()..n - later - trade.len() + 4]
+            .copy_from_slice(&36u32.to_le_bytes());
         assert!(matches!(
             Prefix::decode_prefix(&bytes, Limits::default()),
             Err(Error::Trade(player_trade::Error::Version {
                 expected: 35,
                 actual: 36
+            }))
+        ));
+    }
+    #[test]
+    fn quests_zero_item_tail_requires_current_version() {
+        let mut bytes = carrier();
+        let (v, n, items) = Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        let quests = v.first_player.unwrap().quests;
+        let (encoded, quest_items) = quests
+            .encode_with_items(Limits {
+                max_bytes: 8,
+                max_items: 0,
+            })
+            .unwrap();
+        assert_eq!((encoded.len(), quest_items), (8, 0));
+        assert!(items > 0);
+        bytes[n - encoded.len()..n - encoded.len() + 4].copy_from_slice(&2u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bytes, Limits::default()),
+            Err(Error::Quests(player_quests::Error::Version {
+                expected: 1,
+                actual: 2
             }))
         ));
     }
@@ -2119,8 +2293,7 @@ impl Prefix {
         if self.unfinished_player_entries != self.player_count
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
-                (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerGreatPeoplePoints)
+                (0, None, Boundary::AfterEmptyPlayerManager) | (1.., Some(_), Boundary::PlayerWmds)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -2221,6 +2394,21 @@ impl Prefix {
                 player_trade::Trade::encode_with_items,
                 Error::Trade,
             )?;
+            w.component(
+                &p.great_people_points,
+                player_great_people_points::GreatPeoplePoints::encode_with_items,
+                Error::GreatPeoplePoints,
+            )?;
+            w.component(
+                &p.influence,
+                player_influence::Influence::encode_with_items,
+                Error::Influence,
+            )?;
+            w.component(
+                &p.quests,
+                player_quests::Quests::encode_with_items,
+                Error::Quests,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -2263,7 +2451,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerGreatPeoplePoints;
+        v.boundary = Boundary::PlayerWmds;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
