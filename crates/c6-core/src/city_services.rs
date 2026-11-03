@@ -1,7 +1,8 @@
 //! Bounded Linux XP2 City service-component wire records, not live-state application.
 //! Resources admits7/10 with explicit omitted-list effects; Combat admits6/7
-//! with an explicit HP-modifier0 default. Trade admits10/12 with omitted
-//! Yield-list zero effects. Other components
+//! with an explicit zero HP modifier default. Trade admits10/12 with omitted
+//! Yield-list zero effects. Power admits3/10 with explicit scalar and source-list
+//! initialization effects. Other components
 //! retain their separately checked current versions.
 //! Target SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
 //! W/R: Religion 0x28c28e0/0x28c29b0, Resources 0x28c6190/0x28c6270,
@@ -409,13 +410,28 @@ record!(GeneratedPowerSource, POWER_VERSION, {
  amount_raw_q8:i32, source_resource_hash:u32, source_consumed_raw_q8:i32,
  to_city:CityId, location:PlotCoord,
 });
-record!(Power, POWER_VERSION, {
+record!(Power, POWER_VERSION, legacy 3, wire_version, {
  free_power_raw_q8:i32, temporary_power_raw_q8:i32, required_power_total_raw_q8:i32,
- required_power_from_modifiers_raw_q8:i32, ever_generated_power:bool,
- turn_last_notified_need_power:i32, free_power_sources:Vec<FreePowerSource>,
- temporary_power_sources:Vec<TemporaryPowerSource>, required_power_sources:Vec<RequiredPowerSource>,
- generated_power_sources:Vec<GeneratedPowerSource>, modified_free_power:i32,
+ required_power_from_modifiers_raw_q8:i32, ever_generated_power:bool => (4, 10),
+ turn_last_notified_need_power:i32 => (5, 10), free_power_sources:Vec<FreePowerSource> => (6, 10),
+ temporary_power_sources:Vec<TemporaryPowerSource> => (6, 10), required_power_sources:Vec<RequiredPowerSource> => (6, 10),
+ generated_power_sources:Vec<GeneratedPowerSource> => (8, 10), modified_free_power:i32 => (10, 10),
 });
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PowerSourceListReadEffect {
+    Present,
+    EmptyAfterNativeInitializeLists,
+}
+impl Power {
+    pub fn source_lists_read_effect(&self) -> PowerSourceListReadEffect {
+        if self.wire_version == 3 {
+            PowerSourceListReadEffect::EmptyAfterNativeInitializeLists
+        } else {
+            PowerSourceListReadEffect::Present
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -535,6 +551,76 @@ mod tests {
             }
             v
         }};
+    }
+    #[test]
+    fn power3_preserves_four_q8_scalars_and_source_initialization_effects() {
+        let mut bytes = Vec::new();
+        ints(&mut bytes, &[3, i32::MIN, -257, i32::MAX, 258]);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 0,
+        };
+        let (value, used, items) = Power::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 0));
+        assert_eq!(value.wire_version, 3);
+        assert_eq!(
+            [
+                value.free_power_raw_q8,
+                value.temporary_power_raw_q8,
+                value.required_power_total_raw_q8,
+                value.required_power_from_modifiers_raw_q8
+            ],
+            [i32::MIN, -257, i32::MAX, 258]
+        );
+        assert!(!value.ever_generated_power);
+        assert_eq!(
+            (
+                value.turn_last_notified_need_power,
+                value.modified_free_power
+            ),
+            (0, 0)
+        );
+        assert!(value.free_power_sources.is_empty());
+        assert!(value.temporary_power_sources.is_empty());
+        assert!(value.required_power_sources.is_empty());
+        assert!(value.generated_power_sources.is_empty());
+        assert_eq!(
+            value.source_lists_read_effect(),
+            PowerSourceListReadEffect::EmptyAfterNativeInitializeLists
+        );
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Power::decode_prefix(&bytes[..n], limits).is_err(), "{n}");
+        }
+        assert_eq!(
+            Power::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: end - 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [2i32, 4, 9, 11] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Power::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 10,
+                    actual: version
+                })
+            );
+        }
+        let current = Power::decode(&power(), Limits::default()).unwrap();
+        assert_eq!(
+            current.source_lists_read_effect(),
+            PowerSourceListReadEffect::Present
+        );
+        assert_eq!(current.encode(Limits::default()).unwrap(), power());
     }
     #[test]
     fn trade10_omits_three_late_yield_lists_with_per_definition_zero() {
