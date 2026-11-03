@@ -1085,8 +1085,14 @@ impl FirstPlayer {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+    /// Complete arbitrary source-only wire carrier for consuming adapter tests;
+    /// not an initialized native Player or a runtime constructor default.
+    pub(crate) fn source_first_player() -> FirstPlayer {
+        complete_source_player(0, true, true).0
+    }
+
     fn words(out: &mut Vec<u8>, values: &[u32]) {
         for value in values {
             out.extend_from_slice(&value.to_le_bytes());
