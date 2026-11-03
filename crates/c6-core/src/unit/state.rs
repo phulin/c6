@@ -1205,6 +1205,38 @@ impl Unit {
         limits: Limits,
     ) -> Result<(Self, Vec<FieldRange>), Error> {
         let mut r = Reader::new(bytes, limits)?;
+        let value = Self::read_with_ranges(&mut r)?;
+        r.finish()?;
+        Ok(value)
+    }
+    /// Decode one current Unit at a structural cursor, leaving the caller's tail
+    /// untouched. Returns consumed bytes and the aggregate dynamic-item charge.
+    /// Only the consumed record is subject to the byte limit.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let clipped = bytes.len() > limits.max_bytes;
+        let input = &bytes[..bytes.len().min(limits.max_bytes)];
+        let mut r = Reader::new(input, limits)?;
+        let (value, _) = Self::read_with_ranges(&mut r).map_err(|error| {
+            if clipped
+                && matches!(
+                    error,
+                    Error::Truncated | Error::Variant(variants::VariantError::Truncated)
+                )
+            {
+                Error::ResourceLimit
+            } else {
+                error
+            }
+        })?;
+        Ok((value, r.pos, limits.max_items - r.budget))
+    }
+    pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        Self::decode_prefix_with_items(bytes, limits).map(|(value, consumed, _)| (value, consumed))
+    }
+    fn read_with_ranges(mut r: &mut Reader<'_>) -> Result<(Self, Vec<FieldRange>), Error> {
         r.version(28)?;
         let mut ranges = Vec::new();
         let start = r.pos;
@@ -1718,7 +1750,6 @@ impl Unit {
             start,
             end: r.pos,
         });
-        r.finish()?;
         Ok((
             Self {
                 id,
@@ -1799,6 +1830,10 @@ impl Unit {
         ))
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+        self.encode_with_items(limits).map(|(bytes, _)| bytes)
+    }
+    /// Encode the supported record and report its aggregate dynamic-item charge.
+    pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let mut w = Writer {
             bytes: Vec::new(),
             budget: limits.max_items,
@@ -1878,7 +1913,7 @@ impl Unit {
         self.k_operations_disabled.write(&mut w)?;
         self.k_hero.write(&mut w)?;
         self.k_properties.write(&mut w)?;
-        Ok(w.bytes)
+        Ok((w.bytes, limits.max_items - w.budget))
     }
 }
 
@@ -1932,6 +1967,42 @@ mod tests {
             budget: 100,
             max_bytes: 1000,
         }
+    }
+    #[test]
+    fn prefix_preserves_version_errors_and_distinguishes_clipping() {
+        let limits = Limits {
+            max_bytes: 4,
+            max_items: 0,
+        };
+        assert_eq!(
+            Unit::decode_prefix(&[28, 0, 0], limits),
+            Err(Error::Truncated)
+        );
+        assert_eq!(
+            Unit::decode_prefix(&[28, 0, 0, 0, 0], limits),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Unit::decode(&[28, 0, 0, 0, 0], limits),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Unit::decode_prefix(&[27, 0, 0, 0, 0], limits),
+            Err(Error::Version {
+                expected: 28,
+                actual: 27
+            })
+        );
+        assert_eq!(
+            Unit::decode_prefix(
+                &[28, 0, 0, 0],
+                Limits {
+                    max_bytes: 0,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
     }
     #[test]
     fn independent_health_and_component_id_wire_boundaries() {
