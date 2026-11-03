@@ -66,8 +66,8 @@ def candidate(pin, records):
                     isolated_export_added=False, source_files_sha256=source_hashes,
                     every_source_hash_verified_against_git_pin=True, actual_exported_crate_tests=True,
                     candidate_uses_exported_crate=True, archive_source_mutations=False,
-                    exact_byte_and_shared_item_caps=True, bounded_native_versions_and_legacy_flags=True, bounded_native_truncations_rejected=True,
-                    short_byte_and_item_caps_rejected=True, strict_trailing_rejected=True,
+                    exact_byte_cap_and_zero_item_credit=True, bounded_native_versions_and_legacy_flags=True, bounded_native_truncations_rejected=True,
+                    short_byte_caps_rejected=True, strict_trailing_rejected=True,
                     exact_prefix_consumption=True)
 
 def main():
