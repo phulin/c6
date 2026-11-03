@@ -1,0 +1,218 @@
+{
+  "schema": "c6-linux-player-prerequisites-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "methods": [
+    {
+      "address": "0x2b89f90",
+      "bytes": 242,
+      "name": "Player.Techs.Write",
+      "sha256": "a1eee5b85bf91e347826bbf1fc76bdaa2c7f54e983e55d9bde95e9b36055e8d6"
+    },
+    {
+      "address": "0x2b8a090",
+      "bytes": 494,
+      "name": "Player.Techs.Read",
+      "sha256": "eadb0d0289bb1cdefd1870b3bccac5a6022119147595fdd84327e634156b6553"
+    },
+    {
+      "address": "0x2b8a280",
+      "bytes": 384,
+      "name": "Player.Techs.Reset",
+      "sha256": "b8eba90de6208478dccacd31d781e2f77f7de6c8e06d11f87db9816d11927ec3"
+    },
+    {
+      "address": "0x2a6e330",
+      "bytes": 1357,
+      "name": "Player.Culture.Write",
+      "sha256": "9f823e183f89f4a5e93421be6d5eefab371538923b3cfc193d11dfb413707232"
+    },
+    {
+      "address": "0x2a6e880",
+      "bytes": 3414,
+      "name": "Player.Culture.Read",
+      "sha256": "65066739c39f896f5058cf0b5c11ff19085e7d2eae23930a9695bda1cec380b2"
+    },
+    {
+      "address": "0x2a6f5e0",
+      "bytes": 2026,
+      "name": "Player.Culture.Reset",
+      "sha256": "bbd64b805d50c69fe2ee3ff5179d4b568c85a3cbf52ff509ea04d50d54a6f225"
+    },
+    {
+      "address": "0x218fd60",
+      "bytes": 149,
+      "name": "Technology.ReadIndexHashArray.bool",
+      "sha256": "40b036252c1824179cc68526958d444b6d22db6d9791ec360d73dfacc11e3083"
+    },
+    {
+      "address": "0x218fe50",
+      "bytes": 138,
+      "name": "Technology.WriteIndexHashArray.bool",
+      "sha256": "ff63bebb8b64f6198886ad14a9b928b9e9201b097a4a00784c99e9f8335d6249"
+    },
+    {
+      "address": "0x2a7ead0",
+      "bytes": 149,
+      "name": "Civic.ReadIndexHashArray.bool",
+      "sha256": "393963ad90a53b3b31abf3ba73c0856089a60449af713aeecd5a6a66793aa06a"
+    },
+    {
+      "address": "0x2a7e1d0",
+      "bytes": 138,
+      "name": "Civic.WriteIndexHashArray.bool",
+      "sha256": "fd4403786ee9ac4d96074a7a7f83146088d30a65230239a871263b22a4ad1df2"
+    },
+    {
+      "address": "0x2016480",
+      "bytes": 34,
+      "name": "Technology.HashToIndex",
+      "sha256": "bbba3422fa0bd6194a1c30c88ee7b8e77f8f7f0733c020e55d5c967202a1dd21"
+    },
+    {
+      "address": "0x2017150",
+      "bytes": 34,
+      "name": "Civic.HashToIndex",
+      "sha256": "748e53de45220156b20d66f313d3a803b68d269be59bcac16833d8a36347aab2"
+    },
+    {
+      "address": "0x2a2d150",
+      "bytes": 15,
+      "name": "Game.GetNumTechs",
+      "sha256": "b7cc5f4e936d8d76f805906b752cfedcd703ebf43ded08244f8be2a7dbc6d9ae"
+    },
+    {
+      "address": "0x29783c0",
+      "bytes": 15,
+      "name": "Game.GetNumCivics",
+      "sha256": "4572387a33de0b4f82f7b37e06ea0bf5f13dd6494a92187786695ebdbda01827"
+    },
+    {
+      "address": "0x2a2d180",
+      "bytes": 132,
+      "name": "Game.GetTechNode",
+      "sha256": "a7ba4456eb131bf96c471355b9e7266eeca1fb924e828b1dfa32670b15614095"
+    },
+    {
+      "address": "0x2978330",
+      "bytes": 132,
+      "name": "Game.GetCivicNode",
+      "sha256": "dc69e6d710859a001da3691f848c32cfffd1db53be66ab275f12b3d3520dfdaf"
+    },
+    {
+      "address": "0x2a2e460",
+      "bytes": 4,
+      "name": "TechNode.IsActive",
+      "sha256": "b3f029064691ffb01edfa268341c425a57f45a1174d9b787a33bff7f42083fc4"
+    },
+    {
+      "address": "0x297a950",
+      "bytes": 4,
+      "name": "CivicNode.IsActive",
+      "sha256": "b3f029064691ffb01edfa268341c425a57f45a1174d9b787a33bff7f42083fc4"
+    },
+    {
+      "address": "0x1fe81a0",
+      "bytes": 75,
+      "name": "IStream.ReadObject.bool",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    }
+  ],
+  "calls": [
+    {
+      "address": "0x2b8a0ac",
+      "target": "0x1f24d60",
+      "contract": "Techs Read invokes Reset before arrays"
+    },
+    {
+      "address": "0x2a6e8a1",
+      "target": "0x1fb91a0",
+      "contract": "Culture Read invokes Reset before arrays"
+    },
+    {
+      "address": "0x2b8a138",
+      "target": "0x1efadf0",
+      "contract": "first technology bool hash overlay"
+    },
+    {
+      "address": "0x2a6ec98",
+      "target": "0x1f23060",
+      "contract": "first civic bool hash overlay"
+    },
+    {
+      "address": "0x2b8a33d",
+      "target": "0x1f250d0",
+      "contract": "Techs acquired explicit-false resize"
+    },
+    {
+      "address": "0x2a6f8bd",
+      "target": "0x1f250d0",
+      "contract": "Culture acquired explicit-false resize"
+    },
+    {
+      "address": "0x218fdd6",
+      "target": "0x1f3f970",
+      "contract": "known or unknown hash consumes one bool"
+    }
+  ],
+  "instruction_contracts": [
+    {
+      "address": "0x2b8a330",
+      "bytes": "c6042400",
+      "contract": "Techs Reset explicit false byte"
+    },
+    {
+      "address": "0x2a6f8b3",
+      "bytes": "c6042400",
+      "contract": "Culture Reset explicit false byte"
+    },
+    {
+      "address": "0x2a2e460",
+      "bytes": "8a4704c3",
+      "contract": "TechNode active byte at offset4"
+    },
+    {
+      "address": "0x297a950",
+      "bytes": "8a4704c3",
+      "contract": "CivicNode active byte at offset4"
+    },
+    {
+      "address": "0x1fe81b2",
+      "bytes": "be01000000",
+      "contract": "bool ReadObject requests one byte"
+    }
+  ],
+  "acquired_vectors": {
+    "technology_raw_offset": "0x140",
+    "technology_auto_offset": "0x130",
+    "civic_raw_offset": "0x360",
+    "civic_auto_offset": "0x350",
+    "array": "first bool hash array in each owner",
+    "reset": "clear and resize false to actual definition count",
+    "wire": "u32 pair count then u32 hash and byte bool in original order; unknown hashes consumed, later duplicates overwrite",
+    "remapping": "HashToIndex calls actual native definition Find then GetCollectionIndex"
+  },
+  "global_nodes": {
+    "owner_raw_offset": "0xc0",
+    "type": "signed32 native enum",
+    "active_offset": 4,
+    "completeness": "whole ordered post-Read/Validate live node vector",
+    "lookup": "minusone absent; matching positional fast path; otherwise first matching node; absent/inactive false"
+  },
+  "remaining_capture": [
+    "structural location of acquired arrays through complete preceding unframed Player components, or actual complete live acquired vectors",
+    "complete original live Game.Techs/Culture nodes after Validate",
+    "native-order actual technology/civic definition registries and full module/rules/DLC/mod/configuration identity",
+    "initialized native differential output and affected-state comparison"
+  ],
+  "private_evidence": "../c6-ghidra/evidence/linux-player-prerequisites",
+  "source_sha256": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+  "native_execution": false,
+  "native_differential_acceptance": false,
+  "complete_owner_codec": false,
+  "complete_core_import": false,
+  "gameplay_parity": false,
+  "action_parity": false,
+  "turn_parity": false,
+  "raw_save_load_difference_bytes": 89198
+}
