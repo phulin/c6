@@ -1,0 +1,276 @@
+{
+  "schema": "c6-linux-current-handler-interruption-metadata-preparation-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "original_execution_performed": false,
+  "runner_integrated": false,
+  "native_outputs_available": false,
+  "source_prediction_report_preserved_at": "1dae236",
+  "methods": [
+    {
+      "name": "GameCore::Context::Globals::GetGame()",
+      "rva": "0x1fcc320",
+      "bytes": 11,
+      "sha256": "440d8ec0711321eeaafb3479cabd65b277a965561733cb61087722b09b561205"
+    },
+    {
+      "name": "GameCore::Unit::Operations::Manager::Get()",
+      "rva": "0x2da1260",
+      "bytes": 26,
+      "sha256": "247a0c981c4169f399c86ecce00bb2cc63f7100c890337325450e592e3addcd4"
+    },
+    {
+      "name": "GameCore::Game::Instance::GetPlayerManager()",
+      "rva": "0x20e0670",
+      "bytes": 8,
+      "sha256": "7a5e82ab0d9eeb4a98fea0624663246fda26b6bad0a9771e4fc3d236b7f2f300"
+    },
+    {
+      "name": "GameCore::Player::Manager::GetValidPlayer(GameCore::PlayerTypes) const",
+      "rva": "0x2003940",
+      "bytes": 39,
+      "sha256": "58bb7297d06455fd64617c3472f7087054b4aa5fa1b28ab20ce94cb74db41648"
+    },
+    {
+      "name": "GameCore::Player::Instance::GetID() const",
+      "rva": "0x1fcc140",
+      "bytes": 7,
+      "sha256": "e997d06cf0d3f9b3bb89701ec15a7b1b096198fdc4b0dc87fc0ca29c37f6dadc"
+    },
+    {
+      "name": "GameCore::Player::Instance::GetUnits() const",
+      "rva": "0x1fccc70",
+      "bytes": 8,
+      "sha256": "881c20b86cb02a6b25219fefe1ac158db460204e9e4bc34be216221471420a51"
+    },
+    {
+      "name": "GameCore::Player::Units::GetCount() const",
+      "rva": "0x1fe4ee0",
+      "bytes": 12,
+      "sha256": "b930b8a5f0d6c66958e0245758e8e2a791e6ed138d16ab757a53e77bfaa781df"
+    },
+    {
+      "name": "GameCore::Player::Units::Begin() const",
+      "rva": "0x2021450",
+      "bytes": 12,
+      "sha256": "87a7388edb2ca1089c2f92e438b0559902f54df42b77aa83adc5040d7ab976b0"
+    },
+    {
+      "name": "GameCore::Player::Units::End() const",
+      "rva": "0x2021470",
+      "bytes": 12,
+      "sha256": "c5e02649a25516f44f997a359dca4f57a10b74779f7e0d9f3d303d3aca711aa7"
+    },
+    {
+      "name": "RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::const_iterator::operator->() const",
+      "rva": "0x2021480",
+      "bytes": 7,
+      "sha256": "8b27de69f246bbea1ce9a72d955612ead4d947a493ae43bb249a7dda29e60023"
+    },
+    {
+      "name": "GameCore::Unit::IInstance::GetID() const",
+      "rva": "0x2021490",
+      "bytes": 7,
+      "sha256": "317ef4dac77c526b04292f52727705f4b2857f4e0c5620bf48414d69903402e5"
+    },
+    {
+      "name": "RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::const_iterator::operator++()",
+      "rva": "0x20214a0",
+      "bytes": 14,
+      "sha256": "ee14fc8eab331243e425499cf6bf96a37a747d268887d427a97eea2a287ec507"
+    },
+    {
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const",
+      "rva": "0x2004fc0",
+      "bytes": 51,
+      "sha256": "31c2b843f442ca71b8fd27edeccb2888940a331a9f50686c2a1e078cd25be038"
+    },
+    {
+      "name": "GameCore::Player::Manager::GetPlayerToIndex() const",
+      "rva": "0x2004680",
+      "bytes": 12,
+      "sha256": "4559158698f06477f0713cb29647b1504e9dfc42ad6c2b39d4dda61184eb794b"
+    },
+    {
+      "name": "GameCore::Player::Units::Find(unsigned int) const",
+      "rva": "0x2ba5580",
+      "bytes": 12,
+      "sha256": "d198a658e55262febda648055233f9b1d2069441377f889fb95313bd318f7091"
+    },
+    {
+      "name": "Manager.CanCurrentOperationBeInterrupted",
+      "rva": "0x2da2a60",
+      "bytes": 116,
+      "sha256": "6b2b1cbb8b18460cf4fb4f4f7a8000cd6f42ae2108cab549666eb1a387772ebe"
+    },
+    {
+      "name": "Manager.GetHandler.const",
+      "rva": "0x2da1650",
+      "bytes": 82,
+      "sha256": "a6c3ddb3a4c632585f054c52a76e6a0377372006cfa26f686dda45efe145ad13"
+    },
+    {
+      "name": "Manager.GetHandlerFromHash.const",
+      "rva": "0x2da16f0",
+      "bytes": 40,
+      "sha256": "68cbcbc6d76334d0b491a466d0e0738d8b271329af36a2e42d89db3fb0e0da64"
+    },
+    {
+      "name": "Manager.GetHandlerIDFromHash",
+      "rva": "0x2da1720",
+      "bytes": 86,
+      "sha256": "e67620512f7440c1ca5486dc10569f19d23e2e7bc7ff46a97d7174146b9a7a86"
+    },
+    {
+      "name": "HashID.ctor.int",
+      "rva": "0x27807f0",
+      "bytes": 3,
+      "sha256": "e57f6082d61fbfc2f1375ebe719921bae81e81ff55cb3522867874eaaf77ff16"
+    },
+    {
+      "name": "HashID.IsIndex",
+      "rva": "0x270bbb0",
+      "bytes": 10,
+      "sha256": "ce1dd75acdae031898267e299d8f0aaac9c1abef458d6f23dd9f4476624ce95d"
+    },
+    {
+      "name": "BaseHandler.CanBeInterrupted",
+      "rva": "0x2d95660",
+      "bytes": 3,
+      "sha256": "e18aacce29affcdddaa5f641ac1ec12552e0fe9d066e6408941b1792818b8619"
+    },
+    {
+      "name": "MakeTradeRoute.CanBeInterrupted",
+      "rva": "0x2da0920",
+      "bytes": 3,
+      "sha256": "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+    },
+    {
+      "name": "CoreComponentContainer.GetByIndex",
+      "rva": "0x264c060",
+      "bytes": 42,
+      "sha256": "e864d685fed8e09fe6089b219d16d885221ad68c732a5c70a0d3a9d2167fac11"
+    },
+    {
+      "name": "QueueVector.size",
+      "rva": "0x2702f10",
+      "bytes": 7,
+      "sha256": "53f55dbf3d8cb1fbf639f2b8af689476331653b4d8286762335ad75b745e8c0f"
+    },
+    {
+      "name": "QueueVector.at.const",
+      "rva": "0x2da11e0",
+      "bytes": 26,
+      "sha256": "25a69ba9b57a449de3250e5b8823f65eeef8b841d23c565ca9197d4db45255a3"
+    },
+    {
+      "name": "NodePointer.conversion",
+      "rva": "0x20e35f0",
+      "bytes": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "RecycledUnit.Begin.const",
+      "rva": "0x2021b30",
+      "bytes": 19,
+      "sha256": "d4ff4d3fd24a8e1b41e08972d13d9e012bf7605e02d2020a63090f6b1ddbdfd8"
+    },
+    {
+      "name": "RecycledUnit.End.const",
+      "rva": "0x2021b60",
+      "bytes": 17,
+      "sha256": "bbbc9fb4f7c610f2dc622c2031b6590c4b5a117159c7d78d7b260f08b03d26a2"
+    },
+    {
+      "name": "RecycledUnit.Find.const",
+      "rva": "0x2baa650",
+      "bytes": 84,
+      "sha256": "23187b5ffe8639ccf9e9f356f40d40c171a4e81ef1d4488b412aa1262744a899"
+    },
+    {
+      "name": "PlayerManager.IsValidRange",
+      "rva": "0x2005000",
+      "bytes": 7,
+      "sha256": "1bda6fddb3180619888eb42cbb75a05d0877b5498c502ebb72ec289b4e0ba7a1"
+    }
+  ],
+  "target_dwarf_sha256": "e331d3ae600ddc6785782f876b31db9725be34e23b17239ab67e27119ec7b2ae",
+  "layout": {
+    "game_current_global": "0x3c051a8",
+    "manager_component_index": "0x3c00684",
+    "game_components_offset": 8,
+    "component_stride": 288,
+    "manager_bytes": 104,
+    "handler_vector_offset": 24,
+    "handler_base_bytes": 16,
+    "handler_id_offset": 8,
+    "handler_hash_offset": 12,
+    "interruption_slot": 32,
+    "player_manager_offset": 584,
+    "player_id_to_player_offset": 32,
+    "player_id_to_index_offset": 6664,
+    "player_id_offset": 224,
+    "player_units_offset": 1744,
+    "units_parent_offset": 152,
+    "recycled_container_offset": 160,
+    "recycled_bytes": 72,
+    "block_entries": 8,
+    "block_entry_bytes": 24,
+    "unit_vptr_rva": "0x3ae5f80",
+    "unit_id_offset": 184,
+    "unit_owner_offset": 304,
+    "unit_queue_offset": 3088,
+    "queue_bytes": 200,
+    "queue_block_offset": 176,
+    "queue_capacity_offset": 184,
+    "queue_count_offset": 192,
+    "node_bytes": 40
+  },
+  "helper_original_calls": [],
+  "caller_callback": "required strict retained-context idle admission; separately source/profile gated",
+  "runtime_requirements": [
+    "whole actual module file and /proc/self/exe hashes match pinned target",
+    "actual live Manager slots and supported complete code bytes match hashed original file",
+    "actual live handler +0x20 target belongs to mapped executable original module and matches complete leaf bytes",
+    "all65 mapped Player slots and complete original active Unit container membership",
+    "native current node raw bits resolve to bounded actual vector slot; non-index current identities explicitly unsupported",
+    "unmasked native queue header and entire native block capacity bytes retained; no parameter dereference",
+    "same-context callback and retained original owner lock/lifetime; no original getters or predicates called by helper"
+  ],
+  "tests": {
+    "strict_compiler": true,
+    "gcc_analyzer": true,
+    "ubsan_synthetic_harness": true,
+    "hash_standard_vectors": 2,
+    "streamed_hash_boundary_sizes": 10,
+    "wrong_hash_refusals": 10,
+    "original_asset_files_hashed_without_execution": 2,
+    "unreadable_overflow_refused": true,
+    "queue_shape_and_native_identity_boundaries": true,
+    "complete65_slot_synthetic_roster_and_block_membership": true,
+    "wrong_slot_parent_and_active_list_tail_refused": true,
+    "live_code_mismatch_and_nonexecuting_segment_refused": true,
+    "actual_runtime_code_map_permissions_and_file_owner_required": true,
+    "unknown_idle_fatal_exit": 240,
+    "original_execution": false,
+    "synthetic_fixtures_are_not_native_binding_acceptance": true
+  },
+  "open_integration": [
+    "separate metadata profile and caller guard/source identities",
+    "retained Context/Game/root/session lifetimes and main-thread native lock",
+    "two full passes, six unmasked Saves, known64 RNG endpoint bytes and terminal cleanup",
+    "same-context serializer ownership/hash evidence and independently observed reverse-map answers",
+    "independent pre-answer checker/profile admission before sole future native capture"
+  ],
+  "full_manager_supported": false,
+  "complete_state_action_rng_turns_supported": false,
+  "historical_raw_save_load_failure_bytes": 89198,
+  "source_sha256": {
+    "native/linux/current_handler_interruption.c": "0df30f0bc7f93783f1d07916faade138e601a2046e612f2eb3c56e8bd2e80eaa",
+    "native/linux/current_handler_interruption.h": "705fcc9d02f59d5a9ef2ccdb5ff65deb4df1d1abf718ca6ca3b0d8ba676ae589",
+    "tools/linux/current_handler_interruption_metadata_audit.py": "210e36acdd2d23f6d1c50b7a9585ee850c40a45c007528adb2b5b7df98ad8a5f",
+    "tools/linux/unit_operation_manager_metadata_audit.py": "da62ff2eae1c6de6ed34a0cb9929e431bae5e55a6d213e72c48f4de7f6107c96",
+    "tools/linux/current_handler_interruption_audit.py": "2087b35196c52418552a228b5b0d50d48ffef05a81030c03cfb6b45678e6fc09"
+  }
+}
