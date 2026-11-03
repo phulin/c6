@@ -8,22 +8,19 @@ The user-defined simulation boundary yields to external policies for **all playe
 
 **The complete Rust state/action/turn engine is not yet implemented.** The native Linux harness now activates XP2 content, attaches an offline session and successfully loads/saves the benchmark Core state with full constructed-provider cleanup. A separately identified authoritative Core SkipTurn executes repeatably, but complete gameplay affected-state parity, branch-restorable state, general actions and turns remain unverified. Full desktop/UI/network admission is optional integration, not a completion requirement for this library. Rust supplies validated primitives, bounded state/serialization components and rules/registry infrastructure. It is not yet usable for complete-game AI evaluation.
 
-| Area | Linux target status |
-| --- | --- |
-| Native host/context | Genuine filesystem, providers, StartupGame and owned cleanup verified |
-| XP2 content | Original Configure/Update succeeds; diagnostic callback uses request None, censorship=false and constructor-only nongraphics UI |
-| Linux rules inputs | Base and activated XP2 diagnostic exports match Rust/Python schema, typed rows and file fingerprints |
-| Offline session | Original Attach/Leave and cleanup verified for Base and XP2 profiles |
-| Native Core Load/Save | Benchmark Load returns OK; repeated Saves reproduce across processes; reloading captured output changes serialized bytes |
-| Native loaded-state queries | Read-only game facade reports turn/phase/local-player/processing state without changing serialized output |
-| Native conditional Core action | Fresh conditional command executes/repeats with matching post-Save, quiescence and cleanup; corrected reporting returns observed, transitive callback effects incomplete |
-| Original full-host action | Registered transport remains blocked by passively observed loading deferral; conditional Core execution does not establish host admission |
-| Optional desktop/network integration | Original receive/loading deferral remains unresolved; it is distinct from authoritative gameplay support |
-| Typed Map import | Complete supported Map4/Plot6 and six components roundtrip native bytes; Core indexer extracts Map from byte zero; Player/Unit-roster import incomplete |
-| Rust state/serialization components | Current-fixture Unit/Formation/queues, Trade, RequirementSystem and notifications; bounded SkipTurn Unit/Formation projection matches native records, not complete action effects |
-| Rust RNG/coordinates | Isolated Random/normal record and stateless validity/distance match original code; broader mechanics unimplemented |
-| Damage arithmetic | Average arithmetic and loaded Game-sync randomized transitions match bounded native profiles; full combat and damage application unsupported |
-| Full Rust state, legal actions and turns | Unsupported |
+| Area | Implemented and checked boundary | Missing for gameplay support |
+| --- | --- | --- |
+| Native lifecycle and rules | Genuine providers, XP2 Configure/Update, offline session, Core Load/Save and owned cleanup; pinned Base/XP2 rules exports | Branch-restorable complete state; raw Save→Load still differs |
+| Native SkipTurn | Authoritative conditional Core command repeats with matching post-Save, quiescence and cleanup | Complete callbacks, affected state/RNG and general action/turn parity |
+| Rust mirrored primitives | Random/normal records, stateless validity/distance, average damage and bounded loaded-sync randomized damage | Complete gameplay RNG inventory, combat and damage application |
+| Rust mirrored state phases | Bounded SkipTurn Unit/Formation projection; owned World lookup/mutation infrastructure | Coupled live-owner updates, complete state import and action effects |
+| Rust source-backed numerical rules | Nine movement-cost phases/accumulator/ZOC selection; improvement technology/civic bonus helpers | Initialized native numerical acceptance and complete real query providers |
+| Rust movement-world facts | Frozen typed-world candidate matches 1,536 real adjacent edges in three fact groups, zero mismatches/unsupported | District type/completion and raw validDomains remain observed side inputs; no movement action or complete mask reconstruction |
+| Typed wire transport | Complete current Map4/Plot6; bounded Unit/Formation/queues, Trade, RequirementSystem, notifications, Player Goody_Hut/Bonuses/Congress | Complete Player/City/roster import, runtime fixups and omitted live state |
+| Supplied-input projections | Acquired technology/civic hash arrays and complete post-Validate global nodes can populate World providers; City/District lookup and initialization branches | Actual complete owner/provider capture and native rebuild acceptance |
+| Work in progress | City header/Districts/Citizens and numerical plot/improvement yields have partial source checkpoints | Complete City state and initialized native GetYield comparison |
+| Full Rust gameplay engine | `Engine::apply` rejects unsupported gameplay actions without mutation | Legal actions, complete mandatory continuation and external-decision turns |
+| Optional desktop/network integration | Original host receive/loading deferral observed separately | Full-host admission remains unresolved; it is not the authoritative gameplay completion gate |
 
 Unknown state sections can be retained, but cannot yet be simulated. A passing context lifecycle or localization lookup does not establish a complete game.
 
@@ -93,7 +90,13 @@ Original full-host delivery remains blocked by the proven loading predicate, but
 
 The [Unit/Formation/queue codecs](docs/linux-unit-codec.md) and [independent review](docs/linux-unit-codec-review.md) validate complete supported wire records in the current captures, not live reconstruction or universal handler/variant support. [Yield registry](docs/linux-definition-ids.md) and [Unit registry](docs/linux-unit-definition-ids.md) observations keep type hashes, native indices and database row IDs distinct; no generic rules-row-ID conversion is assumed. The [action review](docs/linux-action-review.md) and [delivery evidence](docs/linux-action-delivery.md) separate passing registration/transport controls from the unresolved Core receive boundary. The [conditional oracle contract](docs/linux-core-oracle-boundary.md) and its actual component results remain explicitly separate from full-host admission and full gameplay parity.
 
-The [typed Map codec](docs/linux-map-codec.md) now roundtrips the complete 4,693,980-byte native Map4/Plot6 section, including six component schemas, with independent field/range checks. Both original streams contain the same Map. General nonempty component branches have source-derived tests but still lack corresponding native fixtures. The [Core stream indexer](docs/linux-core-stream-layout.md) extracts Map structurally from byte zero without traces or fixed offsets; complete Player/Unit-roster import, live world reconstruction and movement remain unsupported.
+The [typed Map codec](docs/linux-map-codec.md) now roundtrips the complete 4,693,980-byte native Map4/Plot6 section, including six component schemas, with independent field/range checks. Both original streams contain the same Map. General nonempty component branches have source-derived tests but still lack corresponding native fixtures. The [Core stream indexer](docs/linux-core-stream-layout.md) extracts Map structurally from byte zero without traces or fixed offsets; structural import now reaches the first Player’s Cities boundary through Formation, Goody_Hut, Bonuses and Congress. Complete Player/Unit-roster import and live world reconstruction remain unsupported.
+
+The [owned World and prerequisite helpers](docs/linux-world-yields-review.md) provide reviewed lookup/ownership contracts and source-backed technology/civic improvement bonus arithmetic over supplied typed inputs. The [prerequisite projection](docs/linux-player-prerequisites-review.md) installs acquired masks and complete live global-node availability; it is not a complete Techs/Culture owner importer or an initialized native comparison.
+
+The [Player component codecs](docs/linux-player-components.md) roundtrip all 86 captured Congress records and advance trace-independent parsing to the first Cities boundary (4,699,208 in the two current streams). All native refund vectors are empty; nonempty refund coverage is source-derived. These are serialization and read-value rules, not Congress gameplay.
+
+The [movement-world control](docs/linux-movement-world-control.md) compares actual typed Map/Unit/Formation records against 1,536 original adjacent edges from a truncated 256-formation discovery. All three fact groups match with zero mismatches and zero unsupported rows, using the exact same Core snapshot and original serializer-owner trace. District type/completion and raw signed-i16 domain masks remain explicit native runtime inputs. This does not establish their reconstruction, numerical cost acceptance, legality or movement execution. The [scalar movement evaluator](docs/linux-movement-cost-review.md) is source-reviewed; its [first native cost run](evidence/linux/movement-cost-timeout-1.json) timed out after 588 complete rows at 180 seconds, without final Saves/RNG or cleanup. That prefix is diagnostic only; a longer full-corpus rerun is pending.
 
 [Captured notification controls](docs/linux-notification-captured-state-phase.md) also pass within their measured scope. Proven Unit EventStream entries/node IDs/allocation are rebuildable presentation output only in the [documented no-UI boundary](docs/linux-skip-turn-state-success.md); producer snapshot queries, properties and gameplay effects remain required.
 
