@@ -47,3 +47,35 @@ Six source-only tests cover nonempty Religion vectors/raw names, empty Cities wi
 An offline separate Rust harness read both existing immutable native Core streams (`ff31f4c…d884` and `85d858ef…87a8`). The existing structural Map parser supplied the validation cursor; no fixture offsets, traces or byte-pattern searches enter the new decoder. Both decode **211,525 post-Map bytes, 28,030 dynamic items, 43 Manager entries, 35 first-player Formations and 11 complete first-player Cities**. Adding the independently computed Map end gives absolute stop **4,907,389**, which matches the native ownership trace's first Player.Cities end and Player.Diplomacy start. Both entire **211,525-byte** typed prefixes re-encode byte-identically, including all Cities and trailing allocator/manager metadata, with encoder and decoder agreeing on the **28,030-item** charge. Exact cumulative byte/item budgets accept and one-less budgets refuse on both fixtures. These numbers are observed validation results, not constants in parser decisions. Both streams describe the same fixture context, not independent gameplay branch coverage.
 
 Complete logical gameplay state, all gameplay RNG and policy decision boundaries remain required work. The recorded **89,198-byte raw Save→Load difference remains unmasked**. This bounded wire milestone makes no state/action/turn parity claim.
+
+## Direct byte-zero library composition
+
+`core_stream::ThroughFirstPlayer::decode` now composes the accepted raw Core prefix/Map reader with this module. It receives the entire decompressed raw Core buffer, derives the Map boundary itself and parses the supported Player prefix from that cursor. No Python offsets, native owner traces or searches are inputs to the library.
+
+```rust
+use c6_core::{core_stream::ThroughFirstPlayer, map, unit};
+
+let decoded = ThroughFirstPlayer::decode(
+    &raw_core,
+    map::Limits::default(),
+    unit::Limits::default(),
+)?;
+let first = decoded.player_prefix.first_player.as_ref();
+let remaining = decoded.tail; // borrowed at the explicit partial boundary
+```
+
+The result retains the typed initial Core prefix in `core`, the new `player_prefix`, aggregate `items_used`, absolute `consumed` and a final borrowed `tail`. `core.tail` still denotes the original Map-end boundary; `decoded.tail` denotes the later supported boundary. The shared Map-policy byte/item ceilings span both portions; the additional Player ceilings intersect their remaining credits. Map's `max_allocation` and variant-depth policy apply through Map. Later City/Player components retain their independently documented byte/item and checked per-vector allocation policy; this API does not report a fictitious exact combined allocation charge.
+
+The [whole-input audit](../tools/linux/core_player_prefix_audit.py), [offline driver](../crates/c6-differential/src/bin/c6-core-player-prefix-candidate.rs) and [result](../evidence/linux/core-player-prefix.json) validate both original inputs. The driver re-encodes all typed post-Map data—including every first-player City—and compares the **entire** consumed 211,525-byte region. All Religion fields, ordered Player header words/flags, Formation/City slots and allocator metadata, City identities/hashes and trailing Cities vectors are independently checked. Existing native City cuts are used only by the independent comparison, never by the Rust parser. The trace-independent original-boundary evidence remains distinct from executing native `Read` fixups.
+
+The absolute consumed boundary is **4,907,389** on both originals; the remaining original tail is **75,750,073 bytes**. All 43 Manager entries are still unfinished because the first entry stops at Diplomacy. Source-only cases insert 20 bytes of framed Context metadata and one extra four-byte settled-Continent entry; the whole-input decoder relocates subsequent boundaries and preserves all untouched tail bytes. No insertion is claimed to be a native gameplay fixture.
+
+Reproduce using:
+
+```sh
+python3 tools/linux/core_player_prefix_audit.py --output target/linux/core-player-prefix.json
+cargo test -p c6-core core_player
+cargo test -p c6-core core_stream
+```
+
+The workspace tests, strict workspace Clippy and C ABI smoke pass for this integrated checkpoint. This is original wire-data comparison with an offline Rust executable, not original-code execution. The next unsupported unframed component is **Player.Diplomacy**; completing remaining Players and reaching their District/Unit rosters requires their intervening real schemas. Runtime Manager validity/65-slot mappings, Read fixups, complete logical state and RNG are not reconstructed by Manager wire membership alone.
