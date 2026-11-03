@@ -275,11 +275,14 @@
     "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
     "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
     "crates/c6-core/examples/unit_placement.rs": "3a190aea3574e4dc4be65d6de53f547ca2da01b999a735896034d5077b409254",
-    "tools/linux/unit_placement_audit.py": "7131463318f55f8d8430d7cfe3f03da1028fc9d78a5be4510e9922ed30b9b2d2"
+    "tools/linux/unit_placement_audit.py": "8bdefa3fffc421b59b9893b53be1f88fa1bff5801ee84373349e30b5a1034457"
   },
-  "candidate_sha256": "9b0daef947b8abfc7d53ed60bd6f85e85bdbe96d427cac8f57f14a76307ae22f",
+  "candidate_sha256": "b574a1f9a97cc297d80cbd3cd5e667dbd698090b0d388a3c9c5ed92e6818d8a8",
   "original_stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
   "original_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "configuration_sha256": "446b6e6afc2542d244f4335ef513392e3e75f4fafefdb0d0e724afcaac8f202c",
+  "configuration_report_sha256": "8c03bcdad2e44e9e0f9c7d5b08d011d0265b42a93582b5eaff2c3759d1380bd5",
+  "original_rules_snapshot_requested": false,
   "original_record_sha256": {
     "map": "cd2ec75b4e342a6ebccc1b96889335352657b9ea67f83d5f6d56f6a94eaf2de9",
     "unit": "46e424568421c463b6389564330e1eb09ab1d4c9dc67420c843c7dba37a0e9bb",

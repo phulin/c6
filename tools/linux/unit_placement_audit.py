@@ -69,6 +69,15 @@ def require(value, reason):
         raise ValueError(reason)
 def audit(a):
     elf = Elf(a.module, GAME_SHA)
+    fixture_path = ROOT/'evidence/linux/game-load-native-attempt-1.json'
+    fixture_raw = fixture_path.read_bytes()
+    require(sha(fixture_raw) == '8c03bcdad2e44e9e0f9c7d5b08d011d0265b42a93582b5eaff2c3759d1380bd5', 'original fixture report identity')
+    fixture = json.loads(fixture_raw)
+    configuration = fixture['configuration']
+    config_sha = sha(json.dumps(configuration,sort_keys=True,separators=(',',':')).encode())
+    require(config_sha == fixture['configuration_sha256'] == '446b6e6afc2542d244f4335ef513392e3e75f4fafefdb0d0e724afcaac8f202c', 'original configuration identity')
+    require(configuration['assets']['libGameCore_XP2.so'] == GAME_SHA, 'configuration module')
+    require(fixture['game_saves']['save']['sha256'] == INITIAL, 'original Save identity')
     for name, address, size, digest in METHODS:
         require(sha(elf.read(address, size)) == digest, 'method mismatch: '+name)
     require(elf.relocated_pointer(0x3ae5f70+16+0x28) == 0x2c12d00, 'actual Unit post-load binding')
@@ -136,6 +145,8 @@ def audit(a):
         original_execution_performed=False,methods=[dict(name=n,address=hex(v),size=s,sha256=h) for n,v,s,h in METHODS],
         source_sha256={p:sha((ROOT/p).read_bytes()) for p in paths},candidate_sha256=sha(binary.read_bytes()),
         original_stream_sha256=INITIAL,original_trace_sha256=sha(trace),
+        configuration_sha256=config_sha,configuration_report_sha256=sha(fixture_raw),
+        original_rules_snapshot_requested=configuration['native_rules_snapshot_requested'],
         original_record_sha256={n:sha(data[x['start']:x['end']]) for n,x in [('map',map_row),('unit',row),('formation',frow)]},
         native_serialized_occupancy_references_compared=len(expected),packed_component_type_preserved=True,
         native_count_result_observed=False,synthetic_checks=results[-1],
