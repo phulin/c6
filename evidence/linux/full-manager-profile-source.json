@@ -1,0 +1,480 @@
+{
+  "cases": [
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "normal"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "answer-false"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          245,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "metadata-before"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          245,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "metadata-control"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          245,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "metadata-after"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          245
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "metadata-repeat"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          245,
+          245,
+          245,
+          245
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "metadata-all"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "saves"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "list-prefix"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 0
+      },
+      "mode": "numeric-boundaries"
+    },
+    {
+      "checks": {
+        "known_rng_changes_retained": true,
+        "metadata_status": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "one_mock_predicate": true,
+        "phases": 9,
+        "protected_actor_after_enter": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 249
+      },
+      "mode": "fixture-error"
+    },
+    {
+      "checks": {
+        "controls_io_error_retained": 247,
+        "one_mock_predicate": true
+      },
+      "counts": {
+        "fixture_calls": 1,
+        "metadata_calls": 4,
+        "owner_checks": 13,
+        "predicate_calls": 1,
+        "status": 247
+      },
+      "mode": "controls-write-error"
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-unmapped",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-player-id",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-owner",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-generation",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-vptr",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-parent",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-block-range",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-block-null",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-block-overflow",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-list-missing",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-list-not-member",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-link-previous",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-count",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-vector-shape",
+      "status": 244
+    },
+    {
+      "fixture_not_invoked": true,
+      "mode": "actor-unreadable",
+      "status": 244
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "missing-owner",
+      "targeted_reason": "numeric_input_missing"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "empty-owner",
+      "targeted_reason": "numeric_input_missing"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "negative-owner",
+      "targeted_reason": "numeric_input_invalid"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "invalid-owner",
+      "targeted_reason": "numeric_input_invalid"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "owner-range",
+      "targeted_reason": "numeric_input_range"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "id-range",
+      "targeted_reason": "numeric_input_range"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "visible-range",
+      "targeted_reason": "numeric_input_range"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "profile-missing",
+      "targeted_reason": "profile_missing"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "profile-short",
+      "targeted_reason": "profile_missing"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "profile-invalid",
+      "targeted_reason": "profile_invalid"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "output-missing",
+      "targeted_reason": "required_path_missing"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "metadata-missing",
+      "targeted_reason": "required_path_missing"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "duplicate-control",
+      "targeted_reason": "duplicate_path"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "duplicate-metadata",
+      "targeted_reason": "duplicate_path"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "duplicate-save",
+      "targeted_reason": "duplicate_path"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "partial-saves",
+      "targeted_reason": "optional_save_paths_incomplete"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "controls-existing",
+      "targeted_reason": "controls_unavailable"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "nested",
+      "targeted_reason": "nested_profile"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "observation-identity",
+      "targeted_reason": "observation_identity"
+    },
+    {
+      "fatal_exit": 240,
+      "mode": "rng-unreadable",
+      "targeted_reason": "known_rng_unreadable"
+    }
+  ],
+  "checks": {
+    "actor_protected_at_predicate_return_without_later_dereference": true,
+    "cases": 47,
+    "fixture_callback_abi_compiled": true,
+    "fixture_status_and_controls_io_errors_preserved": true,
+    "four_snapshot_paths_and_known_rng_effects_retained": true,
+    "gcc_analyzer": true,
+    "optional_save_arguments_all_or_none": true,
+    "passive_metadata_failure_does_not_veto_requested_predicate": true,
+    "per_process_main_tid_witness": true,
+    "raw_actor_identity_refusals": 15,
+    "raw_owner_full_id_block_active_entry_expectation_checked": true,
+    "strict_c": true,
+    "targeted_fatal_refusals": 20,
+    "ubsan_synthetic_wrapper": true
+  },
+  "complete_state_actions_rng_turns": false,
+  "full_manager_predicate_parity": false,
+  "limits": [
+    "synthetic objects and mocked identity/owner/fixture/metadata services only",
+    "fresh native Find, original facade/lock, actual guards and original predicate are not executed here",
+    "separate pinned source/caller/guard/observer/loader profile admission remains necessary",
+    "known 64 RNG bytes are partial observations; differing bytes are retained without equality gates",
+    "optional Save arguments are tested; no original Save or Save equality is required",
+    "no native policy boundary, Lua/GC window, affected gameplay state/order or complete RNG acceptance"
+  ],
+  "native_execution": false,
+  "native_fresh_find_executed": false,
+  "native_profile_admitted": false,
+  "original_modules_opened_or_loaded": false,
+  "raw_actor_pointer_is_untrusted_address_expectation": true,
+  "schema": "c6-linux-full-manager-profile-source-v1",
+  "source_sha256": {
+    "native/linux/action_lifecycle.c": "5e854eeb96016817c3918ecd2f9ce80972460f7097cd1e1c2e756e4a077d2f79",
+    "native/linux/action_lifecycle.h": "8e4552267b01681443447d1b79f7f4cfdd78900bf9d6d24dbefdacdccf3a9d0c",
+    "native/linux/current_handler_interruption.c": "bcfc754a87a7a8666db72f2808e9587390345e0533a7eba657124683e75b90e6",
+    "native/linux/current_handler_interruption.h": "8fc346ec121c6c00ab29b623093013e5bd67b43d5c800e756f8c5285460c9115",
+    "native/linux/full_manager_fixture.c": "a92d43fb00545f20b76c26f98f933df75b03013b6b3a8f733a89711586206ef9",
+    "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
+    "native/linux/full_manager_profile.c": "a616d2a72d5f0ff942384644ebb1b30aa906b292e59c883d36f53e91e6de4b90",
+    "native/linux/full_manager_profile_guard.c": "57bfc48108d523002fdcefc1aa8bfde42cf20063a5657ed735f6b356f396b0a7",
+    "native/linux/full_manager_profile_guard.h": "49391b079163ed04744268a8c797c709fa6bbd772be3ed0887d48d279515cc75",
+    "tools/linux/full_manager_profile_audit.c": "11c8e76f9e3c3acdeafdb2394237010b2f2496f149584434790283ec1e7d80f0",
+    "tools/linux/full_manager_profile_audit.py": "1b5b69091bd7aaac5a7c1d4ae07ccd9275665fd9ecc7c35f1fc3524f95c3bcd1"
+  }
+}
