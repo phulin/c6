@@ -19,6 +19,7 @@ use c6_core::{
     unit_operation_interruption::{Handler, ObservedRegistry},
 };
 
+pub mod choose_tech;
 pub mod handlers;
 pub mod notifications;
 pub mod reporting;
@@ -1091,6 +1092,59 @@ where
         HandlerAuthority::ObservedSnapshot(source),
     )
 }
+
+/// Continue the observed-handler action through the owned Game.Diplomacy.Manager
+/// before constructing the notification provider. Its admitted dynamic witness
+/// is required: matching saved bytes do not imply empty live sessions. Pending
+/// statements are removed from the authoritative owner before the required
+/// processor runs against this same LoadedState; partial effects survive errors.
+/// The notification factory must borrow that resulting state and implement all
+/// reached effects. No full-action acceptance or successful backend is supplied.
+#[allow(clippy::too_many_arguments)]
+pub fn diagnose_skip_turn_observed_owned_aftermath<'s, Q, R, P, W, F>(
+    state: &'s mut LoadedState,
+    r: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    source: &handlers::BoundHandlers<'_>,
+    external: &mut Q,
+    reports: &mut R,
+    statements: &mut P,
+    make_notifications: F,
+    owner: W::Owner,
+    budget: usize,
+) -> Result<Vec<Event>, Failure>
+where
+    Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
+    R: Reports,
+    P: c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
+    W: aftermath::Blocking,
+    F: FnOnce(&'s mut LoadedState) -> W,
+{
+    let mut trace = skip_turn_state_phase_impl(
+        state,
+        r,
+        inputs,
+        external,
+        reports,
+        HandlerAuthority::ObservedSnapshot(source),
+    )?;
+    if trace
+        .iter()
+        .any(|event| matches!(event, Event::UnitAbsent { .. }))
+    {
+        trace.push(Event::Stage(Stage::DiagnosticComplete));
+        return Ok(trace);
+    }
+    let mut budget = budget;
+    trace.push(Event::Stage(Stage::Diplomacy));
+    if let Err(error) = state.process_pending_diplomacy(statements, &mut budget) {
+        return Err(Failure {
+            error: Error::Aftermath(error),
+            trace,
+        });
+    }
+    finish_notifications(make_notifications(state), owner, &mut budget, trace)
+}
 #[allow(clippy::too_many_arguments)]
 fn diagnose_skip_turn_impl<'s, Q, R, W, F>(
     state: &'s mut LoadedState,
@@ -1126,8 +1180,17 @@ where
             trace,
         });
     }
+    finish_notifications(provider, owner, &mut budget, trace)
+}
+
+fn finish_notifications<W: aftermath::Blocking>(
+    mut provider: W,
+    owner: W::Owner,
+    budget: &mut usize,
+    mut trace: Vec<Event>,
+) -> Result<Vec<Event>, Failure> {
     trace.push(Event::Stage(Stage::Notifications));
-    if let Err(error) = aftermath::update_owner_blocking(&mut provider, owner, &mut budget) {
+    if let Err(error) = aftermath::update_owner_blocking(&mut provider, owner, budget) {
         return Err(Failure {
             error: Error::Aftermath(error),
             trace,

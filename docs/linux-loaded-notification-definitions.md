@@ -46,3 +46,18 @@ null**. A missing creator input cannot become a successful no-op, and null
 subtype creation cannot skip the real fallback. The concrete ChooseTech query
 and creation implementation is tracked separately. Full notification Update,
 SkipTurn, affected state, gameplay RNG and turns remain unaccepted.
+
+The source-backed `base_auto_duplicate` leaf covers inherited duplicate slots
+with a null-parameter auto candidate. It compares type, location and target
+ComponentID, then requires the existing discriminator key `55c7a3f8` to be absent.
+It does not compare the candidate's own recycled ID. IsNeeded and actual subtype
+binding must be resolved before invoking this leaf; it is not a replacement for
+whole IsRedundant or the CommandUnits/CityRangeAttack overrides.
+
+The [initialization audit](../tools/linux/loaded_notification_initialization_audit.py)
+checks all six actual auto-subtype `+0x80` slots: these call base InitializeText,
+not reporting Send. Add assigns the new ID and appends before its real added-event
+report. This limits the required logical pool inputs without treating native
+addresses/capacity as gameplay state. Constructor/subtype reset and all other
+pre-Add reads still need their actual semantics; the check does not claim native
+creation or full Update comparison.

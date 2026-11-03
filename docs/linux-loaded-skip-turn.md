@@ -222,3 +222,14 @@ Original target remains Linux XP2 SHA-256
 host `106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4`.
 Reference attribution remains in [reference.md](reference.md); private game
 artifacts and raw reverse-engineering evidence remain outside the public repo.
+
+`diagnose_skip_turn_observed_owned_aftermath` continues the same action algorithm
+through `LoadedState::process_pending_diplomacy` before constructing its required
+notification provider. The Game.Diplomacy.Manager owner retains stable ever-alive
+handles and live sessions; each outgoing statement is removed before the supplied
+processor runs against the same authoritative LoadedState. Missing manager state
+or a missing statement/decision backend returns a partial failure with the
+executed action trace. The method does not infer empty sessions from saved bytes
+or transplant the historical execute-3 runtime. An admitted current dynamic
+witness is still required before that owner can be installed. Notification Update
+and complete gameplay/RNG comparison remain required.

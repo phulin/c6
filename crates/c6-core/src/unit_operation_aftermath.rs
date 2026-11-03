@@ -134,6 +134,10 @@ pub trait Notifications {
         object: Self::Object,
     ) -> Result<bool, Error>;
     fn release(&mut self, object: Self::Object) -> Result<(), Error>;
+    /// Compatibility name for the actual virtual +0x80 InitializeText call,
+    /// not reporting Send. The six stock auto-notify subtypes bind base
+    /// InitializeText0x2d2dd10. Preserve subtype effects and synchronous order;
+    /// the real notification-added report occurs later inside Add.
     fn send(&mut self, object: Self::Object) -> Result<(), Error>;
     fn add(&mut self, collection: Self::Collection, object: Self::Object) -> Result<(), Error>;
     fn play_by_cloud(&mut self, configuration: Self::Configuration) -> Result<bool, Error>;

@@ -12,6 +12,7 @@ pub enum Error {
     Rules(crate::Error),
     MissingTable,
     Field(&'static str),
+    Unsupported(&'static str),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -110,5 +111,57 @@ impl Definitions {
     /// iterate ordered(), checking auto_notify at its actual short-circuit point.
     pub fn auto_notify_count(&self) -> usize {
         self.ordered.iter().filter(|d| d.auto_notify).count()
+    }
+}
+
+/// Source leaf used by the inherited duplicate slot of ChooseTech,
+/// ChooseCivic, FillCivicSlot and ConsiderGovernmentChange. This is only the
+/// auto=true/parameters=null creation path: IsNeeded and the receiver's actual
+/// virtual binding must be established by the caller before invoking it.
+/// It does not inspect either object's own ID, so a recycled pre-Add ID cannot
+/// affect this supported duplicate comparison.
+pub fn base_auto_duplicate(
+    candidate: &c6_core::notifications::Notification,
+    existing: &c6_core::notifications::Notification,
+) -> Result<bool, Error> {
+    if !candidate.parameters.entries.is_empty() {
+        return Err(Error::Unsupported(
+            "base auto duplicate requires null creation parameters",
+        ));
+    }
+    if candidate.type_hash != existing.type_hash
+        || candidate.location != existing.location
+        || candidate.component != existing.component
+    {
+        return Ok(false);
+    }
+    // Instance::IsDuplicate0x2d2e2d0: the empty candidate has neither
+    // 0x42fc7f19 nor 0x55c7a3f8. The latter matches only when both are absent;
+    // native never converts the existing value if just one is present.
+    Ok(!existing
+        .parameters
+        .entries
+        .iter()
+        .any(|entry| entry.key == 0x55c7a3f8))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn supported_duplicate_ignores_recycled_own_id_but_preserves_target_identity() {
+        let candidate = c6_core::notifications::Notification {
+            type_hash: 0x592df4c8,
+            ..Default::default()
+        };
+        let mut existing = candidate.clone();
+        existing.id.id = 123;
+        existing.id.owner = 11;
+        assert!(base_auto_duplicate(&candidate, &existing).unwrap());
+        existing.component.id = 123;
+        assert!(!base_auto_duplicate(&candidate, &existing).unwrap());
+        existing.component = candidate.component;
+        existing.location[0] = 1;
+        assert!(!base_auto_duplicate(&candidate, &existing).unwrap());
     }
 }
