@@ -32,10 +32,10 @@ typedef struct {
     bool (*valid)(const void *,int32_t);
     const void *(*player)(const void *,int32_t);
     I1 player_id;
-    P0 definitions[2],xp2[2];
-    U1 count[2],hash[2];
-    PI at[2],find_xp2[2];
-    B1 internal,canal,canal_wonder,bridge;
+    P0 definitions[3],xp2[2];
+    U1 count[3],hash[3],index[3];
+    PI at[3],find[3],find_xp2[2];
+    B1 internal,canal,canal_wonder,bridge,terrain_water;
     P1 members[2];
     U1 member_count[2],member_id[2];
     I1 member_owner[2];
@@ -47,7 +47,7 @@ typedef struct {
     const void *(*plot)(const void *,const Coord *);
     P1 attributes;
     bool (*coastal)(const void *,int32_t),(*domain)(const void *,int32_t);
-    B1 wonder;
+    B1 wonder,has_attributes;
     const void *map_random;
 } Api;
 
@@ -69,6 +69,11 @@ static int bind_api(void *module,Api *a) {
     BIND(count[0],0x1fe2250); BIND(count[1],0x1fe2260);
     BIND(at[0],0x1fe2b00); BIND(at[1],0x1fe4ad0);
     BIND(hash[0],0x21d56f0); BIND(hash[1],0x20a1260);
+    BIND(definitions[2],0x2214730); BIND(count[2],0x2194f80);
+    BIND(at[2],0x2194cb0); BIND(hash[2],0x2bf69d0);
+    BIND(index[0],0x1fcccf0); BIND(index[1],0x1fccc60); BIND(index[2],0x20e3240);
+    BIND(find[0],0x1ffbc00); BIND(find[1],0x1ffb960); BIND(find[2],0x20f36d0);
+    BIND(terrain_water,0x2bcadc0);
     BIND(find_xp2[0],0x21d5680); BIND(find_xp2[1],0x20a11f0);
     BIND(internal,0x1fe2500); BIND(canal,0x21d5a40);
     BIND(canal_wonder,0x2a3e3f0); BIND(bridge,0x28696c0);
@@ -82,7 +87,7 @@ static int bind_api(void *module,Api *a) {
     BIND(member_owner[0],0x1fe2290); BIND(member_owner[1],0x291e670);
     BIND(find_member[0],0x2a597e0); BIND(find_member[1],0x2ae12e0);
     BIND(width,0x2004f20); BIND(height,0x21436d0); BIND(plot,0x2a48ba0);
-    BIND(attributes,0x2bca780); BIND(coastal,0x2bc9710);
+    BIND(attributes,0x2bca780); BIND(has_attributes,0x2bca7b0); BIND(coastal,0x2bc9710);
     BIND(wonder,0x2bc8100); BIND(domain,0x2bc8350);
 #undef BIND
     a->map_random=dlsym(module,"_ZN8GameCore3Map9Generator10ms_kRandomE");
@@ -103,17 +108,23 @@ static void hex(FILE *out,const void *p,size_t size) {
     fputc('"',out);
 }
 static int registries(FILE *out,const Api *a) {
-    for(unsigned k=0;k<2;k++) {
-        const void *base=a->definitions[k](),*xp2=a->xp2[k]();
+    const char *names[3]={"district","building","terrain"};
+    for(unsigned k=0;k<3;k++) {
+        const void *base=a->definitions[k](),*xp2=k<2?a->xp2[k]():NULL;
         /* Null collection is unsupported; only an actual Find null is absence. */
-        if(!base||!xp2)return 223;
+        if(!base||(k<2&&!xp2))return 223;
         uint32_t count=a->count[k](base);if(count>65536)return 223;
-        fprintf(out,"{\"kind\":\"registry\",\"name\":\"%s\",\"count\":%u,\"complete\":true,\"entries\":[",k?"building":"district",count);
+        fprintf(out,"{\"kind\":\"registry\",\"name\":\"%s\",\"count\":%u,\"complete\":true,\"entries\":[",names[k],count);
         for(uint32_t i=0;i<count;i++) {
             const void *definition=a->at[k](base,i);if(!definition)return 223;
             uint32_t hash=a->hash[k](definition);
+            const void *by_hash=a->find[k](base,hash),*by_query=a->find[k](base,i);
+            fprintf(out,"%s{\"query\":%u,\"index\":%u,\"hash\":%u,\"find_index\":",i?",":"",i,a->index[k](definition),hash);
+            if(by_hash)fprintf(out,"%u",a->index[k](by_hash));else fputs("null",out);
+            fputs(",\"direct_index\":",out);
+            if(by_query)fprintf(out,"%u",a->index[k](by_query));else fputs("null",out);
+            if(k==2){fprintf(out,",\"is_water\":%s}",boolean(a->terrain_water(definition)));continue;}
             const void *extension=a->find_xp2[k](xp2,hash);
-            fprintf(out,"%s{\"query\":%u,\"hash\":%u",i?",":"",i,hash);
             if(!k)fprintf(out,",\"internal_only\":%s",boolean(a->internal(definition)));
             fprintf(out,",\"xp2\":{\"status\":\"%s\"",extension?"present":"absent");
             if(extension) {
@@ -174,12 +185,17 @@ static int plots(FILE *out,const Api *a,void *module,void *context,const void *m
         require_idle(a,module,context);
         Coord coord={x,y};const void *plot=a->plot(map,&coord);if(!plot)return 225;
         uintptr_t vptr=pointer_at(plot,0);
-        if(vptr!=a->base+0x3ae23a0||pointer_at((const void *)vptr,0x38)!=a->base+0x2bca780)return 225;
+        if(vptr!=a->base+0x3ae23a0||pointer_at((const void *)vptr,0x38)!=a->base+0x2bca780
+           ||pointer_at((const void *)vptr,0x48)!=a->base+0x2bca7b0)return 225;
+        bool has_attributes=a->has_attributes(plot);
         const void *attributes=a->attributes(plot);
         if(!attributes||pointer_at(attributes,0)!=a->base+0x3ae2360)return 225;
+        /* Signed i16 at +0x14 is proven by original IsDomainValid(DomainMask).
+         * This answer is expected-only, including fallback slot zero attributes. */
+        int16_t valid_domains_mask;memcpy(&valid_domains_mask,(const unsigned char *)attributes+0x14,2);
         bool coastal=a->coastal(plot,1),wonder=a->wonder(attributes);
         bool domains[3];for(int32_t d=0;d<3;d++)domains[d]=a->domain(attributes,d);
-        fprintf(out,"{\"kind\":\"plot_expected\",\"x\":%d,\"y\":%d,\"coastal_min_one\":%s,\"wonder_complete\":%s,\"valid_domains\":[%s,%s,%s]}\n",x,y,boolean(coastal),boolean(wonder),boolean(domains[0]),boolean(domains[1]),boolean(domains[2]));
+        fprintf(out,"{\"kind\":\"plot_expected\",\"x\":%d,\"y\":%d,\"has_city_attributes\":%s,\"valid_domains_mask\":%d,\"coastal_min_one\":%s,\"wonder_complete\":%s,\"valid_domains\":[%s,%s,%s]}\n",x,y,boolean(has_attributes),(int)valid_domains_mask,boolean(coastal),boolean(wonder),boolean(domains[0]),boolean(domains[1]),boolean(domains[2]));
         (*count)++;
     }
     return 0;

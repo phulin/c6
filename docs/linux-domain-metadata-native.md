@@ -51,9 +51,16 @@ need controlled original execution to establish this read-only profile.
 The JSONL schema is `c6-linux-domain-metadata-native-v1`:
 
 - `header` carries module/host/profile identity, 65 player slots and map dimensions.
-- Two `registry` records (`district`, `building`) preserve actual GetCount/At
-  enumeration order. Entries contain `query` and original type `hash`; district
-  entries also contain `internal_only`. Each entry contains an `xp2` object.
+- Three `registry` records (`district`, `building`, `terrain`) preserve actual GetCount/At
+  enumeration order. Entries contain `query`, actual original `index` (GetCollectionIndex) and
+  original type `hash`. `find_index` observes original base Find(hash) followed
+  by GetCollectionIndex; `direct_index` observes original base Find(query)
+  followed by GetCollectionIndex. A null lookup yields JSON null, preserving
+  duplicate-hash/direct-index selection without assuming At positions equal
+  native indices. Terrain entries include original `is_water` from the same
+  loaded registry context, closing provenance without borrowing an older
+  movement packet. Terrain has no XP2 object. District
+  entries also contain `internal_only`. Each district/building entry contains an `xp2` object.
   Its `status` is `present` only after original XP2.Find(base hash) returns a
   pointer, followed by original district `is_canal` or building `canal_wonder`
   and `bridge` getters. An actual Find null yields `status:"absent"` with no
@@ -69,8 +76,16 @@ The JSONL schema is `c6-linux-domain-metadata-native-v1`:
   the same member pointer. No guessed contiguous IDs or map-location ownership
   inference is involved. No membership is invented for unresolved owners.
 - Every in-bounds real plot has a `plot_expected` record with `x`, `y`, original
-  `coastal_min_one`, original `wonder_complete` and three `valid_domains` answers
-  for domain values 0,1,2. Call order is coastal(plot,1), wonder(attributes),
+  `coastal_min_one`, original `wonder_complete`, raw signed16 `valid_domains_mask`
+  and three `valid_domains` answers
+  for domain values 0,1,2. Original `has_city_attributes` is reported separately
+  from GetCityAttributes: the getter may return original slot-zero fallback
+  attributes for absent/invalid IDs. The signed mask uses memcpy from that
+  actual returned receiver at +0x14, as proven by original
+  IsDomainValid(DomainMask)'s sign-extending two-byte load. This preserves Hover,
+  Immobile and all upper bits and never turns fallback attributes into owned
+  plot attributes. Call order is HasCityAttributes(plot), GetCityAttributes(plot),
+  raw mask observation, coastal(plot,1), wonder(attributes),
   domain(attributes,0), domain(attributes,1), domain(attributes,2). These records
   must never populate the simulator's input masks or prerequisite state.
 - The final `summary` must have status zero, complete expected plot count and
@@ -103,9 +118,11 @@ cmp /tmp/domain-metadata-query-contracts.json evidence/linux/domain-metadata-que
 cc -std=c11 -Wall -Wextra -Werror -fsyntax-only native/linux/domain_metadata.c
 ```
 
-The audit verifies 70 complete original method fingerprints, the precise source
+The audit verifies 86 complete original method fingerprints, the precise source
 binding sequence, original 65-slot initialization, iterator constructors and
-City constructor GOT/vtable reference. It complements
+City constructor GOT/vtable reference. Original HasCityAttributes, raw mask
+accessor and CityPlots.GetAttributes/Initialize/CityAttributes constructor bodies
+are included to preserve presence versus original fallback semantics. It complements
 `evidence/linux/movement-domain-query-contracts.json`; neither packet is an
 execution approval. The future runner must capture every new operation with
 fresh source/build/input identities and full-save/RNG/cleanup controls before

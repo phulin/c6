@@ -166,6 +166,83 @@
       "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1"
     },
     {
+      "binding": "definitions[2]",
+      "address": "0x2214730",
+      "bytes": 16,
+      "name": "GameCore::Definitions::GetTerrainDefinitions()",
+      "sha256": "38312241830472df94815079e4bcb6fb86e8cfde8f435b5f1ee561224cc8fb95"
+    },
+    {
+      "binding": "count[2]",
+      "address": "0x2194f80",
+      "bytes": 5,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::GetCount() const",
+      "sha256": "ba23f0333df28aa0f55fa3f3723d0bb4db7e4313473ea582f2737699bbaaeed6"
+    },
+    {
+      "binding": "at[2]",
+      "address": "0x2194cb0",
+      "bytes": 29,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::At(unsigned int) const",
+      "sha256": "b24fe29f954da8018606697f1e90f2f722ea27ff84d4d1e2b09a784ff09bbcd6"
+    },
+    {
+      "binding": "hash[2]",
+      "address": "0x2bf69d0",
+      "bytes": 4,
+      "name": "GameCore::Definition::Terrain::GetTerrainTypeHash() const",
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1"
+    },
+    {
+      "binding": "index[0]",
+      "address": "0x1fcccf0",
+      "bytes": 4,
+      "name": "GameCore::Definition::District::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "binding": "index[1]",
+      "address": "0x1fccc60",
+      "bytes": 4,
+      "name": "GameCore::Definition::Building::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "binding": "index[2]",
+      "address": "0x20e3240",
+      "bytes": 4,
+      "name": "GameCore::Definition::Terrain::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "binding": "find[0]",
+      "address": "0x1ffbc00",
+      "bytes": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::Find(unsigned int) const",
+      "sha256": "b720a1edc9281bc19df2a5fa2d1db43b2e3c09493372d0f970d1fe598f6181d8"
+    },
+    {
+      "binding": "find[1]",
+      "address": "0x1ffb960",
+      "bytes": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>::Find(unsigned int) const",
+      "sha256": "81c8f59f047a39dbd88358cb829ef615f0fb9db2c737051e03bbf333f5a3ba06"
+    },
+    {
+      "binding": "find[2]",
+      "address": "0x20f36d0",
+      "bytes": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const",
+      "sha256": "29ec9254b9b3b05235344a477486953691e8890e80adc56a1858edac6c8da8c3"
+    },
+    {
+      "binding": "terrain_water",
+      "address": "0x2bcadc0",
+      "bytes": 9,
+      "name": "GameCore::Definition::Terrain::IsWater() const",
+      "sha256": "c5691f4fbd89c10e9133b30255a8717ea46d6779c23b18ea6fd992b19c406171"
+    },
+    {
       "binding": "find_xp2[0]",
       "address": "0x21d5680",
       "bytes": 109,
@@ -362,6 +439,13 @@
       "sha256": "e1a598f85f49a28e29144ddf86739e2601b0294590320845586249ce08532b8a"
     },
     {
+      "binding": "has_attributes",
+      "address": "0x2bca7b0",
+      "bytes": 9,
+      "name": "GameCore::Map::Plot::Instance::HasCityAttributes() const",
+      "sha256": "465525d3e6485a0fa870265793fdd0e49577850a4fb46c4514eb2bb42fd126d2"
+    },
+    {
       "binding": "coastal",
       "address": "0x2bc9710",
       "bytes": 189,
@@ -493,6 +577,34 @@
       "bytes": 1296,
       "name": "GameCore::Player::Districts::Districts(GameCore::Player::Instance*)",
       "sha256": "cfd9954372c0808a73ba396ab06b54d59d998d36902e8cc675d7dc23be10d93b"
+    },
+    {
+      "binding": null,
+      "address": "0x2bc8330",
+      "bytes": 10,
+      "name": "GameCore::Map::Plot::CityAttributes::IsDomainValid(GameCore::DomainMask) const",
+      "sha256": "963df09b8cfda69b159a2cc8fd0c42d7339aa94e2306d98ac04c8cf3264a0d45"
+    },
+    {
+      "binding": null,
+      "address": "0x2a42500",
+      "bytes": 50,
+      "name": "GameCore::Map::CityPlots::GetAttributes(unsigned int)",
+      "sha256": "d9b066e28f35789167afe32cdf72cfc7287e0678e5b4f1f5324427a3260b862d"
+    },
+    {
+      "binding": null,
+      "address": "0x27bbbf0",
+      "bytes": 32,
+      "name": "GameCore::Map::Plot::CityAttributes::CityAttributes()",
+      "sha256": "678fcdd56f78ea2f47ce6b9d44f35e598b66e1072bd4b45a808bec4629268595"
+    },
+    {
+      "binding": null,
+      "address": "0x2a41bb0",
+      "bytes": 116,
+      "name": "GameCore::Map::CityPlots::Initialize()",
+      "sha256": "80221f05cf14b77611320579f980794ffa7bdbb5736769cd396f7088c2c4fa04"
     }
   ],
   "ownership": {
@@ -505,12 +617,14 @@
     "order": "native linked-list traversal, checked against original GetCount",
     "slots": "actual full GetID and low16 slot; original per-player Find(id) must return the same owner",
     "actual_owner": "original Player.GetID / City.IInstance.GetOwner / District.GetOwner",
-    "definitions": "original GetDefinitions/GetCount/At; per-base-hash original XP2 Find",
+    "definitions": "same loaded context: District, Building and Terrain original GetDefinitions/GetCount/At/GetCollectionIndex; original base Find(hash)/Find(query) index identities; per-base-hash original District/Building XP2 Find; Terrain.IsWater",
     "xp2_absence": "only an actual Find null; missing collection is unsupported status 223",
     "map": "original singleton/current-map/game-map identity; vptr 0x3afb160 and GetPlot slot 0x78",
     "plots": "original GetPlot on every in-bounds coordinate; Plot vptr 0x3ae23a0/slot 0x38; CityAttributes vptr 0x3ae2360",
     "city_vptr": "City.Instance constructor sets primary address point 0x3abf460; each enumerated City checked",
-    "expected": "IsCoastalLand(plot,1), IsWonderComplete(attributes), IsDomainValid(attributes,0..2); never calculation inputs"
+    "expected": "HasCityAttributes(plot), raw signed i16 attributes+0x14, IsCoastalLand(plot,1), IsWonderComplete(attributes), IsDomainValid(attributes,0..2); never calculation inputs",
+    "attribute_absence": "native HasCityAttributes tests plot+0x4e != 0; original GetCityAttributes may return slot-zero fallback for absent/invalid attribute IDs; preserve Boolean independently of observed mask",
+    "mask_accessor": "original IsDomainValid(DomainMask) sign-extends i16 at attributes+0x14; memcpy retains all sixteen expected bits"
   },
   "runtime_admission_required": true,
   "independent_review_required": true,
