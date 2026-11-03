@@ -1,0 +1,319 @@
+{
+  "active_loader_or_cli_modified": false,
+  "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "current_is_ai": "unknown_configuration_schema",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "helper_direct_imports": [
+    "__stack_chk_fail",
+    "ferror",
+    "fprintf",
+    "fputc",
+    "fwrite",
+    "getpid",
+    "process_vm_readv",
+    "strchr",
+    "strcmp",
+    "strlen",
+    "strnlen",
+    "syscall"
+  ],
+  "instruction_gates": [
+    {
+      "bytes": "488d7b10",
+      "rva": "0x2917eda"
+    },
+    {
+      "bytes": "48893f48897f08c3",
+      "rva": "0x2917f00"
+    },
+    {
+      "bytes": "488b36",
+      "rva": "0x2917ba4"
+    },
+    {
+      "bytes": "488b00",
+      "rva": "0x2917bf3"
+    },
+    {
+      "bytes": "be41000000",
+      "rva": "0x2b517e3"
+    },
+    {
+      "bytes": "be41000000",
+      "rva": "0x2b51804"
+    }
+  ],
+  "methods": [
+    {
+      "bytes": 39,
+      "name": "global_initializer",
+      "rva": "0x1fc4260",
+      "sha256": "77a6380d412f9b43012ad6c5c0d8490502e555978aea9d7ed009bc38c6743bd2"
+    },
+    {
+      "bytes": 41,
+      "name": "open_list_constructor",
+      "rva": "0x1fc41a0",
+      "sha256": "d0cf9f88b94dee6149df92cf0cb0e6d601592bf5250d6bd38709ce05cfc65b8e"
+    },
+    {
+      "bytes": 41,
+      "name": "closed_list_constructor",
+      "rva": "0x1fc41d0",
+      "sha256": "079392dbd3ffee6f2ca67fe9a7038959697d0fea9a41e088dcb890e0486ddf9c"
+    },
+    {
+      "bytes": 39,
+      "name": "pending_vector_global_initializer",
+      "rva": "0x1fc4200",
+      "sha256": "44fe10f6e5f7355f86f787fa8e4143520e5fc7a7351b67baa9e3ece2c61aa317"
+    },
+    {
+      "bytes": 30,
+      "name": "pending_vector_base_constructor",
+      "rva": "0x2915c80",
+      "sha256": "9fccef2c6c1945769faf21b5c78c2b526cb0dfe15d415849d3cde15f34567630"
+    },
+    {
+      "bytes": 794,
+      "name": "Manager.Initialize",
+      "rva": "0x29112c0",
+      "sha256": "a6513adb4b3cf7816f6bbb68d9b6ff92a45f86c8c8d99d3b625bf442c4f6f381"
+    },
+    {
+      "bytes": 124,
+      "name": "Manager.Uninitialize",
+      "rva": "0x29115f0",
+      "sha256": "03d32306aeae92227ea600066421d92f2cc04d417765256954d797fb29b125dd"
+    },
+    {
+      "bytes": 178,
+      "name": "Manager.ProcessPending",
+      "rva": "0x2913510",
+      "sha256": "ed5dc2a1bf712220260dc946a9e16358d750f0b35b407e563edf790c9f3e2f57"
+    },
+    {
+      "bytes": 166,
+      "name": "Manager.ProcessPendingSessionStatement",
+      "rva": "0x2911900",
+      "sha256": "6fd2f96ae52b08c464dc928bc908bb511d6f8f15294a467a46e609c010316b7e"
+    },
+    {
+      "bytes": 16,
+      "name": "Manager.HasPendingSessionStatements()",
+      "rva": "0x2913f90",
+      "sha256": "d57cace478a0a1a3b007a78bf623d78842726471d68636f63964881bd4f4c67a"
+    },
+    {
+      "bytes": 20,
+      "name": "Manager.HasPendingActions()",
+      "rva": "0x2913fa0",
+      "sha256": "8b2323a7a12b8b92bb07438b93386b6cb8944d2c9a2456fad696c5c62af503dc"
+    },
+    {
+      "bytes": 18,
+      "name": "PendingAction.vector.size",
+      "rva": "0x29155f0",
+      "sha256": "5fc3631d44bc7845f61705137ef6be2a456b50b8a32129fc05473ab3163cc904"
+    },
+    {
+      "bytes": 9,
+      "name": "PendingAction.constructor",
+      "rva": "0x29151b0",
+      "sha256": "97bc1ac7d544357be377d9e3c27c14971c29e448d5859a7fd35398505438fec0"
+    },
+    {
+      "bytes": 82,
+      "name": "Session.constructor",
+      "rva": "0x2916d10",
+      "sha256": "537cc9042903fbec61e1dc0a7a8957cee0cfbe2c6c778d8b1702067c8f454472"
+    },
+    {
+      "bytes": 227,
+      "name": "Session.RemoveNextPendingStatement",
+      "rva": "0x2917270",
+      "sha256": "248c35ba6a613b87fb070882bdc1e2d0fd03f2a2b77fbd358d264ab158ad74f1"
+    },
+    {
+      "bytes": 8,
+      "name": "Player.Manager.GetWasEverAlive",
+      "rva": "0x24273f0",
+      "sha256": "8d460a5d4ab9ce2295dbf6e2df1b534a4269871484a7499ceb9f215a18fe04ce"
+    },
+    {
+      "bytes": 681,
+      "name": "Player.Manager.InitializeLists",
+      "rva": "0x2b51c10",
+      "sha256": "f44a53d6eec7a911236f45603209afbb46359149bb95f719b35479ca83d03429"
+    },
+    {
+      "bytes": 7,
+      "name": "Player.WasEverAlive",
+      "rva": "0x2103ff0",
+      "sha256": "2985741e4b49f0a7c866f3f07b21af359bda5e5061a503294f85e3244bcfaa79"
+    },
+    {
+      "bytes": 35,
+      "name": "Player.IsAI",
+      "rva": "0x2b31550",
+      "sha256": "9c0eb8edff6824a68e729036e07dc49b6a89de87f942d925a9aa04a8d95573e2"
+    },
+    {
+      "bytes": 14,
+      "name": "Configuration.Player.IsHuman",
+      "rva": "0x28ec230",
+      "sha256": "a98088b62436c799ea309acd50c5ee744fd7ad1846e1be89d12429e6ffb9015a"
+    },
+    {
+      "bytes": 41,
+      "name": "Configuration.Player.GetSlotStatus",
+      "rva": "0x28ebe70",
+      "sha256": "22a29648f37247c1a316b7660cbef162162d34682133149854f2bf2ffbcd2ab9"
+    },
+    {
+      "bytes": 130,
+      "name": "Player.fixed_vector.copy",
+      "rva": "0x29152e0",
+      "sha256": "a9bf5fec3451fa7f899a581d13f5577744fe5081f4f7969a29e54285a9c1e39b"
+    },
+    {
+      "bytes": 4,
+      "name": "Player.fixed_vector.begin",
+      "rva": "0x2915370",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "bytes": 5,
+      "name": "Player.fixed_vector.end",
+      "rva": "0x2915380",
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "bytes": 34,
+      "name": "Configuration.Game.GetPlayerConfiguration",
+      "rva": "0x28e4ea0",
+      "sha256": "f08bf18d4625c5777f771dc4221dcae4643e68c027f474b6a682816d8e168406"
+    },
+    {
+      "bytes": 132,
+      "name": "Player.Manager.operator_read",
+      "rva": "0x2b510f0",
+      "sha256": "ab965247cffca1fbce8acb41ba7d7397770a9681a361847088e0feafcbc9e55d"
+    },
+    {
+      "bytes": 3518,
+      "name": "Player.Instance.operator_read",
+      "rva": "0x2b4f490",
+      "sha256": "6cafd8cbdf97f8acc05be3175d60823c706339e01e84c9b757aa63009ef0f3ed"
+    },
+    {
+      "bytes": 130,
+      "name": "Player.Manager.InitializePlayer",
+      "rva": "0x2b51180",
+      "sha256": "6309b0829c021dd9f99c502c53866af4f887b21cf91033ccca37f4ca4d214393"
+    },
+    {
+      "bytes": 572,
+      "name": "Player.Manager.AllocateInstance",
+      "rva": "0x2b519d0",
+      "sha256": "c5f24360daed4e27a8571784425b5dfdd74d395e1f23c2bd50183bd18926c9b6"
+    },
+    {
+      "bytes": 2540,
+      "name": "Game.Instance.operator_read",
+      "rva": "0x2d7aaa0",
+      "sha256": "917d430f7b9c105932f394d62b2b75c83f698437ba89e7ce0ece979dad395873"
+    },
+    {
+      "bytes": 21,
+      "name": "Player.bool_wrapper.operator_read",
+      "rva": "0x2b50590",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "bytes": 15,
+      "name": "Player.bool_wrapper.load",
+      "rva": "0x2b3e140",
+      "sha256": "6cec740fce0026f8bfec042c04cef3c6787a67ca02d451b186eece9a4c2943ac"
+    },
+    {
+      "bytes": 189,
+      "name": "Player.Manager.Initialize",
+      "rva": "0x2b51770",
+      "sha256": "ddfec14f82d853718ec062ab524aba8492248e8d51f962ed8ff1fc96670e9aa2"
+    },
+    {
+      "bytes": 3,
+      "name": "Session.GetFromPlayer",
+      "rva": "0x27814b0",
+      "sha256": "cadd8f26469e7198cb603ea5ba1b165c25958dd0f2df803f0ade24798f5915ac"
+    },
+    {
+      "bytes": 4,
+      "name": "Session.GetToPlayer",
+      "rva": "0x27814c0",
+      "sha256": "4703e829cd2c504bae1968b685216f9f191e08f6e2e2a6f3be0a737a92c43721"
+    },
+    {
+      "bytes": 35,
+      "name": "EASTL.pending_list.base_constructor",
+      "rva": "0x2917ed0",
+      "sha256": "c19f5ae68eeb75f9d68d56b9e18804d72ae8912ff5c866ebb4490244aa94a9a3"
+    },
+    {
+      "bytes": 8,
+      "name": "EASTL.pending_list.DoInit",
+      "rva": "0x2917f00",
+      "sha256": "6847b039a8f3d112142268e2c88c785afc7e2ded24254f786bd5da81e646d8bc"
+    },
+    {
+      "bytes": 17,
+      "name": "EASTL.pending_list.begin",
+      "rva": "0x2917ba0",
+      "sha256": "340d22f085f23837caa92fd7382c27c6bf40573ee615ec86c2d7e20d7f4edc14"
+    },
+    {
+      "bytes": 14,
+      "name": "EASTL.pending_list.end",
+      "rva": "0x2917bd0",
+      "sha256": "8474adbadcfd19421585dbd98a5269b5c5b2ccabdd3c9e5abf511bb6e1592918"
+    },
+    {
+      "bytes": 8,
+      "name": "EASTL.pending_list.iterator_dereference",
+      "rva": "0x2917be0",
+      "sha256": "83c83833839b83a42df8b259715270e78932c38e567637740b62420fd583857f"
+    },
+    {
+      "bytes": 13,
+      "name": "EASTL.pending_list.iterator_increment",
+      "rva": "0x2917bf0",
+      "sha256": "8bb4a4081ba924faaf65ce4ef2ffb225b8c9daaa01212c359060074796a2b530"
+    },
+    {
+      "bytes": 52,
+      "name": "EASTL.pending_list.size",
+      "rva": "0x2917c00",
+      "sha256": "01bc16eba6721c8c60fa229050858015dc9c16d70b6b64c580b3635505d1e029"
+    }
+  ],
+  "native_capture_performed": false,
+  "optional_future_profile_only": true,
+  "original_execution": false,
+  "pending_payloads": "unknown",
+  "schema": "c6-linux-diplomacy-passive-capture-audit-v1",
+  "semantic_completeness": false,
+  "sources": {
+    "docs/linux-diplomacy-manager-capture.md": "fdc0b4c3e657312a807b905a50e73c8a75bb944e6a62dfb29c265bd6dc6a5da2",
+    "evidence/linux/diplomacy-manager-source.json": "d95ee4f5517826be6fc5f22cda107205e962c15c6eeacde0ed12c8168974b69b",
+    "native/linux/diplomacy_manager_capture.c": "67cd1094f836edffed3021599bf45daf75dc9927a99a13e7a0ec914301dd956b",
+    "native/linux/diplomacy_manager_capture.h": "82633df14063bfbff53ab1b5fcafbbd72c3b84e10ffda661a2aa76ad8d5c4517",
+    "tools/check/diplomacy_manager_capture_test.c": "8e963f28c0c01bfe9573cb80f992b6399a8de77acab06a14a4c721c74d8dc833",
+    "tools/check/test_diplomacy_manager_capture_decode.py": "ff86461da4d90d839180f3b06e5d8ed1777c034e7db73a587289be141c779969",
+    "tools/linux/diplomacy_manager_capture_audit.py": "51ea7aa278a30366b8e4652a522d7cbcffd7a13109d798e479e7e5a0d2376a9d",
+    "tools/linux/diplomacy_manager_capture_decode.py": "e2d8f65867c44b70ca86855dd799c6ac1c5f24c701b6fe3ca6820f54512a50a6"
+  },
+  "synthetic_binary_sha256": "fcd22533ecea7b8c0645a64ca0590aece10a6823389b76b8de5da49b0ffefb12",
+  "synthetic_c_tests": "synthetic diplomacy capture checks passed; no original-code observation",
+  "synthetic_decoder_tests": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.265s\n\nOK"
+}
