@@ -1,0 +1,545 @@
+{
+  "schema": "c6-linux-unit-operation-manager-metadata-preparation-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "original_execution_performed": false,
+  "native_capture_available": false,
+  "new_profile_required": true,
+  "methods": [
+    {
+      "image": "gamecore",
+      "address": "0x2003e60",
+      "bytes": 11,
+      "name": "GameCore::Context::Globals::GetConfiguration()",
+      "sha256": "2d3e1fadaf899ada28bed5a2c03be4245dddee7d006ab769e24e6db0b0e1baca"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fcc320",
+      "bytes": 11,
+      "name": "GameCore::Context::Globals::GetGame()",
+      "sha256": "440d8ec0711321eeaafb3479cabd65b277a965561733cb61087722b09b561205"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28e4870",
+      "bytes": 51,
+      "name": "GameCore::Configuration::Game::Instance::GetTurnPhaseType() const",
+      "sha256": "2ae899c84fc261748e99f2f6198cb0b9c6528623b1268aa8912cd7bfc8e36fc7"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28e48b0",
+      "bytes": 81,
+      "name": "GameCore::Configuration::Game::Instance::IsNetworkMultiplayer() const",
+      "sha256": "a785856ac0f0e8391e79e5cafeb5ee3b889d22211129933e6657a59fb4c4a57e"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28e54d0",
+      "bytes": 202,
+      "name": "GameCore::Configuration::Game::Instance::InitializeGameVariants()",
+      "sha256": "87bef5826bf9eaf25e0dd5116362e2577cf37d9e0e7743c269183e5a8db65ffe"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28e5390",
+      "bytes": 132,
+      "name": "GameCore::Configuration::Game::Instance::AllocateMap()",
+      "sha256": "cfa57437582d728016a9551d4b3c14b0912f3b174b198ed175ad81fc5d54c36c"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28e46d0",
+      "bytes": 88,
+      "name": "GameCore::Configuration::Game::Instance::~Instance()",
+      "sha256": "b618b74134952a9abe73a202497a729603d95096d3b24227ef23b8e9025cc572"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2214890",
+      "bytes": 16,
+      "name": "GameCore::Definitions::GetUnitOperationDefinitions()",
+      "sha256": "81ad939829e9d0aef09dc6a8231f2738c147082b41f1061727f64f0cc3dbb701"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20e9bc0",
+      "bytes": 5,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>::GetCount() const",
+      "sha256": "10b6b99e5adb80723195bcee32ed25b405c7afc2575bdd0d413f2c463cf8de2d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20e9bd0",
+      "bytes": 12,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>::size() const",
+      "sha256": "8375e78d364001210bb02186b4a5388e8e09554d7905f614c75f29f2692f7228"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20b3d20",
+      "bytes": 109,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>::Find(unsigned int) const",
+      "sha256": "6e5560f54d2973f7cffbc5de65eb89d2839e7478772244910ac8f21901dadf00"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20b42c0",
+      "bytes": 4,
+      "name": "GameCore::Definition::UnitOperation::GetCollectionIndex() const",
+      "sha256": "ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20b4900",
+      "bytes": 4,
+      "name": "GameCore::Definition::UnitOperation::GetTypeHash() const",
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2c2c220",
+      "bytes": 27,
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>::FindIndex(unsigned int) const",
+      "sha256": "0987f96defd19d195435710a642c1e5fcee85058aee80d49076836b0190e8f2d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20e9f70",
+      "bytes": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation> const&)",
+      "sha256": "b1857e1ade1de689270eacaa15b82957c4a6eaccbf045d053fe6771b1017cad5"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2da1260",
+      "bytes": 26,
+      "name": "GameCore::Unit::Operations::Manager::Get()",
+      "sha256": "247a0c981c4169f399c86ecce00bb2cc63f7100c890337325450e592e3addcd4"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2da1650",
+      "bytes": 82,
+      "name": "GameCore::Unit::Operations::Manager::GetHandler(GameCore::UnitOperationTypes) const",
+      "sha256": "a6c3ddb3a4c632585f054c52a76e6a0377372006cfa26f686dda45efe145ad13"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2da1720",
+      "bytes": 86,
+      "name": "GameCore::Unit::Operations::Manager::GetHandlerIDFromHash(GameCore::Unit::Operations::Types::TypeHash) const",
+      "sha256": "e67620512f7440c1ca5486dc10569f19d23e2e7bc7ff46a97d7174146b9a7a86"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2da2f30",
+      "bytes": 12,
+      "name": "eastl::vector<GameCore::Unit::Operations::BaseHandler*, eastl::allocator>::size() const",
+      "sha256": "8375e78d364001210bb02186b4a5388e8e09554d7905f614c75f29f2692f7228"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20e0670",
+      "bytes": 8,
+      "name": "GameCore::Game::Instance::GetPlayerManager()",
+      "sha256": "7a5e82ab0d9eeb4a98fea0624663246fda26b6bad0a9771e4fc3d236b7f2f300"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2003940",
+      "bytes": 39,
+      "name": "GameCore::Player::Manager::GetValidPlayer(GameCore::PlayerTypes) const",
+      "sha256": "58bb7297d06455fd64617c3472f7087054b4aa5fa1b28ab20ce94cb74db41648"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fcc140",
+      "bytes": 7,
+      "name": "GameCore::Player::Instance::GetID() const",
+      "sha256": "e997d06cf0d3f9b3bb89701ec15a7b1b096198fdc4b0dc87fc0ca29c37f6dadc"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2b315e0",
+      "bytes": 41,
+      "name": "GameCore::Player::Instance::GetConfiguration() const",
+      "sha256": "7700c11c3c1ab92ec0cf51a3c668fa664a8a55a6682132d94a697a4b6fc7346d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28ebe70",
+      "bytes": 41,
+      "name": "GameCore::Configuration::Player::Instance::GetSlotStatus() const",
+      "sha256": "22a29648f37247c1a316b7660cbef162162d34682133149854f2bf2ffbcd2ab9"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fccc70",
+      "bytes": 8,
+      "name": "GameCore::Player::Instance::GetUnits() const",
+      "sha256": "881c20b86cb02a6b25219fefe1ac158db460204e9e4bc34be216221471420a51"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe4ee0",
+      "bytes": 12,
+      "name": "GameCore::Player::Units::GetCount() const",
+      "sha256": "b930b8a5f0d6c66958e0245758e8e2a791e6ed138d16ab757a53e77bfaa781df"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2021450",
+      "bytes": 12,
+      "name": "GameCore::Player::Units::Begin() const",
+      "sha256": "87a7388edb2ca1089c2f92e438b0559902f54df42b77aa83adc5040d7ab976b0"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2021470",
+      "bytes": 12,
+      "name": "GameCore::Player::Units::End() const",
+      "sha256": "c5e02649a25516f44f997a359dca4f57a10b74779f7e0d9f3d303d3aca711aa7"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2021480",
+      "bytes": 7,
+      "name": "RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::const_iterator::operator->() const",
+      "sha256": "8b27de69f246bbea1ce9a72d955612ead4d947a493ae43bb249a7dda29e60023"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2021490",
+      "bytes": 7,
+      "name": "GameCore::Unit::IInstance::GetID() const",
+      "sha256": "317ef4dac77c526b04292f52727705f4b2857f4e0c5620bf48414d69903402e5"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20214a0",
+      "bytes": 14,
+      "name": "RecycledIDContainer<GameCore::Unit::Instance, 8u, 16u>::const_iterator::operator++()",
+      "sha256": "ee14fc8eab331243e425499cf6bf96a37a747d268887d427a97eea2a287ec507"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2004670",
+      "bytes": 7,
+      "name": "GameCore::Unit::IInstance::GetOwner() const",
+      "sha256": "189fcf2dedb49f72260462d7135b85f6b2ee4f66daf2924b7e6167a33f461382"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2171660",
+      "bytes": 11,
+      "name": "GameCore::Context::Globals::GetScriptSystem()",
+      "sha256": "0d5bf15629235063deb60052f71390c42fd80e98a458e0775078bcd7bb77e07e"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a55220",
+      "bytes": 7,
+      "name": "GameCore::Phase::Processor::GetCurrentPhase()",
+      "sha256": "989aa79b1e94a1e41efd8bc5d6adef7557b769b9f0efd0180f0b6110098e2ea9"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a54f20",
+      "bytes": 8,
+      "name": "GameCore::Phase::Processor::GetTurnPhases()",
+      "sha256": "082af7ef017cff0a4628c4aaeac8ad5683de65e89303698cee251537163a4124"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23237a0",
+      "bytes": 4,
+      "name": "GameCore::Definition::TurnPhase::GetDatabaseRowId() const",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2323810",
+      "bytes": 4,
+      "name": "GameCore::Definition::TurnSegment::GetDatabaseRowId() const",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a55cf0",
+      "bytes": 4,
+      "name": "GameCore::Definition::TurnPhase::GetTurnPhaseTypeHash() const",
+      "sha256": "8e1eb1e8ee76f9d9fd9091b8e14772902a0c006899df4ef599bf389b61b64d35"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a562c0",
+      "bytes": 4,
+      "name": "GameCore::Definition::TurnPhase::GetPhaseOrder() const",
+      "sha256": "de9f36dc140db6f626d63850679aba7ae4d76e6d68a564a1b411de985292fe18"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a55ba0",
+      "bytes": 5,
+      "name": "GameCore::Definition::TurnPhase::GetActiveSegment() const",
+      "sha256": "b811adb2d88317c4120dc7c33dd574a1678d7f98965dd45cb6cf6745cafe2e73"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a55bc0",
+      "bytes": 8,
+      "name": "GameCore::Definition::TurnSegment::IsAllowTacticalCommands() const",
+      "sha256": "06059c117d2525723825777083e470ee9220181f3044fd23f4b764be0ac6b038"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2c297e0",
+      "bytes": 73,
+      "name": "GameCore::Unit::Instance::IsOperationDisabled(GameCore::UnitOperationTypes) const",
+      "sha256": "de0f4942cf7c5e7e3e4fb4cd9ea1973ef50dc1b903add1ff673c871556839751"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2c3fbc0",
+      "bytes": 4,
+      "name": "GameCore::IndexList<bool, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitOperation>, &GameCore::Definitions::GetUnitOperationDefinitions, void>::edit()",
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2007f30",
+      "bytes": 4,
+      "name": "Types::Vector<bool, Types::LinearAlloc::Default<1u, 0u> >::size() const",
+      "sha256": "52a506bbea43a2d8d40e5f64b63939b2c437dfb6aae1f52216a775f464b2e537"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe6b60",
+      "bytes": 4,
+      "name": "Types::ptr64<bool>::operator bool*() const",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2021030",
+      "bytes": 7,
+      "name": "GameCore::Player::Instance::IsTurnActive() const",
+      "sha256": "f44ea052578d46f191ac4e546446f30a3022dc5085b44ee6b9378719eabb8c5b"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x281b720",
+      "bytes": 7,
+      "name": "GameCore::Game::Instance::IsPaused() const",
+      "sha256": "bf1c7941b3b62b57c2112fc90a57e28fbe0b8e7ab2b783e84a7c6731d061630f"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2b5c3c0",
+      "bytes": 7,
+      "name": "GameCore::Player::Processor::GetPlayerProcessingAutomation()",
+      "sha256": "750b0f58d460bdbe162c9ce1512bdd6a141a3527ce526bc67ef708695777aafb"
+    },
+    {
+      "image": "host",
+      "address": "0x395f070",
+      "bytes": 124,
+      "name": "Data::TypedVariantMap::TypedVariantMap()",
+      "sha256": "88ef146bf7cc119692ceb6363ed7eb31b05e1b25734903162c34b355bfca021e"
+    },
+    {
+      "image": "host",
+      "address": "0x395f0f0",
+      "bytes": 122,
+      "name": "Data::TypedVariantMap::TypedVariantMap(Data::TypedVariantManager*)",
+      "sha256": "e930cfe363710bf1526b918ee40fa709bdc4369fc7c406ed62e0bc1fd5c61188"
+    },
+    {
+      "image": "host",
+      "address": "0x395f480",
+      "bytes": 95,
+      "name": "Data::TypedVariantMap::GetVariant(unsigned int) const",
+      "sha256": "b264f2c22424685f2c0d51945a672854768f0363768ac961e0bd0de247274118"
+    },
+    {
+      "image": "host",
+      "address": "0x321c700",
+      "bytes": 27,
+      "name": "Data::TypedVariant::operator Data::TypedVariantMap const*() const",
+      "sha256": "8743eecda914a2c28d941ca5764c68b3fdfde23ea62bfe45992fbce0bc0c85df"
+    },
+    {
+      "image": "host",
+      "address": "0x2f63340",
+      "bytes": 125,
+      "name": "Data::TypedVariant::operator int() const",
+      "sha256": "b63e903dd7b7cd54bb2164921354dee6844fb6477b7711e623fd3c2e090e6e6f"
+    },
+    {
+      "image": "host",
+      "address": "0x2f633c0",
+      "bytes": 125,
+      "name": "Data::TypedVariant::operator unsigned int() const",
+      "sha256": "380b88868b20051709d622ff110351a07618ef077476ba5699935aa0b031581c"
+    },
+    {
+      "image": "host",
+      "address": "0x2f634a0",
+      "bytes": 14,
+      "name": "Data::TypedVariant::IsArray() const",
+      "sha256": "f34dcf459773e7f857e1ad157d46af70e1597597c627d8f3d2ff62b456679a4a"
+    },
+    {
+      "image": "host",
+      "address": "0x2f63c20",
+      "bytes": 4,
+      "name": "Data::VariantType::GetType() const",
+      "sha256": "979fd779ee57a2411c6c3e4e9c6440050fee3571d0df0f0a9a95106de0ac1fb4"
+    },
+    {
+      "image": "host",
+      "address": "0x3962060",
+      "bytes": 51,
+      "name": "eastl::rbtree<unsigned int, eastl::pair<unsigned int const, Data::TypedVariant>, eastl::less<unsigned int>, eastl::allocator, eastl::use_first<eastl::pair<unsigned int const, Data::TypedVariant> >, true, true>::find(unsigned int const&) const",
+      "sha256": "3807ac541af5e04676e513023bfdfdb0a728d0dcbd4ab63d364b26abf20da6af"
+    },
+    {
+      "image": "host",
+      "address": "0x32b57d0",
+      "bytes": 19,
+      "name": "eastl::rbtree<unsigned int, eastl::pair<unsigned int const, Data::TypedVariant>, eastl::less<unsigned int>, eastl::allocator, eastl::use_first<eastl::pair<unsigned int const, Data::TypedVariant> >, true, true>::end() const",
+      "sha256": "4f2d6e9cfaf8c7b0f7a9a55178dbd270a6211d50a6870e8b05e160cac851a003"
+    },
+    {
+      "image": "host",
+      "address": "0x32b5590",
+      "bytes": 10,
+      "name": "bool eastl::operator!=<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant> const*, eastl::pair<unsigned int const, Data::TypedVariant> const&>(eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant> const*, eastl::pair<unsigned int const, Data::TypedVariant> const&> const&, eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant> const*, eastl::pair<unsigned int const, Data::TypedVariant> const&> const&)",
+      "sha256": "4b032646ef472c6686889453fcf82f99a755f060d996a86069bb8e95c2093b1e"
+    },
+    {
+      "image": "host",
+      "address": "0x32b55b0",
+      "bytes": 8,
+      "name": "eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant> const*, eastl::pair<unsigned int const, Data::TypedVariant> const&>::operator*() const",
+      "sha256": "111da43af27d403431aff85821d27c6dfb0439f92612e03048c4c92b35072f05"
+    },
+    {
+      "image": "host",
+      "address": "0x2f63c30",
+      "bytes": 7,
+      "name": "Data::ArrayVariant::HasFlag(Data::ArrayVariant::ElementFlags) const",
+      "sha256": "f12bbd4f2af0ed16e1401bf73d72f99d1d715c19875a79c2c87e4c5db9e6ec47"
+    },
+    {
+      "image": "host",
+      "address": "0x39620a0",
+      "bytes": 197,
+      "name": "eastl::rbtree<unsigned int, eastl::pair<unsigned int const, Data::TypedVariant>, eastl::less<unsigned int>, eastl::allocator, eastl::use_first<eastl::pair<unsigned int const, Data::TypedVariant> >, true, true>::find(unsigned int const&)",
+      "sha256": "c839f614702d43ba687762927ea76af24a47e7189b2d9d1d766a5826e0a596af"
+    },
+    {
+      "image": "host",
+      "address": "0x31fb3a0",
+      "bytes": 7,
+      "name": "eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant> const*, eastl::pair<unsigned int const, Data::TypedVariant> const&>::rbtree_iterator(eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant>*, eastl::pair<unsigned int const, Data::TypedVariant>&> const&)",
+      "sha256": "87bbeb690e81cc8d3889e48426dcc9e4ba870d7e9147623b4a6c504e64719f2e"
+    },
+    {
+      "image": "host",
+      "address": "0x32b57c0",
+      "bytes": 4,
+      "name": "eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant> const*, eastl::pair<unsigned int const, Data::TypedVariant> const&>::rbtree_iterator(eastl::rbtree_node<eastl::pair<unsigned int const, Data::TypedVariant> > const*)",
+      "sha256": "539cfe51c3dc23be3a51b13f4cd6c55a914a4a8b4c38fc3a0789fb490f8d23ac"
+    },
+    {
+      "image": "host",
+      "address": "0x3962720",
+      "bytes": 4,
+      "name": "eastl::use_first<eastl::pair<unsigned int const, Data::TypedVariant> >::operator()(eastl::pair<unsigned int const, Data::TypedVariant> const&) const",
+      "sha256": "297ef56d5224205f2134280209526809023f7b23c5b97c6f0f85e9b2ac171036"
+    },
+    {
+      "image": "host",
+      "address": "0x2f80ba0",
+      "bytes": 8,
+      "name": "eastl::less<unsigned int>::operator()(unsigned int const&, unsigned int const&) const",
+      "sha256": "73faf6b7167abaf28645c6408b6f9133c452b1fba3ead4ae01564bb6bbeb67da"
+    },
+    {
+      "image": "host",
+      "address": "0x31fb5f0",
+      "bytes": 4,
+      "name": "eastl::rbtree_iterator<eastl::pair<unsigned int const, Data::TypedVariant>, eastl::pair<unsigned int const, Data::TypedVariant>*, eastl::pair<unsigned int const, Data::TypedVariant>&>::rbtree_iterator(eastl::rbtree_node<eastl::pair<unsigned int const, Data::TypedVariant> > const*)",
+      "sha256": "539cfe51c3dc23be3a51b13f4cd6c55a914a4a8b4c38fc3a0789fb490f8d23ac"
+    }
+  ],
+  "source_sha256": {
+    "native/linux/unit_operation_manager_metadata.c": "0222c430c31ff5cf9ea744c0cfb9a8aef4cedb8a1fa78c5dd79af8b1b0d8356a",
+    "native/linux/unit_operation_manager_metadata.h": "d98c03080cb0529d7d951dc1423d501901d32e3b4e70477ee97c831b13704638",
+    "tools/linux/unit_operation_manager_metadata_audit.py": "819d523d5f6cf00d046ef84bd36c346c8c545c6ef10e436bea3cc2feb442018f"
+  },
+  "configured_phase_provider": {
+    "status": "closed_for_concrete_standard_map_binding_only",
+    "root_offset": 128,
+    "game_map_offset": 136,
+    "initializer": "0x28e54d0",
+    "const_virtual_slot": 112,
+    "host_map_vptr": "0x53b3690",
+    "host_const_lookup": "0x395f480",
+    "host_const_map_conversion": "0x321c700",
+    "lifetime": "borrowed retained Configuration/Game root owns Key_Game child; retain root and its real variant manager until observer returns",
+    "runtime_required": [
+      "nonnull actual root and game maps",
+      "both concrete vptr/const lookup bindings",
+      "root Key_Game const conversion equals actual configuration+0x88",
+      "exact host conversion binding"
+    ],
+    "unknown_override": "unsupported before lookup; never substituted"
+  },
+  "captured_inputs": [
+    "ordered actual operation definition index/hash and numeric/hash FindIndex/HashToIndex results plus registry IDs",
+    "all actual Unit disabled IndexList size/capacity/default rawbyte/ordered raw values",
+    "current raw phase enum and actual configured phase hash plus raw nullable ordered 32-byte phase vector",
+    "phase/segment rowids, phase type hash, signed phase order and raw segment flags",
+    "Game pause rawbyte and automation player rawenum",
+    "actual Player IDs, turn-active rawbyte and slot status",
+    "ScriptSystem availability and actual vptr; callbacks remain uninspected"
+  ],
+  "scalar_abi": {
+    "definition_GetCount": "u32",
+    "definition_size": "u32",
+    "FindIndex": "i32",
+    "HashToIndex": "i32",
+    "phase_order": "i32",
+    "current_phase": "i32",
+    "automation_player": "i32",
+    "phase_vector_bytes": 32,
+    "disabled_list_bytes": 32,
+    "disabled_default_offset": 24,
+    "disabled_size_offset": 16,
+    "disabled_capacity_offset": 8
+  },
+  "validation": [
+    "67 complete original method fingerprints including full host const-lookup/conversion leaf closure",
+    "pinned host/game whole ELF hashes",
+    "original concrete host map virtual slot and constructor origin",
+    "target DWARF widths and storage layouts",
+    "strict C warnings/analyzer",
+    "UBSan actual guard/raw-byte/preflight checks without original execution"
+  ],
+  "unresolved": [
+    "new source/profile-specific admission and quiescent guard",
+    "new runner integration and immutable candidate identity",
+    "same-context native raw facts and independent saved Unit/PlayerHeader/rules crosschecks",
+    "four internal plus two outer raw Saves, two known RNG checks, repeat capture and cleanup",
+    "script callback registration/effects and complete gameplay RNG/state ownership"
+  ],
+  "full_manager_parity": false,
+  "full_action_supported": false,
+  "complete_state_action_rng_turns_supported": false,
+  "historical_raw_save_load_failure_bytes": 89198
+}
