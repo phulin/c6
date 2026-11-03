@@ -36,8 +36,12 @@ all saved flags to live state.
 | Synchronous report provider | Original report arguments and ordering, including activity equality suppression and subsequent activity rereads |
 | Diplomacy/notification provider over the resulting state | Real pending statements, configuration/manager/collection receiver semantics, notification callbacks, owner blocking and RNG effects |
 
-The adapter checks the handler observation's configuration identity against the
-loaded binding. Definition orders, phase selection, placement relations and
+The compatibility entrypoint checks the handler observation's configuration
+identity against the loaded binding. The
+[actual captured-handler entrypoint](linux-loaded-handler-adapter.md) instead
+uses typed `BoundHandlers` authority: it preserves the distinct actual observer
+identity and requires source-registered IDs, matched initial queues, pristine
+associated-snapshot admission and actual resource equivalence. Definition orders, phase selection, placement relations and
 providers must still be admitted for that actual configuration. Existing
 standalone captures cannot acquire native3 live provenance merely because a
 profile name or saved output resembles it. In particular, a nonnull script
@@ -148,9 +152,15 @@ interface cannot claim arbitrary gameplay callback effects on other Units,
 Players, Game state or RNG. A future live action context must support those
 shared reads/writes and redirect actor lookups to its authoritative actor.
 
-Reports run synchronously against the actual loaded Unit. The bounded
-continuation permits activity writes; other Unit writes remain in the record
-and return an error before unsupported continuation. Missing gameplay consumers
+Reports run synchronously through a scoped `ReportingContext`: providers read
+the authoritative LoadedState and may mutate only the addressed actor through
+`actor_mut()`. The guard compares that addressed Unit, permits activity writes,
+and retains other actor changes before returning a partial error. It does not
+claim to scan or validate arbitrary changes elsewhere in the World. The context
+prevents arbitrary safe providers from acquiring other mutable World components.
+This is an explicitly partial diagnostic interface; genuine whole-World/RNG
+callbacks require a future versioned mutation context and remain unsupported
+until their effects can be retained and executed. Missing gameplay consumers
 must return errors, never silently become empty subscriptions. A collector is
 useful for a diagnostic trace but cannot discharge reporting obligations.
 The actual stock reporting/UnitFlag result is scoped to verified stock inputs

@@ -132,22 +132,46 @@ pub struct Inputs<'a, 'd> {
     pub movement: Option<&'a crate::unit_movement_state::Inputs<'a>>,
 }
 
-/// Required synchronous identity-report delivery. Implementations may change the
-/// addressed Unit activity before the next original read. Other writes are
-/// retained, then return a partial-execution error. All actual consumers must run;
-/// collection alone is diagnostic evidence, never gameplay closure. Consumers
-/// needing other mutable world state must reject this Unit-scoped boundary.
+/// A scoped diagnostic reporting boundary. This is deliberately narrower than
+/// the eventual full gameplay callback context: the World is readable, and only
+/// the addressed actor is mutable. Broader World/RNG effects remain unsupported.
+mod report_context {
+    use super::*;
+    pub struct ReportingContext<'a> {
+        state: &'a mut LoadedState,
+        reference: UnitReference,
+    }
+    impl<'a> ReportingContext<'a> {
+        pub(super) fn new(state: &'a mut LoadedState, reference: UnitReference) -> Self {
+            Self { state, reference }
+        }
+        pub fn state(&self) -> &LoadedState {
+            self.state
+        }
+        pub fn reference(&self) -> UnitReference {
+            self.reference
+        }
+        pub fn actor_mut(&mut self) -> Result<&mut Unit, Error> {
+            unit(self.state, self.reference)
+        }
+    }
+}
+pub use report_context::ReportingContext;
+/// Required synchronous identity-report delivery. The supported-write guard
+/// checks the addressed Unit only: activity changes may continue; other actor
+/// changes are retained and return a partial error. The scoped context prevents
+/// arbitrary safe providers from acquiring other mutable World components.
+/// Real callbacks requiring broader gameplay/RNG writes need a future versioned
+/// mutation context and must report unsupported here, never omit those effects.
+/// Collecting reports alone is diagnostic evidence, not subscriber closure.
 pub trait Reports {
     fn send(&mut self, unit: &mut Unit, report: IdentityReport) -> Result<i32, Error>;
-    /// Authoritative loaded-world callback boundary. Providers needing real
-    /// world lookups override this; the default preserves the Unit-only API.
     fn send_loaded(
         &mut self,
-        state: &mut LoadedState,
-        reference: UnitReference,
+        context: &mut ReportingContext<'_>,
         report: IdentityReport,
     ) -> Result<i32, Error> {
-        self.send(unit(state, reference)?, report)
+        self.send(context.actor_mut()?, report)
     }
 }
 
@@ -478,7 +502,7 @@ fn report(
 ) -> Result<(), Error> {
     let mut expected = unit_ref(state, r)?.clone();
     trace.push(Event::Report(report));
-    reports.send_loaded(state, r, report)?;
+    reports.send_loaded(&mut ReportingContext::new(state, r), report)?;
     let actual = unit_ref(state, r)?;
     expected.e_activity = actual.e_activity;
     if actual != &expected {
