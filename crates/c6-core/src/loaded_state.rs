@@ -437,6 +437,52 @@ mod tests {
         );
     }
     #[test]
+    fn diplomacy_revision_exhaustion_never_reopens_pristine_or_removes_a_statement() {
+        use crate::diplomacy_manager::StatementHandle;
+        use crate::unit_operation_aftermath::{Error as AftermathError, Pending, Session};
+        let mut state = diplomacy_state();
+        let owner = state.world.players()[0].owner();
+        let mut processor = StatementProcessor {
+            seen: vec![],
+            owner,
+        };
+        state.revision = u64::MAX;
+        assert!(matches!(
+            state.diplomacy_manager_mut(),
+            Err(Error::ResourceLimit)
+        ));
+        state
+            .process_pending_diplomacy(&mut processor, &mut 0)
+            .unwrap();
+        assert_eq!(state.revision(), u64::MAX);
+        assert!(!state.is_pristine());
+        // Private source-only injection, not an available production mutation.
+        state
+            .diplomacy_manager
+            .as_mut()
+            .unwrap()
+            .open_sessions_mut()
+            .push(Session {
+                from: owner,
+                to: 2,
+                pending: vec![Pending {
+                    from: owner,
+                    to: 2,
+                    statement: StatementHandle(10),
+                }],
+            });
+        assert_eq!(
+            state.process_pending_diplomacy(&mut processor, &mut 8),
+            Err(AftermathError::Unsupported(
+                "loaded state revision exhausted"
+            ))
+        );
+        assert_eq!(state.revision(), u64::MAX);
+        assert!(!state.is_pristine());
+        assert!(processor.seen.is_empty());
+        assert!(state.diplomacy_manager().unwrap().has_outgoing(owner));
+    }
+    #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
         let mut w = ComponentSnapshotWitness {
@@ -952,7 +998,7 @@ impl LoadedState {
         if self.diplomacy_manager.is_none() {
             return Err(Error::Missing(MissingInput::DiplomacyManager));
         }
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         Ok(self.diplomacy_manager.as_mut().unwrap())
     }
     /// Exact outgoing drain over stable copied handles and current configuration
@@ -979,14 +1025,26 @@ impl LoadedState {
                 continue;
             }
             loop {
-                // Empty reads do not advance revision. A real removal does.
+                // Check exhaustion before removal, without turning an empty
+                // read into a mutation or reopening pristine admission on wrap.
+                if !self.diplomacy_manager.as_ref().unwrap().has_outgoing(id) {
+                    break;
+                }
+                let next_revision =
+                    self.revision
+                        .checked_add(1)
+                        .ok_or(AftermathError::Unsupported(
+                            "loaded state revision exhausted",
+                        ))?;
                 let statement = self
                     .diplomacy_manager
                     .as_mut()
                     .unwrap()
-                    .remove_next_outgoing(id);
-                let Some(statement) = statement else { break };
-                self.revision = self.revision.wrapping_add(1);
+                    .remove_next_outgoing(id)
+                    .ok_or(AftermathError::Unsupported(
+                        "outgoing session changed without callback",
+                    ))?;
+                self.revision = next_revision;
                 *budget = budget
                     .checked_sub(1)
                     .ok_or(AftermathError::DiagnosticBudgetExceeded)?;

@@ -122,6 +122,12 @@ impl Manager {
     pub fn pending_actions_mut(&mut self) -> &mut Vec<PendingAction> {
         &mut self.pending_actions
     }
+    pub fn has_outgoing(&self, player: i32) -> bool {
+        self.open_sessions.iter().any(|session| {
+            (session.from == player || session.to == player)
+                && session.pending.iter().any(|pending| pending.from == player)
+        })
+    }
     pub fn remove_next_outgoing(&mut self, player: i32) -> Option<StatementHandle> {
         self.open_sessions
             .iter_mut()
