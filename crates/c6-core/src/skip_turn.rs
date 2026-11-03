@@ -1,4 +1,5 @@
-//! Exact Linux XP2 leaf phases used by SkipTurn, not an accepted action.
+//! Bounded Linux XP2 operation-manager state phase and SkipTurn leaves.
+//! This is not an accepted action; synchronous reporting effects remain required.
 //!
 //! The caller must implement archive registration and synchronous reporting
 //! subscribers through the required hooks. No no-op subscriber implementation is
