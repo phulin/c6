@@ -31,6 +31,7 @@ version = "0.1.0"
 name = "c6-data"
 version = "0.1.0"
 dependencies = [
+ "c6-core",
  "rusqlite",
  "serde",
  "serde_json",
@@ -42,6 +43,7 @@ name = "c6-differential"
 version = "0.1.0"
 dependencies = [
  "c6-core",
+ "c6-data",
  "serde",
  "serde_json",
  "sha2",

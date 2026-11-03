@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
+pub mod movement;
 pub mod registry;
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
