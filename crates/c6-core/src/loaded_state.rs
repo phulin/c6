@@ -97,6 +97,8 @@ mod tests {
             diplomacy_manager_source: None,
             player_notifications: None,
             player_notifications_source: None,
+            game_techs: None,
+            game_techs_source: None,
             trade_graph: None,
             trade_graph_source: None,
         }
@@ -780,6 +782,174 @@ mod tests {
         ));
         assert!(late.trade_graph().is_err());
     }
+    struct TechDefinitions;
+    impl crate::movement_world::DefinitionLookup for TechDefinitions {
+        fn count(&self) -> usize {
+            2
+        }
+        fn find_index(&self, key: u32) -> Option<usize> {
+            match key {
+                0..=1 => Some(key as usize),
+                100..=101 => Some((key - 100) as usize),
+                _ => None,
+            }
+        }
+        fn type_hash(&self, index: usize) -> Option<u32> {
+            (index < 2).then_some(index as u32 + 100)
+        }
+    }
+    fn game_techs_bytes() -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for word in [3u32, 1, 3, 100] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes.push(1);
+        for word in [i32::MIN as u32, 1, 101, 1, 100] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes
+    }
+    fn game_techs_source(bytes: &[u8]) -> (LoadedState, ComponentSnapshotWitness) {
+        let mut state = state();
+        let CoreImage::Unique(image) = &mut state.image else {
+            unreachable!()
+        };
+        let start = image.len();
+        image.extend_from_slice(bytes);
+        state.binding = crate::core_stream::tests::context_binding(image);
+        let witness = ComponentSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: state.binding.core_sha256,
+            snapshot_bytes: image.len(),
+            owner_trace_sha256: [7; 32],
+            owner_range: [start, image.len()],
+            decoded_prefix_bytes: bytes.len(),
+        };
+        (state, witness)
+    }
+    #[test]
+    fn game_techs_admission_retains_graph_and_scope_without_advancing_revision() {
+        let (mut state, witness) = game_techs_source(&game_techs_bytes());
+        assert!(matches!(
+            state.game_techs(),
+            Err(Error::Missing(MissingInput::GameTechs))
+        ));
+        state
+            .install_game_techs(witness.clone(), &TechDefinitions, unit::Limits::default())
+            .unwrap();
+        let graph = state.game_techs().unwrap();
+        assert_eq!(graph.iteration(), [0]);
+        assert_eq!(graph.nodes()[0].cost_raw, i32::MIN);
+        assert!(graph.has_tech(0));
+        assert_eq!(graph.prerequisites(0).unwrap(), [1]);
+        assert_eq!(
+            graph.prerequisites(-1),
+            Err(crate::game_techs::Error::FallbackUnknown)
+        );
+        assert_eq!(state.game_techs_source(), Some(&witness));
+        assert_eq!(state.revision(), 0);
+        assert!(matches!(
+            state.install_game_techs(witness, &TechDefinitions, unit::Limits::default()),
+            Err(Error::AlreadyBound)
+        ));
+    }
+    #[test]
+    fn game_techs_admission_rejects_bad_witnesses_without_binding() {
+        for kind in 0..8 {
+            let (mut state, mut witness) = game_techs_source(&game_techs_bytes());
+            match kind {
+                0 => witness.source_role = core_player::initialization::WireRole::ReadInputCore,
+                1 => witness.snapshot_sha256[0] ^= 1,
+                2 => witness.snapshot_bytes += 1,
+                3 => witness.owner_trace_sha256 = [0; 32],
+                4 => witness.owner_range[1] = usize::MAX,
+                5 => witness.decoded_prefix_bytes -= 1,
+                6 => witness.owner_range.reverse(),
+                _ => witness.owner_range = [0, 0],
+            }
+            assert!(matches!(
+                state.install_game_techs(witness, &TechDefinitions, unit::Limits::default()),
+                Err(Error::Binding)
+            ));
+            assert!(state.game_techs().is_err());
+            assert!(state.game_techs_source().is_none());
+            assert_eq!(state.revision(), 0);
+        }
+    }
+    #[test]
+    fn game_techs_decode_bounds_and_rebuild_gaps_are_not_partial_installs() {
+        let bytes = game_techs_bytes();
+        for limits in [
+            unit::Limits {
+                max_bytes: bytes.len() - 1,
+                max_items: 100,
+            },
+            unit::Limits {
+                max_bytes: bytes.len(),
+                max_items: 2,
+            },
+        ] {
+            let (mut state, witness) = game_techs_source(&bytes);
+            assert!(matches!(
+                state.install_game_techs(witness, &TechDefinitions, limits),
+                Err(Error::GameTechs(crate::game_techs::Error::ResourceLimit))
+            ));
+            assert!(state.game_techs().is_err());
+            assert!(state.game_techs_source().is_none());
+        }
+        let mut trailing = bytes.clone();
+        trailing.push(0);
+        let (mut state, witness) = game_techs_source(&trailing);
+        assert!(matches!(
+            state.install_game_techs(witness, &TechDefinitions, unit::Limits::default()),
+            Err(Error::Binding)
+        ));
+        assert!(state.game_techs().is_err());
+        let mut empty = Vec::new();
+        for word in [3u32, 0, 1, 100] {
+            empty.extend(word.to_le_bytes());
+        }
+        let (mut state, witness) = game_techs_source(&empty);
+        assert!(matches!(
+            state.install_game_techs(witness, &TechDefinitions, unit::Limits::default()),
+            Err(Error::GameTechs(
+                crate::game_techs::Error::BuildTechsRequired
+            ))
+        ));
+        assert!(state.game_techs().is_err());
+        assert_eq!(state.revision(), 0);
+    }
+    #[test]
+    fn game_techs_owner_survives_unrelated_mutation_and_rejects_late_import() {
+        let (mut state, witness) = game_techs_source(&game_techs_bytes());
+        state
+            .install_game_techs(witness.clone(), &TechDefinitions, unit::Limits::default())
+            .unwrap();
+        let owner = state.world.players()[0].owner();
+        let id = state.world.players()[0].formation_records().unwrap()[0]
+            .value
+            .id;
+        state.initialize_formations().unwrap();
+        state
+            .formation_with_runtime_mut(owner, id)
+            .unwrap()
+            .0
+            .moves_remaining_raw = 7;
+        assert_eq!(state.revision(), 1);
+        assert_eq!(state.game_techs().unwrap().iteration(), [0]);
+        assert_eq!(state.game_techs_source(), Some(&witness));
+        let (mut late, witness) = game_techs_source(&game_techs_bytes());
+        late.initialize_formations().unwrap();
+        late.formation_with_runtime_mut(owner, id)
+            .unwrap()
+            .0
+            .moves_remaining_raw = 7;
+        assert!(matches!(
+            late.install_game_techs(witness, &TechDefinitions, unit::Limits::default()),
+            Err(Error::NotPristine)
+        ));
+        assert!(late.game_techs().is_err());
+    }
     #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
@@ -836,6 +1006,7 @@ pub enum Error {
     GameRelations(crate::game_diplomatic_relations::Error),
     DiplomacyManager(crate::diplomacy_manager::Error),
     PlayerNotifications(crate::player_notifications_owner::Error),
+    GameTechs(crate::game_techs::Error),
     TradeGraph(crate::trade_graph_state::Error),
 }
 impl std::fmt::Display for Error {
@@ -848,6 +1019,7 @@ impl std::error::Error for Error {}
 pub enum MissingInput {
     ManagerSlots,
     PlayerNotifications,
+    GameTechs,
     TradeGraph,
     PlayerConfiguration(i32),
     PlayerTurnActive(i32),
@@ -1029,6 +1201,8 @@ pub struct LoadedState {
     diplomacy_manager_source: Option<ObservedSnapshotWitness>,
     player_notifications: Option<crate::player_notifications_owner::Owner>,
     player_notifications_source: Option<ComponentSnapshotWitness>,
+    game_techs: Option<crate::game_techs::Graph>,
+    game_techs_source: Option<ComponentSnapshotWitness>,
     trade_graph: Option<crate::trade_graph_state::GraphState>,
     trade_graph_source: Option<ComponentSnapshotWitness>,
 }
@@ -1150,6 +1324,8 @@ impl LoadedState {
             diplomacy_manager_source: None,
             player_notifications: None,
             player_notifications_source: None,
+            game_techs: None,
+            game_techs_source: None,
             trade_graph: None,
             trade_graph_source: None,
         })
@@ -1283,6 +1459,65 @@ impl LoadedState {
     }
     pub fn trade_graph_source(&self) -> Option<&ComponentSnapshotWitness> {
         self.trade_graph_source.as_ref()
+    }
+    /// Admit an attributed owner-local Game.Techs Read/Validate and nonempty
+    /// InitializePostLoad projection once. This is a source-rebuilt graph, not
+    /// evidence of final native runtime state across other load callbacks. The
+    /// resource adapter authenticates the trace and actual registry; this layer
+    /// checks complete source/binding consistency without general tail offsets.
+    pub fn install_game_techs(
+        &mut self,
+        witness: ComponentSnapshotWitness,
+        definitions: &dyn crate::movement_world::DefinitionLookup,
+        limits: unit::Limits,
+    ) -> Result<(), Error> {
+        if self.game_techs.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+            || witness.snapshot_sha256 != self.binding.core_sha256
+            || witness.snapshot_bytes != self.image.as_ref().len()
+            || witness.owner_trace_sha256 == [0; 32]
+            || witness.owner_range[0] >= witness.owner_range[1]
+            || witness.owner_range[1] - witness.owner_range[0] != witness.decoded_prefix_bytes
+        {
+            return Err(Error::Binding);
+        }
+        let bytes = self
+            .image
+            .as_ref()
+            .get(witness.owner_range[0]..witness.owner_range[1])
+            .ok_or(Error::Binding)?;
+        let limits = unit::Limits {
+            max_bytes: limits.max_bytes.min(bytes.len()),
+            max_items: limits.max_items.min(self.limits.max_runtime_array_items),
+        };
+        let (wire, consumed, _) = crate::game_techs::Techs::decode_prefix_with_items(bytes, limits)
+            .map_err(Error::GameTechs)?;
+        if consumed != bytes.len() {
+            return Err(Error::Binding);
+        }
+        let owner = wire
+            .project_read(definitions)
+            .map_err(Error::GameTechs)?
+            .post_load_without_rebuild()
+            .map_err(Error::GameTechs)?;
+        self.game_techs = Some(owner);
+        self.game_techs_source = Some(witness);
+        Ok(())
+    }
+    /// Immutable typed source projection. Missing owner input is never an empty
+    /// graph. Unrelated Unit changes do not reconstruct or replace this owner.
+    pub fn game_techs(&self) -> Result<&crate::game_techs::Graph, Error> {
+        self.game_techs
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::GameTechs))
+    }
+    pub fn game_techs_source(&self) -> Option<&ComponentSnapshotWitness> {
+        self.game_techs_source.as_ref()
     }
     /// Admit the complete saved notification owner once, without inferring live
     /// lock/default-blocking/pool/subtype state. The producer authenticates the
