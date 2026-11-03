@@ -4,7 +4,7 @@
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "production_registry": {
     "source": "crates/c6-core/src/city_district.rs",
-    "source_sha256": "a8383f6f794668b8552148e60fa1013c208757cf6bfd8148cb24e5f691054d28",
+    "source_sha256": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
     "lookup": "borrowed sorted native low16 slots; preserve requested/resolved IDs and actual owner",
     "unavailable_distinct_from_complete_missing": true,
     "movement_runtime_adapter": true,
@@ -533,6 +533,18 @@
     {
       "address": "0x2a41a93",
       "contract": "SetValidDomains first clears runtime mask"
+    },
+    {
+      "address": "0x2d7b13d",
+      "contract": "Canal Wonder uses original Building Find after packed type narrowing"
+    },
+    {
+      "address": "0x2d7b1eb",
+      "contract": "Bridge independently uses original Building Find"
+    },
+    {
+      "address": "0x2d7b12a",
+      "contract": "Only Canal Wonder prechecks packed type != -1"
     }
   ],
   "virtual_bindings": [

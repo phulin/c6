@@ -419,6 +419,12 @@ METHODS += [(43040224, 286, 'GameCore::Context::Instance::MakeMetaData', '14a02e
 # Concrete District/Building serialized hash remapping providers.
 METHODS += [(33536304, 34, 'int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building> const&)', 'aef8a22d38a41aa430f31d3a7b9315abb5de415033479baf1722557685f5d707'), (33536976, 34, 'int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)', 'd33e4a5fb4dadf218364b8a20da36838ab796c11f42bc2b47327f41c0ff5a465'), (33536352, 109, 'GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Building>::Find(unsigned int) const', '81c8f59f047a39dbd88358cb829ef615f0fb9db2c737051e03bbf333f5a3ba06'), (33537024, 109, 'GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::Find(unsigned int) const', 'b720a1edc9281bc19df2a5fa2d1db43b2e3c09493372d0f970d1fe598f6181d8'), (33344608, 4, 'GameCore::Definition::Building::GetCollectionIndex() const', 'ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a'), (33344752, 4, 'GameCore::Definition::District::GetCollectionIndex() const', 'ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a')]
 
+BYTES += [
+    (0x2d7b13d,'e85e770fff','Canal Wonder uses original Building Find after packed type narrowing'),
+    (0x2d7b1eb,'e8b0760fff','Bridge independently uses original Building Find'),
+    (0x2d7b12a,'83fdff','Only Canal Wonder prechecks packed type != -1'),
+]
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--assets',type=Path,default=ROOT.parent/'c6-assets-linux')

@@ -468,18 +468,21 @@ pub fn rebuild_valid_domains(
             // Packed BuildingTypes is a signed short after hash remapping.
             let wonder_index =
                 remap_type(city.wonder_building_hash, definitions.buildings.lookup)? as i16 as i32;
-            let wonder = if wonder_index == -1 {
-                None
-            } else {
-                Some(
-                    definitions
-                        .buildings
-                        .at(wonder_index)
-                        .ok_or(Error::DefinitionMapping)?,
-                )
+            // Native calls BuildingDefinitions::Find(unsigned), not At. A
+            // narrowed negative value can therefore be an actual hash query.
+            let find_wonder = || {
+                let index = definitions
+                    .buildings
+                    .lookup
+                    .find_index(wonder_index as u32)
+                    .ok_or(Error::DefinitionMapping)?;
+                definitions
+                    .buildings
+                    .at(i32::try_from(index).map_err(|_| Error::DefinitionMapping)?)
+                    .ok_or(Error::DefinitionMapping)
             };
             // Canal Wonder does not require IsWonderComplete in the original.
-            if wonder.is_some_and(|w| w.canal_wonder) {
+            if wonder_index != -1 && find_wonder()?.canal_wonder {
                 masks[plot]
                     .as_mut()
                     .ok_or(Error::PlotAttributes { plot })?
@@ -494,7 +497,8 @@ pub fn rebuild_valid_domains(
                 )?;
             }
             if inputs.is_wonder_complete(plot)? {
-                let wonder = wonder.ok_or(Error::DefinitionMapping)?;
+                // Unlike Canal Wonder, this Find has no packed -1 guard.
+                let wonder = find_wonder()?;
                 if wonder.bridge {
                     masks[plot]
                         .as_mut()
@@ -510,8 +514,8 @@ pub fn rebuild_valid_domains(
 #[cfg(test)]
 mod tests {
     use super::*;
-    struct Definitions(&'static [u32]);
-    impl DefinitionLookup for Definitions {
+    struct Definitions<'a>(&'a [u32]);
+    impl DefinitionLookup for Definitions<'_> {
         fn count(&self) -> usize {
             self.0.len()
         }
@@ -749,6 +753,78 @@ mod tests {
         assert_eq!(
             map_is_water(&map, 4, &terrains),
             Err(Error::PlotOutsideMap { plot: 4 })
+        );
+    }
+    #[test]
+    fn packed_wonder_type_is_resolved_again_with_native_find() {
+        let records = [district(0, 0, true)];
+        let registry = registry(&records);
+        let district_lookup = Definitions(&[77]);
+        let district_properties = [DistrictDomainProperties {
+            canal: false,
+            internal_only: true,
+        }];
+        // First lookup returns index32768. Narrowing to i16 yields -32768,
+        // and the native SECOND Find resolves hash0xffff8000 to index1.
+        let mut building_hashes = vec![0; 32769];
+        building_hashes[1] = 0xffff8000;
+        building_hashes[32768] = 0x12345678;
+        let building_lookup = Definitions(&building_hashes);
+        let mut building_properties = vec![
+            BuildingDomainProperties {
+                canal_wonder: false,
+                bridge: false
+            };
+            32769
+        ];
+        building_properties[1].canal_wonder = true;
+        let definitions = RebuildDefinitions {
+            districts: DefinitionTable::new(&district_lookup, &district_properties).unwrap(),
+            buildings: DefinitionTable::new(&building_lookup, &building_properties).unwrap(),
+        };
+        let mut map = map_fixture();
+        map.plots.truncate(1);
+        map.header.width = 1;
+        map.units.width = 1;
+        map.plots[0]
+            .city_attributes
+            .as_mut()
+            .unwrap()
+            .wonder_building_hash = 0x12345678;
+        assert_eq!(
+            rebuild_valid_domains(&map, &registry, &definitions, &Inputs, 1).unwrap(),
+            [Some(DomainMask(23))]
+        );
+        // Index65535 narrows to -1. Canal's Find is skipped; Bridge's Find
+        // still resolves UINT_MAX after actual IsWonderComplete=true.
+        let mut building_hashes = vec![0; 65536];
+        building_hashes[1] = u32::MAX;
+        building_hashes[65535] = 0x12345678;
+        let building_lookup = Definitions(&building_hashes);
+        let mut building_properties = vec![
+            BuildingDomainProperties {
+                canal_wonder: false,
+                bridge: false
+            };
+            65536
+        ];
+        building_properties[1].bridge = true;
+        let definitions = RebuildDefinitions {
+            districts: DefinitionTable::new(&district_lookup, &district_properties).unwrap(),
+            buildings: DefinitionTable::new(&building_lookup, &building_properties).unwrap(),
+        };
+        struct BridgeInputs;
+        impl DomainRebuildInputs for BridgeInputs {
+            fn is_water(&self, _: usize) -> Result<bool, Error> {
+                Ok(true)
+            }
+            fn is_wonder_complete(&self, _: usize) -> Result<bool, Error> {
+                Ok(true)
+            }
+        }
+        assert_eq!(
+            rebuild_valid_domains(&map, &registry, &definitions, &BridgeInputs, 1).unwrap(),
+            [Some(DomainMask(23))]
         );
     }
     struct Inputs;
