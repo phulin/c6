@@ -1,0 +1,341 @@
+{
+  "action_turn_acceptance": false,
+  "checks": [
+    "wire hash retained and distinct runtime definition index",
+    "changing lookup answers are cached exactly once per pair",
+    "all six reset/overlay arrays plus disabled operations",
+    "ordered duplicates, ignored unknown keys, absent defaults",
+    "owner and profile mismatch; missing definition and invalid index",
+    "no original owned Unit mutation on success or errors",
+    "actual owner Formation low16 lookup preserves both generations",
+    "missing collection errors; known empty, sentinel, missing slot null",
+    "Unit dirty baseline remains unavailable",
+    "Formation local dirty trace and wrong-object errors before mutation"
+  ],
+  "formation_source_commit": "5809ff8323ecd8b473698f9c77cf8bf7fb893a4b",
+  "initialized_world_acceptance": false,
+  "native_parity": false,
+  "original_execution": false,
+  "original_unit_source_commit": "10d404c",
+  "pinned_static_audits": {
+    "formation": {
+      "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "methods": [
+        {
+          "address": "0x293b560",
+          "name": "Formation.Read",
+          "sha256": "5b123a18e008411f37fc3b7848a0929eab7dff3370a0a66107d373021913b82c",
+          "size": 385
+        },
+        {
+          "address": "0x293ed20",
+          "name": "Formation.archive_base.constructor",
+          "sha256": "15f18bb0b47a8c20a9e293745bbf931d217a62606795985a3464429ebd8e6c20",
+          "size": 50
+        },
+        {
+          "address": "0x293ee30",
+          "name": "Formation.archive.setVariableName",
+          "sha256": "1ebc4d8944c5f6a23a98d537ffe27f9663d6d7c550e4ecc991adfe8a60648621",
+          "size": 189
+        },
+        {
+          "address": "0x293b6f0",
+          "name": "Formation.constructor",
+          "sha256": "fcf174dc472e83a96e735bb44d324d8788a17870f71fcd700de035de2efa16c7",
+          "size": 1782
+        },
+        {
+          "address": "0x293ddb0",
+          "name": "Formation.domain.edit",
+          "sha256": "113dcf9e86ede0026030b4a7c09f3dc6c00e231d0fcb5b07591b83aa9d652fcf",
+          "size": 52
+        },
+        {
+          "address": "0x293ece0",
+          "name": "Formation.bool.MoveAssignmentDo",
+          "sha256": "3bcb368d2c6d7847571a325d8926ccf94d2537ac96970a74577974383aa008e4",
+          "size": 52
+        },
+        {
+          "address": "0x293de70",
+          "name": "Formation.GetComponentID",
+          "sha256": "19132cfba3993b009ef5fe4ce918f3f29d5e76e3ac7059d14874df57947b3ecd",
+          "size": 31
+        },
+        {
+          "address": "0x1fe4710",
+          "name": "ComponentID.constructor",
+          "sha256": "cb4c434e7692669068d42f77251a91039bc80797654608f3bdbd62f534f7478f",
+          "size": 11
+        },
+        {
+          "address": "0x1fe5c30",
+          "name": "ComponentID.GetBits",
+          "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23",
+          "size": 4
+        },
+        {
+          "address": "0x293d8e0",
+          "name": "Formation.ClearPathCache",
+          "sha256": "2abba4ca3d359d0580d3c526be2b80690c677bbac24677d247cb2f693b0cfdd3",
+          "size": 48
+        },
+        {
+          "address": "0x293ea30",
+          "name": "Formation.path.edit",
+          "sha256": "ffd5be2502c8e7e9d1093cc3df0d5aace81d6c4aacf11a1f10c9a146ca9f0d3a",
+          "size": 52
+        },
+        {
+          "address": "0x293e400",
+          "name": "Formation.cache.edit",
+          "sha256": "5a52cad8bcfd15d59ec5da08790e8c6aacc6de4337f2b8b07ff5e447577ec286",
+          "size": 52
+        },
+        {
+          "address": "0x2b04da0",
+          "name": "Player.Formations.Read",
+          "sha256": "b3c00e618a9221d5a5164f12671722e89c6a1ca5e165d58ca9fe9ab97483bd31",
+          "size": 46
+        },
+        {
+          "address": "0x2b050a0",
+          "name": "Formation.collection.Read",
+          "sha256": "88a1327c1adf390b15c1bbd72f31f98f12db87a2a64962b931d0a2583edbe27d",
+          "size": 386
+        },
+        {
+          "address": "0x2b05830",
+          "name": "Formation.collection.Find",
+          "sha256": "eba120c60410744f5c69f7277505827d2e4c0eff1548a17cda46a318c5815557",
+          "size": 84
+        },
+        {
+          "address": "0x20e82e0",
+          "name": "Unit.GetComponentID",
+          "sha256": "4dd57984270bbcfbc8ea3273d4dce7454e1a80b27cc975a263084961359155b2",
+          "size": 26
+        },
+        {
+          "address": "0x20bcfc0",
+          "name": "UnitID.constructor",
+          "sha256": "d5e35bf64814cd22ffa58215a152329f4f4647676e2d5f856506b87e5dee4af5",
+          "size": 10
+        },
+        {
+          "address": "0x2940de0",
+          "name": "FAutoVariable<FixedPointT<8u>, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "5a31db2b7a8c8d5e3ffa997f848d8f0aeca6d8ab65d2b6d607f3770f09a3497e",
+          "size": 15
+        },
+        {
+          "address": "0x293df60",
+          "name": "FAutoVariable<FixedPointT<8u>, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+          "sha256": "47cde9fa841a0089d59ac347215c527c67d366862553e277ef672b091b6eca1f",
+          "size": 52
+        },
+        {
+          "address": "0x29439a0",
+          "name": "FAutoVariable<Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "c86820bc1e1f8d0f85dada6cf006607ada5434a78298e6ee068fe93aae16f59a",
+          "size": 15
+        },
+        {
+          "address": "0x293e0a0",
+          "name": "FAutoVariable<Types::Vector<unsigned int, Types::LinearAlloc::DefaultInline<unsigned int, 4u, 1u, 51u> >, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+          "sha256": "b5eef72a7591c0e8c908ba16cf6dc831db43f017a7d69f4493cde6290a01b48c",
+          "size": 69
+        },
+        {
+          "address": "0x2942c10",
+          "name": "FAutoVariable<GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "74e272cea2538a7620acd5fa3dfc96f3c7e9c1ac6a8cb35ab0ef5f4b4420daef",
+          "size": 15
+        },
+        {
+          "address": "0x293e040",
+          "name": "FAutoVariable<GameCore::Pathfinder::ResultNodeArray, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool)",
+          "sha256": "b91a0ae81439836590d8433dad98f38ee53759c5b73479aebb609d6137048192",
+          "size": 84
+        },
+        {
+          "address": "0x2941820",
+          "name": "FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "8263903f88fc5c98c04f019f625d9ed65414cacc645511ce21daf9df7b3d95c2",
+          "size": 15
+        },
+        {
+          "address": "0x293dfa0",
+          "name": "FAutoVariable<GameCore::DomainTypes, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+          "sha256": "582d0b66131affcc046f37cf88d6e6e50df51fa0ad12c48c30511711b6e856f7",
+          "size": 48
+        },
+        {
+          "address": "0x29403e0",
+          "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "afe978ef2659a2f425ede5706f35c391fa97c9dbdffcb8a348be3a5697e7ba90",
+          "size": 15
+        },
+        {
+          "address": "0x293df30",
+          "name": "FAutoVariable<GameCore::PlayerTypes, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+          "sha256": "85a4176929611e605feec01e0c0f6f0489afdfc34569fb2a6e8cae1434cc40da",
+          "size": 48
+        },
+        {
+          "address": "0x293f9a0",
+          "name": "FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "44a3944c538fc2e840f7786f0e172f25246a958d00113935c292d0d4f33b8ede",
+          "size": 15
+        },
+        {
+          "address": "0x293def0",
+          "name": "FAutoVariable<GameCore::PlotCoord, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+          "sha256": "816e50ebed6abd55e79e3a381d8bff9f7e38804351ecfe6f6aded2b5be98c641",
+          "size": 52
+        },
+        {
+          "address": "0x2942220",
+          "name": "FAutoVariable<bool, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "9d2032204657c1849c5358546df3f3d5f1c4eebb320bf90e76e5160723ec8e94",
+          "size": 15
+        },
+        {
+          "address": "0x293e010",
+          "name": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&)",
+          "sha256": "82416b9fc421ebfc3f046d1dbaca6c2f9faf8b34179b78f1dbaf475991c0c6c4",
+          "size": 45
+        },
+        {
+          "address": "0x293dfd0",
+          "name": "FAutoVariable<bool, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, bool&&, bool)",
+          "sha256": "6c263a3d962ffcd6cbcfdfdc7f000810625199b30b898304e78bd2c254cba151",
+          "size": 52
+        },
+        {
+          "address": "0x293efa0",
+          "name": "FAutoVariable<unsigned int, GameCore::Formation::Instance>::load(Serialization::IStream&)",
+          "sha256": "8d35e34d875d90c32b08d0b7703e6138a3ebd02e4add00710beff152c926e3e8",
+          "size": 15
+        },
+        {
+          "address": "0x293deb0",
+          "name": "FAutoVariable<unsigned int, GameCore::Formation::Instance>::FAutoVariable(AutoVariableString const&, FAutoArchive&, unsigned int const&, bool)",
+          "sha256": "6916093e3a5be3477547964b410bfca674c8d24cc6e54c84e70db52fcc682760",
+          "size": 52
+        }
+      ],
+      "report_sha256": "6c24d835b42fee6ba88a2a76c0b4e1d1d54f3921fa2cbea708f718713342b34d"
+    },
+    "unit": {
+      "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+      "methods": {
+        "abilities_overlay": {
+          "address": "0x2c2a7a0",
+          "bytes": 149,
+          "sha256": "69488a602ef29b65f66ed665e4be5a45701788d85a9d694cc46e8b02f24c8776",
+          "symbols": [
+            "_ZN13Serialization18ReadIndexHashArrayIiN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_11UnitAbilityEEEEEbRNS_7IStreamEPT_RKT0_"
+          ]
+        },
+        "concrete_post_load": {
+          "address": "0x2c12d00",
+          "bytes": 19,
+          "sha256": "5a9347cbc48de5fb33deba3be4527993a6cf6a7692be18090a23adfb5f9e44c7",
+          "symbols": [
+            "_ZN8GameCore4Unit9CInstance18InitializePostLoadEv"
+          ]
+        },
+        "definition_domain_hash": {
+          "address": "0x1fe5870",
+          "bytes": 4,
+          "sha256": "77205cdc9a7bd9bf1f7e6ff1fdda57017736a90fa0063ff3b0d23ffeea318cab",
+          "symbols": [
+            "_ZNK8GameCore10Definition4Unit13GetDomainHashEv"
+          ]
+        },
+        "great_person_overlay": {
+          "address": "0x2b13a80",
+          "bytes": 149,
+          "sha256": "184f9626aa3f4fc8b78aceef0e22ae287bb13c285bb39a94943750a5523e7c24",
+          "symbols": [
+            "_ZN13Serialization18ReadIndexHashArrayIiN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_16GreatPersonClassEEEEEbRNS_7IStreamEPT_RKT0_"
+          ]
+        },
+        "initialize_definition": {
+          "address": "0x2c1c6e0",
+          "bytes": 87,
+          "sha256": "d3e05bf90be350eb8f482e319ca09f5b3b1f3cc9ef950a7182844c422c512714",
+          "symbols": [
+            "_ZN8GameCore4Unit9IInstance20InitializeDefinitionENS_9UnitTypesE"
+          ]
+        },
+        "initialize_domain": {
+          "address": "0x2c12bc0",
+          "bytes": 130,
+          "sha256": "331b2d226ee95e10cba7019e9e688fe20f93ddb7f1bc0f2dda0bca88ca7e5867",
+          "symbols": [
+            "_ZN8GameCore4Unit9CInstance16InitializeDomainEv"
+          ]
+        },
+        "interface_post_load": {
+          "address": "0x2c1c850",
+          "bytes": 11,
+          "sha256": "5498b517d76fe29a543e1d4169543884d999e1ebf85494e7c05463b47a2d28d8",
+          "symbols": [
+            "_ZN8GameCore4Unit9IInstance18InitializePostLoadEv"
+          ]
+        },
+        "terrain_overlay": {
+          "address": "0x2c2a8e0",
+          "bytes": 149,
+          "sha256": "3b00754a0ac9e4cf4e460b88fcde735885d394f3317cbd16c52388c86377c173",
+          "symbols": [
+            "_ZN13Serialization18ReadIndexHashArrayIbN8GameCore10Definition33DefinitionCollectionWithTypeIndexINS2_7TerrainEEEEEbRNS_7IStreamEPT_RKT0_"
+          ]
+        },
+        "unit_hash_read": {
+          "address": "0x2d4ec80",
+          "bytes": 58,
+          "sha256": "d2f6a44260938ca04b9c2055201efa60f4b0ad7cd539089934501f6a40e139be",
+          "symbols": [
+            "_ZN13SerializationrsERNS_7IStreamERN8GameCore9UnitTypesE"
+          ]
+        },
+        "unit_read": {
+          "address": "0x2c231f0",
+          "bytes": 3011,
+          "sha256": "e39f2c7b9a358527bbf3ceed7ff41d9c5f5dccfcf6cb3f5802bafbc0d0f2d202",
+          "symbols": [
+            "_ZN13SerializationrsERNS_7IStreamERN8GameCore4Unit8InstanceE"
+          ]
+        },
+        "unit_reset": {
+          "address": "0x2c23dc0",
+          "bytes": 809,
+          "sha256": "fab99e5056724f13df7ff04fc63deb460993434b984b0e5ac28682bcb97f076b",
+          "symbols": [
+            "_ZN8GameCore4Unit8Instance5ResetEv"
+          ]
+        }
+      },
+      "report_sha256": "9c3818d83a293628ecd0163402748f5b9c10206e7d1b0839ceaa9d45b4375648"
+    }
+  },
+  "public_api_checks_passed": true,
+  "schema": "c6-linux-live-initialization-review-v1",
+  "seed_role": "decode seed only; inputs and expected values are modified source fixtures",
+  "source_sha256": {
+    "crates/c6-core/src/formation_initialization.rs": "8c3c8d8cc02172fef71b6c3ec621cc858006620e2d9fc440d2516f6c9b3cb5b7",
+    "crates/c6-core/src/unit_initialization.rs": "004e793931db2cfa4506badf3c94843d6f43d0e60d3d2f2ef5df90f56ef7f026",
+    "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
+    "tools/linux/live_initialization_review.py": "d9d1d91a84a1f88995a9b3328650364fd1e5c10d576dda02e0d08ea7093b978b",
+    "tools/linux/live_initialization_review.rs": "021c8b471f3150a9b5b53d6102940bffe105c077c943045beab3d33c1a5416cc"
+  },
+  "stdout": "public API integration checks passed; no native execution or action acceptance",
+  "unit_overlay_fix_commit": "3760ee7",
+  "unit_seed_sha256": "1a3237872cad09bc5f67efecfc5e128dcb3b531c42342a8253b088e1ea136f86"
+}
