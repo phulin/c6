@@ -374,3 +374,5 @@ pub mod player_ai_research;
 pub mod player_ai_military;
 
 pub mod player_ai_tactical;
+
+pub mod player_ai_targets;
