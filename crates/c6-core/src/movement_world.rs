@@ -364,7 +364,7 @@ fn row_half(y: i32) -> i32 {
         minus_one.wrapping_add(((minus_one as u32) >> 31) as i32) >> 1
     }
 }
-fn coord_range(value: i32, dimension: i32, wrap: bool) -> i32 {
+pub fn coord_range(value: i32, dimension: i32, wrap: bool) -> i32 {
     if !wrap {
         value
     } else if value < 0 {
