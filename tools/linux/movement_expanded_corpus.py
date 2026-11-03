@@ -155,6 +155,9 @@ def main():
                 'ordered expanded control/cost facts differ')
         report['ordered_control_cost_facts_and_registries_equal'] = True
         report['schema'] = 'c6-linux-movement-expanded-corpus-coverage-v1'
+        del report['native_expanded_acceptance_pending']
+        report['native_expanded_coverage_completed'] = True
+        report['arithmetic_acceptance_assessed_by_this_tool'] = False
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + '\n')
 
