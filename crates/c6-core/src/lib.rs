@@ -21,6 +21,7 @@ pub mod notification_lifecycle;
 pub mod notifications;
 pub mod player_components;
 pub mod player_culture;
+pub mod player_cultural_identity;
 pub mod player_diplomacy;
 pub mod player_diplomacy_blackboard;
 pub mod player_districts;
