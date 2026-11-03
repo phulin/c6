@@ -23,4 +23,9 @@ int c6_linux_action_prepare_unit_operation_manager_metadata(void *module,void *b
  * stays inside the probe's explicit original facade lifetime. Save observations
  * are diagnostic; this profile does not admit Manager/actions/turns. */
 int c6_linux_action_prepare_current_handler_metadata(void *module,void *borrowed_context);
+/* Separate full-Manager predicate fixture. Its unlocked two-argument caller
+ * callbacks verify ownership and permit legitimate queued/script effects. The
+ * locked three-/five-argument guards remain inside the probe's facade lifetime.
+ * This lifecycle is source preparation, not gameplay/action/turn acceptance. */
+int c6_linux_action_prepare_full_manager_fixture(void *module,void *borrowed_context);
 #endif
