@@ -46,3 +46,24 @@ and RNG accessor bodies. Independent source/lifetime and exact integrated-profil
 review are still required. Save output is an observational oracle, not a required
 simulator format or a condition for action support. Known RNG checks cover these
 two objects only. Complete affected gameplay state and RNG remain in scope.
+
+A facade retained across an observational Save does not prove uninterrupted lock
+ownership inside all transitive Save code. Saves are separate original-call
+intervals with raw lock/identity endpoints. Only each original-call-free helper
+and guard interval claims an uninterrupted caller-held lock. Save normalization
+and serialization differences remain diagnostics, not a gameplay action gate.
+
+The separate runner mode is `--current-handler-metadata`, with seven private
+`--current-handler-metadata-{output,repeat-output,control-output,before,control-save,after,repeat}`
+paths. It requires the ordinary loaded Core fixture, genuine main-thread setup,
+cleanup, separate outer Saves and a binding-only action trace. It is mutually
+exclusive with other query modes. Actual execution requires an exact reviewed
+configuration digest; prepare-only builds do not execute original code. The
+loader selects only the new `c6_linux_action_prepare_current_handler_metadata`
+entry. The lifecycle branch uses unlocked `caller_idle` and cannot resolve the
+three-argument locked helper guard as a two-argument callback.
+
+`tools/linux/current_handler_fixture_audit.py` checks all canonical packets,
+combined strict/analyzer compilation, four targeted parser refusals and callback
+separation. Exact immutable preload/profile/source archive admission remains a
+separate step. No native acceptance is implied by these source checks.

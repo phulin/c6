@@ -79,6 +79,9 @@ def main():
     action_modes.add_argument('--military-initialization-observer',action='store_true')
     parser.add_argument('--military-observer-plan',type=Path)
     parser.add_argument('--military-observer-directory',type=Path)
+    action_modes.add_argument('--current-handler-metadata',action='store_true')
+    for label in ('output','repeat-output','control-output','before','control-save','after','repeat'):
+        parser.add_argument('--current-handler-metadata-'+label,type=Path)
     action_modes.add_argument('--unit-operation-manager-metadata',action='store_true')
     parser.add_argument('--unit-operation-manager-candidate-manifest',type=Path)
     for label in ('output','repeat-output','control-output','before','control-save','after','repeat'):
@@ -248,6 +251,21 @@ def main():
         if len(set(manager_paths.values()))!=7:parser.error('Manager metadata artifact paths must be distinct')
     elif args.unit_operation_manager_candidate_manifest or any(getattr(args,'unit_operation_manager_metadata_'+label) for label in ('output','repeat_output','control_output','before','control_save','after','repeat')):
         parser.error('Manager metadata paths require separate Manager mode')
+    current_handler_paths={}
+    if args.current_handler_metadata:
+        if not args.prepare_only and not args.expected_configuration:parser.error('current-handler execution requires exact reviewed configuration')
+        if not game_input or not args.prepare_main_thread or not args.cleanup or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('Current-handler metadata requires separate main-thread Core cleanup fixture')
+        args.game_load_observe=True
+        for label in ('output','repeat_output','control_output','before','control_save','after','repeat'):
+            path=getattr(args,'current_handler_metadata_'+label)
+            if path is None:parser.error('Current-handler metadata requires all raw/control/snapshot paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('Current-handler metadata artifacts must be fresh private files')
+            current_handler_paths[label]=path
+        if len(set(current_handler_paths.values()))!=7:parser.error('Current-handler metadata artifact paths must be distinct')
+    elif any(getattr(args,'current_handler_metadata_'+label) for label in ('output','repeat_output','control_output','before','control_save','after','repeat')):
+        parser.error('Current-handler metadata paths require separate current-handler mode')
     military_directory=None
     military_plan=None
     if args.military_initialization_observer:
@@ -289,8 +307,8 @@ def main():
         if len(set(action_snapshots.values()))!=3:parser.error('action snapshot paths must be distinct')
     elif args.action_snapshot_before or args.action_snapshot_after or args.action_snapshot_repeat:
         parser.error('action snapshots require an explicit Skip Turn control/execute mode')
-    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata:
-        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata and not args.placement_metadata and not args.placement_handler_metadata and not args.unit_operation_manager_metadata) or args.action_execution_observe or not action_trace:
+    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata:
+        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata and not args.placement_metadata and not args.placement_handler_metadata and not args.unit_operation_manager_metadata and not args.current_handler_metadata) or args.action_execution_observe or not action_trace:
             parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
         if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
@@ -349,6 +367,7 @@ def main():
         if set(domain_paths.values())&set(game_outputs.values()):parser.error('domain metadata and outer Save paths must be distinct')
         if set(placement_paths.values())&set(game_outputs.values()):parser.error('placement metadata and outer Save paths must be distinct')
         if set(manager_paths.values())&set(game_outputs.values()):parser.error('Manager metadata and outer Save paths must be distinct')
+        if set(current_handler_paths.values())&set(game_outputs.values()):parser.error('current-handler metadata and outer Save paths must be distinct')
         if set(placement_handler_paths.values())&set(game_outputs.values()):parser.error('handler metadata and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
@@ -396,7 +415,7 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata:
+    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/action_event_audit.py',ROOT/'evidence/linux/action-event-abi.json',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -405,7 +424,7 @@ def main():
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata:
+    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata:
         for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -620,6 +639,21 @@ def main():
             committed=subprocess.check_output(['git','show',manifest['source_commit']+':'+name],cwd=ROOT)
             if hashlib.sha256(committed).hexdigest()!=sha:raise SystemExit('Manager candidate committed source differs: '+name)
         manager_profile={'mode':'read_only_manager_raw_metadata','contract':manager_contract,'fixture_contract':fixture_contract,'reconstruction_manifest':manifest,'reconstruction_manifest_sha256':digest(manifest_path),'raw_passes':2,'internal_core_saves':4,'expected_outputs_used_as_inputs':False,'disabled_vectors_are_reconstruction_targets':True,'phase_and_controls_are_raw_inputs':True,'full_manager_called':False,'script_callbacks_called':False,'complete_rng_inventory':False,'native_acceptance_pending':True}
+    current_handler_profile=None
+    current_handler_audit_paths=[]
+    if args.current_handler_metadata:
+        current_handler_audit_paths=[ROOT/'tools/linux/current_handler_interruption_metadata_audit.py',ROOT/'evidence/linux/current-handler-interruption-metadata-preparation.json',ROOT/'tools/linux/current_handler_field_guard_audit.py',ROOT/'evidence/linux/current-handler-field-guard-source.json',ROOT/'tools/linux/current_handler_caller_audit.py',ROOT/'evidence/linux/current-handler-caller-source.json',ROOT/'tools/linux/current_handler_fixture_audit.py',ROOT/'evidence/linux/current-handler-fixture-contract.json']
+        packets=[]
+        with tempfile.TemporaryDirectory(prefix='current-handler-audit-') as temporary:
+            for tool,canonical in zip(current_handler_audit_paths[::2],current_handler_audit_paths[1::2]):
+                target=Path(temporary)/(tool.stem+'.json')
+                command=[sys.executable,str(tool),'--output',str(target)]
+                if tool==current_handler_audit_paths[0]:command+=['--assets',str(assets)]
+                subprocess.run(command,check=True,capture_output=True,text=True)
+                packet=json.loads(target.read_text())
+                if packet!=json.loads(canonical.read_text()):raise SystemExit('current-handler source packet differs: '+str(tool))
+                packets.append(packet)
+        current_handler_profile={'mode':'passive_current_handler_fields','packets':packets,'raw_passes':2,'internal_core_saves':4,'original_calls_in_helper_or_guard':False,'facade_acquisition_is_caller_scope':True,'Save_lock_continuity_claimed':False,'full_manager_called':False,'script_callbacks_called':False,'complete_rng_inventory':False,'native_acceptance_pending':True}
     military_profile=None
     military_audit_paths=[]
     if args.military_initialization_observer:
@@ -691,11 +725,11 @@ def main():
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
-    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata else []
+    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata else []
-    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata or args.placement_handler_metadata or args.unit_operation_manager_metadata or args.current_handler_metadata else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
@@ -706,6 +740,7 @@ def main():
     domain_sources=[ROOT/'native/linux/domain_metadata.c',ROOT/'native/linux/domain_metadata_fixture.c'] if args.domain_metadata else []
     placement_sources=[ROOT/'native/linux/placement_metadata.c',ROOT/'native/linux/placement_metadata_fixture.c'] if args.placement_metadata else []
     manager_sources=[ROOT/'native/linux/unit_operation_manager_metadata.c',ROOT/'native/linux/unit_operation_manager_metadata_fixture.c'] if args.unit_operation_manager_metadata else []
+    current_handler_sources=[ROOT/'native/linux/current_handler_interruption.c',ROOT/'native/linux/current_handler_metadata_fixture.c',ROOT/'native/linux/current_handler_metadata_probe.c'] if args.current_handler_metadata else []
     placement_handler_sources=[ROOT/'native/linux/placement_handler_metadata.c',ROOT/'native/linux/placement_handler_metadata_fixture.c',ROOT/'native/linux/skip_turn_handler_query.c'] if args.placement_handler_metadata else []
     configuration_sources=[]
     if args.saved_configuration:
@@ -751,6 +786,7 @@ def main():
               'lower_core_placement_metadata':placement_profile,
               'lower_core_placement_handler_metadata':placement_handler_profile,
               'lower_core_unit_operation_manager_metadata':manager_profile,
+              'lower_core_current_handler_metadata':current_handler_profile,
               'lower_core_military_initialization_observer':military_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
@@ -801,12 +837,15 @@ def main():
         identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*placement_handler_sources,ROOT/'native/linux/placement_handler_metadata.h',ROOT/'native/linux/placement_handler_metadata_fixture.h',ROOT/'native/linux/skip_turn_handler_query.h']})
     if manager_sources:
         identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*manager_sources,ROOT/'native/linux/unit_operation_manager_metadata.h',ROOT/'native/linux/unit_operation_manager_metadata_fixture.h']})
+    if current_handler_sources:
+        identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*current_handler_sources,ROOT/'native/linux/current_handler_interruption.h',ROOT/'native/linux/current_handler_metadata_fixture.h']})
     if core_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*dispatch_sources,ROOT/'native/linux/action_dispatch.h',ROOT/'native/linux/action_state.h',ROOT/'native/linux/action_registration.h']})
     if captured_gate_path:identity['sources'][str(captured_gate_path.relative_to(ROOT))]=digest(captured_gate_path)
     for path in captured_extra_sources:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*current_handler_audit_paths,ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/script_can_start_boundary_audit.py',ROOT/'tools/linux/unit_operation_manager_metadata_audit.py',ROOT/'tools/linux/current_handler_interruption_audit.py',ROOT/'tools/linux/inspect_elf.py'] if args.current_handler_metadata else []:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in state_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in request_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
@@ -819,7 +858,7 @@ def main():
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*placement_sources,*placement_handler_sources,*manager_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*placement_sources,*placement_handler_sources,*manager_sources,*current_handler_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     if movement_profile:movement_profile['integrated_preload_sha256']=identity['preload_sha256']
     archived_preload=None
@@ -854,6 +893,12 @@ def main():
         archived_preload=manager_paths['output'].parent/'unit-operation-manager-metadata-preload.so'
         if archived_preload.exists():
             if digest(archived_preload)!=digest(preload):raise SystemExit('Manager immutable preload differs')
+        else:
+            with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
+    if args.current_handler_metadata:
+        archived_preload=current_handler_paths['output'].parent/'current-handler-metadata-preload.so'
+        if archived_preload.exists():
+            if digest(archived_preload)!=digest(preload):raise SystemExit('current-handler immutable preload differs')
         else:
             with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     if args.military_initialization_observer:
@@ -912,6 +957,11 @@ def main():
             for label,suffix in {'output':'OUTPUT','repeat_output':'REPEAT_OUTPUT','control_output':'CONTROL_OUTPUT','before':'SNAPSHOT_BEFORE','control_save':'SNAPSHOT_CONTROL','after':'SNAPSHOT_AFTER','repeat':'SNAPSHOT_REPEAT'}.items():
                 env['C6_UNIT_OPERATION_MANAGER_METADATA_'+suffix]=str(manager_paths[label])
             env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
+        if args.current_handler_metadata:
+            for label,suffix in {'output':'OUTPUT','repeat_output':'REPEAT_OUTPUT','control_output':'CONTROL_OUTPUT','before':'SNAPSHOT_BEFORE','control_save':'SNAPSHOT_CONTROL','after':'SNAPSHOT_AFTER','repeat':'SNAPSHOT_REPEAT'}.items():
+                env['C6_CURRENT_HANDLER_METADATA_'+suffix]=str(current_handler_paths[label])
+            env['C6_CURRENT_HANDLER_METADATA']='1'
+            env['C6_ACTION_TRACE_DIRECTORY']=str(action_trace)
         if args.placement_handler_metadata:
             env.update(C6_PLACEMENT_HANDLER_METADATA_OUTPUT=str(placement_handler_paths['output']),C6_PLACEMENT_HANDLER_METADATA_EXPECTED_OUTPUT=str(placement_handler_paths['expected_output']),C6_PLACEMENT_HANDLER_METADATA_HANDLER_EXPECTED_OUTPUT=str(placement_handler_paths['handler_expected_output']),C6_PLACEMENT_HANDLER_METADATA_SNAPSHOT_BEFORE=str(placement_handler_paths['before']),C6_PLACEMENT_HANDLER_METADATA_SNAPSHOT_CONTROL=str(placement_handler_paths['control_save']),C6_PLACEMENT_HANDLER_METADATA_SNAPSHOT_AFTER=str(placement_handler_paths['after']),C6_PLACEMENT_HANDLER_METADATA_SNAPSHOT_REPEAT=str(placement_handler_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
@@ -950,9 +1000,10 @@ def main():
     if args.placement_metadata:env['C6_PLACEMENT_METADATA_PROFILE_SHA256']=configuration_identity
     if args.placement_handler_metadata:env['C6_PLACEMENT_HANDLER_METADATA_PROFILE_SHA256']=configuration_identity
     if args.unit_operation_manager_metadata:env['C6_UNIT_OPERATION_MANAGER_METADATA_PROFILE_SHA256']=configuration_identity
+    if args.current_handler_metadata:env['C6_CURRENT_HANDLER_METADATA_PROFILE_SHA256']=configuration_identity
     if args.military_initialization_observer:env['C6_MILITARY_STREAM_OBSERVER']='1'
     if args.prepare_only:
-        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()},'placement_handler_metadata':{k:str(v) for k,v in placement_handler_paths.items()},'unit_operation_manager_metadata':{k:str(v) for k,v in manager_paths.items()},'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}} if military_directory else None},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
+        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()},'placement_handler_metadata':{k:str(v) for k,v in placement_handler_paths.items()},'unit_operation_manager_metadata':{k:str(v) for k,v in manager_paths.items()},'current_handler_metadata':{k:str(v) for k,v in current_handler_paths.items()},'military_observer':{'directory':str(military_directory),'game_outputs':{k:str(v) for k,v in game_outputs.items()}} if military_directory else None},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
         print(json.dumps({'output':str(args.output),'prepared_only':True,'native_execution_performed':False,'configuration_sha256':configuration_identity}))
         return
     try:
@@ -1065,6 +1116,12 @@ def main():
         report['execution_paths']['preload']=str(archived_preload)
         for label,path in manager_paths.items():
             if path.is_file():report['unit_operation_manager_metadata_artifacts'][label]={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
+    report['current_handler_metadata_artifacts']={}
+    if args.current_handler_metadata:
+        report['execution_paths']['current_handler_metadata']={k:str(v) for k,v in current_handler_paths.items()}
+        report['execution_paths']['preload']=str(archived_preload)
+        for label,path in current_handler_paths.items():
+            if path.is_file():report['current_handler_metadata_artifacts'][label]={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
     report['combat_random_output']=None
     report['combat_random_saves']={}
     if random_input:
