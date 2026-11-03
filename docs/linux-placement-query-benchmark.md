@@ -51,6 +51,7 @@ python3 tools/linux/placement_query_benchmark.py \
   --harness-commit HARNESS_COMMIT \
   --input PRIVATE_STRICT_INPUT_JSON --input-sha256 INPUT_FILE_SHA256 \
   --expected ../c6-ghidra/evidence/linux-placement-metadata/native-1/expected-counts.jsonl \
+  --comparison-report evidence/linux/placement-count-native-1.json \
   --directory target/linux/placement-query-benchmark-NEW \
   --output evidence/linux/placement-query-benchmark-NEW.json
 ```

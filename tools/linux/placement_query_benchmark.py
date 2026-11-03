@@ -30,6 +30,7 @@ def main():
     p.add_argument('--input', type=Path, required=True)
     p.add_argument('--input-sha256', required=True)
     p.add_argument('--expected', type=Path, required=True)
+    p.add_argument('--comparison-report', type=Path, required=True)
     p.add_argument('--directory', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     a = p.parse_args()
@@ -67,6 +68,14 @@ def main():
     subprocess.run(['cargo','clippy','--locked','--offline','--release','-p','c6-differential','--bin',bin_name,'--','-D','warnings'], cwd=source, env=env, check=True)
     input_bytes = a.input.read_bytes()
     assert sha(input_bytes) == a.input_sha256, 'strict projection identity differs'
+    comparison_bytes = a.comparison_report.read_bytes()
+    comparison = json.loads(comparison_bytes)
+    canonical_input = json.dumps(json.loads(input_bytes),sort_keys=True,separators=(',',':')).encode()
+    assert (comparison['schema'] == 'c6-linux-placement-count-native-comparison-v1'
+        and comparison['status'] == 'equal' and comparison['count_mismatches'] == 0
+        and comparison['binding_mismatches'] == 0 and comparison['candidate_source_commit'] == SOURCE
+        and comparison['profile_sha256'] == PROFILE
+        and comparison['candidate_input_projection_sha256'] == sha(canonical_input)), 'accepted strict projection differs'
     candidate = source / 'target/release' / bin_name
     env['C6_PLACEMENT_BENCH_EXPECTED'] = str(a.expected.resolve())
     result = subprocess.run([str(candidate),str(a.input.resolve()),PROFILE,PROFILE], cwd=source, env=env, capture_output=True, check=True)
@@ -77,6 +86,7 @@ def main():
         harness_fragment_sha256=sha(fragment), harness_runner_sha256=sha(script),
         generated_source_sha256=sha(generated.encode()), benchmark_binary_sha256=sha(candidate.read_bytes()),
         input_sha256=sha(input_bytes), expected_sha256=sha(a.expected.read_bytes()), output_sha256=sha(result.stdout),
+        accepted_comparison_report_sha256=sha(comparison_bytes),
         configuration_sha256=PROFILE, profile_sha256=PROFILE, build_command=build,
         rustc_version=subprocess.check_output(['rustc','-Vv'],text=True).strip(),
         machine=subprocess.check_output(['uname','-m'],text=True).strip(),
