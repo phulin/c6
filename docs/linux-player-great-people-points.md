@@ -71,3 +71,12 @@ Complete Player loading, Core/world import, exact gameplay state, action
 execution and turns remain unimplemented. Unknown save bytes remain unclassified
 and unmasked, including the recorded 89,198-byte raw Save→Load failure. Offline
 saved-wire comparisons do not establish native-Read or gameplay parity.
+
+Validated source commit `f1bb7ad` passes both isolated source tests and all 86
+full original saved records: 18,834 bytes per stream, 37,668 bytes total. Each
+record is 438 bytes and 48 charged items; exact caps pass, every truncation
+fails, and one-short byte/item caps fail. The native sample contains the six
+hash tables with 9/9/9/6/9/6 entries and three empty vectors. Nonempty nested
+carriers therefore have source-test coverage, with live native serialization
+and native Read parity remaining validation gaps. The evidence pins the source
+archive, actual source/driver manifest and candidate identity.
