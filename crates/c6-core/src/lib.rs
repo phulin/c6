@@ -370,3 +370,7 @@ pub mod player_ai_grand_strategic;
 pub mod player_ai_homeland;
 
 pub mod player_ai_research;
+
+pub mod player_ai_military;
+
+pub mod player_ai_tactical;
