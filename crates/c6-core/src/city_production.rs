@@ -549,8 +549,8 @@ mod tests {
         assert_eq!(value.entries[0].location, [-1, i32::MAX]);
         assert_eq!(value.yield_type, i32::MIN);
         assert_eq!(value.construction_plot[1].value, -32767);
-        assert_eq!(value.features_valid_wonders[0].value, false);
-        assert_eq!(value.features_valid_wonders[1].value, true);
+        assert!(!value.features_valid_wonders[0].value);
+        assert!(value.features_valid_wonders[1].value);
         assert_eq!(value.feature_overrides[0].feature_hash, 0x12345678);
         assert_eq!(
             value.district_building_production_modifiers[0].modifier,
