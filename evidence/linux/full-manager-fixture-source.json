@@ -381,7 +381,7 @@
     "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
     "native/linux/context_stream.h": "20cc3f198f5460b00a732ddb3047f069b3592cd6de6c485dadcd5562d674962b",
     "native/linux/full_manager_fixture.c": "421b823351d40d5edf54260a44c26a9291113f6c65322f4346a302df05583d86",
-    "native/linux/full_manager_fixture.h": "88ce65efe4aeaab1b0af95221e54f6e95769d61894bf7893c167bcdaae0e7664",
+    "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
     "tools/linux/current_handler_caller_audit.py": "9b4d17f51569b0f81e2e7ab026d14fdf37350b8fa16db4e329c48b49a168c0b2",
     "tools/linux/full_manager_fixture_audit.py": "679062c6ebf4c68791da4a8590807cb063038e77f950a0b00943248257b7850b",
     "tools/linux/map_state_audit.py": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b",

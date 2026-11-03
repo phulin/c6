@@ -48,7 +48,8 @@ typedef struct {
      * no byte/RNG equality requirement controls this predicate call. */
     const char *diagnostic_save_paths[4];
     /* pre_acquisition checks real initialized root linkage, zero native lock,
-     * no worker and a genuine external-policy decision boundary. */
+     * no worker and externally selected predicate input. A genuine gameplay
+     * decision/yield boundary requires separate evidence; idle is insufficient. */
     C6FullManagerOwnerGuard pre_acquisition;
     C6FullManagerLockedBegin locked_begin;
     /* retained_owner verifies same live owners, main thread, no competing
@@ -59,7 +60,9 @@ typedef struct {
     C6FullManagerOwnerGuard retained_owner,locked_end,released_owner;
     /* Passive affected-state/lifecycle evidence. game remains borrowed;
      * facade is owned by this fixture only, until BEFORE_RELEASE. Unit is
-     * borrowed only before PREDICATE_ENTER; it may be removed by callbacks.
+     * live at PREDICATE_ENTER before the original call under retained-owner
+     * guard; PREDICATE_RETURN retains its address only, NULL thereafter. It
+     * may be removed by callbacks.
      * operation is live only at ENTER/RETURN. Do not dereference unit after
      * ENTER merely because its address is retained. RELEASED has facade NULL.
      * A nonzero observation result is recorded; safe cleanup still needs the
