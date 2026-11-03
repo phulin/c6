@@ -19,6 +19,7 @@ mod player_heroes;
 #[path = "../../crates/c6-core/src/rng.rs"]
 mod rng;
 
+#[cfg(not(feature = "full-core"))]
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     let bytes = std::fs::read(&args[1]).unwrap();
@@ -41,6 +42,36 @@ fn main() {
         heroes.discovered.len(),
         heroes.claims.len()
     );
+}
+
+#[cfg(feature = "full-core")]
+fn main() {
+    let args: Vec<_> = std::env::args().collect();
+    let bytes = std::fs::read(&args[1]).unwrap();
+    let prefix = c6_core::core_stream::ThroughFirstPlayer::decode(
+        &bytes,
+        c6_core::map::Limits {
+            max_bytes: bytes.len(),
+            max_items: 20_000_000,
+            max_allocation: 1024 * 1024 * 1024,
+            max_depth: 64,
+        },
+        c6_core::unit::Limits {
+            max_bytes: bytes.len(),
+            max_items: 20_000_000,
+        },
+    )
+    .unwrap();
+    let player = prefix.player_prefix.first_player.as_ref().unwrap();
+    let heroes = &player.heroes;
+    let encoded = heroes
+        .encode(c6_core::unit::Limits {
+            max_bytes: bytes.len(),
+            max_items: 20_000_000,
+        })
+        .unwrap();
+    std::fs::write(&args[2], &encoded).unwrap();
+    println!("{{\"player\":{},\"header_ordered_flags\":{:?},\"discovery_order_records\":{},\"discovered_records\":{},\"claims_records\":{},\"encoded_heroes_bytes\":{},\"consumed\":{},\"boundary\":\"{:?}\"}}", player.header.owner, player.header.ordered_flags, heroes.discovery_order.len(), heroes.discovered.len(), heroes.claims.len(), encoded.len(), prefix.consumed, prefix.player_prefix.boundary);
 }
 
 #[cfg(test)]

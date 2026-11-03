@@ -172,6 +172,42 @@ def saved_fixture(private, executable):
                 raw_read_guard_inference=False, native_rebuild_observed=False)
 
 
+def first_player_fixtures(private, executable):
+    """Actual byte-zero source grammar, with no SavedOutput-offset borrowing."""
+    location = executable.parent
+    source = location/'source'
+    cargo_target = location/'cargo-target'
+    subprocess.run(['cargo', 'build', '--offline', '-p', 'c6-core', '--lib',
+                    '--target-dir', str(cargo_target)], cwd=source, check=True)
+    checker = location/'check-first-player'
+    if not checker.exists():
+        subprocess.run(['rustc', '--edition=2024', '--cfg', 'feature="full-core"',
+            str(source/'tools/linux/hero_discovery_order_check.rs'),
+            '--extern', 'c6_core='+str(cargo_target/'debug/libc6_core.rlib'),
+            '-L', 'dependency='+str(cargo_target/'debug/deps'), '-o', str(checker)], check=True)
+    rows = []
+    for identity, path, compressed in [
+        (RAW, private/'evidence/saves/xp2-gamecore-stream.bin', False),
+        (SAVED, private/'evidence/linux-game-load/canonical'/(SAVED+'.bin.gz'), True),
+    ]:
+        data = path.read_bytes()
+        if compressed:
+            data = gzip.decompress(data)
+        require(sha(data) == identity, 'byte-zero fixture identity differs')
+        incoming, output = location/(identity+'.input.bin'), location/(identity+'.heroes.bin')
+        incoming.write_bytes(data)
+        row = json.loads(run([str(checker), str(incoming), str(output)], text=True))
+        incoming.unlink()
+        row.update(stream_sha256=identity, heroes_encoded_sha256=sha(output.read_bytes()),
+                   byte_zero_source_grammar=True, offsets_borrowed_from_other_fixture=False,
+                   native_rebuild_reached_or_skipped='not observed; header/order parsing does not establish manager/configuration gates')
+        rows.append(row)
+    return dict(records=rows, candidate_sha256=sha(checker.read_bytes()),
+                dependency_lock_sha256=sha((source/'Cargo.lock').read_bytes()),
+                exact_first_player_heroes_records_equal=rows[0]['heroes_encoded_sha256'] == rows[1]['heroes_encoded_sha256'],
+                remaining_players_raw_read_heroes_framing=False)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-commit', required=True)
@@ -193,12 +229,14 @@ def main():
         databases.append(dict(sha256=DATABASE, native_builder_rows=len(rows), readonly=True))
     exe, candidate_identity = candidate(args.source_commit)
     saved = saved_fixture(args.private_root, exe)
+    first = first_player_fixtures(args.private_root, exe)
     report = dict(schema='c6-linux-hero-discovery-order-source-v1', checks_passed=True,
         original_execution=False, gamecore_sha256=GAME_SHA, host_sha256=HOST_SHA,
         methods=[dict(address=hex(a), size=n, name=name, sha256=sha(elf.read(a,n))) for a,n,name in METHODS],
-        candidate=candidate_identity, saved_fixture=saved,
-        incoming_raw_read=dict(sha256=RAW, bytes=len(raw), heroes_owner_framing_available=False,
-            actual_rebuild_reached_or_skipped='unresolved; no Hero Read owner span; SavedOutput offsets not borrowed'),
+        candidate=candidate_identity, saved_fixture=saved, byte_zero_first_player_comparison=first,
+        incoming_raw_read=dict(sha256=RAW, bytes=len(raw), first_player_heroes_source_framing_available=True,
+            all_players_heroes_owner_framing_available=False,
+            actual_rebuild_reached_or_skipped='unresolved native manager/configuration/registry gates; first player parsed directly from byte zero'),
         builder=builder, activated_databases=databases,
         empty_class_collection_rng_proof='If the runtime collection is the fresh collection populated solely by the pinned zero-row builder result, every rebuild consumes zero RNG draws, independent of earlier gate outcomes.',
         runtime_collection_database_binding_admitted=False,
@@ -212,7 +250,7 @@ def main():
     require(not args.output.exists(), 'refusing to overwrite retained report')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2)+'\n')
-    print(json.dumps(dict(checks_passed=True, saved_records=len(saved['records']), empty_saved_orders=saved['zero_orders'], incoming_read_heroes_framing=False)))
+    print(json.dumps(dict(checks_passed=True, saved_records=len(saved['records']), empty_saved_orders=saved['zero_orders'], incoming_read_first_player_heroes_framing=True)))
 
 
 if __name__ == '__main__':

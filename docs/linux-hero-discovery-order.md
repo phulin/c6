@@ -90,8 +90,12 @@ that exact collection/database instance or that archive-clear effects vanish.
 The raw incoming Read payload `a66736…c5aa` is 76,556,938 bytes. The retained
 `ff31f4…d884` payload is post-load SavedOutput with writer-only owner cuts. The
 audit walks its source-backed Quests/WMD/Improvements/Governors/CulturalIdentity
-grammar into all 43 Heroes records and compares each typed re-encoding. Raw
-Read has no retained Heroes owner span in this audit, so neither those offsets
+grammar into all 43 Heroes records and compares each typed re-encoding. It also
+builds the full core library from the same frozen archive and uses
+`core_stream::ThroughFirstPlayer` to parse both complete streams directly from
+byte zero through the first player's Heroes record. Its six header booleans,
+Heroes record identity and explicit continuation boundary are retained. Raw
+Read has no all-player Heroes framing here, and neither SavedOutput offsets
 nor post-load flags are borrowed to claim which original rebuild gates ran.
 The next fixture contract is exact raw-Read player/Heroes framing, actual native
 manager roster/order and configuration/capability/definition collection identity,
