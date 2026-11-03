@@ -372,6 +372,30 @@
       "sha256": "573d7da7612dc26e9b2df470fd3b62bc359f9c02e5fe296620a41ea8b25d72f4"
     },
     {
+      "name": "component_at",
+      "address": "0x264c060",
+      "size": 42,
+      "sha256": "e864d685fed8e09fe6089b219d16d885221ad68c732a5c70a0d3a9d2167fac11"
+    },
+    {
+      "name": "manager_ctor",
+      "address": "0x2da2e10",
+      "size": 119,
+      "sha256": "18fed24ab0e82efa36eab366345e17ce8e0b9880b977fa39231d36175e000b9d"
+    },
+    {
+      "name": "map_find",
+      "address": "0x2da3020",
+      "size": 51,
+      "sha256": "aaf03ca7fd20001939179a57fa4d626a38d80cdd473f3f9b10d46fda96301c81"
+    },
+    {
+      "name": "map_end",
+      "address": "0x2da3070",
+      "size": 19,
+      "sha256": "7bcc6425ec30e5ab81388544f73ff1ecdbd50fa3ffca50ce5f3d2f9c20c1d4bd"
+    },
+    {
       "name": "layered_ctor",
       "address": "0x21a3f90",
       "size": 23,
@@ -986,9 +1010,9 @@
   ],
   "dwarf_sha256": "44ed2ac1d5e9fcef1f0b9a68eb9e1023940821d25961912b87d0dd4f0fee87b6",
   "source_sha256": {
-    "native/linux/skip_turn_handler_query.c": "80d242a3fcf629233a32cac13f8601ecb4a485056fe63e966110033ca43590bf",
+    "native/linux/skip_turn_handler_query.c": "91d79c7762ba69691585d17cfc964dce7c226c8b1352b8b429e5c9178caf1068",
     "native/linux/skip_turn_handler_query.h": "406a3d14a722b0d079e0e7746422629c29078504b969633c4c8006f8afd65594",
-    "tools/linux/skip_turn_handler_query_audit.py": "a86919d026993344ddef6779d9471bdbbc444f1f32b2308396f9a6c293fba373",
+    "tools/linux/skip_turn_handler_query_audit.py": "84cfbb9673b1c05dbb4a74a476b7f34b25590326fe485636c23b2940e99eaeb9",
     "tools/linux/unit_operation_legality_audit.py": "77249224a0ee9e34747e2755c6da794c187421c61065627a2dde740e46eb594f",
     "tools/linux/unit_placement_audit.py": "8bdefa3fffc421b59b9893b53be1f88fa1bff5801ee84373349e30b5a1034457",
     "tools/linux/placement_metadata_audit.py": "f019a7e236f4bd2881d6746203e475b664fe023efd3fd29a4c8a5554bc272174"

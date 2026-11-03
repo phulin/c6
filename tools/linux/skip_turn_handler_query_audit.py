@@ -12,6 +12,10 @@ from unit_placement_audit import METHODS as PLACEMENT
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTRA = [
+    ('component_at', 0x264c060, 42, 'e864d685fed8e09fe6089b219d16d885221ad68c732a5c70a0d3a9d2167fac11'),
+    ('manager_ctor', 0x2da2e10, 119, '18fed24ab0e82efa36eab366345e17ce8e0b9880b977fa39231d36175e000b9d'),
+    ('map_find', 0x2da3020, 51, 'aaf03ca7fd20001939179a57fa4d626a38d80cdd473f3f9b10d46fda96301c81'),
+    ('map_end', 0x2da3070, 19, '7bcc6425ec30e5ab81388544f73ff1ecdbd50fa3ffca50ce5f3d2f9c20c1d4bd'),
     ('layered_ctor', 0x21a3f90, 23, 'cb93ebef973fd5906a7e7ec33e2dc71b19833883b3d46329ee0aa617fdcd2b05'),
     ('player_manager', 0x2b53260, 8, '3767e99c9e2a663768e78a24c0669349430acf05be01ce1ee8f273e1f62679e7'),
     ('player_at', 0x1fcc1b0, 12, '47fe7c239b1abbb63533198084d4b834d08e20f997a7b46ccce8700c65b4a2fb'),
@@ -50,9 +54,20 @@ def main():
     for address, target in CALLS:
         elf.call(address, target)
     for address, target in [(0x3b00db0 + 0x18, 0x2dac950),
-                            (0x3afb160 + 0xc0, 0x2a48750)]:
+                            (0x3afb160 + 0xc0, 0x2a48750),
+                            (0x3aff880 + 0xa0, 0x2da1720),
+                            (0x3aff880 + 0x88, 0x2da1650)]:
         if elf.relocated_pointer(address) != target:
             raise ValueError('virtual binding mismatch')
+    relocations = subprocess.check_output(['readelf', '-rW',
+        str(a.assets / 'libGameCore_XP2.so')], text=True)
+    manager_got = [line.split() for line in relocations.splitlines()
+                   if line.startswith('0000000003b09aa0 ')]
+    if len(manager_got) != 1 or manager_got[0][2:] != [
+            'R_X86_64_GLOB_DAT', '0000000003aff870',
+            '_ZTVN8GameCore4Unit10Operations7ManagerE', '+', '0']:
+        raise ValueError('Manager constructor GOT identity mismatch')
+    elf.call(0x2da1273, 0x1f74b70)
     # Original ctor writes every semantic field and a null shared_ptr. The
     # handler never accesses its Operation argument, so the original destructor
     # follows its null-control-block path without release or allocation.
