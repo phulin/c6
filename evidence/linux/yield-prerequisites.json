@@ -182,6 +182,48 @@
       "bytes": 109,
       "name": "Improvement.Find",
       "sha256": "b7736652c5c3868bda281b29100d8049e96647fb6d9866f3f4daae99390c4538"
+    },
+    {
+      "address": "0x22dd8b0",
+      "bytes": 96,
+      "name": "Improvement.push_back",
+      "sha256": "da7bd6b63ac111a7c363e717e7437f0ed3125d8c965ae132ae19ac9eec2f5d81"
+    },
+    {
+      "address": "0x22ddad0",
+      "bytes": 11,
+      "name": "Improvement.insert_lower_bound",
+      "sha256": "6024f27cf3357bb793cf63febadfc18d973bf1fff0cda15679e3737398493ee5"
+    },
+    {
+      "address": "0x22ddd10",
+      "bytes": 116,
+      "name": "Improvement.insert_lower_bound_body",
+      "sha256": "7f2fabd967bda6e22f32d5209a904f63137aa4585b08aa14cbb688d2f56fa803"
+    },
+    {
+      "address": "0x22ddd90",
+      "bytes": 36,
+      "name": "Improvement.insert_unsigned_hash_compare",
+      "sha256": "7b3726a6101caee12ba45250a0ffda330fa6c4e17933eb438a52c27d53bbc155"
+    },
+    {
+      "address": "0x1ffbf10",
+      "bytes": 11,
+      "name": "Improvement.find_lower_bound",
+      "sha256": "3ca9ce32ee4ebd7f627f2ca7252fc8586a857e3a7c835c6d7e0ca63fd7488b3d"
+    },
+    {
+      "address": "0x1ffbf20",
+      "bytes": 116,
+      "name": "Improvement.find_lower_bound_body",
+      "sha256": "1f229fcb8b99bfb4bc5eab72624469188e5514a34856c4b526e74af3dcfba149"
+    },
+    {
+      "address": "0x1ffbfa0",
+      "bytes": 18,
+      "name": "Improvement.find_unsigned_hash_compare",
+      "sha256": "c6ab3149645d3b45151b95b5fffe2777ba3ba4aafafaa974713fdf6cc1bf9844"
     }
   ],
   "instruction_contracts": [
@@ -278,6 +320,21 @@
   ],
   "calls": [
     {
+      "address": "0x22dd8f5",
+      "target": "0x1e170d0",
+      "contract": "insert new improvement before equal hashes"
+    },
+    {
+      "address": "0x22dd903",
+      "target": "0x1e475e0",
+      "contract": "emplace at original lowerbound"
+    },
+    {
+      "address": "0x1ffbedb",
+      "target": "0x1e4dd70",
+      "contract": "lookup first equal unsigned hash"
+    },
+    {
       "address": "0x2a3fd47",
       "target": "0x1f567e0",
       "contract": "initialize hidden return FixedPoint to zero"
@@ -351,6 +408,7 @@
   "abi": "hidden sret RDI; receiver RSI; player EDX; improvement hash ECX; requested yield R8D; fourbyte signed FixedPointT<8> storage",
   "contract": {
     "invalid_native_player": "zero before definition input",
+    "improvement_lookup": "native index below count else hash lookup; lowerbound insertion before equals and first equal lookup selects last inserted collision",
     "absent_improvement_in_complete_registry": "zero",
     "references": "actual ordered bonus references; null row/yield/prerequisite skips; requested yield matches original collection index",
     "prerequisite": "minusone or unsigned index beyond acquired vector false; then actual global node presence and IsActive; then acquired bit",
@@ -360,7 +418,7 @@
     "missing_inputs": "explicit errors, never invented zero or false"
   },
   "rust_source_sha256": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
-  "source_audit_sha256": "c99ed3bb8dbcf492056ffd1fcf4698593acdcac87d0e98b73d71a3748a343c0f",
+  "source_audit_sha256": "6984bc1ce7b6221d459295391f3d1d3df660af0671fbfd1ca705cd6a29e597a8",
   "private_evidence": [
     "../c6-ghidra/evidence/linux-reporting-yield-effects-local/branch-05.asm",
     "../c6-ghidra/evidence/linux-reporting-yield-effects-local/branch-06.asm",

@@ -38,6 +38,13 @@ METHODS = [
     (0x1fccdd0, 4, 'Civic.CollectionIndex', 'ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a'),
     (0x1fe51e0, 4, 'Yield.CollectionIndex', 'ff2bcadfbf055e508db5d12cdeb05fb8112c623032cf32072576f226e46e359a'),
     (0x1ffbea0, 109, 'Improvement.Find', 'b7736652c5c3868bda281b29100d8049e96647fb6d9866f3f4daae99390c4538'),
+    (0x22dd8b0, 96, 'Improvement.push_back', 'da7bd6b63ac111a7c363e717e7437f0ed3125d8c965ae132ae19ac9eec2f5d81'),
+    (0x22ddad0, 11, 'Improvement.insert_lower_bound', '6024f27cf3357bb793cf63febadfc18d973bf1fff0cda15679e3737398493ee5'),
+    (0x22ddd10, 116, 'Improvement.insert_lower_bound_body', '7f2fabd967bda6e22f32d5209a904f63137aa4585b08aa14cbb688d2f56fa803'),
+    (0x22ddd90, 36, 'Improvement.insert_unsigned_hash_compare', '7b3726a6101caee12ba45250a0ffda330fa6c4e17933eb438a52c27d53bbc155'),
+    (0x1ffbf10, 11, 'Improvement.find_lower_bound', '3ca9ce32ee4ebd7f627f2ca7252fc8586a857e3a7c835c6d7e0ca63fd7488b3d'),
+    (0x1ffbf20, 116, 'Improvement.find_lower_bound_body', '1f229fcb8b99bfb4bc5eab72624469188e5514a34856c4b526e74af3dcfba149'),
+    (0x1ffbfa0, 18, 'Improvement.find_unsigned_hash_compare', 'c6ab3149645d3b45151b95b5fffe2777ba3ba4aafafaa974713fdf6cc1bf9844'),
 ]
 # Bytes are small critical-instruction contracts, not distributed disassembly.
 INSTRUCTIONS = [
@@ -61,6 +68,9 @@ INSTRUCTIONS = [
     (0x297a950, '8a4704c3', 'actual civic node active byte'),
 ]
 CALLS = [
+    (0x22dd8f5, 0x1e170d0, 'insert new improvement before equal hashes'),
+    (0x22dd903, 0x1e475e0, 'emplace at original lowerbound'),
+    (0x1ffbedb, 0x1e4dd70, 'lookup first equal unsigned hash'),
     (0x2a3fd47, 0x1f567e0, 'initialize hidden return FixedPoint to zero'),
     (0x2a3fd56, 0x1f59220, 'native player validity before definition'),
     (0x2a3fd7f, 0x1e4a8e0, 'find actual improvement hash'),
@@ -101,6 +111,7 @@ def main():
         abi='hidden sret RDI; receiver RSI; player EDX; improvement hash ECX; requested yield R8D; fourbyte signed FixedPointT<8> storage',
         contract=dict(
             invalid_native_player='zero before definition input',
+            improvement_lookup='native index below count else hash lookup; lowerbound insertion before equals and first equal lookup selects last inserted collision',
             absent_improvement_in_complete_registry='zero',
             references='actual ordered bonus references; null row/yield/prerequisite skips; requested yield matches original collection index',
             prerequisite='minusone or unsigned index beyond acquired vector false; then actual global node presence and IsActive; then acquired bit',
