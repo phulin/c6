@@ -111,11 +111,24 @@ one-time admission, actual warm lookups, and persistence of graph authority
 across a conservative Unit-borrow revision increment. It does not extend the
 historical reporting action prefix or authorize arbitrary Unit writes.
 
+The [owned-domain result](../evidence/linux/yield-monitor-owned-domain.json)
+passed from committed tree `195d3a8`, with 182 actual Route-city forward hits
+and 6,193 valid path nodes. The complete source archive, extracted preimages,
+generated Cargo manifest/lock, candidate and result remain under
+`target/linux/yield-monitor-domain-candidates/db76ce425a9b472eb8266ff24df6ebe6/`.
+Candidate SHA-256 is
+`b16df326ed2fdae2154b5346943ed9c177c208d9a430b696eaa508c6a944a614`.
+The earlier failed archive is retained separately with its missing embedded
+manifest compile diagnostics; it produced no accepted candidate. Concurrent
+`choose_tech.rs` edits were excluded from the accepted committed-tree archive.
+
 Reproduce this static/input check without native execution:
 
 ```sh
 python3 tools/linux/yield_monitor_headless_scope_audit.py \
   --output target/linux/yield-monitor-headless-scope.json
+python3 tools/linux/yield_monitor_domain_check.py \
+  --output target/linux/yield-monitor-owned-domain.json
 ```
 
 Full affected-state/RNG, complete actions and turns remain unimplemented.
