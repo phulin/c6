@@ -1,0 +1,478 @@
+{
+  "collections": {
+    "Feature": {
+      "collection_index": "size before append",
+      "filter": "none",
+      "methods": [
+        "0x1fe8040",
+        "0x22cae30",
+        "0x1fe8050",
+        "0x22cb070",
+        "0x21f9150",
+        "0x21f8c40",
+        "0x21f9140",
+        "0x22517e0",
+        "0x22cac10",
+        "0x21f8a80",
+        "0x22cac00",
+        "0x1fe7fc0",
+        "0x1fe7fb0",
+        "0x1fe80f0",
+        "0x22cb0f0",
+        "0x1fe80d0",
+        "0x1fe8180"
+      ],
+      "order": "signed intrinsic rowid ascending",
+      "sql_bytes": 515,
+      "sql_getter": "0x21f9150",
+      "sql_sha256": "dc9c2b15367d93501010da018309c0596447a04b47526134c8a4c138e473216d",
+      "table": "Features",
+      "type_column": "FeatureType",
+      "type_column_index": 12
+    },
+    "GreatPersonClass": {
+      "collection_index": "size before append",
+      "filter": "none",
+      "methods": [
+        "0x20e2c70",
+        "0x22d7a40",
+        "0x20e2c80",
+        "0x22d7c80",
+        "0x22d7810",
+        "0x21fc240",
+        "0x2253be0",
+        "0x22d7820",
+        "0x21fc580",
+        "0x21fc360",
+        "0x21fc570",
+        "0x20e2d20",
+        "0x20de6d0",
+        "0x20e2d30",
+        "0x22d7d00",
+        "0x20e2d00",
+        "0x20e2dc0"
+      ],
+      "order": "signed intrinsic rowid ascending",
+      "sql_bytes": 215,
+      "sql_getter": "0x21fc580",
+      "sql_sha256": "22b3a409e569da8d89cf44e31d5acc81bd32287032a91bbfd9fae5b75c8d6980",
+      "table": "GreatPersonClasses",
+      "type_column": "GreatPersonClassType",
+      "type_column_index": 5
+    },
+    "Terrain": {
+      "collection_index": "size before append",
+      "filter": "none",
+      "methods": [
+        "0x20f3fd0",
+        "0x230b6e0",
+        "0x20f3fe0",
+        "0x230b920",
+        "0x2219e80",
+        "0x2219c40",
+        "0x2219e70",
+        "0x225e380",
+        "0x230b4c0",
+        "0x2219c00",
+        "0x230b4b0",
+        "0x20f36d0",
+        "0x20f4080",
+        "0x20f4090",
+        "0x230b9a0",
+        "0x20f4060",
+        "0x20f4120"
+      ],
+      "order": "signed intrinsic rowid ascending",
+      "sql_bytes": 220,
+      "sql_getter": "0x2219e80",
+      "sql_sha256": "64520857565160e44ca50edd30562f8103520793045dc47aa4e9103fc8f1c51c",
+      "table": "Terrains",
+      "type_column": "TerrainType",
+      "type_column_index": 13
+    },
+    "UnitAbility": {
+      "collection_index": "size before append",
+      "filter": "none",
+      "methods": [
+        "0x26235e0",
+        "0x2311fa0",
+        "0x26235f0",
+        "0x23121e0",
+        "0x2311d60",
+        "0x221c260",
+        "0x225f580",
+        "0x221c410",
+        "0x221c2a0",
+        "0x221c400",
+        "0x2311d80",
+        "0x2312290",
+        "0x242e000",
+        "0x2929e90",
+        "0x2623690",
+        "0x2312260",
+        "0x2623670",
+        "0x2623720"
+      ],
+      "order": "signed intrinsic rowid ascending",
+      "sql_bytes": 128,
+      "sql_getter": "0x221c410",
+      "sql_sha256": "687a2e9646c4ef5d3da7dc3d017c4cc1670e555a22976d82c9558438ad245197",
+      "table": "UnitAbilities",
+      "type_column": "UnitAbilityType",
+      "type_column_index": 6
+    }
+  },
+  "complete_unit_initialization": false,
+  "full_state_action_turn_parity": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": {
+    "0x1fe7fb0": {
+      "bytes": 4,
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1",
+      "symbol": "GameCore::Definition::Feature::GetTypeHash() const"
+    },
+    "0x1fe7fc0": {
+      "bytes": 109,
+      "sha256": "ed9b735cda3b0ff47ed506153797c811f813511df1634ce860fb9daf5f95d6a9",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const"
+    },
+    "0x1fe8040": {
+      "bytes": 11,
+      "sha256": "08f0cb7662d94bd924535105fb317adf7d6440e0b968e95cd74e0541eb4a5bd6",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Feature* const*> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(GameCore::Definition::Feature const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(GameCore::Definition::Feature const*, unsigned int)#1})"
+    },
+    "0x1fe8050": {
+      "bytes": 116,
+      "sha256": "7ca6b1aa65c303469eb242a7eed0881225309e37e193f5f9b6af01af3e084c8a",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Feature* const*> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(GameCore::Definition::Feature const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(GameCore::Definition::Feature const*, unsigned int)#1}&)"
+    },
+    "0x1fe80d0": {
+      "bytes": 18,
+      "sha256": "f4096450cf05939a3914ff2543c5012f7d3accc3c906e68fa3b41ae1f9930217",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(GameCore::Definition::Feature const*, unsigned int)#1}::operator()(GameCore::Definition::Feature const*, unsigned int) const"
+    },
+    "0x1fe80f0": {
+      "bytes": 133,
+      "sha256": "d10d1853d378f30dc92c0790a158167f1c0baf5b23d98ff28cd8db5f6b18b095",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Feature* const*> std::__1::__upper_bound<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Feature const*)#1}&, std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, unsigned int>(std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, std::__1::__wrap_iter<GameCore::Definition::Feature* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Feature const*)#1}&)"
+    },
+    "0x1fe8180": {
+      "bytes": 18,
+      "sha256": "fb465153cb9da650288d6beca48d864839486cdbd3e1d6f7b8670cfe7de7a10e",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Feature const*)#1}::operator()(unsigned int, GameCore::Definition::Feature const*) const"
+    },
+    "0x20de6d0": {
+      "bytes": 109,
+      "sha256": "a10f81e773c55de0acdd7d5ab5d48bb8dcff1e0441cf619aeb5d7d715a5e2468",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const"
+    },
+    "0x20e2c70": {
+      "bytes": 11,
+      "sha256": "f9cb7f11cd058e8bdb137439fdee3cdd9f136ed470f046076407fcd94faff46d",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(GameCore::Definition::GreatPersonClass const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(GameCore::Definition::GreatPersonClass const*, unsigned int)#1})"
+    },
+    "0x20e2c80": {
+      "bytes": 116,
+      "sha256": "625b80bbe856f8a60e31ad138dcb6d9b4907406a3fb94d59f50f1be9626b5c1a",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(GameCore::Definition::GreatPersonClass const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(GameCore::Definition::GreatPersonClass const*, unsigned int)#1}&)"
+    },
+    "0x20e2d00": {
+      "bytes": 18,
+      "sha256": "bfd35f30b0e4306e36b8d4b13804b9905e8a560792cfee9f8e67714dc3cc8329",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(GameCore::Definition::GreatPersonClass const*, unsigned int)#1}::operator()(GameCore::Definition::GreatPersonClass const*, unsigned int) const"
+    },
+    "0x20e2d20": {
+      "bytes": 4,
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1",
+      "symbol": "GameCore::Definition::GreatPersonClass::GetTypeHash() const"
+    },
+    "0x20e2d30": {
+      "bytes": 133,
+      "sha256": "526c79c148aeb0d5f8fd0bcc9c5e6d2eb9b76819f1213c8eba0a92f2899012d7",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*> std::__1::__upper_bound<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::GreatPersonClass const*)#1}&, std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, unsigned int>(std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::GreatPersonClass const*)#1}&)"
+    },
+    "0x20e2dc0": {
+      "bytes": 18,
+      "sha256": "735217a66fb1fd43962c4b05e154f346c6b609cc05f7689f973420237019acdf",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::GreatPersonClass const*)#1}::operator()(unsigned int, GameCore::Definition::GreatPersonClass const*) const"
+    },
+    "0x20f36d0": {
+      "bytes": 109,
+      "sha256": "29ec9254b9b3b05235344a477486953691e8890e80adc56a1858edac6c8da8c3",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const"
+    },
+    "0x20f3fd0": {
+      "bytes": 11,
+      "sha256": "04c2b63c5a16ba57efb1f29e027e4a30a28e95ff813bea30836f746299bfc143",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Terrain* const*> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(GameCore::Definition::Terrain const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(GameCore::Definition::Terrain const*, unsigned int)#1})"
+    },
+    "0x20f3fe0": {
+      "bytes": 116,
+      "sha256": "70f8e8bfa692379f177e4de1d59dfa930a2083139b7d8f4003ca0f50faf18ccd",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Terrain* const*> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(GameCore::Definition::Terrain const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(GameCore::Definition::Terrain const*, unsigned int)#1}&)"
+    },
+    "0x20f4060": {
+      "bytes": 18,
+      "sha256": "eb4a54ec315441920a66899d738ea58c90691c68d2e1dc8e87538e920c02e3ee",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(GameCore::Definition::Terrain const*, unsigned int)#1}::operator()(GameCore::Definition::Terrain const*, unsigned int) const"
+    },
+    "0x20f4080": {
+      "bytes": 4,
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1",
+      "symbol": "GameCore::Definition::Terrain::GetTypeHash() const"
+    },
+    "0x20f4090": {
+      "bytes": 133,
+      "sha256": "ccda9abc3f635f7901b097a33c7016d78375d767bbd7facf5797b5dcdec61621",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Terrain* const*> std::__1::__upper_bound<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Terrain const*)#1}&, std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, unsigned int>(std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, std::__1::__wrap_iter<GameCore::Definition::Terrain* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Terrain const*)#1}&)"
+    },
+    "0x20f4120": {
+      "bytes": 18,
+      "sha256": "1240ab8bd30d6e3d676bb8ed460670978c52d9efc22b3c714c32b3785ce169c2",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::Terrain const*)#1}::operator()(unsigned int, GameCore::Definition::Terrain const*) const"
+    },
+    "0x21f8a80": {
+      "bytes": 56,
+      "sha256": "7855ea06bf91d3c3cb952bad89c7009f8a47858ebfd357542854398c9e237c80",
+      "symbol": "GameCore::Definition::Feature::SetFeatureType(char const*)"
+    },
+    "0x21f8c40": {
+      "bytes": 1269,
+      "sha256": "26fda78b75037d8099a2ce38fa91e3c2b29c17da50dc8420408352adb2f570c5",
+      "symbol": "GameCore::Definition::FeatureCollectionBuilder::BuildDefinition(Database::IDatabaseQuery1*)"
+    },
+    "0x21f9140": {
+      "bytes": 8,
+      "sha256": "63f70319a57ecb7b28ab4343395b70b2a3762fcd044d292dca12fdbb9b566745",
+      "symbol": "GameCore::Definition::FeatureCollectionBuilder::GetBuilderCountSql()"
+    },
+    "0x21f9150": {
+      "bytes": 8,
+      "sha256": "fbb04c666c7358666fe8adbac03a671de6824119463452ea645bef2a98aa98e0",
+      "symbol": "GameCore::Definition::FeatureCollectionBuilder::GetBuilderSql()"
+    },
+    "0x21fc240": {
+      "bytes": 56,
+      "sha256": "2ba79eea948553d14e54a827b311e02365ac3507b95cc7fdd5fdfc4e3f90c16b",
+      "symbol": "GameCore::Definition::GreatPersonClass::SetGreatPersonClassType(char const*)"
+    },
+    "0x21fc360": {
+      "bytes": 523,
+      "sha256": "00e7afce042e689fa259e973b4b9fb6e113d191c62cf2bb7f9905b16653d8692",
+      "symbol": "GameCore::Definition::GreatPersonClassCollectionBuilder::BuildDefinition(Database::IDatabaseQuery1*)"
+    },
+    "0x21fc570": {
+      "bytes": 8,
+      "sha256": "c931da278ae542464b431a97e89b54f8fca411560ae4752dfecf591097a0128f",
+      "symbol": "GameCore::Definition::GreatPersonClassCollectionBuilder::GetBuilderCountSql()"
+    },
+    "0x21fc580": {
+      "bytes": 8,
+      "sha256": "72fd0bba0a68407ce2db7de04f251050fa40624528082350061f53c5a6be387c",
+      "symbol": "GameCore::Definition::GreatPersonClassCollectionBuilder::GetBuilderSql()"
+    },
+    "0x2219c00": {
+      "bytes": 56,
+      "sha256": "9228a91b4f6335aa9fbbf8cf140ccc45b36a1460eb232c57fffdcbac74ede874",
+      "symbol": "GameCore::Definition::Terrain::SetTerrainType(char const*)"
+    },
+    "0x2219c40": {
+      "bytes": 552,
+      "sha256": "3bbbbb1e5a2aaf55da3be9eb2b7089d5a4167ea857a40f8c8383288a0032e705",
+      "symbol": "GameCore::Definition::TerrainCollectionBuilder::BuildDefinition(Database::IDatabaseQuery1*)"
+    },
+    "0x2219e70": {
+      "bytes": 8,
+      "sha256": "274a307e8c9b024cb196ec57ab62b402acd56a8126db54c268364cfde7f25dc2",
+      "symbol": "GameCore::Definition::TerrainCollectionBuilder::GetBuilderCountSql()"
+    },
+    "0x2219e80": {
+      "bytes": 8,
+      "sha256": "3af5966cdde9d673bcfc3f629d51a239b866f0cd5ba16962d908060b1039f3cf",
+      "symbol": "GameCore::Definition::TerrainCollectionBuilder::GetBuilderSql()"
+    },
+    "0x221c260": {
+      "bytes": 56,
+      "sha256": "0c9a27af5e0a4454662a8e2339717e157f5d09b2fce5ce4b1f3b254d2f0d5022",
+      "symbol": "GameCore::Definition::UnitAbility::SetUnitAbilityType(char const*)"
+    },
+    "0x221c2a0": {
+      "bytes": 348,
+      "sha256": "7b7e4a0afbb68b6ca12e73b2d18d93dc0d3f283a192776e175baf085361b14de",
+      "symbol": "GameCore::Definition::UnitAbilityCollectionBuilder::BuildDefinition(Database::IDatabaseQuery1*)"
+    },
+    "0x221c400": {
+      "bytes": 8,
+      "sha256": "b6988d24e50fdceae76b2abd524e1e6fb725d8e8b7bfb095073bf82b9dec55b7",
+      "symbol": "GameCore::Definition::UnitAbilityCollectionBuilder::GetBuilderCountSql()"
+    },
+    "0x221c410": {
+      "bytes": 8,
+      "sha256": "46bb1ce5c2c3e37d451a3f1307ea98045130f7f5411e40531d4a434ac2e2fef1",
+      "symbol": "GameCore::Definition::UnitAbilityCollectionBuilder::GetBuilderSql()"
+    },
+    "0x22517e0": {
+      "bytes": 285,
+      "sha256": "93468218e8be4f5913f7162dc598e985b8f6f0590bcfb9fe1e157d77eb40792f",
+      "symbol": "void GameCore::Definition::DefinitionCollectionBuilder::BuildCollection<GameCore::Definition::FeatureCollectionBuilder, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature> >(GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>&)"
+    },
+    "0x2253be0": {
+      "bytes": 285,
+      "sha256": "0df8c31befc8283029298863e6a6306b238c1e85d29b11223797b7521a34e631",
+      "symbol": "void GameCore::Definition::DefinitionCollectionBuilder::BuildCollection<GameCore::Definition::GreatPersonClassCollectionBuilder, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass> >(GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>&)"
+    },
+    "0x225e380": {
+      "bytes": 285,
+      "sha256": "029fea88dda777e37714c241323b6d6cd7495370c05b2ddc67f8719850b0520d",
+      "symbol": "void GameCore::Definition::DefinitionCollectionBuilder::BuildCollection<GameCore::Definition::TerrainCollectionBuilder, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain> >(GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>&)"
+    },
+    "0x225f580": {
+      "bytes": 285,
+      "sha256": "c1c79402efd92303200b76db1794912dcf2e1e258dd3db96e058f9a61cca7cbe",
+      "symbol": "void GameCore::Definition::DefinitionCollectionBuilder::BuildCollection<GameCore::Definition::UnitAbilityCollectionBuilder, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility> >(GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>&)"
+    },
+    "0x22cac00": {
+      "bytes": 4,
+      "sha256": "e0bb5195d3b0df83d6b5f35184dfa71bd6360cf410a1faeb0cda331ec8dbd16c",
+      "symbol": "GameCore::Definition::Feature::SetCollectionIndex(unsigned int)"
+    },
+    "0x22cac10": {
+      "bytes": 96,
+      "sha256": "93c7dec3d55d9a2cdd0c85b81cce954221c6ca83b4cee87b6beecd71ec90751f",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::push_back(GameCore::Definition::Feature*)"
+    },
+    "0x22cae30": {
+      "bytes": 11,
+      "sha256": "6d7392f61763be7fbfce6c182f99d8bd0c07d7ce8c78e159e2142b962d411a73",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Feature**> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::Feature**>, GameCore::Definition::Feature*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::push_back(GameCore::Definition::Feature*)::{lambda(GameCore::Definition::Feature const*, GameCore::Definition::Feature const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::Feature**>, std::__1::__wrap_iter<GameCore::Definition::Feature**>, GameCore::Definition::Feature* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::push_back(GameCore::Definition::Feature*)::{lambda(GameCore::Definition::Feature const*, GameCore::Definition::Feature const*)#1})"
+    },
+    "0x22cb070": {
+      "bytes": 116,
+      "sha256": "769d93ec9ee9d161dc02b5d394722dd15aa3ae01206bbcd62f12279085d2de2e",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Feature**> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::Feature**>, GameCore::Definition::Feature*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::push_back(GameCore::Definition::Feature*)::{lambda(GameCore::Definition::Feature const*, GameCore::Definition::Feature const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::Feature**>, std::__1::__wrap_iter<GameCore::Definition::Feature**>, GameCore::Definition::Feature* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::push_back(GameCore::Definition::Feature*)::{lambda(GameCore::Definition::Feature const*, GameCore::Definition::Feature const*)#1}&)"
+    },
+    "0x22cb0f0": {
+      "bytes": 36,
+      "sha256": "86c145ff2f4e29a4a1a79d1447de1dd2447a44f4a28e323944d809667b8758c3",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Feature>::push_back(GameCore::Definition::Feature*)::{lambda(GameCore::Definition::Feature const*, GameCore::Definition::Feature const*)#1}::operator()(GameCore::Definition::Feature const*, GameCore::Definition::Feature const*) const"
+    },
+    "0x22d7810": {
+      "bytes": 4,
+      "sha256": "e0bb5195d3b0df83d6b5f35184dfa71bd6360cf410a1faeb0cda331ec8dbd16c",
+      "symbol": "GameCore::Definition::GreatPersonClass::SetCollectionIndex(unsigned int)"
+    },
+    "0x22d7820": {
+      "bytes": 96,
+      "sha256": "66e53b276335f81f249883c01305b41b96e00e6d634aaac824b3ea291483ea1f",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::push_back(GameCore::Definition::GreatPersonClass*)"
+    },
+    "0x22d7a40": {
+      "bytes": 11,
+      "sha256": "7bfdc430f10535814c03ecc42584af467efe45a14e23121252fc2ffe5e822cf0",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**>, GameCore::Definition::GreatPersonClass*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::push_back(GameCore::Definition::GreatPersonClass*)::{lambda(GameCore::Definition::GreatPersonClass const*, GameCore::Definition::GreatPersonClass const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**>, std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**>, GameCore::Definition::GreatPersonClass* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::push_back(GameCore::Definition::GreatPersonClass*)::{lambda(GameCore::Definition::GreatPersonClass const*, GameCore::Definition::GreatPersonClass const*)#1})"
+    },
+    "0x22d7c80": {
+      "bytes": 116,
+      "sha256": "12ba03bde3db0a687b14b797a89840dadb878009ed9ab842bfb5584a77cb0c24",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**>, GameCore::Definition::GreatPersonClass*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::push_back(GameCore::Definition::GreatPersonClass*)::{lambda(GameCore::Definition::GreatPersonClass const*, GameCore::Definition::GreatPersonClass const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**>, std::__1::__wrap_iter<GameCore::Definition::GreatPersonClass**>, GameCore::Definition::GreatPersonClass* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::push_back(GameCore::Definition::GreatPersonClass*)::{lambda(GameCore::Definition::GreatPersonClass const*, GameCore::Definition::GreatPersonClass const*)#1}&)"
+    },
+    "0x22d7d00": {
+      "bytes": 36,
+      "sha256": "285d953c0408f9454e575613dc67ae8f951b448dc0646ee3983fcfe596268d7a",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonClass>::push_back(GameCore::Definition::GreatPersonClass*)::{lambda(GameCore::Definition::GreatPersonClass const*, GameCore::Definition::GreatPersonClass const*)#1}::operator()(GameCore::Definition::GreatPersonClass const*, GameCore::Definition::GreatPersonClass const*) const"
+    },
+    "0x230b4b0": {
+      "bytes": 4,
+      "sha256": "e0bb5195d3b0df83d6b5f35184dfa71bd6360cf410a1faeb0cda331ec8dbd16c",
+      "symbol": "GameCore::Definition::Terrain::SetCollectionIndex(unsigned int)"
+    },
+    "0x230b4c0": {
+      "bytes": 96,
+      "sha256": "e5048fb2739b1858b40fcc4d61f1adfef0bf6a6ca95a85e2138ed7eb8632f06f",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::push_back(GameCore::Definition::Terrain*)"
+    },
+    "0x230b6e0": {
+      "bytes": 11,
+      "sha256": "13f623157405268169ace6d208c45f170739bdc5dd526d54b13a9e1d55424ab6",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Terrain**> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::Terrain**>, GameCore::Definition::Terrain*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::push_back(GameCore::Definition::Terrain*)::{lambda(GameCore::Definition::Terrain const*, GameCore::Definition::Terrain const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::Terrain**>, std::__1::__wrap_iter<GameCore::Definition::Terrain**>, GameCore::Definition::Terrain* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::push_back(GameCore::Definition::Terrain*)::{lambda(GameCore::Definition::Terrain const*, GameCore::Definition::Terrain const*)#1})"
+    },
+    "0x230b920": {
+      "bytes": 116,
+      "sha256": "d64826f5666caaed87e079a4f1a2c19dc123d625fecd931feac00124b1dc293a",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::Terrain**> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::Terrain**>, GameCore::Definition::Terrain*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::push_back(GameCore::Definition::Terrain*)::{lambda(GameCore::Definition::Terrain const*, GameCore::Definition::Terrain const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::Terrain**>, std::__1::__wrap_iter<GameCore::Definition::Terrain**>, GameCore::Definition::Terrain* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::push_back(GameCore::Definition::Terrain*)::{lambda(GameCore::Definition::Terrain const*, GameCore::Definition::Terrain const*)#1}&)"
+    },
+    "0x230b9a0": {
+      "bytes": 36,
+      "sha256": "598156d072891a56a16ff36be23bc37b686c49cdaa20612ed9df3014ad3b66ac",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Terrain>::push_back(GameCore::Definition::Terrain*)::{lambda(GameCore::Definition::Terrain const*, GameCore::Definition::Terrain const*)#1}::operator()(GameCore::Definition::Terrain const*, GameCore::Definition::Terrain const*) const"
+    },
+    "0x2311d60": {
+      "bytes": 4,
+      "sha256": "e0bb5195d3b0df83d6b5f35184dfa71bd6360cf410a1faeb0cda331ec8dbd16c",
+      "symbol": "GameCore::Definition::UnitAbility::SetCollectionIndex(unsigned int)"
+    },
+    "0x2311d80": {
+      "bytes": 96,
+      "sha256": "1a7e5b2c4365e1ff518f567ab722b6bcf50a1d04df812f4bdcf096e6048a666f",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::push_back(GameCore::Definition::UnitAbility*)"
+    },
+    "0x2311fa0": {
+      "bytes": 11,
+      "sha256": "2db9ad410ac8dbfd466d5926c52710d7f31ea136a648220e6de4fe62a1e5b73a",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::UnitAbility**> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::UnitAbility**>, GameCore::Definition::UnitAbility*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::push_back(GameCore::Definition::UnitAbility*)::{lambda(GameCore::Definition::UnitAbility const*, GameCore::Definition::UnitAbility const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::UnitAbility**>, std::__1::__wrap_iter<GameCore::Definition::UnitAbility**>, GameCore::Definition::UnitAbility* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::push_back(GameCore::Definition::UnitAbility*)::{lambda(GameCore::Definition::UnitAbility const*, GameCore::Definition::UnitAbility const*)#1})"
+    },
+    "0x23121e0": {
+      "bytes": 116,
+      "sha256": "ad32383f13d7630930e30f7225c7bab0cdcab6549d33ec4741fb12e97e83e496",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::UnitAbility**> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::UnitAbility**>, GameCore::Definition::UnitAbility*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::push_back(GameCore::Definition::UnitAbility*)::{lambda(GameCore::Definition::UnitAbility const*, GameCore::Definition::UnitAbility const*)#1}>(std::__1::__wrap_iter<GameCore::Definition::UnitAbility**>, std::__1::__wrap_iter<GameCore::Definition::UnitAbility**>, GameCore::Definition::UnitAbility* const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::push_back(GameCore::Definition::UnitAbility*)::{lambda(GameCore::Definition::UnitAbility const*, GameCore::Definition::UnitAbility const*)#1}&)"
+    },
+    "0x2312260": {
+      "bytes": 36,
+      "sha256": "a0e58ef11911b314521136df05ec5122243d7c87e192bf583a595149f49f16e7",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::push_back(GameCore::Definition::UnitAbility*)::{lambda(GameCore::Definition::UnitAbility const*, GameCore::Definition::UnitAbility const*)#1}::operator()(GameCore::Definition::UnitAbility const*, GameCore::Definition::UnitAbility const*) const"
+    },
+    "0x2312290": {
+      "bytes": 4,
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1",
+      "symbol": "GameCore::Definition::UnitAbility::GetTypeHash() const"
+    },
+    "0x242e000": {
+      "bytes": 109,
+      "sha256": "a8dd58b01b0e0247c45bd925543090253c3b197468e53bc099d1b0693c6d40e2",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const"
+    },
+    "0x26235e0": {
+      "bytes": 11,
+      "sha256": "e838013fa5be3c9fff8b5055bac6bc54a0c675401b853a94b5be49a3c1b9ca03",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*> ASL::StdLib::Lower_bound::lower_bound<std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(GameCore::Definition::UnitAbility const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(GameCore::Definition::UnitAbility const*, unsigned int)#1})"
+    },
+    "0x26235f0": {
+      "bytes": 116,
+      "sha256": "91fc7ef180d3a619fbd79c0c3957c6159baf286d497d24c6d2fad42d5124805f",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*> ASL::StdLib::Lower_bound::_Lower_bound_unchecked<std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(GameCore::Definition::UnitAbility const*, unsigned int)#1}>(std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(GameCore::Definition::UnitAbility const*, unsigned int)#1}&)"
+    },
+    "0x2623670": {
+      "bytes": 18,
+      "sha256": "0fc563b07b875204a39f5f7e807cbad7520a86dd4bc1d587600ec0786bf4e560",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(GameCore::Definition::UnitAbility const*, unsigned int)#1}::operator()(GameCore::Definition::UnitAbility const*, unsigned int) const"
+    },
+    "0x2623690": {
+      "bytes": 133,
+      "sha256": "df56fdd0545c85bc7d50ff28d816dd97b9204b696f0cb2d0e1d872ebbb3e4662",
+      "symbol": "std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*> std::__1::__upper_bound<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::UnitAbility const*)#1}&, std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, unsigned int>(std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, std::__1::__wrap_iter<GameCore::Definition::UnitAbility* const*>, unsigned int const&, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::UnitAbility const*)#1}&)"
+    },
+    "0x2623720": {
+      "bytes": 18,
+      "sha256": "5f003b97b2cc7cebb5024568d6d5e5d5b2edd2f41945a7508c22b6c08e4db590",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::Find(unsigned int) const::{lambda(unsigned int, GameCore::Definition::UnitAbility const*)#1}::operator()(unsigned int, GameCore::Definition::UnitAbility const*) const"
+    },
+    "0x2929e90": {
+      "bytes": 27,
+      "sha256": "996894d7838bc82468dc056ee16f8d8027a511bc356c7105f080c1d7dd54ba17",
+      "symbol": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitAbility>::FindIndex(unsigned int) const"
+    }
+  },
+  "native_execution": false,
+  "schema": "c6-linux-unit-initialization-definition-builders-v1"
+}

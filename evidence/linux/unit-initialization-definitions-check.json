@@ -1,0 +1,32 @@
+{
+  "array_collection_counts": [
+    155,
+    17,
+    31,
+    9
+  ],
+  "candidate_sha256": "c3433182559380ca163e499ef84675a8619882c04de6b322bf9b525e4b4442a4",
+  "cargo_lock_sha256": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
+  "complete_unit_initialization": false,
+  "native_initialized_state_comparison": false,
+  "native_save_array_orders_compared": true,
+  "original_execution": false,
+  "rules_report_sha256": "4b85ee47e0e1d031a20aec2f96fbe99d2cda23861ad646ed48073fc3fa2614e1",
+  "schema": "c6-linux-unit-initialization-definitions-check-v1",
+  "sources": {
+    "crates/c6-core/src/loaded_state.rs": "f985b5018272a147de643741f9be0292bc855c96b40f2f82e847cbb460527485",
+    "crates/c6-core/src/unit_initialization.rs": "004e793931db2cfa4506badf3c94843d6f43d0e60d3d2f2ef5df90f56ef7f026",
+    "crates/c6-data/src/lib.rs": "b9c000117b2401804ca4ff1a2289ca7460efd7d3fb7ce2bd90822aa8c2c4a454",
+    "crates/c6-data/src/loaded_actions/resources.rs": "6d09d8bebf43c67624d9359a10e192b100cde0dc8a1296c6545906e94e0c31b9",
+    "crates/c6-data/src/movement.rs": "76153d7e76bc3a06e9512caf548384f87a2f32f57ef835d1f60cb43ec7e88d8c",
+    "crates/c6-data/src/registry.rs": "5c72f7427f6c6f102238a72e0c0d50caf4052d4007b7a4870cf77e1076cfa63c",
+    "crates/c6-data/src/unit_initialization_definitions.rs": "dd29a1c684161aab7019eb73388fa86ad64e63de2b653a598e093089cb8c5f8b",
+    "tools/linux/loaded_actions_review_load.rs": "8a10f8a064f28b3761fd9d8dae3fa0887d985ab0bb697415b889d922f7c98123",
+    "tools/linux/unit_initialization_definitions_check.py": "5430624653df7e5f1c8dd8067c89db0738aab9ed373173d3993125fb6903d00b",
+    "tools/linux/unit_initialization_definitions_check.rs": "425b5411cdf919a13e492237feea0dd904d7bcae6e373f09cced4944eef7cad3"
+  },
+  "target_manifest_sha256": "87e3b61271eaeef1fb6f959fedeace75e70bbf35955329f130ab6576f1e10bb5",
+  "target_runtime_sha256": "01479e18272065e11ab0a50dc2284b6fdf4fce77a166b07ae98a19bba5dfa8b3",
+  "units": 1262,
+  "wire_unit_diagnostic_unchanged": true
+}
