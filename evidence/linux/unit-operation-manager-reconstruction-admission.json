@@ -1,0 +1,32 @@
+{
+  "schema": "c6-linux-unit-operation-manager-reconstruction-admission-v1",
+  "profile_sha256": "aa38b5edfe6f4c5ffc8fc25d079e9739ab7e3d75d3998c723dbbdaece5e08aff",
+  "prepared_sha256": "87f3d32b10a7edc2af76bf317b2acf8187692e811b9c24edee9d430df0e061ab",
+  "configuration_file_sha256": "6b34093bbf7b7407972758daeba9e7d2f2885472a48cd6ba7097a1d2d2b78cdf",
+  "preload_sha256": "ca4a1212111b0bcd3bd708bd4c6d9c3f2ec7f6ff59ccf732ea33996e68f79e5f",
+  "candidate_manifest_sha256": "348ee77d2d1ea9c8eaaf74d1a5abc5e1228baca16bee8536b2fc56ad2604f186",
+  "capture_path": "/home/phulin/c6-ghidra/evidence/linux-unit-operation-manager-metadata/native-1",
+  "runtime_sha256": null,
+  "checker_sources": {
+    "tools/linux/unit_operation_manager_reconstruction_results.py": "584322e1ad0d635dff8c2e13fca4e577a45b97d2db02fc291f902b501958df9e",
+    "tools/linux/map_state_audit.py": "f43b2712ef67a4e2fdb1ab0ba578bc4796adc6241d232cb020ed9a35cf13f96b",
+    "tools/linux/core_stream_index.py": "84a7804514f80742160503f4bef78fb13476f1973b095e23576d0545785bb252",
+    "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916",
+    "tools/linux/player_districts_audit.py": "bd1b88925d456e5690e926dba351a181a33a8bac7e7249f7c1090798f2faec08",
+    "tools/linux/player_header_control_audit.py": "55ed59bd0f656c4918a252c8e8633ba2ca2c873f49a38430c6892c99165b96e3",
+    "tools/linux/player_alive_saved_crosscheck.py": "a71a697ff2515ee7ba2ffe7967235e76b0dbfedc1343b892cc2475894460a101",
+    "tools/linux/unit_operation_manager_reconstruction.py": "ed4c7100fb19540702f6e8f141f704ac5d2573faa3a379e91252482b9a97fcbc"
+  },
+  "trace_file_sha256": "5dd8fb4dd50a9445f32d34d3cbadf9f0ceacba0670fe57fd50e544fe57e47093",
+  "rules_files": {
+    "configuration.sqlite": "482de044f9a9fbed23b89183359c1b550b61ad2b3dfd33db4a7cc4f3b6e01b65",
+    "gameplay.sqlite": "c880adaedcfd6da7808302b3b76bb9cad7d3188b35ae78e780cff7b56e04477e"
+  },
+  "native_outputs_present_at_freeze": false,
+  "post_capture_allowed_changed_fields": [
+    "runtime_sha256"
+  ],
+  "expected_outputs_used_as_inputs": false,
+  "full_manager_called": false,
+  "complete_state_actions_rng_turns": false
+}
