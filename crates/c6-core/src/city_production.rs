@@ -1,4 +1,4 @@
-//! Bounded Linux XP2 City BuildQueue (v14/v16, node v2) and Buildings (v10) wire.
+//! Bounded Linux XP2 City BuildQueue (v14/v16, node v2) and Buildings (v8/v10) wire.
 //! Legacy14 omits non-wonder multiplier (native Q8 raw256) and salvage (raw0);
 //! nested FeatureOverride/District modifier versions are independent14/16.
 //!
@@ -171,6 +171,16 @@ impl Reader<'_> {
         let data = self.bytes.get(self.pos..end).ok_or(Error::Truncated)?;
         self.pos = end;
         Ok(data.try_into().unwrap())
+    }
+    fn buildings_version(&mut self) -> Result<i32, Error> {
+        let actual = i32::read(self)?;
+        match actual {
+            8 | 10 => Ok(actual),
+            _ => Err(Error::Version {
+                expected: 10,
+                actual,
+            }),
+        }
     }
     fn build_queue_version(&mut self) -> Result<i32, Error> {
         let actual = i32::read(self)?;
@@ -794,6 +804,7 @@ pub struct BuildingYieldModifier {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GreatWorkSlot {
+    pub wire_version: i32,
     /// GreatWorkSlotTypes uses raw i32 (0x2d4ff30), not a definition hash.
     pub slot_type: i32,
     /// GreatWorkListIndex uses raw i32 (0x2d4fff0).
@@ -826,6 +837,7 @@ pub struct BuildingName {
 /// mapping/filtering; this codec preserves complete wire data separately.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Buildings {
+    pub wire_version: i32,
     pub building_locations: Vec<HashValue<i16>>,
     pub pillaged: Vec<HashValue<bool>>,
     /// Original vector<short> indexed by Building; values are raw i16.
@@ -903,7 +915,21 @@ impl Writer {
         self.put(&bytes)
     }
 }
+/// Native Reset clears these version-omitted vectors; no constructor or
+/// arbitrary prior-state baseline is inferred from their absence on the wire.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BuildingsOmittedListEffect {
+    Present,
+    EmptyAfterNativeReset,
+}
 impl Buildings {
+    pub fn omitted_lists_effect(&self) -> BuildingsOmittedListEffect {
+        if self.wire_version == 8 {
+            BuildingsOmittedListEffect::EmptyAfterNativeReset
+        } else {
+            BuildingsOmittedListEffect::Present
+        }
+    }
     pub const VERSION: i32 = 10;
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
         let (value, consumed, _) = Self::decode_prefix_with_items(bytes, limits)?;
@@ -919,8 +945,9 @@ impl Buildings {
             pos: 0,
             budget: Budget { limits, items: 0 },
         };
-        r.version(Self::VERSION)?;
+        let wire_version = r.buildings_version()?;
         let value = Self {
+            wire_version,
             building_locations: r.pairs()?,
             pillaged: r.pairs()?,
             era_created: r.pairs()?,
@@ -933,8 +960,9 @@ impl Buildings {
                 Ok(GreatWorkBuilding {
                     building_hash: u32::read(r)?,
                     slots: r.vector(|r| {
-                        r.version(Self::VERSION)?;
+                        let wire_version = r.buildings_version()?;
                         Ok(GreatWorkSlot {
+                            wire_version,
                             slot_type: i32::read(r)?,
                             great_work_index: i32::read(r)?,
                         })
@@ -948,21 +976,29 @@ impl Buildings {
                     count: i32::read(r)?,
                 })
             })?,
-            yield_change_from_features: r.vector(|r| {
-                r.version(Self::VERSION)?;
-                Ok(YieldChangeFromFeatures {
-                    feature_hash: u32::read(r)?,
-                    yield_type: i32::read(r)?,
-                    amount: i32::read(r)?,
-                })
-            })?,
-            building_name_overrides: r.vector(|r| {
-                r.version(Self::VERSION)?;
-                Ok(BuildingName {
-                    building_hash: u32::read(r)?,
-                    name: r.localized_text()?,
-                })
-            })?,
+            yield_change_from_features: if wire_version == 8 {
+                Vec::new()
+            } else {
+                r.vector(|r| {
+                    r.version(Self::VERSION)?;
+                    Ok(YieldChangeFromFeatures {
+                        feature_hash: u32::read(r)?,
+                        yield_type: i32::read(r)?,
+                        amount: i32::read(r)?,
+                    })
+                })?
+            },
+            building_name_overrides: if wire_version == 8 {
+                Vec::new()
+            } else {
+                r.vector(|r| {
+                    r.version(Self::VERSION)?;
+                    Ok(BuildingName {
+                        building_hash: u32::read(r)?,
+                        name: r.localized_text()?,
+                    })
+                })?
+            },
         };
         Ok((value, r.pos, r.budget.items))
     }
@@ -978,6 +1014,15 @@ impl Buildings {
     }
     /// Returns bytes and their actual aggregate dynamic-item charge together.
     pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        if self.wire_version != Self::VERSION
+            || self
+                .great_work_buildings
+                .iter()
+                .flat_map(|v| &v.slots)
+                .any(|v| v.wire_version != Self::VERSION)
+        {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         let mut w = Writer {
             bytes: Vec::new(),
             budget: Budget { limits, items: 0 },
@@ -1091,6 +1136,72 @@ mod buildings_tests {
             localized(&mut b, true);
         }
         (b, slot_version, name_version)
+    }
+    #[test]
+    fn buildings8_omitted_vectors_are_empty_after_reset_and_slots_independent() {
+        let (mut bytes, slot, names) = fixture();
+        // Literal fixture's final fields: one16-byte feature-yield record with
+        // count, then the name count before `names`. Both are absent in8.
+        bytes.truncate(names - 24);
+        bytes[..4].copy_from_slice(&8i32.to_le_bytes());
+        for at in [slot, slot + 12] {
+            bytes[at..at + 4].copy_from_slice(&8i32.to_le_bytes());
+        }
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 16,
+        };
+        let (value, used, items) = Buildings::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 16));
+        assert_eq!(value.wire_version, 8);
+        assert!(value.yield_change_from_features.is_empty());
+        assert!(value.building_name_overrides.is_empty());
+        assert_eq!(
+            value.omitted_lists_effect(),
+            BuildingsOmittedListEffect::EmptyAfterNativeReset
+        );
+        assert_eq!(value.great_work_buildings[0].slots[0].wire_version, 8);
+        assert_eq!(
+            value.great_work_buildings[0].slots[0].great_work_index,
+            i32::MIN
+        );
+        assert_eq!(value.extra_great_works[0].count, -1);
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(
+                Buildings::decode_prefix(&bytes[..n], limits).is_err(),
+                "{n}"
+            );
+        }
+        assert_eq!(
+            Buildings::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 15,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for at in [slot, slot + 12] {
+            bytes[at..at + 4].copy_from_slice(&10i32.to_le_bytes());
+        }
+        let v = Buildings::decode_prefix(&bytes, limits).unwrap().0;
+        assert_eq!(v.wire_version, 8);
+        assert_eq!(v.great_work_buildings[0].slots[0].wire_version, 10);
+        for version in [7i32, 9, 11] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Buildings::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 10,
+                    actual: version
+                })
+            );
+        }
     }
     #[test]
     fn charged_prefix_budget_composition() {
