@@ -13,6 +13,8 @@ METHODS += [('host', 63196348, 358, 'WinThread.Initialize', '45639250796014ae321
 
 METHODS += [('host', 47061732, 5, 'ASL_WinCreateThreadWithName.forward', '771c44122d32595cefdb5326128eb103233da727601f043f32d7acc398477687'), ('host', 47053323, 155, 'ASL.WinCreateThreadWithName', '250b3e5649fe0e7e19aefa2ee1066b7d1ddc86d1381226691bd3f3c17b89ed54'), ('host', 47053478, 596, 'ThreadHANDLE.C1', '407c89860f010120275d87ecc26fa6e96164b25cc4a2b84b46f47a67e92a2f6c'), ('host', 47053024, 20, 'ASL.PrepareMainThread', 'c0ad799f23f9919f8ec5f96436586c6e44ff81e684fa6bcb0ce590630116a3b3'), ('host', 47754877, 21, 'GetLastError', '84e2989c3b214b2db7831416e7c6aa625e51969cdb4d20d3405cda197ee8ee8f'), ('host', 63195840, 140, 'Platform.CreateThread.normal_path', '456b15680cd5575be59fb232facbf9a58c96334f6e8339b6671ea03860dd2ad9')]
 
+METHODS += [('host', 47052416, 607, 'ASL.OnCreateThread', '0fee3329532cd3c2ad9db6890bb61bb8f7ad976ae8c045e8c28458826ea3d008'), ('host', 47045129, 5, 'ASL.EmuPreMain', '2c03e9d7be424baca419d2b2d2635f8a31710ee6f5979d7728c59ba31b3ddd0d'), ('host', 46862714, 588, 'ASL.AppBase.AfterConstruct', '89ccd68257de66f4af936e6b804fe9cbd83f4f6528cd6977c228a203a4520e29'), ('host', 46857552, 231, 'ASL.AppBase.Run', '8f9c2316d7ca03ecf4e322a553d7a4e90f1be4ffe744b4849a5ef7f5ddcb4adc'), ('host', 47045134, 718, 'ASL.EmuMain', '8332507ada6e9c23e21533dad22660d64c6279ade704811865caff1b4096c160'), ('host', 50041424, 166, 'WinMain', '25036f2ce475c9bd937512c02412d6a0e54743b077de34306ea25649afb3abbb'), ('host', 69946064, 913, 'AppHost.SetupFXSPlatform', '39f46bb0156f8340e691a7fd1468029aebec1a5862c033b56e5706b8ca628da5'), ('host', 47751051, 159, 'ASL.DLLMainOnThread', 'c418678caaaedc8408461d4ecf2b4864dcc288daf9cccbb19867bf532f343843'), ('host', 47045852, 17, 'ASL.EmuQuit', 'ba2ae3b23ab924c12f03833c271e6a32d7bacc47611932a7721142265267a6f2'), ('host', 46857133, 419, 'ASL.Exit', '3300064d9d3a0c27fea8520ab2cf9408c8e60796220c65c95e26db39f82674dc')]
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -28,7 +30,9 @@ def main():
     calls = [(0x31d49bd,0x31d1150),(0x31d49cc,0x31d4e50),
              (0x31d11aa,0x3c44ac0),(0x31d11d8,0x3c402d8),
              (0x31d1232,0x31d4e70),(0x31d1252,0x3c402de),
-             (0x31d4eff,0x3c402d8),(0x31d4f07,0x3c402de)]
+             (0x31d4eff,0x3c402d8),(0x31d4f07,0x3c402de),(0x2cb1373,0x2cdda09),
+             (0x2cafde4,0x2cdda0e),(0x2fb9291,0x2f8bcd0),
+             (0x2fb92a7,0x42b9800),(0x42b4d94,0x3c3ee86)]
     for address, target in calls:
         host.call(address, target)
     checks = [(host,0x31d1213,'ff9038020000','original Context.ProcessMessages slot'),
@@ -53,6 +57,7 @@ def main():
         predicate_access='original IsExecuting performs an aligned native 32-bit comparison; SetExecuting and SetComplete use original interlocked operations, not replacement C atomic fields',
         completion_flag='first fresh constructor zeros flag45; later flag is consumer notification, not independently reset per pass by SetExecuting',
         startup_diagnostics=dict(worker_global='0x6499108',worker_thread_pointer_offset='0x48',thread_os_handle_offset='0xb0',thread_start_event_offset='0xc0',thread_id_offset='0xc8',thread_started_offset='0xcd',thread_initialized_offset='0xce',native_create_return='0x31d11af',os_create_return='0x3c44df4',worker_run='0x31d11d0',delegate_call='0x3c44eac',pre_start_callback='Platform.JobManager.RegisterMasterThread'),
+        early_lifecycle=dict(abi='PrepareMainThread void(void); OnCreateThread void(char const*)',ordering='ASL App.AfterConstruct -> EmuPreMain -> PrepareMainThread; later App.Run -> EmuMain creates game-entry thread -> WinMain -> Civ6App and AppHost setup/TempHeap',duplicate='not an idempotent setter: every invocation calls OnCreateThread and DLLMainOnThread(2), even with existing TLS identity',lifetime='process scoped main-thread preparation; no paired main-thread reset found in audited EmuQuit/Exit; never use worker endthread on caller',prospective_profile='fresh original startup before Civ6App/TempHeap/XP2 activation, after actual gate observation; not mid-loaded-Core'),
         creation_failure=dict(admission_byte='host0x544cc70 bit0',admission_branch='0x2cdfa2d; clear returnsNULL without pthread call',native_admission_lifecycle='ASL.PrepareMainThread exchanges admission byte then original OnCreateThread; not executed by this audit',pthread_attr_init_return='0x2cdfbd5',pthread_detach_return='0x2cdfbe5',pthread_stack_return='0x2cdfc0b; return unchecked by original',pthread_create_return='0x2cdfc25',requested_stack='original worker option1 yields ASL request0; original ThreadHANDLE normalizes to max(request,1048576)',affinity='no affinity operation in audited constructor path',error_propagation='admission rejection does not set error; pthread_create error is overwritten before later GetLastError, which reads separate TLS error'),
         lock_diagnostics=dict(worker_lock='worker+0',controller_lock='controller+0x460',controller_recorded_owner='controller+0x4a0',controller_recorded_depth='controller+0x4a4',owner_identity='Platform.GetCurrentThreadID; not assumed equal to Linux LWP'),
         native_execution=False,gameplay_parity=False,

@@ -241,6 +241,76 @@
       "size": 140,
       "name": "Platform.CreateThread.normal_path",
       "sha256": "456b15680cd5575be59fb232facbf9a58c96334f6e8339b6671ea03860dd2ad9"
+    },
+    {
+      "module": "host",
+      "address": "0x2cdf680",
+      "size": 607,
+      "name": "ASL.OnCreateThread",
+      "sha256": "0fee3329532cd3c2ad9db6890bb61bb8f7ad976ae8c045e8c28458826ea3d008"
+    },
+    {
+      "module": "host",
+      "address": "0x2cdda09",
+      "size": 5,
+      "name": "ASL.EmuPreMain",
+      "sha256": "2c03e9d7be424baca419d2b2d2635f8a31710ee6f5979d7728c59ba31b3ddd0d"
+    },
+    {
+      "module": "host",
+      "address": "0x2cb117a",
+      "size": 588,
+      "name": "ASL.AppBase.AfterConstruct",
+      "sha256": "89ccd68257de66f4af936e6b804fe9cbd83f4f6528cd6977c228a203a4520e29"
+    },
+    {
+      "module": "host",
+      "address": "0x2cafd50",
+      "size": 231,
+      "name": "ASL.AppBase.Run",
+      "sha256": "8f9c2316d7ca03ecf4e322a553d7a4e90f1be4ffe744b4849a5ef7f5ddcb4adc"
+    },
+    {
+      "module": "host",
+      "address": "0x2cdda0e",
+      "size": 718,
+      "name": "ASL.EmuMain",
+      "sha256": "8332507ada6e9c23e21533dad22660d64c6279ade704811865caff1b4096c160"
+    },
+    {
+      "module": "host",
+      "address": "0x2fb9250",
+      "size": 166,
+      "name": "WinMain",
+      "sha256": "25036f2ce475c9bd937512c02412d6a0e54743b077de34306ea25649afb3abbb"
+    },
+    {
+      "module": "host",
+      "address": "0x42b4ad0",
+      "size": 913,
+      "name": "AppHost.SetupFXSPlatform",
+      "sha256": "39f46bb0156f8340e691a7fd1468029aebec1a5862c033b56e5706b8ca628da5"
+    },
+    {
+      "module": "host",
+      "address": "0x2d89f8b",
+      "size": 159,
+      "name": "ASL.DLLMainOnThread",
+      "sha256": "c418678caaaedc8408461d4ecf2b4864dcc288daf9cccbb19867bf532f343843"
+    },
+    {
+      "module": "host",
+      "address": "0x2cddcdc",
+      "size": 17,
+      "name": "ASL.EmuQuit",
+      "sha256": "ba2ae3b23ab924c12f03833c271e6a32d7bacc47611932a7721142265267a6f2"
+    },
+    {
+      "module": "host",
+      "address": "0x2cafbad",
+      "size": 419,
+      "name": "ASL.Exit",
+      "sha256": "3300064d9d3a0c27fea8520ab2cf9408c8e60796220c65c95e26db39f82674dc"
     }
   ],
   "calls": [
@@ -275,6 +345,26 @@
     {
       "address": "0x31d4f07",
       "target": "0x3c402de"
+    },
+    {
+      "address": "0x2cb1373",
+      "target": "0x2cdda09"
+    },
+    {
+      "address": "0x2cafde4",
+      "target": "0x2cdda0e"
+    },
+    {
+      "address": "0x2fb9291",
+      "target": "0x2f8bcd0"
+    },
+    {
+      "address": "0x2fb92a7",
+      "target": "0x42b9800"
+    },
+    {
+      "address": "0x42b4d94",
+      "target": "0x3c3ee86"
     }
   ],
   "counter": "original Execute CAS0->1 before Resume; original Run Context.ProcessMessages then SetComplete decrements0 while holding worker lock",
@@ -296,6 +386,13 @@
     "worker_run": "0x31d11d0",
     "delegate_call": "0x3c44eac",
     "pre_start_callback": "Platform.JobManager.RegisterMasterThread"
+  },
+  "early_lifecycle": {
+    "abi": "PrepareMainThread void(void); OnCreateThread void(char const*)",
+    "ordering": "ASL App.AfterConstruct -> EmuPreMain -> PrepareMainThread; later App.Run -> EmuMain creates game-entry thread -> WinMain -> Civ6App and AppHost setup/TempHeap",
+    "duplicate": "not an idempotent setter: every invocation calls OnCreateThread and DLLMainOnThread(2), even with existing TLS identity",
+    "lifetime": "process scoped main-thread preparation; no paired main-thread reset found in audited EmuQuit/Exit; never use worker endthread on caller",
+    "prospective_profile": "fresh original startup before Civ6App/TempHeap/XP2 activation, after actual gate observation; not mid-loaded-Core"
   },
   "creation_failure": {
     "admission_byte": "host0x544cc70 bit0",
