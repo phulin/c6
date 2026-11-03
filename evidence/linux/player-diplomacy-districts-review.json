@@ -1,7 +1,7 @@
 {
   "schema": "c6-linux-player-diplomacy-districts-review-v1",
   "codec_review_passed": true,
-  "direct_core_composition_review_passed": false,
+  "direct_core_composition_review_passed": true,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
   "source_checkpoints": {
@@ -2004,5 +2004,86 @@
   "definition_remapping": false,
   "gameplay_state": false,
   "action_execution": false,
-  "turn_execution": false
+  "turn_execution": false,
+  "composition": {
+    "source_commit": "a80a791",
+    "candidate_sha256": "9bd58d9600a83f449b510c96e3c7efc879f8b8a3703eb44f402d22d152a75b72",
+    "harness_sha256": "54b77268f9b66c568797b3ab2d83636c5e6191d2fbd466906d75ef4156223901",
+    "harness_source": "use c6_core::{core_stream::ThroughFirstPlayer,core_player::Boundary,map,unit};\nuse std::io::{Read,Write};\nfn main(){\n let mut input=Vec::new();std::io::stdin().read_to_end(&mut input).unwrap();\n let v=ThroughFirstPlayer::decode(&input,map::Limits::default(),unit::Limits::default()).unwrap();\n assert_eq!(v.player_prefix.boundary,Boundary::PlayerNameManager);\n assert_eq!(v.tail,&input[v.consumed..]);assert!(std::ptr::eq(v.tail.as_ptr(),input[v.consumed..].as_ptr()));\n let (encoded,post_items)=v.player_prefix.encode_prefix_with_items(unit::Limits::default()).unwrap();\n assert_eq!(encoded,input[v.core.consumed..v.consumed]);assert_eq!(v.items_used,v.core.items_used+post_items);\n let p=v.player_prefix.first_player.as_ref().unwrap();\n let (dip,di)=p.diplomacy.encode_with_items(unit::Limits::default()).unwrap();\n let (districts,ds)=p.districts.encode_with_items(unit::Limits::default()).unwrap();\n let shared=map::Limits{max_bytes:v.consumed,max_items:v.items_used,max_allocation:v.core.logical_allocation_used,..map::Limits::default()};\n let player=unit::Limits{max_bytes:encoded.len(),max_items:post_items};\n assert!(ThroughFirstPlayer::decode(&input,shared,player).is_ok());\n for s in [map::Limits{max_bytes:shared.max_bytes-1,..shared},map::Limits{max_items:shared.max_items-1,..shared}]{assert!(ThroughFirstPlayer::decode(&input,s,player).is_err());}\n for l in [unit::Limits{max_bytes:player.max_bytes-1,..player},unit::Limits{max_items:player.max_items-1,..player}]{assert!(ThroughFirstPlayer::decode(&input,shared,l).is_err());}\n for cut in [v.core.consumed,v.consumed-districts.len(),v.consumed-districts.len()-1,v.consumed-1]{assert!(ThroughFirstPlayer::decode(&input[..cut],map::Limits::default(),unit::Limits::default()).is_err());}\n let (enc_exact,ei)=v.player_prefix.encode_prefix_with_items(player).unwrap();assert_eq!(enc_exact,encoded);assert_eq!(ei,post_items);\n for l in [unit::Limits{max_bytes:player.max_bytes-1,..player},unit::Limits{max_items:player.max_items-1,..player}]{assert!(v.player_prefix.encode_prefix_with_items(l).is_err());}\n println!(\"{} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\",v.core.consumed,v.consumed,v.items_used,post_items,v.tail.len(),dip.len(),di,districts.len(),ds,p.districts.records.entries.len(),v.player_prefix.unfinished_player_entries,p.formations.entries.len(),p.cities.records.entries.len(),v.core.logical_allocation_used,p.diplomacy.blackboard.diplomatic_modifiers.len());\n std::io::stdout().write_all(&encoded).unwrap();\n}\n",
+    "fixtures": [
+      {
+        "map_end": 4695864,
+        "consumed": 4988302,
+        "items_used": 2001890,
+        "post_map_items": 43794,
+        "tail_bytes": 75669160,
+        "diplomacy_bytes": 48941,
+        "diplomacy_items": 12741,
+        "districts_bytes": 31972,
+        "districts_items": 3023,
+        "district_records": 72,
+        "unfinished_player_entries": 43,
+        "formation_records": 35,
+        "city_records": 11,
+        "through_map_logical_allocation": 5263756,
+        "blackboard_modifier_vectors": 64,
+        "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+        "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+        "post_map_sha256": "f007a724262ac3dc0665acc7a27e94fe69922d18350c7b5077b858eff3edb684",
+        "tail_sha256": "4d227b253de8b2df9ad24196ba49d0912c84298e8f1d502c869ee07d1c84af2f",
+        "native_diplomacy_start": 4907389,
+        "native_districts_start": 4956330,
+        "native_name_manager_start": null
+      },
+      {
+        "map_end": 4695864,
+        "consumed": 4988302,
+        "items_used": 2001890,
+        "post_map_items": 43794,
+        "tail_bytes": 75669160,
+        "diplomacy_bytes": 48941,
+        "diplomacy_items": 12741,
+        "districts_bytes": 31972,
+        "districts_items": 3023,
+        "district_records": 72,
+        "unfinished_player_entries": 43,
+        "formation_records": 35,
+        "city_records": 11,
+        "through_map_logical_allocation": 5263756,
+        "blackboard_modifier_vectors": 64,
+        "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+        "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+        "post_map_sha256": "f007a724262ac3dc0665acc7a27e94fe69922d18350c7b5077b858eff3edb684",
+        "tail_sha256": "3232705a35c13bddd3a6eeb07c6695d532e38bc7eddffb8d5a77e8133048bbfb",
+        "native_diplomacy_start": 4907389,
+        "native_districts_start": 4956330,
+        "native_name_manager_start": null
+      }
+    ],
+    "exact_shared_and_player_caps_pass": true,
+    "one_short_shared_and_player_caps_refuse": true,
+    "four_actual_prefix_truncations_refuse": true,
+    "exact_and_one_short_encoding_caps_checked": true,
+    "tail_borrow_asserted": true,
+    "core_player_implementation_commit": "4e30e87",
+    "district_export_commit": "a80a791",
+    "core_player_focused_tests_passed": 6,
+    "core_stream_focused_tests_passed": 6,
+    "prior_unchanged_core_prefix_review": "592d660",
+    "candidate_artifact": "target/linux/player-diplomacy-districts-review-a80a791/candidate",
+    "next_component_source": {
+      "address": "0x2b4ee00",
+      "size": 1679,
+      "sha256": "cbeacc8a90c5fa8853e90d6971174683990e8bbee2c91c00a9be1bb2023d8593",
+      "writer_order": [
+        "Cities",
+        "Diplomacy",
+        "Districts",
+        "NameManager",
+        "Culture"
+      ],
+      "name_manager_owner_trace_present": false
+    },
+    "encoding_scope": "all supported post-Map bytes, with unchanged through-Map proof reused"
+  }
 }
