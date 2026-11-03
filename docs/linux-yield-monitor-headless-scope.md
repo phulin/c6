@@ -163,6 +163,26 @@ with both committed and instrumented complete source archives retained under
 The original failed unstructured invocation is retained separately; no
 unsupported version was forced and production raw-input support is unchanged.
 
+After the independent, source-proven Context4 support in `7255bdd`, the same
+probe produced a [separate result](../evidence/linux/yield-monitor-original-first-city-prefix-context4.json):
+**Game version19 is refused before Map** (supported version22). It still
+reaches no City prefix or flags. Complete committed/instrumented sources and
+candidate `806a3953302743809f7d799f00ca5f28462f31d15f763bdb17e3c4104fd47821`
+are retained under
+`target/linux/yield-monitor-raw-city-prefix-candidates/2f701b262d25480dbbad7a744eedfeef/`.
+The prior Context4 refusal remains historical evidence with its own source.
+
+The [sight refinement](../evidence/linux/yield-monitor-postload-sight.json)
+checks 45 focused bodies and the native const Map lookup binding. Postload
+`PolulateSight` reserves/fills the addressed Unit's `k_sight_plots` through
+`GetSightPlots`, which clears/appends its caller-output vector and uses stack
+working buffers. Distance/through helpers read existing Map/Plot data,
+Terrain/Feature definitions and District defensibility. This is distinct from
+adding/removing global visibility. It narrows direct writes to the Unit vector
+and archive marking; wider archive-controller effects remain separate. It
+does not exclude Unit sight from gameplay state or establish its original raw
+guard outcomes.
+
 The separate retained-source domain checker uses the real 43-player,
 1,262-Unit LoadedState. It tests missing-owner and corrupt-trace rejection,
 one-time admission, actual warm lookups, and persistence of graph authority

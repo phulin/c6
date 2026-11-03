@@ -157,6 +157,8 @@ def audit(args):
         raise ValueError('Citizens force_update_plot_appeal guard differs')
     if image.read(0x201e38b, 3).hex() != 'ff5010':
         raise ValueError('actual Control contract virtual postload differs')
+    if image.relocated_pointer(0x3ad5350 + 16 + 0x68) != 0x2a48a30:
+        raise ValueError('sight query native const Map.GetPlot binding differs')
     if sha(args.guard_report) != GUARD_REPORT_SHA:
         raise ValueError('requires the retained a2a8d1a actual saved-guard fixture')
     guards = json.loads(args.guard_report.read_text())
@@ -184,7 +186,7 @@ def audit(args):
                     unit_request_contract='Guarded postload creates building/unit/district-created function objects and subscribes them if the corresponding stored handle is empty. Concrete Subscribe/EnsureRing/AddBefore allocate/link callback nodes and copy function objects; they do not dispatch the registered creation callback. Callback registrations remain required for future genuine events.',
                     city_buildings='Clears a GreatWorkSlot ID only when nonmissing slot indexes a Game.Culture GreatWork whose type is -1; retained slot identity can change.',
                     city_citizens='If force_update_plot_appeal true, clear it and invoke Rules.Appeal.Update on every nonnull city plot. Cached Plot appeal is a direct query input.',
-                    unit_sight='Dead/invalid-location/nonempty-sight guards skip population.21 empty saved-output vectors do not prove21 reachable repairs.',
+                    unit_sight='Dead/invalid-location/nonempty-sight guards skip population. PopulateSight reserves/fills addressed Unit.k_sight_plots through a caller-output GetSightPlots. Sight-distance/through helpers read existing native Map/Plot, Terrain/Feature definitions and District defensibility. Direct writes are Unit vector/archive marking and stack buffers, not global Map visibility updates.21 empty saved-output vectors do not prove21 reachable repairs; wider archive-controller effects remain separate.',
                     heroes='False force rebuild still rebuilds empty player discovery orders; actual allowed/eligible-class gates precede Game.GetRandNum. Separate owner task retains this gameplay RNG obligation.'),
                 remaining=[
                     'Original a667 Read-input City.Citizens flags and guarded Unit sight fields; ff31 saved output cannot establish pre-clear values.',
@@ -292,6 +294,24 @@ CONTRACT_BINDINGS = [{'name': 'vtable for GameCore::AI::Control::UnitRequestCont
   'slot': '0x10',
   'table': '0x3a05ee0',
   'target': '0x200dbd0'}]
+
+METHODS += [('GameCore::Unit::Sight::Manager::GetSightPlots(GameCore::PlayerTypes, int, int, int, bool, bool, '
+  'Types::Vector<GameCore::Unit::Sight::PlotEntry, Types::LinearAlloc::Default<1u, 0u> >&)',
+  '0x2c45f70',
+  2943,
+  '23dc82c362974f5684ed24d2d8e8a5c707e539673dfc4075b435e18592877512'),
+ ('GameCore::Unit::Sight::Manager::GetSightDistanceModifier(GameCore::PlayerTypes, int, int)',
+  '0x2c46bb0',
+  137,
+  '0fcf2d2bb701174723ececb5e903d51e4e1e3a0757b0202dc42531b609866600'),
+ ('GameCore::Unit::Sight::Manager::GetSightThroughDistanceModifer(int, int, bool, bool)',
+  '0x2c46c40',
+  169,
+  '0908c7bc4b94d1fa36d4d0a2c9b743f31dd56fd02e5a76779a0487ec9143daf9'),
+ ('Unit.Sight.PopulateSight',
+  '0x2c46af0',
+  188,
+  '4c3038fb8db4ab6df9ce1fa65e957b527409453def01b21c1845cf2b4158cfd7')]
 
 if __name__ == '__main__':
     main()
