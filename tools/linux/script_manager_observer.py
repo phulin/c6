@@ -45,7 +45,7 @@ class CaptureImage(Image):
         self.reader, self.budget, self.total = reader, budget, 0
 
     def read(self, address, size):
-        require(address > 0 and 0 <= size <= self.limit * 40
+        require(0 < address < 1 << 64 and 0 <= size <= self.limit * 40
                 and address + size <= 1 << 64, 'invalid/excessive capture extent')
         for start, raw in self.segments:
             if start <= address and address + size <= start + len(raw):
@@ -76,7 +76,7 @@ class CaptureImage(Image):
     def write_private(self, directory, identity):
         directory = Path(directory).resolve()
         require(not directory.is_relative_to(ROOT), 'heap evidence cannot enter public checkout')
-        directory.mkdir(parents=True, exist_ok=True)
+        directory.mkdir(parents=True, exist_ok=False)
         rows = []
         for index, (address, raw) in enumerate(self.merged()):
             name = 'segment-%04d.bin' % index
@@ -136,7 +136,7 @@ class Observer:
         require(len(configuration_sha256) == 64 and
                 all(c in '0123456789abcdef' for c in configuration_sha256), 'configuration identity')
         def bounded_read(address, size):
-            require(address > 0 and 0 <= size <= 65536 * 40 and
+            require(0 < address < 1 << 64 and 0 <= size <= 65536 * 40 and
                     address + size <= 1 << 64, 'invalid observer read extent')
             raw = bytes(read(address, size))
             require(len(raw) == size, 'short observer read')
@@ -144,6 +144,8 @@ class Observer:
         self.read, self.emit, self.base = bounded_read, emit, gamecore_base
         self.configuration = configuration_sha256
         self.directory = Path(private_directory)
+        require(not self.directory.exists(), 'fresh private capture root required')
+        self.private_root_created = False
         require(not self.directory.resolve().is_relative_to(ROOT), 'private capture directory required')
         self.call, self.ordinal = None, 0
         self.failed = False
@@ -156,6 +158,9 @@ class Observer:
         return SITES[site] + (self.base if site in GAME_SITES else 0)
 
     def snapshot(self, phase):
+        if not self.private_root_created:
+            self.directory.mkdir(parents=True, exist_ok=False)
+            self.private_root_created = True
         image = CaptureImage(self.read)
         try:
             self._snapshot(image, phase)
@@ -334,6 +339,8 @@ class Tests(unittest.TestCase):
             image.read(1, 5)
         with self.assertRaises(SnapshotError):
             image.read(0, 1)
+        with self.assertRaises(SnapshotError):
+            image.read(1 << 64, 0)
 
     def test_overlap_merge_and_offline(self):
         image = CaptureImage(lambda p, n: bytes(range(p, p+n)))
