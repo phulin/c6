@@ -54,12 +54,15 @@ python3 tools/linux/player_wmds_audit.py --source-commit COMMIT \
 The audit SHA-gates GameCore and host, verifies target contracts and DWARF, then
 builds one isolated committed archive. It records archive, complete Rust source
 manifest, driver, harness and candidate identities. Both canonical native streams
-must roundtrip every original WMDs owner record at exact byte/item caps, reject
+must roundtrip every original WMDs record at exact byte/item caps, reject
 every truncated prefix, and reject one-short caps. The source tests exercise
 nonempty duplicate hashes, signed extrema, empty records, trailing data,
 strict/prefix APIs, unsigned count limits and unsupported versions. Bool tests
-are inapplicable because the grammar contains no bools. Original game code is
-never executed, and private artifacts are read only.
+are inapplicable because the grammar contains no bools. The trace has no WMDs owner events. Each Quests-end and enclosing Player-end
+supplies a contextual suffix; the candidate prefix parser receives that entire
+suffix and its consumed extent is compared against an independent audit-only
+unsigned-count wire calculation. These context cuts never enter the codec.
+Original game code is never executed, and private artifacts are read only.
 
 The next actual Player component is Improvements, call `0x2b4f17e`, PLT
 `0x1f74d10`. Complete Player, Core/world import, exact gameplay state, actions
