@@ -23,6 +23,10 @@ def main():
     args = parser.parse_args()
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     paths = ['Cargo.toml', 'Cargo.lock', 'crates',
+             'evidence/linux/current-handler-closed-review.json',
+             'evidence/linux/rules-base-snapshot.json',
+             'evidence/linux/rules-xp2-request-none-snapshot.json',
+             'evidence/assets/xp2-rules-snapshot.json',
              'tools/linux/loaded_actions_review_load.rs',
              'tools/linux/yield_monitor_domain_check.rs',
              'tools/linux/yield_monitor_domain_check.py']
