@@ -378,6 +378,8 @@ impl ScriptEventRegistry {
     /// Import explicitly known cached event identities. This validates the
     /// logical graph; it neither authenticates a fixture nor establishes HKS
     /// collector, allocator, global-table, or string-intern state.
+    /// An unknown indexer name-map entry stays unknown: the cached path does
+    /// not reach it. Explicitly supplied contradictory entries are rejected.
     pub fn from_seed_with_cache(
         seed: RegistrySeed,
         cache: BTreeMap<String, EventIdentity>,
@@ -403,7 +405,11 @@ impl ScriptEventRegistry {
         }));
         let mut next_identity = registry.next_identity;
         for (name, event) in &cache {
-            if registry.names.get(name) != Some(&KnownNameEntry::Shared(event.shared_group)) {
+            if registry
+                .names
+                .get(name)
+                .is_some_and(|entry| *entry != KnownNameEntry::Shared(event.shared_group))
+            {
                 return Err(RegistryError::InvalidSeed("cache name/group mismatch"));
             }
             let group = registry
@@ -880,6 +886,25 @@ mod tests {
         assert_eq!(event.test_all, event.methods[5]);
         let later = registry.lookup("later").unwrap();
         assert!(later.shared_group.0 > event.methods.iter().map(|id| id.0).max().unwrap());
+    }
+
+    #[test]
+    fn cached_seed_does_not_require_an_unreached_name_map_entry() {
+        let (mut seed, cache) = cached_seed();
+        seed.names.clear();
+        let event = cache["CanStartOperation"];
+        let mut registry = ScriptEventRegistry::from_seed_with_cache(seed, cache).unwrap();
+        let mut effects = cached_effects();
+        assert_eq!(registry.lookup("CanStartOperation"), Ok(event));
+        assert_eq!(
+            registry.test_all_cached("CanStartOperation", [0; 3], &mut effects),
+            Ok(None)
+        );
+        assert!(registry.names.is_empty());
+        assert_eq!(
+            registry.lookup("unreached"),
+            Err(RegistryError::UnknownNameMapEntry("unreached".into()))
+        );
     }
 
     #[test]
