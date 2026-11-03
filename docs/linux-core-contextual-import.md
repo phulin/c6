@@ -3,8 +3,9 @@
 The frozen Rust candidate from `4095ed2` imported all 43 Player records and
 GlobalAi from byte zero in the closed `native-3` profile. Each role's complete
 Player.Manager and GlobalAi re-encoding matched its own original bytes and
-dynamic-item charge exactly. Independent acceptance is pending; this is a
-saved-wire trial, not complete live state or gameplay equivalence.
+dynamic-item charge exactly. Independent review `c27b6fb` accepts this bounded
+saved-wire import and capture attribution, including all 129 Military ranges
+and owner bindings. Complete live state and gameplay equivalence remain open.
 
 The genuine profile supplied a fresh Read of Core `ff31f4c5…` and two separate
 own Writes of Core `85d858ef…`. All three roles reached Player.Manager end

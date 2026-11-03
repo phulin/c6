@@ -10,6 +10,8 @@
     "tail_borrowed": true
   },
   "frozen_manifest_sha256": "82ab337797cd73d13512231fc3c456a278a411df80a5b28ac50991c0b7009f12",
+  "independent_review_commit": "c27b6fb",
+  "independent_review_document": "docs/linux-core-player-native-admission-review.md",
   "input_artifact_hash_manifest_sha256": "f75d928d1ac573de3eb83d0cb7d24fff4935d214ff94b306fdc70413238e7712",
   "limits": {
     "complete_world_import": false,
@@ -53,7 +55,7 @@
   "source_commit": "4095ed2040f582884edf251d94048f8e8b92212b",
   "source_file_count": 1421,
   "source_manifest_sha256": "ffcf4959125b7ef1a3af0a6f74e3fad2a68e2e163207b544bcd77a2dc62e49fc",
-  "status": "successful_current_wire_trial_pending_independent_review",
+  "status": "independently_accepted_bounded_current_wire_import",
   "streams": [
     {
       "cities": 245,
