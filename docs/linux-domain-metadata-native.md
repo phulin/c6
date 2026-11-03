@@ -57,7 +57,8 @@ The JSONL schema is `c6-linux-domain-metadata-native-v1`:
   by GetCollectionIndex; `direct_index` observes original base Find(query)
   followed by GetCollectionIndex. A null lookup yields JSON null, preserving
   duplicate-hash/direct-index selection without assuming At positions equal
-  native indices. Terrain entries include original `is_water` from the same
+  native indices. Terrain entries include original `is_water` and signed i32 `movement_cost`
+  (original Terrain.GetMovementCost at 0x2bcad60, same receiver returned by At) from the same
   loaded registry context, closing provenance without borrowing an older
   movement packet. Terrain has no XP2 object. District
   entries also contain `internal_only`. Each district/building entry contains an `xp2` object.
@@ -118,7 +119,7 @@ cmp /tmp/domain-metadata-query-contracts.json evidence/linux/domain-metadata-que
 cc -std=c11 -Wall -Wextra -Werror -fsyntax-only native/linux/domain_metadata.c
 ```
 
-The audit verifies 86 complete original method fingerprints, the precise source
+The audit verifies 87 complete original method fingerprints, the precise source
 binding sequence, original 65-slot initialization, iterator constructors and
 City constructor GOT/vtable reference. Original HasCityAttributes, raw mask
 accessor and CityPlots.GetAttributes/Initialize/CityAttributes constructor bodies

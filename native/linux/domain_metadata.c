@@ -31,7 +31,7 @@ typedef struct {
     U1 mapping_size;
     bool (*valid)(const void *,int32_t);
     const void *(*player)(const void *,int32_t);
-    I1 player_id;
+    I1 player_id,terrain_cost;
     P0 definitions[3],xp2[2];
     U1 count[3],hash[3],index[3];
     PI at[3],find[3],find_xp2[2];
@@ -73,7 +73,7 @@ static int bind_api(void *module,Api *a) {
     BIND(at[2],0x2194cb0); BIND(hash[2],0x2bf69d0);
     BIND(index[0],0x1fcccf0); BIND(index[1],0x1fccc60); BIND(index[2],0x20e3240);
     BIND(find[0],0x1ffbc00); BIND(find[1],0x1ffb960); BIND(find[2],0x20f36d0);
-    BIND(terrain_water,0x2bcadc0);
+    BIND(terrain_water,0x2bcadc0); BIND(terrain_cost,0x2bcad60);
     BIND(find_xp2[0],0x21d5680); BIND(find_xp2[1],0x20a11f0);
     BIND(internal,0x1fe2500); BIND(canal,0x21d5a40);
     BIND(canal_wonder,0x2a3e3f0); BIND(bridge,0x28696c0);
@@ -123,7 +123,7 @@ static int registries(FILE *out,const Api *a) {
             if(by_hash)fprintf(out,"%u",a->index[k](by_hash));else fputs("null",out);
             fputs(",\"direct_index\":",out);
             if(by_query)fprintf(out,"%u",a->index[k](by_query));else fputs("null",out);
-            if(k==2){fprintf(out,",\"is_water\":%s}",boolean(a->terrain_water(definition)));continue;}
+            if(k==2){fprintf(out,",\"is_water\":%s,\"movement_cost\":%d}",boolean(a->terrain_water(definition)),a->terrain_cost(definition));continue;}
             const void *extension=a->find_xp2[k](xp2,hash);
             if(!k)fprintf(out,",\"internal_only\":%s",boolean(a->internal(definition)));
             fprintf(out,",\"xp2\":{\"status\":\"%s\"",extension?"present":"absent");
