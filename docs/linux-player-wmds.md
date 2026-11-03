@@ -69,3 +69,11 @@ The next actual Player component is Improvements, call `0x2b4f17e`, PLT
 and turns remain unimplemented. Unknown bytes stay unclassified and unmasked,
 including the recorded 89,198-byte raw Save→Load failure. Saved wire roundtrip
 does not establish native live serialization, Read effects or gameplay parity.
+
+Validated source commit `610b82d` passes both source tests and all 86 original
+saved records across the two canonical streams. Each stream covers 43 records,
+1,032 bytes and 86 collection items; every record consumes 24 bytes and two
+items. Exact caps pass, every truncated prefix fails, and byte cap 23 or item
+cap 1 fails. The first observed range is `[5,210,118, 5,210,142)` in each
+stream, solely a validation observation. Native live serialization and Read
+side effects remain validation gaps.
