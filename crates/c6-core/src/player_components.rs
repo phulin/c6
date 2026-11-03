@@ -496,14 +496,17 @@ macro_rules! codec {
                 }
                 Ok(value)
             }
-            pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+            pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
                 let mut writer = Writer {
                     data: Vec::new(),
                     items: 0,
                     limits,
                 };
                 self.write(&mut writer)?;
-                Ok(writer.data)
+                Ok((writer.data, writer.items))
+            }
+            pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+                self.encode_with_items(limits).map(|(bytes, _)| bytes)
             }
         }
     };
@@ -659,6 +662,10 @@ mod tests {
         assert_eq!(
             Congress::decode_prefix_with_items(&wire, limits).unwrap().2,
             9
+        );
+        assert_eq!(
+            congress.encode_with_items(limits).unwrap(),
+            (wire.clone(), 9)
         );
         assert_eq!(
             Congress::decode_prefix_with_items(
