@@ -1,0 +1,43 @@
+{
+  "schema": "c6-linux-placement-count-candidate-independent-review-v1",
+  "source_commit": "301f9e9d188f6a5ac815914218d0380f51b25938",
+  "candidate_sha256": "58171fb1398b148cfc1e94fc882b79723a9571d193cd6d9c375c3c51fb68f59a",
+  "candidate_bytes": 1120800,
+  "manifest_sha256": "e2925853cea2eaee831e1c2ba57421957a02d659e9822b750c28c2ffee1cc6c4",
+  "complete_archive_sha256": "560bb94b98da8a187118e6cbc82f60d279e6d008c12884bd07a1b878c1b6b559",
+  "archive_matches_git_archive": true,
+  "manifest_sources_checked": 94,
+  "all_manifest_sources_match_git": true,
+  "input_contract_audit_sha256": "7c2d2175a5f524fe985adc1e0604b2faae8137f453a344472366c7a0c8892534",
+  "original_methods_checked": 54,
+  "targeted_world_movement_tests_passed": 17,
+  "frozen_binary_synthetic_protocol": {
+    "count_rows": 14,
+    "binding_rows": 1,
+    "handler_rows": 1,
+    "typed_inputs_unchanged": true,
+    "native_comparison": false
+  },
+  "frozen_binary_negative_cases": [
+    "unknown_expected_answer",
+    "incomplete_membership",
+    "omitted_valid_player",
+    "wrong_slot",
+    "wrong_external_profile",
+    "escaping_blob",
+    "duplicate_field",
+    "incorrect_blob_hash"
+  ],
+  "all_negative_cases_rejected_without_result_stdout": true,
+  "lookup_allocator_metadata_not_fabricated": true,
+  "captured_null_and_unavailable_player_distinct": true,
+  "handler_native_compared": false,
+  "candidate_prechecks_passed": true,
+  "remaining_blocking_source_findings": [],
+  "release_scope": "candidate side of separately reviewed count-only native fixture",
+  "original_game_execution_performed": false,
+  "frozen_binary_rebuilt_or_replaced": false,
+  "prior_shared_build_qualification_preserved": true,
+  "complete_native_state_actions_turns_or_rng_proven": false,
+  "historical_raw_save_load_failure_bytes": 89198
+}
