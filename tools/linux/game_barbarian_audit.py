@@ -192,7 +192,7 @@ def main():
         corpus.extend(raw)
         projection=result.pop('projection_bytes');corpus.extend(struct.pack('<I',len(projection)));corpus.extend(projection)
         result['version_sites']=len(result.pop('version_offsets'));result['count_sites']=len(result.pop('count_offsets'))
-        result.update(core_sha256=identity,trace_sha256=trace_digest,wire_sha256=sha(raw),start=row['start'],end=row['end'],direct_children=dict(Counter(c['owner'] for c in children)),all_nested_native_cuts_compared=True,next_owner=dict(owner=next_rows[0]['owner'],start=next_rows[0]['start'],end=next_rows[0]['end'])))
+        result.update(core_sha256=identity,trace_sha256=trace_digest,wire_sha256=sha(raw),start=row['start'],end=row['end'],direct_children=dict(Counter(c['owner'] for c in children)),all_nested_native_cuts_compared=True,next_owner=dict(owner=next_rows[0]['owner'],start=next_rows[0]['start'],end=next_rows[0]['end']))
         fixtures.append(result)
     report=dict(schema='c6-linux-game-barbarian-v1',checks_passed=True,gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,host_variant_methods=HOST_METHODS,
         methods=[dict(address=hex(a),size=n,name=s,sha256=h) for a,n,s,h in METHODS],dwarf_sha256=DWARF_SHA,outer_bindings=[dict(site=hex(a),plt=hex(b),body=hex(c)) for a,b,c in BINDINGS],fixtures=fixtures,
