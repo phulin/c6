@@ -1,0 +1,1257 @@
+{
+  "schema": "c6-linux-player-ai-influence-map-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "audit_source_sha256": "a19fb481eb5e7f8cc47effd417bb9a540a6ee5a06c3e1869818bd706d36786ef",
+  "methods": [
+    [
+      34868736,
+      72,
+      "a0a16314da6af675604dcd79e64135e1b6924929848d3a91ed40a08418f252d3"
+    ],
+    [
+      34868816,
+      81,
+      "dd1bd2f89a8d60da3a5aa2a714d61346c2f9557ed7667d7ec3bc592dd66ccc89"
+    ],
+    [
+      34875584,
+      21,
+      "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    ],
+    [
+      34875616,
+      21,
+      "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    ],
+    [
+      34875648,
+      38,
+      "9317f3b8d7cdaec6dd55cd5ca25099cea13776973b9521efc3d96b24a166d8a8"
+    ],
+    [
+      34881040,
+      15,
+      "cce1a98027284c3cd481129fb2193fb7dcb873689d228b9bce55ddab17187407"
+    ],
+    [
+      34881152,
+      15,
+      "51028c9426b423994d554cbb2edfc2f28b62d83d5c3a5943ca507adfd9ee0243"
+    ],
+    [
+      34883760,
+      14,
+      "94efe331d8d54051f25aee89e2de7d66c597054ddab67b8079442e15e4676b81"
+    ],
+    [
+      34883776,
+      125,
+      "adbd9cfe2061e51f00b5f2e7aa809f16559be398179045e787d026b619899b54"
+    ],
+    [
+      34883984,
+      14,
+      "fcb9926377812eb599dd6355ba5034296d824db7b711b95bf20e7d6805cf1b15"
+    ],
+    [
+      34884032,
+      75,
+      "38d2bb574d57e50a7813133fc053c34e1eb48935a8feef09c582fbe2057ce199"
+    ],
+    [
+      34884160,
+      91,
+      "05bd91a3da50b51c2da8cf726a8aa18252c8c30f974c22f838b58c3cfe5693e5"
+    ],
+    [
+      34884256,
+      71,
+      "70e1ee76fc41d96600a9704802d1b95a28728d5f3b58c6932c30c1de2633617f"
+    ],
+    [
+      34884368,
+      46,
+      "44a2b6d8fd018ebccf434a9691f9d4d11c5db17b78aaf801969ee4299cd29a62"
+    ],
+    [
+      34884416,
+      8,
+      "c602c74e302860c60e4a55195fa9fa4383eef425f84bf44d4b11f62f63c491db"
+    ],
+    [
+      34884432,
+      14,
+      "b3a4ba0fe53a97a6f965db0493686a4226c6c361fae059c0f8d8b9ad2ae39fc0"
+    ],
+    [
+      34884448,
+      14,
+      "f2d3e22bc439750e47398663378c04dc03e443a86397bff40334966cebdde5f3"
+    ],
+    [
+      34868912,
+      296,
+      "6fcf89243ae3482eb7eef52d5a95298b38346b7c78d34904120aa70d01a038e5"
+    ],
+    [
+      34869440,
+      204,
+      "91aa744c18b39e619574678dcc247bfadf4c8a91bc1246db9970b2f15481f89c"
+    ],
+    [
+      45412912,
+      61,
+      "7f42f7822613464c9dec5e80b4a2473a36238d51a7bb6da68b912b0028b1ff55"
+    ],
+    [
+      45413543,
+      12,
+      "5db1fa27fae787f751784f6e982007274be6eb6b51ac182a1b872f73416232cf"
+    ],
+    [
+      45415649,
+      65,
+      "251936512500dccab6060237507a7cb54937f2d7ad6713af7f02aa62e0d71390"
+    ]
+  ],
+  "bindings": [
+    [
+      34868759,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      34868774,
+      31707584,
+      34875584,
+      "call"
+    ],
+    [
+      34868792,
+      31707584,
+      34875584,
+      "call"
+    ],
+    [
+      34868831,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      34868846,
+      33013040,
+      34875616,
+      "call"
+    ],
+    [
+      34868881,
+      31667200,
+      34875648,
+      "call"
+    ],
+    [
+      34875666,
+      31624912,
+      34879584,
+      "call"
+    ],
+    [
+      34875676,
+      33013040,
+      34875616,
+      "call"
+    ],
+    [
+      34881050,
+      32780256,
+      34883760,
+      "jmp"
+    ],
+    [
+      34881162,
+      32826832,
+      34884160,
+      "jmp"
+    ],
+    [
+      34883764,
+      31668016,
+      34883776,
+      "call"
+    ],
+    [
+      34883793,
+      31923152,
+      34878592,
+      "call"
+    ],
+    [
+      34883814,
+      31815744,
+      33341888,
+      "call"
+    ],
+    [
+      34883831,
+      31777024,
+      34883904,
+      "call"
+    ],
+    [
+      34883859,
+      33243776,
+      34883936,
+      "call"
+    ],
+    [
+      34883867,
+      32830064,
+      34884000,
+      "call"
+    ],
+    [
+      34883878,
+      32697920,
+      34883984,
+      "call"
+    ],
+    [
+      34883988,
+      32064384,
+      34884032,
+      "call"
+    ],
+    [
+      34884063,
+      31471216,
+      33348384,
+      "call"
+    ],
+    [
+      34884180,
+      31834240,
+      34879872,
+      "call"
+    ],
+    [
+      34884191,
+      32286608,
+      34884336,
+      "call"
+    ],
+    [
+      34884210,
+      31698736,
+      34884368,
+      "call"
+    ],
+    [
+      34884231,
+      32826272,
+      34884256,
+      "call"
+    ],
+    [
+      34884294,
+      32469024,
+      34884416,
+      "call"
+    ],
+    [
+      34884386,
+      33216624,
+      34876064,
+      "call"
+    ],
+    [
+      34884403,
+      31588976,
+      33341776,
+      "call"
+    ],
+    [
+      34884419,
+      32522480,
+      34884432,
+      "jmp"
+    ],
+    [
+      34884436,
+      32458256,
+      34884448,
+      "call"
+    ],
+    [
+      34868938,
+      31932752,
+      33434432,
+      "call"
+    ],
+    [
+      34868943,
+      31484512,
+      42092400,
+      "call"
+    ],
+    [
+      34868962,
+      32672144,
+      34875696,
+      "call"
+    ],
+    [
+      34868972,
+      32588624,
+      33342032,
+      "call"
+    ],
+    [
+      34868998,
+      31966592,
+      47521872,
+      "call"
+    ],
+    [
+      34869015,
+      31932752,
+      33434432,
+      "call"
+    ],
+    [
+      34869038,
+      32043552,
+      34875728,
+      "call"
+    ],
+    [
+      34869048,
+      32588624,
+      33342032,
+      "call"
+    ],
+    [
+      34869065,
+      31932752,
+      33434432,
+      "call"
+    ],
+    [
+      34869085,
+      32043552,
+      34875728,
+      "call"
+    ],
+    [
+      34869095,
+      32588624,
+      33342032,
+      "call"
+    ],
+    [
+      34869120,
+      32588624,
+      33342032,
+      "call"
+    ],
+    [
+      34869133,
+      32964624,
+      34875808,
+      "call"
+    ],
+    [
+      34869148,
+      32588624,
+      33342032,
+      "call"
+    ],
+    [
+      34869174,
+      32157296,
+      0,
+      "call"
+    ],
+    [
+      34869182,
+      32992576,
+      0,
+      "call"
+    ],
+    [
+      34869195,
+      32588624,
+      33342032,
+      "call"
+    ],
+    [
+      34869203,
+      32992576,
+      0,
+      "call"
+    ],
+    [
+      34869455,
+      32969888,
+      34869344,
+      "call"
+    ],
+    [
+      34869463,
+      33228816,
+      33341760,
+      "call"
+    ],
+    [
+      34869483,
+      32311008,
+      33441552,
+      "call"
+    ],
+    [
+      34869491,
+      32454096,
+      33446960,
+      "call"
+    ],
+    [
+      34869502,
+      32301232,
+      0,
+      "call"
+    ],
+    [
+      34869514,
+      32998480,
+      33342240,
+      "call"
+    ],
+    [
+      34869522,
+      32017184,
+      33437952,
+      "call"
+    ],
+    [
+      34869559,
+      32124448,
+      33611088,
+      "call"
+    ],
+    [
+      34869577,
+      31921104,
+      47521984,
+      "call"
+    ],
+    [
+      34869595,
+      32693792,
+      33611152,
+      "call"
+    ],
+    [
+      34869631,
+      32693792,
+      33611152,
+      "call"
+    ],
+    [
+      34869639,
+      32992576,
+      0,
+      "call"
+    ],
+    [
+      45412922,
+      32186880,
+      33673056,
+      "call"
+    ],
+    [
+      45412937,
+      32807584,
+      34868736,
+      "call"
+    ],
+    [
+      45412952,
+      31703840,
+      35353952,
+      "call"
+    ],
+    [
+      45412967,
+      32994672,
+      33355024,
+      "call"
+    ],
+    [
+      45413550,
+      33098448,
+      34869440,
+      "call"
+    ],
+    [
+      45415659,
+      32319408,
+      33673376,
+      "call"
+    ],
+    [
+      45415684,
+      31905968,
+      34868816,
+      "call"
+    ],
+    [
+      45415694,
+      33211440,
+      34869808,
+      "call"
+    ],
+    [
+      45415709,
+      31674336,
+      35354032,
+      "call"
+    ]
+  ],
+  "virtuals": [
+    [
+      60938408,
+      34881040
+    ],
+    [
+      60938432,
+      34881152
+    ]
+  ],
+  "dwarf_sha256": "8bdc4ec52e454e1eba72f248bce6cb72dbbb3074f0d46fce2bd296cba1ee533d",
+  "wire": [
+    "u32 version=2",
+    "u32 influence_count",
+    "i16 influence[influence_count]",
+    "u32 religious_count",
+    "i16 religious[religious_count]"
+  ],
+  "fixtures": [
+    {
+      "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": [
+        {
+          "player": 0,
+          "start": 5220145,
+          "end": 5234149,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "86c97f9769773d2bf7e7df908f29594a7ee505ef9400a0c413dfff085bfd0eac"
+        },
+        {
+          "player": 1,
+          "start": 7330843,
+          "end": 7344847,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "aaeb0e5f9de00de14b2dc6bde9f6fdf4daf65de51f220da59dd4dab57b4546a5"
+        },
+        {
+          "player": 2,
+          "start": 8921414,
+          "end": 8935418,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "61a55c14e6551128104caf50f255707802d2c056b14e9eb795dad2b45621c5eb"
+        },
+        {
+          "player": 3,
+          "start": 12405621,
+          "end": 12419625,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "1995ee212780d456a12a63e0e6c66a5d199675a81328e1e8c9b66a1f77593ba0"
+        },
+        {
+          "player": 4,
+          "start": 15972618,
+          "end": 15986622,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "c139f17eb9393b5a8f5bf021ec1de0ec9f63a5f64908325b1325809d92600490"
+        },
+        {
+          "player": 5,
+          "start": 18928525,
+          "end": 18942529,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e1448e2da77bd01e15505331e60c866ba167461d51409050252acd14bbfab870"
+        },
+        {
+          "player": 6,
+          "start": 21353979,
+          "end": 21367983,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "8a4a138458316546e239857f382ba4907a95a3e9f2fdc491d49e934a06f66389"
+        },
+        {
+          "player": 7,
+          "start": 24558749,
+          "end": 24572753,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "8c7bb3d58fcbbbe1feb7cd97680f51db0fd49eed882c873db9903d3242978379"
+        },
+        {
+          "player": 8,
+          "start": 28230828,
+          "end": 28244832,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "fbe830c4295dd53c2a7a02d81b9c5d31b59537f816f50b7d92a8d9f36f5c1216"
+        },
+        {
+          "player": 9,
+          "start": 31473371,
+          "end": 31487375,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "c2704d68c92beec89475966ed0b367864af66daa312b821ef89065f41ef75758"
+        },
+        {
+          "player": 10,
+          "start": 35414076,
+          "end": 35428080,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e8d24f1604ba8cbf84a418a28ac95ec214ae36dc4399d79858f272dcc2324c69"
+        },
+        {
+          "player": 11,
+          "start": 38386158,
+          "end": 38400162,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "ecc2f2be19f4ee6f7a3e29fd758c49a28d044f7fd48a84eb8b54ae905c042b2f"
+        },
+        {
+          "player": 12,
+          "start": 39454775,
+          "end": 39468779,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "67621d80b094fd30e5f343db94cc901f30b58e35d9b94959845be8d1ef55342c"
+        },
+        {
+          "player": 13,
+          "start": 41699448,
+          "end": 41713452,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e83803a5966b555e7ff7dec33b1b52cc2a6886a21c7305101571087188630ad2"
+        },
+        {
+          "player": 14,
+          "start": 42580383,
+          "end": 42594387,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "6e7dc4a5cadd06e08dce1513007fdfde9e948e09f2a2dee44d9094d5850dd8bd"
+        },
+        {
+          "player": 15,
+          "start": 45193438,
+          "end": 45207442,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "2c1fea8c19daa622ab73f2f7c0fae72179b7038bf1c01b2b0161bd701e0c19cb"
+        },
+        {
+          "player": 16,
+          "start": 48769582,
+          "end": 48783586,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "77b53f69ca6ab137fc96a79215b92871cc02ff9393bfae4ed72357b206dbae55"
+        },
+        {
+          "player": 17,
+          "start": 51700308,
+          "end": 51714312,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 18,
+          "start": 52315544,
+          "end": 52329548,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "02541666efe29f8792736b4faf34ac9d1b5f002195d22895d054357be28b1f42"
+        },
+        {
+          "player": 19,
+          "start": 52836302,
+          "end": 52850306,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 20,
+          "start": 53460272,
+          "end": 53474276,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e7546727005a5cab315360d2d3969a87b068bd8be414de264baa89611620ee38"
+        },
+        {
+          "player": 21,
+          "start": 53996214,
+          "end": 54010218,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 22,
+          "start": 54639487,
+          "end": 54653491,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 23,
+          "start": 55295730,
+          "end": 55309734,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 24,
+          "start": 55941685,
+          "end": 55955689,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 25,
+          "start": 56601575,
+          "end": 56615579,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 26,
+          "start": 57225948,
+          "end": 57239952,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "d342743213feab9db8c7a002a7ec144190791acd97591fbf7b4ef822cdba5419"
+        },
+        {
+          "player": 27,
+          "start": 57742793,
+          "end": 57756797,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 28,
+          "start": 58373068,
+          "end": 58387072,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 29,
+          "start": 59023015,
+          "end": 59037019,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 30,
+          "start": 59670368,
+          "end": 59684372,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 31,
+          "start": 60307531,
+          "end": 60321535,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 32,
+          "start": 60987803,
+          "end": 61001807,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 33,
+          "start": 61655399,
+          "end": 61669403,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 34,
+          "start": 62285067,
+          "end": 62299071,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "78a50060e415762f2906a04eec3c8b80f6d48ac3be4d229aff59a0bb4d8f80b0"
+        },
+        {
+          "player": 35,
+          "start": 62936227,
+          "end": 62950231,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 36,
+          "start": 63553290,
+          "end": 63567294,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "96bacb1a2e3e635a1c69aadeb687703e84e0f56ee8e2f23fdb6acbd92df31b42"
+        },
+        {
+          "player": 37,
+          "start": 64081982,
+          "end": 64095986,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 38,
+          "start": 64725986,
+          "end": 64739990,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 39,
+          "start": 65403412,
+          "end": 65417416,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 40,
+          "start": 66030942,
+          "end": 66044946,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "a29da8d12a149b9e4dce43a721ac8dc318ab9c0db23b323cf9b18e88f0245b03"
+        },
+        {
+          "player": 62,
+          "start": 66995860,
+          "end": 67009864,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "700f63709ca90717769e7c3312e5bb455adbc5991f5fa5dad277597f8a3de33f"
+        },
+        {
+          "player": 63,
+          "start": 69455659,
+          "end": 69469663,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "faf7efbe0640ed20929bb8942ff6a909b2d173bbe6c6d6ebbf091828917ca7a0"
+        }
+      ]
+    },
+    {
+      "core_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": [
+        {
+          "player": 0,
+          "start": 5220145,
+          "end": 5234149,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "86c97f9769773d2bf7e7df908f29594a7ee505ef9400a0c413dfff085bfd0eac"
+        },
+        {
+          "player": 1,
+          "start": 7330843,
+          "end": 7344847,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "aaeb0e5f9de00de14b2dc6bde9f6fdf4daf65de51f220da59dd4dab57b4546a5"
+        },
+        {
+          "player": 2,
+          "start": 8921414,
+          "end": 8935418,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "61a55c14e6551128104caf50f255707802d2c056b14e9eb795dad2b45621c5eb"
+        },
+        {
+          "player": 3,
+          "start": 12405621,
+          "end": 12419625,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "1995ee212780d456a12a63e0e6c66a5d199675a81328e1e8c9b66a1f77593ba0"
+        },
+        {
+          "player": 4,
+          "start": 15972618,
+          "end": 15986622,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "c139f17eb9393b5a8f5bf021ec1de0ec9f63a5f64908325b1325809d92600490"
+        },
+        {
+          "player": 5,
+          "start": 18928525,
+          "end": 18942529,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e1448e2da77bd01e15505331e60c866ba167461d51409050252acd14bbfab870"
+        },
+        {
+          "player": 6,
+          "start": 21353979,
+          "end": 21367983,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "8a4a138458316546e239857f382ba4907a95a3e9f2fdc491d49e934a06f66389"
+        },
+        {
+          "player": 7,
+          "start": 24558749,
+          "end": 24572753,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "8c7bb3d58fcbbbe1feb7cd97680f51db0fd49eed882c873db9903d3242978379"
+        },
+        {
+          "player": 8,
+          "start": 28230828,
+          "end": 28244832,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "fbe830c4295dd53c2a7a02d81b9c5d31b59537f816f50b7d92a8d9f36f5c1216"
+        },
+        {
+          "player": 9,
+          "start": 31473371,
+          "end": 31487375,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "c2704d68c92beec89475966ed0b367864af66daa312b821ef89065f41ef75758"
+        },
+        {
+          "player": 10,
+          "start": 35414076,
+          "end": 35428080,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e8d24f1604ba8cbf84a418a28ac95ec214ae36dc4399d79858f272dcc2324c69"
+        },
+        {
+          "player": 11,
+          "start": 38386158,
+          "end": 38400162,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "ecc2f2be19f4ee6f7a3e29fd758c49a28d044f7fd48a84eb8b54ae905c042b2f"
+        },
+        {
+          "player": 12,
+          "start": 39454775,
+          "end": 39468779,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "67621d80b094fd30e5f343db94cc901f30b58e35d9b94959845be8d1ef55342c"
+        },
+        {
+          "player": 13,
+          "start": 41699448,
+          "end": 41713452,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e83803a5966b555e7ff7dec33b1b52cc2a6886a21c7305101571087188630ad2"
+        },
+        {
+          "player": 14,
+          "start": 42580383,
+          "end": 42594387,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "6e7dc4a5cadd06e08dce1513007fdfde9e948e09f2a2dee44d9094d5850dd8bd"
+        },
+        {
+          "player": 15,
+          "start": 45193438,
+          "end": 45207442,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "2c1fea8c19daa622ab73f2f7c0fae72179b7038bf1c01b2b0161bd701e0c19cb"
+        },
+        {
+          "player": 16,
+          "start": 48769582,
+          "end": 48783586,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "77b53f69ca6ab137fc96a79215b92871cc02ff9393bfae4ed72357b206dbae55"
+        },
+        {
+          "player": 17,
+          "start": 51700308,
+          "end": 51714312,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 18,
+          "start": 52315544,
+          "end": 52329548,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "02541666efe29f8792736b4faf34ac9d1b5f002195d22895d054357be28b1f42"
+        },
+        {
+          "player": 19,
+          "start": 52836302,
+          "end": 52850306,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 20,
+          "start": 53460272,
+          "end": 53474276,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "e7546727005a5cab315360d2d3969a87b068bd8be414de264baa89611620ee38"
+        },
+        {
+          "player": 21,
+          "start": 53996214,
+          "end": 54010218,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 22,
+          "start": 54639487,
+          "end": 54653491,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 23,
+          "start": 55295730,
+          "end": 55309734,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 24,
+          "start": 55941685,
+          "end": 55955689,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 25,
+          "start": 56601575,
+          "end": 56615579,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 26,
+          "start": 57225948,
+          "end": 57239952,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "d342743213feab9db8c7a002a7ec144190791acd97591fbf7b4ef822cdba5419"
+        },
+        {
+          "player": 27,
+          "start": 57742793,
+          "end": 57756797,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 28,
+          "start": 58373068,
+          "end": 58387072,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 29,
+          "start": 59023015,
+          "end": 59037019,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 30,
+          "start": 59670368,
+          "end": 59684372,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 31,
+          "start": 60307531,
+          "end": 60321535,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 32,
+          "start": 60987803,
+          "end": 61001807,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 33,
+          "start": 61655399,
+          "end": 61669403,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 34,
+          "start": 62285067,
+          "end": 62299071,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "78a50060e415762f2906a04eec3c8b80f6d48ac3be4d229aff59a0bb4d8f80b0"
+        },
+        {
+          "player": 35,
+          "start": 62936227,
+          "end": 62950231,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 36,
+          "start": 63553290,
+          "end": 63567294,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "96bacb1a2e3e635a1c69aadeb687703e84e0f56ee8e2f23fdb6acbd92df31b42"
+        },
+        {
+          "player": 37,
+          "start": 64081982,
+          "end": 64095986,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 38,
+          "start": 64725986,
+          "end": 64739990,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 39,
+          "start": 65403412,
+          "end": 65417416,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "4adab0f51a7450d9193395cf197f0ee616f1f6e0a0a75ccd3d9c11e14a68704c"
+        },
+        {
+          "player": 40,
+          "start": 66030942,
+          "end": 66044946,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "a29da8d12a149b9e4dce43a721ac8dc318ab9c0db23b323cf9b18e88f0245b03"
+        },
+        {
+          "player": 62,
+          "start": 66995860,
+          "end": 67009864,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "700f63709ca90717769e7c3312e5bb455adbc5991f5fa5dad277597f8a3de33f"
+        },
+        {
+          "player": 63,
+          "start": 69455659,
+          "end": 69469663,
+          "influence_items": 6996,
+          "religious_items": 0,
+          "sha256": "faf7efbe0640ed20929bb8942ff6a909b2d173bbe6c6d6ebbf091828917ca7a0"
+        }
+      ]
+    }
+  ],
+  "actual_influence_owner_hook": false,
+  "validation_cuts": "Control.end to Planning.start; same Player parent, production parser has no offsets",
+  "native_player_read_initializes_before_version": true,
+  "native_initialization_reproduced": false,
+  "native_read_fixups_reproduced": false,
+  "planning_only_exclusion_proven": false,
+  "gameplay_rng_in_scope": true,
+  "original_execution": false,
+  "private_writes": false,
+  "unknown_bytes_masked": 0,
+  "recorded_raw_save_load_difference_bytes": 89198,
+  "full_player": false,
+  "world_import": false,
+  "actions": false,
+  "turns": false
+}
