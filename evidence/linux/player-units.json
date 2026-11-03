@@ -11854,8 +11854,8 @@
     }
   ],
   "dwarf_sha256": "837364e5d42c4f2880bd895251b5df9a751bd779c3d58306606fe654d6d1b2b5",
-  "candidate_source_commit": "8119a34ef127f2d46899d5aff44e958ae2663a7b",
-  "candidate_archive_sha256": "18a4b0fe3f12cad41ac11e47029fcae4393171dbf510659154a522b9b03fedba",
+  "candidate_source_commit": "a4fb0ab8d9431f3e2d03f02f0b62f17df844535b",
+  "candidate_archive_sha256": "916e84bcfd1694d28640efa94a15a9c6784851a72e98f54961fc0680b6c72c3f",
   "candidate_sources": {
     "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
     "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
@@ -11870,11 +11870,11 @@
     "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
     "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
     "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
-    "crates/c6-core/src/core_player.rs": "1e6684ebaaae250c5b612f23ef461b6c189f537f6c3c6ad3fe28375d58eb3eca",
-    "crates/c6-core/src/core_stream.rs": "d061cdab17dbd186e3fc0d6b5ee31baa9d4d2828bad2f159950a2ee5c8010b72",
+    "crates/c6-core/src/core_player.rs": "b427fec41eee6f35de9f7d99914a28a707938adb9a4baa36242cbd051e2a52ce",
+    "crates/c6-core/src/core_stream.rs": "330f8a1e555f63daf89c28456040d792e5ddfc61610e71c61c50097f8cddd1b9",
     "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
     "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
-    "crates/c6-core/src/lib.rs": "2477324648f5c4698b668d6e5625f0cbd63d72c3cd68d5c3d6ee534b5faf3b66",
+    "crates/c6-core/src/lib.rs": "e6aa72edb692b3a721c0afd1c74a415d46d2852dffe6c68acf5112e9c1be9ffa",
     "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
     "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
     "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
@@ -11891,6 +11891,7 @@
     "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
     "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
     "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_eras.rs": "970518015af015bc238bbd9ec02e7540de7d3f6d2bbd4bcd635cde4ca3390e95",
     "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
     "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
     "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
@@ -11899,7 +11900,7 @@
     "crates/c6-core/src/player_stats.rs": "03ed6fd193d081d0ed3d027ad0fc494b3fd98fc086a761806a9b4f8de2472cdd",
     "crates/c6-core/src/player_techs.rs": "6c24af4095027bb91a18cdf9db91ffe11bc8bacf2553c3680cf819e86480e5c8",
     "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
-    "crates/c6-core/src/player_units.rs": "a87c2b6e43fe06850670e2cde1b6fc4e13f455e80b724befec324e9a4a900ef5",
+    "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
     "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
     "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
     "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
@@ -11916,9 +11917,9 @@
     "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
     "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
   },
-  "candidate_sha256": "e3a950f08015870bfd2746f19b4194b48d9af3fcdd7d26c6d133aaa657e3873d",
-  "harness_sha256": "1684478effbf3ff22793abd71c0aa86ec42604aaf6f1bd95ce9a03a436ead055",
-  "audit_source_sha256": "0616f6ca5281d1f609b2a574e0f1e5097396c48c384e2bd1ecedbe0bc914db5d",
+  "candidate_sha256": "0000864f2f02465c7f41b7a6de92c9edd38c5a73bc68e7b89eb46fa08a00eef2",
+  "harness_sha256": "e8e8205ba4a145902cbfa74a8ea42326359af3b71df4815bab48c5fc37683d6b",
+  "audit_source_sha256": "fef7fc7d38f9f8f9cb4bcb0d6ec997d1841815ea651134e46fd791f10d07e6cd",
   "fixtures": [
     {
       "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
@@ -11949,11 +11950,13 @@
       "typed_observations_sha256": "5702b770f47af299d712870766e237fe3876d3513335c921df90cf712db15650"
     }
   ],
-  "source_only_tests": 3,
+  "source_only_tests": 4,
   "exact_native_record_byte_item_caps_checked": true,
   "one_short_native_record_caps_rejected": true,
   "native_truncations": "first 32 and final 256 prefixes of every envelope; before end of every nested Unit",
   "synthetic_every_prefix_rejected": true,
+  "signed_free_pass_negative_count_preallocation_refused": true,
+  "signed_free_pass_encoder_count_i32_checked": true,
   "duplicate_and_invalid_slots_rejected": true,
   "synthetic_full_id_and_owner_preserved": true,
   "allocation_policy": "envelope-owned allocations use checked addressable layout and fallible reserve; inherited Unit/state.rs sequence decoding uses Vec::with_capacity and its writer uses infallible Vec extension after existing count/wire checks; aggregate serialized bytes/items cover all Unit children; neither fully fallible nested allocation nor aggregate heap-byte bound is claimed",
@@ -11970,13 +11973,5 @@
   "turns": false,
   "next_player_component": "Eras",
   "unknown_save_bytes_masked": false,
-  "recorded_raw_save_load_difference_bytes": 89198,
-  "post_run_allocation_policy_review_clarification": {
-    "metadata_only": true,
-    "previous_allocation_policy": "checked addressable layout and fallible reserve per allocation; aggregate serialized bytes/items across all Unit children; no aggregate heap-byte claim",
-    "scope": "Fallible reserve and explicit checked addressable layout apply to the envelope-owned implementation. Inherited Unit/state.rs allocations retain the behavior described by the corrected allocation_policy.",
-    "corpus_rerun": false,
-    "closed_run_source_archive_candidate_harness_and_audit_hashes_preserved": true,
-    "audit_source_sha256_scope": "Original closed-run audit tool before this documentation-only descriptor correction."
-  }
+  "recorded_raw_save_load_difference_bytes": 89198
 }

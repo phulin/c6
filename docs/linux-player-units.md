@@ -75,7 +75,8 @@ First observed Units bytes begin at 5,008,068; this is not a parser constant.
 The next Player schema is Eras, established by the enclosing writer's next
 serializer call at `0x2b4f10c` after Units at `0x2b4f0f9`.
 
-The frozen-source audit passed for source commit `8119a34`: 209 Linux method
+The initial frozen-source audit passed for source commit `8119a34`
+(report history `c271899`): 209 Linux method
 extents, 1,765 concrete PLT bindings and matching Units/promotion DWARF. Each
 canonical stream supplied 43 complete Units envelopes (6,422,174 bytes),
 including all 1,262 nested Units (6,137,501 bytes), with exact decode/encode
@@ -90,10 +91,10 @@ The [public report](../evidence/linux/player-units.json) records source,
 archive, candidate, harness and native record identities; it contains no
 proprietary payload or raw disassembly.
 
-A documentation review clarified the allocation-policy description after the
-closed audit run. The public report preserves the actual closed-run source,
-archive, candidate, harness and audit-tool identities and records the metadata
-correction explicitly. The corpus was not rerun for this wording change.
+A documentation review clarified the allocation-policy description after that
+initial closed audit run. Commit `1184f1c` preserved its actual source, archive,
+candidate, harness and audit-tool identities and recorded the metadata-only
+correction explicitly, without rerunning the corpus for the wording change.
 
 The free-pass sequence alone has a signed i32 count (writer `0x2ba1bae`,
 reader `0x2ba2136` with sign extension at `0x2ba214a`). Its envelope adapter
@@ -101,3 +102,13 @@ rejects negative/high-bit carriers before allocation even under maximal
 Limits, and encoding checks the length with `i32::try_from`. Other sequence
 count grammars remain unchanged. `--source-commit COMMIT` selects the actual
 immutable source checkpoint for a new isolated audit run.
+
+The signed-count follow-up was audited from actual source/driver commit
+`a4fb0ab`. All 86 original envelopes and 2,524 nested Units across both streams
+again matched byte-for-byte and at independently attributed boundaries;
+observations and ordered payload digests match the initial run. Four source
+tests now include the maximal-Limits negative-count refusal and checked i32
+encoder boundary, in addition to the existing envelope checks. The current
+public report records the fresh source/archive/candidate/tool identities and
+the inherited allocation limitations stated above. No original code was
+executed and no private evidence or project was written.
