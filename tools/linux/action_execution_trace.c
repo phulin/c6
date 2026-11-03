@@ -308,3 +308,14 @@ int c6_linux_action_trace_end(unsigned expected_messages) {
     fprintf(stderr,"C6_LINUX_ACTION_TRACE complete queued %u received %u unit_executed %u reports %u\n",q,r,e,p);
     return failed?208:(q==r&&e==expected_messages&&q>=e&&(expected_messages||q==0))?0:209;
 }
+
+/* FULL_MANAGER_FIXTURE only: callbacks can legitimately enqueue, receive or
+ * execute tracked work. Retain observations, never drain or require symmetry.
+ * Legacy 209 denotes only the old count expectation; structural207 and IO208
+ * remain failures. Known hard-stop hooks above still make runs unavailable. */
+int c6_linux_action_trace_end_observational(void) {
+    if(atomic_load(&armed)&&trace_log)
+        fprintf(trace_log,"{\"event\":\"counter_policy\",\"mode\":\"observe_callback_effects\",\"expected_zero\":false,\"all_policies_observed\":false}\n");
+    int status=c6_linux_action_trace_end(0);
+    return status==209?0:status;
+}

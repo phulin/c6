@@ -1,0 +1,17 @@
+{
+  "all_policies_observed": false,
+  "audit_sha256": "c1f44db22f0fe3937b42a1b260a9a4dc813f72248c8f0316c6174486da804d6a",
+  "full_manager_only_policy": "actual counters retained without zero/equality expectations; no drain",
+  "gcc_analyzer": true,
+  "known_hard_stops": "unavailable original run; never accepted substitute behavior",
+  "legacy_end_abi_unchanged": true,
+  "legacy_source_prefix_unchanged": true,
+  "legacy_source_sha256": "435cccc7730d92c1deee29ba253434ad6a6e9cc9df97f11dbf022697c9fabba7",
+  "native_execution": false,
+  "schema": "c6-linux-full-manager-observational-trace-policy-v1",
+  "source_sha256": "0ca51b8b7d29c246a9f8172685cfb31b8d6b71d2501956666ad47c149968513a",
+  "strict_c": true,
+  "structural_and_io_failures_retained": true,
+  "synthetic_cases": 6,
+  "ubsan": true
+}
