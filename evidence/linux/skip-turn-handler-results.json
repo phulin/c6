@@ -7,7 +7,7 @@
   "candidate_sha256": "58171fb1398b148cfc1e94fc882b79723a9571d193cd6d9c375c3c51fb68f59a",
   "candidate_source_commit": "301f9e9d188f6a5ac815914218d0380f51b25938",
   "historical_candidate_manifest_sha256": "e2925853cea2eaee831e1c2ba57421957a02d659e9822b750c28c2ffee1cc6c4",
-  "protocol_tests_passed": 12,
+  "protocol_tests_passed": 13,
   "protocol_tests_are_gameplay_parity": false,
   "complete_rng_inventory": false,
   "full_manager_legality": false,

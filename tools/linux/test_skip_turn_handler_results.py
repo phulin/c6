@@ -142,6 +142,12 @@ class RejectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             checker.base.parse('{"kind":"handler_expected","kind":"summary"}')
 
+    def test_policy_trace_rejects_choice_or_incomplete_binding(self):
+        with self.assertRaises(ValueError):
+            checker.check_policy_trace([dict(event='AIControl_DoTurn')])
+        with self.assertRaises(ValueError):
+            checker.check_policy_trace([])
+
 
 if __name__ == '__main__':
     unittest.main()

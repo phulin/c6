@@ -39,6 +39,23 @@ def read_rows(path):
     return [base.parse(line) for line in path.read_text().splitlines()]
 
 
+def check_policy_trace(rows):
+    expected = [dict(event='begin', reporting_observer_profile='proven_skipturn_callers_v2',
+                     UnitOperation_Execute_virtual_interposed=True,
+                     hook_owner_preload=True, target_owner_preload=True),
+                dict(event='original_virtual_binding', name='UnitManager_MakeRequest',
+                     interposed=True, hook_owner_preload=True, target_owner_preload=True)]
+    for name in ('BroadcastMessage', 'GameProcessor_Update', 'GlobalAi_ProcessAi',
+                 'ReceiveMessage', 'EventSend_identity', 'QueueMessage',
+                 'EventSend_identity_two_int', 'Diplomatic_ProcessAction', 'AIControl_DoTurn',
+                 'Diplomatic_ProcessDeal', 'Diplomacy_ProcessStatement', 'Game_Update',
+                 'EventSend_identity_int', 'EventSend_value_value', 'EventSend_type', 'EventSend_two_int'):
+        expected.append(dict(event='original_PLT_binding', name=name, interposed=True,
+                             hook_owner_preload=True, target_owner_preload=True))
+    expected.append(dict(event='end', queued=0, received=0, unit_executed=0, reports=0))
+    exact(rows, expected, 'native policy/action/query trace differs')
+
+
 def candidate_roster(request, calculated):
     """Validate complete ordered actors, count directions, bindings and handlers."""
     actors = []
@@ -207,6 +224,13 @@ def main():
         base.require(base.digest(capture/'source'/name) == value, 'archived source differs: ' + name)
     base.require(base.digest(capture/'source/tools/linux/mod_activation_probe.py') == config['runner_sha256'], 'archived runner differs')
     base.require(base.digest(capture/'placement-handler-metadata-preload.so') == config['preload_sha256'], 'admitted preload differs')
+    exact(set(runtime['action_trace_files']), {'events.jsonl'}, 'unexpected/missing policy trace artifacts')
+    trace_directory = Path(runtime['execution_paths']['action_trace_directory']).resolve()
+    base.require(trace_directory.is_relative_to(capture), 'policy trace outside closed capture')
+    for name, identity in runtime['action_trace_files'].items():
+        path = trace_directory/name
+        exact(dict(sha256=base.digest(path), bytes=path.stat().st_size), identity, 'retained policy trace changed')
+    check_policy_trace(read_rows(trace_directory/'events.jsonl'))
     facts_path = capture/runtime['placement_handler_metadata_output']['filename']
     exact(base.file_identity(facts_path), runtime['placement_handler_metadata_output'], 'closed facts identity differs')
     facts = read_rows(facts_path)
@@ -277,6 +301,8 @@ def main():
                   candidate_input_sha256=base.sha(base.canonical(request)), candidate_output_sha256=base.sha(process.stdout.encode()),
                   archived_sources_checked=len(config['sources']), archived_runner_sha256=config['runner_sha256'],
                   admitted_preload_sha256=config['preload_sha256'], coverage=coverage, matrix=matrix,
+                  action_policy_trace_sha256=runtime['action_trace_files']['events.jsonl']['sha256'],
+                  native_policy_choices_observed=0, native_action_execution_observed=0,
                   count_and_binding_mismatches=len(count_mismatches), handler_mismatches=len(handler_mismatches),
                   native_count_rows_compared=len(calculated['count_results']), native_binding_rows_compared=len(units),
                   computed_handler_unsupported=0, actual_core_alive_saved_header_crosscheck=alive,
