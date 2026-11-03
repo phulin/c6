@@ -94,6 +94,10 @@ pub struct PhaseProcessor {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CorePrefix<'a> {
+    /// Supported outer wire version (4 or 5); independent of Game/Map versions.
+    pub context_version: i32,
+    /// V4 has no metadata bytes: this is its constructed empty map, not inferred
+    /// producer compatibility. V5 preserves the complete encoded metadata map.
     pub metadata: TypedVariantMap,
     pub game_processor: GameProcessor,
     pub player_processor: PlayerProcessor,
@@ -117,7 +121,7 @@ pub struct CorePrefix<'a> {
     pub tail: &'a [u8],
 }
 impl<'a> CorePrefix<'a> {
-    /// Decode only supported current versions through complete Map.
+    /// Decode Context v4/v5 with supported inner versions through complete Map.
     ///
     /// `max_bytes` bounds consumed prefix bytes, excluding the borrowed tail. `max_items` is aggregate over fixed processor-array elements, phase
     /// entries, variant entries/payload bytes and Map items. `max_allocation`
@@ -132,8 +136,18 @@ impl<'a> CorePrefix<'a> {
             allocation: 0,
             limits,
         };
-        r.version("Context", 5)?;
-        let metadata = r.variant(TypedVariantMap::decode_prefix)?;
+        let context_version = r.i32()?;
+        let metadata = match context_version {
+            4 => TypedVariantMap::default(),
+            5 => r.variant(TypedVariantMap::decode_prefix)?,
+            actual => {
+                return Err(Error::UnsupportedVersion {
+                    section: "Context",
+                    expected: 5,
+                    actual,
+                });
+            }
+        };
         r.version("IndexSerializer", 1)?;
         r.version("Game", 22)?;
         r.version("Rules", 1)?;
@@ -215,6 +229,7 @@ impl<'a> CorePrefix<'a> {
         r.charge(map_items, map_allocation)?;
         r.take(consumed)?;
         Ok(Self {
+            context_version,
             metadata,
             game_processor,
             player_processor,
@@ -767,6 +782,90 @@ pub(crate) mod tests {
         let end = b.len();
         b.extend([0xff, 0, 0xa5, 0x5a]); // Deliberately unsupported untouched bytes.
         (b, start, end)
+    }
+    #[test]
+    fn context_v4_stops_at_unsupported_inner_game_version() {
+        let mut header = Vec::new();
+        words(&mut header, &[4, 1, 19]);
+        assert_eq!(
+            CorePrefix::decode(&header, map::Limits::default()),
+            Err(Error::UnsupportedVersion {
+                section: "Game",
+                expected: 22,
+                actual: 19
+            })
+        );
+    }
+    #[test]
+    fn context_v4_omits_metadata_and_preserves_shared_limits() {
+        let meta = metadata();
+        let (v5, start, end) = fixture(&meta, &VariantMap::default());
+        let metadata_len = meta.encode(variants::Limits::default()).unwrap().0.len();
+        let mut v4 = 4i32.to_le_bytes().to_vec();
+        v4.extend_from_slice(&v5[4 + metadata_len..]);
+        let decoded = CorePrefix::decode(&v4, map::Limits::default()).unwrap();
+        let current = CorePrefix::decode(&v5, map::Limits::default()).unwrap();
+        assert_eq!((decoded.context_version, current.context_version), (4, 5));
+        assert_eq!(decoded.metadata, TypedVariantMap::default());
+        assert_eq!(decoded.game_processor, current.game_processor);
+        assert_eq!(decoded.player_processor, current.player_processor);
+        assert_eq!(decoded.phase_processor, current.phase_processor);
+        assert_eq!(decoded.map, current.map);
+        assert_eq!(decoded.map_start, start - metadata_len);
+        assert_eq!(decoded.consumed, end - metadata_len);
+        assert!(std::ptr::eq(
+            decoded.tail.as_ptr(),
+            v4[decoded.consumed..].as_ptr()
+        ));
+        let exact = map::Limits {
+            max_bytes: decoded.consumed,
+            max_items: decoded.items_used,
+            max_allocation: decoded.logical_allocation_used,
+            ..map::Limits::default()
+        };
+        assert!(CorePrefix::decode(&v4, exact).is_ok());
+        for limits in [
+            map::Limits {
+                max_bytes: exact.max_bytes - 1,
+                ..exact
+            },
+            map::Limits {
+                max_items: exact.max_items - 1,
+                ..exact
+            },
+            map::Limits {
+                max_allocation: exact.max_allocation - 1,
+                ..exact
+            },
+        ] {
+            assert!(CorePrefix::decode(&v4, limits).is_err());
+        }
+        for cut in 0..decoded.consumed {
+            assert!(
+                CorePrefix::decode(&v4[..cut], exact).is_err(),
+                "v4 cut {cut}"
+            );
+        }
+        // No heuristic consumes a metadata count in v4's IndexSerializer slot.
+        let mut wrong_index = v4.clone();
+        wrong_index[4..8].copy_from_slice(&0i32.to_le_bytes());
+        assert!(matches!(
+            CorePrefix::decode(&wrong_index, exact),
+            Err(Error::UnsupportedVersion {
+                section: "IndexSerializer",
+                actual: 0,
+                ..
+            })
+        ));
+        for version in [i32::MIN, -1, 0, 1, 2, 3, 6, i32::MAX] {
+            let mut unsupported = v4.clone();
+            unsupported[..4].copy_from_slice(&version.to_le_bytes());
+            assert!(matches!(CorePrefix::decode(&unsupported, exact),
+                Err(Error::UnsupportedVersion { section: "Context", actual, .. }) if actual == version));
+        }
+        // V5 still requires its map; changing only the discriminator must fail.
+        v4[..4].copy_from_slice(&5i32.to_le_bytes());
+        assert!(CorePrefix::decode(&v4, exact).is_err());
     }
     #[test]
     fn composition_relocates_map_and_borrows_tail_preserving_processor_bits() {
