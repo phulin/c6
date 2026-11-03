@@ -354,7 +354,7 @@ def main():
         *sorted((ROOT/'crates/c6-core/src').rglob('*.rs')),*sorted((ROOT/'crates/c6-data/src').rglob('*.rs'))]
     if args.frozen_profile:
         archived = json.loads((args.frozen_profile/'report.json').read_text())
-        if archived['schema']!='c6-linux-rust-core-first-player-units-prefix-v1' or not archived['checks_passed']:
+        if archived['schema']!='c6-linux-rust-core-first-player-cultural-identity-prefix-v1' or not archived['checks_passed']:
             raise ValueError('wrong historical profile')
         sources = archived['candidate_sources'];build_pin=archived['source_commit'];audit_sources=archived['audit_sources']
         for name,digest in sources.items():
@@ -442,7 +442,7 @@ def main():
         moved = run(altered,'city-tail-shift')
         if moved['consumed']!=baseline['consumed']+4 or moved['map_end']!=baseline['map_end'] or moved['tail_sha256']!=baseline['tail_sha256'] or moved['first_player']['city_tail']['settled_continent_hashes'][-1]!=0xdeadbeef or moved['first_player']['cities']!=baseline['first_player']['cities']:
             raise ValueError('counted Cities tail relocation differs')
-    report = dict(schema='c6-linux-rust-core-first-player-units-prefix-v1',checks_passed=True,gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,
+    report = dict(schema='c6-linux-rust-core-first-player-cultural-identity-prefix-v1',checks_passed=True,gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,
         methods=[dict(module=m,address=hex(a),size=n,name=name,sha256=d) for m,a,n,name,d in methods],
         save_bindings=[dict(table=hex(t),slot='0x28',target=hex(a)) for t,a in BINDINGS],
         source_commit=build_pin,isolated_committed_source_verified=True,audit_sources=audit_sources,
