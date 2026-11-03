@@ -1,11 +1,12 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Techs.
-//! Stops before unframed Treasury; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete Units.
+//! Stops before unframed Eras; this is not a Player/world/gameplay importer.
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
 use crate::{player_espionage, player_religion, player_resources, player_stats, player_techs};
+use crate::{player_treasury, player_units};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
@@ -28,6 +29,8 @@ pub enum Error {
     Resources(player_resources::Error),
     Stats(player_stats::Error),
     Techs(player_techs::Error),
+    Treasury(player_treasury::Error),
+    Units(player_units::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -113,13 +116,15 @@ pub struct FirstPlayer {
     pub resources: player_resources::Resources,
     pub stats: player_stats::Stats,
     pub techs: player_techs::Techs,
+    pub treasury: player_treasury::Treasury,
+    pub units: player_units::Units,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerTreasury,
+    PlayerEras,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -127,7 +132,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerTreasury.
+    /// No complete Player entry has been consumed at PlayerEras.
     pub unfinished_player_entries: u32,
 }
 
@@ -433,6 +438,11 @@ impl Prefix {
             )?;
             let stats = r.component(player_stats::Stats::decode_prefix_with_items, Error::Stats)?;
             let techs = r.component(player_techs::Techs::decode_prefix_with_items, Error::Techs)?;
+            let treasury = r.component(
+                player_treasury::Treasury::decode_prefix_with_items,
+                Error::Treasury,
+            )?;
+            let units = r.component(player_units::Units::decode_prefix_with_items, Error::Units)?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -450,10 +460,12 @@ impl Prefix {
                 resources,
                 stats,
                 techs,
+                treasury,
+                units,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerTreasury
+            Boundary::PlayerEras
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -1136,6 +1148,125 @@ mod tests {
             free_tech_boost_wonder_era: -990,
         }
     }
+    // Explicit wire carrier; no runtime initialization defaults.
+    fn treasury_carrier() -> player_treasury::Treasury {
+        use crate::player_treasury as pmod;
+        pmod::Treasury {
+            gold_balance_q8: -1999,
+            gold_rate_change_q8: -1998,
+            cached_net_income_excluding_trade_q8: -1997,
+            bankruptcy_amenities: -1996,
+            maintenance_discount_per_unit: -1995,
+            unit_upgrade_discount_percent: -1994,
+            maintenance_discount_per_wmd_modifier: -1993,
+            levied_unit_upgrade_discount_percent: -1992,
+            cached_net_income_q8: -1991,
+            gold_interest_percent_q8: -1990,
+            gold_dispersal_change_q8: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            gold_diplomatic_deals: vec![pmod::DiplomaticDeal {
+                first: 3203334156,
+                second: 3203334157,
+            }],
+        }
+    }
+    // Explicit wire carrier; no runtime initialization defaults.
+    fn units_carrier() -> player_units::Units {
+        use crate::player_units as pmod;
+        pmod::Units {
+            records: pmod::UnitTable {
+                capacity: 257,
+                entries: vec![],
+                current_id_bits: 0xffff0000,
+                free_head: 0x12345678,
+                free_tail: u32::MAX,
+                free_links: vec![99, 0xffff0001],
+            },
+            current_unit_cost: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            unit_production_multiplier_q8: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            extra_unit_copy: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            enable_wall_attack_whole_game_promotion_class: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            unit_build_disabled: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: true,
+            }],
+            no_settling_cities: true,
+            no_foreign_heal: true,
+            no_neutral_heal: true,
+            add_on_district_founding: vec![pmod::DistrictFoundingUnits {
+                key: 3203334154,
+                values: vec![pmod::MapPair {
+                    key: 3203334155,
+                    value: 3203334156,
+                }],
+            }],
+            unit_free_pass_hashes: vec![3203334155],
+            unit_embarkation_pass_hashes: vec![3203334156],
+            extra_build_charges: -1987,
+            extra_build_charges_by_unit: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            extra_spread_charges: -1985,
+            embarked_movement_modifier: -1984,
+            upgrade_military_formation_on_city_conquest_count: -1983,
+            promotion_selections: vec![pmod::RandomPromotionSelection {
+                promotion_hash: 3203334162,
+                times_selected: -1981,
+            }],
+            proposed_promotions: vec![pmod::ProposedPromotion {
+                promotion_hash: 3203334163,
+                unit_id: 3203334164,
+            }],
+            base_promotions: vec![pmod::BasePromotion {
+                unit_hash: 3203334164,
+                promotion_hash: 3203334165,
+                count: -1978,
+            }],
+            unlimited_promotion_choice_unit_hashes: vec![3203334165],
+            land_corps_unlock_civic_hash: 3203334166,
+            land_army_unlock_civic_hash: 3203334167,
+            naval_corps_unlock_civic_hash: 3203334168,
+            naval_army_unlock_civic_hash: 3203334169,
+            land_corps_unlock_tech_hash: 3203334170,
+            land_army_unlock_tech_hash: 3203334171,
+            naval_corps_unlock_tech_hash: 3203334172,
+            naval_army_unlock_tech_hash: 3203334173,
+            peak_units: 3203334174,
+            land_corps_modified_strength: -1969,
+            land_army_modified_strength: -1968,
+            naval_corps_modified_strength: -1967,
+            naval_army_modified_strength: -1966,
+            enable_wall_attack_whole_game: -1965,
+            rock_band_album_sales_modifier: -1964,
+            banned_production_yield: -1963,
+            favored_production_yield: -1962,
+            favored_production_modifier_q8: -1961,
+            upgrade_cost_modifier_q8: -1960,
+            current_unit_resource_cost: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+            unit_fuel_demands: vec![unit::HashValue {
+                definition_hash: u32::MAX,
+                value: i32::MIN,
+            }],
+        }
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -1196,6 +1327,8 @@ mod tests {
         out.extend(resources_carrier().encode(Limits::default()).unwrap());
         out.extend(stats_carrier().encode(Limits::default()).unwrap());
         out.extend(techs_carrier().encode(Limits::default()).unwrap());
+        out.extend(treasury_carrier().encode(Limits::default()).unwrap());
+        out.extend(units_carrier().encode(Limits::default()).unwrap());
 
         out
     }
@@ -1203,11 +1336,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched Treasury");
+        trailing.extend_from_slice(b"untouched Eras");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerTreasury);
+        assert_eq!(value.boundary, Boundary::PlayerEras);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1233,7 +1366,7 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::Techs(player_techs::Error::ResourceLimit))
+            Err(Error::Units(player_units::Error::ResourceLimit))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -1270,6 +1403,11 @@ mod tests {
         );
         assert!(p.techs.has_tech.pairs[0].value);
         assert!(!p.techs.boost_triggered.pairs[1].value);
+        assert!(p.units.records.entries.is_empty());
+        assert_eq!(p.units.records.free_links, [99, 0xffff0001]);
+        assert_eq!(p.units.proposed_promotions.len(), 1);
+        assert_eq!(p.units.unit_fuel_demands[0].value, i32::MIN);
+        assert_eq!(p.treasury.gold_diplomatic_deals.len(), 1);
         assert_eq!(p.cities.building_build_overrides, [[111, 222], [111, 333]]);
         let exact = Limits {
             max_bytes: n,
@@ -1292,7 +1430,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::Techs(player_techs::Error::ResourceLimit))
+            Err(Error::Units(player_units::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -1317,7 +1455,9 @@ mod tests {
             + player.religion.encode(Limits::default()).unwrap().len()
             + player.resources.encode(Limits::default()).unwrap().len()
             + player.stats.encode(Limits::default()).unwrap().len()
-            + player.techs.encode(Limits::default()).unwrap().len();
+            + player.techs.encode(Limits::default()).unwrap().len()
+            + player.treasury.encode(Limits::default()).unwrap().len()
+            + player.units.encode(Limits::default()).unwrap().len();
         let names_start = n - later_bytes - culture.len() - names.len();
         let culture_start = n - later_bytes - culture.len();
         let changed = value.encode_prefix(Limits::default()).unwrap();
@@ -1353,7 +1493,9 @@ mod tests {
         let p = v.first_player.unwrap();
         let techs = p.techs.encode(Limits::default()).unwrap();
         let stats = p.stats.encode(Limits::default()).unwrap();
-        let stats_start = n - techs.len() - stats.len();
+        let after_techs = p.treasury.encode(Limits::default()).unwrap().len()
+            + p.units.encode(Limits::default()).unwrap().len();
+        let stats_start = n - after_techs - techs.len() - stats.len();
         // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
         // words, four counted vectors, then the first WriteArray<int,64>.
         let tracked_bytes = p
@@ -1383,7 +1525,8 @@ mod tests {
             Err(Error::Stats(player_stats::Error::InvalidContainer))
         ));
         let mut malformed = bytes;
-        malformed[n - techs.len()..n - techs.len() + 4].copy_from_slice(&7u32.to_le_bytes());
+        malformed[n - after_techs - techs.len()..n - after_techs - techs.len() + 4]
+            .copy_from_slice(&7u32.to_le_bytes());
         assert!(matches!(
             Prefix::decode_prefix(&malformed, Limits::default()),
             Err(Error::Techs(player_techs::Error::Version {
@@ -1391,6 +1534,96 @@ mod tests {
                 actual: 7
             }))
         ));
+    }
+    #[test]
+    fn rejects_units_nested_container_version_and_live_count() {
+        let bytes = carrier();
+        let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let p = v.first_player.unwrap();
+        let units = p.units.encode(Limits::default()).unwrap();
+        let start = n - units.len();
+        let mut malformed = bytes.clone();
+        malformed[start + 4..start + 8].copy_from_slice(&65538u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::Units(player_units::Error::Version {
+                expected: 65537,
+                actual: 65538
+            }))
+        ));
+        let mut malformed = bytes;
+        malformed[start + 16..start + 20]
+            .copy_from_slice(&(p.units.records.capacity + 1).to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&malformed, Limits::default()),
+            Err(Error::Units(player_units::Error::InvalidContainer))
+        ));
+    }
+
+    /// Run only from an isolated committed source archive. The supplied raw
+    /// Core is a validation input, never an offset or trace source for parsing.
+    #[test]
+    #[ignore = "requires C6_CORE_PLAYER_PREFIX_FIXTURE raw Core input"]
+    fn offline_raw_core_whole_prefix_exact_caps() {
+        use std::io::Read;
+        let path =
+            std::env::var_os("C6_CORE_PLAYER_PREFIX_FIXTURE").expect("raw Core fixture path");
+        const MAX: u64 = 256 * 1024 * 1024;
+        let mut bytes = Vec::new();
+        std::fs::File::open(path)
+            .unwrap()
+            .take(MAX + 1)
+            .read_to_end(&mut bytes)
+            .unwrap();
+        assert!(bytes.len() as u64 <= MAX);
+        let value = crate::core_stream::ThroughFirstPlayer::decode(
+            &bytes,
+            map::Limits::default(),
+            Limits::default(),
+        )
+        .unwrap();
+        let prefix = &value.player_prefix;
+        assert_eq!(prefix.boundary, Boundary::PlayerEras);
+        let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
+        let post_map = &bytes[value.core.consumed..];
+        assert_eq!(encoded, post_map[..encoded.len()]);
+        let exact = Limits {
+            max_bytes: encoded.len(),
+            max_items: items,
+        };
+        let (decoded, consumed, charged) =
+            Prefix::decode_prefix_with_items(post_map, exact).unwrap();
+        assert_eq!(
+            (&decoded, consumed, charged),
+            (prefix, encoded.len(), items)
+        );
+        assert_eq!(
+            prefix.encode_prefix_with_items(exact).unwrap(),
+            (encoded.clone(), items)
+        );
+        for short in [
+            Limits {
+                max_bytes: encoded.len() - 1,
+                ..exact
+            },
+            Limits {
+                max_items: items - 1,
+                ..exact
+            },
+        ] {
+            assert!(Prefix::decode_prefix_with_items(post_map, short).is_err());
+            assert!(prefix.encode_prefix(short).is_err());
+        }
+        let p = prefix.first_player.as_ref().unwrap();
+        assert!(!p.units.records.entries.is_empty());
+        println!(
+            "consumed={} post_map_bytes={} post_map_items={} units={} boundary={:?}",
+            value.consumed,
+            encoded.len(),
+            items,
+            p.units.records.entries.len(),
+            prefix.boundary
+        );
     }
     #[test]
     fn empty_manager_stops_and_preserves_suffix() {
@@ -1695,8 +1928,7 @@ impl Prefix {
         if self.unfinished_player_entries != self.player_count
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
-                (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerTreasury)
+                (0, None, Boundary::AfterEmptyPlayerManager) | (1.., Some(_), Boundary::PlayerEras)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -1781,6 +2013,16 @@ impl Prefix {
                 player_techs::Techs::encode_with_items,
                 Error::Techs,
             )?;
+            w.component(
+                &p.treasury,
+                player_treasury::Treasury::encode_with_items,
+                Error::Treasury,
+            )?;
+            w.component(
+                &p.units,
+                player_units::Units::encode_with_items,
+                Error::Units,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -1823,7 +2065,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerTreasury;
+        v.boundary = Boundary::PlayerEras;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
