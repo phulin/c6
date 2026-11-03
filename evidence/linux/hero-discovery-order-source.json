@@ -124,12 +124,66 @@
       "size": 16,
       "name": "Definitions.GetHeroClassDefinitions",
       "sha256": "ad7c3778c37c8de54f258f723121110a8770c81c06d0e04e2d9924ea36993ede"
+    },
+    {
+      "address": "0x269b3a0",
+      "size": 283,
+      "name": "Player.Heroes.Read_without_Reset",
+      "sha256": "7588b99d80b6245013835438ea63d942f9f168b4ff4346aaaad7695fb2b2964e"
+    },
+    {
+      "address": "0x269ba50",
+      "size": 270,
+      "name": "Player.Heroes.Reset",
+      "sha256": "170bd0f12802cc096710b403dab1201ed35de6f5845a59ce220a4105da5d1bbb"
+    },
+    {
+      "address": "0x269b9a0",
+      "size": 172,
+      "name": "Player.Heroes.Initialize",
+      "sha256": "aecdeb7352a382e76f977b4ec974187535b218d2eee06d76577bda06f5a350f8"
+    },
+    {
+      "address": "0x265b700",
+      "size": 34,
+      "name": "HeroClass.HashToIndex",
+      "sha256": "8223fec9b03d7f9ff40f2564e9382c049e4e4dbb6ef7f8264d38b33198e0144d"
+    },
+    {
+      "address": "0x265b730",
+      "size": 109,
+      "name": "HeroClass.Find_small_index_before_hash",
+      "sha256": "9fe41c3335e2553726415e40cbad869c63a44411e40afd27c9de8dcf48291fde"
+    },
+    {
+      "address": "0x265b900",
+      "size": 149,
+      "name": "HeroClass.ReadIndexHashArray_bool_last_write",
+      "sha256": "f93551bfbb3b7e030915c9f626040ea30d958c8dcb1bd58597f8612468f80962"
+    },
+    {
+      "address": "0x2953330",
+      "size": 19,
+      "name": "HeroClass.GetIndex",
+      "sha256": "84a0a22e755f0c74a1423ba5ec1a7033a952a9920ee3622d2d4cbcb43c912b03"
+    },
+    {
+      "address": "0x2959e30",
+      "size": 94,
+      "name": "HeroClass.GetTypeIndexT",
+      "sha256": "585dc3608ae626ba3156b0e30a2c549e12531d6cd31662d81b8deff1d30387bc"
+    },
+    {
+      "address": "0x2b4fc2d",
+      "size": 26,
+      "name": "Player.Read_Heroes_version47_guard",
+      "sha256": "74bae0d0e9aa3c4f45c3082591d36b4c6289592e229883aea193d3a7dbe2dc26"
     }
   ],
   "candidate": {
-    "source_commit": "421456bb1957853842a43e8078d61b13d01f77c1",
-    "complete_source_archive_sha256": "a51f6c71bdd5f684c3742cdad12c4d586d8ba2a0c56153811fce19314be1a4d2",
-    "complete_source_archive": "target/linux/hero-discovery-order/candidate-a51f6c71bdd5f684c3742cdad12c4d586d8ba2a0c56153811fce19314be1a4d2/source.tar",
+    "source_commit": "da7d484f40f99a4b6f49703aa39d237c2bc6b302",
+    "complete_source_archive_sha256": "97b0fb3d524250811f1b7f9b43408d0f83d6224a38156fc5a764e962fbb319e3",
+    "complete_source_archive": "target/linux/hero-discovery-order/candidate-97b0fb3d524250811f1b7f9b43408d0f83d6224a38156fc5a764e962fbb319e3/source.tar",
     "extracted_committed_tree": true,
     "concurrent_wip_included": false,
     "generated_source_duplicate": {
@@ -140,9 +194,9 @@
     "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
     "compiler_executable_sha256": "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71",
     "standard_library_rlib_sha256": "bf156342c5f849f27d8f53003131bc7c0e675143389d84dd549b2ebbaccfaa2f",
-    "candidate_sha256": "a38c26d2104996a99e3fd4fe4fc8bf62e8848612c9299c3e7fdca0b1f47df5a9",
-    "test_candidate_sha256": "16c58a55ab27a11fbd03a890e4011c141230e188baa4bb6a6e54634b6648cede",
-    "tests_result": "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+    "candidate_sha256": "6ca9838b423ecf17b93cec01376466880e9caecf78bb995dc133936dfbd3b4ef",
+    "test_candidate_sha256": "14eff7b577f65f325a9d98db59e1b1a6b8367bb2674ea727807fef95ee8ff2a5",
+    "tests_result": "test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
   },
   "saved_fixture": {
     "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
@@ -674,7 +728,7 @@
     "records": [
       {
         "parsed": false,
-        "unsupported_boundary": "Core(UnsupportedVersion { section: \"Context\", expected: 5, actual: 4 })",
+        "unsupported_boundary": "Core(Map(UnsupportedVersion { expected: 6, actual: 5 }))",
         "stream_sha256": "a66736f0423e9a59b11c77b1879b471d936fe3887342df5008940f763dbcc5aa",
         "heroes_encoded_sha256": null,
         "byte_zero_source_grammar_attempted": true,
@@ -705,7 +759,7 @@
         "native_rebuild_reached_or_skipped": "not observed; header/order parsing does not establish manager/configuration gates"
       }
     ],
-    "candidate_sha256": "b448a7b88a7b12d48ce2fb69555426d03d4847be171c8421830f82b20d1447d4",
+    "candidate_sha256": "9c4c65059bf58cd3ce449266d94cc930958e3efb47e6f3cec85daaacc59a1eb6",
     "dependency_lock_sha256": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
     "exact_first_player_heroes_records_equal": null,
     "remaining_players_raw_read_heroes_framing": false
@@ -749,6 +803,26 @@
     "source_queries": "fallible interfaces; synthetic tests confer no captured configuration/eligibility authority",
     "production_loaded_state_bridge": false,
     "original_native_rebuild_oracle": false
+  },
+  "discovered_read_projection": {
+    "live_indexed_snapshot_required": true,
+    "existing_indexed_baseline_required": true,
+    "read_resets_baseline": false,
+    "reset_baseline_only_with_separately_proven_initialize_or_reset": true,
+    "carrier_less_than_collection_count_is_direct_index": true,
+    "duplicate_mapped_entries": "last write wins in wire order",
+    "missing_carriers": "read into discard slot; raw wire entries retained",
+    "complete_contiguous_native_collection_indices_required": true,
+    "empty_collection_requires_no_discovered_snapshot": true
+  },
+  "legacy_player_heroes_guard": {
+    "player_version_minimum": 47,
+    "compare": "0x2b4fc2d",
+    "signed_less_branch": "0x2b4fc32",
+    "skipped_destination": "0x2b4fc47",
+    "heroes_read_call": "0x2b4fc42",
+    "skipped_branch_resets_heroes": false,
+    "raw_player_version_not_inferred_from_game_version": true
   },
   "full_state_actions_turns": false,
   "save_writer": false,
