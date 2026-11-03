@@ -57,7 +57,7 @@
   "source_sha256": {
     "native/linux/full_manager_profile_guard.c": "57bfc48108d523002fdcefc1aa8bfde42cf20063a5657ed735f6b356f396b0a7",
     "native/linux/full_manager_profile_guard.h": "49391b079163ed04744268a8c797c709fa6bbd772be3ed0887d48d279515cc75",
-    "native/linux/mod_activation.c": "09ed53e32af9e9700aea83458f532158e1150b75f33bee766a7d723bf773a8c6",
+    "native/linux/mod_activation.c": "0f904b1b156301fae2491ad7e5e8ab02d67046931cf2faf80a737db89b0e709a",
     "tools/linux/full_manager_profile_guard_audit.py": "4abbc15368ac962d2a9b9ba7eef3e7d61d2d228433b136aa74b3019afe66d728"
   },
   "synthetic_cases": {
