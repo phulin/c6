@@ -31,13 +31,13 @@ def main():
   src.write_text('#include "'+str(ROOT/'native/linux/current_handler_metadata_fixture.c')+'"\n'+HARNESS)
   cmd=['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wconversion','-Wshadow']
   subprocess.run(cmd+['-fanalyzer','-c',str(ROOT/'native/linux/current_handler_metadata_fixture.c'),'-o',str(work/'guard.o')],check=True)
-  subprocess.run(cmd+['-O2','-fsanitize=undefined',str(src),'-o',str(work/'test')],check=True)
+  subprocess.run(cmd+['-O2','-fsanitize=undefined',str(src),'-ldl','-o',str(work/'test')],check=True)
   subprocess.run([str(work/'test')],check=True,capture_output=True)
  sources={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in
   ['native/linux/current_handler_metadata_fixture.c','native/linux/current_handler_metadata_fixture.h','tools/linux/current_handler_field_guard_audit.py']}
  report=dict(schema='c6-linux-current-handler-field-guard-source-v1',native_execution=False,
   integrated_admission=False,original_calls_in_guard=False,methods=methods,sources=sources,
-  synthetic=dict(accepted_idle_scope=True,refusal_cases=21,targeted_fatal_reasons_checked=True,child_main_tid_rebound=True,strict_c=True,gcc_analyzer=True,ubsan=True),
+  synthetic=dict(accepted_idle_scope=True,accepted_unlocked_caller_end=True,refusal_cases=21,targeted_fatal_reasons_checked=True,child_main_tid_rebound=True,strict_c=True,gcc_analyzer=True,ubsan=True),
   limits=['caller main-entry provenance and genuine facade acquisition still require integration',
           'file/mapping/runtime source gates and native lock ownership witness pending',
           'positive GlobalAi processing counter unsupported; both queue sentinels must be empty',
@@ -99,7 +99,13 @@ int main(void){
   int status;assert(waitpid(child,&status,0)==child);assert(WIFEXITED(status)&&WEXITSTATUS(status)==240);
   rewind(errors);char message[512]={0};assert(fread(message,1,sizeof message-1,errors)>0);assert(strstr(message,reasons[test]));assert(!fclose(errors));
  }
+ FieldScope unlocked=scope;
  assert(!c6_linux_current_handler_metadata_fields_end(module,ctx,game));
+ unlocked.lock_owner=0;unlocked.lock_depth=0;put32(c+0x4a0,0);put32(c+0x4a4,0);
+ check_fields_mode(&unlocked,0);caller_scope=unlocked;
+ assert(!c6_linux_current_handler_metadata_caller_idle(module,ctx));
+ assert(!c6_linux_current_handler_metadata_admission_end(module,ctx));
+ assert(!caller_scope.module);
  assert(!scope.module);assert(!munmap(core,0x4000000));assert(!munmap(globals,4096));return 0;
 }
 """

@@ -12,7 +12,9 @@ anything. It requires no worker, an unlocked Controller bound to this Context,
 and initialized native Context/Game fields. It reads the actual EngineUtility GOT
 binding and object, concrete vptr and lock virtual targets before invoking the
 pinned original Context.GetGame factory. The created facade's native Game,
-vptr and refcount must match. The field guard then records and retains the
+vptr and refcount must match. The actual Destroy virtual slot and complete
+DecrementReference chain are pinned; the caller rechecks the slot, refcount and
+actual utility binding before release. The field guard then records and retains the
 original native lock token and depth while the facade remains alive.
 
 Two independent helper calls receive distinct exclusive output paths and the

@@ -12,4 +12,9 @@ int c6_linux_current_handler_metadata_quiescent(void *module, void *context,
     const void *game);
 int c6_linux_current_handler_metadata_fields_end(void *module, void *context,
     const void *game);
+/* Separate unlocked caller/lifecycle boundaries; not the helper callback. */
+int c6_linux_current_handler_metadata_admission_begin(void *module,void *context);
+int c6_linux_current_handler_metadata_caller_idle(void *module,void *context);
+int c6_linux_current_handler_metadata_admission_end(void *module,void *context);
+int c6_linux_current_handler_metadata_probe(void *module,void *context);
 #endif

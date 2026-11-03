@@ -34,6 +34,16 @@
       "address": "0x2d7b4d0",
       "bytes": 8,
       "sha256": "f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b"
+    },
+    {
+      "address": "0x2c86370",
+      "bytes": 5,
+      "sha256": "ff38a02ea4fa34d0d0258df743b207c473530c7154151d18aa114aa4d4c7afd2"
+    },
+    {
+      "address": "0x2c86b80",
+      "bytes": 40,
+      "sha256": "5920342050c4e1a7e3da5f1777b6c0687ba790afb7487f181e33fd95efff7755"
     }
   ],
   "native_execution": false,
@@ -47,13 +57,16 @@
   "preparation_admission": false,
   "schema": "c6-linux-current-handler-caller-source-v1",
   "sources": {
+    "native/linux/context_stream.c": "33681bfee91683a2e9e3a6db4f3fc5df01ec22290e2f0369a2f70536cf17fed0",
+    "native/linux/context_stream.h": "20cc3f198f5460b00a732ddb3047f069b3592cd6de6c485dadcd5562d674962b",
     "native/linux/current_handler_interruption.c": "59fe2c33f63422fb2b22b66905e5b5460d8f5a6056339cb29de7112c44cf1631",
     "native/linux/current_handler_interruption.h": "513560c244125f2789e97572505df54d27d5987f241852756d68fd61a0a432cb",
-    "native/linux/current_handler_metadata_fixture.c": "a29d5380c648de5e216e812e46772c040428bbac749b8ef7d57383480ed0d945",
-    "native/linux/current_handler_metadata_fixture.h": "42f6b2f886c80bfb3541af0cb60fd08b730315c3d42de4c41ffe12324151fe61",
-    "native/linux/current_handler_metadata_probe.c": "54609e52d8229132824feb6a8b52dfdb76959253fc981aa6fabd381259266335",
+    "native/linux/current_handler_metadata_fixture.c": "aa4c60ae7643f98819484e3040e489aa9402e6bfbc8b908080e13a7248513fb6",
+    "native/linux/current_handler_metadata_fixture.h": "f83a4aecb5833597eef96fc42d414ee7d392d6b311d10861765b16f06e74c65c",
+    "native/linux/current_handler_metadata_probe.c": "90d16d9c7d28910b3e2b42c0cb05269b12a40fe485dda35ab1ca854c74b3436c",
     "native/linux/mod_activation.c": "433614f45caeca8114b626630c4351720477e05ae361d4cd030b043fde40f8be",
-    "tools/linux/current_handler_caller_audit.py": "3182ae3eaf1db897770560392de4e0762d7076e079ed225024d9fe7130c8f678",
-    "tools/linux/current_handler_field_guard_audit.py": "5d32fd592822a4c4dfaf94c56fa2220c44ede9c28e3772acf94ea6c552522474"
+    "native/linux/stream_observation.h": "04720ac56f8c98abd3c8340da66f21199a5c42c27036cfac2c012316d8eb2b00",
+    "tools/linux/current_handler_caller_audit.py": "50f8b8c4ccb9d75a2aed3defadbfe0114bcd0b7e76467dd9e9c6fcf400122b0c",
+    "tools/linux/current_handler_field_guard_audit.py": "3e619fe93683975d1b30a35d12b4bcd1418c23055a877d05266ff6204adf4f2d"
   }
 }

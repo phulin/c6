@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from save_lifecycle_audit import Elf,GAME_SHA
 ROOT=Path(__file__).resolve().parents[2]
-METHODS=[(46648032, 92, '0bee95a94a869e776ee221963d7e80aa885739a6d73aff21785121122d1a2c9f'), (46685408, 92, '981ad8a20e2991f4cb6211bc5b349ea550efa2dbc6d59625e4d9b69897b2d519'), (46685568, 56, '9fd728c0f0fe56b64e0fbacaeb0c28e9f73723000c86c57ec6e708ee5f3ae1b3'), (43039648, 22, 'ad7d214f06fbbe64670982468ad970bc59593dbb904cc8cf29764bd75e59f480'), (47690960, 8, 'f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b')]
+METHODS=[(46648032, 92, '0bee95a94a869e776ee221963d7e80aa885739a6d73aff21785121122d1a2c9f'), (46685408, 92, '981ad8a20e2991f4cb6211bc5b349ea550efa2dbc6d59625e4d9b69897b2d519'), (46685568, 56, '9fd728c0f0fe56b64e0fbacaeb0c28e9f73723000c86c57ec6e708ee5f3ae1b3'), (43039648, 22, 'ad7d214f06fbbe64670982468ad970bc59593dbb904cc8cf29764bd75e59f480'), (47690960, 8, 'f0c112fce3f22ba3110c9b92191ebdc9137f2f7c83a3906235e7ad9806bd2b4b'), (46687088, 5, 'ff38a02ea4fa34d0d0258df743b207c473530c7154151d18aa114aa4d4c7afd2'), (46689152, 40, '5920342050c4e1a7e3da5f1777b6c0687ba790afb7487f181e33fd95efff7755')]
 def sha(data):return hashlib.sha256(data).hexdigest()
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);args=p.parse_args()
@@ -27,6 +27,7 @@ def main():
   'native/linux/current_handler_metadata_probe.c','native/linux/current_handler_metadata_fixture.c',
   'native/linux/current_handler_metadata_fixture.h','native/linux/mod_activation.c',
   'native/linux/current_handler_interruption.c','native/linux/current_handler_interruption.h',
+  'native/linux/context_stream.c','native/linux/context_stream.h','native/linux/stream_observation.h',
   'tools/linux/current_handler_caller_audit.py','tools/linux/current_handler_field_guard_audit.py']}
  report=dict(schema='c6-linux-current-handler-caller-source-v1',native_execution=False,
   preparation_admission=False,original_calls_in_helper_or_guard=False,

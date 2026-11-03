@@ -43,3 +43,10 @@ state and known RNG controls, loader/profile integration and independent exact
 preparation admission remain pending. Saves are observational evidence, not a
 production output or an action acceptance gate. Full gameplay state, actions and
 turns remain open.
+
+The new lifecycle callbacks `admission_begin`, `caller_idle` and `admission_end`
+are an explicitly separate unlocked caller scope. They use the same raw identity,
+work and queue checks and require owner/depth zero. They do not acquire a lock or
+stand in for the three-argument helper callback. The three-argument guard still
+requires the caller's retained nonzero native lock witness. Source/profile
+admission of the enclosing lifecycle remains pending.

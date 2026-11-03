@@ -163,12 +163,13 @@
   "original_calls_in_guard": false,
   "schema": "c6-linux-current-handler-field-guard-source-v1",
   "sources": {
-    "native/linux/current_handler_metadata_fixture.c": "a29d5380c648de5e216e812e46772c040428bbac749b8ef7d57383480ed0d945",
-    "native/linux/current_handler_metadata_fixture.h": "42f6b2f886c80bfb3541af0cb60fd08b730315c3d42de4c41ffe12324151fe61",
-    "tools/linux/current_handler_field_guard_audit.py": "5d32fd592822a4c4dfaf94c56fa2220c44ede9c28e3772acf94ea6c552522474"
+    "native/linux/current_handler_metadata_fixture.c": "aa4c60ae7643f98819484e3040e489aa9402e6bfbc8b908080e13a7248513fb6",
+    "native/linux/current_handler_metadata_fixture.h": "f83a4aecb5833597eef96fc42d414ee7d392d6b311d10861765b16f06e74c65c",
+    "tools/linux/current_handler_field_guard_audit.py": "3e619fe93683975d1b30a35d12b4bcd1418c23055a877d05266ff6204adf4f2d"
   },
   "synthetic": {
     "accepted_idle_scope": true,
+    "accepted_unlocked_caller_end": true,
     "child_main_tid_rebound": true,
     "gcc_analyzer": true,
     "refusal_cases": 21,

@@ -58,6 +58,10 @@ int c6_linux_current_handler_metadata_probe(void *module,void *context) {
     uintptr_t controller=getptr(0x6499100);
     if(!controller||controller>UINTPTR_MAX-0x4a8||getptr(0x6499108)||getword(controller+0x4a0)||getword(controller+0x4a4)||
        getptr(controller+0x450)!=(uintptr_t)context)caller_fatal("pre_acquisition_unknown");
+    unsigned char controller_initialized;read_field(controller+0xb,&controller_initialized,1);
+    if(controller_initialized!=1)caller_fatal("controller_not_initialized");
+    if(getptr(base+0x3aecf68)!=base+0x2c86370)caller_fatal("facade_destroy_slot_unknown");
+    (void)binding(module,"_ZN8GameCore7Exports4Game18DecrementReferenceEv",base+0x2c86b80,info.dli_fbase);
     uintptr_t native_context=getptr((uintptr_t)context+8);
     if(!native_context||native_context>UINTPTR_MAX-0x30)caller_fatal("native_context_extent");
     unsigned char initialized;
@@ -106,6 +110,10 @@ int c6_linux_current_handler_metadata_probe(void *module,void *context) {
     if(ferror(out)&&!rc)rc=247;
     if(fclose(out)&&!rc)rc=247;
     c6_linux_current_handler_metadata_fields_end(module,context,(void *)game);
+    if(getptr((uintptr_t)facade)!=base+0x3aecf60||getptr(base+0x3aecf68)!=base+0x2c86370||
+       getword((uintptr_t)facade+0x18)!=1||getptr(base+0x3b13848)!=utility_global||
+       getptr(utility_global)!=utility||getptr(utility)!=0x53a6c90||
+       getptr(0x53a6c90+0x38)!=0x32b3d60)caller_fatal("release_dispatch_changed");
     release(facade);
     if(getptr(0x6499100)!=controller||getptr(0x6499108)||getword(controller+0x4a0)||getword(controller+0x4a4))
         caller_fatal("post_release_unknown");

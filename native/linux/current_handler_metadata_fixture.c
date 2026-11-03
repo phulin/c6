@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "current_handler_metadata_fixture.h"
 #include <stdint.h>
+#include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -18,7 +19,7 @@ typedef struct {
     uint32_t lock_owner,lock_depth;
     long main_tid;
 } FieldScope;
-static FieldScope scope;
+static FieldScope scope,caller_scope;
 
 static _Noreturn void fields_fatal(const char *reason) {
     fprintf(stderr,"C6_CURRENT_HANDLER_FIELDS {\"fatal\":true,\"reason\":\"%s\",\"no_poststate_or_cleanup\":true}\n",reason);
@@ -43,7 +44,7 @@ static void empty_list(uintptr_t list) {
     uintptr_t links[2];copy_field(list,links,sizeof links);
     if(links[0]!=list||links[1]!=list)fields_fatal("message_list_not_empty");
 }
-static void check_fields(const FieldScope *s) {
+static void check_fields_mode(const FieldScope *s,int held) {
     if(!s->module||!s->context||!s->game||!s->base||!s->controller||
        !s->native_context||s->main_tid<=0||syscall(SYS_gettid)!=s->main_tid)
         fields_fatal("scope_or_main_thread_unknown");
@@ -61,7 +62,8 @@ static void check_fields(const FieldScope *s) {
         fields_fatal("context_or_game_unknown");
     /* Native owner is an opaque original token, not an OS TID. Its witness is
      * recorded only after the caller's genuine facade acquisition. */
-    if(!s->lock_owner||!s->lock_depth||word(s->controller+0x4a0)!=s->lock_owner||
+    if((held?(!s->lock_owner||!s->lock_depth):(s->lock_owner||s->lock_depth))||
+       word(s->controller+0x4a0)!=s->lock_owner||
        word(s->controller+0x4a4)!=s->lock_depth)
         fields_fatal("native_lock_witness_changed");
     if(byte(s->base+0x3c05cbb)||byte(s->base+0x3c05cb9)||
@@ -81,6 +83,7 @@ static void check_fields(const FieldScope *s) {
        word(s->controller+0x4a0)!=s->lock_owner||word(s->controller+0x4a4)!=s->lock_depth)
         fields_fatal("owner_changed_during_observation");
 }
+static void check_fields(const FieldScope *s) {check_fields_mode(s,1);}
 int c6_linux_current_handler_metadata_fields_begin(void *module,void *context,
  const void *game,uintptr_t base,long main_tid) {
     if(scope.module||!module||!context||!game||!base||base>UINTPTR_MAX-0x3c07380)
@@ -108,4 +111,34 @@ int c6_linux_current_handler_metadata_fields_end(void *module,void *context,cons
     c6_linux_current_handler_metadata_quiescent(module,context,game);
     memset(&scope,0,sizeof scope);
     return 0;
+}
+
+/* Unlocked lifecycle boundaries are caller scope, never the locked helper's
+ * callback. They admit only no-worker, same-owner, fully idle raw state. */
+int c6_linux_current_handler_metadata_admission_begin(void *module,void *context) {
+    if(caller_scope.module||scope.module||!module||!context)fields_fatal("caller_begin_unknown");
+    object_extent((uintptr_t)context,16);
+    Dl_info info={0};
+    if(!dladdr((void *)pointer((uintptr_t)context),&info)||!info.dli_fbase)
+        fields_fatal("caller_module_unknown");
+    uintptr_t base=(uintptr_t)info.dli_fbase;
+    if(base>UINTPTR_MAX-0x3c07380)fields_fatal("caller_module_extent");
+    long (*main_tid)(void)=dlsym(RTLD_DEFAULT,"c6_linux_mod_main_thread_tid");
+    if(!main_tid)fields_fatal("caller_main_entry_unwitnessed");
+    FieldScope s={.module=module,.context=context,.base=base,.main_tid=main_tid(),
+        .controller=pointer(0x6499100),.context_vptr=pointer((uintptr_t)context),
+        .native_context=pointer((uintptr_t)context+8)};
+    object_extent(s.native_context,0x30);
+    s.game=(void *)pointer(s.native_context+0x28);
+    check_fields_mode(&s,0);
+    caller_scope=s;return 0;
+}
+int c6_linux_current_handler_metadata_caller_idle(void *module,void *context) {
+    if(caller_scope.module!=module||caller_scope.context!=context||scope.module)
+        fields_fatal("caller_scope_unknown");
+    check_fields_mode(&caller_scope,0);return 0;
+}
+int c6_linux_current_handler_metadata_admission_end(void *module,void *context) {
+    c6_linux_current_handler_metadata_caller_idle(module,context);
+    memset(&caller_scope,0,sizeof caller_scope);return 0;
 }
