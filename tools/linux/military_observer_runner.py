@@ -59,26 +59,34 @@ def session_processes(session):
             if row and row['session']==session:rows.append(row)
     return rows
 
-def dispose_session(process,identity,reason):
-    """Only the fresh session launched by this caller; PID/starttime checked."""
+def dispose_session(process,identity,reason,owned_members=()):
+    """Signal only a proven launched leader/session or exact retained children."""
     require(identity and identity['pid']==process.pid and identity['session']==process.pid,'unproven debugger session ownership')
-    before=session_processes(process.pid)
-    for row in [r for r in before if r['pid']!=process.pid]:
+    leader=process_identity(process.pid);before=session_processes(process.pid)
+    matches=lambda a,b:all(a.get(k)==b.get(k) for k in ('pid','starttime','session','exe'))
+    if leader is not None and not matches(leader,identity):
+        return dict(reason=reason,ownership_proven=False,refusal='session leader PID reused or image changed',before=before,signalled=[],remaining=before,no_executing_processes=False,native_cleanup_proven=False)
+    known={(r['pid'],r['starttime']):r for r in owned_members}
+    eligible=before if leader is not None else [r for r in before if (r['pid'],r['starttime']) in known and matches(r,known[(r['pid'],r['starttime'])])]
+    signalled=[]
+    for row in [r for r in eligible if r['pid']!=process.pid]:
         current=process_identity(row['pid'])
-        if current and current['starttime']==row['starttime'] and current['session']==process.pid and current['exe']==row['exe']:
-            try:os.kill(row['pid'],signal.SIGKILL)
+        if current and matches(current,row):
+            try:os.kill(row['pid'],signal.SIGKILL);signalled.append(row['pid'])
             except ProcessLookupError:pass
-    try:process.wait(timeout=0.25)
-    except subprocess.TimeoutExpired:
-        current=process_identity(process.pid)
-        require(current and current['starttime']==identity['starttime'] and current['session']==process.pid and current['exe']==identity['exe'],'debugger ownership changed during disposal')
-        process.kill();process.wait(timeout=5)
+    if leader is not None:
+        try:process.wait(timeout=0.25)
+        except subprocess.TimeoutExpired:
+            current=process_identity(process.pid)
+            require(current and matches(current,identity),'debugger ownership changed during disposal')
+            process.kill();signalled.append(process.pid);process.wait(timeout=5)
     remaining=[]
     for _ in range(100):
         remaining=session_processes(process.pid)
         if not any(r['state'] not in ('Z','X') for r in remaining):break
         time.sleep(0.01)
-    return dict(reason=reason,launched_session=identity,before=before,remaining=remaining,no_executing_processes=not any(r['state'] not in ('Z','X') for r in remaining),native_cleanup_proven=False)
+    return dict(reason=reason,launched_session=identity,ownership_proven=(leader is not None or len(eligible)==len(before)),before=before,signalled=signalled,remaining=remaining,no_executing_processes=not any(r['state'] not in ('Z','X') for r in remaining),native_cleanup_proven=False)
+
 
 def run(host,env,work,timeout,directory,prepared,plan):
     """Called by the identity-gated runner, after its expected-profile gate."""
@@ -98,21 +106,31 @@ def run(host,env,work,timeout,directory,prepared,plan):
     command.write_text('\n'.join(lines)+'\n')
     child_env={k:v for k,v in os.environ.items() if not k.startswith(('C6_','LD_'))}
     transcript=directory/'transcript.txt'
-    process=None;identity=None;status={}
+    process=None;identity=None;status={};owned={}
     try:
         with transcript.open('x') as stream:
             process=subprocess.Popen(['gdb','-nx','-batch','-x',str(command),'--args',str(host)],cwd=work,env=child_env,stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
             identity=process_identity(process.pid);require(identity and identity['session']==process.pid,'debugger session not established')
             (directory/'supervisor.json').write_text(json.dumps(dict(launched=identity,host_executable=str(host)))+'\n')
-            try:process.wait(timeout=timeout)
+            deadline=time.monotonic()+timeout
+            try:
+                while True:
+                    current=process_identity(process.pid)
+                    if current is not None:
+                        require(all(current[k]==identity[k] for k in ('pid','starttime','session','exe')),'debugger session leader changed')
+                        for row in session_processes(process.pid):owned[(row['pid'],row['starttime'])]=row
+                    remaining=deadline-time.monotonic()
+                    if remaining<=0:raise subprocess.TimeoutExpired(process.args,timeout)
+                    try:process.wait(timeout=min(1.0,remaining));break
+                    except subprocess.TimeoutExpired:pass
             except subprocess.TimeoutExpired:
-                status=dispose_session(process,identity,'supervisor_timeout')
+                status=dispose_session(process,identity,'supervisor_timeout',owned.values())
                 (directory/'disposal.json').write_text(json.dumps(status,indent=2)+'\n')
                 return 124,'',transcript.read_text(errors='replace')
         status=json.loads((directory/'exit.json').read_text()) if (directory/'exit.json').exists() else {}
         alive=[row for row in session_processes(process.pid) if row['state'] not in ('Z','X')]
         if process.returncode!=0 or status.get('observer_failed',True) or alive:
-            disposal=dispose_session(process,identity,'debugger_failure_or_remaining_inferior')
+            disposal=dispose_session(process,identity,'debugger_failure_or_remaining_inferior',owned.values())
             (directory/'disposal.json').write_text(json.dumps(disposal,indent=2)+'\n')
         status.update(gdb_returncode=process.returncode,remaining_session_processes=session_processes(process.pid))
         (directory/'supervisor.json').write_text(json.dumps(dict(launched=identity,terminal=status),indent=2)+'\n')
@@ -121,7 +139,7 @@ def run(host,env,work,timeout,directory,prepared,plan):
         return code,'',transcript.read_text(errors='replace')
     except BaseException:
         if process is not None and identity is not None:
-            disposal=dispose_session(process,identity,'caller_exception')
+            disposal=dispose_session(process,identity,'caller_exception',owned.values())
             (directory/'disposal.json').write_text(json.dumps(disposal,indent=2)+'\n')
         raise
 

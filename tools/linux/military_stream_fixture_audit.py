@@ -8,6 +8,7 @@ import struct
 import subprocess
 import tempfile
 import sys
+from unittest.mock import patch
 from military_observer_runner import StreamLifetimes,marker_entry_gate,process_identity,dispose_session
 ROOT=Path(__file__).resolve().parents[2]
 BASELINE='cd4b227'
@@ -62,6 +63,14 @@ def negative_tests():
     require(child and child['session']==process.pid and child['pgrp']!=identity['pgrp'],'synthetic separate process group absent')
     status=dispose_session(process,identity,'synthetic_timeout_test');process.stdout.close()
     require(status['no_executing_processes'] and process.poll() is not None and status['native_cleanup_proven'] is False,'session disposal failed');count+=1
+    class OldProcess:
+        pid=12345
+    old=dict(pid=12345,starttime=1,session=12345,exe='/old/gdb',state='R')
+    reused=dict(old,starttime=99,exe='/unrelated/new-process')
+    outsider=dict(pid=54321,starttime=100,session=12345,exe='/unrelated/child',state='S')
+    with patch('military_observer_runner.process_identity',return_value=reused),patch('military_observer_runner.session_processes',return_value=[reused,outsider]),patch('military_observer_runner.os.kill') as killed:
+        result=dispose_session(OldProcess(),old,'reused-leader-negative')
+        require(not result['ownership_proven'] and not result['signalled'] and killed.call_count==0,'reused leader signalled unrelated process');count+=1
     return count
 
 def stop_api_guard(source):
