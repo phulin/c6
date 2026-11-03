@@ -12,6 +12,16 @@ from movement_cost_results import (digest, known_identity_projection, phases,
     raw_difference, read_corpus, runtime_provenance)
 
 ACCEPTED = '3d2b5681ba880fb62bcd18ab1edc959d2b4a5dacc8a74235ecd7a348052ec15e'
+EXPANDED_ACCEPTED = '08e003e7136412226b66aa96ffa17282c0966a4f4f575c920a1410bb51155575'
+EXPANDED_CHECKER = '9198a6e4a98a4bf3c6a271608be6ad9ce4c05cfbafd1ce721f59f6bb7a76d618'
+EXPANSION_REVISION = '3ad397d725732f70fee174e04bf15de8299d78ff'
+COVERAGE_REVISION = 'a6452032a7449b4737635b9ac8127ab215bee8af'
+EXPANSION_PINS = {
+    'evidence/linux/movement-expanded-corpus-review.json':
+        'b796545bcaacd8f048b187f6d922f03628013b6382b843a7daf754936cba2283',
+    'evidence/linux/movement-expanded-corpus-plan.json':
+        '5de1e208c853cf01b37dc37d488da9b3563397415eff10022b5ea4ae39d907b1'}
+HISTORICAL_REPORT = Path('evidence/linux/movement-cost-expanded-results.json')
 CANDIDATE_FLAGS = ['equal', 'initial_equal', 'final_accumulator_equal', 'no_zoc_equal',
                    'full_equal', 'formation_aggregate_equal']
 PINS = {
@@ -21,6 +31,34 @@ PINS = {
     'expanded_cost': ('55cddc3140ad426931c6966deb945c11f557b0d86909b1417387e0ace2776736',
         'b6cc9418ace0264a49cf11183082b5ee18bb2fc190db44f4d505911ddab1298f',
         '5d3a5d2b9572269693484dfc439738c25887b0b4599692cf0a477b9aad791767', 41164256)}
+
+
+def historical_document(revision, path, expected):
+    """Read exact reviewed bytes from Git, independently of evolving worktree files."""
+    content = subprocess.check_output(['git', 'show', f'{revision}:{path}'],
+                                      cwd=Path(__file__).resolve().parents[2])
+    require(hashlib.sha256(content).hexdigest() == expected,
+            'historical artifact differs: ' + path)
+    return json.loads(content)
+
+
+def historical_rejection_checks():
+    """Exercise hash and real changed-plan rejection without altering artifacts."""
+    path = 'evidence/linux/movement-expanded-corpus-plan.json'
+    results = {}
+    for name, revision, expected in [
+            ('wrong_literal_hash', EXPANSION_REVISION, '0' * 64),
+            ('coverage_revision_plan', COVERAGE_REVISION, EXPANSION_PINS[path])]:
+        try:
+            historical_document(revision, path, expected)
+        except ValueError as error:
+            require(str(error) == 'historical artifact differs: ' + path,
+                    'unexpected historical rejection')
+            results[name] = dict(revision=revision, expected_sha256=expected,
+                                 rejected=True, reason=str(error))
+        else:
+            raise ValueError('historical negative check accepted: ' + name)
+    return results
 
 
 def addresses(value):
@@ -59,8 +97,15 @@ def main():
         parser.add_argument('--expanded-' + kind, type=Path, default=BASE / ('native-expanded-' + kind + '-1'))
         parser.add_argument('--cache-' + kind, type=Path, default=BASE / ('native-cache-' + kind + '-1'))
     parser.add_argument('--private-candidate-output', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path('evidence/linux/movement-cost-expanded-results.json'))
+    parser.add_argument('--output', type=Path, default=Path('evidence/linux/movement-cost-expanded-replay.json'))
     args = parser.parse_args()
+    require(args.output.resolve() != HISTORICAL_REPORT.resolve(),
+            'historical accepted report is immutable; choose a replay output')
+    pin(HISTORICAL_REPORT, EXPANDED_ACCEPTED)
+    historical = load(HISTORICAL_REPORT)
+    require(historical['offline_checker_sha256'] == EXPANDED_CHECKER,
+            'historical checker identity differs')
+    negative_checks = historical_rejection_checks()
     pin(Path('tools/linux/movement_cost_cache_results.py'),
         '940d96999f78c15b4aa0ce52b68bbe2c6d664f77b6db889c6b89ae20d512635a')
     accepted_path = Path('evidence/linux/movement-cost-cache-results.json')
@@ -80,13 +125,11 @@ def main():
     for path, expected in accepted['reviewed_sources'].items():
         require(git_hash(accepted['reviewed_source_revision'], path) == expected, 'reviewed source differs: ' + path)
     require(git_hash(RUNNER_REVISION, 'tools/linux/mod_activation_probe.py') == RUNNER, 'runner revision differs')
-    plan_review_path = Path('evidence/linux/movement-expanded-corpus-review.json')
-    plan_path = Path('evidence/linux/movement-expanded-corpus-plan.json')
-    plan_pins = {}
-    for path in [plan_review_path, plan_path]:
-        expected = git_hash('3ad397d725732f70fee174e04bf15de8299d78ff', str(path))
-        pin(path, expected)
-        plan_pins[str(path)] = expected
+    plan_pins = dict(EXPANSION_PINS)
+    historical_documents = {path: historical_document(EXPANSION_REVISION, path, expected)
+                            for path, expected in plan_pins.items()}
+    require(all(isinstance(value, dict) for value in historical_documents.values()),
+            'historical expansion documents must be objects')
     frozen = Path('target/frozen/movement-cost-probe')
     candidate = frozen / CANDIDATE / 'candidate'
     manifest_path = frozen / CANDIDATE / 'source-manifest.json'
@@ -196,6 +239,17 @@ def main():
         complete_rng_inventory=False, full_movement_parity=False,
         scope='Closed expanded unit-reachable query arithmetic and retained-state observations only; no legality, actions, full state, full RNG, turns or native query speed acceptance. Coverage classification is separate.',
         save_load_89198_byte_failure='Separate unresolved raw Save-to-Load failure; no unknown bytes masked or excluded.')
+    parity = {key: value for key, value in report.items() if key != 'offline_checker_sha256'}
+    accepted_parity = {key: value for key, value in historical.items() if key != 'offline_checker_sha256'}
+    require(parity == accepted_parity, 'replay parity/provenance differs from historical acceptance')
+    report.update(schema='c6-linux-movement-cost-expanded-replay-v1',
+        historical_acceptance=dict(path=str(HISTORICAL_REPORT), sha256=EXPANDED_ACCEPTED,
+            offline_checker_sha256=EXPANDED_CHECKER, schema=historical['schema']),
+        historical_expansion_documents=dict(revision=EXPANSION_REVISION,
+            sha256=plan_pins, retrieval='git show revision:path; literal SHA-256 checked before JSON parsing'),
+        historical_parity_fields_equal=True,
+        historical_parity_fields_compared=sorted(accepted_parity),
+        historical_negative_checks=negative_checks)
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(dict(output=str(args.output), cases=7461, phases=67149, candidate_rows=7461, raw_pairs=24)))
 
