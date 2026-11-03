@@ -1,0 +1,366 @@
+{
+  "schema": "c6-linux-turn-completion-kernel-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "required_future_host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "methods": [
+    {
+      "address": "0x2d27b00",
+      "size": 59,
+      "name": "GameCore::Messages::PlayerTurnComplete::PlayerTurnComplete(GameCore::PlayerTypes, GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "0e698736920e9586a00af92ae746ffcca314229b18423747ea4f01faf000ce48"
+    },
+    {
+      "address": "0x2d28000",
+      "size": 41,
+      "name": "GameCore::Messages::PlayerTurnComplete::PutInBufferBody(Serialization::OStream&) const",
+      "sha256": "66c07ba2214ee0e4363af0e501e28dfade3712a05729c56d2132047628db747c"
+    },
+    {
+      "address": "0x2d28030",
+      "size": 41,
+      "name": "GameCore::Messages::PlayerTurnComplete::SetFromBufferBody(Serialization::IStream&)",
+      "sha256": "b86fc1fdd8106bc8e5568e7335f572ec3c092629fed329678acbc332094d878a"
+    },
+    {
+      "address": "0x2d27b50",
+      "size": 1190,
+      "name": "GameCore::Messages::PlayerTurnComplete::Execute() const",
+      "sha256": "695d8e7b98876bc8582a8778c2fe4372fd5b0cca6420ba40041994121d9b84fa"
+    },
+    {
+      "address": "0x2d28130",
+      "size": 3,
+      "name": "GameCore::Messages::PlayerTurnComplete::GetUnreadiesTurn() const",
+      "sha256": "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+    },
+    {
+      "address": "0x2b5b840",
+      "size": 130,
+      "name": "GameCore::Player::Processor::SetTurnComplete(GameCore::Player::Instance&, bool, GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "bf6e10c8a7a8fb2f77f4ca269a1b80a28aef56140b0c42eae3f8db1bd59bf6fc"
+    },
+    {
+      "address": "0x2ba17b0",
+      "size": 22,
+      "name": "GameCore::Player::TurnManager::DoSetTurnComplete(GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "adfce5a688d5d22da5aeb9fe66d7e4e7e2b0f22692e796e1a399da8a0f9b827f"
+    },
+    {
+      "address": "0x2a5b640",
+      "size": 51,
+      "name": "GameCore::Player::Cities::DoSetTurnComplete(GameCore::Events::TurnRequest::RequestSubTypes)",
+      "sha256": "d6ee12cd3bba79040e5914ca82a066475c9435a602168376a04fc2eda01052e6"
+    },
+    {
+      "address": "0x2a5b570",
+      "size": 195,
+      "name": "GameCore::Player::Cities::RemoveUnassignedProductionOverflow()",
+      "sha256": "4846d8d97a3029fa5cb57f36b1ce74e27ac5a2cdfb53ddbeda44e1b0c68ee151"
+    },
+    {
+      "address": "0x2850fc0",
+      "size": 14,
+      "name": "GameCore::City::BuildQueue::ClearOverflow()",
+      "sha256": "1ff881b344b791b64935ad8275bf140397c280331ab8112c93d32d332484a7af"
+    },
+    {
+      "address": "0x2661ba0",
+      "size": 17,
+      "name": "GameCore::Game::Instance::Update()",
+      "sha256": "e9d50e09f9c4183d872ce51adfb4b35db4aaad7ed99d28f150eaa004fe74e6cc"
+    },
+    {
+      "address": "0x299e450",
+      "size": 8,
+      "name": "Player.EditTurnManager",
+      "sha256": "180ed9bda300816a5b82f1b549d7ec97314d5197a1e4755b145c5ff39231c499"
+    },
+    {
+      "address": "0x20a8cb0",
+      "size": 8,
+      "name": "Player.EditCities",
+      "sha256": "91d1746a30132ffc2968016e3adacc19f461ee24a3c0510f47bea2428acc1e04"
+    },
+    {
+      "address": "0x1fe4890",
+      "size": 12,
+      "name": "City.EditBuildQueue",
+      "sha256": "3d5c3e93320fdc74310d1c2945a3e4c3b0d74a16d7b2f77477e476bd74013d32"
+    },
+    {
+      "address": "0x1fe5090",
+      "size": 15,
+      "name": "BuildQueue.Front const",
+      "sha256": "b940fc6e45643749cdd6b825dec4dfc33d24f275379e2fac270358c637d9406b"
+    },
+    {
+      "address": "0x1fe6b80",
+      "size": 4,
+      "name": "BuildQueue.GetQueue const",
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21"
+    },
+    {
+      "address": "0x1fe71d0",
+      "size": 27,
+      "name": "Queue.Front const",
+      "sha256": "79980c47d2ab7952bb82adb23e27d0d63269bc5dc9445c535493a49490ed910a"
+    },
+    {
+      "address": "0x1fcdc10",
+      "size": 9,
+      "name": "FixedPoint8.assign_int",
+      "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f"
+    }
+  ],
+  "resolved_edges": [
+    {
+      "address": "0x2d27b82",
+      "plt": "0x1e87800",
+      "got": "0x3b66ae8",
+      "target": "0x2b31530",
+      "name": "GameCore::Player::Instance::IsHuman() const"
+    },
+    {
+      "address": "0x2d27b92",
+      "plt": "0x1e119f0",
+      "got": "0x3b2bbe0",
+      "target": "0x281b720",
+      "name": "GameCore::Game::Instance::IsPaused() const"
+    },
+    {
+      "address": "0x2d27cfb",
+      "plt": "0x1ed47e0",
+      "got": "0x3b8d2d8",
+      "target": "0x2b5bb60",
+      "name": "GameCore::Player::Processor::IsTurnComplete(GameCore::Player::Instance const&)"
+    },
+    {
+      "address": "0x2d27e82",
+      "plt": "0x1e61790",
+      "got": "0x3b53ab0",
+      "target": "0x2b5b840",
+      "name": "GameCore::Player::Processor::SetTurnComplete(GameCore::Player::Instance&, bool, GameCore::Events::TurnRequest::RequestSubTypes)"
+    },
+    {
+      "address": "0x2d27e8f",
+      "plt": "0x1f906b0",
+      "got": "0x3beb240",
+      "target": "0x2661ba0",
+      "name": "GameCore::Game::Instance::Update()"
+    },
+    {
+      "address": "0x2d27fe0",
+      "plt": "0x1ef4490",
+      "got": "0x3b9d130",
+      "target": "0x2d49ec0",
+      "name": "GameCore::Reporting::Event::Send(GameCore::Reporting::Event::Type, int)"
+    },
+    {
+      "address": "0x2b5b885",
+      "plt": "0x1f59220",
+      "got": "0x3bcf7f8",
+      "target": "0x2004fc0",
+      "name": "GameCore::Player::Manager::IsValid(GameCore::PlayerTypes) const"
+    },
+    {
+      "address": "0x2b5b891",
+      "plt": "0x1fb6350",
+      "got": "0x3bfe090",
+      "target": "0x2003cb0",
+      "name": "GameCore::Player::Instance::IsAlive() const"
+    },
+    {
+      "address": "0x2b5b8a8",
+      "plt": "0x1e23200",
+      "got": "0x3b347e8",
+      "target": "0x2ba17b0",
+      "name": "GameCore::Player::TurnManager::DoSetTurnComplete(GameCore::Events::TurnRequest::RequestSubTypes)"
+    },
+    {
+      "address": "0x2661ba1",
+      "plt": "0x1e0c3e0",
+      "got": "0x3b290d8",
+      "target": "0x2a0cb70",
+      "name": "GameCore::Game::Processor::Update()"
+    },
+    {
+      "address": "0x2661ba6",
+      "plt": "0x1f2e780",
+      "got": "0x3bba2a8",
+      "target": "0x2913510",
+      "name": "GameCore::Diplomacy::Manager::ProcessPending()"
+    },
+    {
+      "address": "0x2b5b89d",
+      "plt": "0x1eebb70",
+      "got": "0x3b98ca0",
+      "target": "0x299e450",
+      "name": "requested player EditTurnManager"
+    },
+    {
+      "address": "0x2ba17b6",
+      "plt": "0x1f4d190",
+      "got": "0x3bc97b0",
+      "target": "0x20a8cb0",
+      "name": "turn manager owner EditCities"
+    },
+    {
+      "address": "0x2ba17c1",
+      "plt": "0x1e92810",
+      "got": "0x3b6c2f0",
+      "target": "0x2a5b640",
+      "name": "cities completion hook"
+    },
+    {
+      "address": "0x2a5b66c",
+      "plt": "0x1eef330",
+      "got": "0x3b9a880",
+      "target": "0x2a5b570",
+      "name": "human forced/timer city overflow"
+    },
+    {
+      "address": "0x2a5b5e8",
+      "plt": "0x1f1d650",
+      "got": "0x3bb1a10",
+      "target": "0x1fe5090",
+      "name": "city queue Front"
+    },
+    {
+      "address": "0x2a5b5f5",
+      "plt": "0x1eace90",
+      "got": "0x3b79630",
+      "target": "0x1fe4890",
+      "name": "city EditBuildQueue archive boundary"
+    },
+    {
+      "address": "0x2a5b5fd",
+      "plt": "0x1ecb3e0",
+      "got": "0x3b888d8",
+      "target": "0x2850fc0",
+      "name": "clear overflow"
+    },
+    {
+      "address": "0x2850fc9",
+      "plt": "0x1f3afa0",
+      "got": "0x3bc06b8",
+      "target": "0x1fcdc10",
+      "name": "fixed point zero assignment"
+    },
+    {
+      "address": "0x1fe5091",
+      "plt": "0x1e34ee0",
+      "got": "0x3b3d658",
+      "target": "0x1fe6b80",
+      "name": "Front GetQueue"
+    },
+    {
+      "address": "0x1fe509a",
+      "plt": "0x1e57460",
+      "got": "0x3b4e918",
+      "target": "0x1fe71d0",
+      "name": "Front queue delegate"
+    },
+    {
+      "address": "0x2d27e97",
+      "plt": "0x1e317a0",
+      "got": "0x3b3bab8",
+      "target": "0x2021030",
+      "name": "same player active reread"
+    },
+    {
+      "address": "0x2d27ebc",
+      "plt": "0x1f906b0",
+      "got": "0x3beb240",
+      "target": "0x2661ba0",
+      "name": "second Game.Update tail transfer"
+    }
+  ],
+  "branch_contracts": [
+    {
+      "address": "0x2d27b11",
+      "name": "PlayerTurnComplete_message_key"
+    },
+    {
+      "address": "0x2d28130",
+      "name": "completion_does_not_unready_turn"
+    },
+    {
+      "address": "0x2d27b63",
+      "name": "unsigned_player_range_rejection"
+    },
+    {
+      "address": "0x2d27b87",
+      "name": "nonhuman_skips_pause_rejection"
+    },
+    {
+      "address": "0x2d27b97",
+      "name": "unpaused_continues_to_complete_check"
+    },
+    {
+      "address": "0x2d27d00",
+      "name": "not_complete_advances"
+    },
+    {
+      "address": "0x2d27fc7",
+      "name": "paused_human_ignored_report"
+    },
+    {
+      "address": "0x2b5b863",
+      "name": "write_complete_then_false_skips_hooks"
+    },
+    {
+      "address": "0x2b5b88e",
+      "name": "alive_predicate_uses_same_requested_player"
+    },
+    {
+      "address": "0x2b5b89a",
+      "name": "turn_manager_uses_same_requested_player"
+    },
+    {
+      "address": "0x2b5b8ad",
+      "name": "repeat_per_valid_slot_0_through_63"
+    },
+    {
+      "address": "0x2a5b644",
+      "name": "only_forced_or_timer_city_overflow_path"
+    }
+  ],
+  "global_completion_array": {
+    "address": "0x3c06210",
+    "length": 64,
+    "element": "bool",
+    "owner": "Player::ms_abIsTurnComplete; not serialized Player field"
+  },
+  "source_sha256": {
+    "crates/c6-core/src/turn_completion.rs": "8ac742ed5c6256e4cd1728d6bf10fdeb1ec9ed629dcf1e53baddf8a85532abb5",
+    "tools/linux/turn_completion_kernel_audit.py": "55a3c48bcb4192fee2a6ecccbea19304b40889d4abb9ce19a5e906563eb64909",
+    "docs/linux-turn-completion-kernel.md": "38fe5cad4d4448c68ddb92c19bc9412aed2121cbf72d7bff53c30c64f80248e0"
+  },
+  "implementation": {
+    "prefix": "unsigned encoded range; paused human log/report; duplicate log; setter; required Update",
+    "setter": "write global bool; true loops all 64 numeric valid slots, rereading requested player alive and invoking same requested hook",
+    "forced_timer": "human reread per hook; recycled city cursor/end rereads; typed BuildQueue entries/overflow",
+    "archive": "mandatory edit_build_queue provider; exact archive/dirty effects remain unimplemented",
+    "continuation": "mandatory first complete Game.Update, then same-player active reread, optional second complete Game.Update",
+    "effect_providers": "no no-op defaults; errors may follow internal mutation",
+    "public_Engine_apply": "unchanged; must reject before mutation"
+  },
+  "native_execution": false,
+  "native_differential_fixture_available": false,
+  "acceptance": {
+    "full_action_acceptance": 0,
+    "affected_state_parity": false,
+    "gameplay_rng_parity": false,
+    "next_external_decision_boundary_proven": false,
+    "full_gameplay_state_action_turn_supported": false
+  },
+  "remaining": [
+    "exact reporting/log service effects and subscribers",
+    "City FAutoVariable edit archive/dirty ownership",
+    "full mandatory Game.Update and nested exact rules/upkeep",
+    "all external player decisions, including NPC/offturn/diplomacy/automation",
+    "complete logical state and gameplay RNG",
+    "unclassified/unmasked raw Save->Load 89,198-byte failure"
+  ]
+}
