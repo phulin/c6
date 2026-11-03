@@ -74,6 +74,10 @@ def main():
     action_modes.add_argument('--core-component',action='store_true')
     action_modes.add_argument('--movement-cost-control',action='store_true')
     action_modes.add_argument('--movement-cost',action='store_true')
+    action_modes.add_argument('--domain-metadata',action='store_true')
+    parser.add_argument('--domain-metadata-reconstruction-manifest',type=Path)
+    for label in ('output','before','control-save','after','repeat'):
+        parser.add_argument('--domain-metadata-'+label,type=Path)
     for label in ('output','before','control-save','after','repeat'):
         parser.add_argument('--movement-cost-'+label,type=Path)
     parser.add_argument('--movement-cost-max-formations',type=int,default=256)
@@ -173,6 +177,20 @@ def main():
         if len(set(movement_paths.values()))!=5:parser.error('movement artifact paths must be distinct')
     elif any(getattr(args,'movement_cost_'+label) for label in ('output','before','control_save','after','repeat')):
         parser.error('movement artifact paths require a movement mode')
+    domain_paths={}
+    if args.domain_metadata:
+        if not game_input or not args.prepare_main_thread or not args.cleanup or not args.domain_metadata_reconstruction_manifest or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('domain metadata requires a separate prepared-main-thread loaded Core cleanup fixture and frozen reconstruction manifest')
+        args.game_load_observe=True
+        for label in ('output','before','control_save','after','repeat'):
+            path=getattr(args,'domain_metadata_'+label)
+            if path is None:parser.error('domain metadata requires output and all four snapshot paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('domain metadata artifacts must be fresh private files')
+            domain_paths[label]=path
+        if len(set(domain_paths.values()))!=5:parser.error('domain metadata artifact paths must be distinct')
+    elif args.domain_metadata_reconstruction_manifest or any(getattr(args,'domain_metadata_'+label) for label in ('output','before','control_save','after','repeat')):
+        parser.error('domain metadata paths require the separate domain mode')
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -201,8 +219,8 @@ def main():
         if len(set(action_snapshots.values()))!=3:parser.error('action snapshot paths must be distinct')
     elif args.action_snapshot_before or args.action_snapshot_after or args.action_snapshot_repeat:
         parser.error('action snapshots require an explicit Skip Turn control/execute mode')
-    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode:
-        if (not args.action_observe and not core_mode and not movement_mode) or args.action_execution_observe or not action_trace:
+    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata:
+        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata) or args.action_execution_observe or not action_trace:
             parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
         if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
@@ -250,6 +268,7 @@ def main():
         if set(random_paths.values())&set(game_outputs.values()):parser.error('random damage and outer Save paths must be distinct')
         if set(core_paths.values())&set(game_outputs.values()):parser.error('Core component and outer Save paths must be distinct')
         if set(movement_paths.values())&set(game_outputs.values()):parser.error('movement and outer Save paths must be distinct')
+        if set(domain_paths.values())&set(game_outputs.values()):parser.error('domain metadata and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
     snapshot=args.rules_snapshot_dir.resolve() if args.rules_snapshot_dir else None
@@ -296,7 +315,7 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode:
+    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/action_event_audit.py',ROOT/'evidence/linux/action-event-abi.json',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -305,7 +324,7 @@ def main():
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode:
+    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata:
         for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -374,7 +393,7 @@ def main():
         movement_audit_paths=[ROOT/'tools/linux/movement_probe_audit.py',ROOT/('evidence/linux/movement-cost-probe-xp2-contract.json' if args.movement_cost_xp2_map else 'evidence/linux/movement-cost-probe-diagnostic-contract.json' if args.movement_cost_diagnostic else 'evidence/linux/movement-cost-probe-contract.json'),ROOT/'tools/linux/game_load_state_audit.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
         admission_audit=ROOT/'tools/linux/oracle_admission_cache_audit.py'
         admission_contract=json.loads(subprocess.check_output([sys.executable,str(admission_audit)],cwd=ROOT,text=True))
-        movement_audit_paths.append(admission_audit)
+        movement_audit_paths.extend([admission_audit,ROOT/'tools/linux/domain_metadata_fixture_audit.py'])
         movement_contract=json.loads(movement_audit_paths[1].read_text())
         for name,sha in movement_contract['sources'].items():
             if digest(ROOT/name)!=sha:raise SystemExit('movement source identity mismatch: '+name)
@@ -418,6 +437,27 @@ def main():
         committed_bootstrap=subprocess.check_output(['git','show',bootstrap_commit+':'+bootstrap_source],cwd=ROOT)
         if hashlib.sha256(committed_bootstrap).hexdigest()!=bootstrap_sha or digest(ROOT/bootstrap_source)!=bootstrap_sha:raise SystemExit('movement committed localization bridge differs from accepted source')
         movement_profile={'admission_binding_cache':{'revision':'movement-scope-immutable-bindings-v1','audit':admission_contract,'native_acceptance_pending':True},'mode':movement_mode,'admission_diagnostic':args.movement_cost_diagnostic,'xp2_map_revision':args.movement_cost_xp2_map,'max_formations':args.movement_cost_max_formations,'query_options':0,'actual_move_options_available':False,'contract':movement_contract,'frozen_artifacts':frozen,'candidate_frozen_before_original_execution':True,'candidate_source_manifest':{'path':str(candidate_manifest_path.relative_to(ROOT)),'sha256':digest(candidate_manifest_path),'source_reference_commit':candidate_source_commit},'bootstrap_source':{'path':bootstrap_source,'sha256':bootstrap_sha,'commit':bootstrap_commit,'accepted_native_configuration':'b6ca58d53073abc2afa9176a4ceba350fafe3f91ba12dbf84fd08e25a3be9a5b'},'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'quiescence':'original controller/context idle plus acquired/released native Game facade lock barrier; unknown/work fatal before poststate/teardown'}
+    domain_profile=None
+    domain_audit_paths=[]
+    if args.domain_metadata:
+        domain_audit_paths=[ROOT/'tools/linux/domain_metadata_audit.py',ROOT/'evidence/linux/domain-metadata-query-contracts.json',ROOT/'tools/linux/domain_metadata_fixture_audit.py',ROOT/'evidence/linux/domain-metadata-fixture-contract.json']
+        with tempfile.TemporaryDirectory(prefix='domain-metadata-audit-') as temporary:
+            target=Path(temporary)/'contract.json'
+            subprocess.run([sys.executable,str(domain_audit_paths[0]),'--module',str(assets/'libGameCore_XP2.so'),'--output',str(target)],check=True,capture_output=True,text=True)
+            domain_contract=json.loads(target.read_text())
+        if domain_contract!=json.loads(domain_audit_paths[1].read_text()):raise SystemExit('domain native contracts differ')
+        fixture_contract=json.loads(subprocess.check_output([sys.executable,str(domain_audit_paths[2])],cwd=ROOT,text=True))
+        if fixture_contract!=json.loads(domain_audit_paths[3].read_text()):raise SystemExit('domain fixture source contract differs')
+        manifest_path=args.domain_metadata_reconstruction_manifest.resolve()
+        manifest=json.loads(manifest_path.read_text())
+        if manifest['schema']!='c6-linux-domain-reconstruction-candidate-v1' or manifest['expected_outputs_used_as_inputs'] is not False or manifest['native_execution'] is not False or manifest['native_comparison'] is not False:raise SystemExit('domain reconstruction candidate boundary differs')
+        candidate=ROOT/manifest['candidate_path'];snapshot=ROOT/manifest['source_snapshot_path']
+        if digest(candidate)!=manifest['candidate_sha256'] or candidate.stat().st_size!=manifest['candidate_bytes']:raise SystemExit('domain reconstruction executable differs')
+        if digest(snapshot)!=manifest['source_snapshot_sha256'] or snapshot.stat().st_size!=manifest['source_snapshot_bytes']:raise SystemExit('domain reconstruction source archive differs')
+        for name,sha in manifest['sources'].items():
+            committed=subprocess.check_output(['git','show',manifest['source_commit']+':'+name],cwd=ROOT)
+            if hashlib.sha256(committed).hexdigest()!=sha:raise SystemExit('domain reconstruction committed source differs: '+name)
+        domain_profile={'mode':'read_only_domain_metadata','contract':domain_contract,'fixture_contract':fixture_contract,'reconstruction_manifest':manifest,'reconstruction_manifest_sha256':digest(manifest_path),'expected_outputs_used_as_inputs':False,'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'complete_rng_inventory':False,'native_acceptance_pending':True}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
@@ -472,11 +512,11 @@ def main():
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
-    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode else []
+    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode else []
-    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
@@ -484,6 +524,7 @@ def main():
     random_sources=[ROOT/'native/linux/combat_random.c'] if random_input else []
     core_sources=[ROOT/'native/linux/core_component.c'] if core_mode else []
     movement_sources=[ROOT/'native/linux/movement_cost.c'] if movement_mode else []
+    domain_sources=[ROOT/'native/linux/domain_metadata.c',ROOT/'native/linux/domain_metadata_fixture.c'] if args.domain_metadata else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -524,6 +565,7 @@ def main():
               'lower_core_average_damage_kernel':combat_profile,
               'lower_core_random_damage_kernel':random_profile,
               'lower_core_movement_cost':movement_profile,
+              'lower_core_domain_metadata':domain_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -563,6 +605,8 @@ def main():
         identity['sources'].update({name:digest(ROOT/name) for name in random_manifest['source_sha256']})
     if movement_sources:
         identity['sources'].update(movement_contract['sources'])
+    if domain_sources:
+        identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*domain_sources,ROOT/'native/linux/domain_metadata.h',ROOT/'native/linux/domain_metadata_fixture.h']})
     if core_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
@@ -573,14 +617,14 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*domain_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     if movement_profile:movement_profile['integrated_preload_sha256']=identity['preload_sha256']
     archived_preload=None
@@ -591,6 +635,12 @@ def main():
         archived_preload=movement_paths['output'].parent/'movement-cost-preload.so'
         if archived_preload.exists():
             if digest(archived_preload)!=digest(preload):raise SystemExit('movement immutable preload differs')
+        else:
+            with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
+    if args.domain_metadata:
+        archived_preload=domain_paths['output'].parent/'domain-metadata-preload.so'
+        if archived_preload.exists():
+            if digest(archived_preload)!=digest(preload):raise SystemExit('domain immutable preload differs')
         else:
             with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
@@ -635,6 +685,8 @@ def main():
         if random_input:env.update(C6_COMBAT_RANDOM_INPUT=str(random_input),C6_COMBAT_RANDOM_OUTPUT=str(random_paths['output']),C6_COMBAT_RANDOM_CONTROL_SAVE=str(random_paths['control_save']),C6_COMBAT_RANDOM_POST_SAVE=str(random_paths['post_save']))
         if movement_mode:
             env.update(C6_MOVEMENT_COST_MODE=movement_mode,C6_MOVEMENT_COST_EXECUTE='1' if movement_mode=='execute' else '0',C6_MOVEMENT_COST_MAX_FORMATIONS=str(args.movement_cost_max_formations),C6_MOVEMENT_COST_OUTPUT=str(movement_paths['output']),C6_MOVEMENT_COST_SNAPSHOT_BEFORE=str(movement_paths['before']),C6_MOVEMENT_COST_SNAPSHOT_CONTROL=str(movement_paths['control_save']),C6_MOVEMENT_COST_SNAPSHOT_AFTER=str(movement_paths['after']),C6_MOVEMENT_COST_SNAPSHOT_REPEAT=str(movement_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
+        if args.domain_metadata:
+            env.update(C6_DOMAIN_METADATA_OUTPUT=str(domain_paths['output']),C6_DOMAIN_METADATA_SNAPSHOT_BEFORE=str(domain_paths['before']),C6_DOMAIN_METADATA_SNAPSHOT_CONTROL=str(domain_paths['control_save']),C6_DOMAIN_METADATA_SNAPSHOT_AFTER=str(domain_paths['after']),C6_DOMAIN_METADATA_SNAPSHOT_REPEAT=str(domain_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
@@ -667,8 +719,9 @@ def main():
         timing_change={'schema':'c6-movement-cost-supervisor-only-change-v1','baseline_runtime_sha256':digest(baseline_path),'baseline_configuration_sha256':prior_hash,'configuration_sha256':configuration_identity,'allowed_changed_keys':sorted(changed),'native_source_helper_preload_candidate_inputs_identical':True,'previous_timeout_seconds':180,'timeout_seconds':900,'full_case_count_from_control':1536,'max_formations':args.movement_cost_max_formations,'quiescence_checks_weakened':False,'partial_run_accepted':False}
         (movement_paths['output'].parent/'supervisor-timing-change.json').write_text(json.dumps(timing_change,indent=2)+'\n')
     if movement_mode:env['C6_MOVEMENT_COST_PROFILE_SHA256']=configuration_identity
+    if args.domain_metadata:env['C6_DOMAIN_METADATA_PROFILE_SHA256']=configuration_identity
     if args.prepare_only:
-        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
+        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
         print(json.dumps({'output':str(args.output),'prepared_only':True,'native_execution_performed':False,'configuration_sha256':configuration_identity}))
         return
     try:
@@ -726,6 +779,16 @@ def main():
                 artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
                 if label=='output':report['movement_cost_output']=artifact
                 else:report['movement_cost_saves']['control' if label=='control_save' else label]=artifact
+    report['domain_metadata_output']=None
+    report['domain_metadata_saves']={}
+    if args.domain_metadata:
+        report['execution_paths']['domain_metadata']={k:str(v) for k,v in domain_paths.items()}
+        report['execution_paths']['preload']=str(archived_preload)
+        for label,path in domain_paths.items():
+            if path.is_file():
+                artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
+                if label=='output':report['domain_metadata_output']=artifact
+                else:report['domain_metadata_saves']['control' if label=='control_save' else label]=artifact
     report['combat_random_output']=None
     report['combat_random_saves']={}
     if random_input:

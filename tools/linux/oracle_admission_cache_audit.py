@@ -25,11 +25,23 @@ def main():
     assert re.findall(binding, before) == re.findall(binding, after), 'binding identities/order differ'
     assert len(re.findall(binding, after)) == 12
     marker = 'static int observe_loaded_state('
-    assert before.split(marker, 1)[1] == after.split(marker, 1)[1], 'other game-load behavior differs'
+    domain_branch='''        if(!result && getenv("C6_DOMAIN_METADATA_OUTPUT")) {
+            int (*metadata)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_domain_metadata");
+            if(!metadata){
+                fprintf(stderr,"C6_LINUX_DOMAIN_METADATA_LIFECYCLE fatal missing_lifecycle process_discarded 1\\n");
+                fflush(stderr);_exit(184);
+            }
+            result=metadata(game,context);
+        } else '''
+    # Remove only the exact new mutually exclusive profile dispatch.
+    assert after.count(domain_branch)==1
+    projected_after=after.replace(domain_branch,'        ',1)
+    assert before.split(marker, 1)[1] == projected_after.split(marker, 1)[1], 'other game-load behavior differs'
     owner = before.split('    Dl_info info={0};', 1)[1].split('    uintptr_t base=', 1)[0]
     assert owner in after, 'per-call original owner validation removed'
     assert 'b->vptr!=*(void **)context||b->base!=info.dli_fbase' in after
-    lifecycle = (ROOT / 'native/linux/action_lifecycle.c').read_text()
+    from domain_metadata_fixture_audit import project_lifecycle
+    lifecycle = project_lifecycle((ROOT / 'native/linux/action_lifecycle.c').read_text())
     old_lifecycle = original('native/linux/action_lifecycle.c')
     start = '            int (*quiescent)(void *,void *)='
     end = '        } else {\n            result=c6_linux_action_execution'
