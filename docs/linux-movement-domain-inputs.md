@@ -27,6 +27,11 @@ definition order/hashes to the new Rust driver. Native presence, ID, type,
 completion and coordinate fields are expected answers only. The source and new
 candidate hashes are in the [report](../evidence/linux/movement-domain-inputs.json).
 The frozen world candidate `63d15a41…`, arithmetic and native helpers are unchanged.
+The checked new candidate `450ba286…` was built offline from a clean `git archive`
+of committed source `d852a50` in `/tmp/c6-movement-domain-d852a50`, independently of
+the shared checkout. The exact isolated source passes `cargo test -p c6-data`
+(14 passed, four explicitly fixture-dependent tests ignored) and
+`cargo clippy -p c6-data --all-targets -- -D warnings`.
 
 Player validity is still an independent input to general `city_district::Registry`
 construction. Each positive native lookup in this comparison proves validity for
