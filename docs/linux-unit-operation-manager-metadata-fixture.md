@@ -1,6 +1,6 @@
 # Linux UnitOperation Manager raw metadata fixture
 
-This is a new preparation profile. It has no original native comparison or FullManager acceptance yet. Complete state, action execution and turns remain unsupported.
+The first bounded raw metadata capture completed with native exit 0. Rust reconstruction comparison is pending; FullManager acceptance remains absent. Complete state, action execution and turns remain unsupported.
 
 The caller owns `unit_operation_manager_metadata_fixture.[ch]`, the independent lifecycle enum, loader branch and runner mode. The helper owns `unit_operation_manager_metadata.[ch]`. The fixture calls only that raw metadata helper, twice; it does not call FullManager, handler predicates, script callbacks, requests or turn completion.
 
@@ -13,3 +13,5 @@ The runner mode is `--unit-operation-manager-metadata`, with a separately frozen
 The candidate manifest schema is `c6-linux-unit-operation-manager-candidate-v1`. It records exact executable/source-archive bytes, one committed source revision and complete source hashes. No native expected output may be used as candidate input. Live disabled IndexLists are reconstruction targets, not reconstruction inputs. Actual phase/control facts are inputs, not desired predicate answers. Script-system availability is an observation; it does not establish absence of registrations or effects.
 
 Before original execution, preparation must freeze the corrected helper audit, caller fixture audit, loader/runner/source identities, candidate/archive, target/host/dependencies, rules/DLC/configuration and canonical stream. Independent integrated review is required. No prepared profile has been accepted by this document.
+
+The [first capture control summary](../evidence/linux/unit-operation-manager-native-capture-1.json) records the exact prepared profile, two identical complete raw passes, all 65 Player slots / 43 Players / 1,262 Units, 63 operation definitions and four actual ordered phase slots. All six full Core Saves match canonical `ff31` byte for byte, both known RNG objects are unchanged and original teardown completed. ScriptSystem is present; registrations and effects remain unresolved. This is raw-input capture evidence, not FullManager, action, complete-state/RNG or turn parity.

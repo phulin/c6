@@ -1,0 +1,144 @@
+{
+  "schema": "c6-linux-unit-operation-manager-native-capture-v1",
+  "native_capture_complete": true,
+  "capture_profile_sha256": "aa38b5edfe6f4c5ffc8fc25d079e9739ab7e3d75d3998c723dbbdaece5e08aff",
+  "runtime": {
+    "filename": "runtime.json",
+    "bytes": 468980,
+    "sha256": "5b68cfff7a3c88033694df0ef5f882a43dc780700e5ca4b194e312ca115b3740"
+  },
+  "prepared": {
+    "filename": "prepared.json",
+    "bytes": 329155,
+    "sha256": "87f3d32b10a7edc2af76bf317b2acf8187692e811b9c24edee9d430df0e061ab"
+  },
+  "configuration_file": {
+    "filename": "configuration.json",
+    "bytes": 317585,
+    "sha256": "6b34093bbf7b7407972758daeba9e7d2f2885472a48cd6ba7097a1d2d2b78cdf"
+  },
+  "preload_sha256": "ca4a1212111b0bcd3bd708bd4c6d9c3f2ec7f6ff59ccf732ea33996e68f79e5f",
+  "source_gate_count": 60,
+  "helper_source_commit": "dd8be9d",
+  "integration_source_commit": "cb01f89",
+  "preparation_review_commit": "99efc91",
+  "pre_answer_checker_commit": "eb2bed4",
+  "pre_answer_checker_review_commit": "b1cb827",
+  "candidate_manifest_sha256": "348ee77d2d1ea9c8eaaf74d1a5abc5e1228baca16bee8536b2fc56ad2604f186",
+  "candidate_sha256": "50e8dd19447b4b67f4bccce21737862ee83119084b50de9a4214c5156495ba49",
+  "source_preimages_archived": true,
+  "returncode": 0,
+  "raw_passes": [
+    {
+      "filename": "facts.jsonl",
+      "bytes": 436350,
+      "sha256": "3fd5b6e64b5f81e06fc06187b9dae53691ddb536a6fc0b03f6f728d759dea585"
+    },
+    {
+      "filename": "facts-repeat.jsonl",
+      "bytes": 436350,
+      "sha256": "3fd5b6e64b5f81e06fc06187b9dae53691ddb536a6fc0b03f6f728d759dea585"
+    }
+  ],
+  "raw_passes_byte_identical": true,
+  "record_counts": {
+    "profile": 1,
+    "configuration": 1,
+    "phases": 1,
+    "operation_definitions": 1,
+    "player_slot": 65,
+    "player": 43,
+    "unit_disabled": 1262,
+    "roster_summary": 1,
+    "globals": 1,
+    "complete": 1
+  },
+  "operation_definitions": 63,
+  "handler_registry_slots": 63,
+  "ordered_phase_slots": 4,
+  "full_core_saves": [
+    {
+      "filename": "before.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "filename": "control.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "filename": "after.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "filename": "after-repeat.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "filename": "save.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "filename": "repeat.bin",
+      "bytes": 80657462,
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    }
+  ],
+  "masked_bytes": 0,
+  "known_rng_bytes": 64,
+  "known_rng_endpoints_equal": true,
+  "complete_rng_inventory": false,
+  "control_output": {
+    "filename": "controls.jsonl",
+    "bytes": 612,
+    "sha256": "32e254b0b48f511ad414ab3c257cbd9bb96f942f7e9d3357bc6035b3e8990043"
+  },
+  "framework_cleanup_proven": true,
+  "client_cleanup_proven": true,
+  "lifecycle_stages": {
+    "native_context_initialized_observed": true,
+    "native_core_load_completed": true,
+    "native_core_load_result": 0,
+    "game_startup_returned": true,
+    "game_shutdown_returned": true,
+    "controller_cache_initialized": true,
+    "controller_uninitialized_cleanly": true,
+    "framework_cleanup_result": 0,
+    "client_unpublished_observed": true
+  },
+  "controller_footer": {
+    "initialized": 0,
+    "context_bound": 0,
+    "executing": 0,
+    "cleanup": 1
+  },
+  "trace": {
+    "filename": "trace/events.jsonl",
+    "bytes": 2527,
+    "sha256": "6c937ffdf6bc5e9700df700ae5dedc1f114319319c0ef1591bf2712f51ed9ed5"
+  },
+  "trace_records": 19,
+  "observed_known_trace_counters": {
+    "event": "end",
+    "queued": 0,
+    "received": 0,
+    "unit_executed": 0,
+    "reports": 0
+  },
+  "trace_scope": "Selected binding/queue/receive/unit/report observation surfaces only; not all-code or all-AI purity.",
+  "script_system_present": true,
+  "script_registrations_or_effects_proven": false,
+  "full_manager_called": false,
+  "script_callbacks_called": false,
+  "turn_completion_called": false,
+  "raw_fields_are_not_expected_predicate_answers": true,
+  "reconstruction_comparison_pending": true,
+  "full_manager_parity": false,
+  "complete_state_action_rng_turns_supported": false,
+  "historical_raw_save_load_difference_bytes": 89198,
+  "raw_private_upload_authorized": false
+}
