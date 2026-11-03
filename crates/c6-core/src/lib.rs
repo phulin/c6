@@ -6,6 +6,7 @@ pub mod geometry;
 pub mod map;
 pub mod messages;
 pub mod movement;
+pub mod movement_world;
 pub mod notification_lifecycle;
 pub mod notifications;
 pub mod random_variants;
