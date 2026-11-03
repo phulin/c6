@@ -4,9 +4,9 @@
   "complete_rng_inventory": false,
   "diagnosis": {
     "exact_native_failure_subbranch_recorded": false,
-    "necessary_blocker_reproduced": "O_NOFOLLOW rejects actual ASL module symlink with ELOOP40",
     "new_original_run_for_diagnosis": false,
-    "original_errno_recorded": false
+    "original_errno_recorded": false,
+    "sufficient_admission_blocker_reproduced": "O_NOFOLLOW rejects actual ASL module symlink with ELOOP40"
   },
   "framework_cleanup_proven": true,
   "handler_dispatch_or_gameplay_parity": false,

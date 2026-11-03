@@ -47,7 +47,7 @@ observation cases are refused. The audit executes no original code.
 The earlier `04ff` preparation remains unexecuted. The `9450` fixture ended with
 242 before facts; its three Save observations and successful teardown remain
 preserved. `O_NOFOLLOW` rejecting the actual launch symlink was reproduced as a
-necessary blocker, not recorded as the failed run's exact errno or last
+sufficient admission blocker, not recorded as the failed run's exact errno or last
 instruction. The corrected helper validates canonical-file identity against the
 actual mappings and retains named pre-output failures.
 

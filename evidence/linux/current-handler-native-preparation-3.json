@@ -32,7 +32,7 @@
   "previous_preparation": {
     "profile_sha256": "94509905930c5991ff0f6d96d0bcf6fd6be8b9b8c5d672bbd38b7a22651616dc",
     "public_failure_summary": "evidence/linux/current-handler-control-failure-2.json",
-    "reproduced_necessary_blocker": "loader alias rejected by O_NOFOLLOW",
+    "reproduced_sufficient_admission_blocker": "loader alias rejected by O_NOFOLLOW",
     "status": "executed_fixture_unsupported_242",
     "unrecorded_native_errno": true
   },
