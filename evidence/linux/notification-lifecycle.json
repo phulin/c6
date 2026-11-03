@@ -1,0 +1,1210 @@
+{
+  "schema": "c6-linux-notification-lifecycle-static-v1",
+  "checks_passed": true,
+  "static_only": true,
+  "native_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "source_audit_sha256": "1f5d007475cef06ea1759338cb441e0ddcf408b08677f08cfd56bd205c2f546e",
+  "inherited_aftermath_source_sha256": "580745fd4028d7011c9da658428bd2e1770b5bbfdd5cc2e01caa43b874545d34",
+  "inherited_selection_contract": {
+    "scan_order": "native linked-list order",
+    "threshold": "network multiplayer ? 3 : 0",
+    "eligibility": "nonnull && IsAutoActivate && (signed severity >= threshold || bool variant c362976f)",
+    "locked": "signed native int194 > 0; not serialized",
+    "locked_priority": "First eligible locked record returns immediately, preempting any retained unlocked candidate",
+    "unlocked_priority": "First eligible unlocked record with HasBeenActivated=false is retained; continue scanning",
+    "dismissed_filter": false,
+    "activation_argument": false,
+    "rescan_after_each_virtual_activation": true,
+    "is_auto_activate": "HasBeenActivated || (!network && definition exists && !ShowIconSinglePlayer) || native bool19d"
+  },
+  "update_order": [
+    "SendAutoNotify",
+    "Conditional ProcessAutoActivate",
+    "DismissExpired",
+    "Cleanup"
+  ],
+  "virtual_bindings": [
+    {
+      "vtable_rva": "0x3af4830",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification10BoostCivicE",
+      "slots": {
+        "deleting_destructor": "0x2d291e0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "57ffeff6265960c040de6dfee409608d02d62e3c58c65f2041e0cbb08899d837"
+    },
+    {
+      "vtable_rva": "0x3af5050",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification10ChooseTechE",
+      "slots": {
+        "deleting_destructor": "0x2d2a490",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2a320",
+        "is_needed": "0x2d2a3a0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2a2f0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "93445cb7b079c4726df06919e54e677c545d85b2a77172b76fa387103ccec052"
+    },
+    {
+      "vtable_rva": "0x3af4c40",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification11ChooseCivicE",
+      "slots": {
+        "deleting_destructor": "0x2d29bd0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d299d0",
+        "is_needed": "0x2d29a40",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d299a0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "acf36bb1d102d0397e190fadbf00f74562d6dc85179a3b19f14a837c752eb372"
+    },
+    {
+      "vtable_rva": "0x3af65f0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification11PromoteUnitE",
+      "slots": {
+        "deleting_destructor": "0x2d31e20",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d31890",
+        "is_needed": "0x2d318b0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d31800",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "3580b389dea8556d7a288e14ee01dacb5fc782810431399354d8bd46865755d0"
+    },
+    {
+      "vtable_rva": "0x3af4aa0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification12ChooseBeliefE",
+      "slots": {
+        "deleting_destructor": "0x2d29780",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d29630",
+        "is_needed": "0x2d29690",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d29600",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "241c91b9418a2b3de7301689debe01d804188fc643e9bc121a4c83dd07ebddeb"
+    },
+    {
+      "vtable_rva": "0x3af5390",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification12CommandUnitsE",
+      "slots": {
+        "deleting_destructor": "0x2d2abd0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2aab0",
+        "is_needed": "0x2d2aae0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2a9e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "a8045a2faa5462cb5f8aca7323110e084444288142c7dd97594052bb1f63575c"
+    },
+    {
+      "vtable_rva": "0x3af5c80",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification13FillCivicSlotE",
+      "slots": {
+        "deleting_destructor": "0x2d2cb00",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2c940",
+        "is_needed": "0x2d2c9e0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2c910",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "e587bbaf5b917f0aa21198eaa1571942dd178a7141d0cb0b67aa80bed7ac0030"
+    },
+    {
+      "vtable_rva": "0x3af4eb0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification14ChoosePantheonE",
+      "slots": {
+        "deleting_destructor": "0x2d2a0b0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d29f70",
+        "is_needed": "0x2d29fc0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d29f40",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "c43c4d3093604c563f3062004714f8fa81f2349aa54670c2ddf439746cb59b24"
+    },
+    {
+      "vtable_rva": "0x3af4f80",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification14ChooseReligionE",
+      "slots": {
+        "deleting_destructor": "0x2d2a2b0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2a120",
+        "is_needed": "0x2d2a1c0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2a0f0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "aadcc9f3b94b0ed8f8aff2661273f7780734b4e53548aa2b5bc101132eb0bddb"
+    },
+    {
+      "vtable_rva": "0x3af6450",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification14PlayerDefeatedE",
+      "slots": {
+        "deleting_destructor": "0x2d31600",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d31420",
+        "is_needed": "0x2d31430",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d313f0",
+        "activate": "0x2d314a0",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "23c33cc3a04ca798af89a83bf29963fcfaf261f515e253c9b07f39e34b721693"
+    },
+    {
+      "vtable_rva": "0x3af6790",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification14TechDiscoveredE",
+      "slots": {
+        "deleting_destructor": "0x2d321e0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "fdbe73343894c8d9de36971a1ce9a232b24cc7bf7460993879d8e5ea5aa462ac"
+    },
+    {
+      "vtable_rva": "0x3af5120",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification15CityRangeAttackE",
+      "slots": {
+        "deleting_destructor": "0x2d2a660",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2a540",
+        "is_needed": "0x2d2a570",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2a4d0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "6f55d5d13890c2eedc27ca4ec304e3facddd058109a6b0a49522581f806d86b8"
+    },
+    {
+      "vtable_rva": "0x3af51f0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification15CivicDiscoveredE",
+      "slots": {
+        "deleting_destructor": "0x2d2a7f0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "73bdec3ca1c4fd723ebe8c69422682843f0e9b0c19a864de78e961cd9578f112"
+    },
+    {
+      "vtable_rva": "0x3af5600",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification15CongressResultsE",
+      "slots": {
+        "deleting_destructor": "0x2d2b090",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2aff0",
+        "is_needed": "0x2d2b000",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2afd0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "2faf545649d9c52474dd61757039083e906e7586ee503b88dad46b609798307f"
+    },
+    {
+      "vtable_rva": "0x3af5a10",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification15DedicationQuestE",
+      "slots": {
+        "deleting_destructor": "0x2d2baf0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "c793a032faadcd69f5f79490e928bc66f42f7413d0ea92e971b844d317d92ff9"
+    },
+    {
+      "vtable_rva": "0x3af52c0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification16ClaimGreatPersonE",
+      "slots": {
+        "deleting_destructor": "0x2d2a9a0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2a860",
+        "is_needed": "0x2d2a8b0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2a830",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "bf9e1db7054508eb0022f4a68faf48cabe66d1aa781c0ab329e93c850d926df3"
+    },
+    {
+      "vtable_rva": "0x3af56d0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification16ConsiderCongressE",
+      "slots": {
+        "deleting_destructor": "0x2d2b2e0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2b100",
+        "is_needed": "0x2d2b1e0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2b0d0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "8d6d9c51adbc8993a56fbbe8b3ab6204a1a8222950185c07190875ba717764c2"
+    },
+    {
+      "vtable_rva": "0x3af5940",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification16ConsiderRazeCityE",
+      "slots": {
+        "deleting_destructor": "0x2d2b910",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2b760",
+        "is_needed": "0x2d2b820",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2b730",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "ee6a1090f99617715ed6967df86491448f0730931102ac901e09dc2565448270"
+    },
+    {
+      "vtable_rva": "0x3af5ae0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification16DiplomacySessionE",
+      "slots": {
+        "deleting_destructor": "0x2d2c5a0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2bbc0",
+        "is_needed": "0x2d2be30",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2bb30",
+        "activate": "0x2d2bfd0",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "cfa943d43a822a0d486114abe26cfcbc1cb7bfd263cd286c90f6b148eb024457"
+    },
+    {
+      "vtable_rva": "0x3af66c0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification16ReciprocalPlayerE",
+      "slots": {
+        "deleting_destructor": "0x2d32050",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "077c65314417f47ad338160e7e8210c57cb7cd91f79d170d90f7999e7d6a910b"
+    },
+    {
+      "vtable_rva": "0x3af4de0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification17ChooseEscapeRouteE",
+      "slots": {
+        "deleting_destructor": "0x2d29f00",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d29dd0",
+        "is_needed": "0x2d29e10",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d29da0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "7e2a5fdec46501e1869c28fa2824b556c5bdac5d386f8bed910facc99e2b92f0"
+    },
+    {
+      "vtable_rva": "0x3af5530",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification17CongressInSessionE",
+      "slots": {
+        "deleting_destructor": "0x2d2af30",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2ae50",
+        "is_needed": "0x2d2ae90",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2ae20",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "b8e544633bd0177291fc443381daf15ad08d1f12a386c495920a8fc57d69b3f1"
+    },
+    {
+      "vtable_rva": "0x3af5e20",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification18GiveInfluenceTokenE",
+      "slots": {
+        "deleting_destructor": "0x2d2ce70",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2cd20",
+        "is_needed": "0x2d2cd80",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2ccf0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "00e120f5cdf75b3348db4f948461fbb03c27e07dd41dda32ac4bb71f403f4344"
+    },
+    {
+      "vtable_rva": "0x3af5bb0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification19EmergencyHappeningsE",
+      "slots": {
+        "deleting_destructor": "0x2d2c8d0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "c44c0140c7e87e3582500e60d7c1c0cfcd600382c2a032f6a93a99efd23215fc"
+    },
+    {
+      "vtable_rva": "0x3af5ef0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification19GovernorAppointmentE",
+      "slots": {
+        "deleting_destructor": "0x2d2d030",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2cee0",
+        "is_needed": "0x2d2cf40",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2ceb0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "ebc990ec4e1ccba4573993966cd4e0dc0fecd86a47895b3d220850d5d817be83"
+    },
+    {
+      "vtable_rva": "0x3af6090",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification19GovernorOpportunityE",
+      "slots": {
+        "deleting_destructor": "0x2d2d3a0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2d250",
+        "is_needed": "0x2d2d2b0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d220",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "ab0d1bf6a06aec0c9aabfb32db72c7c7cfe262e98050d69101797b76d5c76f71"
+    },
+    {
+      "vtable_rva": "0x3af6520",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification19PrideMomentRecordedE",
+      "slots": {
+        "deleting_destructor": "0x2d31790",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "fe9572aa111978ad478c3dc799cd36a3c576e698cc1fc8937d62120db5f97304"
+    },
+    {
+      "vtable_rva": "0x3af4760",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification20AcknowledgeEmergencyE",
+      "slots": {
+        "deleting_destructor": "0x2d28fc0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d28e60",
+        "is_needed": "0x2d28ea0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d28e30",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "87e9cc12d78b653e5e896fdb367498e8e9c2889d60657f6f45afe0a8c34d6852"
+    },
+    {
+      "vtable_rva": "0x3af49d0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification20ChooseArtifactPlayerE",
+      "slots": {
+        "deleting_destructor": "0x2d295c0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d293f0",
+        "is_needed": "0x2d294d0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d293c0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "93c533c8b476ec0a5a632c42e8c6443625c003c922ab301bccd6a2de96b9ac8a"
+    },
+    {
+      "vtable_rva": "0x3af4b70",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification20ChooseCityProductionE",
+      "slots": {
+        "deleting_destructor": "0x2d29960",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d29800",
+        "is_needed": "0x2d29870",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d297c0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "b08b35fb70e248bf7d1426f8df4dc61c24a585fa15319e6963d4de7955d17983"
+    },
+    {
+      "vtable_rva": "0x3af57a0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification20ConsiderDisloyalCityE",
+      "slots": {
+        "deleting_destructor": "0x2d2b500",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2b350",
+        "is_needed": "0x2d2b410",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2b320",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "f8881335b04e7a80192cbbab7021871c9532d507901728cfd3b6f292d5ada55f"
+    },
+    {
+      "vtable_rva": "0x3af4d10",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification21ChooseDragnetPriorityE",
+      "slots": {
+        "deleting_destructor": "0x2d29d60",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d29c40",
+        "is_needed": "0x2d29c70",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d29c10",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "550353ecfb324f8219659bdb48c8f25f3ef1b9cc8bf992fd885d1651460327b5"
+    },
+    {
+      "vtable_rva": "0x3af5460",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification22CommemorationAvailableE",
+      "slots": {
+        "deleting_destructor": "0x2d2ad80",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2ac40",
+        "is_needed": "0x2d2ac90",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2ac10",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "f00d9ae4bedde9c992f42bbd1c87bbc0ebfd8cfacd9e3e51b2998137869a7b33"
+    },
+    {
+      "vtable_rva": "0x3af5870",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification24ConsiderGovernmentChangeE",
+      "slots": {
+        "deleting_destructor": "0x2d2b6f0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2b570",
+        "is_needed": "0x2d2b5f0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2b540",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "2da3c638ca827cb49997033b4dd2d2a8cd332390c570958b89351da80c111d0e"
+    },
+    {
+      "vtable_rva": "0x3af5fc0",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification24GovernorIdleNotificationE",
+      "slots": {
+        "deleting_destructor": "0x2d2d1e0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2d0a0",
+        "is_needed": "0x2d2d0f0",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d070",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "cdfd1668fc5d244dab413b9f648ce54a010dabfba554173f1002d8859025123b"
+    },
+    {
+      "vtable_rva": "0x3af5d50",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification25ForeignCityBecameFreeCityE",
+      "slots": {
+        "deleting_destructor": "0x2d2ccb0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2cb40",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "866838a6efbcbc35d37afc2067139d1a700194192c7947813b1b2f9666e4228e"
+    },
+    {
+      "vtable_rva": "0x3af6160",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification29GovernorPromotionNotificationE",
+      "slots": {
+        "deleting_destructor": "0x2d2d560",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2d410",
+        "is_needed": "0x2d2d470",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d3e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "e97493a8d0e486d19083c87e0b5881e3a7c7b3f017133a1766d23ef3d90e4883"
+    },
+    {
+      "vtable_rva": "0x3af6228",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification8InstanceE",
+      "slots": {
+        "deleting_destructor": "0x2d2d7c0",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "cf8bf45e38116090c0dc7d2b977f08a1255e8eafb980279b6d5c0a40dec00388"
+    },
+    {
+      "vtable_rva": "0x3af4900",
+      "symbol": "_ZTVN8GameCore9Reporting12Notification9BoostTechE",
+      "slots": {
+        "deleting_destructor": "0x2d29380",
+        "release": "0x2d2de30",
+        "is_expired": "0x2d2e250",
+        "is_needed": "0x2d29200",
+        "auto_expires": "0x2d2e2b0",
+        "get_blocking": "0x2d2e3b0",
+        "initialize": "0x2d2d7e0",
+        "activate": "0x2d2dd80",
+        "dismiss": "0x2d2e450"
+      },
+      "deleting_destructor_sha256": "e570933e9f1de275b2a1aeb1c7fbe61ddf532658932d622a1cd2251b70560e08"
+    }
+  ],
+  "checked_branches": [
+    {
+      "module": "game",
+      "rva": "0x2cd0310",
+      "meaning": "message getter points20"
+    },
+    {
+      "module": "game",
+      "rva": "0x2cd0320",
+      "meaning": "summary getter pointsa0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2fa70",
+      "meaning": "manager vector pointer stride8"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e8d0",
+      "meaning": "pool vector pointer stride8"
+    },
+    {
+      "module": "game",
+      "rva": "0x2722db0",
+      "meaning": "list node payload16"
+    },
+    {
+      "module": "game",
+      "rva": "0x2722e00",
+      "meaning": "list iterator next0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2de38",
+      "meaning": "pool pointer load"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2de42",
+      "meaning": "null pool deletes"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2de53",
+      "meaning": "clear live pool after transfer"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2de6f",
+      "meaning": "nonpooled deleting destructor dispatch"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e5d7",
+      "meaning": "empty pool invokes allocator"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e60a",
+      "meaning": "reuse calls actual Initialize"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2d87b",
+      "meaning": "reuse count=1 lock=0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2da76",
+      "meaning": "reuse blocking zero before definition"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e2b0",
+      "meaning": "AutoExpires tests expiry delta"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e2b7",
+      "meaning": "AutoExpires signed positive"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e26b",
+      "meaning": "expiry wrapping added turn plus delta"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e279",
+      "meaning": "expiry signed current >= sum"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e291",
+      "meaning": "IsNeeded flag19a"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e29d",
+      "meaning": "IsNeeded actual expiration"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e3b8",
+      "meaning": "blocking dismissed gate"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e3ce",
+      "meaning": "omitted blocking field130"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d310c1",
+      "meaning": "blocking actual IsNeeded"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d310ce",
+      "meaning": "blocking actual GetEndTurnBlocking"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d310ee",
+      "meaning": "unsigned severity first tie retained"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d31115",
+      "meaning": "final chosen blocking reevaluation"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e45a",
+      "meaning": "Dismiss writes dismissed first"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e466",
+      "meaning": "Dismiss event9ad1c020"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d314a7",
+      "meaning": "PlayerDefeated one-shot native19c gate"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2bfda",
+      "meaning": "DiplomacySession expiration precondition"
+    },
+    {
+      "module": "host",
+      "rva": "0x3964e01",
+      "meaning": "FindEntry compares key in vector order"
+    },
+    {
+      "module": "host",
+      "rva": "0x3964e04",
+      "meaning": "FindEntry first match retained"
+    },
+    {
+      "module": "host",
+      "rva": "0x3212d1b",
+      "meaning": "activation translator EventData type"
+    },
+    {
+      "module": "host",
+      "rva": "0x3212d46",
+      "meaning": "activation ID custom type1024"
+    },
+    {
+      "module": "host",
+      "rva": "0x3212d65",
+      "meaning": "activation bool key78a2f946"
+    },
+    {
+      "module": "host",
+      "rva": "0x321cae7",
+      "meaning": "null prepublish skips synchronous callback"
+    }
+  ],
+  "checked_calls": [
+    {
+      "module": "game",
+      "rva": "0x2d2de4e",
+      "target": "0x1e2c9d0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e5dc",
+      "target": "0x1e79f10"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e5e7",
+      "target": "0x1ed81c0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e613",
+      "target": "0x1e408a0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2d799",
+      "target": "0x1fb89a0"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2d7a5",
+      "target": "0x1e2f960"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d2e488",
+      "target": "0x1eaf290"
+    },
+    {
+      "module": "game",
+      "rva": "0x2d31508",
+      "target": "0x1f5d780"
+    },
+    {
+      "module": "host",
+      "rva": "0x3964e87",
+      "target": "0x3964dd0"
+    },
+    {
+      "module": "host",
+      "rva": "0x3212d8c",
+      "target": "0x3216580"
+    },
+    {
+      "module": "host",
+      "rva": "0x3212d97",
+      "target": "0x321cac0"
+    },
+    {
+      "module": "host",
+      "rva": "0x321caef",
+      "target": "0x3237c40"
+    },
+    {
+      "module": "host",
+      "rva": "0x321cafa",
+      "target": "0x3237c80"
+    },
+    {
+      "module": "host",
+      "rva": "0x321cb01",
+      "target": "0x2fd7e20"
+    }
+  ],
+  "methods": [
+    {
+      "module": "game",
+      "name": "Instance.Release",
+      "rva": "0x2d2de30",
+      "bytes": 66,
+      "sha256": "f7b29666d16de75feb8a77aa585daf20488d2393c414f7ca0f41c085f847a4fe"
+    },
+    {
+      "module": "game",
+      "name": "Instance.Destruct",
+      "rva": "0x2d2d780",
+      "bytes": 55,
+      "sha256": "0cb049beb64b127c39b2968c0231e832377bbb902a5cb908656fc54820bbb9ae"
+    },
+    {
+      "module": "game",
+      "name": "Instance.CreatePooled",
+      "rva": "0x2d2e5b0",
+      "bytes": 122,
+      "sha256": "c62a190df1d10148b5dc48c852792bca60514e2067fec56055063771d2af1d3f"
+    },
+    {
+      "module": "game",
+      "name": "Instance.Initialize",
+      "rva": "0x2d2d7e0",
+      "bytes": 1312,
+      "sha256": "fc6de81af5bae9af59f204c6246118837df7bf5944baff5c99f811f94e8061d4"
+    },
+    {
+      "module": "game",
+      "name": "Pool.Clear",
+      "rva": "0x2d2e670",
+      "bytes": 80,
+      "sha256": "9f568b96828e41ada103d434181bc29a742c9d1fe4f708f54a81d4e79951e5ec"
+    },
+    {
+      "module": "game",
+      "name": "Instance.IsExpired",
+      "rva": "0x2d2e250",
+      "bytes": 50,
+      "sha256": "7abbd8a56f6b5af7410114d7cd39d0002d468c4bec00ff3683fab8640d8d66a7"
+    },
+    {
+      "module": "game",
+      "name": "Instance.AutoExpires",
+      "rva": "0x2d2e2b0",
+      "bytes": 11,
+      "sha256": "365ff90a515df2f8f029da403b91b1041eddf955455410d884e2e5bf525507e1"
+    },
+    {
+      "module": "game",
+      "name": "Instance.IsNeeded",
+      "rva": "0x2d2e290",
+      "bytes": 28,
+      "sha256": "658f4c8162885bccab4491c099546fcdada489db36ada6cd6423f88180bb3b2b"
+    },
+    {
+      "module": "game",
+      "name": "Instance.GetBlocking",
+      "rva": "0x2d2e3b0",
+      "bytes": 45,
+      "sha256": "33eddf9a3995c115f6f6c4a91afc37dbb1b20e59e8d180d24cca79a14ed56398"
+    },
+    {
+      "module": "game",
+      "name": "PlayerNotifications.GetBlocking",
+      "rva": "0x2d31060",
+      "bytes": 201,
+      "sha256": "261606a6e330578b124b6d16e439e042ab07ed740c1761f14d657bb338f795d4"
+    },
+    {
+      "module": "game",
+      "name": "Instance.Dismiss",
+      "rva": "0x2d2e450",
+      "bytes": 69,
+      "sha256": "ea392dd5171c5b37065285303082622765cfbf0ad607ae451dd315d7f1b81e68"
+    },
+    {
+      "module": "game",
+      "name": "Instance.GetLock",
+      "rva": "0x2d2e4d0",
+      "bytes": 16,
+      "sha256": "6dfaa9476fb8e35b29efb81a30251d9732f70bab6cbf68ed56fa5c8b58c7976e"
+    },
+    {
+      "module": "game",
+      "name": "Instance.ReleaseLock",
+      "rva": "0x2d2e4e0",
+      "bytes": 24,
+      "sha256": "195a7680bce554aa639e81b541335f10aee7b25adc7b4b76b7105be7b5dd6e82"
+    },
+    {
+      "module": "game",
+      "name": "PlayerDefeated.Activate",
+      "rva": "0x2d314a0",
+      "bytes": 125,
+      "sha256": "a132bb895bea85b10acc87aecbb7a246d5f83fdf0410f3cfc620c92c5f5020ce"
+    },
+    {
+      "module": "game",
+      "name": "DiplomacySession.Activate",
+      "rva": "0x2d2bfd0",
+      "bytes": 132,
+      "sha256": "eb0f15d0111b7f3e58daae75b33833873b0385544407d0cee7112bc348ca37c4"
+    },
+    {
+      "module": "game",
+      "name": "PromoteUnit.Destruct",
+      "rva": "0x2d31df0",
+      "bytes": 39,
+      "sha256": "79c296a3944f673333747bc870a299df4952eb13e3ed760346a273ba9075c83f"
+    },
+    {
+      "module": "game",
+      "name": "TypedVariant.Bool",
+      "rva": "0x263d350",
+      "bytes": 135,
+      "sha256": "7db0d20c7e9f4aedf09b26f058a642660a2547b9930dc350fcbaf1abd3e104b1"
+    },
+    {
+      "module": "host",
+      "name": "TypedVariant.Bool",
+      "rva": "0x305ed60",
+      "bytes": 135,
+      "sha256": "ea25e1ef5022651b8c0c7d10e1d53b2d5d94ecadcdac72bdaa2c65f948dc5bac"
+    },
+    {
+      "module": "host",
+      "name": "VectorMap.FindEntry",
+      "rva": "0x3964dd0",
+      "bytes": 62,
+      "sha256": "e97c97ba784f9b55a8d3f970810b0c98e89965b358b58f02083f92d361ab3954"
+    },
+    {
+      "module": "host",
+      "name": "VectorMap.GetVariant",
+      "rva": "0x3964e80",
+      "bytes": 53,
+      "sha256": "38d5cf3d673af30b30e94ce82e256ae5d00a783791e189345f46efdc9657b6db"
+    },
+    {
+      "module": "host",
+      "name": "VectorMap.Destruct",
+      "rva": "0x3964cc0",
+      "bytes": 80,
+      "sha256": "b32968d1c999aa0c3eac0dc0c792d9d282cf63b03aa605db6af74e8f0875e481"
+    },
+    {
+      "module": "host",
+      "name": "TypedVariant.DestroySelf",
+      "rva": "0x395dd10",
+      "bytes": 182,
+      "sha256": "9d29ca2e2ec5abf6f15161835ef9ece8f4712fa34c092c480b52a0e6393c6d74"
+    },
+    {
+      "module": "host",
+      "name": "Localization.Destruct",
+      "rva": "0x3be0800",
+      "bytes": 58,
+      "sha256": "7427cf58b287485251925b8fed44c4ebe16478b4545da5f03ede754d09dc1d48"
+    },
+    {
+      "module": "host",
+      "name": "Translate.NotificationActivated",
+      "rva": "0x3212d00",
+      "bytes": 164,
+      "sha256": "7944888c67752fca156ddafb165bb7680992ff27bc3af4623e545b5ff9a84daa"
+    }
+  ],
+  "target_dwarf_sha256": "b5750ad66e6781cd9a5c849aad744e7ee5486318161eeb4e7ef43cbc29a3e539",
+  "layout": {
+    "instance_bytes": 416,
+    "player_notifications_bytes": 864,
+    "manager_bytes": 576,
+    "pool_bytes": 32,
+    "instance": {
+      "identity8": "i16 owner/i16 type/u32 id",
+      "message": "0x20",
+      "summary": "0xa0",
+      "default_blocking": "0x130",
+      "parent_pool": "0x138",
+      "lock_count": "0x194"
+    },
+    "flags": {
+      "offset198": "Dismissed",
+      "offset199": "CanUserDismiss",
+      "offset19a": "BlocksTurnAdvancement",
+      "offset19b": "IsAutoNotify",
+      "offset19c": "IsExpired",
+      "offset19d": "IsAutoActivate",
+      "offset19e": "HasBeenActivated"
+    },
+    "player_notifications": {
+      "owner": 0,
+      "next_id": 4,
+      "list_sentinel": 8,
+      "node_next": 0,
+      "node_prev": 8,
+      "node_payload": 16,
+      "size": "computed by traversal, not a stored count"
+    },
+    "manager_players": {
+      "vector_offset": 24,
+      "begin": 0,
+      "end": 8,
+      "element_bytes": 8
+    },
+    "pool_vector": {
+      "begin": 0,
+      "end": 8,
+      "element_bytes": 8
+    },
+    "text_correction": "Historical wire adapter/codec metadata reversed message/summary labels; target DWARF plus compiled getters prove first locale20=message, seconda0=summary. Raw bytes and cleanup classification unchanged.",
+    "already_dismissed_classification": "unchanged: Cleanup uses198 IsDismissed, not19c IsExpired. Base IsExpired does not read19c."
+  },
+  "cleanup": {
+    "order": "native list order; Release before erase; retain surviving order and next ID",
+    "pooled": "append same logical object to its pool, clear its pool link; retain payload until reuse or Clear",
+    "unpooled": "call concrete deleting destructor; base payload destroys parameter map, message and summary",
+    "destructor_overrides": "38 base-payload-only deleting wrappers; PromoteUnit additionally destroys ComponentID vector at1a0",
+    "native_addresses_required": false,
+    "logical_ownership_and_order_required": true,
+    "observed_pool_ownership": false,
+    "allocator_only_exclusion_proven_for_all_subtypes": false
+  },
+  "reuse": {
+    "order": [
+      "pool empty: allocate through provided creator; else pop last object",
+      "actual virtual Initialize",
+      "SetPool"
+    ],
+    "base_reset": [
+      "lock194=0/count190=1",
+      "blocking130=0",
+      "dismissed198=false/userdismiss199=true/flag19a=false",
+      "19c/19d/19e=false",
+      "added188=-1/delta18c=0",
+      "type/severity/group",
+      "location/target/parameters/summary/message"
+    ],
+    "native_allocator_addresses_irrelevant": true,
+    "limit": "Logical retained ownership can be modeled without native addresses. Full pool-state elimination requires initialized subtype/reset and ID assignment/lifetime proof; no such blanket exclusion is claimed."
+  },
+  "expiration": {
+    "base": "delta18c>0 && signed current_game_turn >= wrapping_i32(added188+delta18c)",
+    "native_rng_directly_called": false,
+    "subtype_overrides": 30,
+    "base_vtables": 9
+  },
+  "blocking": {
+    "base_needed": "!(flag19a && actual virtual IsExpired)",
+    "base_value": "dismissed || actual virtual IsExpired ? 0 : live blocking130",
+    "reduction": "first nonzero blocking among actual IsNeeded candidates; replace only with strictly greater UNSIGNED severity; evaluate selected blocking again",
+    "omitted_instance_field": "signed enum/raw int130",
+    "omitted_player_field": "old blocking7a8",
+    "event": "55f15a7b old,new only when changed and owner is local"
+  },
+  "activation": {
+    "base_vtables": 37,
+    "base": "write19e=true; general event025f6cfd(ID eab69e5a, incoming bool78a2f946)",
+    "overrides": {
+      "PlayerDefeated": "19c one-shot gate; optional RequestSession(player,local,statement07ad627c,null); actual virtual Dismiss",
+      "DiplomacySession": "not expired, to-player alive, !(human && paused), turn-active: set19c then ActivateStatement; otherwise return"
+    },
+    "native_rng_directly_called_in_base": false,
+    "transitive_callback_rng_coverage": false,
+    "reporting": "enabled/not-suspended -> synchronous Cache.Dispatcher -> EngineUtility -> registered translator -> optional synchronous prepublish -> queued event257 KeepOrder",
+    "typed_override_lookup": "first matching key in vector order; absent default variant; canonical bool low byte !=0 if nonarray type1",
+    "complete_subscriber_effects_proven": false
+  },
+  "required_live_inputs": [
+    "Actual owner global turn-complete flag",
+    "Actual manager player-notification vector initialization",
+    "Actual game uninitializing flag",
+    "Owner human configuration and turn-active state",
+    "PlayByCloud and network multiplayer configuration",
+    "Manager game pointer/local owner",
+    "Definition iteration order, IsAutoNotify and ShowIconSinglePlayer values",
+    "Registered notification factories and subtype virtual behavior",
+    "Original notification list order",
+    "Notification type/severity/native19d/HasBeenActivated and typed parameters",
+    "Omitted live signed lock count native194",
+    "Expiration predicates and actual game turn",
+    "Old blocking enum native7a8 and actual local owner",
+    "Reporting subscribers and external decision boundaries",
+    "Instance end-turn blocking130",
+    "Logical pool ownership/order and supported subtype destructor/reinitialize contract"
+  ],
+  "rust_handoff": {
+    "supported_candidate": "explicit base-method profile with real live lock/blocking/definition inputs, ordered logical ownership and synchronous effect preflight",
+    "unsupported_before_mutation": [
+      "unknown subtype virtual methods",
+      "unknown variant/payload destruction support",
+      "unbound event effects when claiming full action",
+      "missing live locks/blocking/configuration/definition inputs"
+    ],
+    "diagnostic_projection": "may compare wire effects with scenario inputs, but must not promote them to observed native live inputs or full command acceptance"
+  },
+  "limits": "Static contracts and existing frozen wire effects only. No new native runs. Complete gameplay state/action/turns, all gameplay RNG and event subscribers remain unsupported. Raw Save\u2192Load 89,198-byte failure remains unclassified and unmasked.",
+  "full_action_acceptance": 0,
+  "gameplay_parity": false
+}
