@@ -240,7 +240,7 @@ def main():
     execution_audit=None
     execution_audit_paths=[]
     if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode:
-        execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
+        execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/action_event_audit.py',ROOT/'evidence/linux/action-event-abi.json',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
             subprocess.run([sys.executable,str(execution_audit_paths[0]),'--assets',str(assets),'--output',str(result_path)],check=True,capture_output=True,text=True)
