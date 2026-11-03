@@ -16,8 +16,8 @@ Each vector/list has a little-endian u32 count, then the following entries in st
 | ever alive | district naval units | district hash u32 |
 | ever alive | improvements | improvement hash u32 |
 | ever alive | specially allowed projects | project hash u32, signed i32 |
-| ever alive | chop behaviors | feature raw i32, canonical bool u8, yield hash u32, signed amount i32 |
-| ever alive | additional pillaging | plunder, improvement, district hashes u32, signed amount i32 |
+| ever alive | chop behaviors | feature raw i32, canonical bool u8, yield signed i32, signed amount i32 |
+| ever alive | additional pillaging | plunder signed i32, improvement and district hashes u32, signed amount i32 |
 | ever alive | CO2 reductions | signed i32 |
 | always | properties | existing TypedVariantMap grammar, without an added outer vector |
 | always | goody hut replacements | improvement key hash u32, improvement value hash u32 |

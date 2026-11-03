@@ -28,12 +28,12 @@ pub struct ChopFeatureBehavior {
     /// The writer emits the native FeatureTypes integer directly, unlike its reader.
     pub feature_wire: i32,
     pub ban: bool,
-    pub yield_hash: u32,
+    pub yield_type: i32,
     pub amount: i32,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdditionalPillaging {
-    pub plunder_hash: u32,
+    pub plunder_type: i32,
     pub improvement_hash: u32,
     pub district_hash: u32,
     pub amount: i32,
@@ -167,13 +167,13 @@ impl<'a> Reader<'a> {
                     Ok(ChopFeatureBehavior {
                         feature_wire: r.i32()?,
                         ban: r.bool()?,
-                        yield_hash: r.u32()?,
+                        yield_type: r.i32()?,
                         amount: r.i32()?,
                     })
                 })?,
                 additional_pillaging: self.list(16, |r| {
                     Ok(AdditionalPillaging {
-                        plunder_hash: r.u32()?,
+                        plunder_type: r.i32()?,
                         improvement_hash: r.u32()?,
                         district_hash: r.u32()?,
                         amount: r.i32()?,
@@ -291,11 +291,11 @@ impl Writer {
             self.list(&a.chop_behaviors, |w, x| {
                 w.i32(x.feature_wire)?;
                 w.bool(x.ban)?;
-                w.u32(x.yield_hash)?;
+                w.i32(x.yield_type)?;
                 w.i32(x.amount)
             })?;
             self.list(&a.additional_pillaging, |w, x| {
-                w.u32(x.plunder_hash)?;
+                w.i32(x.plunder_type)?;
                 w.u32(x.improvement_hash)?;
                 w.u32(x.district_hash)?;
                 w.i32(x.amount)
@@ -425,11 +425,11 @@ mod tests {
                 chop_behaviors: vec![ChopFeatureBehavior {
                     feature_wire: -123,
                     ban: true,
-                    yield_hash: u32::MAX,
+                    yield_type: i32::MAX,
                     amount: i32::MAX,
                 }],
                 additional_pillaging: vec![AdditionalPillaging {
-                    plunder_hash: 0,
+                    plunder_type: i32::MIN,
                     improvement_hash: u32::MAX,
                     district_hash: 9,
                     amount: -1,
