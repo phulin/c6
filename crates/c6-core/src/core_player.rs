@@ -1,11 +1,11 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Eras.
-//! Stops before unframed Trade; this is not a Player/world/gameplay importer.
-use crate::player_eras;
+//! Bounded post-Map Core wire prefix through the first Player's complete Trade.
+//! Stops before unframed GreatPeoplePoints; this is not a Player/world/gameplay importer.
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
+use crate::{player_eras, player_trade};
 use crate::{player_espionage, player_religion, player_resources, player_stats, player_techs};
 use crate::{player_treasury, player_units};
 
@@ -33,6 +33,7 @@ pub enum Error {
     Treasury(player_treasury::Error),
     Units(player_units::Error),
     Eras(player_eras::Error),
+    Trade(player_trade::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -121,13 +122,14 @@ pub struct FirstPlayer {
     pub treasury: player_treasury::Treasury,
     pub units: player_units::Units,
     pub eras: player_eras::Eras,
+    pub trade: player_trade::Trade,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerTrade,
+    PlayerGreatPeoplePoints,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -135,7 +137,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerTrade.
+    /// No complete Player entry has been consumed at PlayerGreatPeoplePoints.
     pub unfinished_player_entries: u32,
 }
 
@@ -447,6 +449,7 @@ impl Prefix {
             )?;
             let units = r.component(player_units::Units::decode_prefix_with_items, Error::Units)?;
             let eras = r.component(player_eras::Eras::decode_prefix_with_items, Error::Eras)?;
+            let trade = r.component(player_trade::Trade::decode_prefix_with_items, Error::Trade)?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -467,10 +470,11 @@ impl Prefix {
                 treasury,
                 units,
                 eras,
+                trade,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerTrade
+            Boundary::PlayerGreatPeoplePoints
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -1272,6 +1276,104 @@ mod tests {
             }],
         }
     }
+    // Arbitrary complete Trade35 wire values; no runtime defaults/remapping.
+    fn trade_carrier() -> player_trade::Trade {
+        player_trade::Trade {
+            player: -3000,
+            outgoing_route_capacity: -2999,
+            notified_outgoing_route_capacity: -2998,
+            extra_route_range: -2997,
+            improved_route_level: -2996,
+            immediate_trading_post_count: -2995,
+            gain_tiles_en_route_radius: -2994,
+            anyone_plunder_favor: -2993,
+            anyone_trade_to_favor: -2992,
+            extra_land_range_refuel: -2991,
+            extra_water_range_refuel: -2990,
+            free_tech_boost_first_trading_post_each_civ: -2989,
+            free_civic_boost_first_trading_post_each_civ: -2988,
+            trade_route_capacity_increase_on_meeting: -2987,
+            forbid_land_route_domestic: -2986,
+            forbid_land_route_international: -2985,
+            civ_received_civic_boost_first_trading_post: vec![true, false, true],
+            civ_received_tech_boost_first_trading_post: vec![true, false, true],
+            flat_yield_bonus: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            flat_yield_bonus_for_domestic: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            flat_yield_bonus_for_city_state: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            flat_yield_bonus_for_international: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            flat_yield_bonus_for_intercontinental_domestic: vec![
+                (u32::MAX, i32::MIN),
+                (7, 257),
+                (7, -1),
+            ],
+            flat_yield_bonus_for_intercontinental_international: vec![
+                (u32::MAX, i32::MIN),
+                (7, 257),
+                (7, -1),
+            ],
+            flat_yield_bonus_for_cultural_dominance: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            yield_bonus_for_districts_city_state: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            origin_yield_for_ally_route: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            destination_yield_for_ally_route: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            origin_yield_for_suzerain_route: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            destination_yield_for_suzerain_route: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            flat_yield_bonus_to_others: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            techs_civics_per_yield: -2969,
+            per_specialty_district_yield_bonus_for_domestic: vec![
+                (u32::MAX, i32::MIN),
+                (7, 257),
+                (7, -1),
+            ],
+            yield_bonus_per_trading_post_in_foreign_city: vec![
+                (u32::MAX, i32::MIN),
+                (7, 257),
+                (7, -1),
+            ],
+            yield_bonus_per_trading_post_in_own_city: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            yield_bonus_per_path_tile: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            yield_bonus_per_follower: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            international_yield_modifier: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            origin_yield_modifier: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            destination_yield_modifier: vec![(u32::MAX, i32::MIN), (7, 257), (7, -1)],
+            flat_yield_bonus_per_player: std::array::from_fn(|i| vec![(i as u32, i as i32 - 32)]),
+            flat_origin_yield_per_improvement_at_destination: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            flat_destination_yield_per_improvement_at_destination: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            flat_international_yield_per_improvement_at_origin: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            per_specialty_district_yield_bonus_for_international: vec![
+                (u32::MAX, i32::MIN),
+                (7, 257),
+                (7, -1),
+            ],
+            flat_origin_yield_per_terrain_for_domestic: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            flat_destination_yield_per_terrain_for_domestic: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            flat_origin_yield_per_terrain_for_international: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            flat_destination_yield_per_terrain_for_international: vec![
+                (0x81234567, vec![(9, -257), (9, 513)]),
+                (0x81234567, vec![]),
+            ],
+            international_majors_trade_disabled_count: -2951,
+            international_minors_trade_disabled_count: -2950,
+            domestic_trade_disabled_count: -2949,
+        }
+    }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
         words(&mut out, &[7, 101, 102, 1, 7, 0xfeed1234, 4, 5, 6, 7, 3]);
@@ -1335,6 +1437,7 @@ mod tests {
         out.extend(treasury_carrier().encode(Limits::default()).unwrap());
         out.extend(units_carrier().encode(Limits::default()).unwrap());
         words(&mut out, &[2, 0x80000000, u32::MAX]);
+        out.extend(trade_carrier().encode(Limits::default()).unwrap());
 
         out
     }
@@ -1342,11 +1445,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched Trade");
+        trailing.extend_from_slice(b"untouched GreatPeoplePoints");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerTrade);
+        assert_eq!(value.boundary, Boundary::PlayerGreatPeoplePoints);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1372,7 +1475,7 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::Units(player_units::Error::ResourceLimit))
+            Err(Error::Trade(player_trade::Error::ResourceLimit))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -1416,6 +1519,12 @@ mod tests {
         assert_eq!(p.treasury.gold_diplomatic_deals.len(), 1);
         assert_eq!(p.eras.era_hash, 0x80000000);
         assert_eq!(p.eras.game_era_hash, u32::MAX);
+        assert_eq!(p.trade.player, -3000);
+        assert_eq!(p.trade.flat_yield_bonus_per_player[63], [(63, 31)]);
+        assert_eq!(
+            p.trade.flat_origin_yield_per_terrain_for_domestic[0].1,
+            [(9, -257), (9, 513)]
+        );
         assert_eq!(
             p.eras
                 .encode_with_items(Limits {
@@ -1448,7 +1557,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::Units(player_units::Error::ResourceLimit))
+            Err(Error::Trade(player_trade::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -1476,7 +1585,8 @@ mod tests {
             + player.techs.encode(Limits::default()).unwrap().len()
             + player.treasury.encode(Limits::default()).unwrap().len()
             + player.units.encode(Limits::default()).unwrap().len()
-            + player.eras.encode(Limits::default()).unwrap().len();
+            + player.eras.encode(Limits::default()).unwrap().len()
+            + player.trade.encode(Limits::default()).unwrap().len();
         let names_start = n - later_bytes - culture.len() - names.len();
         let culture_start = n - later_bytes - culture.len();
         let changed = value.encode_prefix(Limits::default()).unwrap();
@@ -1514,7 +1624,8 @@ mod tests {
         let stats = p.stats.encode(Limits::default()).unwrap();
         let after_techs = p.treasury.encode(Limits::default()).unwrap().len()
             + p.units.encode(Limits::default()).unwrap().len()
-            + p.eras.encode(Limits::default()).unwrap().len();
+            + p.eras.encode(Limits::default()).unwrap().len()
+            + p.trade.encode(Limits::default()).unwrap().len();
         let stats_start = n - after_techs - techs.len() - stats.len();
         // Stats27 source order: 22 scalar words, TrackedValue, 5 scalar
         // words, four counted vectors, then the first WriteArray<int,64>.
@@ -1561,7 +1672,10 @@ mod tests {
         let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
         let p = v.first_player.unwrap();
         let units = p.units.encode(Limits::default()).unwrap();
-        let start = n - p.eras.encode(Limits::default()).unwrap().len() - units.len();
+        let start = n
+            - p.trade.encode(Limits::default()).unwrap().len()
+            - p.eras.encode(Limits::default()).unwrap().len()
+            - units.len();
         let mut malformed = bytes.clone();
         malformed[start + 4..start + 8].copy_from_slice(&65538u32.to_le_bytes());
         assert!(matches!(
@@ -1603,7 +1717,7 @@ mod tests {
         )
         .unwrap();
         let prefix = &value.player_prefix;
-        assert_eq!(prefix.boundary, Boundary::PlayerTrade);
+        assert_eq!(prefix.boundary, Boundary::PlayerGreatPeoplePoints);
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
         let post_map = &bytes[value.core.consumed..];
         assert_eq!(encoded, post_map[..encoded.len()]);
@@ -1649,7 +1763,9 @@ mod tests {
     fn eras_scalar_tail_requires_current_version_without_item_charge() {
         let bytes = carrier();
         let (v, n, items) = Prefix::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
-        let eras = v.first_player.as_ref().unwrap().eras;
+        let player = v.first_player.as_ref().unwrap();
+        let trade_bytes = player.trade.encode(Limits::default()).unwrap().len();
+        let eras = player.eras;
         let (encoded, era_items) = eras
             .encode_with_items(Limits {
                 max_bytes: 12,
@@ -1671,12 +1787,32 @@ mod tests {
         );
         assert!(items > 0); // whole-prefix one-short item checks never subtract from Era's zero.
         let mut malformed = bytes;
-        malformed[n - encoded.len()..n - encoded.len() + 4].copy_from_slice(&3u32.to_le_bytes());
+        malformed[n - trade_bytes - encoded.len()..n - trade_bytes - encoded.len() + 4]
+            .copy_from_slice(&3u32.to_le_bytes());
         assert!(matches!(
             Prefix::decode_prefix(&malformed, Limits::default()),
             Err(Error::Eras(player_eras::Error::Version {
                 expected: 2,
                 actual: 3
+            }))
+        ));
+    }
+    #[test]
+    fn complete_trade_tail_requires_current_version() {
+        let mut bytes = carrier();
+        let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let trade = v
+            .first_player
+            .unwrap()
+            .trade
+            .encode(Limits::default())
+            .unwrap();
+        bytes[n - trade.len()..n - trade.len() + 4].copy_from_slice(&36u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bytes, Limits::default()),
+            Err(Error::Trade(player_trade::Error::Version {
+                expected: 35,
+                actual: 36
             }))
         ));
     }
@@ -1984,7 +2120,7 @@ impl Prefix {
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
                 (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerTrade)
+                    | (1.., Some(_), Boundary::PlayerGreatPeoplePoints)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -2080,6 +2216,11 @@ impl Prefix {
                 Error::Units,
             )?;
             w.component(&p.eras, player_eras::Eras::encode_with_items, Error::Eras)?;
+            w.component(
+                &p.trade,
+                player_trade::Trade::encode_with_items,
+                Error::Trade,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -2122,7 +2263,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerTrade;
+        v.boundary = Boundary::PlayerGreatPeoplePoints;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
