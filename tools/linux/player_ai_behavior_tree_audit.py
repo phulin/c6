@@ -42,6 +42,8 @@ def derive_current_readers(binary):
  for l in subprocess.check_output(['objdump','-d','-C','--no-show-raw-insn','--start-address=0x26eb070','--stop-address=0x26ec638',str(binary)],text=True).splitlines():
   m=re.match(r'\s*([a-f0-9]+):\s+(\w+)\s*(.*)',l)
   if m:ins.append((int(m[1],16),m[2],m[3]))
+ thresholds=[int(m[1],16) for _,op,arg in ins if op=='movl' and (m:=re.fullmatch(r'\$0x([0-9a-f]+),\(%rsp\)',arg))]
+ if not thresholds or max(thresholds)!=33:raise ValueError('current ReadVersioned threshold exceeds v33')
  d={a:(op,arg) for a,op,arg in ins};nxt={a:ins[i+1][0] for i,(a,_,_) in enumerate(ins[:-1])}
  result={}
  for sym,row in NODE_CONTRACTS.items():

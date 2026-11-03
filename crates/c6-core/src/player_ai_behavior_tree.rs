@@ -723,6 +723,45 @@ mod tests {
             let wire = v.encode(limits()).unwrap();
             assert_eq!(BehaviorTreeManager::decode(&wire, limits()).unwrap(), v);
         }
+        for mask in 0u8..32 {
+            let component = ComponentId {
+                owner: i16::MIN,
+                component_type: i16::MAX,
+                id: u32::MAX,
+            };
+            let reference = |bit, value| Presence {
+                present: BoolByte(if mask & (1 << bit) == 0 { 0 } else { 0x80 }),
+                value: if mask & (1 << bit) == 0 {
+                    None
+                } else {
+                    Some(value)
+                },
+            };
+            let trigger = GameModifierAnalysis {
+                city: reference(0, component.clone()),
+                district: reference(1, component.clone()),
+                unit: reference(4, component),
+                player: Presence {
+                    present: BoolByte(mask & 4),
+                    value: if mask & 4 == 0 { None } else { Some(i32::MIN) },
+                },
+                plot: Presence {
+                    present: BoolByte(mask & 8),
+                    value: if mask & 8 == 0 { None } else { Some(i32::MAX) },
+                },
+                ..GameModifierAnalysis::default()
+            };
+            let mut v = BehaviorTreeManager::default();
+            v.behavior_trees.entries.push(BehaviorTreeEntry {
+                index: 0,
+                tree: BehaviorTree {
+                    trigger,
+                    ..BehaviorTree::default()
+                },
+            });
+            let wire = v.encode(limits()).unwrap();
+            assert_eq!(BehaviorTreeManager::decode(&wire, limits()).unwrap(), v);
+        }
     }
     #[test]
     fn unsupported_unframed_nodes_and_shapes() {
