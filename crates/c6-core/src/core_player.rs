@@ -1,11 +1,12 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Heroes and conditional bool tables.
-//! Yields at the exact conditional AIControl or inline-tail boundary; no gameplay.
+//! Bounded post-Map Core wire prefix through the first Player's complete Heroes and conditional AI prefix.
+//! Yields at the exact conditional AICityManager or inline-tail boundary; no gameplay.
 use crate::player_prerequisites::{self, IndexedBools};
 use crate::unit::{self, Formation, Limits, PlotCoord};
 use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
+use crate::{player_ai_control, player_ai_identity, player_ai_influence_map};
 use crate::{player_cultural_identity, player_heroes};
 use crate::{
     player_eras, player_great_people_points, player_influence, player_quests, player_trade,
@@ -47,6 +48,9 @@ pub enum Error {
     CulturalIdentity(player_cultural_identity::Error),
     Heroes(player_heroes::Error),
     IndexedBools(player_prerequisites::Error),
+    AIControl(player_ai_control::Error),
+    AIInfluenceMap(player_ai_influence_map::Error),
+    AIPlanning(player_ai_identity::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -158,14 +162,17 @@ pub struct FirstPlayer {
     pub cultural_identity: player_cultural_identity::CulturalIdentity,
     pub heroes: player_heroes::Heroes,
     pub post_heroes_arrays: Option<PostHeroesArrays>,
+    pub ai_control: Option<player_ai_control::ControlManager>,
+    pub ai_influence_map: Option<player_ai_influence_map::InfluenceMap>,
+    pub ai_planning: Option<player_ai_identity::PlanningManagerIdentity>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    /// WasEverAlive=true: all three tables consumed; AI Control is next.
-    AIControl,
+    /// WasEverAlive=true: all three tables and current Control/InfluenceMap/Planning records consumed.
+    AICityManager,
     /// WasEverAlive=false: jump to properties at native writer0x2b4f413.
     /// This is inside the later inline tail, not its true-branch start.
     PlayerInlineTail,
@@ -550,6 +557,24 @@ impl Prefix {
             } else {
                 None
             };
+            let (ai_control, ai_influence_map, ai_planning) = if header.saved_was_ever_alive() {
+                (
+                    Some(r.component(
+                        player_ai_control::ControlManager::decode_prefix_with_items,
+                        Error::AIControl,
+                    )?),
+                    Some(r.component(
+                        player_ai_influence_map::InfluenceMap::decode_prefix_with_items,
+                        Error::AIInfluenceMap,
+                    )?),
+                    Some(r.component(
+                        player_ai_identity::PlanningManagerIdentity::decode_prefix_with_items,
+                        Error::AIPlanning,
+                    )?),
+                )
+            } else {
+                (None, None, None)
+            };
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -580,10 +605,13 @@ impl Prefix {
                 cultural_identity,
                 heroes,
                 post_heroes_arrays,
+                ai_control,
+                ai_influence_map,
+                ai_planning,
             })
         };
         let boundary = match first_player.as_ref() {
-            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIControl,
+            Some(p) if p.header.saved_was_ever_alive() => Boundary::AICityManager,
             Some(_) => Boundary::PlayerInlineTail,
             None => Boundary::AfterEmptyPlayerManager,
         };
@@ -1713,7 +1741,92 @@ mod tests {
                 bytes += table.encode(Limits::default()).unwrap().len();
             }
         }
-        bytes
+        bytes + after_post_heroes_arrays_bytes(p)
+    }
+    // Complete arbitrary current control contracts; no native initialization.
+    fn ai_control_carrier() -> player_ai_control::ControlManager {
+        use crate::player_ai_control::*;
+        fn contract(data: ContractData) -> Option<Contract> {
+            Some(Contract {
+                base: ContractBase {
+                    status: -1,
+                    player_id: i32::MIN,
+                    priority: 7,
+                    time_limit: -2,
+                    time_estimate: 3,
+                    id: 0x80000000,
+                    owner: u32::MAX,
+                    extra_present_value: i32::MIN,
+                },
+                data,
+            })
+        }
+        ControlManager {
+            player_id: -7100,
+            priority: i32::MAX,
+            controls: RecycledInstances {
+                capacity: 8,
+                instances: vec![Instance {
+                    index: 2,
+                    id: 0xffff0002,
+                    priority: i32::MIN,
+                    recruit_priority: 11,
+                }],
+                current_id_bits: 0xffff0000,
+                first_free: 7,
+                last_free: 3,
+                free_indices: vec![7, 3],
+            },
+            has_out_of_turn_processing: true,
+            running_as_human: false,
+            contracts: vec![
+                None,
+                contract(ContractData::UnitRequest {
+                    unit_hash: u32::MAX,
+                    building_hash: 0x80000000,
+                    district_hash: 1,
+                    location: [-3, 4],
+                    required_city: 0xffff0001,
+                    keep_control: true,
+                }),
+                contract(ContractData::TechResearch {
+                    technology_hashes: [u32::MAX, 1],
+                    best_controller: 0x80000000,
+                }),
+                contract(ContractData::CivicResearch {
+                    civic_hashes: [7, u32::MAX],
+                }),
+                contract(ContractData::PurchasePlot {
+                    location: [i32::MIN, i32::MAX],
+                }),
+                contract(ContractData::DiplomaticAction {
+                    player_id: -1,
+                    action_hash: 0xdeadbeef,
+                }),
+            ],
+        }
+    }
+    fn ai_influence_map_carrier() -> player_ai_influence_map::InfluenceMap {
+        player_ai_influence_map::InfluenceMap {
+            influence: vec![i16::MIN, -1, i16::MAX],
+            religious_influence: vec![i16::MAX, i16::MIN],
+        }
+    }
+    fn ai_planning_carrier() -> player_ai_identity::PlanningManagerIdentity {
+        player_ai_identity::PlanningManagerIdentity {
+            player_id: i32::MIN,
+        }
+    }
+    fn after_post_heroes_arrays_bytes(p: &FirstPlayer) -> usize {
+        p.ai_control
+            .as_ref()
+            .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
+            + p.ai_influence_map
+                .as_ref()
+                .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
+            + p.ai_planning
+                .as_ref()
+                .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
     }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
@@ -1803,6 +1916,13 @@ mod tests {
         ] {
             out.extend(table.encode(Limits::default()).unwrap());
         }
+        out.extend(ai_control_carrier().encode(Limits::default()).unwrap());
+        out.extend(
+            ai_influence_map_carrier()
+                .encode(Limits::default())
+                .unwrap(),
+        );
+        out.extend(ai_planning_carrier().encode(Limits::default()).unwrap());
 
         out
     }
@@ -1810,11 +1930,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched AIControl");
+        trailing.extend_from_slice(b"untouched AICityManager");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::AIControl);
+        assert_eq!(value.boundary, Boundary::AICityManager);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -1840,8 +1960,8 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::IndexedBools(
-                player_prerequisites::Error::ResourceLimit
+            Err(Error::AIInfluenceMap(
+                player_ai_influence_map::Error::ResourceLimit
             ))
         ));
         let p = value.first_player.unwrap();
@@ -1905,6 +2025,12 @@ mod tests {
         assert_eq!(p.governors.free_links, [9, 9, u32::MAX]);
         assert!(p.header.saved_was_ever_alive());
         assert_eq!(p.heroes.claims.len(), 1);
+        assert_eq!(p.ai_control.as_ref().unwrap().contracts.len(), 6);
+        assert_eq!(
+            p.ai_influence_map.as_ref().unwrap().influence,
+            [i16::MIN, -1, i16::MAX]
+        );
+        assert_eq!(p.ai_planning.as_ref().unwrap().player_id, i32::MIN);
         assert_eq!(
             p.post_heroes_arrays
                 .as_ref()
@@ -1984,7 +2110,9 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::ResourceLimit)
+            Err(Error::AIInfluenceMap(
+                player_ai_influence_map::Error::ResourceLimit
+            ))
         ));
         for end in 0..n {
             assert!(
@@ -2186,13 +2314,25 @@ mod tests {
         let prefix = &value.player_prefix;
         let first = prefix.first_player.as_ref().unwrap();
         let expected = if first.header.saved_was_ever_alive() {
-            Boundary::AIControl
+            Boundary::AICityManager
         } else {
             Boundary::PlayerInlineTail
         };
         assert_eq!(prefix.boundary, expected);
         assert_eq!(
             first.post_heroes_arrays.is_some(),
+            first.header.saved_was_ever_alive()
+        );
+        assert_eq!(
+            first.ai_control.is_some(),
+            first.header.saved_was_ever_alive()
+        );
+        assert_eq!(
+            first.ai_influence_map.is_some(),
+            first.header.saved_was_ever_alive()
+        );
+        assert_eq!(
+            first.ai_planning.is_some(),
             first.header.saved_was_ever_alive()
         );
         let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
@@ -2408,6 +2548,16 @@ mod tests {
         let p = v.first_player.as_mut().unwrap();
         assert!(p.header.saved_was_ever_alive());
         let arrays = p.post_heroes_arrays.take().unwrap();
+        let ai_control = p.ai_control.take().unwrap();
+        let ai_map = p.ai_influence_map.take().unwrap();
+        let ai_planning = p.ai_planning.take().unwrap();
+        let ai_encoded = [
+            ai_control.encode_with_items(Limits::default()).unwrap(),
+            ai_map.encode_with_items(Limits::default()).unwrap(),
+            ai_planning.encode_with_items(Limits::default()).unwrap(),
+        ];
+        let ai_bytes: usize = ai_encoded.iter().map(|(bytes, _)| bytes.len()).sum();
+        let ai_items: usize = ai_encoded.iter().map(|(_, items)| *items).sum();
         let tables = [
             &arrays.unit_definitions,
             &arrays.feature_definitions,
@@ -2424,7 +2574,7 @@ mod tests {
         let (encoded, charged) = v.encode_prefix_with_items(Limits::default()).unwrap();
         assert_eq!(
             (encoded.len(), charged),
-            (n - array_bytes, items - array_items)
+            (n - array_bytes - ai_bytes, items - array_items - ai_items)
         );
         let mut trailing = encoded.clone();
         trailing.extend([255, 255, 255, 255]);
@@ -2464,7 +2614,7 @@ mod tests {
             .take()
             .unwrap();
         v.first_player.as_mut().unwrap().header.ordered_flags[1] = true;
-        v.boundary = Boundary::AIControl;
+        v.boundary = Boundary::AICityManager;
         assert_eq!(
             v.encode_prefix(Limits {
                 max_bytes: 0,
@@ -2472,14 +2622,20 @@ mod tests {
             }),
             Err(Error::InvalidPrefix)
         );
-        v.first_player.as_mut().unwrap().post_heroes_arrays = Some(arrays);
+        let p = v.first_player.as_mut().unwrap();
+        p.post_heroes_arrays = Some(arrays);
+        p.ai_control = Some(ai_control);
+        p.ai_influence_map = Some(ai_map);
+        p.ai_planning = Some(ai_planning);
         assert_eq!(v.encode_prefix(Limits::default()).unwrap(), bytes);
     }
     #[test]
     fn true_branch_bool_hash_tables_validate_counts_and_canonical_bools() {
         let bytes = carrier();
         let (v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
-        let a = v.first_player.unwrap().post_heroes_arrays.unwrap();
+        let p = v.first_player.unwrap();
+        let ai_bytes = after_post_heroes_arrays_bytes(&p);
+        let a = p.post_heroes_arrays.unwrap();
         let array_bytes = a.unit_definitions.encode(Limits::default()).unwrap().len()
             + a.feature_definitions
                 .encode(Limits::default())
@@ -2490,7 +2646,7 @@ mod tests {
                 .unwrap()
                 .len();
         let mut invalid_bool = bytes.clone();
-        invalid_bool[n - 1] = 2;
+        invalid_bool[n - ai_bytes - 1] = 2;
         assert!(matches!(
             Prefix::decode_prefix(&invalid_bool, Limits::default()),
             Err(Error::IndexedBools(
@@ -2498,11 +2654,69 @@ mod tests {
             ))
         ));
         let mut excessive = bytes;
-        excessive[n - array_bytes..n - array_bytes + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        excessive[n - ai_bytes - array_bytes..n - ai_bytes - array_bytes + 4]
+            .copy_from_slice(&u32::MAX.to_le_bytes());
         assert!(matches!(
             Prefix::decode_prefix(&excessive, Limits::default()),
             Err(Error::ResourceLimit)
         ));
+    }
+    #[test]
+    fn gated_ai_components_require_current_versions_and_present_models() {
+        let bytes = carrier();
+        let (mut v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let p = v.first_player.as_ref().unwrap();
+        let ai_bytes = after_post_heroes_arrays_bytes(p);
+        let control_bytes = p
+            .ai_control
+            .as_ref()
+            .unwrap()
+            .encode(Limits::default())
+            .unwrap()
+            .len();
+        let planning_bytes = p
+            .ai_planning
+            .as_ref()
+            .unwrap()
+            .encode(Limits::default())
+            .unwrap()
+            .len();
+        let mut bad_control = bytes.clone();
+        bad_control[n - ai_bytes..n - ai_bytes + 4].copy_from_slice(&3u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bad_control, Limits::default()),
+            Err(Error::AIControl(player_ai_control::Error::Version {
+                expected: 2,
+                actual: 3
+            }))
+        ));
+        let mut bad_map = bytes.clone();
+        bad_map[n - ai_bytes + control_bytes + 4..n - ai_bytes + control_bytes + 8]
+            .copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bad_map, Limits::default()),
+            Err(Error::AIInfluenceMap(
+                player_ai_influence_map::Error::ResourceLimit
+            ))
+        ));
+        let mut bad_planning = bytes;
+        bad_planning[n - planning_bytes..n - planning_bytes + 4]
+            .copy_from_slice(&2u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bad_planning, Limits::default()),
+            Err(Error::AIPlanning(player_ai_identity::Error::Version {
+                expected: 1,
+                actual: 2
+            }))
+        ));
+        v.first_player.as_mut().unwrap().ai_influence_map = None;
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
     }
     #[test]
     fn empty_manager_stops_and_preserves_suffix() {
@@ -2805,17 +3019,23 @@ impl Prefix {
     /// Inconsistent boundary/count/first-entry combinations are rejected.
     pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let expected_boundary = match self.first_player.as_ref() {
-            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIControl,
+            Some(p) if p.header.saved_was_ever_alive() => Boundary::AICityManager,
             Some(_) => Boundary::PlayerInlineTail,
             None => Boundary::AfterEmptyPlayerManager,
         };
         if self.unfinished_player_entries != self.player_count
             || (self.player_count == 0) != self.first_player.is_none()
             || self.boundary != expected_boundary
-            || self
-                .first_player
-                .as_ref()
-                .is_some_and(|p| p.header.saved_was_ever_alive() != p.post_heroes_arrays.is_some())
+            || self.first_player.as_ref().is_some_and(|p| {
+                [
+                    p.post_heroes_arrays.is_some(),
+                    p.ai_control.is_some(),
+                    p.ai_influence_map.is_some(),
+                    p.ai_planning.is_some(),
+                ]
+                .iter()
+                .any(|present| *present != p.header.saved_was_ever_alive())
+            })
         {
             return Err(Error::InvalidPrefix);
         }
@@ -2964,6 +3184,27 @@ impl Prefix {
                     )?;
                 }
             }
+            if let Some(value) = &p.ai_control {
+                w.component(
+                    value,
+                    player_ai_control::ControlManager::encode_with_items,
+                    Error::AIControl,
+                )?;
+            }
+            if let Some(value) = &p.ai_influence_map {
+                w.component(
+                    value,
+                    player_ai_influence_map::InfluenceMap::encode_with_items,
+                    Error::AIInfluenceMap,
+                )?;
+            }
+            if let Some(value) = &p.ai_planning {
+                w.component(
+                    value,
+                    player_ai_identity::PlanningManagerIdentity::encode_with_items,
+                    Error::AIPlanning,
+                )?;
+            }
         }
         Ok((w.bytes, w.items))
     }
@@ -3006,7 +3247,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::AIControl;
+        v.boundary = Boundary::AICityManager;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
