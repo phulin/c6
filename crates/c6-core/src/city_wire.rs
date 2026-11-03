@@ -624,6 +624,14 @@ macro_rules! codec {
     ($t:ty) => {
         impl $t {
             pub fn decode_prefix(data: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+                let (value, consumed, _) = Self::decode_prefix_with_items(data, limits)?;
+                Ok((value, consumed))
+            }
+            /// Decode one prefix and return its aggregate dynamic item charge.
+            pub fn decode_prefix_with_items(
+                data: &[u8],
+                limits: Limits,
+            ) -> Result<(Self, usize, usize), Error> {
                 let mut r = Reader {
                     data,
                     pos: 0,
@@ -631,7 +639,7 @@ macro_rules! codec {
                     limits,
                 };
                 let value = Self::read(&mut r)?;
-                Ok((value, r.pos))
+                Ok((value, r.pos, r.items))
             }
             pub fn decode(data: &[u8], limits: Limits) -> Result<Self, Error> {
                 let (v, n) = Self::decode_prefix(data, limits)?;
@@ -642,13 +650,17 @@ macro_rules! codec {
                 }
             }
             pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
+                Ok(self.encode_with_items(limits)?.0)
+            }
+            /// Encode this boundary and return its aggregate dynamic item charge.
+            pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
                 let mut w = Writer {
                     data: Vec::new(),
                     items: 0,
                     limits,
                 };
                 self.write(&mut w)?;
-                Ok(w.data)
+                Ok((w.data, w.items))
             }
         }
     };
@@ -840,6 +852,54 @@ mod tests {
                 actual: 50
             })
         );
+    }
+    #[test]
+    fn item_charge_api_composes_prefixes_without_charging_the_tail() {
+        let limits = Limits::default();
+        let mut bytes = empty_header_wire();
+        let header_end = bytes.len();
+        for n in [4u32, 2, 0x10001, 0x20002, 3] {
+            bytes.extend(n.to_le_bytes());
+        }
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let (header, consumed, header_items) =
+            Header::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((consumed, header_items), (header_end, 4));
+        assert_eq!(
+            header.encode_with_items(limits).unwrap(),
+            (bytes[..header_end].to_vec(), 4)
+        );
+        let remaining = Limits {
+            max_bytes: limits.max_bytes - consumed,
+            max_items: 2,
+        };
+        let (districts, district_bytes, district_items) =
+            Districts::decode_prefix_with_items(&bytes[consumed..], remaining).unwrap();
+        assert_eq!((district_bytes, district_items), (end - header_end, 2));
+        assert_eq!(
+            districts.encode_with_items(remaining).unwrap(),
+            (bytes[header_end..end].to_vec(), 2)
+        );
+        let exact = Limits {
+            max_bytes: end,
+            max_items: header_items + district_items,
+        };
+        let (combined, n, items) =
+            HeaderDistricts::decode_prefix_with_items(&bytes, exact).unwrap();
+        assert_eq!((n, items), (end, 6));
+        assert_eq!(combined.header, header);
+        assert_eq!(combined.districts, districts);
+        assert_eq!(
+            combined.encode_with_items(exact).unwrap(),
+            (bytes[..end].to_vec(), 6)
+        );
+        let insufficient = Limits {
+            max_items: 5,
+            ..exact
+        };
+        assert!(HeaderDistricts::decode_prefix_with_items(&bytes, insufficient).is_err());
+        assert!(combined.encode_with_items(insufficient).is_err());
     }
     #[test]
     fn fail_closed_versions_bools_counts_and_aggregate_limits() {
