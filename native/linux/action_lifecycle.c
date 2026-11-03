@@ -13,11 +13,13 @@ typedef enum {
     QUERY_NONE,
     QUERY_MOVEMENT_COST,
     QUERY_DOMAIN_METADATA,
-    QUERY_PLACEMENT_METADATA
+    QUERY_PLACEMENT_METADATA,
+    QUERY_PLACEMENT_HANDLER_METADATA
 } QueryProfile;
 
 static _Noreturn void query_fatal(QueryProfile profile,const char *stage) {
-    const char *marker=profile==QUERY_PLACEMENT_METADATA?
+    const char *marker=profile==QUERY_PLACEMENT_HANDLER_METADATA?
+        "C6_LINUX_PLACEMENT_HANDLER_METADATA_LIFECYCLE":profile==QUERY_PLACEMENT_METADATA?
         "C6_LINUX_PLACEMENT_METADATA_LIFECYCLE":profile==QUERY_DOMAIN_METADATA?
         "C6_LINUX_DOMAIN_METADATA_LIFECYCLE":"C6_LINUX_MOVEMENT_LIFECYCLE";
     fprintf(stderr,"%s fatal %s process_discarded 1\n",marker,stage);
@@ -32,6 +34,8 @@ static int preparation_failure(QueryProfile profile,const char *stage,int legacy
 
 static int prepare(void *module,void *context,bool dispatch,bool execute,bool register_session,bool core_component,QueryProfile profile) {
     bool movement_cost=profile!=QUERY_NONE;
+    if(profile==QUERY_PLACEMENT_HANDLER_METADATA)
+        fprintf(stderr,"C6_LINUX_PLACEMENT_HANDLER_METADATA_LIFECYCLE mode placement_handler_metadata read_only 1\n");
     if(profile==QUERY_PLACEMENT_METADATA)
         fprintf(stderr,"C6_LINUX_PLACEMENT_METADATA_LIFECYCLE mode placement_metadata read_only 1\n");
     if(profile==QUERY_DOMAIN_METADATA)
@@ -73,20 +77,24 @@ static int prepare(void *module,void *context,bool dispatch,bool execute,bool re
             if(*active!=controller)query_fatal(profile,"controller_changed_during_cache");
             bound=NULL;get_context(&bound,controller);
             if(!initialized(controller)||bound!=context||executing(controller))query_fatal(profile,"post_cache_identity_or_state");
-            int (*quiescent)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_METADATA?
+            int (*quiescent)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_HANDLER_METADATA?
+                "c6_linux_placement_handler_metadata_quiescent":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_quiescent":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_quiescent":"c6_linux_movement_cost_quiescent");
-            int (*probe)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_METADATA?
+            int (*probe)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_HANDLER_METADATA?
+                "c6_linux_placement_handler_metadata_probe":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_probe":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_probe":"c6_linux_movement_cost_probe");
-            int (*admission_begin)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_METADATA?
+            int (*admission_begin)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_HANDLER_METADATA?
+                "c6_linux_placement_handler_metadata_admission_begin":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_admission_begin":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_admission_begin":"c6_linux_movement_cost_admission_begin");
-            int (*admission_end)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_METADATA?
+            int (*admission_end)(void *,void *)=dlsym(RTLD_DEFAULT,profile==QUERY_PLACEMENT_HANDLER_METADATA?
+                "c6_linux_placement_handler_metadata_admission_end":profile==QUERY_PLACEMENT_METADATA?
                 "c6_linux_placement_metadata_admission_end":profile==QUERY_DOMAIN_METADATA?
                 "c6_linux_domain_metadata_admission_end":"c6_linux_movement_cost_admission_end");
             if(!quiescent||!probe||!admission_begin||!admission_end)query_fatal(profile,
-                profile==QUERY_PLACEMENT_METADATA?"missing_placement_metadata_callback":profile==QUERY_DOMAIN_METADATA?"missing_domain_metadata_callback":"missing_movement_callback");
+                profile==QUERY_PLACEMENT_HANDLER_METADATA?"missing_placement_handler_metadata_callback":profile==QUERY_PLACEMENT_METADATA?"missing_placement_metadata_callback":profile==QUERY_DOMAIN_METADATA?"missing_domain_metadata_callback":"missing_movement_callback");
             if(admission_begin(module,context))query_fatal(profile,"admission_begin_failed");
             if(quiescent(module,context))query_fatal(profile,"post_cache_not_quiescent");
             result=probe(module,context);
@@ -146,4 +154,9 @@ int c6_linux_action_prepare_domain_metadata(void *module,void *context) {
 /* Separate read-only placement-count profile with independently admitted owners. */
 int c6_linux_action_prepare_placement_metadata(void *module,void *context) {
     return prepare(module,context,false,false,false,false,QUERY_PLACEMENT_METADATA);
+}
+
+/* Separate original handler predicate queries, not Manager/action admission. */
+int c6_linux_action_prepare_placement_handler_metadata(void *module,void *context) {
+    return prepare(module,context,false,false,false,false,QUERY_PLACEMENT_HANDLER_METADATA);
 }

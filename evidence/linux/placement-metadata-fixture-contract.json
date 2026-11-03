@@ -9,6 +9,6 @@
   "sources": {
     "native/linux/placement_metadata_fixture.c": "6b93efc2713c6e7442318ab91a59c1ddd618989d552db02541427d725b4e14dc",
     "native/linux/placement_metadata_fixture.h": "72ebae4637a0c3f5917bf35df6e084f88ba6f4a7361804d227e3e82caf4bf6dc",
-    "tools/linux/placement_metadata_fixture_audit.py": "87412c07c22f2a1f6589de3c8349e0c0fa3188e44ef98c840d82f72e7e37be0e"
+    "tools/linux/placement_metadata_fixture_audit.py": "0991c7172eaf042b8c7275798f2071466906dcbc0d5888e624d48c3526243bb2"
   }
 }
