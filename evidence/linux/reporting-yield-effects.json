@@ -1,0 +1,658 @@
+{
+  "schema": "c6-linux-reporting-yield-effects-v1",
+  "checks_passed": true,
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "methods": [
+    {
+      "image": "gamecore",
+      "address": "0x1fe2230",
+      "bytes": 24,
+      "name": "GameCore::Map::Plot::Instance::GetLocation() const",
+      "sha256": "8820929392df8cf5ef38d48429b5ac9e8b9b5be1ea4829b44857889a36f4e3bf"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe23d0",
+      "bytes": 41,
+      "name": "GameCore::Map::Plot::Instance::GetOwner() const",
+      "sha256": "d40d1bd008ab26ed6eac1cc16bfd19ecf84925b3ce6bf6ef79d1d97e1520ce05"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe2410",
+      "bytes": 5,
+      "name": "GameCore::Map::Plot::Instance::GetFeatureType() const",
+      "sha256": "e15cd107dd900e9a5cde4942b652e914b465e14bc34f4a9dac54d3d7864faa1d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe2430",
+      "bytes": 5,
+      "name": "GameCore::Map::Plot::Instance::GetImprovementType() const",
+      "sha256": "2e364ec2b0b375cab6dbdd31e0d641f899ed78ab8c1e4c59df24ea436add56f4"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe2440",
+      "bytes": 6,
+      "name": "GameCore::Map::Plot::Instance::IsImprovementPillaged() const",
+      "sha256": "af700d60344727ffe670fa9f8aa5e8b02a6fdbe9243c45d2428feced003839cc"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x20e35a0",
+      "bytes": 5,
+      "name": "GameCore::Map::Plot::Instance::GetTerrainType() const",
+      "sha256": "aa944c3c94a1601bb7dcb02a65bb632b6eea536336fcc9795e16687e6337491c"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x214f390",
+      "bytes": 8,
+      "name": "Game.EditMap",
+      "sha256": "60f333d9f21930ce93b03ef00947904c289d6d58010da000d11efa92c55ef289"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x21e3ef0",
+      "bytes": 11,
+      "name": "Globals.EditGame",
+      "sha256": "1a62cdedb5d67a1a402ce77ae33f01e69b2789fb3e2d562419b6c8e61e993fcf"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2328850",
+      "bytes": 294,
+      "name": "GameEffects::PlotYields::RemoveAllPlotYields()",
+      "sha256": "72b9ae80afd69757b41c0926efeea21f055aba34578cf2a86700833447cb7ca5"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23291c0",
+      "bytes": 4,
+      "name": "GameEffects::Instance::GetModifierSystem()",
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23292c0",
+      "bytes": 8,
+      "name": "GameEffects.GetPlotYields",
+      "sha256": "d28a535aeaeacb75ccc1ccd18583a7044c37f5b3c925356bbe81b9e3e0ad8fc0"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2330fd0",
+      "bytes": 124,
+      "name": "GameEffects::ModifierSystem::ClearModifiers(std::__1::shared_ptr<GameEffects::IModifierObject> const&)",
+      "sha256": "127ed043b33349b5de0e4892529ec6769b00b172ca17198a1cb5e9919f011ae0"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2331560",
+      "bytes": 44,
+      "name": "ModifierSystem.ObjectDestroyed",
+      "sha256": "2fe04653c2158ccaf7b655b6d03a3a4aa5ccbed6680356294312c637bfa45dda"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2335940",
+      "bytes": 4,
+      "name": "GameEffects::Objects::ModifierObject::GetInstanceId() const",
+      "sha256": "580f63e5ed34152c56532cbfda2c4a0f74402790e9e026cd4888e06541f671e1"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2335950",
+      "bytes": 4,
+      "name": "GameEffects::Objects::ModifierObject::SetInstanceId(int)",
+      "sha256": "16d722de6e6e0c0b5b7328dcabe0f5ecf0e1d191ce89414edf847c761c487641"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23edd30",
+      "bytes": 227,
+      "name": "Objects.PlotYields.C1",
+      "sha256": "a4258beac250738ef36023b5a35919f99966a8ebaac2c725ad23a1cb6eab2ec1"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23f1790",
+      "bytes": 120,
+      "name": "PlotYields.C1",
+      "sha256": "d7baaf33aaf80c9d48ff52e726add42b05802e5f97d4693d37805e502bc132a5"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23f1840",
+      "bytes": 294,
+      "name": "PlotYields.AddPlotYields",
+      "sha256": "f7ecb549065bc474311930db7f0ae3ab089f81b45ebd20012e4f85139b4f1098"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23f1970",
+      "bytes": 460,
+      "name": "PlotYields.RemovePlotYields",
+      "sha256": "24304515b2bf4651707487e391aad831bd3ab09519e2b1cf6781405361490fef"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23f1c20",
+      "bytes": 86,
+      "name": "PlotYields.GetPlotYields",
+      "sha256": "68d2756caf981354ebc28de793565dea8c9dda2e74f3a0c84e493aeb3e684fcc"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x23f1c80",
+      "bytes": 26,
+      "name": "PlotYieldData.C1",
+      "sha256": "ccc498c9aad09347892f97d6e1d2e43e7bc213868889d7d50cd22f04ea76328d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x241bee0",
+      "bytes": 143,
+      "name": "ObjectAdded.Dispatch",
+      "sha256": "1a0447f6d5138bca73e7aa6c925611d30c9148b89f300c66e01b1c38bde066cb"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2430a90",
+      "bytes": 8,
+      "name": "GameEffects::Objects::ModifierObject::GetOnDestroyed()",
+      "sha256": "ed09e751585a6947774095e65b448b6761b20980482541ff17ee77ae6df0bcd8"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x243d770",
+      "bytes": 9,
+      "name": "PlotYieldData.D2",
+      "sha256": "6f6d14ce929ee2b616e2ffcad9ccf287b08d2b44ea9ea2180d4149c3a73dbd9a"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2661d30",
+      "bytes": 8,
+      "name": "Game.GetGameEffects",
+      "sha256": "69ea70922a14067d1b731c0c3e7b6b4b96c12c568ebda1c4352f4685b119dacc"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x27c4190",
+      "bytes": 42,
+      "name": "CoreComponentContainer<GameCore::Map::Component::IInstance>::EditComponentByIndex(unsigned int)",
+      "sha256": "e864d685fed8e09fe6089b219d16d885221ad68c732a5c70a0d3a9d2167fac11"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x28645d0",
+      "bytes": 132,
+      "name": "GameCore::City::Buildings::GetBuildingsAtLocation(int, Types::Vector<GameCore::BuildingTypes, Types::LinearAlloc::DefaultInline<GameCore::BuildingTypes, 3u, 1u, 0u> >&) const",
+      "sha256": "890c75f51439b3c5a167a34c3f48f7f09a5e0a7e65dd4d86f5855a4b0e3581b2"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x288b060",
+      "bytes": 484,
+      "name": "GameCore::City::Growth::HasDroughtPrevention() const",
+      "sha256": "9904e60d6e47e4511fd118a69737b0b45bf6d367226d556fa900e018649e9eca"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x290b8b0",
+      "bytes": 16,
+      "name": "GameCore::Context::Globals::EditMap()",
+      "sha256": "38f37272316971d72466ae3b66de873b38ddf16786c870218bef53a493b7e77e"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a3e7d0",
+      "bytes": 17,
+      "name": "GameCore::Map::Improvement::Instance::GetProperties() const",
+      "sha256": "28f33affda3b468ee1e695f5ffa7c255f77cc47b5147c2036bd536fad5207c19"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a3ee50",
+      "bytes": 757,
+      "name": "GameCore::Map::Improvement::Yields::GetPlayerYieldFrom(GameCore::PlayerTypes, GameCore::ImprovementTypes, GameCore::YieldTypes, GameCore::Map::Plot::Instance const*, std::__1::list<GameCore::Map::Improvement::Yields::YieldContributions, std::__1::allocator<GameCore::Map::Improvement::Yields::YieldContributions> >*) const",
+      "sha256": "f75e801dbf601be97571a61978777c845cc21da43ae840992265ca1c3443e6b1"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a3f150",
+      "bytes": 2147,
+      "name": "GameCore::Map::Improvement::Yields::GetPlayerYieldFrom(GameCore::PlayerTypes, GameCore::Definition::Adjacency_YieldChange const*, GameCore::YieldTypes, GameCore::Map::Plot::Instance const*, Types::Vector<GameCore::AI::AiMapChange, Types::LinearAlloc::Default<1u, 0u> > const*, std::__1::vector<int, std::__1::allocator<int> >*) const",
+      "sha256": "2bc83c3fa99ebe760d7076f6fa00ed2fc13baa475b5d7c8f6e7862b675315af1"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a3fc60",
+      "bytes": 199,
+      "name": "GameCore::Map::Improvement::Yields::GetPlayerBonusYieldFromModifiers(GameCore::ImprovementTypes, GameCore::Map::Plot::Instance const*, GameCore::YieldTypes) const",
+      "sha256": "148be4cc89bf42514a44278586a21a733c2c2d55ccc6503b29131e141e6265ef"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a3fd30",
+      "bytes": 267,
+      "name": "GameCore::Map::Improvement::Yields::GetPlayerBonusTechYieldFrom(GameCore::PlayerTypes, GameCore::ImprovementTypes, GameCore::YieldTypes) const",
+      "sha256": "4e88ea903a10e995089047c15fe4c64838ad782be69733321544cfcd54a18f98"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a3fe40",
+      "bytes": 267,
+      "name": "GameCore::Map::Improvement::Yields::GetPlayerBonusCivicYieldFrom(GameCore::PlayerTypes, GameCore::ImprovementTypes, GameCore::YieldTypes) const",
+      "sha256": "7fcdc9e73aac2cd148e91df4a58569b4cdca56063b27b3fa6a958617de44b9c1"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a41890",
+      "bytes": 110,
+      "name": "GameCore::Map::CityPlots::GetPlotYieldData(int) const",
+      "sha256": "5f3edd1380e04731affd03a1c7c8bfb39f4bd3264f100c0d2855ee7921fe1d2b"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a42500",
+      "bytes": 50,
+      "name": "GameCore::Map::CityPlots::GetAttributes(unsigned int)",
+      "sha256": "d9b066e28f35789167afe32cdf72cfc7287e0678e5b4f1f5324427a3260b862d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a47570",
+      "bytes": 8,
+      "name": "GameCore::Map::EditInstance()",
+      "sha256": "9ed2b7361cfabb71d887c7009c92d3a3f1e43aae2382c53c7e42fd534467081d"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a48ba0",
+      "bytes": 169,
+      "name": "GameCore::Map::Instance::GetPlot(GameCore::PlotCoord const&) const",
+      "sha256": "44dca219db554b1884a343cdbdfe4e5f1ef3ca7695c848cb1e0fe72b933ad4ec"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2b130e0",
+      "bytes": 208,
+      "name": "GameCore::Player::GreatPeoplePoints::CalculateYieldChangePerEarnedGreatPersonClassOnResource(GameCore::YieldTypes, GameCore::ResourceTypes) const",
+      "sha256": "b0cf65dd52c74280bfef2935186c00bc39d7ccfb63543e0514777ab4efc5f772"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2b80470",
+      "bytes": 461,
+      "name": "GameCore::Player::Stats::GetNumDifferentTerrainTypesForCities() const",
+      "sha256": "b3bf5aecb462d09cd78db1e6131af8277b9dbf175760899c9716ddb11ca88555"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bc8d80",
+      "bytes": 6,
+      "name": "GameCore::Map::Plot::Instance::IsFinalKindOf(unsigned int) const",
+      "sha256": "1841c462c002d4015f18698e6f708f340efad3bbe9db6d6aae6823b5f7bd6793"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bc9650",
+      "bytes": 52,
+      "name": "Plot.GetYield.forward",
+      "sha256": "04b9421afd53b980c258b7a2fe67d09281b778fd591c9a26822f5d57017c80e6"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bc96c0",
+      "bytes": 37,
+      "name": "GameCore::Map::Plot::Instance::GetAppeal() const",
+      "sha256": "20737c86df0be1bd3e5d522749073fefd0fe53a79a244ec0ae79e16b89afed0f"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bca780",
+      "bytes": 12,
+      "name": "GameCore::Map::Plot::Instance::GetCityAttributes() const",
+      "sha256": "e1a598f85f49a28e29144ddf86739e2601b0294590320845586249ce08532b8a"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bca7f0",
+      "bytes": 19,
+      "name": "Plot.GetDynamicProperties",
+      "sha256": "c15288f31fc8f4fec71681360c57dfd1e606001b8613d3625d9f08cc1f4929e6"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bca810",
+      "bytes": 52,
+      "name": "Plot.GetDynamicProperties.kind",
+      "sha256": "d449003c2237ab81da7dc9508ed69c88ea1b18815acb8dbdc0d1c4c02bcc1947"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bd35c0",
+      "bytes": 514,
+      "name": "GameCore::Rules::Appeal::Instance::GetAppeal(GameCore::Map::Plot::Instance const*)",
+      "sha256": "577ae75b609362399bc6d1c17b7b849862743c0054037354d720a933c766fcd7"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bd3ab0",
+      "bytes": 556,
+      "name": "Appeal.local_accumulator_callback",
+      "sha256": "6752ef37700063eeec7a0d52f149144787cfa1d61438089b95f815a060f84919"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2bf5ad0",
+      "bytes": 3498,
+      "name": "Rules.Yields.GetYield",
+      "sha256": "5249f66e85d4f15aaac4e11747aa594dce491cdf8d30e9dc8301aac63606c293"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2c665f0",
+      "bytes": 333,
+      "name": "YieldMonitor.CheckPlot",
+      "sha256": "0f1a191dda92973708f6ec1de0ec41dbb829c192651d4d84aca1310738fb2dd2"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2dd2ab0",
+      "bytes": 26,
+      "name": "GameCore::Map::Feature::Manager::Edit()",
+      "sha256": "8b45c9c83922809241de3bdfcb839bf7d157e3571ca278aaa1300d6a277a4323"
+    },
+    {
+      "image": "host",
+      "address": "0x395f3b0",
+      "bytes": 90,
+      "name": "TypedVariantMap.FindVariant.const",
+      "sha256": "2788514beee59158d6cd2b816679fb774a19df417cc647a83564e156c77f6b36"
+    },
+    {
+      "image": "host",
+      "address": "0x395f480",
+      "bytes": 95,
+      "name": "TypedVariantMap.GetVariant.const",
+      "sha256": "b264f2c22424685f2c0d51945a672854768f0363768ac961e0bd0de247274118"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x2a496c0",
+      "bytes": 14,
+      "name": "Map.PlotVector.index.const",
+      "sha256": "e43872283b0a27df38ac1c395d6da3b33206096b605d8374a9d57f3f39752492"
+    },
+    {
+      "image": "gamecore",
+      "address": "0x1fe2220",
+      "bytes": 8,
+      "name": "Game.GetMap",
+      "sha256": "60f333d9f21930ce93b03ef00947904c289d6d58010da000d11efa92c55ef289"
+    }
+  ],
+  "calls": [
+    {
+      "address": "0x2c6668a",
+      "target": "0x1e71110",
+      "contract": "monitor calls Plot.GetYield"
+    },
+    {
+      "address": "0x2bf6126",
+      "target": "0x1e4c6a0",
+      "contract": "rules calls improvement GetYieldFrom"
+    },
+    {
+      "address": "0x2a3f0ab",
+      "target": "0x1eedd50",
+      "contract": "nonnull contribution branch calls temporary modifier calculation"
+    },
+    {
+      "address": "0x2a3fcd5",
+      "target": "0x1f72a90",
+      "contract": "temporary calculation adds live PlotYields object"
+    },
+    {
+      "address": "0x2a3fd10",
+      "target": "0x1eea0e0",
+      "contract": "temporary calculation removes object"
+    },
+    {
+      "address": "0x23f191b",
+      "target": "0x1fa8c90",
+      "contract": "Add synchronously dispatches collection signal"
+    },
+    {
+      "address": "0x23f1b09",
+      "target": "0x1fa6d00",
+      "contract": "Remove invokes ModifierSystem.ObjectDestroyed"
+    },
+    {
+      "address": "0x233156d",
+      "target": "0x1ebbf80",
+      "contract": "ObjectDestroyed clears modifiers"
+    },
+    {
+      "address": "0x2331015",
+      "target": "0x1dff3f0",
+      "contract": "ClearModifiers clears each actual modifier ID"
+    }
+  ],
+  "instruction_contracts": [
+    {
+      "address": "0x2c66680",
+      "bytes": "31c9",
+      "contract": "monitor passes boolean false"
+    },
+    {
+      "address": "0x2bf6118",
+      "bytes": "4531c0",
+      "contract": "GetYield passes NULL contribution pointer R8"
+    },
+    {
+      "address": "0x2a3ed98",
+      "bytes": "4d89c6",
+      "contract": "wrapper retains R8 contribution pointer"
+    },
+    {
+      "address": "0x2a3edd3",
+      "bytes": "4d89f1",
+      "contract": "wrapper forwards contribution pointer in R9"
+    },
+    {
+      "address": "0x2a3ee5e",
+      "bytes": "4c894c2418",
+      "contract": "GetPlayerYieldFrom saves R9 at stack+18"
+    },
+    {
+      "address": "0x2a3f08d",
+      "bytes": "48837c241800",
+      "contract": "test actual contribution pointer"
+    },
+    {
+      "address": "0x2a3f097",
+      "bytes": "7424",
+      "contract": "NULL skips modifier/Add/Remove branch to2a3f0bd"
+    },
+    {
+      "address": "0x23f179b",
+      "bytes": "c7430800000000",
+      "contract": "PlotYields constructor zeros counter"
+    },
+    {
+      "address": "0x23f189d",
+      "bytes": "8b730883c601897308",
+      "contract": "Add increments live uint32 counter"
+    },
+    {
+      "address": "0x2335950",
+      "bytes": "897718c3",
+      "contract": "object SetInstanceId writes actual ID"
+    },
+    {
+      "address": "0x2430a90",
+      "bytes": "488d87e0000000c3",
+      "contract": "OnDestroyed returns object signal+e0"
+    },
+    {
+      "address": "0x1fe2220",
+      "bytes": "488b8750020000c3",
+      "contract": "actual game map pointer+250"
+    },
+    {
+      "address": "0x2661d30",
+      "bytes": "488b8768020000c3",
+      "contract": "actual game GameEffects pointer+268"
+    },
+    {
+      "address": "0x23292c0",
+      "bytes": "488b87a8000000c3",
+      "contract": "actual GameEffects PlotYields pointer+a8"
+    }
+  ],
+  "virtual_bindings": [
+    {
+      "table": "0x3ae2390",
+      "slot": "0x18",
+      "target": "0x2bc8d80",
+      "contract": "live plot final-kind predicate"
+    },
+    {
+      "table": "0x3ae2390",
+      "slot": "0x30",
+      "target": "0x2bc96c0",
+      "contract": "live plot appeal"
+    },
+    {
+      "table": "0x3ae2390",
+      "slot": "0x38",
+      "target": "0x2bca780",
+      "contract": "live plot city attributes"
+    },
+    {
+      "table": "0x3ae2390",
+      "slot": "0x50",
+      "target": "0x2bca7f0",
+      "contract": "existing/empty property map"
+    },
+    {
+      "table": "0x3ae2390",
+      "slot": "0x58",
+      "target": "0x2bca810",
+      "contract": "kind property lookup"
+    },
+    {
+      "table": "0x3ad5350",
+      "slot": "0x78",
+      "target": "0x2a48ba0",
+      "contract": "live map GetPlot"
+    },
+    {
+      "table": "0x3a37150",
+      "slot": "0x30",
+      "target": "0x2335950",
+      "contract": "temporary object SetInstanceId"
+    },
+    {
+      "table": "0x3a37150",
+      "slot": "0xc8",
+      "target": "0x2430a90",
+      "contract": "temporary object destruction signal"
+    }
+  ],
+  "abi": "GetYield int32 EAX; receiver RDI, const Plot* RSI, YieldTypes EDX, fallback PlayerTypes ECX, bool R8b; no hidden return",
+  "actual_monitor": {
+    "active_humans": 1,
+    "plot_cache_entries": 6996,
+    "trade_cache_entries": 182,
+    "evidence": "evidence/linux/reporting-provider-focused-2.json",
+    "argument_domain": "yield index starts0 and increments to NUM_YIELD_TYPES; boolean false; original current local observer",
+    "direct_improvement_contribution_pointer": 0,
+    "direct_temporary_plot_yields_path_excluded": true,
+    "per_plot_branch_outcomes_observed": false
+  },
+  "read_groups": [
+    "definitions and existing scalar/array fields",
+    "Feature.Manager.Edit -> Globals.EditMap -> existing component lookup; no lazy component creation in inspected chain",
+    "Stats distinct terrain count mutates a local bool vector, not the Stats receiver",
+    "building enumeration clears/appends caller-owned temporary vector",
+    "owned appeal reads signed16 plot+4a; unowned appeal computes through captured local accumulator",
+    "live plot property accessor returns existing map or static empty map; standard native map lookup is const find/default, not insertion"
+  ],
+  "general_temporary_effect": {
+    "reachable_only_with_nonnull_contribution_list": true,
+    "system_bytes": 88,
+    "counter_offset": 8,
+    "counter_type": "u32",
+    "counter_wrap": "native 32-bit add",
+    "added_signal_offset": 16,
+    "id_vector_offset": 40,
+    "id_element_bytes": 4,
+    "object_vector_offset": 64,
+    "object_element_bytes": 16,
+    "object_bytes": 344,
+    "object_instance_id_offset": 24,
+    "object_destroyed_signal_offset": 224,
+    "sequence": [
+      "allocate original object",
+      "increment counter",
+      "assign instance ID",
+      "append ID/object vectors",
+      "synchronous collection signal",
+      "read calculated yield",
+      "erase ID/object entries",
+      "ClearModifiers and OnDestroyed dispatch"
+    ],
+    "remove_restores_counter": false,
+    "remove_all_resets_counter": false,
+    "all_counter_writers_proven": false,
+    "counter_serialization_or_sync_proven": false,
+    "serialization_classification": "unproven; persistent live counter alone does not establish gameplay authority",
+    "surviving_id_consumers_after_remove": "unproven; actual modifier/signal registrations and cleanup effects require evidence"
+  },
+  "unresolved_actual_domains": [
+    {
+      "domain": "property submaps",
+      "boundary": "GetYield0x2bf61de/0x2bf620a virtual+60; actual nested map type/vtable not captured",
+      "condition": "valid improvement and relevant native property exists",
+      "minimal_observation": "at existing monitor stop, bounded live plot/property-map pointer/vtable attestation; nested subtype remains unproven without provenance"
+    },
+    {
+      "domain": "improvement adjacency/bonus",
+      "boundary": "0x2a3f150 and tech/civic getters; exact rules values/remaining getter closure not implemented",
+      "condition": "actual improvement definitions/references match requested yield",
+      "minimal_observation": "current plot improvement/owner/definition and exact provider binding; no generic AI namespace exclusion"
+    },
+    {
+      "domain": "unowned appeal",
+      "boundary": "live GetAppeal0x2bc96c0 -> Rules.Appeal0x2bd35c0/local callback0x2bd3ab0",
+      "condition": "appeal-sensitive yield and actual plot owner=-1",
+      "minimal_observation": "existing monitor plot owner/definition fields or bounded branch attestation; no new run by this audit"
+    }
+  ],
+  "typed_boundary": {
+    "return_value": "native i32 integer yield; preserve exact ordering/wrapping/definitions and native FixedPoint conversions",
+    "supported_read_environment": "only identified actual plot/map/property bindings and modeled rules inputs",
+    "monitor_effects": "outside GetYield: compare/update actual receiver-owned IndexLists and report changed plot/aggregate yields in native order",
+    "unsupported_environment": "reject before mutation until relevant rules/provider dependencies are modeled",
+    "live_rust_action_admitted": false
+  },
+  "rng_and_reporting": {
+    "no_direct_rng_or_reporting_call_in_getyield": true,
+    "complete_transitive_rng_or_callback_absence_proven": false,
+    "reason": "general temporary object signals can invoke real modifiers; direct monitor route skips that chain, remaining recursive rule/property bindings not fully closed"
+  },
+  "native_execution": false,
+  "private_evidence_local_only": true,
+  "full_transitive_effects_proven": false,
+  "gameplay_parity": false,
+  "raw_save_load_failure_bytes_unclassified": 89198,
+  "limits": "Static target-version evidence only. Do not infer exercised branches from nonempty monitor or unchanged Save bytes. No unknown bytes masked; no full-host, complete live state/RNG, Rust action or turn acceptance.",
+  "source_audit_sha256": "a5eca7176883ac75dd791edc442330c5b961f6b91d5329055d200b7d991d4e2f"
+}
