@@ -197,7 +197,7 @@ def main():
     report=dict(schema='c6-linux-game-barbarian-v1',checks_passed=True,gamecore_sha256=GAME_SHA,host_sha256=HOST_SHA,host_variant_methods=HOST_METHODS,
         methods=[dict(address=hex(a),size=n,name=s,sha256=h) for a,n,s,h in METHODS],dwarf_sha256=DWARF_SHA,outer_bindings=[dict(site=hex(a),plt=hex(b),body=hex(c)) for a,b,c in BINDINGS],fixtures=fixtures,
         candidate=candidate(args.source_commit,corpus) if args.source_commit else None,
-        complete_current_barbarian_wire=True,typed_variant_unsupported_branches_fail_explicitly=True,original_execution=False,private_writes=False,
+        complete_observed_barbarian_records=True,complete_current_barbarian_structural_fields=True,complete_current_barbarian_wire=False,full_typed_variant_space=False,typed_variant_unsupported_branches_fail_explicitly=True,original_execution=False,private_writes=False,
         native_read_side_effects=False,full_player=False,gameplay_state=False,world_import=False,actions=False,turns=False,
         unknown_save_bytes_masked=False,recorded_raw_save_load_difference_bytes=89198,next_component='GameCore::FreeCities::Manager')
     args.output.write_text(json.dumps(report,indent=2)+'\n')
