@@ -357,8 +357,10 @@
     }
   },
   "roots": {
-    "xp2_script_global": "base+0x3c051c0",
-    "xp2_utility_global": "base+0x3c051b8",
+    "actual_script_global_GOT": "base+0x3b12df0",
+    "actual_utility_global_GOT": "base+0x3b13848",
+    "expected_defined_xp2_script_global": "base+0x3c051c0",
+    "expected_defined_xp2_utility_global": "base+0x3c051b8",
     "host_main_vm_singleton_global": "0x6ec9e68",
     "singleton_main_state_offset": 16,
     "main_state_global_value_offset": 112,
@@ -382,7 +384,7 @@
     "C and Lua closure/upvalue shallow reconstruction, including open/closed value pointers",
     "named event raw absence/type and built-in-versus-overridden TestAll provenance"
   ],
-  "validation": "15 source-derived immutable-memory tests; no original HKS table or registry native comparison",
+  "validation": "16 source-derived immutable-memory tests; no original HKS table or registry native comparison",
   "limits": [
     "producer safe main-VM window and GC/lifetime proof remain required",
     "actual live roots, global/metatable tables and registrations remain uncaptured",
@@ -391,9 +393,9 @@
     "no callback execution, RNG exclusion, FullManager, gameplay action or turn acceptance"
   ],
   "source_sha256": {
-    "tools/linux/script_hks_registry.py": "3c71d5fb63e26c74d48581fc60914a190ac7ca0e48e0bb59682c265b2e775b95",
-    "tools/linux/test_script_hks_registry.py": "6ba262b654dc03e3fc222b59aeeb6cc086bdbf03998ac51531ac3b1cafd5e8de",
-    "tools/linux/script_hks_registry_audit.py": "e2fb47ddf0892928a65c31e2ee42257f54c8a7e35990f76f7e92ed2308843fac"
+    "tools/linux/script_hks_registry.py": "b37623e252bc2b3430025d238671e7b3b622189729527d0e8015ccc2484867ad",
+    "tools/linux/test_script_hks_registry.py": "1d37cfe1bd53b1d95b21dc8d65fa3ade3fd90347310c87aed0c334c868840069",
+    "tools/linux/script_hks_registry_audit.py": "f3c574921fb1602c39904738c96a7666221e713f4bcb0fd5bd3f21af0e5b1a2c"
   },
   "complete_state_actions_rng_turns_supported": false,
   "unknown_bytes_masked": 0,

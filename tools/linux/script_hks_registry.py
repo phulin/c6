@@ -292,16 +292,27 @@ def load_image(path):
 
 
 def inspect_roots(image, gamecore_base):
-    script = image.integer(gamecore_base+0x3c051c0)
-    utility = image.integer(gamecore_base+0x3c051b8)
+    # Follow actual runtime GOT bindings exactly as the original pure getters
+    # do. Defined symbol VAs alone do not rule out ELF interposition.
+    script_global = image.integer(gamecore_base+0x3b12df0)
+    utility_global = image.integer(gamecore_base+0x3b13848)
+    script = image.integer(script_global) if script_global else 0
+    utility = image.integer(utility_global) if utility_global else 0
     singleton = image.integer(0x6ec9e68)
-    result = dict(script_system=hex(script), utility=hex(utility), main_vm_singleton=hex(singleton))
+    result = dict(script_system=hex(script), utility=hex(utility), main_vm_singleton=hex(singleton),
+                  script_global_binding=hex(script_global), utility_global_binding=hex(utility_global),
+                  script_global_is_XP2_definition=script_global == gamecore_base+0x3c051c0,
+                  utility_global_is_XP2_definition=utility_global == gamecore_base+0x3c051b8)
     for name,pointer,expected in [('script',script,0x53a63a8),('utility',utility,0x53a6c90)]:
         result[name+'_status'] = 'null' if not pointer else 'present'
         if pointer:
             vptr = image.integer(pointer)
             result[name+'_vptr'] = hex(vptr)
             result[name+'_concrete_binding'] = vptr == expected
+    if not script_global:
+        result['script_status'] = 'null_GOT_binding_native_getter_unsafe'
+    if not utility_global:
+        result['utility_status'] = 'null_GOT_binding_native_getter_unsafe'
     if not singleton:
         result['main_vm_status'] = 'null_singleton_native_CallTestAll_would_dereference_null'
         result['main_lua_state'] = '0x0'

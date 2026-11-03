@@ -201,10 +201,25 @@ class RegistryTests(unittest.TestCase):
     def test_null_state_and_singleton_are_unsupported_not_empty_registry(self):
         self.assertEqual(inspect_named_event(Image([]),0)['event_status'],'unavailable_null_main_lua_state')
         base=0x100000000
-        segments=[(base+0x3c051b8,bytes(16)),(0x6ec9e68,bytes(8))]
+        segments=[(base+0x3b12df0,struct.pack('<Q',base+0x3c051c0)),
+                  (base+0x3b13848,struct.pack('<Q',base+0x3c051b8)),
+                  (base+0x3c051b8,bytes(16)),(0x6ec9e68,bytes(8))]
         roots=inspect_roots(Image(segments),base)
         self.assertIn('null_singleton',roots['main_vm_status'])
         self.assertEqual(roots['script_status'],'null')
+
+    def test_actual_interposed_got_globals_are_followed(self):
+        base=0x100000000
+        segments=[(base+0x3b12df0,struct.pack('<Q',0x1000)),
+                  (base+0x3b13848,struct.pack('<Q',0x2000)),
+                  (0x1000,bytes(8)),(0x2000,bytes(8)),(0x6ec9e68,bytes(8))]
+        roots=inspect_roots(Image(segments),base)
+        self.assertEqual(roots['script_global_binding'],'0x1000')
+        self.assertFalse(roots['script_global_is_XP2_definition'])
+        self.assertEqual(roots['script_status'],'null')
+        segments=[(base+0x3b12df0,bytes(8)),(base+0x3b13848,bytes(8)),(0x6ec9e68,bytes(8))]
+        roots=inspect_roots(Image(segments),base)
+        self.assertEqual(roots['script_status'],'null_GOT_binding_native_getter_unsafe')
 
 
 if __name__ == '__main__':

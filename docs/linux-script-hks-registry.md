@@ -8,13 +8,15 @@ This extends the [concrete script backend audit](linux-script-can-start-boundary
 
 | Source-closed location | Meaning |
 | --- | --- |
-| XP2 base `+0x3c051c0` | Current ScriptSystem pointer |
-| XP2 base `+0x3c051b8` | Current EngineUtility pointer |
+| XP2 base `+0x3b12df0` | Actual runtime GOT binding to ScriptSystem global |
+| XP2 base `+0x3b13848` | Actual runtime GOT binding to EngineUtility global |
+| XP2 base `+0x3c051c0` | Defined ScriptSystem global; expected binding target |
+| XP2 base `+0x3c051b8` | Defined EngineUtility global; expected binding target |
 | Host absolute `0x6ec9e68` | Main LuaSystem singleton pointer |
 | Singleton `+0x10` | Main lua_State pointer |
 | lua_State `+0x70` | Main global HksObject |
 
-The host is ET_EXEC: symbols are already absolute addresses, and load bias is zero. XP2 is ET_DYN; add its actual module base. The GOT relocations for both XP2 globals are original GLOB_DAT bindings, checked independently of live GOT contents. The decoder records actual receiver/vptr values and compares them to the established ScriptSystem (`0x53a63a8`), EngineUtility (`0x53a6c90`) and AppLuaScriptSystem (`0x53aaa00`) address points. It does not call the host's lazy GetScriptSystem factory.
+The host is ET_EXEC: symbols are already absolute addresses, and load bias is zero. XP2 is ET_DYN; add its actual module base. The GOT relocations for both XP2 globals are original GLOB_DAT bindings. The decoder follows the actual copied GOT pointer before reading each global; defined symbol addresses do not rule out ELF interposition. It records whether that actual binding matches the expected XP2 definition. A null GOT binding is an unsafe native getter context, not a null ScriptSystem observation. The decoder records actual receiver/vptr values and compares them to the established ScriptSystem (`0x53a63a8`), EngineUtility (`0x53a6c90`) and AppLuaScriptSystem (`0x53aaa00`) address points. It does not call the host's lazy GetScriptSystem factory.
 
 Manager skips scripting only when its initially resolved ScriptSystem is null. Concrete ScriptSystem::CallTestAll unconditionally gets the main Lua singleton and calls GetState, whose body dereferences singleton `+0x10`. A null singleton therefore has an unsafe native dereference. A nonnull singleton with null state enters CCallWithErrorHandling and original cclosure/cpcall allocation without a null-state guard. Neither condition means an empty callback registry, a false Lua result or legal operation. The decoder records null roots without dereferencing them and marks event inspection unavailable. Nonnull state alone is not initialization proof.
 
@@ -44,7 +46,7 @@ This protocol is reviewable preparation, **not authorization to execute a new ca
 
 There are two independent native locks. The XP2 wrapper temporarily releases an already-held core lock before scripting and reacquires it afterward. Original CCallWithErrorHandling (`0x3bf22e0`) enters/leaves the separate global Lua critical section at host `0x6ec9c70`. An observer must not acquire extra locks, invoke the dispatcher to obtain that lock, force GC or pin objects merely to inspect. The next runner preparation must first source-close a preexisting synchronous main-VM safe window where no callback, VM mutator, GC or competing owner can advance during the copy. Core-idle checks and two equal byte passes alone do not prove that window. No live snapshot helper is shipped because this original safe execution boundary is still missing.
 
-At that admitted window, copy bounded mapped memory into private immutable artifacts and decode offline. Start with the five root pointer locations above, actual ScriptSystem/utility vptrs, the singleton prefix through `+0x18`, and main state prefix through `+0x80` when present. Preserve nulls and unknown/overridden vptrs without calling any getter. Also record observer thread identity, active controller and core lock owner/count; preserve original Lua lock/lifecycle provenance without changing lock state.
+At that admitted window, copy bounded mapped memory into private immutable artifacts and decode offline. Start with both runtime GOT slots and their actual bound global addresses, the main singleton global, actual ScriptSystem/utility vptrs, the singleton prefix through `+0x18`, and main state prefix through `+0x80` when present. Preserve nulls and unknown/overridden vptrs without calling any getter. Also record observer thread identity, active controller and core lock owner/count; preserve original Lua lock/lifecycle provenance without changing lock state.
 
 For each table required by raw lookup/provenance, copy its entire `0x40` header, physical array extent, reverse links plus all hash nodes, and each nonnil string-key object's header/bytes/terminator. Copy GameEvents/GameEventFactory, their metatables/indexer closures, the named event/method and all built-in shared groups/local arrays. Copy each closure through its bounded upvalues and each referenced UpValue through `+0x28` plus its current HksObject. Preserve raw non-table and non-function values, tombstones and unknown fields. Future callback-state work needs the Method code/prototype/debug data, source provenance and transitive captured environments; this decoder does not claim to reconstruct them. Repeated references must retain identity; do not turn borrowed pointers into newly registered objects or root weak group tables.
 
@@ -81,4 +83,4 @@ After a separately accepted private image exists, offline decoding is:
 python3 tools/linux/script_hks_registry.py --image /private/capture/image.json --output /private/capture/decoded.json
 ```
 
-Fifteen source-derived immutable-memory tests cover exact raw-byte retention, embedded-zero strings, array/hash ordering, collision links, holes/hash length, stale nil-key preservation, malformed/missing memory, open/closed upvalues, absent raw events with a lazy indexer, built-in versus overwritten methods and null roots. No original HKS image/native comparison has run. Existing Manager adapters, frozen candidates and runtime runner are unchanged by this work.
+Sixteen source-derived immutable-memory tests cover exact raw-byte retention, embedded-zero strings, array/hash ordering, collision links, holes/hash length, stale nil-key preservation, malformed/missing memory, open/closed upvalues, absent raw events with a lazy indexer, built-in versus overwritten methods null roots and runtime GOT interposition. No original HKS image/native comparison has run. Existing Manager adapters, frozen candidates and runtime runner are unchanged by this work.
