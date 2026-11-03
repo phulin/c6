@@ -1,0 +1,250 @@
+{
+  "schema": "c6-linux-treasury-units-independent-review-v1",
+  "source_commit": "a4fb0ab8d9431f3e2d03f02f0b62f17df844535b",
+  "archive_sha256": "916e84bcfd1694d28640efa94a15a9c6784851a72e98f54961fc0680b6c72c3f",
+  "review_script_sha256": "24d16b6ed1fab5cc7d91d66250ddbff4faf0601c04f8e654e9b801c3710cb48d",
+  "source_sha256": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/lib.rs": "e6aa72edb692b3a721c0afd1c74a415d46d2852dffe6c68acf5112e9c1be9ffa",
+    "crates/c6-core/src/player_treasury.rs": "0299912a911b1169281a9f16e08fbd6ec075af8ca3b048a0d351177456e6242c",
+    "crates/c6-core/src/player_units.rs": "f72b72f28d35eb9512584e0ff6f7b786e5017218b1d67fdd7335d420df2b2d26",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8"
+  },
+  "candidates": {
+    "treasury": {
+      "harness_sha256": "a759e4e3eb13bc32964a30d62c64e3320836ae24eecdf02648250b8b2b24439c",
+      "candidate_sha256": "9024e6eed2929db529f76b69b378e659359a91530ed802e9e8916d933a9145b6"
+    },
+    "units": {
+      "harness_sha256": "52a8f7de4bda4f154d23f994f1dcf018796e303e298586c82605def6198649d1",
+      "candidate_sha256": "c9350a5dfda4d58b185e5a82e16c27342c645cf7043fc3823db9e56147b7da2b"
+    },
+    "prefix": {
+      "harness_sha256": "8e29894d1e7b5476fee3532d32449c33a045d60a545b061b2856f1d00974ceab",
+      "candidate_sha256": "2090b89ad8e663656fc3aa6202bdefb004f4e8441d9ea54c46c658f7b4f9894b"
+    }
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "static_contracts": {
+    "player_treasury": {
+      "methods": 51,
+      "bindings": 252,
+      "method_manifest_sha256": "a790998b816a22bc2ed3eb1d72e374c40cd1aa19314641fe1de8d494c0069810",
+      "dwarf_sha256": "fa2e66b26f710638b350e708cd99f56baef7900e9484ee037e6511deff9d75cb"
+    },
+    "player_units": {
+      "methods": 209,
+      "bindings": 1765,
+      "method_manifest_sha256": "e013f471926b9d682422e2dc2176399ff9db06aca5ae2707172124912aa6a61c",
+      "dwarf_sha256": "837364e5d42c4f2880bd895251b5df9a751bd779c3d58306606fe654d6d1b2b5"
+    }
+  },
+  "tests": {
+    "player_treasury::tests": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 232 filtered out; finished in 0.00s",
+    "player_units::tests": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 231 filtered out; finished in 0.01s",
+    "unit::": "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 217 filtered out; finished in 0.00s"
+  },
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "components": {
+        "treasury": {
+          "records": 43,
+          "bytes": 25276,
+          "aggregate_items": 2880,
+          "first_record_observation": [
+            780,
+            91,
+            42,
+            49
+          ],
+          "nested_units": 0,
+          "ordered_record_digests_sha256": "0f8287df1c82360a036263bdc6380a4c36ef7d19e862e27eaa72e49ed9f33614",
+          "typed_observations_sha256": "0bc02faa6a1bea2fc1f9d95f632414043b9a8b0761cc0ef58c2c20f2a852f10f"
+        },
+        "units": {
+          "records": 43,
+          "bytes": 6422174,
+          "aggregate_items": 817224,
+          "first_record_observation": [
+            183883,
+            23308,
+            48,
+            36,
+            16973824,
+            2,
+            47,
+            12,
+            36,
+            0,
+            0,
+            0
+          ],
+          "nested_units": 1262,
+          "ordered_record_digests_sha256": "f794ef040db6027b02ca4e13d0b59ec45559565481aa15acbf8aa959d4d493ce",
+          "typed_observations_sha256": "40271d73ad3596480251402042edead2efa75a382c1a5b9101f11b8f46fd6a39",
+          "ordered_allocator_metadata_digests_sha256": "8deac49f23251579cd6f8884951b5486122122222cc4532baf4609fe8ae04160"
+        }
+      },
+      "unit_prefix": {
+        "records": 1262,
+        "bytes": 6137501,
+        "items": 780570,
+        "first_record_all_clipped_and_truncated_prefixes": 4870,
+        "aggregate_exact_and_one_short": true
+      }
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "components": {
+        "treasury": {
+          "records": 43,
+          "bytes": 25276,
+          "aggregate_items": 2880,
+          "first_record_observation": [
+            780,
+            91,
+            42,
+            49
+          ],
+          "nested_units": 0,
+          "ordered_record_digests_sha256": "0f8287df1c82360a036263bdc6380a4c36ef7d19e862e27eaa72e49ed9f33614",
+          "typed_observations_sha256": "0bc02faa6a1bea2fc1f9d95f632414043b9a8b0761cc0ef58c2c20f2a852f10f"
+        },
+        "units": {
+          "records": 43,
+          "bytes": 6422174,
+          "aggregate_items": 817224,
+          "first_record_observation": [
+            183883,
+            23308,
+            48,
+            36,
+            16973824,
+            2,
+            47,
+            12,
+            36,
+            0,
+            0,
+            0
+          ],
+          "nested_units": 1262,
+          "ordered_record_digests_sha256": "f794ef040db6027b02ca4e13d0b59ec45559565481aa15acbf8aa959d4d493ce",
+          "typed_observations_sha256": "40271d73ad3596480251402042edead2efa75a382c1a5b9101f11b8f46fd6a39",
+          "ordered_allocator_metadata_digests_sha256": "8deac49f23251579cd6f8884951b5486122122222cc4532baf4609fe8ae04160"
+        }
+      },
+      "unit_prefix": {
+        "records": 1262,
+        "bytes": 6137501,
+        "items": 780570,
+        "first_record_all_clipped_and_truncated_prefixes": 4870,
+        "aggregate_exact_and_one_short": true
+      }
+    }
+  ],
+  "strict_unit_codec_check": {
+    "schema": "c6-linux-unit-formation-rust-codec-v1",
+    "module_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+    "fixtures": [
+      {
+        "unit_decode_ns_per_record": 3309,
+        "unit_encode_ns_per_record": 4222,
+        "adapter_unit_lookup_ns": 50,
+        "native_malformed_checks": 4880,
+        "first_unit_exact_item_budget": 608,
+        "native_unit_roundtrips": 1262,
+        "native_unit_bytes": 6137501,
+        "native_queue_roundtrips": 1262,
+        "native_queue_unsupported_handlers": 0,
+        "records": 1250,
+        "bytes": 71168,
+        "path_nodes": 56,
+        "unit_ids": 1262,
+        "nonempty_paths": 8,
+        "iterations": 1,
+        "decode_ns_per_record": 122,
+        "encode_ns_per_record": 72,
+        "native_unit_nested_boundaries_matched": 8834,
+        "native_unit_records_sha256": "eca60e6eb40d797174b99a4dd5166beadd1aa26e521e5fdc018a1c1f452e16e3",
+        "native_unit_ranges_sha256": "8b8b413a89b4ed20f0752d4faeb4fdc336cfbf06e7e9f8e13378f9e135c5ac34",
+        "native_unit_nested_ranges_sha256": "3414d40f667f71ea5337573feb720a5c98be53ba1fa44b86986c17cfe88aaee6",
+        "save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+        "native_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+        "all_native_boundaries_matched": 1250,
+        "attributed_ranges_sha256": "96f9103fc63dbf1e52355ab669620d8678987f2a660bc12bb533b276755e9c04",
+        "records_sha256": "7a953be1e527f1ad5ec9c111c8e8264aabf5db0ae4f6a8411c5a89d37d5a142a"
+      },
+      {
+        "unit_decode_ns_per_record": 3337,
+        "unit_encode_ns_per_record": 4096,
+        "adapter_unit_lookup_ns": 50,
+        "native_malformed_checks": 4880,
+        "first_unit_exact_item_budget": 608,
+        "native_unit_roundtrips": 1262,
+        "native_unit_bytes": 6137501,
+        "native_queue_roundtrips": 1262,
+        "native_queue_unsupported_handlers": 0,
+        "records": 1250,
+        "bytes": 71168,
+        "path_nodes": 56,
+        "unit_ids": 1262,
+        "nonempty_paths": 8,
+        "iterations": 1,
+        "decode_ns_per_record": 140,
+        "encode_ns_per_record": 71,
+        "native_unit_nested_boundaries_matched": 8834,
+        "native_unit_records_sha256": "eca60e6eb40d797174b99a4dd5166beadd1aa26e521e5fdc018a1c1f452e16e3",
+        "native_unit_ranges_sha256": "8b8b413a89b4ed20f0752d4faeb4fdc336cfbf06e7e9f8e13378f9e135c5ac34",
+        "native_unit_nested_ranges_sha256": "3414d40f667f71ea5337573feb720a5c98be53ba1fa44b86986c17cfe88aaee6",
+        "save_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+        "native_trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+        "all_native_boundaries_matched": 1250,
+        "attributed_ranges_sha256": "96f9103fc63dbf1e52355ab669620d8678987f2a660bc12bb533b276755e9c04",
+        "records_sha256": "7a953be1e527f1ad5ec9c111c8e8264aabf5db0ae4f6a8411c5a89d37d5a142a"
+      }
+    ],
+    "adapter_sha256": "63091ea1a454a87586ac124676b7d920ebef1047dd59e54da4f74db4ac778eb7",
+    "source_sha256": {
+      "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+      "crates/c6-core/src/unit/state.rs": "e687359031154412cf001ad199ab4f79734653bb95af22345b72ebc5421917d9",
+      "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+      "crates/c6-core/examples/unit_codec.rs": "9194562771c056761e67bf5dee252767f495378a6794ebe2a6fd7d1c74c6e982",
+      "tools/linux/unit_codec_check.py": "a6096b29c712cf2572963cf640cf91a4eeeb73cca73bddc33dfb9de72a483697"
+    },
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "timing_scope": "Release mean per actual Unit/Formation record, decode/encode including allocation/drop; Unit decode includes73field ranges. Unit lookup is adapter std HashMap(owner,id), excludes building index. No game, rules, action, turn, RNG or original-code performance measurement.",
+    "limits": "Current Unit v28/Formation v1 wire records with nine supported operation handlers and bounded typed variants only. Complete native fixtures roundtrip; other handler/variant forms and historical versions explicitly reject. Live omitted fields, read-time fixups, definition remapping, archive dirtiness and gameplay/actions remain unsupported. No attributed nonempty SkipTurn fixture. Raw Save/reload/Save failure remains 89198 unmasked bytes."
+  },
+  "checks_passed": true,
+  "resolved_findings": {
+    "signed_free_pass_count": "a4fb0ab adds explicit signed i32 decode/encode count gates before allocation; huge-Limits negative regression passes",
+    "allocation_claim": "1184f1c qualifies envelope-owned fallible allocation versus inherited nested Unit allocation policy"
+  },
+  "new_independent_checks": [
+    "envelope item algebra includes nested charges",
+    "encoded duplicate/negative/out-of-capacity slot decoder rejection",
+    "table version/index-bit/hostile-live-count decoder rejection",
+    "typed allocator metadata equals exact uncounted free-word wire sequence",
+    "independently traced nested Unit boundaries and slot positions"
+  ],
+  "allocation_caveat": "Envelope-owned vectors preflight items, minimum bytes, available input and addressable layouts and reserve fallibly. Nested Unit generic vectors retain their prior Vec::with_capacity policy after item and byte-minimum checks; no new fallible allocation or total heap-byte promise.",
+  "original_execution": false,
+  "private_writes": false,
+  "scope": "bounded Treasury v10, Player.Units v22 recycled envelope and Unit v28 prefix wrappers; expanded Core prefix separately reviewed",
+  "full_43_players": false,
+  "full_gameplay_state": false,
+  "all_gameplay_rng": false,
+  "actions": false,
+  "turns": false,
+  "raw_save_load_difference_bytes": 89198,
+  "unknown_bytes_masked": false
+}
