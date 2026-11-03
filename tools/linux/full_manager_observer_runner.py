@@ -654,10 +654,13 @@ def install(plan_path,directory):
         output.write(json.dumps(row,sort_keys=True)+'\n')
         output.flush()
     def installation_failed(reason):
-        emit(dict(event='installation_refused',reason=str(reason),callback_absence_proven=False))
-        with (directory/'exit.json').open('x') as stream:
-            stream.write(json.dumps(dict(inferior_exitcode=None,observer_failed=True,
-                                         original_cleanup_proven=False))+'\n')
+        try:
+            emit(dict(event='installation_refused',reason=str(reason),callback_absence_proven=False))
+            with (directory/'exit.json').open('x') as stream:
+                stream.write(json.dumps(dict(inferior_exitcode=None,observer_failed=True,
+                                             original_cleanup_proven=False))+'\n')
+        finally:
+            output.close()
     try:
         plan=json.loads(Path(plan_path).read_text())
         validate_plan(plan)
@@ -729,10 +732,13 @@ def install(plan_path,directory):
                 # not continue originals, call cleanup, detach, or kill an
                 # unverified process from this adapter's failure handler.
             finally:
-                with (directory/'exit.json').open('x') as stream:
-                    stream.write(json.dumps(dict(inferior_exitcode=state['exitcode'],
-                        observer_failed=state['failed'],original_cleanup_proven=False))+'\n')
-                output.flush()
+                try:
+                    with (directory/'exit.json').open('x') as stream:
+                        stream.write(json.dumps(dict(inferior_exitcode=state['exitcode'],
+                            observer_failed=state['failed'],original_cleanup_proven=False))+'\n')
+                    output.flush()
+                finally:
+                    output.close()
     def exited(event):
         state['exitcode']=getattr(event,'exit_code',None)
     gdb.events.exited.connect(exited)
