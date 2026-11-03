@@ -45,13 +45,18 @@ record before reserving output. Prefix APIs report exact bytes and dynamic
 items for parent budget composition; exact decode rejects trailing data.
 
 `tools/linux/player_heroes_audit.py` pins original code bytes, PLT bindings and
-DWARF, then builds only a named committed Git archive. Canonical save owner cuts
-are validation context: the preceding WMD, Improvements, Governors and
-CulturalIdentity grammars locate Heroes within enclosing Player bounds. There
-is no direct Heroes owner hook, so these are contextual prefix comparisons,
-not a separately instrumented original writer oracle. No trace offsets enter
-production decoding. The report records both corpora and exact source identity.
-No original game code is executed by this audit.
+DWARF, then builds only a named committed Git archive. The closed audit locates
+Heroes structurally through the preceding WMD, Improvements, Governors and
+CulturalIdentity grammars within enclosing Player bounds. Its claim that no
+direct Heroes owner hook exists was incorrect: both retained native traces
+contain 43 Heroes hooks. The [additive owner-hook qualification](../evidence/linux/player-heroes-owner-hook-qualification.json)
+independently checks all 86 matching Player parents, contiguous preceding
+CulturalIdentity hooks and exact 540-byte native Heroes extents. Ordered record
+digests from those direct cuts match the records compared by the closed
+actual-crate candidate. The first Heroes hook is call 1269 under Player parent
+327, range `[5213659,5214199)`, in both traces. The original closed report,
+driver and candidate archive remain unchanged as historical evidence. No trace
+offsets enter production decoding. No original game code executes in this check.
 
 The next Player boundary is conditional: `m_bWasEverAlive` at Player+0x278
 (the value of the bool archive wrapper at +0x268) is saved as header boolean
@@ -65,7 +70,8 @@ Acceptance recorded in `evidence/linux/player-heroes.json` uses committed source
 `59e30ec` (including the `3ec5407` crate export), 98 method pins, 183 direct/PLT
 bindings and 10 virtual save/load slots. Actual exported-crate tests (3), strict
 `c6-core` all-target Clippy and the release candidate passed. Both canonical
-corpora supplied 43 contextual records, each consuming exactly 540 bytes and
+corpora supplied 43 records, subsequently matched to their native owner cuts,
+each consuming exactly 540 bytes and
 128 dynamic items; every record roundtripped byte-for-byte with exact limits,
 rejected one-short byte/item limits, and rejected every proper truncation.
 Populated synthetic tests also cover nested claims/discovery records and hostile
