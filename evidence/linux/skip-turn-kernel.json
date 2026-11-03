@@ -4,7 +4,7 @@
   "original_execution_performed": false,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
   "configuration_sha256": "d68604a55344b85212154f5abf20b2a109e2d65b34a582686226e1f3f520187a",
-  "state_report_sha256": "0cec6d5ad7cbbed2f2c0a2880c120ef095c2299ebc116bb517db209206e0ad09",
+  "state_report_sha256": "fc6f88d9f33173fdc738dba53423dfe0957dffdfc8c6292c64caa54bda98492f",
   "native_runtime_sha256": "3d70f68837f3f52b2a3a9e1d439f364d6b81149fd84e177640ed082523ee8faf",
   "native_startup_profile": {
     "prepare_main_thread": true,
@@ -39,14 +39,15 @@
     }
   },
   "original_command_sha256": "5c262073a0b62b252c10ca562ca765faff535bc0e6bdf78c4f41f331498f288a",
-  "candidate_sha256": "2113136fdca4b8aca46657125b2885653e503ee7826dd0567598d8388a3f6ca9",
+  "candidate_sha256": "0071f9fc083ce4157bbb403481ee5abdc601ff5a202bc33a7a86825a22f8e224",
   "source_sha256": {
-    "crates/c6-core/src/skip_turn.rs": "2cb1fd97d1a0a392c48b8688fab0436db36438ce4430a14bc8c26d40e66fe233",
-    "crates/c6-core/examples/skip_turn_kernel.rs": "175586bf988921fff6a149bc2eeb1247966315c925e13a66ac7ef11be011875e",
+    "crates/c6-core/src/skip_turn.rs": "6a14ff063f5bf29a64294976eda909e5c6f0c8cc7e5f7fbce5dc9c1df8aecb57",
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/examples/skip_turn_kernel.rs": "32dcb6b708d0acab0032c031ce23a89fe4bcac2d8e148e4a42acc154208ae30d",
     "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
     "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
     "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
-    "tools/linux/skip_turn_kernel_audit.py": "433e78012cce23eaaf6a7db9397ac2e7550a22c013852b1b0a353fb7a1c3586e"
+    "tools/linux/skip_turn_kernel_audit.py": "bff2675cab44cff2cb573e090a08721b608d73062f6210882c6d2a9aef3742b9"
   },
   "original_method_fingerprints_checked": 69,
   "additional_cancellation_methods": [
@@ -240,17 +241,17 @@
   "required_live_inputs": {
     "turn_local": "original component observation",
     "numeric_handler": "actual original command",
-    "can_move": "true branch inferred from original OPERATION activity before handler",
-    "busy": "false branch inferred from original handler reaching Start",
+    "can_move": "computed from typed signed x_moves_remaining at each native boundary",
+    "busy": "computed from typed signed i_operation_timer after Clear",
     "activation_can_start": "true branch inferred from original handler reaching Start",
     "unit_archive_attachments": "required by observed newly dirty activity/timer/queue indexes",
     "formation_archive_attachments": "assumed attached for static edit-request comparison; no native dirty capture"
   },
   "synthetic_contract_checks": {
     "kind": "checks",
-    "synthetic_no_native_fixture_cases": 16,
+    "synthetic_no_native_fixture_cases": 35,
     "iterations": 10000,
-    "elapsed_ns": 10736308
+    "elapsed_ns": 10137178
   },
   "synthetic_cases_have_native_fixtures": false,
   "benchmark_scope": "Rust typed clone/queue transition/effect allocation/drop only; excludes codec, initialization, provider delivery, full legality, diplomacy, notification/player aftermath, turns and native original performance.",

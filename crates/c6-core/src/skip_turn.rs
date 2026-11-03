@@ -8,6 +8,9 @@
 //! route gameplay actions here. See docs/linux-skip-turn-kernel.md.
 use crate::unit::{ComponentId, Formation, PlotCoord, Unit, SKIP_TURN_HASH};
 
+#[path = "unit_operation_legality.rs"]
+pub mod legality;
+
 pub const HOLD: i32 = 0x047c048b;
 pub const ACTIVITY_DIRTY_INDEX: u32 = 11;
 pub const FORMATION_PATH_DIRTY_INDEX: u32 = 14;
@@ -173,10 +176,6 @@ pub struct ReplacementInputs {
     pub flags: i32,
     pub append: bool,
     pub from_user: bool,
-    /// Actual IsBusy result at activation, not inferred from wire movement.
-    pub busy: bool,
-    /// Actual CanMove result; its complete implementation is outside this phase.
-    pub can_move: bool,
     /// Full manager CanStart result for the inserted SkipTurn/current plot,
     /// false/null defaults, evaluated at its actual activation boundary.
     /// The supported phase requires true and excludes scripts/subscriber changes.
@@ -276,7 +275,7 @@ fn pop_front(unit: &mut Unit, f: &mut Formation, i: ReplacementInputs, e: &mut C
     let hash = unit.k_operations.nodes[0].operation_hash;
     let ready = unit.e_owner == i.local_player
         && unit.e_automation == -1
-        && i.can_move
+        && legality::can_move(unit)
         && unit.k_operations.nodes.len() <= 1
         && [OPERATION, AWAKE].contains(&unit.e_activity);
     e.report(
@@ -308,7 +307,7 @@ fn pop_front(unit: &mut Unit, f: &mut Formation, i: ReplacementInputs, e: &mut C
 /// no pending movement completion, no automation, a matching singleton Formation,
 /// and a legal nonbusy activation.
 /// Actual omitted live predicate results and archive bindings are required inputs.
-/// Unsupported inputs return before any output state/effects are constructed.
+/// Unsupported inputs return no candidate state/effects; borrowed inputs remain unchanged.
 ///
 /// Reporting delivery is an explicit returned obligation. This phase assumes it
 /// does not synchronously change core inputs; no such general provider contract
@@ -355,7 +354,7 @@ pub fn replace_operation(
     {
         return Err(Error::UnsupportedInitialActivity);
     }
-    if i.busy || !i.activation_can_start {
+    if !i.activation_can_start {
         return Err(Error::UnsupportedActivation);
     }
     let mut unit = unit.clone();
@@ -389,10 +388,20 @@ pub fn replace_operation(
         Some(i.skip_turn_operation_id),
         None,
     );
+    // Activate observes the candidate after Clear; a cancelled nonempty queue
+    // has already zeroed the timer. Empty Clear preserves a positive timer.
+    if legality::is_busy(&unit) {
+        return Err(Error::UnsupportedActivation);
+    }
+    let activity = if legality::can_move(&unit) {
+        OPERATION
+    } else {
+        HOLD
+    };
     set_activity_checked(
         &mut unit,
         i.identity,
-        if i.can_move { OPERATION } else { HOLD },
+        activity,
         i.activity_archive_bound,
         &mut e,
     );

@@ -28,8 +28,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         flags: body.flags as i32,
         append: false,
         from_user: false,
-        busy: false,
-        can_move: true,
         activation_can_start: true,
         activity_archive_bound: true,
         timer_archive_bound: true,
@@ -70,7 +68,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         |v: &mut ReplacementInputs| v.flags = 1,
         |v: &mut ReplacementInputs| v.directive = 0,
         |v: &mut ReplacementInputs| v.identity.id ^= 1,
-        |v: &mut ReplacementInputs| v.busy = true,
         |v: &mut ReplacementInputs| v.activation_can_start = false,
     ] {
         let mut unsupported = i;
@@ -126,9 +123,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         3
     );
     cases += 1;
-    let mut no_move = i;
-    no_move.can_move = false;
-    let n = skip_turn::replace_operation(&u, &f, no_move)?;
+    let mut no_move = u.clone();
+    no_move.x_moves_remaining = 0;
+    let n = skip_turn::replace_operation(&no_move, &f, i)?;
     assert!(!n.effects.iter().any(|e| matches!(
         e,
         Effect::Report {
@@ -138,6 +135,165 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     )));
     cases += 1;
+    // Signed raw fixed-point, including sub-one-point positive values.
+    for value in [i32::MIN, -256, -1, 0, 1, 255, 256, i32::MAX] {
+        let mut boundary = u.clone();
+        boundary.x_moves_remaining = value;
+        assert_eq!(skip_turn::legality::can_move(&boundary), value > 0);
+        boundary.i_operation_timer = value;
+        assert_eq!(skip_turn::legality::is_busy(&boundary), value > 0);
+        // Original Clear resets any timer on a nonempty queue before Activate.
+        assert!(skip_turn::replace_operation(&boundary, &f, i).is_ok());
+        boundary.k_operations.nodes.clear();
+        boundary.e_activity = 0x6b25012e;
+        assert_eq!(
+            skip_turn::replace_operation(&boundary, &f, i).is_ok(),
+            value <= 0
+        );
+        cases += 1;
+    }
+    struct Queries {
+        human: bool,
+        count: u32,
+        limit: i32,
+        fail_count: bool,
+        change_to_intercept: bool,
+        calls: Vec<&'static str>,
+    }
+    impl skip_turn::legality::SkipTurnQueries for Queries {
+        type Error = &'static str;
+        fn is_human(&mut self, _: &mut Unit) -> Result<bool, Self::Error> {
+            self.calls.push("human");
+            Ok(self.human)
+        }
+        fn friendly_units_of_type_count(&mut self, u: &mut Unit) -> Result<u32, Self::Error> {
+            self.calls.push("count");
+            if self.change_to_intercept {
+                u.e_activity = 0x5ff1bbdf;
+            }
+            if self.fail_count {
+                Err("missing placement")
+            } else {
+                Ok(self.count)
+            }
+        }
+        fn plot_unit_limit(&mut self, _: &mut Unit) -> Result<i32, Self::Error> {
+            self.calls.push("limit");
+            Ok(self.limit)
+        }
+    }
+    // These are source-derived query branches, not additional native fixtures.
+    for (human, fortify, activity, spy, count, limit, expected, calls) in [
+        (true, 1, 0x6b25012e, u32::MAX, 0, 1, false, vec!["human"]),
+        (
+            true,
+            0,
+            skip_turn::HOLD,
+            u32::MAX,
+            0,
+            1,
+            false,
+            vec!["human"],
+        ),
+        (true, 0, 0x024a74eb, u32::MAX, 0, 1, false, vec!["human"]),
+        (
+            true,
+            -1,
+            0x6b25012e,
+            u32::MAX,
+            1,
+            1,
+            true,
+            vec!["human", "count", "limit"],
+        ),
+        (
+            true,
+            0,
+            0x6b25012e,
+            u32::MAX,
+            2,
+            1,
+            false,
+            vec!["human", "count", "limit"],
+        ),
+        (
+            true,
+            0,
+            0x6b25012e,
+            u32::MAX,
+            u32::MAX,
+            -1,
+            true,
+            vec!["human", "count", "limit"],
+        ),
+        (
+            true,
+            0,
+            0x5ff1bbdf,
+            u32::MAX,
+            0,
+            1,
+            false,
+            vec!["human", "count", "limit"],
+        ),
+        (
+            false,
+            1,
+            skip_turn::HOLD,
+            u32::MAX,
+            2,
+            1,
+            true,
+            vec!["human"],
+        ),
+        (false, 0, 0x5ff1bbdf, u32::MAX, 0, 1, false, vec!["human"]),
+        (false, 0, 0x6b25012e, 0, 0, 1, false, vec!["human"]),
+    ] {
+        let mut v = u.clone();
+        v.i_fortify_turns = fortify;
+        v.e_activity = activity;
+        v.k_espionage.e_operation = spy;
+        let mut q = Queries {
+            human,
+            count,
+            limit,
+            fail_count: false,
+            change_to_intercept: false,
+            calls: vec![],
+        };
+        assert_eq!(
+            skip_turn::legality::skip_turn_can_start(&mut v, &mut q),
+            Ok(expected)
+        );
+        assert_eq!(q.calls, calls);
+        cases += 1;
+    }
+    let mut v = u.clone();
+    v.i_fortify_turns = 0;
+    v.e_activity = 0x6b25012e;
+    let mut q = Queries {
+        human: true,
+        count: 0,
+        limit: 1,
+        fail_count: true,
+        change_to_intercept: true,
+        calls: vec![],
+    };
+    assert_eq!(
+        skip_turn::legality::skip_turn_can_start(&mut v, &mut q),
+        Err("missing placement")
+    );
+    assert_eq!(q.calls, ["human", "count"]);
+    assert_eq!(v.e_activity, 0x5ff1bbdf); // Query effects are not rolled back.
+    q.fail_count = false;
+    q.calls.clear();
+    v.e_activity = 0x6b25012e;
+    assert_eq!(
+        skip_turn::legality::skip_turn_can_start(&mut v, &mut q),
+        Ok(false)
+    );
+    assert_eq!(q.calls, ["human", "count", "limit"]);
+    cases += 2;
     let mut detached = i;
     detached.activity_archive_bound = false;
     detached.timer_archive_bound = false;

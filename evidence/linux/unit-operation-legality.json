@@ -1,0 +1,203 @@
+{
+  "schema": "c6-linux-unit-operation-legality-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "original_execution_performed": false,
+  "methods": [
+    {
+      "name": "Unit.IsBusy",
+      "address": "0x2c27360",
+      "size": 13,
+      "sha256": "670e18b08c2b17b2781aa026faf057fdb0fc2963f7bef934e590da5fda8cad30"
+    },
+    {
+      "name": "Unit.OperationTimer",
+      "address": "0x2c2c2c0",
+      "size": 7,
+      "sha256": "f556d300a8d89adaffc772457586759f83790839af4114aed582c498ec6d9a90"
+    },
+    {
+      "name": "Unit.CanMove",
+      "address": "0x2c27930",
+      "size": 60,
+      "sha256": "b46d22d98040b2db4bf384a1374692b3025952b8424b16a70323c73ca8718c57"
+    },
+    {
+      "name": "Unit.MovesRemaining",
+      "address": "0x213cc90",
+      "size": 21,
+      "sha256": "cacb37411e9aab85d6dd05c1d07fb2f2a36acd2877aeee83ac8bd09f08e92c13"
+    },
+    {
+      "name": "FixedPoint.CopyCtor",
+      "address": "0x1fcc8c0",
+      "size": 5,
+      "sha256": "0dbb0cb08dfc52a8874d7e85a1b0b4bc164f0b6501356e0185faffc434c3cd8b"
+    },
+    {
+      "name": "FixedPoint.Copy",
+      "address": "0x1fcdc00",
+      "size": 8,
+      "sha256": "775143daff273e7ffd54aaf1fdd8ee35101783a6286e5c6a3d9b76fed694472a"
+    },
+    {
+      "name": "FixedPoint.IntCtor",
+      "address": "0x1fcc8b0",
+      "size": 5,
+      "sha256": "a5050360463a3fe04639a9ad47d842d6a2c680138f54cfbbbe95eaf24f73e912"
+    },
+    {
+      "name": "FixedPoint.IntAssign",
+      "address": "0x1fcdc10",
+      "size": 9,
+      "sha256": "289ee59e91d4f68ddbe5f570b5002092702cd7aae484d25f21ca0576db55b96f"
+    },
+    {
+      "name": "FixedPoint.Greater",
+      "address": "0x1fe2b30",
+      "size": 8,
+      "sha256": "ab00271575857734f9deafa1606796d9d87586ae02bc14e6486fe4c79f0cb86d"
+    },
+    {
+      "name": "SkipTurn.CanStart",
+      "address": "0x2dac950",
+      "size": 218,
+      "sha256": "43cc02ab9b2f7976450820d0b623b903f2f90b2029a6431463776996245a8f83"
+    },
+    {
+      "name": "Unit.IsHuman",
+      "address": "0x2c1c740",
+      "size": 32,
+      "sha256": "f8f8d2a77f089f5a5bda429951a2d12c52171701aeae66ecf4b57e7c08c234a5"
+    },
+    {
+      "name": "Unit.FortifyTurns",
+      "address": "0x20f33b0",
+      "size": 7,
+      "sha256": "414030f95dfa6ad16a2d09baf4b1e503e3ed605578cbea5f0ab0d9822f1e3030"
+    },
+    {
+      "name": "Unit.Activity",
+      "address": "0x265b300",
+      "size": 7,
+      "sha256": "e39c923bce0c545f73489d73292f45689f4114aa9f2c4d56131f54a161c3a0a6"
+    },
+    {
+      "name": "Unit.Espionage",
+      "address": "0x206dfd0",
+      "size": 8,
+      "sha256": "5c7112bbb45d99c13d453ce214e766b9173d04cbc39a957d4a90882a926953eb"
+    },
+    {
+      "name": "Espionage.Operation",
+      "address": "0x206dfe0",
+      "size": 4,
+      "sha256": "464ad404f57fdf46d34aca82663f5924e733344590a2d76cd2ff81e199b23f83"
+    },
+    {
+      "name": "Placement.FormationFriendlyCount",
+      "address": "0x2c433f0",
+      "size": 184,
+      "sha256": "4906e83b115c6514f33383cb3c172897b42ca41380facd5fd9f11b46adad1048"
+    },
+    {
+      "name": "Placement.UnitFriendlyCount",
+      "address": "0x2c432a0",
+      "size": 322,
+      "sha256": "c78099a9a470bf120e00faa147c00660d78abdb0603819d5020fde18450899e4"
+    }
+  ],
+  "checked_call_edges": [
+    {
+      "address": "0x2c27361",
+      "target": "0x1f2fb30"
+    },
+    {
+      "address": "0x2c27945",
+      "target": "0x1e750e0"
+    },
+    {
+      "address": "0x2c27954",
+      "target": "0x1f567e0"
+    },
+    {
+      "address": "0x2c2795f",
+      "target": "0x1e6bce0"
+    },
+    {
+      "address": "0x213cc9b",
+      "target": "0x1e43290"
+    },
+    {
+      "address": "0x2dac95e",
+      "target": "0x1fa4020"
+    },
+    {
+      "address": "0x2dac96e",
+      "target": "0x1f58db0"
+    },
+    {
+      "address": "0x2dac9db",
+      "target": "0x1f60130"
+    },
+    {
+      "address": "0x2dac9eb",
+      "target": "0x1e6f280"
+    },
+    {
+      "address": "0x2daca13",
+      "target": "0x1fb0a50"
+    },
+    {
+      "address": "0x2c4345c",
+      "target": "0x1f331b0"
+    },
+    {
+      "address": "0x2c4346c",
+      "target": "0x1ecadb0"
+    },
+    {
+      "address": "0x2c43481",
+      "target": "0x1e35a90"
+    },
+    {
+      "address": "0x2c43321",
+      "target": "0x1fb8b98"
+    },
+    {
+      "address": "0x2c43343",
+      "target": "0x1eb91d0"
+    },
+    {
+      "address": "0x2c43399",
+      "target": "0x1e723a0"
+    }
+  ],
+  "source_sha256": {
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/src/skip_turn.rs": "6a14ff063f5bf29a64294976eda909e5c6f0c8cc7e5f7fbce5dc9c1df8aecb57",
+    "crates/c6-core/examples/skip_turn_kernel.rs": "32dcb6b708d0acab0032c031ce23a89fe4bcac2d8e148e4a42acc154208ae30d",
+    "tools/linux/unit_operation_legality_audit.py": "77249224a0ee9e34747e2755c6da794c187421c61065627a2dde740e46eb594f"
+  },
+  "busy": "signed typed operation timer > 0; evaluated after Clear in replacement phase",
+  "can_move": "signed raw FixedPoint<8> moves > 0, including positive fractions",
+  "handler": "ordered IsHuman; human fortify/activity/count/unsigned-limit; INTERCEPT; espionage==-1",
+  "handler_is_full_manager_can_start": false,
+  "handler_native_boundary_fixtures_available": false,
+  "live_providers": [
+    "actual player IsHuman",
+    "actual layered Formation friendly count",
+    "PLOT_UNIT_LIMIT"
+  ],
+  "placement_count": "Formation returns unsigned maximum of per-member counts; missing/dead members skipped; per-unit requires war, type(false), cargo, trade/spy, combat rivalry",
+  "full_manager_gaps": [
+    "tactical/turn/automation/pause controls",
+    "interruption",
+    "disabled operation",
+    "ordered scripting veto/effects",
+    "actual plot and registered handler"
+  ],
+  "engine_gameplay_apply_supported": false,
+  "complete_state_action_turns_supported": false,
+  "historical_raw_save_load_failure_bytes": 89198
+}

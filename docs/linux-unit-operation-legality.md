@@ -1,0 +1,24 @@
+# Bounded Linux operation predicates
+
+`skip_turn::legality` implements original Linux XP2 `Unit::IsBusy`, `Unit::CanMove` and the complete SkipTurn **handler** CanStart control flow. This reduces trusted predicate answers in the bounded replacement phase; it does not implement full manager legality, an accepted gameplay action or complete gameplay state/actions/turns. `Engine::apply` still rejects gameplay actions.
+
+IsBusy at `0x2c27360` is signed `i_operation_timer > 0`. CanMove at `0x2c27930` copies `x_moves_remaining` as FixedPointT<8> and compares it with constructed fixed-point zero using signed greater-than. A positive fractional raw value such as 1 passes; rounding to whole movement points would be incorrect. Negative values and zero fail. These getters and their fixed-point dependencies only read state; they neither consume RNG nor dispatch scripts/reporting.
+
+`ReplacementInputs` no longer accepts busy or can_move answers. Replacement reads typed candidate movement at each readiness/Start boundary. Busy is evaluated after Clear: Clear resets a nonempty queue's operation timer before activation, but leaves an initially empty queue's timer unchanged. A positive initial timer therefore does not itself reject replacement of the supported MoveTo queue. An empty queue with a positive timer remains unsupported by this immediate-start phase, with borrowed inputs unchanged. Its native inserted-but-not-started result is not implemented here. Full `activation_can_start` remains a separate explicit input evaluated at the actual activation state, not a universal pre-state action gate.
+
+`skip_turn_can_start` preserves the original handler order: actual IsHuman query; for a human, signed positive fortify/HOLD/SLEEP rejection, actual friendly-count query, actual plot-limit query and unsigned greater-than rejection; for everyone, INTERCEPT rejection then typed espionage operation equality with all-one bits (`-1`). It does not check movement or bypass human checks for a visible-only query. Fallible `SkipTurnQueries` has no default implementation. Provider errors mean unsupported/missing live data, not a native false result. Provider effects remain on failure and later predicates reread typed Unit state.
+
+The provider for the count must resolve the actual layered unit collection and Formation. Original Formation overload (`0x2c433f0`) traverses serialized member IDs in order, skips missing or delayed-death members and returns the **unsigned maximum**, not sum, of per-unit counts. Original Unit overload (`0x2c432a0`) first obtains the subject owner's actual Diplomacy. Each existing candidate must pass the actual war query; same-owner candidates also require `AreUnitsOfSameType(..., false)`; cargo is skipped; definitions marked trade-route or spy are skipped; remaining candidates count when original combat rules say they are not rivals. It does not simply count units with matching owner or formation type. The helper's bool argument is not consumed in this target's Unit-overload body; it is forwarded by the Formation overload. These live diplomacy/definition/rivalry semantics are not implemented by supplying a placeholder count.
+
+Full Manager::CanStart (`0x2da20f0`) additionally retains busy, tactical/turn/automation/pause, interruption, disabled-operation, scripting veto/effects, plot resolution and registered-handler obligations. The new handler helper cannot replace that predicate. Neither helper changes request-side TurnUnready ordering or skips required reporting, diplomacy and notification continuation.
+
+Reproduce without original-code execution:
+
+```sh
+python3 tools/linux/unit_operation_legality_audit.py --output target/linux/unit-operation-legality.json
+python3 tools/linux/skip_turn_kernel_audit.py --output target/linux/skip-turn-kernel.json
+```
+
+The [static audit](../evidence/linux/unit-operation-legality.json) gates supplied XP2 SHA-256, 17 method fingerprints, 16 call edges, exact signed/unsigned comparison instructions and getter offsets. Discovery uses target symbols and instructions; cru121 remains only a historical discovery lead with [attribution](reference.md). New raw instruction evidence stays private under `../c6-ghidra/evidence/linux-unit-operation-legality/`.
+
+The native-record replay still matches every Unit field and the complete Formation record plus the existing bounded ordered effects. Thirty-five source-derived branch checks cover request/state rejection, movement/timer extrema and fractions, Clear timing, human/nonhuman handler branches, unsigned limit equality, provider failure and synchronous state rereads. Those synthetic branches have no original native boundary fixtures. The handler's actual live providers are not supplied by this replay, so it is not handler native parity. The raw Save→Load 89,198-byte failure remains recorded and unmasked; full gameplay/RNG equivalence remains open.

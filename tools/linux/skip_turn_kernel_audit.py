@@ -102,7 +102,7 @@ def audit(args):
     formation_requests = [r['index'] for r in effects if r['kind'] == 'formation_dirty']
     require(formation_requests == [14, 15] * 3, 'three ordered formation path edits missing')
     check = next(r for r in effects if r['kind'] == 'checks')
-    source_paths = ['crates/c6-core/src/skip_turn.rs', 'crates/c6-core/examples/skip_turn_kernel.rs',
+    source_paths = ['crates/c6-core/src/skip_turn.rs', 'crates/c6-core/src/unit_operation_legality.rs', 'crates/c6-core/examples/skip_turn_kernel.rs',
                     'crates/c6-core/src/unit.rs', 'crates/c6-core/src/unit/state.rs', 'crates/c6-core/src/unit/variants.rs',
                     'tools/linux/skip_turn_kernel_audit.py']
     return dict(schema='c6-linux-skip-turn-rust-state-phase-v1', checks_passed=True, original_execution_performed=False,
@@ -122,8 +122,8 @@ def audit(args):
                 selected_historical_report_arguments_equal=True, historical_report_return_abi_correct=False,
                 corrected_observer_event_parity=False, reporting_provider_delivery_executed=False,
                 required_live_inputs=dict(turn_local='original component observation', numeric_handler='actual original command',
-                                          can_move='true branch inferred from original OPERATION activity before handler',
-                                          busy='false branch inferred from original handler reaching Start',
+                                          can_move='computed from typed signed x_moves_remaining at each native boundary',
+                                          busy='computed from typed signed i_operation_timer after Clear',
                                           activation_can_start='true branch inferred from original handler reaching Start',
                                           unit_archive_attachments='required by observed newly dirty activity/timer/queue indexes',
                                           formation_archive_attachments='assumed attached for static edit-request comparison; no native dirty capture'),
