@@ -1,0 +1,2612 @@
+{
+  "schema": "c6-linux-player-religion-v1",
+  "checks_passed": true,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "current_version": 20,
+  "version_address": "0x2f66664",
+  "methods": [
+    {
+      "address": "0x1fcc130",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)",
+      "sha256": "2a3fc110a86f71122b45f03f192ddbc4499241d298e49b843ea750bd49d5e1cf"
+    },
+    {
+      "address": "0x1fcc150",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)",
+      "sha256": "9731ca1d2959dc0f406a684267a29d425c9bf7ea2f127425123508fbc2ed2d3b"
+    },
+    {
+      "address": "0x1fcc1a0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)",
+      "sha256": "c6cf9d3175d5134bd8d7b3d396184fd7b9abd3f7ca364cbdc38a1794ce742775"
+    },
+    {
+      "address": "0x1fcc1c0",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)",
+      "sha256": "5edd23b31cc38a2cc74b61c4b33889da2f35c69f9ce10ee24f2899eb7e91af01"
+    },
+    {
+      "address": "0x1fcdac0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x1fcdad0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(int&)",
+      "sha256": "09ddfd4d815a2204789075821ff06a3e8d881dc2bae4791ff3f746206deb3230"
+    },
+    {
+      "address": "0x1fcdb20",
+      "size": 25,
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)",
+      "sha256": "43f291f25ae0e59e98bf6b96e5341ed0345d1627c75c056bac01ada2cfd2f796"
+    },
+    {
+      "address": "0x1fcdba0",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(unsigned int const&)",
+      "sha256": "0baf2c125cf20f28f26a56bc061ccbb70dadd2a825949e44932986634bbea10c"
+    },
+    {
+      "address": "0x1fcdbb0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(unsigned int&)",
+      "sha256": "b5c97ed9421b7f58e0ea8a7e2989ec1c05dd9c16a79416af11d59bd45e57dc3e"
+    },
+    {
+      "address": "0x1fe1f90",
+      "size": 14,
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)",
+      "sha256": "441a140d71c552a6ced859e0e9efa0994c519cad451b975cbb5fc13e8025cd3f"
+    },
+    {
+      "address": "0x1fe2000",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)",
+      "sha256": "8354dc947302541cc1e97c714b223e16c8e9f086c7d09ad77b437291a622809d"
+    },
+    {
+      "address": "0x1fe5e80",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<bool, bool>(Serialization::IStream&, bool&, int, int&&, bool&&)",
+      "sha256": "57e8e97c7be2741a1dc218f74049b9cf7a99191cffd41785ce1aa9dd4c6518e5"
+    },
+    {
+      "address": "0x1fe7900",
+      "size": 14,
+      "name": "Serialization::OStream::WriteObject(bool const&)",
+      "sha256": "0b101fff740deefceb76f32a685baf980dce55ee6f804dd16993e783e33aebba"
+    },
+    {
+      "address": "0x1fe81a0",
+      "size": 75,
+      "name": "Serialization::IStream::ReadObject(bool&)",
+      "sha256": "1b35f5e559410da6d1adcde91f94b8b0ee9a16f84d871535a2d18c3ae544487b"
+    },
+    {
+      "address": "0x1fefe10",
+      "size": 14,
+      "name": "Serialization::IStream& Serialization::operator>><int, Types::LinearAlloc::Default<1u, 0u> >(Serialization::IStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "be5ba0a1913c43eb3a03e109b552c1b3d7d559821096d6f9c59b0ae72f08e878"
+    },
+    {
+      "address": "0x1fefe20",
+      "size": 125,
+      "name": "void Serialization::SerializeToSequenceContainer<int, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > >(Serialization::IStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >&)",
+      "sha256": "0906c9608ac801fcde663528b0adc6569442b13dcb95725cc55a877fa7cfb8c4"
+    },
+    {
+      "address": "0x1ffbbd0",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "d33e4a5fb4dadf218364b8a20da36838ab796c11f42bc2b47327f41c0ff5a465"
+    },
+    {
+      "address": "0x2002480",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)",
+      "sha256": "23f9d1493d61ddb5d8df9b32f1d08543a6eabe7d8b75c1ff9463c7772bc52442"
+    },
+    {
+      "address": "0x20024c0",
+      "size": 41,
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "dafb3aecb2908606aaceb1a0e7e4829c3b36c03c4127d40bef8cbf7fd7918c6d"
+    },
+    {
+      "address": "0x20054a0",
+      "size": 66,
+      "name": "unsigned int Serialization::IndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)",
+      "sha256": "7db73dfe0669efcaf4e9ca33d27a67f3d2e51aed3f6cbdc00134176a2c5199b1"
+    },
+    {
+      "address": "0x2016480",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)",
+      "sha256": "bbba3422fa0bd6194a1c30c88ee7b8e77f8f7f0733c020e55d5c967202a1dd21"
+    },
+    {
+      "address": "0x20e9fa0",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)",
+      "sha256": "bb8836acfe149431c085ea284f1a3022e8e1508430ae8d79bd99f8d3ac731d95"
+    },
+    {
+      "address": "0x2882bb0",
+      "size": 30,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<bool, int>(Serialization::IStream&, bool&, int, int&&, int&&)",
+      "sha256": "1c8f8e7ace5176888574feb86c69b85069de8d1ce361bb96017c63e7ba32d50f"
+    },
+    {
+      "address": "0x2b5d020",
+      "size": 95,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::BeliefYield const&)",
+      "sha256": "6690d8aea786ec5de17ecad88af5682f943d16104b685d391195646b643fe1b1"
+    },
+    {
+      "address": "0x2b5d080",
+      "size": 126,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::BeliefYield&)",
+      "sha256": "461d49f60f250bfb319c2345d7b6eef37035b3ce82fc3a933e902e1b6773bcea"
+    },
+    {
+      "address": "0x2b5d100",
+      "size": 71,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::ReligionBuildingYieldModifier const&)",
+      "sha256": "4d8e76c443f40aa91603a1ae06b0d5d7163e58a8b7596e7aecb79595aa18ff24"
+    },
+    {
+      "address": "0x2b5d150",
+      "size": 69,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::ReligionBuildingYieldModifier&)",
+      "sha256": "e32afc2aec5868e5a99be1fd5d5c61555f27403603da87e446e099320a1a28ca"
+    },
+    {
+      "address": "0x2b5d1a0",
+      "size": 549,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Religion const&)",
+      "sha256": "9c9c41864bb815fe6a6795a6aa04dd2b1a66f9d65fb582d6ca0ae6f1d25d2666"
+    },
+    {
+      "address": "0x2b5d3d0",
+      "size": 1499,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Religion&)",
+      "sha256": "9f4c31dea0ee55306a5e2175de420ba1c5400e3c2423a6fdc19f253f088109f4"
+    },
+    {
+      "address": "0x2b61830",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::DistrictTypes, GameCore::DistrictTypes>(Serialization::IStream&, GameCore::DistrictTypes&, int, int&&, GameCore::DistrictTypes&&)",
+      "sha256": "4ebfd652e697103dc16305452941c3f783da98df9adf0db38d72e0850007c259"
+    },
+    {
+      "address": "0x2b61850",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61870",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::BeliefTypes, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::BeliefTypes, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61890",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b618b0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::PlotCoord, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b618d0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b618f0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61910",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <bool, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<bool, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61930",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::TechTypes, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::TechTypes, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61950",
+      "size": 141,
+      "name": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)",
+      "sha256": "38a67fc5ee9a62ef4939bb6228b95fe113b3d9bbad8520c974029105a6e722e7"
+    },
+    {
+      "address": "0x2b619e0",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <GameCore::GreatPersonIndividualTypes, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::GreatPersonIndividualTypes, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61a00",
+      "size": 21,
+      "name": "Serialization::OStream& operator<< <Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion> const&)",
+      "sha256": "449f3cf4add733712c9d8730e004d66cf06f33459d9190f6e6242aad6c2f52f0"
+    },
+    {
+      "address": "0x2b61a20",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><FixedPointT<8u>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Religion>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b61a40",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::BeliefTypes, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<GameCore::BeliefTypes, GameCore::Player::Religion>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b61a60",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b61a80",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><GameCore::PlotCoord, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Player::Religion>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b61aa0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b61ac0",
+      "size": 38,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&, int, int&&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&)",
+      "sha256": "3009f12db8649c49020f3657452442db3f15a8f5d025b992c8b5e2f14b3ba616"
+    },
+    {
+      "address": "0x2b61af0",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<int, GameCore::Player::Religion>, int>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&, int, int&&, int&&)",
+      "sha256": "7ee907bfa0d46c8109b141cb2741815a6eb6f160fb5c88cbafade0742b7532d2"
+    },
+    {
+      "address": "0x2b61b60",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::TechTypes, GameCore::TechTypes>(Serialization::IStream&, GameCore::TechTypes&, int, int&&, GameCore::TechTypes&&)",
+      "sha256": "f27d96297351852a5bfa33d5504e849fc1e3cb81faaba267512d1d2f3b7a90d4"
+    },
+    {
+      "address": "0x2b61bc0",
+      "size": 120,
+      "name": "bool Serialization::ReadIndexHashArrayVersioned<int, int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&, int, int&&, int&&)",
+      "sha256": "51087e3d4bcc7ed69cc4235e19582667c89d2ff2261cf024d6e152a337864d05"
+    },
+    {
+      "address": "0x2b61c40",
+      "size": 28,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::GreatPersonIndividualTypes, GameCore::GreatPersonIndividualTypes>(Serialization::IStream&, GameCore::GreatPersonIndividualTypes&, int, int&&, GameCore::GreatPersonIndividualTypes&&)",
+      "sha256": "952071b6e4f2f4e4ebe7bd144741f46ffcbdc8c274fd7112e01579e2493a20ba"
+    },
+    {
+      "address": "0x2b61ca0",
+      "size": 34,
+      "name": "Serialization::IStream& Serialization::ReadVersioned<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const&>(Serialization::IStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >&, int, int&&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const&)",
+      "sha256": "eedd2b6127cac69516cd9131d81a92e198afc6f25b597558358b00e801a80fd7"
+    },
+    {
+      "address": "0x2b628b0",
+      "size": 21,
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&)",
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "address": "0x2b62cd0",
+      "size": 149,
+      "name": "bool Serialization::ReadIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)",
+      "sha256": "b2c51a5ab2fe26b6cc9ee999a1c3557d13ef86b39c1e419f62dc43a077527b2f"
+    },
+    {
+      "address": "0x2d4ebe0",
+      "size": 36,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::DistrictTypes const&)",
+      "sha256": "dc40e9bc43e0fc8aec2e195881b9a1c8eab8c366272b24f46990d7fb1231425c"
+    },
+    {
+      "address": "0x2d4ec10",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::DistrictTypes&)",
+      "sha256": "8f2608b388942db0f3d64ebc8e0e8f9cedd91acf351ae7e3d5cbdf710883f92d"
+    },
+    {
+      "address": "0x2d4ef20",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::TechTypes&)",
+      "sha256": "047050d264acc31d6a4477873412f54329d63a12b971850fa8ca7602c1cfa31c"
+    },
+    {
+      "address": "0x2d4f3e0",
+      "size": 58,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::GreatPersonIndividualTypes&)",
+      "sha256": "9fe820dbadcfc907d2a583f88ab9c21f808e8a5dfb5c66cd581531b2a8c81337"
+    },
+    {
+      "address": "0x2d4fb70",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::YieldTypes const&)",
+      "sha256": "b971caad466bb8cb3baf0b50ec89d1f83d536c9d25f15145cc664077fdd4a5c7"
+    },
+    {
+      "address": "0x2d4fba0",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::YieldTypes&)",
+      "sha256": "8f3a33cbd2aca7db1a0c6d4e9fae3b8ea968171068bccd693ea5ca8982362a12"
+    },
+    {
+      "address": "0x2d4fbd0",
+      "size": 33,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::BeliefYieldTypes const&)",
+      "sha256": "d32af052f0218f8e73b49a8ff4a081be91e03f201aea4102b9fb56b0045e45e6"
+    },
+    {
+      "address": "0x2d4fc00",
+      "size": 38,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::BeliefYieldTypes&)",
+      "sha256": "5a3d1cfd0bfa3feebdbdb35d924a19ae813f26e643664a076bcddb2fefebbb3d"
+    },
+    {
+      "address": "0x2d51230",
+      "size": 34,
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual> const&)",
+      "sha256": "73ea400f90b93c6d1ce899be91b4dfac2fd300085888d8d34ed601916c2874a2"
+    }
+  ],
+  "direct_bindings": [
+    {
+      "address": "0x1fcc134",
+      "target": "0x1ea1ce0",
+      "actual_body": "0x1fcdac0",
+      "kind": "call",
+      "name": "Serialization::OStream::WriteObject(int const&)"
+    },
+    {
+      "address": "0x1fcc154",
+      "target": "0x1f1ec80",
+      "actual_body": "0x1fcdba0",
+      "kind": "call",
+      "name": "Serialization::OStream::WriteObject(unsigned int const&)"
+    },
+    {
+      "address": "0x1fcc1a4",
+      "target": "0x1e447f0",
+      "actual_body": "0x1fcdad0",
+      "kind": "call",
+      "name": "Serialization::IStream::ReadObject(int&)"
+    },
+    {
+      "address": "0x1fcc1c4",
+      "target": "0x1f82600",
+      "actual_body": "0x1fcdbb0",
+      "kind": "call",
+      "name": "Serialization::IStream::ReadObject(unsigned int&)"
+    },
+    {
+      "address": "0x1fcdaef",
+      "target": "0x1e03670",
+      "actual_body": "0x1fcdb20",
+      "kind": "call",
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)"
+    },
+    {
+      "address": "0x1fcdb34",
+      "target": "0x1e52db0",
+      "actual_body": "0x1fcdb40",
+      "kind": "jmp",
+      "name": "fastdelegate::FastDelegate1<Platform::MemoryBuffer&, void>::FastDelegate1()"
+    },
+    {
+      "address": "0x1fcdbcf",
+      "target": "0x1e03670",
+      "actual_body": "0x1fcdb20",
+      "kind": "call",
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)"
+    },
+    {
+      "address": "0x1fe1f94",
+      "target": "0x1f8cea0",
+      "actual_body": "0x1fe7900",
+      "kind": "call",
+      "name": "Serialization::OStream::WriteObject(bool const&)"
+    },
+    {
+      "address": "0x1fe2004",
+      "target": "0x1e33280",
+      "actual_body": "0x1fe81a0",
+      "kind": "call",
+      "name": "Serialization::IStream::ReadObject(bool&)"
+    },
+    {
+      "address": "0x1fe5e92",
+      "target": "0x1f3f970",
+      "actual_body": "0x1fe2000",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)"
+    },
+    {
+      "address": "0x1fe81bf",
+      "target": "0x1e03670",
+      "actual_body": "0x1fcdb20",
+      "kind": "call",
+      "name": "Serialization::IStream::ReadRequest::ReadRequest(unsigned long, unsigned long)"
+    },
+    {
+      "address": "0x1fefe14",
+      "target": "0x1ecfb40",
+      "actual_body": "0x1fefe20",
+      "kind": "call",
+      "name": "void Serialization::SerializeToSequenceContainer<int, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > >(Serialization::IStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >&)"
+    },
+    {
+      "address": "0x1fefe31",
+      "target": "0x1e730f0",
+      "actual_body": "0x1fe5530",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::clear()"
+    },
+    {
+      "address": "0x1fefe46",
+      "target": "0x1e57840",
+      "actual_body": "0x1fcc1c0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)"
+    },
+    {
+      "address": "0x1fefe57",
+      "target": "0x1e5d400",
+      "actual_body": "0x1fefea0",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::reserve(unsigned long)"
+    },
+    {
+      "address": "0x1fefe73",
+      "target": "0x1e24d90",
+      "actual_body": "0x1fefec0",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::push_back()"
+    },
+    {
+      "address": "0x1fefe7b",
+      "target": "0x1efbc40",
+      "actual_body": "0x1fefef0",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::back()"
+    },
+    {
+      "address": "0x1fefe86",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x1ffbbd8",
+      "target": "0x1e008d0",
+      "actual_body": "0x1ffbc00",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::Find(unsigned int) const"
+    },
+    {
+      "address": "0x1ffbbe6",
+      "target": "0x1f3df00",
+      "actual_body": "0x1fcccf0",
+      "kind": "jmp",
+      "name": "GameCore::Definition::District::GetCollectionIndex() const"
+    },
+    {
+      "address": "0x2002492",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x20024cd",
+      "target": "0x1f3b410",
+      "actual_body": "0x20054a0",
+      "kind": "call",
+      "name": "unsigned int Serialization::IndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)"
+    },
+    {
+      "address": "0x20024de",
+      "target": "0x1e20270",
+      "actual_body": "0x1fcc150",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)"
+    },
+    {
+      "address": "0x20054ab",
+      "target": "0x1ec7d80",
+      "actual_body": "0x1fe2250",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::GetCount() const"
+    },
+    {
+      "address": "0x20054b9",
+      "target": "0x1ecc450",
+      "actual_body": "0x1fe2b00",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::At(unsigned int) const"
+    },
+    {
+      "address": "0x20054c7",
+      "target": "0x1e8bac0",
+      "actual_body": "0x1fe5b80",
+      "kind": "jmp",
+      "name": "GameCore::Definition::District::GetTypeHash() const"
+    },
+    {
+      "address": "0x20054ce",
+      "target": "0x1e008d0",
+      "actual_body": "0x1ffbc00",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District>::Find(unsigned int) const"
+    },
+    {
+      "address": "0x2016488",
+      "target": "0x1f4e920",
+      "actual_body": "0x20164b0",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology>::Find(unsigned int) const"
+    },
+    {
+      "address": "0x2016496",
+      "target": "0x1e61780",
+      "actual_body": "0x1fccd30",
+      "kind": "jmp",
+      "name": "GameCore::Definition::Technology::GetCollectionIndex() const"
+    },
+    {
+      "address": "0x20e9fa8",
+      "target": "0x1e8bd50",
+      "actual_body": "0x20e9c60",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass>::Find(unsigned int) const"
+    },
+    {
+      "address": "0x20e9fb6",
+      "target": "0x1eb23e0",
+      "actual_body": "0x20a1160",
+      "kind": "jmp",
+      "name": "GameCore::Definition::UnitPromotionClass::GetCollectionIndex() const"
+    },
+    {
+      "address": "0x2882bc4",
+      "target": "0x1f3f970",
+      "actual_body": "0x1fe2000",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)"
+    },
+    {
+      "address": "0x2b5d031",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b5d03c",
+      "target": "0x1fa5c40",
+      "actual_body": "0x2d4fbd0",
+      "kind": "call",
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::BeliefYieldTypes const&)"
+    },
+    {
+      "address": "0x2b5d048",
+      "target": "0x1eee670",
+      "actual_body": "0x2d4fb70",
+      "kind": "call",
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::YieldTypes const&)"
+    },
+    {
+      "address": "0x2b5d054",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b5d060",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b5d06f",
+      "target": "0x1f9dd10",
+      "actual_body": "0x2d4ebe0",
+      "kind": "call",
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::DistrictTypes const&)"
+    },
+    {
+      "address": "0x2b5d092",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2b5d09d",
+      "target": "0x1ecec00",
+      "actual_body": "0x2d4fc00",
+      "kind": "call",
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::BeliefYieldTypes&)"
+    },
+    {
+      "address": "0x2b5d0a9",
+      "target": "0x1f308d0",
+      "actual_body": "0x2d4fba0",
+      "kind": "call",
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::YieldTypes&)"
+    },
+    {
+      "address": "0x2b5d0b5",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2b5d0c1",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2b5d0ee",
+      "target": "0x1f2f7b0",
+      "actual_body": "0x2b61830",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::DistrictTypes, GameCore::DistrictTypes>(Serialization::IStream&, GameCore::DistrictTypes&, int, int&&, GameCore::DistrictTypes&&)"
+    },
+    {
+      "address": "0x2b5d111",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b5d11c",
+      "target": "0x1eee670",
+      "actual_body": "0x2d4fb70",
+      "kind": "call",
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::YieldTypes const&)"
+    },
+    {
+      "address": "0x2b5d128",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b5d137",
+      "target": "0x1e012a0",
+      "actual_body": "0x1fe1f90",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <bool>(bool const&)"
+    },
+    {
+      "address": "0x2b5d15f",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2b5d16a",
+      "target": "0x1f308d0",
+      "actual_body": "0x2d4fba0",
+      "kind": "call",
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::YieldTypes&)"
+    },
+    {
+      "address": "0x2b5d176",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2b5d185",
+      "target": "0x1f3f970",
+      "actual_body": "0x1fe2000",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><bool>(bool&)"
+    },
+    {
+      "address": "0x2b5d1b2",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b5d1c1",
+      "target": "0x1f09fc0",
+      "actual_body": "0x2b61850",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d1d0",
+      "target": "0x1f09fc0",
+      "actual_body": "0x2b61850",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <FixedPointT<8u>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d1df",
+      "target": "0x1f86eb0",
+      "actual_body": "0x2b61870",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <GameCore::BeliefTypes, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::BeliefTypes, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d1ee",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d1fd",
+      "target": "0x1ed22f0",
+      "actual_body": "0x2b618b0",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <GameCore::PlotCoord, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d20c",
+      "target": "0x1e48890",
+      "actual_body": "0x2b618d0",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d21b",
+      "target": "0x1ec86c0",
+      "actual_body": "0x2b618f0",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d22a",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d239",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d248",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d257",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d266",
+      "target": "0x1eddff0",
+      "actual_body": "0x2b61910",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <bool, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<bool, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d275",
+      "target": "0x1eddff0",
+      "actual_body": "0x2b61910",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <bool, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<bool, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d284",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d293",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2a2",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2b1",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2c0",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2cf",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2de",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2ed",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d2fc",
+      "target": "0x1ed7d40",
+      "actual_body": "0x2b61930",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <GameCore::TechTypes, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::TechTypes, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d30b",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d31a",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d329",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d338",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d347",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d353",
+      "target": "0x1f94420",
+      "actual_body": "0x20031d0",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::front() const"
+    },
+    {
+      "address": "0x2b5d35b",
+      "target": "0x1f1f8f0",
+      "actual_body": "0x22148c0",
+      "kind": "call",
+      "name": "GameCore::Definitions::GetUnitPromotionClassDefinitions()"
+    },
+    {
+      "address": "0x2b5d369",
+      "target": "0x1ede260",
+      "actual_body": "0x2b61950",
+      "kind": "call",
+      "name": "bool Serialization::WriteIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::OStream&, int const*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)"
+    },
+    {
+      "address": "0x2b5d378",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d387",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d396",
+      "target": "0x1efc350",
+      "actual_body": "0x2b61890",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <int, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<int, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d3a5",
+      "target": "0x1f8e1b0",
+      "actual_body": "0x2b619e0",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <GameCore::GreatPersonIndividualTypes, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<GameCore::GreatPersonIndividualTypes, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d3b7",
+      "target": "0x1f4e8a0",
+      "actual_body": "0x2b61a00",
+      "kind": "call",
+      "name": "Serialization::OStream& operator<< <Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion>(Serialization::OStream&, FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion> const&)"
+    },
+    {
+      "address": "0x2b5d3e8",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2b5d3f7",
+      "target": "0x1dff290",
+      "actual_body": "0x2b61a20",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><FixedPointT<8u>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d406",
+      "target": "0x1dff290",
+      "actual_body": "0x2b61a20",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><FixedPointT<8u>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<FixedPointT<8u>, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d415",
+      "target": "0x1e12080",
+      "actual_body": "0x2b61a40",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><GameCore::BeliefTypes, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<GameCore::BeliefTypes, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d424",
+      "target": "0x1f0b9b0",
+      "actual_body": "0x2b61a60",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d433",
+      "target": "0x1ea14e0",
+      "actual_body": "0x2b61a80",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><GameCore::PlotCoord, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<GameCore::PlotCoord, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d442",
+      "target": "0x1e0b330",
+      "actual_body": "0x2b61aa0",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::BeliefYield, eastl::allocator>, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d465",
+      "target": "0x1eda700",
+      "actual_body": "0x2b61ac0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&, int, int&&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d492",
+      "target": "0x1e236a0",
+      "actual_body": "0x2b61af0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<int, GameCore::Player::Religion>, int>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d4a1",
+      "target": "0x1f0b9b0",
+      "actual_body": "0x2b61a60",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d4ce",
+      "target": "0x1e236a0",
+      "actual_body": "0x2b61af0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<FAutoVariable<int, GameCore::Player::Religion>, int>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d4dd",
+      "target": "0x1f0b9b0",
+      "actual_body": "0x2b61a60",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b5d4e9",
+      "target": "0x1e481c0",
+      "actual_body": "0x2b61b20",
+      "kind": "call",
+      "name": "FAutoVariable<bool, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d512",
+      "target": "0x1e2eec0",
+      "actual_body": "0x2882bb0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<bool, int>(Serialization::IStream&, bool&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d51e",
+      "target": "0x1e481c0",
+      "actual_body": "0x2b61b20",
+      "kind": "call",
+      "name": "FAutoVariable<bool, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d544",
+      "target": "0x1e5ab10",
+      "actual_body": "0x1fe5e80",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<bool, bool>(Serialization::IStream&, bool&, int, int&&, bool&&)"
+    },
+    {
+      "address": "0x2b5d550",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d579",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d585",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d5ae",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d5ba",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d5e3",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d5ef",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d618",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d624",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d64d",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d659",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d682",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d68e",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d6b7",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d6c3",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d6ec",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d6f8",
+      "target": "0x1e2c1a0",
+      "actual_body": "0x2b61b80",
+      "kind": "call",
+      "name": "FAutoVariable<GameCore::TechTypes, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d721",
+      "target": "0x1f75340",
+      "actual_body": "0x2b61b60",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::TechTypes, GameCore::TechTypes>(Serialization::IStream&, GameCore::TechTypes&, int, int&&, GameCore::TechTypes&&)"
+    },
+    {
+      "address": "0x2b5d72d",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d756",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d762",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d78b",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d797",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d7c0",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d7cc",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d7f5",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d801",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d82a",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d82f",
+      "target": "0x1f1f8f0",
+      "actual_body": "0x22148c0",
+      "kind": "call",
+      "name": "GameCore::Definitions::GetUnitPromotionClassDefinitions()"
+    },
+    {
+      "address": "0x2b5d841",
+      "target": "0x1f3c390",
+      "actual_body": "0x243b770",
+      "kind": "call",
+      "name": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d84c",
+      "target": "0x1f36d50",
+      "actual_body": "0x20a2f60",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass>::GetCount() const"
+    },
+    {
+      "address": "0x2b5d856",
+      "target": "0x1ed1a20",
+      "actual_body": "0x20599d0",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::resize(unsigned long)"
+    },
+    {
+      "address": "0x2b5d85e",
+      "target": "0x1f3c390",
+      "actual_body": "0x243b770",
+      "kind": "call",
+      "name": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d866",
+      "target": "0x1ee0900",
+      "actual_body": "0x2002f20",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::front()"
+    },
+    {
+      "address": "0x2b5d892",
+      "target": "0x1e37ce0",
+      "actual_body": "0x2b61bc0",
+      "kind": "call",
+      "name": "bool Serialization::ReadIndexHashArrayVersioned<int, int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d89e",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d8c7",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d8d3",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d8fc",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d908",
+      "target": "0x1e155b0",
+      "actual_body": "0x243b730",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d931",
+      "target": "0x1fb67c0",
+      "actual_body": "0x2002480",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<int, int>(Serialization::IStream&, int&, int, int&&, int&&)"
+    },
+    {
+      "address": "0x2b5d93d",
+      "target": "0x1f9aa70",
+      "actual_body": "0x2b61c60",
+      "kind": "call",
+      "name": "FAutoVariable<GameCore::GreatPersonIndividualTypes, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d966",
+      "target": "0x1e15ff0",
+      "actual_body": "0x2b61c40",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<GameCore::GreatPersonIndividualTypes, GameCore::GreatPersonIndividualTypes>(Serialization::IStream&, GameCore::GreatPersonIndividualTypes&, int, int&&, GameCore::GreatPersonIndividualTypes&&)"
+    },
+    {
+      "address": "0x2b5d972",
+      "target": "0x1f3c390",
+      "actual_body": "0x243b770",
+      "kind": "call",
+      "name": "FAutoVariable<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, GameCore::Player::Religion>::edit()"
+    },
+    {
+      "address": "0x2b5d995",
+      "target": "0x1e5f410",
+      "actual_body": "0x2b61ca0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::ReadVersioned<Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const&>(Serialization::IStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >&, int, int&&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const&)"
+    },
+    {
+      "address": "0x2b61842",
+      "target": "0x1ef73c0",
+      "actual_body": "0x2d4ec10",
+      "kind": "call",
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::DistrictTypes&)"
+    },
+    {
+      "address": "0x2b61969",
+      "target": "0x1f36d50",
+      "actual_body": "0x20a2f60",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass>::GetCount() const"
+    },
+    {
+      "address": "0x2b6197a",
+      "target": "0x1e20270",
+      "actual_body": "0x1fcc150",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)"
+    },
+    {
+      "address": "0x2b61995",
+      "target": "0x1f9a5d0",
+      "actual_body": "0x20e9c30",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass>::At(unsigned int) const"
+    },
+    {
+      "address": "0x2b6199d",
+      "target": "0x1f92d60",
+      "actual_body": "0x20e9c50",
+      "kind": "call",
+      "name": "GameCore::Definition::UnitPromotionClass::GetTypeHash() const"
+    },
+    {
+      "address": "0x2b619ac",
+      "target": "0x1e20270",
+      "actual_body": "0x1fcc150",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <unsigned int>(unsigned int const&)"
+    },
+    {
+      "address": "0x2b619b7",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2b61ad2",
+      "target": "0x1e36930",
+      "actual_body": "0x2b628d0",
+      "kind": "call",
+      "name": "void CopyAssignment<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion> >(FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&, eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator> const&)"
+    },
+    {
+      "address": "0x2b61adc",
+      "target": "0x1e38060",
+      "actual_body": "0x2b628b0",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<eastl::vector<GameCore::Player::ReligionBuildingYieldModifier, eastl::allocator>, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b61afe",
+      "target": "0x1e567d0",
+      "actual_body": "0x243aeb0",
+      "kind": "call",
+      "name": "FAutoVariable<int, GameCore::Player::Religion>::operator=(int&&)"
+    },
+    {
+      "address": "0x2b61b08",
+      "target": "0x1f0b9b0",
+      "actual_body": "0x2b61a60",
+      "kind": "call",
+      "name": "Serialization::IStream& operator>><int, GameCore::Player::Religion>(Serialization::IStream&, FAutoVariable<int, GameCore::Player::Religion>&)"
+    },
+    {
+      "address": "0x2b61b72",
+      "target": "0x1f29a10",
+      "actual_body": "0x2d4ef20",
+      "kind": "call",
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::TechTypes&)"
+    },
+    {
+      "address": "0x2b61bd9",
+      "target": "0x1e32220",
+      "actual_body": "0x20e31e0",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass>::begin() const"
+    },
+    {
+      "address": "0x2b61be4",
+      "target": "0x1efbe00",
+      "actual_body": "0x20e31f0",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass>::end() const"
+    },
+    {
+      "address": "0x2b61c06",
+      "target": "0x1eb23e0",
+      "actual_body": "0x20a1160",
+      "kind": "call",
+      "name": "GameCore::Definition::UnitPromotionClass::GetCollectionIndex() const"
+    },
+    {
+      "address": "0x2b61c33",
+      "target": "0x1e59c90",
+      "actual_body": "0x2b62cd0",
+      "kind": "jmp",
+      "name": "bool Serialization::ReadIndexHashArray<int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(Serialization::IStream&, int*, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)"
+    },
+    {
+      "address": "0x2b61c52",
+      "target": "0x1e67200",
+      "actual_body": "0x2d4f3e0",
+      "kind": "call",
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::GreatPersonIndividualTypes&)"
+    },
+    {
+      "address": "0x2b61cae",
+      "target": "0x1f01850",
+      "actual_body": "0x2006ee0",
+      "kind": "call",
+      "name": "Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >::operator=(Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> > const&)"
+    },
+    {
+      "address": "0x2b61cb8",
+      "target": "0x1ec6c70",
+      "actual_body": "0x1fefe10",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::operator>><int, Types::LinearAlloc::Default<1u, 0u> >(Serialization::IStream&, Types::Vector<int, Types::LinearAlloc::Default<1u, 0u> >&)"
+    },
+    {
+      "address": "0x2b62cec",
+      "target": "0x1e57840",
+      "actual_body": "0x1fcc1c0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)"
+    },
+    {
+      "address": "0x2b62d16",
+      "target": "0x1e57840",
+      "actual_body": "0x1fcc1c0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)"
+    },
+    {
+      "address": "0x2b62d22",
+      "target": "0x1f99430",
+      "actual_body": "0x20e9fa0",
+      "kind": "call",
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::UnitPromotionClass> const&)"
+    },
+    {
+      "address": "0x2b62d46",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2d4ebe8",
+      "target": "0x1f23800",
+      "actual_body": "0x2213a70",
+      "kind": "call",
+      "name": "GameCore::Definitions::GetDistrictDefinitions()"
+    },
+    {
+      "address": "0x2d4ebf5",
+      "target": "0x1f009f0",
+      "actual_body": "0x20024c0",
+      "kind": "call",
+      "name": "void Serialization::WriteIndexToHash<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(Serialization::OStream&, unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)"
+    },
+    {
+      "address": "0x2d4ec23",
+      "target": "0x1e57840",
+      "actual_body": "0x1fcc1c0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)"
+    },
+    {
+      "address": "0x2d4ec2c",
+      "target": "0x1f23800",
+      "actual_body": "0x2213a70",
+      "kind": "call",
+      "name": "GameCore::Definitions::GetDistrictDefinitions()"
+    },
+    {
+      "address": "0x2d4ec36",
+      "target": "0x1edefd0",
+      "actual_body": "0x1ffbbd0",
+      "kind": "call",
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::District> const&)"
+    },
+    {
+      "address": "0x2d4ef33",
+      "target": "0x1e57840",
+      "actual_body": "0x1fcc1c0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)"
+    },
+    {
+      "address": "0x2d4ef3c",
+      "target": "0x1f7b1f0",
+      "actual_body": "0x22146f0",
+      "kind": "call",
+      "name": "GameCore::Definitions::GetTechnologyDefinitions()"
+    },
+    {
+      "address": "0x2d4ef46",
+      "target": "0x1f269c0",
+      "actual_body": "0x2016480",
+      "kind": "call",
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::Technology> const&)"
+    },
+    {
+      "address": "0x2d4f3f3",
+      "target": "0x1e57840",
+      "actual_body": "0x1fcc1c0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><unsigned int>(unsigned int&)"
+    },
+    {
+      "address": "0x2d4f3fc",
+      "target": "0x1f2fa30",
+      "actual_body": "0x2213e00",
+      "kind": "call",
+      "name": "GameCore::Definitions::GetGreatPersonIndividualDefinitions()"
+    },
+    {
+      "address": "0x2d4f406",
+      "target": "0x1f0ea40",
+      "actual_body": "0x2d51230",
+      "kind": "call",
+      "name": "int Serialization::HashToIndex<GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual> >(unsigned int, GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual> const&)"
+    },
+    {
+      "address": "0x2d4fb83",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2d4fbaf",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2d4fbe3",
+      "target": "0x1f5fbd0",
+      "actual_body": "0x1fcc130",
+      "kind": "call",
+      "name": "Serialization::OStream& Serialization::OStream::operator<< <int>(int const&)"
+    },
+    {
+      "address": "0x2d4fc0f",
+      "target": "0x1e757d0",
+      "actual_body": "0x1fcc1a0",
+      "kind": "call",
+      "name": "Serialization::IStream& Serialization::IStream::operator>><int>(int&)"
+    },
+    {
+      "address": "0x2d51238",
+      "target": "0x1f75080",
+      "actual_body": "0x2869e40",
+      "kind": "call",
+      "name": "GameCore::Definition::DefinitionCollectionWithTypeIndex<GameCore::Definition::GreatPersonIndividual>::Find(unsigned int) const"
+    },
+    {
+      "address": "0x2d51246",
+      "target": "0x1e26a80",
+      "actual_body": "0x20591d0",
+      "kind": "jmp",
+      "name": "GameCore::Definition::GreatPersonIndividual::GetCollectionIndex() const"
+    },
+    {
+      "address": "0x2b4f09a",
+      "target": "0x1f8ff50",
+      "actual_body": "0x2b5d1a0",
+      "kind": "call",
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Religion const&)"
+    },
+    {
+      "address": "0x2b4f0ad",
+      "target": "0x1eb9310",
+      "actual_body": "0x2b6b0f0",
+      "kind": "call",
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Resources const&)"
+    }
+  ],
+  "dwarf_sha256": "1ae0c1843fc671f1353a31224a43d2e190fc96b9631f69d1d5e710a61afc7ac7",
+  "candidate_sources": {
+    "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
+    "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
+    "crates/c6-core/Cargo.toml": "ea3f7de1ec6700efddc0552621e9b1fa968fadf42a2397bd7135e2a18f34d9b8",
+    "crates/c6-core/src/city.rs": "531793be8f4cb537961ef46568a1aa40e7ea1f797839e61a6021aae6c6e9c0ae",
+    "crates/c6-core/src/city_citizens.rs": "1a55765abd69ef6ca03ac06b82dc11ac84e70db9b394bff1b882c831492bb079",
+    "crates/c6-core/src/city_district.rs": "b84286b4dae327a2d1f07a3cf4696b259c3c328f2b4a2b7d18ed218574b2f8a6",
+    "crates/c6-core/src/city_economy.rs": "bbbe64d5c285f8cce9246adc3209ffe5260bf0c45597f0790bf7453320cfab70",
+    "crates/c6-core/src/city_production.rs": "cd76bae578f8240d493bb6cebc08f53d67ea0ca9c3df3fd9e290df995cb5247a",
+    "crates/c6-core/src/city_services.rs": "c49aea2f66ff57909203ff5763d33ece448060bb018ca36b9909bb7d9d05385c",
+    "crates/c6-core/src/city_wire.rs": "bfd35f438a4950ac2443d9e1de2c56b62daec7373002331d14b4d881689a050b",
+    "crates/c6-core/src/codec.rs": "713c945b0ba62a2073945e072f927096d7f11a020dd129183b10340c7b27cf75",
+    "crates/c6-core/src/combat.rs": "6f826ebfa51b861b47765775417fe3b201f54a86464ebdd811b0c3c5eb84e07b",
+    "crates/c6-core/src/combat_random.rs": "b5f42d98ae02e80635a41c20056c8080e417058fa41da016abf93e4f772d54a3",
+    "crates/c6-core/src/core_player.rs": "ea03a7dc61befcea08c3a348d5f8adcfb4395915b0b31515f706ea6b58afed23",
+    "crates/c6-core/src/core_stream.rs": "d061cdab17dbd186e3fc0d6b5ee31baa9d4d2828bad2f159950a2ee5c8010b72",
+    "crates/c6-core/src/geometry.rs": "c6ba93f61f16965c7b203765079250e8081f94db229a58591d31135e44e1c46d",
+    "crates/c6-core/src/improvement_yield.rs": "205ea31e4d418f2682ee1622218d2ffd602b269a417eb3a807126dc7b92b5441",
+    "crates/c6-core/src/lib.rs": "1b647ce16d8249e3dc07924fe68d4d636fa8092ccbb34e8abf4736ad6fc0b435",
+    "crates/c6-core/src/map/components.rs": "3895c5cba713dbacf4578d2bf9b2f77ffe5f2a63740e7ad2832a4f4a0c17c7d2",
+    "crates/c6-core/src/map/containers.rs": "df39a8b66e5928daec33100c7d7af53487e49f4116f054f93b09426aae32a94c",
+    "crates/c6-core/src/map/localization.rs": "677b7f00f223a4ab101c41bed42cdcb1d9baeaedecd1223e65b4c1ac4e6b595c",
+    "crates/c6-core/src/map/plot.rs": "b3a63e4ade2f16fc62cf6122f1af278adf3afd3e11baf40a7bcb12de25885dd6",
+    "crates/c6-core/src/map/tests.rs": "933a1a5e8a7e37c7fa942ff267a5204b9cc381ef4aabe3c4d0fe3e2faf6eb531",
+    "crates/c6-core/src/map.rs": "70ebe4afa6232cab83175b68838a1532581b5c40f2749204906ed049a6ef5530",
+    "crates/c6-core/src/messages.rs": "25b343137e5da79814887186738ec34bcdfbe102e19802ebc16b7dfcaae741c4",
+    "crates/c6-core/src/movement.rs": "676f9803bec5bb7157513044850dee7e3892b30fb8c6abedf40d40cbcdf77652",
+    "crates/c6-core/src/movement_world.rs": "7aaa5f65d94d3a63f8de5810cc91e258597021d81cb44426915feeeaaed9693b",
+    "crates/c6-core/src/notification_lifecycle.rs": "983bbb53a50feb7e7e9327e76027504a8808199ae950d72967c99ef789d57365",
+    "crates/c6-core/src/notifications.rs": "8c7c3b7868377b4f1dc3a2942c47ced2b62b83a6b5a29a9e8c553fe26d252192",
+    "crates/c6-core/src/player_components.rs": "f8df6f9abf37e320481cc7b748e075a9a78739badcb8877b7546eebf92de8df6",
+    "crates/c6-core/src/player_culture.rs": "666d8993a28ce85908025c833d274dae09e2a3eabedede23bf377e5182cd990d",
+    "crates/c6-core/src/player_diplomacy.rs": "8202c3a60e07ca617cbda34bcc36ad772f4feb52f10cdf04bfeaab1643f4ec76",
+    "crates/c6-core/src/player_diplomacy_blackboard.rs": "48acc1d9a5a7ef5c1d79e7018907fcda9e308d8ae524517f76e976be4b642226",
+    "crates/c6-core/src/player_districts.rs": "1c3a6da7a62ecda88dcd17091a248b8b83abda6e6400adc98473a029983d2338",
+    "crates/c6-core/src/player_espionage.rs": "2ba00f8de2ac11902f4c90e5b71e9cb0157c081b70c9c0ef9cde75de89b6fea8",
+    "crates/c6-core/src/player_name_manager.rs": "b91a24873851384bedd92bebada72d8d5761ea52f582593232ffeb557c4c16e0",
+    "crates/c6-core/src/player_prerequisites.rs": "9546116219a973fa7e09c87f5566bcd840ade9afd13cb8db8bb27dc72344333c",
+    "crates/c6-core/src/player_religion.rs": "1ebdb19bdbe4db903ac0a0d572427f7a504901616b52c7c043e0eb3f4c7587c6",
+    "crates/c6-core/src/player_resources.rs": "3465f430dc0c4b1f8ec9be01aae053ce71bb5a46e473d3238a8cbff502060f47",
+    "crates/c6-core/src/plot_yield.rs": "4f9c7a87061cee9a4395b15fec6b1b24f92cbf2b692ad3ac60204b85c428b751",
+    "crates/c6-core/src/random_variants.rs": "4ec46240190a8fc46d7fbfd44cb0b5fbfc41028dd4fabb92a81f1b6dd24b3c62",
+    "crates/c6-core/src/requirements.rs": "7987837beb87779f5e40dabe54640ca984ced39c6cc533b244eeb1ffa5779730",
+    "crates/c6-core/src/rng/native_serialization.rs": "84a367fc74b8eca5b48a5e4b6d0732c5967e000ba4857700535309913e1b61ce",
+    "crates/c6-core/src/rng.rs": "8b4a487be2c18d6e647b420f498e1e0c362182be6ef8ce0db7b102c9df4b48f3",
+    "crates/c6-core/src/skip_turn.rs": "a2a4b20191c66a7d680f054393f1e1f709565408ec37fc9af203056645844a02",
+    "crates/c6-core/src/trade.rs": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "crates/c6-core/src/unit/state.rs": "309d3b8f146b932407f43cf854249500c191ddf1f32db300978345032cc4ca8f",
+    "crates/c6-core/src/unit/variants.rs": "db7c0a88a672cac400024a151b6d3063f66510fdc2b163ad656181dc2117dec8",
+    "crates/c6-core/src/unit.rs": "08dc499110816b38fee63f3d7f78244df6f57a3a7a7d3f4b1a38d2faea75e935",
+    "crates/c6-core/src/unit_operation_legality.rs": "fb69a133715cc26e7ac8591da486a2f2aa89f9cf283b4e439e3db45e94ca8acb",
+    "crates/c6-core/src/unit_placement.rs": "71e8e28102e31f4debc295dc2716983b2523695c0483a5945c9af240275bbd28",
+    "crates/c6-core/src/world.rs": "ff30a11433e8044b9c4a20c26d617c954605462106482427a3b593c53b8b6474",
+    "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8"
+  },
+  "candidate_sha256": "d63d5e124ea529b5d739c0f9e0ef27a2e2b41c8985be03e2ca12dee816095d1b",
+  "harness_sha256": "4f328124921700978f27ed5325310f33dacfde42cbcc89ffb0b3ef5805530074",
+  "audit_source_sha256": "670bea984006755372abe5d097074413e82810a6a66365ce6b64d00fcf2ba21a",
+  "fixtures": [
+    {
+      "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+      "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+      "records": 43,
+      "record_bytes": 17173,
+      "record_bytes_meaning": "sum_of_all_records_in_this_stream",
+      "first_record_bytes": 394,
+      "first_observed_range": [
+        4995796,
+        4996190
+      ],
+      "ordered_record_digests_sha256": "764d8f75fe39a1b1f7e5a39ecd4678650413abd55b461e2aae944bd2de0c1727",
+      "typed_observations": [
+        [
+          394,
+          45,
+          1023823,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          457,
+          49,
+          276884,
+          1,
+          3,
+          20,
+          25
+        ],
+        [
+          418,
+          46,
+          1385898,
+          1,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          4124198,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          442,
+          47,
+          66566,
+          2,
+          0,
+          20,
+          25
+        ],
+        [
+          442,
+          47,
+          53993,
+          2,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2814428,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          4548933,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          418,
+          46,
+          40752,
+          1,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          4781122,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          418,
+          46,
+          143811,
+          1,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          10521,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          5897463,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          82436,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          3222958,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          5763392,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2137007,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          59156,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          204848,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          92845,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          5612,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          19400,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          77668,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          55468,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2628944,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          29949,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          52167,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          40571,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          946005,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2259,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          65085,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          17167,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          655992,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          100845,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          141165,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          118838,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2468063,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          211200,
+          0,
+          0,
+          20,
+          25
+        ]
+      ]
+    },
+    {
+      "stream_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+      "trace_sha256": "027e6d4470a8755121d3e02221a36ae978fd4fd8e128ca296896144064f2a369",
+      "records": 43,
+      "record_bytes": 17173,
+      "record_bytes_meaning": "sum_of_all_records_in_this_stream",
+      "first_record_bytes": 394,
+      "first_observed_range": [
+        4995796,
+        4996190
+      ],
+      "ordered_record_digests_sha256": "764d8f75fe39a1b1f7e5a39ecd4678650413abd55b461e2aae944bd2de0c1727",
+      "typed_observations": [
+        [
+          394,
+          45,
+          1023823,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          457,
+          49,
+          276884,
+          1,
+          3,
+          20,
+          25
+        ],
+        [
+          418,
+          46,
+          1385898,
+          1,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          4124198,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          442,
+          47,
+          66566,
+          2,
+          0,
+          20,
+          25
+        ],
+        [
+          442,
+          47,
+          53993,
+          2,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2814428,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          4548933,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          418,
+          46,
+          40752,
+          1,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          4781122,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          418,
+          46,
+          143811,
+          1,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          10521,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          5897463,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          82436,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          3222958,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          5763392,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2137007,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          59156,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          204848,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          92845,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          5612,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          19400,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          77668,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          55468,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2628944,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          29949,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          0,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          52167,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          40571,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          946005,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2259,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          65085,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          17167,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          655992,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          100845,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          141165,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          118838,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          2468063,
+          0,
+          0,
+          20,
+          25
+        ],
+        [
+          394,
+          45,
+          211200,
+          0,
+          0,
+          20,
+          25
+        ]
+      ]
+    }
+  ],
+  "source_only_tests": 5,
+  "exact_native_record_byte_item_caps_checked": true,
+  "one_short_native_record_caps_rejected": true,
+  "allocation_policy": "checked per-vector storage; aggregate consumed wire bytes and items",
+  "original_execution": false,
+  "private_writes": false,
+  "legacy_versions": false,
+  "attribution_reference_revision": "5af389445118bed2bdebf7a8a42b219c8fba5175",
+  "reference_role": "discovery_only",
+  "complete_current_religion_wire": true,
+  "definition_remapping": false,
+  "native_read_fixups": false,
+  "full_player": false,
+  "world_import": false,
+  "gameplay_state": false,
+  "actions": false,
+  "turns": false,
+  "next_player_component": "Resources",
+  "unknown_save_bytes_masked": false,
+  "recorded_raw_save_load_difference_bytes": 89198
+}
