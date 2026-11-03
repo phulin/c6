@@ -60,7 +60,7 @@ choices remain external policies. Unknown save bytes remain unclassified and
 unmasked, including the recorded 89,198-byte raw Save→Load difference. No original
 game code is executed and no private or proprietary artifacts are written.
 
-Validated source commit `669c84c` passes both isolated source tests and all 86
+Validated source commit `419c616` passes both isolated source tests and all 86
 saved Trade records: 670,112 bytes per canonical stream, 1,340,224 bytes total.
 Every native record is 15,584 bytes and 2,066 charged items. Exact caps pass,
 every truncation fails, and one-short byte/item caps fail. The evidence records

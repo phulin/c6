@@ -4036,8 +4036,8 @@
     }
   ],
   "dwarf_sha256": "18156b26b00d4c70d991f52d47f735aaaca62fbe359c9e629c2b0ed23ab48eb6",
-  "candidate_source_commit": "669c84c94d87088c594c7f32ee9731f421104e07",
-  "candidate_archive_sha256": "1aa5aa07564f6531e483f4a4a5b492752b462c03d11144dd5eddf5fcddf78d86",
+  "candidate_source_commit": "419c6164b9a2656cb529402de8f5d731b06fb6aa",
+  "candidate_archive_sha256": "579058c20bd688f07a7d0c7e133adef6eb2019da92ba23a0d08499093c6f97ec",
   "candidate_sources": {
     "Cargo.toml": "ead82963ead1060b476478f6e9c6d8349cc0b1cba23ef4cc57f996eb1ae85c0a",
     "Cargo.lock": "8ef8b7a2beb9956cabd52034b92a6525d907738576adb0e9901b1938eafc857d",
@@ -4099,11 +4099,11 @@
     "crates/c6-core/src/unit_placement.rs": "6c35aa50f6e40a2bf4aa30252bef4f3bfe6ed988dfb31da6bb8639f0c7176888",
     "crates/c6-core/src/world.rs": "2c5477fc15a591b2bfdac7ff424de827228b48f14820afc044030ccc41a45e66",
     "crates/c6-core/src/yields.rs": "66462b830d627426b862874f27c361686cd8343789c981aa8545827ab33864e8",
-    "tools/linux/player_trade_audit.py": "f0268f79b9f56799420cc0230230b15fa5935c132ee4cc96ac1f42a2e0b6fa95"
+    "tools/linux/player_trade_audit.py": "5554fa8c6091edd9c660acde28e7cb730ef224d8413d21cbf35efc59455f6d39"
   },
-  "candidate_sha256": "96639147450a39b737f9d61d4daf6bdd6751f92dc21f8fcb0644b6f107f3c05e",
-  "harness_sha256": "80e3c7bb372578602b4bb5f0fd040cdc0e7667ed5119adba5204d5be38798f06",
-  "audit_source_sha256": "f0268f79b9f56799420cc0230230b15fa5935c132ee4cc96ac1f42a2e0b6fa95",
+  "candidate_sha256": "563bb8c8820467cf8d790f1947bc3f9312c8481aae9fab571b0bc57c202f3116",
+  "harness_sha256": "09ab3bae2a7d186f8f3016fa1d313875ee3c984780123571afd8723bca6f5df8",
+  "audit_source_sha256": "5554fa8c6091edd9c660acde28e7cb730ef224d8413d21cbf35efc59455f6d39",
   "fixtures": [
     {
       "stream_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
@@ -4154,8 +4154,10 @@
   "legacy_versions": false,
   "definition_remapping": false,
   "native_read_fixups": false,
-  "native_current_read_reset": false,
-  "native_current_read_callbacks": false,
+  "native_current_read_calls_initialize": true,
+  "native_current_read_calls_reset": true,
+  "native_current_read_reset_reproduced": false,
+  "native_current_read_callbacks_reproduced": false,
   "full_player": false,
   "world_import": false,
   "gameplay_state": false,
