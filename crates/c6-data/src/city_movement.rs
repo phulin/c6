@@ -1024,6 +1024,7 @@ mod tests {
     }
     fn buildings() -> Buildings {
         Buildings {
+            wire_version: 9,
             building_locations: vec![],
             pillaged: vec![],
             era_created: vec![],
