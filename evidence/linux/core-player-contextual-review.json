@@ -1,0 +1,197 @@
+{
+  "schema": "c6-linux-contextual-player-manager-independent-review-v1",
+  "preliminary_source_commit": "cba4a635888fb8bbb8182c2b32590359c7c137d6",
+  "source_acceptance": true,
+  "native_all_player_acceptance": false,
+  "closed_low_level_dependencies": [
+    "5a67080",
+    "928ef57",
+    "b508006"
+  ],
+  "review_scope": "complete conditional Player Manager wire, provenance boundary and shared budgets",
+  "findings": [
+    {
+      "id": "roster-preallocation",
+      "status": "resolved",
+      "scope": "source resource policy",
+      "source": "cba4a63",
+      "detail": "Advertised roster preflight uses 102B wire minimum but reserves count times FirstPlayer fixed storage; 600000 entries can request over 10GiB under default wire/item limits before parsing a malformed next entry.",
+      "root_confirmed_material": true,
+      "resolution_commit": "baf0b8daee8a47095f259a26fe9fe3bce31e996a",
+      "resolution": "Decode and validate each additional record before reserving one append slot; nonallocating regression records zero reservation requests for an invalid second header under a 600000-entry advertisement."
+    },
+    {
+      "id": "native-admission",
+      "status": "open",
+      "scope": "native all-Player acceptance",
+      "detail": "No production snapshot admission constructor exists; candidate preflight and cfg(test) SourceOnly construction do not prove initialization or genuine capture."
+    },
+    {
+      "id": "genuine-capture",
+      "status": "open",
+      "scope": "native all-Player acceptance",
+      "detail": "No admitted genuine observations bind input Save, input Core, own output Core, stream occurrence, read/write frames, all three vectors and ordered definitions."
+    },
+    {
+      "id": "absolute-military-cursor",
+      "status": "open",
+      "scope": "native all-Player acceptance",
+      "detail": "This source wrapper delegates the low-level conditional method without absolute Military cursor/record-range validation; that bridge remains a later source change."
+    }
+  ],
+  "context_free_prior_acceptance": "867a009",
+  "native_execution": false,
+  "source_injection": false,
+  "raw_save_load_difference_bytes": 89198,
+  "unknown_bytes_masked": 0,
+  "codec_identities": {
+    "5a67080": {
+      "source_commit": "3b84280a0b458fc26c2d6f6e3d1a807f7483d733",
+      "matched_cba4a63": {
+        "crates/c6-core/src/player_ai_military.rs": "44671c110f4baf67a009bb767e79e1e0be6dbc1f2d91190d8a30492bead54e92",
+        "crates/c6-core/src/player_ai_military_operations.rs": "d3dc8e719d38c4e918025f686b0a015548208d0283308c66ce6283758cec902d",
+        "crates/c6-core/src/player_ai_research.rs": "5df87d9a482fe707b0d34e54786800ad5fb3dea0ea47cb9520e9be326b68b643",
+        "crates/c6-core/src/player_ai_tactical.rs": "ea253bbd0c47aca2b6d3fa00d88f9b4222b5da0b728533dab1c48f4b3ff7d4e1"
+      },
+      "matched_final_source": true
+    },
+    "928ef57": {
+      "source_commit": "eb5bbd03bdb9fbf5394a7a45a29240a3ac8b8eb5",
+      "matched_cba4a63": {
+        "crates/c6-core/src/player_ai_targets.rs": "316654da12d9de6bdb468d9f0e08367549cbc6b9b44ec28d357e8465aebf875d",
+        "crates/c6-core/src/player_ai_behavior_tree.rs": "6d6babd71f41469eecfd1630bfb69ae1b3dc6bab9d15ef6f9b6ec9b58ace3427"
+      },
+      "matched_final_source": true
+    },
+    "b508006": {
+      "source_commit": "69b5aea78cd0af35b4b89f9e2c069aed7d32ae81",
+      "matched_module_sha256": "11fd165c35e84d21c745caf517fe9d4b7717d940e45f534ef02f49d086cae902",
+      "matched_final_source": true
+    }
+  },
+  "source_commit": "361fa6c582361c3d791b07a56d00dcab492a4982",
+  "review_phase": "source-only conditional Manager and GlobalAi wrappers",
+  "production_native_admission_available": false,
+  "genuine_snapshot_admitted": false,
+  "absolute_military_cursor_bridge": false,
+  "public_api": {
+    "source_commit": "361fa6c582361c3d791b07a56d00dcab492a4982",
+    "harness_sha256": "edd41282b64c335c2b8a4105128ec67a7ac6fecfa0079012210b36e779948bd7",
+    "candidate_sha256": "ba16199dc2bf7ba98170273bb4ee9a43ac5e6dbeb5a26c556ca73cd55ffe4ae7",
+    "cases": [
+      {
+        "kind": "actual_input_missing_snapshot_refusal",
+        "input_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+        "bytes": 80657462,
+        "output": "native_refused 6583893 2",
+        "native_all_player_acceptance": false
+      },
+      {
+        "kind": "actual_input_missing_snapshot_refusal",
+        "input_sha256": "85d858efc7f3bd405a3f2349c596d3cab8d36fbd04e8efbf1cdfe9cce40e87a8",
+        "bytes": 80657462,
+        "output": "native_refused 6583893 2",
+        "native_all_player_acceptance": false
+      },
+      {
+        "kind": "synthetic-false-43",
+        "input_sha256": "6a64e986397e9ddcb31c445986a40ebf062176b30b2c36015aa3dbae720be2a4",
+        "bytes": 26964094,
+        "output": "source_false_43 26964091 5129083 3170987 21224",
+        "source_only": true,
+        "snapshots_constructed": 0
+      },
+      {
+        "kind": "synthetic-global-43",
+        "input_sha256": "36998c75ee3893d78bd10896a0541e32afbed7d99e1ed084e8f4ec17ad1b0fe9",
+        "bytes": 27332555,
+        "output": "source_global_43 26964091 27332552 5176584",
+        "source_only": true,
+        "snapshots_constructed": 0
+      }
+    ],
+    "harness_source": "use c6_core::{core_player::{self,initialization as init},core_stream::{ThroughFirstPlayer,ThroughPlayerManager,ThroughPlayerManagerError},map,unit,player_tail};\nuse sha2::{Digest,Sha256};\nuse std::sync::Arc;\nuse std::cell::Cell;\nuse std::io::{Read,Write};\nfn main(){\n let mode=std::env::args().nth(1).unwrap();\n if mode==\"tail\"{std::io::stdout().write_all(&player_tail::Tail::default().encode(player_tail::Context{player_version:47,was_ever_alive:false},unit::Limits::default()).unwrap()).unwrap();return;}\n let mut input=vec![];std::io::stdin().read_to_end(&mut input).unwrap();\n let binding=init::WireBinding{role:init::WireRole::ReadInputCore,core_sha256:Sha256::digest(&input).into(),occurrence_id:b\"independent-source-case-only\".to_vec(),output_id:None,inputs:init::InputIdentities{configuration_sha256:[1;32],rules_inputs_sha256:[2;32],database:init::DatabaseIdentity::LiveSnapshotUnavailable,dlc_inputs_sha256:[3;32],mods_inputs_sha256:[4;32],content_inputs_sha256:[5;32]}};\n let calls=Cell::new(0usize);\n let provider=|id:init::PlayerIdentity| -> Option<Arc<init::InitializationSnapshot>> {calls.set(calls.get()+1);assert_eq!(id.manager_index,0);None};\n let shared=map::Limits{max_items:16_000_000,..map::Limits::default()};let player=unit::Limits{max_items:16_000_000,..unit::Limits::default()};\n let mut wrong=binding.clone();wrong.core_sha256[0]^=1;\n assert!(matches!(ThroughPlayerManager::decode(&input,shared,player,wrong,&provider),Err(ThroughPlayerManagerError::SourceImageMismatch{..})));assert_eq!(calls.get(),0);\n let mut tail_changed=input.clone();*tail_changed.last_mut().unwrap()^=1;\n assert!(matches!(ThroughPlayerManager::decode(&tail_changed,shared,player,binding.clone(),&provider),Err(ThroughPlayerManagerError::SourceImageMismatch{..})));assert_eq!(calls.get(),0);\n if mode==\"native-refusal\"{\n  let standard=ThroughFirstPlayer::decode(&input,shared,player).unwrap();assert_eq!(standard.consumed,6583893);assert_eq!(standard.player_prefix.boundary,core_player::Boundary::AIMilitary);\n  let(encoded,items)=standard.player_prefix.encode_prefix_with_items(player).unwrap();assert_eq!(encoded,input[standard.core.consumed..standard.consumed]);assert_eq!(items,250396);\n  for _ in 0..2{assert!(matches!(ThroughPlayerManager::decode(&input,shared,player,binding.clone(),&provider),Err(ThroughPlayerManagerError::Player(core_player::Error::MissingInitializationSnapshot(_)))));}\n  assert_eq!(calls.get(),2);println!(\"native_refused {} {}\",standard.consumed,calls.get());return;\n }\n if mode==\"synthetic-global-43\"{\n  use c6_core::core_stream::ThroughGlobalAi;\n  let value=ThroughGlobalAi::decode(&input,shared,player,binding.clone(),&provider).unwrap();assert_eq!(calls.get(),0);assert!(value.players.player_prefix.complete_player_manager_wire());assert_eq!(value.players.player_prefix.players().count(),43);\n  let(wire,global_items)=value.global_ai.encode_with_items(player).unwrap();assert_eq!(wire,input[value.players.consumed..value.consumed]);assert_eq!(wire.len(),368461);assert_eq!(global_items,47501);assert_eq!(value.items_used,value.players.items_used+global_items);assert_eq!(value.tail,&[91,92,93]);assert!(std::ptr::eq(value.tail.as_ptr(),input[value.consumed..].as_ptr()));\n  let exact_shared=map::Limits{max_bytes:value.consumed,max_items:value.items_used,max_allocation:value.players.core.logical_allocation_used,..shared};let exact_post=unit::Limits{max_bytes:value.consumed-value.players.core.map_end,max_items:value.items_used-value.players.core.items_used};\n  assert!(ThroughGlobalAi::decode(&input,exact_shared,exact_post,binding.clone(),&provider).is_ok());\n  for short in [map::Limits{max_bytes:exact_shared.max_bytes-1,..exact_shared},map::Limits{max_items:exact_shared.max_items-1,..exact_shared}]{assert!(ThroughGlobalAi::decode(&input,short,exact_post,binding.clone(),&provider).is_err());}\n  for short in [unit::Limits{max_bytes:exact_post.max_bytes-1,..exact_post},unit::Limits{max_items:exact_post.max_items-1,..exact_post}]{assert!(ThroughGlobalAi::decode(&input,exact_shared,short,binding.clone(),&provider).is_err());}\n  assert_eq!(calls.get(),0);println!(\"source_global_43 {} {} {}\",value.players.consumed,value.consumed,value.items_used);return;\n }\n assert_eq!(mode,\"synthetic-false-43\");\n let value=ThroughPlayerManager::decode(&input,shared,player,binding.clone(),&provider).unwrap();assert_eq!(calls.get(),0);\n assert_eq!(value.player_prefix.player_count,43);assert_eq!(value.player_prefix.players().count(),43);assert_eq!(value.player_prefix.unfinished_player_entries,0);assert!(value.player_prefix.complete_player_manager_wire());assert!(!value.player_prefix.initialization_reconstructed());assert_eq!(value.player_prefix.initialization_basis(),core_player::InitializationBasis::ContextFreeWire);\n for(index,p)in value.player_prefix.players().enumerate(){assert_eq!(p.requested_owner,index as i32);assert_eq!(p.header.owner,index as i32);assert!(!p.header.saved_was_ever_alive());assert!(p.initialization_snapshot.is_none());assert!(p.ai_military.is_none());assert!(p.tail.as_ref().unwrap().alive.is_none());}\n assert_eq!(value.tail,&input[value.consumed..]);assert!(std::ptr::eq(value.tail.as_ptr(),input[value.consumed..].as_ptr()));assert_eq!(value.tail,&[91,92,93]);\n let (encoded,post_items)=value.player_prefix.encode_prefix_with_items(player).unwrap();assert_eq!(encoded,input[value.core.consumed..value.consumed]);assert_eq!(value.items_used,value.core.items_used+post_items);\n let exact_shared=map::Limits{max_bytes:value.consumed,max_items:value.items_used,max_allocation:value.core.logical_allocation_used,..shared};let exact_player=unit::Limits{max_bytes:encoded.len(),max_items:post_items};\n assert!(ThroughPlayerManager::decode(&input,exact_shared,exact_player,binding.clone(),&provider).unwrap().player_prefix.complete_player_manager_wire());\n for short in [map::Limits{max_bytes:exact_shared.max_bytes-1,..exact_shared},map::Limits{max_items:exact_shared.max_items-1,..exact_shared}]{assert!(ThroughPlayerManager::decode(&input,short,exact_player,binding.clone(),&provider).is_err());}\n for short in [unit::Limits{max_bytes:exact_player.max_bytes-1,..exact_player},unit::Limits{max_items:exact_player.max_items-1,..exact_player}]{assert!(ThroughPlayerManager::decode(&input,exact_shared,short,binding.clone(),&provider).is_err());assert!(value.player_prefix.encode_prefix_with_items(short).is_err());}\n assert_eq!(value.player_prefix.encode_prefix_with_items(exact_player).unwrap(),(encoded,post_items));\n assert!(ThroughPlayerManager::decode(&input,shared,player,binding,&provider).unwrap().player_prefix.complete_player_manager_wire());assert_eq!(calls.get(),0);\n println!(\"source_false_43 {} {} {} {}\",value.consumed,value.items_used,post_items,std::mem::size_of::<core_player::FirstPlayer>());\n}\n"
+  },
+  "tests": {
+    "core_player_pass": 26,
+    "includes_two_initialization_tests": true,
+    "external_fixture_test_ignored": 1,
+    "core_stream_pass": 9,
+    "strict_core_all_targets_clippy": true,
+    "locked_offline_build": true,
+    "workspace_checks_not_repeated": true
+  },
+  "archive": {
+    "sha256": "84c8b0968a1a61b0d4ef2d2798103c1f2046a8421befeae481271749b0f05085",
+    "regular_files": 1386,
+    "all_regular_files_unchanged_after_build_and_tests": true,
+    "actual_exports": true,
+    "source_recovery": false
+  },
+  "native_manager_contracts_rehashed": [
+    {
+      "module": "gamecore",
+      "address": "0x2b51060",
+      "size": 136,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Manager const&)",
+      "sha256": "9a04b5b429cb4694c382e6dd096f28539267d17645cff0538e425cd693bbb8f6"
+    },
+    {
+      "module": "gamecore",
+      "address": "0x2b510f0",
+      "size": 132,
+      "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Manager&)",
+      "sha256": "ab965247cffca1fbce8acb41ba7d7397770a9681a361847088e0feafcbc9e55d"
+    },
+    {
+      "module": "gamecore",
+      "address": "0x2b4ee00",
+      "size": 1679,
+      "name": "Serialization::operator<<(Serialization::OStream&, GameCore::Player::Instance const&)",
+      "sha256": "cbeacc8a90c5fa8853e90d6971174683990e8bbee2c91c00a9be1bb2023d8593"
+    }
+  ],
+  "hash_boundary": {
+    "complete_image_including_tail": true,
+    "one_digest_call_per_import": true,
+    "no_digest_in_player_loop": true,
+    "global_ai_reuses_player_boundary": true,
+    "digest_verifies_bytes_not_native_provenance": true
+  },
+  "parsed_source_sha256": {
+    "Cargo.lock": "cb462271ea48e273a3dec4afe06fa823b9062ed2c774ca5f20debe95c5ece920",
+    "crates/c6-core/Cargo.toml": "0bcf7b157c27f3c87ae75b43c36cb5d622f6360a4fa9fb2efbdccd346143c0dc",
+    "crates/c6-core/src/core_player.rs": "96712d5b6485d5013fb796dae2a588fd6695acf5f521a7ada39600a6377f27f9",
+    "crates/c6-core/src/core_stream.rs": "2d384ff21dc948d6ed38a2bc52edf83670e22696330b4a896a874d311e06763f",
+    "crates/c6-core/src/player_initialization.rs": "ae06628cf862e76c3055101c79c226bf533430afe8b3f504735fb34ed06248b2"
+  },
+  "initialization_reconstructed": false,
+  "native_all_43_players_imported": false,
+  "full_world": false,
+  "all_rng": false,
+  "actions_turns": false,
+  "synthetic_image_recipe": {
+    "classification": "source-only; not native saved or initialized state",
+    "base_core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+    "head": "base bytes before first Player.Instance owner start minus4; includes original Manager version1/count43",
+    "entry": "base[first Player.Instance start minus4 : same-parent Heroes.end]",
+    "entry_mutations": {
+      "requested_signed_i32_at_offset0": "iteration index0..42",
+      "embedded_signed_i32_at_offset8": "same iteration index",
+      "saved_is_alive_u8_at_offset80": 0,
+      "saved_was_ever_alive_u8_at_offset81": 0
+    },
+    "after_each_entry": "24 zero bytes: empty common Tail properties and five empty vectors",
+    "after_manager": [
+      91,
+      92,
+      93
+    ],
+    "global_case": "insert reviewed GlobalAi base[70566134:70934595] before the three artificial tail bytes",
+    "global_payload_sha256": "d70893e3576acd575d02df74e7ddae85901e9f98311d24a2719f06c7744ed05b",
+    "snapshot_construction": false
+  },
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_expected_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4"
+}
