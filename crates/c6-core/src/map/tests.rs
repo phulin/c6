@@ -61,7 +61,7 @@ fn plot_literal_widths_order_flags_city_and_all_truncated_prefixes() {
         Err(Error::CityAttributesFlagMismatch)
     );
     assert!(matches!(
-        Plot::decode(&bytes, 5, Limits::default()),
+        Plot::decode(&bytes, 4, Limits::default()),
         Err(Error::UnsupportedVersion { .. })
     ));
 }
@@ -260,4 +260,60 @@ fn plot_resource_limits_are_checked_and_unsupported_data_never_changes_input() {
         b
     );
     assert_eq!(b, original);
+}
+
+#[test]
+fn plot_v5_shares_v6_wire_and_applies_native_volatile_clear() {
+    let mut bytes = plot_wire();
+    let cleared = Plot::decode(&bytes, 5, Limits::default()).unwrap();
+    assert_eq!(cleared.flags.bits(), 0xffff);
+    assert_eq!(bytes[50], 1); // Keep the ignored raw flag witness unchanged.
+    assert!(Plot::decode(&bytes, 6, Limits::default())
+        .unwrap()
+        .flags
+        .get(PlotFlag::FeatureVolatile));
+    bytes[50] = 0;
+    let old = Plot::decode(&bytes, 5, Limits::default()).unwrap();
+    assert_eq!(old, cleared);
+    assert_eq!(old, Plot::decode(&bytes, 6, Limits::default()).unwrap());
+    assert!(!old.flags.get(PlotFlag::FeatureVolatile));
+    assert!(old.city_attributes.is_some());
+    assert_eq!(old.encode(6, Limits::default()).unwrap(), bytes);
+    assert!(matches!(
+        old.encode(5, Limits::default()),
+        Err(Error::UnsupportedVersion { .. })
+    ));
+    for n in 0..bytes.len() {
+        assert!(
+            Plot::decode(&bytes[..n], 5, Limits::default()).is_err(),
+            "prefix {n}"
+        );
+    }
+    assert_eq!(
+        Plot::decode(
+            &bytes,
+            5,
+            Limits {
+                max_bytes: bytes.len() - 1,
+                ..Limits::default()
+            }
+        ),
+        Err(Error::ResourceLimit)
+    );
+    bytes[49] &= !0x40; // No CityAttributes: record ends after the property count.
+    bytes.truncate(55);
+    assert!(Plot::decode(&bytes, 5, Limits::default())
+        .unwrap()
+        .city_attributes
+        .is_none());
+    bytes[50] = 2;
+    assert!(matches!(
+        Plot::decode(&bytes, 5, Limits::default()),
+        Err(Error::UnsupportedPlotFlags(_))
+    ));
+    for version in [-1, 0, 1, 2, 3, 4, 7, i32::MAX] {
+        assert!(
+            matches!(Plot::decode(&bytes, version, Limits::default()), Err(Error::UnsupportedVersion { actual, .. }) if actual == version)
+        );
+    }
 }

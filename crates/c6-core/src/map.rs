@@ -369,6 +369,8 @@ pub struct Map {
     pub units: UnitContainer,
     pub components: Vec<Component>,
 }
+type DecodedMap = (Map, Vec<FieldRange>, usize, usize, usize, i32);
+
 impl Map {
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         Self::decode_inner(bytes, limits, false, false).map(|v| v.0)
@@ -377,7 +379,8 @@ impl Map {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, Vec<FieldRange>), Error> {
-        Self::decode_inner(bytes, limits, true, false).map(|(map, ranges, _, _, _)| (map, ranges))
+        Self::decode_inner(bytes, limits, true, false)
+            .map(|(map, ranges, _, _, _, _)| (map, ranges))
     }
     /// Decode the complete supported Map at a known structural cursor. The
     /// untouched caller tail is neither parsed nor charged against max_bytes.
@@ -396,10 +399,21 @@ impl Map {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, usize, usize, usize), Error> {
+        Self::decode_prefix_with_version_and_usage(bytes, limits)
+            .map(|(map, consumed, items, allocation, _)| (map, consumed, items, allocation))
+    }
+    /// Also retains the enclosing Plot record version. Encoding remains the
+    /// current native v6 format; this is a reader provenance value.
+    pub fn decode_prefix_with_version_and_usage(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize, usize, i32), Error> {
         let clipped = bytes.len() > limits.max_bytes;
         let input = &bytes[..bytes.len().min(limits.max_bytes)];
         Self::decode_inner(input, limits, false, true)
-            .map(|(map, _, consumed, items, allocation)| (map, consumed, items, allocation))
+            .map(|(map, _, consumed, items, allocation, version)| {
+                (map, consumed, items, allocation, version)
+            })
             .map_err(|error| {
                 if clipped && error == Error::Truncated {
                     Error::ResourceLimit
@@ -416,7 +430,7 @@ impl Map {
         limits: Limits,
         ranges: bool,
         allow_trailing: bool,
-    ) -> Result<(Self, Vec<FieldRange>, usize, usize, usize), Error> {
+    ) -> Result<DecodedMap, Error> {
         let mut r = Reader::new(bytes, limits)?;
         r.collect_ranges = ranges;
         let header = r.record("header", |r| {
@@ -484,17 +498,18 @@ impl Map {
         let plot_count = (header.width as usize)
             .checked_mul(header.height as usize)
             .ok_or(Error::ResourceLimit)?;
-        let plots = r.record("plots", |r| {
-            r.version(6)?;
+        let (plots, plot_version) = r.record("plots", |r| {
+            let version = r.i32()?;
+            plot::check_version(version)?;
             let count = r.u32()? as usize;
             if count != plot_count {
                 return Err(Error::PlotCountDimensions);
             }
             let mut plots = r.vector::<Plot>(count, 55)?;
             for _ in 0..count {
-                plots.push(r.record("plot", Plot::read)?);
+                plots.push(r.record("plot", |r| Plot::read_versioned(r, version))?);
             }
-            Ok(plots)
+            Ok((plots, version))
         })?;
         let units = r.record("units", UnitContainer::read)?;
         let components = r.record("components", |r| {
@@ -545,7 +560,7 @@ impl Map {
         if !allow_trailing && r.pos != bytes.len() {
             return Err(Error::TrailingBytes);
         }
-        Ok((result, r.ranges, r.pos, r.items, r.allocation))
+        Ok((result, r.ranges, r.pos, r.items, r.allocation, plot_version))
     }
     fn validate_dimensions(&self) -> Result<(), Error> {
         if self.header.width < 0 || self.header.height < 0 {
@@ -699,6 +714,54 @@ mod prefix_tests {
         };
         let limits = Limits::default();
         let wire = map.encode(limits).unwrap();
+        let (_, ranges) = Map::decode_with_ranges(&wire, limits).unwrap();
+        let plots_start = ranges.iter().find(|r| r.name == "plots").unwrap().start;
+        let mut v5 = wire.clone();
+        v5[plots_start..plots_start + 4].copy_from_slice(&5i32.to_le_bytes());
+        let (legacy, used, _, _, version) =
+            Map::decode_prefix_with_version_and_usage(&v5, limits).unwrap();
+        assert_eq!(legacy, map);
+        assert_eq!((used, version), (wire.len(), 5));
+        assert_eq!(legacy.encode(limits).unwrap(), wire);
+        let (_, _, _, _, current_version) =
+            Map::decode_prefix_with_version_and_usage(&wire, limits).unwrap();
+        assert_eq!(current_version, 6);
+        for unsupported in [4i32, 7] {
+            v5[plots_start..plots_start + 4].copy_from_slice(&unsupported.to_le_bytes());
+            assert!(
+                matches!(Map::decode(&v5, limits), Err(Error::UnsupportedVersion { actual, .. }) if actual == unsupported)
+            );
+        }
+        // Exercise version dispatch through a nonempty Map collection, not
+        // only the standalone record decoder or an empty collection.
+        let mut one = map.clone();
+        one.header.width = 1;
+        one.header.height = 1;
+        one.units.width = 1;
+        one.units.height = 1;
+        let mut record = [0u8; 55];
+        record[50] = 1; // FeatureVolatile source bit, cleared only by v5 Read.
+        one.plots.push(Plot::decode(&record, 6, limits).unwrap());
+        let mut one_wire = one.encode(limits).unwrap();
+        let (_, one_ranges) = Map::decode_with_ranges(&one_wire, limits).unwrap();
+        let plot_start = one_ranges.iter().find(|r| r.name == "plots").unwrap().start;
+        one_wire[plot_start..plot_start + 4].copy_from_slice(&5i32.to_le_bytes());
+        let (legacy_one, _, _, _, version) =
+            Map::decode_prefix_with_version_and_usage(&one_wire, limits).unwrap();
+        assert_eq!(version, 5);
+        assert!(!legacy_one.plots[0].flags.get(PlotFlag::FeatureVolatile));
+        assert!(one.plots[0].flags.get(PlotFlag::FeatureVolatile));
+        assert_eq!(one_wire[plot_start + 8 + 50], 1);
+        assert_eq!(
+            Map::decode_prefix(
+                &one_wire,
+                Limits {
+                    max_bytes: one_wire.len() - 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
         let mut carrier = wire.clone();
         carrier.extend_from_slice(b"untouched-Core-tail");
         let exact = Limits {

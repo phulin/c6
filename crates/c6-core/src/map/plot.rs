@@ -88,16 +88,11 @@ pub struct Plot {
 }
 impl Plot {
     /// Plot records do not contain their own version word. The enclosing Plot
-    /// vector supplies version 6; older forms explicitly reject here.
+    /// vector supplies version 5 or 6; older forms explicitly reject here.
     pub fn decode(bytes: &[u8], plot_version: i32, limits: Limits) -> Result<Self, Error> {
-        if plot_version != 6 {
-            return Err(Error::UnsupportedVersion {
-                expected: 6,
-                actual: plot_version,
-            });
-        }
+        check_version(plot_version)?;
         let mut reader = Reader::new(bytes, limits)?;
-        let value = Self::read(&mut reader)?;
+        let value = Self::read_versioned(&mut reader, plot_version)?;
         reader.finish()?;
         Ok(value)
     }
@@ -112,7 +107,7 @@ impl Plot {
         self.write(&mut writer)?;
         Ok(writer.bytes)
     }
-    pub(super) fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+    pub(super) fn read_versioned(r: &mut Reader<'_>, version: i32) -> Result<Self, Error> {
         let area_id = r.i32()?;
         let landmass_id = r.i32()?;
         let region_id = r.u32()?;
@@ -135,9 +130,15 @@ impl Plot {
         let river_crossing_mask = r.u8()?;
         let cliff_crossing_mask = r.u8()?;
         let bytes = r.take(3)?;
-        let flags = PlotFlags::from_bits(
+        let mut flags = PlotFlags::from_bits(
             u32::from(bytes[0]) | (u32::from(bytes[1]) << 8) | (u32::from(bytes[2]) << 16),
         )?;
+        // Read application effect at 0x2bc8bf2: v5 consumes bit 16, then
+        // clears FeatureVolatile. Keep source bytes for wire comparisons;
+        // this value is the native Read projection, not a v5 rewriter.
+        if version == 5 {
+            flags.set(PlotFlag::FeatureVolatile, false);
+        }
         let count = r.u32()? as usize;
         let properties = r.properties(count)?;
         let city_attributes = if flags.get(PlotFlag::HasCityAttributes) {
@@ -218,5 +219,16 @@ impl Plot {
             w.u32(city.wonder_building_hash)?;
         }
         Ok(())
+    }
+}
+
+pub(super) fn check_version(version: i32) -> Result<(), Error> {
+    if matches!(version, 5 | 6) {
+        Ok(())
+    } else {
+        Err(Error::UnsupportedVersion {
+            expected: 6,
+            actual: version,
+        })
     }
 }
