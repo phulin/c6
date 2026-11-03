@@ -346,3 +346,9 @@ pub mod player_governors;
 pub mod player_heroes;
 
 pub mod unit_operation_notification_provider;
+
+pub mod player_ai_control;
+
+pub mod player_tail;
+
+pub mod player_ai_influence_map;
