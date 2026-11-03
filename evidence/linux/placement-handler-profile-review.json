@@ -1,0 +1,119 @@
+{
+  "schema": "c6-linux-placement-handler-profile-review-v1",
+  "status": "integrated_static_and_exact_prepare_only_admission_passed_native_capture_pending",
+  "native_execution_performed": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "standalone_handler_review_commit": "933606e08b94a015fe00988cd0f5e8b3d0e85c9c",
+  "sources": {
+    "native/linux/placement_handler_metadata.c": "aec0c9e704292c352df1268a9020ae89ad8dce32c0772a0eaf63c38ebbf76a4d",
+    "native/linux/placement_handler_metadata.h": "fb2ba1e342b4bb5975dd3d659150ed6321cddf0fc3cd8c9ef588c0808761ab3c",
+    "native/linux/placement_handler_metadata_fixture.c": "05bd92191823b4a1f6f19c62284a8ae3befdb9ecf0c807b9792ea39d87ef8fb3",
+    "native/linux/placement_handler_metadata_fixture.h": "f19b7cd25f01f25fb87983f42d3e332406f83657f572615cc0cf1dff1781e297",
+    "native/linux/skip_turn_handler_query.c": "2409b651484570796279ced7bfb7e214b7ec008e8640aa5d4e388987cac48b02",
+    "native/linux/skip_turn_handler_query.h": "0e7fbe4cf9f1ff7e34889a3fbdeaa3ac4e0ae780fb3714ede3664dbfc0d75af2",
+    "tools/linux/placement_handler_metadata_audit.py": "28c1ecc49a6ebf6a72ac8c28ac393c8030d24148f4697b0d00dc340beaaefd0a",
+    "evidence/linux/placement-handler-metadata-preparation.json": "4b67298754fdd587ef280bf3fd87c5917bafe293ea042e903277253616228b1f",
+    "native/linux/action_lifecycle.c": "49968efe651e74ef15434c7002532edf6dfdde54841f7f3ae1d3c5d27b5b6966",
+    "native/linux/action_lifecycle.h": "8f1ab40717ed2f9246c9895afbad1a805f0277ce4e2cc799de1bb7a70239600b",
+    "native/linux/game_load.c": "4820851ad55cba9ff3c79f4d931a0cbe0f384065c4410f34a43acad67891601f",
+    "tools/linux/mod_activation_probe.py": "33a99e05b36a77e6e63c0782868f1072be2cbf7b6b8b4734928a35a3fb7c32f4",
+    "tools/linux/placement_handler_metadata_fixture_audit.py": "70e5a18a5e78af4a9d08924aceac6c31b27dc24f1136075fe46ae04f1b807b86",
+    "evidence/linux/placement-handler-metadata-fixture-contract.json": "da5bf08ee162fc37d8cb538ab5704d1bc1e96e5a6ecd4a5236bd53b80d1f0d4c",
+    "evidence/linux/placement-handler-candidate-301f9e9.json": "85510356806319f5ed77e639649caf4034a3bbf3511699695cc80cc674355132"
+  },
+  "checks": {
+    "offline_canonical_producer_audit_passed": true,
+    "count_method_contracts": 76,
+    "handler_method_contracts": 167,
+    "gnu11_wall_wextra_werror_fanalyzer_passed": true,
+    "complete_original_unit_membership_unfiltered": true,
+    "runtime_container_id_owner_rechecked_before_each_unit": true,
+    "original_manager_handler_runtime_id_hash_vptr_validated": true,
+    "original_operation_ctor_dtor_full_storage": true,
+    "null_formation_unsupported_244_result_unchanged": true,
+    "expected_observations_separate_from_facts": true,
+    "null_unit_controls_separate_and_no_original_leaf": true,
+    "independent_and_three_legacy_projections_passed": true,
+    "new_original_registry_identity_fact_separate_from_answers_and_candidate_input": true,
+    "successor_manifest_old_fields_unchanged_except_schema": true,
+    "actual_candidate_and_archive_bytes_sizes_verified": true,
+    "runner_ast_parse_passed": true,
+    "seven_fresh_resolved_distinct_private_artifact_paths_and_outer_save_disjointness_gated": true,
+    "all_current_and_archived_source_hashes_and_runner_match": true,
+    "seven_output_paths_absent_at_review": true,
+    "preload_exports_new_independent_guard_scope_query_lifecycle": true,
+    "accepted_target_dependencies_dlc_configuration_input_mainthread_cleanup_unchanged": true
+  },
+  "guard_test": {
+    "source_sha256": "05bd92191823b4a1f6f19c62284a8ae3befdb9ecf0c807b9792ea39d87ef8fb3",
+    "cases": 8,
+    "native_game_execution": false,
+    "all_passed": true
+  },
+  "guard_test_script_sha256": "219dec254c4ef46248b4b1b8dfdf1fa049845a25607e8139e0111e49edd16c09",
+  "expected_matrix_for_unchanged_fixture": {
+    "units": 1262,
+    "placed_units": 1241,
+    "unplaced_units": 21,
+    "repeats": 2,
+    "visible_only_values": [
+      false,
+      true
+    ],
+    "placed_plot_variants": [
+      "current",
+      "null"
+    ],
+    "unplaced_plot_variants": [
+      "null"
+    ],
+    "original_leaf_calls": 10012,
+    "no_call_controls": 4,
+    "expected_true": 9628,
+    "expected_false": 384,
+    "native_values_observed": false
+  },
+  "prepared_profile_sha256": "2aaaa540bd072e5ba80c98e2c2ca8a2064f1fc2f3a32be4826b3b7a71bd1178a",
+  "prepared_preload_sha256": "942f32dc44136714f7d9abddc0d3a77a2a65d2fbfe5e70a4b9219d96240c6a93",
+  "full_manager_legality": false,
+  "complete_state_actions_turns": false,
+  "complete_rng_inventory": false,
+  "historical_save_load_raw_difference_bytes": 89198,
+  "limitations": [
+    "No original-code capture or terminal runtime has been admitted; this passes only the exact integrated static/preparation gate.",
+    "No original-code capture, full raw Save comparison, policy trace or measured cleanup observed.",
+    "Two known RNG controls cannot establish complete RNG inventory/purity.",
+    "Human unplaced Unit branch remains absent from historical fixture.",
+    "Historical candidate native_handler_comparison:false remains immutable; new outer attestation is required."
+  ],
+  "validation_dialect_note": "ISO C -Wpedantic rejects existing POSIX/Linux function-pointer conversions; GNU11 strict warnings/analyzer passes.",
+  "checker_review": {
+    "commit": "269b34fafcc0b548f0f843d1db68fa7a8d65c9a6",
+    "sources": {
+      "tools/linux/skip_turn_handler_results.py": "124d0e2dca57f6d4859612e9f8568e673ed3afb9995094b8cb295699cd9ed70d",
+      "tools/linux/test_skip_turn_handler_results.py": "56f10355749958cf3be09a3a31224f9e8bfa6285f9ab1d33cd8aa40c2218c1fb",
+      "tools/linux/placement_count_reconstruction_results.py": "c9420fbd76b92a582da48f0bf028bd57ad9d58eb96cc95e54fb79ec8c5c4ef73"
+    },
+    "protocol_tests_passed": 13,
+    "admission_none_cli_refuses_before_candidate_or_capture_access": true,
+    "candidate_inputs_only_raw_core_and_facts_projection": true,
+    "native_answers_first_opened_after_candidate_process_exits": true,
+    "all_actors_directions_bindings_matrix_order_compared": true,
+    "null_controls_not_native_false": true,
+    "unsupported_not_false": true,
+    "json_boolean_integer_and_duplicate_key_rejection": true,
+    "original_operation_identity_raw_fact_excluded_from_candidate_inputs": true,
+    "full_four_internal_two_outer_80657462_byte_unmasked_saves_required": true,
+    "actual_closed_capture_review_pending": true,
+    "followup_commit": "a72343a2a6f46098200767d805c157ca8f66a8af",
+    "retained_trace_path_hash_bytes_and_exact_binding_order_zero_terminal_counters_checked": true
+  },
+  "reviewed_source_commit": "b6b3143b3ec65f377b745e80b604491f50d5ae58",
+  "prepared_report_sha256": "2a0d7e1ac6603d7e072dc0fc5af6e8f3452a569b2a19c1c7678907b5e43c76ed",
+  "configuration_file_sha256": "295afaf580bf6310e0c1295e245fbf3905facd84e99bf572fd16c34dfc89d58f",
+  "prepared_sources_verified": 71,
+  "runtime_dependencies_verified": 29,
+  "prepared_artifacts_path": "/home/phulin/c6-ghidra/evidence/linux-placement-handler-metadata/native-1",
+  "prepared_candidate_manifest_sha256": "85510356806319f5ed77e639649caf4034a3bbf3511699695cc80cc674355132"
+}
