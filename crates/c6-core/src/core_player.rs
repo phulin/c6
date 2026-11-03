@@ -1,7 +1,7 @@
-//! Bounded post-Map Core wire prefix through the first Player's complete Cities.
-//! Stops before unframed Diplomacy; this is not a Player/world/gameplay importer.
+//! Bounded post-Map Core wire prefix through the first Player's complete Districts.
+//! Stops before unframed NameManager; this is not a Player/world/gameplay importer.
 use crate::unit::{self, Formation, Limits, PlotCoord};
-use crate::{city, map, player_components as pc};
+use crate::{city, map, player_components as pc, player_diplomacy, player_districts};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
@@ -15,6 +15,8 @@ pub enum Error {
     Formation(unit::Error),
     Component(pc::Error),
     City(city::Error),
+    Diplomacy(player_diplomacy::Error),
+    Districts(player_districts::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -83,13 +85,15 @@ pub struct FirstPlayer {
     pub bonuses: pc::Bonuses,
     pub congress: pc::Congress,
     pub cities: Cities,
+    pub diplomacy: player_diplomacy::Diplomacy,
+    pub districts: player_districts::Districts,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    PlayerDiplomacy,
+    PlayerNameManager,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Prefix {
@@ -97,7 +101,7 @@ pub struct Prefix {
     pub player_count: u32,
     pub first_player: Option<FirstPlayer>,
     pub boundary: Boundary,
-    /// No complete Player entry has been consumed at PlayerDiplomacy.
+    /// No complete Player entry has been consumed at PlayerNameManager.
     pub unfinished_player_entries: u32,
 }
 
@@ -373,6 +377,14 @@ impl Prefix {
             let bonuses = r.component(pc::Bonuses::decode_prefix_with_items, Error::Component)?;
             let congress = r.component(pc::Congress::decode_prefix_with_items, Error::Component)?;
             let cities = r.cities()?;
+            let diplomacy = r.component(
+                player_diplomacy::Diplomacy::decode_prefix_with_items,
+                Error::Diplomacy,
+            )?;
+            let districts = r.component(
+                player_districts::Districts::decode_prefix_with_items,
+                Error::Districts,
+            )?;
             Some(FirstPlayer {
                 requested_owner,
                 header,
@@ -381,10 +393,12 @@ impl Prefix {
                 bonuses,
                 congress,
                 cities,
+                diplomacy,
+                districts,
             })
         };
         let boundary = if first_player.is_some() {
-            Boundary::PlayerDiplomacy
+            Boundary::PlayerNameManager
         } else {
             Boundary::AfterEmptyPlayerManager
         };
@@ -418,6 +432,87 @@ mod tests {
     }
     fn empty_container(out: &mut Vec<u8>) {
         words(out, &[65537, 16, 8, 0, 0x10000, 2, 7, 3, 7, 3]);
+    }
+    // Synthetic supported wire values, not native initialization defaults.
+    fn diplomacy_carrier() -> player_diplomacy::Diplomacy {
+        let mut board_bytes = 13u32.to_le_bytes().to_vec();
+        board_bytes.resize(4 + 4 * 4 + 3 * 4 + 9 * 64 * 4, 0);
+        let blackboard =
+            crate::player_diplomacy_blackboard::Blackboard::decode(&board_bytes, Limits::default())
+                .unwrap();
+        let mut value = player_diplomacy::Diplomacy {
+            had_friendly_meeting: [false; 64],
+            has_delegation: [false; 64],
+            has_embassy: [false; 64],
+            open_borders_from_count: [0; 64],
+            open_borders_ended_turn: [0; 64],
+            can_enforce_borders: false,
+            denounced: [0; 64],
+            cities_razed: [0; 64],
+            cities_liberated: [0; 64],
+            tiles_culture_bombed: [0; 64],
+            nukes_used_against_you: [0; 64],
+            converted_city: [false; 64],
+            occupies_original_city: [false; 64],
+            offered_deal: [0; 64],
+            war_weariness: [0; 64],
+            warmonger_modifier: [0; 64],
+            era_player_met: [0; 64],
+            yield_per_delegation: Vec::new(),
+            yield_per_embassy: Vec::new(),
+            war_and_alliance_modifiers: [0; 10],
+            warmonger_scaling_raw: 0,
+            no_occupation_penalties: false,
+            blackboard,
+            city_war_weariness: Vec::new(),
+            casus_belli: [player_diplomacy::CasusBelliData::default(); 64],
+            yield_modifiers: Vec::new(),
+            movement_modifiers: Vec::new(),
+            combat_modifiers: Vec::new(),
+            action_prereq_overrides: Vec::new(),
+            banned_action_civilizations: Vec::new(),
+            last_war_and_city_turns: [0; 10],
+            all_alliances_shared_visibility: false,
+            grievance_generation_modifier: 0,
+            grievance_decay_modifier: 0,
+            grievance_decay_disabled: false,
+            alliance_and_favor_modifiers: [0; 9],
+            visibility: Vec::new(),
+            visibility_source_hashes: Vec::new(),
+            visibility_additions: Vec::new(),
+            gossip_reports: Vec::new(),
+            held_messages: Vec::new(),
+            promises_made: Vec::new(),
+            incursions_made: Vec::new(),
+            last_promises_made: Vec::new(),
+            units_blocked_entry: Vec::new(),
+            alliance_points_per_player: Vec::new(),
+            banned_action_counts: Vec::new(),
+        };
+        value.promises_made = vec![(
+            64,
+            player_diplomacy::TypeMap {
+                entries: vec![(
+                    -1,
+                    player_diplomacy::PromiseData {
+                        turn_made: i32::MIN,
+                        skipped: true,
+                        broken: false,
+                        broken_notification_sent: true,
+                        report_repeat_offense: false,
+                        turn_broken: i32::MAX,
+                    },
+                )],
+            },
+        )];
+        value.incursions_made = vec![(
+            -1,
+            player_diplomacy::TypeMap {
+                entries: vec![(64, vec![i32::MIN, 1, i32::MAX])],
+            },
+        )];
+        value.visibility_source_hashes = vec![u32::MAX, 0x80000000];
+        value
     }
     fn carrier() -> Vec<u8> {
         let mut out = Vec::new();
@@ -455,23 +550,57 @@ mod tests {
             &[0x80000000, 0xdeadbeef, 2, 0x12345678, 0xffffffff, 9, 10, 11],
         );
         words(&mut out, &[1, 123, 0, 1, 456, 0, 2, 111, 222, 111, 333]);
+        out.extend(diplomacy_carrier().encode(Limits::default()).unwrap());
+        // Districts8, empty actual instance roster with nonempty allocator tail.
+        words(&mut out, &[8]);
+        empty_container(&mut out);
+        words(&mut out, &[0x80000000, 99]);
+        // Five indexed-int arrays; first contains duplicate hash pairs.
+        words(&mut out, &[2, 0xdeadbeef, 7, 0xdeadbeef, 8, 0, 0, 0, 0]);
+        // CreationYield1 with raw Yield index and byte bool fields.
+        words(&mut out, &[1, 1, 0x12345678, 0xffffffff, 0x80000000]);
+        out.extend([1, 0]);
+        words(&mut out, &[0xfedcba98]);
+        // Remaining creation/unit/tech/civic collections are empty.
+        words(&mut out, &[0, 0, 0, 0]);
         out
     }
     #[test]
-    fn typed_empty_cities_tail_prefix_and_aggregate_budgets() {
+    fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched Diplomacy");
+        trailing.extend_from_slice(b"untouched NameManager");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::PlayerDiplomacy);
+        assert_eq!(value.boundary, Boundary::PlayerNameManager);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
             value.encode_prefix_with_items(Limits::default()).unwrap(),
             (bytes.clone(), items)
         );
+        let exact = Limits {
+            max_bytes: n,
+            max_items: items,
+        };
+        assert_eq!(
+            value.encode_prefix_with_items(exact).unwrap(),
+            (bytes.clone(), items)
+        );
+        assert!(value
+            .encode_prefix(Limits {
+                max_bytes: n - 1,
+                ..exact
+            })
+            .is_err());
+        assert!(matches!(
+            value.encode_prefix(Limits {
+                max_items: items - 1,
+                ..exact
+            }),
+            Err(Error::Districts(player_districts::Error::ResourceLimit))
+        ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
         assert_eq!(p.header.owner, 64);
@@ -479,6 +608,18 @@ mod tests {
         assert_eq!(p.formations.free_links, [7, 3]);
         assert!(p.cities.records.entries.is_empty());
         assert_eq!(p.cities.records.free_links, [7, 3]);
+        assert_eq!(
+            p.diplomacy.promises_made[0].1.entries[0].1.turn_made,
+            i32::MIN
+        );
+        assert_eq!(
+            p.diplomacy.incursions_made[0].1.entries[0].1,
+            [i32::MIN, 1, i32::MAX]
+        );
+        assert!(p.districts.records.entries.is_empty());
+        assert_eq!(p.districts.records.free_links, [7, 3]);
+        assert_eq!(p.districts.current_district_cost.len(), 2);
+        assert_eq!(p.districts.creation_yields[0].yield_type, -1);
         assert_eq!(p.cities.building_build_overrides, [[111, 222], [111, 333]]);
         let exact = Limits {
             max_bytes: n,
@@ -501,7 +642,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::ResourceLimit)
+            Err(Error::Districts(player_districts::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -814,7 +955,7 @@ impl Prefix {
             || !matches!(
                 (self.player_count, self.first_player.as_ref(), self.boundary),
                 (0, None, Boundary::AfterEmptyPlayerManager)
-                    | (1.., Some(_), Boundary::PlayerDiplomacy)
+                    | (1.., Some(_), Boundary::PlayerNameManager)
             )
         {
             return Err(Error::InvalidPrefix);
@@ -854,6 +995,16 @@ impl Prefix {
                 Error::Component,
             )?;
             w.cities(&p.cities)?;
+            w.component(
+                &p.diplomacy,
+                player_diplomacy::Diplomacy::encode_with_items,
+                Error::Diplomacy,
+            )?;
+            w.component(
+                &p.districts,
+                player_districts::Districts::encode_with_items,
+                Error::Districts,
+            )?;
         }
         Ok((w.bytes, w.items))
     }
@@ -896,7 +1047,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::PlayerDiplomacy;
+        v.boundary = Boundary::PlayerNameManager;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
