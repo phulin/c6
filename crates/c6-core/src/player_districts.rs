@@ -303,6 +303,12 @@ impl<T: Wire> Wire for Recycled<T> {
         let free_tail = u32::read(r)?;
         // The count precedes head/tail; links have NO second vector count.
         r.charge(n)?;
+        let link_bytes = n
+            .checked_mul(std::mem::size_of::<u32>())
+            .ok_or(Error::ResourceLimit)?;
+        if link_bytes > r.remaining().max_bytes {
+            return Err(Error::ResourceLimit);
+        }
         if n > r.data.len().saturating_sub(r.pos) / 4 {
             return Err(Error::Truncated);
         }
@@ -552,6 +558,50 @@ mod tests {
         assert_eq!(v.unlock_techs[0].technology_hash, 0x2231009);
         assert_eq!(v.encode_with_items(Limits::default()).unwrap(), (b, items));
     }
+    #[test]
+    fn free_links_preflight_remaining_byte_budget_before_allocation_or_reading() {
+        let links = 4096u32;
+        let mut bytes = Vec::new();
+        words(
+            &mut bytes,
+            &[65537, 16, links, 0, 0x12340000, links, 0, links - 1],
+        );
+        for link in 0..links {
+            word(&mut bytes, link);
+        }
+        // The complete source is available and the item budget allows all links.
+        // A cap allowing only a prefix of the links must fail at their start;
+        // incremental scalar enforcement would already consume some links.
+        for max_bytes in [32, 36, 8192] {
+            let mut reader = Reader {
+                data: &bytes,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items: links as usize,
+                },
+            };
+            assert_eq!(
+                Recycled::<District>::read(&mut reader),
+                Err(Error::ResourceLimit)
+            );
+            assert_eq!(reader.pos, 32);
+        }
+        let mut reader = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: bytes.len(),
+                max_items: links as usize,
+            },
+        };
+        let value = Recycled::<District>::read(&mut reader).unwrap();
+        assert_eq!(value.free_links.len(), links as usize);
+        assert_eq!(reader.pos, bytes.len());
+    }
+
     #[test]
     fn all_truncations_versions_bools_trailing_and_exact_shared_limits() {
         for b in [district(), districts()] {
