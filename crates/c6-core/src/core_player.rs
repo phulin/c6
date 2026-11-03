@@ -1,5 +1,5 @@
 //! Bounded post-Map Core wire prefix through the first Player's complete Heroes and conditional AI prefix.
-//! Yields at the exact conditional AICityManager or a source-proven complete false-branch Player; no gameplay.
+//! Yields at the exact conditional AIDiplomatic or a source-proven complete false-branch Player; no gameplay.
 use crate::player_prerequisites::{self, IndexedBools};
 use crate::player_tail;
 use crate::unit::{self, Formation, Limits, PlotCoord};
@@ -7,6 +7,7 @@ use crate::{
     city, map, player_components as pc, player_culture, player_diplomacy, player_districts,
     player_name_manager,
 };
+use crate::{player_ai_city_manager, player_ai_culture};
 use crate::{player_ai_control, player_ai_identity, player_ai_influence_map};
 use crate::{player_cultural_identity, player_heroes};
 use crate::{
@@ -53,6 +54,8 @@ pub enum Error {
     AIInfluenceMap(player_ai_influence_map::Error),
     AIPlanning(player_ai_identity::Error),
     Tail(player_tail::Error),
+    AICityManager(player_ai_city_manager::Error),
+    AICulture(player_ai_culture::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -167,6 +170,8 @@ pub struct FirstPlayer {
     pub ai_control: Option<player_ai_control::ControlManager>,
     pub ai_influence_map: Option<player_ai_influence_map::InfluenceMap>,
     pub ai_planning: Option<player_ai_identity::PlanningManagerIdentity>,
+    pub ai_city_manager: Option<player_ai_city_manager::CityManager>,
+    pub ai_culture: Option<player_ai_culture::CultureAi>,
     /// Complete common suffix only for the false WasEverAlive branch.
     pub tail: Option<player_tail::Tail>,
 }
@@ -175,8 +180,8 @@ pub enum Boundary {
     /// Manager has no entries; later Game components remain unsupported.
     AfterEmptyPlayerManager,
     /// The first entry is partial. Remaining includes that entry's unfinished tail.
-    /// WasEverAlive=true: all three tables and current Control/InfluenceMap/Planning records consumed.
-    AICityManager,
+    /// WasEverAlive=true: all tables and current Control/InfluenceMap/Planning/CityManager/Culture records consumed.
+    AIDiplomatic,
     /// First false-branch wire Player closed; next explicit requested ID is unread.
     NextPlayerEntry,
     /// The sole false-branch wire Player and its enclosing Manager are closed.
@@ -581,6 +586,22 @@ impl Prefix {
             } else {
                 (None, None, None)
             };
+            let ai_city_manager = if header.saved_was_ever_alive() {
+                Some(r.component(
+                    player_ai_city_manager::CityManager::decode_prefix_with_items,
+                    Error::AICityManager,
+                )?)
+            } else {
+                None
+            };
+            let ai_culture = if header.saved_was_ever_alive() {
+                Some(r.component(
+                    player_ai_culture::CultureAi::decode_prefix_with_items,
+                    Error::AICulture,
+                )?)
+            } else {
+                None
+            };
             let tail = if header.saved_was_ever_alive() {
                 None
             } else {
@@ -631,11 +652,13 @@ impl Prefix {
                 ai_control,
                 ai_influence_map,
                 ai_planning,
+                ai_city_manager,
+                ai_culture,
                 tail,
             })
         };
         let boundary = match first_player.as_ref() {
-            Some(p) if p.header.saved_was_ever_alive() => Boundary::AICityManager,
+            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIDiplomatic,
             Some(_) if player_count > 1 => Boundary::NextPlayerEntry,
             Some(_) => Boundary::AfterPlayerManager,
             None => Boundary::AfterEmptyPlayerManager,
@@ -1870,6 +1893,12 @@ mod tests {
             + p.ai_planning
                 .as_ref()
                 .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
+            + p.ai_city_manager
+                .as_ref()
+                .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
+            + p.ai_culture
+                .as_ref()
+                .map_or(0, |v| v.encode(Limits::default()).unwrap().len())
     }
     // Common false-branch saved tail; all fields explicit, no runtime defaults.
     fn false_tail_carrier() -> player_tail::Tail {
@@ -1893,6 +1922,265 @@ mod tests {
             terrain_work_impassable: vec![i32::MIN, -1],
             random_event_no_unit_damage: vec![i32::MAX],
             random_event_modified_damage_opposing_player: vec![-7],
+        }
+    }
+    // Explicit complete saved fields; BoolByte values retain raw bytes.
+    fn ai_city_manager_carrier() -> player_ai_city_manager::CityManager {
+        use crate::player_ai_city_manager as pmod;
+        pmod::CityManager {
+            player_id: -8000,
+            city_ais: pmod::RecycledCityBuilds {
+                capacity: 16,
+                entries: vec![pmod::CityBuildEntry {
+                    index: 3,
+                    city_build: pmod::CityBuild {
+                        city: pmod::ComponentId {
+                            owner: i16::MIN,
+                            component_type: i16::MIN,
+                            id: 3203334149,
+                        },
+                        city_id: 3203334148,
+                        player_owner: -7995,
+                        city_ai_id: 3203334150,
+                        current_yields: vec![pmod::HashValue {
+                            hash: 3203334151,
+                            value: -7992,
+                        }],
+                        current_base_yields: vec![pmod::HashValue {
+                            hash: 3203334152,
+                            value: -7991,
+                        }],
+                        current_gpps: vec![pmod::HashValue {
+                            hash: 3203334153,
+                            value: -7990,
+                        }],
+                        best_improvement_hash: 3203334154,
+                        city_threat: -7989,
+                        under_attack: pmod::BoolByte(197),
+                        desired_defenders: -7987,
+                        defenders_needed: -7986,
+                        reservations: vec![pmod::PlotReservation {
+                            controller: 3203334159,
+                            value: -7984,
+                            tag: 3203334161,
+                        }],
+                        event_trees: vec![u32::MAX, 0x80000000],
+                        managed_working_contract: pmod::ControlHandle {
+                            player_id: -7983,
+                            id: 3203334162,
+                        },
+                        managed_contracts: vec![pmod::ControlHandle {
+                            player_id: -7982,
+                            id: 3203334163,
+                        }],
+                        done_off_turn: pmod::BoolByte(197),
+                        best_plot_to_clear: [i32::MIN, i32::MAX],
+                        best_plot_to_buy: [i32::MIN, i32::MAX],
+                        food_loss_amounts: vec![i32::MIN, -1, i32::MAX],
+                        food_loss_turns: vec![i32::MIN, -1, i32::MAX],
+                        food_loss_populations: vec![i32::MIN, -1, i32::MAX],
+                        city_unit_efficiencies: vec![pmod::UnitEfficiency {
+                            unit_hash: 3203334169,
+                            max_damage: -7974,
+                            is_obsolete: pmod::BoolByte(197),
+                            is_ranged: pmod::BoolByte(197),
+                            is_naval: pmod::BoolByte(197),
+                            has_zone_of_control: pmod::BoolByte(197),
+                            civ_unique: pmod::BoolByte(197),
+                            exclude_from_efficiency_calculation: pmod::BoolByte(197),
+                            can_build: pmod::BoolByte(197),
+                            speed: -7966,
+                            range: -7965,
+                            main_combat_strength: -7964,
+                            defense: -7963,
+                            num_in_use: -7962,
+                            efficiency_against_all_enemies: -7961,
+                            efficiency_against_everyone: -7960,
+                            efficiency_against_player: vec![i32::MIN, -1, i32::MAX],
+                            raw_efficiency: -7958,
+                            maintenance_resource_hash: 3203334187,
+                            num_resource_needed: -7956,
+                        }],
+                        city_trade: pmod::TradeCity {
+                            city: pmod::ComponentId {
+                                owner: i16::MIN,
+                                component_type: i16::MIN,
+                                id: 3203334172,
+                            },
+                            current_routes: -7973,
+                            current_units: -7972,
+                            connected_cities: vec![pmod::TradeConnection {
+                                city: pmod::ComponentId {
+                                    owner: i16::MIN,
+                                    component_type: i16::MIN,
+                                    id: 3203334175,
+                                },
+                                rail_connection: pmod::BoolByte(197),
+                                rail_value: -7969,
+                            }],
+                            known_failed_connections: vec![pmod::ComponentId {
+                                owner: i16::MIN,
+                                component_type: i16::MIN,
+                                id: 3203334176,
+                            }],
+                        },
+                        yield_preferences: vec![i32::MIN, -1, i32::MAX],
+                        plot_evaluations: vec![pmod::PlotEvaluation {
+                            index: 3,
+                            plot: [i32::MIN, i32::MAX],
+                            evaluate_wonders: pmod::BoolByte(197),
+                            city: pmod::ComponentId {
+                                owner: i16::MIN,
+                                component_type: i16::MIN,
+                                id: 3203334177,
+                            },
+                            resource_hash: 3203334176,
+                            feature_hash: 3203334177,
+                            location: [i32::MIN, i32::MAX],
+                            neighbors: pmod::Neighbors([i16::MIN, -1, 0, 1, 2, i16::MAX]),
+                            has_improvement: pmod::BoolByte(197),
+                            has_district: pmod::BoolByte(197),
+                            has_pillaged_improvement: pmod::BoolByte(197),
+                            feature_removable: pmod::BoolByte(197),
+                            can_build_improvement: pmod::BoolByte(197),
+                            can_build_district: pmod::BoolByte(197),
+                            can_place_building: pmod::BoolByte(197),
+                            can_purchase: pmod::BoolByte(197),
+                            neighbor_can_have_district: pmod::BoolByte(197),
+                            revealed: pmod::BoolByte(197),
+                            owned: pmod::BoolByte(197),
+                            worked: pmod::BoolByte(197),
+                        }],
+                        evaluation_layers: pmod::EvaluationLayers(vec![pmod::EvaluationLayer {
+                            buildings: vec![pmod::HashValue {
+                                hash: 3203334173,
+                                value: -7970,
+                            }],
+                            districts: vec![pmod::HashValue {
+                                hash: 3203334174,
+                                value: -7969,
+                            }],
+                            improvements: vec![pmod::HashValue {
+                                hash: 3203334175,
+                                value: -7968,
+                            }],
+                        }]),
+                        unit_evaluations: vec![pmod::HashValue {
+                            hash: 3203334174,
+                            value: -7969,
+                        }],
+                        cached_unit_evaluations: vec![pmod::HashValue {
+                            hash: 3203334175,
+                            value: -7968,
+                        }],
+                        project_evaluations: vec![pmod::HashValue {
+                            hash: 3203334176,
+                            value: -7967,
+                        }],
+                        power_surplus: -7967,
+                        default_build_present_value: -7966,
+                        unimproved_resources: vec![pmod::HashValue {
+                            hash: 3203334179,
+                            value: -7964,
+                        }],
+                    },
+                }],
+                current_id_bits: 3203334147,
+                first_free: 3203334148,
+                last_free: 3203334149,
+                free_indices: vec![u32::MAX, 0x80000000],
+            },
+        }
+    }
+    // Explicit complete saved fields; BoolByte values retain raw bytes.
+    fn ai_culture_carrier() -> player_ai_culture::CultureAi {
+        use crate::player_ai_culture as pmod;
+        pmod::CultureAi {
+            player_id: -8000,
+            managed_contracts: vec![pmod::ControlHandle {
+                player_id: -7999,
+                id: 3203334146,
+            }],
+            boost_manager: pmod::BoostManager {
+                player_id: -7998,
+                allowed_active_boosts: 3203334147,
+                active_boosts: vec![pmod::ActiveBoost {
+                    behavior_tree_control_id: 3203334148,
+                    boost_uniqueness_hash: -7995,
+                }],
+            },
+            done_off_turn: pmod::BoolByte(197),
+            congress_pseudo_yield_preferences: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: -7996,
+            }],
+            pseudo_yield_preferences: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: -7995,
+            }],
+            best_slot_policy_values: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: -7994,
+            }],
+            civic_analyzers: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: pmod::CivicAnalysis {
+                    player_id: -7993,
+                    civic_hash: 3203334152,
+                    next_civic_needed_hash: 3203334153,
+                    is_owned: pmod::BoolByte(197),
+                    is_favored: pmod::BoolByte(197),
+                    has_boost: pmod::BoolByte(197),
+                    is_repeatable: pmod::BoolByte(197),
+                    solo_value_q8: -7986,
+                    full_value_q8: -7985,
+                    turns_to_unlock: -7984,
+                },
+            }],
+            policy_analyzers: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: pmod::PolicyAnalysis {
+                    player_id: -7992,
+                    policy_hash: 3203334153,
+                    slot_type_hash: 3203334154,
+                    dark_age_policy: pmod::BoolByte(197),
+                    golden_age_policy: pmod::BoolByte(197),
+                    min_era_chronology: -7987,
+                    max_era_chronology: -7986,
+                    value_q8: -7985,
+                },
+            }],
+            resolution_analyzers: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: pmod::ResolutionAnalysis {
+                    player_id: -7991,
+                    resolution_hash: 3203334154,
+                    value_q8: -7989,
+                    option_one_value_q8: -7988,
+                    option_two_value_q8: -7987,
+                    best_option: -7986,
+                },
+            }],
+            govt_values: vec![pmod::HashEntry {
+                hash: u32::MAX,
+                value: -7990,
+            }],
+            rockband_analyzers: vec![pmod::RockBandAnalysis {
+                player_id: -7989,
+                base_value_q8: -7988,
+                location: pmod::PlotCoord { x: -7987, y: -7986 },
+                district_hash: 3203334158,
+                improvement_hash: 3203334159,
+                national_park: pmod::BoolByte(197),
+            }],
+            great_work_manager: pmod::GreatWorks {
+                player_id: -7988,
+                great_work_values_q8: vec![i32::MIN, -1, i32::MAX],
+                working_great_work_values_q8: vec![i32::MIN, -1, i32::MAX],
+            },
+            national_park_spots: vec![i32::MIN, -1, i32::MAX],
+            num_naturalists: -7986,
+            must_change_policies: pmod::BoolByte(197),
         }
     }
     fn carrier() -> Vec<u8> {
@@ -1990,6 +2278,8 @@ mod tests {
                 .unwrap(),
         );
         out.extend(ai_planning_carrier().encode(Limits::default()).unwrap());
+        out.extend(ai_city_manager_carrier().encode(Limits::default()).unwrap());
+        out.extend(ai_culture_carrier().encode(Limits::default()).unwrap());
 
         out
     }
@@ -1997,11 +2287,11 @@ mod tests {
     fn typed_empty_rosters_nested_components_and_aggregate_budgets() {
         let bytes = carrier();
         let mut trailing = bytes.clone();
-        trailing.extend_from_slice(b"untouched AICityManager");
+        trailing.extend_from_slice(b"untouched AIDiplomatic");
         let (value, n, items) =
             Prefix::decode_prefix_with_items(&trailing, Limits::default()).unwrap();
         assert_eq!(n, bytes.len());
-        assert_eq!(value.boundary, Boundary::AICityManager);
+        assert_eq!(value.boundary, Boundary::AIDiplomatic);
         assert_eq!(value.unfinished_player_entries, 2);
         assert_eq!(value.religion.records[0].custom_name, b"\xff\0x");
         assert_eq!(
@@ -2027,9 +2317,7 @@ mod tests {
                 max_items: items - 1,
                 ..exact
             }),
-            Err(Error::AIInfluenceMap(
-                player_ai_influence_map::Error::ResourceLimit
-            ))
+            Err(Error::AICulture(player_ai_culture::Error::ResourceLimit))
         ));
         let p = value.first_player.unwrap();
         assert_eq!(p.requested_owner, 64);
@@ -2098,6 +2386,29 @@ mod tests {
             [i16::MIN, -1, i16::MAX]
         );
         assert_eq!(p.ai_planning.as_ref().unwrap().player_id, i32::MIN);
+        assert_eq!(
+            p.ai_city_manager.as_ref().unwrap().city_ais.entries[0]
+                .city_build
+                .under_attack
+                .0,
+            197
+        );
+        assert_eq!(
+            p.ai_city_manager.as_ref().unwrap().city_ais.entries[0]
+                .city_build
+                .plot_evaluations[0]
+                .owned
+                .0,
+            197
+        );
+        assert_eq!(p.ai_culture.as_ref().unwrap().done_off_turn.0, 197);
+        assert_eq!(
+            p.ai_culture.as_ref().unwrap().civic_analyzers[0]
+                .value
+                .is_owned
+                .0,
+            197
+        );
         assert_eq!(
             p.post_heroes_arrays
                 .as_ref()
@@ -2177,9 +2488,7 @@ mod tests {
                     ..exact
                 }
             ),
-            Err(Error::AIInfluenceMap(
-                player_ai_influence_map::Error::ResourceLimit
-            ))
+            Err(Error::AICulture(player_ai_culture::Error::ResourceLimit))
         ));
         for end in 0..n {
             assert!(
@@ -2381,7 +2690,7 @@ mod tests {
         let prefix = &value.player_prefix;
         let first = prefix.first_player.as_ref().unwrap();
         let expected = if first.header.saved_was_ever_alive() {
-            Boundary::AICityManager
+            Boundary::AIDiplomatic
         } else {
             if prefix.player_count > 1 {
                 Boundary::NextPlayerEntry
@@ -2404,6 +2713,14 @@ mod tests {
         );
         assert_eq!(
             first.ai_planning.is_some(),
+            first.header.saved_was_ever_alive()
+        );
+        assert_eq!(
+            first.ai_city_manager.is_some(),
+            first.header.saved_was_ever_alive()
+        );
+        assert_eq!(
+            first.ai_culture.is_some(),
             first.header.saved_was_ever_alive()
         );
         assert_eq!(
@@ -2627,10 +2944,16 @@ mod tests {
         let ai_control = p.ai_control.take().unwrap();
         let ai_map = p.ai_influence_map.take().unwrap();
         let ai_planning = p.ai_planning.take().unwrap();
+        let ai_city_manager = p.ai_city_manager.take().unwrap();
+        let ai_culture = p.ai_culture.take().unwrap();
         let ai_encoded = [
             ai_control.encode_with_items(Limits::default()).unwrap(),
             ai_map.encode_with_items(Limits::default()).unwrap(),
             ai_planning.encode_with_items(Limits::default()).unwrap(),
+            ai_city_manager
+                .encode_with_items(Limits::default())
+                .unwrap(),
+            ai_culture.encode_with_items(Limits::default()).unwrap(),
         ];
         let ai_bytes: usize = ai_encoded.iter().map(|(bytes, _)| bytes.len()).sum();
         let ai_items: usize = ai_encoded.iter().map(|(_, items)| *items).sum();
@@ -2711,7 +3034,7 @@ mod tests {
             .take()
             .unwrap();
         v.first_player.as_mut().unwrap().header.ordered_flags[1] = true;
-        v.boundary = Boundary::AICityManager;
+        v.boundary = Boundary::AIDiplomatic;
         assert_eq!(
             v.encode_prefix(Limits {
                 max_bytes: 0,
@@ -2726,6 +3049,8 @@ mod tests {
         p.ai_control = Some(ai_control);
         p.ai_influence_map = Some(ai_map);
         p.ai_planning = Some(ai_planning);
+        p.ai_city_manager = Some(ai_city_manager);
+        p.ai_culture = Some(ai_culture);
         assert_eq!(v.encode_prefix(Limits::default()).unwrap(), bytes);
     }
     #[test]
@@ -2780,6 +3105,19 @@ mod tests {
             .encode(Limits::default())
             .unwrap()
             .len();
+        let after_planning = p
+            .ai_city_manager
+            .as_ref()
+            .unwrap()
+            .encode(Limits::default())
+            .unwrap()
+            .len()
+            + p.ai_culture
+                .as_ref()
+                .unwrap()
+                .encode(Limits::default())
+                .unwrap()
+                .len();
         let mut bad_control = bytes.clone();
         bad_control[n - ai_bytes..n - ai_bytes + 4].copy_from_slice(&3u32.to_le_bytes());
         assert!(matches!(
@@ -2799,7 +3137,7 @@ mod tests {
             ))
         ));
         let mut bad_planning = bytes;
-        bad_planning[n - planning_bytes..n - planning_bytes + 4]
+        bad_planning[n - after_planning - planning_bytes..n - after_planning - planning_bytes + 4]
             .copy_from_slice(&2u32.to_le_bytes());
         assert!(matches!(
             Prefix::decode_prefix(&bad_planning, Limits::default()),
@@ -2826,6 +3164,8 @@ mod tests {
         p.ai_control = None;
         p.ai_influence_map = None;
         p.ai_planning = None;
+        p.ai_city_manager = None;
+        p.ai_culture = None;
         p.tail = Some(false_tail_carrier());
         v.player_count = 1;
         v.unfinished_player_entries = 0;
@@ -2894,6 +3234,53 @@ mod tests {
             .unwrap()
             .alive = Some(player_tail::AliveTail::default());
         assert!(!v.first_player_complete());
+        assert_eq!(
+            v.encode_prefix(Limits {
+                max_bytes: 0,
+                max_items: 0
+            }),
+            Err(Error::InvalidPrefix)
+        );
+    }
+    #[test]
+    fn city_manager_and_culture_ai_require_current_versions_and_gated_models() {
+        let bytes = carrier();
+        let (mut v, n) = Prefix::decode_prefix(&bytes, Limits::default()).unwrap();
+        let p = v.first_player.as_ref().unwrap();
+        let city = p
+            .ai_city_manager
+            .as_ref()
+            .unwrap()
+            .encode(Limits::default())
+            .unwrap();
+        let culture = p
+            .ai_culture
+            .as_ref()
+            .unwrap()
+            .encode(Limits::default())
+            .unwrap();
+        let mut bad_city = bytes.clone();
+        bad_city[n - culture.len() - city.len()..n - culture.len() - city.len() + 4]
+            .copy_from_slice(&3u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bad_city, Limits::default()),
+            Err(Error::AICityManager(
+                player_ai_city_manager::Error::Version {
+                    expected: 2,
+                    actual: 3
+                }
+            ))
+        ));
+        let mut bad_culture = bytes;
+        bad_culture[n - culture.len()..n - culture.len() + 4].copy_from_slice(&16u32.to_le_bytes());
+        assert!(matches!(
+            Prefix::decode_prefix(&bad_culture, Limits::default()),
+            Err(Error::AICulture(player_ai_culture::Error::Version {
+                expected: 15,
+                actual: 16
+            }))
+        ));
+        v.first_player.as_mut().unwrap().ai_culture = None;
         assert_eq!(
             v.encode_prefix(Limits {
                 max_bytes: 0,
@@ -3200,7 +3587,7 @@ impl Writer {
 }
 impl Prefix {
     /// Completeness of this first serialized wire entry only, not live state.
-    /// The real true branch is still partial at AI.CityManager.
+    /// The real true branch is still partial at AI.Diplomatic.
     pub fn first_player_complete(&self) -> bool {
         self.first_player.as_ref().is_some_and(|p| {
             !p.header.saved_was_ever_alive()
@@ -3209,13 +3596,15 @@ impl Prefix {
                 && p.ai_control.is_none()
                 && p.ai_influence_map.is_none()
                 && p.ai_planning.is_none()
+                && p.ai_city_manager.is_none()
+                && p.ai_culture.is_none()
         })
     }
     /// Encode exactly the supported prefix, without an unsupported Player tail.
     /// Inconsistent boundary/count/first-entry combinations are rejected.
     pub fn encode_prefix_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         let expected_boundary = match self.first_player.as_ref() {
-            Some(p) if p.header.saved_was_ever_alive() => Boundary::AICityManager,
+            Some(p) if p.header.saved_was_ever_alive() => Boundary::AIDiplomatic,
             Some(_) if self.player_count > 1 => Boundary::NextPlayerEntry,
             Some(_) => Boundary::AfterPlayerManager,
             None => Boundary::AfterEmptyPlayerManager,
@@ -3233,6 +3622,8 @@ impl Prefix {
                     p.ai_control.is_some(),
                     p.ai_influence_map.is_some(),
                     p.ai_planning.is_some(),
+                    p.ai_city_manager.is_some(),
+                    p.ai_culture.is_some(),
                 ]
                 .iter()
                 .any(|present| *present != p.header.saved_was_ever_alive())
@@ -3408,6 +3799,20 @@ impl Prefix {
                     Error::AIPlanning,
                 )?;
             }
+            if let Some(value) = &p.ai_city_manager {
+                w.component(
+                    value,
+                    player_ai_city_manager::CityManager::encode_with_items,
+                    Error::AICityManager,
+                )?;
+            }
+            if let Some(value) = &p.ai_culture {
+                w.component(
+                    value,
+                    player_ai_culture::CultureAi::encode_with_items,
+                    Error::AICulture,
+                )?;
+            }
             if let Some(value) = &p.tail {
                 w.component(
                     value,
@@ -3465,7 +3870,7 @@ mod encode_tests {
             }),
             Err(Error::ResourceLimit)
         ));
-        v.boundary = Boundary::AICityManager;
+        v.boundary = Boundary::AIDiplomatic;
         assert_eq!(
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
