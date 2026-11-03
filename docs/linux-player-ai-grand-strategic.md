@@ -1,0 +1,29 @@
+# Linux Player AI GrandStrategic saved wire
+
+This codec implements the complete current saved wire of `AI::GrandStrategic` v12 against Linux XP2 SHA-256 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`. It does not reconstruct native objects, initialize callbacks, execute policy choices or advance gameplay/RNG. Full Player/world state import, actions and turns remain unsupported. The recorded 89,198-byte raw Save→Load difference remains unmasked and unresolved.
+
+The read-only [audit](../tools/linux/player_ai_grand_strategic_audit.py) pins target method bytes and DWARF and independently projects original Save bytes; its [report](../evidence/linux/player-ai-grand-strategic.json) records actual evidence and candidate identities. Discovery attribution follows [reference.md](reference.md), revision `5af389445118bed2bdebf7a8a42b219c8fba5175`. No proprietary binary or raw disassembly is included here.
+
+Writer `0x211e180` emits, in order: version 12; signed player ID; CityPlanner v2; counted unsigned primary, expansion and tertiary region IDs; counted RegionEvaluator v1 records; three one-byte native bool storage fields (done-island-check, is-on-island, commemorate-era); VictoryStrategy v4; two PseudoYield hash/Q8 arrays; UnitProduction v1; Yield hash/Q8 array. All count and version words are little-endian u32; integers and raw Q8 fixed-point storage are i32. Definition hashes are u32, with order, duplicates and sentinels preserved. Region IDs and player ordinals are not definition hashes.
+
+CityPlanner (`0x211e990`/`0x211e9f0`) saves only player identity, expansion score and turns since city founding. Its live preferences are omitted, and Read calls Initialize. RegionEvaluator (`0x212c1f0`/`0x212bc90`) saves player ID, region ID, counted CitySettleSiteEvaluation v1 records, PlotEvaluation v5, then has-positive-eval storage. Each CitySettleSiteEvaluation (`0x211e900`/`0x211e950`) contains PlotCoord (two signed words) and raw Q8 score.
+
+PlotEvaluation (`0x2191b90`/`0x2191cd0`) saves PlotCoord, nearest friendly/enemy cities, danger, cultural pressure, three raw bool bytes, new-inner-ring-resource count, Q8 score, then six hash/i32 arrays: inner-ring Yield, full-city Yield, Terrain counts, inner-ring Resource counts, Resource counts and Feature counts. Its live Continent member is omitted.
+
+VictoryStrategy (`0x21d7fe0`/`0x21d8170`) saves nullable player ID (-1 for null), four Strategy hash/raw-bool arrays, Strategy hash/i32 next-turn-change values, Yield hash/Q8 priorities, then **the live pseudo-yield priorities using Yield definitions too** (call at `0x21d8136`). The codec names this last field `pseudo_yield_priorities_saved_as_yield_hash_q8`; it preserves the actual wire contract. Extra strategy conditions and is-done are not saved. This apparent native mismatch is not corrected or remapped.
+
+UnitProduction (`0x21bcce0`/`0x21bcd40`) saves player ID, counted UnitEfficiencyInfo v4 and raw has-targets. UnitEfficiencyInfo (`0x21bc9e0`/`0x21bcb20`) saves Unit hash, max damage, seven raw bool bytes, speed/range/main strength/defense/number in use, two Q8 efficiency values, counted Q8 efficiency-against-player values, Q8 raw efficiency, maintenance Resource hash and resource quantity. Inline vector capacity 64 is not a saved fixed array; its actual count is retained.
+
+Native bool writer `0x1fe7900` forwards exactly one storage byte to the stream; the reader requests one byte at `0x1fe81a0`. This codec uses u8 for every bool carrier and never normalizes noncanonical storage. This is saved-byte transport, not a statement about C++ boolean evaluation semantics.
+
+Native GrandStrategic Read (`0x211e2b0`) resolves player identity, initializes site evaluation, subscribes signals and archive integration, and calls each region evaluator's InitializeFromLoad with a callback, then initializes UnitProduction. VictoryStrategy Read initializes lists through live Player lookup. These effects are deliberately separate from the bounded transport. No planning-only exclusion or transitive RNG purity is proven, and all gameplay-affecting data and RNG remain in scope. Native AI policy decisions must yield to external policies rather than silently choosing actions.
+
+The actual owner traces contain neither GrandStrategic nor Homeland hooks. The audit starts its exact grammar at the preceding Governors hook's end, independently checks the unique enclosed VictoryStrategy hook and succeeding Homeland v1/player ID, and reports actual hook inventory. It verifies all 43 Player records in each fixture have WasEverAlive=true. These cuts validate the grammar; the production codec uses no owner cuts. Prefix decoding reports actual bytes and aggregate nested dynamic items; strict decoding rejects trailing data. Checked count arithmetic, fallible allocations and exact aggregate byte/item budgets apply to every nested container.
+
+Reproduce without original-code execution:
+
+```sh
+python3 tools/linux/player_ai_grand_strategic_audit.py --output target/linux/player-ai-grand-strategic.json
+```
+
+Use `--source-commit` with an immutable commit that already exports the module to validate the actual crate through an unchanged Git archive, module tests, strict Clippy and all 86 typed decode/re-encode projections. The driver fails on a missing export; it never injects source. Boundary tests cover exact/one-short aggregate budgets, strict trailing/prefix behavior, all small-carrier truncations, hostile counts and nested versions, and all 256 raw bool byte values. Actual fixture cuts cover structural boundaries and bounded interior/first/last repeated rows rather than quadratic full-record truncation loops. This is offline saved-wire validation, not a new original Read or gameplay oracle. Next is AI::Homeland v1 at writer `0x2134880`, reader `0x2134910`, whose MoveList schema and Control/signal initialization remain dependencies.
