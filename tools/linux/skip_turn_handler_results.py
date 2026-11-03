@@ -17,9 +17,18 @@ import placement_count_reconstruction_results as base
 
 ROOT = base.ROOT
 OPERATION_HASH = 0x2C681908
-# Admission is deliberately closed until the independent runner/reviewer freeze
-# an actually terminal-cleaned successor capture. No CLI override bypasses it.
-ADMISSION = None
+# Profile/source/candidate admitted before original answers exist. The runtime
+# remains closed until its terminal-cleaned capture is independently pinned.
+# No CLI override bypasses either admission stage.
+ADMISSION = {
+    'profile_sha256': '2aaaa540bd072e5ba80c98e2c2ca8a2064f1fc2f3a32be4826b3b7a71bd1178a',
+    'prepared_sha256': '2a0d7e1ac6603d7e072dc0fc5af6e8f3452a569b2a19c1c7678907b5e43c76ed',
+    'configuration_file_sha256': '295afaf580bf6310e0c1295e245fbf3905facd84e99bf572fd16c34dfc89d58f',
+    'successor_manifest_sha256': '85510356806319f5ed77e639649caf4034a3bbf3511699695cc80cc674355132',
+    'preload_sha256': '942f32dc44136714f7d9abddc0d3a77a2a65d2fbfe5e70a4b9219d96240c6a93',
+    'native_source_commit': 'b6b3143',
+    'runtime_sha256': None,
+}
 
 
 def same(left, right):
@@ -188,26 +197,31 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     base.require(ADMISSION is not None, 'no independently admitted terminal-cleaned handler capture yet')
+    base.require(ADMISSION['runtime_sha256'] is not None, 'prepared profile admitted; terminal-cleaned runtime not yet admitted')
     capture = args.capture.resolve()
     manifest, binary = base.candidate_gate(args.manifest)
     runtime_path, prepared_path = capture/'runtime.json', capture/'prepared.json'
     base.require(base.digest(runtime_path) == ADMISSION['runtime_sha256'], 'unreviewed runtime')
     base.require(base.digest(prepared_path) == ADMISSION['prepared_sha256'], 'unreviewed preparation')
     runtime, prepared = base.load(runtime_path), base.load(prepared_path)
+    base.require(prepared['schema'] == 'c6-linux-native-profile-prepared-v1'
+                 and prepared['native_execution_performed'] is False and prepared['returncode'] is None,
+                 'prepare-only admission boundary differs')
     config = runtime['configuration']
     profile = ADMISSION['profile_sha256']
     base.require(base.sha(base.canonical(config)) == runtime['configuration_sha256'] == prepared['configuration_sha256'] == profile,
                  'runtime/preparation/profile identity differs')
     exact(config, prepared['configuration'], 'prepared configuration changed')
+    base.require(base.digest(capture/'configuration.json') == ADMISSION['configuration_file_sha256'], 'configuration file changed')
     exact(base.load(capture/'configuration.json'), config, 'durable configuration differs')
     base.require(config['assets']['libGameCore_XP2.so'] == base.GAME and config['assets']['Civ6'] == base.HOST,
                  'original module/host identity differs')
     binding = config['lower_core_placement_handler_metadata']
     base.require(binding['expected_outputs_used_as_inputs'] is False and binding['full_manager_legality'] is False
                  and binding['native_action_execution'] is False, 'handler profile boundary differs')
-    base.require(base.digest(capture/'candidate-manifest.json') == binding['reconstruction_manifest_sha256'] == ADMISSION['successor_manifest_sha256'],
+    base.require(base.digest(capture/'candidate-reference-manifest.json') == binding['reconstruction_manifest_sha256'] == ADMISSION['successor_manifest_sha256'],
                  'successor manifest identity differs')
-    exact(base.load(capture/'candidate-manifest.json'), binding['reconstruction_manifest'], 'successor manifest/config binding differs')
+    exact(base.load(capture/'candidate-reference-manifest.json'), binding['reconstruction_manifest'], 'successor manifest/config binding differs')
     successor = binding['reconstruction_manifest']
     for field, value in manifest.items():
         if field != 'schema':
@@ -223,7 +237,7 @@ def main():
         base.require(not Path(name).is_absolute() and '..' not in Path(name).parts, 'source archive path escapes')
         base.require(base.digest(capture/'source'/name) == value, 'archived source differs: ' + name)
     base.require(base.digest(capture/'source/tools/linux/mod_activation_probe.py') == config['runner_sha256'], 'archived runner differs')
-    base.require(base.digest(capture/'placement-handler-metadata-preload.so') == config['preload_sha256'], 'admitted preload differs')
+    base.require(base.digest(capture/'placement-handler-metadata-preload.so') == config['preload_sha256'] == ADMISSION['preload_sha256'], 'admitted preload differs')
     exact(set(runtime['action_trace_files']), {'events.jsonl'}, 'unexpected/missing policy trace artifacts')
     trace_directory = Path(runtime['execution_paths']['action_trace_directory']).resolve()
     base.require(trace_directory.is_relative_to(capture), 'policy trace outside closed capture')
@@ -303,6 +317,7 @@ def main():
                   admitted_preload_sha256=config['preload_sha256'], coverage=coverage, matrix=matrix,
                   action_policy_trace_sha256=runtime['action_trace_files']['events.jsonl']['sha256'],
                   native_policy_choices_observed=0, native_action_execution_observed=0,
+                  policy_trace_observation_scope='hooked known callers; not a complete transitive policy inventory',
                   count_and_binding_mismatches=len(count_mismatches), handler_mismatches=len(handler_mismatches),
                   native_count_rows_compared=len(calculated['count_results']), native_binding_rows_compared=len(units),
                   computed_handler_unsupported=0, actual_core_alive_saved_header_crosscheck=alive,
