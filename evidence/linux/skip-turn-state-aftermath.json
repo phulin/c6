@@ -5,7 +5,128 @@
   "native_execution": false,
   "implementation": false,
   "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
-  "source_audit_sha256": "9c6067237366bc3a87f783d45ebde1fbb2dc9f1b3918a539a1e087032b5c6ab9",
+  "source_audit_sha256": "580745fd4028d7011c9da658428bd2e1770b5bbfdd5cc2e01caa43b874545d34",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "manager_and_reporting": {
+    "gamecore_methods": [
+      {
+        "name": "MoveTo.Deactivate",
+        "rva": "0x2da4b40",
+        "bytes": 41,
+        "sha256": "04ee26064c5370b4e2aacb053f6946f4a51d3726a3bba3e019cb4a84e6178be5"
+      },
+      {
+        "name": "Unit.CompleteMovement",
+        "rva": "0x2c42ab0",
+        "bytes": 92,
+        "sha256": "7b2680f933866af5406bf9ad5c1c1464be1f5bcef2262e18e095e4338550c2c1"
+      },
+      {
+        "name": "Unit.GetNeedsMovementCompletion",
+        "rva": "0x2c43a70",
+        "bytes": 7,
+        "sha256": "90d52fc37d9542093734f9bc623743bc129b9656431545615a03adaf0bd77fa0"
+      },
+      {
+        "name": "Formation.ClearPathCache",
+        "rva": "0x293d8e0",
+        "bytes": 48,
+        "sha256": "2abba4ca3d359d0580d3c526be2b80690c677bbac24677d247cb2f693b0cfdd3"
+      },
+      {
+        "name": "Reporting.SendTypedMap",
+        "rva": "0x2d4a4b0",
+        "bytes": 79,
+        "sha256": "c1888c434ab05b22459602c065edeb08c79ab33480cb0beb070bf92fcc89ade5"
+      },
+      {
+        "name": "Reporting.SendTypedVectorMap",
+        "rva": "0x2d4a500",
+        "bytes": 143,
+        "sha256": "c95a0bbe9b2dac3683bee31fe6484410b6d592f2aa8a252a0950154f026a9665"
+      },
+      {
+        "name": "Cache.Dispatcher.Send",
+        "rva": "0x2723550",
+        "bytes": 238,
+        "sha256": "c224d2f00939be39974ab16bfc564f2877cef2ece1e8a94e972e243d5dbced20"
+      }
+    ],
+    "host_methods": [
+      {
+        "name": "EngineUtility.SendEvent",
+        "rva": "0x32b4260",
+        "bytes": 2492,
+        "sha256": "24826057267fc9c5a6028051e2eed6dbffea87bb34c1de4600f00ae968c370d9"
+      },
+      {
+        "name": "Translate.Dispatch",
+        "rva": "0x3214c50",
+        "bytes": 129,
+        "sha256": "84bcf221705b2d35e2ff59079cec7c5b22cd7c10afb65c5774642d5c5c7ca910"
+      },
+      {
+        "name": "GameCoreEvent71.Publish",
+        "rva": "0x32176b0",
+        "bytes": 80,
+        "sha256": "4bcd0436d2ba72ae44f4d885d4864d5b1880f9f0a84c833a62179ce2f99187cd"
+      },
+      {
+        "name": "GameCoreEvent257.Publish",
+        "rva": "0x321cac0",
+        "bytes": 80,
+        "sha256": "4fe4c9ea0083b660eb82a946d1b96f27d7f6cb8d218714ca6a48b287c2e33819"
+      }
+    ],
+    "clear_initial_empty": "Return without deactivation, timer assignment or Formation clear",
+    "manager_deactivate": "For nonempty queue: OPERATION -> hard-coded AWAKE; then tracked timer=0. Node saved activity is not restored.",
+    "move_to_deactivate": "CompleteMovement(Unit*) then BaseHandler.Deactivate",
+    "complete_movement_false": "Return immediately when actual Unit m_bNeedsMovementCompletion is false",
+    "complete_movement_true": "Tracked Unit index50=false, then identity/PlotCoord event6e7ef927; unsupported until modeled",
+    "formation_clear": {
+      "ordered_dirty_fields": [
+        14,
+        15
+      ],
+      "effects": [
+        "Clear path",
+        "Set cache coordinates -9999,-9999"
+      ],
+      "evaluating_operation_directly_written": false
+    },
+    "one_move_to_replacement_path_clear_calls": [
+      "Old DeleteNode final removal",
+      "Clear tail",
+      "New SkipTurn DeleteNode final removal"
+    ],
+    "path_clear_sequence_scope": "Instruction-derived supported branch with unchanged subscriber inputs; actual invocation counts were not captured",
+    "native_path_clear_invocation_count_observed": false,
+    "reporting_order": [
+      "Enabled/not-unserializing gates",
+      "Synchronous matching Cache.Dispatcher delegates if updates enabled",
+      "Original EngineUtility.SendEvent parameter-based dirty-component bookkeeping",
+      "Synchronous registered host translator if found",
+      "Relevant GameCoreEvent.Publish optional synchronous pre-publish delegate",
+      "Create queued host GameCore event and Unlock"
+    ],
+    "original_provider_binding": {
+      "vtable": "0x53a6c80",
+      "slot": "0xa8",
+      "target": "0x32b4260"
+    },
+    "unresolved_profile_gates": [
+      "Actual reporting enabled and unserializing values",
+      "Actual Cache.AreUpdatesEnabled",
+      "Matching Cache handler targets and receiver state",
+      "Actual host translator registration table",
+      "Actual pre-publish subscriber pointers/targets",
+      "All transitive callback effects"
+    ],
+    "current_profile_pure_queued_reporting_proven": false,
+    "current_profile_synchronous_gameplay_mutation_proven": false,
+    "live_callback_inventory_observed": false,
+    "limits": "Static synchronous dispatch and queued-event branches are both proven. Neither absence nor gameplay effects of current live callbacks are established by method names, matching Save bytes or the historical selected-event trace."
+  },
   "dependency_source_sha256": "364e7864c908aaa4ea5d7bd89c4f5603bf5f4e203cbbe0283bcae7249527f9fe",
   "original_methods": [
     {

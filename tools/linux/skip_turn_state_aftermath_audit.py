@@ -7,9 +7,10 @@ or complete state/event coverage is supplied by this contract.
 import argparse
 import json
 from pathlib import Path
+import struct
 
 from core_component_check import digest, require
-from save_lifecycle_audit import Elf, GAME_SHA
+from save_lifecycle_audit import Elf, GAME_SHA, HOST_SHA
 from skip_turn_state_success import original_contract, sha, ROOT
 
 
@@ -56,9 +57,65 @@ BRANCHES = [
 ]
 
 
-def audit(module):
+def manager_and_reporting_contract(game, host):
+    require(game.relocated_pointer(0x3affa30 + 16 + 0x68) == 0x2da4b40, 'MoveTo concrete deactivation differs')
+    require(game.read(0x2c43a70, 7).hex() == '8a87d8060000c3', 'movement completion input differs')
+    require(game.read(0x2c42ac1, 2).hex() == '7441', 'CompleteMovement false branch differs')
+    require(game.read(0x2da4b64, 5).hex() == 'e9579618ff', 'MoveTo base deactivation tail differs')
+    require(game.read(0x2da272c, 2).hex() == '744f', 'Clear empty-queue return differs')
+    require(game.read(0x2da29ec, 5).hex() == 'ba2e01256b', 'Deactivate hard-coded AWAKE differs')
+    require(struct.unpack('<Q', host.read(0x53a6c80 + 16 + 0xa8, 8))[0] == 0x32b4260,
+            'original host engine reporting provider binding differs')
+    for call, target in [(0x2da4b51, 0x1f63180), (0x2c42aba, 0x1e6f150),
+                         (0x2c42ac8, 0x1f45ca0), (0x2c42aff, 0x1f302f0),
+                         (0x293d8eb, 0x1e1fbe0), (0x293d8f3, 0x1e135b0), (0x293d902, 0x1ea2b90),
+                         (0x2d4a4db, 0x1f148f0), (0x2d4a4e0, 0x1f310a0),
+                         (0x2723565, 0x1e47f00), (0x2723619, 0x1f435f0)]:
+        game.call(call, target)
+    for call, target in [(0x32b4b97, 0x32b5f90), (0x32b4c03, 0x3214c50),
+                         (0x32176cf, 0x2fd7db0), (0x32176df, 0x3228580),
+                         (0x32176ea, 0x32285c0), (0x32176f1, 0x2fd7e20),
+                         (0x321cadf, 0x2fd7db0), (0x321caef, 0x3237c40),
+                         (0x321cafa, 0x3237c80), (0x321cb01, 0x2fd7e20)]:
+        host.call(call, target)
+    require(host.read(0x3214cbf, 2).hex() == 'ffd0', 'synchronous registered translator call differs')
+    game_methods = [('MoveTo.Deactivate', 0x2da4b40, 0x29), ('Unit.CompleteMovement', 0x2c42ab0, 0x5c),
+                    ('Unit.GetNeedsMovementCompletion', 0x2c43a70, 7), ('Formation.ClearPathCache', 0x293d8e0, 0x30),
+                    ('Reporting.SendTypedMap', 0x2d4a4b0, 0x4f), ('Reporting.SendTypedVectorMap', 0x2d4a500, 0x8f),
+                    ('Cache.Dispatcher.Send', 0x2723550, 0xee)]
+    host_methods = [('EngineUtility.SendEvent', 0x32b4260, 0x9bc), ('Translate.Dispatch', 0x3214c50, 0x81),
+                    ('GameCoreEvent71.Publish', 0x32176b0, 0x50), ('GameCoreEvent257.Publish', 0x321cac0, 0x50)]
+    return dict(gamecore_methods=[dict(name=n,rva=hex(a),bytes=z,sha256=sha(game.read(a,z))) for n,a,z in game_methods],
+                host_methods=[dict(name=n,rva=hex(a),bytes=z,sha256=sha(host.read(a,z))) for n,a,z in host_methods],
+                clear_initial_empty='Return without deactivation, timer assignment or Formation clear',
+                manager_deactivate='For nonempty queue: OPERATION -> hard-coded AWAKE; then tracked timer=0. Node saved activity is not restored.',
+                move_to_deactivate='CompleteMovement(Unit*) then BaseHandler.Deactivate',
+                complete_movement_false='Return immediately when actual Unit m_bNeedsMovementCompletion is false',
+                complete_movement_true='Tracked Unit index50=false, then identity/PlotCoord event6e7ef927; unsupported until modeled',
+                formation_clear=dict(ordered_dirty_fields=[14,15], effects=['Clear path', 'Set cache coordinates -9999,-9999'],
+                                     evaluating_operation_directly_written=False),
+                one_move_to_replacement_path_clear_calls=['Old DeleteNode final removal', 'Clear tail', 'New SkipTurn DeleteNode final removal'],
+                path_clear_sequence_scope='Instruction-derived supported branch with unchanged subscriber inputs; actual invocation counts were not captured',
+                native_path_clear_invocation_count_observed=False,
+                reporting_order=['Enabled/not-unserializing gates', 'Synchronous matching Cache.Dispatcher delegates if updates enabled',
+                                 'Original EngineUtility.SendEvent parameter-based dirty-component bookkeeping',
+                                 'Synchronous registered host translator if found',
+                                 'Relevant GameCoreEvent.Publish optional synchronous pre-publish delegate',
+                                 'Create queued host GameCore event and Unlock'],
+                original_provider_binding=dict(vtable='0x53a6c80', slot='0xa8', target='0x32b4260'),
+                unresolved_profile_gates=['Actual reporting enabled and unserializing values', 'Actual Cache.AreUpdatesEnabled',
+                                          'Matching Cache handler targets and receiver state', 'Actual host translator registration table',
+                                          'Actual pre-publish subscriber pointers/targets', 'All transitive callback effects'],
+                current_profile_pure_queued_reporting_proven=False,
+                current_profile_synchronous_gameplay_mutation_proven=False,
+                live_callback_inventory_observed=False,
+                limits='Static synchronous dispatch and queued-event branches are both proven. Neither absence nor gameplay effects of current live callbacks are established by method names, matching Save bytes or the historical selected-event trace.')
+
+
+def audit(module, host_path=None):
     contract = original_contract(module)
     elf = Elf(module, GAME_SHA)
+    host = Elf(host_path or ROOT.parent / 'c6-assets-linux/Civ6', HOST_SHA)
     for address, expected, name in BRANCHES:
         require(elf.read(address, len(bytes.fromhex(expected))).hex() == expected,
                 'original branch differs: ' + name)
@@ -84,6 +141,7 @@ def audit(module):
     return dict(schema='c6-linux-generic-command-notification-aftermath-static-v1', checks_passed=True,
                 static_only=True, native_execution=False, implementation=False,
                 gamecore_sha256=GAME_SHA, source_audit_sha256=digest(Path(__file__)),
+                host_sha256=HOST_SHA, manager_and_reporting=manager_and_reporting_contract(elf, host),
                 dependency_source_sha256=digest(ROOT / 'tools/linux/skip_turn_state_success.py'),
                 original_methods=contract['methods'] + [dict(name='Player.SetEndTurnBlocking', rva='0x2b5be10', bytes=0x52,
                                                             sha256=sha(elf.read(0x2b5be10, 0x52)))],
@@ -122,8 +180,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--module', type=Path, default=ROOT.parent / 'c6-ghidra/evidence/linux-rules/asl-launch-xp2-2/libGameCore_XP2.so')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--host', type=Path, default=ROOT.parent / 'c6-assets-linux/Civ6')
     args = parser.parse_args()
-    result = audit(args.module)
+    result = audit(args.module, args.host)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2)+'\n')
     print(json.dumps(dict(checks_passed=True, static_only=True, branch_checks=len(BRANCHES), implementation=False)))
