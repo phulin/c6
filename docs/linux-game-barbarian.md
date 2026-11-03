@@ -30,3 +30,10 @@ Both canonical fixtures contain the same 28,817-byte Manager record with 704 agg
 Native Read resolves player pointers and hashes, initializes signals and camp evaluators when a player exists, initializes/resizes legacy data, and edits archive-backed variables. Those live effects are outside this transport. No unencoded live context is guessed. No state is classified as planning-only. Future gameplay must execute exact rules/upkeep and yield to external policies for every player decision.
 
 This is a bounded wire component. Full Player/world import, initialized-game acceptance, gameplay state/RNG, actions and turns remain unsupported. The recorded raw Save→Load difference remains **89,198 bytes**, unmasked and unclassified. See [the audit evidence](../evidence/linux/game-barbarian.json) for the immutable candidate and validation identities.
+
+The recorded audit uses unchanged exported archive `d401fb5`. All three actual module Cargo tests, strict all-target Core Clippy and both full Rust field-projection/roundtrip checks passed; all 107 compiled/source inputs matched Git before and after. Reproduce without original execution or private writes:
+
+```sh
+python3 tools/linux/game_barbarian_audit.py \
+  --source-commit d401fb5 --output /tmp/game-barbarian.json
+```
