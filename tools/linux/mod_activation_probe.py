@@ -75,6 +75,10 @@ def main():
     action_modes.add_argument('--movement-cost-control',action='store_true')
     action_modes.add_argument('--movement-cost',action='store_true')
     action_modes.add_argument('--domain-metadata',action='store_true')
+    action_modes.add_argument('--placement-metadata',action='store_true')
+    parser.add_argument('--placement-metadata-candidate-manifest',type=Path)
+    for label in ('output','expected-output','before','control-save','after','repeat'):
+        parser.add_argument('--placement-metadata-'+label,type=Path)
     parser.add_argument('--domain-metadata-reconstruction-manifest',type=Path)
     for label in ('output','before','control-save','after','repeat'):
         parser.add_argument('--domain-metadata-'+label,type=Path)
@@ -191,6 +195,20 @@ def main():
         if len(set(domain_paths.values()))!=5:parser.error('domain metadata artifact paths must be distinct')
     elif args.domain_metadata_reconstruction_manifest or any(getattr(args,'domain_metadata_'+label) for label in ('output','before','control_save','after','repeat')):
         parser.error('domain metadata paths require the separate domain mode')
+    placement_paths={}
+    if args.placement_metadata:
+        if not game_input or not args.prepare_main_thread or not args.cleanup or not args.placement_metadata_candidate_manifest or any((combat_input,random_input,args.action_observe,args.action_execution_observe,args.action_lifecycle_observe,args.definition_ids,args.unit_definition_ids,args.operation_registry,args.save_normalization_trace,args.rules_snapshot_dir)):
+            parser.error('placement metadata requires a separate prepared-main-thread loaded Core cleanup fixture and frozen reconstruction manifest')
+        args.game_load_observe=True
+        for label in ('output','expected_output','before','control_save','after','repeat'):
+            path=getattr(args,'placement_metadata_'+label)
+            if path is None:parser.error('placement metadata requires output and all four snapshot paths')
+            path=path.resolve()
+            if path.exists() or not path.parent.is_dir() or not path.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):parser.error('placement metadata artifacts must be fresh private files')
+            placement_paths[label]=path
+        if len(set(placement_paths.values()))!=6:parser.error('placement metadata artifact paths must be distinct')
+    elif args.placement_metadata_candidate_manifest or any(getattr(args,'placement_metadata_'+label) for label in ('output','expected_output','before','control_save','after','repeat')):
+        parser.error('placement metadata paths require the separate domain mode')
     action_snapshots={}
     request_input=args.request_load_save.resolve() if args.request_load_save else None
     if request_input:
@@ -219,8 +237,8 @@ def main():
         if len(set(action_snapshots.values()))!=3:parser.error('action snapshot paths must be distinct')
     elif args.action_snapshot_before or args.action_snapshot_after or args.action_snapshot_repeat:
         parser.error('action snapshots require an explicit Skip Turn control/execute mode')
-    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata:
-        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata) or args.action_execution_observe or not action_trace:
+    if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata:
+        if (not args.action_observe and not core_mode and not movement_mode and not args.domain_metadata and not args.placement_metadata) or args.action_execution_observe or not action_trace:
             parser.error('--action-lifecycle-observe requires actor observation and its own trace directory, separately from the phase-one execution observer')
         if not action_trace.is_dir() or any(action_trace.iterdir()) or not action_trace.is_relative_to((ROOT.parent/'c6-ghidra').resolve()):
             parser.error('action trace directory must be a new empty existing private c6-ghidra directory')
@@ -269,6 +287,7 @@ def main():
         if set(core_paths.values())&set(game_outputs.values()):parser.error('Core component and outer Save paths must be distinct')
         if set(movement_paths.values())&set(game_outputs.values()):parser.error('movement and outer Save paths must be distinct')
         if set(domain_paths.values())&set(game_outputs.values()):parser.error('domain metadata and outer Save paths must be distinct')
+        if set(placement_paths.values())&set(game_outputs.values()):parser.error('placement metadata and outer Save paths must be distinct')
     elif args.game_save_output or args.game_save_repeat_output:
         parser.error('game save output paths require --game-load-stream')
     snapshot=args.rules_snapshot_dir.resolve() if args.rules_snapshot_dir else None
@@ -315,7 +334,7 @@ def main():
         if normalization_audit!=json.loads(normalization_audit_paths[-1].read_text()):raise SystemExit('original serialization trace contracts differ')
     execution_audit=None
     execution_audit_paths=[]
-    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata:
+    if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata:
         execution_audit_paths=[ROOT/'tools/linux/action_execution_audit.py',ROOT/'tools/linux/action_event_audit.py',ROOT/'evidence/linux/action-event-abi.json',ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/inspect_elf.py',ROOT/'evidence/linux/action-execution-abi.json']
         with tempfile.TemporaryDirectory(prefix='c6-execution-audit-') as temporary:
             result_path=Path(temporary)/'contracts.json'
@@ -324,7 +343,7 @@ def main():
         if execution_audit!=json.loads(execution_audit_paths[-1].read_text()):raise SystemExit('original cache dispatch contracts differ')
     dispatch_audits={}
     dispatch_audit_paths=[]
-    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata:
+    if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata:
         for stem in ('action_dispatch','action_state','action_delivery','action_registration'):
             tool=ROOT/f'tools/linux/{stem}_audit.py'
             canonical=ROOT/f'evidence/linux/{stem.replace("_","-")}-abi.json'
@@ -393,7 +412,7 @@ def main():
         movement_audit_paths=[ROOT/'tools/linux/movement_probe_audit.py',ROOT/('evidence/linux/movement-cost-probe-xp2-contract.json' if args.movement_cost_xp2_map else 'evidence/linux/movement-cost-probe-diagnostic-contract.json' if args.movement_cost_diagnostic else 'evidence/linux/movement-cost-probe-contract.json'),ROOT/'tools/linux/game_load_state_audit.py',ROOT/'evidence/linux/game-load-state-facade-contracts.json']
         admission_audit=ROOT/'tools/linux/oracle_admission_cache_audit.py'
         admission_contract=json.loads(subprocess.check_output([sys.executable,str(admission_audit)],cwd=ROOT,text=True))
-        movement_audit_paths.extend([admission_audit,ROOT/'tools/linux/domain_metadata_fixture_audit.py'])
+        movement_audit_paths.extend([admission_audit,ROOT/'tools/linux/domain_metadata_fixture_audit.py',ROOT/'tools/linux/placement_metadata_fixture_audit.py'])
         movement_contract=json.loads(movement_audit_paths[1].read_text())
         for name,sha in movement_contract['sources'].items():
             if digest(ROOT/name)!=sha:raise SystemExit('movement source identity mismatch: '+name)
@@ -445,6 +464,7 @@ def main():
             target=Path(temporary)/'contract.json'
             subprocess.run([sys.executable,str(domain_audit_paths[0]),'--module',str(assets/'libGameCore_XP2.so'),'--output',str(target)],check=True,capture_output=True,text=True)
             domain_contract=json.loads(target.read_text())
+        domain_audit_paths.append(ROOT/'tools/linux/placement_metadata_fixture_audit.py')
         if domain_contract!=json.loads(domain_audit_paths[1].read_text()):raise SystemExit('domain native contracts differ')
         fixture_contract=json.loads(subprocess.check_output([sys.executable,str(domain_audit_paths[2])],cwd=ROOT,text=True))
         if fixture_contract!=json.loads(domain_audit_paths[3].read_text()):raise SystemExit('domain fixture source contract differs')
@@ -458,6 +478,30 @@ def main():
             committed=subprocess.check_output(['git','show',manifest['source_commit']+':'+name],cwd=ROOT)
             if hashlib.sha256(committed).hexdigest()!=sha:raise SystemExit('domain reconstruction committed source differs: '+name)
         domain_profile={'mode':'read_only_domain_metadata','contract':domain_contract,'fixture_contract':fixture_contract,'reconstruction_manifest':manifest,'reconstruction_manifest_sha256':digest(manifest_path),'expected_outputs_used_as_inputs':False,'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'complete_rng_inventory':False,'native_acceptance_pending':True}
+    placement_profile=None
+    placement_audit_paths=[]
+    if args.placement_metadata:
+        placement_audit_paths=[ROOT/'tools/linux/placement_metadata_audit.py',ROOT/'evidence/linux/placement-metadata-preparation.json',ROOT/'tools/linux/placement_metadata_fixture_audit.py',ROOT/'evidence/linux/placement-metadata-fixture-contract.json']
+        with tempfile.TemporaryDirectory(prefix='placement-metadata-audit-') as temporary:
+            target=Path(temporary)/'contract.json'
+            subprocess.run([sys.executable,str(placement_audit_paths[0]),'--module',str(assets/'libGameCore_XP2.so'),'--output',str(target)],check=True,capture_output=True,text=True)
+            placement_contract=json.loads(target.read_text())
+        placement_audit_paths.extend([ROOT/'tools/linux/domain_metadata_fixture_audit.py',ROOT/'tools/linux/unit_placement_audit.py',ROOT/'tools/linux/save_lifecycle_audit.py'])
+        if placement_contract!=json.loads(placement_audit_paths[1].read_text()):raise SystemExit('placement native contracts differ')
+        for name,sha in placement_contract['source_sha256'].items():
+            if digest(ROOT/name)!=sha:raise SystemExit('placement native source differs: '+name)
+        fixture_contract=json.loads(subprocess.check_output([sys.executable,str(placement_audit_paths[2])],cwd=ROOT,text=True))
+        if fixture_contract!=json.loads(placement_audit_paths[3].read_text()):raise SystemExit('placement fixture source contract differs')
+        manifest_path=args.placement_metadata_candidate_manifest.resolve()
+        manifest=json.loads(manifest_path.read_text())
+        if manifest['schema']!='c6-linux-placement-count-candidate-v1' or manifest['expected_outputs_used_as_inputs'] is not False or manifest['native_execution'] is not False or manifest['native_comparison'] is not False:raise SystemExit('placement count candidate boundary differs')
+        candidate=ROOT/manifest['candidate_path'];placement_source_snapshot=ROOT/manifest['source_snapshot_path']
+        if digest(candidate)!=manifest['candidate_sha256'] or candidate.stat().st_size!=manifest['candidate_bytes']:raise SystemExit('placement count executable differs')
+        if digest(placement_source_snapshot)!=manifest['source_snapshot_sha256'] or placement_source_snapshot.stat().st_size!=manifest['source_snapshot_bytes']:raise SystemExit('placement count source archive differs')
+        for name,sha in manifest['sources'].items():
+            committed=subprocess.check_output(['git','show',manifest['source_commit']+':'+name],cwd=ROOT)
+            if hashlib.sha256(committed).hexdigest()!=sha:raise SystemExit('placement count committed source differs: '+name)
+        placement_profile={'mode':'read_only_friendly_formation_counts','native_bool_argument':False,'native_handler_query_available':False,'full_membership_required':True,'sampling_allowed':False,'contract':placement_contract,'fixture_contract':fixture_contract,'reconstruction_manifest':manifest,'reconstruction_manifest_sha256':digest(manifest_path),'expected_outputs_used_as_inputs':False,'internal_core_saves':4,'known_rng_objects':['Game sync Random32','Map generator Random32'],'complete_rng_inventory':False,'native_acceptance_pending':True}
     core_contract=None
     core_audit_paths=[]
     if core_mode:
@@ -512,11 +556,11 @@ def main():
     lifecycle_sources=[ROOT/'native/linux/save_lifecycle.c'] if args.attach_saved_session else []
     game_sources=[ROOT/'native/linux/game_load.c',ROOT/'native/linux/context_stream.c'] if game_input else []
     request_sources=[ROOT/'native/linux/request_load.c'] if request_input else []
-    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata else []
+    action_sources=[ROOT/'native/linux/action_observer.c'] if args.action_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata else []
     normalization_sources=[ROOT/'tools/linux/save_normalization_trace.c'] if normalization_trace else []
-    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata else []
-    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata else []
-    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata else []
+    execution_sources=[ROOT/'native/linux/action_execution.c'] if args.action_execution_observe or args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata else []
+    lifecycle_observer_sources=[ROOT/'native/linux/action_lifecycle.c',ROOT/'tools/linux/action_execution_trace.c'] if args.action_lifecycle_observe or action_mode or core_mode or movement_mode or args.domain_metadata or args.placement_metadata else []
+    dispatch_sources=[ROOT/'native/linux/action_dispatch.c',ROOT/'native/linux/action_state.c',ROOT/'native/linux/action_registration.c'] if action_mode or args.action_lifecycle_observe or core_mode or movement_mode or args.domain_metadata or args.placement_metadata else []
     definition_sources=[ROOT/'native/linux/definition_ids.c'] if args.definition_ids else []
     unit_definition_sources=[ROOT/'native/linux/unit_definition_ids.c'] if args.unit_definition_ids else []
     operation_registry_sources=[ROOT/'native/linux/operation_registry.c'] if args.operation_registry else []
@@ -525,6 +569,7 @@ def main():
     core_sources=[ROOT/'native/linux/core_component.c'] if core_mode else []
     movement_sources=[ROOT/'native/linux/movement_cost.c'] if movement_mode else []
     domain_sources=[ROOT/'native/linux/domain_metadata.c',ROOT/'native/linux/domain_metadata_fixture.c'] if args.domain_metadata else []
+    placement_sources=[ROOT/'native/linux/placement_metadata.c',ROOT/'native/linux/placement_metadata_fixture.c'] if args.placement_metadata else []
     configuration_sources=[]
     if args.saved_configuration:
         if digest(args.saved_configuration)!='a328d643201cb11ba226eee46c782f85b0df36b2a7a4e1a32372da8abe9cddb8':raise SystemExit('saved configuration identity mismatch')
@@ -566,6 +611,7 @@ def main():
               'lower_core_random_damage_kernel':random_profile,
               'lower_core_movement_cost':movement_profile,
               'lower_core_domain_metadata':domain_profile,
+              'lower_core_placement_metadata':placement_profile,
               'full_save_request':{'sha256':digest(request_input),'bytes':request_input.stat().st_size,'profile':'supplied-stream device4; both real game-state getters NULL; original deferred request only'} if request_input else None,
               'full_save_request_audit':request_audit,
               'timeout_seconds':args.timeout,
@@ -607,6 +653,8 @@ def main():
         identity['sources'].update(movement_contract['sources'])
     if domain_sources:
         identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*domain_sources,ROOT/'native/linux/domain_metadata.h',ROOT/'native/linux/domain_metadata_fixture.h']})
+    if placement_sources:
+        identity['sources'].update({str(q.relative_to(ROOT)):digest(q) for q in [*placement_sources,ROOT/'native/linux/placement_metadata.h',ROOT/'native/linux/placement_metadata_fixture.h']})
     if core_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*core_sources,ROOT/'native/linux/core_component.h']})
     if dispatch_sources:
@@ -617,14 +665,14 @@ def main():
     for path in action_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in normalization_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in execution_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
-    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*domain_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
+    for path in [*definition_audit_paths,*unit_definition_audit_paths,*operation_registry_audit_paths,*combat_audit_paths,*random_audit_paths,*movement_audit_paths,*domain_audit_paths,*placement_audit_paths,*core_audit_paths,*main_thread_audit_paths]:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     for path in dispatch_audit_paths:identity['sources'][str(path.relative_to(ROOT))]=digest(path)
     if localization_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*localization_sources,ROOT/'native/linux/localization.h',ROOT/'tools/linux/localization_gate.py']})
     if filesystem_sources:
         identity['sources'].update({str(p.relative_to(ROOT)):digest(p) for p in [*filesystem_sources,ROOT/'native/linux/filesystem.h']})
     subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-DC6_MOD_ACTIVATION_PROBE_MAIN',
-                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
+                    str(sources[0]),str(sources[2]),str(sources[4]),*map(str,[*filesystem_sources,*configuration_sources,*localization_sources,*snapshot_sources,*network_sources,*lifecycle_sources,*game_sources,*request_sources,*action_sources,*normalization_sources,*execution_sources,*lifecycle_observer_sources,*definition_sources,*unit_definition_sources,*operation_registry_sources,*combat_sources,*random_sources,*core_sources,*movement_sources,*domain_sources,*placement_sources,*dispatch_sources]),'-ldl','-o',str(preload)],check=True)
     identity['preload_sha256']=digest(preload)
     if movement_profile:movement_profile['integrated_preload_sha256']=identity['preload_sha256']
     archived_preload=None
@@ -641,6 +689,12 @@ def main():
         archived_preload=domain_paths['output'].parent/'domain-metadata-preload.so'
         if archived_preload.exists():
             if digest(archived_preload)!=digest(preload):raise SystemExit('domain immutable preload differs')
+        else:
+            with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
+    if args.placement_metadata:
+        archived_preload=placement_paths['output'].parent/'placement-metadata-preload.so'
+        if archived_preload.exists():
+            if digest(archived_preload)!=digest(preload):raise SystemExit('placement immutable preload differs')
         else:
             with archived_preload.open('xb') as stream:stream.write(preload.read_bytes())
     dependency_env=dict(os.environ,LD_LIBRARY_PATH=f'{ROOT}/target/linux/sysroot/usr/lib/x86_64-linux-gnu:{assets}')
@@ -687,6 +741,8 @@ def main():
             env.update(C6_MOVEMENT_COST_MODE=movement_mode,C6_MOVEMENT_COST_EXECUTE='1' if movement_mode=='execute' else '0',C6_MOVEMENT_COST_MAX_FORMATIONS=str(args.movement_cost_max_formations),C6_MOVEMENT_COST_OUTPUT=str(movement_paths['output']),C6_MOVEMENT_COST_SNAPSHOT_BEFORE=str(movement_paths['before']),C6_MOVEMENT_COST_SNAPSHOT_CONTROL=str(movement_paths['control_save']),C6_MOVEMENT_COST_SNAPSHOT_AFTER=str(movement_paths['after']),C6_MOVEMENT_COST_SNAPSHOT_REPEAT=str(movement_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
         if args.domain_metadata:
             env.update(C6_DOMAIN_METADATA_OUTPUT=str(domain_paths['output']),C6_DOMAIN_METADATA_SNAPSHOT_BEFORE=str(domain_paths['before']),C6_DOMAIN_METADATA_SNAPSHOT_CONTROL=str(domain_paths['control_save']),C6_DOMAIN_METADATA_SNAPSHOT_AFTER=str(domain_paths['after']),C6_DOMAIN_METADATA_SNAPSHOT_REPEAT=str(domain_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
+        if args.placement_metadata:
+            env.update(C6_PLACEMENT_METADATA_OUTPUT=str(placement_paths['output']),C6_PLACEMENT_METADATA_EXPECTED_OUTPUT=str(placement_paths['expected_output']),C6_PLACEMENT_METADATA_SNAPSHOT_BEFORE=str(placement_paths['before']),C6_PLACEMENT_METADATA_SNAPSHOT_CONTROL=str(placement_paths['control_save']),C6_PLACEMENT_METADATA_SNAPSHOT_AFTER=str(placement_paths['after']),C6_PLACEMENT_METADATA_SNAPSHOT_REPEAT=str(placement_paths['repeat']),C6_ACTION_TRACE_DIRECTORY=str(action_trace))
         if args.action_execution_observe:env['C6_ACTION_EXECUTION']='observe_cache'
         if args.action_lifecycle_observe:
             env['C6_ACTION_LIFECYCLE']='observe_cache_initialization'
@@ -720,8 +776,9 @@ def main():
         (movement_paths['output'].parent/'supervisor-timing-change.json').write_text(json.dumps(timing_change,indent=2)+'\n')
     if movement_mode:env['C6_MOVEMENT_COST_PROFILE_SHA256']=configuration_identity
     if args.domain_metadata:env['C6_DOMAIN_METADATA_PROFILE_SHA256']=configuration_identity
+    if args.placement_metadata:env['C6_PLACEMENT_METADATA_PROFILE_SHA256']=configuration_identity
     if args.prepare_only:
-        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
+        args.output.write_text(json.dumps({'schema':'c6-linux-native-profile-prepared-v1','configuration':identity,'configuration_sha256':configuration_identity,'native_execution_performed':False,'returncode':None,'execution_paths':{'preload':str(archived_preload or preload),'userdata':str(userdata),'movement':{k:str(v) for k,v in movement_paths.items()},'domain_metadata':{k:str(v) for k,v in domain_paths.items()},'placement_metadata':{k:str(v) for k,v in placement_paths.items()}},'limits':'offline build and identity preparation only; no original-code comparison or cleanup proof'},indent=2)+'\n')
         print(json.dumps({'output':str(args.output),'prepared_only':True,'native_execution_performed':False,'configuration_sha256':configuration_identity}))
         return
     try:
@@ -789,6 +846,18 @@ def main():
                 artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
                 if label=='output':report['domain_metadata_output']=artifact
                 else:report['domain_metadata_saves']['control' if label=='control_save' else label]=artifact
+    report['placement_metadata_output']=None
+    report['placement_metadata_expected_output']=None
+    report['placement_metadata_saves']={}
+    if args.placement_metadata:
+        report['execution_paths']['placement_metadata']={k:str(v) for k,v in placement_paths.items()}
+        report['execution_paths']['preload']=str(archived_preload)
+        for label,path in placement_paths.items():
+            if path.is_file():
+                artifact={'filename':path.name,'sha256':digest(path),'bytes':path.stat().st_size}
+                if label=='output':report['placement_metadata_output']=artifact
+                elif label=='expected_output':report['placement_metadata_expected_output']=artifact
+                else:report['placement_metadata_saves']['control' if label=='control_save' else label]=artifact
     report['combat_random_output']=None
     report['combat_random_saves']={}
     if random_input:

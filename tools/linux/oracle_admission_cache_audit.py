@@ -16,6 +16,9 @@ def original(path):
 def main():
     path = 'native/linux/game_load.c'
     before, after = original(path), (ROOT / path).read_text()
+    if 'C6_PLACEMENT_METADATA_OUTPUT' in after:
+        from placement_metadata_fixture_audit import project_previous_loader
+        after=project_previous_loader(after)
     # Exact retained native predicate expressions, short-circuit order, facade
     # ownership and fatal exits, allowing only the binding-struct qualification.
     old_guard = before.split('    void *controller=*active,*bound=NULL;', 1)[1].split('\n}\n', 1)[0]

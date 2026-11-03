@@ -201,7 +201,14 @@ int c6_linux_game_load(void *context) {
             int (*action_observe)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_observe");
             result=action_observe?action_observe(game,context):168;
         }
-        if(!result && getenv("C6_DOMAIN_METADATA_OUTPUT")) {
+        if(!result && getenv("C6_PLACEMENT_METADATA_OUTPUT")) {
+            int (*placement)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_placement_metadata");
+            if(!placement){
+                fprintf(stderr,"C6_LINUX_PLACEMENT_METADATA_LIFECYCLE fatal missing_lifecycle process_discarded 1\n");
+                fflush(stderr);_exit(184);
+            }
+            result=placement(game,context);
+        } else if(!result && getenv("C6_DOMAIN_METADATA_OUTPUT")) {
             int (*metadata)(void *,void *)=dlsym(RTLD_DEFAULT,"c6_linux_action_prepare_domain_metadata");
             if(!metadata){
                 fprintf(stderr,"C6_LINUX_DOMAIN_METADATA_LIFECYCLE fatal missing_lifecycle process_discarded 1\n");

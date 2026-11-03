@@ -13,6 +13,9 @@ BASELINE = '21b5993'
 def project_lifecycle(text):
     """Exact, bounded removal of the new profile dispatch; old source must match."""
     import re
+    if 'QUERY_PLACEMENT_METADATA' in text:
+        from placement_metadata_fixture_audit import project_previous_lifecycle
+        text=project_previous_lifecycle(text)
     baseline = subprocess.check_output(['git', 'show', BASELINE + ':native/linux/action_lifecycle.c'], cwd=ROOT, text=True)
     old_fatal = baseline[baseline.index('static _Noreturn void movement_fatal'):baseline.index('static int prepare(')]
     start = text.index('typedef enum {')
