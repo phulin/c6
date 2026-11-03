@@ -643,7 +643,7 @@
     "marker_ABI_88_bytes": true,
     "marker_lanes": 1,
     "outer_drain_only_breakpoint_mutation": true,
-    "synthetic_cases": 28
+    "synthetic_cases": 29
   },
   "complete_state_actions_rng_turns": false,
   "full_manager_native_parity": false,
@@ -659,8 +659,8 @@
   "schema": "c6-linux-full-manager-observer-runner-source-v1",
   "sources": {
     "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
-    "tools/linux/full_manager_observer_runner.py": "df5db7bee1d59f252c8f2609a6bab5d2b9f120fe0429f5feb78d2a00411d2457",
-    "tools/linux/full_manager_observer_runner_audit.py": "6abc41e3ee3ce8d610de1950c54b481dc1cff25b9ccdafc859d694965e2831f8",
+    "tools/linux/full_manager_observer_runner.py": "809134d2bc9b50fdb755b85236c47ff1d99d4d3f8cc9736d21a9f8b3eb6d3803",
+    "tools/linux/full_manager_observer_runner_audit.py": "60f7e4f0444ac8cf96a1fadf9f378c618834b30ee2771686adb74c2ffbdd118c",
     "tools/linux/military_observer_runner.py": "4b61cba5aa3223830388cbca2b8b289741c7517decef52016470d03773a8d3d2",
     "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916",
     "tools/linux/script_can_start_boundary_audit.py": "b8abdc88a1e8d99aeed490e0e43ee4c90c22c8a2c18581f0a431f8da7761f201",

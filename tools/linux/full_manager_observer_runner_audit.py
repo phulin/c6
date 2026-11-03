@@ -248,13 +248,14 @@ class Tests(unittest.TestCase):
             bodies.append(dict(name=row['name'],module=str(preload),relative_address=row['relative_address'],
                                size=row['size'],sha256=hashlib.sha256(raw[offset:offset+row['size']]).hexdigest()))
         marker=next(row for row in contracts if row['name']==producer.MARKER)
+        main=next(row for row in contracts if row['name']=='mod_probe_main')
         witness=next(row for row in contracts if row['name']=='observed_mod_main_tid')
         static=dict(schema='c6-linux-full-manager-observer-plan-v1',profile_kind='genuine_lower_core_full_Manager',observation_mode=mode,
             host='/host',core='/core',preload=str(preload),modules={'/host':{'sha256':HOST_SHA},'/core':{'sha256':GAME_SHA},str(preload):{'sha256':producer.digest(preload)}},
-            caller_suffix_frames=[frame(str(preload),123)],marker_relative_address=marker['relative_address'],
+            caller_suffix_frames=[frame(str(preload),main['relative_address'])],marker_relative_address=marker['relative_address'],
             live_bodies=bodies,compiled_symbols=contracts,
             window_parent_prefixes={} if mode=='raw_unresolved' else {name:[[frame('/core',1)]] for name in producer.SITES},
-            marker_parent_frames={str(phase):[[frame(str(preload),marker['relative_address'])]] for phase in range(1,10)},
+            marker_parent_frames={str(phase):[[frame(str(preload),marker['relative_address']),frame(str(preload),main['relative_address'])]] for phase in range(1,10)},
             main_entry_witness=dict(module=str(preload),relative_address=witness['relative_address']))
         review=Path(temp)/'review.json'
         packet=dict(schema='c6-linux-full-manager-stack-contract-v1',reviewed_sources=sources,
@@ -422,6 +423,14 @@ class Tests(unittest.TestCase):
         row['inode']=99
         with self.assertRaisesRegex(ValueError,'owner'):
             adapter.frame_rows(allow_unresolved=True)
+
+    def test_raw_own_main_prefix_does_not_predict_startup_tail(self):
+        guard=Frames([frame('/preload',0x123),frame('/preload',0x456)],'/core',0x10000000,allow_unresolved_tail=True)
+        guard.caller([frame('/preload',0x123),frame('/preload',0x456),frame('/libc-unclassified',None)])
+        with self.assertRaisesRegex(ValueError,'caller/parent'):
+            guard.caller([frame('/preload',0x123)])
+        with self.assertRaisesRegex(ValueError,'caller/parent'):
+            guard.caller([frame('/wrong',0x123),frame('/preload',0x456)])
 
     def test_only_hardware_outer_drain_mutation(self):
         tree=ast.parse((ROOT/SOURCE).read_text())

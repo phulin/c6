@@ -69,12 +69,14 @@ def same_frame(actual,expected):
 
 class Frames:
     """Exact reviewed caller suffix, compared against actual complete unwinds."""
-    def __init__(self,suffix,core,base):
+    def __init__(self,suffix,core,base,allow_unresolved_tail=False):
         require(suffix and len(suffix)<=120,'missing/excessive reviewed caller frame suffix')
         self.suffix,self.core,self.base=suffix,core,base
+        self.allow_unresolved_tail=allow_unresolved_tail
 
     def caller(self,frames):
-        require(len(frames)==len(self.suffix) and all(same_frame(a,e) for a,e in zip(frames,self.suffix)),
+        require((len(frames)>=len(self.suffix) if self.allow_unresolved_tail else len(frames)==len(self.suffix)) and
+                all(same_frame(a,e) for a,e in zip(frames,self.suffix)),
                 'actual caller/parent frames differ from reviewed main-entry suffix')
 
     def manager_entry(self,frames):
@@ -362,6 +364,14 @@ def compiled_contracts(plan,raw):
             require(any(entry['flags']&2 and entry['address']<=row['relative_address'] and
                         row['relative_address']+8<=entry['address']+entry['memory_size'] for entry in loads),
                     'main-entry witness is not preload writable storage')
+    if plan.get('observation_mode')=='raw_unresolved':
+        main=next(row for row in contracts if row['name']=='mod_probe_main')
+        def ends_at_own_main(chain):
+            return bool(chain and chain[-1]['module']==plan['preload'] and main['relative_address']<=
+                        chain[-1]['relative_pc']<main['relative_address']+main['size'])
+        require(ends_at_own_main(plan['caller_suffix_frames']),'raw caller prefix must reach actual compiled mod_probe_main')
+        require(all(ends_at_own_main(chain) for chains in plan['marker_parent_frames'].values() for chain in chains),
+                'raw marker prefix must reach actual compiled mod_probe_main')
     marker=next(row for row in contracts if row['name']==MARKER)
     require(marker['relative_address']==plan['marker_relative_address'],'compiled actual marker address differs')
 
@@ -390,7 +400,7 @@ class Adapter:
             self.bias[path]=0 if kind==2 else zero[0]
             require(kind!=2 or path!=plan['host'] or zero[0]==0x400000,'host ET_EXEC base')
         self.base=self.bias[plan['core']]
-        self.frames=Frames(plan['caller_suffix_frames'],plan['core'],self.base)
+        self.frames=Frames(plan['caller_suffix_frames'],plan['core'],self.base,allow_unresolved_tail=self.raw_mode)
         self.schedule=Schedule()
         self.marker_thread=None
         self.marker_row=None
@@ -521,7 +531,7 @@ class Adapter:
         target_module=(self.plan['preload'] if name in ('marker','manager_return') else
                        self.plan['core'] if name in GAME_SITES or name=='manager_entry' else self.plan['host'])
         self.executable(target_module,r['pc'],1)
-        frames=self.frame_rows(allow_unresolved=self.raw_mode and name not in ('marker','manager_entry','manager_return'))
+        frames=self.frame_rows(allow_unresolved=self.raw_mode)
         require(self.marker_thread is None or thread==self.marker_thread,'different thread than original caller marker')
         self.emit(dict(event='checkpoint',checkpoint=name,registers=r,thread=list(thread),frames=frames))
         if name=='marker':
@@ -529,7 +539,7 @@ class Adapter:
             marker_entry_gate(self.read(address,8),address,r['pc'])
             row=descriptor(self.read(r['rdi'],88))
             marker_frames=self.plan['marker_parent_frames'].get(str(row['phase']),[])
-            require(marker_frames and any(len(expected)==len(frames) and
+            require(marker_frames and any((len(frames)>=len(expected) if self.raw_mode else len(expected)==len(frames)) and
                     all(same_frame(actual,wanted) for actual,wanted in zip(frames,expected))
                     for expected in marker_frames),
                     'actual marker/caller/main-entry frames differ from source-closed phase')
