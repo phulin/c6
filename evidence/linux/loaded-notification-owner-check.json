@@ -1,0 +1,50 @@
+{
+  "schema": "c6-linux-loaded-notification-owner-v1",
+  "checks_passed": true,
+  "original_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checker_sha256": "ca7b0167d77392462d05d9026c3a15b966b3aa642c9b11daceafe7256b0148fe",
+  "snapshot_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "snapshot_bytes": 80657462,
+  "owner_range": [
+    76400871,
+    76405580
+  ],
+  "owner_bytes": 4709,
+  "owner_sha256": "68c99c43d65778dea5f1d49a7215d9d925b405f639d413b28e2c4f5d6f601094",
+  "owner_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "collections": 64,
+  "records": 12,
+  "slot_zero_next_id": 49,
+  "empty_other_slots": 63,
+  "duplicate_numeric_id_first_match_checked": true,
+  "all_saved_fields_rechecked_at_install": true,
+  "notification_reads_survive_unit_activity_write": true,
+  "replay_after_advancement_rejected_without_revision_change": true,
+  "decoded_players": 43,
+  "decoded_units": 1262,
+  "decoded_formations": 1250,
+  "candidate_sha256": "3d648444b8e1766313bfd9ad08594d65b220bfe54a107574b71d4dbea72befce",
+  "retained_candidate": "target/linux/loaded-handler-adapter-candidates/4c5dcb32c15a420cbdee9ac0c8359d48/candidate",
+  "retained_source_snapshot": "target/linux/loaded-handler-adapter-candidates/4c5dcb32c15a420cbdee9ac0c8359d48/source",
+  "retained_fixture_result": "target/linux/loaded-handler-adapter-candidates/4c5dcb32c15a420cbdee9ac0c8359d48/result.json",
+  "fixture_sha256": "6b0eb0ca2a590e787967f71d5c38742eea99e907c91244246b0c642a32cf14fc",
+  "source_sha256": {
+    "crates/c6-data/src/loaded_actions/notifications.rs": "8df422b0d4a16be174761e6114e38737d31af57b2d962e4a99f4d42180148efc",
+    "crates/c6-core/src/player_notifications_owner.rs": "d0a8714a19438c25afe301780ee0f62af481bc48b98ac632d549864c888d8e98",
+    "crates/c6-core/src/loaded_state.rs": "7471141a6f1aa58582447e60f32b96644b16bd21f2fbbe29b8d47471c96b73d7",
+    "tools/linux/loaded_handler_adapter_check.rs": "f98fa4a3cf01647686b87086a0aa24870377cd481183d94f555cf98eb8233f6b",
+    "tools/linux/loaded_handler_adapter_check.py": "4d31aeb26083876eb2e6e12beff75446fcba188567152429114680fbe727b9c7"
+  },
+  "source_role": "SavedOutputCore",
+  "decoder_role_unchanged": true,
+  "required_reporting_backend_available": false,
+  "native_read_or_live_runtime_equivalence": false,
+  "full_action_state_rng_parity": false,
+  "unresolved": [
+    "omitted live fields and actual subtype/creator authority",
+    "structural append/removal with stable logical handles",
+    "real notification callbacks/subtype effects",
+    "complete Update and native affected-state/RNG comparison"
+  ]
+}

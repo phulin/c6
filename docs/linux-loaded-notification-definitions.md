@@ -61,3 +61,32 @@ report. This limits the required logical pool inputs without treating native
 addresses/capacity as gameplay state. Constructor/subtype reset and all other
 pre-Add reads still need their actual semantics; the check does not claim native
 creation or full Update comparison.
+
+`install_attributed_snapshot` admits the saved notification owner into the same
+LoadedState once, before advancement. It checks the complete ff31 snapshot and
+attributed owner trace, the Manager version/count header `(1, 64)`, all 64
+consecutive bounded collection frames, and the full 4,709-byte Manager span.
+Every collection uses the existing exact codec. Slot 0 contains twelve records
+and next ID 49; the remaining 63 collections are empty. All slots remain present
+regardless of membership in the 43-Player loaded roster. Duplicate ComponentIDs
+stay separate occurrences, and numeric-ID lookup retains the first list match.
+
+This installation preserves saved fields and their source provenance. It does
+not supply omitted locks, default blocking, subtype bindings, creator authority
+or a native Read/live-runtime equivalence claim. The initial owner API also lacks
+structural append/removal; full notification Update requires those mutations and
+stable logical handles across synchronous effects. No extra independently
+mutable notification copy is used as an action authority.
+
+The all-slot owner fixture is checked separately with:
+
+```sh
+python3 tools/linux/loaded_notification_owner_check.py \
+  --output target/linux/loaded-notification-owner-check.json
+```
+
+It rechecks every saved notification field after the diagnostic action's real
+Unit activity assignment, then verifies that a snapshot replay after advancement
+fails without changing revision. These are Rust ownership/integration checks;
+they do not replace native gameplay comparison. Each retained run uses a unique
+binary name so a concurrent run cannot replace its executable before retention.
