@@ -8,4 +8,16 @@ The completed independent source proof on both original streams gives absolute c
 
 The driver adds exact shared/Player byte/item limits and one-short rejection checks to the whole-input byte roundtrip. The audit independently compares every new component's complete original bytes plus acquired-tech hash/bool pairs. Native owner cuts are validation-only and never enter the library. Unknown tail bytes remain borrowed and unmasked; the full original Save→Load difference is still **89,198 bytes**.
 
-Producer report/candidate metadata will be added after the committed isolated run. Existing Cities/Districts/Culture profiles remain immutable. Native player validity, configuration Team/SlotStatus, separate Game.DiplomaticRelations, definition remapping, native Read fixups and all gameplay RNG remain independent requirements. Allocation policies remain component-specific and explicit; addressable typed storage is not silently conflated with serialized bytes. The library executes no native AI policy choices or UI bootstrap.
+The isolated producer now passes. Source commit is `27e51ee11ee359ea6b4695539f35a4ea51e28766`; candidate SHA-256 is `eaa764103859146eacd82ec22bc353f1a9193e8cecba089b886d0e9c56be00ff`. The [report](../evidence/linux/core-player-techs-prefix.json) records 66 Rust/Cargo source files, 151 Python audit sources and 1,023 target method fingerprints. Every recorded source blob matched that single commit before build and again before freezing. The exact candidate/report/source set is local at `target/frozen/core-player-techs-prefix/27e51ee11ee359ea6b4695539f35a4ea51e28766/`. No shared-source recovery occurred.
+
+Both original streams pass the entire post-Map byte roundtrip, acquired-tech projection (77 pairs), saved-alive bridge, exact shared/Player caps and one-short failures. Source-only 20-byte metadata and four-byte Cities-tail insertions relocate the complete downstream boundary while preserving untouched tail digests. The remaining borrowed tail is 75,650,174 bytes; its different raw digest on each original is preserved.
+
+For a fresh source build, create a git archive of that commit and invoke its audit from the extracted directory with explicit `--source-commit`, `--repository`, `--assets` and `--private-root` arguments. The audit rejects building from the primary repository. Historical replay can use:
+
+```sh
+python3 tools/linux/core_player_techs_prefix_audit.py --frozen-profile target/frozen/core-player-techs-prefix/27e51ee11ee359ea6b4695539f35a4ea51e28766 --output target/linux/core-player-techs-prefix.json
+```
+
+ Existing Cities/Districts/Culture profiles remain immutable. Native player validity, configuration Team/SlotStatus, separate Game.DiplomaticRelations, definition remapping, native Read fixups and all gameplay RNG remain independent requirements. Allocation policies remain component-specific and explicit; addressable typed storage is not silently conflated with serialized bytes. The library executes no native AI policy choices or UI bootstrap.
+
+The exact isolated source snapshot also passes the full workspace checks: 226 c6-core tests, the remaining workspace tests, strict all-targets Clippy and the C ABI smoke test. No shared-workspace test result is substituted for this snapshot.
