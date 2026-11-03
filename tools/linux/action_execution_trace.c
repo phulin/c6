@@ -22,6 +22,11 @@ void c6_linux_action_trace_mark(unsigned value) {
 unsigned c6_linux_action_trace_unit_executed(void) {return atomic_load(&executed);}
 static unsigned packet_number;
 static const char *trace_directory;
+static const char *report_profile="proven_skipturn_callers_v2";
+
+static void report_return(unsigned sequence,int result,bool unchanged) {
+    if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"report_forward_return\",\"sequence\":%u,\"result\":%d,\"input_unchanged\":%s}\n",sequence,result,unchanged?"true":"false");
+}
 
 static _Noreturn void fatal(const char *reason) {
     fprintf(stderr,"C6_LINUX_ACTION_TRACE failing_boundary %s action_acceptance 0\n",reason);
@@ -114,23 +119,94 @@ void trace_unit_execute(const void *message) {
     call(message);
     if(atomic_load(&armed))fprintf(trace_log,"{\"event\":\"unit_execute_return\"}\n");
 }
-void trace_event_id(uint64_t,const void *) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE");
-void trace_event_id(uint64_t event,const void *identity) {
-    void (*call)(uint64_t,const void *)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE",trace_event_id,__builtin_return_address(0));
-    if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\"}\n",(unsigned long long)event,(unsigned long long)bits);}
-    call(event,identity);
+int trace_event_id(uint64_t,const void *) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE");
+int trace_event_id(uint64_t event,const void *identity) {
+    int (*call)(uint64_t,const void *)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE",trace_event_id,__builtin_return_address(0));
+    uint64_t bits=0;unsigned sequence=0;
+    if(atomic_load(&armed)){memcpy(&bits,identity,8);sequence=atomic_fetch_add(&reported,1)+1;fprintf(trace_log,"{\"event\":\"report_identity\",\"sequence\":%u,\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\"}\n",sequence,(unsigned long long)event,(unsigned long long)bits);}
+    int result=call(event,identity);
+    uint64_t after=0;if(sequence)memcpy(&after,identity,8);
+    report_return(sequence,result,!sequence||after==bits);
+    return result;
 }
-void trace_event_id_int(uint64_t,const void *,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi");
-void trace_event_id_int(uint64_t event,const void *identity,int value) {
-    void (*call)(uint64_t,const void *,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi",trace_event_id_int,__builtin_return_address(0));
-    if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity_int\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"value\":%d}\n",(unsigned long long)event,(unsigned long long)bits,value);}
-    call(event,identity,value);
+int trace_event_id_int(uint64_t,const void *,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi");
+int trace_event_id_int(uint64_t event,const void *identity,int value) {
+    int (*call)(uint64_t,const void *,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi",trace_event_id_int,__builtin_return_address(0));
+    uint64_t bits=0;unsigned sequence=0;
+    if(atomic_load(&armed)){memcpy(&bits,identity,8);sequence=atomic_fetch_add(&reported,1)+1;fprintf(trace_log,"{\"event\":\"report_identity_int\",\"sequence\":%u,\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"value\":%d}\n",sequence,(unsigned long long)event,(unsigned long long)bits,value);}
+    int result=call(event,identity,value);
+    uint64_t after=0;if(sequence)memcpy(&after,identity,8);
+    report_return(sequence,result,!sequence||after==bits);
+    return result;
 }
-void trace_event_id_two_int(uint64_t,const void *,int,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii");
-void trace_event_id_two_int(uint64_t event,const void *identity,int first,int second) {
-    void (*call)(uint64_t,const void *,int,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii",trace_event_id_two_int,__builtin_return_address(0));
-    if(atomic_load(&armed)){uint64_t bits;memcpy(&bits,identity,8);atomic_fetch_add(&reported,1);fprintf(trace_log,"{\"event\":\"report_identity_two_int\",\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"first\":%d,\"second\":%d}\n",(unsigned long long)event,(unsigned long long)bits,first,second);}
-    call(event,identity,first,second);
+int trace_event_id_two_int(uint64_t,const void *,int,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii");
+int trace_event_id_two_int(uint64_t event,const void *identity,int first,int second) {
+    int (*call)(uint64_t,const void *,int,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii",trace_event_id_two_int,__builtin_return_address(0));
+    uint64_t bits=0;unsigned sequence=0;
+    if(atomic_load(&armed)){memcpy(&bits,identity,8);sequence=atomic_fetch_add(&reported,1)+1;fprintf(trace_log,"{\"event\":\"report_identity_two_int\",\"sequence\":%u,\"type_bits\":\"%016llx\",\"component_bits\":\"%016llx\",\"first\":%d,\"second\":%d}\n",sequence,(unsigned long long)event,(unsigned long long)bits,first,second);}
+    int result=call(event,identity,first,second);
+    uint64_t after=0;if(sequence)memcpy(&after,identity,8);
+    report_return(sequence,result,!sequence||after==bits);
+    return result;
+}
+
+int trace_event_type(uint64_t) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeE");
+int trace_event_type(uint64_t type) {
+    int (*call)(uint64_t)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeE",trace_event_type,__builtin_return_address(0));
+    unsigned sequence=0;
+    if(atomic_load(&armed)){sequence=atomic_fetch_add(&reported,1)+1;fprintf(trace_log,"{\"event\":\"report_type\",\"sequence\":%u,\"type_bits\":\"%016llx\"}\n",sequence,(unsigned long long)type);}
+    int result=call(type);report_return(sequence,result,true);return result;
+}
+
+int trace_event_two_int(uint64_t,int,int) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeEii");
+int trace_event_two_int(uint64_t type,int first,int second) {
+    int (*call)(uint64_t,int,int)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeEii",trace_event_two_int,__builtin_return_address(0));
+    unsigned sequence=0;
+    if(atomic_load(&armed)){sequence=atomic_fetch_add(&reported,1)+1;fprintf(trace_log,"{\"event\":\"report_two_int\",\"sequence\":%u,\"type_bits\":\"%016llx\",\"first\":%d,\"second\":%d}\n",sequence,(unsigned long long)type,first,second);}
+    int result=call(type,first,second);report_return(sequence,result,true);return result;
+}
+
+/* Exact Value32/TypedVariant24 layout and original native accessor bodies are
+ * pinned by action_event_audit.py. No constructor, conversion or mutation is
+ * used here. Unknown types remain explicitly unsupported observations. */
+static bool report_value(const void *value,const void **pointee) {
+    uint32_t key,element_size,count_flags;uint16_t type,modifiers;
+    const unsigned char *p=value;
+    memcpy(&key,p,4);memcpy(&type,p+8,2);memcpy(&modifiers,p+10,2);
+    memcpy(&element_size,p+24,4);memcpy(&count_flags,p+28,4);
+    fprintf(trace_log,"{\"key\":%u,\"variant_type\":%u,\"modifiers\":%u,\"element_size\":%u,\"element_count\":%u,\"count_flags_raw\":%u",key,type,modifiers,element_size,count_flags&0xffffffu,count_flags);
+    bool supported=false;
+    if(type==1&&modifiers==0&&element_size==0&&count_flags==0&&p[16]<=1){
+        fprintf(trace_log,",\"kind\":\"bool\",\"value\":%s",p[16]?"true":"false");supported=true;
+    }else if(key==UINT32_C(0xeab69e5a)&&type==1024&&element_size==8&&(count_flags&0x20000000u)&&(count_flags&0xffffffu)==1){
+        const void *(*get_as)(const void *)=dlsym(RTLD_DEFAULT,"_ZNK4Data12TypedVariant5GetAsIN8GameCore6Player11ComponentIDEEEPKT_v");
+        const void *data=get_as?get_as(p+8):NULL;
+        if(data){uint64_t bits;memcpy(&bits,data,8);*pointee=data;fprintf(trace_log,",\"kind\":\"component_id\",\"component_bits\":\"%016llx\"",(unsigned long long)bits);supported=true;}
+    }
+    if(!supported)fprintf(trace_log,",\"kind\":\"unclassified\"");
+    fprintf(trace_log,",\"typed_capture_supported\":%s}",supported?"true":"false");return supported;
+}
+
+int trace_event_values(uint64_t,const void *,const void *) __asm__("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS0_5ValueES5_");
+int trace_event_values(uint64_t type,const void *first,const void *second) {
+    int (*call)(uint64_t,const void *,const void *)=original("_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS0_5ValueES5_",trace_event_values,__builtin_return_address(0));
+    unsigned sequence=0;unsigned char a[32],b[32];
+    const void *first_pointee=NULL,*second_pointee=NULL;uint64_t first_bits=0,second_bits=0;
+    if(atomic_load(&armed)){
+        memcpy(a,first,32);memcpy(b,second,32);sequence=atomic_fetch_add(&reported,1)+1;
+        flockfile(trace_log);
+        fprintf(trace_log,"{\"event\":\"report_value_value\",\"sequence\":%u,\"type_bits\":\"%016llx\",\"values\":[",sequence,(unsigned long long)type);
+        (void)report_value(first,&first_pointee);fputc(',',trace_log);(void)report_value(second,&second_pointee);fprintf(trace_log,"]}\n");
+        funlockfile(trace_log);
+        if(first_pointee)memcpy(&first_bits,first_pointee,8);
+        if(second_pointee)memcpy(&second_bits,second_pointee,8);
+    }
+    int result=call(type,first,second);
+    uint64_t first_after=first_bits,second_after=second_bits;
+    if(first_pointee)memcpy(&first_after,first_pointee,8);
+    if(second_pointee)memcpy(&second_after,second_pointee,8);
+    report_return(sequence,result,!sequence||(!memcmp(a,first,32)&&!memcmp(b,second,32)&&first_bits==first_after&&second_bits==second_after));
+    return result;
 }
 #define STOP_VOID(NAME,SYMBOL,REASON) \
 void NAME(void *) __asm__(SYMBOL); \
@@ -184,7 +260,7 @@ int c6_linux_action_trace_begin(void *module) {
     bool make_hook_owned=probe_owned((void *)trace_make_request);
     bool make_target_owned=manager&&probe_owned((*(void ***)manager)[0x100/8]);
     bool make_bound=manager&&make_hook_owned&&make_target_owned&&(*(void ***)manager)[0x100/8]==(void *)trace_make_request;
-    fprintf(trace_log,"{\"event\":\"begin\",\"UnitOperation_Execute_virtual_interposed\":%s,\"hook_owner_preload\":%s,\"target_owner_preload\":%s}\n",virtual_bound?"true":"false",unit_hook_owned?"true":"false",unit_target_owned?"true":"false");
+    fprintf(trace_log,"{\"event\":\"begin\",\"reporting_observer_profile\":\"%s\",\"UnitOperation_Execute_virtual_interposed\":%s,\"hook_owner_preload\":%s,\"target_owner_preload\":%s}\n",report_profile,virtual_bound?"true":"false",unit_hook_owned?"true":"false",unit_target_owned?"true":"false");
     fprintf(trace_log,"{\"event\":\"original_virtual_binding\",\"name\":\"UnitManager_MakeRequest\",\"interposed\":%s,\"hook_owner_preload\":%s,\"target_owner_preload\":%s}\n",make_bound?"true":"false",make_hook_owned?"true":"false",make_target_owned?"true":"false");
     Dl_info info;
     void *native_update=dlsym(module,"_ZN8GameCore4Game8Instance6UpdateEv");
@@ -205,7 +281,10 @@ int c6_linux_action_trace_begin(void *module) {
         {0x3baf188,(void *)stop_diplomatic_deal,"Diplomatic_ProcessDeal"},
         {0x3bc1560,(void *)stop_pending_statement,"Diplomacy_ProcessStatement"},
         {0x3beb240,(void *)stop_game_update,"Game_Update"},
-        {0x3bfdb70,(void *)trace_event_id_int,"EventSend_identity_int"}
+        {0x3bfdb70,(void *)trace_event_id_int,"EventSend_identity_int"},
+        {0x3b4eb38,(void *)trace_event_values,"EventSend_value_value"},
+        {0x3b9bbd0,(void *)trace_event_type,"EventSend_type"},
+        {0x3b69c98,(void *)trace_event_two_int,"EventSend_two_int"}
     };
     for(size_t i=0;slots_bound&&i<sizeof bindings/sizeof bindings[0];i++){
         void *bound=*(void **)((uintptr_t)info.dli_fbase+bindings[i].offset);

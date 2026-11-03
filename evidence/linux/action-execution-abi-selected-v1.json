@@ -1,0 +1,167 @@
+{
+  "schema": "c6-linux-action-execution-abi-v1",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "checks_passed": true,
+  "player_controller_initialize": "two native bookkeeping stores and return; no calls",
+  "guard_plt_relocations": [
+    {
+      "offset": "0x3b21cc0",
+      "symbol": "_ZN8GameCore8Messages7Manager16BroadcastMessageERNS0_11BaseMessageE"
+    },
+    {
+      "offset": "0x3bc1560",
+      "symbol": "_ZN8GameCore9Diplomacy7Manager16ProcessStatementEPNS0_9Statement8InstanceE"
+    },
+    {
+      "offset": "0x3b97fa8",
+      "symbol": "_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEii"
+    },
+    {
+      "offset": "0x3b290d8",
+      "symbol": "_ZN8GameCore4Game9Processor6UpdateEv"
+    },
+    {
+      "offset": "0x3b3a468",
+      "symbol": "_ZN8GameCore2AI8GlobalAi9ProcessAiEv"
+    },
+    {
+      "offset": "0x3b44778",
+      "symbol": "_ZN8GameCore8Messages7Manager14ReceiveMessageEiRN13Serialization13MemoryIStreamE"
+    },
+    {
+      "offset": "0x3b7a830",
+      "symbol": "_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDE"
+    },
+    {
+      "offset": "0x3b88880",
+      "symbol": "_ZN8GameCore8Messages7Manager12QueueMessageEiRN13Serialization13MemoryIStreamE"
+    },
+    {
+      "offset": "0x3b9b0e8",
+      "symbol": "_ZN8GameCore2AI10Diplomatic13ProcessActionERKNS_9Diplomacy6Action8InstanceENS_11PlayerTypesE"
+    },
+    {
+      "offset": "0x3bab2e0",
+      "symbol": "_ZN8GameCore2AI7Control7Manager6DoTurnEv"
+    },
+    {
+      "offset": "0x3baf188",
+      "symbol": "_ZN8GameCore2AI10Diplomatic11ProcessDealENS_9Diplomacy4Deal14ProposalActionERKNS3_8InstanceEb"
+    },
+    {
+      "offset": "0x3beb240",
+      "symbol": "_ZN8GameCore4Game8Instance6UpdateEv"
+    },
+    {
+      "offset": "0x3bfdb70",
+      "symbol": "_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi"
+    }
+  ],
+  "guard_scope": "Selected known policy/update PLT entries plus actual UnitOperation Execute vtable; unexpected entries terminate the process, never return a fabricated policy result.",
+  "direct_calls": [
+    {
+      "call": "0x291199d",
+      "target": "0x1f3ccf0",
+      "contract": "PendingStatement_drain_enters_actual_ProcessStatement_guard"
+    },
+    {
+      "call": "0x31d1526",
+      "target": "0x31d1550",
+      "contract": "ControllerInitialize_subscribes_original_messages"
+    },
+    {
+      "call": "0x31d14ef",
+      "target": "0x31dd2a0",
+      "contract": "ControllerInitialize_initializes_real_player_controllers"
+    },
+    {
+      "call": "0x31d1428",
+      "target": "0x31cd1e0",
+      "contract": "ControllerUninitialize_releases_actual_app_cache"
+    },
+    {
+      "call": "0x31d1430",
+      "target": "0x31d16c0",
+      "contract": "ControllerUninitialize_releases_its_context_binding"
+    },
+    {
+      "call": "0x31d1438",
+      "target": "0x31d1760",
+      "contract": "ControllerUninitialize_unsubscribes_messages"
+    },
+    {
+      "call": "0x2c7cd06",
+      "target": "0x1f749c0",
+      "contract": "GetCachePlayer_gets_original_valid_cache_player"
+    },
+    {
+      "call": "0x2c7cd26",
+      "target": "0x1e26df0",
+      "contract": "GetCachePlayer_constructs_actual_cache_facade"
+    },
+    {
+      "call": "0x28061de",
+      "target": "0x1ee11f0",
+      "contract": "RequestOperation_requires_cache_active"
+    },
+    {
+      "call": "0x33af804",
+      "target": "0x33d4150",
+      "contract": "NetGameCoreMessage_requires_original_GameCoreActive"
+    },
+    {
+      "call": "0x33d4151",
+      "target": "0x31d4cf0",
+      "contract": "GameCoreActive_gets_actual_controller"
+    },
+    {
+      "call": "0x32b4d0d",
+      "target": "0x33af670",
+      "contract": "EngineSend_constructs_original_NetGameCoreMessage"
+    },
+    {
+      "call": "0x32b4d1d",
+      "target": "0x33bdbd0",
+      "contract": "EngineSend_broadcasts_via_real_NetworkManager"
+    }
+  ],
+  "methods": [
+    {
+      "address": "0x2c7cd00",
+      "size": 59,
+      "contract": "GetCachePlayer",
+      "sha256": "e0edfec12720000ea2d7d325d88a784d1b1dca321bb0508612738ac610cd14b2"
+    },
+    {
+      "address": "0x2c8c5c0",
+      "size": 26,
+      "contract": "Player_GetID",
+      "sha256": "a74cfa0c8b4613a83ba5896c24b9fa6ef1759d2ddd103760eca7a20a0133c81a"
+    },
+    {
+      "address": "0x2c8c600",
+      "size": 26,
+      "contract": "Player_IsTurnActive",
+      "sha256": "0d0486722135f9a89135eeb7e8fb897587bbbde05acd40354df05b31ff956cbd"
+    },
+    {
+      "address": "0x2c8c700",
+      "size": 26,
+      "contract": "Player_IsHuman",
+      "sha256": "dc88f8c265bcb872fbe8b76a8f7f50286f44ec6d15b550d4505e46cdd7daad40"
+    }
+  ],
+  "instruction_contracts": [
+    "ControllerInitializeCache_delegates_to_AppCacheInitialize",
+    "AppCacheInitialize_calls_GameInitializeCache_true",
+    "ContextDestroy_preserves_framework_owner",
+    "ControllerGetContext_native_hidden_pointer_return",
+    "ControllerIsInitialized_native_field",
+    "CachePlayerFacade_active_queries_original_cache",
+    "NetworkBroadcast_original_session_slot_c0"
+  ],
+  "native_execution": false,
+  "action_executed": false,
+  "scope": "Actual cached/live player precondition observer only; network bytes are delivery leads, not executed acceptance."
+}

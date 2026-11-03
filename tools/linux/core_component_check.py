@@ -216,11 +216,23 @@ def validate(path):
     artifact(trace_path, run['action_trace_files']['events.jsonl'])
     require(trace[0]['event'] == 'begin' and trace[0]['UnitOperation_Execute_virtual_interposed'] and trace[0]['hook_owner_preload'] and trace[0]['target_owner_preload'], 'original handler hook owner proof missing')
     bindings = [row for row in trace if row['event'] in ('original_PLT_binding', 'original_virtual_binding')]
+    event_profile=trace[0].get('reporting_observer_profile','selected_identity_legacy')
+    require(event_profile in ('selected_identity_legacy','proven_skipturn_callers_v2'), 'unknown reporting observer profile')
+    expanded_events=event_profile=='proven_skipturn_callers_v2'
+    declared_event_profile=config['lower_core_cache_dispatch_observer'].get('reporting_observer_profile','selected_identity_legacy')
+    require(declared_event_profile==event_profile, 'runtime/configuration reporting profile differs')
     expected_bindings = {'BroadcastMessage', 'GameProcessor_Update', 'GlobalAi_ProcessAi', 'ReceiveMessage',
                          'EventSend_identity', 'QueueMessage', 'EventSend_identity_two_int', 'Diplomatic_ProcessAction',
                          'AIControl_DoTurn', 'Diplomatic_ProcessDeal', 'Diplomacy_ProcessStatement', 'Game_Update', 'EventSend_identity_int'}
     plt_bindings = [row for row in bindings if row['event'] == 'original_PLT_binding']
-    require(len(plt_bindings) == 13 and {row['name'] for row in plt_bindings} == expected_bindings and
+    if expanded_events:
+        expected_bindings.update(('EventSend_value_value','EventSend_type','EventSend_two_int'))
+        event_contract=json.loads((Path(__file__).resolve().parents[2]/'evidence/linux/action-event-abi.json').read_text())
+        runtime_audit=config['lower_core_cache_dispatch_observer']
+        require(runtime_audit.get('reporting_observer_profile')==event_profile and runtime_audit.get('event_observer_contract')==event_contract, 'expanded event contract/configuration mismatch')
+        require(all(config['sources'].get(k)==v for k,v in event_contract['source_sha256'].items()), 'expanded event observer source differs')
+        require('tools/linux/action_event_audit.py' in config['sources'] and 'evidence/linux/action-event-abi.json' in config['sources'], 'expanded event audit identity missing')
+    require(len(plt_bindings) == len(expected_bindings) and {row['name'] for row in plt_bindings} == expected_bindings and
             len([row for row in bindings if row.get('name') == 'UnitManager_MakeRequest']) == 1, 'selected native guard/conversion bindings incomplete')
     require(all(row['interposed'] and row['hook_owner_preload'] and row['target_owner_preload'] for row in bindings), 'guard provider differs from original trace owner')
     require(not any(row['event'] in ('broadcast_enter', 'broadcast_return', 'failing_boundary') for row in trace), 'component emitted broadcast or fatal boundary')
@@ -230,6 +242,23 @@ def validate(path):
     end = trace[-1]
     require(end['event'] == 'end' and end['queued'] == end['received'] == end['unit_executed'] == int(execute), 'native component message count differs')
     require(sum(row['event'] == 'unit_execute_enter' for row in trace) == sum(row['event'] == 'unit_execute_return' for row in trace) == int(execute), 'native handler execution unbalanced')
+    reports=[row for row in trace if row['event'].startswith('report_') and row['event']!='report_forward_return']
+    forwards=[row for row in trace if row['event']=='report_forward_return']
+    if expanded_events:
+        require(len(reports)==len(forwards)==end['reports'], 'expanded reporting enter/return count differs')
+        require([row['sequence'] for row in reports]==list(range(1,len(reports)+1)), 'expanded reporting order identity differs')
+        require(sorted(row['sequence'] for row in forwards)==list(range(1,len(reports)+1)) and all(row['input_unchanged'] is True and type(row['result']) is int for row in forwards), 'report input mutation or original int-return evidence missing')
+        for row in forwards:
+            require(trace.index(next(entry for entry in reports if entry['sequence']==row['sequence']))<trace.index(row), 'report return preceded original call')
+        activation=[row for row in reports if row['event']=='report_value_value' and int(row['type_bits'],16)&0xffffffff==0x025f6cfd]
+        drained=[row for row in reports if row['event']=='report_type' and int(row['type_bits'],16)&0xffffffff==0x9ea4c222]
+        require(len(activation)==len(drained)==int(execute), 'proven activation or queue-complete event missing')
+        if execute:
+            values=activation[0]['values']
+            require(len(values)==2 and values[0]['key']==0xeab69e5a and values[0]['kind']=='component_id' and values[1]['key']==0x78a2f946 and values[1]['kind']=='bool' and all(value['typed_capture_supported'] is True for value in values), 'activation typed payload missing')
+            require((int(values[0]['component_bits'],16)&0xffff)==admission['sender'], 'activation component owner differs')
+            require(trace.index(next(row for row in trace if row['event']=='unit_execute_enter'))<trace.index(activation[0])<trace.index(next(row for row in trace if row['event']=='unit_execute_return'))<trace.index(drained[0]), 'activation/queue-complete event ordering differs')
+        require(all(value['typed_capture_supported'] is True for row in reports if row['event']=='report_value_value' for value in row['values']), 'unclassified general reporting payload')
     phase = None
     ordered = []
     packets = []
@@ -262,7 +291,11 @@ def validate(path):
                   native_controller_cache_readiness=readiness,
                   bounded_live_observations=states, command=command, packets=packets,
                   native_encoded_actor=dict(message_key=hex(message_key), owner=encoded_owner, component_type=encoded_type, id=encoded_id),
-                  trace_sha256=digest(trace_path), trace_end=end, reporting_events=[row for row in trace if row['event'].startswith('report_')],
+                  trace_sha256=digest(trace_path), trace_end=end, reporting_events=reports, reporting_forward_returns=forwards,
+                  reporting_observer_profile=event_profile, complete_event_inventory=False,
+                  reporting_return_abi_declarations_correct=expanded_events,
+                  legacy_reporting_instrumentation_gap=not expanded_events,
+                  reporting_scope='Six audited original overloads on known SkipTurn/notification/queue callers' if expanded_events else 'Three selected identity overloads only; original void declaration/int return ABI gap and missing activation/queue events',
                   original_core_saves=saves, outer_original_core_saves=outer,
                   raw_core_difference=raw_difference(component_paths['before'], component_paths['after']),
                   native_cleanup_proven=True, conditional_component_completed=True,
@@ -301,6 +334,7 @@ def main():
                 if expected_mode == 'execute':
                     require(result['original_core_saves']['after'] == other['original_core_saves']['after'] and typed_observation(result['bounded_live_observations'][2]) == typed_observation(other['bounded_live_observations'][2]), 'isolated repeated serialized or bounded typed effects differ')
                     require(result['reporting_events'] == other['reporting_events'], 'isolated repeated selected reporting event order differs')
+                    require(result['reporting_forward_returns']==other['reporting_forward_returns'], 'isolated repeated original reporting returns differ')
                     result['isolated_repeat_selected_reporting_events_equal'] = True
                     raw_differences['after'] = raw_live_differences(result['bounded_live_observations'][2], other['bounded_live_observations'][2])
                 result[name] = True

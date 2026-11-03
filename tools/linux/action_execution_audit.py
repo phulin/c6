@@ -26,6 +26,10 @@ EXPECTED_PLT = [(0x3b21cc0,
  (62829120, '_ZN8GameCore4Game8Instance6UpdateEv'),
  (62905200, '_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS_6Player11ComponentIDEi')]
 
+EXPECTED_PLT += [(0x3b4eb38, '_ZN8GameCore9Reporting5Event4SendENS1_4TypeERKNS0_5ValueES5_'),
+                 (0x3b9bbd0, '_ZN8GameCore9Reporting5Event4SendENS1_4TypeE'),
+                 (0x3b69c98, '_ZN8GameCore9Reporting5Event4SendENS1_4TypeEii')]
+
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -75,6 +79,9 @@ def main():
                 methods=[dict(address=hex(a),size=z,contract=n,sha256=hashlib.sha256(game.read(a,z)).hexdigest())for a,z,n in methods],
                 instruction_contracts=[n for _,_,_,n in checks],native_execution=False,action_executed=False,
                 scope='Actual cached/live player precondition observer only; network bytes are delivery leads, not executed acceptance.')
+    from action_event_audit import audit, PROFILE
+    result['reporting_observer_profile']=PROFILE
+    result['event_observer_contract']=audit(args.assets)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(dict(checks_passed=True,native_execution=False)))
