@@ -1,0 +1,139 @@
+{
+  "schema": "c6-linux-current-handler-closed-independent-review-v1",
+  "review_passed": true,
+  "scope": "actual raw registry/slot/code and Unit front inputs only",
+  "capture_directory": "/home/phulin/c6-ghidra/evidence/linux-current-handler-metadata/native-3",
+  "runtime_sha256": "ce40c14a3eb5882ef04d2524e2231d33b77737a1fc8c542a8ede1cf921184553",
+  "profile_sha256": "321c39581fd268b9e75d2efaa2a672e8662a3468573bc1cad8bfbec8e15e7045",
+  "facts_sha256": "77c31dd6dda9736588ee71c06637eb92ec002b0f7acacd780b30739b9ebef942",
+  "facts_bytes": 1197257,
+  "repeat_byte_equal": true,
+  "prepared_sha256": "6dbdc72ad84737fe99071d600f7a6397a8ae78e075c6001048b6760bcb70185b",
+  "preload_sha256": "7ac55e85a400f4281b9309ce67620cad32033d840c2d7003c804a9cbd2e7876a",
+  "source_archive_sha256": "7b6a6b6012e9aa2e7094f2ffcc319508358dbd4fa13b0665e9c947945fd66fbc",
+  "source_preimages_rechecked": 72,
+  "runtime_dependencies_rechecked": 29,
+  "independent_raw_replay": {
+    "players": 43,
+    "nonempty": 308,
+    "units": 1262,
+    "queued_nodes": 308,
+    "empty": 954,
+    "handler_slots": 63,
+    "observed_leaf_code_counts": {
+      "0x2d95660": 62,
+      "0x2da0920": 1
+    },
+    "observed_numeric_front_counts": {
+      "18": 185,
+      "54": 7,
+      "41": 3,
+      "19": 91,
+      "46": 10,
+      "40": 10,
+      "45": 1,
+      "12": 1
+    },
+    "ordered_rows": 2700,
+    "independent_mutation_refusals": [
+      "missing footer",
+      "wrong slot identity",
+      "false actual mapping",
+      "wrong code",
+      "wrong resolve",
+      "broken entry chain",
+      "wrong block",
+      "count mismatch",
+      "front mismatch",
+      "fabricated native result",
+      "wrong actual front pointer",
+      "wrong method pointer"
+    ]
+  },
+  "producer_audit": {
+    "commit": "b1b18213fc5d626456fe21b5a620cf2d03a65d11",
+    "tool": "tools/linux/current_handler_capture_audit.py",
+    "tool_sha256": "43ed925cdfe0bdcf0144c6855987108e201b1f0d60149aeda5c9af27d87f647e",
+    "report": "evidence/linux/current-handler-capture.json",
+    "report_sha256": "4c67a341ef34aa4f840330d35029e0749bd801974c857e6a113c339d75a6dc3c",
+    "independent_rerun_JSON_exact_match": true,
+    "targeted_mutation_refusals": 20,
+    "review_findings_fixed": [
+      "truncated valid code prefix accepted",
+      "broken active entry links accepted",
+      "wrong queue native address/inline flag accepted",
+      "short Player Manager header accepted"
+    ]
+  },
+  "actual_controls": {
+    "six_full_Save_byte_arrays_compared_equal": true,
+    "Save_bytes_each": 80657462,
+    "Save_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "unknown_bytes_masked": false,
+    "known_raw_RNG_endpoint_bytes_each": 64,
+    "known_RNG_endpoints_byte_equal": true,
+    "aggregate_probe_endpoints_only": true,
+    "complete_RNG_inventory": false,
+    "transitive_Save_continuous_lock_proven": false
+  },
+  "actual_cleanup": {
+    "runtime_returncode": 0,
+    "native_boundary_result": 0,
+    "Controller_Uninitialize_footer": "initialized0/context_bound0/executing0/cleanup1",
+    "framework_and_client_cleanup": true,
+    "GameShutdown_returned": true,
+    "no_current_Civ6_GDB_executable_found": true,
+    "observed_supervisor_pid1265285_currently_absent": true,
+    "reported_native_pid1266618_currently_absent": true,
+    "closure_attestation_sha256": "7f324dc4d91f7d541bdb75e5151f8ec1857b2d29744c681e5420fd4e639d505c",
+    "normal_subprocess_wait_and_terminal_return": true,
+    "native_starttime_retained": false,
+    "retrospective_exact_native_PID_generation_proof": false
+  },
+  "retained_vs_source_checked": {
+    "independent_retained_replay": "all4Manager and63handler slot/actual target/full code records; registry and ordered Player/Unit/list/queue bytes; raw RNG endpoints; full files",
+    "source_executed_unretained": "26-byte anchor/file mapping and timestamps; lock token/depth/thread/controller/work checks; original owner lifetime and interval",
+    "live_maps_or_raw_lock_token_dump_available": false,
+    "current_alias_canonical_file_stat_and_hash_match_recorded_device_inode": true,
+    "actual_file_paths_retained_hex": true,
+    "no_transient_filesystem_or_asynchronous_mutation_inventory_claim": true
+  },
+  "observed_registry_projection": {
+    "identity": {
+      "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+      "configuration_sha256": "321c39581fd268b9e75d2efaa2a672e8662a3468573bc1cad8bfbec8e15e7045",
+      "capture_sha256": "77c31dd6dda9736588ee71c06637eb92ec002b0f7acacd780b30739b9ebef942"
+    },
+    "slots": "all63 ordered handler rows; None only for an actually observed null pointer (none in this fixture)",
+    "ObservedHandler.runtime_id": "signed raw16-byte handler header offset8, must equal slot",
+    "ObservedHandler.operation_hash": "u32 raw handler header offset12",
+    "ObservedHandler.interruption_target": "LiveSlotObservation(actual_method.actual_pointer-module_base); require exact RVA, mapped-owner flags and complete3B file match",
+    "ObservedHashResolution_rows": [],
+    "reverse_map_or_native_hash_lookup_answers_available": false,
+    "unit_front": "nonempty actual native queue block firstu32, count/capacity/ownership validated, below0x800 and bounded slot; empty is distinct",
+    "native_gethandler_return_observed": false,
+    "native_CanInterrupt_result_observed": false,
+    "native_full_Manager_result_observed": false,
+    "direct_requested_SkipTurn_object": "unique actual raw handler slot36/hash0x2c681908; direct object identity only, not a native hash lookup answer",
+    "saved_ff31_association": "separate explicit owner/Unit-ID/serializer resource admission required; preserve actual321c identity and capture77; matching Save bytes alone do not establish unsaved-state equivalence"
+  },
+  "prior_failures": {
+    "native1_04ff_unexecuted_preserved": true,
+    "native2_status242_preserved": true,
+    "native2_runtime_sha256": "a2db7dfe69c7a1010d0b721b58e1f009bdfa974dde71c7c9d7ae2c7e6988909b",
+    "old_native_failure_subbranch_unobserved": true
+  },
+  "original_execution_by_reviewer": false,
+  "candidate_execution_or_predicate_comparison": false,
+  "gameplay_or_complete_live_backend_accepted": false,
+  "full_state_actions_rng_turns_supported": false,
+  "Save_identity_is_action_gate": false,
+  "historical_raw_save_load_difference_bytes": 89198,
+  "limits": [
+    "snapshot inputs for source-bounded numeric registry/front behavior; no native predicate invocation/result parity",
+    "all1262 native memberships retained without placement filtering; no placement/death flag observations invented",
+    "known policy/event hooks only, not a complete transitive engine inventory",
+    "original-call-free helper/guard intervals accepted under reviewed caller; original Save/lifecycle behavior remains separate",
+    "complete affected gameplay/unsaved state, RNG, ordering and logical identity remain required for action/turn acceptance"
+  ]
+}
