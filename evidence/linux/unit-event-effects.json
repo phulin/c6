@@ -1,0 +1,856 @@
+{
+  "schema": "c6-linux-unit-event-effects-v1",
+  "checks_passed": true,
+  "static_analysis": true,
+  "native_execution": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "source_audit_sha256": "feb3f632c8fcaa052fee92affaeadebdafe7c5f91cd0a94a76da16224e51e269",
+  "provider_static_sha256": "648dd7884a82eb939ab4f7b8039554006f86429741763aea0c7e65cd40874cbc",
+  "provider_focused_sha256": "b487d03b96a68df639ffebe76bfcb363ca47b4245bd274296bcc26b636e44af2",
+  "observations_sha256": "1ddcd78a25a23e150a3116e445e6a2036607806718b31488d1996fed0cc7b41e",
+  "native_observation_reused": true,
+  "actual_unit_callbacks": [
+    {
+      "sequence": 2,
+      "event_hash": 3795521837,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e112d8",
+      "typed_map": "0x7995b5e11378",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    },
+    {
+      "sequence": 8,
+      "event_hash": 943090161,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e11308",
+      "typed_map": "0x7995b5e113a8",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    },
+    {
+      "sequence": 12,
+      "event_hash": 365123683,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e112f8",
+      "typed_map": "0x7995b5e11398",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    },
+    {
+      "sequence": 16,
+      "event_hash": 3795521837,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e11218",
+      "typed_map": "0x7995b5e112b8",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    },
+    {
+      "sequence": 20,
+      "event_hash": 1027606258,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e11218",
+      "typed_map": "0x7995b5e112b8",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    },
+    {
+      "sequence": 24,
+      "event_hash": 3795521837,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e111e8",
+      "typed_map": "0x7995b5e11288",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    },
+    {
+      "sequence": 30,
+      "event_hash": 943090161,
+      "adjusted_receiver": "0x7995ae9ff430",
+      "event_data": "0x7995b5e11268",
+      "typed_map": "0x7995b5e11308",
+      "thread": [
+        755350,
+        755382,
+        0
+      ],
+      "trace_phase": 5
+    }
+  ],
+  "methods": [
+    {
+      "name": "Unit.OnUpdate",
+      "image": "game",
+      "rva": "0x27ff430",
+      "bytes": 9,
+      "sha256": "3a537d2d8ee7579d85fc3cddd98dcf9dacb0751b52962d0d828cce3f86cab63e"
+    },
+    {
+      "name": "Unit.PublishUpdate",
+      "image": "game",
+      "rva": "0x27ff860",
+      "bytes": 114,
+      "sha256": "4c779cabd97a4d5df671007fc54218756fd544a2c360106ee2d77a15f54f8832"
+    },
+    {
+      "name": "Unit.Add",
+      "image": "game",
+      "rva": "0x27ff2d0",
+      "bytes": 222,
+      "sha256": "8316ba976ec1953a1e5e902a2ef9547183b958ce2730a1111eb90c9fabe2a8bd"
+    },
+    {
+      "name": "Unit.FillVariants",
+      "image": "game",
+      "rva": "0x2805100",
+      "bytes": 1068,
+      "sha256": "365cd17dbd1d6db36a319e27cbc41d8eb1240922755baca85d5a1afba94af23a"
+    },
+    {
+      "name": "Unit.KeyedAlloc",
+      "image": "game",
+      "rva": "0x27ffb20",
+      "bytes": 74,
+      "sha256": "0bbfb84c4250496d2e472ad6eb2de059fc8c4fb0d7f664c91e2f3e76d53f824f"
+    },
+    {
+      "name": "CacheEventStreamID.Ctor",
+      "image": "game",
+      "rva": "0x2707010",
+      "bytes": 6,
+      "sha256": "0e446b8c0d57bbdbb861e488c14603c4a0730b95d656bfa1a9a96f39d9c79904"
+    },
+    {
+      "name": "Upgrade.UnitType",
+      "image": "game",
+      "rva": "0x2c48bd0",
+      "bytes": 107,
+      "sha256": "293e1e1ffa7cbb7da356a97ac64555592a6eb998cc16ff53163ceb21bd17f2dd"
+    },
+    {
+      "name": "Upgrade.GoldCost",
+      "image": "game",
+      "rva": "0x2c48c40",
+      "bytes": 148,
+      "sha256": "4059b3d97a05e2b8e7947aea45886ec2b65d6453326d395578331b91f5cc5abc"
+    },
+    {
+      "name": "Upgrade.ResourceCost",
+      "image": "game",
+      "rva": "0x2c49160",
+      "bytes": 470,
+      "sha256": "24824b7856a69969fd11f7c59e430fce32d688a7addfdbef8d5c832f6694d7e9"
+    },
+    {
+      "name": "Upgrade.ResourceType",
+      "image": "game",
+      "rva": "0x2c49340",
+      "bytes": 62,
+      "sha256": "3176a154b6533e23e8a21b6f93dbfc165ef916593e580480790a58e1ef800f5c"
+    },
+    {
+      "name": "Rules.AvailableUpgrade",
+      "image": "game",
+      "rva": "0x2bf4080",
+      "bytes": 120,
+      "sha256": "5e75598ea426c9b8ce3ab4671d2d4c5c536b767f201f6e12555034d8ba9608eb"
+    },
+    {
+      "name": "Rules.NextUpgrade",
+      "image": "game",
+      "rva": "0x2bf4100",
+      "bytes": 141,
+      "sha256": "cdfa4cfe889827d44a3aed6c529e38b5da167d4719742a9deeef9b5ba35a6795"
+    },
+    {
+      "name": "Rules.UpgradePrerequisites",
+      "image": "game",
+      "rva": "0x2bf4190",
+      "bytes": 111,
+      "sha256": "1355bb26f31e0c4140c938c14e58fde9ce5511c5ee65ff504c53b72f9dbca2ca"
+    },
+    {
+      "name": "Rules.UpgradeCycle",
+      "image": "game",
+      "rva": "0x2bf4200",
+      "bytes": 89,
+      "sha256": "d9277ecffb320036c75543a34157b2000f866a1afa333f0fdb2711e8d5a77618"
+    },
+    {
+      "name": "Rules.UpgradeGoldCost",
+      "image": "game",
+      "rva": "0x2bf4260",
+      "bytes": 761,
+      "sha256": "d31e601f9740252fd66f8f374d97ad3a7d89c4520d844ab089232df62e5e5af3"
+    },
+    {
+      "name": "Player.Units.GetCost",
+      "image": "game",
+      "rva": "0x2ba5960",
+      "bytes": 20,
+      "sha256": "c0886e76cc923d56721ff4fe44173d61eea4e5b44060cc9bf9e340e576cf0fcb"
+    },
+    {
+      "name": "Player.Units.ResourceCost",
+      "image": "game",
+      "rva": "0x2ba5b10",
+      "bytes": 75,
+      "sha256": "f5cf8db36f85fd2f701e3c247179013acc61e0159df49ed97954cdf1a707974c"
+    },
+    {
+      "name": "Player.Units.BuildMapping",
+      "image": "game",
+      "rva": "0x1fccc80",
+      "bytes": 31,
+      "sha256": "cffcb7d93947369ea6db4b4da3051d46b64836a96ee96786a64c3c797182a395"
+    },
+    {
+      "name": "Player.HasTech",
+      "image": "game",
+      "rva": "0x2b8ac60",
+      "bytes": 79,
+      "sha256": "cf4a3cabd3f3b09872b8bd16197980410160d0ae810aae1d63a423ea68c32ec3"
+    },
+    {
+      "name": "Player.HasCivic",
+      "image": "game",
+      "rva": "0x2a73e70",
+      "bytes": 86,
+      "sha256": "d61b6ae94c24981349cecd699fed49fa57c413f81d7d15787f33a3996dfe4f68"
+    },
+    {
+      "name": "Unit.ReadyAutomate",
+      "image": "game",
+      "rva": "0x2c28320",
+      "bytes": 29,
+      "sha256": "41a783d4c78f515481d9a654f615ac1660a1670a584307c7c57dc5f7a5788f34"
+    },
+    {
+      "name": "Unit.ReadySelect",
+      "image": "game",
+      "rva": "0x2c27ff0",
+      "bytes": 41,
+      "sha256": "c345987083c39c3761a62bd7fae9422544fb3ef6a6af6f466501b5427efd63d4"
+    },
+    {
+      "name": "Unit.ReadyMove",
+      "image": "game",
+      "rva": "0x2c28020",
+      "bytes": 201,
+      "sha256": "280297bd6918999c46f4c44759658d6fcb3e2f06f8fdc9b25812c49d878e1a79"
+    },
+    {
+      "name": "Unit.MemberReadyMove",
+      "image": "game",
+      "rva": "0x2c28180",
+      "bytes": 93,
+      "sha256": "00dccb21217631272d6d151aca2a6d19f11ae80de1256b825ef717a23b72a2d9"
+    },
+    {
+      "name": "Unit.CanCyclePast",
+      "image": "game",
+      "rva": "0x2c280f0",
+      "bytes": 138,
+      "sha256": "066ca53a42eace4984de8ce02dd8da66bde0e6c2ca1cb60eddfc177a45b8a505"
+    },
+    {
+      "name": "Unit.HasAdjacentMove",
+      "image": "game",
+      "rva": "0x2c28200",
+      "bytes": 278,
+      "sha256": "ba351b37f2649d3681fd1ca8da6a547eb030e17ae09d903f6e855d3eafc37767"
+    },
+    {
+      "name": "Unit.NeedsAttention",
+      "image": "game",
+      "rva": "0x2b5cb10",
+      "bytes": 7,
+      "sha256": "40f200d62972ac9dc2112babd503ee3ca31f8ae1254d21ad1ced07d7093ddd97"
+    },
+    {
+      "name": "Unit.CanMove",
+      "image": "game",
+      "rva": "0x2c27930",
+      "bytes": 60,
+      "sha256": "b46d22d98040b2db4bf384a1374692b3025952b8424b16a70323c73ca8718c57"
+    },
+    {
+      "name": "Unit.PlacementValid",
+      "image": "game",
+      "rva": "0x2c424c0",
+      "bytes": 1509,
+      "sha256": "618ddc91db1abfef3bc277898e1d0a40df4be1855223064af82bd31b90ff04db"
+    },
+    {
+      "name": "Combat.BestDefender",
+      "image": "game",
+      "rva": "0x28c9e70",
+      "bytes": 684,
+      "sha256": "6076d68a8b161cff1729aa03f057b9e8ce5521ede95d8527b9020e0e3e229fe5"
+    },
+    {
+      "name": "Combat.BetterDefender",
+      "image": "game",
+      "rva": "0x2bdfdb0",
+      "bytes": 61,
+      "sha256": "b72ba2a95f3e67e1f6a086567db4f1f084b84cda0405380f31fc4f75d10e6704"
+    },
+    {
+      "name": "Commands.HoldCycling",
+      "image": "game",
+      "rva": "0x2d8bb00",
+      "bytes": 296,
+      "sha256": "a3cc416b6001fe0f9a702518c8045cbb47aa1c3b6439dffdddefd3b89c382c92"
+    },
+    {
+      "name": "Operations.HoldCycling",
+      "image": "game",
+      "rva": "0x2da2b90",
+      "bytes": 321,
+      "sha256": "1f8f4468bb121b59b779e27f0f93350c79ce9a8d2743e587b6ea2ddad342f2f0"
+    },
+    {
+      "name": "Unit.MaxDamage",
+      "image": "game",
+      "rva": "0x2c27600",
+      "bytes": 48,
+      "sha256": "28fa111b8b63e9bc6ac3f5649fb338c64aeddb2ec9bb8f128af0994d9607f70a"
+    },
+    {
+      "name": "TypedMap.Ctor",
+      "image": "host",
+      "rva": "0x395f070",
+      "bytes": 124,
+      "sha256": "88ef146bf7cc119692ceb6363ed7eb31b05e1b25734903162c34b355bfca021e"
+    },
+    {
+      "name": "TypedMap.ConstFind",
+      "image": "host",
+      "rva": "0x395f3b0",
+      "bytes": 90,
+      "sha256": "2788514beee59158d6cd2b816679fb774a19df417cc647a83564e156c77f6b36"
+    },
+    {
+      "name": "TypedMap.ConstTreeFind",
+      "image": "host",
+      "rva": "0x3962060",
+      "bytes": 51,
+      "sha256": "3807ac541af5e04676e513023bfdfdb0a728d0dcbd4ab63d364b26abf20da6af"
+    },
+    {
+      "name": "TypedMap.Copy",
+      "image": "host",
+      "rva": "0x39612d0",
+      "bytes": 1012,
+      "sha256": "f71b9cdad0085a05f3b14af721c3ece0f69ae91313fd576e6999a140b6c0b207"
+    }
+  ],
+  "fill_direct_calls": [
+    {
+      "call_rva": "0x2805169",
+      "plt_rva": "0x1e2efc0",
+      "symbol": "FixedPointT<8u>::operator=(FixedPointT<8u> const&)"
+    },
+    {
+      "call_rva": "0x2805179",
+      "plt_rva": "0x1fb8c98",
+      "symbol": "GameCore::Unit::Instance::GetMovementMovesRemaining() const"
+    },
+    {
+      "call_rva": "0x2805185",
+      "plt_rva": "0x1e2efc0",
+      "symbol": "FixedPointT<8u>::operator=(FixedPointT<8u> const&)"
+    },
+    {
+      "call_rva": "0x28051b5",
+      "plt_rva": "0x1f6f0b0",
+      "symbol": "GameCore::Unit::Instance::GetAttacksRemaining() const"
+    },
+    {
+      "call_rva": "0x28051c0",
+      "plt_rva": "0x1f0a840",
+      "symbol": "GameCore::Unit::Instance::GetReligion() const"
+    },
+    {
+      "call_rva": "0x28051c8",
+      "plt_rva": "0x1fb8cd0",
+      "symbol": "GameCore::Unit::Religion::GetSpreadCharges() const"
+    },
+    {
+      "call_rva": "0x28051d3",
+      "plt_rva": "0x1f0a840",
+      "symbol": "GameCore::Unit::Instance::GetReligion() const"
+    },
+    {
+      "call_rva": "0x28051db",
+      "plt_rva": "0x1fb8b48",
+      "symbol": "GameCore::Unit::Religion::GetReligiousHealCharges() const"
+    },
+    {
+      "call_rva": "0x28051e6",
+      "plt_rva": "0x1f2d4d0",
+      "symbol": "GameCore::Unit::Instance::GetActionCharges() const"
+    },
+    {
+      "call_rva": "0x28051f1",
+      "plt_rva": "0x1f0a840",
+      "symbol": "GameCore::Unit::Instance::GetReligion() const"
+    },
+    {
+      "call_rva": "0x28051f9",
+      "plt_rva": "0x1fb89d8",
+      "symbol": "GameCore::Unit::Religion::GetReligiousStrength() const"
+    },
+    {
+      "call_rva": "0x2805207",
+      "plt_rva": "0x1f0a840",
+      "symbol": "GameCore::Unit::Instance::GetReligion() const"
+    },
+    {
+      "call_rva": "0x280520f",
+      "plt_rva": "0x1fb8c28",
+      "symbol": "GameCore::Unit::Religion::GetReligionType() const"
+    },
+    {
+      "call_rva": "0x280521d",
+      "plt_rva": "0x1e8e710",
+      "symbol": "GameCore::Unit::Instance::GetBarbarianTargetPlayer() const"
+    },
+    {
+      "call_rva": "0x280522b",
+      "plt_rva": "0x1f09dc0",
+      "symbol": "GameCore::Unit::Instance::GetHero() const"
+    },
+    {
+      "call_rva": "0x2805233",
+      "plt_rva": "0x1ec0f50",
+      "symbol": "GameCore::Unit::Hero::GetClass() const"
+    },
+    {
+      "call_rva": "0x2805241",
+      "plt_rva": "0x1f59500",
+      "symbol": "GameCore::Unit::CInstance::GetDomain() const"
+    },
+    {
+      "call_rva": "0x280524c",
+      "plt_rva": "0x1faa410",
+      "symbol": "GameCore::Unit::CInstance::GetFormationClass() const"
+    },
+    {
+      "call_rva": "0x2805257",
+      "plt_rva": "0x1ec88e0",
+      "symbol": "GameCore::Unit::Instance::GetCombatModifiers() const"
+    },
+    {
+      "call_rva": "0x280525f",
+      "plt_rva": "0x1ed7710",
+      "symbol": "GameCore::Unit::CombatModifiers::IsCannotAttack() const"
+    },
+    {
+      "call_rva": "0x28052c3",
+      "plt_rva": "0x1fb8db0",
+      "symbol": "GameCore::Unit::Instance::GetMaxMoves() const"
+    },
+    {
+      "call_rva": "0x28052ce",
+      "plt_rva": "0x1f5a5b0",
+      "symbol": "GameCore::Unit::Instance::GetMaxDamage() const"
+    },
+    {
+      "call_rva": "0x28052dd",
+      "plt_rva": "0x1f0cb90",
+      "symbol": "GameCore::Unit::Instance::GetCombat(bool) const"
+    },
+    {
+      "call_rva": "0x28052e8",
+      "plt_rva": "0x1e0bfc0",
+      "symbol": "GameCore::Unit::Instance::GetRangedCombat() const"
+    },
+    {
+      "call_rva": "0x28052f3",
+      "plt_rva": "0x1e93350",
+      "symbol": "GameCore::Unit::Instance::GetBombardCombat() const"
+    },
+    {
+      "call_rva": "0x28052fe",
+      "plt_rva": "0x1e16070",
+      "symbol": "GameCore::Unit::Instance::GetAntiAirCombat() const"
+    },
+    {
+      "call_rva": "0x2805309",
+      "plt_rva": "0x1ec2d60",
+      "symbol": "GameCore::Unit::Instance::GetRange() const"
+    },
+    {
+      "call_rva": "0x2805314",
+      "plt_rva": "0x1e0fc50",
+      "symbol": "GameCore::Unit::IInstance::GetType() const"
+    },
+    {
+      "call_rva": "0x2805325",
+      "plt_rva": "0x1fb2320",
+      "symbol": "GameCore::Unit::Upgrade::Manager::Get()"
+    },
+    {
+      "call_rva": "0x2805330",
+      "plt_rva": "0x1ea9580",
+      "symbol": "GameCore::Unit::Upgrade::Manager::GetUpgradeCost(GameCore::Unit::Instance const*) const"
+    },
+    {
+      "call_rva": "0x280533e",
+      "plt_rva": "0x1e0fc50",
+      "symbol": "GameCore::Unit::IInstance::GetType() const"
+    },
+    {
+      "call_rva": "0x2805348",
+      "plt_rva": "0x1fb2320",
+      "symbol": "GameCore::Unit::Upgrade::Manager::Get()"
+    },
+    {
+      "call_rva": "0x2805353",
+      "plt_rva": "0x1f48ae0",
+      "symbol": "GameCore::Unit::Upgrade::Manager::GetUpgradeResourceCost(GameCore::Unit::Instance const*) const"
+    },
+    {
+      "call_rva": "0x2805360",
+      "plt_rva": "0x1fb2320",
+      "symbol": "GameCore::Unit::Upgrade::Manager::Get()"
+    },
+    {
+      "call_rva": "0x280536b",
+      "plt_rva": "0x1f32b50",
+      "symbol": "GameCore::Unit::Upgrade::Manager::ResourceForUpgrade(GameCore::Unit::Instance const*) const"
+    },
+    {
+      "call_rva": "0x2805379",
+      "plt_rva": "0x1ee1ba0",
+      "symbol": "GameCore::Unit::Instance::GetArchaeology() const"
+    },
+    {
+      "call_rva": "0x2805381",
+      "plt_rva": "0x1f225c0",
+      "symbol": "GameCore::Unit::Archaeology::GetHomeCityID() const"
+    },
+    {
+      "call_rva": "0x280538f",
+      "plt_rva": "0x1ee1ba0",
+      "symbol": "GameCore::Unit::Instance::GetArchaeology() const"
+    },
+    {
+      "call_rva": "0x2805397",
+      "plt_rva": "0x1eac610",
+      "symbol": "GameCore::Unit::Archaeology::GetGreatWorkIndex() const"
+    },
+    {
+      "call_rva": "0x28053a5",
+      "plt_rva": "0x1e17790",
+      "symbol": "GameCore::Unit::Instance::GetEspionage() const"
+    },
+    {
+      "call_rva": "0x28053ad",
+      "plt_rva": "0x1fb0a50",
+      "symbol": "GameCore::Unit::Espionage::GetOperation() const"
+    },
+    {
+      "call_rva": "0x28053bb",
+      "plt_rva": "0x1e17790",
+      "symbol": "GameCore::Unit::Instance::GetEspionage() const"
+    },
+    {
+      "call_rva": "0x28053c3",
+      "plt_rva": "0x1e694d0",
+      "symbol": "GameCore::Unit::Espionage::GetOperationEndTurn() const"
+    },
+    {
+      "call_rva": "0x28053d1",
+      "plt_rva": "0x1f98dd0",
+      "symbol": "GameCore::Unit::Instance::IsReadyToAutomate() const"
+    },
+    {
+      "call_rva": "0x28053f5",
+      "plt_rva": "0x1f6aeb0",
+      "symbol": "GameCore::Unit::Instance::IsReadyToSelect() const"
+    },
+    {
+      "call_rva": "0x2805419",
+      "plt_rva": "0x1e356f0",
+      "symbol": "GameCore::Unit::Instance::IsReadyToMove() const"
+    },
+    {
+      "call_rva": "0x280543d",
+      "plt_rva": "0x1f66b90",
+      "symbol": "GameCore::Unit::Instance::HasPendingOperations() const"
+    },
+    {
+      "call_rva": "0x2805461",
+      "plt_rva": "0x1f4d760",
+      "symbol": "GameCore::Unit::Instance::HasMovedIntoZOC() const"
+    },
+    {
+      "call_rva": "0x2805485",
+      "plt_rva": "0x1e0af60",
+      "symbol": "GameCore::Unit::Instance::GetFormationUnitCount() const"
+    },
+    {
+      "call_rva": "0x2805499",
+      "plt_rva": "0x1f462c0",
+      "symbol": "GameCore::Unit::Instance::GetFormationMovesRemaining() const"
+    },
+    {
+      "call_rva": "0x28054a5",
+      "plt_rva": "0x1e2efc0",
+      "symbol": "FixedPointT<8u>::operator=(FixedPointT<8u> const&)"
+    },
+    {
+      "call_rva": "0x28054ad",
+      "plt_rva": "0x1eec360",
+      "symbol": "GameCore::Unit::Instance::GetFormationMaxMoves() const"
+    },
+    {
+      "call_rva": "0x28054b8",
+      "plt_rva": "0x1e764f0",
+      "symbol": "GameCore::Unit::Instance::HasHiddenVisibility() const"
+    },
+    {
+      "call_rva": "0x28054dc",
+      "plt_rva": "0x1eeee90",
+      "symbol": "GameCore::Unit::Instance::IgnoresZOC() const"
+    },
+    {
+      "call_rva": "0x2805500",
+      "plt_rva": "0x1e487f0",
+      "symbol": "GameCore::Unit::Instance::GetAirSlots() const"
+    },
+    {
+      "call_rva": "0x280551e",
+      "plt_rva": "0x1e75a60",
+      "symbol": "String::BasicT<Platform::StaticHeapAllocator<5, 0>, (String::Encoding)0>::operator=(char const*)"
+    }
+  ],
+  "direct_store_scope": "Fill destination snapshot and stack only; imported string assignment allocates/copies destination name",
+  "fill_bool_argument": false,
+  "fill_bool_controls_dependencies": false,
+  "cache_entry": {
+    "command": 2,
+    "map_layer": 0,
+    "native_entry_bytes": 296,
+    "constants_offset": 4,
+    "constants_bytes": 12,
+    "variants_offset": 16,
+    "variants_bytes": 184,
+    "properties_offset": 200,
+    "map_layer_offset": 288,
+    "global_container_rva": "0x3c03858",
+    "node_map_offset": 32,
+    "next_key_offset": 72,
+    "successful_allocation": "Store node at old u32 key, advance next key wrapping32, update peak allocation metric",
+    "allocation_failure": "UINT_MAX; PublishUpdate does not send a cache-update event",
+    "stream_type_hash": "15d11e18",
+    "cache_id_layout": "u32 stream type at0, u32 returned key at4",
+    "observed_successful_host_cache_updates": 7,
+    "actual_cache_keys_captured": false,
+    "complete_cache_state_captured": false
+  },
+  "snapshot_bits": {
+    "0": "CannotAttack",
+    "1": "Embarked",
+    "2": "DelayedDeath",
+    "3": "Immobile",
+    "4": "ReadyToAutomate",
+    "5": "ReadyToSelect",
+    "6": "ReadyToMove",
+    "7": "HasPendingOperations",
+    "8": "MovedIntoZOC",
+    "9": "HiddenVisibility",
+    "10": "IgnoresZOC"
+  },
+  "snapshot_flags_offset": 180,
+  "snapshot_upper_bits_and_padding_classified": false,
+  "snapshot_layout": {
+    "location": [
+      0,
+      8
+    ],
+    "facing": 8,
+    "owner": 12,
+    "name": 16,
+    "name_native_size_unproven": true,
+    "scalar_i32_fields": {
+      "24": "Automation",
+      "28": "Activity",
+      "32": "MilitaryFormation",
+      "36": "Domain",
+      "40": "FormationClass",
+      "44": "Damage",
+      "48": "MaxDamage",
+      "52": "Combat",
+      "56": "RangedCombat",
+      "60": "BombardCombat",
+      "64": "AntiAirCombat",
+      "68": "Range",
+      "72": "FortifyTurns",
+      "76": "MaxMoves",
+      "80": "MovesRemainingRaw",
+      "84": "MovementMovesRemainingRaw",
+      "88": "FormationMovesRemainingRaw",
+      "92": "FormationMaxMoves",
+      "96": "AttacksRemaining",
+      "100": "BuildCharges",
+      "104": "DisasterCharges",
+      "108": "ParkCharges",
+      "112": "AirSlotModifier",
+      "116": "SpreadCharges",
+      "120": "ReligiousHealCharges",
+      "124": "ActionCharges",
+      "128": "ReligiousStrength",
+      "132": "ReligionType",
+      "136": "UnitsInFormation",
+      "140": "UpgradeCost",
+      "144": "UpgradeResourceCost",
+      "148": "UpgradeResourceType",
+      "152": "GreatWorkIndex",
+      "156": "ArchaeologyHomeCity",
+      "160": "SpyOperation",
+      "164": "SpyOperationEndTurn",
+      "168": "AirSlots",
+      "172": "BarbarianTargetPlayer",
+      "176": "HeroClass"
+    }
+  },
+  "upgrade_query_contract": {
+    "selection": "Ordered first valid definition upgrade, player build-unit mapping, tech/civic prerequisites, cycle-checked recursive available upgrade",
+    "gold_cost": "Existing Unit cost vectors, game-speed/base/net-production parameters, formation multiplier, Unit and Treasury discounts; stack-only fixedpoint temporaries",
+    "resource_cost": "Existing resource references/cost vector, formation and levied discounts, minimum and modifier; no resource deduction",
+    "direct_authoritative_store": false,
+    "direct_rng_or_reporting": false,
+    "actual_upgrade_results_captured": false
+  },
+  "max_damage_property_lookup": {
+    "key": "7d3fc711",
+    "host_vtable": "0x53b3680",
+    "slot": "0x60",
+    "target": "0x395f3b0",
+    "effect": "Const tree find; found variant int conversion or global fallback, no lookup insertion"
+  },
+  "defender_comparator": {
+    "rva": "0x2bdfdb0",
+    "call_rva": "0x28ca077",
+    "contract": "Null current best accepts candidate; otherwise null candidate rejects; strict signed candidate.GetCombat(false)>best.GetCombat(false); ties preserve earlier candidate",
+    "attacker_argument_ignored": true,
+    "direct_rng_reporting_or_source_store": false
+  },
+  "actual_initial_fields": {
+    "m_eTypeIndex": {
+      "range": [
+        5052659,
+        5052663
+      ],
+      "raw_hex": "3275d511",
+      "sha256": "4f3b8b968db108cec0d53fe9a13ea43daa363085d0647c48e71cc61c6a3f85e8"
+    },
+    "m_bIsLevied": {
+      "range": [
+        5052699,
+        5052700
+      ],
+      "raw_hex": "00",
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    "m_xMovesRemaining": {
+      "range": [
+        5052728,
+        5052732
+      ],
+      "raw_hex": "00010000",
+      "sha256": "bf5e8ffa51a9e748985800c1d3d7f1a2a6ae7435136593ca8d9637e3f87c699c"
+    },
+    "m_bNeedsAttention": {
+      "range": [
+        5052791,
+        5052792
+      ],
+      "raw_hex": "00",
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    "m_kProperties": {
+      "range": [
+        5057465,
+        5057469
+      ],
+      "raw_hex": "00000000",
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    }
+  },
+  "readiness": {
+    "automate": "CanMove && !HasPendingOperations",
+    "select": "IsReadyToMove && !IsAutomated && !CanCyclePast",
+    "move": "Self member readiness; when formation count>=2 check each existing other member in native order",
+    "member": "Null member returns true; otherwise !delayedDeath && CanMove && !pending && activityAWAKE && automate=-1 && !busy",
+    "cycle": "Invalid location/delayedDeath/noFormation returns true; NeedsAttention or HasAdjacentMove returns false; otherwise command then operation HoldCycling",
+    "adjacent_arguments": {
+      "flags": 1,
+      "output_plot": null,
+      "max_distance": 2147483647,
+      "callback_empty": true,
+      "defender_flags": 264
+    },
+    "adjacency_alternate_search_reachable": false,
+    "hold_cycling": "Registered definition IsHoldCycling filter, then full manager CanStart with testVisible=false and output map",
+    "actual_adjacent_result_captured": false,
+    "actual_hold_cycling_reachability_proven": false
+  },
+  "focused_readiness_checkpoint": {
+    "rva": "0x2c28137",
+    "bytes": "84c07518",
+    "result": "AL",
+    "unit": "RBX",
+    "fields": {
+      "id": "u32[RBX+b8]",
+      "owner": "i32[RBX+130]",
+      "activity": "u32[RBX+290]",
+      "needs_attention": "u8[RBX+738]"
+    },
+    "require": "Armed phase5; FillVariants -> IsReadyToSelect -> CanCyclePast stack; genuine source Unit identity",
+    "true_branch": "Skip both HoldCycling fallbacks; CanCyclePast=false"
+  },
+  "unresolved": [
+    "Actual HasAdjacentMove result and fallback HoldCycling CanStart/script/subtype effects",
+    "Placement visibility/diplomacy/container full transitive closure and actual outcomes; strength comparator itself closed",
+    "Per-callback property-map contents; before/after serialized properties are empty but intermediate maps were not captured",
+    "Snapshot computed values, output node keys, allocator/peak state and complete queued cache entries"
+  ],
+  "complete_callback_effects_proven": false,
+  "complete_rng_inventory": false,
+  "complete_live_state": false,
+  "full_host_admission": false,
+  "rust_live_action_admitted": false,
+  "gameplay_parity": false,
+  "historical_raw_save_load_failure_bytes": 89198,
+  "limits": "Exact target callback/cache output and query branches, not complete gameplay support. Static absence of direct stores/RNG in inspected bodies is not proof of complete transitive purity. Actual cache state and readiness branch still require evidence; no AI/planning-only exclusion, byte masking, native run or project mutation."
+}
