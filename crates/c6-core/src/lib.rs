@@ -24,6 +24,7 @@ pub mod player_culture;
 pub mod player_diplomacy;
 pub mod player_diplomacy_blackboard;
 pub mod player_districts;
+pub mod player_eras;
 pub mod player_espionage;
 pub mod player_religion;
 pub mod player_resources;
