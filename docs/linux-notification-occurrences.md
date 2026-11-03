@@ -10,7 +10,9 @@ stable occurrence serial: removal never renumbers or reuses it. `ordinal_of`
 resolves the current list position in constant time. `object(slot,ordinal)` and
 indexed `record`/`record_mut` still take current list ordinals. Numeric-ID lookup
 still returns the first matching occurrence in list order, including duplicates.
-Removing an unrelated occurrence preserves survivor handles and order. Released
+`first` and `next` traverse current stable handles; removal returns the current
+successor in `Removed.next`. Removing an unrelated occurrence preserves survivor
+handles and order. Released
 handles return `StaleObject`. Handles remain owner-relative and must not be
 transferred between owners.
 

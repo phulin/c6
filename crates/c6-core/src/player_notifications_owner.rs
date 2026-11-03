@@ -84,6 +84,8 @@ struct SlotOccurrences {
 /// Detached storage, not proof of a native Release, destructor or pool append.
 #[derive(Debug, Eq, PartialEq)]
 pub struct Removed {
+    /// Successor in the current list immediately after erasure.
+    pub next: Option<ObjectId>,
     pub record: Notification,
     pub runtime: Runtime,
 }
@@ -194,6 +196,24 @@ impl Owner {
                 index: self.occurrences[slot as usize].ordered[index],
             }))
     }
+    pub fn first(&self, slot: i32) -> Result<Option<ObjectId>, Error> {
+        let entries = &self.occurrences[Self::slot(slot)?];
+        Ok(entries.ordered.first().map(|index| ObjectId {
+            slot: slot as u8,
+            index: *index,
+        }))
+    }
+    /// Current successor, not a snapshot of order before synchronous effects.
+    pub fn next(&self, object: ObjectId) -> Result<Option<ObjectId>, Error> {
+        let ordinal = self.ordinal_of(object)?;
+        Ok(self.occurrences[object.slot as usize]
+            .ordered
+            .get(ordinal + 1)
+            .map(|index| ObjectId {
+                slot: object.slot,
+                index: *index,
+            }))
+    }
     /// O(1) current list lookup; released and never-issued handles reject.
     pub fn ordinal_of(&self, object: ObjectId) -> Result<usize, Error> {
         self.occurrences[object.slot as usize]
@@ -267,6 +287,10 @@ impl Owner {
         }
         self.record_count -= 1;
         Ok(Removed {
+            next: entries.ordered.get(ordinal).map(|index| ObjectId {
+                slot: object.slot,
+                index: *index,
+            }),
             record: self.collections[slot].records.remove(ordinal),
             runtime,
         })
@@ -451,13 +475,31 @@ mod tests {
         let second = owner.object(0, 1).unwrap();
         let third = owner.object(0, 2).unwrap();
         assert_eq!(owner.runtime(second).unwrap(), &Runtime::default());
+        use crate::notification_lifecycle as lifecycle;
+        let logical_object = lifecycle::ObjectId(800);
         let supplied = Runtime {
+            live: Some(lifecycle::LiveNotification {
+                object: logical_object,
+                lock_count: 0,
+                pool_binding: Some(lifecycle::PoolId(41)),
+                definition_icon: lifecycle::DefinitionIcon::Unobserved,
+                activation: lifecycle::ActivationBinding::Base,
+                release: lifecycle::ReleaseBinding::Base,
+                destruction: lifecycle::DestructionBinding::BaseResources,
+            }),
             default_blocking: Some(-7),
             group_hash: Some(19),
             ..Runtime::default()
         };
         *owner.runtime_mut(first).unwrap() = supplied.clone();
+        assert_eq!(owner.first(0), Ok(Some(first)));
+        assert_eq!(owner.next(first), Ok(Some(second)));
         let detached = owner.remove(first).unwrap();
+        assert_eq!(detached.next, Some(second));
+        assert_eq!(owner.first(0), Ok(Some(second)));
+        assert_eq!(owner.next(second), Ok(Some(third)));
+        assert_eq!(owner.next(third), Ok(None));
+        assert!(matches!(owner.next(first), Err(Error::StaleObject(_))));
         assert_eq!(detached.runtime, supplied);
         assert!(matches!(
             owner.record_by_object(first),
@@ -477,8 +519,15 @@ mod tests {
             .unwrap();
         assert_ne!(reused, first);
         assert_eq!(owner.ordinal_of(reused), Ok(2));
+        assert_eq!(owner.next(third), Ok(Some(reused)));
+        assert_eq!(owner.next(reused), Ok(None));
         assert_eq!(owner.ordinal_of(third), Ok(1));
         assert_eq!(owner.runtime(reused).unwrap().default_blocking, Some(-7));
+        assert_eq!(
+            owner.runtime(reused).unwrap().live.as_ref().unwrap().object,
+            logical_object
+        );
+        assert!(matches!(owner.runtime(first), Err(Error::StaleObject(_))));
         assert_eq!(owner.collection(0).unwrap().next_id, 91);
         assert_eq!(
             owner.collection(0).unwrap().records,
@@ -502,19 +551,32 @@ mod tests {
         let first = owner
             .append_initialized(63, Notification::default(), Runtime::default(), limits)
             .unwrap();
+        let saved_before_rejection = source(&owner);
         assert!(matches!(
             owner.append_initialized(63, Notification::default(), Runtime::default(), limits),
             Err(Error::ResourceLimit)
         ));
+        assert_eq!(source(&owner), saved_before_rejection);
+        assert_eq!(owner.runtime(first).unwrap(), &Runtime::default());
         assert_eq!(owner.ordinal_of(first), Ok(0));
         owner.remove(first).unwrap();
         let second = owner
             .append_initialized(63, Notification::default(), Runtime::default(), limits)
             .unwrap();
         owner.remove(second).unwrap();
+        let saved_before_history_rejection = source(&owner);
         assert!(matches!(
             owner.append_initialized(0, Notification::default(), Runtime::default(), limits),
             Err(Error::ResourceLimit)
+        ));
+        assert_eq!(source(&owner), saved_before_history_rejection);
+        assert!(matches!(
+            owner.ordinal_of(first),
+            Err(Error::StaleObject(_))
+        ));
+        assert!(matches!(
+            owner.ordinal_of(second),
+            Err(Error::StaleObject(_))
         ));
         assert!(owner.collection(0).unwrap().records.is_empty());
         assert!(owner.collection(63).unwrap().records.is_empty());
