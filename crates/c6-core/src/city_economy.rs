@@ -1,4 +1,4 @@
-//! Bounded Linux XP2 City Culture16/17, Gold10/11, current Growth wire records only.
+//! Bounded Linux XP2 City Culture16/17, Gold10/11 and Growth20/23 wire records only.
 //! Culture16 explicitly defaults its absent green-energy tourism scalar to0.
 //! Nested Tourism/GreatWork16/17 versions are independent; older versions refuse.
 //!
@@ -315,7 +315,7 @@ impl Gold {
         }
     }
 }
-record!(Growth, GROWTH_VERSION, {
+record!(Growth, GROWTH_VERSION, legacy 20, wire_version, {
     food_raw_q8: i32,
     other_growth_modifier_raw_q8: i32,
     housing_from_water_modifier: i32,
@@ -329,7 +329,7 @@ record!(Growth, GROWTH_VERSION, {
     universal_fresh_water_housing_bonus: bool,
     housing_from_great_people_modifier: i32,
     housing_from_starting_era_modifier: i32,
-    housing_from_great_works_modifier: i32,
+    housing_from_great_works_modifier: i32 => (23, 23),
     amenities_from_great_people_modifier: i32,
     amenities_from_religion_modifier: i32,
     amenities_from_national_parks_modifier: i32,
@@ -344,10 +344,10 @@ record!(Growth, GROWTH_VERSION, {
     amenities_from_districts_modifier: i32,
     amenities_from_natural_wonders_modifier: i32,
     amenities_from_traits_modifier: i32,
-    no_fresh_water_housing: i32,
-    add_amenity_per_adjacent_luxury: i32,
-    amenities_from_religion_followers: i32,
-    amenities_from_religion_minimum_followers: i32,
+    no_fresh_water_housing: i32 => (22, 23),
+    add_amenity_per_adjacent_luxury: i32 => (22, 23),
+    amenities_from_religion_followers: i32 => (21, 23),
+    amenities_from_religion_minimum_followers: i32 => (21, 23),
     feature_appeal_modifiers: Vec<HashValue<i32>>,
 });
 
@@ -415,6 +415,83 @@ mod tests {
         pair(&mut b, u32::MAX, -64);
         pair(&mut b, u32::MAX, 64);
         b
+    }
+    #[test]
+    fn growth20_defaults_only_five_scalars_and_retains_appeal_pairs() {
+        let mut bytes = Vec::new();
+        int(&mut bytes, 20);
+        for x in 0..10 {
+            int(&mut bytes, i32::MIN.wrapping_add(x));
+        }
+        bytes.push(1);
+        for x in 0..21 {
+            if ![2, 17, 18, 19, 20].contains(&x) {
+                int(&mut bytes, x - 15);
+            }
+        }
+        int(&mut bytes, 2);
+        pair(&mut bytes, u32::MAX, -64);
+        pair(&mut bytes, u32::MAX, 64);
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        let (value, used, items) = Growth::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 2));
+        assert_eq!(value.wire_version, 20);
+        assert_eq!(
+            [
+                value.housing_from_great_works_modifier,
+                value.no_fresh_water_housing,
+                value.add_amenity_per_adjacent_luxury,
+                value.amenities_from_religion_followers,
+                value.amenities_from_religion_minimum_followers
+            ],
+            [0; 5]
+        );
+        assert_eq!(value.extra_appeal, i32::MIN + 9);
+        assert!(value.universal_fresh_water_housing_bonus);
+        assert_eq!(value.amenities_from_traits_modifier, 1);
+        assert_eq!(
+            value.feature_appeal_modifiers,
+            [
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: -64
+                },
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: 64
+                }
+            ]
+        );
+        assert_eq!(value.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Growth::decode_prefix(&bytes[..n], limits).is_err(), "{n}");
+        }
+        assert_eq!(
+            Growth::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [19i32, 21, 22, 24] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Growth::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 23,
+                    actual: version
+                })
+            );
+        }
     }
     #[test]
     fn gold10_discards_bool_pairs_but_retains_wire_and_zero_effect() {
