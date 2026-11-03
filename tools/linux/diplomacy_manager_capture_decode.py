@@ -9,7 +9,7 @@ from pathlib import Path
 
 TARGET = 'a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa'
 MAX_BYTES = 16 * 1024 * 1024
-MAX_RECORDS = 40000
+MAX_RECORDS = 65568
 U64 = (1 << 64) - 1
 
 
@@ -206,6 +206,14 @@ def decode(data, expected_profile=None):
         players[name] = entries
     cursor.take('snapshot_end')
     require(cursor.pos == len(rows), 'trailing records')
+    charged_items = sum(row['kind'] in {'list_item', 'session', 'pending_action', 'player'} for row in rows)
+    read_bytes = (2 * 24 + 8 + 24 + 8 + 3 * 24
+                  + 24 * sum(row['kind'] == 'list_item' for row in rows)
+                  + 32 * sum(row['kind'] == 'session' for row in rows)
+                  + 12 * len(actions)
+                  + sum(8 + (5 if pointer(row['pointer']) else 0)
+                        for entries in players.values() for row in entries))
+    require(end['items'] == charged_items and end['read_bytes'] == read_bytes, 'read/item accounting differs')
     # This is an attribution consistency check, not a gameplay predicate. Keep
     # unknown/inconsistent inventories explicit instead of guessing order/AI.
     issues = []

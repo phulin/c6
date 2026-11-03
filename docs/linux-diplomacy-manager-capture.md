@@ -25,7 +25,7 @@ Limits are explicit: at most 8 MiB actual memory reads, 65,536 charged items and
 
 ## Decoder and tests
 
-`tools/linux/diplomacy_manager_capture_decode.py` validates one bounded JSONL snapshot, complete framing and record order, actual target/profile/stage identities, raw-byte projections, list links and vector widths/counts. It retains partial raw prefixes without claiming emptiness. It preserves nonempty sessions and unknown Statement payloads; it never supplies a ProcessStatement or IsAI answer.
+`tools/linux/diplomacy_manager_capture_decode.py` validates one bounded JSONL snapshot, complete framing and record order, actual target/profile/stage identities, raw-byte projections, list links, vector widths/counts and exact source-derived read/item accounting. Its record cap covers the helper's complete 65,536-item budget rather than narrowing valid captures. It retains partial raw prefixes without claiming emptiness. It preserves nonempty sessions and unknown Statement payloads; it never supplies a ProcessStatement or IsAI answer.
 
 The decoder compares actual allocation/ID-pointer associations and first64 scan order against observed ever-alive handles. An unavailable or inconsistent initialized inventory remains explicit. The output's `native_execution_admitted:false` and `semantic_complete:false` do not become true merely because raw decoding succeeds. A later data adapter must validate the finalized capture/preimages and bind those facts once to its actual LoadedState dynamic witness. The [owned-state API](linux-diplomacy-manager-state.md) rejects runtime transplantation and requires exact Statement effects/external decisions for nonempty execution.
 

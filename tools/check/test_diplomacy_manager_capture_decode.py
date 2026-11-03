@@ -5,6 +5,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import struct
 import tempfile
 import unittest
 
@@ -86,7 +87,9 @@ int main(int argc,char **argv) {
         for mutate in [lambda r: r[0].update(gameplay_parity=True),
                        lambda r: r[-1].update(failure='contradiction'),
                        lambda r: r[0].update(main_tid=True),
-                       lambda r: r[0].update(stage='bad"stage')]:
+                       lambda r: r[0].update(stage='bad"stage'),
+                       lambda r: r[-1].update(items=0),
+                       lambda r: r[-1].update(read_bytes=1)]:
             bad = copy.deepcopy(rows)
             mutate(bad)
             with self.assertRaises(decode.InvalidCapture):
@@ -113,6 +116,24 @@ int main(int argc,char **argv) {
         bad[1], bad[2] = bad[2], bad[1]
         with self.assertRaises(decode.InvalidCapture):
             decode.decode(encoded(bad))
+
+    def test_helper_maximum_complete_item_budget_is_not_artificially_narrowed(self):
+        rows = decode.load_records(self.empty)
+        header = next(row for row in rows if row['kind'] == 'vector_header' and row['container'] == 'pending_actions')
+        count = 65536 - rows[-1]['items']
+        start = int(header['begin'], 16)
+        end = start + count * 12
+        header.update(end=hex(end), capacity=hex(end), raw=struct.pack('<QQQ', start, end, end).hex())
+        at = next(i for i, row in enumerate(rows) if row['kind'] == 'pending_allocator') + 1
+        actions = [dict(kind='pending_action', ordinal=i, id=7, **{'from': 0, 'to': 63},
+                        raw=struct.pack('<Iii', 7, 0, 63).hex()) for i in range(count)]
+        rows[at:at] = actions
+        rows[-1]['items'] += count
+        rows[-1]['read_bytes'] += count * 12
+        result = decode.decode(encoded(rows))
+        self.assertEqual(len(result['pending_actions']), count)
+        self.assertTrue(result['complete'])
+        self.assertFalse(result['semantic_complete'])
 
     def test_limits_and_pointer_overflow_are_bounded(self):
         with self.assertRaises(decode.InvalidCapture):

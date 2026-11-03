@@ -304,16 +304,16 @@
   "schema": "c6-linux-diplomacy-passive-capture-audit-v1",
   "semantic_completeness": false,
   "sources": {
-    "docs/linux-diplomacy-manager-capture.md": "fdc0b4c3e657312a807b905a50e73c8a75bb944e6a62dfb29c265bd6dc6a5da2",
+    "docs/linux-diplomacy-manager-capture.md": "960bf98931bf43c47f3a9d6b50fbe6da8e1032cfb50fe6df13b0ce88d16a33bd",
     "evidence/linux/diplomacy-manager-source.json": "d95ee4f5517826be6fc5f22cda107205e962c15c6eeacde0ed12c8168974b69b",
     "native/linux/diplomacy_manager_capture.c": "67cd1094f836edffed3021599bf45daf75dc9927a99a13e7a0ec914301dd956b",
     "native/linux/diplomacy_manager_capture.h": "82633df14063bfbff53ab1b5fcafbbd72c3b84e10ffda661a2aa76ad8d5c4517",
     "tools/check/diplomacy_manager_capture_test.c": "8e963f28c0c01bfe9573cb80f992b6399a8de77acab06a14a4c721c74d8dc833",
-    "tools/check/test_diplomacy_manager_capture_decode.py": "ff86461da4d90d839180f3b06e5d8ed1777c034e7db73a587289be141c779969",
+    "tools/check/test_diplomacy_manager_capture_decode.py": "3d3607b6513464651a6a585d896a3aea24dd6a658111de88c741f81c0493d85e",
     "tools/linux/diplomacy_manager_capture_audit.py": "51ea7aa278a30366b8e4652a522d7cbcffd7a13109d798e479e7e5a0d2376a9d",
-    "tools/linux/diplomacy_manager_capture_decode.py": "e2d8f65867c44b70ca86855dd799c6ac1c5f24c701b6fe3ca6820f54512a50a6"
+    "tools/linux/diplomacy_manager_capture_decode.py": "fe80f4a1c30c09d7a3ea4e0b7599e2e33e8b4a514786a8abf373c80d877dbae8"
   },
   "synthetic_binary_sha256": "fcd22533ecea7b8c0645a64ca0590aece10a6823389b76b8de5da49b0ffefb12",
   "synthetic_c_tests": "synthetic diplomacy capture checks passed; no original-code observation",
-  "synthetic_decoder_tests": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.265s\n\nOK"
+  "synthetic_decoder_tests": ".......\n----------------------------------------------------------------------\nRan 7 tests in 1.310s\n\nOK"
 }
