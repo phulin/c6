@@ -24,7 +24,6 @@ struct Reader<'a> {
     data: &'a [u8],
     pos: usize,
     items: usize,
-    allocated: usize,
     limits: Limits,
 }
 impl Reader<'_> {
@@ -50,15 +49,13 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn allocate<T>(&mut self, n: usize) -> Result<(), Error> {
-        self.allocated = self
-            .allocated
-            .checked_add(
-                n.checked_mul(std::mem::size_of::<T>())
-                    .ok_or(Error::ResourceLimit)?,
-            )
+    fn allocate<T>(&self, n: usize) -> Result<(), Error> {
+        // Limits.max_bytes bounds wire consumption and each individual vector
+        // allocation, matching unit::Limits; it is not a cumulative heap cap.
+        let bytes = n
+            .checked_mul(std::mem::size_of::<T>())
             .ok_or(Error::ResourceLimit)?;
-        if self.allocated > self.limits.max_bytes {
+        if bytes > self.limits.max_bytes {
             return Err(Error::ResourceLimit);
         }
         Ok(())
@@ -380,7 +377,6 @@ impl Culture {
             data: bytes,
             pos: 0,
             items: 0,
-            allocated: 0,
             limits,
         };
         let v = Self::read(&mut r)?;
@@ -707,7 +703,6 @@ mod tests {
             data: &w.data,
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: limits(),
         };
         assert!(matches!(
@@ -745,7 +740,6 @@ mod tests {
             data: &[0xff, 0xff, 0xff, 0x7f],
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: limits(),
         };
         assert_eq!(
@@ -756,7 +750,6 @@ mod tests {
             data: &[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: Limits {
                 max_bytes: 12,
                 max_items: 2,
@@ -781,7 +774,6 @@ mod tests {
             data: &w.data,
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: limits(),
         };
         assert_eq!(GovernmentSlots::read(&mut r), Err(Error::InvalidContainer));
@@ -796,7 +788,6 @@ mod tests {
             data: &w.data,
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: limits(),
         };
         assert_eq!(CultureBombTrigger::read(&mut r), Err(Error::InvalidBool(2)));
@@ -811,7 +802,6 @@ mod tests {
             data: &w.data,
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: limits(),
         };
         assert_eq!(
@@ -832,9 +822,70 @@ mod tests {
             data: &w.data,
             pos: 0,
             items: 0,
-            allocated: 0,
             limits: limits(),
         };
         assert_eq!(Vec::<u32>::read(&mut r).unwrap().len(), 5);
+    }
+    #[test]
+    fn independent_allocations_share_wire_and_item_budgets() {
+        let values = vec![TourismLocation {
+            plot_index: 17,
+            lifetime_tourism: -3,
+            tourist_counts: vec![],
+        }];
+        let mut w = Writer {
+            data: vec![],
+            items: 0,
+            limits: limits(),
+        };
+        values.write(&mut w).unwrap();
+        values.write(&mut w).unwrap();
+        assert_eq!(w.data.len(), 32);
+        let storage = std::mem::size_of::<TourismLocation>();
+        assert!(storage <= w.data.len());
+        assert!(storage * 2 > w.data.len());
+        let exact = Limits {
+            max_bytes: w.data.len(),
+            max_items: 2,
+        };
+        let mut r = Reader {
+            data: &w.data,
+            pos: 0,
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(Vec::<TourismLocation>::read(&mut r).unwrap(), values);
+        assert_eq!(Vec::<TourismLocation>::read(&mut r).unwrap(), values);
+        assert_eq!((r.pos, r.items), (w.data.len(), 2));
+        let mut short = Reader {
+            data: &w.data,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: 31,
+                ..exact
+            },
+        };
+        // Each individual decoded allocation is 32 bytes; reject it before
+        // reservation even though its wire representation occupies 16 bytes.
+        assert_eq!(
+            Vec::<TourismLocation>::read(&mut short),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(short.pos, 4);
+        let mut short_items = Reader {
+            data: &w.data,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_items: 1,
+                ..exact
+            },
+        };
+        Vec::<TourismLocation>::read(&mut short_items).unwrap();
+        assert_eq!(
+            Vec::<TourismLocation>::read(&mut short_items),
+            Err(Error::ResourceLimit)
+        );
     }
 }
