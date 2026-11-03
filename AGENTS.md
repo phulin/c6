@@ -38,3 +38,5 @@ bash tools/check/c_abi_smoke.sh
 ```
 
 Use the native and differential checks in `README.md` when changing supported mechanics or their adapters. Candidate executable hashes change on rebuild; generate a fresh corpus for the tested binary and preserve the configuration gate. An unavailable oracle is a validation gap, not a passing comparison. Benchmark only implemented behavior and report what the measurement excludes.
+
+Reproducible fixture candidates must retain complete source preimages through a reproducible committed tree or a complete immutable source archive, together with dependency and executable identities. If concurrent WIP is genuinely necessary, retain its exact contents and identify its differences from the recorded commit; a hash list alone is insufficient. Preserve limited historical reports honestly rather than relabeling missing or mixed provenance as a coherent committed build.
