@@ -1,0 +1,483 @@
+#!/usr/bin/env python3
+"""Pure-hardware GDB installer for one genuine full Manager predicate fixture.
+
+No launch, inferior function call, software game breakpoint, field write, Lua
+lookup/lock/GC operation or policy execution is provided. The sole runner owns
+launch/profile/lifecycle and timeout disposal. All evidence written here is private.
+"""
+import hashlib
+import json
+import os
+from pathlib import Path
+import struct
+
+from save_lifecycle_audit import GAME_SHA, HOST_SHA
+from script_manager_observer import Observer, SITES, GAME_SITES, SCRIPT_METHODS, LIFECYCLE_METHODS
+from script_hks_registry_audit import METHODS as HKS_METHODS
+from script_can_start_boundary_audit import BINDINGS, STRINGS
+from military_observer_runner import marker_entry_gate
+
+ROOT=Path(__file__).resolve().parents[2]
+MARKER='c6_linux_full_manager_fixture_marker'
+REGISTERS=('pc','rsp','rax','rbx','rbp','rcx','rdx','rsi','rdi','r8','r9','r12','r13','r14','r15')
+
+
+def mandatory_bodies(host,core):
+    rows=[(host,name,address,size,sha) for name,address,size,sha in SCRIPT_METHODS+HKS_METHODS]
+    rows += [(host if module=='host' else core,name,address,size,sha)
+             for module,name,address,size,sha in LIFECYCLE_METHODS]
+    rows += [(core,'Manager.CanStart',0x2da20f0,579,
+              '573164c5e12ad82eeb6761d2492634ae376ae6de63526a3b94cf0608d8550927'),
+             (core,'Utility.CallTestAll',0x2ce79b0,116,
+              '47ad40fd9efa7ddcbe88b6bc4de3eff8c174262c6cc031ce76d78e63094c431e'),
+             (host,'hksi_lua_isfunction.complete',0x343db90,0xc9,
+              'fbb28ac253e00a7248456b725de9c2982a6cbd6129ed11eb80796c1551f8a19d')]
+    return list(dict.fromkeys(rows))
+
+
+def require(test,reason):
+    if not test:
+        raise ValueError(reason)
+
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def canonical(value):
+    return json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+
+
+def descriptor(raw):
+    require(len(raw)==88,'complete fixture descriptor required')
+    phase=struct.unpack_from('<I',raw)[0]
+    require(1<=phase<=9,'unknown fixture marker phase')
+    names=('module','context','game','facade','manager','unit','operation','core_base')
+    result=dict(zip(names,struct.unpack_from('<8Q',raw,8)))
+    result.update(phase=phase,actor_owner=struct.unpack_from('<i',raw,72)[0],
+                  operation_id=struct.unpack_from('<i',raw,76)[0],
+                  actor_full_id=struct.unpack_from('<I',raw,80)[0])
+    require(all(value in (0,1) for value in raw[84:87]),'noncanonical fixture bool')
+    result.update(zip(('visible_only','predicate_returned','allowed'),map(bool,raw[84:87])))
+    result['raw88']=raw.hex()
+    return result
+
+
+def same_frame(actual,expected):
+    return actual['module']==expected['module'] and actual['relative_pc']==expected['relative_pc']
+
+
+class Frames:
+    """Exact reviewed caller suffix, compared against actual complete unwinds."""
+    def __init__(self,suffix,core,base):
+        require(suffix and len(suffix)<=120,'missing/excessive reviewed caller frame suffix')
+        self.suffix,self.core,self.base=suffix,core,base
+
+    def caller(self,frames):
+        require(len(frames)==len(self.suffix) and all(same_frame(a,e) for a,e in zip(frames,self.suffix)),
+                'actual caller/parent frames differ from reviewed main-entry suffix')
+
+    def manager_entry(self,frames):
+        require(frames and frames[0]['module']==self.core and frames[0]['relative_pc']==0x2da20f0,
+                'not original full Manager entry frame')
+        self.caller(frames[1:])
+
+    def descendant(self,frames):
+        indices=[i for i,row in enumerate(frames) if row['module']==self.core and row['relative_pc']==0x2da22a0]
+        require(len(indices)==1,'missing/reentrant original Manager script continuation')
+        self.caller(frames[indices[0]+1:])
+        return indices[0]
+
+
+class Schedule:
+    """Marker plus <=2 original target lanes; mutations happen only in drain."""
+    def __init__(self):
+        self.phase=0
+        self.entry_rsp=self.return_pc=None
+        self.manager_active=False
+        self.manager_returned=False
+        self.script_complete=False
+        self.script_sites=()
+        self.allowed=None
+
+    def marker(self,row):
+        require(row['phase']==self.phase+1,'missing/reordered/extra fixture marker')
+        if row['phase']==4:
+            require(not self.manager_active and not self.manager_returned,'duplicate predicate entry')
+        if row['phase']==5:
+            require(self.manager_returned and row['predicate_returned'] and row['allowed']==self.allowed,
+                    'fixture result differs from actual Manager return')
+        if row['phase']==9:
+            require(self.manager_returned and not self.manager_active and not row['facade'],
+                    'incomplete original Manager/facade lifetime')
+        self.phase=row['phase']
+
+    def points(self,base):
+        if self.phase!=4:
+            return []
+        if self.entry_rsp is None:
+            return [('manager_entry',base+0x2da20f0)]
+        if not self.manager_active:
+            return []
+        if self.script_sites:
+            result=[(name,SITES[name]+(base if name in GAME_SITES else 0)) for name in self.script_sites]
+        else:
+            result=[('manager_return',self.return_pc)]
+            if not self.script_complete:
+                result.append(('dispatch',base+SITES['dispatch']))
+        require(len(result)<=2,'original hardware lane budget exceeded')
+        return result
+
+    def enter(self,r,return_pc):
+        require(self.phase==4 and self.entry_rsp is None,'unexpected/duplicate full Manager entry')
+        self.entry_rsp,self.return_pc=r['rsp'],return_pc
+        self.manager_active=True
+
+    def script(self,event,next_sites):
+        require(self.manager_active and not self.script_complete,'script outside selected Manager lifetime')
+        if event=='wrapper_return':
+            self.script_complete=True
+            self.script_sites=()
+        else:
+            self.script_sites=tuple(next_sites)
+
+    def returned(self,r):
+        require(self.manager_active and r['rsp']==self.entry_rsp+8 and not self.script_sites,
+                'unmatched Manager return or unfinished Lua/lock interval')
+        self.manager_active=False
+        self.manager_returned=True
+        self.allowed=bool(r['rax']&255)
+
+
+def validate_plan(plan):
+    require(plan.get('schema')=='c6-linux-full-manager-observer-plan-v1','wrong full Manager plan schema')
+    require(plan.get('profile_kind')=='genuine_lower_core_full_Manager','wrong observer profile scope')
+    gate=plan['runtime_gate']
+    require(digest(gate['report_path'])==gate['report_sha256'],'runtime report changed')
+    prepared=json.loads(Path(gate['report_path']).read_text())
+    cfg=prepared['configuration']
+    profile=hashlib.sha256(canonical(cfg)).hexdigest()
+    require(profile==prepared['configuration_sha256']==gate['configuration_sha256'],'configuration identity')
+    static={key:value for key,value in plan.items() if key!='runtime_gate'}
+    bound=cfg['lower_core_full_manager_observer']
+    require(static==bound['static_plan'] and digest(gate['static_plan_path'])==bound['static_plan_sha256'] and
+            json.loads(Path(gate['static_plan_path']).read_text())==static,
+            'static full Manager plan differs from reviewed configuration')
+    require(gate['source_files'],'missing frozen source closure')
+    for path,expected in gate['source_files'].items():
+        require(digest(path)==expected,'changed runner/guard/observer source: '+path)
+    for path in (Path(__file__).resolve(),ROOT/'tools/linux/script_manager_observer.py',
+                 ROOT/'tools/linux/script_hks_registry.py',ROOT/'tools/linux/military_observer_runner.py',
+                 ROOT/'tools/linux/save_lifecycle_audit.py',ROOT/'tools/linux/script_can_start_boundary_audit.py',
+                 ROOT/'tools/linux/script_vm_lifecycle_audit.py',ROOT/'tools/linux/script_hks_registry_audit.py'):
+        require(str(path) in gate['source_files'],'adapter/decoder producer source gate absent')
+    require(plan['modules'][plan['host']]['sha256']==HOST_SHA and plan['modules'][plan['core']]['sha256']==GAME_SHA,
+            'wrong original module identities')
+    require(plan['caller_suffix_frames'] and plan['live_bodies'],'missing source-reviewed stack/code contracts')
+    require(all(plan['window_parent_prefixes'].get(name) for name in SITES),
+            'missing source-closed natural-window parent prefix')
+    require(all(plan['marker_parent_frames'].get(str(phase)) for phase in range(1,10)),
+            'missing source-closed fixture marker parent frames')
+    review=plan['stack_contract_review']
+    require(digest(review['path'])==review['sha256'],'compiled caller stack review changed')
+    packet=json.loads(Path(review['path']).read_text())
+    require(packet['schema']=='c6-linux-full-manager-stack-contract-v1' and
+            packet['caller_suffix_frames']==plan['caller_suffix_frames'] and
+            packet['window_parent_prefixes']==plan['window_parent_prefixes'] and
+            packet['marker_parent_frames']==plan['marker_parent_frames'] and
+            packet['live_bodies']==plan['live_bodies'] and
+            packet['main_entry_witness']==plan['main_entry_witness'] and
+            packet['reviewed_sources']==gate['source_files'] and
+            packet['no_VM_or_GC_parent_frames_source_closed'] is True,
+            'missing source-closed main-entry/caller stack contract')
+    require(any(row['module']==plan['preload'] and row['relative_address']==plan['marker_relative_address']
+                and row['size']>=1 for row in plan['live_bodies']),'compiled marker body contract absent')
+    return prepared,profile
+
+
+class Adapter:
+    def __init__(self,gdb,plan,directory,emit):
+        self.gdb,self.plan,self.directory,self.emit=gdb,plan,Path(directory),emit
+        self.prepared,self.profile=validate_plan(plan)
+        require(not gdb.parameter('non-stop'),'GDB all-stop mode required')
+        self.pid=gdb.selected_inferior().pid
+        require(self.pid>0,'no original inferior')
+        require(str(Path('/proc/%d/exe'%self.pid).resolve())==plan['host'],'wrong original host executable')
+        self.module_rows=self.mappings()
+        self.bias={}
+        for path,identity in plan['modules'].items():
+            require(str(Path(path).resolve())==path,'module path must be canonical')
+            with open(path,'rb') as stream:
+                before=os.fstat(stream.fileno());raw=stream.read();after=os.fstat(stream.fileno())
+            require((before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)==
+                    (after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns) and
+                    hashlib.sha256(raw).hexdigest()==identity['sha256'],'module file identity changed')
+            rows=[row for row in self.module_rows if row['path']==path]
+            require(rows and all(row['inode']==before.st_ino and row['device']==(os.major(before.st_dev),os.minor(before.st_dev)) for row in rows),
+                    'mapped module/file inode or device differs')
+            require(raw[:6]==b'\x7fELF\x02\x01','wrong module ELF ABI')
+            kind=struct.unpack_from('<H',raw,16)[0]
+            require(kind in (2,3),'unsupported mapped ELF type')
+            # ELF aligned mapping offsets may yield several candidates; the
+            # source plan pins the unique actual offset-zero load mapping.
+            zero=[row['low'] for row in rows if row['offset']==0]
+            require(len(zero)==1,'ambiguous/missing ELF first mapping')
+            self.bias[path]=0 if kind==2 else zero[0]
+            require(kind!=2 or path!=plan['host'] or zero[0]==0x400000,'host ET_EXEC base')
+        self.base=self.bias[plan['core']]
+        self.frames=Frames(plan['caller_suffix_frames'],plan['core'],self.base)
+        self.schedule=Schedule()
+        self.marker_thread=None
+        self.marker_row=None
+        self.pre_lock=None
+        self.body_gate()
+        self.observer=Observer(self.read,emit,self.base,self.profile,self.directory/'images')
+
+    def mappings(self):
+        result=[]
+        for line in Path('/proc/%d/maps'%self.pid).read_text().splitlines():
+            parts=line.split(maxsplit=5)
+            lo,hi=(int(item,16) for item in parts[0].split('-'))
+            result.append(dict(low=lo,high=hi,permissions=parts[1],offset=int(parts[2],16),
+                               device=tuple(int(v,16) for v in parts[3].split(':')),inode=int(parts[4]),
+                               path=parts[5] if len(parts)>5 else ''))
+        return result
+
+    def stopped(self):
+        require(self.gdb.selected_inferior().pid==self.pid,'inferior identity changed')
+        threads=self.gdb.selected_inferior().threads()
+        require(threads and all(thread.is_stopped() for thread in threads),'all inferior threads must be stopped')
+
+    def read(self,address,size):
+        require(type(address) is int and 0<address<1<<64 and type(size) is int and
+                0<=size<=65536*40 and address+size<=1<<64,'invalid bounded read')
+        self.stopped()
+        if not size:
+            return b''
+        end=address+size
+        cursor=address
+        for row in self.mappings():
+            if row['low']<=cursor<row['high'] and 'r' in row['permissions']:
+                cursor=min(end,row['high'])
+            if cursor==end:
+                return bytes(self.gdb.selected_inferior().read_memory(address,size))
+        raise ValueError('unmapped/unreadable stopped memory extent')
+
+    def number(self,address):
+        return struct.unpack('<Q',self.read(address,8))[0]
+
+    def body_gate(self):
+        for module,name,address,size,sha in mandatory_bodies(self.plan['host'],self.plan['core']):
+            require(hashlib.sha256(self.read(self.bias[module]+address,size)).hexdigest()==sha,
+                    'mandatory original/decoder ABI live body changed: '+name)
+        for vptr,slot,target,name in BINDINGS:
+            require(self.number(vptr+slot)==target,'concrete original host slot changed: '+name)
+        for address,raw in STRINGS:
+            require(self.read(address,len(raw))==raw,'original named-event string changed')
+        require(self.read(self.base+0x2f0bac6,18)==b'CanStartOperation\0','original Manager event changed')
+        for row in self.plan['live_bodies']:
+            require(row['module'] in self.bias,'ungated original/code module')
+            address=self.bias[row['module']]+row['relative_address']
+            require(hashlib.sha256(self.read(address,row['size'])).hexdigest()==row['sha256'],
+                    'live method/marker/trampoline body changed: '+row['name'])
+
+    def frame_rows(self):
+        self.stopped()
+        frame=self.gdb.newest_frame()
+        result=[]
+        while frame is not None:
+            require(len(result)<128,'unwind exceeds bounded frame depth')
+            pc=int(frame.pc())
+            matches=[row for row in self.mappings() if row['low']<=pc<row['high'] and 'x' in row['permissions']]
+            require(len(matches)==1 and matches[0]['path'] in self.bias,'unknown/unpinned executable parent frame')
+            path=matches[0]['path']
+            result.append(dict(pc=pc,module=path,relative_pc=pc-self.bias[path],name=frame.name()))
+            frame=frame.older()
+        require(result,'empty actual unwind')
+        return result
+
+    def lua_lock(self):
+        raw=self.read(0x6ec9c70,64)
+        return dict(raw64=raw.hex(),count=struct.unpack_from('<i',raw,8)[0],
+                    recursion=struct.unpack_from('<i',raw,12)[0],
+                    owner_ASL_ThreadHANDLE_pointer=struct.unpack_from('<Q',raw,16)[0],
+                    pthread_mutex_pointer=struct.unpack_from('<Q',raw,24)[0])
+
+    def checkpoint(self,name,r,thread):
+        self.stopped()
+        frames=self.frame_rows()
+        require(self.marker_thread is None or thread==self.marker_thread,'different thread than original caller marker')
+        self.emit(dict(event='checkpoint',checkpoint=name,registers=r,thread=list(thread),frames=frames))
+        if name=='marker':
+            address=self.bias[self.plan['preload']]+self.plan['marker_relative_address']
+            marker_entry_gate(self.read(address,8),address,r['pc'])
+            row=descriptor(self.read(r['rdi'],88))
+            marker_frames=self.plan['marker_parent_frames'].get(str(row['phase']),[])
+            require(marker_frames and any(len(expected)==len(frames) and
+                    all(same_frame(actual,wanted) for actual,wanted in zip(frames,expected))
+                    for expected in marker_frames),
+                    'actual marker/caller/main-entry frames differ from source-closed phase')
+            require(row['core_base']==self.base,'fixture actual core base differs')
+            if self.marker_row is None:
+                witness=self.plan['main_entry_witness']
+                require(witness['module']==self.plan['preload'],'main-entry witness not owned by reviewed preload')
+                main_tid=self.number(self.bias[witness['module']]+witness['relative_address'])
+                require(main_tid>0 and thread[0]==self.pid and thread[1]==main_tid==self.pid,
+                        'actual observing thread differs from source-witnessed original main entry')
+                self.emit(dict(event='actual_main_entry_thread_witness',os_main_tid=main_tid,
+                               witness_module=witness['module'],witness_relative_address=witness['relative_address'],
+                               native_core_owner_inferred=False,Lua_ThreadHANDLE_inferred=False))
+                require(row['phase']==1,'first marker is not acquired original facade')
+                self.marker_thread=thread
+            else:
+                require(all(row[key]==self.marker_row[key] for key in
+                            ('module','context','game','core_base','actor_owner','actor_full_id','visible_only')),
+                        'fixture owner/actor/profile inputs changed')
+            self.schedule.marker(row)
+            self.marker_row=row
+            self.emit(dict(event='fixture_marker',**row))
+            if row['phase']==9:
+                self.body_gate()
+            return
+        require(self.marker_row is not None,'original point before owned caller marker')
+        if name=='manager_entry':
+            self.frames.manager_entry(frames)
+            row=self.marker_row
+            require((r['rdi'],r['rsi'],r['rdx'],r['rcx'],r['r8']&255,r['r9'])==
+                    (row['manager'],row['unit'],row['operation'],0,int(row['visible_only']),0),
+                    'actual full Manager ABI/actor/Operation differs from live enter marker')
+            return_pc=self.number(r['rsp'])
+            expected=self.plan['caller_suffix_frames'][0]
+            require(return_pc==self.bias[expected['module']]+expected['relative_pc'],
+                    'actual full Manager caller return differs')
+            self.schedule.enter(r,return_pc)
+        elif name=='manager_return':
+            self.frames.caller(frames)
+            self.schedule.returned(r)
+            self.emit(dict(event='actual_Manager_return',allowed=self.schedule.allowed,
+                           natural_script_call_observed=self.schedule.script_complete,
+                           callback_absence_proven=False))
+        else:
+            require(self.schedule.manager_active,'Lua point outside genuine selected Manager invocation')
+            index=self.frames.descendant(frames)
+            prefixes=self.plan['window_parent_prefixes'].get(name,[])
+            require(prefixes and any(len(prefix)==index+1 and
+                    all(same_frame(actual,expected) for actual,expected in zip(frames,prefix))
+                    for prefix in prefixes),
+                    'actual protected/VM/GC parent prefix differs from source-closed window')
+            if name=='dispatch':
+                require(index==1,'unexpected wrapper/Manager parent chain')
+            if name=='ccall_entry':
+                require(index==3 and frames[1]['pc']==0x36b40e1 and
+                        frames[2]['pc']==self.base+0x2ce79ff,'concrete CCall direct parents differ')
+                self.pre_lock=self.lua_lock()
+                require(self.pre_lock['recursion']==0 and self.pre_lock['owner_ASL_ThreadHANDLE_pointer']==0 and
+                        self.pre_lock['pthread_mutex_pointer']!=0,'unwitnessed parent Lua ownership')
+                self.emit(dict(event='before_original_Lua_acquisition',**self.pre_lock))
+            if name=='acquired':
+                lock=self.lua_lock()
+                require(self.pre_lock is not None and lock['recursion']==1 and
+                        lock['owner_ASL_ThreadHANDLE_pointer']!=0 and
+                        lock['pthread_mutex_pointer']==self.pre_lock['pthread_mutex_pointer'],
+                        'original Lua acquisition/mutex provenance differs')
+                self.emit(dict(event='original_Lua_acquired',**lock,owner_is_OS_or_core_thread_ID=False))
+            provenance=dict(configuration_sha256=self.profile,scope='genuine_lower_core_full_Manager',
+                            all_threads_stopped=True,active_lua_parent_frames=0,active_gc_parent_frames=0,
+                            actual_complete_parent_frames=frames,
+                            source_review_sha256=self.plan['stack_contract_review']['sha256'])
+            next_sites=self.observer.observe(name,r,thread,provenance)
+            self.schedule.script(name,next_sites)
+
+    def close(self):
+        okay=self.observer.close()
+        require(okay and self.schedule.phase==9 and self.schedule.manager_returned,
+                'incomplete original fixture/Manager/observer lifetime')
+        self.emit(dict(event='adapter_terminal',natural_Lua_calls=self.observer.ordinal,
+                       registry_images_captured=self.observer.ordinal>0,callback_effects_accepted=False,
+                       callback_absence_proven=False,native_parity_accepted=False))
+
+
+def install(plan_path,directory):
+    """Register c6-full-manager-drain in an existing separately launched GDB.
+
+    Caller supplies its timeout/process disposal supervisor; this code neither
+    launches a process nor attempts native teardown when observation fails.
+    """
+    import gdb
+    plan=json.loads(Path(plan_path).read_text())
+    validate_plan(plan)
+    directory=Path(directory).resolve()
+    require(not directory.is_relative_to(ROOT),'private observer directory required')
+    directory.mkdir(parents=True,exist_ok=False)
+    output=(directory/'observations.jsonl').open('x',buffering=1)
+    state=dict(adapter=None,pending=None,lanes=[],failed=False,exitcode=None)
+    def emit(row):
+        output.write(json.dumps(row,sort_keys=True)+'\n')
+        output.flush()
+    def registers():
+        frame=gdb.newest_frame()
+        return {name:int(frame.read_register(name))&((1<<64)-1) for name in REGISTERS}
+    class Lane(gdb.Breakpoint):
+        def __init__(self,name,address=None):
+            self.name=name
+            spec=MARKER if address is None else '*'+hex(address)
+            super().__init__(spec,type=gdb.BP_HARDWARE_BREAKPOINT,internal=False)
+        def stop(self):
+            try:
+                require(state['pending'] is None,'multiple stop callbacks without outer drain')
+                state['pending']=(self.name,registers(),gdb.selected_thread().ptid)
+            except Exception as error:
+                state['pending']=('stop_error',{'reason':str(error)},None)
+            return True
+    marker=Lane('marker')
+    def rebuild():
+        for lane in state['lanes']:
+            lane.delete()
+        state['lanes']=[]
+        adapter=state['adapter']
+        for name,address in adapter.schedule.points(adapter.base):
+            state['lanes'].append(Lane(name,address))
+        require(len(state['lanes'])+1<=3,'hardware breakpoint budget exceeded')
+    class Drain(gdb.Command):
+        def __init__(self):
+            super().__init__('c6-full-manager-drain',gdb.COMMAND_RUNNING)
+        def invoke(self,argument,from_tty):
+            require(not argument,'unexpected drain arguments')
+            try:
+                while gdb.selected_inferior().pid:
+                    gdb.execute('continue')
+                    if not gdb.selected_inferior().pid:
+                        break
+                    pending=state['pending'];state['pending']=None
+                    require(pending is not None,'unexpected signal or unrelated breakpoint')
+                    name,r,thread=pending
+                    require(name!='stop_error','cannot capture original registers: '+str(r))
+                    if state['adapter'] is None:
+                        require(name=='marker','original point before first fixture marker')
+                        state['adapter']=Adapter(gdb,plan,directory,emit)
+                        emit(dict(event='installed',configuration_sha256=state['adapter'].profile,
+                                  hardware_only=True,software_game_breakpoints=False,
+                                  original_calls_by_observer=0,loader_rendezvous_instrumentation_separate=True))
+                    state['adapter'].checkpoint(name,r,thread)
+                    rebuild()
+                require(state['adapter'] is not None,'no genuine fixture marker reached')
+                state['adapter'].close()
+            except Exception as error:
+                state['failed']=True
+                emit(dict(event='runner_refused',reason=str(error),callback_absence_proven=False))
+                if state['adapter'] is not None:
+                    state['adapter'].observer.fail('adapter: '+str(error))
+                    state['adapter'].observer.close()
+                # Sole runner supervisor owns exact-PID/session disposal. Do
+                # not continue originals, call cleanup, detach, or kill an
+                # unverified process from this adapter's failure handler.
+            finally:
+                with (directory/'exit.json').open('x') as stream:
+                    stream.write(json.dumps(dict(inferior_exitcode=state['exitcode'],
+                        observer_failed=state['failed'],original_cleanup_proven=False))+'\n')
+                output.flush()
+    def exited(event):
+        state['exitcode']=getattr(event,'exit_code',None)
+    gdb.events.exited.connect(exited)
+    Drain()
+    return dict(marker=marker,state=state)

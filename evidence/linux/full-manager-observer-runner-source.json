@@ -1,0 +1,673 @@
+{
+  "checked_original_bodies": [
+    {
+      "address": "0x32461b0",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::CreateArgs()",
+      "sha256": "a77d2f00390f0c09098fb7021926cc054c05cfed9c642644573cabd98164ec68",
+      "size": 88
+    },
+    {
+      "address": "0x3246270",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::DestroyArgs(GameCore::Interfaces::IScriptSystemArgs1*)",
+      "sha256": "1111df7c72cc44b37659f9cf8e512c26edde0ce2de2e8096b4da4e87539d2bb8",
+      "size": 63
+    },
+    {
+      "address": "0x3245600",
+      "module": "host",
+      "name": "GameCore::ScriptSystemArgs::ScriptSystemArgs(GameCore::ScriptSystem*)",
+      "sha256": "e6f42250b4b79a502dc96b48666152f084852cc3949142ca16f79e8202439966",
+      "size": 69
+    },
+    {
+      "address": "0x3245490",
+      "module": "host",
+      "name": "GameCore::ScriptSystemArgs::~ScriptSystemArgs()",
+      "sha256": "e55933dd0923833d98a47152a16e24969b1b6341c1291b535dabab0db553f88d",
+      "size": 323
+    },
+    {
+      "address": "0x3245810",
+      "module": "host",
+      "name": "GameCore::ScriptSystemArgs::Push(int)",
+      "sha256": "90c97cecd098e06fa25101c391bdbc071f56a4e377b82863681784d6db314d47",
+      "size": 108
+    },
+    {
+      "address": "0x32463d0",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::CallTestAll(char const*, GameCore::Interfaces::IScriptSystemArgs1*, bool&)",
+      "sha256": "be3fc7a69a5eeecc2c73918f4fb0b154eb49365ff2097b36d7d89396c202f542",
+      "size": 49
+    },
+    {
+      "address": "0x2f7cdc0",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::Get()",
+      "sha256": "1588ce89ab6b8cc228d2a5820b2830ddb86e26a36e68841068300c53ca68f142",
+      "size": 11
+    },
+    {
+      "address": "0x2fa2240",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::GetState()",
+      "sha256": "54fd6cfb47b3e150944357d067e1c7fcbe9bc8b8b20527db61840cc59da2b262",
+      "size": 5
+    },
+    {
+      "address": "0x32b3b90",
+      "module": "host",
+      "name": "GameCore::EngineUtility::EngineUtility()",
+      "sha256": "fdb95cf9751a43fecb8c78083c77ff6e56ad2f329b2ecb84e737b2344b7852a7",
+      "size": 150
+    },
+    {
+      "address": "0x32b3da0",
+      "module": "host",
+      "name": "GameCore::EngineUtility::HasGameCoreLock()",
+      "sha256": "8048736dcb7c1f33746aeab7e54b92df6f825c06512c37847f13c3f958498776",
+      "size": 24
+    },
+    {
+      "address": "0x32b3d60",
+      "module": "host",
+      "name": "GameCore::EngineUtility::ReleaseGameCoreLock()",
+      "sha256": "257d7c9d356de1f649b0ca2394024341abe3b88c655630f0f43df9cda22d670f",
+      "size": 22
+    },
+    {
+      "address": "0x32b3d40",
+      "module": "host",
+      "name": "GameCore::EngineUtility::GetGameCoreLock()",
+      "sha256": "9394d1eaa3cd10aad54c138f38dbe484621b0f48d78dfd14fb0e14b1de441406",
+      "size": 22
+    },
+    {
+      "address": "0x31d2a40",
+      "module": "host",
+      "name": "GameCoreController::HasLock() const",
+      "sha256": "6dd4a791f87419007b573e362d56f00750cf684694a909976a660b5d092ab3c4",
+      "size": 20
+    },
+    {
+      "address": "0x31d2a00",
+      "module": "host",
+      "name": "GameCoreController::ReleaseLock() const",
+      "sha256": "bc8780bf02eda320da19787506a92b14ffbf1536ec99a10d43adb3be160b3c0d",
+      "size": 50
+    },
+    {
+      "address": "0x31d2440",
+      "module": "host",
+      "name": "GameCoreController::GetLock() const",
+      "sha256": "fa88d916251d8c16793b899effec00d1240e83486e2e7b5e8a153b5672079594",
+      "size": 1459
+    },
+    {
+      "address": "0x36b40b0",
+      "module": "host",
+      "name": "LuaSupport::GameEventLibrary::CallTestAll(lua_State*, char const*, GameCore::Interfaces::IScriptSystemArgs1*, bool&)",
+      "sha256": "d339afefb9a19e0b00295b78990b5e61baa4eb775dddaab7b58f61240d782a38",
+      "size": 78
+    },
+    {
+      "address": "0x36b4190",
+      "module": "host",
+      "name": "LuaSupport::GameEventLibrary::CreateLuaOnlyEventFactory(lua_State*)",
+      "sha256": "5aa515e6a7a3f8f9abd5b0598542462175709b3a6d2cbc0061ff945f25265add",
+      "size": 216
+    },
+    {
+      "address": "0x36b4270",
+      "module": "host",
+      "name": "LuaSupport::GameEventLibrary::lEventFactoryIndexer(lua_State*)",
+      "sha256": "90a59440449d66bfb4bbf934f3e1e0f450b07715964be87946fbc4131aac7990",
+      "size": 274
+    },
+    {
+      "address": "0x36b2b60",
+      "module": "host",
+      "name": "LuaSupport::GameEvent::lCreate(lua_State*)",
+      "sha256": "ccee098874e716e0639545d0deb3fbdef4a8a3a0500a6babbd5c79e724fcfee2",
+      "size": 140
+    },
+    {
+      "address": "0x36b2bf0",
+      "module": "host",
+      "name": "LuaSupport::GameEvent::RegisterMethods(lua_State*, int, int, int)",
+      "sha256": "a34637bb2b0d42e6dbceee996570468bd9a0d7012300c8ebc8f0f7b1289547cc",
+      "size": 268
+    },
+    {
+      "address": "0x36b3960",
+      "module": "host",
+      "name": "LuaSupport::GameEvent::RegisterMethod(lua_State*, int (*)(lua_State*), char const*, int, int)",
+      "sha256": "364e8dc14f3d97db5d2c2980f7fbdd33e79d7ca81b36c334528fb2e54673d2a2",
+      "size": 84
+    },
+    {
+      "address": "0x36b2d70",
+      "module": "host",
+      "name": "LuaSupport::GameEvent::lAdd(lua_State*)",
+      "sha256": "1eac14761be72aeb111c8d1c84f4c0d41d746dff735de3764b8cbdbcc1b5ee9e",
+      "size": 50
+    },
+    {
+      "address": "0x36b3540",
+      "module": "host",
+      "name": "LuaSupport::GameEvent::lTestAll(lua_State*)",
+      "sha256": "4e44233d6ccbea44aee875458297a1d4a4bb8efed4ad2649b7bc89964195c934",
+      "size": 539
+    },
+    {
+      "address": "0x3bc16c5",
+      "module": "host",
+      "name": "hksi_lua_getupvalue(lua_State*, int, int)",
+      "sha256": "b25c7e6ba680e533536b3dbb17bcbe967d4ca2da6318faf4c50e9984e182425a",
+      "size": 302
+    },
+    {
+      "address": "0x36b3bc0",
+      "module": "host",
+      "name": "GameEventLibrary.protected_named_event_body",
+      "sha256": "e4a1ed2a09e18c21f82b023210d4eeb35f4f9574319ec11e2468e5a48f4ea6af",
+      "size": 225
+    },
+    {
+      "address": "0x3ba5baa",
+      "module": "host",
+      "name": "hks::HashTable::Create(lua_State*, unsigned int, unsigned int)",
+      "sha256": "1aa18970a349aeeb8a2349e249db56e85c6d0b95f0fc7baf31d1d0bf742c28fb",
+      "size": 322
+    },
+    {
+      "address": "0x3bbb6b2",
+      "module": "host",
+      "name": "hks::HashTable::getByString(HksObject) const",
+      "sha256": "68f8efdf570b019881f0d2cf5a66fb5bda69302d82a2f9e2ba26b99189584db6",
+      "size": 136
+    },
+    {
+      "address": "0x3bbf9f0",
+      "module": "host",
+      "name": "hks::HashTable::findKeyStringPosition(hks::InternString*) const",
+      "sha256": "5e0a58275a965fdc9a2f08c1d5e8e951ee527f924d7b96da40b2963b1c66010e",
+      "size": 78
+    },
+    {
+      "address": "0x3bbfde0",
+      "module": "host",
+      "name": "hks::HashTable::findKeyIntegerPosition(int) const",
+      "sha256": "b2b340751bfd9aaf24ccac580ea2bb5a13b6e113aa68b1118d181d1f5fc927c2",
+      "size": 67
+    },
+    {
+      "address": "0x3bb69a0",
+      "module": "host",
+      "name": "hks::HashTable::getArrayValue(int) const",
+      "sha256": "59110e6d4e65a88baa49e09a86965a667908f8cb27547582cdd71656a282b211",
+      "size": 140
+    },
+    {
+      "address": "0x3bb6dea",
+      "module": "host",
+      "name": "hks::HashTable::contiguousArraySize() const",
+      "sha256": "e710f2086f6061d8060dbf3f86a7e648508bc68eaeabc955dcf28339cb6168f3",
+      "size": 326
+    },
+    {
+      "address": "0x3b9ecf0",
+      "module": "host",
+      "name": "hks::HashTable::getNext(HksObject*)",
+      "sha256": "fe78c0f3233f342d6533d5474f00ff4151de54c7ee824675217facaec408005b",
+      "size": 65
+    },
+    {
+      "address": "0x3bc00f6",
+      "module": "host",
+      "name": "hks::HashTable::getNextArray(HksObject*) const",
+      "sha256": "901924d917d65a5adc5f1c4fd2a220813e24427ac06d2172d2e84cc09869cdc3",
+      "size": 110
+    },
+    {
+      "address": "0x3bc0164",
+      "module": "host",
+      "name": "hks::HashTable::getNextHash(HksObject*) const",
+      "sha256": "4932d543835caa5800d1f158a6bc871051abc03f98b1a7a6c9756f22260e7e7d",
+      "size": 61
+    },
+    {
+      "address": "0x3bc01a2",
+      "module": "host",
+      "name": "hks::HashTable::searchTableForNext(hks::HashTable::Node*, HksObject*) const",
+      "sha256": "5a81e2042c98ce96bc62066ddba12fef8f951fc74da463413dffd3d3aee27bcb",
+      "size": 106
+    },
+    {
+      "address": "0x3bb6cc8",
+      "module": "host",
+      "name": "hks_obj_next(lua_State*, HksObject const*, HksObject*, HksObject*)",
+      "sha256": "812fa4b3a9754054de2684c90d30b7f8966d738223b0de38c501fdceb26521e5",
+      "size": 71
+    },
+    {
+      "address": "0x3b93093",
+      "module": "host",
+      "name": "hks_obj_objlen(lua_State*, HksObject const*)",
+      "sha256": "fb8266d55c2cacc6d362906dd2a204418c60cac10952e777285260f6d04136e8",
+      "size": 132
+    },
+    {
+      "address": "0x3b92ff6",
+      "module": "host",
+      "name": "hks_obj_getmetatable(lua_State*, HksObject const*, HksObject*)",
+      "sha256": "c72c082012b27f3fe1b377ee263aefa2c330f6ee0d9bd57b17055e839441d182",
+      "size": 147
+    },
+    {
+      "address": "0x3bba3a2",
+      "module": "host",
+      "name": "hks::StringTable::real_intern_inplace(lua_State*, hks::InternString*, char const*, unsigned long, unsigned int)",
+      "sha256": "f2616997dbfaebfa9bf0c9d47ae9dbb717976be185cce6961656bc81932b3dff",
+      "size": 306
+    },
+    {
+      "address": "0x3bc0d52",
+      "module": "host",
+      "name": "hks::cclosure::Create(lua_State*, int (*)(lua_State*), int, int, int)",
+      "sha256": "4ae4c03dc02f5d31f1c3d39ce1bacc4b91f2f1182189476eef015f5fb30ba073",
+      "size": 191
+    },
+    {
+      "address": "0x3bbf72c",
+      "module": "host",
+      "name": "hks::createHksClosure(lua_State*, hks::Method*, hks::HashTable*)",
+      "sha256": "854d932e58c87f24bf563f53a85e8af830bf30d9a5f88f770eb89815df29dc9c",
+      "size": 138
+    },
+    {
+      "address": "0x3bc0e60",
+      "module": "host",
+      "name": "hks::UpValue::close(lua_State*)",
+      "sha256": "8d5f9480dc3bbe4ad96d8fff62d86035707af53d3fd769107eb6c5ac9f2e5d82",
+      "size": 48
+    },
+    {
+      "address": "0x3bf22e0",
+      "module": "host",
+      "name": "Lua::Details::CCallWithErrorHandling(lua_State*, int (*)(lua_State*), void*)",
+      "sha256": "1b556700c4a56c9baf8757868080d3a3963a1833e30c55b7a8bf99d8a343bfd5",
+      "size": 93
+    },
+    {
+      "address": "0x3bc2eae",
+      "module": "host",
+      "name": "hksi_lua_cpcall(lua_State*, int (*)(lua_State*), void*)",
+      "sha256": "ff168b05152e3497d8e27b56ea1a1272a2ac3fb56d981390ad0648086c5bdecf",
+      "size": 79
+    },
+    {
+      "address": "0x36ae950",
+      "module": "host",
+      "name": "AppLuaScriptSystem::AppLuaScriptSystem()",
+      "sha256": "6f7b14cdf581e217fb0196710c6ac1ca51b28b4b6974f8762d2cc7f281d1f55b",
+      "size": 42
+    },
+    {
+      "address": "0x3b9e6d0",
+      "module": "host",
+      "name": "hks::GarbageCollector::markTable_common(hks::HashTable*, hks::VisitData_Table*, unsigned long)",
+      "sha256": "8ad7eebe8eb0eae5c18c985491660f4617e9f2388ce1f445426544507d679b35",
+      "size": 248
+    },
+    {
+      "address": "0x36ae980",
+      "module": "host",
+      "name": "AppLuaScriptSystem::Create()",
+      "sha256": "a8cb48b7bceebb37c8daa1360069fca23072c0e84fa3e6ad27829952b91bf8ad",
+      "size": 112
+    },
+    {
+      "address": "0x3bfc5e0",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::Setup(void* (*)(void*, void*, unsigned long, unsigned long), int, int)",
+      "sha256": "1c9314a4f764d2ca0d819f683c01ddb86721f8f5bf326bbbc35c36db62841f08",
+      "size": 395
+    },
+    {
+      "address": "0x3bfc7e4",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::LuaScriptSystem(void* (*)(void*, void*, unsigned long, unsigned long), int, int)",
+      "sha256": "ffc37e0e52b3d1c5f2a7d4a7dcf1d283188f271e4f6a95bbd40a4392e8e2492a",
+      "size": 129
+    },
+    {
+      "address": "0x3bfc866",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::pInitializeMainState(lua_State*)",
+      "sha256": "32650545fcc0bcf1263155270775efb6443bcdbd861f03c818853abf9d54874c",
+      "size": 2082
+    },
+    {
+      "address": "0x2fa05c0",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::Destroy()",
+      "sha256": "be935b0f163541fe249e7946cb752560a556b2d5a783262b56203eb42db2718f",
+      "size": 31
+    },
+    {
+      "address": "0x3bfd100",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::~LuaScriptSystem()",
+      "sha256": "9a39b38a97508b7d5d7eb934ce5022d3f1d919411f43873c6e5dd5c214721ed8",
+      "size": 89
+    },
+    {
+      "address": "0x3245f30",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::CreateLuaThread(char const*, bool)",
+      "sha256": "3e909d1d2ff888871e61b5098402eafc999422f62126b926ff98fb16a3cb9908",
+      "size": 317
+    },
+    {
+      "address": "0x32460e0",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::LoadFile(lua_State*, wchar_t const*)",
+      "sha256": "6f439a6c760ec13b523b7f8d02b07d507faa93a32207ae44499253fe4cc36863",
+      "size": 36
+    },
+    {
+      "address": "0x3bfd59c",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::LoadFile(lua_State*, wchar_t const*)",
+      "sha256": "bfdf52d98615c93793bd50fcec3c1b03ef2d70b575a6ae2363cc82240e013717",
+      "size": 18
+    },
+    {
+      "address": "0x36b3ab0",
+      "module": "host",
+      "name": "LuaSupport::GameEventLibrary::Register(lua_State*)",
+      "sha256": "ec9ecd2cc6cda7545ba6a68f2d279c1c3d640de39e6cb169b449e3117c8ba505",
+      "size": 36
+    },
+    {
+      "address": "0x36b3ae0",
+      "module": "host",
+      "name": "LuaSupport::GameEventLibrary::pRegister(lua_State*)",
+      "sha256": "288cabc1f47cbb6956a0ac1cac61cb6adfd39a8e314795a82e1ce672bc73c19a",
+      "size": 125
+    },
+    {
+      "address": "0x3bfd446",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::ExposeStateToTuner(lua_State*)",
+      "sha256": "175c47d5765f76863316ae72d49e3303838b7a2048d5d0be9c3893a892d39010",
+      "size": 46
+    },
+    {
+      "address": "0x36af090",
+      "module": "host",
+      "name": "AppLuaScriptSystem::EndFrame()",
+      "sha256": "452911f495d9de9ac5f6fa9ad107c6832d81b38365728c562012432854a4e6cd",
+      "size": 104
+    },
+    {
+      "address": "0x3bfd82c",
+      "module": "host",
+      "name": "LuaSystem::LuaScriptSystem::PumpGarbage()",
+      "sha256": "b6677746ae5493831d062865c597f14c5caa3fd83fc1b14e0d326c9f9e8e800d",
+      "size": 34
+    },
+    {
+      "address": "0x3246520",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::PumpGarbage(lua_State*)",
+      "sha256": "e6318436b7dfb0a81bc6879018c035eab6f95971d186336b3c97793385383dc8",
+      "size": 54
+    },
+    {
+      "address": "0x3bf2420",
+      "module": "host",
+      "name": "Lua::Details::LockAccess()",
+      "sha256": "dba4ce7a276912b5602417c89bda482e79534e3e71521333ace4650e59bcd83b",
+      "size": 12
+    },
+    {
+      "address": "0x3bf2430",
+      "module": "host",
+      "name": "Lua::Details::TryLockAccess()",
+      "sha256": "f5c86127abc6841f2c9abc0e2225773853a5aa43d3b13e41a76ce06aa9b9253d",
+      "size": 12
+    },
+    {
+      "address": "0x3bf2460",
+      "module": "host",
+      "name": "Lua::Details::UnlockAccess()",
+      "sha256": "1b505f5755559492b72da3696b64f2ea2cf59c6f50d9709a0a272a2367502a36",
+      "size": 12
+    },
+    {
+      "address": "0x2ce0c12",
+      "module": "host",
+      "name": "InitializeCriticalSection",
+      "sha256": "68e75469600c71be6f819251b8a02d19260ea7170d97b46eebe70834903521d2",
+      "size": 105
+    },
+    {
+      "address": "0x2ce0cfd",
+      "module": "host",
+      "name": "EnterCriticalSection",
+      "sha256": "68cb1f0e66514f4746c3a3fe26cc160c7112e392bedff6f417e237b48bdd40f5",
+      "size": 89
+    },
+    {
+      "address": "0x2ce0d7a",
+      "module": "host",
+      "name": "TryEnterCriticalSection",
+      "sha256": "b08c61a09c005aa602caa65e5c9d5c52ff77e8fc4dcc21b1cff7d460ada74d45",
+      "size": 81
+    },
+    {
+      "address": "0x2ce0d56",
+      "module": "host",
+      "name": "LeaveCriticalSection",
+      "sha256": "5bad52f202499dfbcd61791c520f1f5aa9bed3f808b33c44dc57f9b9e5c4746c",
+      "size": 36
+    },
+    {
+      "address": "0x2cdf911",
+      "module": "host",
+      "name": "ASL::GetCurrentThreadHANDLE()",
+      "sha256": "7a53063fd1a90ab7cf81644acfe6f0c6815edacadc1b459f6546fd5313d8bcf2",
+      "size": 119
+    },
+    {
+      "address": "0x2ce105f",
+      "module": "host",
+      "name": "GetCurrentThreadId",
+      "sha256": "0ceda76e51b816751d617189f9c76aeb437b4ed5b2218bc9284cf403716b5502",
+      "size": 65
+    },
+    {
+      "address": "0x3bc2724",
+      "module": "host",
+      "name": "hksi_lua_gc(lua_State*, int, int)",
+      "sha256": "3b121ac5d036d520523f30dc3e088ea81ebbc57815b3ea21bf3eefd37fa274af",
+      "size": 282
+    },
+    {
+      "address": "0x3b9d86a",
+      "module": "host",
+      "name": "hks::GarbageCollector::stepIncremental(lua_State*, hks::GC_Call_Type, int)",
+      "sha256": "fe6a68d2d486a292ee49e23530fe344b1b9fc8975758c7b8a79ecf704258da1a",
+      "size": 103
+    },
+    {
+      "address": "0x3b9d8d2",
+      "module": "host",
+      "name": "hks::GarbageCollector::stepNonIncremental(lua_State*, hks::GC_Call_Type)",
+      "sha256": "06fdffc052e4cf83c632f7e6fd0a1d645fd2cba8aef1a62a931096f2e7078a84",
+      "size": 82
+    },
+    {
+      "address": "0x3246130",
+      "module": "host",
+      "name": "GameCore::ScriptSystem::GetGameplayScriptCount()",
+      "sha256": "23b21a8360d8367340dad11a75329550326da782d400348932887c86b9a48d3d",
+      "size": 33
+    },
+    {
+      "address": "0x3383a90",
+      "module": "host",
+      "name": "AppModdingFramework::GetGameplayScripts() const",
+      "sha256": "54826e5b6390995b63f86aae3ff55159c131e2459b37c7eac400c4fb02f10ac6",
+      "size": 8
+    },
+    {
+      "address": "0x2fa1f10",
+      "module": "host",
+      "name": "AppModdingFramework::GetInstance()",
+      "sha256": "513331e1c292ffbd888fdf29449aed79d6aed91cc5da4c04fd70424891650b86",
+      "size": 11
+    },
+    {
+      "address": "0x2c7d230",
+      "module": "core",
+      "name": "GameCore::Exports::Context::Save(Serialization::OStream&)",
+      "sha256": "eae3c66df15bba8f35893513dbda9de889d1d2701a3cb41869b5d017b73af27d",
+      "size": 16
+    },
+    {
+      "address": "0x2c7d240",
+      "module": "core",
+      "name": "GameCore::Exports::Context::Load(Serialization::IStream&)",
+      "sha256": "cdb1fbcf4cff821b9abed6cfaf58ccfb8379db41b43442f3f16697c82d36cf1c",
+      "size": 50
+    },
+    {
+      "address": "0x290bbf0",
+      "module": "core",
+      "name": "GameCore::Context::Instance::Write(Serialization::OStream&) const",
+      "sha256": "96913cdfb9ded76f82d174aee6a76dda5636bac24c69532258b7d5c7e5279763",
+      "size": 161
+    },
+    {
+      "address": "0x290bca0",
+      "module": "core",
+      "name": "GameCore::Context::Instance::Read(Serialization::IStream&)",
+      "sha256": "81dc994f9f6ad8bece5e2b421974aa6b3e78284d692e3c3323c417ad8ac7e371",
+      "size": 310
+    },
+    {
+      "address": "0x290caa0",
+      "module": "core",
+      "name": "GameCore::Context::Instance::InitializeExistingGame()",
+      "sha256": "a0fe9c9c41716e95ef4a00219e0f7a20d5ecb55b542317d808d03966c2eded24",
+      "size": 72
+    },
+    {
+      "address": "0x2d4d1e0",
+      "module": "core",
+      "name": "GameCore::Scripting::Manager::LoadGameplayScripts()",
+      "sha256": "bc06013caf0e3a9a0e742ab012153b1be9cca0f7a7cb12988b651519e6eeafae",
+      "size": 124
+    },
+    {
+      "address": "0x2d4d260",
+      "module": "core",
+      "name": "GameCore::Scripting::Manager::LoadState(wchar_t const*, bool, bool)",
+      "sha256": "f4df1195fee7b6cdef7fc30de07cbde99e060ecc1819db27b04d01077e3d39b9",
+      "size": 484
+    },
+    {
+      "address": "0x2ca9960",
+      "module": "host",
+      "name": "Lua critical-section static initializer",
+      "sha256": "7e93c2fefe216b46e08474c48e82691bc8c02c76fa4e11126562c333dd280cbc",
+      "size": 39
+    },
+    {
+      "address": "0x2ca9990",
+      "module": "host",
+      "name": "Lua static initialization dispatch",
+      "sha256": "1d2c3dfa5d32cbcd0894e04c37cde66540f612f94f9db7476f22dcb7fa05a530",
+      "size": 9
+    },
+    {
+      "address": "0x3c402ac",
+      "module": "host",
+      "name": "Platform::CriticalSection constructor",
+      "sha256": "34cd5999eea6b151143c345dcf9004f9b66b357da1e0937babac49f2a8d66388",
+      "size": 5
+    },
+    {
+      "address": "0x3c402d8",
+      "module": "host",
+      "name": "Platform::CriticalSection::Enter",
+      "sha256": "6a909c74ed948491ba912abc32e716f1450673ef5fea41e38956642f55f117f3",
+      "size": 5
+    },
+    {
+      "address": "0x3c402de",
+      "module": "host",
+      "name": "Platform::CriticalSection::Leave",
+      "sha256": "c602bbafb13a77f4c8391941a6a23031b35a4cb9c86c11591dd1ed029024581d",
+      "size": 5
+    },
+    {
+      "address": "0x2da20f0",
+      "module": "core",
+      "name": "Manager.CanStart",
+      "sha256": "573164c5e12ad82eeb6761d2492634ae376ae6de63526a3b94cf0608d8550927",
+      "size": 579
+    },
+    {
+      "address": "0x2ce79b0",
+      "module": "core",
+      "name": "Utility.CallTestAll",
+      "sha256": "47ad40fd9efa7ddcbe88b6bc4de3eff8c174262c6cc031ce76d78e63094c431e",
+      "size": 116
+    },
+    {
+      "address": "0x343db90",
+      "module": "host",
+      "name": "hksi_lua_isfunction.complete",
+      "sha256": "fbb28ac253e00a7248456b725de9c2982a6cbd6129ed11eb80796c1551f8a19d",
+      "size": 201
+    }
+  ],
+  "checks": {
+    "hardware_target_lanes_at_most": 2,
+    "marker_ABI_88_bytes": true,
+    "marker_lanes": 1,
+    "outer_drain_only_breakpoint_mutation": true,
+    "synthetic_cases": 17
+  },
+  "complete_state_actions_rng_turns": false,
+  "full_manager_native_parity": false,
+  "historical_raw_save_load_difference_bytes": 89198,
+  "launch_profile_or_native_capture_created": false,
+  "original_execution": false,
+  "pending": [
+    "exact future compiled preload marker/caller/main-entry witness contracts",
+    "source-closed complete caller and natural-window parent-frame prefixes",
+    "distinct guard/loader/profile and independent adapter integration review",
+    "sole runner actual native outcomes and all affected callback/state/RNG comparison"
+  ],
+  "schema": "c6-linux-full-manager-observer-runner-source-v1",
+  "sources": {
+    "native/linux/full_manager_fixture.h": "cfdfe0297387bb9426a9938814827a97d58ad87abb6670886d1b94127318787f",
+    "tools/linux/full_manager_observer_runner.py": "e3db6033fd168832856566195f3bc224fa2be41fff74abeafa00a2527cf345ed",
+    "tools/linux/full_manager_observer_runner_audit.py": "d97dbecd2859e8809b77e33d44ff77429125c8e37776caa35bd5f3a747a181a1",
+    "tools/linux/military_observer_runner.py": "4b61cba5aa3223830388cbca2b8b289741c7517decef52016470d03773a8d3d2",
+    "tools/linux/save_lifecycle_audit.py": "fe7d2ef442b0e0bb436daf051dcc778d07c6c2649fade5d1b879f0743053a916",
+    "tools/linux/script_can_start_boundary_audit.py": "b8abdc88a1e8d99aeed490e0e43ee4c90c22c8a2c18581f0a431f8da7761f201",
+    "tools/linux/script_hks_registry.py": "b37623e252bc2b3430025d238671e7b3b622189729527d0e8015ccc2484867ad",
+    "tools/linux/script_hks_registry_audit.py": "f3c574921fb1602c39904738c96a7666221e713f4bcb0fd5bd3f21af0e5b1a2c",
+    "tools/linux/script_manager_observer.py": "dbb075556193864bada8859dcf1d491f569247614fa9190dacf1887bc9f9b177",
+    "tools/linux/script_vm_lifecycle_audit.py": "30b40ec5e1edf2f0886f15676016bd42c045d337aacc80fffa43ebbb0be4a380"
+  },
+  "unknown_bytes_masked": 0
+}
