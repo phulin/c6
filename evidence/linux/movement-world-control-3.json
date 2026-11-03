@@ -1,0 +1,139 @@
+{
+  "schema": "c6-linux-movement-world-control3-v1",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "profile_sha256": "dbe92853390379d3c268b6baf2e75d8feb02b7733e5383c846466cb3af325641",
+  "native_corpus_sha256": "b6f4243ee2fde1ae020e55cf5e5e3e853c87b7c268dcd5fada88393254bef276",
+  "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "native_runtime_report_sha256": "c175591afd4339019007382609ed5ad5bd12ba72ab6c87de891c7635fa3710b6",
+  "owner_trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "binding_sha256": "75139e5cd33c49fe08498f5eb8eec97ba70a6fd507a7b543486960dec3b5e77a",
+  "adapter_report_sha256": "6f8feef7406d9f3658f1d0624ecad22335e927ed27c9f637a5e953c0a029b687",
+  "comparison_tool_sha256": "e4520f82d2b2ce13efdb67179d337865688b5a4fa32017295618b668117ad502",
+  "candidate_source_commit": "0db5d51a3af1edab7c30afa138225ccf82da0f34",
+  "frozen_candidate_sha256": "63d15a41b4f87a6472f3a456479266ac078829a1709796dc15c1c11d466cd909",
+  "frozen_checker_sha256": "e8251cde6f119704b31c3ae17a0ff83d1ba5752f4704776837193def17d946ed",
+  "original_code_executed_by_this_check": false,
+  "native_fact_control_executed_by_separate_runner": true,
+  "native_cost_calls": false,
+  "candidate_exit_status": 0,
+  "summary": {
+    "compared": 1536,
+    "complete_affected_state": false,
+    "complete_rng_inventory": false,
+    "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "evidence_level": "native_serializer_owned",
+    "full_movement_parity": false,
+    "kind": "world_comparison_summary",
+    "mismatches": 0,
+    "native_corpus_sha256": "b6f4243ee2fde1ae020e55cf5e5e3e853c87b7c268dcd5fada88393254bef276",
+    "native_differential_acceptance": false,
+    "profile_sha256": "dbe92853390379d3c268b6baf2e75d8feb02b7733e5383c846466cb3af325641",
+    "raw_save_load_different_bytes_retained": 89198,
+    "runtime_inputs": "actual targeted district observations and raw domain masks; reconstruction not claimed",
+    "trace_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+    "typed_fixture_sha256": "46626543559d963e28bcaa5b39fc79d5fd53f1bc555bfbab138d9aed3d54b6cb",
+    "unknown_bytes_masked": 0,
+    "unsupported": 0
+  },
+  "groups": {
+    "typed_member_and_formation_equal": {
+      "equal": 1536,
+      "mismatches": 0,
+      "unavailable": 0
+    },
+    "definition_identities_equal": {
+      "equal": 1536,
+      "mismatches": 0,
+      "unavailable": 0
+    },
+    "plot_and_edge_equal": {
+      "equal": 1536,
+      "mismatches": 0,
+      "unavailable": 0
+    }
+  },
+  "first_problem_rows": [],
+  "original_owner_ranges": {
+    "map": 1,
+    "units": 1262,
+    "formations": 1250
+  },
+  "registry_counts": {
+    "terrain": 17,
+    "feature": 31,
+    "improvement": 42,
+    "route": 5,
+    "district": 28
+  },
+  "sampled_coverage": {
+    "formations": 256,
+    "owners": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "member_observations": 1542,
+    "unique_resolved_members": 257,
+    "absent_member_observations": 0,
+    "stale_unit_requests": 0,
+    "unique_plots": 1086,
+    "city_attribute_endpoints": 2933,
+    "unique_city_attribute_plots": 1008,
+    "domain_mask_required_endpoints": 257,
+    "unique_domain_mask_required_plots": 122,
+    "resolved_district_endpoints": 1282,
+    "unique_resolved_districts": 298,
+    "stale_district_requests": 0,
+    "adjacent": 1536,
+    "river": 32,
+    "bridge_between": 17,
+    "route_pairs": 887,
+    "city_destination": 51,
+    "hill_destination": 323,
+    "feature_destination": 193,
+    "water_destination": 196,
+    "water_transition": 56,
+    "can_embark": 1470,
+    "multi_member": 6,
+    "ignore_terrain": 6,
+    "ignore_feature": 2,
+    "ignore_rivers": 6,
+    "ignore_shores": 0,
+    "escort_mobility": 0
+  },
+  "native_discovery_truncated": true,
+  "actual_runtime_side_inputs": [
+    "targeted original district lookup/type/completion observations",
+    "actual signed i16 CityAttributes validDomains masks"
+  ],
+  "domain_valid_comparison_scope": "water endpoints with city attributes; unreachable land/absent-attribute placeholder values excluded from predicate comparison, not save-byte masking",
+  "world_from_wire_scope": [
+    "Map4/Plot6 current supported schema",
+    "Unit28 ignore arrays and serialized MovementModifiers",
+    "Formation1 membership/owner/domain/location/CanEmbark/remaining",
+    "native-order observed definition hashes and properties",
+    "wrapped adjacency/direction and guarded river/bridge facts"
+  ],
+  "unresolved": [
+    "runtime district and domain-mask reconstruction not independently imported here",
+    "no nonadjacent/nonempty portal fixtures",
+    "no native scalar rule/cost calls in fact-only control",
+    "incomplete branch/formation discovery and known RNG inventory only",
+    "movement legality/actions/complete state and turns unimplemented"
+  ],
+  "local_comparison_diagnostics": "/home/phulin/c6/target/linux/movement-world-control3/comparisons/75139e5cd33c49fe08498f5eb8eec97ba70a6fd507a7b543486960dec3b5e77a.json",
+  "comparison_diagnostics_sha256": "5fbbfb4df58bdf97c491cfbd97a2a95f04de6be14abdbc62abaf7f1afb9f1cc5",
+  "raw_core_controls_equal": true,
+  "raw_core_control_streams": 6,
+  "known_rng_streams_equal": true,
+  "known_rng_streams": 2,
+  "complete_affected_state": false,
+  "complete_rng_inventory": false,
+  "native_differential_acceptance": false,
+  "full_movement_parity": false,
+  "raw_save_load_different_bytes_retained": 89198,
+  "unknown_bytes_masked": 0
+}

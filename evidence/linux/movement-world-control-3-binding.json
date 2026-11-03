@@ -1,0 +1,71 @@
+{
+  "schema": "c6-linux-movement-world-binding-v1",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "profile_sha256": "dbe92853390379d3c268b6baf2e75d8feb02b7733e5383c846466cb3af325641",
+  "evidence_level": "native_serializer_owned",
+  "native": {
+    "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/facts.jsonl",
+    "sha256": "b6f4243ee2fde1ae020e55cf5e5e3e853c87b7c268dcd5fada88393254bef276"
+  },
+  "core": {
+    "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/before.bin",
+    "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+  },
+  "trace": {
+    "path": "../../../c6-ghidra/evidence/linux-save-normalization/checkpoint-203-owners/trace-benchmark-1.jsonl.gz",
+    "sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae"
+  },
+  "trace_core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "native_source_snapshot_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "trace_save_ordinal": 1,
+  "owner_counts": {
+    "map": 1,
+    "units": 1262,
+    "formations": 1250
+  },
+  "association_proof": "closed native before/control/after/repeat and outer Core files all byte-identical to accepted canonical ff31 stream; pinned target module and original ff31 serializer owner trace; no ID-pattern inference",
+  "control_report_sha256": "c175591afd4339019007382609ed5ad5bd12ba72ab6c87de891c7635fa3710b6",
+  "native_runtime_report": {
+    "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/runtime.json",
+    "sha256": "c175591afd4339019007382609ed5ad5bd12ba72ab6c87de891c7635fa3710b6"
+  },
+  "core_controls": [
+    {
+      "role": "internal_before",
+      "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/before.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "role": "internal_control",
+      "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/control.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "role": "internal_after",
+      "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/after.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "role": "internal_repeat",
+      "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/after-repeat.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "role": "outer_save",
+      "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/save.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    },
+    {
+      "role": "outer_repeat",
+      "path": "../../../c6-ghidra/evidence/linux-movement-cost/native-control-xp2-3/repeat.bin",
+      "sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884"
+    }
+  ],
+  "trace_reuse_public_evidence": [
+    "evidence/linux/unit-rust-codec.json",
+    "evidence/linux/map-codec.json",
+    "evidence/linux/unit-codec-review.json",
+    "evidence/linux/map-codec-review.json"
+  ]
+}
