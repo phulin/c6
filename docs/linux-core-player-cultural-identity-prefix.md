@@ -23,3 +23,5 @@ A new build instead requires an isolated committed archive and explicit `--sourc
 Final producer source: `0874f6e8f105c7dc82963fb2858084d64ea47a7d`; candidate SHA-256: `0a905d03e6e1c90d3b74c542de8c08c6cea0d65ffc396a12d7ae89014df50742`. All 79 Rust/Cargo inputs and 177 Python audit inputs were verified against that single Git commit before the closed snapshot was copied.
 
 Validation in the same final isolated source archive passed `cargo test --workspace`, strict workspace Clippy and the C ABI smoke check. The actual two-stream prefix corpus separately covers the ignored fixture-dependent source test. These checks execute Rust/C candidate code against existing native Save outputs; they do not execute the original game or reproduce its load-time side effects.
+
+Independent closure is recorded in [the combined prefix review](linux-core-player-governors-prefix-review.md), commit `69a5b71`. It verifies both complete prefix cases, typed native projections and all 256 archived source identities; later Heroes/AI progression is a separate source profile.
