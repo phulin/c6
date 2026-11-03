@@ -1,0 +1,539 @@
+{
+  "checks": {
+    "manager_find_requires_notification_type": true,
+    "player_find_compares_numeric_id": true,
+    "player_find_stops_first_match": true,
+    "player_initialize_sets_owner": true
+  },
+  "complete_state_actions_turns_rng": false,
+  "core_bytes": 80657462,
+  "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
+  "logical_ids": "owner-relative fixed slot/index occurrence, distinct from ComponentID; no structural mutation implemented",
+  "manager_bytes": 4709,
+  "manager_range": [
+    76400871,
+    76405580
+  ],
+  "manager_sha256": "68c99c43d65778dea5f1d49a7215d9d925b405f639d413b28e2c4f5d6f601094",
+  "methods": {
+    "manager_edit_slot": {
+      "address": "0x2d2fa90",
+      "bytes": 15,
+      "sha256": "40086c75d4ef93c3a1507ad14e0daf3de22d5485cf6bcf2c23b3f5701f8a1926",
+      "symbols": [
+        "_ZN8GameCore9Reporting12Notification7Manager23EditPlayerNotificationsENS_11PlayerTypesE"
+      ]
+    },
+    "manager_find": {
+      "address": "0x2d2f3d0",
+      "bytes": 91,
+      "sha256": "6f19e7220a4264c5290670471ca07c3268265f675f9a12d6fb29215dc85b6bcb",
+      "symbols": [
+        "_ZN8GameCore9Reporting12Notification7Manager4FindERKNS_6Player11ComponentIDE"
+      ]
+    },
+    "manager_get_slot": {
+      "address": "0x2d2f350",
+      "bytes": 15,
+      "sha256": "7d7c2ad5b6d3c0dd4c6b58e74870a02346445bea2c74539c4153cc96c89239ca",
+      "symbols": [
+        "_ZNK8GameCore9Reporting12Notification7Manager22GetPlayerNotificationsENS_11PlayerTypesE"
+      ]
+    },
+    "manager_initialize": {
+      "address": "0x2d2ee00",
+      "bytes": 236,
+      "sha256": "26d16928118041766e9d612b298105fcb583ed04ca0a61d6467f72f0cb936577",
+      "symbols": [
+        "_ZN8GameCore9Reporting12Notification7Manager10InitializeEPNS_4Game9IInstanceE"
+      ]
+    },
+    "manager_read": {
+      "address": "0x2d2f820",
+      "bytes": 110,
+      "sha256": "fa5fa9f147b5047ed0c3757507f8ab5e1be10dbaec152ef9fecffe44f2d95682",
+      "symbols": [
+        "_ZN8GameCore9Reporting12Notification7Manager4ReadERN13Serialization7IStreamE"
+      ]
+    },
+    "player_find_id": {
+      "address": "0x2d30940",
+      "bytes": 172,
+      "sha256": "9ad97de66dc805066a981f7aedb81b6b67ded4b4f655db11e419a2da2f0b114c",
+      "symbols": [
+        "_ZN8GameCore9Reporting12Notification19PlayerNotifications4FindEj"
+      ]
+    },
+    "player_initialize": {
+      "address": "0x2d30840",
+      "bytes": 10,
+      "sha256": "f3a5a0255c95dbb05171325f28270a04e1897b9f73f2b33ecb7b1775b659c658",
+      "symbols": [
+        "_ZN8GameCore9Reporting12Notification19PlayerNotifications10InitializeENS_11PlayerTypesE"
+      ]
+    }
+  },
+  "native_loading_or_query_comparison": false,
+  "omitted_live_fields": [
+    "locks",
+    "pool/lifetime ownership",
+    "default blocking",
+    "subtype/vtable bindings"
+  ],
+  "original_execution": false,
+  "owner_slots": [
+    {
+      "bytes": 3693,
+      "next_id": 49,
+      "records": 12,
+      "slot": 0,
+      "stored_owner": 0
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 1,
+      "stored_owner": 1
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 2,
+      "stored_owner": 2
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 3,
+      "stored_owner": 3
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 4,
+      "stored_owner": 4
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 5,
+      "stored_owner": 5
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 6,
+      "stored_owner": 6
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 7,
+      "stored_owner": 7
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 8,
+      "stored_owner": 8
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 9,
+      "stored_owner": 9
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 10,
+      "stored_owner": 10
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 11,
+      "stored_owner": 11
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 12,
+      "stored_owner": 12
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 13,
+      "stored_owner": 13
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 14,
+      "stored_owner": 14
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 15,
+      "stored_owner": 15
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 16,
+      "stored_owner": 16
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 17,
+      "stored_owner": 17
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 18,
+      "stored_owner": 18
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 19,
+      "stored_owner": 19
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 20,
+      "stored_owner": 20
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 21,
+      "stored_owner": 21
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 22,
+      "stored_owner": 22
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 23,
+      "stored_owner": 23
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 24,
+      "stored_owner": 24
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 25,
+      "stored_owner": 25
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 26,
+      "stored_owner": 26
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 27,
+      "stored_owner": 27
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 28,
+      "stored_owner": 28
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 29,
+      "stored_owner": 29
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 30,
+      "stored_owner": 30
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 31,
+      "stored_owner": 31
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 32,
+      "stored_owner": 32
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 33,
+      "stored_owner": 33
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 34,
+      "stored_owner": 34
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 35,
+      "stored_owner": 35
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 36,
+      "stored_owner": 36
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 37,
+      "stored_owner": 37
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 38,
+      "stored_owner": 38
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 39,
+      "stored_owner": 39
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 40,
+      "stored_owner": 40
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 41,
+      "stored_owner": 41
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 42,
+      "stored_owner": 42
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 43,
+      "stored_owner": 43
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 44,
+      "stored_owner": 44
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 45,
+      "stored_owner": 45
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 46,
+      "stored_owner": 46
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 47,
+      "stored_owner": 47
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 48,
+      "stored_owner": 48
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 49,
+      "stored_owner": 49
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 50,
+      "stored_owner": 50
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 51,
+      "stored_owner": 51
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 52,
+      "stored_owner": 52
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 53,
+      "stored_owner": 53
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 54,
+      "stored_owner": 54
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 55,
+      "stored_owner": 55
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 56,
+      "stored_owner": 56
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 57,
+      "stored_owner": 57
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 58,
+      "stored_owner": 58
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 59,
+      "stored_owner": 59
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 60,
+      "stored_owner": 60
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 61,
+      "stored_owner": 61
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 62,
+      "stored_owner": 62
+    },
+    {
+      "bytes": 16,
+      "next_id": 0,
+      "records": 0,
+      "slot": 63,
+      "stored_owner": 63
+    }
+  ],
+  "owner_trace_decompressed_sha256": "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae",
+  "saved_state_only": true,
+  "schema": "c6-linux-player-notifications-owner-source-v1"
+}
