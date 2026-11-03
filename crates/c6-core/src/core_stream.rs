@@ -1,4 +1,4 @@
-//! Bounded byte-zero reader for the current Linux XP2 raw Core prefix through Map.
+//! Bounded byte-zero readers for current Linux XP2 raw Core prefixes.
 //!
 //! This is neither a `.Civ6Save` container reader nor native Context::Read: callers
 //! must establish module/configuration provenance. Metadata values are preserved,
@@ -6,8 +6,10 @@
 //! RNG reconstruction and complete executable game state are not established.
 //! The exact grammar is documented in `docs/linux-core-stream-layout.md` for
 //! Linux module SHA-256 a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
-//! Unknown unframed Rules providers fail; bytes after Map remain borrowed and
-//! unclassified, beginning at the unsupported Game.Religion boundary.
+//! Unknown unframed Rules providers fail. CorePrefix stops after Map; the
+//! ThroughFirstPlayer composition continues through Religion and the first
+//! Player's Cities, stopping before Diplomacy (or after an empty Manager).
+//! Each result borrows its untouched remaining tail without semantic exclusion.
 
 use crate::map::{self, Map};
 use crate::unit::variants::{self, DecodeBudget, TypedVariantMap, VariantMap};
@@ -224,6 +226,79 @@ impl<'a> CorePrefix<'a> {
             items_used: r.items,
             logical_allocation_used: r.allocation,
             tail: &bytes[r.pos..],
+        })
+    }
+}
+
+/// Errors from byte-zero composition, retaining each component's exact refusal.
+#[derive(Debug, Eq, PartialEq)]
+pub enum ThroughFirstPlayerError {
+    Core(Error),
+    Player(crate::core_player::Error),
+    ResourceLimit,
+}
+impl std::fmt::Display for ThroughFirstPlayerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for ThroughFirstPlayerError {}
+
+/// Raw Core prefix through Game.Religion and the first Player's complete Cities.
+/// The first Player remains unfinished at Diplomacy; an empty Manager instead
+/// stops at AfterEmptyPlayerManager. Neither boundary is a complete world import.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ThroughFirstPlayer<'a> {
+    pub core: CorePrefix<'a>,
+    pub player_prefix: crate::core_player::Prefix,
+    /// Absolute raw Core cursor at player_prefix.boundary.
+    pub consumed: usize,
+    /// Aggregate charge across both decoded sections.
+    pub items_used: usize,
+    /// Untouched bytes beginning at the explicit continuation boundary.
+    pub tail: &'a [u8],
+}
+impl<'a> ThroughFirstPlayer<'a> {
+    /// Decode directly from byte zero without offsets, searches or opaque skips.
+    ///
+    /// Shared max_bytes/max_items cover both sections. The post-Map decoder's
+    /// effective policy is the minimum of each remaining shared limit and its
+    /// explicit player_limits ceiling. Shared max_allocation/max_depth apply
+    /// through Map only. The later codecs retain their reviewed unit::Limits
+    /// per-vector allocation checks and aggregate item bound; no exact aggregate
+    /// allocation metric is claimed beyond Map. Both byte policies exclude the
+    /// final borrowed tail. CorePrefix's provenance/metadata limitations apply.
+    pub fn decode(
+        bytes: &'a [u8],
+        shared: map::Limits,
+        player_limits: crate::unit::Limits,
+    ) -> Result<Self, ThroughFirstPlayerError> {
+        let core = CorePrefix::decode(bytes, shared).map_err(ThroughFirstPlayerError::Core)?;
+        let effective = crate::unit::Limits {
+            max_bytes: player_limits
+                .max_bytes
+                .min(shared.max_bytes - core.consumed),
+            max_items: player_limits
+                .max_items
+                .min(shared.max_items - core.items_used),
+        };
+        let (player_prefix, player_bytes, player_items) =
+            crate::core_player::Prefix::decode_prefix_with_items(core.tail, effective)
+                .map_err(ThroughFirstPlayerError::Player)?;
+        let consumed = core
+            .consumed
+            .checked_add(player_bytes)
+            .ok_or(ThroughFirstPlayerError::ResourceLimit)?;
+        let items_used = core
+            .items_used
+            .checked_add(player_items)
+            .ok_or(ThroughFirstPlayerError::ResourceLimit)?;
+        Ok(Self {
+            core,
+            player_prefix,
+            consumed,
+            items_used,
+            tail: &bytes[consumed..],
         })
     }
 }
@@ -514,6 +589,155 @@ mod tests {
             CorePrefix::decode(&bytes, map::Limits::default()),
             Err(Error::Map(map::Error::UnsupportedComponent))
         );
+    }
+
+    fn through_player_fixture(nonempty_religion: bool) -> (Vec<u8>, usize, usize) {
+        let (mut bytes, _, map_end) = fixture(&metadata(), &VariantMap::default());
+        bytes.truncate(map_end);
+        words(
+            &mut bytes,
+            &[7, 0x80000000, u32::MAX, nonempty_religion as u32],
+        );
+        if nonempty_religion {
+            words(
+                &mut bytes,
+                &[7, 0x12345678, u32::MAX, 11, 0x80000000, 90, 256],
+            );
+            bytes.extend([0xa5; 256]);
+            words(
+                &mut bytes,
+                &[1, 0xabcdef01, 2, 0xdeadbeef, 0x87654321, 0, 17],
+            );
+            bytes.extend([1, 0, 1]);
+            words(&mut bytes, &[0x80000000]);
+        }
+        words(&mut bytes, &[1, 0]); // Empty Player.Manager, no Player can be skipped.
+        let end = bytes.len();
+        bytes.extend([0xff, 0xa5, 0x5a]);
+        (bytes, map_end, end)
+    }
+    #[test]
+    fn byte_zero_composition_retains_nonempty_religion_and_explicit_empty_manager_boundary() {
+        for nonempty in [false, true] {
+            let (bytes, map_end, end) = through_player_fixture(nonempty);
+            let decoded = ThroughFirstPlayer::decode(
+                &bytes,
+                map::Limits::default(),
+                crate::unit::Limits::default(),
+            )
+            .unwrap();
+            assert_eq!(decoded.core.consumed, map_end);
+            assert_eq!(decoded.consumed, end);
+            assert_eq!(decoded.player_prefix.player_count, 0);
+            assert_eq!(decoded.player_prefix.first_player, None);
+            assert_eq!(
+                decoded.player_prefix.boundary,
+                crate::core_player::Boundary::AfterEmptyPlayerManager
+            );
+            assert_eq!(
+                decoded.player_prefix.religion.records.len(),
+                nonempty as usize
+            );
+            assert!(std::ptr::eq(decoded.tail.as_ptr(), bytes[end..].as_ptr()));
+            assert!(std::ptr::eq(
+                decoded.core.tail.as_ptr(),
+                bytes[map_end..].as_ptr()
+            ));
+            assert_eq!(decoded.tail, [0xff, 0xa5, 0x5a]);
+            if nonempty {
+                let religion = &decoded.player_prefix.religion.records[0];
+                assert_eq!(religion.religion_hash, 0x12345678);
+                assert_eq!(religion.custom_name, [0xa5; 256]);
+                assert_eq!(religion.building_hashes, [0xdeadbeef, 0x87654321]);
+                assert!(religion.condemn_prohibited && religion.awards_envoy);
+                assert!(!religion.auto_spreads_to_new_cities);
+                assert_eq!(religion.awards_envoy_religious_pressure, i32::MIN);
+            }
+            for cut in map_end..end {
+                assert!(
+                    ThroughFirstPlayer::decode(
+                        &bytes[..cut],
+                        map::Limits::default(),
+                        crate::unit::Limits::default()
+                    )
+                    .is_err(),
+                    "post-Map cut {cut}"
+                );
+            }
+            let mut unknown = bytes;
+            unknown[map_end..map_end + 4].copy_from_slice(&8u32.to_le_bytes());
+            assert!(matches!(
+                ThroughFirstPlayer::decode(
+                    &unknown,
+                    map::Limits::default(),
+                    crate::unit::Limits::default()
+                ),
+                Err(ThroughFirstPlayerError::Player(
+                    crate::core_player::Error::Version {
+                        expected: 7,
+                        actual: 8
+                    }
+                ))
+            ));
+        }
+    }
+    #[test]
+    fn byte_zero_composition_carries_shared_and_explicit_player_budget_caps() {
+        let (mut bytes, map_end, end) = through_player_fixture(true);
+        let base = CorePrefix::decode(&bytes, map::Limits::default()).unwrap();
+        // One Religion record, 256 name bytes, one belief and two building hashes.
+        let player_items = 1 + 256 + 1 + 2;
+        let total_items = base.items_used + player_items;
+        let shared = map::Limits {
+            max_bytes: end,
+            max_items: total_items,
+            ..map::Limits::default()
+        };
+        let player = crate::unit::Limits {
+            max_bytes: end - map_end,
+            max_items: player_items,
+        };
+        bytes.resize(end + 1_000_000, 0xa5);
+        let decoded = ThroughFirstPlayer::decode(&bytes, shared, player).unwrap();
+        assert_eq!((decoded.consumed, decoded.items_used), (end, total_items));
+        assert!(std::ptr::eq(decoded.tail.as_ptr(), bytes[end..].as_ptr()));
+        for limited in [
+            map::Limits {
+                max_bytes: end - 1,
+                ..shared
+            },
+            map::Limits {
+                max_items: total_items - 1,
+                ..shared
+            },
+        ] {
+            // Both Core-only budgets would pass: failure must come from carrying
+            // their remaining budgets into the post-Map decoder.
+            assert!(CorePrefix::decode(&bytes, limited).is_ok());
+            assert!(matches!(
+                ThroughFirstPlayer::decode(&bytes, limited, crate::unit::Limits::default()),
+                Err(ThroughFirstPlayerError::Player(
+                    crate::core_player::Error::ResourceLimit
+                ))
+            ));
+        }
+        for limited in [
+            crate::unit::Limits {
+                max_bytes: player.max_bytes - 1,
+                ..player
+            },
+            crate::unit::Limits {
+                max_items: player.max_items - 1,
+                ..player
+            },
+        ] {
+            assert!(matches!(
+                ThroughFirstPlayer::decode(&bytes, map::Limits::default(), limited),
+                Err(ThroughFirstPlayerError::Player(
+                    crate::core_player::Error::ResourceLimit
+                ))
+            ));
+        }
     }
 
     #[test]
