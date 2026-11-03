@@ -41,3 +41,15 @@ fixups, live pointers and archive dirty history remain unsupported; no actions o
 turns are implemented. Target module SHA-256 remains
 `a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa`.
 The raw Save→Load→Save failure remains **89,198 bytes**, unclassified and unmasked.
+
+The [recorded audit](../evidence/linux/unit-prefix.json) freezes source commit
+`cf0fe89a94657ba2fc16f2d5858ae41014d132cc`, with hashes for all 74 recorded
+source/manifests and the generated adapter. Both streams pass all **2,524 Unit
+prefixes**; each contains 6,137,501 Unit bytes and charges 780,570 aggregate items.
+Each first record supplies 4,870 clipped byte limits and 4,870 truncated inputs.
+Both cumulative exact and one-short budgets pass their expected outcomes. The
+archived strict checker passes 2,524 Unit, 2,524 queue and 2,500 Formation
+roundtrips, including 17,668 nested Unit boundary comparisons. All 18 focused
+Unit/component/variant Rust tests pass. The wrapper also passes c6-core library
+clippy with warnings denied. No complete gameplay equivalence follows from these
+wire checks.
