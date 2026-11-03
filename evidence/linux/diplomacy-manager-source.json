@@ -1,0 +1,268 @@
+{
+  "schema": "c6-linux-diplomacy-manager-source-v1",
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "static_only": true,
+  "native_execution_performed": false,
+  "methods": [
+    {
+      "name": "global_initializer",
+      "rva": "0x1fc4260",
+      "bytes": 39,
+      "sha256": "77a6380d412f9b43012ad6c5c0d8490502e555978aea9d7ed009bc38c6743bd2"
+    },
+    {
+      "name": "open_list_constructor",
+      "rva": "0x1fc41a0",
+      "bytes": 41,
+      "sha256": "d0cf9f88b94dee6149df92cf0cb0e6d601592bf5250d6bd38709ce05cfc65b8e"
+    },
+    {
+      "name": "closed_list_constructor",
+      "rva": "0x1fc41d0",
+      "bytes": 41,
+      "sha256": "079392dbd3ffee6f2ca67fe9a7038959697d0fea9a41e088dcb890e0486ddf9c"
+    },
+    {
+      "name": "pending_vector_global_initializer",
+      "rva": "0x1fc4200",
+      "bytes": 39,
+      "sha256": "44fe10f6e5f7355f86f787fa8e4143520e5fc7a7351b67baa9e3ece2c61aa317"
+    },
+    {
+      "name": "pending_vector_base_constructor",
+      "rva": "0x2915c80",
+      "bytes": 30,
+      "sha256": "9fccef2c6c1945769faf21b5c78c2b526cb0dfe15d415849d3cde15f34567630"
+    },
+    {
+      "name": "Manager.Initialize",
+      "rva": "0x29112c0",
+      "bytes": 794,
+      "sha256": "a6513adb4b3cf7816f6bbb68d9b6ff92a45f86c8c8d99d3b625bf442c4f6f381"
+    },
+    {
+      "name": "Manager.Uninitialize",
+      "rva": "0x29115f0",
+      "bytes": 124,
+      "sha256": "03d32306aeae92227ea600066421d92f2cc04d417765256954d797fb29b125dd"
+    },
+    {
+      "name": "Manager.ProcessPending",
+      "rva": "0x2913510",
+      "bytes": 178,
+      "sha256": "ed5dc2a1bf712220260dc946a9e16358d750f0b35b407e563edf790c9f3e2f57"
+    },
+    {
+      "name": "Manager.ProcessPendingSessionStatement",
+      "rva": "0x2911900",
+      "bytes": 166,
+      "sha256": "6fd2f96ae52b08c464dc928bc908bb511d6f8f15294a467a46e609c010316b7e"
+    },
+    {
+      "name": "Manager.HasPendingSessionStatements()",
+      "rva": "0x2913f90",
+      "bytes": 16,
+      "sha256": "d57cace478a0a1a3b007a78bf623d78842726471d68636f63964881bd4f4c67a"
+    },
+    {
+      "name": "Manager.HasPendingActions()",
+      "rva": "0x2913fa0",
+      "bytes": 20,
+      "sha256": "8b2323a7a12b8b92bb07438b93386b6cb8944d2c9a2456fad696c5c62af503dc"
+    },
+    {
+      "name": "PendingAction.vector.size",
+      "rva": "0x29155f0",
+      "bytes": 18,
+      "sha256": "5fc3631d44bc7845f61705137ef6be2a456b50b8a32129fc05473ab3163cc904"
+    },
+    {
+      "name": "PendingAction.constructor",
+      "rva": "0x29151b0",
+      "bytes": 9,
+      "sha256": "97bc1ac7d544357be377d9e3c27c14971c29e448d5859a7fd35398505438fec0"
+    },
+    {
+      "name": "Session.constructor",
+      "rva": "0x2916d10",
+      "bytes": 82,
+      "sha256": "537cc9042903fbec61e1dc0a7a8957cee0cfbe2c6c778d8b1702067c8f454472"
+    },
+    {
+      "name": "Session.RemoveNextPendingStatement",
+      "rva": "0x2917270",
+      "bytes": 227,
+      "sha256": "248c35ba6a613b87fb070882bdc1e2d0fd03f2a2b77fbd358d264ab158ad74f1"
+    },
+    {
+      "name": "Player.Manager.GetWasEverAlive",
+      "rva": "0x24273f0",
+      "bytes": 8,
+      "sha256": "8d460a5d4ab9ce2295dbf6e2df1b534a4269871484a7499ceb9f215a18fe04ce"
+    },
+    {
+      "name": "Player.Manager.InitializeLists",
+      "rva": "0x2b51c10",
+      "bytes": 681,
+      "sha256": "f44a53d6eec7a911236f45603209afbb46359149bb95f719b35479ca83d03429"
+    },
+    {
+      "name": "Player.WasEverAlive",
+      "rva": "0x2103ff0",
+      "bytes": 7,
+      "sha256": "2985741e4b49f0a7c866f3f07b21af359bda5e5061a503294f85e3244bcfaa79"
+    },
+    {
+      "name": "Player.IsAI",
+      "rva": "0x2b31550",
+      "bytes": 35,
+      "sha256": "9c0eb8edff6824a68e729036e07dc49b6a89de87f942d925a9aa04a8d95573e2"
+    },
+    {
+      "name": "Configuration.Player.IsHuman",
+      "rva": "0x28ec230",
+      "bytes": 14,
+      "sha256": "a98088b62436c799ea309acd50c5ee744fd7ad1846e1be89d12429e6ffb9015a"
+    },
+    {
+      "name": "Configuration.Player.GetSlotStatus",
+      "rva": "0x28ebe70",
+      "bytes": 41,
+      "sha256": "22a29648f37247c1a316b7660cbef162162d34682133149854f2bf2ffbcd2ab9"
+    },
+    {
+      "name": "Player.fixed_vector.copy",
+      "rva": "0x29152e0",
+      "bytes": 130,
+      "sha256": "a9bf5fec3451fa7f899a581d13f5577744fe5081f4f7969a29e54285a9c1e39b"
+    },
+    {
+      "name": "Player.fixed_vector.begin",
+      "rva": "0x2915370",
+      "bytes": 4,
+      "sha256": "afae45c906d9e5d93a0612a2360b14d31fd758c9acf5c8f8787b5095927afc23"
+    },
+    {
+      "name": "Player.fixed_vector.end",
+      "rva": "0x2915380",
+      "bytes": 5,
+      "sha256": "8e3eaf4f4b235f364076d47e3b5b95d9e60a71cf19dd62030d0fa20e80858d2e"
+    },
+    {
+      "name": "Configuration.Game.GetPlayerConfiguration",
+      "rva": "0x28e4ea0",
+      "bytes": 34,
+      "sha256": "f08bf18d4625c5777f771dc4221dcae4643e68c027f474b6a682816d8e168406"
+    }
+  ],
+  "instruction_checks": [
+    {
+      "rva": "0x1fc41a7",
+      "bytes": "4889364889760848c7461000000000",
+      "meaning": "Open list sentinel and zero size"
+    },
+    {
+      "rva": "0x2913f97",
+      "bytes": "4883781000",
+      "meaning": "HasPendingSessionStatements compares list count"
+    },
+    {
+      "rva": "0x24273f0",
+      "bytes": "488d87a8030000c3",
+      "meaning": "GetWasEverAlive returns manager +0x3a8"
+    },
+    {
+      "rva": "0x2103ff0",
+      "bytes": "8a8778020000c3",
+      "meaning": "WasEverAlive loads live player byte +0x278"
+    },
+    {
+      "rva": "0x2917290",
+      "bytes": "4983c528",
+      "meaning": "RemoveNext uses session pending list +0x28"
+    },
+    {
+      "rva": "0x28ec236",
+      "bytes": "83f8030f94c0",
+      "meaning": "IsHuman compares SlotStatus ==3"
+    }
+  ],
+  "symbol_search_absences": [
+    "GameCore::Diplomacy::Manager::Manager(",
+    "GameCore::Diplomacy::Manager::Read(",
+    "GameCore::Diplomacy::Manager::Write("
+  ],
+  "absence_limit": "No matching full-symbol names; not proof that no other method writes global state during restore.",
+  "globals": [
+    {
+      "name": "ms_kOpenSessions",
+      "rva": "0x3c052f8",
+      "bytes": 24
+    },
+    {
+      "name": "ms_kClosedSessions",
+      "rva": "0x3c05310",
+      "bytes": 24
+    },
+    {
+      "name": "ms_pkActiveSession",
+      "rva": "0x3c05328",
+      "bytes": 8
+    },
+    {
+      "name": "ms_kPendingActions",
+      "rva": "0x3c05330",
+      "bytes": 32
+    }
+  ],
+  "capture_witness": {
+    "public_report": "evidence/linux/core-component-execute-3.json",
+    "public_report_sha256": "4ab9894fc2ada3fc91edc1913240f09f4ca758ad05eb539e4a782fc8fb293c00",
+    "private_runtime": "../c6-ghidra/evidence/linux-core-component/native-execute-3/runtime.json",
+    "private_runtime_sha256": "3d70f68837f3f52b2a3a9e1d439f364d6b81149fd84e177640ed082523ee8faf",
+    "observations": [
+      {
+        "stage": "diplomacy_before",
+        "pending_actions": 0,
+        "open_session_map_nonempty": 0,
+        "threaded": 1
+      },
+      {
+        "stage": "diplomacy_after",
+        "pending_actions": 0,
+        "open_session_map_nonempty": 0,
+        "result": 0,
+        "component_enqueued": true,
+        "gameplay_parity": false,
+        "full_action_acceptance": 0
+      }
+    ],
+    "limit": "Only those observation times/configuration; no automatic equivalence to current loaded handler, serialized state image, or arbitrary restore."
+  },
+  "limits": [
+    "No production adapter or gameplay parity added.",
+    "No original-code execution or complete Manager restore write audit.",
+    "Nonempty sessions require exact ProcessStatement, affected state/RNG and external-policy decisions.",
+    "Historical raw Save-to-Load 89198-byte difference remains unclassified and unmasked."
+  ],
+  "player_inventory": {
+    "manager_offset": "0x3a8",
+    "header": {
+      "begin": "0x0",
+      "end": "0x8",
+      "capacity": "0x10"
+    },
+    "element_bytes": 8,
+    "inline_storage_offset": "0x28",
+    "overflow_allowed": true,
+    "construction": "InitializeLists: scan 64 manager+8 array pointer slots ascending; append non-null WasEverAlive pointers; no major/human/currently-alive filter",
+    "identity": "Actual retained Player pointer, ID read live before IsAI"
+  },
+  "configuration_dependency": {
+    "player_id_offset": "0xe0",
+    "lookup": "unsigned id<64: configuration+0x90 player vector index; otherwise configuration+0x8b8 fallback",
+    "is_ai": "GetSlotStatus()!=3",
+    "slot_status_absent_default": 2,
+    "slot_status_data_object_offset": "0x10"
+  }
+}
