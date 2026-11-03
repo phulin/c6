@@ -155,6 +155,9 @@ def validate_plan(plan):
     gate=plan['runtime_gate']
     require(digest(gate['report_path'])==gate['report_sha256'],'runtime report changed')
     prepared=json.loads(Path(gate['report_path']).read_text())
+    require(prepared.get('schema')=='c6-linux-native-profile-prepared-v1' and
+            prepared.get('native_execution_performed') is False and 'returncode' in prepared and
+            prepared['returncode'] is None,'report is not unexecuted native preparation')
     cfg=prepared['configuration']
     profile=hashlib.sha256(canonical(cfg)).hexdigest()
     require(profile==prepared['configuration_sha256']==gate['configuration_sha256'],'configuration identity')
@@ -163,7 +166,17 @@ def validate_plan(plan):
     require(static==bound['static_plan'] and digest(gate['static_plan_path'])==bound['static_plan_sha256'] and
             json.loads(Path(gate['static_plan_path']).read_text())==static,
             'static full Manager plan differs from reviewed configuration')
+    normalized={str((ROOT/path).resolve()):value for path,value in cfg['sources'].items()}
+    normalized[str((ROOT/'tools/linux/mod_activation_probe.py').resolve())]=cfg['runner_sha256']
+    require(gate['source_files']==normalized,'source map differs from prepared configuration/runner')
     require(gate['source_files'],'missing frozen source closure')
+    require(plan['preload'] in plan['modules'] and
+            plan['modules'][plan['preload']]['sha256']==cfg['preload_sha256'] and
+            str(Path(prepared['execution_paths']['preload']).resolve())==plan['preload'],
+            'compiled preload differs from prepared configuration')
+    preload_raw,preload_identity=file_version(plan['preload'])
+    require(preload_identity['sha256']==cfg['preload_sha256'],'actual prepared preload file differs')
+    compiled_contracts(plan,preload_raw)
     for path,expected in gate['source_files'].items():
         require(digest(path)==expected,'changed runner/guard/observer source: '+path)
     for path in (Path(__file__).resolve(),ROOT/'tools/linux/script_manager_observer.py',
@@ -186,6 +199,7 @@ def validate_plan(plan):
             packet['window_parent_prefixes']==plan['window_parent_prefixes'] and
             packet['marker_parent_frames']==plan['marker_parent_frames'] and
             packet['live_bodies']==plan['live_bodies'] and
+            packet['compiled_symbols']==plan['compiled_symbols'] and
             packet['main_entry_witness']==plan['main_entry_witness'] and
             packet['reviewed_sources']==gate['source_files'] and
             packet['no_VM_or_GC_parent_frames_source_closed'] is True,
@@ -193,6 +207,82 @@ def validate_plan(plan):
     require(any(row['module']==plan['preload'] and row['relative_address']==plan['marker_relative_address']
                 and row['size']>=1 for row in plan['live_bodies']),'compiled marker body contract absent')
     return prepared,profile
+
+
+def file_version(path):
+    with open(path,'rb') as stream:
+        before=os.fstat(stream.fileno());raw=stream.read();after=os.fstat(stream.fileno())
+    fields=lambda stat:(stat.st_dev,stat.st_ino,stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)
+    require(fields(before)==fields(after),'module file changed during hashing')
+    return raw,dict(version=fields(after),device=(os.major(after.st_dev),os.minor(after.st_dev)),
+                    inode=after.st_ino,sha256=hashlib.sha256(raw).hexdigest())
+
+
+def elf_contract(raw):
+    require(raw[:6]==b'\x7fELF\x02\x01','wrong module ELF ABI')
+    kind=struct.unpack_from('<H',raw,16)[0]
+    require(kind in (2,3),'unsupported mapped ELF type')
+    start=struct.unpack_from('<Q',raw,32)[0]
+    width,count=struct.unpack_from('<HH',raw,54)
+    loads=[]
+    for index in range(count):
+        tag,flags,offset,address,_,file_size,memory_size,_=struct.unpack_from('<IIQQQQQQ',raw,start+index*width)
+        if tag==1:
+            loads.append(dict(address=address,offset=offset,file_size=file_size,memory_size=memory_size,flags=flags))
+    return kind,loads
+
+
+def symbols(raw):
+    start=struct.unpack_from('<Q',raw,40)[0]
+    width,count=struct.unpack_from('<HH',raw,58)
+    sections=[struct.unpack_from('<IIQQQQIIQQ',raw,start+index*width) for index in range(count)]
+    result=[]
+    for section in sections:
+        if section[1] not in (2,11):
+            continue
+        strings=sections[section[6]]
+        table=raw[strings[4]:strings[4]+strings[5]]
+        for position in range(section[4],section[4]+section[5],section[9]):
+            name,info,_,index,address,size=struct.unpack_from('<IBBHQQ',raw,position)
+            if not index or not name:
+                continue
+            text=table[name:table.index(b'\0',name)].decode()
+            result.append(dict(name=text,relative_address=address,size=size,kind=info&15))
+    return result
+
+
+def compiled_contracts(plan,raw):
+    kind,loads=elf_contract(raw)
+    require(kind==3,'fixture preload must be ET_DYN')
+    actual=symbols(raw)
+    contracts=plan['compiled_symbols']
+    required={MARKER,'c6_linux_full_manager_fixture_run','invoke','run_bound','notify',
+              'c6_linux_full_manager_profile_probe','mod_probe_main','observed_mod_main_tid'}
+    require(required<={row['name'] for row in contracts},'missing compiled caller/entry/witness symbol contract')
+    for row in contracts:
+        require(row['module']==plan['preload'],'compiled fixture contract not owned by preload')
+        symbol=dict(name=row['name'],relative_address=row['relative_address'],size=row['size'],kind=row['kind'])
+        require(symbol in actual and row['size']>0,'compiled exact ELF symbol/extent differs: '+row['name'])
+        if row['kind']==2:
+            load=next((entry for entry in loads if entry['flags']&1 and entry['address']<=row['relative_address'] and
+                       row['relative_address']+row['size']<=entry['address']+entry['file_size']),None)
+            require(load is not None,'compiled caller function not file-backed executable')
+            offset=load['offset']+row['relative_address']-load['address']
+            sha=hashlib.sha256(raw[offset:offset+row['size']]).hexdigest()
+            require(any(body['module']==row['module'] and body['relative_address']==row['relative_address'] and
+                        body['size']==row['size'] and body['sha256']==sha for body in plan['live_bodies']),
+                    'complete compiled caller body contract absent: '+row['name'])
+        else:
+            require(row['name']=='observed_mod_main_tid' and row['kind']==1 and row['size']==8,
+                    'unsupported compiled non-function witness')
+            witness=plan['main_entry_witness']
+            require(row['relative_address']==witness['relative_address'] and witness['module']==row['module'],
+                    'main-entry witness differs from actual compiled object')
+            require(any(entry['flags']&2 and entry['address']<=row['relative_address'] and
+                        row['relative_address']+8<=entry['address']+entry['memory_size'] for entry in loads),
+                    'main-entry witness is not preload writable storage')
+    marker=next(row for row in contracts if row['name']==MARKER)
+    require(marker['relative_address']==plan['marker_relative_address'],'compiled actual marker address differs')
 
 
 class Adapter:
@@ -203,23 +293,16 @@ class Adapter:
         self.pid=gdb.selected_inferior().pid
         require(self.pid>0,'no original inferior')
         require(str(Path('/proc/%d/exe'%self.pid).resolve())==plan['host'],'wrong original host executable')
-        self.module_rows=self.mappings()
-        self.bias={}
+        self.bias={};self.module_identity={};self.loads={}
         for path,identity in plan['modules'].items():
             require(str(Path(path).resolve())==path,'module path must be canonical')
-            with open(path,'rb') as stream:
-                before=os.fstat(stream.fileno());raw=stream.read();after=os.fstat(stream.fileno())
-            require((before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)==
-                    (after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns) and
-                    hashlib.sha256(raw).hexdigest()==identity['sha256'],'module file identity changed')
-            rows=[row for row in self.module_rows if row['path']==path]
-            require(rows and all(row['inode']==before.st_ino and row['device']==(os.major(before.st_dev),os.minor(before.st_dev)) for row in rows),
+            raw,retained=file_version(path)
+            require(retained['sha256']==identity['sha256'],'module file identity changed')
+            self.module_identity[path]=retained
+            kind,loads=elf_contract(raw);self.loads[path]=loads
+            rows=[row for row in self.mappings() if row['path']==path]
+            require(rows and all(row['inode']==retained['inode'] and row['device']==retained['device'] for row in rows),
                     'mapped module/file inode or device differs')
-            require(raw[:6]==b'\x7fELF\x02\x01','wrong module ELF ABI')
-            kind=struct.unpack_from('<H',raw,16)[0]
-            require(kind in (2,3),'unsupported mapped ELF type')
-            # ELF aligned mapping offsets may yield several candidates; the
-            # source plan pins the unique actual offset-zero load mapping.
             zero=[row['low'] for row in rows if row['offset']==0]
             require(len(zero)==1,'ambiguous/missing ELF first mapping')
             self.bias[path]=0 if kind==2 else zero[0]
@@ -266,9 +349,39 @@ class Adapter:
     def number(self,address):
         return struct.unpack('<Q',self.read(address,8))[0]
 
+    def module_endpoint(self):
+        for path,retained in self.module_identity.items():
+            _,current=file_version(path)
+            require(current==retained,'retained module file version/hash changed: '+path)
+            rows=[row for row in self.mappings() if row['path']==path]
+            require(rows and all(row['inode']==retained['inode'] and row['device']==retained['device'] for row in rows),
+                    'current module mapping identity changed: '+path)
+
+    def executable(self,path,address,size):
+        require(path in self.bias and size>0,'unknown/empty executable contract')
+        end=address+size;cursor=address;retained=self.module_identity[path]
+        for row in self.mappings():
+            if not row['low']<=cursor<row['high']:
+                continue
+            require(row['path']==path and row['device']==retained['device'] and
+                    row['inode']==retained['inode'] and 'r' in row['permissions'] and
+                    'x' in row['permissions'] and 'w' not in row['permissions'],
+                    'current executable mapping owner/permissions changed')
+            stop=min(end,row['high'])
+            relative=cursor-self.bias[path]
+            load=next((entry for entry in self.loads[path] if entry['flags']&1 and
+                       entry['address']<=relative and stop-self.bias[path]<=entry['address']+entry['file_size']),None)
+            require(load is not None and row['offset']+cursor-row['low']==
+                    load['offset']+relative-load['address'],'current executable mapping file offset changed')
+            cursor=stop
+            if cursor==end:
+                return self.read(address,size)
+        raise ValueError('unmapped executable body/frame extent')
+
     def body_gate(self):
+        self.module_endpoint()
         for module,name,address,size,sha in mandatory_bodies(self.plan['host'],self.plan['core']):
-            require(hashlib.sha256(self.read(self.bias[module]+address,size)).hexdigest()==sha,
+            require(hashlib.sha256(self.executable(module,self.bias[module]+address,size)).hexdigest()==sha,
                     'mandatory original/decoder ABI live body changed: '+name)
         for vptr,slot,target,name in BINDINGS:
             require(self.number(vptr+slot)==target,'concrete original host slot changed: '+name)
@@ -278,7 +391,7 @@ class Adapter:
         for row in self.plan['live_bodies']:
             require(row['module'] in self.bias,'ungated original/code module')
             address=self.bias[row['module']]+row['relative_address']
-            require(hashlib.sha256(self.read(address,row['size'])).hexdigest()==row['sha256'],
+            require(hashlib.sha256(self.executable(row['module'],address,row['size'])).hexdigest()==row['sha256'],
                     'live method/marker/trampoline body changed: '+row['name'])
 
     def frame_rows(self):
@@ -291,6 +404,7 @@ class Adapter:
             matches=[row for row in self.mappings() if row['low']<=pc<row['high'] and 'x' in row['permissions']]
             require(len(matches)==1 and matches[0]['path'] in self.bias,'unknown/unpinned executable parent frame')
             path=matches[0]['path']
+            self.executable(path,pc,1)
             result.append(dict(pc=pc,module=path,relative_pc=pc-self.bias[path],name=frame.name()))
             frame=frame.older()
         require(result,'empty actual unwind')
@@ -389,9 +503,9 @@ class Adapter:
             self.schedule.script(name,next_sites)
 
     def close(self):
-        okay=self.observer.close()
-        require(okay and self.schedule.phase==9 and self.schedule.manager_returned,
+        require(self.schedule.phase==9 and self.schedule.manager_returned,
                 'incomplete original fixture/Manager/observer lifetime')
+        require(self.observer.close(),'producer observer terminal refusal')
         self.emit(dict(event='adapter_terminal',natural_Lua_calls=self.observer.ordinal,
                        registry_images_captured=self.observer.ordinal>0,callback_effects_accepted=False,
                        callback_absence_proven=False,native_parity_accepted=False))
@@ -404,16 +518,25 @@ def install(plan_path,directory):
     launches a process nor attempts native teardown when observation fails.
     """
     import gdb
-    plan=json.loads(Path(plan_path).read_text())
-    validate_plan(plan)
     directory=Path(directory).resolve()
     require(not directory.is_relative_to(ROOT),'private observer directory required')
     directory.mkdir(parents=True,exist_ok=False)
     output=(directory/'observations.jsonl').open('x',buffering=1)
-    state=dict(adapter=None,pending=None,lanes=[],failed=False,exitcode=None)
     def emit(row):
         output.write(json.dumps(row,sort_keys=True)+'\n')
         output.flush()
+    def installation_failed(reason):
+        emit(dict(event='installation_refused',reason=str(reason),callback_absence_proven=False))
+        with (directory/'exit.json').open('x') as stream:
+            stream.write(json.dumps(dict(inferior_exitcode=None,observer_failed=True,
+                                         original_cleanup_proven=False))+'\n')
+    try:
+        plan=json.loads(Path(plan_path).read_text())
+        validate_plan(plan)
+    except Exception as error:
+        installation_failed(error)
+        raise
+    state=dict(adapter=None,pending=None,lanes=[],failed=False,exitcode=None,drain_started=False)
     def registers():
         frame=gdb.newest_frame()
         return {name:int(frame.read_register(name))&((1<<64)-1) for name in REGISTERS}
@@ -429,7 +552,11 @@ def install(plan_path,directory):
             except Exception as error:
                 state['pending']=('stop_error',{'reason':str(error)},None)
             return True
-    marker=Lane('marker')
+    try:
+        marker=Lane('marker')
+    except Exception as error:
+        installation_failed(error)
+        raise
     def rebuild():
         for lane in state['lanes']:
             lane.delete()
@@ -442,8 +569,10 @@ def install(plan_path,directory):
         def __init__(self):
             super().__init__('c6-full-manager-drain',gdb.COMMAND_RUNNING)
         def invoke(self,argument,from_tty):
-            require(not argument,'unexpected drain arguments')
+            require(not state['drain_started'] and not state['failed'],'full Manager drain is one-shot; continuation refused')
+            state['drain_started']=True
             try:
+                require(not argument,'unexpected drain arguments')
                 while gdb.selected_inferior().pid:
                     gdb.execute('continue')
                     if not gdb.selected_inferior().pid:

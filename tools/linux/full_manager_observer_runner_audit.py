@@ -127,10 +127,12 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'phase'):
             descriptor(bytes(88))
 
-    def fake_drain(self,unexpected=False):
+    def fake_drain(self,unexpected=False,early=False):
         live=[];commands={};events=[];inside=[False];peak=[0];phase=[0]
         sequence=['marker']*4+['manager_entry','dispatch','ccall_entry','acquired','resolved',
                    'protected_return','before_release','released','wrapper_return','manager_return']+['marker']*5
+        if early:
+            sequence=['marker']*4+['manager_entry','manager_return']+['marker']*5
         inferior=SimpleNamespace(pid=77)
         class Breakpoint:
             def __init__(self,spec,**kw):
@@ -177,11 +179,11 @@ class Tests(unittest.TestCase):
                 if name=='marker':
                     phase[0]+=1
                     self.schedule.marker(dict(phase=phase[0],predicate_returned=phase[0]>=5,
-                                              allowed=True,facade=0 if phase[0]==9 else 1))
+                                              allowed=not early,facade=0 if phase[0]==9 else 1))
                 elif name=='manager_entry':
                     self.schedule.enter(dict(rsp=0x1000),0x2222)
                 elif name=='manager_return':
-                    self.schedule.returned(dict(rsp=0x1008,rax=1))
+                    self.schedule.returned(dict(rsp=0x1008,rax=0 if early else 1))
                 else:
                     next_sites=dict(dispatch=('ccall_entry',),ccall_entry=('acquired',),
                         acquired=('resolved','protected_return'),resolved=('protected_return',),
@@ -197,6 +199,10 @@ class Tests(unittest.TestCase):
             with mock.patch.dict(sys.modules,{'gdb':fake}),mock.patch.object(producer,'validate_plan',return_value=({},'a'*64)),mock.patch.object(producer,'Adapter',FakeAdapter):
                 state=producer.install(plan,directory)['state']
                 commands['c6-full-manager-drain'].invoke('',False)
+                executes_before=sum(kind=='execute' for kind,_ in events)
+                with self.assertRaisesRegex(ValueError,'one-shot'):
+                    commands['c6-full-manager-drain'].invoke('',False)
+                self.assertEqual(sum(kind=='execute' for kind,_ in events),executes_before)
             terminal=json.loads((directory/'exit.json').read_text())
             self.assertEqual(terminal['observer_failed'],unexpected)
             self.assertEqual(state['failed'],unexpected)
@@ -209,6 +215,9 @@ class Tests(unittest.TestCase):
     def test_outer_drain_hardware_lifecycle_in_fake_gdb(self):
         self.fake_drain()
 
+    def test_early_false_no_Lua_full_drain(self):
+        self.fake_drain(early=True)
+
     def test_unexpected_stop_persists_failure_and_leaves_disposal_to_owner(self):
         self.fake_drain(unexpected=True)
 
@@ -217,24 +226,50 @@ class Tests(unittest.TestCase):
             [SOURCE,'tools/linux/script_manager_observer.py','tools/linux/script_hks_registry.py',
              'tools/linux/military_observer_runner.py','tools/linux/save_lifecycle_audit.py',
              'tools/linux/script_can_start_boundary_audit.py','tools/linux/script_vm_lifecycle_audit.py',
-             'tools/linux/script_hks_registry_audit.py']}
+             'tools/linux/script_hks_registry_audit.py','tools/linux/mod_activation_probe.py']}
+        fake_source=Path(temp)/'fake.c';preload=Path(temp)/'fake.so'
+        fake_source.write_text("static long observed_mod_main_tid;\n"+
+            "\n".join('static void '+name+'(void){}' for name in ('invoke','run_bound','notify'))+
+            "\nstatic void mod_probe_main(void){observed_mod_main_tid=1;}\n"+
+            "void c6_linux_full_manager_fixture_marker(void){}\nvoid c6_linux_full_manager_fixture_run(void){}\nvoid c6_linux_full_manager_profile_probe(void){}\n")
+        subprocess.run(['cc','-shared','-fPIC','-O0',str(fake_source),'-o',str(preload)],check=True)
+        raw=preload.read_bytes();_,loads=producer.elf_contract(raw)
+        required={producer.MARKER,'c6_linux_full_manager_fixture_run','invoke','run_bound','notify',
+                  'c6_linux_full_manager_profile_probe','mod_probe_main','observed_mod_main_tid'}
+        contracts=[dict(row,module=str(preload)) for row in producer.symbols(raw) if row['name'] in required]
+        # Deduplicate symtab/dynsym entries; these are explicitly synthetic symbols.
+        contracts=list({producer.canonical(row):row for row in contracts}.values())
+        bodies=[]
+        for row in contracts:
+            if row['kind']!=2:
+                continue
+            load=next(entry for entry in loads if entry['address']<=row['relative_address']<entry['address']+entry['file_size'])
+            offset=load['offset']+row['relative_address']-load['address']
+            bodies.append(dict(name=row['name'],module=str(preload),relative_address=row['relative_address'],
+                               size=row['size'],sha256=hashlib.sha256(raw[offset:offset+row['size']]).hexdigest()))
+        marker=next(row for row in contracts if row['name']==producer.MARKER)
+        witness=next(row for row in contracts if row['name']=='observed_mod_main_tid')
         static=dict(schema='c6-linux-full-manager-observer-plan-v1',profile_kind='genuine_lower_core_full_Manager',
-            host='/host',core='/core',preload='/preload',modules={'/host':{'sha256':HOST_SHA},'/core':{'sha256':GAME_SHA}},
-            caller_suffix_frames=[frame('/preload',123)],marker_relative_address=456,
-            live_bodies=[dict(module='/preload',relative_address=456,size=1,sha256='a'*64,name='marker')],
+            host='/host',core='/core',preload=str(preload),modules={'/host':{'sha256':HOST_SHA},'/core':{'sha256':GAME_SHA},str(preload):{'sha256':producer.digest(preload)}},
+            caller_suffix_frames=[frame(str(preload),123)],marker_relative_address=marker['relative_address'],
+            live_bodies=bodies,compiled_symbols=contracts,
             window_parent_prefixes={name:[[frame('/core',1)]] for name in producer.SITES},
-            marker_parent_frames={str(phase):[[frame('/preload',456)]] for phase in range(1,10)},
-            main_entry_witness=dict(module='/preload',relative_address=789))
+            marker_parent_frames={str(phase):[[frame(str(preload),marker['relative_address'])]] for phase in range(1,10)},
+            main_entry_witness=dict(module=str(preload),relative_address=witness['relative_address']))
         review=Path(temp)/'review.json'
         packet=dict(schema='c6-linux-full-manager-stack-contract-v1',reviewed_sources=sources,
             no_VM_or_GC_parent_frames_source_closed=True,**{key:static[key] for key in
-            ('caller_suffix_frames','window_parent_prefixes','marker_parent_frames','live_bodies','main_entry_witness')})
+            ('caller_suffix_frames','window_parent_prefixes','marker_parent_frames','live_bodies','main_entry_witness','compiled_symbols')})
         review.write_text(json.dumps(packet))
         static['stack_contract_review']=dict(path=str(review),sha256=producer.digest(review))
         path=Path(temp)/'static.json';path.write_text(json.dumps(static))
-        cfg=dict(lower_core_full_manager_observer=dict(static_plan=static,static_plan_sha256=producer.digest(path)))
+        cfg=dict(lower_core_full_manager_observer=dict(static_plan=static,static_plan_sha256=producer.digest(path)),
+                 sources={str(Path(key).relative_to(ROOT)):value for key,value in sources.items() if not key.endswith('/mod_activation_probe.py')},
+                 runner_sha256=sources[str(ROOT/'tools/linux/mod_activation_probe.py')],preload_sha256=producer.digest(preload))
         profile=hashlib.sha256(producer.canonical(cfg)).hexdigest()
-        report=Path(temp)/'report.json';report.write_text(json.dumps(dict(configuration=cfg,configuration_sha256=profile)))
+        report=Path(temp)/'report.json';report.write_text(json.dumps(dict(configuration=cfg,configuration_sha256=profile,
+            schema='c6-linux-native-profile-prepared-v1',native_execution_performed=False,returncode=None,
+            execution_paths=dict(preload=str(preload)))))
         return dict(**static,runtime_gate=dict(report_path=str(report),report_sha256=producer.digest(report),
             configuration_sha256=profile,source_files=sources,static_plan_path=str(path)))
 
@@ -250,7 +285,7 @@ class Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='c6-plan-gate-') as temp:
             plan=self.plan_fixture(temp)
             del plan['runtime_gate']['source_files'][str((ROOT/'tools/linux/script_hks_registry.py').resolve())]
-            with self.assertRaisesRegex(ValueError,'source gate absent'):
+            with self.assertRaisesRegex(ValueError,'source map differs'):
                 producer.validate_plan(plan)
 
     def test_changed_frame_plan_refused_before_attachment(self):
@@ -259,6 +294,83 @@ class Tests(unittest.TestCase):
             plan['caller_suffix_frames']=[frame('/preload',987)]
             with self.assertRaisesRegex(ValueError,'static full Manager plan'):
                 producer.validate_plan(plan)
+
+    def real_mapping_adapter(self):
+        adapter=producer.Adapter.__new__(producer.Adapter)
+        adapter.bias={'/core':0x1000}
+        adapter.module_identity={'/core':dict(device=(1,2),inode=3)}
+        adapter.loads={'/core':[dict(address=0,offset=0,file_size=4096,memory_size=4096,flags=5)]}
+        row=dict(low=0x1000,high=0x2000,permissions='r-xp',path='/core',offset=0,device=(1,2),inode=3)
+        adapter.mappings=lambda:[row]
+        adapter.read=lambda address,size:bytes(size)
+        adapter.stopped=lambda:None
+        return adapter,row
+
+    def test_real_executable_gate_refuses_read_only_body(self):
+        adapter,row=self.real_mapping_adapter()
+        adapter.executable('/core',0x1000,8)
+        row['permissions']='r--p'
+        with self.assertRaisesRegex(ValueError,'permissions'):
+            adapter.executable('/core',0x1000,8)
+
+    def test_real_body_gate_routes_through_executable_mapping_gate(self):
+        adapter,row=self.real_mapping_adapter()
+        row['permissions']='r--p'
+        adapter.module_endpoint=lambda:None
+        adapter.plan=dict(host='/host',core='/core',live_bodies=[])
+        contract=[('/core','synthetic body',0,8,hashlib.sha256(bytes(8)).hexdigest())]
+        with mock.patch.object(producer,'mandatory_bodies',return_value=contract):
+            with self.assertRaisesRegex(ValueError,'permissions'):
+                adapter.body_gate()
+
+    def test_real_frame_gate_refuses_wrong_inode_device(self):
+        adapter,row=self.real_mapping_adapter()
+        row['inode']=99
+        adapter.gdb=SimpleNamespace(newest_frame=lambda:SimpleNamespace(pc=lambda:0x1001,name=lambda:'synthetic',older=lambda:None))
+        with self.assertRaisesRegex(ValueError,'owner'):
+            adapter.frame_rows()
+        row['inode']=3;row['device']=(4,5)
+        with self.assertRaisesRegex(ValueError,'owner'):
+            adapter.frame_rows()
+
+    def test_real_executable_gate_refuses_changed_file_offset(self):
+        adapter,row=self.real_mapping_adapter()
+        row['offset']=1
+        with self.assertRaisesRegex(ValueError,'file offset'):
+            adapter.executable('/core',0x1000,8)
+
+    def test_real_endpoint_refuses_changed_module_version(self):
+        with tempfile.TemporaryDirectory(prefix='c6-module-endpoint-') as temp:
+            path=Path(temp)/'synthetic';path.write_bytes(b'first')
+            _,retained=producer.file_version(path)
+            adapter=producer.Adapter.__new__(producer.Adapter)
+            adapter.module_identity={str(path):retained}
+            adapter.mappings=lambda:[dict(path=str(path),inode=retained['inode'],device=retained['device'])]
+            adapter.module_endpoint()
+            path.write_bytes(b'second')
+            with self.assertRaisesRegex(ValueError,'file version/hash'):
+                adapter.module_endpoint()
+
+    def test_prepared_executed_or_wrong_schema_refused(self):
+        with tempfile.TemporaryDirectory(prefix='c6-plan-prepared-') as temp:
+            plan=self.plan_fixture(temp)
+            path=Path(plan['runtime_gate']['report_path']);report=json.loads(path.read_text())
+            report['native_execution_performed']=True;path.write_text(json.dumps(report))
+            plan['runtime_gate']['report_sha256']=producer.digest(path)
+            with self.assertRaisesRegex(ValueError,'unexecuted native preparation'):
+                producer.validate_plan(plan)
+            report['native_execution_performed']=False;report['schema']='wrong';path.write_text(json.dumps(report))
+            plan['runtime_gate']['report_sha256']=producer.digest(path)
+            with self.assertRaisesRegex(ValueError,'unexecuted native preparation'):
+                producer.validate_plan(plan)
+
+    def test_actual_compiled_caller_and_witness_required(self):
+        with tempfile.TemporaryDirectory(prefix='c6-plan-symbol-') as temp:
+            plan=self.plan_fixture(temp)
+            raw=Path(plan['preload']).read_bytes()
+            plan['compiled_symbols']=[row for row in plan['compiled_symbols'] if row['name']!='invoke']
+            with self.assertRaisesRegex(ValueError,'missing compiled caller'):
+                producer.compiled_contracts(plan,raw)
 
     def test_only_hardware_outer_drain_mutation(self):
         tree=ast.parse((ROOT/SOURCE).read_text())
