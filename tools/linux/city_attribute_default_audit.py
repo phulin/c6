@@ -291,9 +291,20 @@ TARGETS = {
     0x1ed3ad0: 'update', 0x2bc80f0: 'update',
     0x1f57be0:'primary_plot_ctor',0x1f6d530:'primary_plot_ctor',0x2bc8c70:'primary_plot_ctor',
     0x1efd1c0:'primary_plot_resize',0x2a48e70:'primary_plot_resize',
+    0x1ea20f0:'attrs_construct',0x27bbbf0:'attrs_construct',
+    0x1f210d0:'attrs_move',0x27bbae0:'attrs_move',
+    0x1f92670:'attrs_copy',0x2426880:'attrs_copy',
+    0x1e4d360:'attrs_fill',0x27f8670:'attrs_fill',
+    0x1f55340:'plot_copy',0x2a49ca0:'plot_copy',0x1e687a0:'plot_assign',0x2a4a020:'plot_assign',
     0x1eef260:'primary_plot_initialize',0x2bc8cb0:'primary_plot_initialize',
 }
 EXPECTED_CALLS = {
+    'attrs_construct':[0x1fc56e7,0x27bbbe4],
+    'attrs_move':[0x27bbace],
+    'attrs_copy':[0x238a1c6,0x26f13d8,0x29b83dd],
+    'attrs_fill':[0x27bc70e,0x2c928ae],
+    'plot_copy':[0x2a49ba0,0x2a49f29,0x2a4a0ee],
+    'plot_assign':[0x2a49ffa,0x2a4a0a6,0x2a4a166],
     'get': [0x2bca785], 'edit': [0x2bca7a8],
     'allocate': [0x2bca79b], 'deallocate': [0x2bca7c8],
     'domain_mask': [0x2859c2a,0x2864df0,0x2885062,0x2885cf1,0x2885e66,0x28bb117,
@@ -332,6 +343,28 @@ def main():
     for address,size,name,expected in METHODS:
         require(hashlib.sha256(module.read(address,size)).hexdigest() == expected, 'method differs: '+name)
     require(module.read(0x2bca7a0,4)==bytes.fromhex('6689434e'), 'native u32 allocation result narrowing changed')
+    inventory_path = ROOT/'evidence/linux/city-attribute-writer-inventory.json'
+    require(hashlib.sha256(inventory_path.read_bytes()).hexdigest() ==
+            '512b759a8a9bc8f18cb61ab7994b6cf03d53a431110c69eb679df5ed750b76a4',
+            'writer inventory differs')
+    inventory = json.loads(inventory_path.read_text())
+    for method in inventory['functions']:
+        require(hashlib.sha256(module.read(int(method['address'],16), method['bytes'])).hexdigest()
+                == method['sha256'], 'writer containing method differs: '+method['name'])
+    small_stores = []
+    process = subprocess.Popen(['objdump','-d','-C','-Mintel','--no-show-raw-insn',str(args.module)],
+                               stdout=subprocess.PIPE,text=True)
+    for line in process.stdout:
+        instruction = re.match(r'\s*([0-9a-f]+):\s*(\w+)\s+(.*)',line)
+        if not instruction: continue
+        address, operation, operands = instruction.groups()
+        if operation in ('cmp','test','push','call','jmp','nop'): continue
+        destination = operands.split(',',1)[0]
+        match = re.match(r'(BYTE|WORD) PTR \[.*\+0x(14|15|1e|1f)\]$', destination)
+        if match: small_stores.append((hex(int(address,16)),match[1].lower()))
+    require(process.wait()==0, 'small-field store disassembly failed')
+    require(small_stores == [(row['address'],row['width']) for row in inventory['small_field_stores']],
+            'full-target small-field store inventory differs')
     nm = subprocess.check_output(['nm','-C','-S',str(args.module)],text=True)
     require('0000000003c05df0 0000000000000020 b GameCore::Map::ms_kCityAttributeCache' in nm,
             'primary cache is not the pinned local BSS object')
@@ -370,6 +403,7 @@ def main():
         original_execution=False,methods=[dict(address=hex(a),bytes=n,name=name,sha256=d) for a,n,name,d in METHODS],
         primary_pool=dict(address='0x3c05df0',bytes=32,local_bss=True,references=references),
         separate_cache_pool='0x3c02de0',
+        writer_inventory=dict(path=str(inventory_path.relative_to(ROOT)),sha256=hashlib.sha256(inventory_path.read_bytes()).hexdigest(),small_field_stores=len(small_stores),containing_methods=len(inventory['functions'])),
         calls={name:[hex(a) for a in addresses] for name,addresses in calls.items()},
         mutation_receivers=[dict(write=hex(write),producer=hex(producer),
             source='CManager.EditAttributes -> primary Plot mutable+0x40' if producer==0x2a3c250 else
@@ -390,8 +424,8 @@ def main():
             reset='Map.Read -> Initialize(params) -> Reset/InitPlots -> CityPlots.Initialize clears/reserves0 before component/Map-initialized callbacks',
             plot_read='one indexed pass of current Plot vector; each resets index0 then allocates at most once for its saved HasCityAttributes',
             orphan_accounting='pre-read canonical plots can already own up to P attributes; Plot.Read can orphan those, so P alone is not the allocation bound',
-            bound='for the fresh canonical single-Map read/restore sequence: at most P pre-read orphan slots plus P current owned slots plus reserved0; high-water <=2*P+1',
-            conditions=['canonical primary Plot ownership', 'single current Map.Read pass after reset', 'no extra out-of-band attribute/index mutation', '2*P <=65535'],
+            bound='for the fresh canonical single-Map read/restore sequence: at most P pre-read orphan slots plus P current owned slots plus reserved0; logical constructed-node high-water <=2*P+1 (not raw allocation capacity)',
+            conditions=['positive width and height; P>0', 'canonical primary Plot ownership', 'single current Map.Read pass after reset', 'no extra out-of-band attribute/index mutation', '2*P <=65535'],
             current_fixture_plots=6996,current_fixture_max_allocated_index=13992),
         original_overflow_counterexample=dict(allocation_result_u32=65536,stored_plot_index_u16=0,
             subsequent_edit='EditAttributes(0) sees reserved index0 valid and can return it for mutation',
@@ -400,6 +434,6 @@ def main():
         full_gameplay_state_actions_turns=False)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2)+'\n')
-    print('verified',len(METHODS),'whole methods,13primary-pool references and complete mutation/access call inventory')
+    print('verified',len(METHODS),'base whole methods,81 extended writer/copy method hashes,92 small-field sites and13 primary-pool references')
 
 if __name__=='__main__': main()

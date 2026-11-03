@@ -449,7 +449,39 @@
     ]
   },
   "separate_cache_pool": "0x3c02de0",
+  "writer_inventory": {
+    "path": "evidence/linux/city-attribute-writer-inventory.json",
+    "sha256": "512b759a8a9bc8f18cb61ab7994b6cf03d53a431110c69eb679df5ed750b76a4",
+    "small_field_stores": 92,
+    "containing_methods": 81
+  },
   "calls": {
+    "attrs_construct": [
+      "0x1fc56e7",
+      "0x27bbbe4"
+    ],
+    "attrs_move": [
+      "0x27bbace"
+    ],
+    "attrs_copy": [
+      "0x238a1c6",
+      "0x26f13d8",
+      "0x29b83dd"
+    ],
+    "attrs_fill": [
+      "0x27bc70e",
+      "0x2c928ae"
+    ],
+    "plot_copy": [
+      "0x2a49ba0",
+      "0x2a49f29",
+      "0x2a4a0ee"
+    ],
+    "plot_assign": [
+      "0x2a49ffa",
+      "0x2a4a0a6",
+      "0x2a4a166"
+    ],
     "get": [
       "0x2bca785"
     ],
@@ -643,8 +675,9 @@
     "reset": "Map.Read -> Initialize(params) -> Reset/InitPlots -> CityPlots.Initialize clears/reserves0 before component/Map-initialized callbacks",
     "plot_read": "one indexed pass of current Plot vector; each resets index0 then allocates at most once for its saved HasCityAttributes",
     "orphan_accounting": "pre-read canonical plots can already own up to P attributes; Plot.Read can orphan those, so P alone is not the allocation bound",
-    "bound": "for the fresh canonical single-Map read/restore sequence: at most P pre-read orphan slots plus P current owned slots plus reserved0; high-water <=2*P+1",
+    "bound": "for the fresh canonical single-Map read/restore sequence: at most P pre-read orphan slots plus P current owned slots plus reserved0; logical constructed-node high-water <=2*P+1 (not raw allocation capacity)",
     "conditions": [
+      "positive width and height; P>0",
       "canonical primary Plot ownership",
       "single current Map.Read pass after reset",
       "no extra out-of-band attribute/index mutation",

@@ -10,7 +10,7 @@ method fingerprints, all target-internal relevant direct calls and every direct
 reference to the entire primary pool object.
 
 The proposed invariant is bounded to a fresh canonical single-Map read/restore
-sequence with `2 * plot_count <= 65535`. This is not a claim that entry0 is
+sequence with positive width and height (`P > 0`) and `2 * P <= 65535`. This is not a claim that entry0 is
 unconditionally immutable. A concrete original overflow counterexample remains
 in scope for future full-engine implementation.
 
@@ -86,9 +86,9 @@ pre-read nodes, then allocates up to `P` saved owned nodes. Subsequent ordinary
 canonical edit/free operations preserve one current owned slot per plot. Free
 nodes are reused before vector growth; the possible pre-read orphan set does
 not grow again in this single-read sequence. The conservative high-water bound
-is therefore **`2*P + 1` nodes**, including reserved0, and maximum allocated index
+is therefore **`2*P + 1` constructed logical nodes**, including reserved0, and maximum allocated index
 **`2*P`**. For the actual 6,996-plot fixture this is at most 13,993 nodes/index
-13,992. The proof requires canonical primary Plot ownership and this fresh
+13,992. Geometric storage capacity may be larger; this bounds constructed vector size, not reserved allocation bytes. The proof requires canonical primary Plot ownership and this fresh
 single-read lifetime; it does not infer allocator history for arbitrary imported
 live memory or multiple out-of-band reads/edits.
 
@@ -107,3 +107,40 @@ No new Rust default model or all-plot comparison is claimed by this packet.
 After source review, a new bounded candidate may model the explicit reserved
 state and compare it against all retained native-2 rows. The historical raw
 89,198-byte Save→Load failure remains unresolved and unmasked.
+
+## Inline stores and bulk copies
+
+The [extended writer inventory](../evidence/linux/city-attribute-writer-inventory.json)
+pins all 92 exact BYTE/WORD destination stores at offsets `0x14`, `0x15`, `0x1e`
+and `0x1f`, including read-modify-write and setcc instructions, with 81 complete
+containing and related copy-method hashes. Nine are WORD stores: six are the
+known attribute initialization/read/setter/inline-clear paths. Three have distinct
+receivers: a freshly allocated BuildingProductionData effect object, a Combat
+Member, and a freshly allocated PetTheDog command. Of the 83 BYTE stores, 29
+write stack locals; the other 54 trace to distinct typed formal objects, fresh
+effect allocations, a TargetDamageInfo vector element, Reflection output DTOs,
+command parameters, or Lua MapInitData userdata. AI-namespaced objects are
+classified by these receiver origins, without excluding their gameplay effects.
+This narrow-store inventory is supplemented by the typed bulk paths; it is not
+an assertion that arbitrary wider writes or adjusted pointers cannot exist.
+
+CityAttributes' three copy-constructor call sites write stack destinations
+(`RSP+0x10`, `RSP+0xb0`, `RSP+0x10`). Its other default-constructor caller writes
+the separate global empty object at `0x3c05d68`; its move constructor is used by
+sparse-node relocation. Plot copy construction and assignment preserve the
+8-byte word at `+0x48`, including the local attribute index, and are confined to
+vector helper paths. The canonical read uses the incoming dimensions before
+Reset/InitPlots; Game.Read invokes the 20-byte Map stream wrapper once, which
+calls Map.Read once, before yield/domain restore and XP2 augmentation.
+
+CityAttributes Reflection Fill reads the const source payload and writes a
+caller-provided 24-byte Reflection output. Its export forwards that output
+pointer unchanged. The only direct internal Fill caller is EventStream.Manager.Add, whose output is a stack DTO at `RSP+0x38`; it then builds a separate event node. The cache Initialize/Update bulk assignments copy from
+primary const attributes or event payloads into cache mutable attributes.
+These directions do not expose a primary mutable receiver. The bounded proof
+assumes well-typed internal ownership and the normal Reflection output contract;
+it does not authorize arbitrary external callers to alias an output buffer to
+the private primary pool.
+
+The source packet still awaits independent final receiver-path review before a
+new Rust default model is added. No new native execution or parity claim is made.
