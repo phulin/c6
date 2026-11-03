@@ -74,5 +74,31 @@
     "Intermediate native phase snapshots are retained, but current candidate compares final prefix only",
     "Options0 query is not a reconstructed player movement action",
     "No raw proprietary evidence upload or Ghidra changes"
-  ]
+  ],
+  "admission_diagnostic_review": {
+    "commit": "70ba982",
+    "source_sha256": "de0af4b631022a416e657cb58438f5b58b51a9aadaa730baf03c52d2ca49c488",
+    "contract_sha256": "859d99c6d43f5773ea8d80575e1a01d3d5bbd987084f4c25f183b53875c1e92a",
+    "frozen_builds": {
+      "native_helper": {
+        "path": "target/linux/libc6-movement-cost-probe-diagnostic.so",
+        "bytes": 33120,
+        "sha256": "c830ef4193a99da575bd184b30ba4858bd8a6915a735d1934442382c1b0314a6"
+      },
+      "candidate": {
+        "path": "target/frozen/movement-cost-probe/d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718/candidate",
+        "bytes": 585952,
+        "sha256": "d4dddd41f8f157a951c5b43720e6a217fef1b6600439b307ee01e300c7ce6718"
+      }
+    },
+    "static_contract_reproduced": true,
+    "strict_c_syntax_passed": true,
+    "guards_identity_bounds_and_short_circuit_order_unchanged": true,
+    "prior_configuration_sha256": "6a94b0f1171f69d5aa1939a43ef22e61cd3d604791de231d52b14961955bc4f5",
+    "prior_status": 206,
+    "prior_corpus_cases": 0,
+    "prior_failure_predicate_identified": false,
+    "release_recommendation": "one fresh fact-only admission diagnostic under newly frozen integrated preload/configuration; no cost run or unchanged retry",
+    "original_code_executed_by_reviewer": false
+  }
 }
