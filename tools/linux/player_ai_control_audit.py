@@ -23,8 +23,7 @@ METHODS = [[47512336, 33, 'Serialization::operator<<(Serialization::OStream&, Ga
 VIRTUALS = [[60837440, 33604000, 33604192, 'UnitRequestContract'], [60837656, 33605728, 33605968, 'TechResearchContract'], [60837872, 33606800, 33606928, 'CivicResearchContract'], [60838088, 33607360, 33607424, 'PurchasePlotContract'], [60838304, 33608352, 33608496, 'DiplomaticActionContract']]
 
 HARNESS = r'''pub use c6_core::unit;
-#[path = "MODULE"] mod player_ai_control;
-use player_ai_control::{ControlManager as Manager, Error};
+use c6_core::player_ai_control::{ControlManager as Manager, Error};
 fn main() {
     let input = std::fs::read(std::env::args().nth(1).unwrap()).unwrap();
     let mut pos = 0;
@@ -139,32 +138,43 @@ def candidate(pin, records):
         if driver.read_bytes() != Path(__file__).read_bytes():
             raise ValueError('actual audit driver must be committed with candidate')
         module = source/'crates/c6-core/src/player_ai_control.rs'
-        # Export only inside the isolated immutable archive when parent composition
-        # has not landed yet; the module bytes tested remain exactly committed.
         lib = source/'crates/c6-core/src/lib.rs'
-        exported = 'pub mod player_ai_control;' in lib.read_text()
-        if not exported:
-            with lib.open('a') as out:
-                out.write('\npub mod player_ai_control;\n')
+        if 'pub mod player_ai_control;' not in lib.read_text():
+            raise ValueError('candidate archive must already export player_ai_control')
+        source_paths = ['Cargo.toml', 'Cargo.lock', 'crates/c6-core/Cargo.toml',
+                        'tools/linux/player_ai_control_audit.py', 'tools/linux/player_wmds_audit.py']
+        source_paths += [str(path.relative_to(source)) for path in
+                         sorted((source/'crates/c6-core/src').rglob('*.rs'))]
+        source_hashes = {}
+        for path in source_paths:
+            archived = (source/path).read_bytes()
+            committed = subprocess.check_output(['git', 'show', pin+':'+path], cwd=ROOT)
+            if archived != committed:
+                raise ValueError('archived source differs from Git pin: '+path)
+            source_hashes[path] = sha(archived)
+        subprocess.run(['cargo', 'test', '--offline', '-p', 'c6-core', 'player_ai_control::tests'], cwd=source, check=True)
         subprocess.run(['cargo', 'clippy', '--offline', '-p', 'c6-core', '--all-targets', '--', '-D', 'warnings'], cwd=source, check=True)
         subprocess.run(['cargo', 'build', '--offline', '--release', '-p', 'c6-core'], cwd=source, check=True)
-        harness = HARNESS.replace('MODULE', str(module))
+        harness = HARNESS
         (tmp/'candidate.rs').write_text(harness)
         command = ['rustc', '--edition=2021', '-Dwarnings', '-O', str(tmp/'candidate.rs'),
                    '--extern', 'c6_core='+str(source/'target/release/libc6_core.rlib'),
                    '-L', 'dependency='+str(source/'target/release/deps')]
         subprocess.run(command+['-o', str(tmp/'candidate')], check=True)
-        subprocess.run(command+['--test', '-o', str(tmp/'tests')], check=True)
-        subprocess.run([str(tmp/'tests')], check=True)
         (tmp/'records').write_bytes(records)
         n = int(subprocess.check_output([str(tmp/'candidate'), str(tmp/'records')], text=True).strip())
         if n != 86:
             raise ValueError('candidate record count differs')
+        for path, digest in source_hashes.items():
+            if sha((source/path).read_bytes()) != digest:
+                raise ValueError('candidate build mutated archived source: '+path)
         return dict(source_commit=pin, archive_sha256=sha(archive),
                     module_sha256=sha(module.read_bytes()), driver_sha256=sha(driver.read_bytes()),
                     harness_sha256=sha(harness.encode()), executable_sha256=sha((tmp/'candidate').read_bytes()),
                     records=n, source_tests=2, strict_clippy=True,
-                    isolated_export_added=not exported,
+                    isolated_export_added=False, source_files_sha256=source_hashes,
+                    every_source_hash_verified_against_git_pin=True, actual_exported_crate_tests=True,
+                    candidate_uses_exported_crate=True, archive_source_mutations=False,
                     exact_byte_and_shared_item_caps=True, every_truncation_rejected=True,
                     short_byte_and_item_caps_rejected=True, strict_trailing_rejected=True,
                     exact_prefix_consumption=True)
@@ -215,7 +225,7 @@ def main():
             records.append(result)
         fixtures.append(dict(core_sha256=identity, trace_sha256=trace_digest, players=len(players),
                              ever_alive=len(expected), skipped=len(players)-len(expected), records=records))
-    report = dict(schema='c6-linux-player-ai-control-v1', checks_passed=True, gamecore_sha256=GAME_SHA,
+    report = dict(schema='c6-linux-player-ai-control-exported-v2', checks_passed=True, gamecore_sha256=GAME_SHA,
                   methods=[dict(address=hex(a), size=n, name=s, sha256=h) for a,n,s,h in METHODS],
                   virtuals=[dict(vtable=hex(a), reader=hex(r), writer=hex(w), name=n) for a,r,w,n in VIRTUALS],
                   factory_keys={'0':'UnitRequest', '1':'TechResearch', '2':'CivicResearch', '3':'PurchasePlot', '4':'DiplomaticAction', '-1':'null'},
