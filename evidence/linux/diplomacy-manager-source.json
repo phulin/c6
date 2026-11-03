@@ -153,6 +153,48 @@
       "rva": "0x28e4ea0",
       "bytes": 34,
       "sha256": "f08bf18d4625c5777f771dc4221dcae4643e68c027f474b6a682816d8e168406"
+    },
+    {
+      "name": "Player.Manager.operator_read",
+      "rva": "0x2b510f0",
+      "bytes": 132,
+      "sha256": "ab965247cffca1fbce8acb41ba7d7397770a9681a361847088e0feafcbc9e55d"
+    },
+    {
+      "name": "Player.Instance.operator_read",
+      "rva": "0x2b4f490",
+      "bytes": 3518,
+      "sha256": "6cafd8cbdf97f8acc05be3175d60823c706339e01e84c9b757aa63009ef0f3ed"
+    },
+    {
+      "name": "Player.Manager.InitializePlayer",
+      "rva": "0x2b51180",
+      "bytes": 130,
+      "sha256": "6309b0829c021dd9f99c502c53866af4f887b21cf91033ccca37f4ca4d214393"
+    },
+    {
+      "name": "Player.Manager.AllocateInstance",
+      "rva": "0x2b519d0",
+      "bytes": 572,
+      "sha256": "c5f24360daed4e27a8571784425b5dfdd74d395e1f23c2bd50183bd18926c9b6"
+    },
+    {
+      "name": "Game.Instance.operator_read",
+      "rva": "0x2d7aaa0",
+      "bytes": 2540,
+      "sha256": "917d430f7b9c105932f394d62b2b75c83f698437ba89e7ce0ece979dad395873"
+    },
+    {
+      "name": "Player.bool_wrapper.operator_read",
+      "rva": "0x2b50590",
+      "bytes": 21,
+      "sha256": "4e8b90f2c2ff7b59319d6ac09e5fb89c5e13953ca3ac4f9faf4342de51a46c55"
+    },
+    {
+      "name": "Player.bool_wrapper.load",
+      "rva": "0x2b3e140",
+      "bytes": 15,
+      "sha256": "6cec740fce0026f8bfec042c04cef3c6787a67ca02d451b186eece9a4c2943ac"
     }
   ],
   "instruction_checks": [
@@ -185,6 +227,26 @@
       "rva": "0x28ec236",
       "bytes": "83f8030f94c0",
       "meaning": "IsHuman compares SlotStatus ==3"
+    },
+    {
+      "rva": "0x2b4f87e",
+      "bytes": "498db668020000",
+      "meaning": "WasEverAlive wrapper receiver +0x268"
+    },
+    {
+      "rva": "0x2b51ad2",
+      "bytes": "498b4424084c8934e8",
+      "meaning": "Allocation-slot array at manager+8 written by allocation index"
+    },
+    {
+      "rva": "0x2b51adb",
+      "bytes": "498b4424204c8934d8",
+      "meaning": "Distinct ID-indexed array at manager+0x20"
+    },
+    {
+      "rva": "0x2d7abaf",
+      "bytes": "837c240c0f",
+      "meaning": "Game Read free-cities compatibility compares version 15"
     }
   ],
   "symbol_search_absences": [
@@ -264,5 +326,61 @@
     "is_ai": "GetSlotStatus()!=3",
     "slot_status_absent_default": 2,
     "slot_status_data_object_offset": "0x10"
+  },
+  "load_order_calls": [
+    {
+      "rva": "0x2b5114e",
+      "target_plt": "0x1eaedc0",
+      "bytes": "e86ddc35ff",
+      "meaning": "Manager Read InitializePlayer before Player Read"
+    },
+    {
+      "rva": "0x2b51159",
+      "target_plt": "0x1f503a0",
+      "bytes": "e842f23fff",
+      "meaning": "Manager Read each complete serialized Player"
+    },
+    {
+      "rva": "0x2b4f888",
+      "target_plt": "0x1f66c30",
+      "bytes": "e8a37341ff",
+      "meaning": "Player Read restores WasEverAlive wrapper"
+    },
+    {
+      "rva": "0x2b4f9ca",
+      "target_plt": "0x1e58ee0",
+      "bytes": "e8119530ff",
+      "meaning": "Player Read rebuilds lists after flag prefix, before nested tail"
+    },
+    {
+      "rva": "0x2d7ab6f",
+      "target_plt": "0x1e52a50",
+      "bytes": "e8dc7e0dff",
+      "meaning": "Game Read consumes complete Player Manager"
+    },
+    {
+      "rva": "0x2d7acda",
+      "target_plt": "0x1e58ee0",
+      "bytes": "e801e20dff",
+      "meaning": "Old Game version<15 free-cities compatibility branch rebuild"
+    }
+  ],
+  "was_ever_alive_virtual_load": {
+    "vtable": "0x3addb28",
+    "address_point": "0x3addb38",
+    "virtual_slot": "0x10",
+    "relocated_target": "0x2b3e140",
+    "value_offset": "0x10"
+  },
+  "load_order_conclusion": {
+    "rebuild": "Each Player Read calls InitializeLists after restored WasEverAlive; last serialized Player rebuild sees all serialized flag prefixes. Manager Read itself has no final rebuild.",
+    "ordinary_game_read": "Game version>=15 skips legacy compatibility rebuild at 0x2d7acda.",
+    "allocation_order": "Manager+8 slots are allocation-indexed; manager+0x20 slots are separately ID-indexed. First vacant owner allocation slot reused, otherwise appended. Do not sort IDs.",
+    "admissible_reconstruction": "Apply InitializeLists to complete admitted owner allocation slots and current restored WasEverAlive flags, preserving stable logical owner handles and exact slot order. Pointer capture is unnecessary if slot identity/order and current state are already source-closed.",
+    "limits": [
+      "Not a proof that arbitrary saved record order matches existing/reused live allocation slots.",
+      "Rebuild occurs before each Player nested Read tail; later callbacks or owner mutations require exact state/mutation tracking.",
+      "No additional native execution or full gameplay parity claim."
+    ]
   }
 }
