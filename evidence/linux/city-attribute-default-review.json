@@ -1,0 +1,655 @@
+{
+  "schema": "c6-linux-city-attribute-default-independent-review-v1",
+  "verdict": "accepted_bounded_fresh_single_read_source_invariant",
+  "base_source_commit": "54e5ca45dc0900ecf1871d5817e5708f13a4a1d3",
+  "game_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "base_audit_exactly_reproduced": true,
+  "base_pinned_whole_methods": 62,
+  "primary_pool_address": "0x3c05df0",
+  "primary_pool_bytes": 32,
+  "primary_pool_direct_references": 13,
+  "separate_cache_pool_address": "0x3c02de0",
+  "unrelated_empty_attribute_object": "0x3c05d68; original primary GetAttributes falls back to sparse node0, not this object",
+  "independent_small_field_writer_inventory": {
+    "sites": 92,
+    "functions": 68,
+    "word_sites": 9,
+    "primary_city_attribute_word_sites": [
+      "0x27bbc24",
+      "0x27bbc40",
+      "0x2a3e320",
+      "0x2a41a93",
+      "0x2bc80dc",
+      "0x2bc83a2"
+    ],
+    "unrelated_word_receivers": [
+      {
+        "site": "0x20bde56",
+        "receiver": "newly allocated BuildingProductionData; operator new0x28 then original Data constructor; remains gameplay scope"
+      },
+      {
+        "site": "0x28e1540",
+        "receiver": "Combat::Member this; original Member layout"
+      },
+      {
+        "site": "0x2d8df6f",
+        "receiver": "PetTheDog command this; Create allocates0x18 then original constructor"
+      }
+    ],
+    "containing_function_fingerprints": [
+      {
+        "address": "0x1ffe280",
+        "bytes": 364,
+        "name": "GameCore::AI::CityKnowledge::Update(GameCore::City::Instance const&)",
+        "sha256": "4667cf10ff538c2bb6437d50a5bcb77698e7c56eed18c948cca1d02a6e38d003"
+      },
+      {
+        "address": "0x2054180",
+        "bytes": 335,
+        "name": "GameCore::AI::GreatWorkBuildingInfo::GreatWorkBuildingInfo(GameCore::BuildingTypes, unsigned int, unsigned int, GameCore::Definition::Building_GreatWork const*, GameCore::Player::Instance const*)",
+        "sha256": "8bbaa6163588a3789a7ef5f9db1ee8ed41eebaffa7d20e614118dee846ed2e32"
+      },
+      {
+        "address": "0x2065eb0",
+        "bytes": 6459,
+        "name": "GameCore::AI::Diplomatic::CanBuildDeal(GameCore::Diplomacy::Deal::Instance&, FixedPointT<8u>, Types::Vector<GameCore::AI::TradeItem, Types::LinearAlloc::Default<1u, 0u> >&, FixedPointT<8u>, bool, GameCore::PlayerTypes, bool) const",
+        "sha256": "6dabfb3c870f85a7f69ccc73ad28e91c397eceb903c5b665b358fa61ddacc7b0"
+      },
+      {
+        "address": "0x20bdc00",
+        "bytes": 788,
+        "name": "GameCore::AI::AdjustBuildingProductionEffect::InitializeData(std::__1::vector<GameEffects::ArgumentDefinition, GameEffects::Memory::Allocator<GameEffects::ArgumentDefinition> > const&) const",
+        "sha256": "d8d460847ccde1112ab82b3acdee3527f19f41279990795f229a64484e3ecf1f"
+      },
+      {
+        "address": "0x20c28a0",
+        "bytes": 472,
+        "name": "GameCore::AI::AdjustCityTourismEffect::InitializeData(std::__1::vector<GameEffects::ArgumentDefinition, GameEffects::Memory::Allocator<GameEffects::ArgumentDefinition> > const&) const",
+        "sha256": "5e9df7a4f0c82b266d0ee66cd73e7f43ff7848880bf4e69af8dab5431c3a6f5a"
+      },
+      {
+        "address": "0x20c3700",
+        "bytes": 345,
+        "name": "GameCore::AI::AdjustBanCityProductionEffect::InitializeData(std::__1::vector<GameEffects::ArgumentDefinition, GameEffects::Memory::Allocator<GameEffects::ArgumentDefinition> > const&) const",
+        "sha256": "5f9160aa8accc6f9a672276798adb3defb2a2b80eb50a769f0968a779b6a94b9"
+      },
+      {
+        "address": "0x20c6df0",
+        "bytes": 555,
+        "name": "GameCore::AI::AdjustDistrictCreationEffect::InitializeData(std::__1::vector<GameEffects::ArgumentDefinition, GameEffects::Memory::Allocator<GameEffects::ArgumentDefinition> > const&) const",
+        "sha256": "819c185948a1244d10f1535153e397570f5bc245a5b9c1e46755098e6f5688c8"
+      },
+      {
+        "address": "0x2128a20",
+        "bytes": 63,
+        "name": "TrackedValue::TrackedValue(bool, FixedPointT<8u>)",
+        "sha256": "d5aa5eedf7851db0b638d06e9e4159fe7233815eff44dee3e91fa4fe59421c69"
+      },
+      {
+        "address": "0x2129420",
+        "bytes": 74,
+        "name": "TrackedValue::TrackedValue(TrackedValue const&)",
+        "sha256": "2744020ef431cf1eccbfd6aef34a965cc9436395625656da4e31965baef75a9f"
+      },
+      {
+        "address": "0x2129740",
+        "bytes": 108,
+        "name": "TrackedValue::TrackedValue(TrackedValue&&)",
+        "sha256": "497c6d3ac3aca36e1c688fe44c2b49c611a5a0afd9cec248a2b30b85fbc8dfa4"
+      },
+      {
+        "address": "0x2129820",
+        "bytes": 75,
+        "name": "TrackedValue::operator=(TrackedValue&&)",
+        "sha256": "e722e2ae4f9d03c8770d0711682598d7f7c198735bb0dec7561cbfff8f5c17c6"
+      },
+      {
+        "address": "0x2184a60",
+        "bytes": 1337,
+        "name": "GameCore::AI::Research::Research()",
+        "sha256": "553f5397075d8a5233c41b08192a20b810f43350e80030112479985768ab46d8"
+      },
+      {
+        "address": "0x219db00",
+        "bytes": 3421,
+        "name": "GameCore::AI::Tactical::PlanCombatMoves(Types::Vector<GameCore::Unit::Instance const*, Types::LinearAlloc::Default<1u, 0u> > const&, GameCore::AI::TargetList const&, Types::Vector<GameCore::AI::CombatOrders, Types::LinearAlloc::Default<1u, 0u> >&, bool, bool)",
+        "sha256": "641859869bc3055b8517e6c19b56984e76929f17c3b66f7cedaa20f90be626e3"
+      },
+      {
+        "address": "0x21a8720",
+        "bytes": 1370,
+        "name": "GameCore::AI::Targets::Targets()",
+        "sha256": "5b7b0910a3fe385942be3f79c56c4e6fbaed1954f86dd06dce40c2d2d0099f71"
+      },
+      {
+        "address": "0x21bcff0",
+        "bytes": 3680,
+        "name": "GameCore::AI::UnitEfficiencyManager::CalculateEfficiencies()",
+        "sha256": "31594c432c740fffaa7616025b2ff0d47d0d8c4da2de535269b637c4612b9f2e"
+      },
+      {
+        "address": "0x2343a00",
+        "bytes": 289,
+        "name": "GameEffects::Effects::AddCultureBombTrigger::Initialize(GameEffects::EffectParameters const&)",
+        "sha256": "e3796a96a12c3927029ccfc8e61b8db4fdde30f9fbfea6901ae61fe426e1098c"
+      },
+      {
+        "address": "0x236f4e0",
+        "bytes": 279,
+        "name": "GameEffects::Effects::GrantYieldPerResourceTypeInCity::Initialize(GameEffects::EffectParameters const&)",
+        "sha256": "fe10740cc90d6e2e1f0312497e96012f2d8caaa476a3e0ed8f09e8aafde4a4f8"
+      },
+      {
+        "address": "0x2370bc0",
+        "bytes": 416,
+        "name": "GameEffects::Effects::PlayerDistrictCreateYield::Initialize(GameEffects::EffectParameters const&)",
+        "sha256": "28558fc44d716cf6f340523dda39b5f86f0758efe944eabaee33b7e15e9fcbd1"
+      },
+      {
+        "address": "0x23a0b60",
+        "bytes": 663,
+        "name": "GameEffects::Effects::AddDiploCombatModifier::Initialize(GameEffects::EffectParameters const&)",
+        "sha256": "1ed66d5b2bd7a515edbc6360e6589d05bd36ac3539eaf6ace816d75e96f7cf39"
+      },
+      {
+        "address": "0x23a2030",
+        "bytes": 279,
+        "name": "GameEffects::Effects::AdjustBuildingYieldChange::Initialize(GameEffects::EffectParameters const&)",
+        "sha256": "dd7864b0bb82ce42d023f7b0e9666f8dea7854a3c0de67808b10ac48ddc370e8"
+      },
+      {
+        "address": "0x23d2820",
+        "bytes": 247,
+        "name": "GameEffects::Effects::AdjustPlayerBanCityProduction::Initialize(GameEffects::EffectParameters const&)",
+        "sha256": "5a676f09d8ece3c5e504dec235db6a67a1933a1e35cdeecef4eb5f28ee00e6da"
+      },
+      {
+        "address": "0x24227d0",
+        "bytes": 5,
+        "name": "GameCore::Unit::MovementModifiers::SetEnterForeignLands(bool)",
+        "sha256": "052b0fa24c213ea4246ef74ebbcd289ce7e764b729d22709d1f453ff3db26ab1"
+      },
+      {
+        "address": "0x2422ab0",
+        "bytes": 5,
+        "name": "GameCore::Unit::MovementModifiers::SetIgnoreRivers(bool)",
+        "sha256": "68713720a142218a68fb8e44653dc986930d7409cba27aafa57804cd81ddfa13"
+      },
+      {
+        "address": "0x271b740",
+        "bytes": 81,
+        "name": "TrackedValue::operator=(TrackedValue const&)",
+        "sha256": "4f3fb53a5662797b06077dfd80f79179a4e520dd5bfe585602d2ec5b316d0a3d"
+      },
+      {
+        "address": "0x27281a0",
+        "bytes": 168,
+        "name": "GameCore::Cache::District::Instance::Fill(GameCore::District::Instance const*, GameCore::District::Reflection::Variants1*, bool)",
+        "sha256": "f748cc788bd61fd5e5c19f58fea6b765aac59029c481c86eeca09588419d34a5"
+      },
+      {
+        "address": "0x27bbc20",
+        "bytes": 39,
+        "name": "GameCore::Map::Plot::CityAttributes::Initialize()",
+        "sha256": "8c63b3a6c242a1a59e3eecf7042bff0a94e03e0ba5d9c508ffe948370bc8799d"
+      },
+      {
+        "address": "0x27e2790",
+        "bytes": 308,
+        "name": "GameCore::Cache::Player::Instance::Fill(GameCore::Player::Instance const*, GameCore::Player::Reflection::Variants1*, bool)",
+        "sha256": "6cad788d88ad9898194bdf6ab11d39e96091264a5e52325c8812375adee5874b"
+      },
+      {
+        "address": "0x27f8470",
+        "bytes": 509,
+        "name": "GameCore::Cache::Map::Plot::Instance::Fill(GameCore::Map::Plot::Instance const*, GameCore::Map::Plot::Reflection::TerrainVis1*)",
+        "sha256": "4fedfc47221a1e0de875d88adcbe336fd075e68e2efe53ef3d195bd0731280ea"
+      },
+      {
+        "address": "0x27f8690",
+        "bytes": 509,
+        "name": "GameCore::Cache::Map::Plot::Instance::Fill(GameCore::Map::Plot::Reflection::TerrainVis1*) const",
+        "sha256": "2e93ba2003787502adfc9ad8dd7eb7cfbae7cf5d0b2f6024a46ae31768d89f4e"
+      },
+      {
+        "address": "0x28195d0",
+        "bytes": 129,
+        "name": "GameCore::City::Commands::SetFocus::ClassParameters::Read(Data::TypedVariantMap const&)",
+        "sha256": "06b09d996dc4025d36749e61e242cd14068dc105c6e692eda6ffdfafc6ad801e"
+      },
+      {
+        "address": "0x2819760",
+        "bytes": 36,
+        "name": "GameCore::City::Commands::SetFocus::SetParameters(GameCore::YieldTypes, bool, GameCore::SharedParameters::Instance*) const",
+        "sha256": "9cb1bb0f0b95ae030ba66dcb7f8ef13e759a5fe4b7a7c6467ce1de0790f99bc2"
+      },
+      {
+        "address": "0x2819920",
+        "bytes": 43,
+        "name": "GameCore::City::Commands::SetFocus::ClassParameters::ClassParameters()",
+        "sha256": "6bc3db7795988bc91b3741df7a9881bf14ec4dd99ba72d618563958d028f62f8"
+      },
+      {
+        "address": "0x282de30",
+        "bytes": 1663,
+        "name": "GameCore::Barbarian::Manager::Manager()",
+        "sha256": "2586e78fdf35081915776e4f05040208c2ea172deca3d047b319551fb7be21aa"
+      },
+      {
+        "address": "0x2852980",
+        "bytes": 2268,
+        "name": "GameCore::City::BuildQueue::PreCreateBuilding(GameCore::Definition::Building const&, GameCore::PlotCoord const&)",
+        "sha256": "3a38419c5a9121de2713ed093144287ca81c0df58085ed39e60d4f9c086080d3"
+      },
+      {
+        "address": "0x28577e0",
+        "bytes": 3645,
+        "name": "GameCore::City::BuildQueue::CanZone(GameCore::DistrictTypes, bool, GameCore::PlotCoord const&, Data::TypedVariantMap*) const",
+        "sha256": "ada64ad028e683c7bc5fb7042eab91ce7fbf966a96c6413a6c897d8e30faf355"
+      },
+      {
+        "address": "0x2887460",
+        "bytes": 1224,
+        "name": "Serialization::operator>>(Serialization::IStream&, GameCore::City::Gold&)",
+        "sha256": "a260c926ea711bd90083c9ee47926d228960239177c03285aed5b25ad9f50b8f"
+      },
+      {
+        "address": "0x28e1540",
+        "bytes": 5,
+        "name": "GameCore::Combat::Member::SetMaxHitPoints(int)",
+        "sha256": "e5f693ca5823a32d0a0ceb4cc288d52b310fea827446c19b3d1db237a94c50ea"
+      },
+      {
+        "address": "0x28fe8d0",
+        "bytes": 314,
+        "name": "GameCore::Context::Achievements::OnCityBesieged(GameCore::City::Instance*)",
+        "sha256": "d282e3d2b34da49e9605c441991f2701e245210b6da673b7dcc410830d1d7681"
+      },
+      {
+        "address": "0x294bce0",
+        "bytes": 859,
+        "name": "GameCore::FreeCities::Instance::Initialize(GameCore::Player::Instance*, GameCore::City::Instance const*, int)",
+        "sha256": "849b00b7dc0767ac47f86bfde5575d0c5d1fe4eaaea39e959a68663485c43234"
+      },
+      {
+        "address": "0x294c230",
+        "bytes": 105,
+        "name": "GameCore::FreeCities::Instance::Reset()",
+        "sha256": "e58d8d6c9d5145f852b9826d9e59fd9dc68b62eaf4a7a9ce46126ca980b4231f"
+      },
+      {
+        "address": "0x294c2b0",
+        "bytes": 364,
+        "name": "GameCore::FreeCities::Instance::SetAlive(bool)",
+        "sha256": "645b55b31f2e4a8a5ca58c8e4bd3cc124408fccdc1fffd42217e1cfdd1ec0e89"
+      },
+      {
+        "address": "0x29949e0",
+        "bytes": 2909,
+        "name": "GameCore::Game::Eras::Eras()",
+        "sha256": "458d27dfd7ff3d6d90cfb0502a77b44da4524799911f1026a9f5d663e9b59227"
+      },
+      {
+        "address": "0x2a3e320",
+        "bytes": 5,
+        "name": "GameCore::Map::Plot::CityAttributes::SetWonderType(GameCore::BuildingTypes)",
+        "sha256": "2f18e1c666165e82089f97118a2c3a69a4b9a9ff7260abcdcf61cb506a9a9b32"
+      },
+      {
+        "address": "0x2a41a80",
+        "bytes": 178,
+        "name": "GameCore::Map::CityPlots::SetValidDomains(GameCore::Map::Plot::Instance*)",
+        "sha256": "2a4b78123d7faffdefd2c0e7c1841ff9a72ef95454eb2b4859482ac9e388e74b"
+      },
+      {
+        "address": "0x2a78750",
+        "bytes": 77,
+        "name": "GameCore::Player::Culture::AddCultureBombTrigger(GameCore::BuildingTypes, bool)",
+        "sha256": "6fdf566faff28e1581dcd419550cd2cf97af7140cc1bea1f8a3f1ef655f4fdb6"
+      },
+      {
+        "address": "0x2a787a0",
+        "bytes": 77,
+        "name": "GameCore::Player::Culture::AddCultureBombTrigger(GameCore::DistrictTypes, bool)",
+        "sha256": "9ea15371a6283c1d70729d03390ccef9fb4508d5d08f84c0874d743cecb8bb1a"
+      },
+      {
+        "address": "0x2a787f0",
+        "bytes": 77,
+        "name": "GameCore::Player::Culture::AddCultureBombTrigger(GameCore::ImprovementTypes, bool)",
+        "sha256": "19dc60e0049afab50c368b3eec94738340854e8e78c0222f0afc8d19f17f3ac8"
+      },
+      {
+        "address": "0x2a9c9b0",
+        "bytes": 4513,
+        "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Diplomacy&)",
+        "sha256": "78df3c3745bf3876644964e906e2ca822bb7ca32289c5c5029f66d3402658f22"
+      },
+      {
+        "address": "0x2aa7970",
+        "bytes": 3330,
+        "name": "GameCore::Player::Diplomacy::IsDiplomaticActionValid(GameCore::AI::DiplomaticActions, GameCore::PlayerTypes, bool, bool, bool, Data::TypedVariantMap*, bool) const",
+        "sha256": "29c6fe7ed47132b0d85a0093ce4f49755b9327a2c5eaa6f3ecbfc39f31d4728a"
+      },
+      {
+        "address": "0x2aaf780",
+        "bytes": 51,
+        "name": "GameCore::Player::Diplomacy::AddDiplomaticCombatModifier(GameCore::DiplomaticYieldSources, int, int, bool)",
+        "sha256": "7cc543ca08a16f253ce651c9c39158ba85be6b667a604ca18cc2df0ddd9cf2c1"
+      },
+      {
+        "address": "0x2b2c900",
+        "bytes": 8430,
+        "name": "GameCore::Player::Instance::Instance(GameCore::PlayerTypes)",
+        "sha256": "faf7bab073fe5e16eaed6e5f8884416f4a3cff2444896fd95b839fdbe75bc02e"
+      },
+      {
+        "address": "0x2b510f0",
+        "bytes": 132,
+        "name": "Serialization::operator>>(Serialization::IStream&, GameCore::Player::Manager&)",
+        "sha256": "ab965247cffca1fbce8acb41ba7d7397770a9681a361847088e0feafcbc9e55d"
+      },
+      {
+        "address": "0x2bc8090",
+        "bytes": 91,
+        "name": "GameCore::Map::Plot::CityAttributes::Read(Serialization::IStream&, int)",
+        "sha256": "4735021680e42fe397e22a42fcde4e37114f3a69045747faae2e7a3e29378f77"
+      },
+      {
+        "address": "0x2bc8390",
+        "bytes": 23,
+        "name": "GameCore::Map::Plot::CityAttributes::SetDomainValid(GameCore::DomainMask, bool)",
+        "sha256": "586928f865bc6c6950507556026a70982e878067b2fc6717804de6f330f7f067"
+      },
+      {
+        "address": "0x2be0e60",
+        "bytes": 263,
+        "name": "GameCore::Rules::Combat::Instance::CanWMDStrikePlot(GameCore::PlayerTypes, GameCore::WMDTypes, GameCore::Map::Plot::Instance const*)",
+        "sha256": "625ce80c1fea8e2efc69e38cb567c89f9c1ff6acc08994483ec98ceffdb25705"
+      },
+      {
+        "address": "0x2d01a00",
+        "bytes": 559,
+        "name": "GameCore::Map::pGetMapInitData(lua_State*)",
+        "sha256": "3543373ed3c23551b9e8d94540fcd54ca8c8827cb8b93b9dd595195df3837037"
+      },
+      {
+        "address": "0x2d5f380",
+        "bytes": 51,
+        "name": "GameCore::WorldBuilder::Map::CommandSetRoute::CommandSetRoute(GameCore::RouteTypes, bool, GameCore::Map::Plot::Instance*)",
+        "sha256": "23b39e13db783c00f387c6bdbc65da56384d33076836e670827e3b2c3ff9a21c"
+      },
+      {
+        "address": "0x2d5f3e0",
+        "bytes": 121,
+        "name": "GameCore::WorldBuilder::Map::CommandSetRoute::Redo()",
+        "sha256": "11d52d16e89d2f74db840314942fc63e9ee8ac20c0fa21295f72a92353d84aaa"
+      },
+      {
+        "address": "0x2d5f480",
+        "bytes": 52,
+        "name": "GameCore::WorldBuilder::Map::CommandEditRiver::CommandEditRiver(bool, GameCore::DirectionTypes, GameCore::Map::Plot::Instance*)",
+        "sha256": "fa75a5247ae45a0690454a23385092137626ffcdac0f9f06a9f305f412a7f927"
+      },
+      {
+        "address": "0x2d5f4e0",
+        "bytes": 759,
+        "name": "GameCore::WorldBuilder::Map::CommandEditRiver::Redo()",
+        "sha256": "6c84b7e7d8e6d97d07f53e01d8c4734c235cbd5745a26cf561cb2621ab066cf0"
+      },
+      {
+        "address": "0x2d5fcf0",
+        "bytes": 52,
+        "name": "GameCore::WorldBuilder::Map::CommandEditCliff::CommandEditCliff(bool, GameCore::DirectionTypes, GameCore::Map::Plot::Instance*)",
+        "sha256": "e811d247a7fb3115a36d74f0efa70dd4e4ff8a6e12489f7f3de90d3c283f3ef4"
+      },
+      {
+        "address": "0x2d5fd50",
+        "bytes": 118,
+        "name": "GameCore::WorldBuilder::Map::CommandEditCliff::Redo()",
+        "sha256": "da105e428bd99483004ef152adabb63c7280ee5cc558ca37e5c084be631eca8c"
+      },
+      {
+        "address": "0x2d5fdf0",
+        "bytes": 52,
+        "name": "GameCore::WorldBuilder::Map::CommandSetRevealed::CommandSetRevealed(bool, GameCore::PlayerTypes, GameCore::PlotCoord const&)",
+        "sha256": "360201981fa9571ab75f69bda7416f877796838a1c7b3aa42f82bfa0efb6356d"
+      },
+      {
+        "address": "0x2d5fe50",
+        "bytes": 103,
+        "name": "GameCore::WorldBuilder::Map::CommandSetRevealed::Redo()",
+        "sha256": "45834838edcac2fee87322ac167a5821a93c511c1b8336aaf0f0a0249bcdea5b"
+      },
+      {
+        "address": "0x2d71890",
+        "bytes": 416,
+        "name": "GameCore::WorldBuilder::Rivers::SplitsRiverFromMouth(GameCore::Map::Instance const&, int, GameCore::DirectionTypes)",
+        "sha256": "1e94abe620246089c839222b6f35e67210d6c5e875d21e81526a106932882ae3"
+      },
+      {
+        "address": "0x2d8df50",
+        "bytes": 39,
+        "name": "GameCore::Unit::Commands::PetTheDog::PetTheDog()",
+        "sha256": "7a42bf4c51c6a033cc3c752328a07365a81c0d8605f3a7b552def95eb8154efe"
+      },
+      {
+        "address": "0x2d8df80",
+        "bytes": 522,
+        "name": "GameCore::Unit::Commands::PetTheDog::CanStart(GameCore::Unit::Instance const*, GameCore::Unit::Commands::Command const&, bool, Data::TypedVariantMap*)",
+        "sha256": "7668580ebed9b4dea914f6840771ed021f6ab293325a6fabed542b910a348dc6"
+      },
+      {
+        "address": "0x2de92a0",
+        "bytes": 145,
+        "name": "GameCore::Map::River::Manager::MarkFlooded(GameCore::NamedRiverTypes, int, int, bool)",
+        "sha256": "17773df682613945981de2af3e3b1932cc68f103e7829f560a5483600231fd3f"
+      }
+    ]
+  },
+  "primary_plot_index_writers": [
+    "0x2bc8c24",
+    "0x2bc8cc3",
+    "0x2bca7a0",
+    "0x2bca7cd",
+    "0x2bca7e0"
+  ],
+  "additional_plot_copy_methods": [
+    {
+      "address": "0x2a49ca0",
+      "bytes": 81,
+      "role": "Plot copy constructor retains index in8-byte copy at+0x48",
+      "callers": [
+        "0x2a49ba0",
+        "0x2a49f29",
+        "0x2a4a0ee"
+      ]
+    },
+    {
+      "address": "0x2a4a020",
+      "bytes": 70,
+      "role": "Plot assignment retains index in8-byte copy at+0x48",
+      "callers": [
+        "0x2a49ffa",
+        "0x2a4a0a6",
+        "0x2a4a166"
+      ]
+    }
+  ],
+  "primary_plot_reset_virtual_site": "0x2a41c02 in CityPlots.Initialize before callbacks",
+  "indirect_offset_80_scan": {
+    "sites": 112,
+    "classification": "actual receiver/call flow, including stack-held logging pointers; no namespace exclusion or return-register mention shortcut",
+    "additional_primary_resets_found": 0
+  },
+  "shared_sparse_alloc_calls": {
+    "primary": [
+      "0x2a41bcd",
+      "0x2a4255c",
+      "0x2a42587"
+    ],
+    "cache": [
+      "0x27bb29d",
+      "0x27bb60c",
+      "0x27bb637"
+    ]
+  },
+  "bulk_reflection": {
+    "fill_methods": [
+      "0x27f8670",
+      "0x27f8a40",
+      "0x2c928a0"
+    ],
+    "direction": "read24-byte payload from sourceCityAttributes+8 and write caller Reflection DTO; export wrapper only selects primary/cache source",
+    "update_sites": [
+      "0x27f7f0f",
+      "0x27f8239",
+      "0x27f82bc"
+    ],
+    "update_destinations": "all cache mutable attributes; primary/source payloads are read-only views",
+    "protected_payload": {
+      "offset": 8,
+      "bytes": 24
+    },
+    "sole_direct_internal_fill_call": {
+      "call": "0x27bc70e",
+      "output_producer": "0x27bc704",
+      "destination": "stack RSP+0x38",
+      "containing_method_address": "0x27bc6c0",
+      "bytes": 130,
+      "sha256": "dfb1a1ec06e70202dd6c79f002abb85873ef585497c6f4fbccf2ecb923730d39"
+    },
+    "copy_constructor_stack_destinations": [
+      {
+        "call": "0x238a1c6",
+        "destination": "RSP+0x10"
+      },
+      {
+        "call": "0x26f13d8",
+        "destination": "RSP+0xb0"
+      },
+      {
+        "call": "0x29b83dd",
+        "destination": "RSP+0x10"
+      }
+    ]
+  },
+  "sequencing": {
+    "saved_dimensions_read_before_initialize": true,
+    "old_nonempty_map_uninitialized_before_new_dimensions": true,
+    "primary_pool_clear_reserve_before_callbacks": true,
+    "game_read_map_wrapper": "0x2a46ff0,20bytes; one concrete Read",
+    "one_saved_plot_vector_pass": true,
+    "saved_plot_length_must_equal_positive_dimensions": true
+  },
+  "accepted_bound_conditions": [
+    "positive width and height; P>0",
+    "fresh initialized canonical primary Map/Plot ownership",
+    "one current Map read pass after reset/pool clear/reservation",
+    "saved Plot vector length equals width*height",
+    "no extra out-of-band resets, mutable clones, direct allocator misuse or arbitrary imported allocator history",
+    "checked2*P<=65535"
+  ],
+  "bound": {
+    "constructed_vector_length_high_water": "2*P+1",
+    "maximum_returned_allocation_index": "2*P",
+    "raw_geometric_capacity_not_bounded_by_formula": true,
+    "current_fixture_plots": 6996,
+    "current_fixture_max_constructed_nodes": 13993,
+    "current_fixture_max_allocated_index": 13992,
+    "maximum_admitted_positive_plot_count": 32767
+  },
+  "source_only_allocator_abstraction": {
+    "source_only": true,
+    "exhaustive_reachable_states": {
+      "1": 9,
+      "2": 106,
+      "3": 1735
+    },
+    "worst_case_paths": {
+      "1": {
+        "high_water_nodes": 3,
+        "last_allocation_u32": 2,
+        "last_stored_u16": 2,
+        "bound_admitted": true
+      },
+      "3": {
+        "high_water_nodes": 7,
+        "last_allocation_u32": 6,
+        "last_stored_u16": 6,
+        "bound_admitted": true
+      },
+      "6996": {
+        "high_water_nodes": 13993,
+        "last_allocation_u32": 13992,
+        "last_stored_u16": 13992,
+        "bound_admitted": true
+      },
+      "32767": {
+        "high_water_nodes": 65535,
+        "last_allocation_u32": 65534,
+        "last_stored_u16": 65534,
+        "bound_admitted": true
+      },
+      "32768": {
+        "high_water_nodes": 65537,
+        "last_allocation_u32": 65536,
+        "last_stored_u16": 0,
+        "bound_admitted": false
+      }
+    },
+    "native_code_executed": false
+  },
+  "resolved_scope_findings": [
+    {
+      "issue": "zero plot count passes arithmetic inequality but InitPlots does not reserve default node for empty vector",
+      "required_resolution": "explicit positive geometry/P>0 gate; current MapDomainInputs already rejects nonpositive dimensions; Map wire codec alone does not"
+    },
+    {
+      "issue": "constructed node high-water versus geometric reserved capacity",
+      "required_resolution": "bound allocation return index/constructed vector size; do not claim raw memory capacity<=2P+1"
+    }
+  ],
+  "original_overflow_retained": {
+    "result_u32": 65536,
+    "stored_u16": 0,
+    "reserved_node_can_become_mutable": true,
+    "full_original_behavior_remains_required": true
+  },
+  "source_derived_default": {
+    "raw_domain_mask_i16": 0,
+    "packed_wonder_i16": -1,
+    "wonder_complete": false,
+    "source": "original Initialize stores plus original Wonder packed-1 guard; observed native fallback answers are not inputs"
+  },
+  "new_default_model_implemented_by_review": false,
+  "new_native_rows_compared_by_review": 0,
+  "native_execution": false,
+  "universal_default_immutability_claimed": false,
+  "full_gameplay_state_actions_turns": false,
+  "raw_save_load_difference_preserved": 89198,
+  "unknown_bytes_masked": 0,
+  "source_packet_commit": "d0153d5735d5d0ed7ddb545b81ea85ab8cd1dfd1",
+  "source_packet_files": {
+    "tools/linux/city_attribute_default_audit.py": "fd54d92e9d8555a8eb621c96143db82c58ed5b4d810950e63a2a75a0fbcbf480",
+    "docs/linux-city-attribute-default.md": "b6ffa40be92dc081595f46856cda5ab457006c5752742c2de4c739447f83d66c",
+    "evidence/linux/city-attribute-default-invariant.json": "dcb6d6cf6baf73456bd43d05c3893b48cd6cc3fb510de8c61e7bd6612f834f6f",
+    "evidence/linux/city-attribute-writer-inventory.json": "512b759a8a9bc8f18cb61ab7994b6cf03d53a431110c69eb679df5ed750b76a4"
+  },
+  "final_audit_exactly_reproduced": true,
+  "final_pinned_base_methods": 62,
+  "final_extended_method_hashes": 81,
+  "final_primary_pool_references": 13,
+  "protected_typed_payload_contract": "Scoped well-typed internal ownership and normal nonaliasing Reflection output contract; no arbitrary external private-pool aliases or raw pointer writes",
+  "indirect_offset_190_inventory": {
+    "target_internal_call_or_jmp_sites": 0,
+    "exports_vtable_entry": "0x3af0200",
+    "exports_receiver_slot": "0x190"
+  },
+  "heterogeneous_indirect_offset_38_inventory": {
+    "sites": 2992,
+    "all_receiver_classes_or_taint_escapes_proven": false,
+    "used_as_universal_nonmutation_proof": false
+  },
+  "source_ready_for_bounded_default_model": true
+}
