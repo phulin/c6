@@ -105,6 +105,37 @@ alone does not certify fresh derived values at action entry. The post-init
 history remains an explicit missing authority; an abstract initialization at
 the action boundary would silently replace potentially stale native state.
 
+The [postload history audit](../tools/linux/yield_monitor_postload_history_audit.py)
+and [source result](../evidence/linux/yield-monitor-postload-history.json)
+pin 30 focused bodies and nine exact calls. Player postload invokes concrete
+BehaviorTree/Control initialization, guarded Unit sight population, and City
+Buildings/Citizens initialization. BehaviorTree handle initialization rebinds
+saved owner/contract identities. The Control manager subsequently invokes
+existing Contract virtual `+0x10` at `201e38b`; these transitive effects remain
+unclosed. Its namespace is not a reason to omit a gameplay write or callback.
+
+City Citizens postload (`286eb60`) has a direct intersection with monitor
+inputs: a true `force_update_plot_appeal` clears the flag and calls
+`Rules.Appeal.Update` for each nonnull city plot. The resulting cached appeal
+can affect plot yields. City Buildings postload can clear a GreatWorkSlot ID
+whose indexed GreatWork has missing type. The separate Hero discovery-order
+rebuild contains a real conditional gameplay RNG call at `269c815`; its
+eligibility/profile branch remains with its dedicated owner task. GlobalAI's
+postload body is a single return, established from bytes.
+
+The [saved-guard result](../evidence/linux/yield-monitor-postload-domain.json)
+from committed `a2a8d1a` contains 245 Cities with zero saved appeal-refresh
+flags and 1,262 Units, 21 with empty sight vectors. Complete retained sources
+and candidate `43494c1bccdb8cbcaf9d406820f5652c372d6507aff41f1af1d5cdce9d729c9c`
+remain under
+`target/linux/yield-monitor-domain-candidates/aabbd3e14b6f4f6cbe58323b036cc367/`.
+These fields belong to **postload SavedOutputCore `ff31`**. They do not prove
+the corresponding flags in original raw Read input `a667` were false: native
+postload may already have cleared them. Nor do 21 empty vectors prove 21
+reachable repairs; original IsDead, location and sight-range guards matter.
+Original Read framing/guard inputs and actual relevant callback effects are
+the next bounded history requirements. No baseline certificate is minted.
+
 The separate retained-source domain checker uses the real 43-player,
 1,262-Unit LoadedState. It tests missing-owner and corrupt-trace rejection,
 one-time admission, actual warm lookups, and persistence of graph authority
