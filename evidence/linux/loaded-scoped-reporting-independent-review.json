@@ -1,0 +1,84 @@
+{
+  "changed_preimages": [
+    "crates/c6-data/src/loaded_actions.rs",
+    "crates/c6-data/src/loaded_actions/reporting.rs",
+    "tools/linux/loaded_activity_reporting_check.py",
+    "tools/linux/loaded_activity_reporting_check.rs"
+  ],
+  "checkpoint_sha256": "10ac27dc3b1212f683bc68249e3d4ca7e1e7b5fed0fa63a4db62c2434df0f35b",
+  "complete_action_state_rng_parity": false,
+  "exact_remaining_consumer": "Provider(\"genuine script/lock/args backend unavailable\")",
+  "isolated_cases_are_action_continuation": false,
+  "isolated_source_projection_cases_compared": 9,
+  "mutation_boundary": {
+    "actor_identity_changes_stop_continuation": true,
+    "full_unit_mutation_requires_runtime_guard": true,
+    "immutable_world_reads": true,
+    "mutable_addressed_actor_only": true,
+    "private_context_state_and_reference": true,
+    "stale_runtime_identity_or_dependencies_reject": true,
+    "unsupported_actor_mutations_retained": true,
+    "world_index_repair_implemented": false
+  },
+  "native_host_publication_values_compared": false,
+  "original_execution": false,
+  "original_method_census_repeated": false,
+  "real_native_send_scalar_prefix_compared": 4,
+  "real_native_send_scalar_rows_available": 9,
+  "retained_binary_replay": {
+    "executable_sha256": "a7c6f701aa904906a5999b7d77c42bfb75a3fd5581f3b38be3dc64b93f4546db",
+    "fields_equal": 29,
+    "original_execution": false,
+    "output_sha256": "27796920dbeb34d958aa77cd9fcf899ac1fbebd0e276bb8fe05c6eb3637abb95",
+    "source_rebuild": false
+  },
+  "retained_candidate_sha256": "a7c6f701aa904906a5999b7d77c42bfb75a3fd5581f3b38be3dc64b93f4546db",
+  "retained_manifest_sha256": "377464d1d328dbb9d558ae56b29b68352becb11a909f84efe1655e386c693178",
+  "retained_resolved_lock_sha256": "bc1abcff1443572a997139e1467c114803590feb4ea3b2b3f59a36036d2f2d8a",
+  "reused_previous_review_sha256": "3ec9a2ebad9c310ca45e81b234af8fea11719afab8106b120ef75e7d83bd48a2",
+  "reviewed_commit": "6bdb67d28a6bb2757aab1388c95e035724656256",
+  "reviewer_source_sha256": "96e8ae22cf1704c6add13a0a82511478d16c7c6ba45ba1b94ce6cec98aaae580",
+  "safe_capability_compile_probes": [
+    {
+      "compiles": true,
+      "expected_error": null,
+      "name": "allowed_read_then_actor_activity",
+      "source_sha256": "1b1d40d9ce0bc154a0f004229c177c487547d5a146f29b09400306bc93ee59f4"
+    },
+    {
+      "compiles": true,
+      "expected_error": null,
+      "name": "allowed_actor_identity_write_is_runtime_checked",
+      "source_sha256": "f3e5b4cabb46d5915ca5d02fa0e84035e9046755cee924aa430af02930c643a3"
+    },
+    {
+      "compiles": false,
+      "expected_error": "E0596",
+      "name": "deny_other_unit_mutation",
+      "source_sha256": "d26dc311d66d2aeaf99c051bdd0a9761e05781b6739f0ea6788f9885a57a284f"
+    },
+    {
+      "compiles": false,
+      "expected_error": "E0596",
+      "name": "deny_other_player_mutation",
+      "source_sha256": "897842efa0f9245bcf93e924eebc8e5d0166d6f9a6b6fb97015a9b255fb52c38"
+    },
+    {
+      "compiles": false,
+      "expected_error": "E0616",
+      "name": "deny_reference_rebinding",
+      "source_sha256": "f82ef70206ecebc6cc2fae5f8440d81064052f0b9531e803f97847a795f7893b"
+    },
+    {
+      "compiles": false,
+      "expected_error": "E0502",
+      "name": "deny_live_mutable_actor_and_world_alias",
+      "source_sha256": "27c81df28f88a9f1aa06ee3ef3bc64e960c436f45bae51f952b4dd1365288e2b"
+    }
+  ],
+  "schema": "c6-linux-loaded-scoped-reporting-independent-review-v1",
+  "source_preimages_checked": 167,
+  "source_preimages_matching_commit": 167,
+  "unchanged_preimages_reusing_previous_build": 163,
+  "wider_world_rng_callbacks_supported": false
+}
