@@ -1,0 +1,388 @@
+{
+  "accepted_caller": {
+    "includeTempRoute": false,
+    "origin_destination_yields_recomputed": true,
+    "reason": "Actual Route getters pass false through Rules scalar and vector modifier wrappers; exact bool branches bypass the complete mutating block.",
+    "route_edit_temp_create_game_signal_branch_reachable": false,
+    "true_branch_retained_in_scope": true
+  },
+  "branches": [
+    {
+      "bytes": "c7042400000000",
+      "result": "Origin route getter passes includeTempRoute=false",
+      "rva": "0x2c11965"
+    },
+    {
+      "bytes": "c7042400000000",
+      "result": "Destination route getter passes includeTempRoute=false",
+      "rva": "0x2c119e5"
+    },
+    {
+      "bytes": "44894c2410",
+      "result": "Origin modifier saves bool R9 to stack10",
+      "rva": "0x2c09701"
+    },
+    {
+      "bytes": "807c241000",
+      "result": "Origin tests includeTempRoute",
+      "rva": "0x2c09a28"
+    },
+    {
+      "bytes": "0f84e2010000",
+      "result": "False skips route edits, temporary allocation and game signal",
+      "rva": "0x2c09a32"
+    },
+    {
+      "bytes": "44894c2428",
+      "result": "Destination modifier saves bool R9 to stack28",
+      "rva": "0x2c0ad81"
+    },
+    {
+      "bytes": "807c242800",
+      "result": "Destination tests includeTempRoute",
+      "rva": "0x2c0aed6"
+    },
+    {
+      "bytes": "0f8434010000",
+      "result": "False skips route edits, temporary allocation and game signal",
+      "rva": "0x2c0aee0"
+    },
+    {
+      "bytes": "7440",
+      "result": "Absent forward path enters local FindNewPath branch",
+      "rva": "0x2c08b17"
+    },
+    {
+      "bytes": "0f848c000000",
+      "result": "Absent reverse path enters pooled pathfinder branch",
+      "rva": "0x2c062ad"
+    },
+    {
+      "bytes": "8993d0030000",
+      "result": "Path generation stores player in actual reusable finder",
+      "rva": "0x2c106d0"
+    },
+    {
+      "bytes": "80be4001000000",
+      "result": "Native ID-map traversal filters live active-route bool",
+      "rva": "0x2bfa8cb"
+    },
+    {
+      "bytes": "4d3b67200f8412010000",
+      "result": "Monitor only checks lower_bound result against end",
+      "rva": "0x2c66a8c"
+    },
+    {
+      "bytes": "c6433401",
+      "result": "Lazy local initialized bit store",
+      "rva": "0x2c0d751"
+    },
+    {
+      "bytes": "894330",
+      "result": "Lazy local computed value store",
+      "rva": "0x2c0d75d"
+    }
+  ],
+  "checks_passed": true,
+  "dwarf_sha256": {
+    "args.dwarf": "747d041f2fb0d119ccd983f00edbdc5eb63b62879f44f68beb65297ee27642ce",
+    "pathfinder-types.dwarf": "ccedf4663614af1d84533d0b54c1ac2c5e99461aefd17c77999af982aa4f5887",
+    "types.dwarf": "46ad395219786617f16c95b09870c3f0b70858bea3f6d3e9ae56547fef8bac32"
+  },
+  "existing_path": {
+    "edge_path_value_offset": "0x188",
+    "effect": "Lookup returns existing nonempty tracked path vector; lookup and hit body do not edit graph/path.",
+    "graph_origin_map_offset": "0xf8",
+    "graph_path_write_on_hit": false,
+    "pathfinder_invoked_on_hit": false,
+    "supported_domain": "Valid cities and successful forward graph lookup with nonempty path; fixture has182 active routes, all nonempty forward paths."
+  },
+  "fixture": {
+    "active_path_nodes": 6193,
+    "active_routes": 182,
+    "active_routes_without_forward_path": 0,
+    "codec_review_sha256": "51e50225ce38e0b86123f8bbbff45366cb1ee987eb5928d6ab9c46c37b9a97ff",
+    "codec_sha256": "a8695b23cf98c2be62ef922997b111af1dcfa1d4d9ae6868989dedfbe2346122",
+    "core_sha256": "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884",
+    "edges": 1571,
+    "exact_production_codec_roundtrip": true,
+    "graph_range": [
+      71027800,
+      71497438
+    ],
+    "graph_sha256": "64a196d77b6bc35a72354226dda4111e10f46742cd62d4e335b43c737a186c33",
+    "live_idmap_order_observed": false,
+    "native_lookup_hit_observed": false,
+    "scope": "Captured typed serialized graph. Nonempty paths establish the supported forward-hit input domain, not observed execution of every live lookup."
+  },
+  "full_host_admission": false,
+  "gamecore_sha256": "a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa",
+  "gameplay_parity": false,
+  "iteration": {
+    "cache_key_state": "Preserve origin/destination CityID ordering and complete current cache; do not sort routes or rebuild monitor cache from wire order",
+    "graph_id_map_offset": "0xd0",
+    "graph_manager_offset": "0xc8",
+    "monitor": "Lower_bound over current sorted monitor trade cache; stop only at end. No separate equality check appears before using returned record.",
+    "order": "Native Graph ID-map forward iteration; callback only when Edge live active bool+0x140 true",
+    "route_edge_offset": "0xc0"
+  },
+  "limitations": [
+    "No native run or new callback/value observations",
+    "Serialized active path coverage is not a live hash-table-order/lookup-hit observation",
+    "General modifier/feature getters remain exact rules inputs; this audit does not implement their arithmetic or universally prove all transitive getter purity",
+    "Full affected-state/RNG and reporting subscribers remain required",
+    "Complete Rust gameplay state/actions/turns remain unimplemented; raw Save-to-Load89198-byte failure remains unclassified and unmasked"
+  ],
+  "methods": [
+    {
+      "bytes": 82,
+      "name": "Monitor.CheckTrade",
+      "rva": "0x2c668b0",
+      "sha256": "870260314ca6bc625d0c2e7f7d43f8649b6a8c7f5490a9bd7a2b6f8e7da52d6c"
+    },
+    {
+      "bytes": 390,
+      "name": "Monitor.RouteCallback",
+      "rva": "0x2c66a30",
+      "sha256": "8824db1f610cb852929455f4aadd16fab18ff0ccef10faf17b0c5ddc42a5026f"
+    },
+    {
+      "bytes": 114,
+      "name": "Route.OriginYield",
+      "rva": "0x2c11920",
+      "sha256": "a277d2f0c94bffbc199aeb70e384639fa64e342b031f3f34dfb09ac48557bee9"
+    },
+    {
+      "bytes": 114,
+      "name": "Route.DestinationYield",
+      "rva": "0x2c119a0",
+      "sha256": "159f65a16166b5765bdca1c82332425d06f99d5092a7ca1d384b4e1c780ce0a5"
+    },
+    {
+      "bytes": 619,
+      "name": "Rules.OriginYield",
+      "rva": "0x2be3b70",
+      "sha256": "2550e0aca97480257e05acda10839a0cc147b08b2bbdb50111d366ec70a14558"
+    },
+    {
+      "bytes": 599,
+      "name": "Rules.DestinationYield",
+      "rva": "0x2be4120",
+      "sha256": "39e3774e9ba7005981c4be1238e1584b1249cbc12447c99d443aa4d6faa529a4"
+    },
+    {
+      "bytes": 237,
+      "name": "Manager.OriginModifiersScalar",
+      "rva": "0x2c09600",
+      "sha256": "46f12cdd3c077e2ccfcf3b5bfda93f7ffe33f165147e29b186d21193985b57dc"
+    },
+    {
+      "bytes": 237,
+      "name": "Manager.DestinationModifiersScalar",
+      "rva": "0x2c0ac80",
+      "sha256": "cc6845c063ad03a5d1ac1fcb33be7d9912c5a46629b2baaf2bcd2051cee9d296"
+    },
+    {
+      "bytes": 5021,
+      "name": "Manager.OriginModifiers",
+      "rva": "0x2c096f0",
+      "sha256": "6ab6e5031cd64e18bfbb5c803143814be8ad96d4941a88be390da53ee244664a"
+    },
+    {
+      "bytes": 1773,
+      "name": "Manager.DestinationModifiers",
+      "rva": "0x2c0ad70",
+      "sha256": "4ff716f1ccebdd329be06af4e6951718a5733106dc4e927d70f44df4d1ed25e3"
+    },
+    {
+      "bytes": 1071,
+      "name": "Manager.OriginPathYield",
+      "rva": "0x2c08a80",
+      "sha256": "017bf28a4cfde9c9d2b8ce3fc759d9d9398a10359776b7784ca2e5b5f428f93e"
+    },
+    {
+      "bytes": 16,
+      "name": "Manager.DestinationPathYield",
+      "rva": "0x2c095b0",
+      "sha256": "f824e753e2b20f75184b52d3b3639d6b1debb8d443d17a023b9bb448f2f42eda"
+    },
+    {
+      "bytes": 79,
+      "name": "Manager.ExistingPath",
+      "rva": "0x2c08eb0",
+      "sha256": "c8a6fe2aa46c491d448a9117b4223ac42b961311b0241d60d50017e00b2ef898"
+    },
+    {
+      "bytes": 516,
+      "name": "Manager.FindNewPath",
+      "rva": "0x2c06210",
+      "sha256": "cd14782e0e2ed5a15c26aa3674412399f4d3a2054aef2bd208592aace42bbd32"
+    },
+    {
+      "bytes": 567,
+      "name": "Manager.CountPathFeatures",
+      "rva": "0x2c08f00",
+      "sha256": "48c9e7ad8719c07f53a313d665b0fffa5eadf6aa77351a62616345359fa26323"
+    },
+    {
+      "bytes": 12,
+      "name": "Manager.IterateRoutes",
+      "rva": "0x2c66d40",
+      "sha256": "7a2ed15dbe55fb52013e300f4ce0c25a234becc7579de294789b6c4b7db74218"
+    },
+    {
+      "bytes": 166,
+      "name": "Graph.IterateRoutes",
+      "rva": "0x2bfa860",
+      "sha256": "6bff69101d20874c1381f2b61bf0cae8b3f73f04ae05fc4279e1f7e0f28de232"
+    },
+    {
+      "bytes": 104,
+      "name": "Graph.CityPath",
+      "rva": "0x2bfbbe0",
+      "sha256": "2ef1a7c8b200fe067837c295878ca170fc55827e41c63b3599ed49cb119c6223"
+    },
+    {
+      "bytes": 46,
+      "name": "Graph.Path",
+      "rva": "0x2bfbc50",
+      "sha256": "c31a97c9094a028b77ac474d0a584591ab0b433aaf2bba62e2d1871d9fee692a"
+    },
+    {
+      "bytes": 140,
+      "name": "Graph.Edge",
+      "rva": "0x2bfc240",
+      "sha256": "4327bf0f6e79bd8358964a89582e9eb65277fe11dc97a6436f25606b58eaf797"
+    },
+    {
+      "bytes": 66,
+      "name": "Movement.AcquireFinder",
+      "rva": "0x2c10240",
+      "sha256": "5ec3143b1baf46007577dda7372d3aa5f084409137df6ad7f0a6bb6476ee8b53"
+    },
+    {
+      "bytes": 98,
+      "name": "Movement.TestPathPool",
+      "rva": "0x2c10620",
+      "sha256": "505983dbcdc208760adde0bd16dd370847248089d24fddd2d52bb4c2abe97a1d"
+    },
+    {
+      "bytes": 41,
+      "name": "Movement.TestPathFinder",
+      "rva": "0x2c10690",
+      "sha256": "fcde78178de3ffdb9cb3296f67ecdc74087bff57549a66def2686933ad6dea8e"
+    },
+    {
+      "bytes": 100,
+      "name": "Movement.GeneratePath",
+      "rva": "0x2c106c0",
+      "sha256": "41d4084850229e0d9a32465803452081984f061844451d6e1c0684edd65fc957"
+    },
+    {
+      "bytes": 1067,
+      "name": "Pathfinder.GeneratePath",
+      "rva": "0x2a50940",
+      "sha256": "0c58c135692798aefaa8fd444c84146e6734fe97cd1094344cdcecb1bd24de13"
+    },
+    {
+      "bytes": 12,
+      "name": "Pathfinder.TryLock",
+      "rva": "0x2a50920",
+      "sha256": "92c74c2429378afb8f0c5efb8c1270c868a3f534800e9b0f446105cb73c75fd4"
+    },
+    {
+      "bytes": 12,
+      "name": "Pathfinder.ReleaseLock",
+      "rva": "0x2a50930",
+      "sha256": "58b4359ec98799e7f10a7e2513e94764ae01a1336ec00ee8e46dca54b1dccc5d"
+    },
+    {
+      "bytes": 41,
+      "name": "InitializeOnUse.Get",
+      "rva": "0x2c0d740",
+      "sha256": "f83cd228e499bc18306cff8117ee0e9c8b76b9c7c1bc74a30a4ec3b379d63d4a"
+    },
+    {
+      "bytes": 39,
+      "name": "Origin.LazyCount0",
+      "rva": "0x2c0ca40",
+      "sha256": "d5eedeee323a648c2e125a6e15620dc66ad869e76fa57a6afc32212004c27989"
+    },
+    {
+      "bytes": 23,
+      "name": "Origin.LazyCount1",
+      "rva": "0x2c0cb40",
+      "sha256": "72aee4f47be1c4930eccbd2ac096f6e9f4a219478d9b2ab1e46ed839aefe6eac"
+    },
+    {
+      "bytes": 23,
+      "name": "Origin.LazyCount2",
+      "rva": "0x2c0cc30",
+      "sha256": "6867cd3aaeaeaa5eecf5b5e25924d88befceac1179465bd3c074cc33f2ad2845"
+    },
+    {
+      "bytes": 39,
+      "name": "Origin.LazyCount3",
+      "rva": "0x2c0cd20",
+      "sha256": "d31f9b0c390ab575ec6a63e4b0f524b719c7da811801e8fe0f744faf6cd2d765"
+    },
+    {
+      "bytes": 23,
+      "name": "Origin.LazyCount4",
+      "rva": "0x2c0ce20",
+      "sha256": "c6d21cc68708fda0de92684f9e1e42ac774fe1808db64ecdbe6eca11e3ffdf5f"
+    },
+    {
+      "bytes": 23,
+      "name": "Origin.LazyCount5",
+      "rva": "0x2c0cf10",
+      "sha256": "26e2a94f07c619b10f5fbd4a9a7e940f6d79d3fc057d1e1af8e75042f8404e7a"
+    },
+    {
+      "bytes": 23,
+      "name": "Origin.LazyCount6",
+      "rva": "0x2c0d000",
+      "sha256": "da63fc1d981bbe8af908eb3e3aa762f409d54f1dfd675f84bf33a95fb6839396"
+    }
+  ],
+  "miss": {
+    "cold": "If reverse lookup also fails: acquire actual pooled finder, TestPath with flags0, copy result indices backward into caller local vector, release finder lock.",
+    "complete_cold_path_effects_proven": false,
+    "graph_path_insertion": false,
+    "persistent_mutations": [
+      "Finder critical section+0x180 lock/unlock",
+      "Trade finder player+0x3d0",
+      "Pathfinder start/destination/info+0x120..0x130",
+      "Open/closed/best pointers+0x140/+0x150/+0x158, stack+0x160, node data via+0x178",
+      "Force-reset/abort bytes+0x136/+0x139 and callback-owned state"
+    ],
+    "reverse_path": "FindNewPath first clears caller vector, checks actual map/cities, then looks up destination->origin; reverse existing path is copied in reverse order into caller output.",
+    "smallest_remaining_branch": "Absent forward AND reverse graph paths enters actual pooled Pathfinder.GeneratePath delegate/Step closure. Actual registrations, node state and complete transitive/RNG effects need evidence; unsupported before mutation."
+  },
+  "original_code_executed": false,
+  "outputs": {
+    "destination_path_yield": "Exactly FixedPoint(0)",
+    "direct_monitor_mutation": "Compare computed fixed8 origin/destination amounts with monitor cached lists; assign changed values; dispatch route-change reporting only when a comparison changed.",
+    "direct_route_yield_array_writes_in_false_branch": false,
+    "local_lazy_caches": "Seven InitializeOnUse<int> objects live on scalar call stack. Get sets its own initialized byte+0x34/value+0x30 and invokes known district/resource count closure. No persistent route cache is established by those locals.",
+    "reporting_event": "0x14deda5a, origin/destination ComponentIDs; synchronous downstream subscribers remain exact dependencies"
+  },
+  "performance": "Preserve route ID-map/yield-definition order. Native scalar wrappers use stack fixed-buffer yield arrays and onlyYield filtering; local count caches last one invocation. A forward hit reads the retained graph path without rebuilding a path or touching the finder pool.",
+  "required_rust_inputs": [
+    "Actual active-route ID-map iteration order, Route endpoints/resource identity and live active flags",
+    "Complete ordered monitor TradeYields cache with current fixed8 values and yield-definition order",
+    "Current city/player trade modifiers, resources/district counts, religion, diplomacy/alliance/suzerain, culture/progress and congress rules",
+    "Graph lookup indexes and complete forward path nodes; current map/city/trading-post/road/water/domain data and global transportation parameters",
+    "Actual reporting environment for changed-route events",
+    "For unsupported double-miss: real pool state, lock/selection order, complete pathfinder nodes/delegate bindings and affected RNG/state"
+  ],
+  "rng": {
+    "complete_transitive_no_rng_proof": false,
+    "direct_rng_calls_in_inspected_trade_bodies": false,
+    "scope": "False includeTempRoute excludes its game-signal branch; forward-hit excludes finder delegates. Cold path generic callbacks cannot be declared RNG-free from names or lack of a direct Random call."
+  },
+  "rust_action_admission": false,
+  "schema": "c6-linux-reporting-trade-effects-v1",
+  "source_audit_sha256": "a8aa19f99826be654fde1920a9e7731f498dac1fccb61f4717b8324c19123c70",
+  "static_only_except_production_codec": true
+}
