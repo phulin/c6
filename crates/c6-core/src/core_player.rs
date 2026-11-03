@@ -135,8 +135,149 @@ impl PlayerHeader {
         self.ordered_flags[1]
     }
 }
+/// Bounded saved header only. Version38 support does not authorize reading its
+/// unframed Player body. See docs/linux-player-header-versions.md.
+#[derive(Debug, Eq, PartialEq)]
+pub struct VersionedPlayerHeader {
+    pub version: u32,
+    /// Original scalar wire values; absent v38 scalars [11] and [13] default to 0.
+    /// Hashes retain wire identities, without native definition-index remapping.
+    pub saved: PlayerHeader,
+}
+impl VersionedPlayerHeader {
+    pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let version = r.u32()?;
+        if version != 38 && version != 47 {
+            return Err(Error::Version {
+                expected: 47,
+                actual: version,
+            });
+        }
+        let saved = r.header_body(version)?;
+        Ok((Self { version, saved }, r.pos))
+    }
+    /// Proven native Read scalar assignments only, before runtime fixups.
+    /// v38 pillage modifiers use x86 wrapping 32-bit arithmetic: 100*x - 100.
+    pub fn read_applied_scalars(&self) -> [i32; 15] {
+        let mut values = self.saved.ordered_scalars;
+        if self.version == 38 {
+            for value in &mut values[1..3] {
+                *value = value.wrapping_mul(100).wrapping_sub(100);
+            }
+        }
+        values
+    }
+}
+/// Diagnostic traversal from the post-Map boundary to the first Formations.
+/// No Formations or other Player body bytes are consumed.
+#[derive(Debug, Eq, PartialEq)]
+pub struct FirstPlayerHeaderPrefix {
+    pub religion: Religion,
+    pub player_count: u32,
+    pub requested_owner: i32,
+    pub header: VersionedPlayerHeader,
+}
+impl FirstPlayerHeaderPrefix {
+    pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        r.first_player_header()
+    }
+}
+/// Typed saved body before Cities, shared by the strict Player47 reader and
+/// the bounded Player38/47 traversal. No runtime initialization is inferred.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PlayerPreCities {
+    pub formations: map::Recycled<Formation>,
+    pub goody_hut: pc::GoodyHut,
+    pub bonuses: pc::Bonuses,
+    pub congress: pc::Congress,
+}
+/// Explicit failure at an unconsumed nested component. Offset is relative to
+/// the supplied post-Map bytes; nested errors never authorize skipping bytes.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PlayerPrefixBoundary {
+    pub offset: usize,
+    pub component: &'static str,
+    pub error: Error,
+}
+#[derive(Debug, Eq, PartialEq)]
+pub struct FirstPlayerCitiesPrefix {
+    pub header_prefix: FirstPlayerHeaderPrefix,
+    pub body: PlayerPreCities,
+}
+impl FirstPlayerCitiesPrefix {
+    /// Stops before Cities, retaining the saved version and Read projection.
+    /// Uses the same nested readers and shared budget as strict Player47.
+    pub fn decode_prefix(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize), PlayerPrefixBoundary> {
+        Self::decode_prefix_with_items(bytes, limits).map(|(value, bytes, _)| (value, bytes))
+    }
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), PlayerPrefixBoundary> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let (header_prefix, _) = r
+            .first_player_header()
+            .map_err(|error| PlayerPrefixBoundary {
+                offset: r.pos,
+                component: "Player header",
+                error,
+            })?;
+        let body = r.pre_cities()?;
+        Ok((
+            Self {
+                header_prefix,
+                body,
+            },
+            r.pos,
+            r.items,
+        ))
+    }
+    /// Decode a supported Cities component without asserting Player38 body or
+    /// initialized gameplay-state completeness. Input begins at Cities.
+    pub fn decode_cities_prefix(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Cities, usize), PlayerPrefixBoundary> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let cities = r.cities().map_err(|error| PlayerPrefixBoundary {
+            offset: r.pos,
+            component: "Cities",
+            error,
+        })?;
+        Ok((cities, r.pos))
+    }
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct Cities {
+    pub wire_version: u32,
+    /// False means Read leaves the prior native vector unchanged. The empty
+    /// transport vector then establishes no constructor/runtime baseline.
+    pub building_build_overrides_wire_present: bool,
     pub records: map::Recycled<city::City>,
     pub fresh_water_housing_bonus: bool,
     pub urban_defenses: i32,
@@ -245,6 +386,37 @@ struct Reader<'a> {
     limits: Limits,
 }
 impl<'a> Reader<'a> {
+    fn first_player_header(&mut self) -> Result<(FirstPlayerHeaderPrefix, usize), Error> {
+        let religion = self.religion()?;
+        self.version(1)?;
+        let player_count = self.u32()?;
+        if player_count == 0 {
+            return Err(Error::InvalidPrefix);
+        }
+        if player_count as usize > self.remaining().max_items {
+            return Err(Error::ResourceLimit);
+        }
+        self.charge(0, 1)?;
+        let requested_owner = self.i32()?;
+        let (header, consumed) =
+            VersionedPlayerHeader::decode_prefix(&self.bytes[self.pos..], self.remaining())?;
+        self.charge(consumed, 0)?;
+        if requested_owner != header.saved.owner {
+            return Err(Error::OwnerMismatch {
+                requested: requested_owner,
+                record: header.saved.owner,
+            });
+        }
+        Ok((
+            FirstPlayerHeaderPrefix {
+                religion,
+                player_count,
+                requested_owner,
+                header,
+            },
+            self.pos,
+        ))
+    }
     fn remaining(&self) -> Limits {
         Limits {
             max_bytes: self.limits.max_bytes - self.pos,
@@ -385,11 +557,18 @@ impl<'a> Reader<'a> {
     }
     fn header(&mut self) -> Result<PlayerHeader, Error> {
         self.version(47)?;
+        self.header_body(47)
+    }
+    fn header_body(&mut self, version: u32) -> Result<PlayerHeader, Error> {
         let owner = self.i32()?;
         let starting_plot = self.coord()?;
         let mut ordered_scalars = [0; 15];
-        for v in &mut ordered_scalars {
-            *v = self.i32()?;
+        for (index, value) in ordered_scalars.iter_mut().enumerate() {
+            if version == 38 && (index == 11 || index == 13) {
+                // ReadVersioned since39/since45 explicitly assigns default0.
+                continue;
+            }
+            *value = self.i32()?;
         }
         let mut ordered_flags = [false; 6];
         for v in &mut ordered_flags {
@@ -474,10 +653,19 @@ impl<'a> Reader<'a> {
         })
     }
     fn cities(&mut self) -> Result<Cities, Error> {
-        self.version(15)?;
+        // Target Cities.Read 0x2a57ac0: only these source-closed branches.
+        let wire_version = self.u32()?;
+        if !matches!(wire_version, 12 | 15) {
+            return Err(Error::Version {
+                expected: 15,
+                actual: wire_version,
+            });
+        }
         let records =
             self.recycled(|r| r.component(city::City::decode_prefix_with_items, Error::City))?;
         Ok(Cities {
+            wire_version,
+            building_build_overrides_wire_present: wire_version == 15,
             records,
             fresh_water_housing_bonus: self.boolean()?,
             urban_defenses: self.i32()?,
@@ -485,16 +673,54 @@ impl<'a> Reader<'a> {
             settled_continent_hashes: self.hashes()?,
             peak_cities: self.u32()?,
             extra_starting_population_off_home_continent: self.i32()?,
-            population_after_conquest: self.i32()?,
+            population_after_conquest: if wire_version >= 13 { self.i32()? } else { 0 },
             banned_building_hashes: self.hashes()?,
             banned_district_hashes: self.hashes()?,
             banned_district_building_hashes: self.hashes()?,
             banned_project_hashes: self.hashes()?,
-            building_build_overrides: self.list(8, |r| Ok([r.u32()?, r.u32()?]))?,
+            building_build_overrides: if wire_version == 15 {
+                self.list(8, |r| Ok([r.u32()?, r.u32()?]))?
+            } else {
+                Vec::new()
+            },
         })
     }
 }
 impl Reader<'_> {
+    fn pre_cities(&mut self) -> Result<PlayerPreCities, PlayerPrefixBoundary> {
+        // Player.Read 0x2b4f9c2..0x2b4fa65: both supported versions read
+        // Formations, GoodyHut, Bonuses and Congress (since36), then Cities.
+        macro_rules! read {
+            ($name:literal, $read:expr) => {{
+                let offset = self.pos;
+                $read.map_err(|error| PlayerPrefixBoundary {
+                    offset,
+                    component: $name,
+                    error,
+                })?
+            }};
+        }
+        read!("Formations", self.version(1));
+        let formations = read!("Formations", self.recycled(Reader::formation));
+        let goody_hut = read!(
+            "GoodyHut",
+            self.component(pc::GoodyHut::decode_prefix_with_items, Error::Component)
+        );
+        let bonuses = read!(
+            "Bonuses",
+            self.component(pc::Bonuses::decode_prefix_with_items, Error::Component)
+        );
+        let congress = read!(
+            "Congress",
+            self.component(pc::Congress::decode_prefix_with_items, Error::Component)
+        );
+        Ok(PlayerPreCities {
+            formations,
+            goody_hut,
+            bonuses,
+            congress,
+        })
+    }
     fn player_prefix(&mut self) -> Result<FirstPlayer, Error> {
         self.charge(0, 1)?;
         let requested_owner = self.i32()?;
@@ -505,11 +731,12 @@ impl Reader<'_> {
                 record: header.owner,
             });
         }
-        self.version(1)?;
-        let formations = self.recycled(Reader::formation)?;
-        let goody_hut = self.component(pc::GoodyHut::decode_prefix_with_items, Error::Component)?;
-        let bonuses = self.component(pc::Bonuses::decode_prefix_with_items, Error::Component)?;
-        let congress = self.component(pc::Congress::decode_prefix_with_items, Error::Component)?;
+        let PlayerPreCities {
+            formations,
+            goody_hut,
+            bonuses,
+            congress,
+        } = self.pre_cities().map_err(|boundary| boundary.error)?;
         let cities = self.cities()?;
         let diplomacy = self.component(
             player_diplomacy::Diplomacy::decode_prefix_with_items,
@@ -831,7 +1058,7 @@ where
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InitializationBasis {
     ContextFreeWire,
-    AttributedSnapshotInputs,
+    SuppliedSnapshotInputs,
     #[cfg(test)]
     SourceOnlySnapshotInputs,
 }
@@ -3115,10 +3342,10 @@ pub(crate) mod tests {
             )
             .1;
             let binding = value.initialization_binding.clone().unwrap_or(fallback);
-            let provider = |identity| {
+            let provider = |identity: initialization::PlayerIdentity| {
                 snapshots
                     .iter()
-                    .find(|s| s.candidate().unwrap().player == identity)
+                    .find(|s| s.facts().owner == identity.record_owner)
                     .map(Arc::clone)
             };
             let (bytes, items) = value.encode_prefix_with_items(Limits::default()).unwrap();
@@ -3224,11 +3451,11 @@ pub(crate) mod tests {
         let (value, snapshots) = source_manager(&branches);
         let binding = value.initialization_binding.clone().unwrap();
         let calls = std::cell::RefCell::new(Vec::new());
-        let provider = |identity| {
+        let provider = |identity: initialization::PlayerIdentity| {
             calls.borrow_mut().push(identity);
             snapshots
                 .iter()
-                .find(|s| s.candidate().unwrap().player == identity)
+                .find(|s| s.facts().owner == identity.record_owner)
                 .map(Arc::clone)
         };
         let (bytes, items) = value.encode_prefix_with_items(Limits::default()).unwrap();
@@ -3862,131 +4089,6 @@ pub(crate) mod tests {
         ));
     }
 
-    /// Run only from an isolated committed source archive. The supplied raw
-    /// Core is a validation input, never an offset or trace source for parsing.
-    #[test]
-    #[ignore = "requires C6_CORE_PLAYER_PREFIX_FIXTURE raw Core input"]
-    fn offline_raw_core_whole_prefix_exact_caps() {
-        use std::io::Read;
-        let path =
-            std::env::var_os("C6_CORE_PLAYER_PREFIX_FIXTURE").expect("raw Core fixture path");
-        const MAX: u64 = 256 * 1024 * 1024;
-        let mut bytes = Vec::new();
-        std::fs::File::open(path)
-            .unwrap()
-            .take(MAX + 1)
-            .read_to_end(&mut bytes)
-            .unwrap();
-        assert!(bytes.len() as u64 <= MAX);
-        let value = crate::core_stream::ThroughFirstPlayer::decode(
-            &bytes,
-            map::Limits::default(),
-            Limits::default(),
-        )
-        .unwrap();
-        let prefix = &value.player_prefix;
-        let first = prefix.first_player.as_ref().unwrap();
-        let expected = if first.header.saved_was_ever_alive() {
-            Boundary::AIMilitary
-        } else {
-            if prefix.player_count > 1 {
-                Boundary::NextPlayerEntry
-            } else {
-                Boundary::AfterPlayerManager
-            }
-        };
-        assert_eq!(prefix.boundary, expected);
-        assert_eq!(
-            first.post_heroes_arrays.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_control.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_influence_map.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_planning.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_city_manager.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_culture.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_diplomatic.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_economic.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_governors.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_grand_strategic.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-        assert_eq!(
-            first.ai_homeland.is_some(),
-            first.header.saved_was_ever_alive()
-        );
-
-        assert_eq!(
-            prefix.first_player_complete(),
-            !first.header.saved_was_ever_alive()
-        );
-        assert_eq!(first.tail.is_some(), !first.header.saved_was_ever_alive());
-        let (encoded, items) = prefix.encode_prefix_with_items(Limits::default()).unwrap();
-        let post_map = &bytes[value.core.consumed..];
-        assert_eq!(encoded, post_map[..encoded.len()]);
-        let exact = Limits {
-            max_bytes: encoded.len(),
-            max_items: items,
-        };
-        let (decoded, consumed, charged) =
-            Prefix::decode_prefix_with_items(post_map, exact).unwrap();
-        assert_eq!(
-            (&decoded, consumed, charged),
-            (prefix, encoded.len(), items)
-        );
-        assert_eq!(
-            prefix.encode_prefix_with_items(exact).unwrap(),
-            (encoded.clone(), items)
-        );
-        for short in [
-            Limits {
-                max_bytes: encoded.len() - 1,
-                ..exact
-            },
-            Limits {
-                max_items: items - 1,
-                ..exact
-            },
-        ] {
-            assert!(Prefix::decode_prefix_with_items(post_map, short).is_err());
-            assert!(prefix.encode_prefix(short).is_err());
-        }
-        let p = prefix.first_player.as_ref().unwrap();
-        assert!(!p.units.records.entries.is_empty());
-        println!(
-            "consumed={} post_map_bytes={} post_map_items={} units={} boundary={:?}",
-            value.consumed,
-            encoded.len(),
-            items,
-            p.units.records.entries.len(),
-            prefix.boundary
-        );
-    }
     #[test]
     fn eras_scalar_tail_requires_current_version_without_item_charge() {
         let bytes = carrier();
@@ -4902,6 +5004,15 @@ impl Writer {
         Ok(())
     }
     fn cities(&mut self, v: &Cities) -> Result<(), Error> {
+        if v.wire_version != 15 {
+            return Err(Error::Version {
+                expected: 15,
+                actual: v.wire_version,
+            });
+        }
+        if !v.building_build_overrides_wire_present {
+            return Err(Error::InvalidContainer);
+        }
         self.word(15)?;
         self.recycled(&v.records, |w, v| {
             w.component(v, city::City::encode_with_items, Error::City)
@@ -5204,8 +5315,8 @@ impl Prefix {
         for p in self.players() {
             if let Some(snapshot) = &p.initialization_snapshot {
                 return match snapshot.origin() {
-                    initialization::Origin::AttributedObservation => {
-                        InitializationBasis::AttributedSnapshotInputs
+                    initialization::Origin::SuppliedConsistency => {
+                        InitializationBasis::SuppliedSnapshotInputs
                     }
                     #[cfg(test)]
                     initialization::Origin::SourceOnly => {
@@ -5333,5 +5444,369 @@ mod encode_tests {
             v.encode_prefix(Limits::default()),
             Err(Error::InvalidPrefix)
         );
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod header_versions_tests {
+    use super::*;
+    fn wire(version: u32) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for word in [version, 7, 11, 12] {
+            bytes.extend(word.to_le_bytes());
+        }
+        for index in 0..15i32 {
+            if version == 38 && (index == 11 || index == 13) {
+                continue;
+            }
+            let value = match index {
+                1 => i32::MAX,
+                2 => i32::MIN,
+                _ => index,
+            };
+            bytes.extend(value.to_le_bytes());
+        }
+        bytes.extend([1, 0, 1, 0, 1, 0]);
+        for word in [0xdeadbeefu32, 17, 19, 23] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes
+    }
+    pub(crate) fn cities_prefix_wire(version: u32) -> (Vec<u8>, usize) {
+        let mut bytes = Vec::new();
+        for word in [7u32, 0, 0, 0, 1, 43, 7] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes.extend(wire(version));
+        let player = tests::source_first_player();
+        let mut writer = Writer {
+            bytes: Vec::new(),
+            items: 0,
+            limits: Limits::default(),
+        };
+        writer.word(1).unwrap();
+        writer
+            .recycled(&player.formations, Writer::formation)
+            .unwrap();
+        writer
+            .component(
+                &player.goody_hut,
+                pc::GoodyHut::encode_with_items,
+                Error::Component,
+            )
+            .unwrap();
+        writer
+            .component(
+                &player.bonuses,
+                pc::Bonuses::encode_with_items,
+                Error::Component,
+            )
+            .unwrap();
+        writer
+            .component(
+                &player.congress,
+                pc::Congress::encode_with_items,
+                Error::Component,
+            )
+            .unwrap();
+        bytes.extend(writer.bytes);
+        let end = bytes.len();
+        bytes.extend(12345u32.to_le_bytes());
+        (bytes, end)
+    }
+    #[test]
+    fn shared_pre_cities_versions_preserve_fields_and_exact_boundary() {
+        for version in [38, 47] {
+            let (bytes, end) = cities_prefix_wire(version);
+            let (prefix, used) = FirstPlayerCitiesPrefix::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: end,
+                    max_items: 4096,
+                },
+            )
+            .unwrap();
+            assert_eq!(used, end);
+            assert_eq!(prefix.header_prefix.header.version, version);
+            let player = tests::source_first_player();
+            assert_eq!(prefix.body.formations, player.formations);
+            assert_eq!(prefix.body.goody_hut, player.goody_hut);
+            assert_eq!(prefix.body.bonuses, player.bonuses);
+            assert_eq!(prefix.body.congress, player.congress);
+            let failure =
+                FirstPlayerCitiesPrefix::decode_cities_prefix(&bytes[end..], Limits::default())
+                    .unwrap_err();
+            assert_eq!(
+                failure.error,
+                Error::Version {
+                    expected: 15,
+                    actual: 12345
+                }
+            );
+            for length in 0..end {
+                assert!(
+                    FirstPlayerCitiesPrefix::decode_prefix(&bytes[..length], Limits::default())
+                        .is_err(),
+                    "{version}/{length}"
+                );
+            }
+            assert!(FirstPlayerCitiesPrefix::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: end - 1,
+                    max_items: 4096
+                }
+            )
+            .is_err());
+            assert!(FirstPlayerCitiesPrefix::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: end,
+                    max_items: 0
+                }
+            )
+            .is_err());
+            // Refuse the first unsupported nested version with its input offset.
+            let mut invalid = bytes.clone();
+            let formations_at = 28 + if version == 38 { 90 } else { 98 };
+            invalid[formations_at..formations_at + 4].copy_from_slice(&2u32.to_le_bytes());
+            let failure =
+                FirstPlayerCitiesPrefix::decode_prefix(&invalid, Limits::default()).unwrap_err();
+            assert_eq!(failure.offset, formations_at);
+            assert_eq!(failure.component, "Formations");
+            assert_eq!(
+                failure.error,
+                Error::Version {
+                    expected: 1,
+                    actual: 2
+                }
+            );
+        }
+    }
+    #[test]
+    fn header_versions_preserve_wire_defaults_and_wrapping_read_assignments() {
+        for (version, size) in [(38, 90), (47, 98)] {
+            let mut bytes = wire(version);
+            assert_eq!(bytes.len(), size);
+            bytes.extend(1234u32.to_le_bytes());
+            let (header, used) = VersionedPlayerHeader::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: size,
+                    max_items: 0,
+                },
+            )
+            .unwrap();
+            assert_eq!(used, size);
+            assert_eq!(header.version, version);
+            assert_eq!(header.saved.owner, 7);
+            assert_eq!(header.saved.handicap_hash, 0xdeadbeef);
+            assert_eq!(header.saved.ordered_scalars[1], i32::MAX);
+            let applied = header.read_applied_scalars();
+            if version == 38 {
+                assert_eq!(header.saved.ordered_scalars[11], 0);
+                assert_eq!(header.saved.ordered_scalars[13], 0);
+                assert_eq!(applied[1], -200);
+                assert_eq!(applied[2], -100);
+            } else {
+                assert_eq!(applied, header.saved.ordered_scalars);
+                assert_eq!(applied[11], 11);
+                assert_eq!(applied[13], 13);
+            }
+        }
+    }
+    #[test]
+    fn header_versions_truncation_budget_boolean_and_strict_body_refusal() {
+        for version in [38, 47] {
+            let bytes = wire(version);
+            for end in 0..bytes.len() {
+                assert_eq!(
+                    VersionedPlayerHeader::decode_prefix(&bytes[..end], Limits::default()),
+                    Err(Error::Truncated)
+                );
+            }
+            for budget in 0..bytes.len() {
+                assert_eq!(
+                    VersionedPlayerHeader::decode_prefix(
+                        &bytes,
+                        Limits {
+                            max_bytes: budget,
+                            max_items: 0
+                        }
+                    ),
+                    Err(Error::ResourceLimit)
+                );
+            }
+            let mut invalid = bytes.clone();
+            invalid[bytes.len() - 22] = 2;
+            assert_eq!(
+                VersionedPlayerHeader::decode_prefix(&invalid, Limits::default()),
+                Err(Error::InvalidBool(2))
+            );
+        }
+        let old = wire(38);
+        let mut r = Reader {
+            bytes: &old,
+            pos: 0,
+            items: 0,
+            limits: Limits::default(),
+        };
+        assert_eq!(
+            r.header(),
+            Err(Error::Version {
+                expected: 47,
+                actual: 38
+            })
+        );
+        assert_eq!(r.pos, 4);
+        for version in [0u32, 37, 39, 46, 48, u32::MAX] {
+            assert_eq!(
+                VersionedPlayerHeader::decode_prefix(&version.to_le_bytes(), Limits::default()),
+                Err(Error::Version {
+                    expected: 47,
+                    actual: version
+                })
+            );
+        }
+    }
+    #[test]
+    fn header_prefix_stops_before_formations_and_charges_first_entry() {
+        let mut bytes = Vec::new();
+        for word in [7u32, 0, 0, 0, 1, 43, 7] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes.extend(wire(38));
+        let expected = bytes.len();
+        bytes.extend(1u32.to_le_bytes());
+        let (prefix, used) = FirstPlayerHeaderPrefix::decode_prefix(
+            &bytes,
+            Limits {
+                max_bytes: expected,
+                max_items: 43,
+            },
+        )
+        .unwrap();
+        assert_eq!(used, expected);
+        assert_eq!(prefix.player_count, 43);
+        assert_eq!(prefix.header.version, 38);
+        assert_eq!(
+            FirstPlayerHeaderPrefix::decode_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: expected,
+                    max_items: 0
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        bytes[24..28].copy_from_slice(&8i32.to_le_bytes());
+        assert_eq!(
+            FirstPlayerHeaderPrefix::decode_prefix(&bytes, Limits::default()),
+            Err(Error::OwnerMismatch {
+                requested: 8,
+                record: 7
+            })
+        );
+    }
+}
+
+#[cfg(test)]
+mod cities_versions_tests {
+    use super::*;
+    fn wire(version: u32) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        // Empty recycled City roster, including allocator state and free links.
+        for word in [version, 65537, 16, 0, 0, 123, 0, u32::MAX, u32::MAX] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes.push(1);
+        for word in [0x80000000u32, 0xdeadbeef, 2, 11, 11, 7, 0xffffffff] {
+            bytes.extend(word.to_le_bytes());
+        }
+        if version == 15 {
+            bytes.extend(55u32.to_le_bytes());
+        }
+        for word in [1u32, 21, 1, 22, 1, 23, 1, 24] {
+            bytes.extend(word.to_le_bytes());
+        }
+        if version == 15 {
+            for word in [2u32, 31, 32, 31, 33] {
+                bytes.extend(word.to_le_bytes());
+            }
+        }
+        bytes
+    }
+    #[test]
+    fn cities12_and15_exact_grammar_and_limits() {
+        for version in [12, 15] {
+            let bytes = wire(version);
+            let (cities, used) =
+                FirstPlayerCitiesPrefix::decode_cities_prefix(&bytes, Limits::default()).unwrap();
+            assert_eq!(used, bytes.len());
+            assert_eq!(cities.wire_version, version);
+            assert_eq!(
+                cities.population_after_conquest,
+                if version == 15 { 55 } else { 0 }
+            );
+            assert_eq!(cities.building_build_overrides_wire_present, version == 15);
+            assert_eq!(
+                cities.building_build_overrides.len(),
+                if version == 15 { 2 } else { 0 }
+            );
+            assert_eq!(cities.settled_continent_hashes, [11, 11]);
+            assert_eq!(cities.banned_district_building_hashes, [23]);
+            let mut reader = Reader {
+                bytes: &bytes,
+                pos: 0,
+                items: 0,
+                limits: Limits::default(),
+            };
+            reader.cities().unwrap();
+            let items = reader.items;
+            assert!(FirstPlayerCitiesPrefix::decode_cities_prefix(
+                &bytes,
+                Limits {
+                    max_bytes: bytes.len(),
+                    max_items: items
+                }
+            )
+            .is_ok());
+            for limits in [
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    max_items: items,
+                },
+                Limits {
+                    max_bytes: bytes.len(),
+                    max_items: items - 1,
+                },
+            ] {
+                assert!(FirstPlayerCitiesPrefix::decode_cities_prefix(&bytes, limits).is_err());
+            }
+            for length in 0..bytes.len() {
+                assert!(FirstPlayerCitiesPrefix::decode_cities_prefix(
+                    &bytes[..length],
+                    Limits::default()
+                )
+                .is_err());
+            }
+            let mut writer = Writer {
+                bytes: Vec::new(),
+                items: 0,
+                limits: Limits::default(),
+            };
+            if version == 15 {
+                writer.cities(&cities).unwrap();
+                assert_eq!(writer.bytes, bytes);
+            } else {
+                assert!(writer.cities(&cities).is_err());
+                assert!(writer.bytes.is_empty());
+            }
+        }
+        for version in [0, 11, 13, 14, 16, u32::MAX] {
+            assert!(
+                matches!(FirstPlayerCitiesPrefix::decode_cities_prefix(&version.to_le_bytes(),Limits::default()).unwrap_err().error, Error::Version {actual,..} if actual==version)
+            );
+        }
     }
 }

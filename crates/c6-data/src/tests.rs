@@ -170,9 +170,11 @@ fn source_gate_precedes_io_and_partial_snapshots_fail() {
         .unwrap_err()
         .to_string()
         .contains("source/profile"));
+    let complete = Fixture::new("CREATE TABLE required(value INTEGER);");
+    let expected = inspect(&complete.0).unwrap();
     let f = Fixture::new("CREATE TABLE incomplete(value);");
     let db = inspect(&f.0).unwrap();
-    assert!(validate(&db, &manifest().unwrap().databases[0])
+    assert!(validate(&db, expected.fingerprint())
         .unwrap_err()
         .to_string()
         .contains("missing required table"));
@@ -184,51 +186,6 @@ fn source_gate_precedes_io_and_partial_snapshots_fail() {
         .to_string()
         .contains("external -wal"));
     fs::remove_file(sidecar).unwrap();
-}
-
-/// Requires genuinely exported private artifacts; absence is not a passing native test.
-#[test]
-#[ignore = "historical Windows coverage; requires private original-native run-1 and run-2 artifacts"]
-fn historical_windows_native_exports_match_every_manifest_table() {
-    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../c6-ghidra/evidence/rules");
-    let first = Rules::load(base.join("run-1"), &xp2_source_identity()).unwrap();
-    let second = Rules::load(base.join("run-2"), &xp2_source_identity()).unwrap();
-    assert_eq!(
-        first.configuration().fingerprint(),
-        second.configuration().fingerprint()
-    );
-    assert_eq!(
-        first.gameplay().fingerprint(),
-        second.gameplay().fingerprint()
-    );
-    assert_eq!(
-        first.configuration().tables().len() + first.gameplay().tables().len(),
-        506
-    );
-    assert_eq!(
-        first.configuration().fingerprint().row_count + first.gameplay().fingerprint().row_count,
-        43570
-    );
-    // Typed projection is compared to original SQL fields, not memorized unit values.
-    for unit in first.units() {
-        let row = first
-            .gameplay()
-            .table("Units")
-            .unwrap()
-            .row_by_id(unit.rules_row_id)
-            .unwrap();
-        assert_eq!(unit.unit_type, row.text("UnitType").unwrap());
-        for (name, value) in [
-            ("Cost", unit.cost),
-            ("BaseMoves", unit.base_moves),
-            ("Combat", unit.combat),
-            ("RangedCombat", unit.ranged_combat),
-            ("Range", unit.range),
-            ("Maintenance", unit.maintenance),
-        ] {
-            assert_eq!(value, row.integer(name).unwrap());
-        }
-    }
 }
 
 #[test]
@@ -269,72 +226,6 @@ fn linux_profile_never_falls_back_to_historical_windows() {
             .unwrap_err()
             .to_string()
             .contains("source/profile differs"));
-    }
-}
-
-/// Explicitly requested Linux artifact test; missing evidence is a failure.
-#[test]
-#[ignore = "requires two actual private Linux native base exports"]
-fn linux_native_exports_match_every_manifest_table() {
-    let first_path = std::env::var_os("C6_LINUX_RULES_RUN_1")
-        .expect("C6_LINUX_RULES_RUN_1 must identify actual Linux-native export");
-    let second_path = std::env::var_os("C6_LINUX_RULES_RUN_2")
-        .expect("C6_LINUX_RULES_RUN_2 must identify independent Linux-native export");
-    let profile = RulesProfile::LinuxXp2Base;
-    let source = profile.source_identity().unwrap();
-    let first = Rules::load_profile(profile, Path::new(&first_path), &source).unwrap();
-    let second = Rules::load_profile(profile, Path::new(&second_path), &source).unwrap();
-    let activated = RulesProfile::LinuxXp2ActivatedDiagnostic;
-    assert!(Rules::load_profile(
-        activated,
-        Path::new(&first_path),
-        &activated.source_identity().unwrap()
-    )
-    .is_err());
-    assert_eq!(first.profile(), RulesProfile::LinuxXp2Base);
-    assert_eq!(first.configuration().tables().len(), 78);
-    assert_eq!(first.configuration().fingerprint().row_count, 1280);
-    assert_eq!(first.gameplay().tables().len(), 318);
-    assert_eq!(first.gameplay().fingerprint().row_count, 23966);
-    assert_eq!(first.source(), &source);
-    assert_same_native_database(first.configuration(), second.configuration());
-    assert_same_native_database(first.gameplay(), second.gameplay());
-    for unit in first.units() {
-        let row = first
-            .gameplay()
-            .table("Units")
-            .unwrap()
-            .row_by_id(unit.rules_row_id)
-            .unwrap();
-        assert_eq!(unit.unit_type, row.text("UnitType").unwrap());
-        for (name, value) in [
-            ("Cost", unit.cost),
-            ("BaseMoves", unit.base_moves),
-            ("Combat", unit.combat),
-            ("RangedCombat", unit.ranged_combat),
-            ("Range", unit.range),
-            ("Maintenance", unit.maintenance),
-        ] {
-            assert_eq!(value, row.integer(name).unwrap());
-        }
-    }
-}
-
-// Compare retained state directly as well as every independently pinned digest.
-fn assert_same_native_database(first: &Database, second: &Database) {
-    assert_eq!(first.fingerprint(), second.fingerprint());
-    assert_eq!(first.schema().len(), second.schema().len());
-    for (first, second) in first.schema().iter().zip(second.schema()) {
-        assert_eq!(first.values(), second.values());
-    }
-    assert_eq!(first.tables().len(), second.tables().len());
-    for (first, second) in first.tables().iter().zip(second.tables()) {
-        assert_eq!(first.fingerprint(), second.fingerprint());
-        assert_eq!(first.column_metadata(), second.column_metadata());
-        for (first, second) in first.rows().zip(second.rows()) {
-            assert_eq!(first.row_id(), second.row_id());
-            assert_eq!(first.values(), second.values());
-        }
     }
 }
 
@@ -383,86 +274,55 @@ fn shared_linux_binary_requires_exact_input_profile_before_io() {
     }
 }
 
-/// Activated diagnostic content only; not saved-game, action or turn coverage.
 #[test]
-#[ignore = "requires two private Linux activated requestNone exports"]
-fn linux_activated_native_exports_match_every_manifest_table() {
-    let first_path = std::env::var_os("C6_LINUX_XP2_RULES_RUN_1")
-        .expect("C6_LINUX_XP2_RULES_RUN_1 must identify actual Linux activated export");
-    let second_path = std::env::var_os("C6_LINUX_XP2_RULES_RUN_2")
-        .expect("C6_LINUX_XP2_RULES_RUN_2 must identify independent Linux activated export");
-    let profile = RulesProfile::LinuxXp2ActivatedDiagnostic;
-    let source = profile.source_identity().unwrap();
-    let first = Rules::load_profile(profile, Path::new(&first_path), &source).unwrap();
-    // The compatibility entry point must also choose the complete descriptor.
-    let second = Rules::load(Path::new(&second_path), &source).unwrap();
-    assert_eq!(second.profile(), profile);
-    assert_eq!(first.configuration().tables().len(), 78);
-    assert_eq!(first.configuration().fingerprint().row_count, 1865);
-    assert_eq!(first.gameplay().tables().len(), 428);
-    assert_eq!(first.gameplay().fingerprint().row_count, 41700);
-    assert_same_native_database(first.configuration(), second.configuration());
-    assert_same_native_database(first.gameplay(), second.gameplay());
-    for unit in first.units() {
-        let row = first
-            .gameplay()
-            .table("Units")
-            .unwrap()
-            .row_by_id(unit.rules_row_id)
-            .unwrap();
-        assert_eq!(unit.unit_type, row.text("UnitType").unwrap());
-        for (name, value) in [
-            ("Cost", unit.cost),
-            ("BaseMoves", unit.base_moves),
-            ("Combat", unit.combat),
-            ("RangedCombat", unit.ranged_combat),
-            ("Range", unit.range),
-            ("Maintenance", unit.maintenance),
-        ] {
-            assert_eq!(value, row.integer(name).unwrap());
-        }
-    }
-    // Correctly declared base identity must still refuse activated files.
-    let base = RulesProfile::LinuxXp2Base;
-    assert!(Rules::load_profile(
-        base,
-        Path::new(&first_path),
-        &base.source_identity().unwrap()
-    )
-    .is_err());
-
-    // Mutate copies only; original private exports remain untouched.
-    let copied = Fixture::new("");
-    fs::remove_file(&copied.0).unwrap();
-    fs::create_dir(&copied.0).unwrap();
+fn synthetic_database_identity_detects_rows_rowids_schema_and_physical_bytes() {
+    // These are generic SQLite inputs, independent of registered native exports.
+    let original = Fixture::new(
+        "CREATE TABLE generic(key TEXT, value); INSERT INTO generic(rowid,key,value) VALUES(7,'a',1);",
+    );
+    let expected = inspect(&original.0).unwrap();
     for mutation in [
-        "UPDATE Units SET Combat=X'01' WHERE rowid=(SELECT min(rowid) FROM Units)",
-        "UPDATE Units SET rowid=-123456 WHERE rowid=(SELECT min(rowid) FROM Units)",
-        "ALTER TABLE Units ADD COLUMN unregistered_column",
+        "UPDATE generic SET value=X'01'",
+        "UPDATE generic SET rowid=-7",
+        "ALTER TABLE generic ADD COLUMN extra",
+        "CREATE TABLE extra(value)",
         "physical-only",
     ] {
-        for name in ["configuration.sqlite", "gameplay.sqlite"] {
-            fs::copy(Path::new(&first_path).join(name), copied.0.join(name)).unwrap();
-        }
-        let gameplay = copied.0.join("gameplay.sqlite");
+        let copy = Fixture::new("");
+        fs::copy(&original.0, &copy.0).unwrap();
         if mutation == "physical-only" {
             use std::io::Write;
             fs::OpenOptions::new()
                 .append(true)
-                .open(&gameplay)
+                .open(&copy.0)
                 .unwrap()
                 .write_all(&[0])
                 .unwrap();
         } else {
-            Connection::open(&gameplay)
+            Connection::open(&copy.0)
                 .unwrap()
                 .execute_batch(mutation)
                 .unwrap();
         }
+        let actual = inspect(&copy.0).unwrap();
+        if mutation == "physical-only" {
+            assert_eq!(
+                actual.fingerprint().semantic_sha256,
+                expected.fingerprint().semantic_sha256
+            );
+            assert_ne!(
+                actual.fingerprint().file_sha256,
+                expected.fingerprint().file_sha256
+            );
+        } else {
+            assert_ne!(
+                actual.fingerprint().semantic_sha256,
+                expected.fingerprint().semantic_sha256
+            );
+        }
         assert!(
-            Rules::load_profile(profile, &copied.0, &source).is_err(),
+            validate(&actual, expected.fingerprint()).is_err(),
             "accepted {mutation}"
         );
     }
-    fs::remove_dir_all(&copied.0).unwrap();
 }

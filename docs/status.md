@@ -1,107 +1,39 @@
 # Implementation status
 
-The supplied Linux XP2 profile is the sole execution and acceptance target. The goal remains an exact headless Rust gameplay state/action/turn library, with external policies making **all player decisions** and exact rules/upkeep and gameplay RNG between decisions. [Desktop/UI/network admission is optional integration](linux-gameplay-oracle-scope.md), not a prerequisite to completing the authoritative gameplay library. Proven planning-only or presentation-only state may be omitted within its documented boundary; unknown gameplay effects remain required.
+**The complete headless state/action/turn engine is not implemented.** The public
+library contains reusable numerical, state, codec and rules components. It is
+not yet usable for complete-game AI evaluation.
 
-**The complete simulator is not implemented and is not yet usable for complete-game AI evaluation.** Original Linux Core loading and a conditional native SkipTurn execute repeatably. Rust has bounded mechanics/state phases, typed wire transport and native rules/registry components. Current-format saved-wire import covers all 43 Players and their Unit/Formation rosters, and a consuming adapter owns those records. Complete native Read initialization, live-world reconstruction, general Game actions, EndTurn and whole-world/RNG parity remain unsupported. No completion percentage is inferred from individual records or tests.
-
-| Boundary | What Rust mirrors or transports | Acceptance and remaining gap |
+| Boundary | Available components | Remaining limits |
 | --- | --- | --- |
-| Original native lifecycle | Host providers, XP2 activation, offline session, Core Load/Save and constructed-owner cleanup | Passing identified native profiles; loading is not complete state import |
-| Rules and registries | Pinned Base/activated-XP2 SQLite; explicit native index/hash/row-ID distinctions | Observed Yield/Unit and movement registries; no generic SQL-index substitution |
-| Native-checked primitives | Random/normal records, stateless coordinates, average damage, bounded loaded-sync randomized damage | Scoped original-code comparisons; complete combat/RNG lifecycle absent |
-| Bounded SkipTurn phase | Owned Unit/Formation state, typed Busy/CanMove, handler dispatch and partial synchronous reporting | Real Rust prefix matches four captured Send scalar rows, then stops at missing scripts; complete action/aftermath parity absent |
-| Placement and SkipTurn handler | Layered counts and registered handler with actual control/war/definition inputs | 10,012 native handler calls, 17,584 count-position rows and 1,262 bindings match; separate original full Manager observation accepted, Rust full-query/action parity absent |
-| Owned World | Consuming assembly of Map, 43 Players, 1,262 Units, 1,250 Formations, 245 Cities and 1,284 Districts | Independently checked retained records and lookups; bounded initialization/sidecars do not reproduce all native Read effects |
-| Movement numerical functions | Values construction/finalization, nine phases, formation ignore aggregation, ZOC minimum selection | 7,461 recorded native queries and 67,149 phase states match; complete world queries and actions absent |
-| Improvement prerequisite yields | GetPlayerBonusTechYieldFrom and civic analogue, ordered wrapping FixedPoint8 arithmetic | Source-reviewed supplied-input contract; initialized native differential acceptance absent |
-| Movement-world facts | Unit/member/Formation facts, native definition identities, plot/edge queries | Initial facts and expanded arithmetic accepted; bounded fresh-read native-2 projection matches all 6,996 effective masks/Wonder/domain groups and presence/coastal results |
-| Map wire import | Map4/Plot6 plus all six components, 4,693,980 native bytes | Exact current-fixture roundtrip and structural extraction; live Read fixups absent |
-| Later owned components | Attributed notification slots, Game.Techs graph projection and TradeGraph paths, alongside other wire codecs | Separate owner admission and bounded queries; these do not extend the continuous prefix or establish complete runtime owners |
-| Prerequisite providers | Acquired bool hash arrays and owned Game.Techs Read/Validate/nonempty PostLoad projection | Source-backed remapping/order; BuildTechs, unknown fallback prerequisites and initialized native graph comparison remain gaps |
-| City/District movement projection | Native ID/owner lookup and source-backed initial domain-mask rebuild branches | All 6,996 effective signed-16 masks/Wonder results match in a bounded fresh read; arbitrary history/overflow remains unsupported |
-| Plot/improvement yields | Source-reviewed outer GetYield and numerical improvement composition, including corrected direct-index lookup | Live providers and initialized native numerical comparison absent |
-| City wire composition | Complete current City51 records within supported nested variants | 490 native records / 9,287,120 unmasked bytes / 5,880 child boundaries accepted; live City state absent |
-| Direct Rust Core prefix | Accepted contextual current-wire reader through all Players, GlobalAi, Barbarian, FreeCities and Game sync Random | 71,027,796 / 80,657,462 bytes; next continuous boundary Trade.Manager; untouched suffix retained, native loading/gameplay semantics incomplete |
-| Manager state and native query | Disabled lists, definition lookups, phases, live turn-active fields and one actual full native CanStart observation | Accepted native-2 result AL=true with normal cleanup; Rust full Manager comparison, complete script effects and actions unvalidated |
-| Internal turn completion | Reviewed dispatch/setter/hooks and overflow-clear source contract | Complete Game.Update/providers/native parity absent; public EndTurn Unsupported |
-| Reporting/notifications | Corrected Send/return controls and captured notification/passive4 state checks | Bounded captured effects; complete transitive callbacks/purity absent |
-| Full state/actions/turns | No complete gameplay implementation | General `Engine::apply`, EndTurn, external-decision progression and whole-world/RNG parity unsupported |
-| Desktop/network integration | Original loading/receive gate documented | Unresolved optional host admission, separate from authoritative gameplay semantics |
+| Numerical functions | Explicit RNG records/streams, coordinate helpers, bounded combat/movement/yield arithmetic | Complete gameplay RNG ownership and integration, combat execution and movement actions |
+| Typed wire data | Map, Player, Unit/Formation, City/District and other supported component schemas; bounded Core prefixes | Unsupported versions/branches, complete import, runtime fixups and unsaved state |
+| Owned state | Ordered World records, lookups, retained owners and bounded initialization/query APIs | Complete coupled owner updates and live-world reconstruction |
+| Rules/registries | Immutable registered SQLite profiles, explicit row/hash/index identities and ordered definitions | Complete rules providers, arbitrary configuration/content combinations and gameplay integration |
+| Action components | Bounded legality, queue/setter/reporting and notification phases with explicit dependencies | Complete callbacks, aftermath, script effects, affected state/RNG and action acceptance |
+| Public `Engine` / C ABI | Small snapshot envelope, RNG actions, coordinate helpers and transport | General Game actions, EndTurn and complete World API remain unsupported |
+| Turn progression | Reusable internal components | Complete upkeep, every-player decision boundaries and full turn execution |
 
-## Newly connected state and rules
+Supported wire import can represent complete saved Player rosters for particular
+admitted schemas. This does not reproduce every initialization side effect,
+validate all runtime authority or restore complete gameplay state. Separately
+owned later components do not establish complete continuous Core import.
 
-The [owned World review](linux-world-yields-review.md) accepts the state assembly and two improvement prerequisite yield helpers as source-backed contracts. World owns actual ordered Map/Player/Unit/Formation inputs and preserves native lookup semantics; mutation alone does not maintain coupled occupancy, ownership or action effects. The technology/civic helpers retain native query order and wrapping FixedPoint8 arithmetic. Neither acceptance includes an initialized native numerical oracle.
+The small `Engine::apply` rejects unsupported gameplay actions without mutation.
+Some lower-level diagnostic phases preserve completed work on provider errors;
+callers must inspect the specific API contract rather than assume rollback or
+treat a partial trace as a successful action.
 
-The [prerequisite projection](linux-player-prerequisites-review.md) decodes already located acquired-bool arrays, applies the proven owner reset/remap rules and projects complete live post-Validate global nodes into World. Actual player mapping, native ordered registries and complete capture remain required. The accepted structural prefix includes complete Player Techs/Culture records. The separately [owned Game.Techs projection](linux-loaded-game-techs.md) applies bounded Read/Validate and the nonempty PostLoad branch; BuildTechs and unknown fallback prerequisites reject explicitly. Complete live provider reconstruction and native graph differential acceptance remain separate work.
+Synthetic tests and source/build/interface checks establish only their declared
+boundaries. Numerical parity for one function or records for one profile do not
+establish a complete subsystem, full RNG inventory or a legal complete action.
+Unknown state remains required until its gameplay role is resolved; it cannot be
+filled with defaults or excluded by a class name.
 
-[Player Goody_Hut, Bonuses and Congress](linux-player-components.md) form part of the supported all-Player wire import. All 86 native Congress records roundtrip, with 6,182 independently reviewed leaves. Their refund vectors are empty; populated refund fixtures are source-only. Reset/overlay value semantics are implemented separately from omitted live ownership/archive state and Congress gameplay.
+Completion still requires full state and initialization, exact action validation
+and mandatory effects, deterministic branching, and complete rules/upkeep until
+the next externally supplied decision. Every player decision belongs to the
+external policy; the simulator must not silently make native AI choices.
 
-## Bounded movement progress
-
-The [independently reviewed control3 comparison](linux-movement-world-control.md) binds the frozen world candidate to the exact original Core bytes and serializer trace containing one Map, 1,262 Units and 1,250 Formations. It matches all 1,536 actual adjacent edges in each of three fact groups, with zero mismatches or unsupported rows. Discovery was truncated at 256 formations; this is sample coverage, not complete world acceptance.
-
-The [independently accepted bounded fresh-read projection](linux-movement-domain-default-review.md) matches all **6,996 effective full signed-16 masks, Wonder results and domain-query groups**, plus attribute presence/coastal results. All 1,709 fallback rows are now source-derived; no effective query is unavailable. This closes the captured native-2 getter comparison for one fresh canonical Map read, with positive consistent geometry, plot count `P` satisfying checked `2*P <= 65535`, and normal typed ownership/DTO use without private-pool aliases. Arbitrary history, overflow and full allocator behavior remain unsupported. The original native-2 profile/candidate remains immutable; six full Core Saves, both known RNG objects and cleanup are inherited controls. Complete world state, all gameplay RNG, later construction/transfer updates and actions/turns remain outside acceptance.
-
-The [closed expanded native movement-cost comparison](linux-movement-cost-expanded-results.md) accepts all **7,461 ordered queries and 67,149 native phase states**, with zero arithmetic mismatches. Discovery reaches 1,250 Formations while scanning 1,262 Units, with zero skipped formations and no truncation. This covers the current fixture, not all game cases. All 24 whole-Core pairs compare 80,657,462 bytes directly, with zero differences and zero masked bytes. The full 32 raw bytes of both known Game/Map Random objects remain unchanged within each process; complete gameplay RNG inventory remains unresolved. This accepts arithmetic over original recorded facts and retained serialized observations. Complete world-query reconstruction, cache/provider effects, all gameplay RNG, legality, movement execution and turns remain outside acceptance.
-
-The [first 180-second run](../evidence/linux/movement-cost-timeout-1.json) remains failed history: 588 complete rows without final Saves/RNG or cleanup. The successful 900-second rerun preserved its fixture, native calls, guards and frozen candidate. The [separate prepared-fact benchmark](linux-movement-cost-benchmark.md) reports median 23.81 ns/edge without ZOC and 24.33 ns/edge with ZOC. Input capture, world queries, actions and turns are excluded; instrumented native elapsed time is not a latency benchmark.
-
-## Yield and City source progress
-
-The [plot-yield review](linux-plot-yield-review.md) accepts the outer GetYield translation and improvement composition within their explicit typed-input/provider contract. It verifies first-match versus all-row behavior, wrapping FixedPoint8 arithmetic, source query order and the corrected direct-index improvement lookup. Live visibility, property, City/Player, adjacency and climate providers remain incomplete; no initialized native numerical GetYield parity is claimed.
-
-The [complete City wire review](linux-city-wire-review.md) accepts 490 original City records, 9,287,120 unmasked bytes and 5,880 child-owner boundaries within the supported current nested-variant forms. The streams are a normalization pair from the same context, not independent gameplay branches. Native Read side effects, live owner/provider reconstruction, nonempty inherited-property native coverage and City gameplay remain absent.
-
-## Typed Map milestone
-
-The accepted [Map codec](linux-map-codec.md) consumes the complete current Map v4 / Plot v6 section, including Route, Feature, River, Terrain, Territories and TerritoryBuilder schemas. Every native byte, 2,208,846 independently decoded values, ten sections and 315 original nested boundaries match; the independent [review](linux-map-codec-review.md) also checks exposed nested ranges. The two canonical lifecycle streams contain identical Map bytes, not distinct map-generation coverage.
-
-General nonempty Route/Terrain/Territory/localization forms have source-derived tests. Their populated native branches, Ice and wrapped-map original fixtures remain gaps. There is no opaque-component fallback, but typed transport does not implement Map::Read fixups, active-definition remapping, live world construction, movement or pathfinding.
-
-The historical [AI-Culture profile](linux-core-player-ai-culture-prefix-review.md) (`b562d3f`) and [Homeland source extension](linux-core-player-ai-homeland-prefix-review.md) (`867a009`) stopped within the first Player. They remain bounded historical evidence. The [contextual all-Player import](linux-core-contextual-import.md), independently accepted in `c27b6fb`, now decodes all **43 Players, 1,262 Units, 1,250 Formations, 245 Cities and 1,284 Districts**, followed by GlobalAi. Its per-role Military initialization evidence is explicit; no fixture-default context is synthesized.
-
-The [independently accepted ThroughRandom continuation](linux-core-random-prefix-review.md) reads **71,027,796 of 80,657,462 bytes**, charging **10,678,503 items**, in each of three admitted Native3 roles: fresh ff31 Read and two distinct own 85d Writes. It retains 197 Barbarian instances, 55 FreeCities instances and the serialized Game sync Random record. The continuous reader stops before Trade.Manager and borrows the untouched 9,629,666-byte suffix. Separately attributed later owners do not turn that suffix into a complete Core parse. The [consuming World review](linux-loaded-world-review.md) accepts ownership and record assembly, with bounded initialization/lifecycle successors; native Read fixups, complete unsaved state and executable gameplay remain incomplete.
-
-The immutable original raw Read-input `a66736f0…` is a different stream role. Rust now accepts its Context4/Game19 header and explicitly refuses the **Map.Plots collection v5** gate (supported v6), before any Player. The [retained raw diagnostic](linux-game-header-versions.md) establishes that exact next boundary. Wire-version differences do not establish relative executable age or authorize migration, and the separate historical OperationDef5 failure remains retained.
-
-[Owned notifications](linux-player-notifications-owner.md), the [Game.Techs projection](linux-loaded-game-techs.md) and [TradeGraph path queries](linux-trade-graph-state.md) consume separately attributed later owner frames. Their scopes include concrete retained fields and bounded queries, with missing runtime state, cold pathfinding and callback effects explicit. They establish neither full late-system import nor complete state/action/RNG parity.
-
-## Gameplay callback and output boundary
-
-The [Busy/CanMove and ordered SkipTurn handler predicates](linux-unit-operation-legality.md) remain bounded source contracts. The [independently accepted native placement comparison](linux-placement-count-results-review.md) now matches all **17,584 ordered count-position rows**: 225 null and 17,359 present counts, plus 1,262 definition/Formation bindings. Genuine native control/war/definition inputs and all 43 saved/live alive flags (35 true) are checked. Six full Core Saves match byte-for-byte; the known 64 RNG bytes and cleanup also pass. Logical membership does not reconstruct native allocator state.
-
-The [independently accepted registered handler comparison](linux-skip-turn-handler-results-review.md) matches all **10,012 original SkipTurn::CanStart calls**, alongside all 17,584 count-position rows and 1,262 bindings, with zero mismatches. It queries every actual Unit, including 21 unplaced Units, under the reviewed Plot/visibility/repeat matrix. Six actual 80,657,462-byte Core Saves match byte-for-byte; the known 64 RNG bytes, known-caller zero-action trace and terminal cleanup also pass. This accepts the loaded fixture’s handler predicate. A separate full native Manager observation is now accepted below; Rust full Manager parity remains unvalidated. Scripts, synchronous callbacks, mandatory aftermath and complete affected-state/RNG still block gameplay action support. The [placement benchmark](linux-placement-query-benchmark.md) measures all 17,359 present-position queries: combined lookup/layer/membership/count median **117.16 ns**, p10–p90 **114.89–125.77 ns**, on EPYC 7642. Setup, actions, turns and native speed are excluded.
-
-The [independently accepted Manager raw-state reconstruction](linux-unit-operation-manager-metadata-review.md) (`3155f18`) matches both complete metadata passes: all 65 slots, 43 live turn-active values, 1,262 disabled lists, definition lookups and four selected phases. Six full Saves, known RNG endpoints and cleanup pass. Capacity/object storage is retained without reconstruction; positive disabled states remain a coverage gap. ScriptSystem is genuinely present, while its callbacks remain uninspected and unsupported. This accepts fixture-scoped state reconstruction. The later original full Manager result below is a distinct observation, with no Rust full-query comparison.
-
-The [independent closed full Manager review](linux-full-manager-native-2-closed-review.md) (`5b3667a`) accepts native profile `27ee77e3bf3aed48f957e13d41a314cf7a9c413f5ccb0e1793fe7d4826987116`: owner 0 / Unit 15794187, requested SkipTurn 36, visible-only false, NULL Plot/results. Original Manager returns **AL=true**, with normal Controller/framework/client cleanup. The [script-state semantics audit](linux-script-state-semantics.md) further establishes that the callable Lua path returned the requested **nil result**. That result, the script wrapper's false return/out `00`, and Manager's true AL are distinct. Nil proves neither empty callback storage nor absence of effects. Six equal Save diagnostics and eleven unchanged endpoints of the two named RNG objects remain bounded controls; complete gameplay state/RNG and Rust full-query parity are absent.
-
-The [reviewed ordered Rust reporting prefix](linux-loaded-ordered-reporting-independent-review.md) and [scoped successor](linux-loaded-scoped-reporting-independent-review.md) execute the real loaded SkipTurn path through **four of nine captured typed Send scalar rows**, with source-derived host publications 35, 70, 71 and 67. Execution then stops at the genuine missing Manager script/lock/args backend (`MissingScripts` in the checker). Completed queue/activity changes remain present on error; isolated later projection cases do not extend the action trace. Native host-output values, full callbacks/aftermath and affected-state/RNG equivalence remain unvalidated, and this is not a complete action.
-
-The [Manager::CanStart orchestration](linux-unit-operation-manager.md), corrected [UnitOperation aftermath](linux-unit-operation-aftermath.md) and [read-only notification predicate provider](linux-unit-operation-notification-provider-review.md) remain source-backed contracts. Full callback effects, concrete upkeep and accepted action execution remain open. The [internal turn-completion kernel](linux-turn-completion-kernel-review.md) has independently reviewed dispatch, setter/hook traversal and overflow clearing. Complete Game.Update, dirty/archive effects and native affected-state/RNG comparisons remain missing; public EndTurn stays Unsupported.
-
-Reviewed [Manager script-lock ordering](linux-manager-script-lock-review.md) (`7d3c026` / `a8bf019`) and [current-handler resolution](linux-current-handler-interruption-review.md) (`1dae236` / `25e48d3`) remain source boundaries. Captures contain actual handler vptrs; `+0x20` targets predicted from ELF relocations are not live slot observations and are rejected for runtime dispatch admission. The [HKS decoder review](linux-script-hks-registry-review.md) (`a5edd70`) accepts immutable-image tooling only. Later [bounded script-state capture work](linux-script-state-semantics.md) is separate; complete VM/GC ancestry, actual callback behavior and a Rust callback backend remain unresolved.
-
-The [AI-state role inventory](linux-player-ai-state-roles.md) leaves the AI-owned blocks required until field-level evidence proves narrower roles. Research policy consumes shared Game.Random and mutates Techs; replacing that policy with an external choice requires an exact RNG/caller boundary. The bounded Planning identity codec is wire transport only. No blanket AI or RNG exclusion follows.
-
-The corrected native event profile repeats the original Core transition with eleven balanced Send/int-return calls per action. Actual reporting receivers include an active YieldMonitor with 6,996 plot records and 182 trade records. The accepted [passive4 observation](linux-reporting-effects-observation.md) finishes normally with full native/GDB cleanup, unchanged captured cache/PlotYields data and all five Save/command checks. Slot order is captured native order; route IDs/endpoints/paths are matched separately to parent records. Intermediate changes, unobserved pointees, all gameplay RNG and complete transitive getter effects are not certified.
-
-[Captured notification controls](linux-notification-captured-state-phase.md) reproduce observed inputs within their bounded phase; they do not establish arbitrary subtype callbacks or complete notification gameplay. [Unit EventStream classification](linux-skip-turn-state-success.md) proves its queued entries, node IDs and allocator state are rebuildable output when reflected presentation delivery is omitted. Those UI output allocations are not remaining gameplay requirements. Source properties, producer snapshot queries, unrelated caches and any gameplay-affecting callbacks remain required; no namespace-wide exclusion follows.
-
-The authoritative action API must preserve real owner/turn/phase legality, request normalization and ordering, complete mandatory continuation, and yield to the next external decision. Successful Core execution does not by itself complete that contract. Original full desktop load screens, platform-account startup and packet admission can remain optional integrations; no rejected packet is relabeled as accepted host ingress.
-
-## Save and state comparison
-
-The [normalization summary](../evidence/linux/save-normalization-summary.json) accounts for the raw 89,198-byte native Save→Load difference: 89,156 trade-order bytes with equal keyed payloads, and 42 GameEffects Team-ID/reference bytes following the observed +24 reconstruction map. Exact allocation sequencing, complete reference/RNG coverage and future ordered gameplay effects remain unproven. No bytes are masked or excluded as planning-only.
-
-Native non-byte-idempotent loading is target behavior, not a defect to patch or a blanket block on scoped action comparisons. Same-source fresh-process native baselines repeat; exact simulator cloning must separately preserve complete imported logical gameplay state. One equal serialized sync-RNG record is not all-live-RNG coverage. Core Saves also omit live queues, jobs, some caches and other transient state.
-
-## Next work
-
-1. Extend continuous import beyond Trade.Manager and finish native Read/post-load application for the owned Players, rosters and later systems, retaining identities, order and unsupported forms explicitly.
-2. Finish authoritative SkipTurn callbacks/aftermath and complete affected-state/RNG comparisons, using the proven presentation-only exclusions rather than replicating native heap output.
-3. Connect accepted movement arithmetic to complete world queries, validate movement legality/actions, and implement general Game actions with Linux-native fixtures and ordered continuation.
-4. Complete deterministic branching and full external-decision turn progression across every player and gameplay subsystem.
-5. Measure initialization, memory and action/turn throughput only for implemented paths. Existing codec/data/arithmetic timings are not full-game benchmarks.
-
-[README](../README.md) links active commands. Owner documents and [Linux target policy](targets.md) define exact profile identities and limits. Windows evidence remains frozen historical work and adds no Linux coverage.
+See [architecture/API](architecture.md), [rules inputs](rules-data.md),
+[target and decision policy](targets.md) and [performance scope](performance.md).

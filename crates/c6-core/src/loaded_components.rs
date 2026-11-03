@@ -23,6 +23,7 @@ impl std::error::Error for Error {}
 pub struct OwnedCore {
     pub context_version: i32,
     pub game_version: i32,
+    pub map_plot_version: i32,
     pub metadata: unit::variants::TypedVariantMap,
     pub game_processor: core_stream::GameProcessor,
     pub player_processor: core_stream::PlayerProcessor,
@@ -150,6 +151,7 @@ pub fn split_core(core: core_stream::CorePrefix<'_>) -> (map::Map, OwnedCore) {
         local_player,
         game_properties,
         map,
+        map_plot_version,
         map_start,
         map_end,
         consumed,
@@ -162,6 +164,7 @@ pub fn split_core(core: core_stream::CorePrefix<'_>) -> (map::Map, OwnedCore) {
         OwnedCore {
             context_version,
             game_version,
+            map_plot_version,
             metadata,
             game_processor,
             player_processor,

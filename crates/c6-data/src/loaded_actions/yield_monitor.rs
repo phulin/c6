@@ -3,19 +3,7 @@
 //! This module does not yet authorize omission of the monitor. Its unsaved
 //! derived-cache initialization/history and complete query effects remain
 //! separate admission requirements. No captured numerical answer is installed.
-use c6_core::{
-    core_player::initialization::WireRole,
-    loaded_state::{ComponentSnapshotWitness, LoadedState},
-    trade,
-};
-use serde_json::Value;
-use sha2::{Digest, Sha256};
-
-const CORE: &str = "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884";
-const TRACE: &str = "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae";
-const FRAME: &str = "64a196d77b6bc35a72354226dda4111e10f46742cd62d4e335b43c737a186c33";
-const CORE_BYTES: usize = 80_657_462;
-const FRAME_RANGE: [usize; 2] = [71_027_800, 71_497_438];
+use c6_core::loaded_state::LoadedState;
 
 #[derive(Debug)]
 pub enum Error {
@@ -32,79 +20,6 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
-
-fn digest(bytes: &[u8]) -> [u8; 32] {
-    Sha256::digest(bytes).into()
-}
-fn matches_hash(bytes: &[u8], expected: &str) -> bool {
-    format!("{:x}", Sha256::digest(bytes)) == expected
-}
-
-/// Install exactly the source-attributed Graph frame. Saved origin/destination
-/// yield arrays remain ordinary decoded Route data, never effective answers.
-/// Core performs one-time pristine/binding checks before accepting the owner.
-pub fn install_trade_graph_snapshot(
-    state: &mut LoadedState,
-    owner_trace: &[u8],
-    limits: trade::Limits,
-) -> Result<(), Error> {
-    let witness = snapshot_witness(state, owner_trace)?;
-    let frame_sha256 =
-        digest(&state.source_image()[witness.owner_range[0]..witness.owner_range[1]]);
-    state
-        .install_trade_graph(witness, frame_sha256, limits)
-        .map_err(Error::State)
-}
-
-fn snapshot_witness(state: &LoadedState, trace: &[u8]) -> Result<ComponentSnapshotWitness, Error> {
-    let bytes = state.source_image();
-    if bytes.len() != CORE_BYTES
-        || !matches_hash(bytes, CORE)
-        || state.binding().core_sha256 != digest(bytes)
-        || !matches_hash(trace, TRACE)
-    {
-        return Err(Error::Attribution);
-    }
-    let mut range = None;
-    for line in trace
-        .split(|byte| *byte == b'\n')
-        .filter(|line| !line.is_empty())
-    {
-        let row: Value = serde_json::from_slice(line).map_err(|_| Error::Attribution)?;
-        if row["event"] == "owner" && row["save"] == 1 && row["owner"] == "GameCore::Trade::Graph" {
-            if range.is_some()
-                || row["depth"] != 2
-                || row["parent"] != 162110
-                || row["call"] != 162111
-            {
-                return Err(Error::Attribution);
-            }
-            let offset = |field: &str| {
-                row[field]
-                    .as_u64()
-                    .and_then(|value| usize::try_from(value).ok())
-                    .ok_or(Error::Attribution)
-            };
-            range = Some([offset("start")?, offset("end")?]);
-        }
-    }
-    let range = range.ok_or(Error::Attribution)?;
-    if range != FRAME_RANGE
-        || !bytes
-            .get(range[0]..range[1])
-            .is_some_and(|frame| matches_hash(frame, FRAME))
-    {
-        return Err(Error::Attribution);
-    }
-    Ok(ComponentSnapshotWitness {
-        source_role: WireRole::SavedOutputCore,
-        snapshot_sha256: digest(bytes),
-        snapshot_bytes: bytes.len(),
-        owner_trace_sha256: digest(trace),
-        owner_range: range,
-        decoded_prefix_bytes: range[1] - range[0],
-    })
-}
 
 /// A current-state query result, not a cache-freshness or omission certificate.
 /// Native route iteration order is deliberately not provided by wire traversal.

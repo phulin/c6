@@ -1,9 +1,0 @@
-{
-  "schema": 1,
-  "method": "wrong expected configuration SHA-256 before original native execution",
-  "host_sha256": "106d4986567cf60aad787dfac990d089e41775e04b5f40e073f59a3a8ffe74f4",
-  "runner_sha256": "b3c71bee1f3def890c0e82369bf0e39f129269a8c608968e771708ff170a3989",
-  "returncode": 1,
-  "refused_before_native_execution": true,
-  "stderr": "configuration identity mismatch before native execution\n"
-}

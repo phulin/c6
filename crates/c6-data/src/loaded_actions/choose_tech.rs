@@ -2,13 +2,13 @@
 //! Inputs are typed retained state and admitted definitions. Mutable Game.Techs
 //! graph state must be supplied separately; SQL prerequisites are not that graph.
 //! This is not complete notification Update, live initialization or action parity.
-use super::{notifications, resources::Bound};
+use super::notifications;
+use crate::resource_binding::ResourceAuthority;
 use crate::{registry::LinuxDefinitionRegistry, unit_initialization_definitions, Rules, SqlValue};
 use c6_core::{
     core_player::initialization::{WireBinding, WireRole},
     loaded_state::{ComponentSnapshotWitness, LoadedState},
-    notification_lifecycle::{self as lifecycle, ObjectId, PoolId},
-    notifications::{ComponentId, LocalizedString, Notification},
+    notification_lifecycle::PoolId,
     player_prerequisites::IndexedBools,
     player_techs::Techs,
 };
@@ -21,6 +21,7 @@ pub const DEFAULT_BLOCKING: i32 = 0xeef1_1bf9u32 as i32;
 pub enum Error {
     Resources(unit_initialization_definitions::Error),
     Rules(crate::Error),
+    BaseInitialization(Box<notifications::Error>),
     Graph(c6_core::game_techs::Error),
     Unsupported(&'static str),
 }
@@ -42,13 +43,12 @@ impl Definitions {
     pub fn from_rules(
         state: &LoadedState,
         rules: &Rules,
-        bound: &Bound<'_>,
-        report: &[u8],
+        bound: &ResourceAuthority<'_>,
     ) -> Result<Self, Error> {
         if state.binding() != bound.destination_binding() {
             return Err(Error::Unsupported("rules/retained state binding"));
         }
-        unit_initialization_definitions::Definitions::validate_resources(rules, bound, report)
+        unit_initialization_definitions::Definitions::validate_resources(rules, bound)
             .map_err(Error::Resources)?;
         let technologies =
             unit_initialization_definitions::collection(rules, "Technologies", "TechnologyType")
@@ -89,75 +89,25 @@ impl Definitions {
     pub fn technology_lookup(&self) -> &dyn c6_core::movement_world::DefinitionLookup {
         &self.technologies
     }
-    /// Attribute the saved owner to this exact pristine source image, then
-    /// execute only the closed owner-local Read/Validate/nonempty-postload
-    /// projection. Later load callbacks and final native runtime equivalence
-    /// remain separate obligations; this does not certify a live graph capture.
-    pub fn source_read_graph(
+    /// Decode a checked source owner without claiming final runtime equivalence.
+    pub fn source_read_component(
         &self,
         state: &LoadedState,
-        trace: &[u8],
+        witness: ComponentSnapshotWitness,
         limits: c6_core::unit::Limits,
     ) -> Result<GameTechs, Error> {
-        const CORE: &str = "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884";
-        const TRACE: &str = "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae";
-        const OWNER: &str = "8b9f3c06c16559047dfa52ccb81e8b72661c151d9a28b590b808231cb21f0455";
-        let source = state.source_image();
-        let digest: [u8; 32] = Sha256::digest(source).into();
-        let trace_digest: [u8; 32] = Sha256::digest(trace).into();
-        if !state.is_pristine()
-            || self.binding != *state.binding()
-            || digest != state.binding().core_sha256
-            || format!("{:x}", Sha256::digest(source)) != CORE
-            || format!("{:x}", Sha256::digest(trace)) != TRACE
-        {
-            return Err(Error::Unsupported("attributed GameTechs snapshot/session"));
-        }
-        let mut frame = None;
-        for line in trace.split(|b| *b == b'\n').filter(|line| !line.is_empty()) {
-            let row: serde_json::Value = serde_json::from_slice(line)
-                .map_err(|_| Error::Unsupported("GameTechs owner trace JSON"))?;
-            if row["event"] == "owner"
-                && row["save"] == 1
-                && row["owner"] == "GameCore::Game::Techs"
-            {
-                if frame.is_some() || row["depth"] != 1 || row["parent"] != 1 {
-                    return Err(Error::Unsupported("unique GameTechs source owner"));
-                }
-                let position = |field| {
-                    row[field]
-                        .as_u64()
-                        .and_then(|n| usize::try_from(n).ok())
-                        .ok_or(Error::Unsupported("GameTechs owner extent"))
-                };
-                frame = Some([position("start")?, position("end")?]);
-            }
-        }
-        let range = frame.ok_or(Error::Unsupported("GameTechs source owner missing"))?;
-        if range[0] >= range[1] {
-            return Err(Error::Unsupported("GameTechs owner extent"));
-        }
-        let bytes = source
-            .get(range[0]..range[1])
-            .ok_or(Error::Unsupported("GameTechs owner extent"))?;
-        if format!("{:x}", Sha256::digest(bytes)) != OWNER {
-            return Err(Error::Unsupported("GameTechs owner source preimage"));
-        }
+        let bytes = checked_component_source(state, &self.binding, &witness)?;
         let wire = c6_core::game_techs::Techs::decode(bytes, limits).map_err(Error::Graph)?;
         let graph = wire
             .project_read(&self.technologies)
             .map_err(Error::Graph)?
             .post_load_without_rebuild()
             .map_err(Error::Graph)?;
+        if witness.decoded_prefix_bytes != bytes.len() {
+            return Err(Error::Unsupported("GameTechs decoded prefix"));
+        }
         let mut input = GameTechs::from_source_read(self.binding.clone(), &graph);
-        input.source_witness = Some(ComponentSnapshotWitness {
-            source_role: WireRole::SavedOutputCore,
-            snapshot_sha256: digest,
-            snapshot_bytes: source.len(),
-            owner_trace_sha256: trace_digest,
-            owner_range: range,
-            decoded_prefix_bytes: bytes.len(),
-        });
+        input.source_witness = Some(witness);
         Ok(input)
     }
     pub fn technology_count(&self) -> usize {
@@ -447,22 +397,7 @@ pub enum CreatorBinding {
     BaseFallback,
     Unavailable,
 }
-pub enum LogicalAllocation<'a> {
-    Fresh(ObjectId),
-    Reused {
-        object: ObjectId,
-        prior: &'a Notification,
-    },
-    Failed,
-}
-pub struct Created {
-    pub record: Notification,
-    pub live: lifecycle::LiveNotification,
-    pub default_blocking: i32,
-    /// Native +0x18 is not present in the wire Notification record.
-    pub group_hash: u32,
-    pub vtable_addresspoint: u64,
-}
+pub use super::notifications::{Created, LogicalAllocation};
 /// Source-closed auto=true/NULL-parameters initialization. The caller owns the
 /// logical allocation/reuse decision and any pool pop; this function does not
 /// invent native free-list contents, a successful allocation, or a registered
@@ -491,104 +426,99 @@ pub fn create_auto(
             return Err(Error::Unsupported("base fallback Instance.Create"))
         }
     }
-    let definition = definitions
-        .find(TYPE_HASH)
-        .ok_or(Error::Unsupported("ChooseTech notification definition"))?;
-    if definition.expires_end_of_turn || definition.expires_end_of_next_turn {
-        return Err(Error::Unsupported(
-            "base Initialize PreviouslyActiveThisTurn dependency",
-        ));
-    }
-    let (object, mut id, component_type) =
-        match allocation.ok_or(Error::Unsupported("logical notification allocation/reuse"))? {
-            LogicalAllocation::Fresh(object) => (
-                object,
-                ComponentId {
-                    owner: -1,
-                    component_type: 0x26,
-                    id: u32::MAX,
-                },
-                0,
-            ),
-            LogicalAllocation::Reused { object, prior } => {
-                if prior.factory_type != TYPE_HASH
-                    || prior.type_hash != TYPE_HASH
-                    || !prior.parameters.entries.is_empty()
-                {
-                    return Err(Error::Unsupported(
-                        "reused ChooseTech identity/parameter destruction",
-                    ));
-                }
-                (object, prior.id, prior.component.component_type)
-            }
-            LogicalAllocation::Failed => {
-                return Err(Error::Unsupported("notification allocation failure"))
-            }
-        };
-    if owner != -1 {
-        id.owner = owner as i16;
-    }
-    let severity = definition
-        .severity_type
-        .as_deref()
-        .map(|name| severity_type(crate::registry::linux_type_hash(name.as_bytes())))
-        .filter(|v| *v != -1)
-        .unwrap_or(0);
-    let record = Notification {
-        factory_type: TYPE_HASH,
-        id,
-        type_hash: TYPE_HASH,
-        severity,
-        message: LocalizedString::default(),
-        summary: LocalizedString::default(),
-        location: [-9999; 2],
-        component: ComponentId {
-            owner: -1,
-            component_type,
-            id: u32::MAX,
-        },
-        native_188: -1,
-        native_18c: 0,
-        is_dismissed: false,
-        native_199: false,
-        native_19a: true,
-        native_190: 1,
-        native_19b: true,
-        native_19c: false,
-        parameters: Default::default(),
-        native_19d: definition.auto_activate,
-        has_been_activated: false,
-    };
-    Ok(Some(Created {
-        record,
-        live: lifecycle::LiveNotification {
-            object,
-            lock_count: 0,
-            pool_binding: Some(pool),
-            definition_icon: lifecycle::DefinitionIcon::ShowInSinglePlayer(
-                definition.show_icon_single_player,
-            ),
-            activation: lifecycle::ActivationBinding::Base,
-            release: lifecycle::ReleaseBinding::Base,
-            destruction: lifecycle::DestructionBinding::BaseResources,
-        },
-        default_blocking: DEFAULT_BLOCKING,
-        group_hash: definition
-            .group_type
-            .as_deref()
-            .map(|name| crate::registry::linux_type_hash(name.as_bytes()))
-            .unwrap_or(0xb6fa_1284),
-        vtable_addresspoint: VTABLE_ADDRESSPOINT,
-    }))
+    let allocation =
+        allocation.ok_or(Error::Unsupported("logical notification allocation/reuse"))?;
+    let mut created = notifications::initialize_auto_base(
+        definitions,
+        TYPE_HASH,
+        VTABLE_ADDRESSPOINT,
+        allocation,
+        pool,
+        owner,
+    )
+    .map_err(|error| match error {
+        notifications::Error::Unsupported(reason) => Error::Unsupported(reason),
+        other => Error::BaseInitialization(Box::new(other)),
+    })?;
+    created.record.native_199 = false;
+    created.record.native_19a = true;
+    created.record.native_18c = 0;
+    created.default_blocking = DEFAULT_BLOCKING;
+    Ok(Some(created))
 }
-fn severity_type(hash: u32) -> i32 {
-    match hash {
-        0xfbd0_c5d4 => 0,
-        0x28f6_49bb => 1,
-        0x386f_f61e => 2,
-        0xba9f_3062 => 3,
-        0x6e89_7878 => 4,
-        0..5 => hash as i32,
-        _ => -1,
+
+/// Check source consistency; this never authenticates a native observation.
+pub(crate) fn checked_component_source<'a>(
+    state: &'a LoadedState,
+    binding: &WireBinding,
+    witness: &ComponentSnapshotWitness,
+) -> Result<&'a [u8], Error> {
+    if !state.is_pristine() || binding != state.binding() {
+        return Err(Error::Unsupported("component source binding"));
+    }
+    checked_component_bytes(state.source_image(), state.binding().core_sha256, witness)
+}
+fn checked_component_bytes<'a>(
+    source: &'a [u8],
+    core_sha256: [u8; 32],
+    witness: &ComponentSnapshotWitness,
+) -> Result<&'a [u8], Error> {
+    if witness.source_role != WireRole::SavedOutputCore
+        || witness.snapshot_bytes != source.len()
+        || witness.snapshot_sha256 != core_sha256
+        || <[u8; 32]>::from(Sha256::digest(source)) != witness.snapshot_sha256
+        || witness.owner_range[0] >= witness.owner_range[1]
+    {
+        return Err(Error::Unsupported("component source binding"));
+    }
+    let bytes = source
+        .get(witness.owner_range[0]..witness.owner_range[1])
+        .ok_or(Error::Unsupported("component source extent"))?;
+    if witness.decoded_prefix_bytes > bytes.len() {
+        return Err(Error::Unsupported("component decoded prefix extent"));
+    }
+    Ok(bytes)
+}
+
+#[cfg(test)]
+mod component_tests {
+    use super::*;
+    #[test]
+    fn component_source_checks_identity_role_and_retains_unknown_bytes() {
+        let bytes = [1, 2, 3, 0xaa, 0xbb];
+        let digest = Sha256::digest(bytes).into();
+        let witness = ComponentSnapshotWitness {
+            source_role: WireRole::SavedOutputCore,
+            snapshot_sha256: digest,
+            snapshot_bytes: bytes.len(),
+            owner_trace_sha256: [7; 32],
+            owner_range: [1, 5],
+            decoded_prefix_bytes: 2,
+        };
+        assert_eq!(
+            checked_component_bytes(&bytes, digest, &witness).unwrap(),
+            &[2, 3, 0xaa, 0xbb]
+        );
+        let mut bad = witness.clone();
+        bad.source_role = WireRole::ReadInputCore;
+        assert!(checked_component_bytes(&bytes, digest, &bad).is_err());
+        let mut bad = witness.clone();
+        bad.snapshot_bytes += 1;
+        assert!(checked_component_bytes(&bytes, digest, &bad).is_err());
+        let mut bad = witness.clone();
+        bad.snapshot_sha256[0] ^= 1;
+        assert!(checked_component_bytes(&bytes, digest, &bad).is_err());
+        let mut bad = witness.clone();
+        bad.owner_range = [4, 6];
+        assert!(checked_component_bytes(&bytes, digest, &bad).is_err());
+        let mut bad = witness.clone();
+        bad.owner_range = [3, 3];
+        assert!(checked_component_bytes(&bytes, digest, &bad).is_err());
+        let mut bad = witness.clone();
+        bad.decoded_prefix_bytes = 5;
+        assert!(checked_component_bytes(&bytes, digest, &bad).is_err());
+        let mut changed = bytes;
+        changed[4] ^= 1;
+        assert!(checked_component_bytes(&changed, digest, &witness).is_err());
     }
 }

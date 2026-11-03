@@ -113,31 +113,6 @@ pub fn read_into(state: &mut RandomState, bytes: &[u8]) -> Result<usize, Error> 
 mod tests {
     use super::*;
     #[test]
-    fn original_byte_fixture_and_raw_synchronous_preserved() {
-        // Actual original DLL Write fixture: evidence/native/serialization-response.jsonl.
-        let record = SerializedRandomRecord {
-            seed: 0x12345678,
-            calls: u32::MAX,
-            resets: 42,
-            synchronous_byte: 255,
-        };
-        let bytes = [
-            1, 0, 0, 0, 0x78, 0x56, 0x34, 0x12, 255, 255, 255, 255, 42, 0, 0, 0, 255, 0,
-        ];
-        assert_eq!(record.encode(), bytes);
-        assert_eq!(
-            SerializedRandomRecord::decode_prefix(&bytes),
-            Ok((record, LENGTH))
-        );
-        let mut state = RandomState::new(9);
-        let before = state;
-        assert_eq!(
-            read_into(&mut state, &bytes),
-            Err(Error::UnrepresentableSynchronous { byte: 255 })
-        );
-        assert_eq!(state, before);
-    }
-    #[test]
     fn all_raw_bytes_preserve_records_and_enforce_logical_representability() {
         for byte in 0..=u8::MAX {
             let record = SerializedRandomRecord {

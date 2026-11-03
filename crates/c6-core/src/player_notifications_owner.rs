@@ -90,6 +90,22 @@ pub struct Removed {
     pub runtime: Runtime,
 }
 
+/// The same released logical object's payload, moved out of its old list node.
+/// This is retained storage, not a native allocation or a new list occurrence.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PooledNotification {
+    pub record: Notification,
+    pub runtime: Runtime,
+}
+
+/// Immutable view of a retained pool entry. During Release the payload can
+/// still belong to the linked owner node until Cleanup erases that node.
+#[derive(Debug)]
+pub struct PooledNotificationRef<'a> {
+    pub record: &'a Notification,
+    pub runtime: &'a Runtime,
+}
+
 /// Complete ordered typed storage, admitted into LoadedState only through its
 /// one-time pristine source-witness installer. Constructing this value alone
 /// does not authenticate a capture or perform native Manager::Read.

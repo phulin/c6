@@ -1,22 +1,14 @@
 //! Source-derived definition orders for the bounded current Linux Unit reader.
-//! The registered activated rules snapshot is reused only after actual static
-//! resource comparison with the existing loaded-action capture. This does not
+//! Rules are reused only after checked immutable resource binding. This does not
 //! initialize nested Unit components or establish native action/turn parity.
 use crate::{
-    loaded_actions::resources::Bound,
     registry::{DefinitionEntry, LinuxDefinitionRegistry},
-    Rules, RulesProfile, RulesRowId,
+    resource_binding::ResourceAuthority,
+    Rules, RulesRowId,
 };
-use serde_json::Value;
-use sha2::{Digest, Sha256};
-
-const RULES_REPORT_SHA256: &str =
-    "4b85ee47e0e1d031a20aec2f96fbe99d2cda23861ad646ed48073fc3fa2614e1";
 #[derive(Debug)]
 pub enum Error {
-    Profile,
-    Report,
-    Resources(crate::loaded_actions::resources::Error),
+    Resources(crate::resource_binding::Error),
     Rules(crate::Error),
     MissingTable(&'static str),
     MissingRowId(&'static str),
@@ -45,35 +37,11 @@ impl Definitions {
     /// Validate the registered rules snapshot against actual bound resources.
     /// Other typed definition builders may reuse this gate without duplicating
     /// report parsers or requiring equal observer-profile hashes.
-    pub fn validate_resources(
-        rules: &Rules,
-        bound: &Bound<'_>,
-        rules_runtime: &[u8],
-    ) -> Result<(), Error> {
-        if rules.profile() != RulesProfile::LinuxXp2ActivatedDiagnostic {
-            return Err(Error::Profile);
-        }
-        // This closed report is the original provenance of the registered DBs.
-        // A later observer's whole configuration SHA need not equal this one.
-        if format!("{:x}", Sha256::digest(rules_runtime)) != RULES_REPORT_SHA256 {
-            return Err(Error::Report);
-        }
-        let report: Value = serde_json::from_slice(rules_runtime).map_err(|_| Error::Report)?;
-        if report["configuration_sha256"].as_str()
-            != Some(rules.source().native_configuration_sha256.as_str())
-        {
-            return Err(Error::Report);
-        }
-        bound
-            .validate_static_runtime(rules_runtime)
-            .map_err(Error::Resources)
+    pub fn validate_resources(rules: &Rules, bound: &ResourceAuthority<'_>) -> Result<(), Error> {
+        bound.validate_rules(rules).map_err(Error::Resources)
     }
-    pub fn from_rules(
-        rules: &Rules,
-        bound: &Bound<'_>,
-        rules_runtime: &[u8],
-    ) -> Result<Self, Error> {
-        Self::validate_resources(rules, bound, rules_runtime)?;
+    pub fn from_rules(rules: &Rules, bound: &ResourceAuthority<'_>) -> Result<Self, Error> {
+        Self::validate_resources(rules, bound)?;
         Ok(Self {
             abilities: collection(rules, "UnitAbilities", "UnitAbilityType")?,
             terrains: collection(rules, "Terrains", "TerrainType")?,

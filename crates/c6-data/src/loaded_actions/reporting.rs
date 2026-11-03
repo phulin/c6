@@ -5,7 +5,8 @@
 #[path = "yield_monitor.rs"]
 pub mod yield_monitor;
 
-use super::{resources::Bound, Error, IdentityReport, Reports};
+use super::{Error, IdentityReport, Reports};
+use crate::resource_binding::ResourceAuthority;
 use crate::{
     registry::LinuxDefinitionRegistry,
     unit_initialization_definitions::{self, collection},
@@ -41,18 +42,13 @@ impl Definitions {
     pub fn from_rules(
         state: &LoadedState,
         rules: &Rules,
-        bound: &Bound<'_>,
-        rules_runtime: &[u8],
+        bound: &ResourceAuthority<'_>,
     ) -> Result<Self, Error> {
         if bound.destination_binding() != state.binding() {
             return Err(Error::ConfigurationIdentity);
         }
-        unit_initialization_definitions::Definitions::validate_resources(
-            rules,
-            bound,
-            rules_runtime,
-        )
-        .map_err(|_| Error::Provider("activity reporting rules resource identity"))?;
+        unit_initialization_definitions::Definitions::validate_resources(rules, bound)
+            .map_err(|_| Error::Provider("activity reporting rules resource identity"))?;
         let terrains = collection(rules, "Terrains", "TerrainType")
             .map_err(|_| Error::Provider("activity reporting terrain order"))?;
         let table = rules
@@ -333,40 +329,8 @@ impl<'a> Provider<'a> {
         state: &LoadedState,
         unit: &Unit,
     ) -> Result<ReadinessPath, Error> {
-        if !member_ready(unit) {
-            return Ok(ReadinessPath::MemberNotReady);
-        }
-        let runtime = state
-            .unit_runtime(unit.e_owner, unit.id)
-            .map_err(Error::State)?;
-        let Some(reference) = runtime.formation else {
-            return Ok(ReadinessPath::NoFormation);
-        };
-        let formation = state
-            .world()
-            .player(reference.owner)
-            .map_err(Error::World)?
-            .formation(reference.requested_id)
-            .map_err(Error::World)?
-            .ok_or(Error::Provider("snapshot formation binding absent"))?
-            .record;
-        if formation.id != reference.resolved_id {
-            return Err(Error::Provider("snapshot formation binding changed"));
-        }
-        if formation.unit_ids.len() >= 2 {
-            let player = state
-                .world()
-                .player(formation.owner)
-                .map_err(Error::World)?;
-            for &id in &formation.unit_ids {
-                if id != unit.id {
-                    if let Some(member) = player.unit(id).map_err(Error::World)? {
-                        if !member_ready(member.record) {
-                            return Ok(ReadinessPath::OtherFormationMemberNotReady);
-                        }
-                    }
-                }
-            }
+        if let Some(path) = self.member_readiness_path(state, unit)? {
+            return Ok(path);
         }
         if !unit_placement::coordinate_valid(unit.k_location)
             || unit.b_delayed_death
@@ -378,6 +342,119 @@ impl<'a> Provider<'a> {
             return Ok(ReadinessPath::AdjacentMove(witness));
         }
         Err(Error::Provider("CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable"))
+    }
+
+    /// Native IsReadyToMove: member guards precede Formation lookup, and other
+    /// members are visited in stored order. CanCyclePast is a separate query.
+    pub fn is_ready_to_move(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
+        self.validate_readiness_unit(state, unit)?;
+        Ok(!matches!(
+            self.member_readiness_path(state, unit)?,
+            Some(ReadinessPath::MemberNotReady | ReadinessPath::OtherFormationMemberNotReady)
+        ))
+    }
+
+    /// Independent native CanCyclePast. Pending operations do not short-circuit
+    /// this getter. Reached HoldCycling callbacks remain genuine dependencies.
+    pub fn can_cycle_past(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
+        self.validate_readiness_unit(state, unit)?;
+        if !unit_placement::coordinate_valid(unit.k_location) || unit.b_delayed_death {
+            return Ok(true);
+        }
+        if self.bound_formation(state, unit)?.is_none() {
+            return Ok(true);
+        }
+        if unit.b_needs_attention || self.has_adjacent_move(state, unit)?.is_some() {
+            return Ok(false);
+        }
+        Err(Error::Provider("CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable"))
+    }
+
+    fn validate_readiness_unit(&self, state: &LoadedState, unit: &Unit) -> Result<(), Error> {
+        if self.definitions.binding != *state.binding() {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let current = state
+            .world()
+            .player(unit.e_owner)
+            .map_err(Error::World)?
+            .unit(unit.id)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingUnit)?
+            .record;
+        if !std::ptr::eq(current, unit) {
+            return Err(Error::Provider(
+                "readiness query requires authoritative Unit",
+            ));
+        }
+        Ok(())
+    }
+
+    fn bound_formation<'s>(
+        &self,
+        state: &'s LoadedState,
+        unit: &Unit,
+    ) -> Result<Option<&'s c6_core::unit::Formation>, Error> {
+        let runtime = state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        let Some(reference) = runtime.formation else {
+            if state
+                .world()
+                .player(unit.e_owner)
+                .map_err(Error::World)?
+                .formation(unit.formation_id)
+                .map_err(Error::World)?
+                .is_some()
+            {
+                return Err(Error::Provider("snapshot formation binding changed"));
+            }
+            return Ok(None);
+        };
+        if reference.owner != unit.e_owner || reference.requested_id != unit.formation_id {
+            return Err(Error::Provider("snapshot formation binding changed"));
+        }
+        let formation = state
+            .world()
+            .player(reference.owner)
+            .map_err(Error::World)?
+            .formation(reference.requested_id)
+            .map_err(Error::World)?
+            .ok_or(Error::Provider("snapshot formation binding absent"))?
+            .record;
+        if formation.id != reference.resolved_id {
+            return Err(Error::Provider("snapshot formation binding changed"));
+        }
+        Ok(Some(formation))
+    }
+
+    fn member_readiness_path(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+    ) -> Result<Option<ReadinessPath>, Error> {
+        if !member_ready(unit) {
+            return Ok(Some(ReadinessPath::MemberNotReady));
+        }
+        let Some(formation) = self.bound_formation(state, unit)? else {
+            return Ok(Some(ReadinessPath::NoFormation));
+        };
+        if formation.unit_ids.len() >= 2 {
+            let player = state
+                .world()
+                .player(formation.owner)
+                .map_err(Error::World)?;
+            for &id in &formation.unit_ids {
+                if id != unit.id {
+                    if let Some(member) = player.unit(id).map_err(Error::World)? {
+                        if !member_ready(member.record) {
+                            return Ok(Some(ReadinessPath::OtherFormationMemberNotReady));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(None)
     }
 
     fn has_adjacent_move(

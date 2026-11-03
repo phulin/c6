@@ -67,12 +67,24 @@ pub struct Eruption {
     pub duration: i32,
     pub severity: i32,
 }
+// Historical branches are pinned in linux-map-component-versions.md. Unknown
+// versions remain errors; writers always emit their current versions.
+fn read_version(r: &mut Reader<'_>, minimum: i32, current: i32) -> Result<i32, Error> {
+    let actual = r.i32()?;
+    if !(minimum..=current).contains(&actual) {
+        return Err(Error::UnsupportedVersion {
+            expected: current,
+            actual,
+        });
+    }
+    Ok(actual)
+}
 impl Eruption {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(7)?;
+        let version = read_version(r, 6, 7)?;
         Ok(Self {
             turn: r.i32()?,
-            duration: r.i32()?,
+            duration: if version >= 7 { r.i32()? } else { 0 },
             severity: r.i32()?,
         })
     }
@@ -97,14 +109,14 @@ pub struct Volcano {
 }
 impl Volcano {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(5)?;
+        read_version(r, 3, 5)?;
         Ok(Self {
             name_hash: r.u32()?,
             plot: r.i32()?,
             discovering_civilization_hash: r.u32()?,
             turn_active: r.i32()?,
             custom_name: r.list(1, Reader::u8)?,
-            eruptions: r.list(16, Eruption::read)?,
+            eruptions: r.list(12, Eruption::read)?,
             affected_plots: r.list(4, Reader::i32)?,
             periods_raw: r.list(4, Reader::i32)?,
             chances_raw: r.list(4, Reader::i32)?,
@@ -131,11 +143,11 @@ pub struct NaturalWonderVolcano {
 }
 impl NaturalWonderVolcano {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(5)?;
+        read_version(r, 4, 5)?;
         Ok(Self {
             feature_hash: r.u32()?,
             plots: r.list(4, Reader::i32)?,
-            eruptions: r.list(16, Eruption::read)?,
+            eruptions: r.list(12, Eruption::read)?,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -173,15 +185,71 @@ pub struct FeatureComponent {
     pub ice: Vec<Ice>,
 }
 impl FeatureComponent {
-    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(7)?;
-        Ok(Self {
+    /// Decode wire fields and retain the source version, without applying native
+    /// map initialization or legacy Ice effects. The caller owns those steps.
+    pub fn decode_wire(bytes: &[u8], limits: super::Limits) -> Result<(Self, i32), Error> {
+        let mut r = Reader::new(bytes, limits)?;
+        let value = Self::read_wire(&mut r)?;
+        r.finish()?;
+        Ok(value)
+    }
+
+    /// Apply the version-6 Plot flag restoration using actual resolved native
+    /// RandomEvent collection indices in Ice order (-1 means lookup miss).
+    /// None means unavailable definitions, not an empty native collection.
+    /// All required input is checked before any Plot mutation. Native runtime
+    /// volcano/cache rebuilds are separate and remain outside this helper.
+    pub fn apply_legacy_ice_read(
+        &self,
+        version: i32,
+        plots: &mut [super::Plot],
+        resolved_events: Option<&[i32]>,
+    ) -> Result<(), Error> {
+        if !matches!(version, 6 | 7) {
+            return Err(Error::UnsupportedVersion {
+                expected: 7,
+                actual: version,
+            });
+        }
+        if version == 7 || self.ice.is_empty() {
+            return Ok(());
+        }
+        let events = resolved_events.ok_or(Error::UnsupportedComponentBranch)?;
+        if events.len() != self.ice.len() {
+            return Err(Error::UnsupportedComponentBranch);
+        }
+        for (ice, event) in self.ice.iter().zip(events) {
+            if *event != -1 {
+                if let Some(plot) = usize::try_from(ice.plot)
+                    .ok()
+                    .and_then(|index| plots.get_mut(index))
+                {
+                    plot.flags.set(super::PlotFlag::FeatureVolatile, true);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn read_wire(r: &mut Reader<'_>) -> Result<(Self, i32), Error> {
+        let version = read_version(r, 6, 7)?;
+        let value = Self {
             extra_yields: SparsePlotData::read(r, read_hashes)?,
             volcanoes: r.list(40, Volcano::read)?,
             natural_wonder_volcanoes: r.list(16, NaturalWonderVolcano::read)?,
             plot_volcanoes: SparsePlotData::read(r, |r| r.list(4, Reader::i32))?,
             ice: r.list(12, Ice::read)?,
-        })
+        };
+        Ok((value, version))
+    }
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let (value, version) = Self::read_wire(r)?;
+        // The default Map transport has no active RandomEvent registry input.
+        // Empty Ice makes the versioned Plot restoration vacuous.
+        if version == 6 && !value.ice.is_empty() {
+            return Err(Error::UnsupportedComponentBranch);
+        }
+        Ok(value)
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
         w.i32(7)?;
@@ -202,12 +270,12 @@ pub struct Flood {
 }
 impl Flood {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(5)?;
+        let version = read_version(r, 4, 5)?;
         Ok(Self {
             turn: r.i32()?,
             duration: r.i32()?,
             severity: r.i32()?,
-            mitigated: r.boolean()?,
+            mitigated: if version >= 5 { r.boolean()? } else { false },
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -233,7 +301,7 @@ pub struct River {
 }
 impl River {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(4)?;
+        let version = read_version(r, 3, 4)?;
         Ok(Self {
             name_hash: r.u32()?,
             id: r.i32()?,
@@ -241,8 +309,12 @@ impl River {
             floodplains: r.list(4, Reader::i32)?,
             discovering_civilization_hash: r.u32()?,
             custom_name: r.list(1, Reader::u8)?,
-            floods: r.list(17, Flood::read)?,
-            edges: r.list(8, |r| Ok([r.i32()?, r.i32()?]))?,
+            floods: r.list(16, Flood::read)?,
+            edges: if version >= 4 {
+                r.list(8, |r| Ok([r.i32()?, r.i32()?]))?
+            } else {
+                Vec::new()
+            },
             periods_raw: r.list(4, Reader::i32)?,
             chances_raw: r.list(4, Reader::i32)?,
         })
@@ -273,13 +345,22 @@ pub struct RiverComponent {
 }
 impl RiverComponent {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(4)?;
-        Ok(Self {
-            next_id: r.i32()?,
+        let version = read_version(r, 3, 4)?;
+        let mut value = Self {
+            next_id: if version >= 4 { r.i32()? } else { 0 },
             rivers: r.list(40, River::read)?,
             plot_rivers: SparsePlotData::read(r, |r| r.list(4, Reader::i32))?,
             floodplain_rivers: SparsePlotData::read(r, |r| r.list(4, Reader::i32))?,
-        })
+        };
+        // Native Read performs this even for current-version zero next_id.
+        if value.next_id == 0 {
+            value.next_id = value
+                .rivers
+                .iter()
+                .fold(0, |max, river| max.max(river.id))
+                .wrapping_add(1);
+        }
+        Ok(value)
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
         w.i32(4)?;
@@ -489,14 +570,34 @@ pub struct TerrainComponent {
 }
 impl TerrainComponent {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(6)?;
+        let version = read_version(r, 2, 6)?;
         Ok(Self {
             coastal_lowlands: r.list(33, CoastalLowland::read)?,
-            deserts: r.list(20, GeographicalTerritory::read)?,
-            mountain_ranges: r.list(20, GeographicalTerritory::read)?,
-            named_lakes: r.list(20, NamedTerritory::read)?,
-            named_oceans: r.list(20, NamedTerritory::read)?,
-            named_seas: r.list(20, NamedTerritory::read)?,
+            deserts: if version >= 5 {
+                r.list(20, GeographicalTerritory::read)?
+            } else {
+                Vec::new()
+            },
+            mountain_ranges: if version >= 5 {
+                r.list(20, GeographicalTerritory::read)?
+            } else {
+                Vec::new()
+            },
+            named_lakes: if version >= 6 {
+                r.list(20, NamedTerritory::read)?
+            } else {
+                Vec::new()
+            },
+            named_oceans: if version >= 6 {
+                r.list(20, NamedTerritory::read)?
+            } else {
+                Vec::new()
+            },
+            named_seas: if version >= 6 {
+                r.list(20, NamedTerritory::read)?
+            } else {
+                Vec::new()
+            },
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -653,5 +754,305 @@ impl Component {
             }
             Self::TerritoryBuilder => Ok(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod version_tests {
+    use super::*;
+    use crate::map::Limits;
+
+    fn words(values: &[i32]) -> Vec<u8> {
+        values.iter().flat_map(|v| v.to_le_bytes()).collect()
+    }
+    fn decode<T>(bytes: &[u8], read: fn(&mut Reader<'_>) -> Result<T, Error>) -> Result<T, Error> {
+        let mut r = Reader::new(bytes, Limits::default())?;
+        let value = read(&mut r)?;
+        r.finish()?;
+        Ok(value)
+    }
+    fn sparse() -> Vec<u8> {
+        words(&[4, 0, 0, 0])
+    }
+    fn feature(version: i32, ice: &[i32]) -> Vec<u8> {
+        let mut b = words(&[version]);
+        b.extend(sparse());
+        b.extend(words(&[0, 0]));
+        b.extend(sparse());
+        b.extend(words(&[(ice.len() / 3) as i32]));
+        b.extend(words(ice));
+        b
+    }
+    fn river(version: i32, id: i32) -> Vec<u8> {
+        let mut b = words(&[version, 123, id, 0, 0, 456, 0, 0]);
+        if version >= 4 {
+            b.extend(words(&[0]));
+        }
+        b.extend(words(&[0, 0]));
+        b
+    }
+    fn river_manager(version: i32, next: i32, ids: &[i32]) -> Vec<u8> {
+        let mut b = words(&[version]);
+        if version >= 4 {
+            b.extend(words(&[next]));
+        }
+        b.extend(words(&[ids.len() as i32]));
+        for id in ids {
+            b.extend(river(3, *id));
+        }
+        b.extend(sparse());
+        b.extend(sparse());
+        b
+    }
+    #[test]
+    fn feature6_empty_ice_is_vacuous_and_nonempty_requires_definitions() {
+        let old = decode(&feature(6, &[]), FeatureComponent::read).unwrap();
+        let current = decode(&feature(7, &[]), FeatureComponent::read).unwrap();
+        assert_eq!(old, current);
+        let ice = [2, 12, 0x12345678];
+        assert_eq!(
+            decode(&feature(6, &ice), FeatureComponent::read),
+            Err(Error::UnsupportedComponentBranch)
+        );
+        assert_eq!(
+            decode(&feature(7, &ice), FeatureComponent::read)
+                .unwrap()
+                .ice,
+            vec![Ice {
+                plot: 12,
+                random_event_hash: 0x12345678
+            }]
+        );
+        for version in [-1, 0, 5, 8, i32::MAX] {
+            assert!(
+                matches!(decode(&feature(version, &[]), FeatureComponent::read), Err(Error::UnsupportedVersion { expected: 7, actual }) if actual == version)
+            );
+        }
+        for version in [6, 7] {
+            let bytes = feature(version, &[]);
+            for n in 0..bytes.len() {
+                assert!(
+                    decode(&bytes[..n], FeatureComponent::read).is_err(),
+                    "version {version} prefix {n}"
+                );
+            }
+        }
+    }
+    #[test]
+    fn wire_decode_retains_ice_and_version_and_apply_preflights_resolution() {
+        let bytes = feature(6, &[2, 0, 123, 2, 1, 456, 2, -1, 123, 2, 99, 123]);
+        let (value, version) = FeatureComponent::decode_wire(&bytes, Limits::default()).unwrap();
+        assert_eq!(version, 6);
+        assert_eq!(value.ice.len(), 4);
+        assert_eq!(value.ice[0].random_event_hash, 123);
+        let plot = super::super::Plot::decode(&[0; 55], 6, Limits::default()).unwrap();
+        let mut plots = vec![plot.clone(), plot];
+        let preimage = plots.clone();
+        assert_eq!(
+            value.apply_legacy_ice_read(6, &mut plots, None),
+            Err(Error::UnsupportedComponentBranch)
+        );
+        assert_eq!(plots, preimage);
+        assert_eq!(
+            value.apply_legacy_ice_read(6, &mut plots, Some(&[0])),
+            Err(Error::UnsupportedComponentBranch)
+        );
+        assert_eq!(plots, preimage);
+        value.apply_legacy_ice_read(7, &mut plots, None).unwrap();
+        assert_eq!(plots, preimage);
+        value
+            .apply_legacy_ice_read(6, &mut plots, Some(&[7, -1, 0, 0]))
+            .unwrap();
+        assert!(plots[0].flags.get(super::super::PlotFlag::FeatureVolatile));
+        assert!(!plots[1].flags.get(super::super::PlotFlag::FeatureVolatile));
+        assert_eq!(value.ice[0].random_event_hash, 123);
+        assert_eq!(
+            value.apply_legacy_ice_read(8, &mut plots, None),
+            Err(Error::UnsupportedVersion {
+                expected: 7,
+                actual: 8
+            })
+        );
+    }
+    #[test]
+    fn historical_leaf_defaults_and_current_bits() {
+        assert_eq!(
+            decode(&words(&[6, i32::MIN, -1]), Eruption::read).unwrap(),
+            Eruption {
+                turn: i32::MIN,
+                duration: 0,
+                severity: -1
+            }
+        );
+        assert_eq!(
+            decode(&words(&[7, -2, i32::MIN, i32::MAX]), Eruption::read).unwrap(),
+            Eruption {
+                turn: -2,
+                duration: i32::MIN,
+                severity: i32::MAX
+            }
+        );
+        assert_eq!(
+            decode(&words(&[4, -2, i32::MIN, -1]), Flood::read).unwrap(),
+            Flood {
+                turn: -2,
+                duration: i32::MIN,
+                severity: -1,
+                mitigated: false
+            }
+        );
+        let mut current = words(&[5, -2, 17, -1]);
+        current.push(1);
+        assert!(decode(&current, Flood::read).unwrap().mitigated);
+        current[16] = 2;
+        assert_eq!(
+            decode(&current, Flood::read),
+            Err(Error::NoncanonicalBool(2))
+        );
+        assert!(matches!(
+            decode(&words(&[5]), Eruption::read),
+            Err(Error::UnsupportedVersion { .. })
+        ));
+        assert!(matches!(
+            decode(&words(&[3]), Flood::read),
+            Err(Error::UnsupportedVersion { .. })
+        ));
+    }
+    #[test]
+    fn volcano_compatible_versions_accept_short_old_eruption_records() {
+        // Nonempty child arrays catch minimum-wire assumptions at nesting boundaries.
+        for version in [3, 4, 5] {
+            let b = words(&[
+                version,
+                123,
+                7,
+                456,
+                -1,
+                0,
+                1,
+                6,
+                -99,
+                2,
+                1,
+                7,
+                1,
+                i32::MIN,
+                1,
+                i32::MAX,
+            ]);
+            let v = decode(&b, Volcano::read).unwrap();
+            assert_eq!(v.eruptions[0].duration, 0);
+            assert_eq!(v.affected_plots, vec![7]);
+            assert_eq!(v.periods_raw, vec![i32::MIN]);
+            assert_eq!(v.chances_raw, vec![i32::MAX]);
+            for n in 0..b.len() {
+                assert!(decode(&b[..n], Volcano::read).is_err());
+            }
+        }
+        for version in [4, 5] {
+            let b = words(&[version, 123, 1, 7, 1, 6, -99, 2]);
+            let v = decode(&b, NaturalWonderVolcano::read).unwrap();
+            assert_eq!(v.plots, vec![7]);
+            assert_eq!(v.eruptions[0].duration, 0);
+        }
+        assert!(matches!(
+            decode(&words(&[2]), Volcano::read),
+            Err(Error::UnsupportedVersion { .. })
+        ));
+        assert!(matches!(
+            decode(&words(&[6]), Volcano::read),
+            Err(Error::UnsupportedVersion { .. })
+        ));
+    }
+    #[test]
+    fn river3_omitted_edges_and_native_next_id_conversion() {
+        assert!(decode(&river(3, 17), River::read).unwrap().edges.is_empty());
+        for version in [3, 4] {
+            for (ids, expected) in [
+                (vec![], 1),
+                (vec![-5, -1], 1),
+                (vec![5, 2, 17], 18),
+                (vec![i32::MAX], i32::MIN),
+            ] {
+                let b = river_manager(version, 0, &ids);
+                assert_eq!(decode(&b, RiverComponent::read).unwrap().next_id, expected);
+                for n in 0..b.len() {
+                    assert!(decode(&b[..n], RiverComponent::read).is_err());
+                }
+            }
+        }
+        assert_eq!(
+            decode(&river_manager(4, -7, &[17]), RiverComponent::read)
+                .unwrap()
+                .next_id,
+            -7
+        );
+        assert_eq!(
+            decode(&river_manager(4, 9, &[17]), RiverComponent::read)
+                .unwrap()
+                .next_id,
+            9
+        );
+        assert!(matches!(
+            decode(&words(&[2]), RiverComponent::read),
+            Err(Error::UnsupportedVersion { .. })
+        ));
+    }
+    #[test]
+    fn terrain5_constructor_empty_named_vectors_and_current6() {
+        for version in [2, 3, 4] {
+            let old = words(&[version, 0]);
+            let value = decode(&old, TerrainComponent::read).unwrap();
+            assert!(value.deserts.is_empty() && value.mountain_ranges.is_empty());
+            assert!(
+                value.named_lakes.is_empty()
+                    && value.named_oceans.is_empty()
+                    && value.named_seas.is_empty()
+            );
+            for n in 0..old.len() {
+                assert!(decode(&old[..n], TerrainComponent::read).is_err());
+            }
+        }
+        let old = words(&[5, 0, 0, 0]);
+        let current = words(&[6, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            decode(&old, TerrainComponent::read).unwrap(),
+            decode(&current, TerrainComponent::read).unwrap()
+        );
+        assert_eq!(
+            decode(&current[..16], TerrainComponent::read),
+            Err(Error::Truncated)
+        );
+        assert_eq!(
+            decode(&[old.clone(), words(&[0])].concat(), TerrainComponent::read),
+            Err(Error::TrailingBytes)
+        );
+        for n in 0..old.len() {
+            assert!(decode(&old[..n], TerrainComponent::read).is_err());
+        }
+    }
+    #[test]
+    fn historical_component_budgets_remain_enforced() {
+        let bytes = river_manager(3, 0, &[7]);
+        for limits in [
+            Limits {
+                max_items: 0,
+                ..Limits::default()
+            },
+            Limits {
+                max_allocation: 0,
+                ..Limits::default()
+            },
+        ] {
+            let mut r = Reader::new(&bytes, limits).unwrap();
+            assert_eq!(RiverComponent::read(&mut r), Err(Error::ResourceLimit));
+        }
+        let mut bytes = feature(6, &[]);
+        // First sparse data's indices count requests an impossible vector.
+        bytes[12..16].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(
+            decode(&bytes, FeatureComponent::read),
+            Err(Error::Truncated)
+        );
     }
 }

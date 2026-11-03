@@ -1,8 +1,8 @@
 //! Actual Linux Unit MaxMoves/HasMoved over owned gameplay fields.
 //! No Formation flag, effective-stat answer or native archive state is an input.
 use crate::{
-    loaded_actions::resources::Bound,
     registry::LinuxDefinitionRegistry,
+    resource_binding::ResourceAuthority,
     unit_initialization_definitions::{self, collection},
     Rules, SqlValue,
 };
@@ -87,18 +87,13 @@ impl Definitions {
     pub fn from_rules(
         state: &LoadedState,
         rules: &Rules,
-        bound: &Bound<'_>,
-        rules_runtime: &[u8],
+        bound: &ResourceAuthority<'_>,
     ) -> Result<Self, Error> {
         if bound.destination_binding() != state.binding() {
             return Err(Error::Binding);
         }
-        unit_initialization_definitions::Definitions::validate_resources(
-            rules,
-            bound,
-            rules_runtime,
-        )
-        .map_err(Error::Resources)?;
+        unit_initialization_definitions::Definitions::validate_resources(rules, bound)
+            .map_err(Error::Resources)?;
         let units = collection(rules, "Units", "UnitType").map_err(Error::Resources)?;
         let native = bound
             .unit_definitions()

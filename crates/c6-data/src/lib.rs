@@ -11,16 +11,18 @@ pub mod game_relations;
 pub mod loaded_actions;
 pub mod movement;
 pub mod registry;
+pub mod resource_binding;
 pub mod unit_initialization_definitions;
 pub mod unit_movement_state;
 pub mod unit_operation_manager;
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
-const LINUX_BASE_MANIFEST: &str = include_str!("../../../evidence/linux/rules-base-snapshot.json");
+// Registered production descriptors retain identity and complete database fingerprints.
+// Investigator reports and export histories are not build inputs.
+const LINUX_BASE_MANIFEST: &str = include_str!("../profiles/linux-xp2-base.json");
 const LINUX_XP2_DIAGNOSTIC_MANIFEST: &str =
-    include_str!("../../../evidence/linux/rules-xp2-request-none-snapshot.json");
-const WINDOWS_HISTORICAL_MANIFEST: &str =
-    include_str!("../../../evidence/assets/xp2-rules-snapshot.json");
+    include_str!("../profiles/linux-xp2-activated-diagnostic.json");
+const WINDOWS_HISTORICAL_MANIFEST: &str = include_str!("../profiles/windows-xp2-historical.json");
 
 type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
@@ -600,11 +602,6 @@ fn profile_manifest(profile: RulesProfile) -> Result<Manifest> {
     }
     Ok(manifest)
 }
-// Historical private fixture helper retained for generic-codec regression tests.
-#[cfg(test)]
-fn manifest() -> Result<Manifest> {
-    profile_manifest(RulesProfile::WindowsXp2Historical)
-}
 /// Historical Windows-only identity. New callers should select a RulesProfile.
 /// This function supplies no Linux coverage and is never used as a fallback.
 pub fn xp2_source_identity() -> SourceIdentity {
@@ -763,6 +760,66 @@ fn validate(actual: &Database, expected: &DatabaseFingerprint) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod profile_tests {
+    use super::*;
+
+    #[test]
+    fn production_profiles_preserve_registered_descriptors() {
+        // Canonical identities cover every previously consumed descriptor and
+        // database field, including nested arrays and raw JSON-valued identities.
+        let expected = [
+            (
+                RulesProfile::LinuxXp2Base,
+                "da3394ed155bb25e13e9a32380356abbf017a6d97daf55d1ddb28aabb1dc2a44",
+                "f0137e4c5203f0a16c5e5ae5e0ad7a4cfb6481e8e338db22b48a3f053a635cc9",
+            ),
+            (
+                RulesProfile::LinuxXp2ActivatedDiagnostic,
+                "a70562229841296b982cfb1d9e435c75a9730656ac6657fb5e4d123c24d0330d",
+                "ac6d4e34b22dd3f154c8ca069cf1fa2f9be1cf0b8de3fba673a65571418954b4",
+            ),
+            (
+                RulesProfile::WindowsXp2Historical,
+                "04c4a71e37c6e0fa5d72903cc50c58be1e396a95d04caa8491441cbae872f150",
+                "36c6b2987a3cdacf5fbfc6c5129700d7299a4b286ad48fde0515121bfdfe1faf",
+            ),
+        ];
+        for (profile, source_digest, databases_digest) in expected {
+            let manifest = profile_manifest(profile).unwrap();
+            let source = serde_json::to_value(&manifest.source).unwrap();
+            let databases = serde_json::to_value(&manifest.databases).unwrap();
+            assert_eq!(sha(&serde_json::to_vec(&source).unwrap()), source_digest);
+            assert_eq!(
+                sha(&serde_json::to_vec(&databases).unwrap()),
+                databases_digest
+            );
+            assert_eq!(manifest.source, profile.source_identity().unwrap());
+            assert_eq!(manifest.databases.len(), 2);
+            assert_eq!(
+                manifest.source.profile["target_sha256"],
+                profile.gamecore_sha256()
+            );
+
+            let text = match profile {
+                RulesProfile::LinuxXp2Base => LINUX_BASE_MANIFEST,
+                RulesProfile::LinuxXp2ActivatedDiagnostic => LINUX_XP2_DIAGNOSTIC_MANIFEST,
+                RulesProfile::WindowsXp2Historical => WINDOWS_HISTORICAL_MANIFEST,
+            };
+            let mut consumed = source;
+            consumed
+                .as_object_mut()
+                .unwrap()
+                .insert("databases".into(), databases);
+            // A production descriptor contains exactly the deserialized contract,
+            // with no ignored report sections or database annotations.
+            assert_eq!(serde_json::from_str::<Value>(text).unwrap(), consumed);
+        }
+    }
+}
+
+pub mod random_event_definitions;
 
 #[cfg(test)]
 mod tests;

@@ -1,16 +1,17 @@
 //! Activated definitions and attributed saved notification ownership for upkeep.
 //! Live omitted fields, creator authority, subtype effects and complete
 //! Manager::Update remain explicit dependencies.
-use super::resources::Bound;
+pub mod allocation;
+pub mod initialization;
+pub mod lifecycle;
+pub mod processing;
+pub mod text;
+
+use crate::resource_binding::ResourceAuthority;
 use crate::{
     registry::LinuxDefinitionRegistry, unit_initialization_definitions, Rules, RulesRowId, SqlValue,
 };
-use c6_core::{
-    core_player::initialization::WireRole,
-    loaded_state::{ComponentSnapshotWitness, Error as StateError, LoadedState},
-    notifications::{Limits, PlayerNotifications},
-};
-use sha2::{Digest, Sha256};
+use c6_core::loaded_state::{Error as StateError, LoadedState};
 
 #[derive(Debug)]
 pub enum Error {
@@ -25,120 +26,6 @@ pub enum Error {
     Owner(i32),
 }
 
-const SNAPSHOT: &str = "ff31f4c543e073e13080f456eb9698467c06a13509570558fb3ba5b31e89d884";
-const OWNER_TRACE: &str = "528721084cdabd8b1eb5b1ae8c57b0b9a0a5ab9c2729aa4f1c5074f4b0cba8ae";
-const OWNER_SPAN: &str = "68c99c43d65778dea5f1d49a7215d9d925b405f639d413b28e2c4f5d6f601094";
-
-/// Install the once-attributed saved owner into the authoritative LoadedState.
-/// Source Read and live-runtime authority stay distinct. No locks, subtype
-/// bindings, initialized flags or callback absence are inferred from Save.
-pub fn install_attributed_snapshot(
-    state: &mut LoadedState,
-    trace: &[u8],
-    limits: Limits,
-) -> Result<(), Error> {
-    if !state.is_pristine() {
-        return Err(Error::State(StateError::NotPristine));
-    }
-    let (witness, collections) = captured_collections(state, trace, limits)?;
-    state
-        .install_player_notifications(witness, collections)
-        .map_err(Error::State)
-}
-
-/// Decode all 64 independently attributed owner frames. The Manager creates
-/// 64 slots, including those absent from the loaded 43-Player roster. This is
-/// admission work only; no trace scan or source-image hashing belongs on a query
-/// or action hot path. Omitted runtime fields are not defaulted by this decode.
-pub(crate) fn captured_collections(
-    state: &LoadedState,
-    trace: &[u8],
-    limits: Limits,
-) -> Result<(ComponentSnapshotWitness, Vec<PlayerNotifications>), Error> {
-    let bytes = state.source_image();
-    let matches = |bytes: &[u8], expected: &str| format!("{:x}", Sha256::digest(bytes)) == expected;
-    let snapshot_digest = Sha256::digest(bytes);
-    let trace_digest = Sha256::digest(trace);
-    if bytes.len() != 80_657_462
-        || format!("{snapshot_digest:x}") != SNAPSHOT
-        || format!("{trace_digest:x}") != OWNER_TRACE
-        || state.binding().core_sha256 != <[u8; 32]>::from(snapshot_digest)
-    {
-        return Err(Error::Attribution);
-    }
-    let mut frames = Vec::with_capacity(64);
-    for line in trace.split(|b| *b == b'\n').filter(|line| !line.is_empty()) {
-        let row: serde_json::Value =
-            serde_json::from_slice(line).map_err(|_| Error::Attribution)?;
-        if row["event"] == "owner"
-            && row["save"] == 1
-            && row["owner"] == "GameCore::Reporting::Notification::PlayerNotifications"
-        {
-            let index = frames.len();
-            if index >= 64
-                || row["depth"] != 1
-                || row["parent"] != 1
-                || row["call"] != 201876 + index
-            {
-                return Err(Error::Attribution);
-            }
-            let offset = |name: &str| {
-                row[name]
-                    .as_u64()
-                    .and_then(|x| usize::try_from(x).ok())
-                    .ok_or(Error::Attribution)
-            };
-            let start = offset("start")?;
-            let end = offset("end")?;
-            if end <= start
-                || frames
-                    .last()
-                    .is_some_and(|previous: &[usize; 2]| previous[1] != start)
-            {
-                return Err(Error::Attribution);
-            }
-            frames.push([start, end]);
-        }
-    }
-    if frames.len() != 64 || frames[0][0] != 76_400_879 || frames[63][1] != 76_405_580 {
-        return Err(Error::Attribution);
-    }
-    let range = [frames[0][0] - 8, frames[63][1]];
-    let span = bytes.get(range[0]..range[1]).ok_or(Error::Attribution)?;
-    if span.len() > limits.max_bytes {
-        return Err(Error::Codec(c6_core::notifications::Error::ResourceLimit));
-    }
-    if !matches(span, OWNER_SPAN) || span[..8] != [1, 0, 0, 0, 64, 0, 0, 0] {
-        return Err(Error::Attribution);
-    }
-    let mut collections = Vec::with_capacity(64);
-    let mut records = 0usize;
-    for (slot, frame) in frames.into_iter().enumerate() {
-        let owner_bytes = bytes.get(frame[0]..frame[1]).ok_or(Error::Attribution)?;
-        let owner = PlayerNotifications::decode(owner_bytes, limits).map_err(Error::Codec)?;
-        records = records
-            .checked_add(owner.records.len())
-            .ok_or(Error::Attribution)?;
-        if records > limits.max_records {
-            return Err(Error::Codec(c6_core::notifications::Error::ResourceLimit));
-        }
-        if owner.owner != slot as i32 {
-            return Err(Error::Attribution);
-        }
-        collections.push(owner);
-    }
-    Ok((
-        ComponentSnapshotWitness {
-            source_role: WireRole::SavedOutputCore,
-            snapshot_sha256: snapshot_digest.into(),
-            snapshot_bytes: bytes.len(),
-            owner_trace_sha256: trace_digest.into(),
-            owner_range: range,
-            decoded_prefix_bytes: span.len(),
-        },
-        collections,
-    ))
-}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "loaded notification inputs: {self:?}")
@@ -176,8 +63,8 @@ impl Definitions {
     /// 0x2204bb0 reads AutoActivate at column1 and AutoNotify at column2.
     /// This uses the activated DB after actual static-resource equivalence;
     /// base XML does not establish the enabled collection or iteration order.
-    pub fn from_rules(rules: &Rules, bound: &Bound<'_>, report: &[u8]) -> Result<Self, Error> {
-        unit_initialization_definitions::Definitions::validate_resources(rules, bound, report)
+    pub fn from_rules(rules: &Rules, bound: &ResourceAuthority<'_>) -> Result<Self, Error> {
+        unit_initialization_definitions::Definitions::validate_resources(rules, bound)
             .map_err(Error::Resources)?;
         let registry =
             unit_initialization_definitions::collection(rules, "Notifications", "NotificationType")
@@ -357,6 +244,139 @@ pub fn base_auto_duplicate(
         .entries
         .iter()
         .any(|entry| entry.key == 0x55c7a3f8))
+}
+
+use c6_core::notification_lifecycle::{self as core_lifecycle, ObjectId, PoolId};
+use c6_core::notifications::{ComponentId, LocalizedString, Notification};
+
+pub enum LogicalAllocation<'a> {
+    Fresh(ObjectId),
+    Reused {
+        object: ObjectId,
+        prior: &'a Notification,
+    },
+    Failed,
+}
+pub struct Created {
+    pub record: Notification,
+    pub live: core_lifecycle::LiveNotification,
+    pub default_blocking: i32,
+    /// Native +0x18 is not present in the wire Notification record.
+    pub group_hash: u32,
+    pub vtable_addresspoint: u64,
+}
+/// Exact base Initialize for auto=true/null parameters. Manager lifecycle and
+/// creator dispatch remain the caller's source-derived responsibility. Subtype
+/// stores happen separately so a failing query retains its partially initialized
+/// authoritative candidate. Returned runtime describes source initialization,
+/// not an observation of a native live object.
+pub fn initialize_auto_base(
+    definitions: &Definitions,
+    type_hash: u32,
+    vtable_addresspoint: u64,
+    allocation: LogicalAllocation<'_>,
+    pool: PoolId,
+    owner: i32,
+) -> Result<Created, Error> {
+    let definition = definitions
+        .find(type_hash)
+        .ok_or(Error::Unsupported("auto notification definition"))?;
+    if definition.expires_end_of_turn || definition.expires_end_of_next_turn {
+        return Err(Error::Unsupported(
+            "base Initialize PreviouslyActiveThisTurn dependency",
+        ));
+    }
+    let (object, mut id, component_type) = match allocation {
+        LogicalAllocation::Fresh(object) => (
+            object,
+            ComponentId {
+                owner: -1,
+                component_type: 0x26,
+                id: u32::MAX,
+            },
+            0,
+        ),
+        LogicalAllocation::Reused { object, prior } => {
+            if prior.factory_type != type_hash
+                || prior.type_hash != type_hash
+                || !prior.parameters.entries.is_empty()
+            {
+                return Err(Error::Unsupported(
+                    "reused notification identity/parameter destruction",
+                ));
+            }
+            (object, prior.id, prior.component.component_type)
+        }
+        LogicalAllocation::Failed => {
+            return Err(Error::Unsupported("notification allocation failure"))
+        }
+    };
+    if owner != -1 {
+        id.owner = owner as i16;
+    }
+    let severity = definition
+        .severity_type
+        .as_deref()
+        .map(|name| severity_type(crate::registry::linux_type_hash(name.as_bytes())))
+        .filter(|v| *v != -1)
+        .unwrap_or(0);
+    let record = Notification {
+        factory_type: type_hash,
+        id,
+        type_hash,
+        severity,
+        message: LocalizedString::default(),
+        summary: LocalizedString::default(),
+        location: [-9999; 2],
+        component: ComponentId {
+            owner: -1,
+            component_type,
+            id: u32::MAX,
+        },
+        native_188: -1,
+        native_18c: 0,
+        is_dismissed: false,
+        native_199: true,
+        native_19a: false,
+        native_190: 1,
+        native_19b: true,
+        native_19c: false,
+        parameters: Default::default(),
+        native_19d: definition.auto_activate,
+        has_been_activated: false,
+    };
+    Ok(Created {
+        record,
+        live: core_lifecycle::LiveNotification {
+            object,
+            lock_count: 0,
+            pool_binding: Some(pool),
+            definition_icon: core_lifecycle::DefinitionIcon::ShowInSinglePlayer(
+                definition.show_icon_single_player,
+            ),
+            activation: core_lifecycle::ActivationBinding::Base,
+            release: core_lifecycle::ReleaseBinding::Base,
+            destruction: core_lifecycle::DestructionBinding::BaseResources,
+        },
+        default_blocking: 0,
+        group_hash: definition
+            .group_type
+            .as_deref()
+            .map(|name| crate::registry::linux_type_hash(name.as_bytes()))
+            .unwrap_or(0xb6fa_1284),
+        vtable_addresspoint,
+    })
+}
+fn severity_type(hash: u32) -> i32 {
+    match hash {
+        0xfbd0_c5d4 => 0,
+        0x28f6_49bb => 1,
+        0x386f_f61e => 2,
+        0xba9f_3062 => 3,
+        0x6e89_7878 => 4,
+        0..5 => hash as i32,
+        _ => -1,
+    }
 }
 
 #[cfg(test)]

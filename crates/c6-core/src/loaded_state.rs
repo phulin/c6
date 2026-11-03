@@ -97,6 +97,9 @@ mod tests {
             diplomacy_manager_source: None,
             player_notifications: None,
             player_notifications_source: None,
+            notification_runtime_projection_installed: false,
+            notification_pools: Vec::new(),
+            notification_pool_projection_installed: false,
             game_techs: None,
             game_techs_source: None,
             trade_graph: None,
@@ -690,6 +693,864 @@ mod tests {
                 .has_been_activated
         );
     }
+    #[test]
+    fn notification_runtime_projection_requires_complete_unique_pristine_bound_input() {
+        use crate::player_notifications_owner::{OccurrenceLimits, Runtime};
+        let (mut state, witness, collections) = notification_source();
+        let record = collections[0].records[0].clone();
+        state
+            .install_player_notifications(witness, collections)
+            .unwrap();
+        let binding = state.binding().clone();
+        let first = state
+            .player_notifications()
+            .unwrap()
+            .first(0)
+            .unwrap()
+            .unwrap();
+        // Synthetic second occurrence exercises complete/duplicate coverage.
+        let second = state
+            .player_notifications
+            .as_mut()
+            .unwrap()
+            .append_initialized(0, record, Runtime::default(), OccurrenceLimits::default())
+            .unwrap();
+        let runtime = Runtime {
+            default_blocking: Some(19),
+            ..Runtime::default()
+        };
+        let mut wrong_binding = binding.clone();
+        wrong_binding.core_sha256[0] ^= 1;
+        for (binding, values) in [
+            (
+                &wrong_binding,
+                vec![(first, runtime.clone()), (second, runtime.clone())],
+            ),
+            (&binding, vec![(first, runtime.clone())]),
+            (
+                &binding,
+                vec![(first, runtime.clone()), (first, runtime.clone())],
+            ),
+        ] {
+            assert!(matches!(
+                state.initialize_notification_runtime(binding, values),
+                Err(Error::Binding)
+            ));
+            assert_eq!(state.revision(), 0);
+            assert_eq!(
+                state.player_notifications().unwrap().runtime(first),
+                Ok(&Runtime::default())
+            );
+            assert_eq!(
+                state.player_notifications().unwrap().runtime(second),
+                Ok(&Runtime::default())
+            );
+        }
+        // A prior supplied field blocks the whole installation before writes.
+        state
+            .player_notifications
+            .as_mut()
+            .unwrap()
+            .runtime_mut(second)
+            .unwrap()
+            .group_hash = Some(5);
+        assert!(matches!(
+            state.initialize_notification_runtime(
+                &binding,
+                vec![(first, runtime.clone()), (second, Runtime::default())]
+            ),
+            Err(Error::AlreadyBound)
+        ));
+        assert_eq!(
+            state.player_notifications().unwrap().runtime(first),
+            Ok(&Runtime::default())
+        );
+        state
+            .player_notifications
+            .as_mut()
+            .unwrap()
+            .runtime_mut(second)
+            .unwrap()
+            .group_hash = None;
+        // Unordered complete input succeeds; explicit unknowns remain unknown.
+        state
+            .initialize_notification_runtime(
+                &binding,
+                vec![(second, Runtime::default()), (first, runtime.clone())],
+            )
+            .unwrap();
+        assert_eq!(state.revision(), 0);
+        assert_eq!(
+            state.player_notifications().unwrap().runtime(first),
+            Ok(&runtime)
+        );
+        assert_eq!(
+            state.player_notifications().unwrap().runtime(second),
+            Ok(&Runtime::default())
+        );
+        assert!(matches!(
+            state.initialize_notification_runtime(
+                &binding,
+                vec![(first, Runtime::default()), (second, Runtime::default())]
+            ),
+            Err(Error::AlreadyBound)
+        ));
+        assert_eq!(
+            state.player_notifications().unwrap().runtime(first),
+            Ok(&runtime)
+        );
+        let (mut advanced, witness, collections) = notification_source();
+        advanced
+            .install_player_notifications(witness, collections)
+            .unwrap();
+        let binding = advanced.binding().clone();
+        advanced
+            .notification_runtime_mut(first)
+            .unwrap()
+            .default_blocking = Some(5);
+        assert!(matches!(
+            advanced.initialize_notification_runtime(&binding, vec![(first, Runtime::default())]),
+            Err(Error::NotPristine)
+        ));
+        assert_eq!(advanced.revision(), 1);
+        // Empty collections still consume the projection lease exactly once.
+        let (mut empty, _, _) = notification_source();
+        empty.player_notifications = Some(
+            crate::player_notifications_owner::Owner::from_decoded(
+                (0..64)
+                    .map(|owner| crate::notifications::PlayerNotifications {
+                        owner,
+                        ..Default::default()
+                    })
+                    .collect(),
+            )
+            .unwrap(),
+        );
+        let binding = empty.binding().clone();
+        empty
+            .initialize_notification_runtime(&binding, vec![])
+            .unwrap();
+        assert!(matches!(
+            empty.initialize_notification_runtime(&binding, vec![]),
+            Err(Error::AlreadyBound)
+        ));
+    }
+    #[test]
+    fn notification_occurrence_bridge_retains_handles_and_checks_revision_before_mutation() {
+        use crate::player_notifications_owner::{OccurrenceLimits, Runtime};
+        let (mut state, witness, collections) = notification_source();
+        let original = collections[0].records[0].clone();
+        state
+            .install_player_notifications(witness.clone(), collections)
+            .unwrap();
+        let first = state
+            .player_notifications()
+            .unwrap()
+            .first(0)
+            .unwrap()
+            .unwrap();
+        let second = state
+            .append_initialized_notification(
+                0,
+                original.clone(),
+                Runtime::default(),
+                OccurrenceLimits::default(),
+            )
+            .unwrap();
+        assert_eq!(state.revision(), 1);
+        assert_eq!(state.remove_notification(first).unwrap().next, Some(second));
+        assert_eq!(state.revision(), 2);
+        assert_eq!(
+            state.player_notifications().unwrap().first(0),
+            Ok(Some(second))
+        );
+        assert_eq!(
+            state.player_notifications().unwrap().ordinal_of(second),
+            Ok(0)
+        );
+        for _ in 0..2 {
+            assert!(state.notification_runtime_mut(first).is_err());
+            assert!(state.remove_notification(first).is_err());
+            assert_eq!(state.revision(), 2);
+        }
+        state
+            .notification_runtime_mut(second)
+            .unwrap()
+            .default_blocking = Some(11);
+        assert_eq!(state.revision(), 3);
+        assert_eq!(state.player_notifications_source(), Some(&witness));
+        assert_eq!(
+            state.player_notifications().unwrap().collections().len(),
+            64
+        );
+        state.revision = u64::MAX;
+        assert!(matches!(
+            state.notification_runtime_mut(second),
+            Err(Error::ResourceLimit)
+        ));
+        assert!(matches!(
+            state.remove_notification(second),
+            Err(Error::ResourceLimit)
+        ));
+        assert!(matches!(
+            state.append_initialized_notification(
+                0,
+                original.clone(),
+                Runtime::default(),
+                OccurrenceLimits::default()
+            ),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(state.revision(), u64::MAX);
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .record_by_object(second),
+            Ok(&original)
+        );
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .runtime(second)
+                .unwrap()
+                .default_blocking,
+            Some(11)
+        );
+    }
+    #[test]
+    fn notification_occurrence_bridge_refusals_preserve_state_and_callback_prefix_commits() {
+        use crate::player_notifications_owner::{OccurrenceLimits, Runtime};
+        let (mut state, witness, collections) = notification_source();
+        let original = collections[0].records[0].clone();
+        state
+            .install_player_notifications(witness, collections)
+            .unwrap();
+        let first = state
+            .player_notifications()
+            .unwrap()
+            .first(0)
+            .unwrap()
+            .unwrap();
+        for limits in [
+            OccurrenceLimits {
+                max_records: 1,
+                max_occurrences: 9,
+            },
+            OccurrenceLimits {
+                max_records: 9,
+                max_occurrences: 1,
+            },
+        ] {
+            assert!(state
+                .append_initialized_notification(0, original.clone(), Runtime::default(), limits)
+                .is_err());
+            assert_eq!(state.revision(), 0);
+            assert_eq!(
+                state
+                    .player_notifications()
+                    .unwrap()
+                    .record_by_object(first),
+                Ok(&original)
+            );
+        }
+        assert!(state
+            .append_initialized_notification(
+                64,
+                original.clone(),
+                Runtime::default(),
+                OccurrenceLimits::default()
+            )
+            .is_err());
+        assert_eq!(state.revision(), 0);
+        // Caller bounds cannot raise the LoadedState resource policy.
+        state.limits.max_runtime_array_items = 1;
+        assert!(state
+            .append_initialized_notification(
+                0,
+                original.clone(),
+                Runtime::default(),
+                OccurrenceLimits {
+                    max_records: usize::MAX,
+                    max_occurrences: usize::MAX
+                }
+            )
+            .is_err());
+        assert_eq!(state.revision(), 0);
+        state.limits.max_runtime_array_items = 10;
+        // The required data-provider callback receives the same state after the
+        // append. An error keeps both the append and callback's preceding writes.
+        let delivery = |state: &mut LoadedState| -> Result<(), &'static str> {
+            let object = state
+                .append_initialized_notification(
+                    0,
+                    original.clone(),
+                    Runtime::default(),
+                    OccurrenceLimits::default(),
+                )
+                .unwrap();
+            state
+                .notification_runtime_mut(object)
+                .unwrap()
+                .default_blocking = Some(23);
+            Err("required delivery failed")
+        };
+        assert_eq!(delivery(&mut state), Err("required delivery failed"));
+        assert_eq!(state.revision(), 2);
+        let second = state
+            .player_notifications()
+            .unwrap()
+            .next(first)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .record_by_object(first),
+            Ok(&original)
+        );
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .runtime(second)
+                .unwrap()
+                .default_blocking,
+            Some(23)
+        );
+    }
+    fn notification_pool_source() -> (
+        LoadedState,
+        crate::player_notifications_owner::ObjectId,
+        crate::notification_lifecycle::PoolId,
+    ) {
+        use crate::notification_lifecycle as lifecycle;
+        use crate::player_notifications_owner::Runtime;
+        let (mut state, witness, collections) = notification_source();
+        state
+            .install_player_notifications(witness, collections)
+            .unwrap();
+        let object = state
+            .player_notifications()
+            .unwrap()
+            .first(0)
+            .unwrap()
+            .unwrap();
+        let pool = lifecycle::PoolId(99);
+        let binding = state.binding().clone();
+        state
+            .initialize_notification_runtime(
+                &binding,
+                vec![(
+                    object,
+                    Runtime {
+                        live: Some(lifecycle::LiveNotification {
+                            object: lifecycle::ObjectId(42),
+                            lock_count: -3,
+                            pool_binding: Some(pool),
+                            definition_icon: lifecycle::DefinitionIcon::Unobserved,
+                            activation: lifecycle::ActivationBinding::Base,
+                            release: lifecycle::ReleaseBinding::Base,
+                            destruction: lifecycle::DestructionBinding::Unsupported,
+                        }),
+                        default_blocking: Some(17),
+                        group_hash: Some(0x12345678),
+                        vtable_addresspoint: Some(0x3aec000),
+                    },
+                )],
+            )
+            .unwrap();
+        (state, object, pool)
+    }
+    #[test]
+    fn notification_pool_moves_same_payload_and_reappend_gets_fresh_occurrence() {
+        use crate::player_notifications_owner::OccurrenceLimits;
+        let (mut state, object, pool) = notification_pool_source();
+        let id = state
+            .player_notifications()
+            .unwrap()
+            .record_by_object(object)
+            .unwrap()
+            .id;
+        state
+            .notification_record_mut(0, 0, id)
+            .unwrap()
+            .message
+            .base = vec![0xa5; 64];
+        let allocation = state
+            .player_notifications()
+            .unwrap()
+            .record_by_object(object)
+            .unwrap()
+            .message
+            .base
+            .as_ptr();
+        assert!(
+            matches!(state.last_pooled_notification(pool), Err(Error::Missing(MissingInput::NotificationPool(p))) if p == pool)
+        );
+        state.pool_notification(object, pool).unwrap();
+        let revision = state.revision();
+        let view = state.last_pooled_notification(pool).unwrap().unwrap();
+        let owner = state.player_notifications().unwrap();
+        assert!(std::ptr::eq(
+            view.record,
+            owner.record_by_object(object).unwrap()
+        ));
+        assert!(std::ptr::eq(view.runtime, owner.runtime(object).unwrap()));
+        assert_eq!(view.runtime.live.as_ref().unwrap().pool_binding, None);
+        assert_eq!(view.runtime.live.as_ref().unwrap().object.0, 42);
+        assert_eq!(owner.first(0), Ok(Some(object)));
+        for error in [
+            state.pop_pooled_notification(pool).unwrap_err(),
+            state.remove_notification(object).unwrap_err(),
+            state.pool_notification(object, pool).unwrap_err(),
+        ] {
+            assert!(
+                matches!(error, Error::NotificationPoolPending { pool: p, object: o } if p == pool && o == object)
+            );
+        }
+        assert_eq!(state.revision(), revision);
+        // The borrowed pending view follows the actual live payload, not a copy.
+        state.notification_record_mut(0, 0, id).unwrap().severity = -23;
+        assert_eq!(
+            state
+                .last_pooled_notification(pool)
+                .unwrap()
+                .unwrap()
+                .record
+                .severity,
+            -23
+        );
+        assert_eq!(state.erase_released_notification(object).unwrap(), None);
+        assert!(state
+            .player_notifications()
+            .unwrap()
+            .runtime(object)
+            .is_err());
+        let retained = state.last_pooled_notification(pool).unwrap().unwrap();
+        assert_eq!(retained.record.message.base.as_ptr(), allocation);
+        let mut popped = state.pop_pooled_notification(pool).unwrap().unwrap();
+        assert_eq!(popped.record.message.base.as_ptr(), allocation);
+        assert_eq!(popped.record.severity, -23);
+        assert_eq!(popped.runtime.live.as_ref().unwrap().lock_count, -3);
+        assert_eq!(popped.runtime.default_blocking, Some(17));
+        assert_eq!(popped.runtime.group_hash, Some(0x12345678));
+        assert_eq!(popped.runtime.vtable_addresspoint, Some(0x3aec000));
+        assert!(matches!(
+            state.last_pooled_notification(pool),
+            Err(Error::Missing(MissingInput::NotificationPool(_)))
+        ));
+        popped.runtime.live.as_mut().unwrap().pool_binding = Some(pool);
+        let fresh = state
+            .append_initialized_notification(
+                0,
+                popped.record,
+                popped.runtime,
+                OccurrenceLimits::default(),
+            )
+            .unwrap();
+        assert_ne!(fresh, object);
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .runtime(fresh)
+                .unwrap()
+                .live
+                .as_ref()
+                .unwrap()
+                .object
+                .0,
+            42
+        );
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .record_by_object(fresh)
+                .unwrap()
+                .message
+                .base
+                .as_ptr(),
+            allocation
+        );
+    }
+    #[test]
+    fn notification_pool_lifo_retains_unknown_prefix_and_pending_order() {
+        use crate::player_notifications_owner::OccurrenceLimits;
+        let (mut state, first, pool) = notification_pool_source();
+        let record = state
+            .player_notifications()
+            .unwrap()
+            .record_by_object(first)
+            .unwrap()
+            .clone();
+        let mut runtime = state
+            .player_notifications()
+            .unwrap()
+            .runtime(first)
+            .unwrap()
+            .clone();
+        runtime.live.as_mut().unwrap().object.0 = 43;
+        let second = state
+            .append_initialized_notification(0, record, runtime, OccurrenceLimits::default())
+            .unwrap();
+        state.pool_notification(first, pool).unwrap();
+        state.pool_notification(second, pool).unwrap();
+        assert_eq!(
+            state.erase_released_notification(first).unwrap(),
+            Some(second)
+        );
+        assert!(
+            matches!(state.pop_pooled_notification(pool), Err(Error::NotificationPoolPending { object, .. }) if object == second)
+        );
+        assert_eq!(state.erase_released_notification(second).unwrap(), None);
+        assert_eq!(
+            state
+                .pop_pooled_notification(pool)
+                .unwrap()
+                .unwrap()
+                .runtime
+                .live
+                .unwrap()
+                .object
+                .0,
+            43
+        );
+        assert_eq!(
+            state
+                .pop_pooled_notification(pool)
+                .unwrap()
+                .unwrap()
+                .runtime
+                .live
+                .unwrap()
+                .object
+                .0,
+            42
+        );
+        let revision = state.revision();
+        assert!(
+            matches!(state.pop_pooled_notification(pool), Err(Error::Missing(MissingInput::NotificationPool(p))) if p == pool)
+        );
+        assert_eq!(state.revision(), revision);
+    }
+    #[test]
+    fn notification_pool_known_empty_full_and_unlisted_pools_are_distinct() {
+        use crate::notification_lifecycle::PoolId;
+        use crate::player_notifications_owner::PooledNotification;
+        let (mut state, first, pool) = notification_pool_source();
+        let owner = state.player_notifications().unwrap();
+        let mut runtime = owner.runtime(first).unwrap().clone();
+        runtime.live.as_mut().unwrap().object.0 = 43;
+        runtime.live.as_mut().unwrap().pool_binding = None;
+        let retained = PooledNotification {
+            record: owner.record_by_object(first).unwrap().clone(),
+            runtime,
+        };
+        let binding = state.binding().clone();
+        state
+            .initialize_notification_pools(
+                &binding,
+                vec![(pool, vec![]), (PoolId(100), vec![retained])],
+            )
+            .unwrap();
+        assert_eq!(state.revision(), 0);
+        assert!(state.last_pooled_notification(pool).unwrap().is_none());
+        assert!(state.pop_pooled_notification(pool).unwrap().is_none());
+        assert_eq!(state.revision(), 0);
+        assert!(matches!(
+            state.last_pooled_notification(PoolId(101)),
+            Err(Error::Missing(MissingInput::NotificationPool(PoolId(101))))
+        ));
+        assert_eq!(
+            state
+                .pop_pooled_notification(PoolId(100))
+                .unwrap()
+                .unwrap()
+                .runtime
+                .live
+                .unwrap()
+                .object
+                .0,
+            43
+        );
+        assert!(state
+            .pop_pooled_notification(PoolId(100))
+            .unwrap()
+            .is_none());
+        assert_eq!(state.revision(), 1);
+        assert!(matches!(
+            state.initialize_notification_pools(&binding, vec![]),
+            Err(Error::AlreadyBound)
+        ));
+        state.pool_notification(first, pool).unwrap();
+        state.erase_released_notification(first).unwrap();
+        assert_eq!(
+            state
+                .pop_pooled_notification(pool)
+                .unwrap()
+                .unwrap()
+                .runtime
+                .live
+                .unwrap()
+                .object
+                .0,
+            42
+        );
+        assert!(state.last_pooled_notification(pool).unwrap().is_none());
+    }
+    #[test]
+    fn notification_pool_projection_preflights_binding_limits_and_duplicate_authority() {
+        use crate::notification_lifecycle::PoolId;
+        use crate::player_notifications_owner::PooledNotification;
+        for case in 0..6 {
+            let (mut state, first, pool) = notification_pool_source();
+            let mut binding = state.binding().clone();
+            let mut runtime = state
+                .player_notifications()
+                .unwrap()
+                .runtime(first)
+                .unwrap()
+                .clone();
+            runtime.live.as_mut().unwrap().pool_binding = None;
+            runtime.live.as_mut().unwrap().object.0 = if case == 3 { 42 } else { 43 };
+            let retained = PooledNotification {
+                record: state
+                    .player_notifications()
+                    .unwrap()
+                    .record_by_object(first)
+                    .unwrap()
+                    .clone(),
+                runtime,
+            };
+            let values = match case {
+                1 => vec![(pool, vec![]), (pool, vec![retained])],
+                _ => vec![(PoolId(100), vec![retained])],
+            };
+            match case {
+                0 => binding.core_sha256[0] ^= 1,
+                2 => state.limits.max_runtime_array_items = 0,
+                4 => state.limits.max_roster_records = 1,
+                5 => state.set_notification_next_id(0, 9).unwrap(),
+                _ => (),
+            }
+            let revision = state.revision();
+            assert!(state
+                .initialize_notification_pools(&binding, values)
+                .is_err());
+            assert!(!state.notification_pool_projection_installed);
+            assert!(state.notification_pools.is_empty());
+            assert_eq!(state.revision(), revision);
+            assert_eq!(
+                state
+                    .player_notifications()
+                    .unwrap()
+                    .runtime(first)
+                    .unwrap()
+                    .live
+                    .as_ref()
+                    .unwrap()
+                    .pool_binding,
+                Some(pool)
+            );
+        }
+    }
+    #[test]
+    fn notification_pool_first_projection_cannot_be_duplicated_by_later_runtime_projection() {
+        use crate::player_notifications_owner::PooledNotification;
+        let (template, first, pool) = notification_pool_source();
+        let mut runtime = template
+            .player_notifications()
+            .unwrap()
+            .runtime(first)
+            .unwrap()
+            .clone();
+        runtime.live.as_mut().unwrap().pool_binding = None;
+        let retained = PooledNotification {
+            record: template
+                .player_notifications()
+                .unwrap()
+                .record_by_object(first)
+                .unwrap()
+                .clone(),
+            runtime: runtime.clone(),
+        };
+        let (mut state, witness, collections) = notification_source();
+        state
+            .install_player_notifications(witness, collections)
+            .unwrap();
+        let binding = state.binding().clone();
+        state
+            .initialize_notification_pools(&binding, vec![(pool, vec![retained])])
+            .unwrap();
+        runtime.live.as_mut().unwrap().pool_binding = Some(pool);
+        assert!(matches!(
+            state.initialize_notification_runtime(&binding, vec![(first, runtime)]),
+            Err(Error::RuntimeIdentity)
+        ));
+        assert!(!state.notification_runtime_projection_installed);
+        assert_eq!(
+            state.player_notifications().unwrap().runtime(first),
+            Ok(&crate::player_notifications_owner::Runtime::default())
+        );
+        assert_eq!(
+            state
+                .last_pooled_notification(pool)
+                .unwrap()
+                .unwrap()
+                .runtime
+                .live
+                .as_ref()
+                .unwrap()
+                .object
+                .0,
+            42
+        );
+        assert_eq!(state.revision(), 0);
+    }
+    #[test]
+    fn notification_pool_refusals_do_not_clear_parent_or_erase_before_release() {
+        use crate::notification_lifecycle::PoolId;
+        let (mut state, object, pool) = notification_pool_source();
+        assert!(matches!(
+            state.erase_released_notification(object),
+            Err(Error::RuntimeIdentity)
+        ));
+        assert!(matches!(
+            state.pool_notification(object, PoolId(100)),
+            Err(Error::RuntimeIdentity)
+        ));
+        state.limits.max_runtime_array_items = 0;
+        assert!(matches!(
+            state.pool_notification(object, pool),
+            Err(Error::ResourceLimit)
+        ));
+        assert!(state.notification_pools.is_empty());
+        assert_eq!(state.revision(), 0);
+        assert_eq!(
+            state
+                .player_notifications()
+                .unwrap()
+                .runtime(object)
+                .unwrap()
+                .live
+                .as_ref()
+                .unwrap()
+                .pool_binding,
+            Some(pool)
+        );
+        // A successful external no-pool destructor is a caller prerequisite,
+        // not a callback invented by this structural erase operation.
+        state
+            .player_notifications
+            .as_mut()
+            .unwrap()
+            .runtime_mut(object)
+            .unwrap()
+            .live
+            .as_mut()
+            .unwrap()
+            .pool_binding = None;
+        assert_eq!(state.erase_released_notification(object).unwrap(), None);
+        let revision = state.revision();
+        assert!(matches!(
+            state.erase_released_notification(object),
+            Err(Error::PlayerNotifications(_))
+        ));
+        assert_eq!(state.revision(), revision);
+        assert!(state.notification_pools.is_empty());
+    }
+    #[test]
+    fn notification_pool_revision_exhaustion_retains_release_prefix_and_payload() {
+        for phase in 0..3 {
+            let (mut state, object, pool) = notification_pool_source();
+            if phase >= 1 {
+                state.pool_notification(object, pool).unwrap();
+            }
+            if phase == 2 {
+                state.erase_released_notification(object).unwrap();
+            }
+            state.revision = u64::MAX;
+            assert!(matches!(
+                state.pool_notification(object, pool),
+                Err(Error::ResourceLimit)
+            ));
+            assert!(matches!(
+                state.erase_released_notification(object),
+                Err(Error::ResourceLimit)
+            ));
+            assert!(matches!(
+                state.pop_pooled_notification(pool),
+                Err(Error::ResourceLimit)
+            ));
+            assert_eq!(state.revision(), u64::MAX);
+            if phase == 0 {
+                assert!(state.notification_pools.is_empty());
+                assert_eq!(
+                    state
+                        .player_notifications()
+                        .unwrap()
+                        .runtime(object)
+                        .unwrap()
+                        .live
+                        .as_ref()
+                        .unwrap()
+                        .pool_binding,
+                    Some(pool)
+                );
+            } else {
+                let view = state.last_pooled_notification(pool).unwrap().unwrap();
+                assert_eq!(view.runtime.live.as_ref().unwrap().pool_binding, None);
+                assert_eq!(view.runtime.live.as_ref().unwrap().object.0, 42);
+                assert_eq!(
+                    state
+                        .player_notifications()
+                        .unwrap()
+                        .ordinal_of(object)
+                        .is_ok(),
+                    phase == 1
+                );
+            }
+        }
+    }
+    #[test]
+    fn notification_pool_rejects_duplicate_live_or_retained_object_on_append() {
+        use crate::player_notifications_owner::OccurrenceLimits;
+        let (mut state, object, pool) = notification_pool_source();
+        for phase in 0..3 {
+            let (record, runtime) = if phase < 2 {
+                let owner = state.player_notifications().unwrap();
+                (
+                    owner.record_by_object(object).unwrap().clone(),
+                    owner.runtime(object).unwrap().clone(),
+                )
+            } else {
+                let value = state.last_pooled_notification(pool).unwrap().unwrap();
+                (value.record.clone(), value.runtime.clone())
+            };
+            let revision = state.revision();
+            assert!(matches!(
+                state.append_initialized_notification(
+                    0,
+                    record,
+                    runtime,
+                    OccurrenceLimits::default()
+                ),
+                Err(Error::RuntimeIdentity)
+            ));
+            assert_eq!(state.revision(), revision);
+            match phase {
+                0 => state.pool_notification(object, pool).unwrap(),
+                1 => {
+                    state.erase_released_notification(object).unwrap();
+                }
+                _ => (),
+            }
+        }
+    }
     fn trade_graph_carrier(frame: &[u8]) -> (LoadedState, ComponentSnapshotWitness, [u8; 32]) {
         use sha2::{Digest, Sha256};
         let mut s = state();
@@ -1035,6 +1896,10 @@ pub enum Error {
     GameRelations(crate::game_diplomatic_relations::Error),
     DiplomacyManager(crate::diplomacy_manager::Error),
     PlayerNotifications(crate::player_notifications_owner::Error),
+    NotificationPoolPending {
+        pool: crate::notification_lifecycle::PoolId,
+        object: crate::player_notifications_owner::ObjectId,
+    },
     GameTechs(crate::game_techs::Error),
     TradeGraph(crate::trade_graph_state::Error),
 }
@@ -1048,6 +1913,7 @@ impl std::error::Error for Error {}
 pub enum MissingInput {
     ManagerSlots,
     PlayerNotifications,
+    NotificationPool(crate::notification_lifecycle::PoolId),
     GameTechs,
     TradeGraph,
     PlayerConfiguration(i32),
@@ -1212,6 +2078,21 @@ impl UnitDependencies {
     }
 }
 #[derive(Debug)]
+enum NotificationPoolEntry {
+    Linked {
+        occurrence: crate::player_notifications_owner::ObjectId,
+        logical_object: crate::notification_lifecycle::ObjectId,
+    },
+    Retained(crate::player_notifications_owner::PooledNotification),
+}
+#[derive(Debug)]
+struct RetainedNotificationPool {
+    id: crate::notification_lifecycle::PoolId,
+    /// False retains an unknown older prefix below these known appended entries.
+    prefix_known: bool,
+    entries: Vec<NotificationPoolEntry>,
+}
+#[derive(Debug)]
 pub struct LoadedState {
     image: CoreImage,
     binding: WireBinding,
@@ -1230,6 +2111,10 @@ pub struct LoadedState {
     diplomacy_manager_source: Option<ObservedSnapshotWitness>,
     player_notifications: Option<crate::player_notifications_owner::Owner>,
     player_notifications_source: Option<ComponentSnapshotWitness>,
+    // Once-only source projection bookkeeping, not native runtime readiness.
+    notification_runtime_projection_installed: bool,
+    notification_pools: Vec<RetainedNotificationPool>,
+    notification_pool_projection_installed: bool,
     game_techs: Option<crate::game_techs::Graph>,
     game_techs_source: Option<ComponentSnapshotWitness>,
     trade_graph: Option<crate::trade_graph_state::GraphState>,
@@ -1353,6 +2238,9 @@ impl LoadedState {
             diplomacy_manager_source: None,
             player_notifications: None,
             player_notifications_source: None,
+            notification_runtime_projection_installed: false,
+            notification_pools: Vec::new(),
+            notification_pool_projection_installed: false,
             game_techs: None,
             game_techs_source: None,
             trade_graph: None,
@@ -1620,6 +2508,525 @@ impl LoadedState {
             .map_err(Error::PlayerNotifications)?;
         self.revision = next;
         Ok(record)
+    }
+    /// Once-only pristine projection of omitted runtime fields. The caller
+    /// supplies provenance: this does not authenticate a live capture or make
+    /// source-projected values observed native state. Unknowns may remain None.
+    /// Complete unique current occurrence coverage is validated before writes.
+    pub fn initialize_notification_runtime(
+        &mut self,
+        binding: &core_player::initialization::WireBinding,
+        mut values: Vec<(
+            crate::player_notifications_owner::ObjectId,
+            crate::player_notifications_owner::Runtime,
+        )>,
+    ) -> Result<(), Error> {
+        if self.notification_runtime_projection_installed {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if binding != &self.binding {
+            return Err(Error::Binding);
+        }
+        if values.len() > self.limits.max_runtime_array_items {
+            return Err(Error::ResourceLimit);
+        }
+        let owner = self.player_notifications()?;
+        let count = owner
+            .collections()
+            .iter()
+            .try_fold(0usize, |total, collection| {
+                total
+                    .checked_add(collection.records.len())
+                    .ok_or(Error::ResourceLimit)
+            })?;
+        if values.len() != count {
+            return Err(Error::Binding);
+        }
+        // Sort the supplied owned vector without allocating an auxiliary set.
+        values.sort_unstable_by_key(|(object, _)| *object);
+        let mut supplied = values.iter();
+        for (slot, collection) in owner.collections().iter().enumerate() {
+            for ordinal in 0..collection.records.len() {
+                let object = owner
+                    .object(slot as i32, ordinal)
+                    .map_err(Error::PlayerNotifications)?;
+                if supplied.next().map(|(handle, _)| *handle) != Some(object) {
+                    return Err(Error::Binding);
+                }
+                if owner.runtime(object).map_err(Error::PlayerNotifications)?
+                    != &crate::player_notifications_owner::Runtime::default()
+                {
+                    return Err(Error::AlreadyBound);
+                }
+            }
+        }
+        // Pools can be source-projected first. A later complete runtime
+        // projection must not introduce a second authority for a retained
+        // logical object (or duplicate supplied live logical objects).
+        let retained_count = self.notification_pools.iter().try_fold(0usize, |n, pool| {
+            n.checked_add(pool.entries.len())
+                .ok_or(Error::ResourceLimit)
+        })?;
+        let mut logical = reserved(
+            values
+                .len()
+                .checked_add(retained_count)
+                .ok_or(Error::ResourceLimit)?,
+        )?;
+        for (_, runtime) in &values {
+            if let Some(live) = &runtime.live {
+                logical.push(live.object);
+            }
+        }
+        for pool in &self.notification_pools {
+            for entry in &pool.entries {
+                let NotificationPoolEntry::Retained(value) = entry else {
+                    return Err(Error::RuntimeIdentity);
+                };
+                logical.push(
+                    value
+                        .runtime
+                        .live
+                        .as_ref()
+                        .ok_or(Error::RuntimeIdentity)?
+                        .object,
+                );
+            }
+        }
+        logical.sort_unstable();
+        if logical.windows(2).any(|pair| pair[0] == pair[1]) {
+            return Err(Error::RuntimeIdentity);
+        }
+        let owner = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?;
+        for (object, runtime) in values {
+            *owner
+                .runtime_mut(object)
+                .map_err(Error::PlayerNotifications)? = runtime;
+        }
+        self.notification_runtime_projection_installed = true;
+        Ok(())
+    }
+    /// Reserve the shared revision before exposing explicitly supplied runtime
+    /// fields. Stale handles reject without changing the revision or storage.
+    pub fn notification_runtime_mut(
+        &mut self,
+        object: crate::player_notifications_owner::ObjectId,
+    ) -> Result<&mut crate::player_notifications_owner::Runtime, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let runtime = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .runtime_mut(object)
+            .map_err(Error::PlayerNotifications)?;
+        self.revision = next;
+        Ok(runtime)
+    }
+    /// Admit only the explicitly supplied, completely known pools. Unlisted
+    /// PoolIds remain unknown. The producer supplies runtime/source authority;
+    /// neither saved notification bytes nor a new PoolId prove an empty pool.
+    pub fn initialize_notification_pools(
+        &mut self,
+        binding: &core_player::initialization::WireBinding,
+        pools: Vec<(
+            crate::notification_lifecycle::PoolId,
+            Vec<crate::player_notifications_owner::PooledNotification>,
+        )>,
+    ) -> Result<(), Error> {
+        if self.notification_pool_projection_installed || !self.notification_pools.is_empty() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if binding != &self.binding {
+            return Err(Error::Binding);
+        }
+        let owner = self.player_notifications()?;
+        let active = owner
+            .collections()
+            .iter()
+            .try_fold(0usize, |n, collection| {
+                n.checked_add(collection.records.len())
+                    .ok_or(Error::ResourceLimit)
+            })?;
+        let retained = pools.iter().try_fold(0usize, |n, (_, records)| {
+            n.checked_add(records.len()).ok_or(Error::ResourceLimit)
+        })?;
+        let total = active.checked_add(retained).ok_or(Error::ResourceLimit)?;
+        if pools.len() > self.limits.max_runtime_array_items
+            || retained > self.limits.max_runtime_array_items
+            || total > self.limits.max_roster_records
+        {
+            return Err(Error::ResourceLimit);
+        }
+        let mut ids = reserved(pools.len())?;
+        let mut objects = reserved(total)?;
+        for (slot, collection) in owner.collections().iter().enumerate() {
+            for ordinal in 0..collection.records.len() {
+                let occurrence = owner
+                    .object(slot as i32, ordinal)
+                    .map_err(Error::PlayerNotifications)?;
+                if let Some(live) = &owner
+                    .runtime(occurrence)
+                    .map_err(Error::PlayerNotifications)?
+                    .live
+                {
+                    objects.push(live.object);
+                }
+            }
+        }
+        for (id, records) in &pools {
+            ids.push(*id);
+            for record in records {
+                let live = record.runtime.live.as_ref().ok_or(Error::RuntimeIdentity)?;
+                if live.pool_binding.is_some() {
+                    return Err(Error::RuntimeIdentity);
+                }
+                objects.push(live.object);
+            }
+        }
+        ids.sort_unstable();
+        objects.sort_unstable();
+        if ids.windows(2).any(|pair| pair[0] == pair[1])
+            || objects.windows(2).any(|pair| pair[0] == pair[1])
+        {
+            return Err(Error::RuntimeIdentity);
+        }
+        let mut prepared = reserved(pools.len())?;
+        for (id, records) in pools {
+            let mut entries = reserved(records.len())?;
+            entries.extend(records.into_iter().map(NotificationPoolEntry::Retained));
+            prepared.push(RetainedNotificationPool {
+                id,
+                prefix_known: true,
+                entries,
+            });
+        }
+        self.notification_pools = prepared;
+        self.notification_pool_projection_installed = true;
+        Ok(())
+    }
+    fn notification_pool_link(
+        &self,
+        object: crate::player_notifications_owner::ObjectId,
+    ) -> Option<(usize, usize)> {
+        self.notification_pools
+            .iter()
+            .enumerate()
+            .find_map(|(pool, values)| {
+                values.entries.iter().position(|entry| matches!(entry,
+                NotificationPoolEntry::Linked { occurrence, .. } if *occurrence == object
+            )).map(|index| (pool, index))
+            })
+    }
+    fn notification_logical_in_use(
+        &self,
+        logical: crate::notification_lifecycle::ObjectId,
+        except: Option<crate::player_notifications_owner::ObjectId>,
+    ) -> Result<bool, Error> {
+        let owner = self.player_notifications()?;
+        for (slot, collection) in owner.collections().iter().enumerate() {
+            for ordinal in 0..collection.records.len() {
+                let occurrence = owner
+                    .object(slot as i32, ordinal)
+                    .map_err(Error::PlayerNotifications)?;
+                if Some(occurrence) != except
+                    && owner
+                        .runtime(occurrence)
+                        .map_err(Error::PlayerNotifications)?
+                        .live
+                        .as_ref()
+                        .is_some_and(|live| live.object == logical)
+                {
+                    return Ok(true);
+                }
+            }
+        }
+        for pool in &self.notification_pools {
+            for entry in &pool.entries {
+                match entry {
+                    NotificationPoolEntry::Linked {
+                        occurrence,
+                        logical_object,
+                    } if Some(*occurrence) != except && *logical_object == logical => {
+                        return Ok(true);
+                    }
+                    NotificationPoolEntry::Retained(value)
+                        if value
+                            .runtime
+                            .live
+                            .as_ref()
+                            .is_some_and(|live| live.object == logical) =>
+                    {
+                        return Ok(true);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        Ok(false)
+    }
+    /// Source BaseRelease prefix: append a reference to the SAME logical object
+    /// before clearing its live parent/pool association. No payload is cloned.
+    /// Until erase_released_notification, the owner node retains that payload.
+    pub fn pool_notification(
+        &mut self,
+        object: crate::player_notifications_owner::ObjectId,
+        pool: crate::notification_lifecycle::PoolId,
+    ) -> Result<(), Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let owner = self.player_notifications()?;
+        let live = owner
+            .runtime(object)
+            .map_err(Error::PlayerNotifications)?
+            .live
+            .as_ref()
+            .ok_or(Error::RuntimeIdentity)?;
+        if let Some((index, _)) = self.notification_pool_link(object) {
+            return Err(Error::NotificationPoolPending {
+                pool: self.notification_pools[index].id,
+                object,
+            });
+        }
+        if live.pool_binding != Some(pool)
+            || self.notification_logical_in_use(live.object, Some(object))?
+        {
+            return Err(Error::RuntimeIdentity);
+        }
+        let logical_object = live.object;
+        let count = self.notification_pools.iter().try_fold(0usize, |n, p| {
+            n.checked_add(p.entries.len()).ok_or(Error::ResourceLimit)
+        })?;
+        if count >= self.limits.max_runtime_array_items {
+            return Err(Error::ResourceLimit);
+        }
+        let index = self
+            .notification_pools
+            .iter()
+            .position(|value| value.id == pool);
+        let mut new_entries = Vec::new();
+        if let Some(index) = index {
+            self.notification_pools[index]
+                .entries
+                .try_reserve(1)
+                .map_err(|_| Error::ResourceLimit)?;
+        } else {
+            if self.notification_pools.len() >= self.limits.max_runtime_array_items {
+                return Err(Error::ResourceLimit);
+            }
+            self.notification_pools
+                .try_reserve(1)
+                .map_err(|_| Error::ResourceLimit)?;
+            new_entries = reserved(1)?;
+        }
+        let live = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .runtime_mut(object)
+            .map_err(Error::PlayerNotifications)?
+            .live
+            .as_mut()
+            .ok_or(Error::RuntimeIdentity)?;
+        let entry = NotificationPoolEntry::Linked {
+            occurrence: object,
+            logical_object,
+        };
+        if let Some(index) = index {
+            self.notification_pools[index].entries.push(entry);
+        } else {
+            new_entries.push(entry);
+            self.notification_pools.push(RetainedNotificationPool {
+                id: pool,
+                prefix_known: false,
+                entries: new_entries,
+            });
+        }
+        live.pool_binding = None;
+        self.revision = next;
+        Ok(())
+    }
+    /// Called only after the provider's required Release/destructor succeeds.
+    /// Pool-linked payloads move into their existing entry; no-pool payloads
+    /// drop only here. A later refusal retains every earlier Release effect.
+    pub fn erase_released_notification(
+        &mut self,
+        object: crate::player_notifications_owner::ObjectId,
+    ) -> Result<Option<crate::player_notifications_owner::ObjectId>, Error> {
+        let next_revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let owner = self.player_notifications()?;
+        owner
+            .ordinal_of(object)
+            .map_err(Error::PlayerNotifications)?;
+        let live = owner
+            .runtime(object)
+            .map_err(Error::PlayerNotifications)?
+            .live
+            .as_ref();
+        if live.is_some_and(|value| value.pool_binding.is_some()) {
+            return Err(Error::RuntimeIdentity);
+        }
+        let linked = self.notification_pool_link(object);
+        if let Some((pool, index)) = linked {
+            let NotificationPoolEntry::Linked { logical_object, .. } =
+                &self.notification_pools[pool].entries[index]
+            else {
+                unreachable!("preflight found a linked pool entry")
+            };
+            if live.map(|value| value.object) != Some(*logical_object) {
+                return Err(Error::RuntimeIdentity);
+            }
+        }
+        let removed = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .remove(object)
+            .map_err(Error::PlayerNotifications)?;
+        let next = removed.next;
+        if let Some((pool, index)) = linked {
+            self.notification_pools[pool].entries[index] = NotificationPoolEntry::Retained(
+                crate::player_notifications_owner::PooledNotification {
+                    record: removed.record,
+                    runtime: removed.runtime,
+                },
+            );
+        }
+        self.revision = next_revision;
+        Ok(next)
+    }
+    /// Last known appended object, borrowing its authoritative current payload.
+    /// Reaching an unknown old prefix returns Missing, never invented emptiness.
+    pub fn last_pooled_notification(
+        &self,
+        pool: crate::notification_lifecycle::PoolId,
+    ) -> Result<Option<crate::player_notifications_owner::PooledNotificationRef<'_>>, Error> {
+        let values = self
+            .notification_pools
+            .iter()
+            .find(|value| value.id == pool)
+            .ok_or(Error::Missing(MissingInput::NotificationPool(pool)))?;
+        match values.entries.last() {
+            Some(NotificationPoolEntry::Retained(value)) => Ok(Some(
+                crate::player_notifications_owner::PooledNotificationRef {
+                    record: &value.record,
+                    runtime: &value.runtime,
+                },
+            )),
+            Some(NotificationPoolEntry::Linked {
+                occurrence,
+                logical_object,
+            }) => {
+                let owner = self.player_notifications()?;
+                let runtime = owner
+                    .runtime(*occurrence)
+                    .map_err(Error::PlayerNotifications)?;
+                let live = runtime.live.as_ref().ok_or(Error::RuntimeIdentity)?;
+                if live.object != *logical_object || live.pool_binding.is_some() {
+                    return Err(Error::RuntimeIdentity);
+                }
+                Ok(Some(
+                    crate::player_notifications_owner::PooledNotificationRef {
+                        record: owner
+                            .record_by_object(*occurrence)
+                            .map_err(Error::PlayerNotifications)?,
+                        runtime,
+                    },
+                ))
+            }
+            None if values.prefix_known => Ok(None),
+            None => Err(Error::Missing(MissingInput::NotificationPool(pool))),
+        }
+    }
+    /// Transfer a fully erased retained payload in native LIFO order. A linked
+    /// Release prefix cannot be allocated twice while its owner node survives.
+    pub fn pop_pooled_notification(
+        &mut self,
+        pool: crate::notification_lifecycle::PoolId,
+    ) -> Result<Option<crate::player_notifications_owner::PooledNotification>, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let index = self
+            .notification_pools
+            .iter()
+            .position(|value| value.id == pool)
+            .ok_or(Error::Missing(MissingInput::NotificationPool(pool)))?;
+        let values = &mut self.notification_pools[index];
+        match values.entries.last() {
+            Some(NotificationPoolEntry::Linked { occurrence, .. }) => {
+                return Err(Error::NotificationPoolPending {
+                    pool,
+                    object: *occurrence,
+                });
+            }
+            None if values.prefix_known => return Ok(None),
+            None => return Err(Error::Missing(MissingInput::NotificationPool(pool))),
+            Some(NotificationPoolEntry::Retained(_)) => (),
+        }
+        let Some(NotificationPoolEntry::Retained(value)) = values.entries.pop() else {
+            unreachable!("preflight retained entry cannot change without callbacks")
+        };
+        self.revision = next;
+        Ok(Some(value))
+    }
+    /// Raw structural append, not native Add. The provider owns exact ID/turn
+    /// assignment and all synchronous callbacks. Once committed, callback errors
+    /// must retain this mutation and its revision.
+    pub fn append_initialized_notification(
+        &mut self,
+        slot: i32,
+        record: crate::notifications::Notification,
+        runtime: crate::player_notifications_owner::Runtime,
+        limits: crate::player_notifications_owner::OccurrenceLimits,
+    ) -> Result<crate::player_notifications_owner::ObjectId, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        if let Some(live) = &runtime.live {
+            if self.notification_logical_in_use(live.object, None)? {
+                return Err(Error::RuntimeIdentity);
+            }
+        }
+        let limits = crate::player_notifications_owner::OccurrenceLimits {
+            max_records: limits.max_records.min(self.limits.max_roster_records),
+            max_occurrences: limits
+                .max_occurrences
+                .min(self.limits.max_runtime_array_items),
+        };
+        let object = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .append_initialized(slot, record, runtime, limits)
+            .map_err(Error::PlayerNotifications)?;
+        self.revision = next;
+        Ok(object)
+    }
+    /// Raw erasure only: the provider must call actual Release first. If that
+    /// callback fails, it must keep the node and the preceding callback effects.
+    pub fn remove_notification(
+        &mut self,
+        object: crate::player_notifications_owner::ObjectId,
+    ) -> Result<crate::player_notifications_owner::Removed, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        if let Some((index, _)) = self.notification_pool_link(object) {
+            return Err(Error::NotificationPoolPending {
+                pool: self.notification_pools[index].id,
+                object,
+            });
+        }
+        let removed = self
+            .player_notifications
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::PlayerNotifications))?
+            .remove(object)
+            .map_err(Error::PlayerNotifications)?;
+        self.revision = next;
+        Ok(removed)
     }
     pub fn set_notification_next_id(&mut self, slot: i32, value: u32) -> Result<(), Error> {
         let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;

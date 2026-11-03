@@ -525,34 +525,4 @@ mod tests {
             Err(Error::InvalidPauseByte(2))
         ));
     }
-    #[test]
-    #[ignore = "requires genuine identity-gated Linux activated rules export"]
-    fn genuine_rules_phase_provider_reconstruction() {
-        let path = std::env::var("C6_MANAGER_RULES").expect("C6_MANAGER_RULES");
-        let source = RulesProfile::LinuxXp2ActivatedDiagnostic
-            .source_identity()
-            .unwrap();
-        let rules =
-            Rules::load_profile(RulesProfile::LinuxXp2ActivatedDiagnostic, path, &source).unwrap();
-        let mut total = 0;
-        let mut false_count = 0;
-        for name in [
-            "TURNPHASE_SINGLEPLAYER",
-            "TURNPHASE_SIMULTANEOUS",
-            "TURNPHASE_DYNAMIC",
-            "TURNPHASE_TWOPHASE",
-        ] {
-            let phases =
-                PhaseDefinitions::from_rules(&rules, linux_type_hash(name.as_bytes())).unwrap();
-            assert!(!phases.slots().is_empty());
-            for (i, p) in phases.slots().iter().enumerate() {
-                let expected = p.unwrap().active_segment.unwrap().flags & 2 != 0;
-                assert_eq!(phases.allow_tactical_commands(i as i32, 99), Ok(expected));
-                total += 1;
-                false_count += usize::from(!expected);
-            }
-        }
-        assert_eq!(total, 14);
-        assert_eq!(false_count, 10);
-    }
 }

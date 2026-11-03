@@ -1,60 +1,63 @@
-# Simulator architecture and current boundary
+# Library architecture and API
 
-The target is a deterministic, headless Civilization VI state machine driven by external actions: load a complete state, apply actions, advance turns, inspect the resulting state, and compare it against the original GameCore DLL. Native AI and rendering are outside that execution path. This repository currently implements a much smaller verified primitive. It does **not** implement a playable simulation, a complete save-state format, legal action enumeration, or end-turn execution.
+The public workspace contains three crates:
 
-## Executable layers
+| Crate | Responsibility |
+| --- | --- |
+| `c6-core` | Deterministic numerical functions, typed wire records, owned state and bounded gameplay components |
+| `c6-data` | Immutable SQLite rules, definition registries and rules-backed providers; depends on `c6-core` |
+| `c6-ffi` | Versioned C shared-library interface; depends on `c6-core` |
 
-- `c6-core` is a dependency-free Rust library. `Engine` owns a `Snapshot`; `apply` accepts typed actions without JSON parsing or allocation for RNG actions. Unsupported operations return a typed error without changing state. A caller can clone a snapshot/engine to branch evaluation. There is no implicit global engine or random source.
-- `c6-ffi` builds a shared library exposing the versioned `include/c6.h` API. An evaluation framework may load the platform library, check `c6_abi_version`, create/import handles, apply packed numeric actions, export state, and destroy handles before unloading. Each handle needs external synchronization. The ABI is native platform C, not a cross-machine wire ABI. Only validated live pointers are permitted.
-- The differential harness and native oracle are separate processes. Their JSON protocol is a test transport; it does not sit in the simulation action hot path. The oracle calls original pinned DLL code. DLL subsystem dependencies must be explicitly recorded when stubbed.
+The workspace has no source/build dependency on investigative tools, native
+harnesses or private captures. Its current components do not compose into a
+complete playable simulator; [status](status.md) defines the remaining boundary.
 
-## Coverage
+## Two state boundaries
 
-| Subsystem | Current executable coverage |
-|---|---|
-| Gameplay random | `Get` arithmetic and logical counters; `Reset`; `Initialize`; lock count operations |
-| RNG logging and synchronization callbacks | Excluded; no observable game-event equivalence claimed |
-| Coordinate sentinel and plot distance | Isolated arithmetic primitives; no initialized map required |
-| World, players, units, cities | Unsupported |
-| Diplomacy, economy, combat | Unsupported |
-| Turn progression and action legality | Unsupported |
+`Engine` owns a small `Snapshot` with explicit identities, caller-identified RNG
+streams and opaque future sections. `Engine::apply` handles the implemented RNG
+operations. General Game actions and EndTurn return typed errors without changing
+this envelope. A snapshot identity records a declaration, not proof of a complete
+imported gameplay context. Opaque sections preserve bytes without defining how
+they evolve.
 
-The `COVERAGE` table exposes this boundary to Rust consumers. Its RNG entry means a verified primitive, not full equivalence of the owning subsystem. A future release should replace broad entries with individually versioned operation coverage as more routines become executable.
+The larger typed codecs, `world::World` and `loaded_state::LoadedState` provide
+separate state and query building blocks. They preserve record order, logical
+identity and explicit missing inputs. Decoding fields and constructing lookup
+indices do not perform every runtime initialization step, couple all owner
+updates, or implement a complete action. Caller-supplied definitions and runtime
+bindings must meet each API's declared consistency checks and lifecycle rules.
 
-## Gameplay random
+Low-level diagnostic phases can retain completed mutations when a later provider
+fails. Their documented errors and partial traces are not transactions or
+successful actions. This differs from the small `Engine::apply` unsupported-action
+guarantee; callers must use the contract of the specific API they invoke.
 
-The primitive is **GameCore::Random**, not the separate UI cache PCG generator. Native oracle inspection of the final XP2 DLL (SHA256 `324c51e9ea3531758842e16c69e6cddbefbb226c5b675c3d6e60111646c2e98c`) identifies `Get` at RVA `0x5fa040`, `Initialize` at `0x5fa120`, and `Reset` at `0x5fa370`. See the native evidence directory for reproducible extraction and execution details. Reference data is pinned at commit `5af389445118bed2bdebf7a8a42b219c8fba5175`; Linux DWARF independently identifies seed/call/reset/lock/synchronous fields, but is not evidence that every Windows object has the same layout.
+## Numerical and wire contracts
 
-`Get` advances a 32-bit seed with wrapping multiplication by `0x41c64e6d` and addition of `0x3039`. It increments the 32-bit call counter and returns `((seed >> 16) * bound) >> 16`, where the bound and result are unsigned 16-bit values. Bound zero still advances state. `Reset` increments the wrapping reset counter and assigns seed while preserving calls and other fields. `Initialize` assigns seed, zeros calls/resets/lock count, and preserves the synchronous flag. `Lock` wraps its unsigned counter on increment; `Unlock` decrements only a positive counter. These logical operations do not implement host synchronization. `RandomState::new` denotes initialized asynchronous state, not the C++ constructor (whose reset counter initially differs).
+RNG instances carry seed, calls, resets, lock count and synchronous state
+explicitly; stream IDs are caller-assigned, with zero reserved for the default.
+No host PRNG substitutes for these streams. Registering several streams does not
+establish a complete game's RNG inventory. Arithmetic and codecs retain their
+explicit widths, wrapping behavior, ordering, version and resource limits.
 
-The Rust `draw` signature makes the native effective bound explicit as `u16`. Test adapters casting raw native arguments must record both raw and effective bounds. The C API rejects an oversized draw argument so framework mistakes cannot be silently truncated. No global or host-language PRNG substitutes for this generator.
+The [codec module](../crates/c6-core/src/codec.rs) transports the simulator snapshot
+envelope. That envelope is distinct from supported component wire records and
+from a Civ VI save container. Retaining or reencoding a record establishes no
+unimplemented runtime effects. See [rules inputs](rules-data.md) for separate
+profile and definition identity checks.
 
-## Original RNG stream payload
+## C interface
 
-`rng::native_serialization` models a separate, isolated payload emitted by original XP2 `Random::Write` (RVA `0x5fa390`) and consumed by the supported normal branch of `Random::Read` (RVA `0x5fa190`). It is not the simulator snapshot envelope or a full game save format. Native memory-stream callbacks established byte and state behavior; see `evidence/engine/rng-serialization.json`, `evidence/native/serialization-response.jsonl`, and `tools/oracle/serialization.py`.
+[include/c6.h](../include/c6.h) defines ABI v1, numeric action kinds, result codes
+and handle ownership. The ABI uses the platform's C calling convention, pointer
+width and `size_t`; it is not a portable network ABI. Each handle requires
+exclusive external synchronization and must be destroyed before unloading its
+creating library. Invalid pointers, double frees and aliasing violate the
+contract.
 
-The normal payload is 18 bytes: LE u32 version, seed, calls, resets; raw u8 synchronous byte; u8 legacy-vector flag. Write emits version 1 and legacy flag 0. Lock count is omitted. Read consumes but ignores the version word, restores seed/calls/resets/raw synchronous byte, preserves the existing lock count and consumes exactly 18 bytes, leaving any trailer for the caller. Its preliminary reset counter increment is overwritten by the serialized reset value on this successful path.
-
-`SerializedRandomRecord` retains all 256 possible synchronous bytes exactly. `encode` reproduces Write's version 1 and absent legacy vector. `decode_prefix` accepts arbitrary version words, returns the record and consumed length, and rejects a nonzero legacy flag. `apply_to` and `read_into` target logical `RandomState`, whose synchronous field is a Rust bool, so they reject a raw byte above 1 before changing state. This is an explicit representability boundary; original native serialization preserves noncanonical bytes. Raw-record decoding/encoding still supports those values.
-
-Inputs shorter than 18 bytes and the legacy-vector branch are unsupported. The atomic error behavior of these Rust APIs is a safe supported-subset contract, not a reproduction of native stream failure behavior: native short reads can partially mutate fields and depend on the underlying I/O stream. No guessed partial-read, callback-error, allocation or legacy-vector semantics are supplied. The native adapter independently checks six original callbacks and their consumed cursor, and a separate corpus compares raw bytes, lock preservation, ignored versions and trailer consumption.
-
-## Coordinates
-
-`geometry::plot_valid` reproduces the sentinel check `x > -9999 && y > -9999`; it does not check actual map bounds. `plot_distance` reproduces the isolated XP2 routine at RVA `0x15ec0`, with width and wrap flag passed explicitly. Width is accepted as the native signed value, including zero/negative widths; the raw primitive does not validate map dimensions. Rust uses a bool wrap flag matching the native branch on a nonzero byte; the C ABI requires 0 or 1 to reject caller mistakes. Signed comparisons and wrapping arithmetic preserve native behavior even for extreme inputs; negative-row conversion has an `i32::MIN` corner case. Coordinate arithmetic does not establish world/map simulation coverage. See `evidence/engine/map-distance.asm` and the native differential fixtures.
-
-## State and identity
-
-`Snapshot` is a versioned simulator envelope. It carries a legacy default logical RNG instance (stable numeric ID 0), a sorted `BTreeMap<u32, RandomState>` of caller-registered independent GameCore::Random instances, two 32-byte identity fields for the game binary and rules configuration, and a sorted map of named opaque byte sections. Unknown sections survive import, supported actions and export unchanged. This permits future state retention without inventing mechanics or discarding unknown data. It does not mean that unknown state can be simulated. Zero identity is an explicitly unbound primitive sandbox; consumers must require expected identities before evaluating game-state behavior. Loading actual Civ VI save files remains unsupported.
-
-The current canonical binary envelope (version 2) is: `C6SN`; LE u32 version; 32 DLL hash bytes; 32 rules hash bytes; four LE u32 random fields (seed, calls, resets, lock count); one boolean byte (0/1); LE u64 section count; then repeated LE u64 UTF-8 name length/name bytes and LE u64 data length/data bytes. Sections emit in name order. Version 2 appends an LE u64 extra-stream count followed by sorted entries: LE u32 nonzero stream ID, four LE u32 RNG fields in the same order as default, then one 0/1 synchronous byte. ID 0 is reserved for the preceding legacy default state. The reader accepts version 1 envelopes (without the appended stream table) and upgrades them to version 2 with no extra streams. Writers emit current snapshots as version 2. Decoder rejects unknown versions, duplicate/reserved stream IDs, duplicate sections, invalid UTF-8/booleans, truncation and trailing data. Lengths are checked against available input before allocation. Transport version is distinct from ABI version and eventual game/rules schema version.
-
-`Engine::insert_random_stream` registers a nonzero numeric ID with explicit state; duplicate and missing IDs fail atomically. `apply_random` and typed stream actions route without allocation or string parsing. The C ABI adds numeric stream create/apply/state functions while legacy functions address ID 0. Snapshot clone/export/import preserve every stream, including streams untouched by an action. IDs carry no inferred ownership or lifecycle: a caller must establish which actual game object a stream represents. This supports independent instances of the verified gameplay generator; it does not implement the separate UI PCG algorithm, identify every native stream, or model scoped generator lifetime automatically.
-
-Full representation requires an audited field inventory for the exact DLL, rules database and enabled mods, including map, entity IDs, component containers, pending events, caches with semantic effects, turn scheduler state and every random stream. Add typed sections only after identifying their ownership and serialization semantics; preserve opaque sections until audited. Never call an envelope a complete game snapshot merely because it can store arbitrary bytes.
-
-## Extending and validating
-
-A new gameplay operation needs exact-version reference evidence, a native executable oracle with documented setup, boundary fixtures, and comparisons of both outputs and all affected state. Add support only after those comparisons pass; preserve failures as minimized reproducible fixtures. A full end-turn test must account for event order, active players, all random streams and every mutated subsystem. Current RNG tests cannot establish that equivalence.
-
-`cargo test --workspace` checks core state and FFI contracts along with the harness tests. `cargo bench -p c6-core --bench rng` measures the actual verified RNG primitive using an optimization-resistant loop and emits a checksum and final state. It excludes JSON, logging and DLL host setup. It is not a game-turn throughput measurement, and no simulator speedup over Civ VI is inferred from it.
+Failed calls preserve outputs as specified by the header; export may update the
+required byte count. A draw bound must fit `u16`; the C interface rejects larger
+arguments. Snapshot import/export handles the implemented envelope, including
+supported legacy upgrades, without claiming whole-game persistence. C EndTurn
+is explicitly unsupported.

@@ -109,6 +109,9 @@ pub struct CorePrefix<'a> {
     pub local_player: i32,
     pub game_properties: VariantMap,
     pub map: Map,
+    /// Original shared Plot-record version; native v5 Read effects are applied
+    /// by the Map decoder while the immutable input retains original bytes.
+    pub map_plot_version: i32,
     /// Absolute raw Core offsets; no save-container offsets are implied.
     pub map_start: usize,
     pub map_end: usize,
@@ -229,15 +232,16 @@ impl<'a> CorePrefix<'a> {
         let local_player = r.i32()?;
         let game_properties = r.variant(VariantMap::decode_prefix)?;
         let map_start = r.pos;
-        let (map, consumed, map_items, map_allocation) = Map::decode_prefix_with_usage(
-            &bytes[map_start..],
-            map::Limits {
-                max_bytes: limits.max_bytes - map_start,
-                max_items: limits.max_items - r.items,
-                max_allocation: limits.max_allocation - r.allocation,
-                max_depth: limits.max_depth,
-            },
-        )?;
+        let (map, consumed, map_items, map_allocation, map_plot_version) =
+            Map::decode_prefix_with_version_and_usage(
+                &bytes[map_start..],
+                map::Limits {
+                    max_bytes: limits.max_bytes - map_start,
+                    max_items: limits.max_items - r.items,
+                    max_allocation: limits.max_allocation - r.allocation,
+                    max_depth: limits.max_depth,
+                },
+            )?;
         r.charge(map_items, map_allocation)?;
         r.take(consumed)?;
         Ok(Self {
@@ -252,6 +256,7 @@ impl<'a> CorePrefix<'a> {
             local_player,
             game_properties,
             map,
+            map_plot_version,
             map_start,
             map_end: r.pos,
             consumed: r.pos,
@@ -326,6 +331,77 @@ impl<'a> ThroughFirstPlayer<'a> {
             .items_used
             .checked_add(player_items)
             .ok_or(ThroughFirstPlayerError::ResourceLimit)?;
+        Ok(Self {
+            core,
+            player_prefix,
+            consumed,
+            items_used,
+            tail: &bytes[consumed..],
+        })
+    }
+}
+
+/// Exact refusal from the version-aware partial Player path. Player offsets
+/// are absolute Core cursors, retaining the first unsupported named component.
+#[derive(Debug, Eq, PartialEq)]
+pub enum ThroughFirstPlayerCitiesError {
+    Core(Error),
+    Player(crate::core_player::PlayerPrefixBoundary),
+    ResourceLimit,
+}
+impl std::fmt::Display for ThroughFirstPlayerCitiesError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for ThroughFirstPlayerCitiesError {}
+/// Byte-zero transport through the first Player's supported pre-Cities fields.
+/// This is a partial typed import, never a closed Player or initialized World.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ThroughFirstPlayerCities<'a> {
+    pub core: CorePrefix<'a>,
+    pub player_prefix: crate::core_player::FirstPlayerCitiesPrefix,
+    pub consumed: usize,
+    pub items_used: usize,
+    pub tail: &'a [u8],
+}
+impl<'a> ThroughFirstPlayerCities<'a> {
+    pub fn decode(
+        bytes: &'a [u8],
+        shared: map::Limits,
+        player_limits: crate::unit::Limits,
+    ) -> Result<Self, ThroughFirstPlayerCitiesError> {
+        let core =
+            CorePrefix::decode(bytes, shared).map_err(ThroughFirstPlayerCitiesError::Core)?;
+        let effective = crate::unit::Limits {
+            max_bytes: player_limits
+                .max_bytes
+                .min(shared.max_bytes - core.consumed),
+            max_items: player_limits
+                .max_items
+                .min(shared.max_items - core.items_used),
+        };
+        let (player_prefix, used, items) =
+            match crate::core_player::FirstPlayerCitiesPrefix::decode_prefix_with_items(
+                core.tail, effective,
+            ) {
+                Ok(value) => value,
+                Err(mut error) => {
+                    error.offset = error
+                        .offset
+                        .checked_add(core.consumed)
+                        .ok_or(ThroughFirstPlayerCitiesError::ResourceLimit)?;
+                    return Err(ThroughFirstPlayerCitiesError::Player(error));
+                }
+            };
+        let consumed = core
+            .consumed
+            .checked_add(used)
+            .ok_or(ThroughFirstPlayerCitiesError::ResourceLimit)?;
+        let items_used = core
+            .items_used
+            .checked_add(items)
+            .ok_or(ThroughFirstPlayerCitiesError::ResourceLimit)?;
         Ok(Self {
             core,
             player_prefix,
@@ -807,6 +883,101 @@ pub(crate) mod tests {
                 expected: 22,
                 actual: 20
             })
+        );
+    }
+    #[test]
+    fn partial_city_prefix_reuses_shared_limits_and_retains_absolute_boundary() {
+        let (base, _, end) = fixture(&TypedVariantMap::default(), &VariantMap::default());
+        let (mut player_bytes, _) =
+            crate::core_player::header_versions_tests::cities_prefix_wire(47);
+        // Source-only fixture has one entry; the helper's declared43 count is
+        // otherwise an intentionally larger resource-policy floor.
+        player_bytes[20..24].copy_from_slice(&1u32.to_le_bytes());
+        let mut bytes = base[..end].to_vec();
+        bytes.extend(player_bytes);
+        let decoded = ThroughFirstPlayerCities::decode(
+            &bytes,
+            map::Limits::default(),
+            crate::unit::Limits::default(),
+        )
+        .unwrap();
+        assert_eq!(decoded.player_prefix.header_prefix.header.version, 47);
+        let (post, used, items) =
+            crate::core_player::FirstPlayerCitiesPrefix::decode_prefix_with_items(
+                decoded.core.tail,
+                crate::unit::Limits::default(),
+            )
+            .unwrap();
+        assert_eq!(post, decoded.player_prefix);
+        assert_eq!(decoded.consumed, decoded.core.consumed + used);
+        assert_eq!(decoded.items_used, decoded.core.items_used + items);
+        assert_eq!(decoded.tail.as_ptr(), bytes[decoded.consumed..].as_ptr());
+        let shared = map::Limits {
+            max_bytes: decoded.consumed,
+            max_items: decoded.items_used,
+            ..map::Limits::default()
+        };
+        let exact =
+            ThroughFirstPlayerCities::decode(&bytes, shared, crate::unit::Limits::default());
+        assert!(exact.is_ok(), "exact bound: {exact:?}");
+        assert!(ThroughFirstPlayerCities::decode(
+            &bytes,
+            map::Limits {
+                max_bytes: shared.max_bytes - 1,
+                ..shared
+            },
+            crate::unit::Limits::default()
+        )
+        .is_err());
+        assert!(ThroughFirstPlayerCities::decode(
+            &bytes,
+            map::Limits {
+                max_items: shared.max_items - 1,
+                ..shared
+            },
+            crate::unit::Limits::default()
+        )
+        .is_err());
+        let mut truncated = bytes[..decoded.core.consumed].to_vec();
+        truncated.extend([0; 4]);
+        let error = ThroughFirstPlayerCities::decode(
+            &truncated,
+            map::Limits::default(),
+            crate::unit::Limits::default(),
+        )
+        .unwrap_err();
+        let ThroughFirstPlayerCitiesError::Player(error) = error else {
+            panic!("named player boundary required")
+        };
+        assert!(error.offset >= decoded.core.consumed);
+    }
+    #[test]
+    fn plot_collection_version_survives_prefix_and_consuming_assembly() {
+        let (current_bytes, start, end) =
+            fixture(&TypedVariantMap::default(), &VariantMap::default());
+        let current = CorePrefix::decode(&current_bytes, map::Limits::default()).unwrap();
+        assert_eq!(current.map_plot_version, 6);
+        let (_, ranges) =
+            Map::decode_with_ranges(&current_bytes[start..end], map::Limits::default()).unwrap();
+        let plots = ranges.iter().find(|range| range.name == "plots").unwrap();
+        let mut previous_bytes = current_bytes.clone();
+        let version_at = start + plots.start;
+        previous_bytes[version_at..version_at + 4].copy_from_slice(&5i32.to_le_bytes());
+        let previous = CorePrefix::decode(&previous_bytes, map::Limits::default()).unwrap();
+        assert_eq!(previous.map_plot_version, 5);
+        assert_eq!((previous.map_start, previous.map_end), (start, end));
+        assert_eq!(previous.tail, current.tail);
+        assert_eq!(previous.items_used, current.items_used);
+        assert_eq!(
+            previous.logical_allocation_used,
+            current.logical_allocation_used
+        );
+        assert_eq!(previous.map, current.map);
+        let (_, owned) = crate::loaded_components::split_core(previous);
+        assert_eq!(owned.map_plot_version, 5);
+        assert_eq!(
+            &previous_bytes[version_at..version_at + 4],
+            &5i32.to_le_bytes()
         );
     }
     #[test]

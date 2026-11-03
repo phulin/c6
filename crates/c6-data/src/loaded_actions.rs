@@ -20,10 +20,13 @@ use c6_core::{
 };
 
 pub mod choose_tech;
+pub mod city_range_attack;
+pub mod command_units;
+pub mod configuration;
+pub mod culture_notifications;
 pub mod handlers;
 pub mod notifications;
 pub mod reporting;
-pub mod resources;
 
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
@@ -180,7 +183,7 @@ pub trait Reports {
 #[derive(Clone, Copy)]
 enum HandlerAuthority<'a, 'capture> {
     DecoderBinding,
-    ObservedSnapshot(&'a handlers::BoundHandlers<'capture>),
+    RuntimeBinding(&'a handlers::BoundHandlers<'capture>),
 }
 struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
@@ -246,7 +249,7 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
                 .saved_hash_runtime_id(OperationHash(hash))
                 .map(|id| id.0)
                 .map_err(Error::Registry),
-            HandlerAuthority::ObservedSnapshot(source) => source
+            HandlerAuthority::RuntimeBinding(source) => source
                 .runtime_id(hash)
                 .map(|id| id.0)
                 .map_err(Error::HandlerObservation),
@@ -805,9 +808,10 @@ pub fn skip_turn_state_phase<Q: ManagerQueries<Unit, Parameters = (), Error = &'
         HandlerAuthority::DecoderBinding,
     )
 }
-/// Same diagnostic algorithm with a separately admitted actual handler capture.
-/// The capture's own ObservationIdentity is preserved; no observer profile is
-/// relabeled as the destination's native Read process or lookup oracle.
+/// Same diagnostic algorithm with checked runtime handler/queue inputs.
+/// The historical name does not authenticate a capture: input adapters must
+/// establish actual origin separately. Supplied identities are never relabeled
+/// as the destination's native Read process or as hash-lookup observations.
 pub fn skip_turn_state_phase_observed<
     Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
 >(
@@ -824,7 +828,7 @@ pub fn skip_turn_state_phase_observed<
         inputs,
         external,
         reports,
-        HandlerAuthority::ObservedSnapshot(source),
+        HandlerAuthority::RuntimeBinding(source),
     )
 }
 fn skip_turn_state_phase_impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>>(
@@ -864,7 +868,7 @@ fn skip_turn_state_phase_impl<Q: ManagerQueries<Unit, Parameters = (), Error = &
                     .map_err(Error::Registry)?
                     .0
             }
-            HandlerAuthority::ObservedSnapshot(source) => {
+            HandlerAuthority::RuntimeBinding(source) => {
                 source
                     .validate_execution(state, inputs.handlers, inputs.operations)
                     .map_err(Error::HandlerObservation)?;
@@ -1060,8 +1064,9 @@ where
         HandlerAuthority::DecoderBinding,
     )
 }
-/// Execute the same post-Add composition using actual observed handler/code
-/// bindings and explicitly source-reconstructed queue IDs, never hash answers.
+/// Execute the same post-Add composition using checked handler/code bindings
+/// and source-reconstructed queue IDs. Native attribution belongs to the input
+/// adapter; this public consistency boundary supplies no hash-lookup answers.
 #[allow(clippy::too_many_arguments)]
 pub fn diagnose_skip_turn_observed<'s, Q, R, W, F>(
     state: &'s mut LoadedState,
@@ -1089,7 +1094,7 @@ where
         make_aftermath,
         owner,
         budget,
-        HandlerAuthority::ObservedSnapshot(source),
+        HandlerAuthority::RuntimeBinding(source),
     )
 }
 
@@ -1126,7 +1131,7 @@ where
         inputs,
         external,
         reports,
-        HandlerAuthority::ObservedSnapshot(source),
+        HandlerAuthority::RuntimeBinding(source),
     )?;
     if trace
         .iter()
@@ -1203,7 +1208,6 @@ fn finish_notifications<W: aftermath::Blocking>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sha2::{Digest, Sha256};
 
     #[test]
     fn report_trace_preserves_signed_identity_bits_and_optional_arguments() {
@@ -1223,40 +1227,256 @@ mod tests {
             serde_json::json!([{"kind":"report","type_bits":"80000001e23b112d","component_bits":"fedcba98fffeffff","first":i32::MIN,"second":null}])
         );
     }
-    // Private original records never enter the public repository. This source
-    // replay authenticates the existing fixture; it executes no original code.
-    fn fixture() -> Unit {
-        let manifest: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../evidence/linux/skip-turn-state-execute-3.json"
-        ))
-        .unwrap();
-        let path = std::env::var_os("C6_LOADED_ACTION_BEFORE_CORE")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| {
-                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
-                    "../../../c6-ghidra/evidence/linux-core-component/native-execute-3/before.bin",
-                )
-            });
-        let core = std::fs::read(path).expect("original before Core fixture");
-        assert_eq!(
-            format!("{:x}", Sha256::digest(&core)),
-            manifest["original_core_saves"]["before"]["sha256"]
-                .as_str()
-                .unwrap()
-        );
-        let row = manifest["changed_owner_regions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|r| r["owner"] == "unit")
-            .unwrap();
-        let range = row["before_range"].as_array().unwrap();
-        let bytes = &core[range[0].as_u64().unwrap() as usize..range[1].as_u64().unwrap() as usize];
-        assert_eq!(
-            format!("{:x}", Sha256::digest(bytes)),
-            row["before_sha256"].as_str().unwrap()
-        );
-        Unit::decode(bytes, c6_core::unit::Limits::default()).unwrap()
+    // Synthetic wire-shaped input for report-order/mutation regressions only.
+    // It makes no claim about a native initialized Unit or complete gameplay.
+    fn synthetic_unit() -> Unit {
+        c6_core::unit::Unit {
+            id: 0,
+            e_type_index: 0,
+            e_ai_type: 0,
+            ai_controller: 0,
+            ai_goal: c6_core::unit::PlotCoord { x: 0, y: 0 },
+            k_location: c6_core::unit::PlotCoord { x: 0, y: 0 },
+            e_facing_direction: 0,
+            e_owner: 0,
+            e_original_owner: 0,
+            b_is_levied: false,
+            formation_id: 0,
+            e_military_formation: 0,
+            e_automation: 0,
+            e_activity: 0,
+            i_damage: 0,
+            i_fortify_turns: 0,
+            i_upgrade_discount: 0,
+            x_moves_remaining: 0,
+            i_attacks_remaining: 0,
+            i_operation_timer: 0,
+            i_build_charges: 0,
+            i_park_charges: 0,
+            i_action_charges: 0,
+            i_air_slot_modifier: 0,
+            b_dominant_conquer: false,
+            i_barbarian_tribe_index: 0,
+            e_barbarian_player_target: 0,
+            i_disaster_charges: 0,
+            i_era_strength_modifier: 0,
+            b_embarked: false,
+            b_delayed_death: false,
+            b_immobile: false,
+            b_processed_turn: false,
+            b_needs_movement_completion: false,
+            b_eligible_to_heal: false,
+            b_has_hidden_visibility: false,
+            b_hidden_visibility_forfeited: false,
+            b_ignore_terrain_cost: false,
+            b_ignore_zoc: false,
+            b_exert_zoc: false,
+            b_can_see_through_features: false,
+            b_can_see_through_terrain: false,
+            b_attack_after_moving: false,
+            i_move_after_attacking: 0,
+            b_needs_attention: false,
+            b_ignore_resource_maintenance: false,
+            k_health_modifiers: c6_core::unit::HealthModifiers {
+                i_extra_enemy_heal: 0,
+                i_extra_neutral_heal: 0,
+                i_extra_friendly_heal: 0,
+                b_can_heal_after_action: false,
+            },
+            k_health_religion_modifiers: c6_core::unit::HealthReligionModifiers {
+                i_extra_enemy_heal_religion: 0,
+                i_extra_neutral_heal_religion: 0,
+                i_extra_friendly_heal_religion: 0,
+                b_can_heal_after_action_religion: false,
+            },
+            k_combat_modifers: c6_core::unit::CombatModifiers {
+                i_versus_barbarians: 0,
+                i_friendly_territory_combat_mod: 0,
+                b_bypass_walls: false,
+                b_enable_wall_attack: false,
+                b_cannot_attack: false,
+                i_flanking_bonus_modifier: 0,
+                i_support_bonus_modifier: 0,
+                i_per_luxury_attack_modifier: 0,
+                b_advanced_pillaging: false,
+                i_plunder_yield_modifier: 0,
+                b_bypass_combat_units: false,
+                b_no_reduction_for_damage: false,
+                b_capture_combat_units: false,
+                e_captured_combat_unit_type: 0,
+                i_bonus_attacks: 0,
+                b_conduct_raid: false,
+                i_raid_bonus: 0,
+                i_strength_reduction_for_damage_modifier: 0,
+                i_post_combat_heal: 0,
+                b_can_force_retreat: false,
+                i_higher_diplo_viz_combat_mod: 0,
+                i_each_diplo_viz_combat_mod: 0,
+                i_adjacent_levy_combat_modifier: 0,
+                i_number_allies_combat_modifier: 0,
+                i_strength_reduction_insufficient_fuel: 0,
+                i_per_unused_movement_combat_modifier: 0,
+                i_advanced_coastal_raid: 0,
+                i_combat_bonus_against_district: 0,
+                b_ignore_ranged_vs_district_penalty: false,
+                i_wmd_blast_resistance: 0,
+                i_wmd_fallout_resistance: 0,
+                i_water_damage_resistance: 0,
+                i_number_holy_cities_combat_modifier: 0,
+                i_number_military_policies_combat_modifier: 0,
+                i_number_neighbor_combat_bonus: 0,
+                b_fight_while_embarked: false,
+                i_anti_air_strength_modifier: 0,
+                i_combat_strength_modifier: 0,
+                i_ranged_strength_modifier: 0,
+                i_bombard_strength_modifier: 0,
+                i_direct_loyalty_damage: 0,
+            },
+            k_movement_modifiers: c6_core::unit::MovementModifiers {
+                i_extra_moves: 0,
+                i_clear_terrain_start_movement: 0,
+                b_enter_foreign_lands: false,
+                b_ignore_rivers: false,
+                b_ignore_cliffs: false,
+                b_ignore_shores: false,
+                b_escort_mobility: false,
+                i_friendly_territory_start_movement: 0,
+                i_enemy_territory_start_movement: 0,
+                b_can_paradrop: false,
+                i_jump_range: 0,
+            },
+            k_sight_modifiers: c6_core::unit::SightModifiers {
+                i_sight_range: 0,
+                e_can_see_hidden_type: 0,
+            },
+            k_attack_range_modifiers: c6_core::unit::AttackRangeModifiers { i_attack_range: 0 },
+            k_sight_plots: Vec::new(),
+            ai_abilities_possessed: Vec::new(),
+            ab_invalid_terrain_types: Vec::new(),
+            ab_ignore_terrain_types: Vec::new(),
+            ab_ignore_feature_types: Vec::new(),
+            ai_bonus_points_per_kill: Vec::new(),
+            ai_bonus_points_per_kill_strength: Vec::new(),
+            ai_bypass_walls_promotion_class: Vec::new(),
+            ai_enable_wall_attack_promotion_class: Vec::new(),
+            k_experience: c6_core::unit::Experience {
+                b_can_promote: false,
+                b_experience_locked: false,
+                i_experience: 0,
+                i_level: 0,
+                i_stored_promotions: 0,
+                i_promote_no_finish_moves: 0,
+                x_general_experience_modifier: 0,
+                ab_promotions_earned: Vec::new(),
+                s_veteran_name: Vec::new(),
+                b_can_promote_notify_needed: false,
+                x_attacking_experience_modifier_percent: 0,
+            },
+            k_great_person: c6_core::unit::GreatPerson {
+                e_individual: 0,
+                e_class: 0,
+                i_action_charges: 0,
+            },
+            k_religion: c6_core::unit::Religion {
+                i_religious_strength: 0,
+                e_religion_type: 0,
+                i_spread_charges: 0,
+                i_religious_heal_charges: 0,
+                i_nw_deferred_charges: 0,
+                e_initiation_yield: 0,
+                i_initiation_amount: 0,
+                i_evict_percent: 0,
+                i_foreign_spread_modifier: 0,
+                b_converts_barbarians: false,
+                b_no_foreign_spread: false,
+                b_relic_upon_death: false,
+                b_land_victory_spread: false,
+                i_land_victory_spread: 0,
+                i_plunder_improvement_faith_yield: 0,
+                i_plunder_district_faith_yield: 0,
+                a_initiation_yield_population: Vec::new(),
+                e_relic_source: 0,
+            },
+            k_rock_band: c6_core::unit::RockBand {
+                b_max_level: false,
+                b_max_promotions: false,
+                i_level: 0,
+                i_album_sales: 0,
+                i_post_tourism_bomb_foreign_loyalty: 0,
+                i_modified_rockband_level_national_park: 0,
+                i_modified_tourism_bomb_value_national_park: 0,
+                i_modified_rockband_level_natural_wonder: 0,
+                i_modified_tourism_bomb_value_natural_wonder: 0,
+                i_modified_tourism_bomb_player_range: 0,
+                i_modified_tourism_bomb_value_at_range: 0,
+                i_modified_tourism_bomb_convert_city: 0,
+                i_modified_tourism_bomb_value_target_peace: 0,
+                a_modified_yield_per_tourism_bomb: Vec::new(),
+                ai_concert_plots: Vec::new(),
+                ai_modified_rockband_level_district: Vec::new(),
+                ai_modified_rockband_level_improvement: Vec::new(),
+                ai_modified_tourism_bomb_value_district: Vec::new(),
+                ai_modified_tourism_bomb_value_improvement: Vec::new(),
+            },
+            k_trade: c6_core::unit::Trade {
+                k_origin_trade_city: c6_core::unit::ComponentId {
+                    owner: 0,
+                    component_type: 0,
+                    id: 0,
+                },
+                k_destination_trade_city: c6_core::unit::ComponentId {
+                    owner: 0,
+                    component_type: 0,
+                    id: 0,
+                },
+                v_domain_plunder_immunities: [0; 5],
+            },
+            k_archaeology: c6_core::unit::Archaeology {
+                k_home_city_id: 0,
+                e_home_building: 0,
+                i_artifact_index: 0,
+                i_great_work_index: 0,
+                b_can_extract_sea_artifacts: false,
+                b_choosing_artifact: false,
+            },
+            k_espionage: c6_core::unit::Espionage {
+                a_espionage_bonuses: Vec::new(),
+                a_espionage_time_reductions: Vec::new(),
+                e_operation: 0,
+                i_operation_end_turn: 0,
+                k_operation_end_destination: c6_core::unit::PlotCoord { x: 0, y: 0 },
+                i_establish_in_city_time_reduction: 0,
+                i_escape_boost: 0,
+                i_boost_all_spies: 0,
+                i_nerf_all_enemy_spies: 0,
+                i_visibility_reduction_all_cities: 0,
+                b_counter_spy_entire_city: false,
+                i_counter_spy_adjacent_level_boost: 0,
+                e_escape_route: 0,
+                b_escaping: false,
+                e_stolen_boost: 0,
+                i_siphoned_gold: 0,
+                i_stolen_great_work_index: 0,
+            },
+            k_attributes: c6_core::unit::variants::VariantMap {
+                scalars: Vec::new(),
+                arrays: Vec::new(),
+            },
+            k_operations: c6_core::unit::OperationQueue { nodes: Vec::new() },
+            k_operations_disabled: Vec::new(),
+            k_hero: c6_core::unit::Hero {
+                e_class: 0,
+                k_origin_city_id: c6_core::unit::ComponentId {
+                    owner: 0,
+                    component_type: 0,
+                    id: 0,
+                },
+            },
+            k_properties: c6_core::unit::variants::TypedVariantMap {
+                header: Default::default(),
+                entries: Vec::new(),
+            },
+        }
     }
     struct Subscriber {
         mode: u8,
@@ -1290,9 +1510,8 @@ mod tests {
         }
     }
     #[test]
-    #[ignore = "requires identity-gated private original Core fixture; source replay only"]
     fn loaded_report_activity_reread_and_equal_value_suppression() {
-        let mut u = fixture();
+        let mut u = synthetic_unit();
         let id = identity(&u);
         u.e_activity = AWAKE;
         let mut subscriber = Subscriber { mode: 0, calls: 0 };
@@ -1312,10 +1531,9 @@ mod tests {
         );
     }
     #[test]
-    #[ignore = "requires identity-gated private original Core fixture; source replay only"]
     fn loaded_report_error_retains_effect_and_stops_before_activity() {
         for mode in [1, 2] {
-            let mut u = fixture();
+            let mut u = synthetic_unit();
             let id = identity(&u);
             u.e_activity = AWAKE;
             let damage = u.i_damage;
@@ -1330,9 +1548,8 @@ mod tests {
         }
     }
     #[test]
-    #[ignore = "requires identity-gated private original Core fixture; source replay only"]
     fn loaded_activity_assignment_precedes_failed_report() {
-        let mut u = fixture();
+        let mut u = synthetic_unit();
         let id = identity(&u);
         u.e_activity = AWAKE;
         let mut subscriber = Subscriber { mode: 3, calls: 0 };

@@ -16,6 +16,7 @@ pub enum Error {
     Trailing,
     ResourceLimit,
     DefinitionMapping,
+    MissingGovernmentSlots,
     DestinationSize,
     /// Native resize(int) does not initialize the new int values. No default
     /// is invented when neither existing storage nor a wire pair supplied it.
@@ -196,6 +197,7 @@ pub struct CongressModifiers {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ResolutionEffectRefund {
+    pub wire_version: i32,
     pub resolution_hash: u32,
     pub which_effect: i32,
     pub refund_percent: i32,
@@ -207,12 +209,16 @@ impl ResolutionEffectRefund {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Congress {
+    /// Original saved version; only 6 and 12 have bounded schemas here.
+    pub wire_version: i32,
     pub favor: CongressFavor,
     pub suzerain_favor_by_type: Vec<HashValue<i32>>,
     pub influence_token_favor_by_type: Vec<HashValue<i32>>,
     pub trade_route_favor_by_type: Vec<HashValue<i32>>,
     /// Original sequential int vector, NOT a hash overlay.
-    pub favor_from_government_slots: Vec<i32>,
+    /// None in v6: native Read self-assigns and retains the existing vector.
+    /// This does not establish any constructor or initialized runtime baseline.
+    pub favor_from_government_slots: Option<Vec<i32>>,
     pub trade_route_by_type_modifier: Vec<HashValue<i32>>,
     pub modifiers: CongressModifiers,
     pub resolution_effect_refunds: Vec<ResolutionEffectRefund>,
@@ -240,7 +246,13 @@ impl Congress {
             apply_resized_indexed_ints(pairs[0], prior[0], lookup, limits)?,
             apply_resized_indexed_ints(pairs[1], prior[1], lookup, limits)?,
             apply_resized_indexed_ints(pairs[2], prior[2], lookup, limits)?,
-            apply_resized_indexed_ints(pairs[3], prior[3], lookup, limits)?,
+            if self.wire_version == 6 {
+                // Since10 array has explicit ReadIndexHashArrayVersioned zero
+                // assignments for every actual definition when absent in v6.
+                reset_indexed_ints(lookup, limits)?
+            } else {
+                apply_resized_indexed_ints(pairs[3], prior[3], lookup, limits)?
+            },
         ])
     }
 }
@@ -384,37 +396,59 @@ impl Wire for Bonuses {
 }
 impl Wire for Congress {
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(12)?;
+        let wire_version = r.i32()?;
+        if wire_version != 6 && wire_version != 12 {
+            return Err(Error::Version {
+                expected: 12,
+                actual: wire_version,
+            });
+        }
         let favor = CongressFavor {
             player: r.i32()?,
             lifetime: r.i32()?,
-            entering_congress: r.i32()?,
+            entering_congress: if wire_version >= 7 { r.i32()? } else { 0 },
             extra_per_turn: r.i32()?,
             suzerain_multiplier: r.i32()?,
-            alliance_multiplier: r.i32()?,
+            alliance_multiplier: if wire_version >= 12 { r.i32()? } else { 0 },
         };
         let suzerain_favor_by_type = r.indexed()?;
         let influence_token_favor_by_type = r.indexed()?;
         let trade_route_favor_by_type = r.indexed()?;
-        let favor_from_government_slots = r.list(4, |r| r.i32())?;
-        let trade_route_by_type_modifier = r.indexed()?;
+        let favor_from_government_slots = if wire_version >= 9 {
+            Some(r.list(4, |r| r.i32())?)
+        } else {
+            None
+        };
+        let trade_route_by_type_modifier = if wire_version >= 10 {
+            r.indexed()?
+        } else {
+            Vec::new()
+        };
         let modifiers = CongressModifiers {
             emergency_target: r.i32()?,
             emergency_member: r.i32()?,
-            great_person: r.i32()?,
+            great_person: if wire_version >= 8 { r.i32()? } else { 0 },
             bid_cost: r.i32()?,
         };
         let resolution_effect_refunds = r.list(16, |r| {
-            r.version(12)?;
+            let wire_version = r.i32()?;
+            if wire_version != 6 && wire_version != 12 {
+                return Err(Error::Version {
+                    expected: 12,
+                    actual: wire_version,
+                });
+            }
             Ok(ResolutionEffectRefund {
+                wire_version,
                 resolution_hash: r.u32()?,
                 which_effect: r.i32()?,
                 refund_percent: r.i32()?,
             })
         })?;
         let wants_congress_to_meet = r.bool()?;
-        let diplo_vp_last_turn = r.i32()?;
+        let diplo_vp_last_turn = if wire_version >= 11 { r.i32()? } else { 0 };
         Ok(Self {
+            wire_version,
             favor,
             suzerain_favor_by_type,
             influence_token_favor_by_type,
@@ -428,6 +462,16 @@ impl Wire for Congress {
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 12 {
+            return Err(Error::Version {
+                expected: 12,
+                actual: self.wire_version,
+            });
+        }
+        let slots = self
+            .favor_from_government_slots
+            .as_ref()
+            .ok_or(Error::MissingGovernmentSlots)?;
         w.i32(12)?;
         let f = &self.favor;
         for value in [
@@ -443,8 +487,8 @@ impl Wire for Congress {
         w.indexed(&self.suzerain_favor_by_type)?;
         w.indexed(&self.influence_token_favor_by_type)?;
         w.indexed(&self.trade_route_favor_by_type)?;
-        w.count(self.favor_from_government_slots.len())?;
-        for &value in &self.favor_from_government_slots {
+        w.count(slots.len())?;
+        for &value in slots {
             w.i32(value)?;
         }
         w.indexed(&self.trade_route_by_type_modifier)?;
@@ -459,6 +503,12 @@ impl Wire for Congress {
         }
         w.count(self.resolution_effect_refunds.len())?;
         for value in &self.resolution_effect_refunds {
+            if value.wire_version != 12 {
+                return Err(Error::Version {
+                    expected: 12,
+                    actual: value.wire_version,
+                });
+            }
             w.i32(12)?;
             w.u32(value.resolution_hash)?;
             w.i32(value.which_effect)?;
@@ -542,6 +592,7 @@ mod tests {
     }
     fn congress() -> Congress {
         Congress {
+            wire_version: 12,
             favor: CongressFavor {
                 player: -1,
                 lifetime: i32::MAX,
@@ -553,7 +604,7 @@ mod tests {
             suzerain_favor_by_type: vec![pair(90, -9), pair(90, 10), pair(999, 100)],
             influence_token_favor_by_type: vec![],
             trade_route_favor_by_type: vec![pair(70, 20)],
-            favor_from_government_slots: vec![1, -2, i32::MIN],
+            favor_from_government_slots: Some(vec![1, -2, i32::MIN]),
             trade_route_by_type_modifier: vec![pair(0, 30)],
             modifiers: CongressModifiers {
                 emergency_target: 7,
@@ -562,12 +613,100 @@ mod tests {
                 bid_cost: 10,
             },
             resolution_effect_refunds: vec![ResolutionEffectRefund {
+                wire_version: 12,
                 resolution_hash: 1234567,
                 which_effect: -1,
                 refund_percent: 150,
             }],
             wants_congress_to_meet: true,
             diplo_vp_last_turn: 11,
+        }
+    }
+    #[test]
+    fn congress6_shared_reader_retains_wire_and_explicit_read_defaults() {
+        // Source-only fixture with all present variable fields nonempty.
+        // Omitted GovernmentSlots is an unknown existing runtime vector.
+        let mut bytes = Vec::new();
+        for value in [
+            6i32, -7, 19, -23, 29, 1, 90, 31, 1, 90, 37, 1, 90, 41, -43, 47, -53, 1, 6, 1234567,
+            -1, 150,
+        ] {
+            bytes.extend(value.to_le_bytes());
+        }
+        bytes.push(1);
+        let end = bytes.len();
+        bytes.extend(123u32.to_le_bytes());
+        let (value, used, items) =
+            Congress::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        assert_eq!(used, end);
+        assert_eq!(items, 4);
+        assert_eq!(value.wire_version, 6);
+        assert_eq!(value.favor.player, -7);
+        assert_eq!(value.favor.lifetime, 19);
+        assert_eq!(value.favor.entering_congress, 0);
+        assert_eq!(value.favor.extra_per_turn, -23);
+        assert_eq!(value.favor.suzerain_multiplier, 29);
+        assert_eq!(value.favor.alliance_multiplier, 0);
+        assert_eq!(value.favor_from_government_slots, None);
+        assert!(value.trade_route_by_type_modifier.is_empty());
+        assert_eq!(value.modifiers.great_person, 0);
+        assert_eq!(value.diplo_vp_last_turn, 0);
+        assert_eq!(value.resolution_effect_refunds[0].wire_version, 6);
+        assert!(value.wants_congress_to_meet);
+        let arrays = value
+            .apply_indexed_arrays([&[99]; 4], &Lookup(vec![90]), Limits::default())
+            .unwrap();
+        assert_eq!(arrays, [vec![31], vec![37], vec![41], vec![0]]);
+        assert_eq!(
+            value.encode(Limits::default()),
+            Err(Error::Version {
+                expected: 12,
+                actual: 6
+            })
+        );
+        for length in 0..end {
+            assert!(Congress::decode_prefix(&bytes[..length], Limits::default()).is_err());
+        }
+        assert!(Congress::decode_prefix(
+            &bytes,
+            Limits {
+                max_bytes: end - 1,
+                max_items: items
+            }
+        )
+        .is_err());
+        assert!(Congress::decode_prefix(
+            &bytes,
+            Limits {
+                max_bytes: end,
+                max_items: items - 1
+            }
+        )
+        .is_err());
+        assert_eq!(
+            Congress::decode_prefix_with_items(
+                &bytes,
+                Limits {
+                    max_bytes: end,
+                    max_items: items
+                }
+            )
+            .unwrap(),
+            (value, end, items)
+        );
+        bytes[end - 1] = 2;
+        assert_eq!(
+            Congress::decode_prefix(&bytes, Limits::default()),
+            Err(Error::InvalidBool)
+        );
+        for version in [0i32, 5, 7, 11, 13] {
+            assert_eq!(
+                Congress::decode_prefix(&version.to_le_bytes(), Limits::default()),
+                Err(Error::Version {
+                    expected: 12,
+                    actual: version
+                })
+            );
         }
     }
     #[test]
