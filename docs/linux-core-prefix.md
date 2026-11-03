@@ -70,3 +70,5 @@ cargo test -p c6-core core_stream
 ```
 
 This is original **wire-data comparison**, with an offline Rust candidate and exact source/binary identities. It performs no original-code execution, native rerun, Ghidra/private repository change or upload, and leaves all frozen movement/City profiles intact. Full state/action/turn support still requires the subsequent real schemas, live read-derived gameplay state, all affected RNG and genuine external policy decision boundaries.
+
+For continued readers, `Map::decode_prefix_with_usage` exposes both the existing parser item charge and logical allocation charge in addition to consumed bytes. The initial `decode_prefix_with_items` API remains available. Exact and one-short allocation limits are tested; these are conservative Rust resource-policy charges, not native heap/layout state. Historical evidence above retains its immutable tested source identities.

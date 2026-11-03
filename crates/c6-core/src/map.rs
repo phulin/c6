@@ -377,7 +377,7 @@ impl Map {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, Vec<FieldRange>), Error> {
-        Self::decode_inner(bytes, limits, true, false).map(|(map, ranges, _, _)| (map, ranges))
+        Self::decode_inner(bytes, limits, true, false).map(|(map, ranges, _, _, _)| (map, ranges))
     }
     /// Decode the complete supported Map at a known structural cursor. The
     /// untouched caller tail is neither parsed nor charged against max_bytes.
@@ -386,10 +386,20 @@ impl Map {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_prefix_with_usage(bytes, limits)
+            .map(|(map, consumed, items, _)| (map, consumed, items))
+    }
+    /// Returns consumed bytes, item charge and logical allocation charge for
+    /// aggregate readers which continue after Map. Charges use this parser's
+    /// existing conservative allocation policy, not native heap measurements.
+    pub fn decode_prefix_with_usage(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize, usize), Error> {
         let clipped = bytes.len() > limits.max_bytes;
         let input = &bytes[..bytes.len().min(limits.max_bytes)];
         Self::decode_inner(input, limits, false, true)
-            .map(|(map, _, consumed, items)| (map, consumed, items))
+            .map(|(map, _, consumed, items, allocation)| (map, consumed, items, allocation))
             .map_err(|error| {
                 if clipped && error == Error::Truncated {
                     Error::ResourceLimit
@@ -406,7 +416,7 @@ impl Map {
         limits: Limits,
         ranges: bool,
         allow_trailing: bool,
-    ) -> Result<(Self, Vec<FieldRange>, usize, usize), Error> {
+    ) -> Result<(Self, Vec<FieldRange>, usize, usize, usize), Error> {
         let mut r = Reader::new(bytes, limits)?;
         r.collect_ranges = ranges;
         let header = r.record("header", |r| {
@@ -535,7 +545,7 @@ impl Map {
         if !allow_trailing && r.pos != bytes.len() {
             return Err(Error::TrailingBytes);
         }
-        Ok((result, r.ranges, r.pos, r.items))
+        Ok((result, r.ranges, r.pos, r.items, r.allocation))
     }
     fn validate_dimensions(&self) -> Result<(), Error> {
         if self.header.width < 0 || self.header.height < 0 {
@@ -699,6 +709,31 @@ mod prefix_tests {
         assert_eq!(decoded, map);
         assert_eq!(consumed, wire.len());
         assert_eq!(items, 1);
+        let (usage_map, usage_consumed, usage_items, allocation) =
+            Map::decode_prefix_with_usage(&carrier, exact).unwrap();
+        assert_eq!(
+            (usage_map, usage_consumed, usage_items),
+            (map.clone(), consumed, items)
+        );
+        assert!(allocation > 0);
+        assert!(Map::decode_prefix_with_usage(
+            &carrier,
+            Limits {
+                max_allocation: allocation,
+                ..exact
+            }
+        )
+        .is_ok());
+        assert_eq!(
+            Map::decode_prefix_with_usage(
+                &carrier,
+                Limits {
+                    max_allocation: allocation - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
         assert_eq!(Map::decode(&wire, limits).unwrap(), map);
         assert_eq!(Map::decode(&carrier, limits), Err(Error::TrailingBytes));
         assert_eq!(Map::decode(&carrier, exact), Err(Error::ResourceLimit));
