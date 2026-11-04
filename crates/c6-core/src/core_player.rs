@@ -1822,6 +1822,7 @@ pub(crate) mod tests {
     fn resources_carrier() -> player_resources::Resources {
         use crate::player_resources as pmod;
         pmod::Resources {
+            wire_version: 16,
             free_resource_visibility: vec![pmod::ResourceEntry {
                 resource_hash: u32::MAX,
                 value: true,

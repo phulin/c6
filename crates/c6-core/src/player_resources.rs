@@ -1,4 +1,4 @@
-//! Current Linux XP2 Player.Resources v16 wire transport, including nested records.
+//! Bounded Linux XP2 Player.Resources v12/v16 wire transport, including nested records.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::Limits;
 
@@ -6,6 +6,7 @@ pub const VERSION: u32 = 16;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     InvalidBool(u8),
@@ -56,15 +57,15 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self) -> Result<(), Error> {
+    fn version(&mut self) -> Result<u32, Error> {
         let actual = u32::read(self)?;
-        if actual != VERSION {
+        if !matches!(actual, 12 | 16) {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
             });
         }
-        Ok(())
+        Ok(actual)
     }
 }
 struct Writer {
@@ -201,26 +202,131 @@ impl<T: Wire> Wire for ResourceEntry<T> {
     }
 }
 record!(CityResource,false,{city_id:u32,resource_hash:u32});
-record!(Resources,true,{
-    free_resource_visibility:Vec<ResourceEntry<bool>>,
-    extra_amenities_per_owned_luxury_resource:i32,
-    extra_amenities_per_owned_bonus_resource:i32,
-    full_access_one_strategic:bool,
-    prevent_harvest_resource:i32,
-    resource_ownership:Vec<ResourceEntry<Vec<i32>>>,
-    accumulated_resource_per_turn_q8:Vec<ResourceEntry<i32>>,
-    luxury_allocations:Vec<CityResource>,
-    reserved_resources:Vec<ResourceEntry<i32>>,
-    banned_resources:Vec<ResourceEntry<i32>>,
-    no_cap_resources:Vec<ResourceEntry<i32>>,
-    export_resource_extracted:Vec<ResourceEntry<i32>>,
-    import_resource_extracted:Vec<ResourceEntry<i32>>,
-    free_resources_extracted:Vec<ResourceEntry<i32>>,
-    extra_accumulation_modifier:Vec<ResourceEntry<i32>>,
-    resource_stockpile_cap_modifier:Vec<ResourceEntry<i32>>,
-    unit_resource_demand_per_turn_q8:Vec<ResourceEntry<i32>>,
-    power_resource_demand_per_turn_q8:Vec<ResourceEntry<i32>>,
-});
+/// Player.Resources12/16 wire projection. Raw reserved values remain intact;
+/// native Read defaults and its clamp are described separately, not applied.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Resources {
+    pub wire_version: u32,
+    pub free_resource_visibility: Vec<ResourceEntry<bool>>,
+    pub extra_amenities_per_owned_luxury_resource: i32,
+    pub extra_amenities_per_owned_bonus_resource: i32,
+    pub full_access_one_strategic: bool,
+    pub prevent_harvest_resource: i32,
+    pub resource_ownership: Vec<ResourceEntry<Vec<i32>>>,
+    pub accumulated_resource_per_turn_q8: Vec<ResourceEntry<i32>>,
+    pub luxury_allocations: Vec<CityResource>,
+    pub reserved_resources: Vec<ResourceEntry<i32>>,
+    pub banned_resources: Vec<ResourceEntry<i32>>,
+    pub no_cap_resources: Vec<ResourceEntry<i32>>,
+    pub export_resource_extracted: Vec<ResourceEntry<i32>>,
+    pub import_resource_extracted: Vec<ResourceEntry<i32>>,
+    pub free_resources_extracted: Vec<ResourceEntry<i32>>,
+    pub extra_accumulation_modifier: Vec<ResourceEntry<i32>>,
+    pub resource_stockpile_cap_modifier: Vec<ResourceEntry<i32>>,
+    pub unit_resource_demand_per_turn_q8: Vec<ResourceEntry<i32>>,
+    pub power_resource_demand_per_turn_q8: Vec<ResourceEntry<i32>>,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResourceReadEffect {
+    /// Zero at each actual Resource definition collection index; registry/count,
+    /// dense ordering and unrepresented slots are not inferred from wire data.
+    ZeroAtActualResourceIndexes,
+    /// After native hash overlay, clamp negatives across the entire logical
+    /// reserved-resource vector. This does not normalize the wire pairs here.
+    ClampNegativeReservedEntriesToZero,
+}
+impl Resources {
+    /// At12: extra accumulation, stockpile cap, unit demand and power demand.
+    pub fn omitted_resource_arrays_read_effect(&self) -> Option<ResourceReadEffect> {
+        (self.wire_version == 12).then_some(ResourceReadEffect::ZeroAtActualResourceIndexes)
+    }
+    pub fn reserved_resources_read_effect(&self) -> ResourceReadEffect {
+        ResourceReadEffect::ClampNegativeReservedEntriesToZero
+    }
+}
+impl Wire for Resources {
+    const MIN: usize = 4
+        + <Vec<ResourceEntry<bool>> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<ResourceEntry<Vec<i32>>> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN
+        + <Vec<CityResource> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN
+        + <Vec<ResourceEntry<i32>> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = r.version()?;
+        Ok(Self {
+            wire_version,
+            free_resource_visibility: <Vec<ResourceEntry<bool>> as Wire>::read(r)?,
+            extra_amenities_per_owned_luxury_resource: <i32 as Wire>::read(r)?,
+            extra_amenities_per_owned_bonus_resource: <i32 as Wire>::read(r)?,
+            full_access_one_strategic: <bool as Wire>::read(r)?,
+            prevent_harvest_resource: <i32 as Wire>::read(r)?,
+            resource_ownership: <Vec<ResourceEntry<Vec<i32>>> as Wire>::read(r)?,
+            accumulated_resource_per_turn_q8: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            luxury_allocations: <Vec<CityResource> as Wire>::read(r)?,
+            reserved_resources: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            banned_resources: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            no_cap_resources: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            export_resource_extracted: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            import_resource_extracted: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            free_resources_extracted: <Vec<ResourceEntry<i32>> as Wire>::read(r)?,
+            extra_accumulation_modifier: if wire_version == 16 {
+                <Vec<ResourceEntry<i32>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            resource_stockpile_cap_modifier: if wire_version == 16 {
+                <Vec<ResourceEntry<i32>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            unit_resource_demand_per_turn_q8: if wire_version == 16 {
+                <Vec<ResourceEntry<i32>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            power_resource_demand_per_turn_q8: if wire_version == 16 {
+                <Vec<ResourceEntry<i32>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.free_resource_visibility.write(w)?;
+        self.extra_amenities_per_owned_luxury_resource.write(w)?;
+        self.extra_amenities_per_owned_bonus_resource.write(w)?;
+        self.full_access_one_strategic.write(w)?;
+        self.prevent_harvest_resource.write(w)?;
+        self.resource_ownership.write(w)?;
+        self.accumulated_resource_per_turn_q8.write(w)?;
+        self.luxury_allocations.write(w)?;
+        self.reserved_resources.write(w)?;
+        self.banned_resources.write(w)?;
+        self.no_cap_resources.write(w)?;
+        self.export_resource_extracted.write(w)?;
+        self.import_resource_extracted.write(w)?;
+        self.free_resources_extracted.write(w)?;
+        self.extra_accumulation_modifier.write(w)?;
+        self.resource_stockpile_cap_modifier.write(w)?;
+        self.unit_resource_demand_per_turn_q8.write(w)?;
+        self.power_resource_demand_per_turn_q8.write(w)?;
+        Ok(())
+    }
+}
+
 impl Resources {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -271,6 +377,7 @@ mod tests {
     }
     fn specimen() -> Resources {
         Resources {
+            wire_version: VERSION,
             free_resource_visibility: vec![
                 ResourceEntry {
                     resource_hash: 0x8000_0001,
@@ -412,12 +519,130 @@ mod tests {
         }
     }
     #[test]
+    fn resources12_literal_omits_late_arrays_without_normalizing_wire_entries() {
+        fn words(b: &mut Vec<u8>, values: &[i32]) {
+            for v in values {
+                b.extend(v.to_le_bytes());
+            }
+        }
+        let hash = 0x87654321u32 as i32;
+        let mut b = Vec::new();
+        words(&mut b, &[12, 2, hash]);
+        b.push(1);
+        words(&mut b, &[hash]);
+        b.push(0);
+        words(&mut b, &[-11, 12]);
+        b.push(1);
+        words(&mut b, &[-13]);
+        words(&mut b, &[1, hash, 3, i32::MIN, 0, i32::MAX]); // ownership row
+        words(&mut b, &[1, hash, -257]); // accumulated Q8
+        words(&mut b, &[1, 0xab010007u32 as i32, hash]); // luxury allocation
+        words(&mut b, &[2, hash, -3, hash, 7]); // raw reserved pairs incl negative
+        words(&mut b, &[1, hash, -5]); // banned
+        words(&mut b, &[0]); // no-cap
+        words(&mut b, &[1, hash, 10, 1, hash, -11, 1, hash, 12]); // export/import/free
+                                                                  // Four arrays introduced13/14/15 have no wire counts at12.
+        let end = b.len();
+        b.extend([0xaa, 0xbb]);
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 14,
+        };
+        let (v, used, items) = Resources::decode_prefix_with_items(&b, exact).unwrap();
+        assert_eq!((used, items, v.wire_version), (end, 14, 12));
+        assert_eq!(
+            (
+                v.extra_amenities_per_owned_luxury_resource,
+                v.extra_amenities_per_owned_bonus_resource
+            ),
+            (-11, 12)
+        );
+        assert!(v.full_access_one_strategic);
+        assert_eq!(v.prevent_harvest_resource, -13);
+        assert_eq!(v.resource_ownership[0].value, [i32::MIN, 0, i32::MAX]);
+        assert_eq!(v.accumulated_resource_per_turn_q8[0].value, -257);
+        assert_eq!(v.luxury_allocations[0].city_id, 0xab010007);
+        assert_eq!(
+            v.reserved_resources
+                .iter()
+                .map(|p| (p.resource_hash, p.value))
+                .collect::<Vec<_>>(),
+            vec![(hash as u32, -3), (hash as u32, 7)]
+        );
+        assert_eq!(v.banned_resources[0].value, -5);
+        assert_eq!(
+            (
+                v.export_resource_extracted[0].value,
+                v.import_resource_extracted[0].value,
+                v.free_resources_extracted[0].value
+            ),
+            (10, -11, 12)
+        );
+        assert!(
+            v.extra_accumulation_modifier.is_empty()
+                && v.resource_stockpile_cap_modifier.is_empty()
+        );
+        assert!(
+            v.unit_resource_demand_per_turn_q8.is_empty()
+                && v.power_resource_demand_per_turn_q8.is_empty()
+        );
+        assert_eq!(
+            v.omitted_resource_arrays_read_effect(),
+            Some(ResourceReadEffect::ZeroAtActualResourceIndexes)
+        );
+        assert_eq!(
+            v.reserved_resources_read_effect(),
+            ResourceReadEffect::ClampNegativeReservedEntriesToZero
+        );
+        let mut w = Writer {
+            data: vec![0xaa],
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert_eq!(w.data, [0xaa]);
+        for n in 0..end {
+            assert!(Resources::decode_prefix(&b[..n], exact).is_err(), "{n}");
+        }
+        assert_eq!(
+            Resources::decode_prefix(
+                &b,
+                Limits {
+                    max_items: 13,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut bad = b.clone();
+        bad[12] = 2;
+        assert_eq!(
+            Resources::decode_prefix(&bad, exact),
+            Err(Error::InvalidBool(2))
+        );
+        let mut unknown = b.clone();
+        unknown[..4].copy_from_slice(&13u32.to_le_bytes());
+        assert_eq!(
+            Resources::decode_prefix(&unknown, exact),
+            Err(Error::Version {
+                expected: 16,
+                actual: 13
+            })
+        );
+    }
+    #[test]
     fn nonempty_roundtrip_and_prefix() {
         let v = specimen();
         let (b, i) = v.encode_with_items(limits()).unwrap();
         let (mut suffix, n, items) = Resources::decode_prefix_with_items(&b, limits()).unwrap();
         assert_eq!(suffix, v);
         assert_eq!(n, b.len());
+        assert_eq!(v.wire_version, 16);
+        assert_eq!(v.omitted_resource_arrays_read_effect(), None);
+        assert_eq!(
+            v.reserved_resources_read_effect(),
+            ResourceReadEffect::ClampNegativeReservedEntriesToZero
+        );
         assert_eq!(i, items);
         assert_eq!(items, 30);
         suffix.reserved_resources[0].value = -23;
