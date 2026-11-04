@@ -33,7 +33,8 @@ pub struct PlotVisibilityChanged {
     pub first_reveal: bool,
 }
 impl Runtime {
-    fn shared(&self, owner: i32) -> Result<&SharedLayers, &'static str> {
+    /// Checked actual live group1 storage; never reconstructed from group0.
+    pub fn shared(&self, owner: i32) -> Result<&SharedLayers, &'static str> {
         let mut rows = self.shared.iter().filter(|r| r.owner == owner);
         let value = rows.next().ok_or("missing live shared visibility")?;
         if rows.next().is_some() {
@@ -255,7 +256,7 @@ impl<E: Effects> visibility_change::Context for Context<'_, E> {
                     continue;
                 }
                 let own = self.own_visibility(player)?;
-                let mut shared = self.runtime.shared(player).map_err(Error::Missing)?.clone();
+                let shared = self.runtime.shared(player).map_err(Error::Missing)?;
                 let before = shared
                     .0
                     .iter()
@@ -263,12 +264,7 @@ impl<E: Effects> visibility_change::Context for Context<'_, E> {
                     .and_then(|l| l.values.get(change.plot_index as usize))
                     .copied()
                     .ok_or(Error::Missing("shared base visibility count"))?;
-                let after = visibility_change::change_base_count(
-                    &mut shared.0,
-                    change.plot_index,
-                    change.delta,
-                )
-                .map_err(Error::Visibility)?;
+                let after = visibility_change::base_count_after(before, change.delta);
                 if (before > 0) != (after > 0)
                     || (after == 0
                         && change.delta == 0
@@ -287,22 +283,26 @@ impl<E: Effects> visibility_change::Context for Context<'_, E> {
                         .and_then(|i| self.runtime.hidden_layer_hashes.get(i))
                         .copied()
                         .ok_or(Error::Missing("hidden visibility layer mapping"))?;
-                    let mut changed = visibility_change::change_hidden_count(
-                        &mut shared.0,
-                        change.plot_index,
-                        hash,
-                        change.delta,
-                    )
-                    .map_err(Error::Visibility)?;
+                    let probe =
+                        |layers: &[c6_core::map::VisibilityLayer]| -> Result<bool, Self::Error> {
+                            let Some(layer) = layers.iter().find(|l| l.type_hash == hash) else {
+                                return Ok(false);
+                            };
+                            let mut value = layer
+                                .values
+                                .get(change.plot_index as usize)
+                                .copied()
+                                .ok_or(Error::Missing("hidden visibility count"))?;
+                            // Native base writes precede hidden writes, including
+                            // an explicitly supplied aliased layer hash.
+                            if hash == visibility_change::BASE_LAYER_HASH {
+                                value = visibility_change::base_count_after(value, change.delta);
+                            }
+                            Ok(visibility_change::hidden_count_after(value, change.delta).1)
+                        };
+                    let mut changed = probe(&shared.0)?;
                     if player == change.owner {
-                        let mut layers = own.layers.clone();
-                        changed |= visibility_change::change_hidden_count(
-                            &mut layers,
-                            change.plot_index,
-                            hash,
-                            change.delta,
-                        )
-                        .map_err(Error::Visibility)?;
+                        changed |= probe(&own.layers)?;
                     }
                     if changed
                         && !visibility_propagation::hidden_propagation_is_empty(
@@ -570,50 +570,6 @@ impl<E: Effects> SightContext for Context<'_, E> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    fn row(owner: i32) -> c6_core::map::PlayerVisibility {
-        c6_core::map::PlayerVisibility {
-            player: owner,
-            visibility: Visibility {
-                player_id: owner,
-                cached_num_revealed_hexes: 0,
-                cached_old: false,
-                revealed: vec![0],
-                layers: vec![],
-                outgoing_visibility: vec![],
-                outgoing_visibility_blockers: vec![],
-            },
-        }
-    }
-    #[test]
-    fn reordered_visibility_requires_actual_manager_mapping() {
-        let rows = vec![row(7), row(2)];
-        let mut mapping = [-1; 65];
-        mapping[7] = 0;
-        mapping[2] = 1;
-        assert!(std::ptr::eq(
-            mapped_visibility(&rows, Some(&mapping), 2).unwrap(),
-            &rows[1].visibility
-        ));
-        mapping[2] = 0;
-        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
-        assert!(mapped_visibility(&rows, None, 2).is_err());
-    }
-    #[test]
-    fn contradictory_or_duplicate_owner_is_not_silently_selected() {
-        let mut rows = vec![row(2)];
-        let mut mapping = [-1; 65];
-        mapping[2] = 0;
-        rows[0].visibility.player_id = 7;
-        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
-        rows[0].visibility.player_id = 2;
-        rows.push(row(2));
-        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
-    }
-}
-
 impl<E: Effects> visibility_propagation::Context for Context<'_, E> {
     type Error = Error<E::Error>;
     fn world(&self) -> &world::World {
@@ -678,5 +634,49 @@ impl<E: Effects> visibility_propagation::Context for Context<'_, E> {
         self.effects
             .unit_visibility_changed(self.state, self.runtime, event)
             .map_err(Error::Effect)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn row(owner: i32) -> c6_core::map::PlayerVisibility {
+        c6_core::map::PlayerVisibility {
+            player: owner,
+            visibility: Visibility {
+                player_id: owner,
+                cached_num_revealed_hexes: 0,
+                cached_old: false,
+                revealed: vec![0],
+                layers: vec![],
+                outgoing_visibility: vec![],
+                outgoing_visibility_blockers: vec![],
+            },
+        }
+    }
+    #[test]
+    fn reordered_visibility_requires_actual_manager_mapping() {
+        let rows = vec![row(7), row(2)];
+        let mut mapping = [-1; 65];
+        mapping[7] = 0;
+        mapping[2] = 1;
+        assert!(std::ptr::eq(
+            mapped_visibility(&rows, Some(&mapping), 2).unwrap(),
+            &rows[1].visibility
+        ));
+        mapping[2] = 0;
+        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
+        assert!(mapped_visibility(&rows, None, 2).is_err());
+    }
+    #[test]
+    fn contradictory_or_duplicate_owner_is_not_silently_selected() {
+        let mut rows = vec![row(2)];
+        let mut mapping = [-1; 65];
+        mapping[2] = 0;
+        rows[0].visibility.player_id = 7;
+        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
+        rows[0].visibility.player_id = 2;
+        rows.push(row(2));
+        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
     }
 }

@@ -93,6 +93,20 @@ fn entry(layers: &[VisibilityLayer], plot: u32) -> Result<i16, StateError> {
         .ok_or(StateError::PlotOutOfRange)
 }
 
+/// Scalar probe shared by preflight and committed base-count writes.
+pub fn base_count_after(value: i16, delta: i32) -> i16 {
+    value.wrapping_add(delta as i16).max(0)
+}
+
+/// Stored hidden count and visibility crossing, using the native wide sum.
+pub fn hidden_count_after(value: i16, delta: i32) -> (i16, bool) {
+    if delta == 0 {
+        return (value, false);
+    }
+    let sum = i32::from(value) + i32::from(delta as i16);
+    (sum.max(0) as i16, (value > 0) != (sum > 0))
+}
+
 /// Native base count wraps at 16 bits, then the manager clamps negative results.
 pub fn change_base_count(
     layers: &mut [VisibilityLayer],
@@ -106,7 +120,7 @@ pub fn change_base_count(
         .values
         .get_mut(plot as usize)
         .ok_or(StateError::PlotOutOfRange)?;
-    *value = value.wrapping_add(delta as i16).max(0);
+    *value = base_count_after(*value, delta);
     Ok(*value)
 }
 
@@ -130,10 +144,9 @@ pub fn change_hidden_count(
         .values
         .get_mut(plot as usize)
         .ok_or(StateError::PlotOutOfRange)?;
-    let before = *value > 0;
-    let sum = i32::from(*value) + i32::from(delta as i16);
-    *value = sum.max(0) as i16;
-    Ok(before != (sum > 0))
+    let (after, crossed) = hidden_count_after(*value, delta);
+    *value = after;
+    Ok(crossed)
 }
 
 fn revealed(v: &Visibility, plot: u32) -> Result<bool, StateError> {
