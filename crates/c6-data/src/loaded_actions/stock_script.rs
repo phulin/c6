@@ -168,32 +168,6 @@ impl<P> Runtime<P> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn callback_observes_release_and_success_restores_ownership() {
-        let mut sync = Synchronization::exclusive();
-        sync.call(|| Ok(())).unwrap();
-        assert_eq!(sync.core_lock_depth(), 1);
-        sync.release().unwrap();
-        sync.call(|| Ok(())).unwrap();
-        assert_eq!(sync.core_lock_depth(), 0);
-        assert!(matches!(sync.release(), Err(Error::LockUnderflow)));
-    }
-    #[test]
-    fn callback_failure_retains_release_prefix() {
-        let mut sync = Synchronization::exclusive();
-        assert!(matches!(
-            sync.call::<()>(|| Err(Error::Identity)),
-            Err(Error::Identity)
-        ));
-        assert_eq!(sync.core_lock_depth(), 0);
-        sync.acquire().unwrap();
-        assert_eq!(sync.core_lock_depth(), 1);
-    }
-}
-
 /// Arguments are scoped to one Manager TestAll call and retain native order.
 pub struct Arguments {
     values: Vec<i32>,
@@ -489,5 +463,31 @@ impl<P> c6_core::skip_turn::legality::ManagerQueries<c6_core::unit::Unit> for Ru
         results: Option<&mut Self::Results>,
     ) -> Result<bool, Self::Error> {
         Err("physical query must use canonical Data Manager wrapper")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn callback_observes_release_and_success_restores_ownership() {
+        let mut sync = Synchronization::exclusive();
+        sync.call(|| Ok(())).unwrap();
+        assert_eq!(sync.core_lock_depth(), 1);
+        sync.release().unwrap();
+        sync.call(|| Ok(())).unwrap();
+        assert_eq!(sync.core_lock_depth(), 0);
+        assert!(matches!(sync.release(), Err(Error::LockUnderflow)));
+    }
+    #[test]
+    fn callback_failure_retains_release_prefix() {
+        let mut sync = Synchronization::exclusive();
+        assert!(matches!(
+            sync.call::<()>(|| Err(Error::Identity)),
+            Err(Error::Identity)
+        ));
+        assert_eq!(sync.core_lock_depth(), 0);
+        sync.acquire().unwrap();
+        assert_eq!(sync.core_lock_depth(), 1);
     }
 }
