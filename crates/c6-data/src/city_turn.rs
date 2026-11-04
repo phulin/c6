@@ -8,6 +8,7 @@ pub mod economy;
 pub mod growth;
 pub mod housing;
 pub mod religion;
+pub mod resources;
 
 #[derive(Debug)]
 pub enum Error {

@@ -23,6 +23,8 @@ pub struct Definitions {
     districts: Vec<(u32, i32)>,
     projects: Vec<Project>,
     resources: Vec<(u32, bool)>,
+    resource_visibility: super::resources::Definitions,
+    improvements: crate::registry::LinuxDefinitionRegistry,
 }
 fn integer(row: crate::Row<'_>, field: &'static str) -> Result<i32, Error> {
     match row.get(field).map_err(Error::Rules)? {
@@ -102,6 +104,8 @@ impl Definitions {
             districts,
             projects,
             resources,
+            resource_visibility: super::resources::Definitions::from_rules(rules)?,
+            improvements: registry("Improvements", "ImprovementType")?,
         })
     }
     fn project(&self, city: &City) -> Result<Option<&Project>, Error> {
@@ -275,9 +279,55 @@ impl Definitions {
             }
         }
         if city.resources.extra_amenity_modifier > 0 {
-            return Err(Error::Unsupported(
-                "current visible improved local luxury resources",
-            ));
+            for (resource_index, &(_, luxury)) in self.resources.iter().enumerate() {
+                if !luxury {
+                    continue;
+                }
+                for index in 0..c6_core::city_citizen_assignment::NUM_PLOTS as i32 {
+                    let Some(location) = c6_core::city_citizen_assignment::plot_location(
+                        state.world().map(),
+                        PlotCoord {
+                            x: city.header.location_x,
+                            y: city.header.location_y,
+                        },
+                        index,
+                    )
+                    .map_err(|_| Error::Unsupported("local luxury city plot"))?
+                    else {
+                        continue;
+                    };
+                    let (_, plot) = movement_world::plot_at(state.world().map(), location)
+                        .map_err(|_| Error::Unsupported("local luxury plot"))?;
+                    if !plot
+                        .city_attributes
+                        .as_ref()
+                        .is_some_and(|a| a.working_city == id && i32::from(a.player) == owner)
+                    {
+                        continue;
+                    }
+                    let resource = self
+                        .resources
+                        .iter()
+                        .position(|r| r.0 == plot.resource_hash)
+                        .map_or(-1, |i| i as i32);
+                    if self
+                        .resource_visibility
+                        .visible_resource(state, owner, resource)?
+                        != resource_index as i32
+                    {
+                        continue;
+                    }
+                    if self
+                        .improvements
+                        .find_index(plot.improvement_hash)
+                        .is_some()
+                        && !plot.flags.get(c6_core::map::PlotFlag::ImprovementPillaged)
+                    {
+                        result = result.wrapping_add(city.resources.extra_amenity_modifier);
+                        break;
+                    }
+                }
+            }
         }
         result = result.wrapping_add(self.entertainment(state, owner, id)?);
         for value in [
