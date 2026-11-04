@@ -1711,6 +1711,7 @@ pub(crate) mod tests {
     fn espionage_carrier() -> player_espionage::Espionage {
         use crate::player_espionage as pmod;
         pmod::Espionage {
+            wire_version: 17,
             spy_capacity: -999,
             captured_spies: vec![pmod::CapturedSpy {
                 owning_player_ordinal: -998,

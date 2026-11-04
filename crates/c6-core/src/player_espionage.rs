@@ -1,4 +1,4 @@
-//! Current Linux XP2 Player.Espionage v17 wire transport, including nested records.
+//! Bounded Linux XP2 Player.Espionage v15/v17 wire transport, with strict nested records.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::Limits;
 
@@ -6,6 +6,7 @@ pub const VERSION: u32 = 17;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     Version { expected: u32, actual: u32 },
@@ -218,18 +219,92 @@ record!(TargetCitySpyYieldPercent, true, {
     yield_ordinal:i32,
     percent:i32,
 });
-record!(Espionage, true, {
-    spy_capacity:i32,
-    captured_spies:Vec<CapturedSpy>,
-    off_map_spies:Vec<OffMapSpy>,
-    cities_with_sources:Vec<CityWithSources>,
-    global_offense_bonus:i32,
-    global_defense_bonus:i32,
-    extra_steal_tech_boosts:i32,
-    mission_histories:Vec<MissionHistoryRecord>,
-    counter_spy_yield_awards:Vec<CounterSpyYieldAward>,
-    target_city_spy_yield_percents:Vec<TargetCitySpyYieldPercent>,
-});
+/// Player.Espionage15/17 wire projection. Empty omitted15 vectors represent
+/// no wire entries, not an empty native gameplay list.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Espionage {
+    pub wire_version: u32,
+    pub spy_capacity: i32,
+    pub captured_spies: Vec<CapturedSpy>,
+    pub off_map_spies: Vec<OffMapSpy>,
+    pub cities_with_sources: Vec<CityWithSources>,
+    pub global_offense_bonus: i32,
+    pub global_defense_bonus: i32,
+    pub extra_steal_tech_boosts: i32,
+    pub mission_histories: Vec<MissionHistoryRecord>,
+    pub counter_spy_yield_awards: Vec<CounterSpyYieldAward>,
+    pub target_city_spy_yield_percents: Vec<TargetCitySpyYieldPercent>,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OmittedEspionageState {
+    UnknownRetainedBaseline,
+}
+impl Espionage {
+    /// Applies to counter_spy_yield_awards and target_city_spy_yield_percents.
+    /// Native15 self-default copies do not reset or alter either prior list.
+    pub fn omitted_read_state(&self) -> Option<OmittedEspionageState> {
+        (self.wire_version == 15).then_some(OmittedEspionageState::UnknownRetainedBaseline)
+    }
+}
+impl Wire for Espionage {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <Vec<CapturedSpy> as Wire>::MIN
+        + <Vec<OffMapSpy> as Wire>::MIN
+        + <Vec<CityWithSources> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<MissionHistoryRecord> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | 17) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            spy_capacity: <i32 as Wire>::read(r)?,
+            captured_spies: <Vec<CapturedSpy> as Wire>::read(r)?,
+            off_map_spies: <Vec<OffMapSpy> as Wire>::read(r)?,
+            cities_with_sources: <Vec<CityWithSources> as Wire>::read(r)?,
+            global_offense_bonus: <i32 as Wire>::read(r)?,
+            global_defense_bonus: <i32 as Wire>::read(r)?,
+            extra_steal_tech_boosts: <i32 as Wire>::read(r)?,
+            mission_histories: <Vec<MissionHistoryRecord> as Wire>::read(r)?,
+            counter_spy_yield_awards: if wire_version == 17 {
+                <Vec<CounterSpyYieldAward> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            target_city_spy_yield_percents: if wire_version == 17 {
+                <Vec<TargetCitySpyYieldPercent> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.spy_capacity.write(w)?;
+        self.captured_spies.write(w)?;
+        self.off_map_spies.write(w)?;
+        self.cities_with_sources.write(w)?;
+        self.global_offense_bonus.write(w)?;
+        self.global_defense_bonus.write(w)?;
+        self.extra_steal_tech_boosts.write(w)?;
+        self.mission_histories.write(w)?;
+        self.counter_spy_yield_awards.write(w)?;
+        self.target_city_spy_yield_percents.write(w)?;
+        Ok(())
+    }
+}
+
 impl Espionage {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -281,6 +356,7 @@ mod tests {
     }
     fn specimen() -> Espionage {
         Espionage {
+            wire_version: VERSION,
             spy_capacity: -7,
             captured_spies: vec![CapturedSpy {
                 owning_player_ordinal: -1,
@@ -401,6 +477,75 @@ mod tests {
         assert_eq!(value.encode(limits()).unwrap(), bytes);
         assert_eq!(Espionage::decode(&bytes, limits()).unwrap(), value);
         assert_eq!(value.encode_with_items(limits()).unwrap().1, 11);
+    }
+    #[test]
+    fn espionage15_preserves_unknown_omitted_lists_and_present_history() {
+        let mut b = Vec::new();
+        for v in [15i32, 7, 0, 0, 0, -1, 2, -3, 1] {
+            b.extend(v.to_le_bytes());
+        }
+        let history_tag = b.len();
+        for v in [17i32, -4, -1, -5, -6, -7, -8, -9, -10, -11, -12] {
+            b.extend(v.to_le_bytes());
+        }
+        let end = b.len();
+        b.extend([0xaa, 0xbb]);
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 1,
+        };
+        let (v, used, items) = Espionage::decode_prefix_with_items(&b, exact).unwrap();
+        assert_eq!((used, items, v.wire_version), (end, 1, 15));
+        assert_eq!(v.spy_capacity, 7);
+        assert_eq!(
+            (
+                v.global_offense_bonus,
+                v.global_defense_bonus,
+                v.extra_steal_tech_boosts
+            ),
+            (-1, 2, -3)
+        );
+        assert_eq!(v.mission_histories[0].operation_hash, u32::MAX);
+        assert_eq!(v.mission_histories[0].loot_info, -12);
+        assert_eq!(
+            v.omitted_read_state(),
+            Some(OmittedEspionageState::UnknownRetainedBaseline)
+        );
+        assert!(
+            v.counter_spy_yield_awards.is_empty() && v.target_city_spy_yield_percents.is_empty()
+        );
+        assert_eq!(v.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Espionage::decode_prefix(&b[..n], exact).is_err(), "{n}");
+        }
+        assert_eq!(
+            Espionage::decode_prefix(
+                &b,
+                Limits {
+                    max_items: 0,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut nested = b.clone();
+        nested[history_tag..history_tag + 4].copy_from_slice(&15u32.to_le_bytes());
+        assert_eq!(
+            Espionage::decode_prefix(&nested, exact),
+            Err(Error::Version {
+                expected: 17,
+                actual: 15
+            })
+        );
+        let mut unknown = b.clone();
+        unknown[..4].copy_from_slice(&16u32.to_le_bytes());
+        assert_eq!(
+            Espionage::decode_prefix(&unknown, exact),
+            Err(Error::Version {
+                expected: 17,
+                actual: 16
+            })
+        );
     }
     #[test]
     fn nonempty_roundtrip_and_prefix() {
