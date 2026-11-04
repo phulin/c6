@@ -8,6 +8,7 @@
 pub mod appeal;
 pub mod building_yields;
 pub mod buildings;
+pub mod modifier_effects;
 
 use c6_core::{
     city_production::{execution, Order, QueueEntry},
