@@ -703,12 +703,45 @@ fn node_schema(hash: u32) -> Result<&'static [FieldKind], Error> {
         .map(|x| x.2)
         .ok_or(Error::UnsupportedNodeType(hash))
 }
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+fn node28_omissions(hash: u32) -> &'static [usize] {
+    match hash {
+        0x296535ee => &[6], // Operation Move
+        0xf326fede => &[1], // Operation Defend Units
+        0xa8120f1b => &[4], // Operation Change Target
+        0xe5ecbdf8 => &[2], // Operation Pillage
+        0x9d4a6546 => &[0], // Operation Launch nuke
+        _ => &[],
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NodeDefinition {
     pub shape: i32,
     pub node_hash: u32,
+    pub node_data_version: u32,
+    /// Serialized values only; version28 omits some current-schema slots.
+    /// Native NodeData defaults/reconstruction are not executed.
     pub fields: Vec<NodeValue>,
     pub num_shared_data: u32,
+}
+impl Default for NodeDefinition {
+    fn default() -> Self {
+        Self {
+            shape: 0,
+            node_hash: 0,
+            node_data_version: 33,
+            fields: Vec::new(),
+            num_shared_data: 0,
+        }
+    }
+}
+impl NodeDefinition {
+    pub fn omitted_current_field_indices(&self) -> &'static [usize] {
+        if self.node_data_version == 28 {
+            node28_omissions(self.node_hash)
+        } else {
+            &[]
+        }
+    }
 }
 impl Wire for NodeDefinition {
     const MIN: usize = 20;
@@ -717,13 +750,27 @@ impl Wire for NodeDefinition {
         let shape = i32::read(r)?;
         let node_hash = u32::read(r)?;
         let schema = node_schema(node_hash)?;
-        r.version(33)?;
+        let node_data_version = u32::read(r)?;
+        if !matches!(node_data_version, 28 | 33) {
+            return Err(Error::Version {
+                expected: 33,
+                actual: node_data_version,
+            });
+        }
+        let omissions = if node_data_version == 28 {
+            node28_omissions(node_hash)
+        } else {
+            &[]
+        };
         // Dispatch fields are fixed schema members, not counted dynamic items.
         let mut fields = Vec::new();
         fields
             .try_reserve_exact(schema.len())
             .map_err(|_| Error::ResourceLimit)?;
-        for k in schema {
+        for (index, k) in schema.iter().enumerate() {
+            if omissions.contains(&index) {
+                continue;
+            }
             fields.push(match k {
                 FieldKind::Shared => NodeValue::Shared(SharedData::read(r)?),
                 FieldKind::Word => NodeValue::Word(u32::read(r)?),
@@ -734,11 +781,15 @@ impl Wire for NodeDefinition {
         Ok(Self {
             shape,
             node_hash,
+            node_data_version,
             fields,
             num_shared_data: u32::read(r)?,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.node_data_version != 33 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         let schema = node_schema(self.node_hash)?;
         if schema.len() != self.fields.len() {
             return Err(Error::NodeFieldShape);
@@ -872,6 +923,7 @@ mod tests {
             .map(|(hash, _, schema, _)| NodeDefinition {
                 shape: -7,
                 node_hash: *hash,
+                node_data_version: 33,
                 num_shared_data: u32::MAX,
                 fields: schema
                     .iter()
@@ -917,6 +969,95 @@ mod tests {
             max_bytes: 1 << 20,
             max_items: 1 << 16,
         }
+    }
+    #[test]
+    fn node_data28_serialized_omissions_and_trailer_alignment() {
+        fn word(raw: &mut Vec<u8>, v: u32) {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        for (hash, _, schema, _) in NODE_SCHEMAS {
+            let omitted = match hash {
+                0x296535ee => Some(6),
+                0xf326fede => Some(1),
+                0xa8120f1b => Some(4),
+                0xe5ecbdf8 => Some(2),
+                0x9d4a6546 => Some(0),
+                _ => None,
+            };
+            let mut raw = Vec::new();
+            for v in [3u32, i32::MIN as u32, *hash, 28] {
+                word(&mut raw, v);
+            }
+            for (i, k) in schema.iter().enumerate() {
+                if omitted == Some(i) {
+                    continue;
+                }
+                match k {
+                    FieldKind::Shared => {
+                        word(&mut raw, i32::MIN as u32 + i as u32);
+                        word(&mut raw, 0x80000000 + i as u32);
+                    }
+                    FieldKind::Word => word(&mut raw, 0xdead0000 + i as u32),
+                    FieldKind::Byte => raw.push(197 ^ i as u8),
+                    FieldKind::Plot => {
+                        word(&mut raw, i32::MIN as u32 + i as u32);
+                        word(&mut raw, i32::MAX as u32 - i as u32);
+                    }
+                }
+            }
+            word(&mut raw, 0x12345678);
+            let used = raw.len();
+            word(&mut raw, 0x87654321);
+            let cap = Limits {
+                max_bytes: used,
+                max_items: 0,
+            };
+            let mut r = Reader {
+                data: &raw,
+                pos: 0,
+                items: 0,
+                limits: cap,
+            };
+            let v = NodeDefinition::read(&mut r).unwrap();
+            assert_eq!((r.pos, r.items), (used, 0));
+            assert_eq!(v.node_data_version, 28);
+            assert_eq!(v.num_shared_data, 0x12345678);
+            assert_eq!(
+                v.fields.len(),
+                schema.len() - usize::from(omitted.is_some())
+            );
+            assert_eq!(v.omitted_current_field_indices(), omitted.as_slice());
+            let mut w = Writer {
+                data: Vec::new(),
+                bytes: 0,
+                items: 0,
+                limits: cap,
+                measuring: true,
+            };
+            assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+            if omitted.is_some() {
+                for n in 0..used {
+                    let mut r = Reader {
+                        data: &raw[..n],
+                        pos: 0,
+                        items: 0,
+                        limits: cap,
+                    };
+                    assert!(NodeDefinition::read(&mut r).is_err());
+                }
+            }
+            let mut r = Reader {
+                data: &raw,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes: used - 1,
+                    ..cap
+                },
+            };
+            assert_eq!(NodeDefinition::read(&mut r), Err(Error::ResourceLimit));
+        }
+        assert_eq!(NodeDefinition::default().node_data_version, 33);
     }
     #[test]
     fn legacy_analysis12_absent_hashes_are_not_index_bits() {
