@@ -17,6 +17,7 @@ pub enum IntegerParameter {
     CombatMaxHitPoints,
     CombatMaxNumAttacks,
     CombatGarrisonMilitiaModifier,
+    CombatBombardVsUnitStrengthModifier,
     FortifyTurnMax,
     LoyaltyStart,
     HealCityGarrison,
@@ -41,6 +42,7 @@ impl IntegerParameter {
             Self::CombatMaxHitPoints => "COMBAT_MAX_HIT_POINTS",
             Self::CombatMaxNumAttacks => "COMBAT_MAX_NUM_ATTACKS",
             Self::CombatGarrisonMilitiaModifier => "COMBAT_GARRISON_MILITIA_MODIFIER",
+            Self::CombatBombardVsUnitStrengthModifier => "COMBAT_BOMBARD_VS_UNIT_STRENGTH_MODIFIER",
             Self::FortifyTurnMax => "FORTIFY_TURN_MAX",
             Self::LoyaltyStart => "LOYALTY_START",
             Self::HealCityGarrison => "COMBAT_HEAL_CITY_GARRISON",
@@ -74,6 +76,7 @@ impl IntegerParameter {
             Self::HealLandEnemy => 5,
             Self::HealLandFriendly => 15,
             Self::HealLandNeutral | Self::CombatGarrisonMilitiaModifier => 10,
+            Self::CombatBombardVsUnitStrengthModifier => 17,
             Self::HealNavalEnemy | Self::HealNavalNeutral => 0,
             Self::ReligionHealingMultiplier => 3,
         }

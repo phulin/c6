@@ -3,6 +3,7 @@
 //! Definitions are admitted once. Each expansion reads current Units, Plots,
 //! diplomacy and visibility; unsupported reached dependencies remain errors.
 //! This read-only search plus Formation cache writes is not complete MoveTo.
+pub mod breadth_first;
 use crate::{
     city_movement::NativeTerrainDefinitions,
     formation_movement_cost as cost, formation_rules, movement_placement_state as placement,
@@ -233,6 +234,7 @@ pub struct Context<'s, 'a, 'r> {
     religion: u32,
     layer: u32,
     memo: logic::MovementMemo,
+    starting_remaining_override: Option<i32>,
 }
 impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
     pub fn new(
@@ -262,6 +264,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             religion: u32::MAX,
             layer: u32::MAX,
             memo: logic::MovementMemo::default(),
+            starting_remaining_override: None,
         })
     }
     fn record(&self) -> &Formation {
@@ -376,7 +379,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             formation_location: self.record().location,
             path_flags: s.flags,
             child_cache_flags: s.node(child).cache_flags,
-            starting_remaining: MovementPoints(self.record().moves_remaining_raw),
+            starting_remaining: MovementPoints(self.starting_remaining_override.unwrap_or(self.record().moves_remaining_raw)),
         };
         // Move the small identity memo out to permit the lazy live queries to
         // borrow this context; no Unit, World or definition collection is cloned.

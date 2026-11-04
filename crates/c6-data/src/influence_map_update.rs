@@ -1,4 +1,5 @@
-//! Current-state eager InfluenceMap rebuild for the supported threat-free path.
+//! Current-state eager InfluenceMap rebuild with source movement reachability.
+mod unit_jobs;
 use crate::{
     formation_movement_cost, formation_rules,
     game_parameters::{IntegerParameter, Parameters},
@@ -29,6 +30,8 @@ pub enum Error {
     Defender(crate::combat_defender::Error),
     Movement(formation_movement_cost::Error),
     Relations(c6_core::game_diplomatic_relations::Error),
+    Path(crate::formation_path_state::Error),
+    Strength(crate::melee_attack::strength::Error),
     Missing(&'static str),
 }
 impl std::fmt::Display for Error {
@@ -48,6 +51,10 @@ pub struct Definitions {
     levels: LinuxDefinitionRegistry,
     receives_influence: Vec<i32>,
     militia: i32,
+    bombard_modifier: i32,
+    max_hit_points: i32,
+    buildings: LinuxDefinitionRegistry,
+    building_strength: Vec<i32>,
 }
 impl Definitions {
     pub fn from_rules(
@@ -93,9 +100,20 @@ impl Definitions {
             levels: collection(rules, "CivilizationLevels", "CivilizationLevelType")
                 .map_err(Error::Definitions)?,
             receives_influence: integer("CivilizationLevels", "CanReceiveInfluence")?,
+            max_hit_points: Parameters::from_rules(rules)
+                .map_err(Error::Parameter)?
+                .integer(IntegerParameter::CombatMaxHitPoints)
+                .map_err(Error::Parameter)?,
+            buildings: collection(rules, "Buildings", "BuildingType")
+                .map_err(Error::Definitions)?,
+            building_strength: integer("Buildings", "OuterDefenseStrength")?,
             militia: Parameters::from_rules(rules)
                 .map_err(Error::Parameter)?
                 .integer(IntegerParameter::CombatGarrisonMilitiaModifier)
+                .map_err(Error::Parameter)?,
+            bombard_modifier: Parameters::from_rules(rules)
+                .map_err(Error::Parameter)?
+                .integer(IntegerParameter::CombatBombardVsUnitStrengthModifier)
                 .map_err(Error::Parameter)?,
         })
     }
@@ -107,6 +125,9 @@ pub struct Queries<'a, 'r> {
     pub movement: &'a formation_movement_cost::Definitions<'r>,
     pub formation: &'a formation_rules::Definitions,
     pub city_range: &'a city_range_attack::Queries<'a>,
+    pub path: Option<&'a crate::formation_path_state::Definitions<'a, 'r>>,
+    pub path_runtime: Option<&'a crate::formation_path_state::Runtime<'a>>,
+    pub strength: Option<&'a crate::melee_attack::strength::Definitions>,
 }
 type DistrictId = (i32, u32);
 struct Current<'a, 'q, 'r> {
@@ -182,7 +203,7 @@ impl Current<'_, '_, '_> {
         }
         Ok(level)
     }
-    fn has_defender_without_air(&self, location: PlotCoord) -> Result<bool, Error> {
+    fn defender_without_air(&self, location: PlotCoord) -> Result<Option<UnitReference>, Error> {
         use c6_core::combat_defender::{self, Context};
         let mut current = crate::combat_defender::Current::new(
             self.state,
@@ -191,6 +212,7 @@ impl Current<'_, '_, '_> {
             Some(0),
         );
         let mut index = 0;
+        let mut selected = None;
         while index < current.candidate_count().map_err(Error::Defender)? {
             if let Some(unit) = current.resolve(index).map_err(Error::Defender)? {
                 if !current.delayed_death(unit).map_err(Error::Defender)?
@@ -207,13 +229,22 @@ impl Current<'_, '_, '_> {
                         .domain
                         != 1
                     {
-                        return Ok(true);
+                        let replace = match selected {
+                            None => true,
+                            Some(old) => {
+                                current.combat_false(unit).map_err(Error::Defender)?
+                                    > current.combat_false(old).map_err(Error::Defender)?
+                            }
+                        };
+                        if replace {
+                            selected = Some(unit);
+                        }
                     }
                 }
             }
             index += 1;
         }
-        Ok(false)
+        Ok(selected)
     }
     fn defense(&self, district: &District) -> Result<i32, Error> {
         let Some(index) = self
@@ -238,25 +269,88 @@ impl Current<'_, '_, '_> {
             .max_melee_strength_trained
             .wrapping_shl(8)
             .wrapping_sub(self.definitions.militia.wrapping_shl(8));
-        if self.has_defender_without_air(PlotCoord {
+        let mut modifiers = 0i32;
+        if let Some(garrison) = self.defender_without_air(PlotCoord {
             x: district.location.0,
             y: district.location.1,
         })? {
-            return Err(Error::Missing(
-                "District defense garrison damage adjustment",
-            ));
+            let unit = self.unit(garrison)?;
+            let combat = self
+                .queries
+                .formation
+                .combat(self.state, unit)
+                .map_err(Error::Combat)?
+                .wrapping_shl(8);
+            let percent = unit
+                .i_damage
+                .wrapping_mul(100)
+                .checked_div(self.definitions.max_hit_points)
+                .ok_or(Error::Missing("District garrison damage division"))?;
+            let reduction = self
+                .queries
+                .strength
+                .ok_or(Error::Missing("garrison combat definitions"))?
+                .reduction_for_damage(
+                    self.state,
+                    percent,
+                    unit.k_combat_modifers
+                        .i_strength_reduction_for_damage_modifier,
+                )
+                .map_err(Error::Strength)?;
+            let strength = combat.wrapping_sub(reduction);
+            if strength > base {
+                modifiers = strength.wrapping_sub(base);
+            }
         }
+        let urban = if self.level(owner)? == 0x04e6b0a0 {
+            self.state
+                .retained()
+                .free_cities
+                .instances
+                .iter()
+                .find(|free| {
+                    free.living_raw != 0
+                        && city.header.location_x != -9999
+                        && city.header.location_y != -9999
+                        && free.city_location.x == city.header.location_x
+                        && free.city_location.y == city.header.location_y
+                })
+                .map_or(0, |free| free.urban_defenses)
+        } else {
+            self.player(owner)?.cities.urban_defenses
+        };
         let maximum = city_range_attack::ordinary_outer_defense_hit_points(
             city,
-            self.player(owner)?.cities.urban_defenses,
+            urban,
             self.queries.city_range.definitions,
         )
         .map_err(Error::Combat)?;
-        if self.level(owner)? == 0x04e6b0a0 {
-            return Err(Error::Missing("FreeCities urban defenses"));
-        }
         if district.outer_defenses_damage < maximum {
-            return Err(Error::Missing("District defense walls"));
+            let mut outer = 0i32;
+            for (i, building) in self.definitions.buildings.entries().iter().enumerate() {
+                let hash = crate::registry::linux_type_hash(&building.type_name);
+                let mut entries = city
+                    .buildings
+                    .building_locations
+                    .iter()
+                    .filter(|e| e.definition_hash == hash);
+                let location = entries
+                    .next()
+                    .ok_or(Error::Missing("Building location array"))?;
+                if entries.next().is_some() {
+                    return Err(Error::Missing("duplicate Building location"));
+                }
+                if location.value >= 0 {
+                    outer = outer.wrapping_add(self.definitions.building_strength[i]);
+                }
+            }
+            if outer > 0 {
+                modifiers = modifiers.wrapping_add(
+                    outer
+                        .wrapping_add(city.combat.outer_defense_strength_modifier)
+                        .wrapping_shl(8),
+                );
+            }
         }
         let mut district_strength = 0i32;
         for id in &city.districts.district_ids {
@@ -288,6 +382,7 @@ impl Current<'_, '_, '_> {
             }
         }
         Ok(base
+            .wrapping_add(modifiers)
             .wrapping_add(district_strength.max(0).wrapping_shl(8))
             .wrapping_add(city.combat.inner_defense_strength_modifier.wrapping_shl(8)))
     }
@@ -397,6 +492,15 @@ impl kernel::Context for Current<'_, '_, '_> {
                 self.queries.visibility,
             )
             .map_err(Error::Movement)
+    }
+    fn unit_jobs(&mut self, units: &[UnitReference]) -> Result<(), Error> {
+        self.apply_unit_jobs(units)
+    }
+    fn enemy_district(&mut self, district: DistrictId) -> Result<(), Error> {
+        self.apply_enemy_district(district)
+    }
+    fn friendly_ranged_district(&mut self, district: DistrictId) -> Result<(), Error> {
+        self.suppress_friendly_district(district)
     }
     fn district_count(&mut self, owner: Option<i32>) -> Result<usize, Error> {
         Ok(self

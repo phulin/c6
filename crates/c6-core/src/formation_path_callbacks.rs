@@ -1122,6 +1122,11 @@ pub struct MovementMemo {
 }
 
 impl MovementMemo {
+    /// BreadthFirstPathValid consumes the remaining budget at an enemy combat
+    /// obstruction. Preserve the current identity-pair cache for PathValid.
+    pub fn override_result(&mut self, result: MovementResult) {
+        self.result = result;
+    }
     /// Check retained node identities before invoking any lazy world getter.
     pub fn calculate_lazy<Q: LazyPathQueries>(
         &mut self,

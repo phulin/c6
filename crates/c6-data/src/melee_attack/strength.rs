@@ -110,6 +110,11 @@ struct BonusDefinitions {
     military_slot: Option<usize>,
 }
 impl Definitions {
+    /// Shared District garrison query uses this same quantized combat rule.
+    pub fn reduction_for_damage(&self, state: &LoadedState, percent: i32, modifier: i32) -> Result<i32, Error> {
+        self.check(state)?;
+        Ok(kernel::reduction_for_damage(percent, modifier, self.wounded_multiplier))
+    }
     /// Admit the static religion/policy collections needed by later bonus stages.
     /// Their exact target builder SQL orders GovernmentSlots and Policies by rowid.
     pub fn from_bound_rules(

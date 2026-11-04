@@ -537,6 +537,16 @@ impl Definitions<'_> {
             && district.is_complete
             && !district.pillaged)
     }
+    /// Optional definition HP without completeness or pillage predicates.
+    /// BreadthFirstPathValid tests this property alone.
+    pub fn district_definition_hit_points(
+        &self,
+        district: &c6_core::player_districts::District,
+    ) -> Result<Option<i32>, Error> {
+        let index = self.districts.registry.find_index(district.district_hash)
+            .ok_or(Error::Missing("District definition"))?;
+        self.district_hit_points.get(index).copied().ok_or(Error::Missing("District HitPoints"))
+    }
     pub fn unit_visible(
         &self,
         state: &LoadedState,

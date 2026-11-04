@@ -1,18 +1,15 @@
 //! Eager InfluenceMap rebuild at the current callback boundary.
 //!
-//! Unit influence jobs and ranged district neighborhoods remain explicit
-//! unsupported branches. The supported path still reads current war, unit,
-//! district and feature state; an empty threat set is never supplied as an answer.
+//! Current war, visibility, unit jobs, district neighborhoods and feature state
+//! are evaluated in source order; an empty threat set is never an input answer.
 use crate::player_ai_influence_map::InfluenceMap;
+pub mod threats;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<E> {
     Backend(E),
     MissingReligiousStorage,
     PlotIndex(usize),
-    EnemyUnitJobs,
-    EnemyDistrict,
-    FriendlyRangedDistrict,
 }
 impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -40,6 +37,7 @@ pub trait Context {
     fn is_combat(&mut self, unit: Self::Unit) -> Result<bool, Self::Error>;
     fn valid_location(&mut self, unit: Self::Unit) -> Result<bool, Self::Error>;
     fn unit_visible(&mut self, unit: Self::Unit) -> Result<bool, Self::Error>;
+    fn unit_jobs(&mut self, units: &[Self::Unit]) -> Result<(), Self::Error>;
     fn district_count(&mut self, owner: Option<i32>) -> Result<usize, Self::Error>;
     fn district_at(
         &mut self,
@@ -50,6 +48,8 @@ pub trait Context {
     fn district_plot(&mut self, district: Self::District) -> Result<usize, Self::Error>;
     fn district_defense_q8(&mut self, district: Self::District) -> Result<i32, Self::Error>;
     fn district_can_attack(&mut self, district: Self::District) -> Result<bool, Self::Error>;
+    fn enemy_district(&mut self, district: Self::District) -> Result<(), Self::Error>;
+    fn friendly_ranged_district(&mut self, district: Self::District) -> Result<(), Self::Error>;
     fn feature_danger(&mut self, plot: usize) -> Result<Option<i32>, Self::Error>;
 }
 
@@ -85,7 +85,7 @@ pub fn update<C: Context>(c: &mut C) -> Result<(), Error<C::Error>> {
         if !c.at_war(other).map_err(Error::Backend)? {
             continue;
         }
-        let mut selected = false;
+        let mut selected = Vec::new();
         for j in 0..c.unit_count(other).map_err(Error::Backend)? {
             let unit = c.unit_at(other, j).map_err(Error::Backend)?;
             c.visibility().map_err(Error::Backend)?;
@@ -94,16 +94,16 @@ pub fn update<C: Context>(c: &mut C) -> Result<(), Error<C::Error>> {
                 && c.valid_location(unit).map_err(Error::Backend)?
                 && c.unit_visible(unit).map_err(Error::Backend)?
             {
-                selected = true;
+                selected.push(unit);
             }
         }
-        if selected {
-            return Err(Error::EnemyUnitJobs);
+        if !selected.is_empty() {
+            c.unit_jobs(&selected).map_err(Error::Backend)?;
         }
         for j in 0..c.district_count(Some(other)).map_err(Error::Backend)? {
             let district = c.district_at(Some(other), j).map_err(Error::Backend)?;
             if c.district_visible(district).map_err(Error::Backend)? {
-                return Err(Error::EnemyDistrict);
+                c.enemy_district(district).map_err(Error::Backend)?;
             }
         }
     }
@@ -118,7 +118,8 @@ pub fn update<C: Context>(c: &mut C) -> Result<(), Error<C::Error>> {
                 .ok_or(Error::PlotIndex(plot))? = 0;
         }
         if c.district_can_attack(district).map_err(Error::Backend)? {
-            return Err(Error::FriendlyRangedDistrict);
+            c.friendly_ranged_district(district)
+                .map_err(Error::Backend)?;
         }
     }
     for plot in 0..count {
@@ -225,6 +226,16 @@ mod tests {
             self.log.push("visible");
             Ok(self.visible)
         }
+        fn unit_jobs(&mut self, units: &[usize]) -> Result<(), Self::Error> {
+            assert_eq!(units, [0, 1]);
+            Err("jobs")
+        }
+        fn enemy_district(&mut self, _: usize) -> Result<(), Self::Error> {
+            unreachable!()
+        }
+        fn friendly_ranged_district(&mut self, _: usize) -> Result<(), Self::Error> {
+            unreachable!()
+        }
         fn district_count(&mut self, owner: Option<i32>) -> Result<usize, Self::Error> {
             Ok(usize::from(owner.is_none()))
         }
@@ -299,7 +310,7 @@ mod tests {
             units: 2,
             ..Fixture::default()
         };
-        assert_eq!(on_unit_removed(&mut c), Err(Error::EnemyUnitJobs));
+        assert_eq!(on_unit_removed(&mut c), Err(Error::Backend("jobs")));
         assert_eq!(c.map.influence, [0, 0]);
         assert_eq!(c.map.religious_influence, Some(vec![0, 0]));
         assert_eq!(c.log.iter().filter(|s| **s == "visible").count(), 2);
