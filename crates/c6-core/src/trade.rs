@@ -202,6 +202,12 @@ impl Graph {
             .get(&(from, to))
             .map(|&(i, j)| &self.origins[i].destinations[j].edge)
     }
+    /// Crate-internal payload access. Public gameplay mutation is restricted to
+    /// GraphState's traversal view so keys/IDs and auxiliary indexes agree.
+    pub(crate) fn get_edge_mut(&mut self, from: Vertex, to: Vertex) -> Option<&mut Edge> {
+        let &(i, j) = self.edge_index.get(&(from, to))?;
+        Some(&mut self.origins[i].destinations[j].edge)
+    }
     pub fn get_edge_by_id(&self, id: i32) -> Option<&Edge> {
         self.id_index
             .get(&id)

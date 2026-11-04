@@ -3822,6 +3822,13 @@ impl LoadedState {
             .as_ref()
             .ok_or(Error::Missing(MissingInput::TradeGraph))
     }
+    /// Edit the admitted canonical graph in place; do not reimport its initial
+    /// snapshot after cursor updates. GraphState exposes only narrow edits.
+    pub fn trade_graph_mut(&mut self) -> Result<&mut crate::trade_graph_state::GraphState, Error> {
+        self.trade_graph
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::TradeGraph))
+    }
     pub fn trade_graph_source(&self) -> Option<&ComponentSnapshotWitness> {
         self.trade_graph_source.as_ref()
     }
