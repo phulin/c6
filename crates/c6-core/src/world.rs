@@ -385,6 +385,22 @@ impl World {
     pub fn map(&self) -> &Map {
         &self.map
     }
+    /// Serialized own visibility layers and the common revealed-state array.
+    /// Shared visibility counts are separate live state, absent from Map wire.
+    pub fn visibility(&self, owner: i32) -> Option<&crate::map::Visibility> {
+        self.map
+            .visibility
+            .iter()
+            .find(|v| v.player == owner)
+            .map(|v| &v.visibility)
+    }
+    pub fn visibility_mut(&mut self, owner: i32) -> Option<&mut crate::map::Visibility> {
+        self.map
+            .visibility
+            .iter_mut()
+            .find(|v| v.player == owner)
+            .map(|v| &mut v.visibility)
+    }
     pub fn players(&self) -> &[Player] {
         &self.players
     }
