@@ -6,6 +6,15 @@ use crate::diplomacy_statement::{
     StatementInfo,
 };
 use crate::unit_operation_aftermath::{self as aftermath, Session};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+// Representation-only owner token for rejecting cross-manager deferred plans.
+static NEXT_DRAIN_OWNER: AtomicU64 = AtomicU64::new(0);
+fn drain_owner() -> Result<u64, Error> {
+    NEXT_DRAIN_OWNER
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| v.checked_add(1))
+        .map_err(|_| Error::ResourceLimit)
+}
 
 /// Stable logical identity of an owned Player object. Native address bits are
 /// capture evidence, not the Rust object's address. Player replacement is not
@@ -31,6 +40,9 @@ pub enum Error {
     ResourceLimit,
     SessionMetadataRequired,
     InvalidSessionMetadata,
+    InvalidStatementInventory,
+    StatementInventoryAlreadyInitialized,
+    ExecutionProfileAlreadyInitialized,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -93,12 +105,12 @@ pub struct SessionMetadata {
     pub queued: Vec<StatementHandle>,
 }
 #[derive(Debug)]
-struct Routing {
-    authoritative: bool,
-    metadata: Vec<SessionMetadata>,
-    active: Option<SessionHandle>,
+pub(crate) struct Routing {
+    pub(crate) authoritative: bool,
+    pub(crate) metadata: Vec<SessionMetadata>,
+    pub(crate) active: Option<SessionHandle>,
     // Representation-only fresh object labels, never native numeric SessionID.
-    next_object_label: u64,
+    pub(crate) next_object_label: u64,
 }
 /// Owned pending state plus optional authoritative session routing metadata.
 /// Complete statement payloads and other active subtype effects remain required
@@ -106,11 +118,94 @@ struct Routing {
 #[derive(Debug)]
 pub struct Manager {
     ever_alive: Vec<PlayerHandle>,
-    open_sessions: Vec<Session<StatementHandle>>,
+    pub(crate) open_sessions: Vec<Session<StatementHandle>>,
     pending_actions: Vec<PendingAction>,
-    routing: Option<Routing>,
+    pub(crate) routing: Option<Routing>,
+    pub(crate) statements: Option<Vec<StatementInfo>>,
+    execution_profile: Option<(u32, statement::Logging)>,
+    // Exhaustion permanently disables deferred planning instead of aliasing an old stamp.
+    pub(crate) drain_revision: Option<u64>,
+    pub(crate) drain_owner: u64,
 }
 impl Manager {
+    pub(crate) fn invalidate_drain_plans(&mut self) {
+        self.drain_revision = self.drain_revision.and_then(|r| r.checked_add(1));
+    }
+    /// Install the complete typed statement owner once, before action admission.
+    /// Payload kinds are supplied runtime facts, not inferred from numeric IDs.
+    pub fn initialize_statement_inventory(
+        &mut self,
+        facts: Vec<StatementInfo>,
+    ) -> Result<(), Error> {
+        if self.statements.is_some() {
+            return Err(Error::StatementInventoryAlreadyInitialized);
+        }
+        let metadata = self.session_metadata()?;
+        if facts
+            .iter()
+            .enumerate()
+            .any(|(i, f)| facts[..i].iter().any(|g| g.handle == f.handle))
+        {
+            return Err(Error::InvalidStatementInventory);
+        }
+        for (session, meta) in self.open_sessions.iter().zip(metadata) {
+            for pending in &session.pending {
+                if !facts.iter().any(|f| {
+                    f.handle == pending.statement && f.from == pending.from && f.to == pending.to
+                }) {
+                    return Err(Error::InvalidStatementInventory);
+                }
+            }
+            if meta
+                .history
+                .iter()
+                .chain(&meta.queued)
+                .any(|h| !facts.iter().any(|f| f.handle == *h))
+            {
+                return Err(Error::InvalidStatementInventory);
+            }
+        }
+        // A handle cannot have two simultaneous owned list positions.
+        let mut handles = Vec::new();
+        for (session, meta) in self.open_sessions.iter().zip(metadata) {
+            for h in session
+                .pending
+                .iter()
+                .map(|p| p.statement)
+                .chain(meta.history.iter().copied())
+                .chain(meta.queued.iter().copied())
+            {
+                if handles.contains(&h) {
+                    return Err(Error::InvalidStatementInventory);
+                }
+                handles.try_reserve(1).map_err(|_| Error::ResourceLimit)?;
+                handles.push(h);
+            }
+        }
+        self.invalidate_drain_plans();
+        self.statements = Some(facts);
+        Ok(())
+    }
+    pub fn statement_inventory(&self) -> Option<&[StatementInfo]> {
+        self.statements.as_deref()
+    }
+    /// Bind the actual configuration and source-closed logging host once.
+    pub fn initialize_execution_profile(
+        &mut self,
+        game_mode: u32,
+        logging: statement::Logging,
+    ) -> Result<(), Error> {
+        if self.execution_profile.is_some() {
+            return Err(Error::ExecutionProfileAlreadyInitialized);
+        }
+        self.invalidate_drain_plans();
+        self.execution_profile = Some((game_mode, logging));
+        Ok(())
+    }
+    pub fn execution_profile(&self) -> Option<(u32, statement::Logging)> {
+        self.execution_profile
+    }
+
     fn validate_players(ever_alive: &[PlayerHandle]) -> Result<(), Error> {
         if ever_alive.len() > 64
             || ever_alive.iter().enumerate().any(|(i, p)| {
@@ -137,6 +232,10 @@ impl Manager {
             open_sessions: Vec::new(),
             pending_actions,
             routing: None,
+            statements: None,
+            execution_profile: None,
+            drain_revision: Some(0),
+            drain_owner: drain_owner()?,
         })
     }
     /// Initialize authoritative routing from an explicitly supplied runtime
@@ -158,6 +257,10 @@ impl Manager {
             open_sessions: Vec::new(),
             pending_actions,
             routing: None,
+            statements: None,
+            execution_profile: None,
+            drain_revision: Some(0),
+            drain_owner: drain_owner()?,
         };
         let mut metadata = Vec::new();
         metadata
@@ -223,6 +326,43 @@ impl Manager {
             .map(|r| r.next_object_label)
             .ok_or(Error::SessionMetadataRequired)
     }
+    fn validate_owned_statement(
+        &self,
+        context: Context,
+        incoming: Option<StatementInfo>,
+        retired: Option<StatementHandle>,
+    ) -> Result<(), statement::Error> {
+        if incoming.is_some()
+            && self
+                .execution_profile
+                .is_some_and(|p| p != (context.game_mode, context.logging))
+        {
+            return Err(statement::Error::Conflict);
+        }
+        let Some(facts) = &self.statements else {
+            return Ok(());
+        };
+        if incoming.is_some_and(|incoming| !facts.contains(&incoming)) {
+            return Err(statement::Error::Conflict);
+        }
+        if let Some(retired) = retired {
+            let fact = facts
+                .iter()
+                .find(|f| f.handle == retired)
+                .ok_or(statement::Error::Conflict)?;
+            if fact.kind != statement::StatementKind::Response {
+                return Err(statement::Error::Unsupported(
+                    statement::Unsupported::PendingDestructor(retired),
+                ));
+            }
+        }
+        Ok(())
+    }
+    fn retire_owned_statement(&mut self, retired: Option<StatementHandle>) {
+        if let (Some(facts), Some(retired)) = (&mut self.statements, retired) {
+            facts.retain(|f| f.handle != retired);
+        }
+    }
     /// Readonly computed routing/creation plan at the POSToutgoing-removal seam.
     /// Context configuration/logging and payload facts still require the same
     /// actual World revision and effect-closed binding as the statement module.
@@ -232,6 +372,8 @@ impl Manager {
         incoming: Option<StatementInfo>,
         facts: &[StatementInfo],
     ) -> Result<statement::Plan, statement::Error> {
+        self.validate_owned_statement(context, incoming, None)?;
+        let facts = self.statements.as_deref().unwrap_or(facts);
         let no_session_read = incoming.is_none()
             || context.game_mode != statement::SINGLE_PLAYER_MODE
             || incoming
@@ -267,17 +409,22 @@ impl Manager {
     }
     /// Apply only after the common World revision guard and all other action
     /// preflights pass. Open-order/identity/current pending facts are checked
-    /// again here. Returned retirement MUST update the statement inventory in
-    /// the same enclosing commit. This alone is not a complete action transaction.
+    /// again here. An initialized canonical statement inventory retires ownership
+    /// in the same commit; legacy external owners must apply returned retirement.
+    /// This alone is not a complete action transaction.
     pub fn apply_statement(
         &mut self,
         plan: statement::Plan,
         mut context: Context,
         incoming: Option<StatementInfo>,
     ) -> Result<statement::Outcome, statement::Error> {
+        self.validate_owned_statement(context, incoming, plan.retired_statement())?;
+        self.invalidate_drain_plans();
         let Some(target) = plan.target() else {
             plan.validate(context, incoming, None)?;
-            return Ok(plan.commit(&mut context, None));
+            let outcome = plan.commit(&mut context, None);
+            self.retire_owned_statement(outcome.retired_statement);
+            return Ok(outcome);
         };
         let routing = self.routing.as_mut().filter(|r| r.authoritative).ok_or(
             statement::Error::Unsupported(statement::Unsupported::SessionMetadata),
@@ -373,7 +520,7 @@ impl Manager {
         if plan.activates_session() {
             routing.active = Some(target.handle);
         }
-        Ok(plan.commit(
+        let outcome = plan.commit(
             &mut context,
             Some(SessionWrite {
                 header: metadata.header,
@@ -381,7 +528,9 @@ impl Manager {
                 pending: &mut pending.pending,
                 queued: &mut metadata.queued,
             }),
-        ))
+        );
+        self.retire_owned_statement(outcome.retired_statement);
+        Ok(outcome)
     }
     pub fn ever_alive(&self) -> &[PlayerHandle] {
         &self.ever_alive
@@ -399,6 +548,7 @@ impl Manager {
     /// A real statement provider owns each handle's typed payload and full
     /// routing/history/effects. Merely inserting a handle does not implement it.
     pub fn open_sessions_mut(&mut self) -> &mut Vec<Session<StatementHandle>> {
+        self.invalidate_drain_plans();
         // Unstructured mutation can change identity/order/endpoints as well as
         // pending lists. Never silently retain stale routing authority.
         if let Some(routing) = self.routing.as_mut() {
@@ -410,6 +560,7 @@ impl Manager {
         &self.pending_actions
     }
     pub fn pending_actions_mut(&mut self) -> &mut Vec<PendingAction> {
+        self.invalidate_drain_plans();
         &mut self.pending_actions
     }
     pub fn has_outgoing(&self, player: i32) -> bool {
@@ -419,6 +570,7 @@ impl Manager {
         })
     }
     pub fn remove_next_outgoing(&mut self, player: i32) -> Option<StatementHandle> {
+        self.invalidate_drain_plans();
         self.open_sessions
             .iter_mut()
             .filter(|session| session.from == player || session.to == player)
@@ -844,5 +996,107 @@ mod routing_tests {
             .apply_statement(p, context(Some(10)), Some(incoming))
             .unwrap();
         assert_eq!(manager.next_session_object_label().unwrap(), u64::MAX);
+    }
+}
+
+#[cfg(test)]
+mod inventory_tests {
+    use super::*;
+    #[test]
+    fn inventory_import_is_complete_unique_and_once_only_before_writes() {
+        let fact = StatementInfo {
+            handle: StatementHandle(1),
+            session_id: 7,
+            from: 1,
+            to: 0,
+            kind: statement::StatementKind::Response,
+        };
+        let observed = ObservedSession {
+            header: SessionHeader {
+                handle: SessionHandle(10),
+                id: 7,
+                from: 1,
+                to: 0,
+            },
+            history: vec![],
+            queued: vec![],
+            pending: vec![aftermath::Pending {
+                statement: fact.handle,
+                from: 1,
+                to: 0,
+            }],
+        };
+        let mut manager =
+            Manager::from_observed_sessions(vec![], vec![], vec![observed], None, 20).unwrap();
+        let revision = manager.drain_revision;
+        assert_eq!(
+            manager.initialize_statement_inventory(vec![]),
+            Err(Error::InvalidStatementInventory)
+        );
+        assert_eq!(
+            manager.initialize_statement_inventory(vec![fact, fact]),
+            Err(Error::InvalidStatementInventory)
+        );
+        let wrong = StatementInfo { from: 2, ..fact };
+        assert_eq!(
+            manager.initialize_statement_inventory(vec![wrong]),
+            Err(Error::InvalidStatementInventory)
+        );
+        assert_eq!(manager.drain_revision, revision);
+        assert_eq!(manager.statement_inventory(), None);
+        manager.initialize_statement_inventory(vec![fact]).unwrap();
+        assert_eq!(
+            manager.initialize_statement_inventory(vec![]),
+            Err(Error::StatementInventoryAlreadyInitialized)
+        );
+        assert_eq!(manager.statement_inventory().unwrap(), [fact]);
+    }
+    #[test]
+    fn legacy_statement_apply_uses_owned_facts_and_retires_owned_payload() {
+        let first = StatementInfo {
+            handle: StatementHandle(1),
+            session_id: 7,
+            from: 1,
+            to: 0,
+            kind: statement::StatementKind::Response,
+        };
+        let second = StatementInfo {
+            handle: StatementHandle(2),
+            ..first
+        };
+        let observed = ObservedSession {
+            header: SessionHeader {
+                handle: SessionHandle(10),
+                id: 7,
+                from: 1,
+                to: 0,
+            },
+            history: vec![],
+            queued: vec![],
+            pending: vec![aftermath::Pending {
+                statement: second.handle,
+                from: 1,
+                to: 0,
+            }],
+        };
+        let mut manager =
+            Manager::from_observed_sessions(vec![], vec![], vec![observed], None, 20).unwrap();
+        manager
+            .initialize_statement_inventory(vec![first, second])
+            .unwrap();
+        let context = Context {
+            local_player: 0,
+            game_mode: statement::SINGLE_PLAYER_MODE,
+            active_session: None,
+            logging: statement::Logging::OrdinaryHostDisabled,
+        };
+        let plan = manager.plan_statement(context, Some(first), &[]).unwrap();
+        let result = manager.apply_statement(plan, context, Some(first)).unwrap();
+        assert_eq!(result.retired_statement, Some(second.handle));
+        assert_eq!(manager.statement_inventory().unwrap(), [first]);
+        assert_eq!(
+            manager.session_metadata().unwrap()[0].history,
+            [first.handle]
+        );
     }
 }
