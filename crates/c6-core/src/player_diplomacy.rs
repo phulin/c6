@@ -318,7 +318,53 @@ record!(PromiseData, 50, {
     broken_notification_sent: bool, report_repeat_offense: bool, turn_broken: i32,
 });
 record!(MessageData, 1, { is_kudo: bool, is_hidden_agenda: bool, recipient: i32, message_hash: u32 });
-record!(VisibilityAddition, 50, { amount: i32, source_hash: u32, source_type: i32 });
+/// A wire projection: source_hash is retained before native registry lookup.
+/// The independent 41/50 tag is read but does not change these three fields.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct VisibilityAddition {
+    pub wire_version: u32,
+    pub amount: i32,
+    pub source_hash: u32,
+    pub source_type: i32,
+}
+impl Default for VisibilityAddition {
+    fn default() -> Self {
+        Self {
+            wire_version: 50,
+            amount: 0,
+            source_hash: 0,
+            source_type: 0,
+        }
+    }
+}
+impl Wire for VisibilityAddition {
+    const MIN: usize = 16;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.last_version_component = "VisibilityAddition";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 41 | 50) {
+            return Err(Error::Version {
+                expected: 50,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            amount: i32::read(r)?,
+            source_hash: u32::read(r)?,
+            source_type: i32::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 50 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        50u32.write(w)?;
+        self.amount.write(w)?;
+        self.source_hash.write(w)?;
+        self.source_type.write(w)
+    }
+}
 record!(YieldModifier, 2, { source: i32, turns_active: i32, yield_type: i32, modifier: i32, stack: bool });
 record!(MovementModifier, 1, { source: i32, turns_active: i32, extra_moves: i32 });
 record!(CombatModifier, 1, { source: i32, turns_active: i32, combat_bonus: i32, religious_only: bool });
@@ -762,6 +808,7 @@ mod tests {
         value.visibility = vec![-1, i32::MAX];
         value.visibility_source_hashes = vec![u32::MAX, 3];
         value.visibility_additions = vec![VisibilityAddition {
+            wire_version: 50,
             amount: -1,
             source_hash: u32::MAX,
             source_type: -1,
@@ -800,6 +847,59 @@ mod tests {
             value: -1,
         }];
         value
+    }
+    #[test]
+    fn visibility41_own_tag_preserves_wire_hash_and_signed_fields() {
+        let mut bytes = 41u32.to_le_bytes().to_vec();
+        bytes.extend(i32::MIN.to_le_bytes());
+        bytes.extend(0xfedcba98u32.to_le_bytes());
+        bytes.extend((-1i32).to_le_bytes());
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: 16,
+            max_items: 0,
+        };
+        let read = |data| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                limits,
+                last_version_component: "Diplomacy",
+            };
+            let value = VisibilityAddition::read(&mut r)?;
+            Ok::<_, Error>((value, r.pos, r.items))
+        };
+        let (value, used, items) = read(&bytes).unwrap();
+        assert_eq!((used, items), (16, 0));
+        assert_eq!(
+            value,
+            VisibilityAddition {
+                wire_version: 41,
+                amount: i32::MIN,
+                source_hash: 0xfedcba98,
+                source_type: -1
+            }
+        );
+        for n in 0..16 {
+            assert!(read(&bytes[..n]).is_err(), "{n}");
+        }
+        let mut bad = bytes.clone();
+        bad[..4].copy_from_slice(&42u32.to_le_bytes());
+        assert_eq!(
+            read(&bad),
+            Err(Error::Version {
+                expected: 50,
+                actual: 42
+            })
+        );
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits,
+        };
+        assert_eq!(value.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
     }
     #[test]
     fn casus41_own_tag_and_nine_bool_order_match_current_shape() {
@@ -899,9 +999,17 @@ mod tests {
         for value in 101i32..=107 {
             bytes.extend(value.to_le_bytes());
         }
-        for _ in 0..8 {
+        for _ in 0..2 {
             bytes.extend(0u32.to_le_bytes());
-        } // visibility/maps/messages
+        } // visibility lists
+        bytes.extend(1u32.to_le_bytes()); // one independently tagged addition
+        bytes.extend(41u32.to_le_bytes());
+        bytes.extend((-9i32).to_le_bytes());
+        bytes.extend(0xfedcba98u32.to_le_bytes());
+        bytes.extend((-1i32).to_le_bytes());
+        for _ in 0..5 {
+            bytes.extend(0u32.to_le_bytes());
+        } // maps/messages
           // No Unit blocked-entry list at41; alliance points/action counts remain.
         for _ in 0..2 {
             bytes.extend(0u32.to_le_bytes());
@@ -919,10 +1027,10 @@ mod tests {
         bytes.extend([0xaa, 0xbb]);
         let limits = Limits {
             max_bytes: end,
-            max_items: 2,
+            max_items: 3,
         };
         let (v, used, items) = Diplomacy::decode_prefix_with_items(&bytes, limits).unwrap();
-        assert_eq!((used, items), (end, 2));
+        assert_eq!((used, items), (end, 3));
         assert_eq!(v.wire_version, 41);
         assert!(
             v.can_enforce_borders && v.no_occupation_penalties && v.all_alliances_shared_visibility
@@ -938,6 +1046,15 @@ mod tests {
         assert_eq!(
             v.alliance_and_favor_modifiers,
             [101, 102, 103, 104, 105, 106, 107, 0, 0]
+        );
+        assert_eq!(
+            v.visibility_additions,
+            vec![VisibilityAddition {
+                wire_version: 41,
+                amount: -9,
+                source_hash: 0xfedcba98,
+                source_type: -1
+            }]
         );
         assert!(!v.delegation_embassy_yields_wire_present());
         assert!(!v.blocked_entry_wire_present());
