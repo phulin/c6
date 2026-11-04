@@ -12,6 +12,8 @@ use super::{
 };
 #[path = "stock_notifications_game_update.rs"]
 pub mod game_update;
+#[path = "stock_skip_turn.rs"]
+pub mod skip_turn;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -43,11 +45,14 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
+    /// Ordered emitted notification publications; client UI playback is omitted.
+    pub publications: Vec<lifecycle::Report>,
     pub last_error: Option<String>,
     pub reached: Vec<&'static str>,
     binding: WireBinding,
     facts: Facts,
     temporary_serial: u64,
+    positive_temporaries: Vec<c6_core::notification_lifecycle::ObjectId>,
     player_services: Option<crate::unit_placement_services::Runtime>,
 }
 impl<'a, P> Runtime<'a, P> {
@@ -67,11 +72,13 @@ impl<'a, P> Runtime<'a, P> {
             script,
             reporting,
             decisions: Vec::new(),
+            publications: Vec::new(),
             last_error: None,
             reached: Vec::new(),
             binding: state.binding().clone(),
             facts,
             temporary_serial: 0,
+            positive_temporaries: Vec::new(),
             player_services: None,
         })
     }
@@ -155,10 +162,40 @@ impl<P> lifecycle::Backend for Runtime<'_, P> {
         report: lifecycle::Report,
     ) -> Result<(), lifecycle::Error> {
         self.reached.push("notification report");
-        let lifecycle::Report::Activated { identity, argument } = report else {
-            return Err(lifecycle::Error::Backend(
-                "stock notification report subtype",
-            ));
+        self.publications.push(report);
+        let (identity, argument) = match report {
+            lifecycle::Report::Added(_) => {
+                let record = state
+                    .player_notifications()?
+                    .record_by_object(object)
+                    .map_err(lifecycle::Error::Owner)?;
+                let decision = Decision {
+                    owner: i32::from(record.id.owner),
+                    type_hash: record.type_hash,
+                    location: record.location,
+                    component: (!(record.component.owner == -1 && record.component.id == u32::MAX))
+                        .then_some(record.component),
+                };
+                if !self.decisions.contains(&decision) {
+                    self.decisions.push(decision);
+                }
+                // Stock plain headless publication exposes the semantic decision;
+                // native client cache/DTO playback has no policy role here.
+                return Ok(());
+            }
+            lifecycle::Report::Dismissed(_) => {
+                let record = state
+                    .player_notifications()?
+                    .record_by_object(object)
+                    .map_err(lifecycle::Error::Owner)?;
+                self.decisions.retain(|d| {
+                    d.owner != i32::from(record.id.owner)
+                        || d.type_hash != record.type_hash
+                        || d.location != record.location
+                });
+                return Ok(());
+            }
+            lifecycle::Report::Activated { identity, argument } => (identity, argument),
         };
         self.reporting
             .send_notification_activated_report(state, object, identity, argument)
@@ -251,13 +288,13 @@ impl<P> processing::Backend for Runtime<'_, P> {
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         self.decision(candidate);
-        if existing_target.owner != -1 || existing_target.id != u32::MAX {
-            return Ok(());
+        let _ = existing_target;
+        if !self.positive_temporaries.contains(&candidate.live.object) {
+            self.positive_temporaries.push(candidate.live.object);
         }
-        Err(processing::Error::Unsupported(
-            "positive notification residual target type",
-        ))
+        Ok(())
     }
+
     fn release_pending(
         &mut self,
         state: &mut LoadedState,
@@ -273,6 +310,18 @@ impl<P> processing::Backend for Runtime<'_, P> {
             )?)
         {
             return Err(processing::Error::Unsupported("temporary release binding"));
+        }
+        let positive = self
+            .positive_temporaries
+            .iter()
+            .position(|id| *id == created.live.object);
+        if let Some(index) = positive {
+            self.positive_temporaries.remove(index);
+        } else {
+            self.decisions.retain(|d| {
+                d.owner != i32::from(created.record.id.owner)
+                    || d.type_hash != created.record.type_hash
+            });
         }
         candidate.take();
         Ok(())
