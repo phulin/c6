@@ -2535,8 +2535,9 @@ pub(crate) mod tests {
     }
     fn ai_influence_map_carrier() -> player_ai_influence_map::InfluenceMap {
         player_ai_influence_map::InfluenceMap {
+            wire_version: 2,
             influence: vec![i16::MIN, -1, i16::MAX],
-            religious_influence: vec![i16::MAX, i16::MIN],
+            religious_influence: Some(vec![i16::MAX, i16::MIN]),
         }
     }
     fn ai_planning_carrier() -> player_ai_identity::PlanningManagerIdentity {
