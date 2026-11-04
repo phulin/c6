@@ -3,6 +3,16 @@ use super::Runtime;
 use crate::game_update_state::activation::{cityless_managers as data, maintenance};
 use c6_core::{game_update::Error, loaded_state::LoadedState};
 impl<P> data::Effects for Runtime<'_, P> {
+    fn congress_event(
+        &mut self,
+        state: &mut LoadedState,
+        _owner: i32,
+        _kind: u32,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Unsupported("Congress report binding"))?;
+        Err(Error::Unsupported("Congress phase report"))
+    }
     fn report_block(
         &mut self,
         state: &mut LoadedState,

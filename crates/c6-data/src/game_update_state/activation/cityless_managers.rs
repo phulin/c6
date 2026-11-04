@@ -35,6 +35,8 @@ pub struct Definitions {
     resources: Vec<(u32, bool)>,
     denounce: i32,
     denounce_by_speed: Vec<(u32, i32)>,
+    congress_initial_era: i32,
+    special_session_min_turns: i32,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -148,7 +150,20 @@ impl Definitions {
             }
             denounce_by_speed.push((linux_type_hash(name.as_bytes()), scaled));
         }
+        let parameter = |name| {
+            rules
+                .gameplay()
+                .table("GlobalParameters")
+                .and_then(|t| t.rows().find(|r| r.text("Name").ok() == Some(name)))
+                .and_then(|r| r.get("Value").ok())
+                .and_then(sql_integer)
+                .ok_or(missing("Congress parameter"))
+        };
         Ok(Self {
+            congress_initial_era: parameter("WORLD_CONGRESS_INITIAL_ERA")?,
+            special_session_min_turns: parameter(
+                "WORLD_CONGRESS_MIN_TIME_BETWEEN_SPECIAL_SESSIONS",
+            )?,
             binding: state.binding().clone(),
             units,
             traders,
@@ -181,10 +196,15 @@ fn reset_climate(rows: &mut [ClimateConsumption], owner: i32) {
         }
     }
 }
+pub struct CongressInputs {
+    pub last_special_session: i32,
+    pub emergencies: Vec<c6_core::game_emergency::Instance>,
+}
 pub struct Runtime {
     instance: ActionStamp,
     pub climate: Vec<ClimateConsumption>,
     pub parks: Vec<c6_core::game_national_parks::ParkData>,
+    congress: Option<CongressInputs>,
 }
 impl Runtime {
     pub fn from_initial(
@@ -196,7 +216,20 @@ impl Runtime {
             instance: state.action_stamp(),
             climate,
             parks,
+            congress: None,
         }
+    }
+    pub fn initialize_congress(
+        &mut self,
+        state: &LoadedState,
+        inputs: CongressInputs,
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.congress.is_some() {
+            return Err(missing("Congress owner already initialized"));
+        }
+        self.congress = Some(inputs);
+        Ok(())
     }
     fn validate(&self, state: &LoadedState) -> Result<(), Error> {
         if !self.instance.same_instance(state.action_stamp()) {
@@ -211,6 +244,12 @@ pub struct Queries<'a> {
     pub game_speed_type: u32,
 }
 pub trait Effects {
+    fn congress_event(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        kind: u32,
+    ) -> Result<(), Error>;
     fn report_block(
         &mut self,
         state: &mut LoadedState,
@@ -569,6 +608,92 @@ pub fn after_cities(
     let _ = e;
     Ok(())
 }
+fn can_call_special_session(turn: i32, last: i32, minimum: i32, era: i32, initial: i32) -> bool {
+    (turn.wrapping_sub(last) > minimum || turn == last) && era >= initial
+}
+/// The finite +9c0 Congress subscriber. This reads the same current Phase
+/// definition at each source query, not the saved last-valid-segment scalar.
+pub fn on_congress_turn_started(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    q: &Queries<'_>,
+    runtime: &Runtime,
+    phases: &super::Phases,
+    e: &mut impl Effects,
+    owner: i32,
+) -> Result<(), Error> {
+    defs.validate(state)?;
+    runtime.validate(state)?;
+    let current = runtime
+        .congress
+        .as_ref()
+        .ok_or(missing("current Congress/Emergency owner"))?;
+    let disabled = state
+        .retained()
+        .core
+        .phase_processor
+        .turn_segments
+        .iter()
+        .find(|v| v.hash == 0x2c2337c1)
+        .is_none_or(|v| v.disabled);
+    let elapsed = state
+        .retained()
+        .core
+        .current_turn
+        .wrapping_sub(current.last_special_session);
+    let first_available = disabled && elapsed.wrapping_sub(defs.special_session_min_turns) == 1;
+    // GetDiscussionsToDecideOn calls CanCallSpecialSession before segment gates.
+    let era = state
+        .game_eras()
+        .map_err(|_| missing("Congress current era"))?
+        .current_era()
+        .ok_or(missing("Congress current era"))?;
+    let _can_call = can_call_special_session(
+        state.retained().core.current_turn,
+        current.last_special_session,
+        defs.special_session_min_turns,
+        era,
+        defs.congress_initial_era,
+    );
+    let segment = phases.current_segment(state)?;
+    if segment != 0xb52a667b && segment != 0x2c2337c1 {
+        for &other in q.alive_major_ids {
+            // Player.Diplomacy.HasMet runs even for the eventual self case.
+            let has_met = met(state, other, owner)?;
+            if has_met || other == owner {
+                // FindDiscussionOptions only considers current Emergency
+                // instances reached through real Discussion definitions. With
+                // an observed empty manager every EditEmergency returns null;
+                // ConfirmEmergency and its mutations cannot be reached.
+                if !current.emergencies.is_empty() {
+                    return Err(missing("positive Congress Emergency discussion options"));
+                }
+            }
+        }
+    }
+    // No options were produced by the reached current-state branch. The
+    // non-disabled form still attempts the ordinary all-requirements notification.
+    if !disabled {
+        e.notification(state, owner, 0x7179594d)?;
+    }
+    let _ = first_available; // False options emit nothing in either disabled arm.
+    match phases.current_segment(state)? {
+        0xb52a667b => {
+            e.congress_event(state, owner, 0xdabc2341)?;
+            e.notification(state, owner, 0x3b627e38)?;
+        }
+        0x2c2337c1 => {
+            e.congress_event(state, owner, 0x43b572fb)?;
+            e.notification(state, owner, 0x3b627e38)?;
+        }
+        0xd74f83e5 => {
+            e.congress_event(state, owner, 0x34b2426d)?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -606,6 +731,13 @@ mod tests {
         t.accumulation_turn_count = 1;
         update_tracker(&mut t);
         assert_eq!(t.current_value, 0);
+    }
+    #[test]
+    fn special_session_uses_strict_elapsed_and_current_era() {
+        assert!(!can_call_special_session(15, 0, 15, 2, 2));
+        assert!(can_call_special_session(16, 0, 15, 2, 2));
+        assert!(can_call_special_session(0, 0, 15, 2, 2));
+        assert!(!can_call_special_session(16, 0, 15, 1, 2));
     }
     #[test]
     fn integer_speed_scaling_truncates_and_clamps_without_q8_quantization() {
