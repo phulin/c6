@@ -9,6 +9,8 @@ use crate::{
     visibility_contents::{self, UnitViewContext},
 };
 
+pub mod siege;
+
 pub const SPREAD_CHARGES_CHANGED: u32 = 0xb2176dc4;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SpreadChargesReport {
