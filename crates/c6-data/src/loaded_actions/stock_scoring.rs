@@ -73,6 +73,8 @@ pub struct Category {
 }
 pub struct Definitions {
     pub categories: Vec<Category>,
+    /// Native line-item order, before descending priority sorting.
+    pub tie_breakers: Vec<(i32, Raw)>,
 }
 fn multiplier(value: &SqlValue) -> Result<f32, Error> {
     match value {
@@ -127,7 +129,27 @@ impl Definitions {
             }
             result.push(category);
         }
-        Ok(Self { categories: result })
+        let mut tie_breakers = Vec::new();
+        for entry in lines.entries() {
+            let row = line_rows
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Missing("scoring tie-break line"))?;
+            let mut raw = Raw::Zero;
+            for (flag, kind) in FLAGS {
+                if row.integer(flag).map_err(Error::Rules)? != 0 {
+                    raw = kind;
+                    break;
+                }
+            }
+            tie_breakers.push((
+                row.integer("TieBreakerPriority").map_err(Error::Rules)? as i32,
+                raw,
+            ));
+        }
+        Ok(Self {
+            categories: result,
+            tie_breakers,
+        })
     }
 }
 /// CVTTSS2SI returns the indefinite integer for NaN and out-of-range values;
@@ -189,6 +211,36 @@ pub struct Runtime {
     pub globals: GlobalInputs,
 }
 impl Runtime {
+    /// GetScore computes a stale cache without storing its result. Only the
+    /// scalar cache is copied; constituent queries read the current world.
+    pub fn get_score(
+        &self,
+        state: &LoadedState,
+        definitions: &Definitions,
+        owner: i32,
+    ) -> Result<i32, Error> {
+        if self.binding != *state.binding() {
+            return Err(Error::Binding);
+        }
+        let mut cache = self
+            .caches
+            .iter()
+            .find(|p| p.0 == owner)
+            .ok_or(Error::Missing("current scoring cache"))?
+            .1;
+        cache.calculate(
+            definitions,
+            state.retained().core.current_turn,
+            false,
+            |kind| current_raw(state, &self.globals, owner, kind),
+        )
+    }
+    pub fn raw_score(&self, state: &LoadedState, owner: i32, kind: Raw) -> Result<i32, Error> {
+        if self.binding != *state.binding() {
+            return Err(Error::Binding);
+        }
+        current_raw(state, &self.globals, owner, kind)
+    }
     pub fn calculate(
         &mut self,
         state: &LoadedState,
@@ -314,6 +366,7 @@ mod tests {
     #[test]
     fn cache_order_rounding_and_failure_prefix() {
         let defs = Definitions {
+            tie_breakers: Vec::new(),
             categories: vec![
                 Category {
                     multiplier: 0.5,
@@ -367,6 +420,7 @@ mod tests {
         assert_eq!(trunc(2147483648.0), i32::MIN);
         assert_eq!(trunc(-1.9), -1);
         let defs = Definitions {
+            tie_breakers: Vec::new(),
             categories: vec![Category {
                 multiplier: 1.0,
                 lines: vec![
