@@ -191,6 +191,21 @@ impl ScriptState {
             .plan_call_six(name, arguments, state, &self.factory)
             .map(ScriptExecutionPlan::Bounded)
     }
+    pub fn plan_test_all_then_call_six(
+        &self,
+        test: (&str, [i32; 3]),
+        call: (&str, [i32; 6]),
+    ) -> Result<ScriptExecutionPlan, RegistryError> {
+        let state = self
+            .bounded
+            .as_ref()
+            .ok_or(RegistryError::UnsupportedEffect(
+                "sequence requires bounded execution facts",
+            ))?;
+        self.registry
+            .plan_test_all_then_call_six(test, call, state, &self.factory)
+            .map(ScriptExecutionPlan::Sequence)
+    }
     pub fn prepare_plan(
         &mut self,
         plan: ScriptExecutionPlan,
@@ -205,6 +220,17 @@ impl ScriptState {
                     plan,
                 )
                 .map(PreparedScriptCommit::Exact),
+            ScriptExecutionPlan::Sequence(plan) => {
+                let state = self
+                    .bounded
+                    .as_mut()
+                    .ok_or(RegistryError::UnsupportedEffect(
+                        "bounded execution facts changed",
+                    ))?;
+                self.registry
+                    .prepare_sequence(state, &mut self.factory, plan)
+                    .map(PreparedScriptCommit::Sequence)
+            }
             ScriptExecutionPlan::Bounded(plan) => {
                 let state = self
                     .bounded
@@ -229,24 +255,36 @@ impl ScriptState {
 pub enum ScriptExecutionPlan {
     Exact(RegistryExecutionPlan),
     Bounded(c6_core::script_event_registry::BoundedRegistryExecutionPlan),
+    Sequence(c6_core::script_event_registry::RegistrySequencePlan),
 }
 impl ScriptExecutionPlan {
+    pub fn ordered_results(&self) -> Vec<Option<bool>> {
+        match self {
+            Self::Exact(p) => vec![p.result()],
+            Self::Bounded(p) => vec![p.result()],
+            Self::Sequence(p) => p.results().to_vec(),
+        }
+    }
+
     pub fn result(&self) -> Option<bool> {
         match self {
             Self::Exact(p) => p.result(),
             Self::Bounded(p) => p.result(),
+            Self::Sequence(p) => p.results()[0],
         }
     }
 }
 pub enum PreparedScriptCommit<'a> {
     Exact(c6_core::script_event_registry::PreparedRegistryCommit<'a>),
     Bounded(c6_core::script_event_registry::PreparedBoundedRegistryCommit<'a>),
+    Sequence(c6_core::script_event_registry::PreparedRegistrySequenceCommit<'a>),
 }
 impl PreparedScriptCommit<'_> {
     pub fn commit(self) -> Option<bool> {
         match self {
             Self::Exact(p) => p.commit(),
             Self::Bounded(p) => p.commit(),
+            Self::Sequence(p) => p.commit()[0],
         }
     }
 }

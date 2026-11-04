@@ -653,6 +653,102 @@ impl ScriptEventRegistry {
     }
 }
 
+/// Deferred source-supported cached TestAll followed by six-argument Call.
+/// The first call changes only scalar accounting, so projection does not copy
+/// the registry graph or manufacture an intermediate live event.
+#[derive(Debug, PartialEq)]
+pub struct RegistrySequencePlan {
+    first: BoundedRegistryExecutionPlan,
+    second: BoundedRegistryExecutionPlan,
+}
+impl RegistrySequencePlan {
+    pub fn results(&self) -> [Option<bool>; 2] {
+        [self.first.result(), self.second.result()]
+    }
+}
+
+pub struct PreparedRegistrySequenceCommit<'a> {
+    registry: &'a mut ScriptEventRegistry,
+    knowledge: &'a mut BoundedExecutionState,
+    factory: &'a mut FactoryExecutionState,
+    plan: RegistrySequencePlan,
+}
+impl PreparedRegistrySequenceCommit<'_> {
+    pub fn commit(self) -> [Option<bool>; 2] {
+        let first = PreparedBoundedRegistryCommit {
+            registry: self.registry,
+            knowledge: self.knowledge,
+            factory: self.factory,
+            plan: self.plan.first,
+        }
+        .commit();
+        let second = PreparedBoundedRegistryCommit {
+            registry: self.registry,
+            knowledge: self.knowledge,
+            factory: self.factory,
+            plan: self.plan.second,
+        }
+        .commit();
+        [first, second]
+    }
+}
+
+impl ScriptEventRegistry {
+    pub fn plan_test_all_then_call_six(
+        &self,
+        test: (&str, [i32; 3]),
+        call: (&str, [i32; 6]),
+        knowledge: &BoundedExecutionState,
+        factory: &FactoryExecutionState,
+    ) -> Result<RegistrySequencePlan, RegistryError> {
+        let first = self.plan_test_all_alternatives(test.0, test.1, knowledge, factory)?;
+        if first.plans.iter().any(|p| p.factory.is_some()) {
+            return Err(RegistryError::UnsupportedEffect(
+                "sequence requires cached TestAll",
+            ));
+        }
+        let mut projected = knowledge.clone();
+        for (alternative, plan) in projected.alternatives.iter_mut().zip(&first.plans) {
+            plan.commit_effects(&mut alternative.execution);
+        }
+        let second = self.plan_call_six(call.0, call.1, &projected, factory)?;
+        Ok(RegistrySequencePlan { first, second })
+    }
+
+    pub fn prepare_sequence<'a>(
+        &'a mut self,
+        knowledge: &'a mut BoundedExecutionState,
+        factory: &'a mut FactoryExecutionState,
+        plan: RegistrySequencePlan,
+    ) -> Result<PreparedRegistrySequenceCommit<'a>, RegistryError> {
+        let RegistryArguments::TestAll(test_args) = plan.first.arguments else {
+            return Err(RegistryError::UnsupportedEffect(
+                "invalid sequence first method",
+            ));
+        };
+        let RegistryArguments::Call(call_args) = plan.second.arguments else {
+            return Err(RegistryError::UnsupportedEffect(
+                "invalid sequence second method",
+            ));
+        };
+        let current = self.plan_test_all_then_call_six(
+            (&plan.first.name, test_args),
+            (&plan.second.name, call_args),
+            knowledge,
+            factory,
+        )?;
+        if current != plan {
+            return Err(RegistryError::UnsupportedEffect("stale registry sequence"));
+        }
+        Ok(PreparedRegistrySequenceCommit {
+            registry: self,
+            knowledge,
+            factory,
+            plan,
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProtectedCallbackResult {
     Returned(LuaValue),
@@ -1867,22 +1963,26 @@ mod tests {
     fn bounded_cached_test_all_then_call_preserves_all_histories() {
         let (mut registry, mut knowledge, mut factory) = call_context();
         registry.lookup("CanStartOperation").unwrap();
+        let before = (registry.clone(), knowledge.clone(), factory.clone());
         let plan = registry
-            .plan_test_all_alternatives("CanStartOperation", [0, 7, 5], &knowledge, &factory)
+            .plan_test_all_then_call_six(
+                ("CanStartOperation", [0, 7, 5]),
+                ("OnUnitMoved", [0; 6]),
+                &knowledge,
+                &factory,
+            )
             .unwrap();
-        assert_eq!(plan.result(), None);
-        registry
-            .prepare_call_six(&mut knowledge, &mut factory, plan)
-            .unwrap()
-            .commit();
-        assert_eq!(knowledge.namespace, Some((1, 1)));
-        let plan = registry
-            .plan_call_six("OnUnitMoved", [0; 6], &knowledge, &factory)
+        assert_eq!(plan.results(), [None, None]);
+        assert_eq!(
+            (&registry, &knowledge, &factory),
+            (&before.0, &before.1, &before.2)
+        );
+        let guard = registry
+            .prepare_sequence(&mut knowledge, &mut factory, plan)
             .unwrap();
-        registry
-            .prepare_call_six(&mut knowledge, &mut factory, plan)
-            .unwrap()
-            .commit();
+        assert_eq!(guard.commit(), [None, None]);
+        let event = registry.cached_event("OnUnitMoved").unwrap();
+        assert_eq!(registry.lookup("OnUnitMoved").unwrap(), event);
         assert_eq!(
             knowledge
                 .alternatives
@@ -1899,6 +1999,60 @@ mod tests {
                 .max(),
             Some(37_332_465 + 2167)
         );
+    }
+
+    #[test]
+    fn deferred_sequence_refuses_second_effect_and_stale_inputs_before_first_write() {
+        let (mut registry, mut knowledge, mut factory) = call_context();
+        registry.lookup("CanStartOperation").unwrap();
+        let before = (registry.clone(), knowledge.clone(), factory.clone());
+        assert!(registry
+            .plan_test_all_then_call_six(
+                ("CanStartOperation", [0; 3]),
+                ("unknown event", [0; 6]),
+                &knowledge,
+                &factory,
+            )
+            .is_err());
+        assert_eq!(
+            (&registry, &knowledge, &factory),
+            (&before.0, &before.1, &before.2)
+        );
+        let plan = registry
+            .plan_test_all_then_call_six(
+                ("CanStartOperation", [0; 3]),
+                ("OnUnitMoved", [0; 6]),
+                &knowledge,
+                &factory,
+            )
+            .unwrap();
+        knowledge
+            .alternatives
+            .last_mut()
+            .unwrap()
+            .execution
+            .allocated_bytes += 1;
+        let before = (registry.clone(), knowledge.clone(), factory.clone());
+        assert!(registry
+            .prepare_sequence(&mut knowledge, &mut factory, plan)
+            .is_err());
+        assert_eq!((registry, knowledge, factory), before);
+    }
+
+    #[test]
+    fn bounded_unknown_scan_refuses_intern_growth_in_any_alternative() {
+        let (registry, mut knowledge, factory) = call_context();
+        for alternative in &mut knowledge.alternatives {
+            alternative.intern.count = 32_768;
+        }
+        let before = (registry.clone(), knowledge.clone(), factory.clone());
+        assert!(matches!(
+            registry.plan_call_six("OnUnitMoved", [0; 6], &knowledge, &factory),
+            Err(RegistryError::UnsupportedEffect(
+                "unknown intern growth mark prefix"
+            ))
+        ));
+        assert_eq!((registry, knowledge, factory), before);
     }
 
     #[test]
