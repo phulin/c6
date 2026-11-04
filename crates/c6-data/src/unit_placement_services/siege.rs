@@ -338,16 +338,13 @@ impl<E: Services> kernel::Context for Current<'_, '_, '_, E> {
         let Ok(index) = usize::try_from(index) else {
             return Ok(false);
         };
-        let Some(hash) = self.base.definition()?.abilities.type_hash(index) else {
-            return Ok(false);
-        };
-        Ok(self
+        let unit = self.base.current_unit(u)?;
+        let runtime = self
             .base
-            .current_unit(u)?
-            .ai_abilities_possessed
-            .iter()
-            .find(|v| v.definition_hash == hash)
-            .is_some_and(|v| v.value > 0))
+            .state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        Ok(runtime.abilities.get(index).copied().unwrap_or(0) > 0)
     }
     fn player_id(&mut self, p: i32) -> Result<i32, Self::Error> {
         Ok(p)
