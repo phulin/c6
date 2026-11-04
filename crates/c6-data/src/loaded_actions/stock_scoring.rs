@@ -317,20 +317,11 @@ fn current_raw(
                 .civics
                 .as_ref()
                 .ok_or(Error::Missing("current civic flags"))?;
-            let active = state
-                .world()
-                .civic_availability
-                .as_ref()
-                .ok_or(Error::Missing("current civic availability"))?;
-            if flags.len() != active.len() {
-                return Err(Error::Missing("complete current civic availability"));
-            }
-            Ok(flags
-                .iter()
-                .zip(active)
-                .fold(player.culture.num_civics_repeated, |n, (flag, active)| {
-                    n.wrapping_add(i32::from(*flag && *active))
-                }))
+            count_civics(
+                flags,
+                state.world().civic_availability.as_deref(),
+                player.culture.num_civics_repeated,
+            )
         }
         Raw::GreatPeople => global
             .great_people_received
@@ -360,6 +351,25 @@ fn current_raw(
         other => Err(Error::Unsupported(other)),
     }
 }
+/// HasCivic is the conjunction of two pure current flags. If every acquired
+/// flag is known false, missing global availability cannot change the count;
+/// no availability value is initialized or assumed by this projection.
+fn count_civics(flags: &[bool], active: Option<&[bool]>, repeated: i32) -> Result<i32, Error> {
+    if !flags.iter().any(|flag| *flag) {
+        return Ok(repeated);
+    }
+    let active = active.ok_or(Error::Missing("current civic availability"))?;
+    if flags.len() != active.len() {
+        return Err(Error::Missing("complete current civic availability"));
+    }
+    Ok(flags
+        .iter()
+        .zip(active)
+        .fold(repeated, |n, (flag, active)| {
+            n.wrapping_add(i32::from(*flag && *active))
+        }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,6 +446,18 @@ mod tests {
         assert_eq!(
             cache.calculate(&defs, 0, false, |_| Ok::<_, ()>(i32::MIN)),
             Ok(0)
+        );
+    }
+    #[test]
+    fn known_false_civics_do_not_require_or_invent_global_availability() {
+        assert_eq!(count_civics(&[false, false], None, 7).unwrap(), 7);
+        assert!(matches!(
+            count_civics(&[false, true], None, 7),
+            Err(Error::Missing("current civic availability"))
+        ));
+        assert_eq!(
+            count_civics(&[true, false, true], Some(&[false, true, true]), 7).unwrap(),
+            8
         );
     }
 }
