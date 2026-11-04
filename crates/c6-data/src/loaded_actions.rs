@@ -32,6 +32,7 @@ pub mod notifications;
 pub mod reporting;
 pub mod scripting;
 pub mod stock_script;
+pub mod stock_notifications;
 pub mod current_city_domains;
 pub mod transition;
 #[path = "loaded_actions/aftermath.rs"]
