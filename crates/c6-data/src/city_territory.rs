@@ -199,6 +199,7 @@ pub trait Effects: unit_sight_state::Effects {
     fn expel_from_plot(
         &mut self,
         state: &mut LoadedState,
+        runtime: &mut Runtime,
         location: PlotCoord,
     ) -> Result<(), Self::Error>;
     fn activate_improvement_without_unit(
@@ -779,7 +780,7 @@ impl<E: Effects> kernel::AnnexContext for Context<'_, E> {
     }
     fn expel_from_plot(&mut self, location: PlotCoord) -> Result<(), Self::Error> {
         self.effects
-            .expel_from_plot(self.state, location)
+            .expel_from_plot(self.state, self.runtime, location)
             .map_err(Error::Effect)
     }
     fn activate_improvement_without_unit(&mut self, plot: u32) -> Result<(), Self::Error> {

@@ -46,6 +46,7 @@ pub struct Definitions {
     food_min: i32,
     production_min: i32,
     drought_loss: i32,
+    normal_worker_capacity: i32,
 }
 fn integer(row: Row<'_>, column: &'static str) -> Result<i32, Error> {
     crate::game_parameters::sql_integer(row.get(column).map_err(Error::Rules)?)
@@ -71,6 +72,11 @@ impl Definitions {
     /// Current native Yield collection identity for canonical hash-keyed arrays.
     pub fn yield_hash(&self, index: i32) -> Option<u32> {
         self.yields.type_hash(index as u32 as usize)
+    }
+    /// GetPlotWorkerCapacity uses the current initialized global parameter
+    /// after ordinary-plot, workable-improvement and positive-yield gates.
+    pub fn normal_worker_capacity(&self) -> i32 {
+        self.normal_worker_capacity
     }
 
     pub fn from_rules(rules: &Rules) -> Result<Self, Error> {
@@ -251,6 +257,7 @@ impl Definitions {
             food_min: parameter("YIELD_FOOD_CITY_TERRAIN_REPLACE")?,
             production_min: parameter("YIELD_PRODUCTION_CITY_TERRAIN_REPLACE")?,
             drought_loss: parameter("DROUGHT_FOOD_LOSS_PER_TILE")?,
+            normal_worker_capacity: parameter("CITY_NORMAL_PLOT_WORKER_CAPACITY")?,
             yields,
             terrains,
             features,
