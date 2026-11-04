@@ -209,10 +209,7 @@ pub fn previously_active_this_turn(state: &LoadedState, owner: i32) -> Result<bo
     if event {
         return Ok(false);
     }
-    Ok(!state
-        .player_controls(owner)
-        .map_err(Error::State)?
-        .turn_active)
+    Ok(!state.turn_active(owner).map_err(Error::State)?)
 }
 
 /// Source leaf used by the inherited duplicate slot of ChooseTech,

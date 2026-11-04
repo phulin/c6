@@ -184,9 +184,9 @@ impl Definitions {
             techs: &player.techs,
             city_count: Some(player.cities.records.entries.len()),
             human: state
-                .player_controls(owner)
+                .player_slot_status(owner)
                 .ok()
-                .map(|p| p.slot_status == 3),
+                .map(|status| status == 3),
             graph,
         })
     }
@@ -598,6 +598,7 @@ pub(super) mod current_tests {
     }
     pub(in crate::loaded_actions) fn techs() -> Techs {
         Techs {
+            wire_version: 6,
             research_queue_hashes: vec![],
             research_overflow_q8: 0,
             science_rate_change_q8: 0,

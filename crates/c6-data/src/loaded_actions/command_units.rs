@@ -67,12 +67,7 @@ pub fn get_unit_counts(
     if owner == -1 {
         return Ok(counts);
     }
-    if state
-        .player_controls(owner)
-        .map_err(Error::State)?
-        .slot_status
-        != 3
-    {
+    if state.player_slot_status(owner).map_err(Error::State)? != 3 {
         return Ok(counts);
     }
     let player = state.world().player(owner).map_err(Error::World)?;

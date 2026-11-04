@@ -355,7 +355,7 @@ impl<B: Backend> Notifications for Provider<'_, B> {
             if !s.backend.manager_initialized(s.state)? || s.backend.game_uninitializing(s.state)? {
                 return Ok(false);
             }
-            Ok(s.state.player_controls(owner)?.slot_status == 3)
+            Ok(s.state.player_slot_status(owner)? == 3)
         })
     }
     fn definition_count(&mut self, _: ()) -> Result<usize, aftermath::Error> {

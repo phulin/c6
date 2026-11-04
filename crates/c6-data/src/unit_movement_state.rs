@@ -221,7 +221,7 @@ fn is_city(state: &LoadedState, plot: &Plot, definitions: &Definitions) -> Resul
     // CManager rejects unsupported player IDs; do not infer global validity from
     // a saved roster when the actual manager input is unavailable.
     state
-        .player_controls(i32::from(attrs.player))
+        .partial_player_controls(i32::from(attrs.player))
         .map_err(Error::State)?;
     let records = &player(state, i32::from(attrs.player))?.districts.records;
     let index = (attrs.district & 0xffff) as i32;

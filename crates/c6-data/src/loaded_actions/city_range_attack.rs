@@ -359,11 +359,7 @@ pub fn first_ranged_attack_city_id(
         {
             continue;
         }
-        let human = state
-            .player_controls(owner)
-            .map_err(Error::State)?
-            .slot_status
-            == 3;
+        let human = state.player_slot_status(owner).map_err(Error::State)? == 3;
         if human && state.pause_storage().map_err(Error::State)? != 0 {
             continue;
         }
@@ -728,7 +724,7 @@ fn plot_district<'a>(
         return Ok(None);
     }
     state
-        .player_controls(i32::from(attributes.player))
+        .partial_player_controls(i32::from(attributes.player))
         .map_err(Error::State)?;
     let player = state
         .retained()
@@ -1106,7 +1102,7 @@ fn is_enemy(state: &LoadedState, owner: i32, other: i32) -> Result<bool, Error> 
     {
         return Ok(false);
     }
-    if !state.player_controls(other).map_err(Error::State)?.is_alive {
+    if !state.player_alive(other).map_err(Error::State)? {
         return Ok(false);
     }
     state

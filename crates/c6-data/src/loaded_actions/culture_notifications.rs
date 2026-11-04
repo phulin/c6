@@ -387,9 +387,9 @@ impl Definitions {
             culture: &player.culture,
             current_turn: state.retained().core.current_turn,
             human: state
-                .player_controls(owner)
+                .player_slot_status(owner)
                 .ok()
-                .map(|p| p.slot_status == 3),
+                .map(|status| status == 3),
             city_count: player.cities.records.entries.len(),
             graph,
             techs,

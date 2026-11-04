@@ -775,6 +775,149 @@ mod tests {
             Err(Error::Missing(MissingInput::UnitRuntime))
         ));
     }
+    #[test]
+    fn partial_controls_preserve_unread_fields_and_empty_diplomacy_readset() {
+        use crate::diplomacy_manager::{Manager, PlayerHandle};
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        state.retained.players[0].header.ordered_flags[1] = true;
+        let witness = witness(&state);
+        let mut partial: PartialControlInputs = controls(&state).into();
+        partial.players[0].slot_status = 2;
+        partial.players[0].team = None;
+        partial.players[0].is_alive = None;
+        partial.players[0].turn_active = None;
+        let before = state.action_stamp();
+        state
+            .bind_observed_snapshot_partial_controls(witness.clone(), partial)
+            .unwrap();
+        assert_ne!(state.action_stamp(), before);
+        assert_eq!(state.revision(), 0);
+        assert_eq!(state.player_slot_status(owner).unwrap(), 2);
+        assert_eq!(state.world.player(owner).unwrap().slot_status, Some(2));
+        assert_eq!(state.world.player(owner).unwrap().team, None);
+        assert_eq!(state.world.player(owner).unwrap().is_alive, None);
+        assert!(
+            matches!(state.turn_active(owner), Err(Error::Missing(MissingInput::PlayerTurnActive(p))) if p==owner)
+        );
+        assert!(
+            matches!(state.player_alive(owner), Err(Error::Missing(MissingInput::PlayerAlive(p))) if p==owner)
+        );
+        assert!(
+            matches!(state.player_team(owner), Err(Error::Missing(MissingInput::PlayerTeam(p))) if p==owner)
+        );
+        assert_eq!(state.processing_automation().unwrap(), -1);
+        assert_eq!(state.pause_storage().unwrap(), 0);
+        let manager = Manager::from_observed_sessions_with_unknown_pending_actions(
+            vec![PlayerHandle { owner }],
+            vec![],
+            None,
+            1,
+        )
+        .unwrap();
+        let mut slots = vec![None; 65];
+        slots[0] = Some(PlayerHandle { owner });
+        state
+            .install_current_diplomacy_manager(witness, slots, manager)
+            .unwrap();
+        let before = state.action_stamp();
+        state.plan_pending_diplomacy().unwrap();
+        assert_eq!(state.action_stamp(), before);
+        assert_eq!(
+            state.diplomacy_manager().unwrap().pending_actions_known(),
+            None
+        );
+    }
+    #[test]
+    fn partial_controls_validate_and_reserve_admission_before_any_write() {
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let mut partial: PartialControlInputs = controls(&state).into();
+        partial.players[0].team = None;
+        partial.players[0].is_alive = None;
+        let mut invalid: PartialControlInputs = controls(&state).into();
+        invalid.pause_storage = Some(2);
+        let before = state.action_stamp();
+        assert!(matches!(
+            state.bind_partial_controls(invalid),
+            Err(Error::Binding)
+        ));
+        assert_eq!(state.action_stamp(), before);
+        assert!(state.world.player_mapping.is_none());
+        state.admission_generation = u64::MAX;
+        let exhausted = state.action_stamp();
+        let witness = witness(&state);
+        assert!(matches!(
+            state.bind_observed_snapshot_partial_controls(witness, partial),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(state.action_stamp(), exhausted);
+        assert!(state.controls.is_none());
+        assert!(state.observed_snapshot.is_none());
+        assert!(state.world.player_mapping.is_none());
+        assert_eq!(state.world.player(owner).unwrap().slot_status, None);
+    }
+    #[test]
+    fn formation_mut_checks_lookup_and_revision_before_exposing_record() {
+        let mut s = state();
+        let owner = s.world.players()[0].owner();
+        let before = s
+            .world
+            .player(owner)
+            .unwrap()
+            .formation(1)
+            .unwrap()
+            .unwrap()
+            .record
+            .clone();
+        for (requested_owner, id) in [(i32::MAX, 1), (owner, 0), (owner, u32::MAX)] {
+            assert!(s.formation_mut(requested_owner, id).is_err());
+            assert_eq!(s.revision(), 0);
+            assert_eq!(
+                s.world
+                    .player(owner)
+                    .unwrap()
+                    .formation(1)
+                    .unwrap()
+                    .unwrap()
+                    .record,
+                &before
+            );
+        }
+        // Low-16 alias lookup is native World behavior. Mutation needs no sidecar.
+        s.formation_mut(owner, 0xabcd0001)
+            .unwrap()
+            .moves_remaining_raw = 77;
+        assert_eq!(s.revision(), 1);
+        assert_eq!(
+            s.world
+                .player(owner)
+                .unwrap()
+                .formation(1)
+                .unwrap()
+                .unwrap()
+                .record
+                .moves_remaining_raw,
+            77
+        );
+        s.revision = u64::MAX;
+        assert!(matches!(
+            s.formation_mut(owner, 1),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(s.revision(), u64::MAX);
+        assert_eq!(
+            s.world
+                .player(owner)
+                .unwrap()
+                .formation(1)
+                .unwrap()
+                .unwrap()
+                .record
+                .moves_remaining_raw,
+            77
+        );
+    }
     fn witness(s: &LoadedState) -> ObservedSnapshotWitness {
         ObservedSnapshotWitness {
             source_role: core_player::initialization::WireRole::SavedOutputCore,
@@ -2523,6 +2666,8 @@ pub enum MissingInput {
     TradeGraph,
     PlayerConfiguration(i32),
     PlayerTurnActive(i32),
+    PlayerAlive(i32),
+    PlayerTeam(i32),
     Player(i32),
     Unit { owner: i32, id: u32 },
     Formation { owner: i32, id: u32 },
@@ -2554,6 +2699,50 @@ pub struct ControlInputs {
     pub players: Vec<PlayerControls>,
     pub processing_automation: Option<i32>,
     pub pause_storage: Option<u8>,
+}
+/// Current configuration facts plus independently observed runtime fields.
+/// None preserves an unread field; consumers require only the facts they read.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PartialPlayerControls {
+    pub owner: i32,
+    pub slot_status: i32,
+    pub team: Option<i32>,
+    pub is_alive: Option<bool>,
+    pub turn_active: Option<bool>,
+}
+impl From<PlayerControls> for PartialPlayerControls {
+    fn from(value: PlayerControls) -> Self {
+        Self {
+            owner: value.owner,
+            slot_status: value.slot_status,
+            team: Some(value.team),
+            is_alive: Some(value.is_alive),
+            turn_active: Some(value.turn_active),
+        }
+    }
+}
+/// Supplied current controls with explicit unknown per-player runtime fields.
+/// Mapping and allocation-slot presence remain complete actual Manager inputs.
+#[derive(Debug)]
+pub struct PartialControlInputs {
+    pub binding: WireBinding,
+    pub player_mapping: [i32; 65],
+    pub player_slots: [bool; 65],
+    pub players: Vec<PartialPlayerControls>,
+    pub processing_automation: Option<i32>,
+    pub pause_storage: Option<u8>,
+}
+impl From<ControlInputs> for PartialControlInputs {
+    fn from(value: ControlInputs) -> Self {
+        Self {
+            binding: value.binding,
+            player_mapping: value.player_mapping,
+            player_slots: value.player_slots,
+            players: value.players.into_iter().map(Into::into).collect(),
+            processing_automation: value.processing_automation,
+            pause_storage: value.pause_storage,
+        }
+    }
 }
 /// Provenance of an observed mutable-state export, independent of the decoder's
 /// Read/Write framing role. The resource adapter validates actual preimages.
@@ -2721,7 +2910,7 @@ pub struct LoadedState {
     world: world::World,
     retained: RetainedComponents,
     statistics: ImportStatistics,
-    controls: Option<ControlInputs>,
+    controls: Option<PartialControlInputs>,
     runtime: Option<Vec<RuntimePlayer>>,
     formation_runtime: Option<Vec<RuntimeFormations>>,
     limits: AssemblyLimits,
@@ -3819,7 +4008,7 @@ impl LoadedState {
                 .find(|p| p.header.owner == handle.owner)
                 .ok_or(Error::Missing(MissingInput::Player(handle.owner)))?;
             if index < 64 && record.header.saved_was_ever_alive() {
-                self.player_controls(handle.owner)?;
+                self.partial_player_controls(handle.owner)?;
                 expected.push(*handle);
             }
         }
@@ -3869,7 +4058,7 @@ impl LoadedState {
         let manager = self.diplomacy_manager()?;
         let mut statuses = reserved(manager.ever_alive().len())?;
         for player in manager.ever_alive() {
-            statuses.push((*player, self.player_controls(player.owner)?.slot_status));
+            statuses.push((*player, self.player_slot_status(player.owner)?));
         }
         let has_work = statuses
             .iter()
@@ -3905,10 +4094,10 @@ impl LoadedState {
         for player in players {
             let id = player.owner;
             let controls = self
-                .player_controls(id)
+                .player_slot_status(id)
                 .map_err(|_| AftermathError::Unsupported("current player configuration"))?;
             // IsAI = !IsHuman; actual IsHuman is SlotStatus == SS_TAKEN (3).
-            if controls.slot_status == 3 {
+            if controls == 3 {
                 continue;
             }
             loop {
@@ -3956,6 +4145,14 @@ impl LoadedState {
         witness: ObservedSnapshotWitness,
         controls: ControlInputs,
     ) -> Result<(), Error> {
+        self.bind_observed_snapshot_partial_controls(witness, controls.into())
+    }
+    /// Bind the same admitted observed snapshot while preserving unread fields.
+    pub fn bind_observed_snapshot_partial_controls(
+        &mut self,
+        witness: ObservedSnapshotWitness,
+        controls: PartialControlInputs,
+    ) -> Result<(), Error> {
         self.require_initial_controls()?;
         if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
             || witness.snapshot_sha256 != self.binding.core_sha256
@@ -3971,10 +4168,14 @@ impl LoadedState {
     /// Validate every control before changing any World field. Saved membership
     /// does not supply Manager validity or nonnull-slot facts.
     pub fn bind_controls(&mut self, controls: ControlInputs) -> Result<(), Error> {
+        self.bind_partial_controls(controls.into())
+    }
+    /// Bind supplied controls without inferring unread runtime fields from Save.
+    pub fn bind_partial_controls(&mut self, controls: PartialControlInputs) -> Result<(), Error> {
         self.require_initial_controls()?;
         self.install_controls(controls)
     }
-    fn install_controls(&mut self, controls: ControlInputs) -> Result<(), Error> {
+    fn install_controls(&mut self, controls: PartialControlInputs) -> Result<(), Error> {
         if controls.binding != self.binding {
             return Err(Error::Binding);
         }
@@ -4002,8 +4203,8 @@ impl LoadedState {
         for p in &controls.players {
             let player = self.world.player_mut(p.owner).map_err(Error::World)?;
             player.slot_status = Some(p.slot_status);
-            player.team = Some(p.team);
-            player.is_alive = Some(p.is_alive);
+            player.team = p.team;
+            player.is_alive = p.is_alive;
         }
         self.world.player_mapping = Some(controls.player_mapping);
         self.world.player_slot_present = Some(controls.player_slots);
@@ -4044,7 +4245,18 @@ impl LoadedState {
         self.revision = revision;
         Ok(true)
     }
-    pub fn player_controls(&self, owner: i32) -> Result<&PlayerControls, Error> {
+    /// Complete known-control view for callers that actually need every field.
+    pub fn player_controls(&self, owner: i32) -> Result<PlayerControls, Error> {
+        let controls = self.partial_player_controls(owner)?;
+        Ok(PlayerControls {
+            owner,
+            slot_status: controls.slot_status,
+            team: self.player_team(owner)?,
+            is_alive: self.player_alive(owner)?,
+            turn_active: self.turn_active(owner)?,
+        })
+    }
+    pub fn partial_player_controls(&self, owner: i32) -> Result<&PartialPlayerControls, Error> {
         self.controls
             .as_ref()
             .ok_or(Error::Missing(MissingInput::ManagerSlots))?
@@ -4053,8 +4265,23 @@ impl LoadedState {
             .find(|p| p.owner == owner)
             .ok_or(Error::Missing(MissingInput::PlayerConfiguration(owner)))
     }
+    pub fn player_slot_status(&self, owner: i32) -> Result<i32, Error> {
+        Ok(self.partial_player_controls(owner)?.slot_status)
+    }
+    pub fn player_team(&self, owner: i32) -> Result<i32, Error> {
+        self.partial_player_controls(owner)?
+            .team
+            .ok_or(Error::Missing(MissingInput::PlayerTeam(owner)))
+    }
+    pub fn player_alive(&self, owner: i32) -> Result<bool, Error> {
+        self.partial_player_controls(owner)?
+            .is_alive
+            .ok_or(Error::Missing(MissingInput::PlayerAlive(owner)))
+    }
     pub fn turn_active(&self, owner: i32) -> Result<bool, Error> {
-        Ok(self.player_controls(owner)?.turn_active)
+        self.partial_player_controls(owner)?
+            .turn_active
+            .ok_or(Error::Missing(MissingInput::PlayerTurnActive(owner)))
     }
     pub fn processing_automation(&self) -> Result<i32, Error> {
         self.controls
@@ -4317,6 +4544,20 @@ impl LoadedState {
 
     /// Existing pure legality queries can use the actual imported Unit without
     /// requiring unrelated UI or native dirty-tree machinery.
+    /// Reserve revision before exposing the retained saved formation record.
+    /// This follows World low-16 lookup and does not validate runtime sidecars.
+    pub fn formation_mut(&mut self, owner: i32, id: u32) -> Result<&mut unit::Formation, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let value = self
+            .world
+            .player_mut(owner)
+            .map_err(Error::World)?
+            .formation_mut(id)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing(MissingInput::Formation { owner, id }))?;
+        self.revision = next;
+        Ok(value)
+    }
     pub fn unit_mut(&mut self, owner: i32, id: u32) -> Result<&mut unit::Unit, Error> {
         let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         let value = self
