@@ -1,4 +1,4 @@
-//! Current Linux XP2 Player.Religion v20 wire transport, including nested records.
+//! Bounded Linux XP2 Player.Religion v15/v20 wire transport, with strict nested records.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::{HashValue, Limits};
 
@@ -6,6 +6,7 @@ pub const VERSION: u32 = 20;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     InvalidBool(u8),
@@ -22,6 +23,7 @@ struct Reader<'a> {
     pos: usize,
     items: usize,
     limits: Limits,
+    version_component: &'static str,
 }
 impl Reader<'_> {
     fn remaining(&self) -> Limits {
@@ -57,7 +59,8 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self) -> Result<(), Error> {
+    fn version(&mut self, component: &'static str) -> Result<(), Error> {
+        self.version_component = component;
         let actual = u32::read(self)?;
         if actual != VERSION {
             return Err(Error::Version {
@@ -184,7 +187,7 @@ macro_rules! record {
         impl Wire for $name {
             const MIN: usize = (if $version { 4 } else { 0 }) $(+ <$ty as Wire>::MIN)*;
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-                if $version { r.version()?; }
+                if $version { r.version(stringify!($name))?; }
                 Ok(Self { $($field: <$ty as Wire>::read(r)?),* })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -198,54 +201,243 @@ macro_rules! record {
 record!(PlotCoord, false, {x:i32,y:i32});
 record!(BeliefYield, true, {belief_yield_ordinal:i32,yield_ordinal:i32,amount:i32,per_x_items:i32,district_hash:u32});
 record!(ReligionBuildingYieldModifier, true, {yield_ordinal:i32,multiplier:i32,founder_only:bool});
-record!(Religion, true, {
-faith_balance_q8:i32,
-faith_rate_change_q8:i32,
-pantheon_hash:u32,
-num_beliefs_earned:i32,
-holy_city_coord:PlotCoord,
-belief_yields:Vec<BeliefYield>,
-building_yield_modifiers:Vec<ReligionBuildingYieldModifier>,
-religion_building_discount:i32,
-spread_distance:i32,
-combat_loss:i32,
-inquisition:i32,
-gains_all_follower_beliefs:bool,
-founder_belief_of_majority_religion:bool,
-faith_per_peaceful_religion_founder:i32,
-add_faith_harvest_modifier:i32,
-add_faith_chop_modifier:i32,
-add_faith_barbarian_plunder_modifier:i32,
-adopts_ally_founded_religions:i32,
-treat_ally_capital_as_holy_city:i32,
-treat_holy_sites_as_holy_city:i32,
-spread_multiplier:i32,
-spread_enhancing_tech_hash:u32,
-tech_enabled_spread_multiplier:i32,
-natural_wonder_relic:i32,
-faith_from_dispersal:i32,
-religious_pressure_per_great_person_activated:i32,
-enable_wall_attack_whole_game_same_religion:i32,
-enable_wall_attack_whole_game_same_religion_promotion_class:Vec<HashValue<i32>>,
-start_inquisition_charges:i32,
-spread_trade_route_pressure_destination_modifier:i32,
-spread_trade_route_pressure_origin_modifier:i32,
-great_person_founder_hash:u32,
-units_religion_strength_by_religion:Vec<i32>,
-});
+/// Player.Religion15/20 wire/default projection. Absent15 vectors retain
+/// distinct native Read effects; empty wire vectors are not native empty state.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Religion {
+    pub wire_version: u32,
+    pub faith_balance_q8: i32,
+    pub faith_rate_change_q8: i32,
+    pub pantheon_hash: u32,
+    pub num_beliefs_earned: i32,
+    pub holy_city_coord: PlotCoord,
+    pub belief_yields: Vec<BeliefYield>,
+    pub building_yield_modifiers: Vec<ReligionBuildingYieldModifier>,
+    pub religion_building_discount: i32,
+    pub spread_distance: i32,
+    pub combat_loss: i32,
+    pub inquisition: i32,
+    pub gains_all_follower_beliefs: bool,
+    pub founder_belief_of_majority_religion: bool,
+    pub faith_per_peaceful_religion_founder: i32,
+    pub add_faith_harvest_modifier: i32,
+    pub add_faith_chop_modifier: i32,
+    pub add_faith_barbarian_plunder_modifier: i32,
+    pub adopts_ally_founded_religions: i32,
+    pub treat_ally_capital_as_holy_city: i32,
+    pub treat_holy_sites_as_holy_city: i32,
+    pub spread_multiplier: i32,
+    pub spread_enhancing_tech_hash: u32,
+    pub tech_enabled_spread_multiplier: i32,
+    pub natural_wonder_relic: i32,
+    pub faith_from_dispersal: i32,
+    pub religious_pressure_per_great_person_activated: i32,
+    pub enable_wall_attack_whole_game_same_religion: i32,
+    pub enable_wall_attack_whole_game_same_religion_promotion_class: Vec<HashValue<i32>>,
+    pub start_inquisition_charges: i32,
+    pub spread_trade_route_pressure_destination_modifier: i32,
+    pub spread_trade_route_pressure_origin_modifier: i32,
+    pub great_person_founder_hash: u32,
+    pub units_religion_strength_by_religion: Vec<i32>,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ReligionArrayReadEffect {
+    /// Zero at each actual promotion-class definition's collection index.
+    /// Registry/count, dense ordering and unrepresented slots are not inferred.
+    ZeroAtActualPromotionClassIndexes,
+    UnknownRetainedBaseline,
+}
+impl Religion {
+    pub fn promotion_class_wall_attack_read_effect(&self) -> Option<ReligionArrayReadEffect> {
+        (self.wire_version == 15)
+            .then_some(ReligionArrayReadEffect::ZeroAtActualPromotionClassIndexes)
+    }
+    pub fn units_religion_strength_read_effect(&self) -> Option<ReligionArrayReadEffect> {
+        (self.wire_version == 15).then_some(ReligionArrayReadEffect::UnknownRetainedBaseline)
+    }
+}
+impl Wire for Religion {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <PlotCoord as Wire>::MIN
+        + <Vec<BeliefYield> as Wire>::MIN
+        + <Vec<ReligionBuildingYieldModifier> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "Religion";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | 20) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            faith_balance_q8: <i32 as Wire>::read(r)?,
+            faith_rate_change_q8: <i32 as Wire>::read(r)?,
+            pantheon_hash: <u32 as Wire>::read(r)?,
+            num_beliefs_earned: <i32 as Wire>::read(r)?,
+            holy_city_coord: <PlotCoord as Wire>::read(r)?,
+            belief_yields: <Vec<BeliefYield> as Wire>::read(r)?,
+            building_yield_modifiers: <Vec<ReligionBuildingYieldModifier> as Wire>::read(r)?,
+            religion_building_discount: <i32 as Wire>::read(r)?,
+            spread_distance: <i32 as Wire>::read(r)?,
+            combat_loss: <i32 as Wire>::read(r)?,
+            inquisition: <i32 as Wire>::read(r)?,
+            gains_all_follower_beliefs: <bool as Wire>::read(r)?,
+            founder_belief_of_majority_religion: <bool as Wire>::read(r)?,
+            faith_per_peaceful_religion_founder: <i32 as Wire>::read(r)?,
+            add_faith_harvest_modifier: <i32 as Wire>::read(r)?,
+            add_faith_chop_modifier: <i32 as Wire>::read(r)?,
+            add_faith_barbarian_plunder_modifier: <i32 as Wire>::read(r)?,
+            adopts_ally_founded_religions: <i32 as Wire>::read(r)?,
+            treat_ally_capital_as_holy_city: <i32 as Wire>::read(r)?,
+            treat_holy_sites_as_holy_city: <i32 as Wire>::read(r)?,
+            spread_multiplier: <i32 as Wire>::read(r)?,
+            spread_enhancing_tech_hash: <u32 as Wire>::read(r)?,
+            tech_enabled_spread_multiplier: <i32 as Wire>::read(r)?,
+            natural_wonder_relic: <i32 as Wire>::read(r)?,
+            faith_from_dispersal: <i32 as Wire>::read(r)?,
+            religious_pressure_per_great_person_activated: if wire_version == 20 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            enable_wall_attack_whole_game_same_religion: if wire_version == 20 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            enable_wall_attack_whole_game_same_religion_promotion_class: if wire_version == 20 {
+                <Vec<HashValue<i32>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            start_inquisition_charges: <i32 as Wire>::read(r)?,
+            spread_trade_route_pressure_destination_modifier: if wire_version == 20 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            spread_trade_route_pressure_origin_modifier: if wire_version == 20 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            great_person_founder_hash: <u32 as Wire>::read(r)?,
+            units_religion_strength_by_religion: if wire_version == 20 {
+                <Vec<i32> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.faith_balance_q8.write(w)?;
+        self.faith_rate_change_q8.write(w)?;
+        self.pantheon_hash.write(w)?;
+        self.num_beliefs_earned.write(w)?;
+        self.holy_city_coord.write(w)?;
+        self.belief_yields.write(w)?;
+        self.building_yield_modifiers.write(w)?;
+        self.religion_building_discount.write(w)?;
+        self.spread_distance.write(w)?;
+        self.combat_loss.write(w)?;
+        self.inquisition.write(w)?;
+        self.gains_all_follower_beliefs.write(w)?;
+        self.founder_belief_of_majority_religion.write(w)?;
+        self.faith_per_peaceful_religion_founder.write(w)?;
+        self.add_faith_harvest_modifier.write(w)?;
+        self.add_faith_chop_modifier.write(w)?;
+        self.add_faith_barbarian_plunder_modifier.write(w)?;
+        self.adopts_ally_founded_religions.write(w)?;
+        self.treat_ally_capital_as_holy_city.write(w)?;
+        self.treat_holy_sites_as_holy_city.write(w)?;
+        self.spread_multiplier.write(w)?;
+        self.spread_enhancing_tech_hash.write(w)?;
+        self.tech_enabled_spread_multiplier.write(w)?;
+        self.natural_wonder_relic.write(w)?;
+        self.faith_from_dispersal.write(w)?;
+        self.religious_pressure_per_great_person_activated
+            .write(w)?;
+        self.enable_wall_attack_whole_game_same_religion.write(w)?;
+        self.enable_wall_attack_whole_game_same_religion_promotion_class
+            .write(w)?;
+        self.start_inquisition_charges.write(w)?;
+        self.spread_trade_route_pressure_destination_modifier
+            .write(w)?;
+        self.spread_trade_route_pressure_origin_modifier.write(w)?;
+        self.great_person_founder_hash.write(w)?;
+        self.units_religion_strength_by_religion.write(w)?;
+        Ok(())
+    }
+}
+
+/// Exact Rust decoder cursor before refusal. A direct version error includes
+/// its4-byte tag; this is not an original native execution failure PC.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Boundary {
+    pub consumed: usize,
+    pub component: &'static str,
+    pub error: Error,
+}
 impl Religion {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_prefix_with_boundary(bytes, limits).map_err(|b| b.error)
+    }
+    pub fn decode_prefix_with_boundary(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Boundary> {
         let mut r = Reader {
             data: bytes,
             pos: 0,
             items: 0,
             limits,
+            version_component: "Religion",
         };
-        let v = Self::read(&mut r)?;
-        Ok((v, r.pos, r.items))
+        match Self::read(&mut r) {
+            Ok(v) => Ok((v, r.pos, r.items)),
+            Err(error) => Err(Boundary {
+                consumed: r.pos,
+                component: if matches!(error, Error::Version { .. }) {
+                    r.version_component
+                } else {
+                    "Religion field"
+                },
+                error,
+            }),
+        }
     }
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
         let (v, n, _) = Self::decode_prefix_with_items(bytes, limits)?;
@@ -336,10 +528,127 @@ mod tests {
         b
     }
     #[test]
+    fn religion15_literal_defaults_keep_distinct_native_array_effects() {
+        fn words(b: &mut Vec<u8>, values: &[i32]) {
+            for v in values {
+                b.extend(v.to_le_bytes());
+            }
+        }
+        let mut b = Vec::new();
+        words(&mut b, &[15, -257, 513, 0x81234567u32 as i32, 3, -8, 9, 1]);
+        let belief_tag = b.len();
+        words(&mut b, &[20, 7, -1, -90, 4, 0xfedcba98u32 as i32]);
+        words(&mut b, &[1, 20, 5, -71]);
+        b.push(1);
+        words(&mut b, &[-11, 12, -13, 42]);
+        b.extend([0, 1]);
+        for v in 1..=12 {
+            words(&mut b, &[-v]);
+        }
+        // No pressure18, wall19, promotion-class20 array, or route17 modifiers.
+        words(&mut b, &[-20, 0xabcdef01u32 as i32]);
+        // The since16 units-strength vector is absent, with unknown prior state.
+        let end = b.len();
+        b.extend([0xaa, 0xbb]);
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        let (v, used, items) = Religion::decode_prefix_with_items(&b, exact).unwrap();
+        assert_eq!((used, items, v.wire_version), (end, 2, 15));
+        assert_eq!(v.faith_balance_q8, -257);
+        assert_eq!(v.pantheon_hash, 0x81234567);
+        assert_eq!(v.belief_yields[0].district_hash, 0xfedcba98);
+        assert!(v.building_yield_modifiers[0].founder_only);
+        assert_eq!(v.inquisition, 42);
+        assert_eq!(v.faith_from_dispersal, -12);
+        assert_eq!(
+            (
+                v.religious_pressure_per_great_person_activated,
+                v.enable_wall_attack_whole_game_same_religion
+            ),
+            (0, 0)
+        );
+        assert_eq!(
+            (
+                v.spread_trade_route_pressure_destination_modifier,
+                v.spread_trade_route_pressure_origin_modifier
+            ),
+            (0, 0)
+        );
+        assert_eq!(v.start_inquisition_charges, -20);
+        assert_eq!(v.great_person_founder_hash, 0xabcdef01);
+        assert!(v
+            .enable_wall_attack_whole_game_same_religion_promotion_class
+            .is_empty());
+        assert!(v.units_religion_strength_by_religion.is_empty());
+        assert_eq!(
+            v.promotion_class_wall_attack_read_effect(),
+            Some(ReligionArrayReadEffect::ZeroAtActualPromotionClassIndexes)
+        );
+        assert_eq!(
+            v.units_religion_strength_read_effect(),
+            Some(ReligionArrayReadEffect::UnknownRetainedBaseline)
+        );
+        let mut w = Writer {
+            data: vec![0xaa],
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert_eq!(w.data, [0xaa]);
+        for n in 0..end {
+            assert!(Religion::decode_prefix(&b[..n], exact).is_err(), "{n}");
+        }
+        assert_eq!(
+            Religion::decode_prefix(
+                &b,
+                Limits {
+                    max_items: 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut nested = b.clone();
+        nested[belief_tag..belief_tag + 4].copy_from_slice(&15u32.to_le_bytes());
+        let boundary = Religion::decode_prefix_with_boundary(&nested, exact).unwrap_err();
+        assert_eq!(
+            (boundary.component, boundary.consumed),
+            ("BeliefYield", belief_tag + 4)
+        );
+        assert_eq!(
+            boundary.error,
+            Error::Version {
+                expected: 20,
+                actual: 15
+            }
+        );
+        assert_eq!(
+            Religion::decode_prefix(&nested, exact),
+            Err(Error::Version {
+                expected: 20,
+                actual: 15
+            })
+        );
+        let mut unknown = b.clone();
+        unknown[..4].copy_from_slice(&16u32.to_le_bytes());
+        assert_eq!(
+            Religion::decode_prefix(&unknown, exact),
+            Err(Error::Version {
+                expected: 20,
+                actual: 16
+            })
+        );
+    }
+    #[test]
     fn nonempty_source() {
         let b = source();
         let (v, n, i) = Religion::decode_prefix_with_items(&b, limits()).unwrap();
         assert_eq!(n, b.len());
+        assert_eq!(v.wire_version, 20);
+        assert_eq!(v.promotion_class_wall_attack_read_effect(), None);
+        assert_eq!(v.units_religion_strength_read_effect(), None);
         assert_eq!(i, 7);
         assert_eq!(v.faith_balance_q8, -257);
         assert_eq!(v.pantheon_hash, 0x81234567);

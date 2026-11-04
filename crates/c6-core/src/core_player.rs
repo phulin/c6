@@ -1770,6 +1770,7 @@ pub(crate) mod tests {
     fn religion_carrier() -> player_religion::Religion {
         use crate::player_religion as pmod;
         pmod::Religion {
+            wire_version: 20,
             faith_balance_q8: -999,
             faith_rate_change_q8: -998,
             pantheon_hash: 3735879683,
