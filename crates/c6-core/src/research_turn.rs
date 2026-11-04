@@ -218,3 +218,26 @@ pub fn choose<C: BoostContext>(
 pub fn yield_attribute_value(base: i32, modifier: i32) -> i32 {
     base.wrapping_add(((i64::from(base) * i64::from(modifier)) / 25_600) as i32)
 }
+
+/// Effectful numeric reads made by the stock PlayerTechs client publication.
+/// The first GetScienceYield belongs to current GetTurnsLeft and is skipped
+/// for an empty queue. Values.Fill then calculates science independently.
+/// Pure output buffers and eligibility/cost DTO queries are not gameplay state.
+/// The caller must separately qualify its actual synchronous consumer route.
+pub fn technology_publication_yields<C: Context>(
+    c: &mut C,
+    player: i32,
+) -> Result<Vec<i32>, Error<C::Error>> {
+    let mut reads = Vec::with_capacity(2);
+    if current(c, player, Kind::Technology).map_err(Error::Context)? != -1 {
+        reads.push(
+            c.research_yield_q8(player, Kind::Technology)
+                .map_err(Error::Context)?,
+        );
+    }
+    reads.push(
+        c.research_yield_q8(player, Kind::Technology)
+            .map_err(Error::Context)?,
+    );
+    Ok(reads)
+}

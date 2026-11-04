@@ -42,7 +42,11 @@ impl<E: Effects> Context<'_, E> {
             .find(|p| p.header.owner == owner)
             .ok_or(Error::Missing("current research Player"))
     }
-    fn has_current_tech(&self, player: i32, index: i32) -> Result<bool, Error<E::Error>> {
+    pub(super) fn has_current_tech(
+        &self,
+        player: i32,
+        index: i32,
+    ) -> Result<bool, Error<E::Error>> {
         let Some(definition) = self.definitions.techs.get(index as u32 as usize) else {
             return Ok(false);
         };

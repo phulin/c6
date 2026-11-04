@@ -25,6 +25,7 @@ pub enum Error<E> {
     Costs(crate::research_unit_costs::Error),
     AcquiredWrite(c6_core::loaded_state::research::WriteError),
     Binding,
+    IllegalTechnology(i32),
     Missing(&'static str),
     Effect(E),
     Kernel(Box<boost::Error<Error<E>>>),
@@ -389,6 +390,79 @@ pub struct Context<'a, E: Effects> {
     pub effects: &'a mut E,
 }
 impl<E: Effects> Context<'_, E> {
+    /// Preserve the current numeric query effects of the stock PlayerTechs
+    /// publication while allowing a headless adapter to retain semantic output
+    /// instead of native presentation caches. This is not a generic dispatcher:
+    /// its caller must qualify all actual subscribers/prepublication handlers.
+    pub fn stock_technology_publication_yields(
+        &mut self,
+        report: &boost::Report,
+    ) -> Result<Vec<i32>, Error<E::Error>> {
+        self.check()?;
+        if !matches!(report.event, 0x48062f97 | 0x4378a305)
+            || report.specialization.is_some()
+            || report.old_progress.is_some()
+            || report.source.is_some()
+        {
+            return Err(Error::Missing("unsupported stock technology publication"));
+        }
+        research_turn::technology_publication_yields(self, report.player)
+            .map_err(|e| Error::Kernel(Box::new(e)))
+    }
+    /// Positive CanResearch legality over the current initialized graph. The
+    /// hidden-until-prerequisite reveal gate is implied by all prerequisites
+    /// being acquired (or by an empty prerequisite list). It changes no true
+    /// result here; no AI recommendation or policy selection is performed.
+    pub fn can_research_technology(
+        &self,
+        player: i32,
+        index: i32,
+    ) -> Result<bool, Error<E::Error>> {
+        self.check()?;
+        let Some(definition) = self.definitions.techs.get(index as u32 as usize) else {
+            return Ok(false);
+        };
+        if !self.globally_available(Kind::Technology, index)? {
+            return Ok(false);
+        }
+        if self.has_current_tech(player, index)? && definition.repeatable != Some(true) {
+            return Ok(false);
+        }
+        let node = self
+            .node(Kind::Technology, index)?
+            .ok_or(Error::Missing("active technology node"))?;
+        for &prerequisite in &node.prerequisites {
+            if !self.has_current_tech(player, prerequisite)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+    /// Ordered legal external choices. No native AI decision fills an empty
+    /// research queue. An empty result is distinct from unavailable input.
+    pub fn technology_choices(&self, player: i32) -> Result<Vec<i32>, Error<E::Error>> {
+        let mut choices = Vec::new();
+        for index in 0..self.definitions.techs.len() {
+            if self.can_research_technology(player, index as i32)? {
+                choices.push(index as i32);
+            }
+        }
+        Ok(choices)
+    }
+    /// External policy action. Input is a native technology collection index;
+    /// invalid/ineligible choices reject before any queue or callback changes.
+    pub fn request_technology(
+        &mut self,
+        player: i32,
+        index: i32,
+        mode: InsertMode,
+    ) -> Result<(), Error<E::Error>> {
+        if !self.can_research_technology(player, index)? {
+            return Err(Error::IllegalTechnology(index));
+        }
+        self.choose(player, Kind::Technology, index, mode)
+            .map_err(|error| Error::Kernel(Box::new(error)))
+    }
     fn check(&self) -> Result<(), Error<E::Error>> {
         if self.state.binding() != &self.definitions.binding
             || self.state.binding() != &self.effects.runtime().binding

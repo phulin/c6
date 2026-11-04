@@ -936,6 +936,22 @@ mod tests {
         }
     }
     #[test]
+    fn client_publication_preserves_both_current_yield_reads_and_empty_queue_skip() {
+        let mut f = Fixture::new();
+        assert_eq!(
+            crate::research_turn::technology_publication_yields(&mut f, 0).unwrap(),
+            vec![integer(2), integer(2)]
+        );
+        assert_eq!(f.log, ["yield", "yield"]);
+        f.log.clear();
+        f.techs[0].research_queue_hashes.clear();
+        assert_eq!(
+            crate::research_turn::technology_publication_yields(&mut f, 0).unwrap(),
+            vec![integer(2)]
+        );
+        assert_eq!(f.log, ["yield"]);
+    }
+    #[test]
     fn research_turn_spends_old_overflow_once_completes_and_yields_next_choice() {
         let mut f = Fixture::new();
         f.techs[0].research_progress_q8[0].value = integer(99);
