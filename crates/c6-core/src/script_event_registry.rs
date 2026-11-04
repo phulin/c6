@@ -1,8 +1,8 @@
 //! Bounded logical GameEvents graph for the pinned Linux host.
 //!
-//! This models source-backed factory/cache mutations and builtin TestAll control
-//! flow. The cached three-integer no-listener frontier additionally evolves
-//! bounded allocator/collector accounting. This is not a complete HKS heap,
+//! This models source-backed factory/cache mutations and builtin TestAll/Call
+//! control flow. The three-integer TestAll and six-integer Call no-listener
+//! frontiers additionally evolve exact or explicitly alternative allocator accounting. This is not a complete HKS heap,
 //! collector, callback VM, action executor, or turn implementation. Unknown
 //! name-map entries are never interpreted as absent.
 
@@ -157,6 +157,8 @@ pub enum CachedCallCapacity {
     NoGrowthForThreeIntegers,
     /// Twenty-eight API cells, three nested C frames, and bounded depth.
     NoGrowthForFactoryThreeIntegers,
+    /// Source-qualified six integer Call including factory: 150 cells, nine frames.
+    NoGrowthForFactorySixIntegers,
 }
 
 /// Current semantic facts for the no-destination-growth factory frontier. Facts are supplied from actual initial state, not inferred from a
@@ -185,7 +187,8 @@ pub struct InternExecutionState {
     pub count: u32,
     /// Logical mask+1; this bounded profile admits powers of two through 2^31.
     pub capacity: u32,
-    pub scan_index: u32,
+    /// Unknown is retained through hit-only and non-growing insertion paths.
+    pub scan_index: Option<u32>,
     pub known_absent: std::collections::BTreeSet<String>,
 }
 
@@ -247,7 +250,7 @@ fn plan_intern(
         .checked_add(1)
         .ok_or(RegistryError::UnsupportedEffect("intern count overflow"))?;
     if next > plan.capacity / 2 {
-        if plan.initial.scan_index != 0 {
+        if plan.initial.scan_index != Some(0) {
             return Err(RegistryError::UnsupportedEffect(
                 "unknown intern growth mark prefix",
             ));
@@ -327,13 +330,28 @@ impl AllocationPlan {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum RegistryArguments {
+    TestAll([i32; 3]),
+    Call([i32; 6]),
+}
+impl RegistryArguments {
+    fn method(self) -> &'static str {
+        match self {
+            Self::TestAll(_) => "TestAll",
+            Self::Call(_) => "Call",
+        }
+    }
+}
+
 /// Deferred effects for one bounded three-integer TestAll call. This owns only
 /// newly created objects, intern additions, and allocator scalars. Preparation
 /// rechecks the source computation against current inputs before any write.
 #[derive(Debug, PartialEq)]
 pub struct RegistryExecutionPlan {
     name: String,
-    arguments: [i32; 3],
+    arguments: RegistryArguments,
+    namespace_growth: bool,
     with_intern: bool,
     allocation: AllocationPlan,
     protected_obligations: u64,
@@ -383,11 +401,12 @@ impl PreparedRegistryCommit<'_> {
 }
 
 impl CachedExecutionState {
-    fn admit(&self, name: &str) -> Result<(), RegistryError> {
+    fn admit(&self, name: &str, arguments: RegistryArguments) -> Result<(), RegistryError> {
         if !matches!(
             self.call_capacity,
             CachedCallCapacity::NoGrowthForThreeIntegers
                 | CachedCallCapacity::NoGrowthForFactoryThreeIntegers
+                | CachedCallCapacity::NoGrowthForFactorySixIntegers
         ) {
             return Err(RegistryError::UnsupportedEffect(
                 "unknown call growth effects",
@@ -398,7 +417,7 @@ impl CachedExecutionState {
                 "collector phase outside cached frontier",
             ));
         }
-        for key in ["GameEvents", name, "TestAll"] {
+        for key in ["GameEvents", name, arguments.method()] {
             if !self.interned_names.contains(key) {
                 return Err(RegistryError::UnsupportedEffect("string intern miss"));
             }
@@ -418,6 +437,219 @@ impl CachedExecutionState {
             ));
         }
         Ok(())
+    }
+}
+
+/// One possible physical accounting state; all alternatives share the registry's
+/// logical objects. No member is privileged as the actual native history.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExecutionAlternative {
+    pub execution: CachedExecutionState,
+    pub intern: InternExecutionState,
+}
+
+/// Explicit bounded knowledge. Unknown intern memberships are enumerated rather
+/// than silently interpreted as hits or misses. This is not a general heap VM.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BoundedExecutionState {
+    alternatives: Vec<ExecutionAlternative>,
+    namespace: Option<(u32, u32)>,
+}
+impl BoundedExecutionState {
+    pub fn alternatives(&self) -> &[ExecutionAlternative] {
+        &self.alternatives
+    }
+
+    /// At most four strictly unknown memberships, ordinary successful allocator,
+    /// current intern count/capacity and optional scan knowledge are input facts.
+    /// A namespace (capacity, occupied) fact is consumed by a fresh insertion.
+    pub fn from_unknown_memberships(
+        execution: CachedExecutionState,
+        intern: InternExecutionState,
+        unknown: &[String],
+        namespace: Option<(u32, u32)>,
+    ) -> Result<Self, RegistryError> {
+        let keys: std::collections::BTreeSet<_> = unknown.iter().collect();
+        if unknown.len() > 4
+            || keys.len() != unknown.len()
+            || unknown
+                .iter()
+                .any(|s| execution.interned_names.contains(s) || intern.known_absent.contains(s))
+        {
+            return Err(RegistryError::InvalidSeed(
+                "invalid bounded intern memberships",
+            ));
+        }
+        let alternatives = (0..(1usize << unknown.len()))
+            .map(|mask| {
+                let mut execution = execution.clone();
+                let mut intern = intern.clone();
+                for (bit, name) in unknown.iter().enumerate() {
+                    if mask & (1 << bit) == 0 {
+                        execution.interned_names.insert(name.clone());
+                    } else {
+                        intern.known_absent.insert(name.clone());
+                    }
+                }
+                ExecutionAlternative { execution, intern }
+            })
+            .collect();
+        Ok(Self {
+            alternatives,
+            namespace,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct BoundedRegistryExecutionPlan {
+    name: String,
+    arguments: RegistryArguments,
+    plans: Vec<RegistryExecutionPlan>,
+}
+
+impl BoundedRegistryExecutionPlan {
+    pub fn result(&self) -> Option<bool> {
+        self.plans[0].result()
+    }
+}
+
+pub struct PreparedBoundedRegistryCommit<'a> {
+    registry: &'a mut ScriptEventRegistry,
+    knowledge: &'a mut BoundedExecutionState,
+    factory: &'a mut FactoryExecutionState,
+    plan: BoundedRegistryExecutionPlan,
+}
+impl PreparedBoundedRegistryCommit<'_> {
+    pub fn commit(self) -> Option<bool> {
+        let result = self.plan.plans[0].result();
+        let mut plans = self.plan.plans.into_iter();
+        let first = plans.next().expect("nonempty bounded alternatives");
+        // Only the first delta constructs logical objects; all alternatives have
+        // the same delta and differ only in physical intern/accounting state.
+        for (alternative, plan) in self.knowledge.alternatives.iter_mut().skip(1).zip(plans) {
+            plan.commit_effects(&mut alternative.execution);
+            if let Some((count, capacity, added)) = plan.factory.and_then(|f| f.intern_delta) {
+                alternative.intern.count = count;
+                alternative.intern.capacity = capacity;
+                for key in added {
+                    alternative.intern.known_absent.remove(&key);
+                    alternative.execution.interned_names.insert(key);
+                }
+            }
+        }
+        let alternative = &mut self.knowledge.alternatives[0];
+        let created = first.factory.is_some();
+        self.registry.commit_plan(
+            &mut alternative.execution,
+            self.factory,
+            Some(&mut alternative.intern),
+            first,
+        );
+        if created {
+            self.knowledge.namespace = None;
+        }
+        result
+    }
+}
+
+impl ScriptEventRegistry {
+    /// Source-compute builtin Call with six integer arguments and empty reached
+    /// groups. Every alternative must remain inside the supported frontier.
+    pub fn plan_call_six(
+        &self,
+        name: &str,
+        arguments: [i32; 6],
+        knowledge: &BoundedExecutionState,
+        factory: &FactoryExecutionState,
+    ) -> Result<BoundedRegistryExecutionPlan, RegistryError> {
+        self.plan_bounded(name, RegistryArguments::Call(arguments), knowledge, factory)
+    }
+
+    pub fn plan_test_all_alternatives(
+        &self,
+        name: &str,
+        arguments: [i32; 3],
+        knowledge: &BoundedExecutionState,
+        factory: &FactoryExecutionState,
+    ) -> Result<BoundedRegistryExecutionPlan, RegistryError> {
+        self.plan_bounded(
+            name,
+            RegistryArguments::TestAll(arguments),
+            knowledge,
+            factory,
+        )
+    }
+
+    fn plan_bounded(
+        &self,
+        name: &str,
+        arguments: RegistryArguments,
+        knowledge: &BoundedExecutionState,
+        factory: &FactoryExecutionState,
+    ) -> Result<BoundedRegistryExecutionPlan, RegistryError> {
+        let fresh = self.cached_event(name).is_none();
+        let growth = fresh && knowledge.namespace == Some((1, 1));
+        if fresh && knowledge.namespace.is_some() && !growth {
+            return Err(RegistryError::UnsupportedEffect(
+                "unsupported namespace capacity",
+            ));
+        }
+        let plans = knowledge
+            .alternatives
+            .iter()
+            .map(|a| {
+                self.plan_invocation(
+                    name,
+                    arguments,
+                    &a.execution,
+                    factory,
+                    Some(&a.intern),
+                    growth,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        // Every source branch must create identical logical identities/order.
+        if plans
+            .windows(2)
+            .any(|p| match (&p[0].factory, &p[1].factory) {
+                (Some(a), Some(b)) => {
+                    a.entry != b.entry
+                        || a.append_position != b.append_position
+                        || a.end != b.end
+                        || a.objects != b.objects
+                }
+                (None, None) => false,
+                _ => true,
+            })
+        {
+            return Err(RegistryError::UnsupportedEffect(
+                "divergent logical Call alternatives",
+            ));
+        }
+        Ok(BoundedRegistryExecutionPlan {
+            name: name.into(),
+            arguments,
+            plans,
+        })
+    }
+
+    pub fn prepare_call_six<'a>(
+        &'a mut self,
+        knowledge: &'a mut BoundedExecutionState,
+        factory: &'a mut FactoryExecutionState,
+        plan: BoundedRegistryExecutionPlan,
+    ) -> Result<PreparedBoundedRegistryCommit<'a>, RegistryError> {
+        let current = self.plan_bounded(&plan.name, plan.arguments, knowledge, factory)?;
+        if current != plan {
+            return Err(RegistryError::UnsupportedEffect("stale bounded Call plan"));
+        }
+        Ok(PreparedBoundedRegistryCommit {
+            registry: self,
+            knowledge,
+            factory,
+            plan,
+        })
     }
 }
 
@@ -696,7 +928,7 @@ impl ScriptEventRegistry {
         _arguments: [i32; 3],
         effects: &mut CachedExecutionState,
     ) -> Result<Option<bool>, RegistryError> {
-        let plan = self.plan_cached(name, _arguments, effects)?;
+        let plan = self.plan_cached(name, RegistryArguments::TestAll(_arguments), effects)?;
         plan.commit_effects(effects);
         Ok(plan.result())
     }
@@ -704,7 +936,7 @@ impl ScriptEventRegistry {
     fn plan_cached(
         &self,
         name: &str,
-        arguments: [i32; 3],
+        arguments: RegistryArguments,
         effects: &CachedExecutionState,
     ) -> Result<RegistryExecutionPlan, RegistryError> {
         if name.as_bytes().contains(&0) {
@@ -733,13 +965,21 @@ impl ScriptEventRegistry {
         if any_nonempty {
             return Err(RegistryError::UnsupportedCallbackVm);
         }
-        effects.admit(name)?;
+        if matches!(arguments, RegistryArguments::Call(_))
+            && effects.call_capacity != CachedCallCapacity::NoGrowthForFactorySixIntegers
+        {
+            return Err(RegistryError::UnsupportedEffect(
+                "unknown Call6 growth effects",
+            ));
+        }
+        effects.admit(name, arguments)?;
         // Source order: protected cclosure allocation precedes the three
         // intern-hit field lookups and empty TestAll traversal. Phase zero
         // intern hits and the reached empty groups have no further effects.
         Ok(RegistryExecutionPlan {
             name: name.to_owned(),
             arguments,
+            namespace_growth: false,
             with_intern: false,
             allocation: AllocationPlan {
                 countdown: effects.step_countdown.wrapping_sub(1),
@@ -810,9 +1050,28 @@ impl ScriptEventRegistry {
         factory: &FactoryExecutionState,
         intern: Option<&InternExecutionState>,
     ) -> Result<RegistryExecutionPlan, RegistryError> {
+        self.plan_invocation(
+            name,
+            RegistryArguments::TestAll(arguments),
+            effects,
+            factory,
+            intern,
+            false,
+        )
+    }
+
+    fn plan_invocation(
+        &self,
+        name: &str,
+        arguments: RegistryArguments,
+        effects: &CachedExecutionState,
+        factory: &FactoryExecutionState,
+        intern: Option<&InternExecutionState>,
+        namespace_growth: bool,
+    ) -> Result<RegistryExecutionPlan, RegistryError> {
         if self.cached_event(name).is_some() {
             if intern.as_ref().is_some_and(|state| {
-                ["GameEvents", name, "TestAll"]
+                ["GameEvents", name, arguments.method()]
                     .iter()
                     .any(|key| state.known_absent.contains(*key))
             }) {
@@ -834,7 +1093,14 @@ impl ScriptEventRegistry {
             .get(name)
             .copied()
             .ok_or_else(|| RegistryError::UnknownNameMapEntry(name.to_owned()))?;
-        if effects.call_capacity != CachedCallCapacity::NoGrowthForFactoryThreeIntegers {
+        if effects.call_capacity
+            != match arguments {
+                RegistryArguments::TestAll(_) => {
+                    CachedCallCapacity::NoGrowthForFactoryThreeIntegers
+                }
+                RegistryArguments::Call(_) => CachedCallCapacity::NoGrowthForFactorySixIntegers,
+            }
+        {
             return Err(RegistryError::UnsupportedEffect(
                 "unknown factory call growth effects",
             ));
@@ -844,7 +1110,7 @@ impl ScriptEventRegistry {
                 "collector phase outside factory frontier",
             ));
         }
-        if !factory.game_event_spare_names.contains(name) {
+        if !namespace_growth && !factory.game_event_spare_names.contains(name) {
             return Err(RegistryError::UnsupportedEffect(
                 "unknown GameEvents insertion growth",
             ));
@@ -917,7 +1183,7 @@ impl ScriptEventRegistry {
                 "unknown rooted string intern membership",
             ));
         }
-        if intern.is_some() {
+        if intern.is_some() && matches!(arguments, RegistryArguments::TestAll(_)) {
             // Known retained event objects root their keys and closure names.
             // A miss cannot create a second native intern identity for them.
             let retained_event = !self.cache.is_empty() || !factory.factory_objects.is_empty();
@@ -1009,7 +1275,15 @@ impl ScriptEventRegistry {
         plan_intern("__newindex", effects, &mut intern_plan, &mut allocation)?;
         plan_intern("__metatable", effects, &mut intern_plan, &mut allocation)?;
         allocation.charge(3, &[64], 0)?; // protected empty metatable
-        plan_intern("TestAll", effects, &mut intern_plan, &mut allocation)?;
+        if namespace_growth {
+            allocation.charge(1, &[80], 40)?;
+        }
+        plan_intern(
+            arguments.method(),
+            effects,
+            &mut intern_plan,
+            &mut allocation,
+        )?;
         let intern_delta = intern_plan.map(|p| (p.count, p.capacity, p.added));
 
         // Reserve every new swept identity before mutation, including garbage
@@ -1057,6 +1331,7 @@ impl ScriptEventRegistry {
         Ok(RegistryExecutionPlan {
             name: name.to_owned(),
             arguments,
+            namespace_growth,
             with_intern: intern.is_some(),
             allocation,
             protected_obligations,
@@ -1097,12 +1372,13 @@ impl ScriptEventRegistry {
         intern: Option<&'a mut InternExecutionState>,
         plan: RegistryExecutionPlan,
     ) -> Result<PreparedRegistryCommit<'a>, RegistryError> {
-        let current = self.plan_test_all(
+        let current = self.plan_invocation(
             &plan.name,
             plan.arguments,
             effects,
             factory,
             intern.as_deref(),
+            plan.namespace_growth,
         )?;
         if current != plan {
             return Err(RegistryError::UnsupportedEffect(
@@ -1473,9 +1749,176 @@ mod tests {
         InternExecutionState {
             count: 64,
             capacity: 128,
-            scan_index: 0,
+            scan_index: Some(0),
             known_absent: missing.iter().map(|s| (*s).to_owned()).collect(),
         }
+    }
+
+    fn call_context() -> (
+        ScriptEventRegistry,
+        BoundedExecutionState,
+        FactoryExecutionState,
+    ) {
+        let (mut registry, mut effects, mut factory) = factory_context(false);
+        registry
+            .names
+            .insert("OnUnitMoved".into(), KnownNameEntry::Absent);
+        factory.name_map_spare_names.insert("OnUnitMoved".into());
+        effects.call_capacity = CachedCallCapacity::NoGrowthForFactorySixIntegers;
+        effects.step_countdown = -1024;
+        effects.allocated_bytes = 37_332_465;
+        effects.peak_allocated_bytes = 37_334_743;
+        effects.collection_threshold = 40_951_825;
+        let unknown = ["OnUnitMoved", "GameEvent::lCreate", "func", "__newindex"].map(String::from);
+        for key in &unknown {
+            effects.interned_names.remove(key);
+        }
+        let knowledge = BoundedExecutionState::from_unknown_memberships(
+            effects,
+            InternExecutionState {
+                count: 31_054,
+                capacity: 65_536,
+                scan_index: None,
+                known_absent: Default::default(),
+            },
+            &unknown,
+            Some((1, 1)),
+        )
+        .unwrap();
+        (registry, knowledge, factory)
+    }
+
+    #[test]
+    fn call_six_intern_histories_share_objects_and_cached_reuse() {
+        let (mut registry, mut knowledge, mut factory) = call_context();
+        let prior = registry.lookup("CanStartOperation").unwrap();
+        let initial = knowledge.clone();
+        let plan = registry
+            .plan_call_six("OnUnitMoved", [0, 7, 1, 2, 3, 4], &knowledge, &factory)
+            .unwrap();
+        assert_eq!(plan.result(), None); // native builtin Call returns nil
+        assert_eq!(knowledge, initial);
+        registry
+            .prepare_call_six(&mut knowledge, &mut factory, plan)
+            .unwrap()
+            .commit();
+        let event = registry.cached_event("OnUnitMoved").unwrap();
+        assert_eq!(
+            event
+                .methods
+                .into_iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            9
+        );
+        assert_ne!(event.event, prior.event);
+        assert_ne!(event.shared_group, prior.shared_group);
+        assert!(event.methods.iter().all(|id| !prior.methods.contains(id)));
+        assert_ne!(event.event, event.shared_group);
+        assert_ne!(event.shared_group, event.local_group);
+        assert_eq!(knowledge.alternatives.len(), 16);
+        assert_eq!(
+            knowledge
+                .alternatives
+                .iter()
+                .map(|a| a.execution.allocated_bytes)
+                .min(),
+            Some(37_332_465 + 1968)
+        );
+        assert_eq!(
+            knowledge
+                .alternatives
+                .iter()
+                .map(|a| a.execution.allocated_bytes)
+                .max(),
+            Some(37_332_465 + 1968 + 151)
+        );
+        for a in &knowledge.alternatives {
+            assert_eq!(a.intern.scan_index, None);
+            assert_eq!(a.intern.capacity, 65_536);
+            assert_eq!(
+                a.execution.step_countdown,
+                -1024 - 37 - (a.intern.count - 31_054) as i32
+            );
+            assert_eq!(a.execution.peak_allocated_bytes, 37_334_743);
+            assert!(a.execution.interned_names.contains("OnUnitMoved"));
+            assert!(a.intern.known_absent.is_empty());
+        }
+        let before = knowledge.clone();
+        let plan = registry
+            .plan_call_six("OnUnitMoved", [9; 6], &knowledge, &factory)
+            .unwrap();
+        registry
+            .prepare_call_six(&mut knowledge, &mut factory, plan)
+            .unwrap()
+            .commit();
+        assert_eq!(registry.cached_event("OnUnitMoved"), Some(event));
+        assert_eq!(factory.factory_objects.len(), 1);
+        for (a, b) in knowledge.alternatives.iter().zip(&before.alternatives) {
+            assert_eq!(
+                a.execution.allocated_bytes,
+                b.execution.allocated_bytes + 48
+            );
+            assert_eq!(a.intern, b.intern);
+        }
+    }
+
+    #[test]
+    fn bounded_cached_test_all_then_call_preserves_all_histories() {
+        let (mut registry, mut knowledge, mut factory) = call_context();
+        registry.lookup("CanStartOperation").unwrap();
+        let plan = registry
+            .plan_test_all_alternatives("CanStartOperation", [0, 7, 5], &knowledge, &factory)
+            .unwrap();
+        assert_eq!(plan.result(), None);
+        registry
+            .prepare_call_six(&mut knowledge, &mut factory, plan)
+            .unwrap()
+            .commit();
+        assert_eq!(knowledge.namespace, Some((1, 1)));
+        let plan = registry
+            .plan_call_six("OnUnitMoved", [0; 6], &knowledge, &factory)
+            .unwrap();
+        registry
+            .prepare_call_six(&mut knowledge, &mut factory, plan)
+            .unwrap()
+            .commit();
+        assert_eq!(
+            knowledge
+                .alternatives
+                .iter()
+                .map(|a| a.execution.allocated_bytes)
+                .min(),
+            Some(37_332_465 + 2016)
+        );
+        assert_eq!(
+            knowledge
+                .alternatives
+                .iter()
+                .map(|a| a.execution.allocated_bytes)
+                .max(),
+            Some(37_332_465 + 2167)
+        );
+    }
+
+    #[test]
+    fn bounded_call_refuses_any_later_collector_frontier_atomically() {
+        let (mut registry, mut knowledge, mut factory) = call_context();
+        let plan = registry
+            .plan_call_six("OnUnitMoved", [0; 6], &knowledge, &factory)
+            .unwrap();
+        registry
+            .prepare_call_six(&mut knowledge, &mut factory, plan)
+            .unwrap()
+            .commit();
+        let last = knowledge.alternatives.last_mut().unwrap();
+        last.execution.collection_threshold = last.execution.allocated_bytes - 1;
+        let before = (registry.clone(), knowledge.clone(), factory.clone());
+        assert!(matches!(
+            registry.plan_call_six("OnUnitMoved", [0; 6], &knowledge, &factory),
+            Err(RegistryError::UnsupportedEffect("collector progression"))
+        ));
+        assert_eq!((registry, knowledge, factory), before);
     }
 
     #[test]
@@ -1668,7 +2111,7 @@ mod tests {
             );
             assert_eq!(intern.count, 64 + missing.len() as u32);
             assert_eq!(intern.capacity, 256);
-            assert_eq!(intern.scan_index, 0);
+            assert_eq!(intern.scan_index, Some(0));
             assert!(intern.known_absent.is_empty());
             for name in missing {
                 assert!(effects.interned_names.contains(*name));
@@ -1735,7 +2178,7 @@ mod tests {
         let mut intern = InternExecutionState {
             count: 0,
             capacity: 0,
-            scan_index: 42,
+            scan_index: Some(42),
             known_absent: Default::default(),
         };
         let before = intern.clone();
@@ -1754,7 +2197,7 @@ mod tests {
         let (mut registry, mut effects, mut factory) = factory_context(true);
         let mut intern = intern_state(&mut effects, &["Count"]);
         intern.capacity = 256;
-        intern.scan_index = 42;
+        intern.scan_index = Some(42);
         let initial = effects.allocated_bytes;
         assert_eq!(
             registry.test_all_with_intern(
@@ -1766,7 +2209,7 @@ mod tests {
             ),
             Ok(None)
         );
-        assert_eq!(intern.scan_index, 42);
+        assert_eq!(intern.scan_index, Some(42));
         assert_eq!(intern.capacity, 256);
         assert_eq!(effects.allocated_bytes, initial + 1744 + 32);
 
@@ -1838,7 +2281,7 @@ mod tests {
                 0 => {
                     intern.known_absent.remove("func");
                 }
-                1 => intern.scan_index = 1,
+                1 => intern.scan_index = Some(1),
                 2 => intern.capacity = 127,
                 3 => intern.count = u32::MAX,
                 4 => {

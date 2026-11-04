@@ -86,6 +86,7 @@ pub struct ScriptState {
     execution: CachedExecutionState,
     factory: FactoryExecutionState,
     intern: Option<InternExecutionState>,
+    bounded: Option<c6_core::script_event_registry::BoundedExecutionState>,
 }
 impl ScriptState {
     #[allow(clippy::too_many_arguments)]
@@ -106,22 +107,147 @@ impl ScriptState {
             execution,
             factory,
             intern,
+            bounded: None,
         }
     }
     pub fn registry(&self) -> &ScriptEventRegistry {
         &self.registry
     }
-    pub fn execution(&self) -> &CachedExecutionState {
-        &self.execution
+    pub fn execution(&self) -> Option<&CachedExecutionState> {
+        self.bounded.is_none().then_some(&self.execution)
     }
     pub fn factory(&self) -> &FactoryExecutionState {
         &self.factory
     }
     pub fn intern(&self) -> Option<&InternExecutionState> {
-        self.intern.as_ref()
+        if self.bounded.is_some() {
+            None
+        } else {
+            self.intern.as_ref()
+        }
+    }
+    /// Retain every hit/miss history allowed by supplied unknown membership.
+    pub fn with_unknown_memberships(
+        mut self,
+        unknown: &[String],
+        namespace: Option<(u32, u32)>,
+    ) -> Result<Self, RegistryError> {
+        if self.bounded.is_some() {
+            return Err(RegistryError::InvalidSeed("already bounded execution"));
+        }
+        let intern = self
+            .intern
+            .as_ref()
+            .ok_or(RegistryError::InvalidSeed("bounded intern facts absent"))?;
+        self.bounded = Some(
+            c6_core::script_event_registry::BoundedExecutionState::from_unknown_memberships(
+                self.execution.clone(),
+                intern.clone(),
+                unknown,
+                namespace,
+            )?,
+        );
+        Ok(self)
+    }
+    pub fn execution_alternatives(
+        &self,
+    ) -> Option<&[c6_core::script_event_registry::ExecutionAlternative]> {
+        self.bounded.as_ref().map(|s| s.alternatives())
+    }
+    pub fn plan_test_all(
+        &self,
+        name: &str,
+        arguments: [i32; 3],
+    ) -> Result<ScriptExecutionPlan, RegistryError> {
+        match &self.bounded {
+            Some(state) => self
+                .registry
+                .plan_test_all_alternatives(name, arguments, state, &self.factory)
+                .map(ScriptExecutionPlan::Bounded),
+            None => self
+                .registry
+                .plan_test_all(
+                    name,
+                    arguments,
+                    &self.execution,
+                    &self.factory,
+                    self.intern.as_ref(),
+                )
+                .map(ScriptExecutionPlan::Exact),
+        }
+    }
+    pub fn plan_call_six(
+        &self,
+        name: &str,
+        arguments: [i32; 6],
+    ) -> Result<ScriptExecutionPlan, RegistryError> {
+        let state = self
+            .bounded
+            .as_ref()
+            .ok_or(RegistryError::UnsupportedEffect(
+                "Call6 requires bounded execution facts",
+            ))?;
+        self.registry
+            .plan_call_six(name, arguments, state, &self.factory)
+            .map(ScriptExecutionPlan::Bounded)
+    }
+    pub fn prepare_plan(
+        &mut self,
+        plan: ScriptExecutionPlan,
+    ) -> Result<PreparedScriptCommit<'_>, RegistryError> {
+        match plan {
+            ScriptExecutionPlan::Exact(plan) if self.bounded.is_none() => self
+                .registry
+                .prepare_commit(
+                    &mut self.execution,
+                    &mut self.factory,
+                    self.intern.as_mut(),
+                    plan,
+                )
+                .map(PreparedScriptCommit::Exact),
+            ScriptExecutionPlan::Bounded(plan) => {
+                let state = self
+                    .bounded
+                    .as_mut()
+                    .ok_or(RegistryError::UnsupportedEffect(
+                        "bounded execution facts changed",
+                    ))?;
+                self.registry
+                    .prepare_call_six(state, &mut self.factory, plan)
+                    .map(PreparedScriptCommit::Bounded)
+            }
+            _ => Err(RegistryError::UnsupportedEffect(
+                "script execution knowledge changed",
+            )),
+        }
     }
     fn matches(&self, state: &LoadedState) -> bool {
         self.binding == *state.binding() && self.origin.as_ref() == state.observed_snapshot()
+    }
+}
+
+pub enum ScriptExecutionPlan {
+    Exact(RegistryExecutionPlan),
+    Bounded(c6_core::script_event_registry::BoundedRegistryExecutionPlan),
+}
+impl ScriptExecutionPlan {
+    pub fn result(&self) -> Option<bool> {
+        match self {
+            Self::Exact(p) => p.result(),
+            Self::Bounded(p) => p.result(),
+        }
+    }
+}
+pub enum PreparedScriptCommit<'a> {
+    Exact(c6_core::script_event_registry::PreparedRegistryCommit<'a>),
+    Bounded(c6_core::script_event_registry::PreparedBoundedRegistryCommit<'a>),
+}
+impl PreparedScriptCommit<'_> {
+    pub fn commit(self) -> Option<bool> {
+        match self {
+            Self::Exact(p) => p.commit(),
+            Self::Bounded(p) => p.commit(),
+        }
     }
 }
 
@@ -168,7 +294,7 @@ pub struct StatePhasePlan {
     binding: WireBinding,
     before: ActorRecords,
     after: ActorRecords,
-    script: Option<RegistryExecutionPlan>,
+    script: Option<ScriptExecutionPlan>,
     script_identity: Option<ScriptSystemIdentity>,
     trace: Vec<Event>,
     publications: Vec<reporting::Publication>,
@@ -223,7 +349,7 @@ pub struct AppliedSkipTurn {
 struct ScriptQueries<'a> {
     state: &'a LoadedState,
     scripts: Option<&'a ScriptState>,
-    pending: Option<RegistryExecutionPlan>,
+    pending: Option<ScriptExecutionPlan>,
     error: Option<RegistryError>,
     held: bool,
 }
@@ -423,13 +549,7 @@ impl ManagerQueries<Unit> for ScriptQueries<'_> {
         if arguments != [s.unit.e_owner, s.unit.id as i32, s.operation.runtime_id] {
             return Err("script argument identity");
         }
-        match scripts.registry.plan_test_all(
-            event,
-            arguments,
-            &scripts.execution,
-            &scripts.factory,
-            scripts.intern.as_ref(),
-        ) {
+        match scripts.plan_test_all(event, arguments) {
             Ok(plan) => {
                 let result = plan.result();
                 self.pending = Some(plan);
@@ -979,15 +1099,7 @@ impl PreparedSkipTurn {
                         diplomacy,
                     )
                     .map_err(Error::State)?;
-                let registry = script
-                    .registry
-                    .prepare_commit(
-                        &mut script.execution,
-                        &mut script.factory,
-                        script.intern.as_mut(),
-                        plan,
-                    )
-                    .map_err(Error::ScriptRegistry)?;
+                let registry = script.prepare_plan(plan).map_err(Error::ScriptRegistry)?;
                 actor.commit();
                 registry.commit();
             } else {
