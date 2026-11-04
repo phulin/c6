@@ -66,6 +66,7 @@ pub trait Backend: lifecycle::Backend {
         &mut self,
         state: &mut LoadedState,
         candidate: &Created,
+        existing_target: c6_core::notifications::ComponentId,
     ) -> Result<(), Error>;
     fn release_pending(
         &mut self,
@@ -404,19 +405,34 @@ impl<B: Backend> Notifications for Provider<'_, B> {
             if !s.expiry(object, true)? {
                 return Ok(true);
             }
-            if let Object::Pending(i) = object {
-                let candidate = s
-                    .pending
-                    .get(i)
-                    .and_then(|p| p.created.as_ref())
-                    .ok_or(Error::Unsupported("positive IsNeeded pending candidate"))?;
-                s.backend.validate_duplicate_identity(s.state, candidate)?;
-            }
-            let candidate = s.record(object)?;
+            let candidate_prefix = {
+                let record = s.record(object)?;
+                (record.type_hash, record.location)
+            };
             let mut cursor = s.state.player_notifications()?.first(slot)?;
             while let Some(current) = cursor {
                 let existing = s.state.player_notifications()?.record_by_object(current)?;
                 if !existing.is_dismissed {
+                    // Base IsDuplicate returns before reading target identity
+                    // when type/location differ. Preserve that lazy boundary.
+                    if candidate_prefix.0 == existing.type_hash
+                        && candidate_prefix.1 == existing.location
+                    {
+                        let existing_target = existing.component;
+                        if let Object::Pending(i) = object {
+                            let created =
+                                s.pending.get(i).and_then(|p| p.created.as_ref()).ok_or(
+                                    Error::Unsupported("positive IsNeeded pending candidate"),
+                                )?;
+                            s.backend.validate_duplicate_identity(
+                                s.state,
+                                created,
+                                existing_target,
+                            )?;
+                        }
+                    }
+                    let candidate = s.record(object)?;
+                    let existing = s.state.player_notifications()?.record_by_object(current)?;
                     let duplicate = match candidate.type_hash {
                         command_units::TYPE_HASH => {
                             command_units::is_duplicate(candidate, existing)?
