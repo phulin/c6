@@ -9,8 +9,8 @@ pub struct Object {
     pub improvement_override: i32,
     /// Native ordered tuples (YieldTypes,int), initially empty, not base yields.
     pub yields: Vec<(i32, i32)>,
-    pub owned_modifiers: Vec<i32>,
-    pub affected_modifiers: crate::unit_moved_signal::modifiers::AffectedModifiers,
+    pub owned_modifiers: Option<Vec<i32>>,
+    pub affected_modifiers: Option<crate::unit_moved_signal::modifiers::AffectedModifiers>,
 }
 impl Object {
     pub fn new(plot: u32, city: Option<CityId>, improvement_override: i32) -> Self {
@@ -20,11 +20,26 @@ impl Object {
             city,
             improvement_override,
             yields: vec![],
-            owned_modifiers: vec![],
-            affected_modifiers:
+            owned_modifiers: Some(vec![]),
+            affected_modifiers: Some(
                 crate::unit_moved_signal::modifiers::AffectedModifiers::from_sorted(vec![])
                     .expect("new empty affected list"),
+            ),
         }
+    }
+    /// Captured yield tuples do not establish ownership/affected-modifier
+    /// state. Required modifier operations must fail before writing it.
+    pub fn owned_modifiers_mut(&mut self) -> Result<&mut Vec<i32>, &'static str> {
+        self.owned_modifiers
+            .as_mut()
+            .ok_or("current PlotYields owned modifiers")
+    }
+    pub fn affected_modifiers_mut(
+        &mut self,
+    ) -> Result<&mut crate::unit_moved_signal::modifiers::AffectedModifiers, &'static str> {
+        self.affected_modifiers
+            .as_mut()
+            .ok_or("current PlotYields affected modifiers")
     }
     pub const fn is_temporary(&self) -> bool {
         true
@@ -177,6 +192,19 @@ mod tests {
         o.change_yield(2, 1);
         assert_eq!(o.yields[2], (2, 9));
         assert_eq!(o.yield_value(2), i32::MIN + 1);
+    }
+    #[test]
+    fn query_only_import_keeps_modifier_ownership_unknown() {
+        let mut object = Object::new(7, None, -1);
+        assert!(object.owned_modifiers_mut().unwrap().is_empty());
+        assert!(object.affected_modifiers_mut().is_ok());
+        object.owned_modifiers = None;
+        object.affected_modifiers = None;
+        object.yields = vec![(2, 5)];
+        assert_eq!(object.yield_value(2), 5);
+        assert!(object.owned_modifiers_mut().is_err());
+        assert!(object.affected_modifiers_mut().is_err());
+        assert_eq!(object.yields, [(2, 5)]);
     }
     #[test]
     fn absent_signal_retains_native_allocated_prefix() {
