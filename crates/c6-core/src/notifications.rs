@@ -30,6 +30,7 @@ pub enum Error {
     InvalidBoolean(u8),
     InvalidLocaleHeader,
     UnsupportedLocaleArguments,
+    OmittedPresentation,
     Variant(variants::VariantError),
 }
 impl std::fmt::Display for Error {
@@ -56,6 +57,9 @@ pub enum LocalizedWireFormat {
     /// A zero-length legacy record preserves prior native text, whose value
     /// cannot be inferred from the saved record. No runtime text is installed.
     LegacyLength,
+    /// Deliberately excluded localized presentation in a typed runtime snapshot.
+    /// This marker cannot be written as a native saved string.
+    OmittedPresentation,
 }
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LocalizedString {
@@ -457,6 +461,9 @@ impl Writer {
         self.word(v.id)
     }
     fn string(&mut self, s: &LocalizedString) -> Result<(), Error> {
+        if s.wire_format == LocalizedWireFormat::OmittedPresentation {
+            return Err(Error::OmittedPresentation);
+        }
         let n = u32::try_from(s.base.len()).map_err(|_| Error::ResourceLimit)?;
         if s.wire_format == LocalizedWireFormat::LegacyLength {
             if n == u32::MAX {
@@ -476,6 +483,12 @@ impl Writer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn omitted_runtime_presentation_cannot_be_encoded_as_saved_text() {
+        let mut p = fixture();
+        p.records[0].message.wire_format = LocalizedWireFormat::OmittedPresentation;
+        assert_eq!(p.encode(Limits::default()), Err(Error::OmittedPresentation));
+    }
     fn fixture() -> PlayerNotifications {
         let r = Notification {
             factory_type: 123,

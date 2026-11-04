@@ -11,6 +11,7 @@ pub mod city_initialization;
 pub mod influence_map_update;
 pub mod game_update;
 pub mod game_sync;
+pub mod notification_snapshot;
 pub mod observed_controls;
 pub mod research;
 pub mod turn_completion;
@@ -1681,6 +1682,33 @@ mod tests {
         last.install_diplomacy_manager(snapshot(vec![], allocation))
             .unwrap();
         assert!(last.diplomacy_manager().unwrap().ever_alive().is_empty());
+    }
+    #[test]
+    fn current_notifications_require_same_initial_snapshot_without_saved_body() {
+        let mut s = state();
+        let w = witness(&s);
+        s.bind_observed_snapshot_controls(w.clone(), controls(&s))
+            .unwrap();
+        let collections = (0..64)
+            .map(|owner| crate::notifications::PlayerNotifications {
+                owner,
+                next_id: 0,
+                records: vec![],
+            })
+            .collect::<Vec<_>>();
+        let mut bad = w.clone();
+        bad.capture_facts_sha256[0] ^= 1;
+        assert!(matches!(
+            s.install_current_player_notifications(&bad, collections.clone()),
+            Err(Error::Binding)
+        ));
+        s.install_current_player_notifications(&w, collections.clone())
+            .unwrap();
+        assert!(s.player_notifications_source().is_none());
+        assert!(matches!(
+            s.install_current_player_notifications(&w, collections),
+            Err(Error::AlreadyBound)
+        ));
     }
     fn notification_source() -> (
         LoadedState,
