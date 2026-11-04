@@ -1,6 +1,6 @@
 //! Bounded Linux XP2 Player.Diplomacy wire records (versions41/50).
 //! Missing arrays retain explicit reset/registry effects. Version41 also carries
-//!64 typed Discussion lists; nested component versions remain independent/strict.
+//! 64 typed Discussion lists; nested component versions remain independent/strict.
 //!
 //! Ordered maps retain wire order and duplicate keys. Registry hashes remain
 //! hashes; this codec does not apply native Reset/Read fixups or advance gameplay.
@@ -29,6 +29,7 @@ struct Reader<'a> {
     pos: usize,
     items: usize,
     limits: Limits,
+    last_version_component: &'static str,
 }
 impl Reader<'_> {
     fn raw(&mut self, n: usize) -> Result<&[u8], Error> {
@@ -47,7 +48,8 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self, expected: u32) -> Result<(), Error> {
+    fn version(&mut self, expected: u32, component: &'static str) -> Result<(), Error> {
+        self.last_version_component = component;
         let actual = u32::read(self)?;
         if actual != expected {
             return Err(Error::Version { expected, actual });
@@ -227,7 +229,7 @@ macro_rules! record {
         impl Wire for $name {
             const MIN: usize = 4 + $(<$ty as Wire>::MIN +)* 0;
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-                r.version($version)?;
+                r.version($version, stringify!($name))?;
                 Ok(Self { $($field: <$ty>::read(r)?),* })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -268,7 +270,7 @@ impl<T> From<Vec<T>> for TypeMap<T> {
 impl<T: Wire> Wire for TypeMap<T> {
     const MIN: usize = 8;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(1)?;
+        r.version(1, "TypeMap")?;
         Ok(Self {
             entries: Vec::read(r)?,
         })
@@ -519,6 +521,16 @@ impl Wire for Diplomacy {
         Ok(())
     }
 }
+/// Cursor attribution from the shared decoder. `consumed` is the number of
+/// bytes consumed before failure, not an original native failure PC. Delegated
+/// Blackboard errors retain that child's start because its decoder returns no
+/// partial consumption. Direct version errors include their four-byte tag.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Boundary {
+    pub consumed: usize,
+    pub component: &'static str,
+    pub error: Error,
+}
 impl Diplomacy {
     /// False at41: native resets each omitted list to0 using the actual Yield
     /// definition count; empty transport vectors do not establish empty arrays.
@@ -535,13 +547,30 @@ impl Diplomacy {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_prefix_with_boundary(bytes, limits).map_err(|boundary| boundary.error)
+    }
+    /// Same parser and shared budget, additionally attributing nested version
+    /// refusals without retrying, scanning or skipping input bytes.
+    pub fn decode_prefix_with_boundary(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Boundary> {
         let mut r = Reader {
+            last_version_component: "Diplomacy",
             data: bytes,
             pos: 0,
             items: 0,
             limits,
         };
-        let value = Self::read(&mut r)?;
+        let value = Self::read(&mut r).map_err(|error| Boundary {
+            consumed: r.pos,
+            component: match &error {
+                Error::Blackboard(_) => "Blackboard",
+                Error::Version { .. } => r.last_version_component,
+                _ => "Diplomacy field",
+            },
+            error,
+        })?;
         Ok((value, r.pos, r.items))
     }
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
@@ -726,6 +755,7 @@ mod tests {
         board.resize(4 + 4 * 4 + 3 * 4 + 9 * 64 * 4, 0);
         bytes.extend(board);
         bytes.extend(0u32.to_le_bytes()); // City war weariness
+        let casus_at = bytes.len();
         for _ in 0..64 {
             bytes.extend(50u32.to_le_bytes());
             bytes.extend([0; 9]);
@@ -806,6 +836,24 @@ mod tests {
             ),
             Err(Error::ResourceLimit)
         );
+        let mut nested = bytes.clone();
+        nested[casus_at..casus_at + 4].copy_from_slice(&41u32.to_le_bytes());
+        let boundary = Diplomacy::decode_prefix_with_boundary(&nested, limits).unwrap_err();
+        assert_eq!(
+            (boundary.component, boundary.consumed),
+            ("CasusBelliData", casus_at + 4)
+        );
+        assert_eq!(
+            boundary.error,
+            Error::Version {
+                expected: 50,
+                actual: 41
+            }
+        );
+        assert_eq!(
+            Diplomacy::decode_prefix(&nested, limits),
+            Err(boundary.error)
+        );
         for version in [40u32, 42, 49, 51] {
             let mut bad = bytes.clone();
             bad[..4].copy_from_slice(&version.to_le_bytes());
@@ -834,6 +882,7 @@ mod tests {
         let end = bytes.len();
         bytes.extend([0xaa, 0xbb]);
         let mut r = Reader {
+            last_version_component: "Diplomacy",
             data: &bytes,
             pos: 0,
             items: 0,
@@ -860,6 +909,7 @@ mod tests {
         assert!(v.players[0].is_empty());
         for n in 0..end {
             let mut r = Reader {
+                last_version_component: "Diplomacy",
                 data: &bytes[..n],
                 pos: 0,
                 items: 0,
@@ -868,6 +918,7 @@ mod tests {
             assert!(LegacyCongressDiscussionLists::read(&mut r).is_err(), "{n}");
         }
         let mut r = Reader {
+            last_version_component: "Diplomacy",
             data: &bytes,
             pos: 0,
             items: 0,
@@ -958,6 +1009,7 @@ mod tests {
         };
         value.write(&mut w).unwrap();
         let mut r = Reader {
+            last_version_component: "Diplomacy",
             data: &w.data,
             pos: 0,
             items: 0,
@@ -967,6 +1019,7 @@ mod tests {
         assert_eq!(r.pos, w.data.len());
         for cut in 0..w.data.len() {
             let mut r = Reader {
+                last_version_component: "Diplomacy",
                 data: &w.data[..cut],
                 pos: 0,
                 items: 0,
@@ -976,6 +1029,7 @@ mod tests {
         }
         w.data[..4].copy_from_slice(&(version - 1).to_le_bytes());
         let mut r = Reader {
+            last_version_component: "Diplomacy",
             data: &w.data,
             pos: 0,
             items: 0,
@@ -1006,6 +1060,7 @@ mod tests {
     fn malicious_count_rejected_before_allocation() {
         let bytes = u32::MAX.to_le_bytes();
         let mut r = Reader {
+            last_version_component: "Diplomacy",
             data: &bytes,
             pos: 0,
             items: 0,
