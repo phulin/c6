@@ -1,6 +1,8 @@
 //! Linux HoldCycling scans over admitted definitions and live registered handlers.
 //! Full CanStart callbacks remain effects, including output/parameter cleanup;
 //! these scans neither select a player action nor assume callbacks are pure.
+#[path = "hold_cycling_commands.rs"]
+pub mod commands;
 use crate::{
     registry::LinuxDefinitionRegistry, resource_binding::ResourceAuthority,
     unit_initialization_definitions as definitions, Rules, SqlValue,
@@ -135,6 +137,14 @@ impl Definitions {
     }
     pub fn binding(&self) -> &WireBinding {
         &self.binding
+    }
+    /// Command manager only; the caller acquires operations only on false.
+    pub fn command_hold_cycling<Q: Queries>(
+        &self,
+        queries: &mut Q,
+        budget: &mut usize,
+    ) -> Result<bool, Error<Q::Error>> {
+        scan(Kind::Command, &self.commands, queries, budget)
     }
     pub fn hold_cycling<Q: Queries>(
         &self,

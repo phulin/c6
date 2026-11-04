@@ -448,6 +448,55 @@ impl<'a> Provider<'a> {
         Ok(!hold(state, reference)?)
     }
 
+    /// Compute the command fallback with the stock command provider. Only a
+    /// false command result acquires the separate operation provider; it may
+    /// execute the existing operation Manager/scripts against mutable state.
+    pub fn can_cycle_past_with_commands(
+        &self,
+        state: &mut LoadedState,
+        reference: UnitReference,
+        inputs: hold_cycling::commands::Inputs<'_>,
+        budget: &mut usize,
+        operation_hold: impl FnOnce(&mut LoadedState, UnitReference, &mut usize) -> Result<bool, Error>,
+    ) -> Result<bool, hold_cycling::commands::CycleError> {
+        use hold_cycling::commands::{Computed, CycleError};
+        let commands = {
+            let unit = state
+                .world()
+                .unit(reference)
+                .map_err(|e| CycleError::Reporting(Error::World(e)))?
+                .ok_or(CycleError::Reporting(Error::MissingUnit))?
+                .record;
+            if let Some(result) = self
+                .cycle_past_early_result(state, unit)
+                .map_err(CycleError::Reporting)?
+            {
+                return Ok(result);
+            }
+            if inputs.hold_definitions.binding() != state.binding() {
+                return Err(CycleError::Binding);
+            }
+            let mut query = Computed {
+                definitions: inputs.definitions,
+                state,
+                unit,
+                phases: inputs.phases,
+                operations: inputs.operations,
+                registrations: inputs.registrations,
+                tags: inputs.tags,
+                temporary_scope: inputs.temporary_scope,
+            };
+            inputs
+                .hold_definitions
+                .command_hold_cycling(&mut query, budget)
+                .map_err(CycleError::Command)?
+        };
+        if commands {
+            return Ok(false);
+        }
+        Ok(!operation_hold(state, reference, budget).map_err(CycleError::Reporting)?)
+    }
+
     fn cycle_past_early_result(
         &self,
         state: &LoadedState,
