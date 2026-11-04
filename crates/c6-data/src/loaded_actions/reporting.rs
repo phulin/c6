@@ -222,6 +222,42 @@ impl<'a> Provider<'a> {
     pub fn snapshot_observations(&self) -> &[SnapshotObservation] {
         &self.snapshots
     }
+    /// Execute the existing source-bounded Unit snapshot queries on the actual
+    /// retained actor. Event bindings and omitted DTO/cache/output stores must
+    /// be qualified by the caller; this does not invent a new event mapping.
+    pub fn observe_unit_snapshot(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+    ) -> Result<SnapshotObservation, Error> {
+        let unit = state
+            .world()
+            .unit(reference)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingUnit)?
+            .record;
+        self.validate_readiness_unit(state, unit)?;
+        let runtime = state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        if runtime.archive.identity() != reference.component_id() {
+            return Err(Error::Provider("snapshot actual Unit identity"));
+        }
+        if !unit.k_properties.entries.is_empty() {
+            return Err(Error::Provider(
+                "Unit snapshot nonempty/custom property copy effects",
+            ));
+        }
+        let observation = SnapshotObservation {
+            identity: reference.component_id(),
+            current_activity: unit.e_activity,
+            queue_nodes: unit.k_operations.nodes.len(),
+            remaining_q8: unit.x_moves_remaining,
+            path: self.check_snapshot_query_effects(state, unit, None)?,
+        };
+        self.snapshots.push(observation);
+        Ok(observation)
+    }
     /// This bounded provider has no admitted playback subscriber registry.
     pub fn drain_playback(&mut self) -> Result<(), Error> {
         Err(Error::Provider(
