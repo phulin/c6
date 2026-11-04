@@ -1,4 +1,4 @@
-//! Complete current Linux XP2 District v15 and Player.Districts v8 wire transport.
+//! Linux XP2 District v15 and Player.Districts v4/v8 wire transport.
 //! No definition remapping, live Read fixups, actual plot owner reconstruction,
 //! initialized world, gameplay, actions or turns are provided by these codecs.
 //! Methods and field identities: docs/linux-player-districts.md.
@@ -9,6 +9,7 @@ use crate::unit::{HashValue, Limits};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     InvalidContainer,
@@ -377,17 +378,117 @@ impl<T: Wire> Wire for Recycled<T> {
         Ok(())
     }
 }
-record!(Districts, 8, {
-    records: Recycled<District>, free_building_when_specialty_district_constructed: i32, envoys_non_specialty: i32,
-    current_district_cost: Vec<HashValue<i32>>,
-    free_building_when_specialty_district_constructed_except: Vec<HashValue<i32>>,
-    specific_district_grant_envoys: Vec<HashValue<i32>>,
-    district_cannot_be_built_adjacent_to_city: Vec<HashValue<i32>>,
-    feature_required_for_specialty_districts: Vec<HashValue<i32>>,
-    creation_yields: Vec<DistrictCreateYield>, creation_units: Vec<DistrictCreateUnit>,
-    district_and_buildings_creation_units: Vec<DistrictAndBuildingsCreateUnitWithAbilityByClass>,
-    unlock_techs: Vec<DistrictUnlockTech>, unlock_civics: Vec<DistrictUnlockCivic>,
-});
+/// Wire projection; omitted4 containers have unknown prior native state.
+/// Empty Vec fields mean no wire entries, not empty native lists.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Districts {
+    pub wire_version: u32,
+    pub records: Recycled<District>,
+    pub free_building_when_specialty_district_constructed: i32,
+    pub envoys_non_specialty: i32,
+    pub current_district_cost: Vec<HashValue<i32>>,
+    pub free_building_when_specialty_district_constructed_except: Vec<HashValue<i32>>,
+    pub specific_district_grant_envoys: Vec<HashValue<i32>>,
+    pub district_cannot_be_built_adjacent_to_city: Vec<HashValue<i32>>,
+    pub feature_required_for_specialty_districts: Vec<HashValue<i32>>,
+    pub creation_yields: Vec<DistrictCreateYield>,
+    pub creation_units: Vec<DistrictCreateUnit>,
+    pub district_and_buildings_creation_units:
+        Vec<DistrictAndBuildingsCreateUnitWithAbilityByClass>,
+    pub unlock_techs: Vec<DistrictUnlockTech>,
+    pub unlock_civics: Vec<DistrictUnlockCivic>,
+}
+/// Native Read skips these containers without assigning a default at4.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OmittedDistrictsState {
+    UnknownRetainedBaseline,
+}
+impl Districts {
+    /// Applies to free-building exceptions, specific envoys, adjacency bans,
+    /// required features and district/building creation units at4.
+    pub fn omitted_read_state(&self) -> Option<OmittedDistrictsState> {
+        (self.wire_version == 4).then_some(OmittedDistrictsState::UnknownRetainedBaseline)
+    }
+}
+impl Wire for Districts {
+    const MIN: usize = 4 + <Recycled<District>>::MIN + 5 * 4;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 4 | 8) {
+            return Err(Error::Version {
+                expected: 8,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            records: <Recycled<District>>::read(r)?,
+            free_building_when_specialty_district_constructed: if wire_version == 8 {
+                <i32>::read(r)?
+            } else {
+                0
+            },
+            envoys_non_specialty: if wire_version == 8 {
+                <i32>::read(r)?
+            } else {
+                0
+            },
+            current_district_cost: <Vec<HashValue<i32>>>::read(r)?,
+            free_building_when_specialty_district_constructed_except: if wire_version == 8 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            specific_district_grant_envoys: if wire_version == 8 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            district_cannot_be_built_adjacent_to_city: if wire_version == 8 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            feature_required_for_specialty_districts: if wire_version == 8 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            creation_yields: <Vec<DistrictCreateYield>>::read(r)?,
+            creation_units: <Vec<DistrictCreateUnit>>::read(r)?,
+            district_and_buildings_creation_units: if wire_version == 8 {
+                <Vec<DistrictAndBuildingsCreateUnitWithAbilityByClass>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            unlock_techs: <Vec<DistrictUnlockTech>>::read(r)?,
+            unlock_civics: <Vec<DistrictUnlockCivic>>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 8 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        8u32.write(w)?;
+        self.records.write(w)?;
+        self.free_building_when_specialty_district_constructed
+            .write(w)?;
+        self.envoys_non_specialty.write(w)?;
+        self.current_district_cost.write(w)?;
+        self.free_building_when_specialty_district_constructed_except
+            .write(w)?;
+        self.specific_district_grant_envoys.write(w)?;
+        self.district_cannot_be_built_adjacent_to_city.write(w)?;
+        self.feature_required_for_specialty_districts.write(w)?;
+        self.creation_yields.write(w)?;
+        self.creation_units.write(w)?;
+        self.district_and_buildings_creation_units.write(w)?;
+        self.unlock_techs.write(w)?;
+        self.unlock_civics.write(w)?;
+        Ok(())
+    }
+}
+
 macro_rules! codec {
     ($ty:ty) => {
         impl $ty {
@@ -491,6 +592,90 @@ mod tests {
         b
     }
     #[test]
+    fn districts4_omits_wire_fields_without_inventing_prior_lists() {
+        let mut bytes = Vec::new();
+        words(&mut bytes, &[4, 65537, 16, 0, 0, 0, 0, u32::MAX, u32::MAX]);
+        words(&mut bytes, &[2, 0xfedcba98, u32::MAX, 0xfedcba98, 17]);
+        word(&mut bytes, 0); // creation yields
+        words(&mut bytes, &[1, 1, 0x12345678, 0x87654321]); // creation units
+        words(&mut bytes, &[1, 1, 0x11111111, 0x22222222]); // unlock tech
+        words(&mut bytes, &[1, 1, 0x33333333, 0x44444444]); // unlock civic
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 5,
+        };
+        let (v, used, items) = Districts::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items, v.wire_version), (end, 5, 4));
+        assert_eq!(
+            (
+                v.free_building_when_specialty_district_constructed,
+                v.envoys_non_specialty
+            ),
+            (0, 0)
+        );
+        assert_eq!(
+            v.omitted_read_state(),
+            Some(OmittedDistrictsState::UnknownRetainedBaseline)
+        );
+        assert_eq!(
+            v.current_district_cost
+                .iter()
+                .map(|x| (x.definition_hash, x.value))
+                .collect::<Vec<_>>(),
+            vec![(0xfedcba98, -1), (0xfedcba98, 17)]
+        );
+        assert_eq!(v.creation_units[0].unit_type_hash, 0x87654321);
+        assert_eq!(v.unlock_techs[0].technology_hash, 0x22222222);
+        assert_eq!(v.unlock_civics[0].civic_hash, 0x44444444);
+        assert!(v
+            .free_building_when_specialty_district_constructed_except
+            .is_empty());
+        assert!(v.specific_district_grant_envoys.is_empty());
+        assert!(v.district_cannot_be_built_adjacent_to_city.is_empty());
+        assert!(v.feature_required_for_specialty_districts.is_empty());
+        assert!(v.district_and_buildings_creation_units.is_empty());
+        assert_eq!(v.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(
+                Districts::decode_prefix_with_items(&bytes[..n], limits).is_err(),
+                "{n}"
+            );
+        }
+        assert_eq!(
+            Districts::decode_prefix_with_items(
+                &bytes,
+                Limits {
+                    max_items: 4,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut bad = bytes.clone();
+        bad[..4].copy_from_slice(&5u32.to_le_bytes());
+        assert_eq!(
+            Districts::decode_prefix_with_items(&bad, limits),
+            Err(Error::Version {
+                expected: 8,
+                actual: 5
+            })
+        );
+        let mut nested = Vec::new();
+        words(&mut nested, &[4, 65537, 16, 1, 1, 0]);
+        let mut child = district();
+        child[..4].copy_from_slice(&14u32.to_le_bytes());
+        nested.extend(child);
+        assert_eq!(
+            Districts::decode_prefix_with_items(&nested, Limits::default()),
+            Err(Error::Version {
+                expected: 15,
+                actual: 14
+            })
+        );
+    }
+    #[test]
     fn nonempty_source_carriers_preserve_all_fields_and_allocator_order() {
         let b = district();
         let (v, n, items) = District::decode_prefix_with_items(&b, Limits::default()).unwrap();
@@ -537,6 +722,8 @@ mod tests {
         let b = districts();
         let (v, n, items) = Districts::decode_prefix_with_items(&b, Limits::default()).unwrap();
         assert_eq!(n, b.len());
+        assert_eq!(v.wire_version, 8);
+        assert_eq!(v.omitted_read_state(), None);
         assert_eq!(
             v.records
                 .entries
