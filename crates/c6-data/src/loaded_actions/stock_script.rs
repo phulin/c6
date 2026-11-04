@@ -150,6 +150,23 @@ impl<P> Runtime<P> {
         self.synchronization
             .call(|| test_all(&mut self.script, identity, event, arguments, initial))
     }
+    /// Source CallHook with two integer arguments and no reached subscribers.
+    /// Nonempty callback groups refuse; uses this runtime's persistent registry.
+    pub fn call_two_empty(
+        &mut self,
+        state: &LoadedState,
+        event: &str,
+        arguments: [i32; 2],
+    ) -> Result<(), Error> {
+        if !self.script.matches(state) {
+            return Err(Error::Identity);
+        }
+        self.synchronization.call(|| {
+            self.script
+                .call_empty(event, &arguments)
+                .map_err(Error::Registry)
+        })
+    }
     pub fn on_unit_moved(
         &mut self,
         state: &LoadedState,

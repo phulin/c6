@@ -200,3 +200,26 @@ impl LoadedState {
         Ok(())
     }
 }
+
+impl LoadedState {
+    /// Initial current Game.Culture active-node projection. Acquisition changes
+    /// local acquired bytes, not this global node availability mask.
+    pub fn install_current_civic_availability(
+        &mut self,
+        binding: &WireBinding,
+        availability: Vec<bool>,
+    ) -> Result<(), Error> {
+        if binding != &self.binding
+            || self
+                .world
+                .civic_availability
+                .as_ref()
+                .is_some_and(|old| old != &availability)
+        {
+            return Err(Error::Binding);
+        }
+        self.advance_admission_generation()?;
+        self.world.civic_availability = Some(availability);
+        Ok(())
+    }
+}

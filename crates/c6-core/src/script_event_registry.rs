@@ -1559,6 +1559,44 @@ impl ScriptEventRegistry {
         result
     }
 
+    /// Supply a source-observed absent cache AND indexer-name-map entry before
+    /// gameplay. Missing entries elsewhere remain unknown.
+    pub fn supply_absent_name(&mut self, name: &str) -> Result<(), RegistryError> {
+        if name.as_bytes().contains(&0)
+            || self.cache.contains_key(name)
+            || self.names.contains_key(name)
+        {
+            return Err(RegistryError::InvalidSeed("conflicting event-name absence"));
+        }
+        self.names.insert(name.to_owned(), KnownNameEntry::Absent);
+        Ok(())
+    }
+
+    /// Gameplay projection of builtin Call for an empty reached listener list.
+    /// Creates and retains the ordinary logical event/array/method identities.
+    /// There are no callback or RNG effects. Native allocator and collector
+    /// accounting is outside this projection; nonempty callback VM work refuses.
+    pub fn call_empty(&mut self, name: &str, _arguments: &[i32]) -> Result<(), RegistryError> {
+        let shared = self
+            .cached_event(name)
+            .map(|event| event.shared_group)
+            .or_else(|| match self.names.get(name) {
+                Some(KnownNameEntry::Shared(id)) => Some(*id),
+                _ => None,
+            });
+        if let Some(shared) = shared {
+            for entry in &self.shared_groups[&shared].entries_in_native_order {
+                if let GroupEntry::Table(local) = entry {
+                    if self.local_groups[local].objlen != 0 {
+                        return Err(RegistryError::UnsupportedCallbackVm);
+                    }
+                }
+            }
+        }
+        self.lookup(name)?;
+        Ok(())
+    }
+
     /// Source-backed ordinary lookup: indexer creates the shared group if known
     /// absent, creates a local array and event/method closure, and caches event.
     /// This is a logical projection; HKS allocation/GC effects remain unsupported.
@@ -3260,5 +3298,70 @@ mod tests {
             r.lookup("CanStartOperation").unwrap().shared_group,
             ScriptObjectId(101)
         );
+    }
+}
+
+#[cfg(test)]
+mod semantic_empty_call_tests {
+    use super::*;
+    #[test]
+    fn first_call_creates_one_persistent_empty_event_and_unknown_names_refuse() {
+        let mut registry = ScriptEventRegistry::default();
+        assert!(matches!(
+            registry.call_empty("Unknown", &[0, 1]),
+            Err(RegistryError::UnknownNameMapEntry(_))
+        ));
+        registry
+            .supply_absent_name("OnTechnologyResearched")
+            .unwrap();
+        registry
+            .call_empty("OnTechnologyResearched", &[0, 0])
+            .unwrap();
+        let first = registry.cached_event("OnTechnologyResearched").unwrap();
+        registry
+            .call_empty("OnTechnologyResearched", &[1, 5])
+            .unwrap();
+        assert_eq!(registry.cached_event("OnTechnologyResearched"), Some(first));
+        assert_eq!(
+            registry
+                .shared_group(first.shared_group)
+                .unwrap()
+                .entries_in_native_order
+                .len(),
+            1
+        );
+        assert!(registry
+            .supply_absent_name("OnTechnologyResearched")
+            .is_err());
+    }
+    #[test]
+    fn subscribed_callback_is_never_omitted() {
+        let shared = ScriptObjectId(1);
+        let local = ScriptObjectId(2);
+        let mut registry = ScriptEventRegistry::from_seed(RegistrySeed {
+            names: [("Event".into(), KnownNameEntry::Shared(shared))].into(),
+            shared_groups: [(
+                shared,
+                SharedGroup {
+                    entries_in_native_order: vec![GroupEntry::Table(local)],
+                    append_order: AppendOrder::DenseNumericArray,
+                },
+            )]
+            .into(),
+            local_groups: [(
+                local,
+                LocalGroup {
+                    objlen: 1,
+                    numeric_slots: [(1, LuaValue::Object(ScriptObjectId(3)))].into(),
+                },
+            )]
+            .into(),
+        })
+        .unwrap();
+        assert_eq!(
+            registry.call_empty("Event", &[0, 0]),
+            Err(RegistryError::UnsupportedCallbackVm)
+        );
+        assert!(registry.cached_event("Event").is_none());
     }
 }

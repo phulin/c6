@@ -186,6 +186,15 @@ impl ScriptState {
                 .map(|plan| ScriptExecutionPlan::Exact(Box::new(plan))),
         }
     }
+    /// Initial raw cache and indexer-name-map absence, supplied by the caller.
+    pub fn supply_absent_event_name(&mut self, name: &str) -> Result<(), RegistryError> {
+        self.registry.supply_absent_name(name)
+    }
+    /// Empty-listener gameplay Call. Retains logical registry mutation without
+    /// making native HKS allocator bookkeeping a gameplay input.
+    pub fn call_empty(&mut self, name: &str, arguments: &[i32]) -> Result<(), RegistryError> {
+        self.registry.call_empty(name, arguments)
+    }
     pub fn plan_call_six(
         &self,
         name: &str,

@@ -241,3 +241,69 @@ pub fn technology_publication_yields<C: Context>(
     );
     Ok(reads)
 }
+
+/// RecomputeCost's empty-district stock branches. The caller establishes an
+/// actually empty current District roster, making both its count and average
+/// count zero. Other progression cases remain explicit errors.
+pub fn empty_district_cost(
+    base: i32,
+    model_hash: u32,
+    parameter: i32,
+    research_percent: i32,
+    game_escalation: i32,
+    speed_multiplier: i32,
+    starting_era_rate: Option<i32>,
+) -> Result<i32, i32> {
+    use crate::research_acquisition::units;
+    let model = units::progression_model(model_hash);
+    let progress = |parameter: i32| {
+        parameter
+            .wrapping_mul(base)
+            .wrapping_div(100)
+            .wrapping_sub(base)
+            .wrapping_mul(research_percent)
+            .wrapping_div(100)
+            .wrapping_add(base)
+    };
+    let escalated = match model {
+        1 => progress(parameter),
+        5 => progress(game_escalation),
+        -1 | 6..=8 => base,
+        _ => return Err(model),
+    };
+    let factor = starting_era_rate.map_or(256, |rate| {
+        let numerator = 100i32.wrapping_shl(8).wrapping_sub(rate.wrapping_shl(8));
+        ((i64::from(numerator) << 8) / 25_600) as i32
+    });
+    let speed = units::adjust_for_game_speed(escalated, speed_multiplier);
+    let raw = ((i64::from(speed.wrapping_shl(8)) * i64::from(factor)) >> 8) as i32;
+    Ok((raw >> 8).max(1))
+}
+#[cfg(test)]
+mod district_cost_tests {
+    use super::*;
+    #[test]
+    fn district_research_scaling_then_speed_and_starting_era_quantization() {
+        assert_eq!(
+            empty_district_cost(54, 0xf594ad38, 40, 1, 1000, 100, Some(0)),
+            Ok(58)
+        );
+        assert_eq!(
+            empty_district_cost(54, 0x12897359, 1000, 100, 1000, 100, Some(50)),
+            Ok(270)
+        );
+        assert_eq!(
+            empty_district_cost(54, 0x12897359, 1000, 0, 1000, 50, Some(25)),
+            Ok(20)
+        );
+        assert_eq!(
+            empty_district_cost(54, 0xf594ad38, 40, 1, 1000, 100, Some(120)),
+            Ok(1)
+        );
+        assert_eq!(empty_district_cost(-3, 0, 0, 0, 1000, 100, None), Ok(1));
+        assert_eq!(
+            empty_district_cost(54, 0x33b005a1, 40, 1, 1000, 100, None),
+            Err(0)
+        );
+    }
+}

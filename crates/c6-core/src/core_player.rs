@@ -1335,6 +1335,23 @@ impl FirstPlayer {
         let prefix = reader.player_prefix_for_owner(requested_owner)?;
         Ok((prefix.cities, reader.pos))
     }
+    /// Expose the already implemented standalone Player.Write prefix. The
+    /// returned owner stops before Military; later optional fields are not
+    /// initialized or claimed complete. No Manager/header framing is invented.
+    pub fn decode_component_before_military(
+        bytes: &[u8],
+        limits: Limits,
+        requested_owner: i32,
+    ) -> Result<(Self, usize), Error> {
+        let mut reader = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let prefix = reader.player_prefix_for_owner(requested_owner)?;
+        Ok((prefix, reader.pos))
+    }
     /// Decode the existing context-free Player.Write prefix and return its
     /// research owners. This ends before Military and supplies no missing
     /// initialization context or later Player state.
@@ -1343,14 +1360,9 @@ impl FirstPlayer {
         limits: Limits,
         requested_owner: i32,
     ) -> Result<((player_techs::Techs, player_culture::Culture), usize), Error> {
-        let mut reader = Reader {
-            bytes,
-            pos: 0,
-            items: 0,
-            limits,
-        };
-        let prefix = reader.player_prefix_for_owner(requested_owner)?;
-        Ok(((prefix.techs, prefix.culture), reader.pos))
+        let (prefix, used) =
+            Self::decode_component_before_military(bytes, limits, requested_owner)?;
+        Ok(((prefix.techs, prefix.culture), used))
     }
     /// Decode one original Player.Write component without inventing a Manager
     /// count or requested-owner wire prefix. `component_origin` is its actual

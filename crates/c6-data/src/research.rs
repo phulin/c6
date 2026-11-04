@@ -9,10 +9,13 @@ use crate::{
 };
 use acquisition::Context as _;
 use c6_core::{
-    core_player::initialization::WireBinding, loaded_state::LoadedState, player_culture::Culture,
-    player_techs::Techs, relic_creation::boost, research_acquisition as acquisition, research_turn,
+    core_player::initialization::WireBinding, loaded_state::LoadedState,
+    movement_world::DefinitionLookup, player_culture::Culture, player_techs::Techs,
+    relic_creation::boost, research_acquisition as acquisition, research_turn,
 };
 pub use research_turn::{InsertMode, Kind};
+pub mod districts;
+pub mod units;
 mod yields;
 #[derive(Debug)]
 pub enum Error<E> {
@@ -23,6 +26,7 @@ pub enum Error<E> {
     Definitions(unit_initialization_definitions::Error),
     Rules(crate::Error),
     Costs(crate::research_unit_costs::Error),
+    DistrictCosts(districts::Error),
     AcquiredWrite(c6_core::loaded_state::research::WriteError),
     Binding,
     IllegalTechnology(i32),
@@ -35,6 +39,17 @@ pub struct CivicGraph {
     pub nodes: Vec<c6_core::game_techs::Node>,
     pub iteration: Vec<i32>,
 }
+impl CivicGraph {
+    fn node(&self, index: i32) -> Option<&c6_core::game_techs::Node> {
+        if index == -1 {
+            return None;
+        }
+        self.nodes
+            .get(index as u32 as usize)
+            .filter(|n| n.native_type == index)
+            .or_else(|| self.nodes.iter().find(|n| n.native_type == index))
+    }
+}
 /// Unsaved current inputs belong to this one initialized World. Absent inputs
 /// are never inferred from serialized bytes, owner numbers or queue contents.
 pub struct Runtime {
@@ -44,6 +59,7 @@ pub struct Runtime {
     pub alive_major_ids: Option<Vec<i32>>,
     pub city_order: Vec<(i32, Vec<c6_core::unit::ComponentId>)>,
     pub game_era: Option<i32>,
+    pub start_era_hash: Option<u32>,
     pub civilization_levels: Vec<(i32, u32)>,
     pub scratch_players: Vec<(i32, bool)>,
     pub manager_logging: Option<bool>,
@@ -138,6 +154,8 @@ pub struct Definitions {
     research_alliance: i32,
     technology_hashes: Vec<u32>,
     route_prerequisites: Vec<Option<i32>>,
+    technology_modifiers: Vec<u32>,
+    district_costs: districts::Definitions,
     chronology: Vec<i32>,
     era_percent: [Option<i32>; 4],
     tourism_per_citizen: Option<i32>,
@@ -311,9 +329,29 @@ impl Definitions {
                 _ => return Err(Error::Missing("route prerequisite technology reference")),
             });
         }
+        let mut technology_modifiers = Vec::new();
+        for row in rules
+            .gameplay()
+            .table("TechnologyModifiers")
+            .ok_or(Error::Missing("TechnologyModifiers"))?
+            .rows()
+        {
+            match row.get("TechnologyType").map_err(Error::Rules)? {
+                SqlValue::Text(name) => technology_modifiers.push(linux_type_hash(name)),
+                _ => return Err(Error::Missing("TechnologyModifiers.TechnologyType")),
+            }
+        }
+        let unit_costs =
+            crate::research_unit_costs::Definitions::from_rules(rules, bound, game_speed)
+                .map_err(Error::Costs)?;
+        let district_costs =
+            districts::Definitions::from_rules(rules, bound, unit_costs.economic())
+                .map_err(Error::DistrictCosts)?;
         Ok(Self {
             binding: bound.destination_binding().clone(),
             route_prerequisites,
+            technology_modifiers,
+            district_costs,
             technology_hashes: boost_rules
                 .technologies
                 .iter()
@@ -336,10 +374,7 @@ impl Definitions {
             ],
             tourism_per_citizen: parameter(rules, "TOURISM_CULTURE_PER_CITIZEN"),
             speed,
-            unit_costs: crate::research_unit_costs::Definitions::from_rules(
-                rules, bound, game_speed,
-            )
-            .map_err(Error::Costs)?,
+            unit_costs,
         })
     }
     /// Install supplied/computed complete current nodes once. The current
@@ -396,6 +431,44 @@ impl Definitions {
         state
             .install_current_research_flags(&self.binding, flags)
             .map_err(Error::State)
+    }
+    /// Mirror the current initialized civic graph into World's shared
+    /// availability view used by unlock/resource/yield queries.
+    pub fn install_current_civic_availability<E>(
+        &self,
+        state: &mut LoadedState,
+        graph: &CivicGraph,
+    ) -> Result<(), Error<E>> {
+        let availability = (0..self.civics.len())
+            .map(|i| graph.node(i as i32).is_some_and(|n| n.active))
+            .collect();
+        state
+            .install_current_civic_availability(&self.binding, availability)
+            .map_err(Error::State)
+    }
+    /// DatabaseUtility.GetModifierDefinitions for TechnologyModifiers. A
+    /// positive result requires real modifier attachment by the caller.
+    pub fn technology_has_attached_modifiers(
+        &self,
+        index: i32,
+    ) -> Result<bool, Error<std::convert::Infallible>> {
+        let definition = self
+            .boost
+            .technologies
+            .iter()
+            .flatten()
+            .find(|d| d.index == index)
+            .ok_or(Error::IllegalTechnology(index))?;
+        Ok(self.technology_modifiers.contains(&definition.hash))
+    }
+    pub fn technology_era_hash(
+        &self,
+        index: i32,
+    ) -> Result<Option<u32>, Error<std::convert::Infallible>> {
+        let cost = self.costs[0]
+            .get(index as u32 as usize)
+            .ok_or(Error::IllegalTechnology(index))?;
+        Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
     }
     pub fn research_rules(&self) -> &boost::Rules {
         &self.boost
@@ -528,6 +601,21 @@ impl<E: Effects> Context<'_, E> {
         }
         Ok(())
     }
+    pub fn recompute_empty_district_costs(&mut self, player: i32) -> Result<(), Error<E::Error>> {
+        self.check()?;
+        let percent = self
+            .percentage(player, Kind::Technology)?
+            .max(self.percentage(player, Kind::Civic)?);
+        self.definitions
+            .district_costs
+            .recompute_empty(
+                self.state,
+                player,
+                percent,
+                self.effects.runtime().start_era_hash,
+            )
+            .map_err(Error::DistrictCosts)
+    }
     fn check(&self) -> Result<(), Error<E::Error>> {
         if self.state.binding() != &self.definitions.binding
             || self.state.binding() != &self.effects.runtime().binding
@@ -560,9 +648,7 @@ impl<E: Effects> Context<'_, E> {
                 .civic_graph
                 .as_ref()
                 .ok_or(Error::Missing("current Game.Culture graph"))?
-                .nodes
-                .iter()
-                .find(|node| node.native_type == index)),
+                .node(index)),
         }
     }
     fn percentage(&self, player: i32, kind: Kind) -> Result<i32, Error<E::Error>> {
@@ -958,5 +1044,32 @@ impl<E: Effects> research_turn::Context for Context<'_, E> {
     }
     fn notify_choose_technology(&mut self, player: i32) -> Result<(), Self::Error> {
         self.emit(Effect::ChooseTechnology(player))
+    }
+}
+
+#[cfg(test)]
+mod current_civic_tests {
+    use super::*;
+    #[test]
+    fn current_civic_node_prefers_matching_positional_entry_before_first_duplicate() {
+        let graph = CivicGraph {
+            nodes: vec![
+                c6_core::game_techs::Node {
+                    native_type: 1,
+                    active: false,
+                    cost_raw: 10,
+                    prerequisites: vec![],
+                },
+                c6_core::game_techs::Node {
+                    native_type: 1,
+                    active: true,
+                    cost_raw: 20,
+                    prerequisites: vec![],
+                },
+            ],
+            iteration: vec![1, 1],
+        };
+        assert_eq!(graph.node(1).unwrap().cost_raw, 20);
+        assert!(graph.node(-1).is_none());
     }
 }
