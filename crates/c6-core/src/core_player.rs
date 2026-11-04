@@ -1345,6 +1345,8 @@ pub(crate) mod tests {
             crate::player_diplomacy_blackboard::Blackboard::decode(&board_bytes, Limits::default())
                 .unwrap();
         let mut value = player_diplomacy::Diplomacy {
+            wire_version: 50,
+            legacy_available_congress_discussions: None,
             had_friendly_meeting: [false; 64],
             has_delegation: [false; 64],
             has_embassy: [false; 64],

@@ -1,4 +1,6 @@
-//! Exact current Linux XP2 Player.Diplomacy wire record (version 50).
+//! Bounded Linux XP2 Player.Diplomacy wire records (versions41/50).
+//! Missing arrays retain explicit reset/registry effects. Version41 also carries
+//!64 typed Discussion lists; nested component versions remain independent/strict.
 //!
 //! Ordered maps retain wire order and duplicate keys. Registry hashes remain
 //! hashes; this codec does not apply native Reset/Read fixups or advance gameplay.
@@ -8,6 +10,7 @@ use crate::unit::{HashValue, Limits};
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     InvalidBool(u8),
@@ -280,10 +283,40 @@ pub type GossipReports = Vec<(i32, TypeMap<(i32, u32)>)>;
 pub type Promises = Vec<(i32, TypeMap<(i32, PromiseData)>)>;
 pub type Incursions = Vec<(i32, TypeMap<(i32, Vec<i32>)>)>;
 
+/// Exactly64 serialized Discussion IndexLists, without an outer wire count.
+/// Native Read sets the default tofalse and resets all actual Discussion
+/// definition cells tofalse before overlaying these pairs. Definition counts
+/// and mappings remain unknown here; empty pairs do not mean an empty array.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum LegacyDiscussionBaseline {
+    NativeFalseResetDiscussionDefinitionCountUnknown,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LegacyCongressDiscussionLists {
+    pub native_baseline: LegacyDiscussionBaseline,
+    pub players: [Vec<HashValue<bool>>; 64],
+}
+impl LegacyCongressDiscussionLists {
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let mut players = std::array::from_fn(|_| Vec::new());
+        for row in &mut players {
+            *row = Vec::read(r)?;
+        }
+        Ok(Self {
+            players,
+            native_baseline:
+                LegacyDiscussionBaseline::NativeFalseResetDiscussionDefinitionCountUnknown,
+        })
+    }
+}
 /// Complete current serialized component only. Fixed 64-player arrays have no
 /// wire count; their elements do not consume the dynamic item budget.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Diplomacy {
+    pub wire_version: u32,
+    /// Present only in admitted41. None at50 means no wire data, not absent
+    /// native/gameplay state; native discussion state is not excluded by name.
+    pub legacy_available_congress_discussions: Option<LegacyCongressDiscussionLists>,
     pub had_friendly_meeting: [bool; 64],
     pub has_delegation: [bool; 64],
     pub has_embassy: [bool; 64],
@@ -335,8 +368,15 @@ pub struct Diplomacy {
 impl Wire for Diplomacy {
     const MIN: usize = 4;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(50)?;
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 41 | 50) {
+            return Err(Error::Version {
+                expected: 50,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
+            wire_version,
             had_friendly_meeting: <[bool; 64]>::read(r)?,
             has_delegation: <[bool; 64]>::read(r)?,
             has_embassy: <[bool; 64]>::read(r)?,
@@ -354,8 +394,16 @@ impl Wire for Diplomacy {
             war_weariness: <[i32; 64]>::read(r)?,
             warmonger_modifier: <[i32; 64]>::read(r)?,
             era_player_met: <[i32; 64]>::read(r)?,
-            yield_per_delegation: <Vec<HashValue<i32>>>::read(r)?,
-            yield_per_embassy: <Vec<HashValue<i32>>>::read(r)?,
+            yield_per_delegation: if wire_version == 50 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            yield_per_embassy: if wire_version == 50 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
             war_and_alliance_modifiers: <[i32; 10]>::read(r)?,
             warmonger_scaling_raw: <i32>::read(r)?,
             no_occupation_penalties: <bool>::read(r)?,
@@ -369,10 +417,31 @@ impl Wire for Diplomacy {
             banned_action_civilizations: <Vec<BannedActionCivilization>>::read(r)?,
             last_war_and_city_turns: <[i32; 10]>::read(r)?,
             all_alliances_shared_visibility: <bool>::read(r)?,
-            grievance_generation_modifier: <i32>::read(r)?,
-            grievance_decay_modifier: <i32>::read(r)?,
-            grievance_decay_disabled: <bool>::read(r)?,
-            alliance_and_favor_modifiers: <[i32; 9]>::read(r)?,
+            grievance_generation_modifier: if wire_version == 50 {
+                <i32>::read(r)?
+            } else {
+                0
+            },
+            grievance_decay_modifier: if wire_version == 50 {
+                <i32>::read(r)?
+            } else {
+                0
+            },
+            grievance_decay_disabled: if wire_version == 50 {
+                <bool>::read(r)?
+            } else {
+                false
+            },
+            alliance_and_favor_modifiers: {
+                let mut values = [0; 9];
+                for value in values
+                    .iter_mut()
+                    .take(if wire_version == 41 { 7 } else { 9 })
+                {
+                    *value = i32::read(r)?;
+                }
+                values
+            },
             visibility: <Vec<i32>>::read(r)?,
             visibility_source_hashes: <Vec<u32>>::read(r)?,
             visibility_additions: <Vec<VisibilityAddition>>::read(r)?,
@@ -381,12 +450,24 @@ impl Wire for Diplomacy {
             promises_made: <Promises>::read(r)?,
             incursions_made: <Incursions>::read(r)?,
             last_promises_made: <Promises>::read(r)?,
-            units_blocked_entry: <Vec<HashValue<bool>>>::read(r)?,
+            units_blocked_entry: if wire_version == 50 {
+                <Vec<HashValue<bool>>>::read(r)?
+            } else {
+                Vec::new()
+            },
             alliance_points_per_player: <Vec<i32>>::read(r)?,
             banned_action_counts: <Vec<HashValue<i32>>>::read(r)?,
+            legacy_available_congress_discussions: if wire_version == 41 {
+                Some(LegacyCongressDiscussionLists::read(r)?)
+            } else {
+                None
+            },
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 50 || self.legacy_available_congress_discussions.is_some() {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         50u32.write(w)?;
         self.had_friendly_meeting.write(w)?;
         self.has_delegation.write(w)?;
@@ -439,6 +520,16 @@ impl Wire for Diplomacy {
     }
 }
 impl Diplomacy {
+    /// False at41: native resets each omitted list to0 using the actual Yield
+    /// definition count; empty transport vectors do not establish empty arrays.
+    pub fn delegation_embassy_yields_wire_present(&self) -> bool {
+        self.wire_version == 50
+    }
+    /// False at41: native assigns false at every actual Unit definition index.
+    /// That registry/count is not reconstructed by wire transport.
+    pub fn blocked_entry_wire_present(&self) -> bool {
+        self.wire_version == 50
+    }
     /// Dynamic item charges include all nested containers and Blackboard strings.
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -486,6 +577,8 @@ mod tests {
         board_bytes.resize(4 + 4 * 4 + 3 * 4 + 9 * 64 * 4, 0);
         let blackboard = Blackboard::decode(&board_bytes, Limits::default()).unwrap();
         let mut value = Diplomacy {
+            wire_version: 50,
+            legacy_available_congress_discussions: None,
             had_friendly_meeting: [false; 64],
             has_delegation: [false; 64],
             has_embassy: [false; 64],
@@ -610,6 +703,183 @@ mod tests {
             value: -1,
         }];
         value
+    }
+    #[test]
+    fn diplomacy41_complete_outer_grammar_keeps_late_discussion_payload() {
+        // Independent literal source grammar. Nested data intentionally uses
+        // its already admitted current versions; older nested versions must
+        // still refuse rather than borrow the outer41 tag.
+        let mut bytes = 41u32.to_le_bytes().to_vec();
+        bytes.extend([0; 3 * 64]);
+        bytes.extend([0; 2 * 64 * 4]);
+        bytes.push(1);
+        bytes.extend([0; 5 * 64 * 4]);
+        bytes.extend([0; 2 * 64]);
+        bytes.extend([0; 4 * 64 * 4]);
+        // No delegation/embassy Yield lists at41.
+        for value in 1i32..=10 {
+            bytes.extend(value.to_le_bytes());
+        }
+        bytes.extend((-257i32).to_le_bytes());
+        bytes.push(1);
+        let mut board = 13u32.to_le_bytes().to_vec();
+        board.resize(4 + 4 * 4 + 3 * 4 + 9 * 64 * 4, 0);
+        bytes.extend(board);
+        bytes.extend(0u32.to_le_bytes()); // City war weariness
+        for _ in 0..64 {
+            bytes.extend(50u32.to_le_bytes());
+            bytes.extend([0; 9]);
+        }
+        for _ in 0..5 {
+            bytes.extend(0u32.to_le_bytes());
+        } // modifier/override vectors
+        for value in 11i32..=20 {
+            bytes.extend(value.to_le_bytes());
+        }
+        bytes.push(1); // shared alliance visibility is already present at41
+                       // Three grievance scalars are absent, then seven of nine alliance/favor ints.
+        for value in 101i32..=107 {
+            bytes.extend(value.to_le_bytes());
+        }
+        for _ in 0..8 {
+            bytes.extend(0u32.to_le_bytes());
+        } // visibility/maps/messages
+          // No Unit blocked-entry list at41; alliance points/action counts remain.
+        for _ in 0..2 {
+            bytes.extend(0u32.to_le_bytes());
+        }
+        for player in 0..64 {
+            bytes.extend((if player == 3 { 2u32 } else { 0 }).to_le_bytes());
+            if player == 3 {
+                for value in [1u8, 0] {
+                    bytes.extend(u32::MAX.to_le_bytes());
+                    bytes.push(value);
+                }
+            }
+        }
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        let (v, used, items) = Diplomacy::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items), (end, 2));
+        assert_eq!(v.wire_version, 41);
+        assert!(
+            v.can_enforce_borders && v.no_occupation_penalties && v.all_alliances_shared_visibility
+        );
+        assert_eq!(
+            v.war_and_alliance_modifiers,
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        );
+        assert_eq!(v.warmonger_scaling_raw, -257);
+        assert_eq!(v.grievance_generation_modifier, 0);
+        assert_eq!(v.grievance_decay_modifier, 0);
+        assert!(!v.grievance_decay_disabled);
+        assert_eq!(
+            v.alliance_and_favor_modifiers,
+            [101, 102, 103, 104, 105, 106, 107, 0, 0]
+        );
+        assert!(!v.delegation_embassy_yields_wire_present());
+        assert!(!v.blocked_entry_wire_present());
+        let legacy = v.legacy_available_congress_discussions.as_ref().unwrap();
+        assert_eq!(legacy.players[3].len(), 2);
+        assert_eq!(
+            legacy.native_baseline,
+            LegacyDiscussionBaseline::NativeFalseResetDiscussionDefinitionCountUnknown
+        );
+        assert_eq!(v.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(
+                Diplomacy::decode_prefix(&bytes[..n], limits).is_err(),
+                "{n}"
+            );
+        }
+        assert_eq!(
+            Diplomacy::decode_prefix(
+                &bytes,
+                Limits {
+                    max_items: 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for version in [40u32, 42, 49, 51] {
+            let mut bad = bytes.clone();
+            bad[..4].copy_from_slice(&version.to_le_bytes());
+            assert_eq!(
+                Diplomacy::decode_prefix(&bad, limits),
+                Err(Error::Version {
+                    expected: 50,
+                    actual: version
+                })
+            );
+        }
+    }
+    #[test]
+    fn legacy_discussion_lists_have_fixed64_framing_and_no_false_baseline() {
+        let mut bytes = Vec::new();
+        for player in 0..64 {
+            let count = if player == 3 { 2u32 } else { 0 };
+            bytes.extend(count.to_le_bytes());
+            if count != 0 {
+                for value in [1u8, 0] {
+                    bytes.extend(u32::MAX.to_le_bytes());
+                    bytes.push(value);
+                }
+            }
+        }
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: end,
+                max_items: 2,
+            },
+        };
+        let v = LegacyCongressDiscussionLists::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (end, 2));
+        assert_eq!(
+            v.players[3],
+            [
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: true
+                },
+                HashValue {
+                    definition_hash: u32::MAX,
+                    value: false
+                }
+            ]
+        );
+        assert!(v.players[0].is_empty());
+        for n in 0..end {
+            let mut r = Reader {
+                data: &bytes[..n],
+                pos: 0,
+                items: 0,
+                limits: Limits::default(),
+            };
+            assert!(LegacyCongressDiscussionLists::read(&mut r).is_err(), "{n}");
+        }
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: end,
+                max_items: 1,
+            },
+        };
+        assert_eq!(
+            LegacyCongressDiscussionLists::read(&mut r),
+            Err(Error::ResourceLimit)
+        );
     }
     #[test]
     fn nonempty_ordered_roundtrip_and_aggregate_budget() {
