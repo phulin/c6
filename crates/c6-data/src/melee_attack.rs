@@ -7,6 +7,7 @@ pub mod experience;
 pub mod execution;
 pub mod proposals;
 pub mod results;
+pub mod resolve;
 pub mod strength;
 pub mod target_selection;
 use c6_core::{

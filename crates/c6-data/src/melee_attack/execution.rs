@@ -363,6 +363,8 @@ pub struct GeneratedMembers {
     pub defender_experience: i32,
     pub attacker_maximum_damage: i32,
     pub defender_maximum_damage: i32,
+    /// Generated permission only. Resolve must still check both survival and
+    /// defender defeat before moving the attacker.
     pub attacker_advances: bool,
 }
 #[derive(Debug)]
@@ -462,5 +464,43 @@ impl<E> Generation<'_, '_, E> {
             defender_maximum_damage,
             attacker_advances: count < 2,
         })
+    }
+}
+
+/// Successful generation and source attacker completion; Resolve is mandatory.
+#[must_use]
+pub struct RequiresResolve {
+    pub members: GeneratedMembers,
+}
+#[derive(Debug)]
+pub enum CompletionError<E> {
+    State(c6_core::loaded_state::Error),
+    Operations(Box<loaded_upkeep::Error<E>>),
+}
+impl<E: loaded_upkeep::OperationReports> Generation<'_, '_, E> {
+    /// AttackInto performs these only AFTER complete successful generation.
+    pub fn complete_attacker(
+        &mut self,
+        members: GeneratedMembers,
+    ) -> Result<RequiresResolve, CompletionError<E::Error>> {
+        self.state
+            .unit_mut(self.actor.player(), self.actor.id)
+            .map_err(CompletionError::State)?
+            .i_fortify_turns = 0;
+        loaded_upkeep::clear_unit_operations(
+            self.state,
+            self.actor.player(),
+            self.actor.id,
+            self.effects,
+        )
+        .map_err(|e| CompletionError::Operations(Box::new(e)))?;
+        loaded_upkeep::complete_unit_movement(
+            self.state,
+            self.actor.player(),
+            self.actor.id,
+            self.effects,
+        )
+        .map_err(|e| CompletionError::Operations(Box::new(e)))?;
+        Ok(RequiresResolve { members })
     }
 }

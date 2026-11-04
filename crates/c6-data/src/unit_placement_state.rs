@@ -236,6 +236,35 @@ pub fn set<E: Effects>(
     .map_err(|e| Error::Transition(Box::new(e)))
 }
 
+/// Shared Unit::ChangeDamage setter/report/Clear sequence. Manager dead checking
+/// and Kill follow separately against the same current state.
+#[allow(clippy::too_many_arguments)]
+pub fn change_damage<E: Effects>(
+    state: &mut LoadedState,
+    definitions: &Definitions<'_, '_>,
+    queries: &Queries<'_>,
+    runtime: &mut sight::Runtime,
+    effects: &mut E,
+    actor: (i32, u32),
+    delta: i32,
+) -> Result<i32, c6_core::unit_healing::UnitHealingError<Error<EffectsError<E>>>> {
+    definitions
+        .validate_binding(state)
+        .map_err(|e| c6_core::unit_healing::UnitHealingError::InputsUnavailable(Error::Query(e)))?;
+    let mut context = Context {
+        sight: sight::Context {
+            state,
+            runtime,
+            effects,
+            sight_definitions: definitions.sight,
+            actor,
+        },
+        definitions,
+        queries,
+    };
+    c6_core::unit_healing::change_damage(&mut context, delta)
+}
+
 impl<E> From<crate::loaded_actions::Error> for Error<E> {
     fn from(e: crate::loaded_actions::Error) -> Self {
         Self::Query(e)
