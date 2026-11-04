@@ -1,10 +1,11 @@
 //! Actual Linux Unit MaxMoves/HasMoved over owned gameplay fields.
 //! No Formation flag, effective-stat answer or native archive state is an input.
 use crate::{
+    game_parameters::{IntegerParameter, Parameters},
     registry::LinuxDefinitionRegistry,
     resource_binding::ResourceAuthority,
     unit_initialization_definitions::{self, collection},
-    Rules, SqlValue,
+    Rules,
 };
 use c6_core::{
     core_player::initialization::InputIdentities,
@@ -113,6 +114,8 @@ impl Definitions {
                 i32::try_from(unit.base_moves).map_err(|_| Error::Scalar("BaseMoves"))
             })
             .collect::<Result<_, _>>()?;
+        let parameters =
+            Parameters::from_rules(rules).map_err(|_| Error::Definition("GlobalParameters"))?;
         Ok(Self {
             identities: state.binding().inputs.clone(),
             units,
@@ -126,30 +129,13 @@ impl Definitions {
                 "MovementChange",
             )?,
             districts: collection(rules, "Districts", "DistrictType").map_err(Error::Resources)?,
-            embarked_base: parameter(rules, "MOVEMENT_WHILE_EMBARKED_BASE")?,
-            city_cost: parameter(rules, "CITY_MOVEMENT_COST")?,
+            embarked_base: parameters
+                .integer(IntegerParameter::MovementWhileEmbarkedBase)
+                .map_err(|_| Error::Scalar("MOVEMENT_WHILE_EMBARKED_BASE"))?,
+            city_cost: parameters
+                .integer(IntegerParameter::CityMovementCost)
+                .map_err(|_| Error::Scalar("CITY_MOVEMENT_COST"))?,
         })
-    }
-}
-fn parameter(rules: &Rules, name: &'static str) -> Result<i32, Error> {
-    let rows = rules
-        .gameplay()
-        .table("GlobalParameters")
-        .ok_or(Error::Definition("GlobalParameters"))?;
-    let mut found = rows
-        .rows()
-        .filter(|row| row.text("Name").ok() == Some(name));
-    let row = found.next().ok_or(Error::Scalar(name))?;
-    if found.next().is_some() {
-        return Err(Error::Scalar(name));
-    }
-    match row.get("Value").map_err(Error::Rules)? {
-        SqlValue::Integer(value) => i32::try_from(*value).map_err(|_| Error::Scalar(name)),
-        SqlValue::Text(value) => std::str::from_utf8(value)
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .ok_or(Error::Scalar(name)),
-        _ => Err(Error::Scalar(name)),
     }
 }
 
