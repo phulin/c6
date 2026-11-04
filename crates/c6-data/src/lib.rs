@@ -25,6 +25,7 @@ pub mod unit_initialization_definitions;
 pub mod unit_movement_state;
 pub mod unit_operation_manager;
 pub mod unit_sight_state;
+pub mod unit_moved_achievement;
 pub mod world_congress_options;
 pub mod world_congress_rules;
 
@@ -841,3 +842,4 @@ pub mod unit_placement_state;
 pub mod unit_placement_services;
 
 pub mod plot_adjacent_owner_requirement;
+
