@@ -57,6 +57,16 @@ pub trait Backend: lifecycle::Backend {
     fn manager_initialized(&mut self, state: &mut LoadedState) -> Result<bool, Error>;
     fn game_uninitializing(&mut self, state: &mut LoadedState) -> Result<bool, Error>;
     fn allocate(&mut self, state: &mut LoadedState, type_hash: u32) -> Result<Allocation, Error>;
+    /// Validation at the first positive IsNeeded identity consumer. Exact
+    /// allocators validate their retained/fresh target identity here. A
+    /// presentation projection may omit pool history on the redundant branch,
+    /// but must reject here if a retained target type could change IsDuplicate.
+    /// This is an invariant check, not an additional native gameplay query.
+    fn validate_duplicate_identity(
+        &mut self,
+        state: &mut LoadedState,
+        candidate: &Created,
+    ) -> Result<(), Error>;
     fn release_pending(
         &mut self,
         state: &mut LoadedState,
@@ -391,10 +401,18 @@ impl<B: Backend> Notifications for Provider<'_, B> {
     }
     fn redundant(&mut self, slot: i32, object: Object) -> Result<bool, aftermath::Error> {
         self.step(|s| {
-            let candidate = s.record(object)?;
             if !s.expiry(object, true)? {
                 return Ok(true);
             }
+            if let Object::Pending(i) = object {
+                let candidate = s
+                    .pending
+                    .get(i)
+                    .and_then(|p| p.created.as_ref())
+                    .ok_or(Error::Unsupported("positive IsNeeded pending candidate"))?;
+                s.backend.validate_duplicate_identity(s.state, candidate)?;
+            }
+            let candidate = s.record(object)?;
             let mut cursor = s.state.player_notifications()?.first(slot)?;
             while let Some(current) = cursor {
                 let existing = s.state.player_notifications()?.record_by_object(current)?;
