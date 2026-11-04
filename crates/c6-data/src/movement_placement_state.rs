@@ -1168,6 +1168,54 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                                 .map_err(|error| Error::District(Box::new(error)))?,
                         );
                     }
+                    PlacementMissing::RangedCombat
+                    | PlacementMissing::MeleeForRanged
+                    | PlacementMissing::BombardCombat
+                    | PlacementMissing::MeleeForBombard
+                    | PlacementMissing::IsCombat => {
+                        let definitions = self
+                            .combat_definitions
+                            .ok_or(Error::Capability(Capability::ForeignContext(missing)))?;
+                        let combat_error = |error| Error::Combat(Box::new(error));
+                        match missing {
+                            PlacementMissing::RangedCombat => {
+                                f.ranged_combat = Some(
+                                    definitions.ranged(self.state, unit).map_err(combat_error)?,
+                                )
+                            }
+                            PlacementMissing::MeleeForRanged => {
+                                f.melee_for_ranged = Some(
+                                    definitions.combat(self.state, unit).map_err(combat_error)?,
+                                )
+                            }
+                            PlacementMissing::BombardCombat => {
+                                f.bombard_combat = Some(
+                                    definitions
+                                        .bombard(self.state, unit)
+                                        .map_err(combat_error)?,
+                                )
+                            }
+                            PlacementMissing::MeleeForBombard => {
+                                f.melee_for_bombard = Some(
+                                    definitions.combat(self.state, unit).map_err(combat_error)?,
+                                )
+                            }
+                            PlacementMissing::IsCombat => {
+                                f.is_combat = Some(
+                                    definitions.combat(self.state, unit).map_err(combat_error)? > 0
+                                        || definitions
+                                            .ranged(self.state, unit)
+                                            .map_err(combat_error)?
+                                            > 0
+                                        || definitions
+                                            .bombard(self.state, unit)
+                                            .map_err(combat_error)?
+                                            > 0,
+                                )
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                     PlacementMissing::Barbarian => {
                         f.barbarian = Some(self.civilization_level(unit.e_owner)? == 0xd959ec24)
                     }
