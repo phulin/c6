@@ -415,6 +415,7 @@ pub mod unit_operation_interruption;
 pub mod game_capabilities;
 pub mod game_diplomatic_relations;
 pub mod game_diplomatic_relations_wire;
+pub mod game_gossip_wire;
 pub mod game_global_ai;
 pub mod game_great_people;
 pub mod game_quests;
