@@ -13,7 +13,10 @@
 //! only. Bindings must preserve actual ordered rows, keyed lookups, return types
 //! and reached failures; missing data must never become a default value. Errors
 //! leave reached global cache/counter writes intact and prevent output assignment.
-//! Such partial writes are callback diagnostics, not action acceptance.
+//! Such partial writes are callback diagnostics, not action acceptance. Ordered
+//! row slices are complete, successfully acquired inputs; failures while an
+//! underlying GameInfo iterator yields those rows are outside this profile.
+//! Prefix-write guarantees apply to the explicit fallible query calls only.
 //!
 //! Each method's borrowed slice represents assignment of ResolutionOptions to
 //! the corresponding global cached list. The source aliases that list rather
