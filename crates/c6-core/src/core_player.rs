@@ -1771,6 +1771,7 @@ pub(crate) mod tests {
             wire_version: 17,
             spy_capacity: -999,
             captured_spies: vec![pmod::CapturedSpy {
+                wire_version: 17,
                 owning_player_ordinal: -998,
                 unit_type_hash: 3735879683,
                 name_index: -996,

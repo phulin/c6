@@ -174,14 +174,59 @@ macro_rules! record {
         }
     };
 }
-record!(CapturedSpy, true, {
-    owning_player_ordinal:i32,
-    unit_type_hash:u32,
-    name_index:i32,
-    level:i32,
-    promotion_hash:u32,
-    promotion_hashes:Vec<u32>,
-});
+/// Independently tagged CapturedSpy15/17 wire projection. All fields are
+/// present by version8; native definition remaps are not executed here.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CapturedSpy {
+    pub wire_version: u32,
+    pub owning_player_ordinal: i32,
+    pub unit_type_hash: u32,
+    pub name_index: i32,
+    pub level: i32,
+    pub promotion_hash: u32,
+    pub promotion_hashes: Vec<u32>,
+}
+impl Wire for CapturedSpy {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "CapturedSpy";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | VERSION) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            owning_player_ordinal: <i32 as Wire>::read(r)?,
+            unit_type_hash: <u32 as Wire>::read(r)?,
+            name_index: <i32 as Wire>::read(r)?,
+            level: <i32 as Wire>::read(r)?,
+            promotion_hash: <u32 as Wire>::read(r)?,
+            promotion_hashes: <Vec<u32> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.owning_player_ordinal.write(w)?;
+        self.unit_type_hash.write(w)?;
+        self.name_index.write(w)?;
+        self.level.write(w)?;
+        self.promotion_hash.write(w)?;
+        self.promotion_hashes.write(w)?;
+        Ok(())
+    }
+}
 /// Independently tagged OffMapSpy wire data. All fields are present at15/17;
 /// hashes and the AI controller bits are retained without native index guesses.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -506,6 +551,7 @@ mod tests {
             wire_version: VERSION,
             spy_capacity: -7,
             captured_spies: vec![CapturedSpy {
+                wire_version: VERSION,
                 owning_player_ordinal: -1,
                 unit_type_hash: 0xffffffff,
                 name_index: -8,
@@ -558,6 +604,66 @@ mod tests {
                 percent: i32::MIN,
             }],
         }
+    }
+    #[test]
+    fn captured_spy15_keeps_hashes_order_and_item_budgets() {
+        let mut bytes = Vec::new();
+        for word in [
+            15u32,
+            i32::MIN as u32,
+            0x80000001,
+            u32::MAX,
+            i32::MAX as u32,
+            u32::MAX,
+            2,
+            0x81234567,
+            0x81234567,
+        ] {
+            bytes.extend_from_slice(&word.to_le_bytes());
+        }
+        let decode = |data: &[u8], max_bytes, max_items| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items,
+                },
+                version_component: "test",
+            };
+            CapturedSpy::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&bytes, bytes.len(), 2).unwrap();
+        assert_eq!((v.wire_version, n, i), (15, 36, 2));
+        assert_eq!(v.owning_player_ordinal, i32::MIN);
+        assert_eq!(v.unit_type_hash, 0x80000001);
+        assert_eq!(v.promotion_hashes, vec![0x81234567; 2]);
+        assert!(decode(&bytes, bytes.len() - 1, 2).is_err());
+        assert!(decode(&bytes, bytes.len(), 1).is_err());
+        for cut in 0..bytes.len() {
+            assert!(decode(&bytes[..cut], bytes.len(), 2).is_err());
+        }
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        bytes[..4].copy_from_slice(&16u32.to_le_bytes());
+        assert_eq!(
+            decode(&bytes, bytes.len(), 2),
+            Err(Error::Version {
+                expected: 17,
+                actual: 16
+            })
+        );
+        bytes[..4].copy_from_slice(&17u32.to_le_bytes());
+        let current = decode(&bytes, bytes.len(), 2).unwrap().0;
+        current.write(&mut w).unwrap();
+        assert_eq!(w.data, bytes);
     }
     #[test]
     fn source_carrier_wire_words() {
