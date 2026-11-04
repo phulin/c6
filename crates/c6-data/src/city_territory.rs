@@ -209,6 +209,7 @@ pub trait Effects: unit_sight_state::Effects {
     fn reallocate_citizens(
         &mut self,
         state: &mut LoadedState,
+        runtime: &mut Runtime,
         city: CityId,
     ) -> Result<(), Self::Error>;
     fn annex_report(
@@ -821,7 +822,7 @@ impl<E: Effects> kernel::AnnexContext for Context<'_, E> {
     }
     fn reallocate_citizens(&mut self, city: CityId) -> Result<(), Self::Error> {
         self.effects
-            .reallocate_citizens(self.state, city)
+            .reallocate_citizens(self.state, self.runtime, city)
             .map_err(Error::Effect)
     }
     fn report_annexed(&mut self, city: CityId, location: PlotCoord) -> Result<(), Self::Error> {
