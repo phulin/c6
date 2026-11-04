@@ -49,8 +49,17 @@ pub struct ComponentId {
     pub component_type: i16,
     pub id: u32,
 }
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum LocalizedWireFormat {
+    #[default]
+    Versioned1,
+    /// A zero-length legacy record preserves prior native text, whose value
+    /// cannot be inferred from the saved record. No runtime text is installed.
+    LegacyLength,
+}
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LocalizedString {
+    pub wire_format: LocalizedWireFormat,
     /// Base string bytes, without UTF-8 conversion or an added terminator.
     pub base: Vec<u8>,
 }
@@ -142,7 +151,16 @@ impl<'a> Reader<'a> {
         })
     }
     fn string(&mut self) -> Result<LocalizedString, Error> {
-        if self.u32()? != u32::MAX || self.take(1)?[0] != 1 {
+        let first = self.u32()?;
+        if first != u32::MAX {
+            let n = first as usize;
+            self.charge(n)?;
+            return Ok(LocalizedString {
+                wire_format: LocalizedWireFormat::LegacyLength,
+                base: self.take(n)?.to_vec(),
+            });
+        }
+        if self.take(1)?[0] != 1 {
             return Err(Error::InvalidLocaleHeader);
         }
         let n = self.u32()? as usize;
@@ -151,7 +169,10 @@ impl<'a> Reader<'a> {
         if self.take(1)?[0] != 0 || self.take(1)?[0] != 0 {
             return Err(Error::UnsupportedLocaleArguments);
         }
-        Ok(LocalizedString { base })
+        Ok(LocalizedString {
+            wire_format: LocalizedWireFormat::Versioned1,
+            base,
+        })
     }
     fn record(&mut self) -> Result<Notification, Error> {
         let factory_type = self.u32()?;
@@ -256,8 +277,8 @@ impl PlayerNotifications {
             return Err(Error::ResourceLimit);
         }
         r.charge(count)?;
-        // Every supported record has at least 85 bytes; check before allocation.
-        if count > bytes.len().saturating_sub(r.pos) / 85 {
+        // Every supported record has at least 71 bytes; check before allocation.
+        if count > bytes.len().saturating_sub(r.pos) / 71 {
             return Err(Error::Truncated);
         }
         let mut records = Vec::new();
@@ -419,6 +440,13 @@ impl Writer {
     }
     fn string(&mut self, s: &LocalizedString) -> Result<(), Error> {
         let n = u32::try_from(s.base.len()).map_err(|_| Error::ResourceLimit)?;
+        if s.wire_format == LocalizedWireFormat::LegacyLength {
+            if n == u32::MAX {
+                return Err(Error::ResourceLimit);
+            }
+            self.word(n)?;
+            return self.put(&s.base);
+        }
         self.word(u32::MAX)?;
         self.put(&[1])?;
         self.word(n)?;
@@ -440,9 +468,13 @@ mod tests {
                 component_type: i16::MIN,
                 id: u32::MAX,
             },
-            message: LocalizedString { base: vec![0, 255] },
+            message: LocalizedString {
+                base: vec![0, 255],
+                ..LocalizedString::default()
+            },
             summary: LocalizedString {
                 base: b"sum".to_vec(),
+                ..LocalizedString::default()
             },
             native_188: i32::MAX,
             is_dismissed: true,
@@ -606,5 +638,43 @@ mod tests {
             Manager::decode(&b, Limits::default()),
             Err(Error::UnsupportedVersion(99))
         );
+    }
+    #[test]
+    fn legacy_text_is_distinct_from_versioned_text_and_zero_preserves_prior_unknown() {
+        let literal = [
+            0, 0, 0, 0, 3, 0, 0, 0, b'a', 0, 255, 255, 255, 255, 255, 1, 0, 0, 0, 0, 0, 0,
+        ];
+        let mut r = Reader {
+            bytes: &literal,
+            pos: 0,
+            items: 0,
+            limits: Limits::default(),
+            variants: DecodeBudget::new(variant_limits(Limits::default())),
+        };
+        let absent = r.string().unwrap();
+        assert_eq!(absent.wire_format, LocalizedWireFormat::LegacyLength);
+        assert!(absent.base.is_empty());
+        let legacy = r.string().unwrap();
+        assert_eq!(legacy.base, [b'a', 0, 255]);
+        assert_eq!(legacy.wire_format, LocalizedWireFormat::LegacyLength);
+        let modern = r.string().unwrap();
+        assert_eq!(modern.wire_format, LocalizedWireFormat::Versioned1);
+        assert!(modern.base.is_empty());
+        assert_ne!(absent, modern);
+        assert_eq!((r.pos, r.items), (literal.len(), 3));
+        // The smallest legacy record is 71 bytes; modern-only minimum85 is wrong.
+        let mut v = fixture();
+        v.records.truncate(1);
+        v.records[0].message = absent;
+        v.records[0].summary = legacy;
+        let b = v.encode(Limits::default()).unwrap();
+        assert_eq!(b.len(), 16 + 71 + 3);
+        assert_eq!(
+            PlayerNotifications::decode(&b, Limits::default()).unwrap(),
+            v
+        );
+        for cut in 0..b.len() {
+            assert!(PlayerNotifications::decode(&b[..cut], Limits::default()).is_err());
+        }
     }
 }
