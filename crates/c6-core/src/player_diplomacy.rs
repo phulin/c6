@@ -240,11 +240,79 @@ macro_rules! record {
         }
     };
 }
-record!(CasusBelliData, 50, {
-    colonial_war: bool, holy_war: bool, liberation_war: bool,
-    protectorate_war: bool, reconquest_war: bool, territorial_war: bool,
-    golden_age_war: bool, retribution_war: bool, ideological_war: bool,
-});
+/// All nine booleans are present in admitted41/50. Native memory order differs
+/// from wire order; this DTO follows wire order and retains the independent tag.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CasusBelliData {
+    pub wire_version: u32,
+    pub colonial_war: bool,
+    pub holy_war: bool,
+    pub liberation_war: bool,
+    pub protectorate_war: bool,
+    pub reconquest_war: bool,
+    pub territorial_war: bool,
+    pub golden_age_war: bool,
+    pub retribution_war: bool,
+    pub ideological_war: bool,
+}
+impl Default for CasusBelliData {
+    /// Empty current wire data, not execution of a native constructor.
+    fn default() -> Self {
+        Self {
+            wire_version: 50,
+            colonial_war: false,
+            holy_war: false,
+            liberation_war: false,
+            protectorate_war: false,
+            reconquest_war: false,
+            territorial_war: false,
+            golden_age_war: false,
+            retribution_war: false,
+            ideological_war: false,
+        }
+    }
+}
+impl Wire for CasusBelliData {
+    const MIN: usize = 13;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.last_version_component = "CasusBelliData";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 41 | 50) {
+            return Err(Error::Version {
+                expected: 50,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            colonial_war: bool::read(r)?,
+            holy_war: bool::read(r)?,
+            liberation_war: bool::read(r)?,
+            protectorate_war: bool::read(r)?,
+            reconquest_war: bool::read(r)?,
+            territorial_war: bool::read(r)?,
+            golden_age_war: bool::read(r)?,
+            retribution_war: bool::read(r)?,
+            ideological_war: bool::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 50 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        50u32.write(w)?;
+        self.colonial_war.write(w)?;
+        self.holy_war.write(w)?;
+        self.liberation_war.write(w)?;
+        self.protectorate_war.write(w)?;
+        self.reconquest_war.write(w)?;
+        self.territorial_war.write(w)?;
+        self.golden_age_war.write(w)?;
+        self.retribution_war.write(w)?;
+        self.ideological_war.write(w)?;
+        Ok(())
+    }
+}
 record!(PromiseData, 50, {
     turn_made: i32, skipped: bool, broken: bool,
     broken_notification_sent: bool, report_repeat_offense: bool, turn_broken: i32,
@@ -734,10 +802,70 @@ mod tests {
         value
     }
     #[test]
+    fn casus41_own_tag_and_nine_bool_order_match_current_shape() {
+        let mut bytes = 41u32.to_le_bytes().to_vec();
+        bytes.extend([1, 0, 1, 0, 1, 0, 1, 0, 1]);
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: 13,
+            max_items: 0,
+        };
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            limits,
+            last_version_component: "Diplomacy",
+        };
+        let v = CasusBelliData::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (13, 0));
+        assert_eq!(v.wire_version, 41);
+        assert_eq!(
+            [
+                v.colonial_war,
+                v.holy_war,
+                v.liberation_war,
+                v.protectorate_war,
+                v.reconquest_war,
+                v.territorial_war,
+                v.golden_age_war,
+                v.retribution_war,
+                v.ideological_war
+            ],
+            [true, false, true, false, true, false, true, false, true]
+        );
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..13 {
+            let mut r = Reader {
+                data: &bytes[..n],
+                pos: 0,
+                items: 0,
+                limits,
+                last_version_component: "Diplomacy",
+            };
+            assert!(CasusBelliData::read(&mut r).is_err(), "{n}");
+        }
+        let mut bad = bytes.clone();
+        bad[12] = 2;
+        let mut r = Reader {
+            data: &bad,
+            pos: 0,
+            items: 0,
+            limits,
+            last_version_component: "Diplomacy",
+        };
+        assert_eq!(CasusBelliData::read(&mut r), Err(Error::InvalidBool(2)));
+    }
+    #[test]
     fn diplomacy41_complete_outer_grammar_keeps_late_discussion_payload() {
         // Independent literal source grammar. Nested data intentionally uses
-        // its already admitted current versions; older nested versions must
-        // still refuse rather than borrow the outer41 tag.
+        // independent tags: Casus41 and Blackboard13. Other older nested
+        // versions still refuse rather than borrowing the outer41 tag.
         let mut bytes = 41u32.to_le_bytes().to_vec();
         bytes.extend([0; 3 * 64]);
         bytes.extend([0; 2 * 64 * 4]);
@@ -757,7 +885,7 @@ mod tests {
         bytes.extend(0u32.to_le_bytes()); // City war weariness
         let casus_at = bytes.len();
         for _ in 0..64 {
-            bytes.extend(50u32.to_le_bytes());
+            bytes.extend(41u32.to_le_bytes());
             bytes.extend([0; 9]);
         }
         for _ in 0..5 {
@@ -837,7 +965,7 @@ mod tests {
             Err(Error::ResourceLimit)
         );
         let mut nested = bytes.clone();
-        nested[casus_at..casus_at + 4].copy_from_slice(&41u32.to_le_bytes());
+        nested[casus_at..casus_at + 4].copy_from_slice(&42u32.to_le_bytes());
         let boundary = Diplomacy::decode_prefix_with_boundary(&nested, limits).unwrap_err();
         assert_eq!(
             (boundary.component, boundary.consumed),
@@ -847,7 +975,7 @@ mod tests {
             boundary.error,
             Error::Version {
                 expected: 50,
-                actual: 41
+                actual: 42
             }
         );
         assert_eq!(
