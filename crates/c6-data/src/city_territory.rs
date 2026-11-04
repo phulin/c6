@@ -962,3 +962,42 @@ pub fn rules_cities_owner_changed(
     }
     Ok(())
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ImprovementReapply {
+    pub plot: u32,
+    pub improvement_type: i32,
+    pub old_city: CityId,
+}
+/// Actual GameEventHandler.OnPlotAnnexed_ReapplyGameEffects23e72c0 first
+/// queries the current improvement. NO_IMPROVEMENT returns at23e769c before
+/// constructing an object, retrieving ModifierSystem, logging or callbacks.
+/// A present improvement returns the real reached continuation, not success.
+pub fn annexed_improvement_reapply(
+    state: &LoadedState,
+    definitions: &Definitions,
+    plot: u32,
+    old_city: CityId,
+) -> Result<Option<ImprovementReapply>, Error<std::convert::Infallible>> {
+    if state.binding() != &definitions.binding {
+        return Err(Error::Missing("territory definitions binding"));
+    }
+    let current = state
+        .world()
+        .map()
+        .plot_by_index(plot)
+        .ok_or(Error::Missing("annexed improvement Plot"))?;
+    if current.improvement_hash == u32::MAX {
+        return Ok(None);
+    }
+    let improvement_type = definitions
+        .improvements
+        .find_index(current.improvement_hash)
+        .ok_or(Error::Missing("annexed current improvement definition"))?
+        as i32;
+    Ok(Some(ImprovementReapply {
+        plot,
+        improvement_type,
+        old_city,
+    }))
+}
