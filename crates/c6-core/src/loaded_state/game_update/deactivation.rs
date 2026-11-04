@@ -279,11 +279,21 @@ impl<S: Services> core::World for Context<'_, S> {
             .as_ref()
             .and_then(|c| c.players.iter().position(|v| v.owner == p))
             .ok_or(Error::Unsupported("SetTurnActive current player controls"))?;
+        let retained = self
+            .state
+            .retained
+            .players
+            .iter()
+            .position(|v| v.header.owner == p)
+            .ok_or(Error::Unsupported("SetTurnActive canonical player header"))?;
         // CopyAssignmentDo2b3d480 only inserts the variable in an archive dirty
         // tree before the bool store. Logical revision retains dirty semantics;
         // native tree allocations/order have no gameplay/RNG consumers here.
         self.revision()?;
         self.state.controls.as_mut().expect("checked").players[index].turn_active = Some(value);
+        // The control view and native Player47 field are aliases of the SAME
+        // logical bool. Keep serialized/current queries coherent after writes.
+        self.state.retained.players[retained].header.ordered_flags[2] = value;
         Ok(())
     }
     fn clear_automation_processed(&mut self, id: i32) -> Result<(), Error> {
@@ -317,6 +327,7 @@ mod tests {
     #[test]
     fn completed_current_player_clears_auto_game_then_inactive_prefix_before_log() {
         let (mut state, mut runtime, owner) = fixture();
+        state.retained.players[0].header.ordered_flags[2] = true;
         // Native turn order is consumed physically; it is never deduplicated.
         state.retained.core.game_processor.turn_order[63] = owner;
         let pending =
@@ -332,6 +343,7 @@ mod tests {
         assert_eq!(runtime.inputs.auto_player_game, Some(false));
         assert_eq!(state.retained.core.player_processor.active_count, 0);
         assert!(!state.turn_active(owner).unwrap());
+        assert!(!state.retained.players[0].header.saved_turn_active());
         assert!(!state.retained.core.player_processor.automation_processed[owner as usize]);
         assert!(
             begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap()).is_err()

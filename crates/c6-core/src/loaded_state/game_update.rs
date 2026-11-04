@@ -5,6 +5,7 @@ pub mod deactivation;
 pub mod automation;
 pub mod human_control;
 pub mod resources;
+pub mod activation;
 use crate::{
     core_player::initialization::WireBinding,
     game_update::{self as core, Error},

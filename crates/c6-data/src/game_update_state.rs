@@ -2,6 +2,7 @@
 //! existing concrete UnitCounts queries. No complete end-turn support implied.
 pub mod automation;
 pub mod deactivation;
+pub mod activation;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,

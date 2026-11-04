@@ -114,6 +114,28 @@ impl Frame {
     pub fn fail(&mut self) {
         self.failed = true;
     }
+    /// Inspect the current complete unit record without consuming the pending
+    /// callback. This permits the known empty/dead branch to avoid requesting
+    /// an unreachable movement/combat execution environment.
+    pub fn peek_unit<'a>(&self, state: &'a LoadedState) -> Result<Option<&'a Unit>, Error> {
+        self.check(state)?;
+        if self.current.is_some() {
+            return Err(Error::Unsupported("automation unit update already pending"));
+        }
+        let Some(slot) = self.cursor else {
+            return Ok(None);
+        };
+        state
+            .world
+            .player(self.owner)
+            .map_err(missing)?
+            .unit_records()
+            .map_err(missing)?
+            .iter()
+            .find(|s| s.index == slot)
+            .map(|s| Some(&s.value))
+            .ok_or(Error::Unsupported("automation current live node removed"))
+    }
     /// Dereference current live node then HasPendingOperations, BEFORE the
     /// per-unit UpdateAutomation callback. Subsequent fields are reread live.
     pub fn take_unit(&mut self, state: &LoadedState) -> Result<Option<UnitWork>, Error> {

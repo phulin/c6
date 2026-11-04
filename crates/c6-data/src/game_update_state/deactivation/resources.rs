@@ -17,6 +17,8 @@ struct Resource {
 }
 pub struct Definitions {
     ordered: Vec<Resource>,
+    speeds: crate::registry::LinuxDefinitionRegistry,
+    speed_percent: Vec<i32>,
 }
 fn integer<E>(v: &SqlValue) -> Result<i32, Error<E>> {
     match v {
@@ -35,11 +37,7 @@ fn scale(cap: i32, percent: i32) -> i32 {
 impl Definitions {
     /// Native resource order is an explicit immutable definition input. The
     /// current initialized ResourceEntry hash vector preserves that same order.
-    pub fn from_rules<E>(
-        rules: &Rules,
-        native_order: &[u32],
-        speed_hash: u32,
-    ) -> Result<Self, Error<E>> {
+    pub fn from_rules<E>(rules: &Rules, native_order: &[u32]) -> Result<Self, Error<E>> {
         let resources =
             collection(rules, "Resources", "ResourceType").map_err(Error::Definitions)?;
         if resources.entries().len() != native_order.len() {
@@ -47,23 +45,30 @@ impl Definitions {
         }
         let speeds =
             collection(rules, "GameSpeeds", "GameSpeedType").map_err(Error::Definitions)?;
-        let percent = if let Some(speed) = speeds.find(speed_hash) {
-            let row = rules
-                .gameplay()
-                .table("GameSpeeds")
-                .and_then(|t| t.row_by_id(speed.database_rowid))
-                .ok_or(Error::Missing("current game speed"))?;
-            integer(row.get("CostMultiplier").map_err(Error::Rules)?)?
-        } else {
-            100
-        };
+        let speed_percent = speeds
+            .entries()
+            .iter()
+            .map(|speed| {
+                let row = rules
+                    .gameplay()
+                    .table("GameSpeeds")
+                    .and_then(|t| t.row_by_id(speed.database_rowid))
+                    .ok_or(Error::Missing("game speed definition"))?;
+                integer(row.get("CostMultiplier").map_err(Error::Rules)?)
+            })
+            .collect::<Result<Vec<_>, Error<E>>>()?;
         let consumption = rules
             .gameplay()
             .table("Resource_Consumption")
             .ok_or(Error::Missing("Resource_Consumption"))?;
         let mut ordered = Vec::with_capacity(native_order.len());
         for (index, &hash) in native_order.iter().enumerate() {
-            if native_order[..index].contains(&hash) || resources.find(hash).is_none() {
+            if native_order[..index].contains(&hash)
+                || !resources
+                    .entries()
+                    .iter()
+                    .any(|entry| linux_type_hash(&entry.type_name) == hash)
+            {
                 return Err(Error::Missing("native resource identity"));
             }
             let mut cap = None;
@@ -72,10 +77,7 @@ impl Definitions {
                     == hash
                 {
                     cap = if integer(row.get("Accumulate").map_err(Error::Rules)?)? != 0 {
-                        Some(scale(
-                            integer(row.get("StockpileCap").map_err(Error::Rules)?)?,
-                            percent,
-                        ))
+                        Some(integer(row.get("StockpileCap").map_err(Error::Rules)?)?)
                     } else {
                         None
                     };
@@ -83,11 +85,17 @@ impl Definitions {
             }
             ordered.push(Resource { hash, cap });
         }
-        Ok(Self { ordered })
+        Ok(Self {
+            ordered,
+            speeds,
+            speed_percent,
+        })
     }
 }
 pub trait Effects {
     type Error;
+    fn game_speed(&mut self, state: &LoadedState) -> Result<u32, Self::Error>;
+    fn game_uninitializing(&mut self, state: &LoadedState) -> Result<bool, Self::Error>;
     fn allocate_luxuries(&mut self, state: &mut LoadedState, owner: i32)
         -> Result<(), Self::Error>;
     fn resource_changed(
@@ -145,6 +153,12 @@ pub fn deactivate<E: Effects>(
         if amount <= 0 {
             continue;
         }
+        let speed = effects.game_speed(state).map_err(Error::Effect)?;
+        let percent = definitions
+            .speeds
+            .find_index(speed)
+            .map_or(100, |index| definitions.speed_percent[index]);
+        let cap = scale(cap, percent);
         let modifier = resources
             .resource_stockpile_cap_modifier
             .iter()
@@ -165,9 +179,11 @@ pub fn deactivate<E: Effects>(
         *value = value.wrapping_add(delta).max(0);
         // ChangeResourceAmount stores BEFORE allocation/signal/report. Errors
         // preserve this prefix; callers must not retry the same turn phase.
-        effects
-            .allocate_luxuries(state, owner)
-            .map_err(Error::Effect)?;
+        if !effects.game_uninitializing(state).map_err(Error::Effect)? {
+            effects
+                .allocate_luxuries(state, owner)
+                .map_err(Error::Effect)?;
+        }
         effects
             .resource_changed(state, owner, index as i32, 0, delta)
             .map_err(Error::Effect)?;

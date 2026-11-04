@@ -205,6 +205,11 @@ impl<'a> Configuration<'a> {
         self.require_binding(binding)?;
         Ok(self.game.game_mode.ok_or(Error::Missing("game_mode"))? != 0xe9685ee7)
     }
+    /// Native IsHotseat28e4d70 reads only the current GameMode key.
+    pub fn is_hotseat(&self, binding: &WireBinding) -> Result<bool, Error> {
+        self.require_binding(binding)?;
+        Ok(self.game.game_mode.ok_or(Error::Missing("game_mode"))? == 0x0c67cee3)
+    }
     pub fn is_network_multiplayer(&self, binding: &WireBinding) -> Result<bool, Error> {
         self.require_binding(binding)?;
         Ok(matches!(

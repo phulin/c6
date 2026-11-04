@@ -203,7 +203,6 @@ where
         + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: move_to::Movement<E>,
 {
-    use c6_core::loaded_state::game_update::deactivation::LoggingScope;
     let result = (|| {
         let Some(work) = frame.take_unit(state).map_err(PlayerError::Prefix)? else {
             return Ok(UnitProgress::NoUnit);
@@ -212,51 +211,103 @@ where
             state, work.actor, inputs, handlers, runtime, effects, movement, scope,
         )
         .map_err(PlayerError::Operations)?;
-        // Stock Manager.IsDoingPartialMove2da2ae0 is constant false. This is
-        // queried before the retained pre-update pending-operations boolean.
-        if work.human
-            && work.had_pending
-            && frame.player_complete(state).map_err(PlayerError::Prefix)?
-        {
-            let ready = readiness
-                .is_ready_to_move(
+        finish_unit(state, frame, work, readiness, logging)
+    })();
+    if result.is_err() {
+        frame.fail();
+    }
+    result
+}
+
+fn finish_unit<E, M>(
+    state: &mut LoadedState,
+    frame: &mut c6_core::loaded_state::game_update::automation::Frame,
+    work: c6_core::loaded_state::game_update::automation::UnitWork,
+    readiness: &actions::reporting::Provider<'_>,
+    logging: Option<c6_core::loaded_state::game_update::deactivation::LoggingScope>,
+) -> Result<UnitProgress, PlayerError<E, M>> {
+    use c6_core::loaded_state::game_update::deactivation::LoggingScope;
+    // Stock Manager.IsDoingPartialMove2da2ae0 is constant false. This is
+    // queried before the retained pre-update pending-operations boolean.
+    if work.human
+        && work.had_pending
+        && frame.player_complete(state).map_err(PlayerError::Prefix)?
+    {
+        let ready = readiness
+            .is_ready_to_move(
+                state,
+                frame.current_unit(state).map_err(PlayerError::Prefix)?,
+            )
+            .map_err(PlayerError::Readiness)?;
+        if ready
+            && !frame
+                .current_unit(state)
+                .map_err(PlayerError::Prefix)?
+                .b_delayed_death
+            && frame
+                .current_unit(state)
+                .map_err(PlayerError::Prefix)?
+                .e_automation
+                == -1
+            && !readiness
+                .can_cycle_past(
                     state,
                     frame.current_unit(state).map_err(PlayerError::Prefix)?,
                 )
-                .map_err(PlayerError::Readiness)?;
-            if ready
-                && !frame
-                    .current_unit(state)
-                    .map_err(PlayerError::Prefix)?
-                    .b_delayed_death
-                && frame
-                    .current_unit(state)
-                    .map_err(PlayerError::Prefix)?
-                    .e_automation
-                    == -1
-                && !readiness
-                    .can_cycle_past(
-                        state,
-                        frame.current_unit(state).map_err(PlayerError::Prefix)?,
-                    )
-                    .map_err(PlayerError::Readiness)?
-            {
-                frame.set_attention(state).map_err(PlayerError::Prefix)?;
-                match logging {
-                    Some(LoggingScope::StockFileSink) => {}
-                    None => {
-                        return Err(PlayerError::Prefix(
-                            c6_core::turn_completion::Error::Unsupported(
-                                "automation attention log callback effects",
-                            ),
-                        ))
-                    }
+                .map_err(PlayerError::Readiness)?
+        {
+            frame.set_attention(state).map_err(PlayerError::Prefix)?;
+            match logging {
+                Some(LoggingScope::StockFileSink) => {}
+                None => {
+                    return Err(PlayerError::Prefix(
+                        c6_core::turn_completion::Error::Unsupported(
+                            "automation attention log callback effects",
+                        ),
+                    ))
                 }
-                frame.attention_logged();
             }
+            frame.attention_logged();
         }
-        frame.advance(state).map_err(PlayerError::Prefix)?;
-        Ok(UnitProgress::Advanced)
+    }
+    frame.advance(state).map_err(PlayerError::Prefix)?;
+    Ok(UnitProgress::Advanced)
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IdleProgress {
+    NoUnit,
+    Advanced,
+    RequiresQueuedHandler,
+}
+/// Actual empty-queue/delayed-death branch on the current linked node. A live
+/// queued operation returns an internal continuation BEFORE consuming the node;
+/// callers can invoke the ordinary handler executor without replaying a prefix.
+pub fn advance_idle_player_unit(
+    state: &mut LoadedState,
+    frame: &mut c6_core::loaded_state::game_update::automation::Frame,
+    readiness: &actions::reporting::Provider<'_>,
+    logging: Option<c6_core::loaded_state::game_update::deactivation::LoggingScope>,
+) -> Result<IdleProgress, PlayerError<std::convert::Infallible, std::convert::Infallible>> {
+    let result = (|| {
+        let Some(unit) = frame.peek_unit(state).map_err(PlayerError::Prefix)? else {
+            return Ok(IdleProgress::NoUnit);
+        };
+        if !unit.k_operations.nodes.is_empty() && !unit.b_delayed_death {
+            return Ok(IdleProgress::RequiresQueuedHandler);
+        }
+        let work = frame
+            .take_unit(state)
+            .map_err(PlayerError::Prefix)?
+            .expect("peeked current node");
+        state
+            .unit_mut(work.actor.0, work.actor.1)
+            .map_err(|_| {
+                PlayerError::Prefix(c6_core::game_update::Error::Unsupported(
+                    "automation timer archive",
+                ))
+            })?
+            .i_operation_timer = 0;
+        finish_unit(state, frame, work, readiness, logging).map(|_| IdleProgress::Advanced)
     })();
     if result.is_err() {
         frame.fail();

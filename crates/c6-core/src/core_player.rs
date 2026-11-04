@@ -140,6 +140,16 @@ pub struct PlayerHeader {
     pub final_scalar: i32,
 }
 impl PlayerHeader {
+    /// Player47 writer2b4ef42/4c serializes wrapper+280/value+290;
+    /// this is the same field read by Player.IsTurnActive2021030.
+    pub fn saved_turn_active(&self) -> bool {
+        self.ordered_flags[2]
+    }
+    /// Writer2b4ef51/5b serializes wrapper+298/value+2a8, read by the
+    /// dynamic-turn-mode branch of IsSimultaneousTurns2b316b9.
+    pub fn saved_simultaneous_turns(&self) -> bool {
+        self.ordered_flags[3]
+    }
     /// Saved Player47 m_bIsAlive (first ordered bool); this does not establish
     /// initialized validity, configuration, team/human status or Read fixups.
     /// Exact Linux source contract: docs/linux-player-header-control.md.
