@@ -1,11 +1,14 @@
 //! Linux XP2 per-unit end-turn healing amount calculation.
 //!
-//! This projects Rules::Units::Instance::HealUnit's current-state reads to its
-//! positive ChangeDamage request. It does not change damage, deliver the native
-//! healing signal, resolve world queries, or implement complete turn upkeep.
+//! Computes Rules::Units::Instance::HealUnit's positive ChangeDamage request
+//! and applies its local-authority damage/report/clear/signal continuation to
+//! a live Unit through mandatory synchronous world providers. World resolution,
+//! subscriber implementations and complete turn upkeep remain separate.
 //! Inputs must come from one authoritative current state and configured rules;
 //! unavailable provider values must not be replaced with defaults. Native
 //! differential validation of this calculation remains outstanding.
+
+use crate::unit::{ComponentId, Unit};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HealingTerritory {
@@ -189,6 +192,267 @@ pub fn healing_amount(unit: Option<&UnitHealingState>, rules: &HealingRules) -> 
     amount.max(0)
 }
 
+/// World-derived reads not stored authoritatively in the Unit record.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HealingWorldState {
+    pub territory: HealingTerritory,
+    pub no_foreign_heal: bool,
+    pub no_neutral_heal: bool,
+    pub resource: HealingResource,
+    pub domain: HealingDomain,
+    pub embarked: bool,
+    pub plot: Option<HealingPlot>,
+}
+
+impl UnitHealingState {
+    /// Stored actor fields always come from the authoritative live Unit.
+    pub fn from_unit(unit: &Unit, world: HealingWorldState) -> Self {
+        Self {
+            eligible_to_heal: unit.b_eligible_to_heal,
+            delayed_death: unit.b_delayed_death,
+            territory: world.territory,
+            no_foreign_heal: world.no_foreign_heal,
+            no_neutral_heal: world.no_neutral_heal,
+            resource: world.resource,
+            domain: world.domain,
+            religious_strength: unit.k_religion.i_religious_strength,
+            embarked: world.embarked,
+            health: TerritoryHealing {
+                friendly: unit.k_health_modifiers.i_extra_friendly_heal,
+                neutral: unit.k_health_modifiers.i_extra_neutral_heal,
+                enemy: unit.k_health_modifiers.i_extra_enemy_heal,
+            },
+            religion_health: TerritoryHealing {
+                friendly: unit
+                    .k_health_religion_modifiers
+                    .i_extra_friendly_heal_religion,
+                neutral: unit
+                    .k_health_religion_modifiers
+                    .i_extra_neutral_heal_religion,
+                enemy: unit.k_health_religion_modifiers.i_extra_enemy_heal_religion,
+            },
+            plot: world.plot,
+        }
+    }
+}
+
+pub const DAMAGE_CHANGED: u32 = 0xf8a5ab14;
+/// Logical registered hash, never the process's numeric operation ID.
+pub const HEAL_OPERATION_HASH: u32 = 0x7eb896fb;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DamageChangedReport {
+    pub event_hash: u32,
+    pub identity: ComponentId,
+    pub damage: i32,
+    pub previous_damage: i32,
+    pub maximum_damage: i32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UnitHealedSignal {
+    pub requested: i32,
+    /// Old damage minus current damage after reporting and operation clearing.
+    pub actual: i32,
+}
+
+/// Binds one live actor and its authoritative world for the entire call.
+///
+/// Queries are read-only projections of actual current providers. Missing
+/// inputs are errors. Synchronous callbacks receive this same context and may
+/// mutate the actor/world; no snapshot copyback or default no-op exists.
+/// Native archive dirty bookkeeping is omitted only under the same audited
+/// local-authority profile as unit_turn_upkeep.
+pub trait UnitHealingContext {
+    type Error;
+    /// Resolve the same retained live actor. Removal by a synchronous callback
+    /// must return Err on subsequent access; do not revive a detached copy.
+    fn unit(&self) -> Result<&Unit, Self::Error>;
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error>;
+    fn healing_world_state(&self) -> Result<HealingWorldState, Self::Error>;
+    fn healing_rules(&self) -> Result<HealingRules, Self::Error>;
+    /// Pure capability check before any field change or RNG consumption.
+    /// Require complete report/signal subscribers and all operation Clear
+    /// continuations reachable even after synchronous subscriber mutations.
+    /// Unknown required effects must reject here, preserving all state.
+    fn preflight_healing_effects(&self) -> Result<(), Self::Error>;
+    /// Actual COMBAT_MAX_HIT_POINTS. SetDamage clamps to this global rule,
+    /// even when the actor's dynamic maximum-damage property differs.
+    fn combat_max_hit_points(&self) -> Result<i32, Self::Error>;
+    /// GetMaxDamage at the report point: current dynamic property 0x7d3fc711
+    /// converted by the native TypedVariant integer semantics, or the actual
+    /// COMBAT_MAX_HIT_POINTS only if the property is absent.
+    fn maximum_damage_for_report(&self) -> Result<i32, Self::Error>;
+    fn send_damage_changed(&mut self, report: DamageChangedReport) -> Result<(), Self::Error>;
+    /// Exact Operations::Manager::Clear continuation, including deactivation,
+    /// repeated current-front removals and current formation path clearing.
+    /// Clearing just the Vec or recording a transcript is insufficient.
+    fn clear_current_operations(&mut self) -> Result<(), Self::Error>;
+    /// Game::Signals +0x1518, dispatch(unit, requested, actual), synchronous.
+    /// The actor is this context's live Unit, not a saved ComponentID lookup.
+    fn dispatch_unit_healed(&mut self, signal: UnitHealedSignal) -> Result<(), Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HealingStage {
+    ActorAccess,
+    MaximumDamageQuery,
+    DamageChangedReport,
+    ClearOperations,
+    HealedSignal,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum UnitHealingError<E> {
+    InputsUnavailable(E),
+    EffectsUnavailable(E),
+    /// Any completed damage write/subscriber effects remain visible; actor
+    /// access can fail before the first write or after synchronous removal.
+    ContinuationFailed {
+        stage: HealingStage,
+        error: E,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnitHealingOutcome {
+    Skipped,
+    /// Signal completed; subscribers own subsequent state.
+    Signalled(UnitHealedSignal),
+}
+
+/// Apply the healing path's real damage write and synchronous continuations.
+///
+/// The queue stores admitted logical operation hashes. Its live numeric-ID
+/// registry mapping must have been established by the runtime binding; a raw
+/// numeric ID must never be placed in OperationNode::operation_hash.
+pub fn heal_unit<C: UnitHealingContext>(
+    context: Option<&mut C>,
+) -> Result<UnitHealingOutcome, UnitHealingError<C::Error>> {
+    let Some(context) = context else {
+        return Ok(UnitHealingOutcome::Skipped);
+    };
+    let world = context
+        .healing_world_state()
+        .map_err(UnitHealingError::InputsUnavailable)?;
+    let rules = context
+        .healing_rules()
+        .map_err(UnitHealingError::InputsUnavailable)?;
+    let state = UnitHealingState::from_unit(
+        context
+            .unit()
+            .map_err(|error| UnitHealingError::ContinuationFailed {
+                stage: HealingStage::ActorAccess,
+                error,
+            })?,
+        world,
+    );
+    let requested = healing_amount(Some(&state), &rules);
+    if requested == 0 {
+        return Ok(UnitHealingOutcome::Skipped);
+    }
+    context
+        .preflight_healing_effects()
+        .map_err(UnitHealingError::EffectsUnavailable)?;
+    let limit = context
+        .combat_max_hit_points()
+        .map_err(UnitHealingError::InputsUnavailable)?;
+    let previous_damage = context
+        .unit()
+        .map_err(|error| UnitHealingError::ContinuationFailed {
+            stage: HealingStage::ActorAccess,
+            error,
+        })?
+        .i_damage;
+    let candidate = previous_damage.wrapping_sub(requested);
+    // Utilities::Range(candidate, 0, limit) compares candidate twice. In
+    // particular, a negative configured upper bound is not normalized to zero.
+    let damage = if candidate < 0 {
+        0
+    } else {
+        candidate.min(limit)
+    };
+    context
+        .unit_mut()
+        .map_err(|error| UnitHealingError::ContinuationFailed {
+            stage: HealingStage::ActorAccess,
+            error,
+        })?
+        .i_damage = damage;
+    let actor = context
+        .unit()
+        .map_err(|error| UnitHealingError::ContinuationFailed {
+            stage: HealingStage::ActorAccess,
+            error,
+        })?;
+    if previous_damage != actor.i_damage {
+        let identity = ComponentId {
+            owner: actor.e_owner as i16,
+            component_type: 1,
+            id: actor.id,
+        };
+        let damage = actor.i_damage;
+        let maximum_damage = context.maximum_damage_for_report().map_err(|error| {
+            UnitHealingError::ContinuationFailed {
+                stage: HealingStage::MaximumDamageQuery,
+                error,
+            }
+        })?;
+        context
+            .send_damage_changed(DamageChangedReport {
+                event_hash: DAMAGE_CHANGED,
+                identity,
+                damage,
+                previous_damage,
+                maximum_damage,
+            })
+            .map_err(|error| UnitHealingError::ContinuationFailed {
+                stage: HealingStage::DamageChangedReport,
+                error,
+            })?;
+    }
+    // Reread after synchronous reporting: subscribers can change damage/queue.
+    let actor = context
+        .unit()
+        .map_err(|error| UnitHealingError::ContinuationFailed {
+            stage: HealingStage::ActorAccess,
+            error,
+        })?;
+    if actor.i_damage <= 0
+        && actor
+            .k_operations
+            .nodes
+            .first()
+            .is_some_and(|n| n.operation_hash == HEAL_OPERATION_HASH)
+    {
+        context.clear_current_operations().map_err(|error| {
+            UnitHealingError::ContinuationFailed {
+                stage: HealingStage::ClearOperations,
+                error,
+            }
+        })?;
+    }
+    let signal = UnitHealedSignal {
+        requested,
+        actual: previous_damage.wrapping_sub(
+            context
+                .unit()
+                .map_err(|error| UnitHealingError::ContinuationFailed {
+                    stage: HealingStage::ActorAccess,
+                    error,
+                })?
+                .i_damage,
+        ),
+    };
+    context
+        .dispatch_unit_healed(signal)
+        .map_err(|error| UnitHealingError::ContinuationFailed {
+            stage: HealingStage::HealedSignal,
+            error,
+        })?;
+    Ok(UnitHealingOutcome::Signalled(signal))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -246,6 +510,343 @@ mod tests {
                 city_garrison: 61,
             },
         )
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum Failure {
+        Unsupported,
+        Callback,
+    }
+
+    struct LiveContext {
+        actor: Unit,
+        world: HealingWorldState,
+        rules: HealingRules,
+        limit: i32,
+        report_maximum: Result<i32, Failure>,
+        admitted: bool,
+        actor_removed: bool,
+        remove_after_report: bool,
+        remove_after_clear: bool,
+        fail_at: Option<HealingStage>,
+        after_report: Option<(i32, bool)>,
+        after_clear_damage: Option<i32>,
+        after_signal_damage: Option<i32>,
+        log: Vec<&'static str>,
+        reports: Vec<DamageChangedReport>,
+        signals: Vec<UnitHealedSignal>,
+    }
+
+    impl LiveContext {
+        fn new(damage: i32, heal_front: bool) -> Self {
+            let (state, rules) = fixture();
+            let mut actor = crate::unit_turn_upkeep::tests::source_only_unit();
+            actor.id = 77;
+            actor.e_owner = -32769;
+            actor.i_damage = damage;
+            actor.b_eligible_to_heal = true;
+            actor.b_delayed_death = false;
+            actor.k_religion.i_religious_strength = 0;
+            actor.k_health_modifiers.i_extra_friendly_heal = 3;
+            actor.k_operations.nodes.clear();
+            let mut context = Self {
+                actor,
+                rules,
+                limit: 100,
+                report_maximum: Ok(300),
+                admitted: true,
+                actor_removed: false,
+                remove_after_report: false,
+                remove_after_clear: false,
+                world: HealingWorldState {
+                    territory: state.territory,
+                    no_foreign_heal: state.no_foreign_heal,
+                    no_neutral_heal: state.no_neutral_heal,
+                    resource: state.resource,
+                    domain: state.domain,
+                    embarked: state.embarked,
+                    plot: state.plot,
+                },
+                fail_at: None,
+                after_report: None,
+                after_clear_damage: None,
+                after_signal_damage: None,
+                log: Vec::new(),
+                reports: Vec::new(),
+                signals: Vec::new(),
+            };
+            context.set_front(heal_front);
+            context
+        }
+        fn set_front(&mut self, heal: bool) {
+            self.actor.k_operations.nodes = vec![crate::unit::OperationNode {
+                operation_hash: if heal {
+                    HEAL_OPERATION_HASH
+                } else {
+                    crate::unit::SKIP_TURN_HASH
+                },
+                directive: 0,
+                flags: 0,
+                push_turn: 0,
+                previous_activity: 0,
+                previous_automation: 0,
+                parameters: crate::unit::OperationParameters::None,
+            }];
+        }
+        fn callback_result(&self, stage: HealingStage) -> Result<(), Failure> {
+            if self.fail_at == Some(stage) {
+                Err(Failure::Callback)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    impl UnitHealingContext for LiveContext {
+        type Error = Failure;
+        fn unit(&self) -> Result<&Unit, Failure> {
+            if self.actor_removed {
+                Err(Failure::Unsupported)
+            } else {
+                Ok(&self.actor)
+            }
+        }
+        fn unit_mut(&mut self) -> Result<&mut Unit, Failure> {
+            if self.actor_removed {
+                Err(Failure::Unsupported)
+            } else {
+                Ok(&mut self.actor)
+            }
+        }
+        fn healing_world_state(&self) -> Result<HealingWorldState, Failure> {
+            Ok(self.world)
+        }
+        fn healing_rules(&self) -> Result<HealingRules, Failure> {
+            Ok(self.rules)
+        }
+        fn preflight_healing_effects(&self) -> Result<(), Failure> {
+            if self.admitted {
+                Ok(())
+            } else {
+                Err(Failure::Unsupported)
+            }
+        }
+        fn combat_max_hit_points(&self) -> Result<i32, Failure> {
+            Ok(self.limit)
+        }
+        fn maximum_damage_for_report(&self) -> Result<i32, Failure> {
+            self.report_maximum
+        }
+        fn send_damage_changed(&mut self, report: DamageChangedReport) -> Result<(), Failure> {
+            assert_eq!(self.actor.i_damage, report.damage);
+            self.log.push("damage_changed");
+            self.reports.push(report);
+            if let Some((damage, heal)) = self.after_report {
+                self.actor.i_damage = damage;
+                self.set_front(heal);
+            }
+            self.actor_removed = self.remove_after_report;
+            self.callback_result(HealingStage::DamageChangedReport)
+        }
+        fn clear_current_operations(&mut self) -> Result<(), Failure> {
+            assert!(self.actor.i_damage <= 0);
+            assert_eq!(
+                self.actor.k_operations.nodes[0].operation_hash,
+                HEAL_OPERATION_HASH
+            );
+            // This synthetic fixture has a source-qualified absent formation
+            // and no operation subscribers. Production must supply full Clear.
+            self.log.push("clear_operations");
+            self.actor.k_operations.nodes.clear();
+            if let Some(damage) = self.after_clear_damage {
+                self.actor.i_damage = damage;
+            }
+            self.actor_removed = self.remove_after_clear;
+            self.callback_result(HealingStage::ClearOperations)
+        }
+        fn dispatch_unit_healed(&mut self, signal: UnitHealedSignal) -> Result<(), Failure> {
+            self.log.push("healed");
+            self.signals.push(signal);
+            if let Some(damage) = self.after_signal_damage {
+                self.actor.i_damage = damage;
+            }
+            self.callback_result(HealingStage::HealedSignal)
+        }
+    }
+
+    #[test]
+    fn transition_changes_real_damage_and_reports_dynamic_maximum() {
+        let mut c = LiveContext::new(100, true);
+        let signal = UnitHealedSignal {
+            requested: 79,
+            actual: 79,
+        };
+        assert_eq!(
+            heal_unit(Some(&mut c)),
+            Ok(UnitHealingOutcome::Signalled(signal))
+        );
+        assert_eq!(c.actor.i_damage, 21);
+        assert_eq!(c.log, ["damage_changed", "healed"]);
+        assert_eq!(
+            c.reports,
+            [DamageChangedReport {
+                event_hash: DAMAGE_CHANGED,
+                identity: ComponentId {
+                    owner: 32767,
+                    component_type: 1,
+                    id: 77
+                },
+                damage: 21,
+                previous_damage: 100,
+                maximum_damage: 300,
+            }]
+        );
+        assert_eq!(c.actor.k_operations.nodes.len(), 1);
+    }
+
+    #[test]
+    fn full_healing_clears_current_heal_before_signal_even_when_unchanged() {
+        for damage in [30, 0] {
+            let mut c = LiveContext::new(damage, true);
+            let signal = UnitHealedSignal {
+                requested: 79,
+                actual: damage,
+            };
+            assert_eq!(
+                heal_unit(Some(&mut c)),
+                Ok(UnitHealingOutcome::Signalled(signal))
+            );
+            assert_eq!(c.actor.i_damage, 0);
+            assert!(c.actor.k_operations.nodes.is_empty());
+            assert_eq!(c.signals, [signal]);
+            assert_eq!(c.reports.len(), usize::from(damage != 0));
+            assert_eq!(&c.log[c.log.len() - 2..], ["clear_operations", "healed"]);
+        }
+        let mut c = LiveContext::new(0, false);
+        heal_unit(Some(&mut c)).unwrap();
+        assert_eq!(c.log, ["healed"]);
+        assert_eq!(c.actor.k_operations.nodes.len(), 1);
+    }
+
+    #[test]
+    fn synchronous_callbacks_control_current_queue_damage_and_actual_amount() {
+        let mut c = LiveContext::new(100, false);
+        c.after_report = Some((0, true));
+        c.after_clear_damage = Some(7);
+        c.after_signal_damage = Some(90);
+        let signal = UnitHealedSignal {
+            requested: 79,
+            actual: 93,
+        };
+        assert_eq!(
+            heal_unit(Some(&mut c)),
+            Ok(UnitHealingOutcome::Signalled(signal))
+        );
+        assert_eq!(c.log, ["damage_changed", "clear_operations", "healed"]);
+        assert_eq!(c.actor.i_damage, 90);
+        assert_eq!(c.signals, [signal]);
+        // A report can prevent the clear and can make actual healing negative.
+        let mut c = LiveContext::new(30, true);
+        c.after_report = Some((40, false));
+        heal_unit(Some(&mut c)).unwrap();
+        assert_eq!(c.log, ["damage_changed", "healed"]);
+        assert_eq!(c.signals[0].actual, -10);
+        assert_eq!(c.actor.i_damage, 40);
+    }
+
+    #[test]
+    fn preflight_and_skipped_healing_preserve_all_actor_state() {
+        let mut c = LiveContext::new(30, true);
+        c.admitted = false;
+        let original = c.actor.clone();
+        assert_eq!(
+            heal_unit(Some(&mut c)),
+            Err(UnitHealingError::EffectsUnavailable(Failure::Unsupported))
+        );
+        assert_eq!(c.actor, original);
+        assert!(c.log.is_empty());
+        c.actor.b_eligible_to_heal = false;
+        let original = c.actor.clone();
+        assert_eq!(heal_unit(Some(&mut c)), Ok(UnitHealingOutcome::Skipped));
+        assert_eq!(c.actor, original);
+        assert!(c.log.is_empty());
+        assert_eq!(
+            heal_unit::<LiveContext>(None),
+            Ok(UnitHealingOutcome::Skipped)
+        );
+    }
+
+    #[test]
+    fn continuation_failures_retain_writes_and_completed_effects() {
+        for stage in [
+            HealingStage::DamageChangedReport,
+            HealingStage::ClearOperations,
+            HealingStage::HealedSignal,
+        ] {
+            let mut c = LiveContext::new(30, true);
+            c.fail_at = Some(stage);
+            assert_eq!(
+                heal_unit(Some(&mut c)),
+                Err(UnitHealingError::ContinuationFailed {
+                    stage,
+                    error: Failure::Callback
+                })
+            );
+            assert_eq!(c.actor.i_damage, 0);
+            assert_eq!(
+                c.signals.len(),
+                usize::from(stage == HealingStage::HealedSignal)
+            );
+            assert_eq!(
+                c.actor.k_operations.nodes.is_empty(),
+                stage != HealingStage::DamageChangedReport
+            );
+        }
+        let mut c = LiveContext::new(30, true);
+        c.report_maximum = Err(Failure::Unsupported);
+        assert_eq!(
+            heal_unit(Some(&mut c)),
+            Err(UnitHealingError::ContinuationFailed {
+                stage: HealingStage::MaximumDamageQuery,
+                error: Failure::Unsupported,
+            })
+        );
+        assert_eq!(c.actor.i_damage, 0);
+        assert!(c.log.is_empty());
+    }
+
+    #[test]
+    fn actor_removal_by_callback_is_a_fallible_reread_without_copyback() {
+        for after_report in [true, false] {
+            let mut c = LiveContext::new(30, true);
+            c.remove_after_report = after_report;
+            c.remove_after_clear = !after_report;
+            assert_eq!(
+                heal_unit(Some(&mut c)),
+                Err(UnitHealingError::ContinuationFailed {
+                    stage: HealingStage::ActorAccess,
+                    error: Failure::Unsupported,
+                })
+            );
+            assert!(c.actor_removed);
+            assert_eq!(c.actor.i_damage, 0);
+            assert!(c.signals.is_empty());
+            assert_eq!(c.actor.k_operations.nodes.is_empty(), !after_report);
+        }
+    }
+
+    #[test]
+    fn setter_uses_global_clamp_and_wrapping_change_damage() {
+        let mut c = LiveContext::new(i32::MIN, false);
+        heal_unit(Some(&mut c)).unwrap();
+        assert_eq!(c.actor.i_damage, 100);
+        assert_eq!(c.reports[0].maximum_damage, 300);
+        assert_eq!(c.signals[0].actual, i32::MIN.wrapping_sub(100));
+        let mut c = LiveContext::new(100, false);
+        c.limit = -4;
+        heal_unit(Some(&mut c)).unwrap();
+        assert_eq!(c.actor.i_damage, -4);
+        assert_eq!(c.signals[0].actual, 104);
     }
 
     #[test]
