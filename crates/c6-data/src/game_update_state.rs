@@ -1,6 +1,7 @@
 //! Partial Game.Update services using the current shared player-list owner and
 //! existing concrete UnitCounts queries. No complete end-turn support implied.
 pub mod automation;
+pub mod deactivation;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,

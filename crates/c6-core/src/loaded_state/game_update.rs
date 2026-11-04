@@ -3,6 +3,8 @@
 use super::LoadedState;
 pub mod deactivation;
 pub mod automation;
+pub mod human_control;
+pub mod resources;
 use crate::{
     core_player::initialization::WireBinding,
     game_update::{self as core, Error},
