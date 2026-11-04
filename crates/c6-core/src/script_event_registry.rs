@@ -290,6 +290,7 @@ pub struct FactoryObjects {
 }
 
 // Small effect-free scalar plan, not a heap/graph transaction or native replay.
+#[derive(Debug, PartialEq)]
 struct AllocationPlan {
     countdown: i32,
     allocated: u64,
@@ -323,6 +324,61 @@ impl AllocationPlan {
                     "factory allocation accounting underflow",
                 ))?;
         Ok(())
+    }
+}
+
+/// Deferred effects for one bounded three-integer TestAll call. This owns only
+/// newly created objects, intern additions, and allocator scalars. Preparation
+/// rechecks the source computation against current inputs before any write.
+#[derive(Debug, PartialEq)]
+pub struct RegistryExecutionPlan {
+    name: String,
+    arguments: [i32; 3],
+    with_intern: bool,
+    allocation: AllocationPlan,
+    protected_obligations: u64,
+    result: Option<bool>,
+    factory: Option<FactoryPlan>,
+}
+
+#[derive(Debug, PartialEq)]
+struct FactoryPlan {
+    entry: KnownNameEntry,
+    append_position: usize,
+    end: u64,
+    objects: FactoryObjects,
+    intern_delta: Option<(u32, u32, std::collections::BTreeSet<String>)>,
+}
+
+impl RegistryExecutionPlan {
+    /// Every admitted reached local group is empty. The builtin aggregate is
+    /// therefore nil; callbacks with nonempty groups remain unsupported.
+    pub fn result(&self) -> Option<bool> {
+        self.result
+    }
+
+    fn commit_effects(&self, effects: &mut CachedExecutionState) {
+        effects.step_countdown = self.allocation.countdown;
+        effects.allocated_bytes = self.allocation.allocated;
+        effects.peak_allocated_bytes = self.allocation.peak;
+        effects.protected_closure_obligations = self.protected_obligations;
+    }
+}
+
+/// Exclusive borrows retain validated inputs until the infallible commit.
+/// Dropping this guard without committing leaves all inputs unchanged.
+pub struct PreparedRegistryCommit<'a> {
+    registry: &'a mut ScriptEventRegistry,
+    effects: &'a mut CachedExecutionState,
+    factory: &'a mut FactoryExecutionState,
+    intern: Option<&'a mut InternExecutionState>,
+    plan: RegistryExecutionPlan,
+}
+
+impl PreparedRegistryCommit<'_> {
+    pub fn commit(self) -> Option<bool> {
+        self.registry
+            .commit_plan(self.effects, self.factory, self.intern, self.plan)
     }
 }
 
@@ -362,13 +418,6 @@ impl CachedExecutionState {
             ));
         }
         Ok(())
-    }
-
-    fn allocate_protected_closure(&mut self) {
-        self.step_countdown = self.step_countdown.wrapping_sub(1);
-        self.allocated_bytes += 48;
-        self.peak_allocated_bytes = self.peak_allocated_bytes.max(self.allocated_bytes);
-        self.protected_closure_obligations += 1;
     }
 }
 
@@ -647,6 +696,17 @@ impl ScriptEventRegistry {
         _arguments: [i32; 3],
         effects: &mut CachedExecutionState,
     ) -> Result<Option<bool>, RegistryError> {
+        let plan = self.plan_cached(name, _arguments, effects)?;
+        plan.commit_effects(effects);
+        Ok(plan.result())
+    }
+
+    fn plan_cached(
+        &self,
+        name: &str,
+        arguments: [i32; 3],
+        effects: &CachedExecutionState,
+    ) -> Result<RegistryExecutionPlan, RegistryError> {
         if name.as_bytes().contains(&0) {
             return Err(RegistryError::UnsupportedEffect(
                 "embedded NUL in native field name",
@@ -677,8 +737,23 @@ impl ScriptEventRegistry {
         // Source order: protected cclosure allocation precedes the three
         // intern-hit field lookups and empty TestAll traversal. Phase zero
         // intern hits and the reached empty groups have no further effects.
-        effects.allocate_protected_closure();
-        Ok(any_nonempty.then_some(true))
+        Ok(RegistryExecutionPlan {
+            name: name.to_owned(),
+            arguments,
+            with_intern: false,
+            allocation: AllocationPlan {
+                countdown: effects.step_countdown.wrapping_sub(1),
+                allocated: effects.allocated_bytes + 48,
+                peak: effects
+                    .peak_allocated_bytes
+                    .max(effects.allocated_bytes + 48),
+                threshold: effects.collection_threshold,
+                inhibited: effects.collection_inhibited,
+            },
+            protected_obligations: effects.protected_closure_obligations + 1,
+            result: any_nonempty.then_some(true),
+            factory: None,
+        })
     }
 
     /// Execute cached TestAll or the bounded absent-event factory from current
@@ -719,6 +794,22 @@ impl ScriptEventRegistry {
         factory: &mut FactoryExecutionState,
         intern: Option<&mut InternExecutionState>,
     ) -> Result<Option<bool>, RegistryError> {
+        let plan = self.plan_test_all(name, arguments, effects, factory, intern.as_deref())?;
+        Ok(self
+            .prepare_commit(effects, factory, intern, plan)?
+            .commit())
+    }
+
+    /// Plan one bounded TestAll without changing registry or execution state.
+    /// No whole graph or intern membership set is copied.
+    pub fn plan_test_all(
+        &self,
+        name: &str,
+        arguments: [i32; 3],
+        effects: &CachedExecutionState,
+        factory: &FactoryExecutionState,
+        intern: Option<&InternExecutionState>,
+    ) -> Result<RegistryExecutionPlan, RegistryError> {
         if self.cached_event(name).is_some() {
             if intern.as_ref().is_some_and(|state| {
                 ["GameEvents", name, "TestAll"]
@@ -729,7 +820,9 @@ impl ScriptEventRegistry {
                     "contradictory cached intern membership",
                 ));
             }
-            return self.test_all_cached(name, arguments, effects);
+            let mut plan = self.plan_cached(name, arguments, effects)?;
+            plan.with_intern = intern.is_some();
+            return Ok(plan);
         }
         if name.as_bytes().contains(&0) {
             return Err(RegistryError::UnsupportedEffect(
@@ -867,7 +960,7 @@ impl ScriptEventRegistry {
             threshold: effects.collection_threshold,
             inhibited: effects.collection_inhibited,
         };
-        let mut intern_plan = intern.as_deref().map(InternPlan::new);
+        let mut intern_plan = intern.map(InternPlan::new);
         // Ordered source ledger: each check sees OLD signed countdown and OLD
         // current bytes. Resize allocates before freeing old backing. Intern
         // operations occur at their source positions, including repeated hits.
@@ -961,8 +1054,93 @@ impl ScriptEventRegistry {
         };
         debug_assert_eq!(next, end);
 
-        // All fallible admission is complete. Commit just the reached objects,
-        // consumed facts, and scalar allocator projection.
+        Ok(RegistryExecutionPlan {
+            name: name.to_owned(),
+            arguments,
+            with_intern: intern.is_some(),
+            allocation,
+            protected_obligations,
+            // The new local group is empty; compute the aggregate over the
+            // actual existing shared traversal, whose reached lengths were
+            // admitted above. No callback result is supplied by the caller.
+            result: match entry {
+                KnownNameEntry::Absent => None,
+                KnownNameEntry::Shared(id) => self.shared_groups[&id]
+                    .entries_in_native_order.iter().any(|entry| {
+                        matches!(entry, GroupEntry::Table(local) if self.local_groups[local].objlen != 0)
+                    }).then_some(true),
+            },
+            factory: Some(FactoryPlan {
+                entry,
+                append_position,
+                end,
+                objects: FactoryObjects {
+                    event: identity,
+                    protected_closure,
+                    factory_closure,
+                    event_metatable,
+                    protected_metatable,
+                    weak_metatable,
+                    swept_construction_order: order,
+                },
+                intern_delta,
+            }),
+        })
+    }
+
+    /// Recompute the small delta from current source-used facts, then retain
+    /// exclusive access so actor and registry commits need no fallible work.
+    pub fn prepare_commit<'a>(
+        &'a mut self,
+        effects: &'a mut CachedExecutionState,
+        factory: &'a mut FactoryExecutionState,
+        intern: Option<&'a mut InternExecutionState>,
+        plan: RegistryExecutionPlan,
+    ) -> Result<PreparedRegistryCommit<'a>, RegistryError> {
+        let current = self.plan_test_all(
+            &plan.name,
+            plan.arguments,
+            effects,
+            factory,
+            intern.as_deref(),
+        )?;
+        if current != plan {
+            return Err(RegistryError::UnsupportedEffect(
+                "stale registry execution plan",
+            ));
+        }
+        Ok(PreparedRegistryCommit {
+            registry: self,
+            effects,
+            factory,
+            intern,
+            plan,
+        })
+    }
+
+    fn commit_plan(
+        &mut self,
+        effects: &mut CachedExecutionState,
+        factory: &mut FactoryExecutionState,
+        intern: Option<&mut InternExecutionState>,
+        plan: RegistryExecutionPlan,
+    ) -> Option<bool> {
+        plan.commit_effects(effects);
+        let result = plan.result();
+        let Some(delta) = plan.factory else {
+            return result;
+        };
+        let name = plan.name;
+        let FactoryPlan {
+            entry,
+            append_position,
+            end,
+            objects,
+            intern_delta,
+        } = delta;
+        let identity = objects.event;
+        let shared_group = identity.shared_group;
+        let local_group = identity.local_group;
         if entry == KnownNameEntry::Absent {
             self.shared_groups.insert(
                 shared_group,
@@ -997,15 +1175,7 @@ impl ScriptEventRegistry {
         self.next_identity = end;
         factory.game_event_spare_names.clear();
         factory.shared_spare_slots.remove(&shared_group);
-        factory.factory_objects.push(FactoryObjects {
-            event: identity,
-            protected_closure,
-            factory_closure,
-            event_metatable,
-            protected_metatable,
-            weak_metatable,
-            swept_construction_order: order,
-        });
+        factory.factory_objects.push(objects);
         if let (Some(intern), Some((count, capacity, added))) = (intern, intern_delta) {
             intern.count = count;
             intern.capacity = capacity;
@@ -1014,16 +1184,7 @@ impl ScriptEventRegistry {
                 effects.interned_names.insert(name);
             }
         }
-        effects.step_countdown = allocation.countdown;
-        effects.allocated_bytes = allocation.allocated;
-        effects.peak_allocated_bytes = allocation.peak;
-        effects.protected_closure_obligations = protected_obligations;
-        // Compute builtin TestAll from the actual committed group, rather than
-        // returning a factory-specific constant or replayed native answer.
-        let any_nonempty = self.shared_groups[&shared_group].entries_in_native_order.iter().any(|entry| {
-            matches!(entry, GroupEntry::Table(local) if self.local_groups[local].objlen != 0)
-        });
-        Ok(any_nonempty.then_some(true))
+        result
     }
 
     /// Source-backed ordinary lookup: indexer creates the shared group if known
@@ -1315,6 +1476,164 @@ mod tests {
             scan_index: 0,
             known_absent: missing.iter().map(|s| (*s).to_owned()).collect(),
         }
+    }
+
+    #[test]
+    fn deferred_factory_plan_rechecks_changed_public_inputs_without_writes() {
+        for changed in 0..9 {
+            let (mut registry, mut effects, mut factory) = factory_context(false);
+            let mut intern = intern_state(&mut effects, &["func"]);
+            let plan = registry
+                .plan_test_all(
+                    "CanStartOperation",
+                    [0, 7, 36],
+                    &effects,
+                    &factory,
+                    Some(&intern),
+                )
+                .unwrap();
+            match changed {
+                0 => effects.allocated_bytes += 1,
+                1 => effects.step_countdown += 1,
+                2 => effects.protected_closure_obligations += 1,
+                3 => effects.call_capacity = CachedCallCapacity::Unknown,
+                4 => effects
+                    .interned_names
+                    .remove("GameEvents")
+                    .then_some(())
+                    .unwrap(),
+                5 => {
+                    factory.game_event_spare_names.clear();
+                }
+                6 => intern.count += 1,
+                7 => {
+                    intern.known_absent.clear();
+                }
+                8 => effects.collector_phase = 1,
+                _ => unreachable!(),
+            }
+            let before = (
+                registry.clone(),
+                effects.clone(),
+                factory.clone(),
+                intern.clone(),
+            );
+            assert!(
+                registry
+                    .prepare_commit(&mut effects, &mut factory, Some(&mut intern), plan,)
+                    .is_err(),
+                "changed input {changed}"
+            );
+            assert_eq!((registry, effects, factory, intern), before);
+        }
+    }
+
+    #[test]
+    fn prepared_guard_can_be_dropped_and_commit_preserves_unrelated_facts() {
+        let (mut registry, mut effects, mut factory) = factory_context(false);
+        let mut intern = intern_state(&mut effects, &["func"]);
+        let before = (
+            registry.clone(),
+            effects.clone(),
+            factory.clone(),
+            intern.clone(),
+        );
+        let plan = registry
+            .plan_test_all(
+                "CanStartOperation",
+                [0; 3],
+                &effects,
+                &factory,
+                Some(&intern),
+            )
+            .unwrap();
+        assert_eq!(plan.result(), None);
+        drop(
+            registry
+                .prepare_commit(&mut effects, &mut factory, Some(&mut intern), plan)
+                .unwrap(),
+        );
+        assert_eq!(
+            (
+                registry.clone(),
+                effects.clone(),
+                factory.clone(),
+                intern.clone()
+            ),
+            before
+        );
+
+        let plan = registry
+            .plan_test_all(
+                "CanStartOperation",
+                [0; 3],
+                &effects,
+                &factory,
+                Some(&intern),
+            )
+            .unwrap();
+        // Unrelated membership is preserved, rather than restoring a cloned
+        // intern set. Its count already fits the supplied native count.
+        effects.interned_names.insert("unrelated".into());
+        intern.known_absent.insert("another".into());
+        let guard = registry
+            .prepare_commit(&mut effects, &mut factory, Some(&mut intern), plan)
+            .unwrap();
+        assert_eq!(guard.commit(), None);
+        assert!(effects.interned_names.contains("unrelated"));
+        assert!(intern.known_absent.contains("another"));
+        assert!(!intern.known_absent.contains("func"));
+        let bytes = effects.allocated_bytes;
+        let plan = registry
+            .plan_test_all(
+                "CanStartOperation",
+                [0; 3],
+                &effects,
+                &factory,
+                Some(&intern),
+            )
+            .unwrap();
+        assert_eq!(
+            registry
+                .prepare_commit(&mut effects, &mut factory, Some(&mut intern), plan)
+                .unwrap()
+                .commit(),
+            None
+        );
+        assert_eq!(effects.allocated_bytes, bytes + 48);
+    }
+
+    #[test]
+    fn deferred_plan_rechecks_registry_and_cached_collector_boundary() {
+        let (mut registry, mut effects, mut factory) = factory_context(false);
+        let plan = registry
+            .plan_test_all("CanStartOperation", [0; 3], &effects, &factory, None)
+            .unwrap();
+        registry.lookup("later").unwrap();
+        let before = (registry.clone(), effects.clone(), factory.clone());
+        assert!(registry
+            .prepare_commit(&mut effects, &mut factory, None, plan)
+            .is_err());
+        assert_eq!((registry, effects, factory), before);
+
+        let (seed, cache) = cached_seed();
+        let mut registry = ScriptEventRegistry::from_seed_with_cache(seed, cache).unwrap();
+        let mut effects = cached_effects();
+        let mut factory = FactoryExecutionState::default();
+        let plan = registry
+            .plan_test_all("CanStartOperation", [0; 3], &effects, &factory, None)
+            .unwrap();
+        registry
+            .test_all_cached("CanStartOperation", [0; 3], &mut effects)
+            .unwrap();
+        let before = effects.clone();
+        assert_eq!(
+            registry
+                .prepare_commit(&mut effects, &mut factory, None, plan)
+                .err(),
+            Some(RegistryError::UnsupportedEffect("collector progression"))
+        );
+        assert_eq!(effects, before);
     }
 
     #[test]
