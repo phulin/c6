@@ -10,6 +10,11 @@ use crate::{
 pub enum LoggingScope {
     /// Stock GetLogFile(fcf144ab) finds no channel. No logger methods execute.
     MissingChannel,
+    /// Matching stock host LogFile::IsEnabled/Message/OutputMessage: locks,
+    /// string formatting, time prefix and file writes only. Its enabled state
+    /// changes output, never gameplay, callbacks or any RNG stream. An input
+    /// adapter must identify this concrete implementation, not assume UI purity.
+    StockFileSink,
 }
 pub struct Inputs {
     pub record: SerializedRandomRecord,
@@ -122,7 +127,10 @@ impl LoadedState {
             .game_sync_runtime
             .as_ref()
             .ok_or(AccessError::Missing)?;
-        if runtime.logging != Some(LoggingScope::MissingChannel) {
+        if !matches!(
+            runtime.logging,
+            Some(LoggingScope::MissingChannel | LoggingScope::StockFileSink)
+        ) {
             return Err(AccessError::UnsupportedLogging);
         }
         if runtime
@@ -173,7 +181,10 @@ impl LoadedState {
             .game_sync_runtime
             .as_ref()
             .ok_or(AccessError::Missing)?;
-        if runtime.logging != Some(LoggingScope::MissingChannel) {
+        if !matches!(
+            runtime.logging,
+            Some(LoggingScope::MissingChannel | LoggingScope::StockFileSink)
+        ) {
             return Err(AccessError::UnsupportedLogging);
         }
         if !cfg!(all(
@@ -208,43 +219,45 @@ mod tests {
     use crate::{combat_random::ArchiveOrderKey, core_player::initialization::WireRole};
     #[test]
     fn generic_draw_edits_same_archive_and_zero_bound_consumes() {
-        let mut state = super::super::tests::state();
-        let before = state.retained.random.record;
-        state.game_sync_runtime = Some(Runtime {
-            lock_count: 17,
-            archive: GameSyncArchiveTracking {
-                sync_variable_key: ArchiveOrderKey(4),
-                changed_keys: vec![ArchiveOrderKey(2), ArchiveOrderKey(9)],
-            },
-            logging: Some(LoggingScope::MissingChannel),
-        });
-        let mut expected = crate::rng::RandomState {
-            seed: before.seed,
-            calls: before.calls,
-            resets: before.resets,
-            lock_count: 17,
-            synchronous: before.synchronous_byte != 0,
-        };
-        for bound in [0, 1, 7, u16::MAX] {
-            assert_eq!(state.game_sync_rand(bound).unwrap(), expected.draw(bound));
+        for scope in [LoggingScope::MissingChannel, LoggingScope::StockFileSink] {
+            let mut state = super::super::tests::state();
+            let before = state.retained.random.record;
+            state.game_sync_runtime = Some(Runtime {
+                lock_count: 17,
+                archive: GameSyncArchiveTracking {
+                    sync_variable_key: ArchiveOrderKey(4),
+                    changed_keys: vec![ArchiveOrderKey(2), ArchiveOrderKey(9)],
+                },
+                logging: Some(scope),
+            });
+            let mut expected = crate::rng::RandomState {
+                seed: before.seed,
+                calls: before.calls,
+                resets: before.resets,
+                lock_count: 17,
+                synchronous: before.synchronous_byte != 0,
+            };
+            for bound in [0, 1, 7, u16::MAX] {
+                assert_eq!(state.game_sync_rand(bound).unwrap(), expected.draw(bound));
+            }
+            let now = state.game_sync().unwrap();
+            assert_eq!(now.record.seed, expected.seed);
+            assert_eq!(now.record.calls, before.calls.wrapping_add(4));
+            assert_eq!(now.record.resets, before.resets);
+            assert_eq!(now.record.synchronous_byte, before.synchronous_byte);
+            assert_eq!(now.lock_count, 17);
+            assert_eq!(
+                now.archive.changed_keys,
+                [ArchiveOrderKey(2), ArchiveOrderKey(4), ArchiveOrderKey(9)]
+            );
+            state.game_sync_runtime.as_mut().unwrap().logging = None;
+            let before = state.retained.random.record;
+            assert!(matches!(
+                state.game_sync_rand(4),
+                Err(AccessError::UnsupportedLogging)
+            ));
+            assert_eq!(state.retained.random.record, before);
         }
-        let now = state.game_sync().unwrap();
-        assert_eq!(now.record.seed, expected.seed);
-        assert_eq!(now.record.calls, before.calls.wrapping_add(4));
-        assert_eq!(now.record.resets, before.resets);
-        assert_eq!(now.record.synchronous_byte, before.synchronous_byte);
-        assert_eq!(now.lock_count, 17);
-        assert_eq!(
-            now.archive.changed_keys,
-            [ArchiveOrderKey(2), ArchiveOrderKey(4), ArchiveOrderKey(9)]
-        );
-        state.game_sync_runtime.as_mut().unwrap().logging = None;
-        let before = state.retained.random.record;
-        assert!(matches!(
-            state.game_sync_rand(4),
-            Err(AccessError::UnsupportedLogging)
-        ));
-        assert_eq!(state.retained.random.record, before);
     }
     #[test]
     fn real_loaded_owner_mutates_the_retained_record_and_preserves_live_fields() {
