@@ -1,4 +1,4 @@
-//! Complete current Linux Player.CulturalIdentity saved wire only.
+//! Linux Player.CulturalIdentity v6/v10 saved wire only.
 //! Raw Q8 values are signed backing integers. Native archive effects, initialization,
 //! gameplay decisions, actions and turns are not performed.
 use crate::unit::Limits;
@@ -6,6 +6,7 @@ pub const VERSION: u32 = 10;
 pub const WIRE_BYTES: usize = 60;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -20,6 +21,7 @@ impl std::error::Error for Error {}
 /// Fourteen scalar members in original writer order; `_raw` denotes Q8 backing bits.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CulturalIdentity {
+    pub wire_version: u32,
     pub extra_capital_pressure_radius: i32,
     pub identity_per_turn_for_domestic_trade_route_origin_raw: i32,
     pub martial_law_modifier: i32,
@@ -54,16 +56,17 @@ impl CulturalIdentity {
             return Err(Error::ResourceLimit);
         }
         let actual = u32::from_le_bytes(data.get(..4).ok_or(Error::Truncated)?.try_into().unwrap());
-        if actual != VERSION {
+        if actual != 6 && actual != VERSION {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
             });
         }
-        if limits.max_bytes < WIRE_BYTES {
+        let wire_bytes = if actual == 6 { 36 } else { WIRE_BYTES };
+        if limits.max_bytes < wire_bytes {
             return Err(Error::ResourceLimit);
         }
-        let bytes = data.get(..WIRE_BYTES).ok_or(Error::Truncated)?;
+        let bytes = data.get(..wire_bytes).ok_or(Error::Truncated)?;
         let mut words = bytes[4..]
             .as_chunks::<4>()
             .0
@@ -71,22 +74,47 @@ impl CulturalIdentity {
             .map(|b| i32::from_le_bytes(*b));
         Ok((
             Self {
+                wire_version: actual,
                 extra_capital_pressure_radius: words.next().unwrap(),
                 identity_per_turn_for_domestic_trade_route_origin_raw: words.next().unwrap(),
                 martial_law_modifier: words.next().unwrap(),
                 post_combat_foreign_loyalty: words.next().unwrap(),
                 post_combat_local_loyalty: words.next().unwrap(),
-                additional_golden_age_post_combat_loyalty: words.next().unwrap(),
+                additional_golden_age_post_combat_loyalty: if actual == 6 {
+                    0
+                } else {
+                    words.next().unwrap()
+                },
                 post_pillage_foreign_loyalty: words.next().unwrap(),
                 post_pillage_local_loyalty: words.next().unwrap(),
                 get_skip_free_city_step: words.next().unwrap(),
-                foreign_identity_per_turn_from_nearby_great_works_raw: words.next().unwrap(),
-                domestic_identity_per_turn_from_nearby_great_works_raw: words.next().unwrap(),
-                foreign_identity_per_turn_from_nearby_wonders_raw: words.next().unwrap(),
-                domestic_identity_per_turn_from_nearby_wonders_raw: words.next().unwrap(),
-                always_loyal_coastal_home_continent_count: words.next().unwrap(),
+                foreign_identity_per_turn_from_nearby_great_works_raw: if actual == 6 {
+                    0
+                } else {
+                    words.next().unwrap()
+                },
+                domestic_identity_per_turn_from_nearby_great_works_raw: if actual == 6 {
+                    0
+                } else {
+                    words.next().unwrap()
+                },
+                foreign_identity_per_turn_from_nearby_wonders_raw: if actual == 6 {
+                    0
+                } else {
+                    words.next().unwrap()
+                },
+                domestic_identity_per_turn_from_nearby_wonders_raw: if actual == 6 {
+                    0
+                } else {
+                    words.next().unwrap()
+                },
+                always_loyal_coastal_home_continent_count: if actual == 6 {
+                    0
+                } else {
+                    words.next().unwrap()
+                },
             },
-            WIRE_BYTES,
+            wire_bytes,
             0,
         ))
     }
@@ -94,6 +122,9 @@ impl CulturalIdentity {
         self.encode_with_items(limits).map(|(v, _)| v)
     }
     pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         if limits.max_bytes < WIRE_BYTES {
             return Err(Error::ResourceLimit);
         }
@@ -216,5 +247,79 @@ mod tests {
                 })
             );
         }
+    }
+    #[test]
+    fn legacy6_scalar_defaults_and_exact_wire_length() {
+        let values = [i32::MIN, i32::MAX, -1, -257, 0, 255, 256, -765];
+        let mut bytes = 6u32.to_le_bytes().to_vec();
+        for value in values {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        let exact = Limits {
+            max_bytes: 36,
+            max_items: 0,
+        };
+        let (v, n, i) = CulturalIdentity::decode_prefix_with_items(&bytes, exact).unwrap();
+        assert_eq!((n, i), (36, 0));
+        assert_eq!(v.wire_version, 6);
+        assert_eq!(
+            [
+                v.extra_capital_pressure_radius,
+                v.identity_per_turn_for_domestic_trade_route_origin_raw,
+                v.martial_law_modifier,
+                v.post_combat_foreign_loyalty,
+                v.post_combat_local_loyalty,
+                v.post_pillage_foreign_loyalty,
+                v.post_pillage_local_loyalty,
+                v.get_skip_free_city_step
+            ],
+            values
+        );
+        assert_eq!(
+            [
+                v.additional_golden_age_post_combat_loyalty,
+                v.foreign_identity_per_turn_from_nearby_great_works_raw,
+                v.domestic_identity_per_turn_from_nearby_great_works_raw,
+                v.foreign_identity_per_turn_from_nearby_wonders_raw,
+                v.domestic_identity_per_turn_from_nearby_wonders_raw,
+                v.always_loyal_coastal_home_continent_count
+            ],
+            [0; 6]
+        );
+        assert_eq!(v.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..36 {
+            assert_eq!(
+                CulturalIdentity::decode(&bytes[..n], exact),
+                Err(Error::Truncated)
+            );
+            assert_eq!(
+                CulturalIdentity::decode(
+                    &bytes,
+                    Limits {
+                        max_bytes: n,
+                        ..exact
+                    }
+                ),
+                Err(Error::ResourceLimit)
+            );
+        }
+        let mut suffix = bytes.clone();
+        suffix.push(1);
+        assert_eq!(
+            CulturalIdentity::decode(&suffix, exact),
+            Err(Error::Trailing)
+        );
+        assert_eq!(
+            CulturalIdentity::decode_prefix(&suffix, exact).unwrap(),
+            (v, 36)
+        );
+        bytes[..4].copy_from_slice(&5u32.to_le_bytes());
+        assert_eq!(
+            CulturalIdentity::decode(&bytes, exact),
+            Err(Error::Version {
+                expected: 10,
+                actual: 5
+            })
+        );
     }
 }

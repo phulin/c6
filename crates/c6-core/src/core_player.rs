@@ -2383,6 +2383,7 @@ pub(crate) mod tests {
     // All fourteen signed current-wire fields, with no runtime defaults.
     fn cultural_identity_carrier() -> player_cultural_identity::CulturalIdentity {
         player_cultural_identity::CulturalIdentity {
+            wire_version: 10,
             extra_capital_pressure_radius: i32::MIN,
             identity_per_turn_for_domestic_trade_route_origin_raw: -5999,
             martial_law_modifier: -5998,
