@@ -1,6 +1,7 @@
 //! Executable first TestAttackInto stage over canonical loaded actors/Formations.
 //! This is NOT complete attack legality, an applied attack, or combat resolution.
 use crate::{formation_path_state as path, formation_rules, movement_placement_state};
+pub mod backend;
 pub mod execution;
 pub mod proposals;
 pub mod results;
