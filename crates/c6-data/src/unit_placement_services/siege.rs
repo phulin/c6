@@ -72,8 +72,8 @@ impl<E: Services> Current<'_, '_, '_, E> {
             .world()
             .player(viewer)
             .map_err(Error::World)?;
-        // Acquiring the current visibility receiver precedes candidate traversal.
-        self.base.sight.shared(viewer).map_err(Error::Missing)?;
+        // The visibility receiver is obtained before traversal, but its layer
+        // values are read only for an eligible candidate, in visible().
         let index = self.unit_index(location);
         defender::select_enemy(
             &mut Candidates {
