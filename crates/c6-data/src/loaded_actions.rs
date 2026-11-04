@@ -95,6 +95,7 @@ pub enum Error {
     HandlerObservation(handlers::Error),
     Kernel(skip_turn::Error),
     Movement(crate::unit_movement_state::Error),
+    MovementPlacement(crate::movement_placement_state::Error),
     Provider(&'static str),
     Aftermath(aftermath::Error),
     MissingUnit,

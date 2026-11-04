@@ -793,17 +793,16 @@ impl<'a> Provider<'a> {
                 "adjacent placement foreign blocked-entry/border/district queries unavailable",
             ));
         }
-        // For the bounded empty-cell branch the original best-defender scan has
-        // no candidate to invoke. Nonempty cells require exact filtering/strength.
-        for layer in &state.world().map().units.layers {
-            if !unit_placement::units_at(state.world(), Some(layer.layer_id), coord)
-                .map_err(Error::Placement)?
-                .is_empty()
-            {
-                return Err(Error::Provider(
-                    "adjacent placement nonempty defender candidate scan unavailable",
-                ));
-            }
+        // The original scan uses only the subject's layer. Reuse its ordered
+        // candidate filtering instead of treating occupancy in any layer as an
+        // unavailable query. Foreign/visibility/strength dependencies stay typed.
+        if crate::movement_placement_state::best_defender(state, unit, coord)
+            .map_err(Error::MovementPlacement)?
+            .is_some()
+        {
+            return Err(Error::Provider(
+                "adjacent placement selected defender continuation unavailable",
+            ));
         }
         if unit.i_barbarian_tribe_index >= 0 {
             return Err(Error::Provider(

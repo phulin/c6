@@ -251,6 +251,67 @@ fn unlock_embarkation(rules: &Rules) -> Result<bool, Error> {
     Ok(value != 0)
 }
 
+/// Source GetBestDefender prefix over the subject's actual map layer. This
+/// reads current owned state and keeps stored candidate order. Friendly,
+/// delayed-death and missing candidates need no visibility/strength query;
+/// reached foreign candidates retain explicit unsupported capabilities.
+/// No gameplay state or script/RNG callback is changed by this bounded profile.
+pub fn best_defender<'s>(
+    state: &'s LoadedState,
+    unit: &Unit,
+    destination: PlotCoord,
+) -> Result<Option<&'s Unit>, Error> {
+    let map = state.world().map();
+    let raw_index = destination
+        .y
+        .wrapping_mul(map.units.width as i32)
+        .wrapping_add(destination.x) as u32 as usize;
+    let layer = placement::unit_layer(state.world(), unit).map_err(|_| Error::Geometry)?;
+    let references = match layer {
+        None => &[][..], // Original UnitContainer rejects layer UINT_MAX.
+        Some(layer) => {
+            if raw_index >= map.plots.len() {
+                return Err(Error::Capability(Capability::SparseCoordinate));
+            }
+            state
+                .world()
+                .plot_units(layer, raw_index)
+                .map_err(Error::World)?
+        }
+    };
+    let candidates = references.iter().map(|reference| {
+        state
+            .world()
+            .unit(*reference)
+            .map_err(Error::World)
+            .map(|found| {
+                found.map(|found| {
+                    let u = found.record;
+                    ShoreDefender {
+                        unit: u,
+                        owner: u.e_owner,
+                        delayed_death: u.b_delayed_death,
+                        location: Some(u.k_location),
+                        definition: DefenderDefinition::Unresolved,
+                        religious_strength: Some(u.k_religion.i_religious_strength),
+                    }
+                })
+            })
+    });
+    logic::select_shore_defender(
+        candidates,
+        unit.e_owner,
+        None,
+        Some(unit.k_religion.i_religious_strength),
+        |_| Err(Error::Capability(Capability::CombatStrength)),
+    )
+    .map_err(|error| match error {
+        DefenderError::Candidate(e) | DefenderError::CombatStrength(e) => e,
+        DefenderError::VisibilityContext => Error::Capability(Capability::VisibilityContext),
+        _ => Error::Capability(Capability::ExtendedUnitDefinition),
+    })
+}
+
 /// Construct once from the same registered rules/resources and actual exported
 /// terrain definitions. Fields are borrowed immutable definitions; each query
 /// reads the current state rather than a per-action oracle result or clone.
@@ -637,55 +698,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .map_or(-1, |i| i as i32))
     }
     fn best_defender(&self, unit: &Unit, destination: PlotCoord) -> Result<Option<&Unit>, Error> {
-        let map = self.state.world().map();
-        let raw_index = destination
-            .y
-            .wrapping_mul(map.units.width as i32)
-            .wrapping_add(destination.x) as u32 as usize;
-        let layer = placement::unit_layer(self.state.world(), unit).map_err(|_| Error::Geometry)?;
-        let references = match layer {
-            None => &[][..], // Original UnitContainer rejects layer UINT_MAX.
-            Some(layer) => {
-                if raw_index >= map.plots.len() {
-                    return Err(Error::Capability(Capability::SparseCoordinate));
-                }
-                self.state
-                    .world()
-                    .plot_units(layer, raw_index)
-                    .map_err(Error::World)?
-            }
-        };
-        let candidates = references.iter().map(|reference| {
-            self.state
-                .world()
-                .unit(*reference)
-                .map_err(Error::World)
-                .map(|found| {
-                    found.map(|found| {
-                        let u = found.record;
-                        ShoreDefender {
-                            unit: u,
-                            owner: u.e_owner,
-                            delayed_death: u.b_delayed_death,
-                            location: Some(u.k_location),
-                            definition: DefenderDefinition::Unresolved,
-                            religious_strength: Some(u.k_religion.i_religious_strength),
-                        }
-                    })
-                })
-        });
-        logic::select_shore_defender(
-            candidates,
-            unit.e_owner,
-            None,
-            Some(unit.k_religion.i_religious_strength),
-            |_| Err(Error::Capability(Capability::CombatStrength)),
-        )
-        .map_err(|error| match error {
-            DefenderError::Candidate(e) | DefenderError::CombatStrength(e) => e,
-            DefenderError::VisibilityContext => Error::Capability(Capability::VisibilityContext),
-            _ => Error::Capability(Capability::ExtendedUnitDefinition),
-        })
+        best_defender(self.state, unit, destination)
     }
     fn query(
         &self,
