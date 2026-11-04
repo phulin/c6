@@ -21,9 +21,6 @@ fn index<C: BoostContext>(c: &C, kind: Kind, raw: u32) -> i32 {
     if (raw as usize) < definitions.len() {
         return raw as i32;
     }
-    if raw <= 0x7ff {
-        return -1;
-    }
     definitions
         .iter()
         .flatten()
@@ -131,7 +128,12 @@ pub fn choose<C: BoostContext>(
     input: i32,
     mode: InsertMode,
 ) -> Result<(), Error<C::Error>> {
-    let chosen = index(c, kind, input as u32);
+    let raw = input as u32;
+    let chosen = if raw <= 0x7ff && raw as usize >= definitions(c, kind).len() {
+        -1
+    } else {
+        index(c, kind, raw)
+    };
     let Some(definition) = definitions(c, kind)
         .get(chosen as u32 as usize)
         .and_then(Option::as_ref)
@@ -209,4 +211,10 @@ pub fn choose<C: BoostContext>(
         source: None,
     })
     .map_err(Error::Context)
+}
+
+/// GameAttribute.Value: Base plus its separately quantized percentage term.
+/// ScaleByPercentage truncates signed wide division and retains low32 bits.
+pub fn yield_attribute_value(base: i32, modifier: i32) -> i32 {
+    base.wrapping_add(((i64::from(base) * i64::from(modifier)) / 25_600) as i32)
 }

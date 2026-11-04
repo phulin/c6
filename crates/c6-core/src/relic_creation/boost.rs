@@ -925,6 +925,52 @@ mod tests {
             }
         }
     }
+    impl crate::research_turn::Context for Fixture {
+        fn research_yield_q8(&mut self, _: i32, _: Kind) -> Result<i32, Self::Error> {
+            self.log.push("yield".into());
+            Ok(integer(2))
+        }
+        fn notify_choose_technology(&mut self, _: i32) -> Result<(), Self::Error> {
+            self.log.push("choose notification".into());
+            Ok(())
+        }
+    }
+    #[test]
+    fn research_turn_spends_old_overflow_once_completes_and_yields_next_choice() {
+        let mut f = Fixture::new();
+        f.techs[0].research_progress_q8[0].value = integer(99);
+        f.techs[0].research_overflow_q8 = integer(1);
+        crate::research_turn::do_research(&mut f, 0).unwrap();
+        assert!(f.techs[0].has_tech.pairs[0].value);
+        assert_eq!(f.techs[0].research_progress_q8[0].value, 0);
+        assert_eq!(f.techs[0].research_overflow_q8, integer(2));
+        assert!(f.techs[0].research_queue_hashes.is_empty());
+        assert_eq!(f.log.first().unwrap(), "yield");
+        assert_eq!(f.log.last().unwrap(), "choose notification");
+        crate::research_turn::do_research(&mut f, 0).unwrap();
+        assert_eq!(f.techs[0].research_overflow_q8, integer(4));
+    }
+    #[test]
+    fn external_research_replace_cleans_existing_queue_without_regranting_tech() {
+        use crate::research_turn::{choose, InsertMode};
+        let mut f = Fixture::new();
+        choose(&mut f, 0, Kind::Technology, 0, InsertMode::Back).unwrap();
+        assert!(f.log.is_empty());
+        f.techs[0].research_queue_hashes.push(101);
+        f.techs[0].has_tech.pairs[0].value = true;
+        choose(&mut f, 0, Kind::Technology, 0, InsertMode::Replace).unwrap();
+        assert_eq!(f.techs[0].research_queue_hashes, [101]);
+        assert_eq!(f.log.len(), 2);
+        assert!(!f.log.iter().any(|line| line.starts_with("acquire")));
+    }
+    #[test]
+    fn current_yield_attribute_keeps_fractional_percent_and_wrapping() {
+        use crate::research_turn::yield_attribute_value as value;
+        assert_eq!(value(257, 50 << 8), 385);
+        assert_eq!(value(-257, 50 << 8), -385);
+        assert_eq!(value(257, -100 << 8), 0);
+        assert_eq!(value(i32::MAX, 100 << 8), -2);
+    }
     impl Context for Fixture {
         fn preflight_boost(&self, _: i32) -> Result<(), Self::Error> {
             Ok(())

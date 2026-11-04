@@ -42,6 +42,28 @@ pub trait Context {
     fn techs_mut(&mut self, player: i32) -> Result<&mut Techs, Self::Error>;
     fn culture(&self, player: i32) -> Result<&Culture, Self::Error>;
     fn culture_mut(&mut self, player: i32) -> Result<&mut Culture, Self::Error>;
+    /// Store the one acquired value. Contexts with an indexed World view must
+    /// update that alias here, before the first synchronous subscriber runs.
+    fn write_acquired_flag(
+        &mut self,
+        player: i32,
+        kind: Kind,
+        _index: i32,
+        hash: u32,
+        value: bool,
+    ) -> Result<(), Self::Error> {
+        let acquired = match kind {
+            Kind::Technology => &mut self.techs_mut(player)?.has_tech,
+            Kind::Civic => &mut self.culture_mut(player)?.has_civic,
+        };
+        acquired
+            .pairs
+            .iter_mut()
+            .rfind(|pair| pair.definition_hash == hash)
+            .expect("checked acquired flag")
+            .value = value;
+        Ok(())
+    }
     /// Actual live Culture acquired vector size, independently of wire pair
     /// count. The source-read overlay must have been applied to Reset storage.
     fn civic_acquired_count(&self, player: i32) -> Result<usize, Self::Error>;
@@ -165,17 +187,8 @@ pub fn set<C: Context>(
     })?;
     c.preflight_acquisition(player, kind, index, value)
         .map_err(Context)?;
-    let acquired = match kind {
-        Kind::Technology => &mut c.techs_mut(player).map_err(Context)?.has_tech,
-        Kind::Civic => &mut c.culture_mut(player).map_err(Context)?.has_civic,
-    };
-    acquired
-        .pairs
-        .iter_mut()
-        .rev()
-        .find(|p| p.definition_hash == definition.hash)
-        .expect("checked acquired flag")
-        .value = value;
+    c.write_acquired_flag(player, kind, index, definition.hash, value)
+        .map_err(Context)?;
     // Civic HasCivic is deliberately queried after the flag write.
     let active = kind == Kind::Technology || c.globally_available(kind, index).map_err(Context)?;
     if !active || !value {

@@ -240,6 +240,28 @@ impl ReadProjection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Graph(ReadProjection);
 impl Graph {
+    /// Complete initialized current fields, supplied or computed by the caller.
+    /// This does not run Read, BuildTechs, initialization RNG or prerequisite
+    /// generation. Preserve node/iteration order, duplicates and missing nodes.
+    pub fn from_complete_current(
+        nodes: Vec<Node>,
+        iteration: Vec<i32>,
+        limits: Limits,
+    ) -> Result<Self, Error> {
+        let items = nodes
+            .iter()
+            .try_fold(iteration.len(), |count, node| {
+                count.checked_add(1)?.checked_add(node.prerequisites.len())
+            })
+            .ok_or(Error::ResourceLimit)?;
+        if items > limits.max_items
+            || nodes.len() > i32::MAX as usize
+            || iteration.len() > i32::MAX as usize
+        {
+            return Err(Error::ResourceLimit);
+        }
+        Ok(Self(ReadProjection { nodes, iteration }))
+    }
     pub fn nodes(&self) -> &[Node] {
         self.0.nodes()
     }
@@ -269,5 +291,55 @@ impl Graph {
         self.node(tech)
             .map(|node| node.prerequisites.as_slice())
             .ok_or(Error::FallbackUnknown)
+    }
+}
+
+#[cfg(test)]
+mod current_graph_tests {
+    use super::*;
+    #[test]
+    fn current_fields_keep_positional_lookup_duplicate_order_and_budget() {
+        let nodes = vec![
+            Node {
+                native_type: 1,
+                active: false,
+                cost_raw: 128,
+                prerequisites: vec![0],
+            },
+            Node {
+                native_type: 1,
+                active: true,
+                cost_raw: 257,
+                prerequisites: vec![],
+            },
+            Node {
+                native_type: 0,
+                active: true,
+                cost_raw: 512,
+                prerequisites: vec![],
+            },
+        ];
+        let graph =
+            Graph::from_complete_current(nodes.clone(), vec![1, 0, 1], Limits::default()).unwrap();
+        assert_eq!(graph.iteration(), [1, 0, 1]);
+        assert_eq!(graph.node(1).unwrap().cost_raw, 257);
+        assert_eq!(graph.node(0).unwrap().cost_raw, 512);
+        assert_eq!(graph.prerequisites(9), Err(Error::FallbackUnknown));
+        assert_eq!(
+            Graph::from_complete_current(
+                nodes,
+                vec![1],
+                Limits {
+                    max_items: 0,
+                    ..Limits::default()
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert!(
+            !Graph::from_complete_current(vec![], vec![], Limits::default())
+                .unwrap()
+                .has_tech(0)
+        );
     }
 }

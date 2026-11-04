@@ -16,6 +16,7 @@ pub enum Error {
     MissingAlliances,
     MissingPermanentAlliances,
     MissingDeclaredFriendships,
+    MissingResearchAgreements,
     MissingHasMet,
     DefinitionInputs,
     AlreadyInitialized,
@@ -273,6 +274,29 @@ impl GameDiplomaticRelations {
             .get(self.index(a, b)?)
             .map(|value| value.value)
             .ok_or(Error::Index)
+    }
+    /// The canonical Read prefix retains TechTypes hashes. Project the same
+    /// native Read HashToIndex mapping using the current admitted collection.
+    /// Equal identities return -1 before any storage/definition lookup.
+    pub fn research_agreement_tech(
+        &self,
+        a: i32,
+        b: i32,
+        technology_hashes: &[u32],
+    ) -> Result<i32, Error> {
+        if a == b {
+            return Ok(-1);
+        }
+        let values = &self
+            .read_prefix
+            .as_ref()
+            .ok_or(Error::MissingResearchAgreements)?
+            .at_168;
+        let hash = self.value(values, a, b)? as u32;
+        Ok(
+            native_definition_index(technology_hashes, hash, |value| *value)
+                .map_or(-1, |index| index as i32),
+        )
     }
     /// Current permanent-alliance bool relationship. Equal players return false
     /// before storage/range checks. Missing prefix/storage is not a false value.
@@ -542,6 +566,24 @@ mod tests {
         assert_eq!(
             state.has_declared_friendship(0, 2),
             Err(Error::MissingDeclaredFriendships)
+        );
+    }
+    #[test]
+    fn research_agreement_remaps_saved_hashes_and_keeps_native_equal_sentinel() {
+        let mut state = GameDiplomaticRelations::decode_prefix(&fixture(), Limits::default())
+            .unwrap()
+            .state;
+        state.read_prefix.as_mut().unwrap().at_168.values = vec![0x80002000u32 as i32, 1, -1];
+        let definitions = [0x80001000, 0x80002000];
+        assert_eq!(state.research_agreement_tech(0, 2, &definitions), Ok(1));
+        assert_eq!(state.research_agreement_tech(2, 0, &definitions), Ok(1));
+        assert_eq!(state.research_agreement_tech(1, 2, &definitions), Ok(1));
+        assert_eq!(state.research_agreement_tech(0, 1, &definitions), Ok(-1));
+        state.read_prefix = None;
+        assert_eq!(state.research_agreement_tech(-1, -1, &[]), Ok(-1));
+        assert_eq!(
+            state.research_agreement_tech(0, 1, &definitions),
+            Err(Error::MissingResearchAgreements)
         );
     }
     #[test]
