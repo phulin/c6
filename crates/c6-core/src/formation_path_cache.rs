@@ -10,7 +10,7 @@ use crate::unit::{Formation, PathNode, PlotCoord};
 pub trait GenerationContext: PathCallbacks {
     /// The same retained Formation; no detached copy and later copyback.
     fn formation(&self) -> &Formation;
-    fn formation_mut(&mut self) -> &mut Formation;
+    fn formation_mut(&mut self) -> Result<&mut Formation, Self::Error>;
     fn includes_unit_of_domain(&mut self, domain: i32) -> Result<bool, Self::Error>;
     fn is_plot(&mut self, location: PlotCoord) -> Result<bool, Self::Error>;
     fn is_visible(&mut self, location: PlotCoord) -> Result<bool, Self::Error>;
@@ -45,19 +45,19 @@ pub fn generate_formation_path<C: GenerationContext>(
     } else {
         false
     };
-    context.formation_mut().last_path_cache_location = destination;
-    context.formation_mut().last_path = search.copy_path();
+    context.formation_mut()?.last_path_cache_location = destination;
+    context.formation_mut()?.last_path = search.copy_path();
     let count = context.formation().last_path.len();
     for index in (0..count).rev() {
         let at = location(&context.formation().last_path[index]);
         if context.is_plot(at)? && !context.is_visible(at)? {
-            context.formation_mut().last_path[index].flags |= 1;
+            context.formation_mut()?.last_path[index].flags |= 1;
             if index + 2 < count {
-                context.formation_mut().last_path[index + 1].flags |= 2;
+                context.formation_mut()?.last_path[index + 1].flags |= 2;
             }
             let at = location(&context.formation().last_path[0]);
             if context.is_plot(at)? && !context.is_visible(at)? {
-                context.formation_mut().last_path[0].flags |= 1;
+                context.formation_mut()?.last_path[0].flags |= 1;
             }
             break;
         }
