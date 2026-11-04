@@ -148,6 +148,7 @@ pub struct Provider<'a> {
     publications: Vec<Publication>,
     skip_turn_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
+    command_queries: Option<hold_cycling::commands::Inputs<'a>>,
 }
 impl<'a> Provider<'a> {
     pub fn new(
@@ -161,7 +162,25 @@ impl<'a> Provider<'a> {
             publications: Vec::new(),
             skip_turn_handler: None,
             snapshots: Vec::new(),
+            command_queries: None,
         }
+    }
+    /// Bind reconstructed/observed current stock command state once. This
+    /// establishes consistency only; actual startup/code authority is external.
+    pub fn bind_command_queries(
+        &mut self,
+        inputs: hold_cycling::commands::Inputs<'a>,
+    ) -> Result<(), Error> {
+        if self.command_queries.is_some() {
+            return Err(Error::Provider("command queries already bound"));
+        }
+        if inputs.definitions.binding() != &self.definitions.binding
+            || inputs.hold_definitions.binding() != &self.definitions.binding
+        {
+            return Err(Error::ConfigurationIdentity);
+        }
+        self.command_queries = Some(inputs);
+        Ok(())
     }
     pub fn pending_publications(&self) -> &[Publication] {
         &self.publications
@@ -418,9 +437,33 @@ impl<'a> Provider<'a> {
     /// Independent native CanCyclePast. Pending operations do not short-circuit
     /// this getter. Reached HoldCycling callbacks remain genuine dependencies.
     pub fn can_cycle_past(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
-        self.cycle_past_early_result(state, unit)?.ok_or(Error::Provider(
-            "CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable",
-        ))
+        if let Some(result) = self.cycle_past_early_result(state, unit)? {
+            return Ok(result);
+        }
+        if let Some(inputs) = self.command_queries {
+            let mut query = hold_cycling::commands::Computed {
+                definitions: inputs.definitions,
+                state,
+                unit,
+                phases: inputs.phases,
+                operations: inputs.operations,
+                registrations: inputs.registrations,
+                tags: inputs.tags,
+                temporary_scope: inputs.temporary_scope,
+            };
+            let mut budget = inputs.registrations.scan_budget();
+            if inputs
+                .hold_definitions
+                .command_hold_cycling(&mut query, &mut budget)
+                .map_err(|e| Error::CommandHoldCycling(Box::new(e)))?
+            {
+                return Ok(false);
+            }
+            return Err(Error::Provider(
+                "operation HoldCycling Manager/Script effects after computed command scan",
+            ));
+        }
+        Err(Error::Provider("CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable"))
     }
 
     /// Compute command HoldCycling, then operation HoldCycling only if needed.

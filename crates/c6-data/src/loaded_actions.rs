@@ -83,6 +83,9 @@ pub fn trace_json(trace: &[Event]) -> serde_json::Value {
 }
 #[derive(Debug)]
 pub enum Error {
+    CommandHoldCycling(
+        Box<reporting::hold_cycling::Error<reporting::hold_cycling::commands::Error>>,
+    ),
     State(StateError),
     ScriptRegistry(c6_core::script_event_registry::RegistryError),
     World(c6_core::world::MissingInput),

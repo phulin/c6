@@ -104,6 +104,9 @@ impl Definitions {
             max_hit_points,
         })
     }
+    pub fn binding(&self) -> &WireBinding {
+        &self.binding
+    }
     fn check(&self, state: &LoadedState) -> Result<(), Error> {
         if self.binding != *state.binding() {
             return Err(Error::Unsupported("current command state binding"));
@@ -149,7 +152,7 @@ impl Definitions {
         state: &LoadedState,
         unit: &Unit,
         phases: &PhaseDefinitions,
-        operations: &ObservedRegistry<'_>,
+        operations: Option<&ObservedRegistry<'_>>,
     ) -> Result<bool, Error> {
         self.check(state)?;
         if !phases
@@ -171,6 +174,9 @@ impl Definitions {
             return Ok(false);
         }
         if let Some(front) = unit.k_operations.nodes.first() {
+            let operations = operations.ok_or(Error::Unsupported(
+                "current operation interruption registry",
+            ))?;
             let id = operations
                 .saved_hash_runtime_id(OperationHash(front.operation_hash))
                 .map_err(Error::Registry)?;
@@ -263,7 +269,7 @@ impl Definitions {
         &self,
         state: &LoadedState,
         unit: &Unit,
-        tags: &Tags,
+        tags: Option<&Tags>,
     ) -> Result<Vec<ComponentId>, Error> {
         self.check(state)?;
         if state
@@ -289,6 +295,7 @@ impl Definitions {
             .at(index as u32)
             .ok_or(Error::Unsupported("Unit definition"))?
             .type_name;
+        let tags = tags.ok_or(Error::Unsupported("current Tag repository"))?;
         if tags.has(linux_type_hash(name), b"CLASS_RELIGIOUS_ALL") {
             return Ok(Vec::new());
         }
@@ -481,6 +488,9 @@ pub struct RegisteredCommands {
     slots: Vec<RegisteredCommand>,
 }
 impl RegisteredCommands {
+    pub fn scan_budget(&self) -> usize {
+        self.slots.len() + 1
+    }
     pub fn from_current_slots(slots: Vec<RegisteredCommand>) -> Result<Self, Error> {
         if slots.len() > 0x800 {
             return Err(Error::Unsupported("command numeric slot domain"));
@@ -507,6 +517,7 @@ impl RegisteredCommands {
 /// never custom variants. Its creation/destruction writes only temporary data
 /// and allocator state; retaining native heap layout is unnecessary here.
 /// Custom managers, interposition or semantic allocation hooks are unsupported.
+#[derive(Clone, Copy)]
 pub enum TemporaryScope {
     StockPodResults,
 }
@@ -519,9 +530,9 @@ pub struct Computed<'a> {
     pub state: &'a LoadedState,
     pub unit: &'a Unit,
     pub phases: &'a PhaseDefinitions,
-    pub operations: &'a ObservedRegistry<'a>,
+    pub operations: Option<&'a ObservedRegistry<'a>>,
     pub registrations: &'a RegisteredCommands,
-    pub tags: &'a Tags,
+    pub tags: Option<&'a Tags>,
     pub temporary_scope: TemporaryScope,
 }
 impl super::Queries for Computed<'_> {
@@ -593,13 +604,14 @@ impl super::Queries for Computed<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Inputs<'a> {
     pub hold_definitions: &'a super::Definitions,
     pub definitions: &'a Definitions,
     pub phases: &'a PhaseDefinitions,
-    pub operations: &'a ObservedRegistry<'a>,
+    pub operations: Option<&'a ObservedRegistry<'a>>,
     pub registrations: &'a RegisteredCommands,
-    pub tags: &'a Tags,
+    pub tags: Option<&'a Tags>,
     pub temporary_scope: TemporaryScope,
 }
 #[derive(Debug)]
