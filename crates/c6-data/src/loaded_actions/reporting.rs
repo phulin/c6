@@ -34,8 +34,26 @@ const OPERATION_DEACTIVATED: u32 = 0xa60328c5;
 const OPERATIONS_CLEARED: u32 = 0x383669f1;
 const OPERATION_ADDED: u32 = 0x15c35863;
 const OPERATION_STARTED: u32 = 0x3d4006f2;
+const OPERATION_SEGMENT_COMPLETE: u32 = 0xcb0345f1;
 const AWAKE: i32 = 0x6b25012e;
 const OPERATION: i32 = 0x490cc8e1;
+
+/// Host69 translator copies the two current EventData words at+0x50/+0x54
+/// without invoking an operation facade or remapping signed hash bits.
+fn segment_complete_payload(report: IdentityReport) -> Result<(i32, i32), Error> {
+    match report {
+        IdentityReport {
+            event: OPERATION_SEGMENT_COMPLETE,
+            subtype: 0,
+            first: Some(operation),
+            second: Some(segment),
+            ..
+        } => Ok((operation, segment)),
+        _ => Err(Error::Provider(
+            "Unit segment-complete typed argument shape",
+        )),
+    }
+}
 
 /// Immutable, configuration-admitted definitions; never effective query answers.
 pub struct Definitions {
@@ -817,6 +835,11 @@ impl<'a> Provider<'a> {
             {
                 (67, true)
             }
+            OPERATION_SEGMENT_COMPLETE
+                if report.subtype == 0 && report.first.is_some() && report.second.is_some() =>
+            {
+                (69, true)
+            }
             OPERATION_STARTED
                 if (report.subtype == c6_core::unit::SKIP_TURN_HASH
                     || (report.subtype == c6_core::unit::MOVE_TO_HASH
@@ -830,7 +853,8 @@ impl<'a> Provider<'a> {
             | OPERATION_DEACTIVATED
             | OPERATIONS_CLEARED
             | OPERATION_ADDED
-            | OPERATION_STARTED => {
+            | OPERATION_STARTED
+            | OPERATION_SEGMENT_COMPLETE => {
                 return Err(Error::Provider("Unit reporting typed argument shape"))
             }
             _ => {
@@ -944,6 +968,7 @@ impl<'a> Provider<'a> {
         }
         let (operation, value) = match host_event {
             67 | 68 => (report.subtype as i32, report.first.unwrap_or(0)),
+            69 => segment_complete_payload(report)?,
             70 | 71 => (report.first.unwrap_or(0), report.second.unwrap_or(0)),
             _ => (activity_operation.unwrap_or(0) as i32, -1),
         };
@@ -1487,5 +1512,54 @@ mod movement_reporting_tests {
         assert!(movement_publication(report(MOVES_EXHAUSTED, Some(0))).is_err());
         assert!(movement_publication(report(MOVES_REMAINING_CHANGED, None)).is_err());
         assert!(movement_publication(report(0, None)).is_err());
+    }
+}
+
+#[cfg(test)]
+mod segment_complete_tests {
+    use super::*;
+    #[test]
+    fn preserves_both_host_words_and_requires_actual_argument_shape() {
+        let report = IdentityReport {
+            event: OPERATION_SEGMENT_COMPLETE,
+            identity: ComponentId {
+                owner: 0,
+                component_type: 1,
+                id: 14155776,
+            },
+            subtype: 0,
+            first: Some(0x8374d954u32 as i32),
+            second: Some(0),
+        };
+        assert_eq!(segment_complete_payload(report).unwrap(), (-2089494188, 0));
+        assert_eq!(
+            segment_complete_payload(IdentityReport {
+                first: Some(i32::MIN),
+                second: Some(i32::MAX),
+                ..report
+            })
+            .unwrap(),
+            (i32::MIN, i32::MAX)
+        );
+        for bad in [
+            IdentityReport {
+                first: None,
+                ..report
+            },
+            IdentityReport {
+                second: None,
+                ..report
+            },
+            IdentityReport {
+                subtype: 1,
+                ..report
+            },
+            IdentityReport {
+                event: OPERATION_STARTED,
+                ..report
+            },
+        ] {
+            assert!(segment_complete_payload(bad).is_err());
+        }
     }
 }
