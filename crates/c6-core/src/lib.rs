@@ -60,6 +60,7 @@ pub mod unit;
 pub mod unit_healing;
 pub mod unit_operations_clear;
 pub mod unit_initialization;
+pub mod unit_turn_start;
 pub mod unit_turn_upkeep;
 pub mod world;
 pub mod yields;
