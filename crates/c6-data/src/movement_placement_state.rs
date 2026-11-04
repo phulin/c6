@@ -270,7 +270,7 @@ pub fn best_defender<'s>(
 
 // The selected flags0x108 call uses only the presence of this context, not
 // normal/hidden visibility arrays. A missing/contradictory row is unknown.
-fn visibility_context_present(
+pub(crate) fn visibility_context_present(
     rows: &[c6_core::map::PlayerVisibility],
     mapping: Option<&[i32; 65]>,
     owner: i32,

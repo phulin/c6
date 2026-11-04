@@ -1207,32 +1207,58 @@ fn unit_visible(
     viewer: i32,
     queries: &Queries<'_>,
 ) -> Result<bool, Error> {
-    let definitions = queries.definitions;
+    unit_visible_with_counts(
+        state,
+        unit,
+        viewer,
+        queries.definitions,
+        |layer, normal| {
+            combined_visibility_count(
+                state,
+                viewer,
+                (unit.k_location.x, unit.k_location.y),
+                layer,
+                normal,
+                queries,
+            )
+        },
+        || {
+            queries
+                .combined_visibility
+                .map(|v| v.hidden_layer0)
+                .ok_or(Error::Unsupported(
+                    "actual hidden visibility layer0 identity",
+                ))
+        },
+    )
+}
+
+/// Shared source IsVisible(Unit*) control flow. Callers bind these lazy reads
+/// to actual current shared-layer storage, never per-Unit visibility answers.
+pub(crate) fn unit_visible_with_counts<E: From<Error>>(
+    state: &LoadedState,
+    unit: &c6_core::unit::Unit,
+    viewer: i32,
+    definitions: &Definitions,
+    mut count: impl FnMut(u32, bool) -> Result<i16, E>,
+    hidden_layer0: impl FnOnce() -> Result<u32, E>,
+) -> Result<bool, E> {
     let location = (unit.k_location.x, unit.k_location.y);
     if location.0 <= -9999 || location.1 <= -9999 {
         return Ok(false);
     }
-    if combined_visibility_count(state, viewer, location, 0x11351026, true, queries)? <= 0 {
+    if count(0x11351026, true)? <= 0 {
         return Ok(false);
     }
-    if unit.e_owner != viewer && unit.b_has_hidden_visibility && !unit.b_hidden_visibility_forfeited
+    if unit.e_owner != viewer
+        && unit.b_has_hidden_visibility
+        && !unit.b_hidden_visibility_forfeited
+        && count(hidden_layer0()?, false)? <= 0
     {
-        let authority = queries.combined_visibility.ok_or(Error::Unsupported(
-            "CityRangeAttack actual hidden visibility layer0 identity",
-        ))?;
-        if combined_visibility_count(
-            state,
-            viewer,
-            location,
-            authority.hidden_layer0,
-            false,
-            queries,
-        )? <= 0
-        {
-            return Ok(false);
-        }
+        return Ok(false);
     }
-    Ok(unit_definition(state, unit, definitions)?
+    Ok(unit_definition(state, unit, definitions)
+        .map_err(E::from)?
         .is_some_and(|data| !data.team_visibility || unit.e_owner == viewer))
 }
 fn combined_visibility_count(

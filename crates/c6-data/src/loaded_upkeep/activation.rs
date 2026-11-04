@@ -87,7 +87,10 @@ impl<E: Effects> ClearOperationsContext for Activation<'_, '_, '_, '_, E> {
         ))
     }
 }
-impl<E: Effects> OperationsTurnStartContext for Activation<'_, '_, '_, '_, E> {
+impl<E> OperationsTurnStartContext for Activation<'_, '_, '_, '_, E>
+where
+    E: Effects + AlertVisibility<Error = <E as Effects>::Error>,
+{
     fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
         self.movement.unit_mut()
     }
@@ -96,6 +99,21 @@ impl<E: Effects> OperationsTurnStartContext for Activation<'_, '_, '_, '_, E> {
             // These stock handlers inherit the complete constant-false leaf.
             // No queue mutation, policy selection, report or RNG is performed.
             SKIP_TURN_HASH | FORTIFY_HASH | MOVE_TO_HASH | MAKE_TRADE_ROUTE_HASH => Ok(false),
+            c6_core::unit::ALERT_HASH => {
+                let actor = self.movement.unit()?;
+                if !alert_enemy_visible(
+                    self.movement.state,
+                    actor,
+                    self.definitions,
+                    self.movement.effects,
+                )? {
+                    Ok(false)
+                } else {
+                    Err(Error::Unsupported(
+                        "Alert awakening report and identity-preserving PopFront continuation",
+                    ))
+                }
+            }
             _ => Err(Error::Unsupported(
                 "queued handler TurnStartCheck continuation",
             )),
@@ -144,7 +162,9 @@ impl<E: Effects> PromotionNotificationContext for Activation<'_, '_, '_, '_, E> 
 }
 impl<E> UnitTurnStartContext for Activation<'_, '_, '_, '_, E>
 where
-    E: Effects + AttacksReports<Error = <E as Effects>::Error>,
+    E: Effects
+        + AttacksReports<Error = <E as Effects>::Error>
+        + AlertVisibility<Error = <E as Effects>::Error>,
 {
     fn current_unit_manager(&mut self) -> Result<(), Error<<E as Effects>::Error>> {
         // XP2 registers the concrete stock factory. Native addresses and vptrs
@@ -178,7 +198,9 @@ pub fn activate_unit<E>(
     effects: &mut E,
 ) -> Result<(), unit_turn_start::UnitTurnStartError<Error<<E as Effects>::Error>>>
 where
-    E: Effects + AttacksReports<Error = <E as Effects>::Error>,
+    E: Effects
+        + AttacksReports<Error = <E as Effects>::Error>
+        + AlertVisibility<Error = <E as Effects>::Error>,
 {
     unit_turn_start::activate_unit(&mut Activation {
         movement: Movement {

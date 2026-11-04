@@ -139,6 +139,24 @@ impl Definitions {
         self.check(state)?;
         Ok(self.max_attacks)
     }
+    pub(crate) fn unit_visible_with_counts<E: From<Error>>(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+        viewer: i32,
+        count: impl FnMut(u32, bool) -> Result<i16, E>,
+        hidden_layer0: impl FnOnce() -> Result<u32, E>,
+    ) -> Result<bool, E> {
+        self.check(state).map_err(E::from)?;
+        city_range_attack::unit_visible_with_counts(
+            state,
+            unit,
+            viewer,
+            &self.combat,
+            count,
+            hidden_layer0,
+        )
+    }
     pub fn combat(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
         city_range_attack::unit_combat(state, unit, &self.combat)
     }

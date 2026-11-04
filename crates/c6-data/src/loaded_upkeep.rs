@@ -7,6 +7,8 @@
 use crate::unit_movement_state::{self, Inputs};
 mod activation;
 pub use activation::activate_unit;
+mod alert;
+pub use alert::{alert_enemy_visible, AlertVisibility};
 use c6_core::{
     formation_upkeep::{self, BooleanQuery, FormationUpkeepContext, IntegerQuery},
     loaded_state::LoadedState,
@@ -56,6 +58,11 @@ pub enum Error<E> {
     Unsupported(&'static str),
     Provider(E),
     Formation(Box<formation_upkeep::FormationUpkeepError<Error<E>>>),
+}
+impl<E> From<crate::loaded_actions::Error> for Error<E> {
+    fn from(value: crate::loaded_actions::Error) -> Self {
+        Self::Rules(value)
+    }
 }
 
 /// Required live continuations. Admission is pure and must cover every reachable
