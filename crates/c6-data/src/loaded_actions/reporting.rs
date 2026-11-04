@@ -145,6 +145,22 @@ fn movement_publication(report: MovementReport) -> Result<(MovementPublication, 
     ))
 }
 
+/// Host24 completion output. Pure presentation-only reflection fields are not
+/// represented; both reached FillVariants query surfaces are executed below.
+/// Actual observer plus current native linked unit order. Unknown inputs stay
+/// unavailable; an empty slice means a proven empty current roster.
+#[derive(Clone, Copy)]
+pub struct MoveCompleteInputs<'a> {
+    pub local_observer: Option<i32>,
+    pub native_unit_order: Option<&'a [UnitReference]>,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MoveCompletePublication {
+    pub identity: ComponentId,
+    pub location: PlotCoord,
+    pub blocking: bool,
+}
+
 /// Host UnitMoved event 23, prepared at the synchronous BE121408 translator.
 /// These are its actual EventData1 identity/coordinate and four keyed values;
 /// the record does not imply that prepublish or queued consumers were delivered.
@@ -339,6 +355,7 @@ pub struct Provider<'a> {
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
     movement_publications: Vec<MovementPublication>,
+    move_complete_publications: Vec<MoveCompletePublication>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
     current_placement_queries: Option<CurrentPlacementQueries<'a>>,
@@ -358,6 +375,7 @@ impl<'a> Provider<'a> {
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
             movement_publications: Vec::new(),
+            move_complete_publications: Vec::new(),
             command_queries: None,
             placement_queries: None,
             current_placement_queries: None,
@@ -477,6 +495,84 @@ impl<'a> Provider<'a> {
     }
     pub fn snapshot_observations(&self) -> &[SnapshotObservation] {
         &self.snapshots
+    }
+    pub fn pending_move_complete_publications(&self) -> &[MoveCompletePublication] {
+        &self.move_complete_publications
+    }
+    /// Guarded native all-player-unit updates, then host GetUnit/Exports.FillCache
+    /// (which calls the same FillVariants with false), then blocking host24.
+    /// Caller qualifies actual6e7/24 and nested275 consumers before delivery.
+    pub fn send_move_complete_report(
+        &mut self,
+        state: &LoadedState,
+        report: PlacementReport,
+        inputs: MoveCompleteInputs<'_>,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        if report.event_hash != c6_core::unit_placement_transition::MOVEMENT_COMPLETED
+            || report.identity.component_type
+                != c6_core::formation_initialization::UNIT_COMPONENT_TYPE
+        {
+            return Err(Error::Provider("complete movement report identity/event"));
+        }
+        let PlacementPayload::Coordinate(location) = report.payload else {
+            return Err(Error::Provider("complete movement coordinate shape"));
+        };
+        let owner = i32::from(report.identity.owner);
+        // Actual27ff650 guards: validity, actual observer, then !IsAI. Native
+        // IsAI2b31550 is !Configuration.Player.IsHuman (slot status3).
+        if state.world().player_is_valid(owner).map_err(Error::World)? {
+            let observer = inputs
+                .local_observer
+                .ok_or(Error::Provider("current completion local observer"))?;
+            if owner == observer
+                && state
+                    .partial_player_controls(owner)
+                    .map_err(Error::State)?
+                    .slot_status
+                    == 3
+            {
+                let order = inputs
+                    .native_unit_order
+                    .ok_or(Error::Provider("current completion native unit order"))?;
+                let player = state.world().player(owner).map_err(Error::World)?;
+                let records = player.unit_records().map_err(Error::World)?;
+                // Validate membership only. Iterate the supplied native live
+                // chain below, never an ID or slot sort.
+                let mut current = std::collections::BTreeSet::new();
+                for row in records {
+                    current.insert((row.value.e_owner as i16, row.value.id));
+                }
+                let supplied: std::collections::BTreeSet<_> = order
+                    .iter()
+                    .map(|r| (r.component_id().owner, r.id))
+                    .collect();
+                if current != supplied
+                    || order.len() != current.len()
+                    || order.iter().any(|r| r.component_id().component_type != 1)
+                {
+                    return Err(Error::Provider(
+                        "completion current unit roster differs from native order",
+                    ));
+                }
+                for &unit in order {
+                    self.observe_unit_snapshot(state, unit)?;
+                }
+            }
+        }
+        let actor = UnitReference::from_component_id(report.identity);
+        // Host GetUnit/Exports.FillCache is separate from the guarded all-unit
+        // cache loop and invokes the same false-mode FillVariants again.
+        self.observe_unit_snapshot(state, actor)?;
+        self.move_complete_publications
+            .push(MoveCompletePublication {
+                identity: report.identity,
+                location,
+                blocking: true,
+            });
+        Ok(())
     }
     pub fn pending_movement_publications(&self) -> &[MovementPublication] {
         &self.movement_publications
