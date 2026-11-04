@@ -1,8 +1,9 @@
-//! Reached Linux GameSummary4 shared repository3 wire prefix only.
+//! Reached Linux GameSummary4 / shared repository3 / Repository0 wire transport.
 //! Keeps independent guard byte strings, dataset order and tuple coordinates,
 //! raw Q8 values, moments and plot-state history. Native reference rebuilding,
 //! dataset normalization, presentation and gameplay effects are not applied.
-//! The newer GameSummary.Repository follows this prefix and is not read here.
+//! ThroughSharedRepository remains a bounded prefix; Instance composes both
+//! repositories without applying native pooling or reference reconstruction.
 use crate::notifications::{self, LocalizedString};
 pub use crate::unit::Limits;
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -261,6 +262,184 @@ impl ThroughSharedRepository {
     }
 }
 
+/// Native interned strings are full byte strings on wire; native PoolString
+/// receives a C string. No pooling, NUL truncation or pointer identity is applied.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RulesetType {
+    pub type_name: Vec<u8>,
+    pub kind: Vec<u8>,
+    pub name: Vec<u8>,
+    pub icon: Vec<u8>,
+}
+impl Wire for RulesetType {
+    const MIN: usize = 16;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            type_name: Vec::read(r)?,
+            kind: Vec::read(r)?,
+            name: Vec::read(r)?,
+            icon: Vec::read(r)?,
+        })
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Object {
+    pub id: i32,
+    pub owner_player: i32,
+    pub type_name: Vec<u8>,
+    pub name: Vec<u8>,
+    pub component: notifications::ComponentId,
+    pub plot_index: i32,
+    pub extra_data: Vec<u8>,
+    pub icon: Vec<u8>,
+}
+impl Wire for Object {
+    const MIN: usize = 36;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            id: i32::read(r)?,
+            owner_player: i32::read(r)?,
+            type_name: Vec::read(r)?,
+            name: Vec::read(r)?,
+            component: notifications::ComponentId {
+                owner: u16::read(r)? as i16,
+                component_type: u16::read(r)? as i16,
+                id: u32::read(r)?,
+            },
+            plot_index: i32::read(r)?,
+            extra_data: Vec::read(r)?,
+            icon: Vec::read(r)?,
+        })
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DataPoint {
+    pub id: Vec<u8>,
+    pub object_id: i32,
+    pub value_object_id: i32,
+    /// Native assigns the optional numeric value only for nonzero presence.
+    /// The saved numeric word is consumed even for zero, and remains preserved.
+    pub numeric_present_raw: u8,
+    pub numeric_value_word: i32,
+    pub value_string: Vec<u8>,
+    pub value_type: Vec<u8>,
+}
+impl Wire for DataPoint {
+    const MIN: usize = 25;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            id: Vec::read(r)?,
+            object_id: i32::read(r)?,
+            value_object_id: i32::read(r)?,
+            numeric_present_raw: u8::read(r)?,
+            numeric_value_word: i32::read(r)?,
+            value_string: Vec::read(r)?,
+            value_type: Vec::read(r)?,
+        })
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValuePair {
+    pub first: i32,
+    pub second: i32,
+}
+impl Wire for ValuePair {
+    const MIN: usize = 8;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            first: i32::read(r)?,
+            second: i32::read(r)?,
+        })
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DataSetRecord {
+    pub id: Vec<u8>,
+    pub object_id: i32,
+    pub type_name: Vec<u8>,
+    pub values: Vec<ValuePair>,
+}
+impl Wire for DataSetRecord {
+    const MIN: usize = 16;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            id: Vec::read(r)?,
+            object_id: i32::read(r)?,
+            type_name: Vec::read(r)?,
+            values: Vec::read(r)?,
+        })
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Repository {
+    pub opening_guard: Vec<u8>,
+    pub wire_version: u32,
+    pub last_object_id: u32,
+    pub ruleset_types: Vec<RulesetType>,
+    pub objects: Vec<Object>,
+    pub data_points: Vec<DataPoint>,
+    pub data_sets: Vec<DataSetRecord>,
+    pub closing_guard: Vec<u8>,
+}
+impl Wire for Repository {
+    const MIN: usize = 32;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            opening_guard: Vec::read(r)?,
+            wire_version: r.version(0)?,
+            last_object_id: u32::read(r)?,
+            ruleset_types: Vec::read(r)?,
+            objects: Vec::read(r)?,
+            data_points: Vec::read(r)?,
+            data_sets: Vec::read(r)?,
+            closing_guard: Vec::read(r)?,
+        })
+    }
+}
+macro_rules! root_reader {
+    ($ty:ty,$body:expr) => {
+        impl $ty {
+            pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
+                let (v, n, _) = Self::decode_prefix_with_items(bytes, limits)?;
+                if n != bytes.len() {
+                    return Err(Error::Trailing);
+                }
+                Ok(v)
+            }
+            pub fn decode_prefix_with_items(
+                bytes: &[u8],
+                limits: Limits,
+            ) -> Result<(Self, usize, usize), Error> {
+                let mut r = Reader {
+                    data: bytes,
+                    pos: 0,
+                    items: 0,
+                    limits,
+                };
+                let v = $body(&mut r)?;
+                Ok((v, r.pos, r.items))
+            }
+        }
+    };
+}
+root_reader!(Repository, Repository::read);
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Instance {
+    pub wire_version: u32,
+    pub shared: SharedRepository,
+    pub repository: Repository,
+}
+impl Wire for Instance {
+    const MIN: usize = 60;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            wire_version: r.version(4)?,
+            shared: SharedRepository::read(r)?,
+            repository: Repository::read(r)?,
+        })
+    }
+}
+root_reader!(Instance, Instance::read);
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -396,4 +575,155 @@ mod tests {
     }
     const TAGS: &[(usize, u32)] = &[(0, 4), (10, 3)];
     const COUNTS: &[usize] = &[4, 14, 18, 23, 29, 38, 66, 70, 75, 85, 89, 101, 124, 155];
+    const REPOSITORY_FIXTURE: &[u8] = &[
+        2, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 255, 255, 255, 1, 0, 0, 0, 1, 0, 0, 0, 255, 1, 0, 0,
+        0, 107, 0, 0, 0, 0, 2, 0, 0, 0, 0, 105, 1, 0, 0, 0, 249, 255, 255, 255, 255, 255, 255, 255,
+        1, 0, 0, 0, 84, 2, 0, 0, 0, 255, 78, 255, 255, 0, 128, 255, 255, 255, 255, 247, 255, 255,
+        255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 97, 249, 255, 255, 255, 255, 255,
+        255, 255, 0, 133, 255, 255, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 249, 255, 255, 255,
+        254, 255, 255, 255, 255, 255, 255, 255, 127, 0, 0, 0, 0, 1, 0, 0, 0, 122, 1, 0, 0, 0, 1, 0,
+        0, 0, 100, 249, 255, 255, 255, 1, 0, 0, 0, 116, 2, 0, 0, 0, 255, 255, 255, 255, 4, 0, 0, 0,
+        255, 255, 255, 255, 5, 0, 0, 0, 1, 0, 0, 0, 128,
+    ];
+    #[test]
+    fn repository_keeps_saved_strings_optional_numeric_words_and_duplicate_pairs() {
+        let limits = Limits {
+            max_bytes: REPOSITORY_FIXTURE.len(),
+            max_items: 23,
+        };
+        let (v, n, i) = Repository::decode_prefix_with_items(REPOSITORY_FIXTURE, limits).unwrap();
+        assert_eq!((n, i), (REPOSITORY_FIXTURE.len(), 23));
+        assert_eq!(v.last_object_id, u32::MAX);
+        assert_eq!(v.opening_guard, [0, 255]);
+        assert_eq!(v.closing_guard, [128]);
+        assert_eq!(
+            v.ruleset_types[0],
+            RulesetType {
+                type_name: vec![255],
+                kind: b"k".to_vec(),
+                name: vec![],
+                icon: vec![0, b'i']
+            }
+        );
+        let o = &v.objects[0];
+        assert_eq!((o.id, o.owner_player, o.plot_index), (-7, -1, -9));
+        assert_eq!(
+            o.component,
+            notifications::ComponentId {
+                owner: -1,
+                component_type: i16::MIN,
+                id: u32::MAX
+            }
+        );
+        assert_eq!(o.name, [255, b'N']);
+        assert_eq!(o.extra_data, [0]);
+        assert_eq!(
+            (
+                v.data_points[0].numeric_present_raw,
+                v.data_points[0].numeric_value_word
+            ),
+            (0, -123)
+        );
+        assert_eq!(
+            (
+                v.data_points[1].numeric_present_raw,
+                v.data_points[1].numeric_value_word
+            ),
+            (255, i32::MAX)
+        );
+        assert_eq!(
+            v.data_sets[0].values,
+            vec![
+                ValuePair {
+                    first: -1,
+                    second: 4
+                },
+                ValuePair {
+                    first: -1,
+                    second: 5
+                }
+            ]
+        );
+        let mut all = FIXTURE.to_vec();
+        all.extend(REPOSITORY_FIXTURE);
+        let (v, n, i) = Instance::decode_prefix_with_items(
+            &all,
+            Limits {
+                max_bytes: all.len(),
+                max_items: 40,
+            },
+        )
+        .unwrap();
+        assert_eq!((n, i), (all.len(), 40));
+        assert_eq!(v.repository.last_object_id, u32::MAX);
+        assert_eq!(v.shared.moments.len(), 1);
+        all.push(0x55);
+        assert_eq!(
+            Instance::decode_prefix_with_items(&all, Limits::default())
+                .unwrap()
+                .1,
+            all.len() - 1
+        );
+        assert_eq!(
+            Instance::decode(&all, Limits::default()),
+            Err(Error::Trailing)
+        );
+    }
+    #[test]
+    fn repository_and_composition_enforce_every_boundary_and_shared_item_budget() {
+        for cut in 0..REPOSITORY_FIXTURE.len() {
+            assert!(Repository::decode(&REPOSITORY_FIXTURE[..cut], Limits::default()).is_err());
+            assert!(Repository::decode(
+                REPOSITORY_FIXTURE,
+                Limits {
+                    max_bytes: cut,
+                    max_items: 23
+                }
+            )
+            .is_err());
+        }
+        for max_items in 0..23 {
+            assert!(Repository::decode(
+                REPOSITORY_FIXTURE,
+                Limits {
+                    max_bytes: REPOSITORY_FIXTURE.len(),
+                    max_items
+                }
+            )
+            .is_err());
+        }
+        for at in REPOSITORY_COUNTS {
+            let mut b = REPOSITORY_FIXTURE.to_vec();
+            b[*at..*at + 4].copy_from_slice(&0x7fffffffu32.to_le_bytes());
+            assert!(Repository::decode(&b, Limits::default()).is_err());
+        }
+        let mut b = REPOSITORY_FIXTURE.to_vec();
+        b[6..10].copy_from_slice(&99u32.to_le_bytes());
+        assert_eq!(
+            Repository::decode(&b, Limits::default()),
+            Err(Error::Version {
+                expected: 0,
+                actual: 99
+            })
+        );
+        let mut all = FIXTURE.to_vec();
+        all.extend(REPOSITORY_FIXTURE);
+        for max_items in 0..40 {
+            assert!(Instance::decode(
+                &all,
+                Limits {
+                    max_bytes: all.len(),
+                    max_items
+                }
+            )
+            .is_err());
+        }
+        for cut in 0..all.len() {
+            assert!(Instance::decode(&all[..cut], Limits::default()).is_err());
+        }
+    }
+    const REPOSITORY_COUNTS: &[usize] = &[
+        0, 14, 18, 23, 28, 32, 38, 50, 55, 73, 78, 82, 86, 104, 109, 113, 130, 134, 139, 143, 152,
+        157, 177,
+    ];
 }
