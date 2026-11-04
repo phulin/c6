@@ -6,6 +6,496 @@
 use crate::movement::MovementPoints;
 use crate::unit::PlotCoord;
 
+/// World getters are requested only at their native branch. Cached Formation
+/// scalars remain ordinary arguments; unavailable reached getters return errors.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PathBoolQuery {
+    ChildVisible,
+    ChildRevealed,
+    ChildMountain,
+    ChildImpassable,
+    ChildWater,
+    ParentWater,
+    ChildHills,
+    ChildCanyon,
+    CanEmbarkTo,
+    CanDisembarkTo { allow_unembarked: bool },
+    SlowedByZoc,
+    AtWar { other: i32, reverse: bool },
+    BarbarianClansActive,
+    ParentEnforcesBorders { owner: i32 },
+    OpenBordersFrom { owner: i32 },
+    AdjacentToFormation,
+    FeatureAllowPassthrough,
+    FeatureAllowDestination,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PathIntQuery {
+    ParentOwner,
+    ChildOwner,
+    FriendlyUnitsOfType,
+    PlacementResult,
+    ForeignCityOwner,
+    ForeignDefensibleDistrictOwner,
+    FeatureDanger,
+    AdjacentNonRevealedCount,
+    Influence,
+    BribeTurnsRemaining { owner: i32 },
+    BaseMoves { domain: i32 },
+}
+pub trait LazyPathQueries {
+    type Error;
+    fn boolean(&mut self, query: PathBoolQuery) -> Result<bool, Self::Error>;
+    fn integer(&mut self, query: PathIntQuery) -> Result<i32, Self::Error>;
+    /// None means absent feature/definition; Some(0) selects danger fallback.
+    fn feature_movement_count(&mut self) -> Result<Option<u32>, Self::Error>;
+    /// One HasVisibleEnemyUnit call returns the result and its bool out argument.
+    fn visible_enemy(&mut self) -> Result<(bool, bool), Self::Error>;
+    /// Actual MovementCost::Values construction and MovementCost continuation.
+    /// zoc_value is 0 for current budget, 1 for renewal, 2 for ZOC renewal.
+    fn movement_cost(
+        &mut self,
+        base_moves: i32,
+        available: MovementPoints,
+        zoc_value: i32,
+    ) -> Result<(MovementPoints, MovementPoints), Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LazyValidFacts {
+    pub path_flags: u32,
+    pub formation_location: PlotCoord,
+    pub destination: PlotCoord,
+    pub calculated_turns: i32,
+    pub is_human: bool,
+    pub is_automated: bool,
+    pub can_attack: bool,
+    pub domain: i32,
+    pub plot_unit_limit: u32,
+    pub includes_land_unit: bool,
+    pub includes_naval_unit: bool,
+    pub formation_owner: i32,
+    pub barbarian_tribe_index: i32,
+}
+
+/// PathValid's branch-local world calls. Cache initialization and movement memo
+/// calculation precede this function and are required even for a null parent.
+pub fn path_valid_lazy<Q: LazyPathQueries>(
+    child: ValidityNode,
+    ancestors: &[ValidityNode],
+    f: LazyValidFacts,
+    q: &mut Q,
+) -> Result<ValidityResult, Q::Error> {
+    let rejected = ValidityResult::default();
+    let accepted = ValidityResult {
+        valid: true,
+        abort: false,
+    };
+    let Some(parent) = ancestors.first() else {
+        return Ok(accepted);
+    };
+    if child.location == f.formation_location || child.cache.flags & 0x10000 != 0 {
+        return Ok(rejected);
+    }
+    // Native captures parent ownership before walking turn boundaries.
+    let parent_owner = q.integer(PathIntQuery::ParentOwner)?;
+    let automatic = !f.is_human || f.is_automated;
+    let mut previous_turn = -1;
+    let mut previous_obstruction = false;
+    for (index, node) in std::iter::once(&child).chain(ancestors.iter()).enumerate() {
+        let turn = if index == 0 {
+            f.calculated_turns
+        } else {
+            node.turns
+        };
+        let destination = node.location == f.destination;
+        let flags = node.cache.flags;
+        if previous_turn == -1 && destination
+            || previous_turn != -1 && (turn != previous_turn || previous_obstruction)
+        {
+            if flags & 2 != 0 {
+                if (flags & 0x400 == 0 || !f.can_attack)
+                    && u32::from(node.cache.friendly_units_of_type) >= f.plot_unit_limit
+                    && f.path_flags & 4 == 0
+                    && (f.path_flags & 0x1000 == 0 || turn < 2)
+                {
+                    return Ok(ValidityResult {
+                        valid: false,
+                        abort: destination,
+                    });
+                }
+                if flags & 0x84 == 4 || flags & 4 != 0 && f.path_flags & 4 == 0 && automatic {
+                    return Ok(rejected);
+                }
+                if flags & 0x88 == 8 || flags & 8 != 0 && f.path_flags & 4 == 0 && automatic {
+                    return Ok(rejected);
+                }
+                if f.path_flags & 0x80 != 0 && flags & 0x10 != 0 {
+                    return Ok(rejected);
+                }
+            }
+            if f.path_flags & 4 == 0 && flags & 0x200 != 0 {
+                return Ok(rejected);
+            }
+        }
+        previous_turn = turn;
+        previous_obstruction = flags & 0x6000 == 0x6000 || flags & 0x400 != 0;
+    }
+    let flags = child.cache.flags;
+    if f.includes_land_unit {
+        if flags & 0x100 != 0 {
+            if flags & 0x10 != 0 && parent.cache.flags & 0x10 == 0 {
+                if !q.boolean(PathBoolQuery::CanEmbarkTo)? {
+                    return Ok(rejected);
+                }
+            } else if parent.cache.flags & 0x10 != 0 && flags & 0x10 == 0 {
+                if !q.boolean(PathBoolQuery::CanDisembarkTo {
+                    allow_unembarked: true,
+                })? {
+                    return Ok(rejected);
+                }
+            } else if flags & 0x40 == 0 {
+                return Ok(rejected);
+            }
+        }
+    } else if f.includes_naval_unit && flags & 0x140 == 0x100 {
+        return Ok(rejected);
+    }
+    let attack_allowed = f.can_attack
+        && (if f.path_flags & 0x10 != 0 {
+            f.destination.x == -9999
+                || f.destination.y == -9999
+                || child.location.x == f.destination.x
+                    && (f.domain == 1 || child.location.y == f.destination.y)
+        } else {
+            f.path_flags & 0x1000 != 0 && f.calculated_turns > 1
+        });
+    if !attack_allowed && f.domain != 1 && flags & 0x3400 != 0 {
+        return Ok(rejected);
+    }
+    if f.domain != 1
+        && f.can_attack
+        && f.path_flags & 4 == 0
+        && flags & 0x2000 != 0
+        && q.boolean(PathBoolQuery::AdjacentToFormation)?
+        && flags & 0x4000 != 0
+        && parent.cache.flags & 0x8000 != 0
+    {
+        return Ok(rejected);
+    }
+    if f.path_flags & 2 != 0
+        && parent_owner != -1
+        && q.boolean(PathBoolQuery::AtWar {
+            other: parent_owner,
+            reverse: false,
+        })?
+    {
+        return Ok(rejected);
+    }
+    if parent_owner != -1
+        && f.barbarian_tribe_index >= 0
+        && q.boolean(PathBoolQuery::BarbarianClansActive)?
+        && q.integer(PathIntQuery::BribeTurnsRemaining {
+            owner: parent_owner,
+        })? > 0
+    {
+        return Ok(rejected);
+    }
+    if (f.path_flags & 8 != 0 || f.is_automated)
+        && parent.turns <= 1
+        && q.integer(PathIntQuery::Influence)? > 0
+    {
+        return Ok(rejected);
+    }
+    if f.path_flags & 0x8000 != 0
+        && parent.turns <= 1
+        && flags & 0x10 != 0
+        && q.integer(PathIntQuery::Influence)? > 0
+    {
+        return Ok(rejected);
+    }
+    if f.path_flags & 1 != 0 && parent.location != f.formation_location {
+        if parent.cache.flags & 0x100 == 0 {
+            return Ok(rejected);
+        }
+        if parent_owner != f.formation_owner
+            && parent_owner != -1
+            && q.boolean(PathBoolQuery::ParentEnforcesBorders {
+                owner: parent_owner,
+            })?
+            && !q.boolean(PathBoolQuery::AtWar {
+                other: parent_owner,
+                reverse: true,
+            })?
+            && !q.boolean(PathBoolQuery::OpenBordersFrom {
+                owner: parent_owner,
+            })?
+        {
+            return Ok(rejected);
+        }
+    }
+    Ok(accepted)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LazyCostFacts {
+    pub path_flags: u32,
+    pub child_cache_flags: u32,
+    pub includes_land_unit: bool,
+    pub is_human: bool,
+    pub is_automated: bool,
+    pub formation_owner: i32,
+    pub plot_unit_limit: u32,
+}
+
+/// PathCost after its movement memo calculation. Even when budget remains the
+/// native child IsWater query occurs before the conditional penalty block.
+pub fn path_cost_lazy<Q: LazyPathQueries>(
+    movement: MovementResult,
+    f: LazyCostFacts,
+    q: &mut Q,
+) -> Result<MovementPoints, Q::Error> {
+    let child_water = q.boolean(PathBoolQuery::ChildWater)?;
+    let automatic = !f.is_human || f.is_automated;
+    let revealed = f.child_cache_flags & 0x100 != 0;
+    let mut cost = movement.cost.0.wrapping_mul(1000);
+    if movement.remaining.0 <= 0 {
+        cost = cost.wrapping_add(4 << 8);
+        if revealed {
+            let mut add = |integer: i32| {
+                cost = cost.wrapping_add(integer.wrapping_shl(8));
+            };
+            if f.includes_land_unit
+                && !q.boolean(PathBoolQuery::ParentWater)?
+                && child_water
+                && !q.boolean(PathBoolQuery::CanEmbarkTo)?
+            {
+                add(1_000_000);
+            }
+            // The native repeats parent IsWater rather than retaining it.
+            if f.includes_land_unit
+                && q.boolean(PathBoolQuery::ParentWater)?
+                && !child_water
+                && !q.boolean(PathBoolQuery::CanDisembarkTo {
+                    allow_unembarked: true,
+                })?
+            {
+                add(1_000_000);
+            }
+            if f.path_flags & 0x40 != 0 && !q.boolean(PathBoolQuery::ChildHills)? {
+                add(300);
+            }
+            if f.plot_unit_limit != 0
+                && f.path_flags & 4 == 0
+                && q.integer(PathIntQuery::FriendlyUnitsOfType)? as u32 >= f.plot_unit_limit
+            {
+                add(1_000_000);
+            }
+            if q.boolean(PathBoolQuery::ChildMountain)? && automatic {
+                add(1_000_000);
+            }
+            if q.boolean(PathBoolQuery::ChildCanyon)? && automatic {
+                add(1_000_000);
+            }
+            if q.integer(PathIntQuery::ChildOwner)? != f.formation_owner {
+                add(3);
+            }
+        }
+    }
+    if f.path_flags & 0x40 != 0 {
+        let adjacent = q.integer(PathIntQuery::AdjacentNonRevealedCount)?;
+        let revealed = q.boolean(PathBoolQuery::ChildRevealed)?;
+        let visibility = 7i32
+            .wrapping_sub(adjacent)
+            .wrapping_sub(i32::from(!revealed))
+            .wrapping_mul(10);
+        cost = cost.wrapping_add(visibility.wrapping_shl(8));
+    }
+    if revealed && f.includes_land_unit && child_water && automatic {
+        cost = cost.wrapping_add(1000 << 8);
+    }
+    cost = cost.wrapping_add(if revealed || f.path_flags & 0x40 != 0 {
+        2 << 8
+    } else {
+        3 << 8
+    });
+    Ok(MovementPoints(cost))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LazyMovementFacts {
+    pub formation_location: PlotCoord,
+    pub path_flags: u32,
+    pub child_cache_flags: u32,
+    pub starting_remaining: MovementPoints,
+}
+
+/// CalculateMovementPoints without querying unused ZOC, domain, or cost inputs.
+/// The caller checks the identity-pair memo before calling this evaluator.
+pub fn calculate_movement_points_lazy<Q: LazyPathQueries>(
+    parent: Option<ParentMovement>,
+    f: LazyMovementFacts,
+    q: &mut Q,
+) -> Result<MovementResult, Q::Error> {
+    let Some(parent) = parent else {
+        return Ok(MovementResult {
+            remaining: f.starting_remaining,
+            turns: 1,
+            ..MovementResult::default()
+        });
+    };
+    let revealed = (parent.cache_flags | f.child_cache_flags) & 0x100 != 0;
+    let child_water = if revealed {
+        q.boolean(PathBoolQuery::ChildWater)?
+    } else {
+        false
+    };
+    let selected_domain = movement_domain(parent.cache_flags, f.child_cache_flags, child_water);
+    let mut available = parent.remaining;
+    let mut selected_base_moves = 0;
+    let mut parent_domain_base_moves = 0;
+    let mut slowed = false;
+    let mut zoc_value = 0;
+    if parent.remaining.0 <= 0 {
+        slowed = q.boolean(PathBoolQuery::SlowedByZoc)?;
+        if slowed {
+            let water = q.boolean(PathBoolQuery::ParentWater)?;
+            parent_domain_base_moves = q.integer(PathIntQuery::BaseMoves {
+                domain: if water { 0 } else { 2 },
+            })?;
+            available = MovementPoints::integer(parent_domain_base_moves);
+            zoc_value = 2;
+        } else {
+            selected_base_moves = q.integer(PathIntQuery::BaseMoves {
+                domain: selected_domain,
+            })?;
+            available = MovementPoints::integer(selected_base_moves);
+            zoc_value = 1;
+        }
+    }
+    let (movement_cost, to_plot_exit_cost) = if revealed {
+        // Native queries selected-domain base moves again for Values construction.
+        let base = q.integer(PathIntQuery::BaseMoves {
+            domain: selected_domain,
+        })?;
+        q.movement_cost(base, available, zoc_value)?
+    } else {
+        (MovementPoints(0), MovementPoints(0))
+    };
+    Ok(calculate_movement_points(
+        Some(parent),
+        MovementStep {
+            formation_location: f.formation_location,
+            path_flags: f.path_flags,
+            child_cache_flags: f.child_cache_flags,
+            child_is_water: child_water,
+            starting_remaining: f.starting_remaining,
+            selected_base_moves,
+            parent_domain_base_moves,
+            slowed_by_zoc: slowed,
+            movement_cost,
+            to_plot_exit_cost,
+        },
+    ))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LazyNodeCacheFacts {
+    pub formation_owner: i32,
+    pub formation_location: PlotCoord,
+    pub location: PlotCoord,
+    pub destination: PlotCoord,
+    pub plot_unit_limit: u32,
+    pub is_human: bool,
+    pub is_automated: bool,
+}
+
+/// Initialize per-node cache in native query/write order. Providers implement
+/// foreign city/district owner lookups with their native guarded null semantics.
+pub fn initialize_node_cache_lazy<Q: LazyPathQueries>(
+    cache: &mut NodeCache,
+    parent: Option<NodeCache>,
+    f: LazyNodeCacheFacts,
+    q: &mut Q,
+) -> Result<(), Q::Error> {
+    if cache.flags & 1 != 0 {
+        return Ok(());
+    }
+    fn bit(flags: &mut u32, mask: u32, value: bool) {
+        *flags = (*flags & !mask) | if value { mask } else { 0 };
+    }
+    cache.flags |= 1;
+    let visible = q.boolean(PathBoolQuery::ChildVisible)?;
+    bit(&mut cache.flags, 2, visible);
+    cache.friendly_units_of_type = (q.integer(PathIntQuery::FriendlyUnitsOfType)? as u32)
+        .wrapping_sub(u32::from(f.location == f.formation_location))
+        as u16;
+    let mountain = q.boolean(PathBoolQuery::ChildMountain)?;
+    bit(&mut cache.flags, 4, mountain);
+    let impassable = q.boolean(PathBoolQuery::ChildImpassable)?;
+    // Native rereads IsMountain only when IsImpassable returned true.
+    let blocked = impassable && !q.boolean(PathBoolQuery::ChildMountain)?;
+    bit(&mut cache.flags, 8, blocked);
+    let water = q.boolean(PathBoolQuery::ChildWater)?;
+    bit(&mut cache.flags, 0x10, water);
+    let placement = q.integer(PathIntQuery::PlacementResult)?;
+    bit(&mut cache.flags, 0x40, placement == 1);
+    bit(&mut cache.flags, 0x80, placement == 1);
+    let revealed = q.boolean(PathBoolQuery::ChildRevealed)?;
+    bit(&mut cache.flags, 0x100, revealed);
+    cache.flags &= 0xfffe61ff;
+    bit(
+        &mut cache.flags,
+        0x8000,
+        u32::from(cache.friendly_units_of_type) >= f.plot_unit_limit,
+    );
+    if visible {
+        let city_owner = q.integer(PathIntQuery::ForeignCityOwner)?;
+        if city_owner != -1 && city_owner != f.formation_owner {
+            let war = q.boolean(PathBoolQuery::AtWar {
+                other: city_owner,
+                reverse: false,
+            })?;
+            cache.flags |= if war { 0x400 } else { 0x200 };
+        }
+        let district_owner = q.integer(PathIntQuery::ForeignDefensibleDistrictOwner)?;
+        if district_owner != -1 && district_owner != f.formation_owner {
+            let war = q.boolean(PathBoolQuery::AtWar {
+                other: district_owner,
+                reverse: false,
+            })?;
+            cache.flags |= if war { 0x1000 } else { 0x800 };
+        }
+        let (enemy, out) = q.visible_enemy()?;
+        bit(&mut cache.flags, 0x2000, enemy);
+        bit(&mut cache.flags, 0x4000, out);
+        if let Some(count) = q.feature_movement_count()? {
+            let blocked = if count != 0 {
+                !q.boolean(PathBoolQuery::FeatureAllowPassthrough)?
+                    && (!q.boolean(PathBoolQuery::FeatureAllowDestination)?
+                        || f.location != f.destination)
+            } else {
+                q.integer(PathIntQuery::FeatureDanger)? > 0
+                    && f.location.x != f.destination.x
+                    && f.location.y != f.destination.y
+                    && (!f.is_human || f.is_automated)
+            };
+            if blocked {
+                cache.flags |= 0x10000;
+            }
+        }
+    } else {
+        cache.flags &= 0xfffe81ff;
+    }
+    let remembered = if revealed || parent.is_some_and(|p| p.flags & 0x100 != 0) {
+        water
+    } else {
+        parent.is_some_and(|p| p.flags & 0x20 != 0)
+    };
+    bit(&mut cache.flags, 0x20, remembered);
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct InitializationMember {
     pub embarked: bool,
@@ -632,6 +1122,22 @@ pub struct MovementMemo {
 }
 
 impl MovementMemo {
+    /// Check retained node identities before invoking any lazy world getter.
+    pub fn calculate_lazy<Q: LazyPathQueries>(
+        &mut self,
+        parent: Option<crate::pathfinder::NodeId>,
+        child: crate::pathfinder::NodeId,
+        parent_movement: Option<ParentMovement>,
+        facts: LazyMovementFacts,
+        queries: &mut Q,
+    ) -> Result<MovementResult, Q::Error> {
+        if self.last_pair != Some((parent, child)) {
+            self.result = calculate_movement_points_lazy(parent_movement, facts, queries)?;
+            self.last_pair = Some((parent, child));
+        }
+        Ok(self.result)
+    }
+
     pub fn calculate(
         &mut self,
         parent: Option<crate::pathfinder::NodeId>,
@@ -695,6 +1201,301 @@ pub fn prepare_partial_node(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
+    #[derive(Debug)]
+    enum QueryAnswer {
+        Bool(PathBoolQuery, bool),
+        Int(PathIntQuery, i32),
+        Feature(Option<u32>),
+        Enemy(bool, bool),
+        Cost(i32, MovementPoints, i32, MovementPoints, MovementPoints),
+    }
+    struct Queries(VecDeque<QueryAnswer>);
+    impl Queries {
+        fn new(answers: impl IntoIterator<Item = QueryAnswer>) -> Self {
+            Self(answers.into_iter().collect())
+        }
+        fn done(&self) {
+            assert!(self.0.is_empty(), "unreached scripted query: {:?}", self.0);
+        }
+    }
+    impl LazyPathQueries for Queries {
+        type Error = &'static str;
+        fn boolean(&mut self, q: PathBoolQuery) -> Result<bool, Self::Error> {
+            match self.0.pop_front() {
+                Some(QueryAnswer::Bool(expected, v)) if q == expected => Ok(v),
+                _ => Err("unexpected bool query"),
+            }
+        }
+        fn integer(&mut self, q: PathIntQuery) -> Result<i32, Self::Error> {
+            match self.0.pop_front() {
+                Some(QueryAnswer::Int(expected, v)) if q == expected => Ok(v),
+                _ => Err("unexpected integer query"),
+            }
+        }
+        fn feature_movement_count(&mut self) -> Result<Option<u32>, Self::Error> {
+            match self.0.pop_front() {
+                Some(QueryAnswer::Feature(v)) => Ok(v),
+                _ => Err("unexpected feature query"),
+            }
+        }
+        fn visible_enemy(&mut self) -> Result<(bool, bool), Self::Error> {
+            match self.0.pop_front() {
+                Some(QueryAnswer::Enemy(a, b)) => Ok((a, b)),
+                _ => Err("unexpected enemy query"),
+            }
+        }
+        fn movement_cost(
+            &mut self,
+            base: i32,
+            available: MovementPoints,
+            zoc: i32,
+        ) -> Result<(MovementPoints, MovementPoints), Self::Error> {
+            match self.0.pop_front() {
+                Some(QueryAnswer::Cost(b, a, z, c, e)) if (base, available, zoc) == (b, a, z) => {
+                    Ok((c, e))
+                }
+                _ => Err("unexpected movement-cost query"),
+            }
+        }
+    }
+
+    fn valid_facts() -> LazyValidFacts {
+        LazyValidFacts {
+            path_flags: 0,
+            formation_location: at(0, 0),
+            destination: at(9, 9),
+            calculated_turns: 1,
+            is_human: true,
+            is_automated: false,
+            can_attack: false,
+            domain: 2,
+            plot_unit_limit: 1,
+            includes_land_unit: true,
+            includes_naval_unit: false,
+            formation_owner: 0,
+            barbarian_tribe_index: -1,
+        }
+    }
+
+    #[test]
+    fn lazy_validity_does_not_query_unreached_diplomacy_or_influence() {
+        use PathBoolQuery as B;
+        use PathIntQuery as I;
+        use QueryAnswer::{Bool, Int};
+        let parent = ValidityNode {
+            location: at(1, 0),
+            turns: 1,
+            cache: NodeCache {
+                flags: 0x141,
+                friendly_units_of_type: 0,
+            },
+        };
+        let child = ValidityNode {
+            location: at(2, 0),
+            ..parent
+        };
+        let mut q = Queries::new([]);
+        assert!(
+            path_valid_lazy(child, &[], valid_facts(), &mut q)
+                .unwrap()
+                .valid
+        );
+        q.done();
+        let mut q = Queries::new([Int(I::ParentOwner, -1)]);
+        assert!(
+            path_valid_lazy(child, &[parent], valid_facts(), &mut q)
+                .unwrap()
+                .valid
+        );
+        q.done();
+        let water = ValidityNode {
+            cache: NodeCache {
+                flags: 0x111,
+                friendly_units_of_type: 0,
+            },
+            ..child
+        };
+        let mut q = Queries::new([Int(I::ParentOwner, -1), Bool(B::CanEmbarkTo, false)]);
+        assert!(
+            !path_valid_lazy(water, &[parent], valid_facts(), &mut q)
+                .unwrap()
+                .valid
+        );
+        q.done();
+        // Reached unknowns propagate errors rather than selecting false.
+        assert!(path_valid_lazy(water, &[parent], valid_facts(), &mut Queries::new([])).is_err());
+    }
+
+    #[test]
+    fn lazy_score_preserves_water_queries_and_skips_hidden_penalties() {
+        use PathBoolQuery as B;
+        use PathIntQuery as I;
+        use QueryAnswer::{Bool, Int};
+        let facts = LazyCostFacts {
+            path_flags: 0,
+            child_cache_flags: 0,
+            includes_land_unit: true,
+            is_human: true,
+            is_automated: false,
+            formation_owner: 0,
+            plot_unit_limit: 0,
+        };
+        let movement = MovementResult {
+            cost: MovementPoints(256),
+            remaining: MovementPoints(0),
+            ..MovementResult::default()
+        };
+        let mut q = Queries::new([Bool(B::ChildWater, true)]);
+        assert_eq!(
+            path_cost_lazy(movement, facts, &mut q).unwrap(),
+            MovementPoints(256_000 + 7 * 256)
+        );
+        q.done();
+        let mut q = Queries::new([
+            Bool(B::ChildWater, true),
+            Bool(B::ParentWater, false),
+            Bool(B::CanEmbarkTo, false),
+            Bool(B::ParentWater, false),
+            Bool(B::ChildMountain, false),
+            Bool(B::ChildCanyon, false),
+            Int(I::ChildOwner, 0),
+        ]);
+        assert_eq!(
+            path_cost_lazy(
+                movement,
+                LazyCostFacts {
+                    child_cache_flags: 0x100,
+                    ..facts
+                },
+                &mut q
+            )
+            .unwrap(),
+            MovementPoints(256_000 + 6 * 256 + 1_000_000 * 256)
+        );
+        q.done();
+    }
+
+    #[test]
+    fn lazy_cache_skips_all_hidden_enemy_and_feature_queries() {
+        use PathBoolQuery as B;
+        use PathIntQuery as I;
+        use QueryAnswer::{Bool, Enemy, Feature, Int};
+        let facts = LazyNodeCacheFacts {
+            formation_owner: 0,
+            formation_location: at(0, 0),
+            location: at(2, 0),
+            destination: at(9, 9),
+            plot_unit_limit: 1,
+            is_human: true,
+            is_automated: false,
+        };
+        let prefix = |visible| {
+            vec![
+                Bool(B::ChildVisible, visible),
+                Int(I::FriendlyUnitsOfType, 0),
+                Bool(B::ChildMountain, false),
+                Bool(B::ChildImpassable, false),
+                Bool(B::ChildWater, true),
+                Int(I::PlacementResult, 1),
+                Bool(B::ChildRevealed, false),
+            ]
+        };
+        let mut cache = NodeCache::default();
+        let mut q = Queries::new(prefix(false));
+        initialize_node_cache_lazy(&mut cache, None, facts, &mut q).unwrap();
+        q.done();
+        assert_eq!(cache.flags & 0x20, 0);
+        initialize_node_cache_lazy(&mut cache, None, facts, &mut Queries::new([])).unwrap();
+        cache.flags &= !1;
+        let mut answers = prefix(true);
+        answers.extend([
+            Int(I::ForeignCityOwner, -1),
+            Int(I::ForeignDefensibleDistrictOwner, -1),
+            Enemy(false, false),
+            Feature(None),
+        ]);
+        let mut q = Queries::new(answers);
+        initialize_node_cache_lazy(&mut cache, None, facts, &mut q).unwrap();
+        q.done();
+        assert_eq!(cache.flags & 0x10000, 0);
+    }
+
+    #[test]
+    fn lazy_movement_only_queries_zoc_when_renewing_and_memo_hits_skip_everything() {
+        use PathBoolQuery as B;
+        use PathIntQuery as I;
+        use QueryAnswer::{Bool, Cost, Int};
+        let parent = ParentMovement {
+            location: at(1, 0),
+            remaining: MovementPoints(256),
+            exit_cost: MovementPoints(0),
+            turns: 1,
+            cache_flags: 0x100,
+        };
+        let facts = LazyMovementFacts {
+            formation_location: at(0, 0),
+            path_flags: 0,
+            child_cache_flags: 0x100,
+            starting_remaining: MovementPoints(512),
+        };
+        let mut q = Queries::new([
+            Bool(B::ChildWater, true),
+            Int(I::BaseMoves { domain: 0 }, 3),
+            Cost(
+                3,
+                MovementPoints(256),
+                0,
+                MovementPoints(256),
+                MovementPoints(0),
+            ),
+        ]);
+        let mut memo = MovementMemo::default();
+        let result = memo
+            .calculate_lazy(
+                Some(crate::pathfinder::NodeId(0)),
+                crate::pathfinder::NodeId(1),
+                Some(parent),
+                facts,
+                &mut q,
+            )
+            .unwrap();
+        q.done();
+        assert_eq!(result.remaining, MovementPoints(0));
+        assert_eq!(
+            memo.calculate_lazy(
+                Some(crate::pathfinder::NodeId(0)),
+                crate::pathfinder::NodeId(1),
+                Some(parent),
+                facts,
+                &mut Queries::new([])
+            )
+            .unwrap(),
+            result
+        );
+        let parent = ParentMovement {
+            remaining: MovementPoints(0),
+            cache_flags: 0,
+            ..parent
+        };
+        let mut q = Queries::new([
+            Bool(B::SlowedByZoc, true),
+            Bool(B::ParentWater, false),
+            Int(I::BaseMoves { domain: 2 }, 3),
+        ]);
+        let result = calculate_movement_points_lazy(
+            Some(parent),
+            LazyMovementFacts {
+                child_cache_flags: 0,
+                ..facts
+            },
+            &mut q,
+        )
+        .unwrap();
+        q.done();
+        assert_eq!(result.remaining, MovementPoints(512));
+        assert_eq!(result.turns, 2);
+    }
     fn at(x: i32, y: i32) -> PlotCoord {
         PlotCoord { x, y }
     }
