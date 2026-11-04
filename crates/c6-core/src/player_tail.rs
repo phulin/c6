@@ -1,4 +1,4 @@
-//! Current Linux Player v47 final inline saved tail. No live Read effects or gameplay.
+//! Linux Player38/47 inline saved tail. Native remaps/listeners and gameplay do not run.
 use crate::unit::variants::{DecodeBudget, Limits as VariantLimits, TypedVariantMap, VariantError};
 use crate::unit::{HashValue, Limits};
 pub const PLAYER_VERSION: u32 = 47;
@@ -15,6 +15,7 @@ pub enum Error {
     Version { expected: u32, actual: u32 },
     NoncanonicalBool(u8),
     ContextMismatch,
+    UnsupportedLegacyWrite,
     Variant(VariantError),
 }
 impl std::fmt::Display for Error {
@@ -38,31 +39,71 @@ pub struct AdditionalPillaging {
     pub district_hash: u32,
     pub amount: i32,
 }
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AliveTail {
     pub agendas: Vec<u32>,
     pub agenda_visibilities: Vec<i32>,
-    pub foreign_continent_city_unit_class_hashes: Vec<u32>,
-    pub district_naval_unit_hashes: Vec<u32>,
+    /// None before v40: no wire payload; prior initialized native value is unknown.
+    pub foreign_continent_city_unit_class_hashes: Option<Vec<u32>>,
+    /// None before v40: no wire payload; prior initialized native value is unknown.
+    pub district_naval_unit_hashes: Option<Vec<u32>>,
     pub improvement_hashes: Vec<u32>,
     pub special_allowed_projects: Vec<HashValue<i32>>,
     pub chop_behaviors: Vec<ChopFeatureBehavior>,
     pub additional_pillaging: Vec<AdditionalPillaging>,
     pub co2_generation_reductions: Vec<i32>,
 }
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+impl Default for AliveTail {
+    fn default() -> Self {
+        Self {
+            agendas: Vec::new(),
+            agenda_visibilities: Vec::new(),
+            foreign_continent_city_unit_class_hashes: Some(Vec::new()),
+            district_naval_unit_hashes: Some(Vec::new()),
+            improvement_hashes: Vec::new(),
+            special_allowed_projects: Vec::new(),
+            chop_behaviors: Vec::new(),
+            additional_pillaging: Vec::new(),
+            co2_generation_reductions: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Tail {
+    /// Context metadata; no extra word is serialized here.
+    pub player_version: u32,
     /// Present exactly when the enclosing Player header says m_bWasEverAlive.
     pub alive: Option<AliveTail>,
     pub properties: TypedVariantMap,
+    /// Paired table since v46; empty at v38 means no serialized pairs, not an empty native map.
     pub improvement_replacements: Vec<HashValue<u32>>,
+    /// Older listed improvement hashes. Native Read maps each listed improvement to GOODY_HUT;
+    /// that definition lookup/assignment is deliberately not executed here.
+    pub legacy_improvement_replacement_hashes: Option<Vec<u32>>,
     pub random_event_hashes: Vec<u32>,
     pub terrain_work_impassable: Vec<i32>,
     pub random_event_no_unit_damage: Vec<i32>,
     pub random_event_modified_damage_opposing_player: Vec<i32>,
 }
+impl Default for Tail {
+    fn default() -> Self {
+        Self {
+            player_version: 47,
+            alive: None,
+            properties: TypedVariantMap::default(),
+            improvement_replacements: Vec::new(),
+            legacy_improvement_replacement_hashes: None,
+            random_event_hashes: Vec::new(),
+            terrain_work_impassable: Vec::new(),
+            random_event_no_unit_damage: Vec::new(),
+            random_event_modified_damage_opposing_player: Vec::new(),
+        }
+    }
+}
+
 fn context(c: Context) -> Result<(), Error> {
-    if c.player_version != PLAYER_VERSION {
+    if !matches!(c.player_version, 38 | PLAYER_VERSION) {
         return Err(Error::Version {
             expected: PLAYER_VERSION,
             actual: c.player_version,
@@ -154,8 +195,16 @@ impl<'a> Reader<'a> {
             Some(AliveTail {
                 agendas: self.list(4, Self::u32)?,
                 agenda_visibilities: self.list(4, Self::i32)?,
-                foreign_continent_city_unit_class_hashes: self.list(4, Self::u32)?,
-                district_naval_unit_hashes: self.list(4, Self::u32)?,
+                foreign_continent_city_unit_class_hashes: if c.player_version == 47 {
+                    Some(self.list(4, Self::u32)?)
+                } else {
+                    None
+                },
+                district_naval_unit_hashes: if c.player_version == 47 {
+                    Some(self.list(4, Self::u32)?)
+                } else {
+                    None
+                },
                 improvement_hashes: self.list(4, Self::u32)?,
                 special_allowed_projects: self.list(8, |r| {
                     Ok(HashValue {
@@ -163,23 +212,37 @@ impl<'a> Reader<'a> {
                         value: r.i32()?,
                     })
                 })?,
-                chop_behaviors: self.list(13, |r| {
-                    Ok(ChopFeatureBehavior {
-                        feature_wire: r.i32()?,
-                        ban: r.bool()?,
-                        yield_type: r.i32()?,
-                        amount: r.i32()?,
-                    })
-                })?,
-                additional_pillaging: self.list(16, |r| {
-                    Ok(AdditionalPillaging {
-                        plunder_type: r.i32()?,
-                        improvement_hash: r.u32()?,
-                        district_hash: r.u32()?,
-                        amount: r.i32()?,
-                    })
-                })?,
-                co2_generation_reductions: self.list(4, Self::i32)?,
+                chop_behaviors: if c.player_version == 47 {
+                    self.list(13, |r| {
+                        Ok(ChopFeatureBehavior {
+                            feature_wire: r.i32()?,
+                            ban: r.bool()?,
+                            yield_type: r.i32()?,
+                            amount: r.i32()?,
+                        })
+                    })?
+                } else {
+                    Vec::new()
+                },
+                additional_pillaging: if c.player_version == 47 {
+                    self.list(16, |r| {
+                        Ok(AdditionalPillaging {
+                            plunder_type: r.i32()?,
+                            improvement_hash: r.u32()?,
+                            district_hash: r.u32()?,
+                            amount: r.i32()?,
+                        })
+                    })?
+                } else {
+                    Vec::new()
+                },
+                co2_generation_reductions: if c.player_version == 47 {
+                    self.list(4, Self::i32)?
+                } else if self.collect {
+                    vec![0; 4]
+                } else {
+                    Vec::new()
+                },
             })
         } else {
             None
@@ -197,14 +260,24 @@ impl<'a> Reader<'a> {
             .ok_or(Error::ResourceLimit)?;
         self.bytes(n)?;
         Ok(Tail {
+            player_version: c.player_version,
             alive,
             properties,
-            improvement_replacements: self.list(8, |r| {
-                Ok(HashValue {
-                    definition_hash: r.u32()?,
-                    value: r.u32()?,
-                })
-            })?,
+            improvement_replacements: if c.player_version == 47 {
+                self.list(8, |r| {
+                    Ok(HashValue {
+                        definition_hash: r.u32()?,
+                        value: r.u32()?,
+                    })
+                })?
+            } else {
+                Vec::new()
+            },
+            legacy_improvement_replacement_hashes: if c.player_version == 38 {
+                Some(self.list(4, Self::u32)?)
+            } else {
+                None
+            },
             random_event_hashes: self.list(4, Self::u32)?,
             terrain_work_impassable: self.list(4, Self::i32)?,
             random_event_no_unit_damage: self.list(4, Self::i32)?,
@@ -273,16 +346,27 @@ impl Writer {
         Ok(())
     }
     fn tail(&mut self, t: &Tail, c: Context) -> Result<(), Error> {
-        if t.alive.is_some() != c.was_ever_alive {
+        if t.player_version != c.player_version
+            || t.legacy_improvement_replacement_hashes.is_some()
+            || t.alive.is_some() != c.was_ever_alive
+        {
             return Err(Error::ContextMismatch);
         }
         if let Some(a) = &t.alive {
             self.list(&a.agendas, |w, x| w.u32(*x))?;
             self.list(&a.agenda_visibilities, |w, x| w.i32(*x))?;
-            self.list(&a.foreign_continent_city_unit_class_hashes, |w, x| {
-                w.u32(*x)
-            })?;
-            self.list(&a.district_naval_unit_hashes, |w, x| w.u32(*x))?;
+            self.list(
+                a.foreign_continent_city_unit_class_hashes
+                    .as_ref()
+                    .ok_or(Error::ContextMismatch)?,
+                |w, x| w.u32(*x),
+            )?;
+            self.list(
+                a.district_naval_unit_hashes
+                    .as_ref()
+                    .ok_or(Error::ContextMismatch)?,
+                |w, x| w.u32(*x),
+            )?;
             self.list(&a.improvement_hashes, |w, x| w.u32(*x))?;
             self.list(&a.special_allowed_projects, |w, x| {
                 w.u32(x.definition_hash)?;
@@ -369,6 +453,9 @@ impl Tail {
     }
     pub fn encode_with_items(&self, c: Context, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
         context(c)?;
+        if c.player_version != PLAYER_VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         let mut w = Writer {
             data: Vec::new(),
             pos: 0,
@@ -409,8 +496,8 @@ mod tests {
             alive: alive.then(|| AliveTail {
                 agendas: vec![u32::MAX, 0x81234567, 0x81234567],
                 agenda_visibilities: vec![-1, i32::MIN, i32::MAX],
-                foreign_continent_city_unit_class_hashes: vec![u32::MAX],
-                district_naval_unit_hashes: vec![0],
+                foreign_continent_city_unit_class_hashes: Some(vec![u32::MAX]),
+                district_naval_unit_hashes: Some(vec![0]),
                 improvement_hashes: vec![0x87654321],
                 special_allowed_projects: vec![
                     HashValue {
@@ -452,6 +539,110 @@ mod tests {
             random_event_modified_damage_opposing_player: vec![i32::MAX],
             ..Tail::default()
         }
+    }
+    #[test]
+    fn legacy38_omissions_defaults_and_legacy_replacement_keys() {
+        fn words(raw: &mut Vec<u8>, xs: &[u32]) {
+            for v in xs {
+                raw.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        for alive in [false, true] {
+            let mut raw = Vec::new();
+            if alive {
+                words(
+                    &mut raw,
+                    &[
+                        2,
+                        u32::MAX,
+                        0x80000001,
+                        1,
+                        i32::MIN as u32,
+                        1,
+                        0x12345678,
+                        1,
+                        u32::MAX,
+                        (-257i32) as u32,
+                    ],
+                );
+            }
+            words(
+                &mut raw,
+                &[
+                    0,
+                    2,
+                    0x80000001,
+                    u32::MAX,
+                    1,
+                    0x87654321,
+                    1,
+                    i32::MIN as u32,
+                    1,
+                    u32::MAX,
+                    1,
+                    i32::MAX as u32,
+                ],
+            );
+            let (bytes, items) = if alive { (88, 11) } else { (48, 6) };
+            assert_eq!(raw.len(), bytes);
+            let c = Context {
+                player_version: 38,
+                was_ever_alive: alive,
+            };
+            let cap = Limits {
+                max_bytes: bytes,
+                max_items: items,
+            };
+            let (v, n, i) = Tail::decode_prefix_with_items(&raw, c, cap).unwrap();
+            assert_eq!((n, i), (bytes, items));
+            assert_eq!(v.player_version, 38);
+            assert_eq!(
+                v.legacy_improvement_replacement_hashes,
+                Some(vec![0x80000001, u32::MAX])
+            );
+            assert!(v.improvement_replacements.is_empty());
+            assert_eq!(v.random_event_hashes, [0x87654321]);
+            assert_eq!(v.terrain_work_impassable, [i32::MIN]);
+            assert_eq!(v.random_event_no_unit_damage, [-1]);
+            assert_eq!(v.random_event_modified_damage_opposing_player, [i32::MAX]);
+            if let Some(a) = &v.alive {
+                assert_eq!(a.foreign_continent_city_unit_class_hashes, None);
+                assert_eq!(a.district_naval_unit_hashes, None);
+                assert!(a.chop_behaviors.is_empty());
+                assert!(a.additional_pillaging.is_empty());
+                assert_eq!(a.co2_generation_reductions, [0; 4]);
+                assert_eq!(a.special_allowed_projects[0].value, -257);
+            }
+            assert_eq!(v.encode(c, cap), Err(Error::UnsupportedLegacyWrite));
+            assert_eq!(v.encode(context(alive), cap), Err(Error::ContextMismatch));
+            for n in 0..raw.len() {
+                assert!(Tail::decode(&raw[..n], c, cap).is_err());
+            }
+            for short in [
+                Limits {
+                    max_bytes: bytes - 1,
+                    ..cap
+                },
+                Limits {
+                    max_items: items - 1,
+                    ..cap
+                },
+            ] {
+                assert!(Tail::decode(&raw, c, short).is_err());
+            }
+            raw.extend_from_slice(&0xdeadbeefu32.to_le_bytes());
+            assert_eq!(
+                Tail::decode_prefix_with_items(&raw, c, cap),
+                Ok((v, bytes, items))
+            );
+            assert_eq!(Tail::decode(&raw, c, cap), Err(Error::Trailing));
+        }
+        let mut current = sample(true);
+        current.alive.as_mut().unwrap().district_naval_unit_hashes = None;
+        assert_eq!(
+            current.encode(context(true), Limits::default()),
+            Err(Error::ContextMismatch)
+        );
     }
     #[test]
     fn both_branches_roundtrip_caps_prefix_and_every_truncation() {

@@ -2566,6 +2566,8 @@ pub(crate) mod tests {
     // Common false-branch saved tail; all fields explicit, no runtime defaults.
     fn false_tail_carrier() -> player_tail::Tail {
         player_tail::Tail {
+            player_version:47,
+            legacy_improvement_replacement_hashes:None,
             alive: None,
             properties: unit::variants::TypedVariantMap {
                 header: unit::variants::KeyedHeader::Count,
