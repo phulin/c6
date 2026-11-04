@@ -275,6 +275,15 @@ pub fn plan(manager: &Manager, inputs: Inputs<'_>) -> Result<Plan, Error> {
             };
             context_option = Some(context);
             if let Some(retired) = outcome.retired_statement {
+                // Unknown alias ownership is outside this finite profile. Never
+                // retire the payload while a surviving list still refers to it.
+                if views(manager, &plan.overlays)?.iter().any(|s| {
+                    s.pending.iter().any(|p| p.statement == retired)
+                        || s.history.contains(&retired)
+                        || s.queued.contains(&retired)
+                }) {
+                    return Err(Error::Conflict);
+                }
                 if plan.retired.contains(&retired) {
                     return Err(Error::Conflict);
                 }
@@ -647,5 +656,21 @@ mod tests {
         manager.pending_actions_mut();
         assert_eq!(manager.drain_revision, None);
         assert_eq!(manager.open_sessions()[0].pending.len(), 1);
+    }
+    #[test]
+    fn surviving_alias_refuses_retirement_without_committing_prior_leaf_changes() {
+        let facts = [
+            info(1, 7, 1, 0, StatementKind::Response),
+            info(2, 7, 1, 0, StatementKind::Response),
+        ];
+        let mut manager = initialized(&facts, None);
+        // Simulate an unsupported retained alias beyond the importer's unique
+        // list-owner profile. Planning must still refuse instead of dangling it.
+        manager.routing.as_mut().unwrap().metadata[0]
+            .history
+            .push(facts[1].handle);
+        let before = format!("{manager:?}");
+        assert_eq!(plan(&manager, inputs(None)).unwrap_err(), Error::Conflict);
+        assert_eq!(format!("{manager:?}"), before);
     }
 }

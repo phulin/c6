@@ -358,6 +358,41 @@ impl Manager {
         }
         Ok(())
     }
+    fn validate_retirement_references(
+        &self,
+        plan: &statement::Plan,
+    ) -> Result<(), statement::Error> {
+        if self.statements.is_none() {
+            return Ok(());
+        }
+        let Some(retired) = plan.retired_statement() else {
+            return Ok(());
+        };
+        let metadata = self
+            .session_metadata()
+            .map_err(|_| statement::Error::Conflict)?;
+        let mut removed_target_reference = false;
+        for (session, metadata) in self.open_sessions.iter().zip(metadata) {
+            if metadata.history.contains(&retired) || metadata.queued.contains(&retired) {
+                return Err(statement::Error::Conflict);
+            }
+            for pending in &session.pending {
+                if pending.statement != retired {
+                    continue;
+                }
+                // ProcessResponse removes exactly one pending entry on its
+                // selected target. Every other alias remains unsupported.
+                if plan.effect() != statement::Effect::ProcessResponse
+                    || plan.target() != Some(metadata.header)
+                    || removed_target_reference
+                {
+                    return Err(statement::Error::Conflict);
+                }
+                removed_target_reference = true;
+            }
+        }
+        Ok(())
+    }
     fn retire_owned_statement(&mut self, retired: Option<StatementHandle>) {
         if let (Some(facts), Some(retired)) = (&mut self.statements, retired) {
             facts.retain(|f| f.handle != retired);
@@ -419,6 +454,7 @@ impl Manager {
         incoming: Option<StatementInfo>,
     ) -> Result<statement::Outcome, statement::Error> {
         self.validate_owned_statement(context, incoming, plan.retired_statement())?;
+        self.validate_retirement_references(&plan)?;
         self.invalidate_drain_plans();
         let Some(target) = plan.target() else {
             plan.validate(context, incoming, None)?;
@@ -1098,5 +1134,70 @@ mod inventory_tests {
             manager.session_metadata().unwrap()[0].history,
             [first.handle]
         );
+    }
+    #[test]
+    fn legacy_apply_refuses_retirement_of_surviving_cross_session_reference() {
+        let incoming = StatementInfo {
+            handle: StatementHandle(1),
+            session_id: 7,
+            from: 1,
+            to: 0,
+            kind: statement::StatementKind::Response,
+        };
+        let retired = StatementInfo {
+            handle: StatementHandle(2),
+            ..incoming
+        };
+        let observed = ObservedSession {
+            header: SessionHeader {
+                handle: SessionHandle(10),
+                id: 7,
+                from: 1,
+                to: 0,
+            },
+            history: vec![],
+            queued: vec![],
+            pending: vec![aftermath::Pending {
+                statement: retired.handle,
+                from: 1,
+                to: 0,
+            }],
+        };
+        let other = ObservedSession {
+            header: SessionHeader {
+                handle: SessionHandle(11),
+                id: 8,
+                from: 1,
+                to: 0,
+            },
+            history: vec![],
+            queued: vec![],
+            pending: vec![],
+        };
+        let mut manager =
+            Manager::from_observed_sessions(vec![], vec![], vec![observed, other], None, 20)
+                .unwrap();
+        manager
+            .initialize_statement_inventory(vec![incoming, retired])
+            .unwrap();
+        // This unsupported alias could otherwise outlive target retirement.
+        manager.routing.as_mut().unwrap().metadata[1]
+            .queued
+            .push(retired.handle);
+        let context = Context {
+            local_player: 0,
+            game_mode: statement::SINGLE_PLAYER_MODE,
+            active_session: None,
+            logging: statement::Logging::OrdinaryHostDisabled,
+        };
+        let plan = manager
+            .plan_statement(context, Some(incoming), &[])
+            .unwrap();
+        let before = format!("{manager:?}");
+        assert_eq!(
+            manager.apply_statement(plan, context, Some(incoming)),
+            Err(statement::Error::Conflict)
+        );
+        assert_eq!(format!("{manager:?}"), before);
     }
 }
