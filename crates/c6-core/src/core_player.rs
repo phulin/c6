@@ -1744,6 +1744,7 @@ pub(crate) mod tests {
             global_defense_bonus: -994,
             extra_steal_tech_boosts: -993,
             mission_histories: vec![pmod::MissionHistoryRecord {
+                wire_version: 17,
                 name_index: -992,
                 operation_hash: 3735879689,
                 target_city_id: 3735879690,

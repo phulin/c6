@@ -261,18 +261,76 @@ record!(CityWithSources, true, {
     city_id:u32,
     expire_turn:i32,
 });
-record!(MissionHistoryRecord, true, {
-    name_index:i32,
-    operation_hash:u32,
-    target_city_id:u32,
-    target_player_ordinal:i32,
-    target_plot_index:i32,
-    completion_turn:i32,
-    initial_result_ordinal:i32,
-    escape_result_ordinal:i32,
-    level_after_mission:i32,
-    loot_info:i32,
-});
+/// Independently tagged mission-history wire data. The operation remains a
+/// wire hash before native definition lookup; result enum bits are preserved.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MissionHistoryRecord {
+    pub wire_version: u32,
+    pub name_index: i32,
+    pub operation_hash: u32,
+    pub target_city_id: u32,
+    pub target_player_ordinal: i32,
+    pub target_plot_index: i32,
+    pub completion_turn: i32,
+    pub initial_result_ordinal: i32,
+    pub escape_result_ordinal: i32,
+    pub level_after_mission: i32,
+    pub loot_info: i32,
+}
+impl Wire for MissionHistoryRecord {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "MissionHistoryRecord";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | 17) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            name_index: <i32 as Wire>::read(r)?,
+            operation_hash: <u32 as Wire>::read(r)?,
+            target_city_id: <u32 as Wire>::read(r)?,
+            target_player_ordinal: <i32 as Wire>::read(r)?,
+            target_plot_index: <i32 as Wire>::read(r)?,
+            completion_turn: <i32 as Wire>::read(r)?,
+            initial_result_ordinal: <i32 as Wire>::read(r)?,
+            escape_result_ordinal: <i32 as Wire>::read(r)?,
+            level_after_mission: <i32 as Wire>::read(r)?,
+            loot_info: <i32 as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.name_index.write(w)?;
+        self.operation_hash.write(w)?;
+        self.target_city_id.write(w)?;
+        self.target_player_ordinal.write(w)?;
+        self.target_plot_index.write(w)?;
+        self.completion_turn.write(w)?;
+        self.initial_result_ordinal.write(w)?;
+        self.escape_result_ordinal.write(w)?;
+        self.level_after_mission.write(w)?;
+        self.loot_info.write(w)?;
+        Ok(())
+    }
+}
+
 record!(CounterSpyYieldAward, true, {
     yield_ordinal:i32,
     amount:i32,
@@ -478,6 +536,7 @@ mod tests {
             global_defense_bonus: i32::MAX,
             extra_steal_tech_boosts: -19,
             mission_histories: vec![MissionHistoryRecord {
+                wire_version: VERSION,
                 name_index: 41,
                 operation_hash: 0xf1234567,
                 target_city_id: 0xffffffff,
@@ -567,6 +626,94 @@ mod tests {
         assert_eq!(value.encode(limits()).unwrap(), bytes);
         assert_eq!(Espionage::decode(&bytes, limits()).unwrap(), value);
         assert_eq!(value.encode_with_items(limits()).unwrap().1, 11);
+    }
+    #[test]
+    fn mission_history15_keeps_all_signed_fields_and_operation_hash() {
+        let mut bytes = Vec::new();
+        for word in [
+            15u32,
+            (-17i32) as u32,
+            0xfedcba98,
+            0xab010007,
+            u32::MAX,
+            123,
+            (-257i32) as u32,
+            i32::MIN as u32,
+            i32::MAX as u32,
+            9,
+            (-7i32) as u32,
+        ] {
+            bytes.extend(word.to_le_bytes());
+        }
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 0,
+        };
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            allocated: 0,
+            limits: exact,
+            version_component: "Espionage",
+        };
+        let v = MissionHistoryRecord::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (44, 0));
+        assert_eq!(v.wire_version, 15);
+        assert_eq!(
+            (v.name_index, v.operation_hash, v.target_city_id),
+            (-17, 0xfedcba98, 0xab010007)
+        );
+        assert_eq!(
+            (
+                v.target_player_ordinal,
+                v.target_plot_index,
+                v.completion_turn
+            ),
+            (-1, 123, -257)
+        );
+        assert_eq!(
+            (v.initial_result_ordinal, v.escape_result_ordinal),
+            (i32::MIN, i32::MAX)
+        );
+        assert_eq!((v.level_after_mission, v.loot_info), (9, -7));
+        let mut w = Writer {
+            data: vec![0xaa],
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert_eq!(w.data, [0xaa]);
+        for n in 0..end {
+            let mut r = Reader {
+                data: &bytes[..n],
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: exact,
+                version_component: "Espionage",
+            };
+            assert!(MissionHistoryRecord::read(&mut r).is_err(), "{n}");
+        }
+        let mut bad = bytes.clone();
+        bad[..4].copy_from_slice(&16u32.to_le_bytes());
+        let mut r = Reader {
+            data: &bad,
+            pos: 0,
+            items: 0,
+            allocated: 0,
+            limits: exact,
+            version_component: "Espionage",
+        };
+        assert_eq!(
+            MissionHistoryRecord::read(&mut r),
+            Err(Error::Version {
+                expected: 17,
+                actual: 16
+            })
+        );
     }
     fn off_map_spy15_literal() -> Vec<u8> {
         let mut bytes = Vec::new();
@@ -683,7 +830,7 @@ mod tests {
             b.extend(v.to_le_bytes());
         }
         let history_tag = b.len();
-        for v in [17i32, -4, -1, -5, -6, -7, -8, -9, -10, -11, -12] {
+        for v in [15i32, -4, -1, -5, -6, -7, -8, -9, -10, -11, -12] {
             b.extend(v.to_le_bytes());
         }
         let end = b.len();
@@ -728,12 +875,12 @@ mod tests {
             Err(Error::ResourceLimit)
         );
         let mut nested = b.clone();
-        nested[history_tag..history_tag + 4].copy_from_slice(&15u32.to_le_bytes());
+        nested[history_tag..history_tag + 4].copy_from_slice(&16u32.to_le_bytes());
         assert_eq!(
             Espionage::decode_prefix(&nested, exact),
             Err(Error::Version {
                 expected: 17,
-                actual: 15
+                actual: 16
             })
         );
         let boundary = Espionage::decode_prefix_with_boundary(&nested, exact).unwrap_err();
@@ -745,7 +892,7 @@ mod tests {
             boundary.error,
             Error::Version {
                 expected: 17,
-                actual: 15
+                actual: 16
             }
         );
         let mut unknown = b.clone();
