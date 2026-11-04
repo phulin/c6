@@ -65,6 +65,13 @@ fn pair(rows: &[HashValue<i32>], hash: u32) -> Result<i32, Error> {
 fn round(raw: i32) -> i32 {
     (raw >> 8).wrapping_add(((raw as u32 >> 7) & 1) as i32)
 }
+fn citizen_gold(population: i32, coefficient: i32) -> i32 {
+    if coefficient > 0 {
+        population.wrapping_mul(coefficient).wrapping_shl(8)
+    } else {
+        0
+    }
+}
 fn production(city: &c6_core::city::City, kind: u32) -> (i32, i32) {
     let (flat, multiplier) = match kind {
         0x15d11e18 => (
@@ -215,7 +222,10 @@ pub fn calculate(
         modifier = modifier.wrapping_add(percent);
     }
     if Some(yield_index) == definitions.yield_index(b"YIELD_GOLD") {
-        base = base.wrapping_add(city.gold.gold_from_citizens.wrapping_shl(8));
+        base = base.wrapping_add(citizen_gold(
+            city.header.population,
+            city.gold.gold_from_citizens,
+        ));
     }
     if city.religion.majority_religion_hash != c6_core::city_religion::NO_RELIGION {
         return Err(Error::Unsupported(
@@ -284,6 +294,12 @@ pub fn calculate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn citizen_gold_uses_positive_coefficient_and_wrapping_population_product() {
+        assert_eq!(citizen_gold(4, 3), 12 * 256);
+        assert_eq!(citizen_gold(4, -3), 0);
+        assert_eq!(citizen_gold(i32::MAX, 2), -512);
+    }
     #[test]
     fn native_round_half_ties_are_toward_positive_infinity() {
         for (raw, expected) in [
