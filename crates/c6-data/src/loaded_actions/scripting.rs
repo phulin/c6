@@ -756,7 +756,7 @@ mod tests {
         let mut intern = InternExecutionState {
             count: 32,
             capacity: 64,
-            scan_index: 0,
+            scan_index: Some(0),
             known_absent: ["CanStartOperation".into()].into(),
         };
         let mut environment = Environment;
