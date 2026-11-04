@@ -6,7 +6,10 @@ use crate::formation_initialization::FormationRuntime;
 use crate::loaded_components::{self, OwnedCore, RetainedPlayer};
 use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 /// Unique input storage moves without copying; explicitly shared immutable
 /// storage remains shared. Neither variant permits an implicit World clone.
@@ -90,6 +93,8 @@ mod tests {
             formation_runtime: None,
             limits: AssemblyLimits::default(),
             revision: 0,
+            instance_identity: fresh_state_identity().unwrap(),
+            admission_generation: 0,
             observed_snapshot: None,
             game_relations: None,
             game_relations_source: None,
@@ -221,6 +226,67 @@ mod tests {
                 id: 0x10001,
             },
         )
+    }
+    #[test]
+    fn action_stamps_are_instance_specific_move_stable_and_track_admissions() {
+        let a = state();
+        let b = state();
+        assert_eq!(a.binding(), b.binding());
+        assert_eq!(a.revision(), b.revision());
+        assert_ne!(a.action_stamp(), b.action_stamp());
+        let initial = a.action_stamp();
+        let mut moved = *Box::new(a);
+        assert_eq!(moved.action_stamp(), initial);
+        moved.bind_controls(controls(&moved)).unwrap();
+        let controlled = moved.action_stamp();
+        assert_ne!(controlled, initial);
+        assert_eq!(moved.revision(), 0);
+        moved.initialize_formations().unwrap();
+        let initialized = moved.action_stamp();
+        assert_ne!(initialized, controlled);
+        assert_eq!(moved.revision(), 0);
+        assert!(moved.initialize_formations().is_err());
+        assert_eq!(moved.action_stamp(), initialized);
+        let owner = moved.world.players()[0].owner();
+        moved.formation_with_runtime_mut(owner, 1).unwrap();
+        assert_ne!(moved.action_stamp(), initialized);
+    }
+    #[test]
+    fn failed_admissions_and_generation_exhaustion_do_not_write_state() {
+        let mut state = state();
+        let initial = state.action_stamp();
+        let mut invalid = controls(&state);
+        invalid.pause_storage = Some(2);
+        assert!(matches!(state.bind_controls(invalid), Err(Error::Binding)));
+        assert_eq!(state.action_stamp(), initial);
+        state.admission_generation = u64::MAX;
+        let exhausted = state.action_stamp();
+        assert!(matches!(
+            state.bind_controls(controls(&state)),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(state.action_stamp(), exhausted);
+        assert!(state.controls.is_none());
+        assert!(state.world.player_mapping.is_none());
+        assert!(state.world.player_slot_present.is_none());
+        assert!(state.world.players()[0].slot_status.is_none());
+        assert!(matches!(
+            state.initialize_formations(),
+            Err(Error::ResourceLimit)
+        ));
+        assert!(state.formation_runtime.is_none());
+        assert_eq!(state.action_stamp(), exhausted);
+        assert_eq!(state.revision(), 0);
+    }
+    #[test]
+    fn late_owned_component_admission_stales_without_gameplay_revision_change() {
+        let (mut state, witness) = game_techs_source(&game_techs_bytes());
+        let before = state.action_stamp();
+        state
+            .install_game_techs(witness, &TechDefinitions, unit::Limits::default())
+            .unwrap();
+        assert_eq!(state.revision(), 0);
+        assert_ne!(state.action_stamp(), before);
     }
     #[test]
     fn prepared_actor_commit_is_exclusive_infallible_and_drop_is_inert() {
@@ -2324,7 +2390,24 @@ struct RetainedNotificationPool {
     prefix_known: bool,
     entries: Vec<NotificationPoolEntry>,
 }
+/// Process-local capability stamp. It is not gameplay state or a native ID.
+/// Independent loads receive different identities; ordinary Rust moves preserve it.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ActionStamp {
+    instance: u64,
+    revision: u64,
+    admission_generation: u64,
+}
+static NEXT_STATE_IDENTITY: AtomicU64 = AtomicU64::new(1);
+fn fresh_state_identity() -> Result<u64, Error> {
+    NEXT_STATE_IDENTITY
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1))
+        .map_err(|_| Error::ResourceLimit)
+}
+
 #[derive(Debug)]
+/// Deliberately not Clone: any future independent copy must allocate a fresh
+/// instance identity rather than copy its action capabilities.
 pub struct LoadedState {
     image: CoreImage,
     binding: WireBinding,
@@ -2336,6 +2419,8 @@ pub struct LoadedState {
     formation_runtime: Option<Vec<RuntimeFormations>>,
     limits: AssemblyLimits,
     revision: u64,
+    instance_identity: u64,
+    admission_generation: u64,
     observed_snapshot: Option<ObservedSnapshotWitness>,
     game_relations: Option<crate::game_diplomatic_relations::GameDiplomaticRelations>,
     game_relations_source: Option<ComponentSnapshotWitness>,
@@ -2499,6 +2584,8 @@ impl LoadedState {
             formation_runtime: None,
             limits,
             revision: 0,
+            instance_identity: fresh_state_identity()?,
+            admission_generation: 0,
             observed_snapshot: None,
             game_relations: None,
             game_relations_source: None,
@@ -2535,6 +2622,22 @@ impl LoadedState {
     }
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+    /// Invalidates prepared actions on any gameplay mutation or successful
+    /// admission. No native memory identity, RNG, or gameplay value is changed.
+    pub fn action_stamp(&self) -> ActionStamp {
+        ActionStamp {
+            instance: self.instance_identity,
+            revision: self.revision,
+            admission_generation: self.admission_generation,
+        }
+    }
+    fn advance_admission_generation(&mut self) -> Result<(), Error> {
+        self.admission_generation = self
+            .admission_generation
+            .checked_add(1)
+            .ok_or(Error::ResourceLimit)?;
+        Ok(())
     }
     pub fn is_pristine(&self) -> bool {
         self.revision == 0
@@ -2590,6 +2693,7 @@ impl LoadedState {
         owner
             .initialize_definitions(war_hashes, alliances)
             .map_err(Error::GameRelations)?;
+        self.advance_admission_generation()?;
         self.game_relations = Some(owner);
         self.game_relations_source = Some(witness);
         Ok(())
@@ -2630,6 +2734,7 @@ impl LoadedState {
         }
         let graph = crate::trade_graph_state::GraphState::decode(frame, limits)
             .map_err(Error::TradeGraph)?;
+        self.advance_admission_generation()?;
         self.trade_graph = Some(graph);
         self.trade_graph_source = Some(witness);
         Ok(())
@@ -2690,6 +2795,7 @@ impl LoadedState {
             .map_err(Error::GameTechs)?
             .post_load_without_rebuild()
             .map_err(Error::GameTechs)?;
+        self.advance_admission_generation()?;
         self.game_techs = Some(owner);
         self.game_techs_source = Some(witness);
         Ok(())
@@ -2747,6 +2853,7 @@ impl LoadedState {
         {
             return Err(Error::Binding);
         }
+        self.advance_admission_generation()?;
         self.player_notifications = Some(owner);
         self.player_notifications_source = Some(witness);
         Ok(())
@@ -2868,6 +2975,7 @@ impl LoadedState {
         if logical.windows(2).any(|pair| pair[0] == pair[1]) {
             return Err(Error::RuntimeIdentity);
         }
+        self.advance_admission_generation()?;
         let owner = self
             .player_notifications
             .as_mut()
@@ -2977,6 +3085,7 @@ impl LoadedState {
                 entries,
             });
         }
+        self.advance_admission_generation()?;
         self.notification_pools = prepared;
         self.notification_pool_projection_installed = true;
         Ok(())
@@ -3362,6 +3471,7 @@ impl LoadedState {
             snapshot.pending_actions,
         )
         .map_err(Error::DiplomacyManager)?;
+        self.advance_admission_generation()?;
         self.diplomacy_manager = Some(manager);
         self.diplomacy_manager_source = Some(snapshot.witness);
         Ok(())
@@ -3489,6 +3599,7 @@ impl LoadedState {
         }
         let mut owners = reserved(self.world.players().len())?;
         owners.extend(self.world.players().iter().map(|p| p.owner()));
+        self.advance_admission_generation()?;
         for owner in owners {
             let player = self.world.player_mut(owner).map_err(Error::World)?;
             player.slot_status = None;
@@ -3626,6 +3737,7 @@ impl LoadedState {
                 units,
             });
         }
+        self.advance_admission_generation()?;
         self.runtime = Some(runtime);
         Ok(())
     }
@@ -3663,6 +3775,7 @@ impl LoadedState {
                 formations,
             });
         }
+        self.advance_admission_generation()?;
         self.formation_runtime = Some(runtime);
         Ok(())
     }

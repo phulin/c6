@@ -10,7 +10,7 @@ use super::{
 use c6_core::{
     core_player::initialization::WireBinding,
     formation_initialization::{FormationRuntime, UNIT_COMPONENT_TYPE},
-    loaded_state::{LoadedState, ObservedSnapshotWitness},
+    loaded_state::{ActionStamp, LoadedState, ObservedSnapshotWitness},
     map::UnitReference,
     script_event_registry::{
         CachedExecutionState, FactoryExecutionState, InternExecutionState, RegistryError,
@@ -137,6 +137,7 @@ pub struct Inputs<'a, 'd, 'capture> {
 /// Computed records and required deferred effects. There is deliberately no
 /// public state-phase commit: aftermath must also be supported before advance.
 pub struct StatePhasePlan {
+    stamp: ActionStamp,
     revision: u64,
     binding: WireBinding,
     before: ActorRecords,
@@ -148,6 +149,12 @@ pub struct StatePhasePlan {
     snapshots: Vec<reporting::SnapshotObservation>,
 }
 impl StatePhasePlan {
+    /// Whether this plan still belongs to this exact owned World and its
+    /// unchanged initialization/gameplay generation. Script deltas are checked
+    /// separately by their exclusive commit guard.
+    pub fn is_current(&self, state: &LoadedState) -> bool {
+        self.stamp == state.action_stamp()
+    }
     pub fn before(&self) -> &ActorRecords {
         &self.before
     }
@@ -584,6 +591,7 @@ pub fn plan_state_phase<'a, 'd, 'capture>(
     match result {
         Ok((before, after, script, script_identity, publications, snapshots)) => {
             Ok(StatePhasePlan {
+                stamp: state.action_stamp(),
                 revision: state.revision(),
                 binding: state.binding().clone(),
                 before,
@@ -681,8 +689,14 @@ impl PreparedSkipTurn {
         scripts: Option<&mut ScriptState>,
     ) -> Result<AppliedSkipTurn, Refusal> {
         let phase = self.phase;
+        let current = phase.is_current(state);
         let mut trace = phase.trace;
         let result = (|| {
+            if !current {
+                return Err(Error::State(
+                    c6_core::loaded_state::Error::ActorCommitConflict,
+                ));
+            }
             if *state.binding() != phase.binding {
                 return Err(Error::ConfigurationIdentity);
             }
