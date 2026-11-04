@@ -699,7 +699,7 @@ mod tests {
     #[test]
     fn handler_result_controls_single_pop_and_failure_preserves_prefix() {
         let mut c = context();
-        c.unit.k_operations.nodes = vec![node(), node()];
+        c.unit.k_operations.nodes = vec![node(), node()].into();
         assert_eq!(
             operations_turn_start(&mut c),
             Ok(OperationsTurnStartOutcome::Retained)

@@ -8,8 +8,10 @@
 //! See `docs/linux-unit-archive.md`; unsupported handlers cannot be skipped because
 //! their bodies have no common length. No action transition is implemented here.
 
+mod operation_nodes;
 mod state;
 pub mod variants;
+pub use operation_nodes::{OperationNodeId, OperationNodes};
 pub use state::*;
 
 /// The original registered SkipTurn operation hash, never a numeric handler ID.
@@ -66,7 +68,7 @@ pub struct OperationNode {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OperationQueue {
     /// Native queue order, without sorting or handler-ID conversion.
-    pub nodes: Vec<OperationNode>,
+    pub nodes: OperationNodes,
 }
 
 /// Codec resource policy; these are not native gameplay limits.
@@ -164,7 +166,9 @@ impl OperationQueue {
                 parameters,
             });
         }
-        Ok(Self { nodes })
+        Ok(Self {
+            nodes: nodes.into(),
+        })
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
         if self.nodes.len() > limits.max_items || self.nodes.len() > u32::MAX as usize {

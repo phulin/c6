@@ -149,7 +149,7 @@ mod tests {
             actor.e_activity = ACTIVITY_OPERATION;
             actor.x_moves_remaining = 1;
             actor.i_operation_timer = 8;
-            actor.k_operations.nodes = vec![node(); count];
+            actor.k_operations.nodes = vec![node(); count].into();
             Self {
                 actor,
                 local: 2,

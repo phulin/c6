@@ -593,7 +593,8 @@ mod tests {
                 previous_activity: 0,
                 previous_automation: 0,
                 parameters: crate::unit::OperationParameters::None,
-            }];
+            }]
+            .into();
         }
         fn callback_result(&self, stage: HealingStage) -> Result<(), Failure> {
             if self.fail_at == Some(stage) {

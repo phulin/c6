@@ -596,7 +596,9 @@ pub(crate) mod tests {
                 scalars: Vec::new(),
                 arrays: Vec::new(),
             },
-            k_operations: crate::unit::OperationQueue { nodes: Vec::new() },
+            k_operations: crate::unit::OperationQueue {
+                nodes: Vec::new().into(),
+            },
             k_operations_disabled: Vec::new(),
             k_hero: crate::unit::Hero {
                 e_class: 0,
