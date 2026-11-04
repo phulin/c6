@@ -284,7 +284,9 @@ pub trait UnitHealingContext {
     /// COMBAT_MAX_HIT_POINTS only if the property is absent.
     fn maximum_damage_for_report(&self) -> Result<i32, Self::Error>;
     fn send_damage_changed(&mut self, report: DamageChangedReport) -> Result<(), Self::Error>;
-    /// Exact Operations::Manager::Clear continuation, including deactivation,
+    /// Exact Operations::Manager::Clear continuation. Delegate orchestration
+    /// to unit_operations_clear::clear_operations with complete providers.
+    /// This includes deactivation,
     /// repeated current-front removals and current formation path clearing.
     /// Clearing just the Vec or recording a transcript is insufficient.
     fn clear_current_operations(&mut self) -> Result<(), Self::Error>;
