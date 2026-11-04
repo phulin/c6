@@ -1,4 +1,32 @@
 //! Persistent stock SkipTurn request composition through headless aftermath.
+//!
+//! After installing typed state and constructing one stock aftermath context,
+//! callers issue successive explicit orders without importing the world again:
+//!
+//! ```no_run
+//! use c6_data::loaded_actions::{current_aftermath, handlers, stock_notifications, Inputs};
+//! use c6_core::{map::UnitReference, unit::ComponentId};
+//!
+//! fn order_units(
+//!     session: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_, ()>>,
+//!     inputs: &Inputs<'_, '_>,
+//!     handlers: &handlers::BoundHandlers<'_>,
+//!     owner: i32,
+//!     ids: &[u32],
+//! ) -> Result<(), stock_notifications::skip_turn::Error> {
+//!     let mut continuation_budget = 64;
+//!     for &id in ids {
+//!         let actor = UnitReference::from_component_id(ComponentId {
+//!             owner: owner as i16, component_type: 1, id,
+//!         });
+//!         stock_notifications::skip_turn::execute(
+//!             session, owner, actor, inputs, handlers, &mut continuation_budget,
+//!         )?;
+//!     }
+//!     // session retains the same Script RNG, reporting and semantic decisions.
+//!     Ok(())
+//! }
+//! ```
 use crate::loaded_actions::{
     self as actions, current_aftermath, handlers, stock_notifications, transition, Inputs,
 };
