@@ -1672,6 +1672,7 @@ pub(crate) mod tests {
                 captures_owned_territory: true,
             }],
             tourism_into_favor: vec![pculture::TourismIntoFavor {
+                wire_version: 45,
                 tourism: -101,
                 favor: 102,
             }],

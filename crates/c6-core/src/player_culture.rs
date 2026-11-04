@@ -283,10 +283,39 @@ record!(CultureBombTrigger, true, {
     improvement_hash: u32,
     captures_owned_territory: bool,
 });
-record!(TourismIntoFavor, true, {
-    tourism: i32,
-    favor: i32,
-});
+/// Independently tagged TourismIntoFavor38/45. Both signed words are
+/// unconditional on the wire; no conversion or favor gameplay runs here.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TourismIntoFavor {
+    pub wire_version: u32,
+    pub tourism: i32,
+    pub favor: i32,
+}
+impl Wire for TourismIntoFavor {
+    const MIN: usize = 12;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 38 | VERSION) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            tourism: i32::read(r)?,
+            favor: i32::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.tourism.write(w)?;
+        self.favor.write(w)
+    }
+}
 record!(FeatureUnlock, true, {
     feature_hash: u32,
     civic_hash: u32,
@@ -874,6 +903,7 @@ mod tests {
                 captures_owned_territory: false,
             }],
             tourism_into_favor: vec![TourismIntoFavor {
+                wire_version: VERSION,
                 tourism: -123,
                 favor: 456,
             }],
@@ -920,6 +950,52 @@ mod tests {
                 delta: i32::MIN,
             }],
         }
+    }
+    #[test]
+    fn tourism_into_favor38_keeps_signed_words_and_independent_version() {
+        let mut b = Vec::new();
+        for word in [38u32, i32::MIN as u32, i32::MAX as u32, 0xdeadbeef] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        let decode = |data: &[u8], max_bytes| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items: 0,
+                },
+            };
+            TourismIntoFavor::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&b, 12).unwrap();
+        assert_eq!(
+            (v.wire_version, v.tourism, v.favor, n, i),
+            (38, i32::MIN, i32::MAX, 12, 0)
+        );
+        for cut in 0..12 {
+            assert!(decode(&b[..cut], 12).is_err());
+        }
+        assert!(decode(&b, 11).is_err());
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        b[..4].copy_from_slice(&39u32.to_le_bytes());
+        assert_eq!(
+            decode(&b, 12),
+            Err(Error::Version {
+                expected: 45,
+                actual: 39
+            })
+        );
+        b[..4].copy_from_slice(&45u32.to_le_bytes());
+        decode(&b, 12).unwrap().0.write(&mut w).unwrap();
+        assert_eq!(w.data, &b[..12]);
     }
     #[test]
     fn culture38_literal_omissions_and_unapplied_definition_rebuild() {
