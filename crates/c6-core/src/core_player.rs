@@ -1794,6 +1794,7 @@ pub(crate) mod tests {
                 old_unit_id: 3735879693,
             }],
             cities_with_sources: vec![pmod::CityWithSources {
+                wire_version: 17,
                 player_ordinal: -996,
                 city_id: 3735879685,
                 expire_turn: -994,

@@ -301,11 +301,43 @@ impl Wire for OffMapSpy {
     }
 }
 
-record!(CityWithSources, true, {
-    player_ordinal:i32,
-    city_id:u32,
-    expire_turn:i32,
-});
+/// CityWithSources15/17 has the same three unconditional wire fields.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CityWithSources {
+    pub wire_version: u32,
+    pub player_ordinal: i32,
+    pub city_id: u32,
+    pub expire_turn: i32,
+}
+impl Wire for CityWithSources {
+    const MIN: usize = 16;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "CityWithSources";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | VERSION) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_ordinal: <i32 as Wire>::read(r)?,
+            city_id: <u32 as Wire>::read(r)?,
+            expire_turn: <i32 as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.player_ordinal.write(w)?;
+        self.city_id.write(w)?;
+        self.expire_turn.write(w)?;
+        Ok(())
+    }
+}
 /// Independently tagged mission-history wire data. The operation remains a
 /// wire hash before native definition lookup; result enum bits are preserved.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -574,6 +606,7 @@ mod tests {
                 old_unit_id: 0xffffffee,
             }],
             cities_with_sources: vec![CityWithSources {
+                wire_version: VERSION,
                 player_ordinal: 62,
                 city_id: 0x87654321,
                 expire_turn: -29,
@@ -604,6 +637,55 @@ mod tests {
                 percent: i32::MIN,
             }],
         }
+    }
+    #[test]
+    fn city_sources15_retains_bits_and_version_without_consuming_trailer() {
+        let mut bytes = Vec::new();
+        for word in [15u32, i32::MIN as u32, 0x81234567, u32::MAX, 0xdeadbeef] {
+            bytes.extend_from_slice(&word.to_le_bytes());
+        }
+        let decode = |data: &[u8], max_bytes| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items: 0,
+                },
+                version_component: "test",
+            };
+            CityWithSources::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&bytes, 16).unwrap();
+        assert_eq!((v.wire_version, n, i), (15, 16, 0));
+        assert_eq!(
+            (v.player_ordinal, v.city_id, v.expire_turn),
+            (i32::MIN, 0x81234567, -1)
+        );
+        for cut in 0..16 {
+            assert!(decode(&bytes[..cut], 16).is_err());
+        }
+        assert!(decode(&bytes, 15).is_err());
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        bytes[..4].copy_from_slice(&16u32.to_le_bytes());
+        assert_eq!(
+            decode(&bytes, 16),
+            Err(Error::Version {
+                expected: 17,
+                actual: 16
+            })
+        );
+        bytes[..4].copy_from_slice(&17u32.to_le_bytes());
+        decode(&bytes, 16).unwrap().0.write(&mut w).unwrap();
+        assert_eq!(w.data, &bytes[..16]);
     }
     #[test]
     fn captured_spy15_keeps_hashes_order_and_item_budgets() {
