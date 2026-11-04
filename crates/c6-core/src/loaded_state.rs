@@ -2557,6 +2557,22 @@ mod tests {
         assert!(late.game_techs().is_err());
     }
     #[test]
+    fn gossip_counter_access_checks_owner_and_revision_before_exposure() {
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let before = state.retained.players[0].diplomacy.gossip_reports.clone();
+        assert!(state.player_gossip_reports_mut(-1).is_err());
+        assert_eq!(state.revision(), 0);
+        state.revision = u64::MAX;
+        assert!(matches!(state.player_gossip_reports_mut(owner), Err(Error::ResourceLimit)));
+        assert_eq!(state.retained.players[0].diplomacy.gossip_reports, before);
+        state.revision = 0;
+        state.player_gossip_reports_mut(owner).unwrap().push((4, vec![(7, 9)].into()));
+        assert_eq!(state.revision(), 1);
+        assert_eq!(state.retained.players[0].diplomacy.gossip_reports.last().unwrap().0, 4);
+    }
+
+    #[test]
     fn blocking_store_preserves_raw_words_and_checks_revision_before_write() {
         let mut state = state();
         let owner = state.world.players()[0].owner();
@@ -4219,6 +4235,21 @@ impl LoadedState {
         self.controls = Some(controls);
         Ok(())
     }
+    /// Borrow the current owned diplomacy counters for ordered gossip delivery.
+    /// Reserve revision before exposure; no reporting/event is emitted here.
+    pub fn player_gossip_reports_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut crate::player_diplomacy::GossipReports, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        let index = self.retained.players.iter()
+            .position(|player| player.header.owner == owner)
+            .ok_or(Error::Missing(MissingInput::Player(owner)))?;
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.revision = next;
+        Ok(&mut self.retained.players[index].diplomacy.gossip_reports)
+    }
+
     /// Current raw EndTurnBlockingTypes word. Native Read/Write uses plain i32,
     /// with no definition remap; the source setter's field is Player+0x7a8.
     pub fn player_end_turn_blocking(&self, owner: i32) -> Result<i32, Error> {
