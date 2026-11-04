@@ -110,6 +110,23 @@ pub struct Religion {
     pub next_pantheon_founder: i32,
     pub records: Vec<ReligionData>,
 }
+impl Religion {
+    /// Decode one original Game.Religion component, without a PlayerManager
+    /// suffix. The caller verifies the returned extent against its export.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let mut reader = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let value = reader.religion()?;
+        Ok((value, reader.pos, reader.items))
+    }
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct PlayerHeader {
     pub owner: i32,
@@ -3467,6 +3484,33 @@ pub(crate) mod tests {
         }
         (value, snapshots)
     }
+    #[test]
+    fn standalone_game_religion_stops_without_manager_header() {
+        let mut bytes = Vec::new();
+        for v in [7i32, i32::MIN, -1, 0] {
+            bytes.extend(v.to_le_bytes());
+        }
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: 0,
+        };
+        let (religion, used, items) = Religion::decode_prefix_with_items(&bytes, exact).unwrap();
+        assert_eq!(religion.minimum_faith_for_next_pantheon, i32::MIN);
+        assert_eq!(religion.next_pantheon_founder, -1);
+        assert_eq!((used, items), (16, 0));
+        bytes.extend([0xff; 4]);
+        assert_eq!(
+            Religion::decode_prefix_with_items(&bytes, exact).unwrap().1,
+            16
+        );
+        assert!(Religion::decode_prefix_with_items(&bytes[..15], exact).is_err());
+        bytes[..4].copy_from_slice(&6i32.to_le_bytes());
+        assert!(matches!(
+            Religion::decode_prefix_with_items(&bytes, exact),
+            Err(Error::Version { .. })
+        ));
+    }
+
     #[test]
     fn standalone_player_component_reuses_complete_grammar_and_limits() {
         for was in [false, true] {

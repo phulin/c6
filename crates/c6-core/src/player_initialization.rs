@@ -22,15 +22,23 @@ pub struct InputIdentities {
 pub enum WireRole {
     ReadInputCore,
     SavedOutputCore,
+    /// A collection of original component exports, not a Civ VI Core Save.
+    SavedOutputComponents,
     #[cfg(test)]
     SourceOnlyReadCase,
     #[cfg(test)]
     SourceOnlyWriteCase,
 }
+impl WireRole {
+    pub fn is_saved_output(self) -> bool {
+        matches!(self, Self::SavedOutputCore | Self::SavedOutputComponents)
+    }
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WireBinding {
     pub role: WireRole,
-    /// Raw Core identity; never the .Civ6Save container identity.
+    /// Raw Core identity, or the exact component bundle identity for
+    /// SavedOutputComponents; never the .Civ6Save container identity.
     pub core_sha256: Digest,
     /// Actual STREAM occurrence, canonical decimal bytes from raw
     /// `stream_occurrence`; per-Military occurrences remain separate metadata.
@@ -218,7 +226,7 @@ impl InitializationSnapshot {
                     return Err(Error::InputBinding);
                 }
             }
-            WireRole::SavedOutputCore => {
+            WireRole::SavedOutputCore | WireRole::SavedOutputComponents => {
                 token(
                     facts
                         .binding

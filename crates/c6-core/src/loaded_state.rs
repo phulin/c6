@@ -9,6 +9,7 @@ use crate::{map, unit, world};
 pub mod combat_proposals;
 pub mod game_update;
 pub mod turn_completion;
+pub mod typed_components;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -26,7 +27,7 @@ pub enum CoreImage {
 mod tests {
     use super::*;
     // Private source-only state carrier: no public fabricated native factory.
-    fn state() -> LoadedState {
+    pub(super) fn state() -> LoadedState {
         let (bytes, _, _) = crate::core_stream::tests::random_prefix_fixture();
         let binding = crate::core_stream::tests::context_binding(&bytes);
         let contexts = |_: core_player::initialization::PlayerIdentity| None;
@@ -3125,6 +3126,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MissingInput {
+    RetainedComponents,
     ManagerSlots,
     PlayerNotifications,
     NotificationPool(crate::notification_lifecycle::PoolId),
@@ -3512,6 +3514,9 @@ impl LoadedState {
         contexts: &impl PlayerInitializations,
         limits: AssemblyLimits,
     ) -> Result<Self, Error> {
+        if binding.role == core_player::initialization::WireRole::SavedOutputComponents {
+            return Err(Error::Binding);
+        }
         let parsed =
             ThroughRandom::decode(image.as_ref(), shared, post_map, binding.clone(), contexts)
                 .map_err(Error::Decode)?;
@@ -3697,7 +3702,7 @@ impl LoadedState {
         if !self.is_pristine() {
             return Err(Error::NotPristine);
         }
-        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+        if !witness.source_role.is_saved_output()
             || witness.snapshot_sha256 != self.binding.core_sha256
             || witness.snapshot_bytes != self.image.as_ref().len()
             || witness.owner_range[0] >= witness.owner_range[1]
@@ -3746,7 +3751,7 @@ impl LoadedState {
         if !self.is_pristine() {
             return Err(Error::NotPristine);
         }
-        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+        if !witness.source_role.is_saved_output()
             || witness.snapshot_sha256 != self.binding.core_sha256
             || witness.snapshot_bytes != self.image.as_ref().len()
             || witness.owner_range[0] >= witness.owner_range[1]
@@ -3790,7 +3795,7 @@ impl LoadedState {
         if !self.is_pristine() {
             return Err(Error::NotPristine);
         }
-        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+        if !witness.source_role.is_saved_output()
             || witness.snapshot_sha256 != self.binding.core_sha256
             || witness.snapshot_bytes != self.image.as_ref().len()
             || witness.owner_trace_sha256 == [0; 32]
@@ -3849,7 +3854,7 @@ impl LoadedState {
         if !self.is_pristine() {
             return Err(Error::NotPristine);
         }
-        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+        if !witness.source_role.is_saved_output()
             || witness.snapshot_sha256 != self.binding.core_sha256
             || witness.snapshot_bytes != self.image.as_ref().len()
             || witness.owner_trace_sha256 == [0; 32]
@@ -3906,7 +3911,7 @@ impl LoadedState {
         if !self.is_pristine() {
             return Err(Error::NotPristine);
         }
-        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+        if !witness.source_role.is_saved_output()
             || witness.snapshot_sha256 != self.binding.core_sha256
             || witness.snapshot_bytes != self.image.as_ref().len()
             || witness.owner_trace_sha256 == [0; 32]
@@ -4705,7 +4710,7 @@ impl LoadedState {
         controls: PartialControlInputs,
     ) -> Result<(), Error> {
         self.require_initial_controls()?;
-        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+        if !witness.source_role.is_saved_output()
             || witness.snapshot_sha256 != self.binding.core_sha256
             || witness.snapshot_bytes != self.image.as_ref().len()
         {
