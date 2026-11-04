@@ -4,6 +4,8 @@
 //! diplomacy and visibility; unsupported reached dependencies remain errors.
 //! This read-only search plus Formation cache writes is not complete MoveTo.
 pub mod breadth_first;
+mod shore;
+mod visible_units;
 use crate::{
     city_movement::NativeTerrainDefinitions,
     formation_movement_cost as cost, formation_rules, movement_placement_state as placement,
@@ -53,6 +55,7 @@ pub struct Definitions<'a, 'r> {
     pub fortify_turn_max: i32,
     features: crate::registry::LinuxDefinitionRegistry,
     feature_danger: Vec<i32>,
+    shallow_terrains: Vec<bool>,
     // Only the first native reference is consumed. Nonempty reference tables
     // require an admitted order; this boundary rejects their unsupported import.
     feature_movements_empty: bool,
@@ -99,7 +102,26 @@ impl<'a, 'r> Definitions<'a, 'r> {
         let fortify_turn_max = parameters
             .integer(crate::game_parameters::IntegerParameter::FortifyTurnMax)
             .map_err(|_| Error::Missing("FORTIFY_TURN_MAX"))?;
+        let terrain_registry = collection(rules, "Terrains", "TerrainType")
+            .map_err(|_| Error::Missing("Terrains native collection"))?;
+        let terrain_rows = rules
+            .gameplay()
+            .table("Terrains")
+            .ok_or(Error::Missing("Terrains table"))?;
+        let shallow_terrains = terrain_registry
+            .entries()
+            .iter()
+            .map(|entry| {
+                terrain_rows
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("Terrains row"))?
+                    .integer("ShallowWater")
+                    .map(|v| v != 0)
+                    .map_err(|_| Error::Missing("Terrains.ShallowWater"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
+            shallow_terrains,
             fortify_turn_max,
             placement,
             movement,
@@ -205,7 +227,8 @@ pub fn placement_context<'s, 'a, 'r>(
 ) -> Result<placement::Context<'s, 'a, 'r>, Error> {
     let mut p = placement::Context::from_definitions(state, &definitions.placement)
         .map_err(Error::Placement)?
-        .with_district_definitions(&definitions.movement);
+        .with_district_definitions(&definitions.movement)
+        .with_combat_definitions(&definitions.formation);
     if let Some(levels) = &runtime.civilization_levels {
         p = p
             .with_civilization_levels(placement::CurrentCivilizationLevels {
@@ -379,7 +402,10 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             formation_location: self.record().location,
             path_flags: s.flags,
             child_cache_flags: s.node(child).cache_flags,
-            starting_remaining: MovementPoints(self.starting_remaining_override.unwrap_or(self.record().moves_remaining_raw)),
+            starting_remaining: MovementPoints(
+                self.starting_remaining_override
+                    .unwrap_or(self.record().moves_remaining_raw),
+            ),
         };
         // Move the small identity memo out to permit the lazy live queries to
         // borrow this context; no Unit, World or definition collection is cloned.
@@ -879,10 +905,13 @@ impl LazyPathQueries for Queries<'_, '_, '_, '_> {
                 Some(c.runtime.visibility),
             )
             .map_err(Error::Cost),
-            B::CanEmbarkTo => Err(Error::Missing("Formation CanEmbarkTo live shore adapter")),
-            B::CanDisembarkTo { .. } => Err(Error::Missing(
-                "Formation CanDisembarkTo live shore adapter",
-            )),
+            B::CanEmbarkTo => shore::query(c, self.parent()?, self.child(), None),
+            B::CanDisembarkTo { allow_unembarked } => shore::query(
+                c,
+                self.parent()?,
+                self.child(),
+                Some((allow_unembarked, self.search.flags & (1 << 13) != 0)),
+            ),
             B::BarbarianClansActive => Err(Error::Missing("current Barbarian Clans activation")),
             B::FeatureAllowPassthrough | B::FeatureAllowDestination => {
                 Err(Error::Missing("ordered Feature_UnitMovement import"))
@@ -1011,21 +1040,7 @@ impl LazyPathQueries for Queries<'_, '_, '_, '_> {
         Ok(Some(0))
     }
     fn visible_enemy(&mut self) -> Result<(bool, bool), Error> {
-        let c = &self.context;
-        let candidates = unit_placement::units_at(c.state.world(), Some(c.layer), self.child())
-            .map_err(|_| Error::Missing("enemy plot candidates"))?;
-        // GetVisibleOpposingUnits cannot add this owner's Units. Foreign
-        // candidates need its full Combat/Religion semantics, never a false fill.
-        for &r in candidates {
-            if let Some(found) = c.state.world().unit(r).map_err(Error::World)? {
-                if found.record.e_owner != c.record().owner {
-                    return Err(Error::Missing(
-                        "visible opposing/enemy/rival unit selectors",
-                    ));
-                }
-            }
-        }
-        Ok((false, false))
+        visible_units::enemy(self.context, self.child())
     }
     fn movement_cost(
         &mut self,
