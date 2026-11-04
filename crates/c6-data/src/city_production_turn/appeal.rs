@@ -294,3 +294,125 @@ pub fn refresh_unchanged(
     }
     Ok(())
 }
+
+/// Gameplay continuations of a changed appeal. Both execute after the i16 cache
+/// write; the signal receives the full calculated i32, before numeric narrowing.
+pub trait Effects {
+    type Error;
+    fn appeal_changed(
+        &mut self,
+        state: &mut LoadedState,
+        plot: u32,
+        value: i32,
+    ) -> Result<(), Self::Error>;
+    fn appeal_report(&mut self, state: &mut LoadedState, plot: u32) -> Result<(), Self::Error>;
+}
+#[derive(Debug)]
+pub enum UpdateError<E> {
+    Query(Error),
+    State(c6_core::loaded_state::Error),
+    Effect(E),
+    MissingPlot,
+    Geometry(c6_core::movement_world::MissingInput),
+}
+impl<E: std::fmt::Debug> std::fmt::Display for UpdateError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Appeal update: {self:?}")
+    }
+}
+impl<E: std::fmt::Debug> std::error::Error for UpdateError<E> {}
+struct Update<'a, E> {
+    state: &'a mut LoadedState,
+    definitions: &'a Definitions,
+    effects: &'a mut E,
+}
+impl<E: Effects> c6_core::map::appeal::Context for Update<'_, E> {
+    type Error = UpdateError<E::Error>;
+    type Plot = usize;
+    fn calculate(&mut self, plot: usize) -> Result<i32, Self::Error> {
+        calculate(self.state, plot, self.definitions).map_err(UpdateError::Query)
+    }
+    fn cached(&mut self, plot: usize) -> Result<i16, Self::Error> {
+        self.state
+            .world()
+            .map()
+            .plots
+            .get(plot)
+            .map(|p| p.appeal)
+            .ok_or(UpdateError::MissingPlot)
+    }
+    fn store(&mut self, plot: usize, value: i16) -> Result<(), Self::Error> {
+        self.state
+            .world_mut()
+            .map_err(UpdateError::State)?
+            .plot_mut(plot)
+            .ok_or(UpdateError::MissingPlot)?
+            .appeal = value;
+        Ok(())
+    }
+    fn changed(&mut self, plot: usize, value: i32) -> Result<(), Self::Error> {
+        self.effects
+            .appeal_changed(self.state, plot as u32, value)
+            .map_err(UpdateError::Effect)
+    }
+    fn report(&mut self, plot: usize) -> Result<(), Self::Error> {
+        self.effects
+            .appeal_report(self.state, plot as u32)
+            .map_err(UpdateError::Effect)
+    }
+}
+/// Update2bd3900 -> Update2bd3870 visits the center, then native directions0..5.
+/// Callback-visible order differs from ascending CityHexspace indexes. Wrapped
+/// duplicates remain repeated calls; each plot is recalculated after callbacks.
+pub fn update<E: Effects>(
+    state: &mut LoadedState,
+    point: [i32; 2],
+    definitions: &Definitions,
+    effects: &mut E,
+) -> Result<usize, UpdateError<E::Error>> {
+    let Some(center) = c6_core::found_city::placement::plot_from_delta(
+        state.world().map(),
+        PlotCoord {
+            x: point[0],
+            y: point[1],
+        },
+        0,
+        0,
+        0,
+    )
+    .map_err(UpdateError::Geometry)?
+    else {
+        return Ok(0);
+    };
+    let mut context = Update {
+        state,
+        definitions,
+        effects,
+    };
+    let mut changed = usize::from(c6_core::map::appeal::update_only(
+        &mut context,
+        Some(center),
+    )?);
+    let (x, y) = context
+        .state
+        .world()
+        .map()
+        .coordinates(center as u32)
+        .ok_or(UpdateError::MissingPlot)?;
+    let center = PlotCoord { x, y };
+    // Source Direction.X=[0,1,1,0,-1,-1], Y=[1,0,-1,-1,0,1].
+    for index in [2, 1, 6, 5, 4, 3] {
+        let location = c6_core::city_citizen_assignment::plot_location(
+            context.state.world().map(),
+            center,
+            index,
+        )
+        .map_err(UpdateError::Geometry)?;
+        let plot = location
+            .map(|p| plot_index(context.state.world().map(), p))
+            .transpose()
+            .map_err(UpdateError::Query)?;
+        changed += usize::from(c6_core::map::appeal::update_only(&mut context, plot)?);
+    }
+    Ok(changed)
+}

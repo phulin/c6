@@ -7,6 +7,8 @@ pub use localization::*;
 mod containers;
 pub use components::*;
 mod plot;
+pub mod appeal;
+
 use crate::unit::variants::{self, DecodeBudget, TypedVariantMap};
 pub use containers::*;
 pub use plot::{CityAttributes, Plot, PlotFlag, PlotFlags};
