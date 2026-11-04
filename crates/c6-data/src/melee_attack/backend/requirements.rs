@@ -57,6 +57,9 @@ impl Runtime {
     pub fn sets(&self) -> &sets::Runtime {
         &self.sets
     }
+    pub fn sets_mut(&mut self) -> &mut sets::Runtime {
+        &mut self.sets
+    }
     pub fn with_unit_definitions(
         mut self,
         definitions: crate::melee_attack::proposals::unit_subject_predicates::Definitions,
@@ -161,6 +164,9 @@ impl registry::Context for Context<'_> {
 impl predicates::Context for Context<'_> {
     fn alliance_pair(&mut self) -> Result<Option<(i32, i32)>, Error> {
         Ok(match self.object {
+            ContextObject::City(_) | ContextObject::Plot(_) => {
+                return Err(Error::Missing("source-qualified new context IAlliance"))
+            }
             ContextObject::Alliance {
                 first_player,
                 second_player,
@@ -274,6 +280,9 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
     type PlayerInterface = ContextObject;
     fn context_player_interface(&mut self) -> Result<Option<ContextObject>, Error> {
         Ok(match self.object {
+            ContextObject::City(_) | ContextObject::Plot(_) => {
+                return Err(Error::Missing("source-qualified new context IPlayer"))
+            }
             ContextObject::Alliance { .. } => None,
             other => Some(other),
         })
@@ -286,6 +295,9 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
             ContextObject::Player(id) => Ok(id),
             ContextObject::Unit(unit) => Ok(i32::from(unit.component_id().owner)),
             ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
+            ContextObject::City(_) | ContextObject::Plot(_) => {
+                Err(Error::Missing("source-qualified new context IPlayer"))
+            }
         }
     }
     fn promotion_class(&mut self, unit: UnitReference) -> Result<Option<&[u8]>, Error> {

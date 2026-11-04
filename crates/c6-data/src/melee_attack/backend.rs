@@ -21,14 +21,86 @@ pub enum ContextObject {
     /// Objects.Unit's IPlayer interface uses its stored CID owner, while its
     /// IUnit interface resolves the CURRENT corresponding canonical Unit.
     Unit(UnitReference),
+    /// A real City object, distinct from its owner/plot or a proposal handle.
+    City(ComponentId),
+    /// A real plot object; interface roles remain source-qualified by services.
+    Plot(u32),
     Alliance {
         first_player: i32,
         second_player: i32,
     },
 }
+/// Typed native City effect parameters. The common modifier runtime controls
+/// application counts/lifetime; these do not create another subject registry.
+#[derive(Clone, Debug)]
+pub enum CityEffect {
+    FeatureProduction(c6_core::found_city::feature_production::Effect),
+    IdentityPerTurn { amount: i32 },
+    YieldChanges { yields: Vec<u32>, amounts: Vec<i32> },
+}
+#[derive(Debug)]
+pub enum CityEffectError {
+    Query(QueryError),
+    FeatureProduction(c6_core::found_city::feature_production::Error),
+    Production(crate::city_production_turn::Error),
+}
+impl CityEffect {
+    /// Invoke only after the shared lifecycle resolves the actual ICity subject.
+    /// Cloning parameters before this call releases the store borrow, allowing
+    /// synchronous reports to reenter the same object/modifier owner.
+    pub fn apply(
+        &self,
+        state: &mut LoadedState,
+        city: ComponentId,
+        features: &[u32],
+        remove: bool,
+        effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+    ) -> Result<bool, CityEffectError> {
+        if city.component_type != 2 {
+            return Err(CityEffectError::Query(QueryError::Unsupported(
+                "source-qualified ICity subject",
+            )));
+        }
+        match self {
+            Self::FeatureProduction(effect) => c6_core::found_city::feature_production::apply(
+                state, city, features, *effect, remove,
+            )
+            .map_err(CityEffectError::FeatureProduction),
+            Self::IdentityPerTurn { amount } => {
+                crate::city_production_turn::modifier_effects::adjust_identity_per_turn(
+                    state,
+                    i32::from(city.owner),
+                    city.id,
+                    *amount,
+                    remove,
+                    effects,
+                )
+                .map_err(CityEffectError::Production)?;
+                Ok(true)
+            }
+            Self::YieldChanges { yields, amounts } => {
+                crate::city_production_turn::modifier_effects::adjust_yields(
+                    state,
+                    i32::from(city.owner),
+                    city.id,
+                    yields,
+                    amounts,
+                    remove,
+                    effects,
+                )
+                .map_err(CityEffectError::Production)?;
+                Ok(true)
+            }
+        }
+    }
+}
 #[derive(Debug)]
 pub enum EffectState {
     Unit(crate::unit_kill::effects::Effect),
+    City {
+        context: u64,
+        effect: CityEffect,
+    },
     Player {
         context: u64,
         effect: player_strength::Effect,
@@ -47,6 +119,7 @@ pub struct Object {
     pub unit_lifecycle: Option<c6_core::unit_kill::objects::Object>,
 }
 pub struct EffectRuntime {
+    origin: c6_core::loaded_state::ActionStamp,
     binding: WireBinding,
     witness: ObservedSnapshotWitness,
     effects: Vec<(u64, EffectState)>,
@@ -93,12 +166,86 @@ impl EffectRuntime {
             }
         }
         Ok(Self {
+            origin: state.action_stamp(),
             binding: state.binding().clone(),
             witness: witness.clone(),
             effects,
             objects,
             unit_modifiers: None,
         })
+    }
+    fn current_owner(&self, state: &LoadedState) -> Result<(), QueryError> {
+        if !self.origin.same_instance(state.action_stamp())
+            || self.binding != *state.binding()
+            || state.observed_snapshot() != Some(&self.witness)
+        {
+            return Err(QueryError::Binding);
+        }
+        Ok(())
+    }
+    /// Register a source-created live object in the existing owner. The caller
+    /// supplies its real logical identity/instance ID from the shared factory;
+    /// this method never invents an allocator or reimports an entire fixture.
+    pub fn register_current_object(
+        &mut self,
+        state: &LoadedState,
+        identity: u64,
+        object: Object,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        if identity == 0 || self.objects.iter().any(|row| row.0 == identity) {
+            return Err(QueryError::DuplicateObject(identity));
+        }
+        match object.kind {
+            ContextObject::City(city) => {
+                if city.component_type != 2 {
+                    return Err(QueryError::Unsupported("City object component type"));
+                }
+                state
+                    .city(i32::from(city.owner), city.id)
+                    .map_err(|_| QueryError::Missing("current registered City"))?;
+            }
+            ContextObject::Plot(plot) => {
+                state
+                    .world()
+                    .map()
+                    .plot_by_index(plot)
+                    .ok_or(QueryError::Missing("current registered Plot"))?;
+            }
+            _ => return Err(QueryError::Unsupported("new object class factory")),
+        }
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| QueryError::Missing("object registration allocation"))?;
+        self.objects.push((identity, object));
+        Ok(())
+    }
+    pub fn register_city_effect(
+        &mut self,
+        state: &LoadedState,
+        identity: u64,
+        context: u64,
+        effect: CityEffect,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        if identity == 0 || self.effects.iter().any(|row| row.0 == identity) {
+            return Err(QueryError::DuplicateEffect(identity));
+        }
+        self.object(context)?;
+        self.effects
+            .try_reserve(1)
+            .map_err(|_| QueryError::Missing("effect registration allocation"))?;
+        self.effects
+            .push((identity, EffectState::City { context, effect }));
+        Ok(())
+    }
+    pub fn city_effect(&self, identity: u64) -> Result<(u64, CityEffect), QueryError> {
+        match self.effect(identity)? {
+            EffectState::City { context, effect } => Ok((*context, effect.clone())),
+            _ => Err(QueryError::Unsupported(
+                "non-City effect in City dispatcher",
+            )),
+        }
     }
     /// Attach current Unit-wrapper cleanup state to the same canonical object
     /// map. Shared handles must have identical immutable identity metadata.
@@ -346,6 +493,11 @@ impl player_strength::Context for EffectContext<'_> {
             ContextObject::Player(owner) => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
             ContextObject::Alliance { .. } => return Ok(None),
+            ContextObject::City(_) | ContextObject::Plot(_) => {
+                return Err(QueryError::Unsupported(
+                    "new context IPlayer query requires source-qualified adapter",
+                ))
+            }
         };
         let player = self
             .state
@@ -386,6 +538,11 @@ impl player_strength::Context for EffectContext<'_> {
         self.start_turn()
     }
     fn unit_property(&mut self, _: u32) -> Result<Option<i32>, QueryError> {
+        if matches!(self.object, ContextObject::City(_) | ContextObject::Plot(_)) {
+            return Err(QueryError::Unsupported(
+                "new context IUnit query requires source-qualified adapter",
+            ));
+        }
         if matches!(self.object, ContextObject::Unit(_)) {
             Err(QueryError::Unsupported("current Unit property conversion"))
         } else {
@@ -398,6 +555,11 @@ impl player_strength::Context for EffectContext<'_> {
         ))
     }
     fn has_game_interface(&mut self) -> Result<bool, QueryError> {
+        if matches!(self.object, ContextObject::City(_) | ContextObject::Plot(_)) {
+            return Err(QueryError::Unsupported(
+                "new context IGame query requires source-qualified adapter",
+            ));
+        }
         Ok(true)
     }
     fn game_property(&mut self, _: u32) -> Result<Option<i32>, QueryError> {
@@ -417,6 +579,11 @@ fn configured_end_turn(limit: u32, start: i32, maximum: i32) -> i32 {
 
 impl alliance_strength::Context for EffectContext<'_> {
     fn context_alliance_interface(&mut self) -> Result<bool, QueryError> {
+        if matches!(self.object, ContextObject::City(_) | ContextObject::Plot(_)) {
+            return Err(QueryError::Unsupported(
+                "new context IAlliance query requires source-qualified adapter",
+            ));
+        }
         Ok(matches!(self.object, ContextObject::Alliance { .. }))
     }
     fn subject_proposal(&mut self) -> Result<Option<registry::Handle>, QueryError> {
@@ -528,6 +695,11 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
     ) -> Result<bool, Self::Error> {
         let context = match self.effects.effect(effect).map_err(Error::Query)? {
             EffectState::Player { context, .. } | EffectState::Alliance { context, .. } => *context,
+            EffectState::City { .. } => {
+                return Err(Error::Query(QueryError::Unsupported(
+                    "City effect in strength dispatcher",
+                )))
+            }
             EffectState::Unit(_) => {
                 return Err(Error::Query(QueryError::Unsupported(
                     "Unit effect in strength Apply dispatcher",
@@ -543,6 +715,9 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
             .map(|r| &mut r.1)
             .ok_or(Error::Query(QueryError::MissingEffect(effect)))?;
         match entry {
+            EffectState::City { .. } => Err(Error::Query(QueryError::Unsupported(
+                "City effect in strength dispatcher",
+            ))),
             EffectState::Unit(_) => Err(Error::Query(QueryError::Unsupported(
                 "Unit effect in strength Apply dispatcher",
             ))),
