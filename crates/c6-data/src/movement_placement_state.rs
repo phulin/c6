@@ -124,7 +124,7 @@ fn open_borders_from(
     permanently_allied()
 }
 
-fn unit_embark_decision(
+pub(crate) fn unit_embark_decision(
     domain: i32,
     owner: i32,
     original_owner: i32,
@@ -474,7 +474,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             },
         )
     }
-    fn can_embark(&self, unit: &Unit) -> Result<bool, Error> {
+    pub fn can_embark(&self, unit: &Unit) -> Result<bool, Error> {
         let runtime = self
             .state
             .unit_runtime(unit.e_owner, unit.id)

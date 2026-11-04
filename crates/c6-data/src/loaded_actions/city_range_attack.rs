@@ -1306,23 +1306,40 @@ fn unit_definition<'a>(
         .map(Some)
         .ok_or(Error::Unsupported("CityRangeAttack Unit definition index"))
 }
+// Native bool order is domain!=0, isCorps. Wire order is land corps/army,
+// then naval corps/army; domain0 is naval despite the historical reversed use.
+fn modified_formation_strength(domain: i32, corps: bool, values: [i32; 4]) -> i32 {
+    values[if domain != 0 {
+        if corps {
+            0
+        } else {
+            1
+        }
+    } else if corps {
+        2
+    } else {
+        3
+    }]
+}
 fn formation_combat_modifier(
     unit: &c6_core::unit::Unit,
     player: &c6_core::loaded_components::RetainedPlayer,
     definitions: &Definitions,
     domain: i32,
 ) -> i32 {
+    let values = [
+        player.units.land_corps_modified_strength,
+        player.units.land_army_modified_strength,
+        player.units.naval_corps_modified_strength,
+        player.units.naval_army_modified_strength,
+    ];
     match unit.e_military_formation {
-        1 => definitions.corps_strength.wrapping_add(if domain != 0 {
-            player.units.naval_corps_modified_strength
-        } else {
-            player.units.land_corps_modified_strength
-        }),
-        2 => definitions.army_strength.wrapping_add(if domain != 0 {
-            player.units.naval_army_modified_strength
-        } else {
-            player.units.land_army_modified_strength
-        }),
+        1 => definitions
+            .corps_strength
+            .wrapping_add(modified_formation_strength(domain, true, values)),
+        2 => definitions
+            .army_strength
+            .wrapping_add(modified_formation_strength(domain, false, values)),
         _ => 0,
     }
 }
@@ -1352,66 +1369,82 @@ pub fn unit_combat(
             base = definitions.era_embarked_strength[era];
         }
     }
-    let mut strength = base.wrapping_add(unit.k_combat_modifers.i_combat_strength_modifier.max(0));
-    if strength > 0 {
-        strength = strength.wrapping_add(formation_combat_modifier(
-            unit,
-            player,
-            definitions,
-            state
-                .unit_runtime(unit.e_owner, unit.id)
-                .map_err(Error::State)?
-                .domain,
-        ));
-        if strength > 0 {
-            strength = strength.wrapping_add(era_strength(state, unit, definitions)?);
+    let modifier = unit.k_combat_modifers.i_combat_strength_modifier.max(0);
+    let mut strength = base.wrapping_add(modifier);
+    if i64::from(base) + i64::from(modifier) > 0 {
+        if matches!(unit.e_military_formation, 1 | 2) {
+            let addition = formation_combat_modifier(
+                unit,
+                player,
+                definitions,
+                state
+                    .unit_runtime(unit.e_owner, unit.id)
+                    .map_err(Error::State)?
+                    .domain,
+            );
+            let positive = i64::from(strength) + i64::from(addition) > 0;
+            strength = strength.wrapping_add(addition);
+            if !positive {
+                return Ok(strength);
+            }
         }
+        strength = strength.wrapping_add(era_strength(state, unit, definitions)?);
     }
     Ok(strength)
 }
-fn unit_ranged_combat(
+pub(crate) fn unit_ranged_combat(
     state: &LoadedState,
     unit: &c6_core::unit::Unit,
     definitions: &Definitions,
 ) -> Result<i32, Error> {
     let player = retained_player(state, unit.e_owner)?;
     let data = unit_definition(state, unit, definitions)?;
-    let mut strength = data
-        .map_or(0, |d| d.ranged)
-        .wrapping_add(unit.k_combat_modifers.i_ranged_strength_modifier.max(0));
-    if strength > 0 {
-        strength = strength.wrapping_add(formation_combat_modifier(
-            unit,
-            player,
-            definitions,
-            state
-                .unit_runtime(unit.e_owner, unit.id)
-                .map_err(Error::State)?
-                .domain,
-        ));
-        if strength > 0 {
-            strength = strength.wrapping_add(era_strength(state, unit, definitions)?);
+    let base = data.map_or(0, |d| d.ranged);
+    let modifier = unit.k_combat_modifers.i_ranged_strength_modifier.max(0);
+    let mut strength = base.wrapping_add(modifier);
+    if i64::from(base) + i64::from(modifier) > 0 {
+        if matches!(unit.e_military_formation, 1 | 2) {
+            let addition = formation_combat_modifier(
+                unit,
+                player,
+                definitions,
+                state
+                    .unit_runtime(unit.e_owner, unit.id)
+                    .map_err(Error::State)?
+                    .domain,
+            );
+            let positive = i64::from(strength) + i64::from(addition) > 0;
+            strength = strength.wrapping_add(addition);
+            if !positive {
+                return Ok(strength);
+            }
         }
+        strength = strength.wrapping_add(era_strength(state, unit, definitions)?);
     }
     Ok(strength)
 }
-fn unit_bombard_combat(
+pub(crate) fn unit_bombard_combat(
     state: &LoadedState,
     unit: &c6_core::unit::Unit,
     definitions: &Definitions,
 ) -> Result<i32, Error> {
-    let mut strength = unit_definition(state, unit, definitions)?
-        .map_or(0, |d| d.bombard)
-        .wrapping_add(unit.k_combat_modifers.i_bombard_strength_modifier.max(0));
-    if strength > 0 {
-        strength = strength.wrapping_add(match unit.e_military_formation {
-            1 => definitions.corps_strength,
-            2 => definitions.army_strength,
-            _ => 0,
-        });
-        if strength > 0 {
-            strength = strength.wrapping_add(era_strength(state, unit, definitions)?);
+    let base = unit_definition(state, unit, definitions)?.map_or(0, |d| d.bombard);
+    let modifier = unit.k_combat_modifers.i_bombard_strength_modifier.max(0);
+    let mut strength = base.wrapping_add(modifier);
+    if i64::from(base) + i64::from(modifier) > 0 {
+        if matches!(unit.e_military_formation, 1 | 2) {
+            let addition = if unit.e_military_formation == 1 {
+                definitions.corps_strength
+            } else {
+                definitions.army_strength
+            };
+            let positive = i64::from(strength) + i64::from(addition) > 0;
+            strength = strength.wrapping_add(addition);
+            if !positive {
+                return Ok(strength);
+            }
         }
+        strength = strength.wrapping_add(era_strength(state, unit, definitions)?);
     }
     Ok(strength)
 }
@@ -1423,4 +1456,30 @@ fn unit_is_combat(
     Ok(unit_combat(state, unit, definitions)? > 0
         || unit_ranged_combat(state, unit, definitions)? > 0
         || unit_bombard_combat(state, unit, definitions)? > 0)
+}
+
+#[cfg(test)]
+mod formation_modifier_tests {
+    #[test]
+    fn native_bool_selector_preserves_distinct_land_naval_corps_army_fields() {
+        use c6_core::unit_initialization::domain_from_hash;
+        let sea = domain_from_hash(crate::registry::linux_type_hash(b"DOMAIN_SEA"));
+        let land = domain_from_hash(crate::registry::linux_type_hash(b"DOMAIN_LAND"));
+        assert_eq!(sea, 0);
+        assert_eq!(land, 2);
+        let values = [11, -23, 47, -89];
+        assert_eq!(super::modified_formation_strength(sea, true, values), 47);
+        assert_eq!(super::modified_formation_strength(sea, false, values), -89);
+        assert_eq!(super::modified_formation_strength(land, true, values), 11);
+        assert_eq!(super::modified_formation_strength(land, false, values), -23);
+        for domain in [1, 2, -1, i32::MIN] {
+            assert_eq!(super::modified_formation_strength(domain, true, values), 11);
+            assert_eq!(
+                super::modified_formation_strength(domain, false, values),
+                -23
+            );
+        }
+        assert_eq!(super::modified_formation_strength(0, true, values), 47);
+        assert_eq!(super::modified_formation_strength(0, false, values), -89);
+    }
 }
