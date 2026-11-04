@@ -52,6 +52,7 @@ impl Kind {
 #[derive(Debug)]
 pub enum Error {
     Resources(definitions::Error),
+    Configuration(super::configuration::Error),
     Rules(crate::Error),
     Tech(choose_tech::Error),
     Unsupported(&'static str),
@@ -84,6 +85,7 @@ pub fn initialize_in_place(kind: Kind, created: &mut notifications::Created) -> 
 pub enum StartingSource {
     CallerProvided,
     SourceConfigurationAndEraPrefix,
+    RuntimeConfigurationAndEraPrefix,
 }
 /// Current getter fields carry no observation authority merely by construction.
 impl StartingContext {
@@ -1372,16 +1374,34 @@ impl Definitions {
         if eras.witness.snapshot_sha256 != state.binding().core_sha256 {
             return Err(Error::Unsupported("Game.Eras context snapshot"));
         }
-        let game = configuration.game();
+        configuration
+            .require_binding(state.binding())
+            .map_err(Error::Configuration)?;
+        let game = configuration.game_fields();
+        let required = |value: Option<u32>, field| {
+            value.ok_or(Error::Configuration(super::configuration::Error::Missing(
+                field,
+            )))
+        };
         let mut context = self.starting_context_from_raw_configuration(
             state,
-            game.start_era,
-            game.start_year,
-            game.calendar_type,
-            game.game_speed_type,
+            required(game.start_era, "start_era")?,
+            game.start_year
+                .ok_or(Error::Configuration(super::configuration::Error::Missing(
+                    "start_year presence",
+                )))?,
+            required(game.calendar_type, "calendar_type")?,
+            required(game.game_speed_type, "game_speed_type")?,
             Some(eras.current_era),
         )?;
-        context.source = StartingSource::SourceConfigurationAndEraPrefix;
+        context.source = match configuration.source() {
+            super::configuration::ConfigurationSource::SourceRead => {
+                StartingSource::SourceConfigurationAndEraPrefix
+            }
+            super::configuration::ConfigurationSource::RuntimeSnapshot => {
+                StartingSource::RuntimeConfigurationAndEraPrefix
+            }
+        };
         Ok(context)
     }
 }

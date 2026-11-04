@@ -19,6 +19,7 @@ use c6_core::{
 #[derive(Debug)]
 pub enum Error {
     State(c6_core::loaded_state::Error),
+    Configuration(crate::loaded_actions::configuration::Error),
     Owner(c6_core::player_notifications_owner::Error),
     Definitions(super::Error),
     Lifecycle(lifecycle::Error),
@@ -38,7 +39,7 @@ impl std::error::Error for Error {}
 macro_rules! conversions { ($($variant:ident: $ty:ty),* $(,)?) => {$(
     impl From<$ty> for Error { fn from(e: $ty) -> Self { Self::$variant(e) } }
 )*}; }
-conversions! { State:c6_core::loaded_state::Error, Owner:c6_core::player_notifications_owner::Error,
+conversions! { Configuration:crate::loaded_actions::configuration::Error, State:c6_core::loaded_state::Error, Owner:c6_core::player_notifications_owner::Error,
 Definitions:super::Error, Lifecycle:lifecycle::Error, Tech:choose_tech::Error,
 Culture:culture::Error, Gameplay:crate::loaded_actions::Error }
 
@@ -499,7 +500,7 @@ impl<B: Backend> Notifications for Provider<'_, B> {
         })
     }
     fn play_by_cloud(&mut self, _: ()) -> Result<bool, aftermath::Error> {
-        Ok(self.inputs.configuration.game().is_play_by_cloud())
+        self.step(|s| Ok(s.inputs.configuration.is_play_by_cloud(s.state.binding())?))
     }
     fn manager_game_local_player(&mut self, _: ()) -> Result<Option<i32>, aftermath::Error> {
         self.step(|s| s.backend.manager_game_local_player(s.state))
@@ -508,7 +509,11 @@ impl<B: Backend> Notifications for Provider<'_, B> {
         self.step(|s| Ok(s.state.turn_active(owner)?))
     }
     fn network_multiplayer(&mut self, _: ()) -> Result<bool, aftermath::Error> {
-        Ok(self.inputs.configuration.game().is_network_multiplayer())
+        self.step(|s| {
+            Ok(s.inputs
+                .configuration
+                .is_network_multiplayer(s.state.binding())?)
+        })
     }
     fn find_auto_activate(
         &mut self,
@@ -516,7 +521,10 @@ impl<B: Backend> Notifications for Provider<'_, B> {
         threshold: i32,
     ) -> Result<Option<Object>, aftermath::Error> {
         self.step(|s| {
-            let network = s.inputs.configuration.game().is_network_multiplayer();
+            let network = s
+                .inputs
+                .configuration
+                .is_network_multiplayer(s.state.binding())?;
             let mut cursor = s.state.player_notifications()?.first(slot)?;
             let mut candidate = None;
             while let Some(object) = cursor {

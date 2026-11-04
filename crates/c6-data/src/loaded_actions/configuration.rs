@@ -1,4 +1,5 @@
 //! Checked typed source configuration inputs. These do not prove later runtime equivalence.
+use c6_core::core_player::initialization::WireBinding;
 use std::ops::Range;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -12,6 +13,8 @@ pub enum Error {
     UnsupportedScalar(u32),
     Player(i32),
     RuntimeConfigurationUnverified,
+    Missing(&'static str),
+    Binding,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,10 +49,11 @@ impl RawGameConfiguration {
 /// All input bytes remain borrowed, including unknown/unconsumed metadata and
 /// compressed gameplay. Parsing configuration does not authorize advancing it.
 pub struct Configuration<'a> {
-    source: &'a [u8],
-    game: RawGameConfiguration,
-    last_starting_game: RawGameConfiguration,
+    source: Option<&'a [u8]>,
+    game: GameFields,
+    last_starting_game: Option<GameFields>,
     levels: Vec<(i32, u32)>,
+    binding: Option<WireBinding>,
     active_root: Range<usize>,
     last_starting_root: Range<usize>,
     gameplay_start: usize,
@@ -67,6 +71,49 @@ pub struct SourceInputs {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConfigurationSource {
     SourceRead,
+    RuntimeSnapshot,
+}
+/// Independently observed semantic fields. None means unobserved, including
+/// start_year=None versus Some(None), the latter a known absent source key.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct GameFields {
+    pub game_mode: Option<u32>,
+    pub start_year: Option<Option<i32>>,
+    pub calendar_type: Option<u32>,
+    pub game_speed_type: Option<u32>,
+    pub start_era: Option<u32>,
+}
+impl From<RawGameConfiguration> for GameFields {
+    fn from(v: RawGameConfiguration) -> Self {
+        Self {
+            game_mode: Some(v.game_mode),
+            start_year: Some(v.start_year),
+            calendar_type: Some(v.calendar_type),
+            game_speed_type: Some(v.game_speed_type),
+            start_era: Some(v.start_era),
+        }
+    }
+}
+impl GameFields {
+    fn complete(self) -> Result<RawGameConfiguration, Error> {
+        Ok(RawGameConfiguration {
+            game_mode: self.game_mode.ok_or(Error::Missing("game_mode"))?,
+            start_year: self
+                .start_year
+                .ok_or(Error::Missing("start_year presence"))?,
+            calendar_type: self.calendar_type.ok_or(Error::Missing("calendar_type"))?,
+            game_speed_type: self
+                .game_speed_type
+                .ok_or(Error::Missing("game_speed_type"))?,
+            start_era: self.start_era.ok_or(Error::Missing("start_era"))?,
+        })
+    }
+}
+pub struct RuntimeSnapshot {
+    pub game: GameFields,
+    pub last_starting_game: Option<GameFields>,
+    /// Only known slots need be supplied; absence is never civilization level0.
+    pub civilization_levels: Vec<(i32, u32)>,
 }
 impl<'a> Configuration<'a> {
     /// Validate ranges and the complete 64-slot getter projection. Unknown source
@@ -90,23 +137,75 @@ impl<'a> Configuration<'a> {
             return Err(Error::Framing("complete civilization level slots"));
         }
         Ok(Self {
-            source,
-            game: inputs.game,
-            last_starting_game: inputs.last_starting_game,
+            source: Some(source),
+            game: inputs.game.into(),
+            last_starting_game: Some(inputs.last_starting_game.into()),
             levels: inputs.civilization_levels,
+            binding: None,
             active_root: inputs.active_root,
             last_starting_root: inputs.last_starting_root,
             gameplay_start: inputs.gameplay_start,
         })
     }
-    pub fn source(&self) -> ConfigurationSource {
-        ConfigurationSource::SourceRead
+    pub fn from_runtime_snapshot(
+        binding: &WireBinding,
+        inputs: RuntimeSnapshot,
+    ) -> Result<Self, Error> {
+        let levels = inputs.civilization_levels;
+        for (index, &(owner, _)) in levels.iter().enumerate() {
+            if !(0..64).contains(&owner) {
+                return Err(Error::Player(owner));
+            }
+            if levels[..index].iter().any(|v| v.0 == owner) {
+                return Err(Error::Framing("duplicate runtime player"));
+            }
+        }
+        Ok(Self {
+            source: None,
+            game: inputs.game,
+            last_starting_game: inputs.last_starting_game,
+            levels,
+            binding: Some(binding.clone()),
+            active_root: 0..0,
+            last_starting_root: 0..0,
+            gameplay_start: 0,
+        })
     }
-    pub fn game(&self) -> RawGameConfiguration {
+    pub fn require_binding(&self, binding: &WireBinding) -> Result<(), Error> {
+        if self.binding.as_ref().is_some_and(|v| v != binding) {
+            Err(Error::Binding)
+        } else {
+            Ok(())
+        }
+    }
+    pub fn source(&self) -> ConfigurationSource {
+        if self.binding.is_some() {
+            ConfigurationSource::RuntimeSnapshot
+        } else {
+            ConfigurationSource::SourceRead
+        }
+    }
+    pub fn game(&self) -> Result<RawGameConfiguration, Error> {
+        self.game.complete()
+    }
+    pub fn game_fields(&self) -> GameFields {
         self.game
     }
-    pub fn last_starting_game(&self) -> RawGameConfiguration {
+    pub fn last_starting_game(&self) -> Result<RawGameConfiguration, Error> {
         self.last_starting_game
+            .ok_or(Error::Missing("last_starting_game"))?
+            .complete()
+    }
+    pub fn is_play_by_cloud(&self, binding: &WireBinding) -> Result<bool, Error> {
+        self.require_binding(binding)?;
+        Ok(self.game.game_mode.ok_or(Error::Missing("game_mode"))? == 0x10ff95a6)
+    }
+    pub fn is_network_multiplayer(&self, binding: &WireBinding) -> Result<bool, Error> {
+        self.require_binding(binding)?;
+        Ok(matches!(
+            self.game.game_mode.ok_or(Error::Missing("game_mode"))?,
+            0xe75806e8 | 0x0138409a | 0x07cd5e0a | 0x453f23e2
+        ))
     }
     pub fn civilization_level_type_id(&self, player: i32) -> Result<u32, Error> {
         self.levels
@@ -115,20 +214,23 @@ impl<'a> Configuration<'a> {
             .map(|v| v.1)
             .ok_or(Error::Player(player))
     }
+    /// Known slots only on runtime snapshots; use the checked per-player getter
+    /// when a consumer requires a slot that may not have been observed.
     pub fn civilization_level_types(&self) -> &[(i32, u32)] {
         &self.levels
     }
-    pub fn original_bytes(&self) -> &'a [u8] {
+    pub fn original_bytes(&self) -> Result<&'a [u8], Error> {
         self.source
+            .ok_or(Error::Missing("serialized configuration source"))
     }
-    pub fn active_root_bytes(&self) -> &'a [u8] {
-        &self.source[self.active_root.clone()]
+    pub fn active_root_bytes(&self) -> Result<&'a [u8], Error> {
+        Ok(&self.original_bytes()?[self.active_root.clone()])
     }
-    pub fn last_starting_root_bytes(&self) -> &'a [u8] {
-        &self.source[self.last_starting_root.clone()]
+    pub fn last_starting_root_bytes(&self) -> Result<&'a [u8], Error> {
+        Ok(&self.original_bytes()?[self.last_starting_root.clone()])
     }
-    pub fn unconsumed_gameplay_bytes(&self) -> &'a [u8] {
-        &self.source[self.gameplay_start..]
+    pub fn unconsumed_gameplay_bytes(&self) -> Result<&'a [u8], Error> {
+        Ok(&self.original_bytes()?[self.gameplay_start..])
     }
     /// No source-only decoder proves subsequent native runtime writes absent.
     pub fn require_runtime_equivalence(&self) -> Result<(), Error> {
@@ -167,6 +269,52 @@ mod tests {
         assert!(!cloud.is_network_multiplayer());
     }
     #[test]
+    fn runtime_mode_is_lazy_and_identity_checked() {
+        let binding = super::super::choose_tech::current_tests::binding();
+        let config = Configuration::from_runtime_snapshot(
+            &binding,
+            RuntimeSnapshot {
+                game: GameFields {
+                    game_mode: Some(0x10ff95a6),
+                    ..GameFields::default()
+                },
+                last_starting_game: None,
+                civilization_levels: vec![(7, 0)],
+            },
+        )
+        .unwrap();
+        assert_eq!(config.source(), ConfigurationSource::RuntimeSnapshot);
+        assert_eq!(config.is_play_by_cloud(&binding), Ok(true));
+        assert_eq!(config.is_network_multiplayer(&binding), Ok(false));
+        assert_eq!(config.game(), Err(Error::Missing("start_year presence")));
+        assert_eq!(
+            config.last_starting_game(),
+            Err(Error::Missing("last_starting_game"))
+        );
+        assert_eq!(config.civilization_level_type_id(7), Ok(0));
+        assert_eq!(config.civilization_level_type_id(0), Err(Error::Player(0)));
+        assert_eq!(
+            config.original_bytes(),
+            Err(Error::Missing("serialized configuration source"))
+        );
+        let mut other = binding.clone();
+        other.inputs.rules_inputs_sha256[0] ^= 1;
+        assert_eq!(config.is_play_by_cloud(&other), Err(Error::Binding));
+        let missing = Configuration::from_runtime_snapshot(
+            &binding,
+            RuntimeSnapshot {
+                game: GameFields::default(),
+                last_starting_game: None,
+                civilization_levels: vec![],
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            missing.is_play_by_cloud(&binding),
+            Err(Error::Missing("game_mode"))
+        );
+    }
+    #[test]
     fn checked_source_ranges_and_slots() {
         let game = RawGameConfiguration {
             game_mode: 0,
@@ -185,7 +333,7 @@ mod tests {
         };
         let bytes = [9; 8];
         let config = Configuration::from_source_inputs(&bytes, inputs()).unwrap();
-        assert_eq!(config.unconsumed_gameplay_bytes(), &[9, 9]);
+        assert_eq!(config.unconsumed_gameplay_bytes().unwrap(), &[9, 9]);
         assert_eq!(config.source(), ConfigurationSource::SourceRead);
         assert_eq!(
             config.require_runtime_equivalence(),
