@@ -178,9 +178,155 @@ pub enum Error<E> {
     EmptyInterval { argument: usize },
 }
 
+/// Exact runtime libc identity for this native snapshot layout/algorithm.
+pub const LINUX_LIBC_SHA256: [u8; 32] = [
+    0x3a, 0x15, 0xd6, 0x68, 0x67, 0xd8, 0x37, 0x62, 0xc7, 0xf2, 0xf1, 0xe3, 0x73, 0x59, 0xcb, 0x8f,
+    0x6c, 0x57, 0x43, 0xed, 0xb3, 0x69, 0xc6, 0x52, 0x85, 0xcb, 0x0b, 0x1c, 0x4f, 0x74, 0x98, 0xbf,
+];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SnapshotError {
+    ModuleIdentity,
+    Descriptor,
+    StateExtent,
+    LockHeld,
+}
+/// An explicitly observed native snapshot, distinct from seeded initialization.
+/// Caller establishes the actual module mapping, stopped epoch and raw-byte
+/// stability; the capture adapter verifies live algorithm bodies independently.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NativeSnapshot {
+    state: State,
+    descriptor: [u8; 48],
+    state_header: u32,
+}
+impl NativeSnapshot {
+    pub fn from_native_parts(
+        module_sha256: [u8; 32],
+        descriptor: [u8; 48],
+        state_header_and_words: &[u8],
+        lock: [u8; 4],
+    ) -> Result<Self, SnapshotError> {
+        if module_sha256 != LINUX_LIBC_SHA256 {
+            return Err(SnapshotError::ModuleIdentity);
+        }
+        if lock != [0; 4] {
+            return Err(SnapshotError::LockHeld);
+        }
+        let q = |at| u64::from_le_bytes(descriptor[at..at + 8].try_into().unwrap());
+        let i = |at| i32::from_le_bytes(descriptor[at..at + 4].try_into().unwrap());
+        let kind = match i(24) {
+            0 => Kind::Lcg,
+            1 => Kind::Additive7,
+            2 => Kind::Additive15,
+            3 => Kind::Additive31,
+            4 => Kind::Additive63,
+            _ => return Err(SnapshotError::Descriptor),
+        };
+        let degree = kind.degree();
+        let state = q(16);
+        if i(28) != degree as i32
+            || i(32) != kind.separation() as i32
+            || state < 4
+            || state % 4 != 0
+            || state.checked_add(degree as u64 * 4) != Some(q(40))
+        {
+            return Err(SnapshotError::Descriptor);
+        }
+        if state_header_and_words.len() != (degree.max(1) + 1) * 4 {
+            return Err(SnapshotError::StateExtent);
+        }
+        let cursor = |pointer: u64| -> Result<usize, SnapshotError> {
+            if kind == Kind::Lcg {
+                return Ok(0);
+            }
+            let offset = pointer
+                .checked_sub(state)
+                .ok_or(SnapshotError::Descriptor)?;
+            if offset % 4 != 0 || offset / 4 >= degree as u64 {
+                return Err(SnapshotError::Descriptor);
+            }
+            Ok((offset / 4) as usize)
+        };
+        let words = state_header_and_words[4..]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|v| u32::from_le_bytes(*v))
+            .collect();
+        let logical = State::from_parts(kind, words, cursor(q(0))?, cursor(q(8))?)
+            .map_err(|_| SnapshotError::Descriptor)?;
+        Ok(Self {
+            state: logical,
+            descriptor,
+            state_header: u32::from_le_bytes(state_header_and_words[..4].try_into().unwrap()),
+        })
+    }
+    pub fn state(&self) -> &State {
+        &self.state
+    }
+    pub fn into_state(self) -> State {
+        self.state
+    }
+    pub const fn native_descriptor(&self) -> &[u8; 48] {
+        &self.descriptor
+    }
+    pub const fn state_header(&self) -> u32 {
+        self.state_header
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn observed_native_import_preserves_current_words_and_rejects_unknowns() {
+        let mut descriptor = [0u8; 48];
+        for (at, value) in [(0, 0x100c_u64), (8, 0x1000), (16, 0x1000), (40, 0x101c)] {
+            descriptor[at..at + 8].copy_from_slice(&value.to_le_bytes());
+        }
+        for (at, value) in [(24, 1i32), (28, 7), (32, 3)] {
+            descriptor[at..at + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        let allocation = [91u32, u32::MAX, 2, 3, 4, 5, 6, 7]
+            .into_iter()
+            .flat_map(u32::to_le_bytes)
+            .collect::<Vec<_>>();
+        let snapshot =
+            NativeSnapshot::from_native_parts(LINUX_LIBC_SHA256, descriptor, &allocation, [0; 4])
+                .unwrap();
+        assert_eq!(snapshot.state_header(), 91);
+        assert_eq!(snapshot.state().words(), &[u32::MAX, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(snapshot.state().front(), 3);
+        assert_eq!(snapshot.state().rear(), 0);
+        assert_eq!(
+            NativeSnapshot::from_native_parts([0; 32], descriptor, &allocation, [0; 4]),
+            Err(SnapshotError::ModuleIdentity)
+        );
+        assert_eq!(
+            NativeSnapshot::from_native_parts(
+                LINUX_LIBC_SHA256,
+                descriptor,
+                &allocation,
+                [1, 0, 0, 0]
+            ),
+            Err(SnapshotError::LockHeld)
+        );
+        assert_eq!(
+            NativeSnapshot::from_native_parts(
+                LINUX_LIBC_SHA256,
+                descriptor,
+                &allocation[..8],
+                [0; 4]
+            ),
+            Err(SnapshotError::StateExtent)
+        );
+        descriptor[0] = 0x0d;
+        assert_eq!(
+            NativeSnapshot::from_native_parts(LINUX_LIBC_SHA256, descriptor, &allocation, [0; 4]),
+            Err(SnapshotError::Descriptor)
+        );
+    }
     #[test]
     fn actual_draw_order_and_argument_failures() {
         let initial = State::seeded(Kind::Additive31, 1);
