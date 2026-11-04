@@ -1,4 +1,4 @@
-//! Source-derived Linux XP2 attack replenishment on a retained live Unit.
+//! Source-derived Linux XP2 attack and movement replenishment on a live Unit.
 //!
 //! Implements Manager::RestoreAttacksRemaining (0x26af860), GetMaxNumAttacks
 //! (0x2c27140), and the local-authority SetAttacksRemaining field/report order
@@ -112,6 +112,192 @@ pub fn restore_attacks_remaining<C: RestoreAttacksContext>(
         })
         .map_err(RestoreAttacksError::ReportFailed)?;
     Ok(RestoreAttacksOutcome::Reported)
+}
+
+/// Linux movement events carry raw signed Q8, never rounded whole moves.
+pub const MOVES_REMAINING_CHANGED: u32 = 0xc50d66d6;
+pub const MOVES_EXHAUSTED: u32 = 0xe992f3cd;
+pub const MOVEMENT_RESTORED: u32 = 0x6e8a2f93;
+pub const ACTIVITY_HOLD: i32 = 0x5ff1bbdf;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MovementReport {
+    pub event_hash: u32,
+    pub identity: ComponentId,
+    /// None is the exhausted event's identity-only overload.
+    pub raw_q8: Option<i32>,
+}
+
+/// Same authoritative actor/world contract as RestoreAttacksContext.
+/// Native null input is represented by None at the function boundary.
+pub trait RestoreMovementContext {
+    type Error;
+    fn unit(&self) -> &Unit;
+    fn unit_mut(&mut self) -> &mut Unit;
+
+    /// Query actual current Linux MaxMoves in whole moves. The data-layer
+    /// implementation is c6_data::unit_movement_state::unit_max_moves; bindings
+    /// must delegate that exact rules/world/diplomacy query, not a base-move
+    /// approximation or a caller-invented maximum. Missing inputs return Err.
+    fn max_moves(&self) -> Result<i32, Self::Error>;
+
+    /// Pure admission check, before any write/RNG. Check the owner query and,
+    /// when movement_branch is true, all reachable synchronous subscribers and
+    /// current-formation updates, including formations introduced by callbacks.
+    /// Unknown required effects reject; this is not a native event.
+    fn preflight_restore_movement(&self, movement_branch: bool) -> Result<(), Self::Error>;
+
+    /// Complete synchronous delivery, including gameplay/RNG in native order.
+    /// Subscribers may mutate the same Unit, owner, formation and world.
+    fn send_movement_report(&mut self, report: MovementReport) -> Result<(), Self::Error>;
+
+    /// At this exact point read current EditFormation (+0xbc0); if nonnull,
+    /// reread EditFormation and run SyncMovesRemaining -> UpdateAttributes.
+    /// That updates actual formation attributes/domain/movement and reports
+    /// changed formation movement for each current member in original order.
+    /// A validated absent formation needs no update; unknown state is Err.
+    /// This is not equivalent to logging a sync or copying this Unit's moves.
+    fn sync_current_formation(&mut self) -> Result<(), Self::Error>;
+
+    /// Resolve the current owner's actual Player::IsBarbarian after reporting.
+    fn owner_is_barbarian(&self) -> Result<bool, Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MovementStage {
+    ChangedReport,
+    ExhaustedReport,
+    FormationSync,
+    RestoredReport,
+    OwnerQuery,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RestoreMovementError<E> {
+    MaxMovesUnavailable(E),
+    EffectsUnavailable(E),
+    /// The actual field assignment and completed callbacks remain visible.
+    /// No rollback, successful action, or complete turn is implied.
+    ContinuationFailed {
+        stage: MovementStage,
+        error: E,
+    },
+}
+impl<E: std::fmt::Display> std::fmt::Display for RestoreMovementError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MaxMovesUnavailable(e) => write!(f, "maximum movement unavailable: {e}"),
+            Self::EffectsUnavailable(e) => write!(f, "movement effects unavailable: {e}"),
+            Self::ContinuationFailed { stage, error } => {
+                write!(f, "movement continuation failed at {stage:?}: {error}")
+            }
+        }
+    }
+}
+impl<E: std::error::Error + 'static> std::error::Error for RestoreMovementError<E> {}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RestoreMovementOutcome {
+    NullUnit,
+    /// The maximum matched; healing eligibility was still assigned.
+    MovementUnchanged,
+    /// The outer restoration event completed; callbacks own subsequent state.
+    Restored,
+}
+
+fn movement_identity(unit: &Unit) -> ComponentId {
+    ComponentId {
+        owner: unit.e_owner as i16,
+        component_type: 1,
+        id: unit.id,
+    }
+}
+
+/// Manager::RestoreMovement (0x26af6c0), including the local-authority writes of
+/// ChangeMovesRemaining (0x2c277f0) and SetEligibleToHeal (0x26b0c90).
+/// Native archive dirty-tree bookkeeping is excluded under the audited profile.
+/// Formation/report continuations must execute fully; this leaf establishes
+/// neither initialized-world/native parity nor complete activation/turn support.
+pub fn restore_movement<C: RestoreMovementContext>(
+    context: Option<&mut C>,
+) -> Result<RestoreMovementOutcome, RestoreMovementError<C::Error>> {
+    let Some(context) = context else {
+        return Ok(RestoreMovementOutcome::NullUnit);
+    };
+    let maximum = context
+        .max_moves()
+        .map_err(RestoreMovementError::MaxMovesUnavailable)?
+        .wrapping_shl(8);
+    let branch = maximum != context.unit().x_moves_remaining;
+    context
+        .preflight_restore_movement(branch)
+        .map_err(RestoreMovementError::EffectsUnavailable)?;
+    if branch {
+        let delta = maximum.wrapping_sub(context.unit().x_moves_remaining);
+        let changed = context.unit().x_moves_remaining.wrapping_add(delta).max(0);
+        if changed != context.unit().x_moves_remaining {
+            context.unit_mut().x_moves_remaining = changed;
+            let report = MovementReport {
+                event_hash: MOVES_REMAINING_CHANGED,
+                identity: movement_identity(context.unit()),
+                raw_q8: Some(context.unit().x_moves_remaining),
+            };
+            context.send_movement_report(report).map_err(|error| {
+                RestoreMovementError::ContinuationFailed {
+                    stage: MovementStage::ChangedReport,
+                    error,
+                }
+            })?;
+            // Test current field after synchronous subscribers, not changed/max.
+            if context.unit().x_moves_remaining == 0 {
+                let report = MovementReport {
+                    event_hash: MOVES_EXHAUSTED,
+                    identity: movement_identity(context.unit()),
+                    raw_q8: None,
+                };
+                context.send_movement_report(report).map_err(|error| {
+                    RestoreMovementError::ContinuationFailed {
+                        stage: MovementStage::ExhaustedReport,
+                        error,
+                    }
+                })?;
+            }
+            context.sync_current_formation().map_err(|error| {
+                RestoreMovementError::ContinuationFailed {
+                    stage: MovementStage::FormationSync,
+                    error,
+                }
+            })?;
+        }
+        // Outer report uses cached maximum, even after clamping or subscribers.
+        let report = MovementReport {
+            event_hash: MOVEMENT_RESTORED,
+            identity: movement_identity(context.unit()),
+            raw_q8: Some(maximum),
+        };
+        context.send_movement_report(report).map_err(|error| {
+            RestoreMovementError::ContinuationFailed {
+                stage: MovementStage::RestoredReport,
+                error,
+            }
+        })?;
+    }
+    let barbarian =
+        context
+            .owner_is_barbarian()
+            .map_err(|error| RestoreMovementError::ContinuationFailed {
+                stage: MovementStage::OwnerQuery,
+                error,
+            })?;
+    let unit = context.unit();
+    let eligible = !barbarian
+        && (unit.e_activity != ACTIVITY_HOLD || unit.k_health_modifiers.b_can_heal_after_action);
+    context.unit_mut().b_eligible_to_heal = eligible;
+    Ok(if branch {
+        RestoreMovementOutcome::Restored
+    } else {
+        RestoreMovementOutcome::MovementUnchanged
+    })
 }
 
 #[cfg(test)]
@@ -561,5 +747,242 @@ mod tests {
         assert_eq!(context.actor, expected_unit);
         assert_eq!(context.world_counter, 1);
         assert_eq!(context.reports.len(), 1);
+    }
+    struct MovementContext {
+        actor: Unit,
+        maximum: Result<i32, &'static str>,
+        admitted: bool,
+        barbarian: bool,
+        mutate_changed: bool,
+        fail: Option<MovementStage>,
+        reports: Vec<MovementReport>,
+        order: Vec<&'static str>,
+    }
+    impl MovementContext {
+        fn new(maximum: i32, current: i32) -> Self {
+            let mut actor = source_only_unit();
+            actor.x_moves_remaining = current;
+            actor.i_damage = 43;
+            actor.i_attacks_remaining = 7;
+            Self {
+                actor,
+                maximum: Ok(maximum),
+                admitted: true,
+                barbarian: false,
+                mutate_changed: false,
+                fail: None,
+                reports: vec![],
+                order: vec![],
+            }
+        }
+    }
+    impl RestoreMovementContext for MovementContext {
+        type Error = &'static str;
+        fn unit(&self) -> &Unit {
+            &self.actor
+        }
+        fn unit_mut(&mut self) -> &mut Unit {
+            &mut self.actor
+        }
+        fn max_moves(&self) -> Result<i32, Self::Error> {
+            self.maximum
+        }
+        fn preflight_restore_movement(&self, _: bool) -> Result<(), Self::Error> {
+            if self.admitted {
+                Ok(())
+            } else {
+                Err("unknown effects")
+            }
+        }
+        fn send_movement_report(&mut self, report: MovementReport) -> Result<(), Self::Error> {
+            assert_eq!(report.identity, movement_identity(&self.actor));
+            let stage = match report.event_hash {
+                MOVES_REMAINING_CHANGED => {
+                    assert_eq!(report.raw_q8, Some(self.actor.x_moves_remaining));
+                    self.order.push("changed");
+                    if self.mutate_changed {
+                        self.actor.x_moves_remaining = 0;
+                        self.actor.id = 77;
+                        self.actor.e_owner = -7;
+                        self.actor.e_activity = ACTIVITY_HOLD;
+                    }
+                    MovementStage::ChangedReport
+                }
+                MOVES_EXHAUSTED => {
+                    self.order.push("zero");
+                    MovementStage::ExhaustedReport
+                }
+                MOVEMENT_RESTORED => {
+                    self.order.push("restored");
+                    MovementStage::RestoredReport
+                }
+                _ => panic!("unexpected event"),
+            };
+            self.reports.push(report);
+            if self.fail == Some(stage) {
+                Err("subscriber failed")
+            } else {
+                Ok(())
+            }
+        }
+        fn sync_current_formation(&mut self) -> Result<(), Self::Error> {
+            self.order.push("formation");
+            // Synthetic required continuation stands for fully checked absent
+            // formation, or a failing admitted provider. No native parity claim.
+            if self.fail == Some(MovementStage::FormationSync) {
+                self.actor.i_damage = 88;
+                Err("formation failed")
+            } else {
+                Ok(())
+            }
+        }
+        fn owner_is_barbarian(&self) -> Result<bool, Self::Error> {
+            if self.fail == Some(MovementStage::OwnerQuery) {
+                Err("owner missing")
+            } else {
+                Ok(self.barbarian)
+            }
+        }
+    }
+
+    #[test]
+    fn movement_actual_fields_order_and_reentrant_readback() {
+        let mut c = MovementContext::new(3, 17);
+        c.mutate_changed = true;
+        assert_eq!(
+            restore_movement(Some(&mut c)),
+            Ok(RestoreMovementOutcome::Restored)
+        );
+        assert_eq!(c.order, ["changed", "zero", "formation", "restored"]);
+        assert_eq!(c.reports[0].raw_q8, Some(768));
+        assert_eq!(c.reports[1].raw_q8, None);
+        assert_eq!(c.reports[1].identity.id, 77);
+        assert_eq!(c.reports[2].raw_q8, Some(768));
+        assert_eq!(c.actor.x_moves_remaining, 0);
+        assert!(!c.actor.b_eligible_to_heal); // callback changed activity
+        assert_eq!(c.actor.i_damage, 43);
+        assert_eq!(c.actor.i_attacks_remaining, 7);
+    }
+
+    #[test]
+    fn movement_equal_still_updates_healing_and_null_skips_everything() {
+        assert_eq!(
+            restore_movement::<MovementContext>(None),
+            Ok(RestoreMovementOutcome::NullUnit)
+        );
+        for (barbarian, activity, after_action, expected) in [
+            (false, 0, false, true),
+            (true, 0, true, false),
+            (false, ACTIVITY_HOLD, false, false),
+            (false, ACTIVITY_HOLD, true, true),
+            (true, ACTIVITY_HOLD, true, false),
+        ] {
+            let mut c = MovementContext::new(2, 512);
+            c.barbarian = barbarian;
+            c.actor.e_activity = activity;
+            c.actor.k_health_modifiers.b_can_heal_after_action = after_action;
+            c.actor
+                .k_health_religion_modifiers
+                .b_can_heal_after_action_religion = !after_action;
+            assert_eq!(
+                restore_movement(Some(&mut c)),
+                Ok(RestoreMovementOutcome::MovementUnchanged)
+            );
+            assert_eq!(c.actor.b_eligible_to_heal, expected);
+            assert!(c.order.is_empty());
+        }
+    }
+
+    #[test]
+    fn movement_signed_wrap_clamp_and_outer_report_on_inner_no_change() {
+        for (maximum, current, expected, events) in [
+            (-1, 0, 0, vec!["restored"]),
+            (-1, 5, 0, vec!["changed", "zero", "formation", "restored"]),
+            (0, -1, 0, vec!["changed", "zero", "formation", "restored"]),
+            (
+                i32::MAX,
+                i32::MIN,
+                0,
+                vec!["changed", "zero", "formation", "restored"],
+            ),
+            (
+                0x01000001,
+                i32::MIN,
+                256,
+                vec!["changed", "formation", "restored"],
+            ),
+        ] {
+            let mut c = MovementContext::new(maximum, current);
+            restore_movement(Some(&mut c)).unwrap();
+            assert_eq!(c.actor.x_moves_remaining, expected);
+            assert_eq!(c.order, events);
+            assert_eq!(
+                c.reports.last().unwrap().raw_q8,
+                Some(maximum.wrapping_shl(8))
+            );
+        }
+    }
+
+    #[test]
+    fn movement_rejects_unavailable_inputs_before_writes() {
+        let mut c = MovementContext::new(3, 1);
+        let before = c.actor.clone();
+        c.maximum = Err("unbound exact query");
+        assert_eq!(
+            restore_movement(Some(&mut c)),
+            Err(RestoreMovementError::MaxMovesUnavailable(
+                "unbound exact query"
+            ))
+        );
+        assert_eq!(c.actor, before);
+        c.maximum = Ok(3);
+        c.admitted = false;
+        assert_eq!(
+            restore_movement(Some(&mut c)),
+            Err(RestoreMovementError::EffectsUnavailable("unknown effects"))
+        );
+        assert_eq!(c.actor, before);
+        assert!(c.order.is_empty());
+    }
+
+    #[test]
+    fn movement_continuation_failure_keeps_exact_completed_prefix() {
+        for (stage, order) in [
+            (MovementStage::ChangedReport, vec!["changed"]),
+            (MovementStage::ExhaustedReport, vec!["changed", "zero"]),
+            (
+                MovementStage::FormationSync,
+                vec!["changed", "zero", "formation"],
+            ),
+            (
+                MovementStage::RestoredReport,
+                vec!["changed", "zero", "formation", "restored"],
+            ),
+            (
+                MovementStage::OwnerQuery,
+                vec!["changed", "zero", "formation", "restored"],
+            ),
+        ] {
+            let mut c = MovementContext::new(3, 1);
+            c.mutate_changed = true;
+            c.actor.b_eligible_to_heal = true;
+            c.fail = Some(stage);
+            let error = restore_movement(Some(&mut c)).unwrap_err();
+            assert!(
+                matches!(error, RestoreMovementError::ContinuationFailed { stage: actual, .. } if actual == stage)
+            );
+            assert_eq!(c.order, order);
+            assert_eq!(c.actor.x_moves_remaining, 0);
+            assert_eq!(c.actor.id, 77);
+            assert!(c.actor.b_eligible_to_heal); // final assignment not reached
+            assert_eq!(
+                c.actor.i_damage,
+                if stage == MovementStage::FormationSync {
+                    88
+                } else {
+                    43
+                }
+            );
+        }
     }
 }
