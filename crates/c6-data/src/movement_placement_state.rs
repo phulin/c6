@@ -24,6 +24,7 @@ use c6_core::{
 #[derive(Debug)]
 pub enum Error {
     State(c6_core::loaded_state::Error),
+    Relations(c6_core::game_diplomatic_relations::Error),
     World(c6_core::world::MissingInput),
     Rules(unit_initialization_definitions::Error),
     Binding,
@@ -112,6 +113,17 @@ fn validate_current_levels(
     }
     Ok(())
 }
+fn open_borders_from(
+    count: i32,
+    allied: impl FnOnce() -> Result<bool, Error>,
+    permanently_allied: impl FnOnce() -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    if count != 0 || allied()? {
+        return Ok(true);
+    }
+    permanently_allied()
+}
+
 fn unit_embark_decision(
     domain: i32,
     owner: i32,
@@ -373,15 +385,49 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             },
         )
     }
-    fn player_can_embark(&self, owner: i32, unit_type: i32) -> Result<bool, Error> {
+    fn civilization_level(&self, owner: i32) -> Result<u32, Error> {
         self.state.world().player(owner).map_err(Error::World)?;
-        let level = self
-            .civilization_levels
+        self.civilization_levels
             .and_then(|v| v.iter().find(|p| p.0 == owner))
             .map(|p| p.1)
             .ok_or(Error::Capability(Capability::PlayerCivilizationLevel(
                 owner,
-            )))?;
+            )))
+    }
+    fn open_borders(&self, owner: i32, from: i32) -> Result<bool, Error> {
+        self.state.world().player(owner).map_err(Error::World)?;
+        let diplomacy = &self
+            .state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Definitions)?
+            .diplomacy;
+        let count = *diplomacy
+            .open_borders_from_count
+            .get(usize::try_from(from).map_err(|_| Error::Definitions)?)
+            .ok_or(Error::Definitions)?;
+        open_borders_from(
+            count,
+            || {
+                self.state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .is_allied(owner, from)
+                    .map_err(Error::Relations)
+            },
+            || {
+                self.state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .is_permanently_allied(owner, from)
+                    .map_err(Error::Relations)
+            },
+        )
+    }
+    fn player_can_embark(&self, owner: i32, unit_type: i32) -> Result<bool, Error> {
+        let level = self.civilization_level(owner)?;
         player_embark_decision(
             level,
             self.unlock_embarkation,
@@ -708,6 +754,36 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                             &diplomacy.units_blocked_entry,
                         )?);
                     }
+                    PlacementMissing::EnterForeign => {
+                        f.enter_foreign = Some(unit.k_movement_modifiers.b_enter_foreign_lands)
+                    }
+                    PlacementMissing::OpenBorders => {
+                        f.open_borders =
+                            Some(self.open_borders(
+                                unit.e_owner,
+                                f.plot_owner.ok_or(Error::Definitions)?,
+                            )?)
+                    }
+                    PlacementMissing::EnforceBorders => {
+                        let owner = f.plot_owner.ok_or(Error::Definitions)?;
+                        self.state.world().player(owner).map_err(Error::World)?;
+                        f.enforce_borders = Some(
+                            self.state
+                                .retained()
+                                .players
+                                .iter()
+                                .find(|p| p.header.owner == owner)
+                                .ok_or(Error::Definitions)?
+                                .diplomacy
+                                .can_enforce_borders,
+                        )
+                    }
+                    PlacementMissing::Barbarian => {
+                        f.barbarian = Some(self.civilization_level(unit.e_owner)? == 0xd959ec24)
+                    }
+                    PlacementMissing::TribeIndex => {
+                        f.tribe_index = Some(unit.i_barbarian_tribe_index)
+                    }
                     _ => return Err(Error::Capability(Capability::ForeignContext(missing))),
                 },
             }
@@ -1024,5 +1100,31 @@ mod tests {
             },
         )
         .unwrap();
+    }
+    #[test]
+    fn open_border_count_alliance_permanent_order_is_lazy() {
+        for count in [-9, 1, 7] {
+            assert!(
+                open_borders_from(count, || panic!("alliance"), || panic!("permanent")).unwrap()
+            );
+        }
+        assert!(open_borders_from(0, || Ok(true), || panic!("permanent")).unwrap());
+        let calls = std::cell::RefCell::new(Vec::new());
+        assert!(open_borders_from(
+            0,
+            || {
+                calls.borrow_mut().push("alliance");
+                Ok(false)
+            },
+            || {
+                calls.borrow_mut().push("permanent");
+                Ok(true)
+            }
+        )
+        .unwrap());
+        assert_eq!(*calls.borrow(), ["alliance", "permanent"]);
+        assert!(!open_borders_from(0, || Ok(false), || Ok(false)).unwrap());
+        assert!(open_borders_from(0, || Err(Error::Definitions), || panic!("permanent")).is_err());
+        assert!(open_borders_from(0, || Ok(false), || Err(Error::Definitions)).is_err());
     }
 }

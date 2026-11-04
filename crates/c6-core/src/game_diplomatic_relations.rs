@@ -14,6 +14,7 @@ pub enum Error {
     NoncanonicalBool(u8),
     MissingWar,
     MissingAlliances,
+    MissingPermanentAlliances,
     DefinitionInputs,
     AlreadyInitialized,
     InvalidStorage,
@@ -217,6 +218,25 @@ impl GameDiplomaticRelations {
     pub fn is_allied(&self, a: i32, b: i32) -> Result<bool, Error> {
         Ok(self.alliance_type(a, b)? != -1)
     }
+    /// Current permanent-alliance bool relationship. Equal players return false
+    /// before storage/range checks. Missing prefix/storage is not a false value.
+    pub fn is_permanently_allied(&self, a: i32, b: i32) -> Result<bool, Error> {
+        if a == b {
+            return Ok(false);
+        }
+        let values = &self
+            .read_prefix
+            .as_ref()
+            .ok_or(Error::MissingPermanentAlliances)?
+            .at_118;
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        values
+            .get(self.index(a, b)?)
+            .map(|value| value.value)
+            .ok_or(Error::Index)
+    }
     /// Read the pinned current serializer in its original order, stopping just
     /// after the first AllianceTypes vector. Old-version initialization/remapping
     /// branches reject explicitly. No native callbacks are executed here.
@@ -394,6 +414,50 @@ mod tests {
             Some(&[i32::MAX; 3][..])
         );
         assert_eq!(s.alliance_type(-1, 0), Err(Error::InvalidPlayer(-1)));
+    }
+    #[test]
+    fn permanent_alliance_uses_own_bool_storage_and_symmetric_order() {
+        let mut state = GameDiplomaticRelations::decode_prefix(&fixture(), Limits::default())
+            .unwrap()
+            .state;
+        assert_eq!(state.is_permanently_allied(-1, -1), Ok(false));
+        assert_eq!(
+            state.is_permanently_allied(0, 1),
+            Err(Error::InvalidStorage)
+        );
+        state.read_prefix.as_mut().unwrap().at_118 = vec![
+            BoolRelationship {
+                value: true,
+                changed_turn: 91,
+            },
+            BoolRelationship {
+                value: false,
+                changed_turn: -7,
+            },
+            BoolRelationship {
+                value: true,
+                changed_turn: 17,
+            },
+        ];
+        assert_eq!(state.is_permanently_allied(0, 2), Ok(true));
+        assert_eq!(state.is_permanently_allied(2, 0), Ok(true));
+        assert_eq!(state.is_permanently_allied(2, 1), Ok(false));
+        assert_eq!(state.is_permanently_allied(0, 1), Ok(true));
+        assert_eq!(
+            state.is_permanently_allied(3, 0),
+            Err(Error::InvalidPlayer(3))
+        );
+        assert_eq!(
+            state.is_permanently_allied(-1, 0),
+            Err(Error::InvalidPlayer(-1))
+        );
+        assert_eq!(state.read_prefix().unwrap().at_118[0].changed_turn, 91);
+        let missing = GameDiplomaticRelations::from_war_values(3, vec![-1; 3]).unwrap();
+        assert_eq!(
+            missing.is_permanently_allied(0, 1),
+            Err(Error::MissingPermanentAlliances)
+        );
+        assert_eq!(missing.is_permanently_allied(99, 99), Ok(false));
     }
     #[test]
     fn definition_misses_and_invalid_input_reject_without_partial_authority() {
