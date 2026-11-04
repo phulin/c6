@@ -110,6 +110,19 @@ impl Current<'_, '_, '_> {
                 .queries
                 .path_runtime
                 .ok_or(Error::Missing("influence current path runtime"))?;
+            // This exclusive rebuild writes only InfluenceMap arrays. Preserve
+            // the caller's current city-domain proof while refreshing the broad
+            // action revision after our own derived-map writes, not after any
+            // unaccounted city/map mutation.
+            if source_runtime
+                .city_domains
+                .as_ref()
+                .is_some_and(|domains| domains.stamp != self.input_stamp)
+            {
+                return Err(Error::Missing(
+                    "city domains stale before influence rebuild",
+                ));
+            }
             let current_runtime = crate::formation_path_state::Runtime {
                 visibility: source_runtime.visibility,
                 civilization_levels: source_runtime.civilization_levels.as_ref().map(|levels| {
@@ -121,7 +134,7 @@ impl Current<'_, '_, '_> {
                 city_domains: source_runtime.city_domains.as_ref().map(|domains| {
                     crate::formation_path_state::CurrentCityDomains {
                         binding: domains.binding,
-                        stamp: domains.stamp,
+                        stamp: self.state.action_stamp(),
                         masks: domains.masks,
                     }
                 }),

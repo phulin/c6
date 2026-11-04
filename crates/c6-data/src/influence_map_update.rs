@@ -131,6 +131,7 @@ pub struct Queries<'a, 'r> {
 }
 type DistrictId = (i32, u32);
 struct Current<'a, 'q, 'r> {
+    input_stamp: loaded_state::ActionStamp,
     state: &'a mut LoadedState,
     definitions: &'a Definitions,
     queries: &'a Queries<'q, 'r>,
@@ -581,6 +582,7 @@ pub fn dispatch_if_active(
         )));
     }
     kernel::on_unit_removed(&mut Current {
+        input_stamp: state.action_stamp(),
         state,
         definitions,
         queries,
@@ -602,6 +604,7 @@ pub fn update(
         )));
     }
     kernel::update(&mut Current {
+        input_stamp: state.action_stamp(),
         state,
         definitions,
         queries,
