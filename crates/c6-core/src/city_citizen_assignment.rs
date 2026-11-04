@@ -350,9 +350,51 @@ pub fn assign_to_index(
         previous_workers,
     }))
 }
+/// RemoveAllCitizenWorkers286ed80 on the source branch with no forced
+/// workers. Forced slots need fresh capacity queries and are rejected before
+/// any write. ReallocateCitizens retains this ordinary-worker snapshot for its
+/// later ordered SendPlotIndexWorkerChange calls.
+pub fn remove_all_without_forced(
+    citizens: &mut Citizens,
+    population: i32,
+) -> Result<Vec<i32>, Error> {
+    if citizens.working_plot.len() != citizens.forced_working_plot.len()
+        || citizens.forced_working_plot.iter().any(|&n| n != 0)
+    {
+        return Err(Error::CurrentArrayShape);
+    }
+    let mut previous = Vec::new();
+    previous.try_reserve_exact(citizens.working_plot.len()).map_err(|_| Error::AllocationLimit)?;
+    previous.extend_from_slice(&citizens.working_plot);
+    citizens.num_unassigned_citizens = population.max(0);
+    citizens.num_citizens_working_plots = 0;
+    for (index, count) in citizens.working_plot.iter_mut().enumerate() {
+        if *count > 0 || index == 0 {
+            *count = i32::from(index == 0);
+        }
+    }
+    Ok(previous)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reallocation_retains_previous_order_and_free_center_worker() {
+        let mut citizens = Citizens {
+            working_plot: vec![0, 2, -1, 1], forced_working_plot: vec![0; 4],
+            favored_yields: vec![], disfavored_yields: vec![],
+            num_unassigned_citizens: -3, num_citizens_working_plots: 3,
+            force_update_plot_appeal: false,
+        };
+        assert_eq!(remove_all_without_forced(&mut citizens, 2), Ok(vec![0, 2, -1, 1]));
+        assert_eq!(citizens.working_plot, [1, 0, -1, 0]);
+        assert_eq!((citizens.num_unassigned_citizens, citizens.num_citizens_working_plots), (2, 0));
+        citizens.forced_working_plot[1] = 1;
+        let original = citizens.clone();
+        assert_eq!(remove_all_without_forced(&mut citizens, 1), Err(Error::CurrentArrayShape));
+        assert_eq!(citizens, original);
+    }
     #[test]
     fn city_index_order_preserves_odd_rows_and_wrapped_duplicates() {
         use crate::unit::PlotCoord;

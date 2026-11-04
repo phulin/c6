@@ -68,6 +68,10 @@ impl Definitions {
     pub fn yield_indices(&self) -> std::ops::Range<i32> {
         0..self.yields.count() as i32
     }
+    /// Current native Yield collection identity for canonical hash-keyed arrays.
+    pub fn yield_hash(&self, index: i32) -> Option<u32> {
+        self.yields.type_hash(index as u32 as usize)
+    }
 
     pub fn from_rules(rules: &Rules) -> Result<Self, Error> {
         let table = |name| rules.gameplay().table(name).ok_or(Error::Unsupported(name));
