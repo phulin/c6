@@ -1,4 +1,4 @@
-//! Actual Linux Unit MaxMoves/HasMoved over owned gameplay fields.
+//! Actual Linux Unit BaseMoves/MaxMoves/HasMoved over owned gameplay fields.
 //! No Formation flag, effective-stat answer or native archive state is an input.
 use crate::{
     game_parameters::{IntegerParameter, Parameters},
@@ -29,6 +29,7 @@ pub enum Error {
     Map,
     District,
     Relations(c6_core::game_diplomatic_relations::Error),
+    Placement(crate::movement_placement_state::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -304,6 +305,118 @@ fn effective_embarked(activity: i32, saved_embarked: bool) -> bool {
     activity != 0x5ff1_bbdf && saved_embarked
 }
 
+/// Original Unit.GetBaseMoves(domain), including its lazy CanEmbark query.
+/// The callback must query the existing placement Context against this same
+/// current state; it must not supply a captured effective-stat answer.
+/// Missing definitions return zero before domain/configuration queries.
+pub fn unit_base_moves_with_can_embark(
+    state: &LoadedState,
+    unit: &Unit,
+    domain: i32,
+    inputs: &Inputs<'_>,
+    can_embark: impl FnOnce() -> Result<bool, crate::movement_placement_state::Error>,
+) -> Result<i32, Error> {
+    let definitions = inputs.definitions;
+    if definitions.identities != state.binding().inputs {
+        return Err(Error::Binding);
+    }
+    let runtime = state
+        .unit_runtime(unit.e_owner, unit.id)
+        .map_err(Error::State)?;
+    let definition = usize::try_from(runtime.definition_index)
+        .ok()
+        .and_then(|index| definitions.base_moves.get(index).copied());
+    if definition.is_some()
+        && definitions.units.find_index(unit.e_type_index)
+            != usize::try_from(runtime.definition_index).ok()
+    {
+        return Err(Error::Definition("Unit initialized index"));
+    }
+    base_moves_value(
+        definition,
+        runtime.domain,
+        domain,
+        unit_is_embarked(unit),
+        unit.k_combat_modifers.b_fight_while_embarked,
+        || can_embark().map_err(Error::Placement),
+        || {
+            Ok(definitions.embarked_base.wrapping_add(
+                player(state, unit.e_owner)?
+                    .units
+                    .embarked_movement_modifier,
+            ))
+        },
+    )
+}
+
+/// BaseMoves when no current civilization-level projection is available.
+/// Only branches which actually reach a player capability require it; callers
+/// with placement context should use `unit_base_moves_with_can_embark`.
+pub fn unit_base_moves(
+    state: &LoadedState,
+    unit: &Unit,
+    domain: i32,
+    inputs: &Inputs<'_>,
+) -> Result<i32, Error> {
+    unit_base_moves_with_can_embark(state, unit, domain, inputs, || {
+        use crate::movement_placement_state::{self, Capability, Error};
+        let runtime = state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        movement_placement_state::unit_embark_decision(
+            runtime.domain,
+            unit.e_owner,
+            unit.e_original_owner,
+            |owner| {
+                Err(Error::Capability(Capability::PlayerCivilizationLevel(
+                    owner,
+                )))
+            },
+            |owner| state.world().player_is_valid(owner).map_err(Error::World),
+        )
+    })
+}
+
+// Branch order from Linux 0x2c27990. In particular, requested domain zero
+// evaluates CanEmbark even for a unit that fights while embarked. Nonzero
+// domains other than -1 never consult the saved embarkation flag.
+fn base_moves_value<E>(
+    definition: Option<i32>,
+    unit_domain: i32,
+    requested_domain: i32,
+    embarked: bool,
+    fight_while_embarked: bool,
+    can_embark: impl FnOnce() -> Result<bool, E>,
+    embarked_moves: impl FnOnce() -> Result<i32, E>,
+) -> Result<i32, E> {
+    let Some(base) = definition else {
+        return Ok(0);
+    };
+    let embark_branch = if requested_domain == 0 {
+        can_embark()?
+    } else {
+        requested_domain == -1 && unit_domain != 1 && embarked
+    };
+    if embark_branch {
+        return if fight_while_embarked {
+            Ok(base)
+        } else {
+            embarked_moves()
+        };
+    }
+    Ok(
+        if requested_domain == unit_domain
+            || requested_domain == -1
+            || unit_domain == 4
+            || unit_domain == 1
+        {
+            base
+        } else {
+            0
+        },
+    )
+}
+
 /// Original Unit.GetMaxMoves(), including signed wrapping integer arithmetic.
 /// Unused pure plot branches may be elided only when their contribution is zero.
 pub fn unit_max_moves(state: &LoadedState, unit: &Unit, inputs: &Inputs<'_>) -> Result<i32, Error> {
@@ -374,6 +487,94 @@ pub fn unit_has_moved(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn base_moves_domain_matrix_and_absent_definition_skip_dependencies() {
+        // Expected rows: actual domains0..4; columns requested domains-1..4.
+        // With no embark capability, sea and immobile domains retain their
+        // definition on every request; other domains require a match or -1.
+        let expected = [
+            [7, 7, 0, 0, 0, 0],
+            [7, 7, 7, 7, 7, 7],
+            [7, 0, 0, 7, 0, 0],
+            [7, 0, 0, 0, 7, 0],
+            [7, 7, 7, 7, 7, 7],
+        ];
+        for actual in 0..5 {
+            for requested in -1..5 {
+                let value: Result<i32, ()> = base_moves_value(
+                    Some(7),
+                    actual,
+                    requested,
+                    true,
+                    false,
+                    || Ok(false),
+                    || Ok(11),
+                );
+                // NO_DOMAIN uses effective embarkation for all except sea.
+                let want = if requested == -1 && actual != 1 {
+                    11
+                } else {
+                    expected[actual as usize][(requested + 1) as usize]
+                };
+                assert_eq!(value, Ok(want), "actual={actual}, requested={requested}");
+            }
+        }
+        let value: Result<i32, ()> = base_moves_value(
+            None,
+            2,
+            0,
+            true,
+            false,
+            || panic!("missing definition must not call CanEmbark"),
+            || panic!("missing definition must not call owner"),
+        );
+        assert_eq!(value, Ok(0));
+    }
+    #[test]
+    fn base_moves_preserves_lazy_queries_and_signed_values() {
+        let value = base_moves_value(
+            Some(7),
+            2,
+            0,
+            false,
+            true,
+            || Err("current configuration"),
+            || panic!("fight bit does not bypass CanEmbark"),
+        );
+        assert_eq!(value, Err("current configuration"));
+        let value: Result<i32, ()> = base_moves_value(
+            Some(-7),
+            2,
+            0,
+            false,
+            true,
+            || Ok(true),
+            || panic!("fight bit bypasses embarked owner modifier"),
+        );
+        assert_eq!(value, Ok(-7));
+        let value: Result<i32, ()> = base_moves_value(
+            Some(7),
+            2,
+            -1,
+            true,
+            false,
+            || panic!("NO_DOMAIN must not call CanEmbark"),
+            || Ok(i32::MAX.wrapping_add(1)),
+        );
+        assert_eq!(value, Ok(i32::MIN));
+        for requested in [1, 2, 3, 4, i32::MIN, i32::MAX] {
+            let value: Result<i32, ()> = base_moves_value(
+                Some(7),
+                2,
+                requested,
+                true,
+                false,
+                || panic!("nonzero explicit domain must not call CanEmbark"),
+                || panic!("nonzero explicit domain must not query embarked moves"),
+            );
+            assert_eq!(value, Ok(if requested == 2 { 7 } else { 0 }));
+        }
+    }
     #[test]
     fn activity_suppresses_effective_embarkation_without_changing_saved_flag() {
         for saved in [false, true] {
