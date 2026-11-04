@@ -11,6 +11,8 @@
 //! hashes and the two node type hashes. It does not perform registry remapping,
 //! Reset, queue insertion, dirty tracking, production, or player decisions.
 //! Omitted live fields are not established defaults or planning exclusions.
+pub mod execution;
+
 use crate::unit::{HashValue, Limits};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
