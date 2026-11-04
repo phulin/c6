@@ -1,6 +1,8 @@
 //! Current city Power activation with admitted native-order rules.
 //! Wire hashes are explicitly resolved to runtime indices. Projection of saved
 //! fields alone does not establish a final native initialized/current city.
+pub mod loaded_gossip;
+
 use crate::{
     registry::LinuxDefinitionRegistry,
     resource_binding::ResourceAuthority,
@@ -32,12 +34,15 @@ pub struct BuildingPower {
     required: i32,
 }
 pub struct Definitions {
+    binding: Option<c6_core::core_player::initialization::WireBinding>,
     buildings: LinuxDefinitionRegistry,
     projects: LinuxDefinitionRegistry,
     xp_projects: LinuxDefinitionRegistry,
     building_power: Vec<BuildingPower>,
     project_power: Vec<i32>,
     project_fully_powered: Vec<Option<bool>>,
+    gossip: LinuxDefinitionRegistry,
+    gossip_properties: Vec<c6_core::city_power_activation::gossip_delivery::Definition>,
 }
 impl Definitions {
     pub fn from_rules(rules: &Rules, authority: &ResourceAuthority<'_>) -> Result<Self, Error> {
@@ -102,15 +107,47 @@ impl Definitions {
                 }
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        let gossip = collection(rules, "Gossips", "GossipType").map_err(Error::Resources)?;
+        let gossip_properties = gossip
+            .entries()
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| {
+                Ok(
+                    c6_core::city_power_activation::gossip_delivery::Definition {
+                        type_hash: gossip.type_hash(index).ok_or(Error::Index)?,
+                        visibility_level: integer(
+                            "Gossips",
+                            entry.database_rowid,
+                            "VisibilityLevel",
+                        )?,
+                        filter: integer("Gossips", entry.database_rowid, "Filter")? != 0,
+                    },
+                )
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
+            binding: Some(authority.destination_binding().clone()),
             buildings,
             projects,
             xp_projects,
             building_power,
             project_power,
             project_fully_powered,
+            gossip,
+            gossip_properties,
         })
     }
+    pub fn gossip_definition(
+        &self,
+        key: u32,
+    ) -> Option<c6_core::city_power_activation::gossip_delivery::Definition> {
+        self.gossip
+            .find_index(key)
+            .and_then(|index| self.gossip_properties.get(index))
+            .copied()
+    }
+
     /// Exact lazy IsFullyPowered. The current project is not queried unless
     /// missing raw Q8 power is positive; it is an index, not a saved hash.
     pub fn is_fully_powered(
@@ -279,6 +316,7 @@ mod tests {
     }
     fn definitions() -> Definitions {
         Definitions {
+            binding: None,
             buildings: registry(&["BUILDING_FIRST", "BUILDING_SECOND"]),
             projects: registry(&["PROJECT_TEST"]),
             xp_projects: registry(&["PROJECT_TEST"]),
@@ -288,8 +326,28 @@ mod tests {
             }],
             project_power: vec![2],
             project_fully_powered: vec![Some(true)],
+            gossip: registry(&["GOSSIP_SYNTHETIC"]),
+            gossip_properties: vec![
+                c6_core::city_power_activation::gossip_delivery::Definition {
+                    type_hash: crate::registry::linux_type_hash(b"GOSSIP_SYNTHETIC"),
+                    visibility_level: 2,
+                    filter: false,
+                },
+            ],
         }
     }
+    #[test]
+    fn gossip_lookup_uses_native_index_or_hash_and_explicit_miss() {
+        let defs = definitions();
+        let hash = crate::registry::linux_type_hash(b"GOSSIP_SYNTHETIC");
+        let by_index = defs.gossip_definition(0).unwrap();
+        assert_eq!(defs.gossip_definition(hash), Some(by_index));
+        assert_eq!(by_index.type_hash, hash);
+        assert_eq!(by_index.visibility_level, 2);
+        assert!(!by_index.filter);
+        assert_eq!(defs.gossip_definition(u32::MAX), None);
+    }
+
     #[test]
     fn saved_hashes_resolve_to_native_indices_not_row_ids() {
         let defs = definitions();
