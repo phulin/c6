@@ -422,6 +422,7 @@ pub mod game_fallout_wire;
 pub mod game_culture_wire;
 pub mod game_techs_wire;
 pub mod game_effects_wire;
+pub mod game_effects_modifiers_wire;
 pub mod game_global_ai;
 pub mod game_great_people;
 pub mod game_quests;
