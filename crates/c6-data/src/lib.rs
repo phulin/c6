@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
+pub mod city_power;
 pub mod city_movement;
 pub mod formation_rules;
 pub mod game_relations;
