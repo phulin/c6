@@ -307,3 +307,24 @@ mod district_cost_tests {
         );
     }
 }
+
+/// OnPlayerTechResearched requires at least half the living majors, rounded
+/// upwards, with a minimum of one. Native intermediate arithmetic is signed32.
+pub fn minor_technology_catchup_threshold(alive_majors: i32) -> i32 {
+    (alive_majors.wrapping_mul(50).wrapping_add(50) / 100).max(1)
+}
+#[cfg(test)]
+mod catchup_threshold_tests {
+    use super::*;
+    #[test]
+    fn odd_major_counts_round_up_without_granting_an_empty_game_threshold() {
+        assert_eq!(
+            (0..=6)
+                .map(minor_technology_catchup_threshold)
+                .collect::<Vec<_>>(),
+            vec![1, 1, 1, 2, 2, 3, 3]
+        );
+        assert_eq!(minor_technology_catchup_threshold(64), 32);
+        assert_eq!(minor_technology_catchup_threshold(i32::MAX), 1);
+    }
+}

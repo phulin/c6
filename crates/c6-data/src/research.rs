@@ -14,6 +14,7 @@ use c6_core::{
     relic_creation::boost, research_acquisition as acquisition, research_turn,
 };
 pub use research_turn::{InsertMode, Kind};
+pub mod diplomacy;
 pub mod districts;
 pub mod units;
 mod yields;
@@ -155,7 +156,9 @@ pub struct Definitions {
     technology_hashes: Vec<u32>,
     route_prerequisites: Vec<Option<i32>>,
     technology_modifiers: Vec<u32>,
+    resource_tech_prerequisites: Vec<u32>,
     district_costs: districts::Definitions,
+    diplomatic_visibility: diplomacy::Definitions,
     chronology: Vec<i32>,
     era_percent: [Option<i32>; 4],
     tourism_per_citizen: Option<i32>,
@@ -341,6 +344,19 @@ impl Definitions {
                 _ => return Err(Error::Missing("TechnologyModifiers.TechnologyType")),
             }
         }
+        let mut resource_tech_prerequisites = Vec::new();
+        for row in rules
+            .gameplay()
+            .table("Resources")
+            .ok_or(Error::Missing("Resources"))?
+            .rows()
+        {
+            match row.get("PrereqTech").map_err(Error::Rules)? {
+                SqlValue::Null => {}
+                SqlValue::Text(name) => resource_tech_prerequisites.push(linux_type_hash(name)),
+                _ => return Err(Error::Missing("Resource.PrereqTech")),
+            }
+        }
         let unit_costs =
             crate::research_unit_costs::Definitions::from_rules(rules, bound, game_speed)
                 .map_err(Error::Costs)?;
@@ -351,7 +367,10 @@ impl Definitions {
             binding: bound.destination_binding().clone(),
             route_prerequisites,
             technology_modifiers,
+            resource_tech_prerequisites,
             district_costs,
+            diplomatic_visibility: diplomacy::Definitions::from_rules(rules, bound)
+                .map_err(|_| Error::Missing("diplomatic visibility definitions"))?,
             technology_hashes: boost_rules
                 .technologies
                 .iter()
@@ -461,6 +480,19 @@ impl Definitions {
             .ok_or(Error::IllegalTechnology(index))?;
         Ok(self.technology_modifiers.contains(&definition.hash))
     }
+    pub fn technology_has_resource_unlock(
+        &self,
+        index: i32,
+    ) -> Result<bool, Error<std::convert::Infallible>> {
+        let definition = self
+            .boost
+            .technologies
+            .iter()
+            .flatten()
+            .find(|d| d.index == index)
+            .ok_or(Error::IllegalTechnology(index))?;
+        Ok(self.resource_tech_prerequisites.contains(&definition.hash))
+    }
     pub fn technology_era_hash(
         &self,
         index: i32,
@@ -469,6 +501,9 @@ impl Definitions {
             .get(index as u32 as usize)
             .ok_or(Error::IllegalTechnology(index))?;
         Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
+    }
+    pub fn diplomatic_visibility(&self) -> &diplomacy::Definitions {
+        &self.diplomatic_visibility
     }
     pub fn research_rules(&self) -> &boost::Rules {
         &self.boost
@@ -492,7 +527,7 @@ impl<E: Effects> Context<'_, E> {
         report: &boost::Report,
     ) -> Result<Vec<i32>, Error<E::Error>> {
         self.check()?;
-        if !matches!(report.event, 0x48062f97 | 0x4378a305)
+        if !matches!(report.event, 0x48062f97 | 0x4378a305 | 0xf621c5ac)
             || report.specialization.is_some()
             || report.old_progress.is_some()
             || report.source.is_some()
@@ -501,6 +536,97 @@ impl<E: Effects> Context<'_, E> {
         }
         research_turn::technology_publication_yields(self, report.player)
             .map_err(|e| Error::Kernel(Box::new(e)))
+    }
+    /// Techs.OnPlayerTechResearched: minor catch-up progresses to one whole
+    /// science below cost, rather than granting the technology. Queries use the
+    /// current acquired aliases and actual alive-major vector.
+    pub fn stock_player_technology_catchup(
+        &mut self,
+        owner: i32,
+        event_player: i32,
+        index: i32,
+    ) -> Result<(), boost::Error<Error<E::Error>>> {
+        self.check().map_err(boost::Error::Context)?;
+        let level = |owner| {
+            self.effects
+                .runtime()
+                .civilization_levels
+                .iter()
+                .find(|p| p.0 == owner)
+                .map(|p| p.1)
+                .ok_or(Error::Missing("current civilization level"))
+        };
+        if level(event_player).map_err(boost::Error::Context)? != 0x253718b0 {
+            return Ok(());
+        }
+        let hash = self
+            .definitions
+            .boost
+            .technologies
+            .iter()
+            .flatten()
+            .find(|d| d.index == index)
+            .ok_or(boost::Error::Definition)?
+            .hash;
+        let has = self
+            .state
+            .research_components(owner)
+            .map_err(Error::State)
+            .map_err(boost::Error::Context)?
+            .0
+            .has_tech
+            .pairs
+            .iter()
+            .rev()
+            .find(|p| p.definition_hash == hash)
+            .map(|p| p.value)
+            .ok_or(boost::Error::MissingBool(hash))?;
+        if has {
+            return Ok(());
+        }
+        let own_level = level(owner).map_err(boost::Error::Context)?;
+        if own_level == 0x253718b0 || own_level == 0xd959ec24 {
+            return Ok(());
+        }
+        let alive = self
+            .effects
+            .runtime()
+            .alive_majors
+            .as_ref()
+            .ok_or(boost::Error::Context(Error::Missing(
+                "current alive major order",
+            )))?;
+        let threshold = research_turn::minor_technology_catchup_threshold(alive.len() as i32);
+        let mut count = 0i32;
+        for &other in alive {
+            if self
+                .state
+                .research_components(other)
+                .map_err(Error::State)
+                .map_err(boost::Error::Context)?
+                .0
+                .has_tech
+                .pairs
+                .iter()
+                .rev()
+                .find(|p| p.definition_hash == hash)
+                .map(|p| p.value)
+                .ok_or(boost::Error::MissingBool(hash))?
+            {
+                count = count.wrapping_add(1);
+            }
+        }
+        if count >= threshold {
+            let cost = boost::research_cost(self, Kind::Technology, index, false)?;
+            boost::set_research_progress(
+                self,
+                owner,
+                Kind::Technology,
+                index,
+                cost.wrapping_sub(1).wrapping_shl(8),
+            )?;
+        }
+        Ok(())
     }
     /// Positive CanResearch legality over the current initialized graph. The
     /// hidden-until-prerequisite reveal gate is implied by all prerequisites

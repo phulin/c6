@@ -223,3 +223,64 @@ impl LoadedState {
         Ok(())
     }
 }
+
+impl super::LoadedState {
+    /// Source SetVisibilityOn clamps only the upper bound and reports only a
+    /// changed level. The caller performs that synchronous report before source.
+    pub fn set_current_diplomatic_visibility(
+        &mut self,
+        owner: i32,
+        other: i32,
+        level: i32,
+    ) -> Result<bool, super::Error> {
+        let index = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
+            .ok_or(super::Error::Binding)?;
+        let target = usize::try_from(other).map_err(|_| super::Error::Binding)?;
+        let value = self.retained.players[index]
+            .diplomacy
+            .visibility
+            .get_mut(target)
+            .ok_or(super::Error::Binding)?;
+        let level = level.min(4);
+        if *value == level {
+            return Ok(false);
+        }
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(super::Error::ResourceLimit)?;
+        *value = level;
+        self.revision = next;
+        Ok(true)
+    }
+    pub fn set_current_diplomatic_visibility_source(
+        &mut self,
+        owner: i32,
+        other: i32,
+        hash: u32,
+    ) -> Result<(), super::Error> {
+        let index = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
+            .ok_or(super::Error::Binding)?;
+        let target = usize::try_from(other).map_err(|_| super::Error::Binding)?;
+        let value = self.retained.players[index]
+            .diplomacy
+            .visibility_source_hashes
+            .get_mut(target)
+            .ok_or(super::Error::Binding)?;
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(super::Error::ResourceLimit)?;
+        *value = hash;
+        self.revision = next;
+        Ok(())
+    }
+}
