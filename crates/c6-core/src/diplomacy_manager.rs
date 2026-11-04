@@ -376,7 +376,7 @@ impl Manager {
                 .iter()
                 .find(|f| f.handle == retired)
                 .ok_or(statement::Error::Conflict)?;
-            if fact.kind != statement::StatementKind::Response {
+            if !fact.kind.ordinary_destructor() {
                 return Err(statement::Error::Unsupported(
                     statement::Unsupported::PendingDestructor(retired),
                 ));

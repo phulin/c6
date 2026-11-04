@@ -415,6 +415,7 @@ pub mod trade_read_order;
 
 pub mod diplomacy_manager;
 pub mod diplomacy_meeting;
+pub mod diplomacy_request;
 
 pub mod player_notifications_owner;
 

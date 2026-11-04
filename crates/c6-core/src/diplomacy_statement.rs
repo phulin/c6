@@ -20,10 +20,23 @@ pub enum StatementKind {
     /// Concrete Response Process is empty and its destructor has only ordinary
     /// allocation cleanup. This is a semantic kind, not a native address.
     Response,
+    /// Constructor-bounded FirstMeeting payload; other inherited fields retain
+    /// their native constructor defaults until a supported transition changes them.
+    FirstMeeting {
+        type_hash: u32,
+        initiator: i32,
+        response_type: u32,
+        hospitality_city: crate::unit::PlotCoord,
+    },
     Other {
         type_hash: u32,
         subtype_hash: u32,
     },
+}
+impl StatementKind {
+    pub(crate) fn ordinary_destructor(self) -> bool {
+        matches!(self, Self::Response | Self::FirstMeeting { .. })
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StatementInfo {
@@ -316,7 +329,7 @@ fn plan_internal(
         return Err(unsupported(Unsupported::MultiplayerNotificationAndRouting));
     }
     if statement.from != context.local_player && statement.to != context.local_player {
-        return if statement.kind == StatementKind::Response {
+        return if statement.kind.ordinary_destructor() {
             Ok(result(Effect::DiscardResponse, None, None))
         } else {
             Err(unsupported(Unsupported::StatementDestructor(
@@ -402,7 +415,7 @@ fn plan_internal(
         if matches.next().is_some() || fact.from != pending.from || fact.to != pending.to {
             return Err(unsupported(Unsupported::InconsistentState));
         }
-        if fact.kind != StatementKind::Response {
+        if !fact.kind.ordinary_destructor() {
             return Err(unsupported(Unsupported::PendingDestructor(
                 pending.statement,
             )));
