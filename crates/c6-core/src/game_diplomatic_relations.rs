@@ -83,6 +83,8 @@ pub struct GameDiplomaticRelations {
     read_prefix: Option<ReadPrefixFields>,
     current_research_agreements: Option<Relationships>,
     current_contacts: Option<Vec<BoolRelationship>>,
+    current_friendships: Option<Vec<BoolRelationship>>,
+    current_permanent_alliances: Option<Vec<BoolRelationship>>,
 }
 
 pub struct DecodedPrefix<'a> {
@@ -130,6 +132,8 @@ impl GameDiplomaticRelations {
             read_prefix: None,
             current_research_agreements: None,
             current_contacts: None,
+            current_friendships: None,
+            current_permanent_alliances: None,
         })
     }
     /// Complete current native enum values, with each companion changed turn.
@@ -158,6 +162,8 @@ impl GameDiplomaticRelations {
             read_prefix: None,
             current_research_agreements: Some(matrix(research_agreements)),
             current_contacts: None,
+            current_friendships: None,
+            current_permanent_alliances: None,
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
@@ -265,6 +271,8 @@ impl GameDiplomaticRelations {
             read_prefix: None,
             current_research_agreements: None,
             current_contacts: None,
+            current_friendships: None,
+            current_permanent_alliances: None,
         };
         value.initialize_current_contacts(player_count, values)?;
         Ok(value)
@@ -337,15 +345,74 @@ impl GameDiplomaticRelations {
     }
     /// Native HasDeclaredFriendship uses the distinct symmetric bool vector.
     /// Equal identities return false before consulting the current storage.
+    /// Current native friendship cells, independent of an optional saved Read
+    /// prefix. Native values are already bools; no absent cell is inferred.
+    pub fn initialize_current_friendships(
+        &mut self,
+        values: Vec<BoolRelationship>,
+    ) -> Result<(), Error> {
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        if let Some(old) = self
+            .current_friendships
+            .as_ref()
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_f0))
+        {
+            if old != &values {
+                return Err(Error::AlreadyInitialized);
+            }
+        }
+        self.current_friendships = Some(values);
+        Ok(())
+    }
+    /// Actual native permanent-alliance cells, retaining their changed turns.
+    pub fn initialize_current_permanent_alliances(
+        &mut self,
+        values: Vec<BoolRelationship>,
+    ) -> Result<(), Error> {
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        if let Some(old) = self
+            .current_permanent_alliances
+            .as_ref()
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_118))
+        {
+            if old != &values {
+                return Err(Error::AlreadyInitialized);
+            }
+        }
+        self.current_permanent_alliances = Some(values);
+        Ok(())
+    }
+    /// Native current WarTypes indexes and changed turns; saved hashes require
+    /// initialize_definitions instead. Preserve current storage on conflict.
+    pub fn initialize_current_war(&mut self, values: Vec<(i32, i32)>) -> Result<(), Error> {
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        let rows = Relationships {
+            values: values.iter().map(|p| p.0).collect(),
+            changed_turns: Some(values.iter().map(|p| p.1).collect()),
+        };
+        if let Some(old) = &self.war {
+            if old != &rows {
+                return Err(Error::AlreadyInitialized);
+            }
+        }
+        self.war = Some(rows);
+        Ok(())
+    }
     pub fn has_declared_friendship(&self, a: i32, b: i32) -> Result<bool, Error> {
         if a == b {
             return Ok(false);
         }
-        let values = &self
-            .read_prefix
+        let values = self
+            .current_friendships
             .as_ref()
-            .ok_or(Error::MissingDeclaredFriendships)?
-            .at_f0;
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_f0))
+            .ok_or(Error::MissingDeclaredFriendships)?;
         if values.len() != total(self.player_count)? {
             return Err(Error::InvalidStorage);
         }
@@ -386,11 +453,11 @@ impl GameDiplomaticRelations {
         if a == b {
             return Ok(false);
         }
-        let values = &self
-            .read_prefix
+        let values = self
+            .current_permanent_alliances
             .as_ref()
-            .ok_or(Error::MissingPermanentAlliances)?
-            .at_118;
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_118))
+            .ok_or(Error::MissingPermanentAlliances)?;
         if values.len() != total(self.player_count)? {
             return Err(Error::InvalidStorage);
         }
@@ -435,6 +502,8 @@ impl GameDiplomaticRelations {
                 alliances: None,
                 current_research_agreements: None,
                 current_contacts: None,
+                current_friendships: None,
+                current_permanent_alliances: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,
@@ -822,5 +891,68 @@ mod current_research_tests {
             GameDiplomaticRelations::from_current_research_relations(2, vec![], vec![(0, 0)])
                 .is_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod current_friendship_tests {
+    use super::*;
+    #[test]
+    fn current_native_vectors_remain_distinct_from_missing_saved_prefix() {
+        let mut r = GameDiplomaticRelations::from_current_research_relations(
+            2,
+            vec![(-1, -1)],
+            vec![(-1, -1)],
+        )
+        .unwrap();
+        assert_eq!(
+            r.has_declared_friendship(0, 1),
+            Err(Error::MissingDeclaredFriendships)
+        );
+        r.initialize_current_friendships(vec![BoolRelationship {
+            value: true,
+            changed_turn: 7,
+        }])
+        .unwrap();
+        r.initialize_current_war(vec![(3, 5)]).unwrap();
+        assert_eq!(
+            r.is_permanently_allied(0, 1),
+            Err(Error::MissingPermanentAlliances)
+        );
+        r.initialize_current_permanent_alliances(vec![BoolRelationship {
+            value: false,
+            changed_turn: -1,
+        }])
+        .unwrap();
+        assert_eq!(r.is_permanently_allied(0, 1), Ok(false));
+        assert_eq!(r.has_declared_friendship(0, 1), Ok(true));
+        assert_eq!(r.has_declared_friendship(0, 0), Ok(false));
+        assert_eq!(r.war_type(1, 0), Ok(3));
+        assert_eq!(r.war().unwrap().changed_turns(), Some(&[5][..]));
+        assert!(r.read_prefix().is_none());
+    }
+    #[test]
+    fn conflicting_current_vector_does_not_replace_prior_cells() {
+        let mut r = GameDiplomaticRelations::from_current_research_relations(
+            2,
+            vec![(-1, -1)],
+            vec![(-1, -1)],
+        )
+        .unwrap();
+        r.initialize_current_friendships(vec![BoolRelationship {
+            value: false,
+            changed_turn: -1,
+        }])
+        .unwrap();
+        assert_eq!(
+            r.initialize_current_friendships(vec![BoolRelationship {
+                value: true,
+                changed_turn: 3
+            }]),
+            Err(Error::AlreadyInitialized)
+        );
+        assert_eq!(r.has_declared_friendship(0, 1), Ok(false));
+        assert_eq!(r.initialize_current_war(vec![]), Err(Error::InvalidStorage));
+        assert_eq!(r.war_type(0, 1), Err(Error::MissingWar));
     }
 }

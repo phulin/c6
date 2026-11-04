@@ -131,6 +131,38 @@ fn validate_current_levels(
     }
     Ok(())
 }
+/// Current HasOpenBordersFrom count/alliance/permanent-alliance sequence.
+pub fn player_open_borders(state: &LoadedState, owner: i32, from: i32) -> Result<bool, Error> {
+    state.world().player(owner).map_err(Error::World)?;
+    let diplomacy = &state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or(Error::Definitions)?
+        .diplomacy;
+    let count = *diplomacy
+        .open_borders_from_count
+        .get(usize::try_from(from).map_err(|_| Error::Definitions)?)
+        .ok_or(Error::Definitions)?;
+    open_borders_from(
+        count,
+        || {
+            state
+                .game_relations()
+                .map_err(Error::State)?
+                .is_allied(owner, from)
+                .map_err(Error::Relations)
+        },
+        || {
+            state
+                .game_relations()
+                .map_err(Error::State)?
+                .is_permanently_allied(owner, from)
+                .map_err(Error::Relations)
+        },
+    )
+}
 fn open_borders_from(
     count: i32,
     allied: impl FnOnce() -> Result<bool, Error>,
@@ -746,36 +778,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             )))
     }
     pub fn open_borders(&self, owner: i32, from: i32) -> Result<bool, Error> {
-        self.state.world().player(owner).map_err(Error::World)?;
-        let diplomacy = &self
-            .state
-            .retained()
-            .players
-            .iter()
-            .find(|p| p.header.owner == owner)
-            .ok_or(Error::Definitions)?
-            .diplomacy;
-        let count = *diplomacy
-            .open_borders_from_count
-            .get(usize::try_from(from).map_err(|_| Error::Definitions)?)
-            .ok_or(Error::Definitions)?;
-        open_borders_from(
-            count,
-            || {
-                self.state
-                    .game_relations()
-                    .map_err(Error::State)?
-                    .is_allied(owner, from)
-                    .map_err(Error::Relations)
-            },
-            || {
-                self.state
-                    .game_relations()
-                    .map_err(Error::State)?
-                    .is_permanently_allied(owner, from)
-                    .map_err(Error::Relations)
-            },
-        )
+        player_open_borders(self.state, owner, from)
     }
     fn player_can_embark(&self, owner: i32, unit_type: i32) -> Result<bool, Error> {
         let level = self.civilization_level(owner)?;
