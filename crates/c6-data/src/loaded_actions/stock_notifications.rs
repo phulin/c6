@@ -47,6 +47,8 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub decisions: Vec<Decision>,
     /// Ordered emitted notification publications; client UI playback is omitted.
     pub publications: Vec<lifecycle::Report>,
+    /// Source-ordered changes after the canonical Player blocking store.
+    pub blocking_changes: Vec<(u32, i32, i32)>,
     pub last_error: Option<String>,
     pub reached: Vec<&'static str>,
     binding: WireBinding,
@@ -73,6 +75,7 @@ impl<'a, P> Runtime<'a, P> {
             reporting,
             decisions: Vec::new(),
             publications: Vec::new(),
+            blocking_changes: Vec::new(),
             last_error: None,
             reached: Vec::new(),
             binding: state.binding().clone(),
@@ -355,10 +358,18 @@ impl<P> processing::Backend for Runtime<'_, P> {
         new: i32,
     ) -> Result<(), processing::Error> {
         self.check(state)?;
-        self.last_error = Some(format!("blocking change {event:08x}: {old} -> {new}"));
-        Err(processing::Error::Unsupported(
-            "stock blocking-changed consumers",
-        ))
+        if event != 0x55f15a7b {
+            return Err(processing::Error::Unsupported("stock blocking event"));
+        }
+        // The Player store has already happened. Fixed stock listeners fill
+        // reflected Player score/agenda output and publish client DTOs. Their
+        // stock scalar queries have no gameplay/RNG effect; canonical warm
+        // route paths exclude the hypothetical-route/pathfinder branches.
+        // Keep the semantic scheduling change, omit native display/cache work.
+        super::reporting::yield_monitor::warm_route_domain(state)
+            .map_err(|_| processing::Error::Unsupported("blocking report current route domain"))?;
+        self.blocking_changes.push((event, old, new));
+        Ok(())
     }
 }
 impl<P> ProcessStatement<LoadedState> for Runtime<'_, P> {
