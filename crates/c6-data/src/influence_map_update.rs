@@ -483,3 +483,24 @@ pub fn dispatch_if_active(
         owner,
     })
 }
+
+/// Turn activation calls UpdateInfluenceMap directly, including non-human
+/// players; its caller owns the preceding turn transition and callback order.
+pub fn update(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    queries: &Queries<'_, '_>,
+    owner: i32,
+) -> Result<(), kernel::Error<Error>> {
+    if state.binding() != &definitions.binding {
+        return Err(kernel::Error::Backend(Error::Missing(
+            "Influence rules binding",
+        )));
+    }
+    kernel::update(&mut Current {
+        state,
+        definitions,
+        queries,
+        owner,
+    })
+}
