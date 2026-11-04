@@ -345,6 +345,37 @@ impl Definitions {
             .install_current_game_techs(&self.binding, graph, availability)
             .map_err(Error::State)
     }
+    /// Every indexed acquired byte must be present in the current writer's
+    /// hash pairs. Missing inputs remain errors rather than reset false flags.
+    pub fn install_current_player_flags<E>(&self, state: &mut LoadedState) -> Result<(), Error<E>> {
+        let mut flags = Vec::new();
+        for player in &state.retained().players {
+            let mut values = Vec::new();
+            for (definitions, pairs) in [
+                (&self.techs, &player.techs.has_tech.pairs),
+                (&self.civics, &player.culture.has_civic.pairs),
+            ] {
+                values.push(
+                    definitions
+                        .iter()
+                        .map(|d| {
+                            pairs
+                                .iter()
+                                .rfind(|p| p.definition_hash == d.hash)
+                                .map(|p| p.value)
+                                .ok_or(Error::Missing("complete current acquired flags"))
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                );
+            }
+            let civics = values.pop().expect("two acquired vectors");
+            let techs = values.pop().expect("two acquired vectors");
+            flags.push((player.header.owner, techs, civics));
+        }
+        state
+            .install_current_research_flags(&self.binding, flags)
+            .map_err(Error::State)
+    }
     pub fn research_rules(&self) -> &boost::Rules {
         &self.boost
     }

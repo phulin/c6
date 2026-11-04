@@ -80,6 +80,7 @@ pub struct GameDiplomaticRelations {
     war: Option<Relationships>,
     alliances: Option<Relationships>,
     read_prefix: Option<ReadPrefixFields>,
+    current_research_agreements: Option<Relationships>,
 }
 
 pub struct DecodedPrefix<'a> {
@@ -125,6 +126,34 @@ impl GameDiplomaticRelations {
             }),
             alliances: None,
             read_prefix: None,
+            current_research_agreements: None,
+        })
+    }
+    /// Complete current native enum values, with each companion changed turn.
+    /// This admits only the two supplied matrices. Other relation queries stay
+    /// unavailable; this does not construct a default diplomatic world.
+    pub fn from_current_research_relations(
+        player_count: i32,
+        alliances: Vec<(i32, i32)>,
+        research_agreements: Vec<(i32, i32)>,
+    ) -> Result<Self, Error> {
+        let count = total(player_count)?;
+        if alliances.len() != count || research_agreements.len() != count {
+            return Err(Error::InvalidStorage);
+        }
+        fn matrix(pairs: Vec<(i32, i32)>) -> Relationships {
+            let (values, turns) = pairs.into_iter().unzip();
+            Relationships {
+                values,
+                changed_turns: Some(turns),
+            }
+        }
+        Ok(Self {
+            player_count,
+            war: None,
+            alliances: Some(matrix(alliances)),
+            read_prefix: None,
+            current_research_agreements: Some(matrix(research_agreements)),
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
@@ -287,6 +316,9 @@ impl GameDiplomaticRelations {
         if a == b {
             return Ok(-1);
         }
+        if let Some(current) = &self.current_research_agreements {
+            return self.value(current, a, b);
+        }
         let values = &self
             .read_prefix
             .as_ref()
@@ -351,6 +383,7 @@ impl GameDiplomaticRelations {
                 player_count,
                 war: None,
                 alliances: None,
+                current_research_agreements: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,
@@ -658,5 +691,30 @@ mod tests {
             ),
             Err(Error::ResourceLimit)
         ));
+    }
+}
+
+#[cfg(test)]
+mod current_research_tests {
+    use super::*;
+    #[test]
+    fn current_native_matrices_keep_turns_and_do_not_remap_indices() {
+        let state = GameDiplomaticRelations::from_current_research_relations(
+            2,
+            vec![(4, 19)],
+            vec![(7, 23)],
+        )
+        .unwrap();
+        assert_eq!(state.alliance_type(0, 1), Ok(4));
+        assert_eq!(
+            state.alliances().unwrap().changed_turns(),
+            Some([19].as_slice())
+        );
+        assert_eq!(state.research_agreement_tech(1, 0, &[]), Ok(7));
+        assert_eq!(state.war_type(0, 1), Err(Error::MissingWar));
+        assert!(
+            GameDiplomaticRelations::from_current_research_relations(2, vec![], vec![(0, 0)])
+                .is_err()
+        );
     }
 }

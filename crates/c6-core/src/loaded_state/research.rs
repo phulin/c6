@@ -153,3 +153,50 @@ impl LoadedState {
         Ok(())
     }
 }
+
+impl LoadedState {
+    /// Admit explicitly supplied current research relation fields. Other
+    /// diplomacy fields remain unavailable in the supplied owner.
+    pub fn install_current_research_relations(
+        &mut self,
+        binding: &WireBinding,
+        relations: crate::game_diplomatic_relations::GameDiplomaticRelations,
+    ) -> Result<(), Error> {
+        if binding != &self.binding || self.game_relations.is_some() {
+            return Err(Error::Binding);
+        }
+        self.advance_admission_generation()?;
+        self.game_relations = Some(relations);
+        Ok(())
+    }
+    /// Install complete indexed aliases of current acquired flags. No absent
+    /// flag receives a reset/default value, and existing aliases must agree.
+    pub fn install_current_research_flags(
+        &mut self,
+        binding: &WireBinding,
+        flags: Vec<(i32, Vec<bool>, Vec<bool>)>,
+    ) -> Result<(), Error> {
+        if binding != &self.binding {
+            return Err(Error::Binding);
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for (owner, techs, civics) in &flags {
+            if !seen.insert(*owner) {
+                return Err(Error::Binding);
+            }
+            let player = self.world.player(*owner).map_err(Error::World)?;
+            if player.technologies.as_ref().is_some_and(|old| old != techs)
+                || player.civics.as_ref().is_some_and(|old| old != civics)
+            {
+                return Err(Error::Binding);
+            }
+        }
+        self.advance_admission_generation()?;
+        for (owner, techs, civics) in flags {
+            let player = self.world.player_mut(owner).map_err(Error::World)?;
+            player.technologies = Some(techs);
+            player.civics = Some(civics);
+        }
+        Ok(())
+    }
+}
