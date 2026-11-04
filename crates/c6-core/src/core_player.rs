@@ -1834,6 +1834,7 @@ pub(crate) mod tests {
             num_beliefs_earned: -996,
             holy_city_coord: pmod::PlotCoord { x: -995, y: -994 },
             belief_yields: vec![pmod::BeliefYield {
+                wire_version: 20,
                 belief_yield_ordinal: -994,
                 yield_ordinal: -993,
                 amount: -992,
@@ -1841,6 +1842,7 @@ pub(crate) mod tests {
                 district_hash: 3735879690,
             }],
             building_yield_modifiers: vec![pmod::ReligionBuildingYieldModifier {
+                wire_version: 20,
                 yield_ordinal: -993,
                 multiplier: -992,
                 founder_only: true,

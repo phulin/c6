@@ -59,16 +59,16 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self, component: &'static str) -> Result<(), Error> {
+    fn version(&mut self, component: &'static str) -> Result<u32, Error> {
         self.version_component = component;
         let actual = u32::read(self)?;
-        if actual != VERSION {
+        if !matches!(actual, 15 | VERSION) {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
             });
         }
-        Ok(())
+        Ok(actual)
     }
 }
 struct Writer {
@@ -199,8 +199,75 @@ macro_rules! record {
     };
 }
 record!(PlotCoord, false, {x:i32,y:i32});
-record!(BeliefYield, true, {belief_yield_ordinal:i32,yield_ordinal:i32,amount:i32,per_x_items:i32,district_hash:u32});
-record!(ReligionBuildingYieldModifier, true, {yield_ordinal:i32,multiplier:i32,founder_only:bool});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BeliefYield {
+    pub wire_version: u32,
+    pub belief_yield_ordinal: i32,
+    pub yield_ordinal: i32,
+    pub amount: i32,
+    pub per_x_items: i32,
+    pub district_hash: u32,
+}
+impl Wire for BeliefYield {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = r.version("BeliefYield")?;
+        Ok(Self {
+            wire_version,
+            belief_yield_ordinal: <i32 as Wire>::read(r)?,
+            yield_ordinal: <i32 as Wire>::read(r)?,
+            amount: <i32 as Wire>::read(r)?,
+            per_x_items: <i32 as Wire>::read(r)?,
+            district_hash: <u32 as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.belief_yield_ordinal.write(w)?;
+        self.yield_ordinal.write(w)?;
+        self.amount.write(w)?;
+        self.per_x_items.write(w)?;
+        self.district_hash.write(w)?;
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReligionBuildingYieldModifier {
+    pub wire_version: u32,
+    pub yield_ordinal: i32,
+    pub multiplier: i32,
+    pub founder_only: bool,
+}
+impl Wire for ReligionBuildingYieldModifier {
+    const MIN: usize = 4 + <i32 as Wire>::MIN + <i32 as Wire>::MIN + <bool as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = r.version("ReligionBuildingYieldModifier")?;
+        Ok(Self {
+            wire_version,
+            yield_ordinal: <i32 as Wire>::read(r)?,
+            multiplier: <i32 as Wire>::read(r)?,
+            founder_only: <bool as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.yield_ordinal.write(w)?;
+        self.multiplier.write(w)?;
+        self.founder_only.write(w)?;
+        Ok(())
+    }
+}
 /// Player.Religion15/20 wire/default projection. Absent15 vectors retain
 /// distinct native Read effects; empty wire vectors are not native empty state.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -528,6 +595,114 @@ mod tests {
         b
     }
     #[test]
+    fn nested15_layouts_keep_independent_tags_and_exact_limits() {
+        let mut raw = Vec::new();
+        for v in [
+            2u32,
+            15,
+            i32::MIN as u32,
+            u32::MAX,
+            i32::MAX as u32,
+            (-257i32) as u32,
+            0x80000001,
+            20,
+            u32::MAX,
+            i32::MIN as u32,
+            23,
+            0,
+            u32::MAX,
+        ] {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        let cap = Limits {
+            max_bytes: 52,
+            max_items: 2,
+        };
+        let mut r = Reader {
+            data: &raw,
+            pos: 0,
+            items: 0,
+            limits: cap,
+            version_component: "test",
+        };
+        let rows = Vec::<BeliefYield>::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (52, 2));
+        assert_eq!(rows[0].wire_version, 15);
+        assert_eq!(rows[1].wire_version, 20);
+        assert_eq!(rows[0].district_hash, 0x80000001);
+        assert_eq!(rows[0].amount, i32::MAX);
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: cap,
+        };
+        assert_eq!(rows[0].write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..raw.len() {
+            let mut r = Reader {
+                data: &raw[..n],
+                pos: 0,
+                items: 0,
+                limits: cap,
+                version_component: "test",
+            };
+            assert!(Vec::<BeliefYield>::read(&mut r).is_err());
+        }
+        for limits in [
+            Limits {
+                max_bytes: 51,
+                ..cap
+            },
+            Limits {
+                max_items: 1,
+                ..cap
+            },
+        ] {
+            let mut r = Reader {
+                data: &raw,
+                pos: 0,
+                items: 0,
+                limits,
+                version_component: "test",
+            };
+            assert_eq!(Vec::<BeliefYield>::read(&mut r), Err(Error::ResourceLimit));
+        }
+        let mut modifier = Vec::new();
+        for v in [15u32, i32::MIN as u32, i32::MAX as u32] {
+            modifier.extend_from_slice(&v.to_le_bytes());
+        }
+        modifier.push(1);
+        let mut r = Reader {
+            data: &modifier,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: 13,
+                max_items: 0,
+            },
+            version_component: "test",
+        };
+        let value = ReligionBuildingYieldModifier::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (13, 0));
+        assert_eq!(value.wire_version, 15);
+        assert!(value.founder_only);
+        assert_eq!(value.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        modifier[..4].copy_from_slice(&16u32.to_le_bytes());
+        let mut r = Reader {
+            data: &modifier,
+            pos: 0,
+            items: 0,
+            limits: Limits::default(),
+            version_component: "test",
+        };
+        assert_eq!(
+            ReligionBuildingYieldModifier::read(&mut r),
+            Err(Error::Version {
+                expected: 20,
+                actual: 16
+            })
+        );
+    }
+    #[test]
     fn religion15_literal_defaults_keep_distinct_native_array_effects() {
         fn words(b: &mut Vec<u8>, values: &[i32]) {
             for v in values {
@@ -611,7 +786,7 @@ mod tests {
             Err(Error::ResourceLimit)
         );
         let mut nested = b.clone();
-        nested[belief_tag..belief_tag + 4].copy_from_slice(&15u32.to_le_bytes());
+        nested[belief_tag..belief_tag + 4].copy_from_slice(&14u32.to_le_bytes());
         let boundary = Religion::decode_prefix_with_boundary(&nested, exact).unwrap_err();
         assert_eq!(
             (boundary.component, boundary.consumed),
@@ -621,14 +796,14 @@ mod tests {
             boundary.error,
             Error::Version {
                 expected: 20,
-                actual: 15
+                actual: 14
             }
         );
         assert_eq!(
             Religion::decode_prefix(&nested, exact),
             Err(Error::Version {
                 expected: 20,
-                actual: 15
+                actual: 14
             })
         );
         let mut unknown = b.clone();
