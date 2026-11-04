@@ -212,27 +212,30 @@ impl Graph {
     /// Requires exactly one extracted Graph: no trailing Manager fields accepted.
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         let mut r = Reader::new(bytes, limits)?;
-        r.version(1)?;
-        let total = r.i32()?;
-        let count = r.count(true, 20)?;
-        let mut origins = Vec::with_capacity(count);
-        for _ in 0..count {
-            let vertex = r.vertex()?;
-            let count = r.count(true, 126)?;
-            let mut destinations = Vec::with_capacity(count);
-            for _ in 0..count {
-                destinations.push(Destination {
-                    vertex: r.vertex()?,
-                    edge: r.edge()?,
-                });
-            }
-            origins.push(Origin {
-                vertex,
-                destinations,
-            });
-        }
+        let (total, origins) = r.graph_data()?;
         r.finish()?;
         Self::new(total, origins)
+    }
+    /// Decode one Graph from a larger source-ordered stream and return its
+    /// exact consumed bytes and aggregate origin/destination/path/yield charge.
+    /// Uses the same supported version/key/endpoint guards as strict decode;
+    /// this does not reconstruct native ID-map order or omitted runtime state.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let clipped = bytes.len() > limits.max_bytes;
+        let bounded = &bytes[..bytes.len().min(limits.max_bytes)];
+        let mut r = Reader::new(bounded, limits)?;
+        let (total, origins) = r.graph_data().map_err(|error| {
+            if clipped && error == Error::Truncated {
+                Error::ResourceLimit
+            } else {
+                error
+            }
+        })?;
+        let graph = Self::new(total, origins)?;
+        Ok((graph, r.offset, limits.max_items - r.items_left))
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
         let mut w = Writer::new(limits);
@@ -409,6 +412,28 @@ impl<'a> Reader<'a> {
             to_vertex: self.vertex()?,
         })
     }
+    fn graph_data(&mut self) -> Result<(i32, Vec<Origin>), Error> {
+        self.version(1)?;
+        let total = self.i32()?;
+        let count = self.count(true, 20)?;
+        let mut origins = Vec::with_capacity(count);
+        for _ in 0..count {
+            let vertex = self.vertex()?;
+            let count = self.count(true, 126)?;
+            let mut destinations = Vec::with_capacity(count);
+            for _ in 0..count {
+                destinations.push(Destination {
+                    vertex: self.vertex()?,
+                    edge: self.edge()?,
+                });
+            }
+            origins.push(Origin {
+                vertex,
+                destinations,
+            });
+        }
+        Ok((total, origins))
+    }
     fn finish(&self) -> Result<(), Error> {
         if self.offset == self.bytes.len() {
             Ok(())
@@ -577,6 +602,65 @@ mod tests {
         Limits::default()
     }
 
+    #[test]
+    fn graph_prefix_preserves_trailing_manager_data_and_aggregate_charge() {
+        let g = graph();
+        let bytes = g.encode(limits()).unwrap();
+        let mut larger = bytes.clone();
+        larger.extend_from_slice(&0x81234567u32.to_le_bytes());
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: 16,
+        };
+        let (decoded, n, i) = Graph::decode_prefix_with_items(&larger, exact).unwrap();
+        assert!(decoded.wire_state_eq(&g));
+        assert_eq!((n, i), (bytes.len(), 16));
+        assert_eq!(&larger[n..], &0x81234567u32.to_le_bytes());
+        assert_eq!(
+            Graph::decode(&larger, limits()).unwrap_err(),
+            Error::TrailingBytes
+        );
+        assert_eq!(
+            Graph::decode(&larger, exact).unwrap_err(),
+            Error::ResourceLimit
+        );
+        assert_eq!(
+            Graph::decode_prefix_with_items(
+                &larger,
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    ..exact
+                }
+            )
+            .unwrap_err(),
+            Error::ResourceLimit
+        );
+        assert_eq!(
+            Graph::decode_prefix_with_items(
+                &larger,
+                Limits {
+                    max_items: 15,
+                    ..exact
+                }
+            )
+            .unwrap_err(),
+            Error::ResourceLimit
+        );
+        for cut in 0..bytes.len() {
+            assert!(Graph::decode_prefix_with_items(&bytes[..cut], exact).is_err());
+        }
+        let empty = Graph::new(-1, vec![]).unwrap().encode(limits()).unwrap();
+        let (g, n, i) = Graph::decode_prefix_with_items(
+            &empty,
+            Limits {
+                max_bytes: 12,
+                max_items: 0,
+            },
+        )
+        .unwrap();
+        assert_eq!((n, i), (12, 0));
+        assert!(g.origins.is_empty());
+    }
     #[test]
     fn independent_route_wire_preserves_integer_boundaries_and_definition_order() {
         let r = route();
