@@ -2,9 +2,10 @@
 //!
 //! Reuses the existing pending drain; this is the next statement-processing
 //! boundary. Plans cover single-player existing-session queueing and concrete
-//! Response processing/destruction. They supply no native AI policy or player
-//! decision. Missing subtype effects, multiplayer notification/routing and new
-//! session ownership are explicit dependencies, never no-op execution.
+//! Response processing/destruction. The canonical Manager also owns computed
+//! new-session creation with copied numeric IDs and fresh logical object labels.
+//! No native AI policy or player decision is supplied. Missing active subtype
+//! effects and multiplayer notification/routing remain explicit dependencies.
 //! Initial logical identities, statement kinds and ordinary disabled logger
 //! binding must come from the actual runtime state; Save alone does not supply
 //! these unsaved globals. This module is not full action/native parity support.
@@ -87,6 +88,7 @@ pub enum Unsupported {
         from: i32,
         to: i32,
     },
+    SessionMetadata,
     InconsistentState,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,6 +112,7 @@ pub struct Plan {
     remove: Option<(usize, Pending<StatementHandle>)>,
     effect: Effect,
     activate: bool,
+    creation: bool,
 }
 /// Retirement is a required logical ownership delta. The action owner must
 /// remove these handles from its typed statement inventory in the same commit;
@@ -126,6 +129,12 @@ impl Plan {
     pub fn target(&self) -> Option<SessionHeader> {
         self.target
     }
+    pub fn creates_session(&self) -> bool {
+        self.creation
+    }
+    pub(crate) fn activates_session(&self) -> bool {
+        self.activate
+    }
     pub fn retired_statement(&self) -> Option<StatementHandle> {
         if self.effect == Effect::DiscardResponse {
             self.statement.map(|s| s.handle)
@@ -133,75 +142,127 @@ impl Plan {
             self.remove.as_ref().map(|(_, p)| p.statement)
         }
     }
-    /// Validate reached facts before content mutation. Whole-action atomicity
-    /// additionally requires the owner's common World revision guard.
-    pub fn apply(
-        self,
-        context: &mut Context,
+    pub(crate) fn validate(
+        &self,
+        context: Context,
         statement: Option<StatementInfo>,
-        target: Option<SessionWrite<'_>>,
-    ) -> Result<Outcome, Error> {
-        if self.context != *context || self.statement != statement {
+        target: Option<SessionView<'_>>,
+    ) -> Result<(), Error> {
+        if self.context != context || self.statement != statement {
             return Err(Error::Conflict);
         }
+        if matches!(self.effect, Effect::Null | Effect::DiscardResponse) {
+            return Ok(());
+        }
+        let target = target.ok_or(Error::Conflict)?;
+        let statement = self.statement.ok_or(Error::Conflict)?;
+        if Some(target.header) != self.target
+            || target.history.contains(&statement.handle)
+            || target.queued.contains(&statement.handle)
+            || target
+                .pending
+                .iter()
+                .any(|p| p.statement == statement.handle)
+        {
+            return Err(Error::Conflict);
+        }
+        if self.creation
+            && (!target.history.is_empty()
+                || !target.pending.is_empty()
+                || !target.queued.is_empty())
+        {
+            return Err(Error::Conflict);
+        }
+        if self.effect == Effect::ProcessResponse {
+            let first = target.pending.iter().position(|p| p.from == statement.from);
+            match (&self.remove, first) {
+                (None, None) => {}
+                (Some((index, pending)), Some(actual))
+                    if *index == actual && target.pending[actual] == *pending => {}
+                _ => return Err(Error::Conflict),
+            }
+        }
+        Ok(())
+    }
+    pub(crate) fn reserve(&self, target: &mut SessionWrite<'_>) -> Result<(), Error> {
         match self.effect {
-            Effect::Null => Ok(Outcome {
+            Effect::Queue => target
+                .queued
+                .try_reserve(1)
+                .map_err(|_| Error::ResourceLimit),
+            Effect::ProcessResponse => target
+                .history
+                .try_reserve(1)
+                .map_err(|_| Error::ResourceLimit),
+            _ => Ok(()),
+        }
+    }
+    /// Internal commit requires validate/reserve and the common World guard;
+    /// callers perform no callbacks or intervening mutation between them.
+    pub(crate) fn commit(self, context: &mut Context, target: Option<SessionWrite<'_>>) -> Outcome {
+        match self.effect {
+            Effect::Null => Outcome {
                 native_result: false,
                 retired_statement: None,
-            }),
-            Effect::DiscardResponse => Ok(Outcome {
+            },
+            Effect::DiscardResponse => Outcome {
                 native_result: false,
                 retired_statement: self.statement.map(|s| s.handle),
-            }),
+            },
             Effect::Queue | Effect::ProcessResponse => {
-                let target = target.ok_or(Error::Conflict)?;
-                let statement = self.statement.ok_or(Error::Conflict)?;
-                if Some(target.header) != self.target
-                    || target.history.contains(&statement.handle)
-                    || target.queued.contains(&statement.handle)
-                    || target
-                        .pending
-                        .iter()
-                        .any(|p| p.statement == statement.handle)
-                {
-                    return Err(Error::Conflict);
-                }
+                let target = target.expect("validated statement target");
+                let statement = self.statement.expect("validated nonnull statement");
                 if self.effect == Effect::Queue {
-                    target
-                        .queued
-                        .try_reserve(1)
-                        .map_err(|_| Error::ResourceLimit)?;
                     target.queued.push(statement.handle);
-                    return Ok(Outcome {
+                    return Outcome {
                         native_result: true,
                         retired_statement: None,
-                    });
+                    };
                 }
-                let first = target.pending.iter().position(|p| p.from == statement.from);
-                match (&self.remove, first) {
-                    (None, None) => {}
-                    (Some((index, pending)), Some(actual))
-                        if *index == actual && target.pending[actual] == *pending => {}
-                    _ => return Err(Error::Conflict),
-                }
-                target
-                    .history
-                    .try_reserve(1)
-                    .map_err(|_| Error::ResourceLimit)?;
-                // Native order: append history, destroy/erase first same-source
-                // pending statement, then invoke the concrete empty Process.
                 if self.activate {
                     context.active_session = Some(target.header.handle);
                 }
                 target.history.push(statement.handle);
                 let retired_statement =
                     self.remove.map(|(i, _)| target.pending.remove(i).statement);
-                Ok(Outcome {
+                Outcome {
                     native_result: true,
                     retired_statement,
-                })
+                }
             }
         }
+    }
+    /// Existing-session leaf apply. Creation is committed through Manager so its
+    /// one canonical pending-list owner, ordered metadata and identity allocator
+    /// change together. Whole-action atomicity still needs the common World guard.
+    pub fn apply(
+        self,
+        context: &mut Context,
+        statement: Option<StatementInfo>,
+        mut target: Option<SessionWrite<'_>>,
+    ) -> Result<Outcome, Error> {
+        if self.creation {
+            let h = self.target.expect("creation header");
+            return Err(Error::Unsupported(Unsupported::SessionCreation {
+                id: h.id,
+                from: h.from,
+                to: h.to,
+            }));
+        }
+        self.validate(
+            *context,
+            statement,
+            target.as_ref().map(|t| SessionView {
+                header: t.header,
+                history: t.history,
+                pending: t.pending,
+                queued: t.queued,
+            }),
+        )?;
+        if let Some(t) = target.as_mut() {
+            self.reserve(t)?;
+        }
+        Ok(self.commit(context, target))
     }
 }
 
@@ -214,6 +275,27 @@ pub fn plan(
     sessions: &[SessionView<'_>],
     facts: &[StatementInfo],
 ) -> Result<Plan, Error> {
+    plan_internal(context, statement, sessions, facts, None)
+}
+
+/// Creation uses the canonical Manager's next fresh logical object label. It
+/// does not generate or replace the incoming statement's numeric session ID.
+pub(crate) fn plan_with_creation(
+    context: Context,
+    statement: Option<StatementInfo>,
+    sessions: &[SessionView<'_>],
+    facts: &[StatementInfo],
+    fresh: SessionHandle,
+) -> Result<Plan, Error> {
+    plan_internal(context, statement, sessions, facts, Some(fresh))
+}
+fn plan_internal(
+    context: Context,
+    statement: Option<StatementInfo>,
+    sessions: &[SessionView<'_>],
+    facts: &[StatementInfo],
+    fresh: Option<SessionHandle>,
+) -> Result<Plan, Error> {
     let result = |effect, target, remove| Plan {
         context,
         statement,
@@ -221,6 +303,7 @@ pub fn plan(
         remove,
         effect,
         activate: effect == Effect::ProcessResponse && context.active_session.is_none(),
+        creation: false,
     };
     let Some(statement) = statement else {
         return Ok(result(Effect::Null, None, None));
@@ -241,22 +324,47 @@ pub fn plan(
             )))
         };
     }
-    let session = sessions
+    let created;
+    let (session, creation) = if let Some(existing) = sessions
         .iter()
         .find(|s| s.header.id == statement.session_id)
-        .ok_or(unsupported(Unsupported::SessionCreation {
+    {
+        if sessions
+            .iter()
+            .filter(|s| s.header.handle == existing.header.handle)
+            .count()
+            != 1
+        {
+            return Err(unsupported(Unsupported::InconsistentState));
+        }
+        (existing, false)
+    } else {
+        let fresh = fresh.ok_or(unsupported(Unsupported::SessionCreation {
             id: statement.session_id,
             from: statement.from,
             to: statement.to,
         }))?;
-    if sessions
-        .iter()
-        .filter(|s| s.header.handle == session.header.handle)
-        .count()
-        != 1
-    {
-        return Err(unsupported(Unsupported::InconsistentState));
-    }
+        if fresh.0.checked_add(1).is_none() {
+            return Err(Error::ResourceLimit);
+        }
+        if context.active_session == Some(fresh)
+            || sessions.iter().any(|s| s.header.handle == fresh)
+        {
+            return Err(unsupported(Unsupported::InconsistentState));
+        }
+        created = SessionView {
+            header: SessionHeader {
+                handle: fresh,
+                id: statement.session_id,
+                from: statement.from,
+                to: statement.to,
+            },
+            history: &[],
+            pending: &[],
+            queued: &[],
+        };
+        (&created, true)
+    };
 
     if session.history.contains(&statement.handle)
         || session.queued.contains(&statement.handle)
@@ -271,7 +379,9 @@ pub fn plan(
         .active_session
         .is_some_and(|active| active != session.header.handle)
     {
-        return Ok(result(Effect::Queue, Some(session.header), None));
+        let mut p = result(Effect::Queue, Some(session.header), None);
+        p.creation = creation;
+        return Ok(p);
     }
     if statement.kind != StatementKind::Response {
         return Err(unsupported(Unsupported::StatementProcess(statement.kind)));
@@ -298,11 +408,9 @@ pub fn plan(
             )));
         }
     }
-    Ok(result(
-        Effect::ProcessResponse,
-        Some(session.header),
-        remove,
-    ))
+    let mut p = result(Effect::ProcessResponse, Some(session.header), remove);
+    p.creation = creation;
+    Ok(p)
 }
 
 #[cfg(test)]
