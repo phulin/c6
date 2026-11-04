@@ -447,3 +447,4 @@ pub mod lua_math_random;
 pub mod game_update;
 
 pub mod simple_requirement;
+pub mod unit_near_religious_city_requirement;

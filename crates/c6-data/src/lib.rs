@@ -846,3 +846,4 @@ pub mod plot_adjacent_owner_requirement;
 
 
 pub mod game_update_state;
+pub mod unit_near_religious_city_requirement;
