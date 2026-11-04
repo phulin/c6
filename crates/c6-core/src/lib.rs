@@ -473,3 +473,5 @@ pub mod game_archaeology;
 pub mod found_city;
 
 pub mod game_deals_wire;
+
+pub mod game_summary_wire;

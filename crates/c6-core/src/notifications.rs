@@ -63,6 +63,24 @@ pub struct LocalizedString {
     /// Base string bytes, without UTF-8 conversion or an added terminator.
     pub base: Vec<u8>,
 }
+impl LocalizedString {
+    /// Saved text prefix with explicit legacy/current form; legacy zero retains
+    /// unknown prior native text. Localized arguments remain unsupported.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+            variants: DecodeBudget::new(variant_limits(limits)),
+        };
+        let value = r.string()?;
+        Ok((value, r.pos, r.items))
+    }
+}
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Notification {
     /// Factory discriminator and Instance type are independently preserved.
