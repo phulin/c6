@@ -12,6 +12,8 @@ pub const RECYCLED_VERSION: u32 = 0x10001;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
+    MissingRetainedCurrentBaseYields,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -262,20 +264,226 @@ impl Wire for EvaluationLayers {
         w.sequence(&self.0)
     }
 }
-record!(CityBuild, CITY_BUILD_VERSION, {
-    city: ComponentId, city_id: u32, player_owner: i32, city_ai_id: u32,
-    current_yields: Vec<HashValue>, current_base_yields: Vec<HashValue>, current_gpps: Vec<HashValue>,
-    best_improvement_hash: u32, city_threat: i32, under_attack: BoolByte,
-    desired_defenders: i32, defenders_needed: i32,
-    reservations: Vec<PlotReservation>, event_trees: Vec<u32>,
-    managed_working_contract: ControlHandle, managed_contracts: Vec<ControlHandle>,
-    done_off_turn: BoolByte, best_plot_to_clear: [i32; 2], best_plot_to_buy: [i32; 2],
-    food_loss_amounts: Vec<i32>, food_loss_turns: Vec<i32>, food_loss_populations: Vec<i32>,
-    city_unit_efficiencies: Vec<UnitEfficiency>, city_trade: TradeCity, yield_preferences: Vec<i32>,
-    plot_evaluations: Vec<PlotEvaluation>, evaluation_layers: EvaluationLayers,
-    unit_evaluations: Vec<HashValue>, cached_unit_evaluations: Vec<HashValue>, project_evaluations: Vec<HashValue>,
-    power_surplus: i32, default_build_present_value: i32, unimproved_resources: Vec<HashValue>
-});
+/// Saved CityBuild profile only; native Initialize/analyzers are unapplied.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CityBuild {
+    pub wire_version: u32,
+    pub city: ComponentId,
+    pub city_id: u32,
+    pub player_owner: i32,
+    pub city_ai_id: u32,
+    pub current_yields: Vec<HashValue>,
+    /// None at version 15: prior IndexList after native Initialize remains unknown.
+    pub current_base_yields: Option<Vec<HashValue>>,
+    pub current_gpps: Vec<HashValue>,
+    pub best_improvement_hash: u32,
+    pub city_threat: i32,
+    pub under_attack: BoolByte,
+    pub desired_defenders: i32,
+    pub defenders_needed: i32,
+    pub reservations: Vec<PlotReservation>,
+    pub event_trees: Vec<u32>,
+    pub managed_working_contract: ControlHandle,
+    pub managed_contracts: Vec<ControlHandle>,
+    pub done_off_turn: BoolByte,
+    pub best_plot_to_clear: [i32; 2],
+    pub best_plot_to_buy: [i32; 2],
+    pub food_loss_amounts: Vec<i32>,
+    pub food_loss_turns: Vec<i32>,
+    pub food_loss_populations: Vec<i32>,
+    pub city_unit_efficiencies: Vec<UnitEfficiency>,
+    pub city_trade: TradeCity,
+    pub yield_preferences: Vec<i32>,
+    pub plot_evaluations: Vec<PlotEvaluation>,
+    pub evaluation_layers: EvaluationLayers,
+    pub unit_evaluations: Vec<HashValue>,
+    /// No wire pairs at version 15; native defaults apply at actual Unit indexes.
+    pub cached_unit_evaluations: Vec<HashValue>,
+    pub project_evaluations: Vec<HashValue>,
+    pub power_surplus: i32,
+    pub default_build_present_value: i32,
+    pub unimproved_resources: Vec<HashValue>,
+}
+// Preserve the existing synthetic current-format transport Default.
+impl Default for CityBuild {
+    fn default() -> Self {
+        Self {
+            wire_version: CITY_BUILD_VERSION,
+            city: Default::default(),
+            city_id: Default::default(),
+            player_owner: Default::default(),
+            city_ai_id: Default::default(),
+            current_yields: Default::default(),
+            current_base_yields: Some(Vec::new()),
+            current_gpps: Default::default(),
+            best_improvement_hash: Default::default(),
+            city_threat: Default::default(),
+            under_attack: Default::default(),
+            desired_defenders: Default::default(),
+            defenders_needed: Default::default(),
+            reservations: Default::default(),
+            event_trees: Default::default(),
+            managed_working_contract: Default::default(),
+            managed_contracts: Default::default(),
+            done_off_turn: Default::default(),
+            best_plot_to_clear: Default::default(),
+            best_plot_to_buy: Default::default(),
+            food_loss_amounts: Default::default(),
+            food_loss_turns: Default::default(),
+            food_loss_populations: Default::default(),
+            city_unit_efficiencies: Default::default(),
+            city_trade: Default::default(),
+            yield_preferences: Default::default(),
+            plot_evaluations: Default::default(),
+            evaluation_layers: Default::default(),
+            unit_evaluations: Default::default(),
+            cached_unit_evaluations: Default::default(),
+            project_evaluations: Default::default(),
+            power_surplus: Default::default(),
+            default_build_present_value: Default::default(),
+            unimproved_resources: Default::default(),
+        }
+    }
+}
+impl CityBuild {
+    /// Unapplied zero default at actual Unit collection indexes, without
+    /// inferring dense index order or an empty effective native array.
+    pub fn cached_unit_evaluations_default_q8(&self) -> Option<i32> {
+        (self.wire_version == 15).then_some(0)
+    }
+}
+impl Wire for CityBuild {
+    const MIN: usize = 4
+        + <ComponentId as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <Vec<HashValue> as Wire>::MIN
+        + <Vec<HashValue> as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<PlotReservation> as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <ControlHandle as Wire>::MIN
+        + <Vec<ControlHandle> as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <[i32; 2] as Wire>::MIN
+        + <[i32; 2] as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<UnitEfficiency> as Wire>::MIN
+        + <TradeCity as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<PlotEvaluation> as Wire>::MIN
+        + <EvaluationLayers as Wire>::MIN
+        + <Vec<HashValue> as Wire>::MIN
+        + <Vec<HashValue> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<HashValue> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if wire_version != 15 && wire_version != CITY_BUILD_VERSION {
+            return Err(Error::Version {
+                expected: CITY_BUILD_VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            city: <ComponentId as Wire>::read(r)?,
+            city_id: <u32 as Wire>::read(r)?,
+            player_owner: <i32 as Wire>::read(r)?,
+            city_ai_id: <u32 as Wire>::read(r)?,
+            current_yields: <Vec<HashValue> as Wire>::read(r)?,
+            current_base_yields: if wire_version == 15 {
+                None
+            } else {
+                Some(<Vec<HashValue> as Wire>::read(r)?)
+            },
+            current_gpps: <Vec<HashValue> as Wire>::read(r)?,
+            best_improvement_hash: <u32 as Wire>::read(r)?,
+            city_threat: <i32 as Wire>::read(r)?,
+            under_attack: <BoolByte as Wire>::read(r)?,
+            desired_defenders: <i32 as Wire>::read(r)?,
+            defenders_needed: <i32 as Wire>::read(r)?,
+            reservations: <Vec<PlotReservation> as Wire>::read(r)?,
+            event_trees: <Vec<u32> as Wire>::read(r)?,
+            managed_working_contract: <ControlHandle as Wire>::read(r)?,
+            managed_contracts: <Vec<ControlHandle> as Wire>::read(r)?,
+            done_off_turn: <BoolByte as Wire>::read(r)?,
+            best_plot_to_clear: <[i32; 2] as Wire>::read(r)?,
+            best_plot_to_buy: <[i32; 2] as Wire>::read(r)?,
+            food_loss_amounts: <Vec<i32> as Wire>::read(r)?,
+            food_loss_turns: <Vec<i32> as Wire>::read(r)?,
+            food_loss_populations: <Vec<i32> as Wire>::read(r)?,
+            city_unit_efficiencies: <Vec<UnitEfficiency> as Wire>::read(r)?,
+            city_trade: <TradeCity as Wire>::read(r)?,
+            yield_preferences: <Vec<i32> as Wire>::read(r)?,
+            plot_evaluations: <Vec<PlotEvaluation> as Wire>::read(r)?,
+            evaluation_layers: <EvaluationLayers as Wire>::read(r)?,
+            unit_evaluations: <Vec<HashValue> as Wire>::read(r)?,
+            cached_unit_evaluations: if wire_version == 15 {
+                Vec::new()
+            } else {
+                <Vec<HashValue> as Wire>::read(r)?
+            },
+            project_evaluations: <Vec<HashValue> as Wire>::read(r)?,
+            power_surplus: <i32 as Wire>::read(r)?,
+            default_build_present_value: <i32 as Wire>::read(r)?,
+            unimproved_resources: <Vec<HashValue> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != CITY_BUILD_VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let base = self
+            .current_base_yields
+            .as_ref()
+            .ok_or(Error::MissingRetainedCurrentBaseYields)?;
+        CITY_BUILD_VERSION.write(w)?;
+        self.city.write(w)?;
+        self.city_id.write(w)?;
+        self.player_owner.write(w)?;
+        self.city_ai_id.write(w)?;
+        self.current_yields.write(w)?;
+        base.write(w)?;
+        self.current_gpps.write(w)?;
+        self.best_improvement_hash.write(w)?;
+        self.city_threat.write(w)?;
+        self.under_attack.write(w)?;
+        self.desired_defenders.write(w)?;
+        self.defenders_needed.write(w)?;
+        self.reservations.write(w)?;
+        self.event_trees.write(w)?;
+        self.managed_working_contract.write(w)?;
+        self.managed_contracts.write(w)?;
+        self.done_off_turn.write(w)?;
+        self.best_plot_to_clear.write(w)?;
+        self.best_plot_to_buy.write(w)?;
+        self.food_loss_amounts.write(w)?;
+        self.food_loss_turns.write(w)?;
+        self.food_loss_populations.write(w)?;
+        self.city_unit_efficiencies.write(w)?;
+        self.city_trade.write(w)?;
+        self.yield_preferences.write(w)?;
+        self.plot_evaluations.write(w)?;
+        self.evaluation_layers.write(w)?;
+        self.unit_evaluations.write(w)?;
+        self.cached_unit_evaluations.write(w)?;
+        self.project_evaluations.write(w)?;
+        self.power_surplus.write(w)?;
+        self.default_build_present_value.write(w)?;
+        self.unimproved_resources.write(w)?;
+        Ok(())
+    }
+}
+
 record!(CityBuildEntry, 0, { index: i32, city_build: CityBuild });
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RecycledCityBuilds {
@@ -593,6 +801,119 @@ mod tests {
                 component_type: i16::MIN,
                 id: u32::MAX
             }
+        );
+    }
+    #[test]
+    fn city_build15_keeps_unknown_base_and_unapplied_cache_default() {
+        let mut expected = specimen();
+        let build = &mut expected.city_ais.entries[0].city_build;
+        build.current_base_yields = Some(vec![HashValue {
+            hash: 0xfedcba98,
+            value: -257,
+        }]);
+        build.cached_unit_evaluations = vec![
+            HashValue {
+                hash: 0x80000001,
+                value: i32::MIN,
+            },
+            HashValue {
+                hash: 0x80000001,
+                value: -1,
+            },
+        ];
+        let (current, items) = expected.encode_with_items(Limits::default()).unwrap();
+        let build = &expected.city_ais.entries[0].city_build;
+        let base_start = 28 + 24 + 4 + 8 * build.current_yields.len();
+        let base_end = base_start + 4 + 8 * build.current_base_yields.as_ref().unwrap().len();
+        let child_end = current.len() - (16 + 4 * expected.city_ais.free_indices.len());
+        let cache_end = child_end - 16;
+        let cache_start = cache_end - (4 + 8 * build.cached_unit_evaluations.len());
+        let mut bytes = current[..base_start].to_vec();
+        bytes.extend_from_slice(&current[base_end..cache_start]);
+        bytes.extend_from_slice(&current[cache_end..]);
+        bytes[28..32].copy_from_slice(&15u32.to_le_bytes());
+        let build = &mut expected.city_ais.entries[0].city_build;
+        build.wire_version = 15;
+        build.current_base_yields = None;
+        build.cached_unit_evaluations.clear();
+        assert_eq!(build.cached_unit_evaluations_default_q8(), Some(0));
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: items - 3,
+        };
+        assert_eq!(
+            CityManager::decode_prefix_with_items(&bytes, exact).unwrap(),
+            (expected.clone(), bytes.len(), items - 3)
+        );
+        assert_eq!(expected.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..bytes.len() {
+            assert!(
+                CityManager::decode(&bytes[..n], exact).is_err(),
+                "prefix {n}"
+            );
+        }
+        assert_eq!(
+            CityManager::decode(
+                &bytes,
+                Limits {
+                    max_items: items - 4,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            CityManager::decode(
+                &bytes,
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+    }
+    #[test]
+    fn city_build15_minimum_row_and_current_missing_field_refusal() {
+        let value = CityBuild::default();
+        let limits = Limits::default();
+        let mut w = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits,
+            measuring: false,
+        };
+        value.write(&mut w).unwrap();
+        let end = w.data.len();
+        // Minimal current base/cache tables each occupy one count word.
+        let mut bytes = w.data[..28].to_vec();
+        bytes.extend_from_slice(&w.data[32..end - 20]);
+        bytes.extend_from_slice(&w.data[end - 16..]);
+        bytes[..4].copy_from_slice(&15u32.to_le_bytes());
+        assert_eq!(bytes.len(), CityBuild::MIN);
+        let mut wrapped = 1u32.to_le_bytes().to_vec();
+        wrapped.extend_from_slice(&0i32.to_le_bytes());
+        wrapped.extend_from_slice(&bytes);
+        let mut r = Reader {
+            data: &wrapped,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: wrapped.len(),
+                max_items: 1,
+            },
+        };
+        let entries = Vec::<CityBuildEntry>::read(&mut r).unwrap();
+        assert_eq!(r.pos, wrapped.len());
+        assert_eq!(entries[0].city_build.current_base_yields, None);
+        let invalid = CityBuild {
+            current_base_yields: None,
+            ..CityBuild::default()
+        };
+        assert_eq!(
+            invalid.write(&mut w),
+            Err(Error::MissingRetainedCurrentBaseYields)
         );
     }
 }

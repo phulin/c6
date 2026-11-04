@@ -2597,6 +2597,7 @@ pub(crate) mod tests {
                 entries: vec![pmod::CityBuildEntry {
                     index: 3,
                     city_build: pmod::CityBuild {
+                        wire_version: 17,
                         city: pmod::ComponentId {
                             owner: i16::MIN,
                             component_type: i16::MIN,
@@ -2609,10 +2610,10 @@ pub(crate) mod tests {
                             hash: 3203334151,
                             value: -7992,
                         }],
-                        current_base_yields: vec![pmod::HashValue {
+                        current_base_yields: Some(vec![pmod::HashValue {
                             hash: 3203334152,
                             value: -7991,
-                        }],
+                        }]),
                         current_gpps: vec![pmod::HashValue {
                             hash: 3203334153,
                             value: -7990,
