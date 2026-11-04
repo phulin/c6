@@ -2,8 +2,9 @@
 //! effect-owned totals survive every callback; proposal payloads stay in the
 //! canonical LoadedState registry. This does not complete melee resolution.
 use super::proposals;
-pub mod requirements;
 pub mod city_creation;
+pub mod allocation;
+pub mod requirements;
 use crate::{
     loaded_actions::{configuration::RawGameConfiguration, culture_notifications as calendar},
     loaded_upkeep,
@@ -127,6 +128,7 @@ pub struct EffectRuntime {
     objects: Vec<(u64, Object)>,
     unit_modifiers: Option<Vec<c6_core::unit_kill::objects::Modifier>>,
     city_creation: Option<city_creation::Creation>,
+    allocations: allocation::State,
 }
 #[derive(Debug)]
 pub enum QueryError {
@@ -134,6 +136,8 @@ pub enum QueryError {
     AlreadyAdvanced,
     DuplicateEffect(u64),
     DuplicateObject(u64),
+    DuplicateObjectInstance(i32),
+    DuplicateModifierInstance(i32),
     MissingObject(u64),
     MissingEffect(u64),
     Missing(&'static str),
@@ -175,6 +179,7 @@ impl EffectRuntime {
             objects,
             unit_modifiers: None,
             city_creation: None,
+            allocations: allocation::State::from_initial(state),
         })
     }
     fn current_owner(&self, state: &LoadedState) -> Result<(), QueryError> {
@@ -200,6 +205,22 @@ impl EffectRuntime {
             return Err(QueryError::DuplicateObject(identity));
         }
         match object.kind {
+            ContextObject::Unit(unit) => {
+                if unit.component_id().component_type != 1 {
+                    return Err(QueryError::Unsupported("Unit object component type"));
+                }
+                let suffix = object
+                    .unit_sort_suffix
+                    .ok_or(QueryError::Missing("Unit object sort suffix"))?;
+                if !matches!(suffix[0], 0 | 1) {
+                    return Err(QueryError::Unsupported("new Unit object subtype"));
+                }
+                let current = crate::melee_attack::actor(state, unit)
+                    .map_err(|_| QueryError::Missing("current registered Unit"))?;
+                if current.id != unit.id || current.e_owner != unit.player() {
+                    return Err(QueryError::Missing("current registered Unit full identity"));
+                }
+            }
             ContextObject::City(city) => {
                 if city.component_type != 2 {
                     return Err(QueryError::Unsupported("City object component type"));
@@ -221,6 +242,40 @@ impl EffectRuntime {
             .try_reserve(1)
             .map_err(|_| QueryError::Missing("object registration allocation"))?;
         self.objects.push((identity, object));
+        Ok(())
+    }
+    pub fn register_unit_effect(
+        &mut self,
+        state: &LoadedState,
+        identity: u64,
+        effect: crate::unit_kill::effects::Effect,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        if identity == 0 || self.effects.iter().any(|row| row.0 == identity) {
+            return Err(QueryError::DuplicateEffect(identity));
+        }
+        self.effects.push((identity, EffectState::Unit(effect)));
+        Ok(())
+    }
+    pub fn register_unit_modifier(
+        &mut self,
+        state: &LoadedState,
+        modifier: c6_core::unit_kill::objects::Modifier,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        self.object(modifier.context)?;
+        self.effect(modifier.effect)?;
+        let records = self
+            .unit_modifiers
+            .as_mut()
+            .ok_or(QueryError::Missing("current Unit modifier owner"))?;
+        if records
+            .iter()
+            .any(|row| row.receiver == modifier.receiver || row.instance == modifier.instance)
+        {
+            return Err(QueryError::DuplicateEffect(modifier.receiver));
+        }
+        records.push(modifier);
         Ok(())
     }
     pub fn register_city_effect(
@@ -328,9 +383,13 @@ impl EffectRuntime {
         &mut self,
         receiver: u64,
     ) -> Result<c6_core::unit_kill::objects::Modifier, QueryError> {
-        let modifiers = self.unit_modifiers.as_mut()
+        let modifiers = self
+            .unit_modifiers
+            .as_mut()
             .ok_or(QueryError::Missing("current Unit modifier cleanup state"))?;
-        let index = modifiers.iter().position(|m|m.receiver==receiver)
+        let index = modifiers
+            .iter()
+            .position(|m| m.receiver == receiver)
             .ok_or(QueryError::MissingEffect(receiver))?;
         Ok(modifiers.remove(index))
     }

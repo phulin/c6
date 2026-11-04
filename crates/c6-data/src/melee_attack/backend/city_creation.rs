@@ -49,9 +49,7 @@ struct Object {
 }
 /// This state is a child of EffectRuntime, not another modifier registry.
 pub(super) struct Creation {
-    next_modifier_id: i32,
     modifiers: Vec<Dynamic>,
-    existing_modifier_ids: Vec<i32>,
     objects: Vec<Object>,
     loyalty: ListenerRing<LoyaltyListener>,
     loyalty_subscriptions: Vec<(u64, Subscription)>,
@@ -88,12 +86,17 @@ impl EffectRuntime {
                 destroyed: ListenerRing::from_ordered(&object.destroyed).map_err(Error::Ring)?,
             });
         }
+        let loyalty = ListenerRing::from_ordered(&initial.loyalty).map_err(Error::Ring)?;
+        self.initialize_modifier_system(
+            state,
+            initial.next_modifier_id,
+            &initial.existing_modifier_ids,
+        )
+        .map_err(Error::Query)?;
         self.city_creation = Some(Creation {
-            next_modifier_id: initial.next_modifier_id,
             modifiers: Vec::new(),
-            existing_modifier_ids: initial.existing_modifier_ids,
             objects,
-            loyalty: ListenerRing::from_ordered(&initial.loyalty).map_err(Error::Ring)?,
+            loyalty,
             loyalty_subscriptions: Vec::new(),
         });
         Ok(())
@@ -214,18 +217,6 @@ impl Creation {
             .iter_mut()
             .find(|v| v.handle == handle)
             .ok_or(Error::Missing("current City modifier-object lifecycle"))
-    }
-    fn assign_instance(&mut self) -> Result<i32, Error> {
-        let id = self.next_modifier_id;
-        if self.existing_modifier_ids.contains(&id)
-            || self.modifiers.iter().any(|v| v.instance == id)
-        {
-            return Err(Error::DuplicateModifier(id));
-        }
-        // 232f440: post-increment the source i32 counter immediately before
-        // SetInstanceId, insertion into the manager map and optional Activate.
-        self.next_modifier_id = id.wrapping_add(1);
-        Ok(id)
     }
 }
 
@@ -462,8 +453,66 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
 }
 
 impl EffectRuntime {
+    /// Native ordinary MakeObject(City*): reuse the cached normal wrapper or
+    /// initialize one for a City created after this owner's initial snapshot.
+    /// The same global object store/counter is used by Unit factories.
+    pub fn make_city_object(
+        &mut self,
+        state: &LoadedState,
+        city: c6_core::unit::ComponentId,
+    ) -> Result<u64, Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        if city.component_type != 2 {
+            return Err(Error::Missing("City wrapper component type"));
+        }
+        state
+            .city(i32::from(city.owner), city.id)
+            .map_err(|_| Error::Missing("current City wrapper target"))?;
+        if let Some(row) = self
+            .objects
+            .iter()
+            .find(|r| r.1.kind == super::ContextObject::City(city))
+        {
+            return Ok(row.0);
+        }
+        if self
+            .allocations
+            .has_initial_city(city)
+            .map_err(Error::Query)?
+        {
+            return Err(Error::Missing("current BEFORE City wrapper cache"));
+        }
+        let creation = self
+            .city_creation
+            .as_mut()
+            .ok_or(Error::Missing("current City creation domain"))?;
+        creation
+            .objects
+            .try_reserve(1)
+            .map_err(|_| Error::Missing("City object lifecycle allocation"))?;
+        let affected =
+            AffectedModifiers::from_sorted(Vec::new()).expect("empty constructor affected list");
+        let destroyed = ListenerRing::from_ordered(&[]).map_err(Error::Ring)?;
+        let handle = self
+            .append_normal_object(
+                state,
+                super::Object {
+                    kind: super::ContextObject::City(city),
+                    instance_id: 0,
+                    unit_sort_suffix: None,
+                    unit_lifecycle: None,
+                },
+            )
+            .map_err(Error::Query)?;
+        self.city_creation.as_mut().unwrap().objects.push(Object {
+            handle,
+            affected,
+            destroyed,
+        });
+        Ok(handle)
+    }
     /// Supported positive DynamicModifier factory: COLLECTION_OWNER over an
-    /// already cached City wrapper, with the two concrete City effect classes.
+    /// current City wrapper, with the two concrete City effect classes.
     /// The modifier is inserted before Activate; callback failure retains its
     /// real mutation prefix and never counts as successful attachment.
     #[allow(clippy::too_many_arguments)] // Native factory plus same-state owners.
@@ -501,7 +550,7 @@ impl EffectRuntime {
             .as_mut()
             .ok_or(Error::Missing("current City creation domain"))?;
         creation.object_mut(owner)?;
-        let instance = creation.assign_instance()?;
+        let instance = self.allocate_modifier_id(state).map_err(Error::Query)?;
         // Logical effect handles occupy their own namespace. Native heap
         // addresses/allocator state are not fabricated or gameplay counters.
         let effect_handle = (1u64 << 62) | u64::from(instance as u32);
@@ -558,10 +607,6 @@ impl EffectRuntime {
             .ok_or(Error::Missing("created City modifier"))
     }
     pub fn next_city_modifier_id(&self) -> Result<i32, Error> {
-        Ok(self
-            .city_creation
-            .as_ref()
-            .ok_or(Error::Missing("current City creation domain"))?
-            .next_modifier_id)
+        self.next_modifier_instance_id().map_err(Error::Query)
     }
 }

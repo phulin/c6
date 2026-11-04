@@ -1,0 +1,232 @@
+//! Shared non-temporary ObjectPool/ModifierSystem allocation metadata.
+//! Logical handles stay in the existing EffectRuntime maps. Native heap/pool
+//! storage is not cloned; the actual input counters and live relative order are.
+use super::{ContextObject, EffectRuntime, Object, QueryError};
+use c6_core::{loaded_state::LoadedState, map::UnitReference, unit::ComponentId};
+
+#[derive(Debug)]
+pub(super) struct Pool {
+    next_id: i32,
+    next_order: usize,
+}
+pub(super) struct State {
+    pool: Option<Pool>,
+    modifier_next: Option<i32>,
+    modifier_ids: Vec<i32>,
+    initial_units: Vec<(i32, Option<Vec<u32>>)>,
+    initial_cities: Vec<(i32, Vec<u32>)>,
+}
+impl State {
+    pub(super) fn from_initial(state: &LoadedState) -> Self {
+        Self {
+            pool: None,
+            modifier_next: None,
+            modifier_ids: Vec::new(),
+            initial_units: state
+                .world()
+                .players()
+                .iter()
+                .map(|p| {
+                    (
+                        p.owner(),
+                        p.unit_records()
+                            .ok()
+                            .map(|rows| rows.iter().map(|r| r.value.id).collect()),
+                    )
+                })
+                .collect(),
+            initial_cities: state
+                .retained()
+                .players
+                .iter()
+                .map(|p| {
+                    (
+                        p.header.owner,
+                        p.cities
+                            .records
+                            .entries
+                            .iter()
+                            .map(|r| r.value.header.id)
+                            .collect(),
+                    )
+                })
+                .collect(),
+        }
+    }
+    pub(super) fn has_initial_city(&self, city: ComponentId) -> Result<bool, QueryError> {
+        self.initial_cities
+            .iter()
+            .find(|r| r.0 == i32::from(city.owner))
+            .map(|r| r.1.contains(&city.id))
+            .ok_or(QueryError::Missing("initial City wrapper cache domain"))
+    }
+    fn has_initial_unit(&self, unit: UnitReference) -> Result<bool, QueryError> {
+        self.initial_units
+            .iter()
+            .find(|r| r.0 == unit.player())
+            .and_then(|r| r.1.as_ref())
+            .map(|r| r.contains(&unit.id))
+            .ok_or(QueryError::Missing("initial Unit wrapper cache domain"))
+    }
+}
+impl EffectRuntime {
+    /// Observed ObjectPool counter and normal object-list extent. Live pool
+    /// Trim compaction cannot change relative order; new logical ordinals append
+    /// after all initial entries, independently of physical allocation/layout.
+    pub fn initialize_object_pool(
+        &mut self,
+        state: &LoadedState,
+        next_instance_id: i32,
+        source_pool_slots: usize,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        if let Some(pool) = &self.allocations.pool {
+            if pool.next_id == next_instance_id && pool.next_order == source_pool_slots {
+                return Ok(());
+            }
+            return Err(QueryError::Unsupported(
+                "ObjectPool counters already initialized/advanced",
+            ));
+        }
+        self.allocations.pool = Some(Pool {
+            next_id: next_instance_id,
+            next_order: source_pool_slots,
+        });
+        Ok(())
+    }
+    pub fn initialize_modifier_system(
+        &mut self,
+        state: &LoadedState,
+        next_instance_id: i32,
+        existing_ids: &[i32],
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        if self
+            .allocations
+            .modifier_next
+            .is_some_and(|id| id != next_instance_id)
+        {
+            return Err(QueryError::Unsupported(
+                "ModifierSystem counter already initialized/advanced",
+            ));
+        }
+        for (i, id) in existing_ids.iter().enumerate() {
+            if existing_ids[..i].contains(id) {
+                return Err(QueryError::DuplicateModifierInstance(*id));
+            }
+        }
+        self.allocations.modifier_next = Some(next_instance_id);
+        for id in existing_ids {
+            if !self.allocations.modifier_ids.contains(id) {
+                self.allocations.modifier_ids.push(*id)
+            }
+        }
+        Ok(())
+    }
+    pub fn next_object_instance_id(&self) -> Result<i32, QueryError> {
+        self.allocations
+            .pool
+            .as_ref()
+            .map(|p| p.next_id)
+            .ok_or(QueryError::Missing("current ObjectPool counter"))
+    }
+    pub fn next_modifier_instance_id(&self) -> Result<i32, QueryError> {
+        self.allocations
+            .modifier_next
+            .ok_or(QueryError::Missing("current ModifierSystem counter"))
+    }
+    /// Post-increment immediately before modifier registration.
+    /// City and Unit factories call this one owner, never separate counters.
+    pub fn allocate_modifier_id(&mut self, state: &LoadedState) -> Result<i32, QueryError> {
+        self.current_owner(state)?;
+        let id = self.next_modifier_instance_id()?;
+        if self.allocations.modifier_ids.contains(&id) {
+            return Err(QueryError::DuplicateModifierInstance(id));
+        }
+        self.allocations
+            .modifier_ids
+            .try_reserve(1)
+            .map_err(|_| QueryError::Missing("modifier ID allocation"))?;
+        self.allocations.modifier_next = Some(id.wrapping_add(1));
+        self.allocations.modifier_ids.push(id);
+        Ok(id)
+    }
+    pub(super) fn append_normal_object(
+        &mut self,
+        state: &LoadedState,
+        mut object: Object,
+    ) -> Result<u64, QueryError> {
+        self.current_owner(state)?;
+        let pool = self
+            .allocations
+            .pool
+            .as_ref()
+            .ok_or(QueryError::Missing("current ObjectPool counter"))?;
+        let id = pool.next_id;
+        let order = pool.next_order;
+        let next_order = order
+            .checked_add(1)
+            .ok_or(QueryError::Missing("ObjectPool order limit"))?;
+        if self.objects.iter().any(|r| r.1.instance_id == id) {
+            return Err(QueryError::DuplicateObjectInstance(id));
+        }
+        // Namespace disjoint from existing effect/modifier/requirement handles.
+        let handle = (1u64 << 60) | u64::from(id as u32);
+        object.instance_id = id;
+        if let Some(life) = &mut object.unit_lifecycle {
+            life.pool_ordinal = order
+        }
+        self.register_current_object(state, handle, object)?;
+        let pool = self.allocations.pool.as_mut().unwrap();
+        // Append registers the object first, then increments the shared source
+        // instance counter. Native addresses/weak_ptr capacity are not inputs.
+        pool.next_id = id.wrapping_add(1);
+        pool.next_order = next_order;
+        Ok(handle)
+    }
+    /// Ordinary Unit/ability wrapper sharing. Existing wrappers keep identity;
+    /// new canonical Units have constructor-established empty wrapper caches.
+    /// An unimported BEFORE cache is missing input, never assumed empty.
+    pub fn make_current_unit_object(
+        &mut self,
+        state: &LoadedState,
+        unit: UnitReference,
+        suffix: [i32; 2],
+    ) -> Result<u64, QueryError> {
+        self.current_owner(state)?;
+        if !matches!(suffix[0], 0 | 1) || (suffix[0] == 0 && suffix[1] != 0) {
+            return Err(QueryError::Unsupported("Unit wrapper subtype"));
+        }
+        crate::melee_attack::actor(state, unit)
+            .map_err(|_| QueryError::Missing("current Unit wrapper target"))?;
+        if let Some(row) = self
+            .objects
+            .iter()
+            .find(|r| r.1.kind == ContextObject::Unit(unit) && r.1.unit_sort_suffix == Some(suffix))
+        {
+            return Ok(row.0);
+        }
+        if self.allocations.has_initial_unit(unit)? {
+            return Err(QueryError::Missing("current BEFORE Unit wrapper cache"));
+        }
+        let life = c6_core::unit_kill::objects::Object {
+            pool_ordinal: 0, // Assigned from the SAME source-backed order on append.
+            owned_modifiers: Vec::new(),
+            affected: c6_core::unit_moved_signal::modifiers::AffectedModifiers::from_sorted(
+                Vec::new(),
+            )
+            .expect("empty constructor affected list"),
+            destroyed: c6_core::unit_moved_signal::ListenerRing::from_ordered(&[])
+                .expect("empty constructor destruction signal"),
+        };
+        self.append_normal_object(
+            state,
+            Object {
+                kind: ContextObject::Unit(unit),
+                instance_id: 0,
+                unit_sort_suffix: Some(suffix),
+                unit_lifecycle: Some(life),
+            },
+        )
+    }
+}
