@@ -217,7 +217,11 @@ pub fn add_progress(
             let queue = &mut state.city_mut(owner, city)?.build_queue;
             queue.production_overflow = queue.production_overflow.wrapping_add(generic_yield_q8);
         }
-        return Ok(Outcome::NeedsProduction);
+        return Ok(if state.city(owner, city)?.header.delayed_death {
+            Outcome::Progressed
+        } else {
+            Outcome::NeedsProduction
+        });
     };
     let build = effects.current_build(state, owner, city, &entry)?;
     let before = progress(state, owner, city, entry.order)?.value;
@@ -251,9 +255,14 @@ pub fn add_progress(
                 remaining,
                 allow_overflow,
             );
-        effects.new_front(state, owner, city)?;
+        // DoNewFrontCheck284dbc0 has no gameplay work for an empty queue;
+        // the native pending-check cache flag is not an external decision.
+        if !state.city(owner, city)?.build_queue.entries.is_empty() {
+            effects.new_front(state, owner, city)?;
+        }
+        let value = state.city(owner, city)?;
         Ok(Outcome::Completed {
-            needs_production: state.city(owner, city)?.build_queue.entries.is_empty(),
+            needs_production: value.build_queue.entries.is_empty() && !value.header.delayed_death,
         })
     } else {
         Ok(Outcome::Progressed)
