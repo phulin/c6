@@ -253,6 +253,15 @@ impl<'s> ActorOverlay<'s> {
     }
 }
 
+/// Immutable placement definitions and current configuration/domain services.
+/// The state itself is reborrowed inside each reached query, after preceding
+/// notification/script effects, instead of retaining an old World view.
+#[derive(Clone, Copy)]
+pub struct CurrentPlacementQueries<'a> {
+    pub definitions: &'a crate::movement_placement_state::Definitions<'a, 'a>,
+    pub queries: &'a crate::unit_placement_state::Queries<'a>,
+}
+
 pub struct Provider<'a> {
     definitions: &'a Definitions,
     movement: &'a unit_movement_state::Inputs<'a>,
@@ -261,6 +270,7 @@ pub struct Provider<'a> {
     snapshots: Vec<SnapshotObservation>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
+    current_placement_queries: Option<CurrentPlacementQueries<'a>>,
 }
 impl<'a> Provider<'a> {
     pub fn new(
@@ -276,6 +286,7 @@ impl<'a> Provider<'a> {
             snapshots: Vec::new(),
             command_queries: None,
             placement_queries: None,
+            current_placement_queries: None,
         }
     }
     /// Reuse the computed shore-placement provider for the exact flags1,
@@ -286,10 +297,23 @@ impl<'a> Provider<'a> {
         &mut self,
         context: &'a crate::movement_placement_state::Context<'a, 'a, 'a>,
     ) -> Result<(), Error> {
-        if self.placement_queries.is_some() {
+        if self.placement_queries.is_some() || self.current_placement_queries.is_some() {
             return Err(Error::Provider("placement queries already bound"));
         }
         self.placement_queries = Some(context);
+        Ok(())
+    }
+
+    /// Bind a cheap current-state placement factory. Definitions stay cached;
+    /// a reached query reads the same LoadedState supplied to readiness now.
+    pub fn bind_current_placement_queries(
+        &mut self,
+        queries: CurrentPlacementQueries<'a>,
+    ) -> Result<(), Error> {
+        if self.placement_queries.is_some() || self.current_placement_queries.is_some() {
+            return Err(Error::Provider("placement queries already bound"));
+        }
+        self.current_placement_queries = Some(queries);
         Ok(())
     }
 
@@ -939,6 +963,21 @@ impl<'a> Provider<'a> {
         plot: &Plot,
         coord: PlotCoord,
     ) -> Result<bool, Error> {
+        if let Some(queries) = self.current_placement_queries {
+            return queries
+                .queries
+                .placement_context(state, queries.definitions)
+                .and_then(|context| {
+                    context.unit_record_placement(
+                        state,
+                        unit,
+                        coord,
+                        c6_core::movement_shore::PlacementRequest::shore_query(false),
+                    )
+                })
+                .map(|result| result == 1)
+                .map_err(Error::MovementPlacement);
+        }
         if let Some(queries) = self.placement_queries {
             return queries
                 .unit_record_placement(
