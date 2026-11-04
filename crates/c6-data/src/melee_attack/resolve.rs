@@ -2,6 +2,8 @@
 //! the native prefix; generated damage is never reported as a resolved attack.
 pub mod budget;
 pub mod kill_awards;
+pub mod post_kill;
+pub mod unit_era;
 
 use super::execution::{GeneratedMembers, RequiresResolve};
 use crate::{
