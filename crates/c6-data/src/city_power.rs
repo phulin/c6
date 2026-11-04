@@ -1,6 +1,7 @@
 //! Current city Power activation with admitted native-order rules.
 //! Wire hashes are explicitly resolved to runtime indices. Projection of saved
 //! fields alone does not establish a final native initialized/current city.
+pub mod loaded;
 pub mod loaded_gossip;
 
 use crate::{
@@ -20,6 +21,7 @@ pub enum Error {
     Resources(crate::unit_initialization_definitions::Error),
     Missing(&'static str),
     Index,
+    State(c6_core::loaded_state::Error),
     Allocation(std::collections::TryReserveError),
 }
 impl std::fmt::Display for Error {
@@ -314,7 +316,7 @@ mod tests {
                 .collect(),
         )
     }
-    fn definitions() -> Definitions {
+    pub(super) fn definitions() -> Definitions {
         Definitions {
             binding: None,
             buildings: registry(&["BUILDING_FIRST", "BUILDING_SECOND"]),

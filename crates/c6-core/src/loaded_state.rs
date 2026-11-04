@@ -2557,6 +2557,17 @@ mod tests {
         assert!(late.game_techs().is_err());
     }
     #[test]
+    fn city_power_missing_identity_does_not_reserve_revision() {
+        let mut state = state();
+        assert!(state.city_power_mut(-1, 1).is_err());
+        let owner = state.world.players()[0].owner();
+        assert!(matches!(
+            state.city_power_mut(owner, u32::MAX),
+            Err(Error::Missing(MissingInput::City { .. }))
+        ));
+        assert_eq!(state.revision(), 0);
+    }
+    #[test]
     fn gossip_counter_access_checks_owner_and_revision_before_exposure() {
         let mut state = state();
         let owner = state.world.players()[0].owner();
@@ -2564,12 +2575,26 @@ mod tests {
         assert!(state.player_gossip_reports_mut(-1).is_err());
         assert_eq!(state.revision(), 0);
         state.revision = u64::MAX;
-        assert!(matches!(state.player_gossip_reports_mut(owner), Err(Error::ResourceLimit)));
+        assert!(matches!(
+            state.player_gossip_reports_mut(owner),
+            Err(Error::ResourceLimit)
+        ));
         assert_eq!(state.retained.players[0].diplomacy.gossip_reports, before);
         state.revision = 0;
-        state.player_gossip_reports_mut(owner).unwrap().push((4, vec![(7, 9)].into()));
+        state
+            .player_gossip_reports_mut(owner)
+            .unwrap()
+            .push((4, vec![(7, 9)].into()));
         assert_eq!(state.revision(), 1);
-        assert_eq!(state.retained.players[0].diplomacy.gossip_reports.last().unwrap().0, 4);
+        assert_eq!(
+            state.retained.players[0]
+                .diplomacy
+                .gossip_reports
+                .last()
+                .unwrap()
+                .0,
+            4
+        );
     }
 
     #[test]
@@ -2580,13 +2605,19 @@ mod tests {
         assert!(state.player_unit_costs_mut(-1).is_err());
         assert_eq!(state.revision(), 0);
         state.revision = u64::MAX;
-        assert!(matches!(state.player_unit_costs_mut(owner), Err(Error::ResourceLimit)));
+        assert!(matches!(
+            state.player_unit_costs_mut(owner),
+            Err(Error::ResourceLimit)
+        ));
         assert_eq!(state.retained.players[0].units.current_unit_cost, before);
         state.revision = 0;
         let arrays = state.player_unit_costs_mut(owner).unwrap();
         arrays.production[0].value = 17;
         assert_eq!(state.revision(), 1);
-        assert_eq!(state.retained.players[0].units.current_unit_cost[0].value, 17);
+        assert_eq!(
+            state.retained.players[0].units.current_unit_cost[0].value,
+            17
+        );
     }
     #[test]
     fn blocking_store_preserves_raw_words_and_checks_revision_before_write() {
@@ -2703,6 +2734,7 @@ pub enum MissingInput {
     Player(i32),
     Unit { owner: i32, id: u32 },
     Formation { owner: i32, id: u32 },
+    City { owner: i32, id: u32 },
     UnitRuntime,
     FormationRuntime,
     ProcessingAutomation,
@@ -3186,7 +3218,10 @@ impl LoadedState {
         owner: i32,
     ) -> Result<crate::research_acquisition::units::CostArrays<'_>, Error> {
         self.world.player(owner).map_err(Error::World)?;
-        let index = self.retained.players.iter()
+        let index = self
+            .retained
+            .players
+            .iter()
             .position(|player| player.header.owner == owner)
             .ok_or(Error::Missing(MissingInput::Player(owner)))?;
         let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
@@ -4265,6 +4300,58 @@ impl LoadedState {
         self.controls = Some(controls);
         Ok(())
     }
+    /// Current logical City lookup. Full owner/ID identity is checked rather
+    /// than accepting a recycled slot occupied by another generation.
+    pub fn city(&self, owner: i32, id: u32) -> Result<&crate::city::City, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        if id == u32::MAX {
+            return Err(Error::Missing(MissingInput::City { owner, id }));
+        }
+        self.retained
+            .players
+            .iter()
+            .find(|player| player.header.owner == owner)
+            .and_then(|player| {
+                player
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .find(|entry| entry.value.header.owner == owner && entry.value.header.id == id)
+            })
+            .map(|entry| &entry.value)
+            .ok_or(Error::Missing(MissingInput::City { owner, id }))
+    }
+    /// Mutate only the owned Power component; reserve revision before exposure.
+    /// Synchronous reporting belongs to the calling gameplay operation.
+    pub fn city_power_mut(
+        &mut self,
+        owner: i32,
+        id: u32,
+    ) -> Result<&mut crate::city_services::Power, Error> {
+        self.city(owner, id)?;
+        let player = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
+            .ok_or(Error::Missing(MissingInput::City { owner, id }))?;
+        let city = self.retained.players[player]
+            .cities
+            .records
+            .entries
+            .iter()
+            .position(|entry| entry.value.header.owner == owner && entry.value.header.id == id)
+            .ok_or(Error::Missing(MissingInput::City { owner, id }))?;
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.revision = next;
+        Ok(
+            &mut self.retained.players[player].cities.records.entries[city]
+                .value
+                .power,
+        )
+    }
+
     /// Borrow the current owned diplomacy counters for ordered gossip delivery.
     /// Reserve revision before exposure; no reporting/event is emitted here.
     pub fn player_gossip_reports_mut(
@@ -4272,7 +4359,10 @@ impl LoadedState {
         owner: i32,
     ) -> Result<&mut crate::player_diplomacy::GossipReports, Error> {
         self.world.player(owner).map_err(Error::World)?;
-        let index = self.retained.players.iter()
+        let index = self
+            .retained
+            .players
+            .iter()
             .position(|player| player.header.owner == owner)
             .ok_or(Error::Missing(MissingInput::Player(owner)))?;
         let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
