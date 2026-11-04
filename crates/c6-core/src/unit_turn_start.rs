@@ -262,22 +262,10 @@ pub fn restore_formation_movement<C: FormationRestoreContext>(
     if c.formation().map_err(result)?.moves_remaining_raw >> 8 != maximum {
         c.formation_mut().map_err(result)?.moves_remaining_raw = maximum.wrapping_shl(8);
     }
-    c.formation_mut().map_err(result)?.has_moved = false;
-    let units = c.units().map_err(result)?;
-    let mut index = 0;
-    loop {
-        let members = &c.formation().map_err(result)?.unit_ids;
-        if index == members.len() {
-            break;
-        }
-        let id = *members
-            .get(index)
-            .ok_or(FormationUpkeepError::InvalidatedMemberCursor { index })?;
-        if let Some(handle) = c.find_unit(units, id).map_err(result)? {
-            c.unit_mut(handle).map_err(result)?.b_needs_attention = false;
-        }
-        index += 1;
-    }
+    crate::movement_execution::set_formation_has_moved(c, false, |c, handle, attention| {
+        c.unit_mut(handle)?.b_needs_attention = attention;
+        Ok(())
+    })?;
     let old_zoc = c.formation().map_err(result)?.has_moved_into_zoc;
     c.formation_mut().map_err(result)?.has_moved_into_zoc = false;
     update_attributes(c)?;

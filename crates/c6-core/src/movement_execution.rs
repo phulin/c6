@@ -130,6 +130,35 @@ impl<C: FormationMovementContext> UnitMovementContext for Member<'_, C> {
     }
 }
 
+/// Formation::SetHasMoved(bool), 0x293d2c0. The assignment does not suppress an
+/// equal-value call: every found member has NeedsAttention set to FALSE, even
+/// when HasMoved is set to true. No movement query, report or RNG is performed.
+/// The setter closure writes the retained actual Unit; null Find skips it.
+pub fn set_formation_has_moved<C: FormationUpkeepContext>(
+    c: &mut C,
+    value: bool,
+    mut set_needs_attention: impl FnMut(&mut C, C::UnitHandle, bool) -> Result<(), C::Error>,
+) -> Result<(), FormationUpkeepError<C::Error>> {
+    let result = FormationUpkeepError::ContinuationFailed;
+    c.formation_mut().map_err(result)?.has_moved = value;
+    let units = c.units().map_err(result)?;
+    let mut index = 0;
+    loop {
+        let members = &c.formation().map_err(result)?.unit_ids;
+        if index == members.len() {
+            break;
+        }
+        let id = *members
+            .get(index)
+            .ok_or(FormationUpkeepError::InvalidatedMemberCursor { index })?;
+        if let Some(unit) = c.find_unit(units, id).map_err(result)? {
+            set_needs_attention(c, unit, false).map_err(result)?;
+        }
+        index += 1;
+    }
+    Ok(())
+}
+
 /// Formation::ChangeMovesRemaining (0x293cf50), reached by the normal MoveTo
 /// step *after* Placement::Set. The same original delta applies to every found
 /// member, not the formation's clamped difference. The original formation-change
@@ -434,5 +463,28 @@ mod tests {
             (c.f.moves_remaining_raw, c.units[0].x_moves_remaining),
             (0, 0)
         );
+    }
+    #[test]
+    fn has_moved_true_clears_attention_even_when_equal_and_skips_missing_members() {
+        let mut c = Context::new(&[256, 512], 256);
+        c.f.has_moved = true;
+        c.f.has_moved_into_zoc = true;
+        c.f.unit_ids.insert(1, 999);
+        for unit in &mut c.units {
+            unit.b_needs_attention = true;
+        }
+        c.admitted = false; // No reporting or attribute-query support is needed.
+        let mut visited = vec![];
+        set_formation_has_moved(&mut c, true, |c, handle, attention| {
+            visited.push(handle);
+            c.units[handle].b_needs_attention = attention;
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(visited, vec![0, 1]);
+        assert!(c.f.has_moved && c.f.has_moved_into_zoc);
+        assert!(c.units.iter().all(|u| !u.b_needs_attention));
+        assert_eq!(c.f.moves_remaining_raw, 256);
+        assert!(c.reports.is_empty());
     }
 }
