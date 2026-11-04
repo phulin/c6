@@ -290,3 +290,129 @@ pub fn apply_experience<E: super::experience::Reports>(
     }
     Ok(RequiresCombatAftermath { members })
 }
+
+/// Semantic effects reached after a combatant dies. Notification delivery owns
+/// its real pending gameplay messages; localization/render serialization is not
+/// an input to this transition.
+pub trait DeathReports: loaded_upkeep::OperationReports {
+    /// First status, UnitDied notification, Game.Signals.UnitKilled (+14a0),
+    /// then the opponent status, in that order. A headless provider may replace
+    /// presentation output with semantic events, but must retain every reached
+    /// gameplay subscriber and RNG draw from the signal.
+    fn unit_death_notifications(
+        &mut self,
+        state: &mut LoadedState,
+        request: UnitDeath,
+    ) -> Result<(), Self::Error>;
+}
+#[derive(Clone, Copy, Debug)]
+pub struct UnitDeath {
+    pub dead: UnitReference,
+    pub opponent: UnitReference,
+    pub location: c6_core::unit::PlotCoord,
+    pub dead_damage: i32,
+    pub opponent_damage: i32,
+    pub status_id: u32,
+}
+#[derive(Debug)]
+pub enum AftermathError<E> {
+    Actor(super::Error),
+    Maximum(crate::formation_movement_cost::Error),
+    Effect(E),
+    Clear(Box<loaded_upkeep::Error<E>>),
+    /// The live attacker follows the separate suicide/movement/healing path.
+    SurvivingAttacker,
+    RelicCreation {
+        owner: i32,
+        location: c6_core::unit::PlotCoord,
+        source: u32,
+    },
+}
+/// The inner melee routine returned. The outer ResolveCombat budget changes,
+/// post-combat effects and war weariness are still mandatory.
+#[must_use]
+pub struct RequiresOuterResolution {
+    pub members: GeneratedMembers,
+}
+
+/// ResolveMeleeUnitVsUnitCombat's dead-attacker branch. Generated advance
+/// permission never bypasses the current survival checks. Callback failures
+/// retain their exact prefix; this is not a completed Attack action.
+pub fn finish_dead_attacker<E: DeathReports>(
+    state: &mut LoadedState,
+    maximum: &crate::formation_movement_cost::Definitions<'_>,
+    effects: &mut E,
+    pending: RequiresCombatAftermath,
+    status_id: u32,
+) -> Result<RequiresOuterResolution, AftermathError<E::Error>> {
+    use c6_core::unit_placement_transition::{PlacementPayload, PlacementReport};
+    let members = pending.members;
+    let attacker = members.damage.attacker;
+    let defender = members.damage.defender;
+    let current = super::actor(state, attacker).map_err(AftermathError::Actor)?;
+    if current.i_damage
+        < maximum
+            .maximum_damage(current)
+            .map_err(AftermathError::Maximum)?
+    {
+        return Err(AftermathError::SurvivingAttacker);
+    }
+    // IsRelicUponDeath reads the source enum; the historical bool is not this
+    // getter. Only this source creates a relic in this branch.
+    let source = current.k_religion.e_relic_source as u32;
+    if source == 0xb8cd57a7 {
+        return Err(AftermathError::RelicCreation {
+            owner: current.e_owner,
+            location: current.k_location,
+            source,
+        });
+    }
+    let dead = super::actor(state, attacker).map_err(AftermathError::Actor)?;
+    let dead_id = c6_core::unit::ComponentId {
+        owner: dead.e_owner as i16,
+        component_type: 1,
+        id: dead.id,
+    };
+    let other = super::actor(state, defender).map_err(AftermathError::Actor)?;
+    let other_id = c6_core::unit::ComponentId {
+        owner: other.e_owner as i16,
+        component_type: 1,
+        id: other.id,
+    };
+    effects
+        .placement_report(
+            state,
+            PlacementReport {
+                event_hash: 0x754cbd1b,
+                identity: dead_id,
+                payload: PlacementPayload::OtherIdentity(other_id),
+            },
+        )
+        .map_err(AftermathError::Effect)?;
+    effects
+        .unit_death_notifications(
+            state,
+            UnitDeath {
+                dead: attacker,
+                opponent: defender,
+                location: members.location,
+                dead_damage: members.damage.attacker_received,
+                opponent_damage: members.damage.defender_received,
+                status_id,
+            },
+        )
+        .map_err(AftermathError::Effect)?;
+    loaded_upkeep::clear_unit_operations(state, attacker.player(), attacker.id, effects)
+        .map_err(|e| AftermathError::Clear(Box::new(e)))?;
+    loaded_upkeep::clear_unit_operations(state, defender.player(), defender.id, effects)
+        .map_err(|e| AftermathError::Clear(Box::new(e)))?;
+    let current = super::actor(state, attacker).map_err(AftermathError::Actor)?;
+    if current.i_damage
+        < maximum
+            .maximum_damage(current)
+            .map_err(AftermathError::Maximum)?
+    {
+        return Err(AftermathError::SurvivingAttacker);
+    }
+    Ok(RequiresOuterResolution { members })
+}
