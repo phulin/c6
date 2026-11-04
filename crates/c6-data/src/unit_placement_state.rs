@@ -84,6 +84,21 @@ pub trait Effects:
     ) -> Result<(), Error<EffectsError<Self>>> {
         Err(Error::Missing("OnUnitMoved ScriptState Call6 leaf"))
     }
+    /// Specific source-backed requirement handlers use this same loaded state;
+    /// unimplemented receiver kinds must return an error without guessed values.
+    fn on_unit_moved_requirement(
+        &mut self,
+        _state: &mut LoadedState,
+        _runtime: &mut sight::Runtime,
+        _receiver: u64,
+        _current: c6_core::unit::ComponentId,
+        _old: PlotCoord,
+        _new: PlotCoord,
+    ) -> Result<(), Error<EffectsError<Self>>> {
+        Err(Error::Missing(
+            "source-backed UnitMoved requirement continuation",
+        ))
+    }
     fn signal_unit_moved(
         &mut self,
         state: &mut LoadedState,
@@ -1246,6 +1261,23 @@ impl<E: Effects> c6_core::unit_moved_signal::Context for UnitMovedContext<'_, E>
         &mut self,
     ) -> Result<&mut c6_core::unit_moved_signal::Registry, Self::Error> {
         self.effects.unit_moved_registrations_mut()
+    }
+    fn on_requirement(
+        &mut self,
+        receiver: u64,
+        old: PlotCoord,
+        new: PlotCoord,
+    ) -> Result<(), c6_core::unit_moved_signal::Error<Self::Error>> {
+        let unit = c6_core::unit_moved_signal::Context::unit(self)
+            .map_err(c6_core::unit_moved_signal::Error::Context)?;
+        let current = ComponentId {
+            owner: unit.e_owner as i16,
+            component_type: 1,
+            id: unit.id,
+        };
+        self.effects
+            .on_unit_moved_requirement(self.state, self.runtime, receiver, current, old, new)
+            .map_err(c6_core::unit_moved_signal::Error::Context)
     }
     fn call_on_unit_moved(
         &mut self,

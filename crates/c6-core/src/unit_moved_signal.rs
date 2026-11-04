@@ -278,6 +278,16 @@ pub trait Context {
     fn unit(&self) -> Result<&Unit, Self::Error>;
     fn registrations(&self) -> Result<&Registry, Self::Error>;
     fn registrations_mut(&mut self) -> Result<&mut Registry, Self::Error>;
+    /// Dispatch only a source-qualified concrete requirement implementation.
+    /// Other receiver kinds remain unsupported; no predicate result is supplied.
+    fn on_requirement(
+        &mut self,
+        receiver: u64,
+        _old: PlotCoord,
+        _new: PlotCoord,
+    ) -> Result<(), Error<Self::Error>> {
+        Err(Error::UnsupportedRequirement(receiver))
+    }
     /// The existing stock Utility.CallHook/ScriptState Call6 leaf, with full
     /// synchronization and reached Lua/GC effects. This is not whole dispatch.
     fn call_on_unit_moved(
@@ -337,7 +347,7 @@ fn invoke<C: Context>(
         }
         Subscriber::GameEffectsUnitFanout => game_effects_unit_moved(c, old, new),
         Subscriber::GameEffectsPlayerFanout => game_effects_player_unit_moved(c, old, new),
-        Subscriber::Requirement { receiver } => Err(Error::UnsupportedRequirement(receiver)),
+        Subscriber::Requirement { receiver } => c.on_requirement(receiver, old, new),
         Subscriber::Achievement => Err(Error::UnsupportedAchievement),
         Subscriber::Unknown { identity } => Err(Error::UnknownSubscriber(identity)),
     }
