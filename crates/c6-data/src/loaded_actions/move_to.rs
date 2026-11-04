@@ -1,6 +1,8 @@
 //! Mutable queued MoveTo execution over authoritative loaded records.
 //! This internal action pipeline preserves completed callback effects on errors;
 //! complete outer message, diplomacy/notification and RNG parity is separate.
+mod trade;
+
 use c6_core::{
     skip_turn::legality::ManagerOperation,
     unit::{OperationParameters, PlotCoord},
@@ -77,6 +79,13 @@ where
 /// can retain its search/definitions here while this module owns queue control.
 pub trait Movement<E: OperationReports> {
     type Error;
+    /// Current CManager.EditCityAt, including CityAttributes::IsCity and the
+    /// current logical owner/ID lookup. No initial city-location answer cache.
+    fn city_at(
+        &self,
+        state: &LoadedState,
+        location: PlotCoord,
+    ) -> Result<Option<c6_core::trade::ComponentId>, Self::Error>;
     fn preflight(
         &self,
         state: &LoadedState,
@@ -556,6 +565,11 @@ fn update<E: Effects, M: Movement<E>>(
     movement: &mut M,
 ) -> Result<(), Error<EffectError<E>, M::Error>> {
     let node = front(state, actor)?;
+    if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+        return Err(Error::Unsupported(
+            "MakeTradeRoute Update and Trade.Movement.MoveTo",
+        ));
+    }
     let (destination, modifiers) = target(&node)?;
     if node.push_turn == state.retained().core.current_turn {
         // The native captured member-vector includes other units and clears
@@ -717,9 +731,14 @@ fn continue_operation<E: Effects, M: Movement<E>>(
         }
         if !data.delete && !data.stop && !unit(state, actor)?.k_operations.nodes.is_empty() {
             // CheckComplete selects the CURRENT front following Update effects.
-            let (destination, _) = target(&front(state, actor)?)?;
-            if unit(state, actor)?.k_location == destination {
-                data.delete = true;
+            let node = front(state, actor)?;
+            if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+                trade::check_complete(state, actor, &node, &mut data, movement)?;
+            } else {
+                let (destination, _) = target(&node)?;
+                if unit(state, actor)?.k_location == destination {
+                    data.delete = true;
+                }
             }
         }
         if unit(state, actor)?.k_operations.nodes.is_empty() {
@@ -810,6 +829,58 @@ where
         + loaded_upkeep::FormationRestoreEffects<Error = crate::unit_placement_state::EffectsError<E>>,
 {
     type Error = ComputedError<crate::unit_placement_state::EffectsError<E>>;
+    fn city_at(
+        &self,
+        state: &LoadedState,
+        location: PlotCoord,
+    ) -> Result<Option<c6_core::trade::ComponentId>, Self::Error> {
+        if !c6_core::skip_turn::placement::coordinate_valid(location) {
+            return Ok(None);
+        }
+        let map = state.world().map();
+        let index = location
+            .y
+            .wrapping_mul(map.header.width)
+            .wrapping_add(location.x) as u32;
+        let Some(plot) = map.plots.get(index as usize) else {
+            return Ok(None);
+        };
+        let Some(district) = self
+            .path
+            .movement
+            .district_at(state, plot)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::Cost(e)))?
+        else {
+            return Ok(None);
+        };
+        if !self
+            .path
+            .movement
+            .district_is_city(district)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::Cost(e)))?
+        {
+            return Ok(None);
+        }
+        let Some(attrs) = &plot.city_attributes else {
+            return Ok(None);
+        };
+        let city = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == i32::from(attrs.player))
+            .and_then(|p| {
+                p.cities.records.entries.iter().find(|e| {
+                    e.value.header.owner == i32::from(attrs.player)
+                        && e.value.header.id == attrs.owning_city
+                })
+            });
+        Ok(city.map(|e| c6_core::trade::ComponentId {
+            owner: e.value.header.owner as i16,
+            component_type: 5,
+            id: e.value.header.id,
+        }))
+    }
     fn preflight(
         &self,
         state: &LoadedState,
