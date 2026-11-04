@@ -2323,6 +2323,7 @@ pub(crate) mod tests {
             entries: vec![pmod::Slot {
                 index: 2,
                 governor: pmod::Governor {
+                    wire_version: 16,
                     id: -4997,
                     definition_hash: 3735879684,
                     name: vec![0, 255, 128],

@@ -43,6 +43,7 @@ pub struct Grievance {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Governor {
+    pub wire_version: u32,
     pub id: i32,
     /// Raw definition hash, never a SQL ordinal.
     pub definition_hash: u32,
@@ -193,8 +194,15 @@ impl<'a> Reader<'a> {
         })
     }
     fn governor(&mut self) -> Result<Governor, Error> {
-        self.version(INSTANCE_VERSION)?;
+        let wire_version = self.u32()?;
+        if wire_version != 9 && wire_version != INSTANCE_VERSION {
+            return Err(Error::Version {
+                expected: INSTANCE_VERSION,
+                actual: wire_version,
+            });
+        }
         Ok(Governor {
+            wire_version,
             id: self.i32()?,
             definition_hash: self.u32()?,
             name: self.list(1, false, |r| Ok(r.bytes(1)?[0]))?,
@@ -204,20 +212,28 @@ impl<'a> Reader<'a> {
             cultural_pressure: self.i32()?,
             domestic_identity_pressure: self.i32()?,
             foreign_identity_pressure: self.i32()?,
-            domestic_identity_pressure_once_per_city: self.i32()?,
-            foreign_identity_pressure_once_per_city: self.i32()?,
+            domestic_identity_pressure_once_per_city: if wire_version == 9 {
+                0
+            } else {
+                self.i32()?
+            },
+            foreign_identity_pressure_once_per_city: if wire_version == 9 {
+                0
+            } else {
+                self.i32()?
+            },
             established: self.bool()?,
             neutralized_turns: self.i32()?,
-            neutralized_indefinitely: self.i32()?,
+            neutralized_indefinitely: if wire_version == 9 { 0 } else { self.i32()? },
             identity_per_title: self.i32()?,
             alliance_points: self.i32()?,
             ignore_identity_pressure: self.i32()?,
-            feature_no_improvement_appeal_modifier: self.i32()?,
-            prevent_structural_damage: self.i32()?,
+            feature_no_improvement_appeal_modifier: if wire_version == 9 { 0 } else { self.i32()? },
+            prevent_structural_damage: if wire_version == 9 { 0 } else { self.i32()? },
             assign_to_major: self.bool()?,
-            resource_power_provided_change: self.i32()?,
-            faith_purchase_districts: self.i32()?,
-            extra_heal: self.i32()?,
+            resource_power_provided_change: if wire_version == 9 { 0 } else { self.i32()? },
+            faith_purchase_districts: if wire_version == 9 { 0 } else { self.i32()? },
+            extra_heal: if wire_version == 9 { 0 } else { self.i32()? },
             established_cities: self.list(12, true, |r| {
                 Ok(EstablishedCity {
                     city: r.city()?,
@@ -261,7 +277,7 @@ impl<'a> Reader<'a> {
         if count > capacity as usize {
             return Err(Error::InvalidContainerMetadata);
         }
-        let entries = self.list_n(count, 111, |r| {
+        let entries = self.list_n(count, 79, |r| {
             Ok(Slot {
                 index: r.i32()?,
                 governor: r.governor()?,
@@ -343,6 +359,9 @@ impl Writer {
         self.u32(c.id)
     }
     fn governor(&mut self, g: &Governor) -> Result<(), Error> {
+        if g.wire_version != INSTANCE_VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         self.u32(INSTANCE_VERSION)?;
         self.i32(g.id)?;
         self.u32(g.definition_hash)?;
@@ -498,6 +517,7 @@ mod tests {
             entries: vec![Slot {
                 index: -7,
                 governor: Governor {
+                    wire_version: INSTANCE_VERSION,
                     id: i32::MIN,
                     definition_hash: u32::MAX,
                     name: vec![0, 255, 0xc3, 0xa9],
@@ -722,5 +742,109 @@ mod tests {
                 actual: 4
             })
         );
+    }
+    #[test]
+    fn independent_governor9_defaults_and_minimum_row() {
+        fn legacy_instance(mut expected: Governors) {
+            // Fix name length3 to make the source field spans below explicit.
+            expected.entries[0].governor.name = vec![0, 255, 128];
+            let (current, items) = expected.encode_with_items(Limits::default()).unwrap();
+            // Slot starts24, instance28. Omit8 int fields, retaining its two
+            // booleans and all current9 fields, maps and independently tagged grievances.
+            let mut bytes = Vec::new();
+            let mut start = 0;
+            for (lo, hi) in [(47, 55), (60, 64), (76, 84), (85, 97)] {
+                bytes.extend_from_slice(&current[start..28 + lo]);
+                start = 28 + hi;
+            }
+            bytes.extend_from_slice(&current[start..]);
+            bytes[28..32].copy_from_slice(&9u32.to_le_bytes());
+            let g = &mut expected.entries[0].governor;
+            g.wire_version = 9;
+            g.domestic_identity_pressure_once_per_city = 0;
+            g.foreign_identity_pressure_once_per_city = 0;
+            g.neutralized_indefinitely = 0;
+            g.feature_no_improvement_appeal_modifier = 0;
+            g.prevent_structural_damage = 0;
+            g.resource_power_provided_change = 0;
+            g.faith_purchase_districts = 0;
+            g.extra_heal = 0;
+            let exact = Limits {
+                max_bytes: bytes.len(),
+                max_items: items,
+            };
+            assert_eq!(Governors::decode(&bytes, exact).unwrap(), expected);
+            assert_eq!(expected.encode(exact), Err(Error::UnsupportedLegacyWrite));
+            for n in 0..bytes.len() {
+                assert!(Governors::decode(&bytes[..n], exact).is_err(), "prefix {n}");
+            }
+            assert_eq!(
+                Governors::decode(
+                    &bytes,
+                    Limits {
+                        max_items: items - 1,
+                        ..exact
+                    }
+                ),
+                Err(Error::ResourceLimit)
+            );
+            assert_eq!(
+                Governors::decode(
+                    &bytes,
+                    Limits {
+                        max_bytes: bytes.len() - 1,
+                        ..exact
+                    }
+                ),
+                Err(Error::ResourceLimit)
+            );
+            // Both outer versions can carry the same independent instance9.
+            let tail = bytes.len() - 13;
+            bytes.drain(tail..tail + 4);
+            bytes[..4].copy_from_slice(&5u32.to_le_bytes());
+            expected.wire_version = 5;
+            expected.neutralized_indefinitely = 0;
+            let legacy_limits = Limits {
+                max_bytes: bytes.len(),
+                ..exact
+            };
+            assert_eq!(Governors::decode(&bytes, legacy_limits).unwrap(), expected);
+            bytes[28..32].copy_from_slice(&8u32.to_le_bytes());
+            assert_eq!(
+                Governors::decode(&bytes, legacy_limits),
+                Err(Error::Version {
+                    expected: 16,
+                    actual: 8
+                })
+            );
+        }
+        legacy_instance(sample());
+        let mut minimal = sample();
+        minimal.entries[0].governor.established_cities.clear();
+        minimal.entries[0].governor.promotions.clear();
+        minimal.entries[0].governor.grievances.clear();
+        minimal.free_links.clear();
+        // With name length3 this leaves111 wire bytes after the count. Empty
+        // name would leave108; a dedicated no-allocation preflight below tests79.
+        legacy_instance(minimal.clone());
+        minimal.entries[0].governor.name.clear();
+        let (current, items) = minimal.encode_with_items(Limits::default()).unwrap();
+        let mut bytes = Vec::new();
+        let mut start = 0;
+        for (lo, hi) in [(44, 52), (57, 61), (73, 81), (82, 94)] {
+            bytes.extend_from_slice(&current[start..28 + lo]);
+            start = 28 + hi;
+        }
+        bytes.extend_from_slice(&current[start..]);
+        bytes[28..32].copy_from_slice(&9u32.to_le_bytes());
+        assert_eq!(bytes.len(), 132);
+        assert!(Governors::decode(
+            &bytes,
+            Limits {
+                max_bytes: 132,
+                max_items: items
+            }
+        )
+        .is_ok());
     }
 }
