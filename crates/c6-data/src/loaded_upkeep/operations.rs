@@ -17,6 +17,17 @@ pub trait OperationReports {
         actor: UnitHandle,
         report: IdentityReport,
     ) -> Result<(), Self::Error>;
+    fn preflight_placement_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+        event: u32,
+    ) -> Result<(), Self::Error>;
+    fn placement_report(
+        &mut self,
+        state: &mut LoadedState,
+        report: c6_core::unit_placement_transition::PlacementReport,
+    ) -> Result<(), Self::Error>;
     fn operation_report(
         &mut self,
         state: &mut LoadedState,
@@ -36,6 +47,25 @@ where
     ) -> Result<(), Self::Error> {
         self.continuations
             .preflight_operation_report(state, actor, report)
+            .map_err(RulesEffectError::Continuation)
+    }
+    fn preflight_placement_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+        event: u32,
+    ) -> Result<(), Self::Error> {
+        self.continuations
+            .preflight_placement_report(state, actor, event)
+            .map_err(RulesEffectError::Continuation)
+    }
+    fn placement_report(
+        &mut self,
+        state: &mut LoadedState,
+        report: c6_core::unit_placement_transition::PlacementReport,
+    ) -> Result<(), Self::Error> {
+        self.continuations
+            .placement_report(state, report)
             .map_err(RulesEffectError::Continuation)
     }
     fn operation_report(
@@ -174,6 +204,31 @@ impl<E: OperationReports> BaseDeactivationContext for Base<'_, E> {
     }
 }
 
+impl<E: OperationReports> c6_core::unit_placement_transition::PlacementStateContext
+    for Base<'_, E>
+{
+    type Error = Error<E::Error>;
+    fn unit(&self) -> Result<&Unit, Self::Error> {
+        self.actor.get(self.state).map_err(Error::World)
+    }
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+        self.actor.get_mut(self.state).map_err(Error::State)
+    }
+    fn preflight_placement_report(&self, event: u32) -> Result<(), Self::Error> {
+        self.effects
+            .preflight_placement_report(self.state, self.actor, event)
+            .map_err(Error::Provider)
+    }
+    fn send_placement_report(
+        &mut self,
+        report: c6_core::unit_placement_transition::PlacementReport,
+    ) -> Result<(), Self::Error> {
+        self.effects
+            .placement_report(self.state, report)
+            .map_err(Error::Provider)
+    }
+}
+
 /// Original PopFront selects the current front on entry, then retains its
 /// allocation/slot through handler callbacks. DeleteNode compares that token to
 /// current Front, deactivates only on equality, and removes the CURRENT payload
@@ -205,11 +260,19 @@ pub fn pop_front_operation<E: OperationReports>(
             }
         }
         SKIP_TURN_HASH | FORTIFY_HASH => {}
-        MOVE_TO_HASH
-            if !actor
-                .get(state)
-                .map_err(Error::World)?
-                .b_needs_movement_completion => {}
+        MOVE_TO_HASH => {
+            use c6_core::unit_placement_transition::{complete_movement, PlacementStateError};
+            complete_movement(&mut Base {
+                state,
+                actor,
+                effects,
+            })
+            .map_err(|error| match error {
+                PlacementStateError::EffectsUnavailable(e)
+                | PlacementStateError::Context(e)
+                | PlacementStateError::ReportFailed(e) => e,
+            })?;
+        }
         _ => {
             return Err(Error::Unsupported(
                 "selected handler Deactivate continuation",
