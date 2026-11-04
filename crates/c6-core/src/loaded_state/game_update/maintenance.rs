@@ -30,6 +30,14 @@ impl LoadedState {
         let i = self.maintenance_player(owner)?;
         Ok(&mut self.retained.players[i].units)
     }
+    /// Current gameplay callback access; preserves the retained planner state.
+    pub fn player_ai_grand_strategic_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut Option<crate::player_ai_grand_strategic::GrandStrategic>, Error> {
+        let i = self.maintenance_player(owner)?;
+        Ok(&mut self.retained.players[i].ai_grand_strategic)
+    }
     pub fn player_ai_military_mut(
         &mut self,
         owner: i32,

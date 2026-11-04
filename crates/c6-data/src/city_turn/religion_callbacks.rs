@@ -236,6 +236,154 @@ impl From<Error> for CityError {
         CityError::ReligionCallback(error)
     }
 }
+/// Actual ordered PopulationChanged subscribers. The Lua recipient is executed
+/// by the caller's existing semantic ScriptState, including event creation.
+#[derive(Clone, Debug)]
+pub enum PopulationListener {
+    Lua,
+    History,
+    Boost {
+        population_of_player: bool,
+        minimum: i32,
+    },
+    GrandStrategic {
+        owner: i32,
+        settlement_decay_amount: i32,
+    },
+    PlayerPopulationLead {
+        requirement: u64,
+        context_player: i32,
+        subject_player: i32,
+        minimum_lead: i32,
+        percent_bits: u32,
+    },
+    Achievements,
+}
+pub trait PopulationScript {
+    fn on_city_population_changed(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        delta: i32,
+    ) -> Result<(), Error>;
+}
+fn population(state: &LoadedState, owner: i32) -> Result<i32, Error> {
+    let player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or(Error::Missing("current population Player"))?;
+    Ok(player
+        .cities
+        .records
+        .entries
+        .iter()
+        .fold(0i32, |sum, entry| {
+            sum.wrapping_add(entry.value.header.population)
+        }))
+}
+/// 23c2e00 uses wrapping signed subtraction/absolute value, then f32 products.
+/// Return values are the native SimpleRequirement states (0 satisfied, 1 failed).
+pub fn population_lead_test(context: i32, subject: i32, minimum: i32, percent: f32) -> i32 {
+    let difference = context.wrapping_sub(subject);
+    let absolute = if difference < 0 {
+        difference.wrapping_neg()
+    } else {
+        difference
+    };
+    if absolute < minimum {
+        return 1;
+    }
+    let satisfied = if percent > 0.0 {
+        subject as f32 >= percent * context as f32
+    } else {
+        context as f32 >= -(percent * subject as f32)
+    };
+    i32::from(!satisfied)
+}
+/// Executes the current founding/growth population listeners against the same
+/// canonical City and shared requirement store. Reached positive boost/history/
+/// achievement paths remain explicit until their owning gameplay effects exist.
+#[allow(clippy::too_many_arguments)]
+pub fn population_changed<S: PopulationScript>(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    delta: i32,
+    listeners: &[PopulationListener],
+    requirements: &mut subject_sets::Runtime,
+    script: &mut S,
+) -> Result<(), Error> {
+    for listener in listeners {
+        let current = state.city(owner, city)?.header.population;
+        match *listener {
+            PopulationListener::Lua => {
+                script.on_city_population_changed(state, owner, city, delta)?
+            }
+            PopulationListener::History => {
+                let old = current.wrapping_sub(delta);
+                if [25, 20, 15, 10]
+                    .iter()
+                    .any(|&threshold| current >= threshold && old < threshold)
+                {
+                    return Err(Error::Unsupported("population historic moment threshold"));
+                }
+            }
+            PopulationListener::Boost {
+                population_of_player,
+                minimum,
+            } => {
+                let amount = if population_of_player {
+                    population(state, owner)?
+                } else {
+                    current
+                };
+                if amount >= minimum {
+                    return Err(Error::Unsupported("population boost trigger"));
+                }
+            }
+            PopulationListener::GrandStrategic {
+                owner: subscriber,
+                settlement_decay_amount,
+            } => {
+                if subscriber == owner {
+                    let value = state
+                        .player_ai_grand_strategic_mut(owner)?
+                        .as_mut()
+                        .ok_or(Error::Missing("current GrandStrategic city planner"))?;
+                    value.city_planner.expansion_score = value
+                        .city_planner
+                        .expansion_score
+                        .wrapping_add(settlement_decay_amount.wrapping_mul(2).wrapping_neg());
+                }
+            }
+            PopulationListener::PlayerPopulationLead {
+                requirement,
+                context_player,
+                subject_player,
+                minimum_lead,
+                percent_bits,
+            } => {
+                let tested = population_lead_test(
+                    population(state, context_player)?,
+                    population(state, subject_player)?,
+                    minimum_lead,
+                    f32::from_bits(percent_bits),
+                );
+                invalidate(requirements, requirement, tested)?;
+            }
+            PopulationListener::Achievements => {
+                if current >= 30 {
+                    return Err(Error::Unsupported("population achievement eligibility"));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,6 +411,16 @@ mod tests {
         })
         .unwrap();
         assert_eq!(value.state, 1);
+    }
+    #[test]
+    fn population_lead_preserves_minimum_float_sign_and_wrapping_edges() {
+        assert_eq!(population_lead_test(1, 0, 3, 1.1), 1);
+        assert_eq!(population_lead_test(1, 1, 3, -1.1), 1);
+        assert_eq!(population_lead_test(10, 13, 3, 1.1), 0);
+        assert_eq!(population_lead_test(10, 7, 3, 1.1), 1);
+        assert_eq!(population_lead_test(13, 10, 3, -1.1), 0);
+        assert_eq!(population_lead_test(i32::MIN, 0, 0, 1.1), 1);
+        assert_eq!(population_lead_test(10, 13, 0, f32::NAN), 1);
     }
     #[test]
     fn repeated_triggered_state_requires_real_subscriber_continuation() {
