@@ -1114,6 +1114,7 @@ impl Wire for SightPlotEntry {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EspionageBonus {
+    pub wire_version: i32,
     /// Original m_eOperationType at 0x0.
     pub e_operation_type: u32,
     /// Original m_bOffensive at 0x4.
@@ -1124,14 +1125,24 @@ pub struct EspionageBonus {
 impl Wire for EspionageBonus {
     const MIN: usize = 13;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(7)?;
+        let wire_version = r.i32()?;
+        if wire_version != 6 && wire_version != 7 {
+            return Err(Error::Version {
+                expected: 7,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
+            wire_version,
             e_operation_type: <u32>::read(r)?,
             b_offensive: <bool>::read(r)?,
             i_amount: <i32>::read(r)?,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 7 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         (7i32).write(w)?;
         self.e_operation_type.write(w)?;
         self.b_offensive.write(w)?;
@@ -1141,6 +1152,7 @@ impl Wire for EspionageBonus {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EspionageTimeReduction {
+    pub wire_version: i32,
     /// Original m_eOperationType at 0x0.
     pub e_operation_type: u32,
     /// Original m_iReductionPercent at 0x4.
@@ -1149,13 +1161,23 @@ pub struct EspionageTimeReduction {
 impl Wire for EspionageTimeReduction {
     const MIN: usize = 12;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(7)?;
+        let wire_version = r.i32()?;
+        if wire_version != 6 && wire_version != 7 {
+            return Err(Error::Version {
+                expected: 7,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
+            wire_version,
             e_operation_type: <u32>::read(r)?,
             i_reduction_percent: <i32>::read(r)?,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 7 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         (7i32).write(w)?;
         self.e_operation_type.write(w)?;
         self.i_reduction_percent.write(w)?;
@@ -3039,11 +3061,13 @@ mod tests {
     fn unit_espionage6_two_defaults_and_independent_nested_records() {
         let mut value = crate::unit_turn_upkeep::tests::source_only_unit().k_espionage;
         value.a_espionage_bonuses = vec![EspionageBonus {
+            wire_version: 7,
             e_operation_type: 0x80000001,
             b_offensive: true,
             i_amount: -5,
         }];
         value.a_espionage_time_reductions = vec![EspionageTimeReduction {
+            wire_version: 7,
             e_operation_type: 0x80000002,
             i_reduction_percent: -3,
         }];
@@ -3104,12 +3128,12 @@ mod tests {
         .unwrap();
         assert_eq!(Espionage::read(&mut r), Err(Error::ResourceLimit));
         let mut bad = bytes.clone();
-        bad[8..12].copy_from_slice(&6i32.to_le_bytes());
+        bad[8..12].copy_from_slice(&5i32.to_le_bytes());
         assert_eq!(
             Espionage::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
             Err(Error::Version {
                 expected: 7,
-                actual: 6
+                actual: 5
             })
         );
         bad = bytes.clone();
@@ -3125,6 +3149,70 @@ mod tests {
                 expected: 7,
                 actual: 5
             })
+        );
+    }
+    #[test]
+    fn independently_tagged_espionage_records6_preserve_fields() {
+        let mut value = crate::unit_turn_upkeep::tests::source_only_unit().k_espionage;
+        value.a_espionage_bonuses = vec![EspionageBonus {
+            wire_version: 7,
+            e_operation_type: 0xf1234567,
+            b_offensive: true,
+            i_amount: i32::MIN,
+        }];
+        value.a_espionage_time_reductions = vec![EspionageTimeReduction {
+            wire_version: 7,
+            e_operation_type: 0xfedcba98,
+            i_reduction_percent: -257,
+        }];
+        let mut w = writer();
+        value.write(&mut w).unwrap();
+        // Each nested tag belongs to its record, independently of outer7.
+        w.bytes[8..12].copy_from_slice(&6i32.to_le_bytes());
+        w.bytes[25..29].copy_from_slice(&6i32.to_le_bytes());
+        value.a_espionage_bonuses[0].wire_version = 6;
+        value.a_espionage_time_reductions[0].wire_version = 6;
+        let limits = Limits {
+            max_bytes: w.bytes.len(),
+            max_items: 2,
+        };
+        let mut r = Reader::new(&w.bytes, limits).unwrap();
+        assert_eq!(Espionage::read(&mut r).unwrap(), value);
+        r.finish().unwrap();
+        assert_eq!(
+            value.write(&mut writer()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        for n in 0..w.bytes.len() {
+            assert!(Espionage::read(&mut Reader::new(&w.bytes[..n], limits).unwrap()).is_err());
+        }
+        let mut bad = w.bytes.clone();
+        bad[25..29].copy_from_slice(&5i32.to_le_bytes());
+        assert_eq!(
+            Espionage::read(&mut Reader::new(&bad, limits).unwrap()),
+            Err(Error::Version {
+                expected: 7,
+                actual: 5
+            })
+        );
+        bad = w.bytes.clone();
+        bad[16] = 2;
+        assert_eq!(
+            Espionage::read(&mut Reader::new(&bad, limits).unwrap()),
+            Err(Error::NoncanonicalBool(2))
+        );
+        assert_eq!(
+            Espionage::read(
+                &mut Reader::new(
+                    &w.bytes,
+                    Limits {
+                        max_items: 1,
+                        ..limits
+                    }
+                )
+                .unwrap()
+            ),
+            Err(Error::ResourceLimit)
         );
     }
 }
