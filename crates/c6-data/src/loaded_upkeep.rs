@@ -9,6 +9,7 @@ use c6_core::{
     formation_upkeep::{self, BooleanQuery, FormationUpkeepContext, IntegerQuery},
     loaded_state::LoadedState,
     unit::{Formation, Unit},
+    unit_turn_start::{self, FormationRestoreContext, FormationRestoredReport},
     unit_turn_upkeep::{self, MovementReport, RestoreMovementContext},
 };
 
@@ -135,6 +136,28 @@ pub trait Continuations {
     fn owner_is_barbarian(&self, state: &LoadedState, owner: i32) -> Result<bool, Self::Error>;
 }
 
+/// Additional synchronous effects reached by Formation::RestoreMovement.
+/// These callbacks receive the same authoritative state as member movement
+/// reports. They must execute every reached gameplay/RNG effect before return;
+/// collecting a transcript does not satisfy this contract.
+pub trait FormationRestoreEffects: Effects {
+    fn formation_restored(
+        &mut self,
+        state: &mut LoadedState,
+        report: FormationRestoredReport,
+    ) -> Result<(), Self::Error>;
+}
+
+/// Formation restoration extends the existing rules-backed provider with its
+/// two reached report overloads, without supplying default subscribers.
+pub trait FormationRestoreContinuations: Continuations {
+    fn formation_restored(
+        &mut self,
+        state: &mut LoadedState,
+        report: FormationRestoredReport,
+    ) -> Result<(), Self::Error>;
+}
+
 #[derive(Debug)]
 pub enum RulesEffectError<E> {
     World(c6_core::world::MissingInput),
@@ -247,6 +270,18 @@ impl<'a, C: Continuations> Effects for RulesEffects<'a, C> {
     fn owner_is_barbarian(&self, state: &LoadedState, owner: i32) -> Result<bool, Self::Error> {
         self.continuations
             .owner_is_barbarian(state, owner)
+            .map_err(RulesEffectError::Continuation)
+    }
+}
+
+impl<C: FormationRestoreContinuations> FormationRestoreEffects for RulesEffects<'_, C> {
+    fn formation_restored(
+        &mut self,
+        state: &mut LoadedState,
+        report: FormationRestoredReport,
+    ) -> Result<(), Self::Error> {
+        self.continuations
+            .formation_restored(state, report)
             .map_err(RulesEffectError::Continuation)
     }
 }
@@ -446,6 +481,50 @@ impl<E: Effects> FormationUpkeepContext for Members<'_, '_, '_, E> {
             .report(self.state, report)
             .map_err(Error::Provider)
     }
+}
+
+impl<E: FormationRestoreEffects> FormationRestoreContext for Members<'_, '_, '_, E> {
+    fn unit_mut(&mut self, handle: UnitHandle) -> Result<&mut Unit, Self::Error> {
+        handle.get_mut(self.state).map_err(Error::State)
+    }
+    fn send_formation_restored(
+        &mut self,
+        report: FormationRestoredReport,
+    ) -> Result<(), Self::Error> {
+        self.effects
+            .formation_restored(self.state, report)
+            .map_err(Error::Provider)
+    }
+}
+
+/// Execute the source-derived Linux Formation::RestoreMovement continuation on
+/// current owned records, including member attention resets, attribute updates
+/// and the ordered Formation reports. Existing rules-backed MaxMoves and domain
+/// queries are reused; no actor/World copyback can overwrite subscriber changes.
+///
+/// Errors retain completed writes and callback effects. The caller must admit
+/// the required subscriber/getter profile and valid retained collections; this
+/// does not execute earlier activation stages or establish native turn parity.
+pub fn restore_formation_movement<E: FormationRestoreEffects>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+) -> Result<(), formation_upkeep::FormationUpkeepError<Error<E::Error>>> {
+    state
+        .world()
+        .player(owner)
+        .and_then(|p| p.formation(id))
+        .and_then(|f| f.ok_or(c6_core::world::MissingInput::InvalidSlot))
+        .map_err(|e| formation_upkeep::FormationUpkeepError::EffectsUnavailable(Error::World(e)))?;
+    unit_turn_start::restore_formation_movement(&mut Members {
+        state,
+        inputs,
+        effects,
+        owner,
+        id,
+    })
 }
 
 /// Compute actual current Formation attributes, domain, movement and member
