@@ -10,6 +10,7 @@ pub use activation::activate_unit;
 mod alert;
 pub use alert::{alert_enemy_visible, AlertVisibility};
 mod operations;
+pub mod placement_tails;
 use c6_core::{
     formation_upkeep::{self, BooleanQuery, FormationUpkeepContext, IntegerQuery},
     loaded_state::LoadedState,

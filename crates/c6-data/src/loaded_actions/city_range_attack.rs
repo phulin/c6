@@ -829,7 +829,7 @@ fn hex_distance(x: i32, y: i32) -> i32 {
         a.wrapping_add(b)
     }
 }
-fn plot_distance(state: &LoadedState, a: (i32, i32), b: (i32, i32)) -> i32 {
+pub(crate) fn plot_distance(state: &LoadedState, a: (i32, i32), b: (i32, i32)) -> i32 {
     let map = state.world().map();
     let dx =
         b.0.wrapping_sub(row_half(b.1))
@@ -844,7 +844,7 @@ fn plot_distance(state: &LoadedState, a: (i32, i32), b: (i32, i32)) -> i32 {
         distance
     }
 }
-fn adjacent_location(
+pub(crate) fn adjacent_location(
     state: &LoadedState,
     location: (i32, i32),
     direction: usize,

@@ -71,6 +71,7 @@ pub mod unit_initialization;
 pub mod unit_occupancy;
 pub mod unit_operations_clear;
 pub mod unit_placement_transition;
+pub mod unit_placement_tails;
 pub mod unit_sight;
 pub mod unit_turn_start;
 pub mod unit_turn_upkeep;

@@ -578,6 +578,16 @@ mod tests {
         assert_eq!(f.log, ["clan view 5"]);
     }
     #[test]
+    fn basic_view_overload_does_not_run_clan_effects() {
+        let mut f = Fixture::new();
+        rules_view_unit_basic(&mut f, 0, 8).unwrap();
+        assert_eq!(f.encountered, [true]);
+        assert_eq!(f.log, ["encountered signal"]);
+        f.log.clear();
+        rules_view_unit_basic(&mut f, 0, 8).unwrap();
+        assert!(f.log.is_empty());
+    }
+    #[test]
     fn missing_unit_type_flag_fails_without_clan_callback_or_flag_mutation() {
         let mut f = Fixture::new();
         f.encountered.clear();
@@ -688,14 +698,14 @@ pub enum UnitViewError<E> {
     MissingUnitType(i32),
 }
 
-/// Both Rules.Units::ViewUnit overloads. The first-reveal bool is unused.
+/// Two-argument Rules.Units::ViewUnit (Linux 0x2bf4940).
+/// This overload only updates encounter state and dispatches its signal.
 /// Native unit-type flag indexing is unguarded; invalid exported arrays fail
 /// explicitly here instead of inventing an unseen/encountered value.
-pub fn rules_view_unit<C: UnitViewContext>(
+pub fn rules_view_unit_basic<C: UnitViewContext>(
     c: &mut C,
     player: i32,
     unit: C::Unit,
-    origin: i32,
 ) -> Result<(), UnitViewError<C::Error>> {
     use UnitViewError::Context;
     if c.player_valid(player).map_err(Context)? {
@@ -716,6 +726,19 @@ pub fn rules_view_unit<C: UnitViewContext>(
                 .map_err(Context)?;
         }
     }
+    Ok(())
+}
+
+/// Four-argument ViewUnit (Linux 0x2bf49d0). The first-reveal bool is unused.
+/// Its barbarian-clan continuation follows the basic encounter operation.
+pub fn rules_view_unit<C: UnitViewContext>(
+    c: &mut C,
+    player: i32,
+    unit: C::Unit,
+    origin: i32,
+) -> Result<(), UnitViewError<C::Error>> {
+    use UnitViewError::Context;
+    rules_view_unit_basic(c, player, unit)?;
     if c.unit_owner(unit).map_err(Context)? != player
         && c.player_barbarian(player).map_err(Context)?
         && c.clans_active().map_err(Context)?
