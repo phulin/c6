@@ -1,9 +1,10 @@
-//! Current Linux XP2 Player.Influence saved-state wire transport.
+//! Linux XP2 v18/v22 Player.Influence saved-state wire transport.
 //! Saved wire only; envoy decisions remain external. No native Read initialization, remapping or gameplay.
 use crate::unit::Limits;
 pub const VERSION: u32 = 22;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -18,9 +19,10 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 /// Ordered yield definition hash and signed raw Q8 pairs, preserving duplicates.
 pub type HashValues = Vec<(u32, i32)>;
-/// Current saved record. Points and yield values retain signed raw Q8 bits.
+/// Saved record with independent wire version. Points and yield values retain signed raw Q8 bits.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Influence {
+    pub wire_version: u32,
     pub player: i32,
     pub points_earned: i32,
     pub base_points_per_turn: i32,
@@ -102,16 +104,6 @@ impl Reader<'_> {
             b => Err(Error::InvalidBool(b)),
         }
     }
-    fn version(&mut self) -> Result<(), Error> {
-        let actual = self.u32()?;
-        if actual != VERSION {
-            return Err(Error::Version {
-                expected: VERSION,
-                actual,
-            });
-        }
-        Ok(())
-    }
     fn sequence<T>(
         &mut self,
         width: usize,
@@ -174,6 +166,12 @@ impl Writer {
     }
 }
 impl Influence {
+    /// Version 18 instead derives 64 zero entries from unconditional native
+    /// Initialize/Reset. Those entries consume no wire collection-item charge.
+    pub fn levy_discounts_wire_present(&self) -> bool {
+        self.wire_version == VERSION
+    }
+
     pub fn decode(data: &[u8], limits: Limits) -> Result<Self, Error> {
         let (v, n, _) = Self::decode_prefix_with_items(data, limits)?;
         if n != data.len() {
@@ -194,8 +192,15 @@ impl Influence {
             items: 0,
             limits,
         };
-        r.version()?;
+        let wire_version = r.u32()?;
+        if wire_version != 18 && wire_version != VERSION {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
         let v = Self {
+            wire_version,
             player: r.int()?,
             points_earned: r.int()?,
             base_points_per_turn: r.int()?,
@@ -204,8 +209,8 @@ impl Influence {
             tokens_per_threshold: r.int()?,
             tokens_to_give: r.int()?,
             duplicate_first_tokens: r.int()?,
-            tokens_on_first_to_meet: r.int()?,
-            tokens_on_trade_route_started: r.int()?,
+            tokens_on_first_to_meet: if wire_version == 18 { 0 } else { r.int()? },
+            tokens_on_trade_route_started: if wire_version == 18 { 0 } else { r.int()? },
             tokens_received: r.sequence(4, |r| r.int())?,
             virtual_tokens_received: r.sequence(4, |r| r.int())?,
             disallow_tokens_from: r.sequence(1, |r| r.boolean())?,
@@ -217,11 +222,15 @@ impl Influence {
             yield_modifier_per_tributary: r.table()?,
             yield_per_tributary: r.table()?,
             open_borders_count: r.sequence(4, |r| r.int())?,
-            levy_discount_percent_by_player: r.sequence(4, |r| r.int())?,
+            levy_discount_percent_by_player: if wire_version == 18 {
+                vec![0; 64]
+            } else {
+                r.sequence(4, |r| r.int())?
+            },
             copy_luxuries_count: r.sequence(4, |r| r.int())?,
             copy_strategics_count: r.sequence(4, |r| r.int())?,
             duplicate_tokens_when_rival_government: r.int()?,
-            duplicate_tokens_when_trade_route_to: r.int()?,
+            duplicate_tokens_when_trade_route_to: if wire_version == 18 { 0 } else { r.int()? },
             duplicate_tokens_when_same_religion: r.int()?,
             suzerain_visibility_counter: r.int()?,
             levy_discount_percent: r.int()?,
@@ -231,6 +240,9 @@ impl Influence {
         Ok((v, r.pos, r.items))
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         w.word(VERSION)?;
         w.word(self.player as u32)?;
         w.word(self.points_earned as u32)?;
@@ -321,6 +333,7 @@ mod tests {
     use super::*;
     fn fixture() -> Influence {
         Influence {
+            wire_version: VERSION,
             player: i32::MAX,
             points_earned: i32::MIN,
             base_points_per_turn: i32::MAX,
@@ -414,5 +427,107 @@ mod tests {
         let mut bad = b;
         bad[41..45].copy_from_slice(&u32::MAX.to_le_bytes());
         assert_eq!(Influence::decode(&bad, lim), Err(Error::ResourceLimit));
+    }
+    #[test]
+    fn legacy18_keeps_present_fields_and_reset_levy_vector() {
+        let mut bytes = Vec::new();
+        let word = |bytes: &mut Vec<u8>, x: i32| bytes.extend_from_slice(&x.to_le_bytes());
+        for x in [18, -1, i32::MIN, -257] {
+            word(&mut bytes, x);
+        }
+        bytes.push(1);
+        for x in [-1, 2, -3, 4] {
+            word(&mut bytes, x);
+        }
+        // Received, virtual, disallowed, then ordered Yield/rawQ8 table.
+        for x in [2, -1, i32::MAX, 0, 2] {
+            word(&mut bytes, x);
+        }
+        bytes.extend_from_slice(&[1, 0]);
+        for x in [
+            2,
+            0xfedcba98u32 as i32,
+            i32::MIN,
+            0xfedcba98u32 as i32,
+            -257,
+        ] {
+            word(&mut bytes, x);
+        }
+        // Four suzerain/levy scalars, two tables, open borders, copy vectors.
+        for x in [-1, -2, 3, 4, 0, 0, 1, -7, 0, 0] {
+            word(&mut bytes, x);
+        }
+        // Rival, same religion, visibility, levy scalars, modifiers and maxima.
+        for x in [-5, 6, -7, 8, 2, -8, 9, 1, 12] {
+            word(&mut bytes, x);
+        }
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: 10,
+        };
+        let (v, n, items) = Influence::decode_prefix_with_items(&bytes, exact).unwrap();
+        assert_eq!((n, items), (bytes.len(), 10));
+        assert_eq!(v.wire_version, 18);
+        assert_eq!(
+            (v.player, v.points_earned, v.base_points_per_turn),
+            (-1, i32::MIN, -257)
+        );
+        assert!(v.not_earning_points);
+        assert_eq!(v.tokens_received, vec![-1, i32::MAX]);
+        assert_eq!(v.disallow_tokens_from, vec![true, false]);
+        assert_eq!(
+            v.yield_per_given_token,
+            vec![(0xfedcba98, i32::MIN), (0xfedcba98, -257)]
+        );
+        assert_eq!(
+            (
+                v.tokens_on_first_to_meet,
+                v.tokens_on_trade_route_started,
+                v.duplicate_tokens_when_trade_route_to
+            ),
+            (0, 0, 0)
+        );
+        assert_eq!(v.levy_discount_percent_by_player, vec![0; 64]);
+        assert!(!v.levy_discounts_wire_present());
+        assert_eq!(v.tokens_received_modifier, vec![-8, 9]);
+        assert_eq!(v.max_tokens_received, vec![12]);
+        assert_eq!(v.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..bytes.len() {
+            assert!(Influence::decode(&bytes[..n], exact).is_err(), "prefix {n}");
+        }
+        assert_eq!(
+            Influence::decode(
+                &bytes,
+                Limits {
+                    max_items: 9,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Influence::decode(
+                &bytes,
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut bad = bytes.clone();
+        bad[16] = 2;
+        assert_eq!(Influence::decode(&bad, exact), Err(Error::InvalidBool(2)));
+        bad = bytes.clone();
+        bad[33..37].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(Influence::decode(&bad, exact), Err(Error::ResourceLimit));
+        bytes[..4].copy_from_slice(&17u32.to_le_bytes());
+        assert_eq!(
+            Influence::decode(&bytes, exact),
+            Err(Error::Version {
+                expected: 22,
+                actual: 17
+            })
+        );
     }
 }

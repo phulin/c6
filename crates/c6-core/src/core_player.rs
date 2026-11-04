@@ -2257,6 +2257,7 @@ pub(crate) mod tests {
     // Explicit arbitrary saved-wire fields, not native initialization defaults.
     fn influence_carrier() -> player_influence::Influence {
         player_influence::Influence {
+            wire_version: 22,
             player: -4000,
             points_earned: -3999,
             base_points_per_turn: -3998,
