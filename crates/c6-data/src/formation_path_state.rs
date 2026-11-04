@@ -189,6 +189,30 @@ pub fn shared_plot_visible(
         > 0)
 }
 
+/// Reborrow the current placement state with the exact path runtime inputs.
+pub fn placement_context<'s, 'a, 'r>(
+    state: &'s LoadedState,
+    definitions: &'a Definitions<'a, 'r>,
+    runtime: &Runtime<'a>,
+) -> Result<placement::Context<'s, 'a, 'r>, Error> {
+    let mut p = placement::Context::from_definitions(state, &definitions.placement)
+        .map_err(Error::Placement)?;
+    if let Some(levels) = &runtime.civilization_levels {
+        p = p
+            .with_civilization_levels(placement::CurrentCivilizationLevels {
+                binding: levels.binding,
+                values: levels.values,
+            })
+            .map_err(Error::Placement)?;
+    }
+    if let Some(domains) = &runtime.city_domains {
+        p = p
+            .with_city_domain_masks(domains.binding, domains.stamp, domains.masks)
+            .map_err(Error::Placement)?;
+    }
+    Ok(p)
+}
+
 pub struct Context<'s, 'a, 'r> {
     pub state: &'s mut LoadedState,
     pub definitions: &'a Definitions<'a, 'r>,
@@ -242,23 +266,8 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .expect("retained Formation")
             .record
     }
-    fn placement(&self) -> Result<placement::Context<'_, 'a, 'r>, Error> {
-        let mut p = placement::Context::from_definitions(self.state, &self.definitions.placement)
-            .map_err(Error::Placement)?;
-        if let Some(levels) = &self.runtime.civilization_levels {
-            p = p
-                .with_civilization_levels(placement::CurrentCivilizationLevels {
-                    binding: levels.binding,
-                    values: levels.values,
-                })
-                .map_err(Error::Placement)?;
-        }
-        if let Some(domains) = &self.runtime.city_domains {
-            p = p
-                .with_city_domain_masks(domains.binding, domains.stamp, domains.masks)
-                .map_err(Error::Placement)?;
-        }
-        Ok(p)
+    pub fn placement(&self) -> Result<placement::Context<'_, 'a, 'r>, Error> {
+        placement_context(self.state, self.definitions, &self.runtime)
     }
     fn init(&self) -> Result<logic::InitializedMembers, Error> {
         self.initialized.ok_or(Error::Missing("PathInitialize"))
