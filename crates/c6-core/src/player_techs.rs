@@ -1,10 +1,11 @@
-//! Current Linux XP2 Player.Techs v6 wire transport, including nested records.
+//! Linux XP2 Player.Techs v5/v6 wire transport, including nested records.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::Limits;
 
 pub const VERSION: u32 = 6;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -57,15 +58,15 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self) -> Result<(), Error> {
+    fn version(&mut self) -> Result<u32, Error> {
         let actual = u32::read(self)?;
-        if actual != VERSION {
+        if actual != 5 && actual != VERSION {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
             });
         }
-        Ok(())
+        Ok(actual)
     }
 }
 struct Writer {
@@ -151,24 +152,6 @@ impl<T: Wire> Wire for Vec<T> {
         Ok(())
     }
 }
-macro_rules! record {
-    ($name:ident, $version:expr, { $($field:ident: $ty:ty),* $(,)? }) => {
-        #[derive(Clone, Debug, Eq, PartialEq)]
-        pub struct $name { $(pub $field: $ty),* }
-        impl Wire for $name {
-            const MIN: usize = (if $version { 4 } else { 0 }) $(+ <$ty as Wire>::MIN)*;
-            fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-                if $version { r.version()?; }
-                Ok(Self { $($field: <$ty as Wire>::read(r)?),* })
-            }
-            fn write(&self, w: &mut Writer) -> Result<(), Error> {
-                if $version { VERSION.write(w)?; }
-                $(self.$field.write(w)?;)*
-                Ok(())
-            }
-        }
-    };
-}
 impl Wire for bool {
     const MIN: usize = 1;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
@@ -234,18 +217,61 @@ impl Wire for IndexedBools {
         w.raw(&bytes)
     }
 }
-record!(Techs,true,{
-    research_queue_hashes:Vec<u32>,
-    research_overflow_q8:i32,
-    science_rate_change_q8:i32,
-    modified_boost:i32,
-    has_tech:IndexedBools,
-    boost_triggered:IndexedBools,
-    research_progress_q8:Vec<HashValue<i32>>,
-    num_random_tech_boosts_on_new_era:i32,
-    num_techs_repeated:i32,
-    free_tech_boost_wonder_era:i32,
-});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Techs {
+    pub wire_version: u32,
+    pub research_queue_hashes: Vec<u32>,
+    pub research_overflow_q8: i32,
+    pub science_rate_change_q8: i32,
+    pub modified_boost: i32,
+    pub has_tech: IndexedBools,
+    pub boost_triggered: IndexedBools,
+    pub research_progress_q8: Vec<HashValue<i32>>,
+    pub num_random_tech_boosts_on_new_era: i32,
+    pub num_techs_repeated: i32,
+    pub free_tech_boost_wonder_era: i32,
+}
+impl Wire for Techs {
+    const MIN: usize = 4;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = r.version()?;
+        Ok(Self {
+            wire_version,
+            research_queue_hashes: <Vec<u32> as Wire>::read(r)?,
+            research_overflow_q8: <i32 as Wire>::read(r)?,
+            science_rate_change_q8: <i32 as Wire>::read(r)?,
+            modified_boost: <i32 as Wire>::read(r)?,
+            has_tech: <IndexedBools as Wire>::read(r)?,
+            boost_triggered: <IndexedBools as Wire>::read(r)?,
+            research_progress_q8: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            num_random_tech_boosts_on_new_era: <i32 as Wire>::read(r)?,
+            num_techs_repeated: <i32 as Wire>::read(r)?,
+            free_tech_boost_wonder_era: if wire_version == 5 {
+                0
+            } else {
+                <i32 as Wire>::read(r)?
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.research_queue_hashes.write(w)?;
+        self.research_overflow_q8.write(w)?;
+        self.science_rate_change_q8.write(w)?;
+        self.modified_boost.write(w)?;
+        self.has_tech.write(w)?;
+        self.boost_triggered.write(w)?;
+        self.research_progress_q8.write(w)?;
+        self.num_random_tech_boosts_on_new_era.write(w)?;
+        self.num_techs_repeated.write(w)?;
+        self.free_tech_boost_wonder_era.write(w)?;
+        Ok(())
+    }
+}
+
 impl Techs {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -296,6 +322,7 @@ mod tests {
     }
     fn specimen() -> Techs {
         Techs {
+            wire_version: VERSION,
             research_queue_hashes: vec![0, 0x8000_0001, u32::MAX, 0x8000_0001, 1],
             research_overflow_q8: i32::MIN,
             science_rate_change_q8: i32::MAX,
@@ -385,7 +412,7 @@ mod tests {
     #[test]
     fn version_bools_and_hostile_counts() {
         let mut b = specimen().encode(limits()).unwrap();
-        b[0] = 5;
+        b[0] = 4;
         assert!(matches!(
             Techs::decode(&b, limits()),
             Err(Error::Version { .. })
@@ -417,5 +444,52 @@ mod tests {
             max_items: items,
         };
         assert_eq!(Techs::decode(&b, exact).unwrap(), v);
+    }
+    #[test]
+    fn legacy5_omits_only_final_scalar_and_preserves_budgets() {
+        let current = specimen();
+        let mut b = current.encode(limits()).unwrap();
+        b[..4].copy_from_slice(&5u32.to_le_bytes());
+        b.truncate(b.len() - 4);
+        let (v, n, items) = Techs::decode_prefix_with_items(&b, limits()).unwrap();
+        let mut expected = current;
+        expected.wire_version = 5;
+        expected.free_tech_boost_wonder_era = 0;
+        assert_eq!(v, expected);
+        assert_eq!(n, b.len());
+        assert_eq!(v.encode(limits()), Err(Error::UnsupportedLegacyWrite));
+        assert!(Techs::decode_prefix_with_items(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: items
+            }
+        )
+        .is_ok());
+        assert_eq!(
+            Techs::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len() - 1,
+                    max_items: items
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Techs::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len(),
+                    max_items: items - 1
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for end in 0..b.len() {
+            assert!(Techs::decode(&b[..end], limits()).is_err(), "prefix {end}");
+        }
+        b.push(0);
+        assert_eq!(Techs::decode(&b, limits()), Err(Error::Trailing));
     }
 }

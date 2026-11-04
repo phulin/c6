@@ -1959,6 +1959,7 @@ pub(crate) mod tests {
     fn techs_carrier() -> player_techs::Techs {
         use crate::player_techs as pmod;
         pmod::Techs {
+            wire_version: 6,
             research_queue_hashes: vec![3735879681],
             research_overflow_q8: -998,
             science_rate_change_q8: -997,
