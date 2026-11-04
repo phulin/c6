@@ -1,5 +1,6 @@
 //! Deterministic simulator kernel. Gameplay beyond declared coverage fails closed.
 pub mod relic_creation;
+pub mod research_acquisition;
 pub mod city;
 pub mod city_citizens;
 pub mod city_district;
