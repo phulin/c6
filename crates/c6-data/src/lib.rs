@@ -17,6 +17,7 @@ pub mod unit_initialization_definitions;
 pub mod unit_movement_state;
 pub mod unit_operation_manager;
 pub mod world_congress_options;
+pub mod world_congress_rules;
 
 const ENCODING: &str = "c6.sqlite-typed-rowid.v1";
 // Registered production descriptors retain identity and complete database fingerprints.
