@@ -15,6 +15,13 @@ pub(super) struct StaticYields {
     district_copy: bool,
     regional_range: i32,
 }
+impl StaticYields {
+    pub(super) fn has_science_row(&self) -> bool {
+        self.base
+            .iter()
+            .any(|&(kind, _)| kind == linux_type_hash(b"YIELD_SCIENCE"))
+    }
+}
 pub(super) fn from_rules(
     rules: &Rules,
     building: u32,

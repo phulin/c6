@@ -32,6 +32,7 @@ pub struct Building {
     xp_construction_effects: bool,
     coastal_construction_effects: bool,
     resource_cost_rows_present: bool,
+    known_era_score_noop: bool,
 }
 pub struct Definitions {
     inputs: InputIdentities,
@@ -163,6 +164,29 @@ impl Definitions {
                     resource_cost_rows_present = true;
                 }
             }
+            let yield_data = super::building_yields::from_rules(
+                rules,
+                hash_value,
+                integer(row, "RegionalRange")?,
+            )?;
+            let mut air_district = false;
+            if let Some(prerequisite) = hash(row, "PrereqDistrict")? {
+                for district in table("Districts")?.rows() {
+                    if hash(district, "DistrictType")? == Some(prerequisite) {
+                        air_district = hash(district, "MilitaryDomain")?
+                            == Some(linux_type_hash(b"DOMAIN_AIR"));
+                    }
+                }
+            }
+            // Era subscriber299ca00 returns for wonders. Its remaining score
+            // branches require science rows, GreatWork rows, an air district,
+            // or a technology/civic prerequisite reaching chronology>=5.
+            let known_era_score_noop = integer(row, "IsWonder")? != 0
+                || (!yield_data.has_science_row()
+                    && !great_work_rows_present
+                    && !air_district
+                    && hash(row, "PrereqTech")?.is_none()
+                    && hash(row, "PrereqCivic")?.is_none());
             buildings.push(Building {
                 hash: hash_value,
                 capital: integer(row, "Capital")? != 0,
@@ -173,11 +197,7 @@ impl Definitions {
                 outer_defense_strength: integer(row, "OuterDefenseStrength")?,
                 base_cost: integer(row, "Cost")?,
                 housing: integer(row, "Housing")?,
-                yields: super::building_yields::from_rules(
-                    rules,
-                    hash_value,
-                    integer(row, "RegionalRange")?,
-                )?,
+                yields: yield_data,
                 great_work_slots,
                 great_work_rows_present,
                 mutually_exclusive,
@@ -185,6 +205,7 @@ impl Definitions {
                 xp_construction_effects,
                 coastal_construction_effects,
                 resource_cost_rows_present,
+                known_era_score_noop,
             });
         }
         let speed_registry = registry("GameSpeeds", "GameSpeedType")?;
@@ -223,6 +244,17 @@ impl Definitions {
             production_rate,
             government_bonuses: registry("GovernmentBonusNames", "GovernmentBonusType")?,
         })
+    }
+    /// Source299ca00 has no reachable ChangeEraScore branch for this definition.
+    /// False requires the general current Era-rate/prerequisite query path;
+    /// it does not imply that such a path necessarily awards a score.
+    pub fn building_era_score_noop(
+        &self,
+        state: &LoadedState,
+        building_hash: u32,
+    ) -> Result<bool, Error> {
+        self.validate(state)?;
+        Ok(self.building(building_hash)?.known_era_score_noop)
     }
     /// First-progress resource path284ff30 for a building with no resolved
     /// strategic-resource rows. Such a definition reaches no reservation,
@@ -801,6 +833,7 @@ mod tests {
             xp_construction_effects: false,
             coastal_construction_effects: false,
             resource_cost_rows_present: false,
+            known_era_score_noop: true,
         };
         (definitions, building)
     }
