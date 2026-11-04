@@ -26,6 +26,8 @@ pub struct Definitions {
     identities: InputIdentities,
     units: LinuxDefinitionRegistry,
     earn: Vec<bool>,
+    random_choices: Vec<i32>,
+    next_level_multiplier: i32,
     bonuses: LinuxDefinitionRegistry,
     rules: kernel::Rules,
 }
@@ -71,11 +73,25 @@ impl Definitions {
                 Ok(base && extension)
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        let random_choices = units
+            .entries()
+            .iter()
+            .map(|entry| {
+                table
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("Unit row"))?
+                    .integer("NumRandomChoices")
+                    .map(|v| v as i32)
+                    .map_err(Error::Rule)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let p = |name| super::damage::integer(rules, name).map_err(Error::Parameter);
         Ok(Self {
             identities: state.binding().inputs.clone(),
             units,
             earn,
+            random_choices,
+            next_level_multiplier: p("EXPERIENCE_NEEDED_FOR_NEXT_LEVEL_MULTIPLIER")?,
             bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
                 .map_err(Error::Definitions)?,
             rules: kernel::Rules {
@@ -306,4 +322,110 @@ pub fn joint_war_partners(
         }
     }
     Ok(result)
+}
+
+/// Reached reports only; experience arithmetic and promotion flags are computed
+/// here on the current owned Unit, never supplied as an opaque handler answer.
+pub trait Reports {
+    type Error;
+    fn observer_can_see_player(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+    ) -> Result<bool, Self::Error>;
+    fn gained(
+        &mut self,
+        state: &mut LoadedState,
+        unit: UnitReference,
+        amount: i32,
+        promotable: bool,
+    ) -> Result<(), Self::Error>;
+    fn changed(&mut self, state: &mut LoadedState, unit: UnitReference) -> Result<(), Self::Error>;
+}
+#[derive(Debug)]
+pub enum ChangeError<E> {
+    Query(Error),
+    State(c6_core::loaded_state::Error),
+    Maximum(crate::formation_movement_cost::Error),
+    Effect(E),
+    RandomPromotionOptions,
+}
+/// Unit.Experience.ChangeExperience. Delayed/dead Units remain owned but do not
+/// gain XP. Random promotion-option generation remains an explicit continuation
+/// after the native XP clamp/lock/promotable writes, never a fabricated choice.
+#[allow(clippy::too_many_arguments)]
+pub fn change<E: Reports>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    maximum: &crate::formation_movement_cost::Definitions<'_>,
+    levels: &[(i32, u32)],
+    unit: UnitReference,
+    amount: i32,
+    effects: &mut E,
+) -> Result<(), ChangeError<E::Error>> {
+    if amount <= 0 {
+        return Ok(());
+    }
+    if state.binding().inputs != defs.identities {
+        return Err(ChangeError::Query(Error::Binding));
+    }
+    let actor = super::actor(state, unit).map_err(|e| ChangeError::Query(Error::Actor(e)))?;
+    if actor.k_experience.b_experience_locked {
+        return Ok(());
+    }
+    if actor.i_damage
+        >= maximum
+            .maximum_damage(actor)
+            .map_err(ChangeError::Maximum)?
+    {
+        return Ok(());
+    }
+    let level = levels
+        .iter()
+        .find(|r| r.0 == actor.e_owner)
+        .ok_or(ChangeError::Query(Error::Missing("current player level")))?
+        .1;
+    if level == 0xd959ec24 {
+        return Ok(());
+    }
+    let experience = &mut state
+        .unit_mut(unit.player(), unit.id)
+        .map_err(ChangeError::State)?
+        .k_experience;
+    experience.i_experience = experience.i_experience.wrapping_add(amount);
+    let threshold = kernel::next_level_experience(experience.i_level, defs.next_level_multiplier);
+    let promoted = experience.i_experience >= threshold;
+    if promoted {
+        experience.i_experience = threshold;
+        experience.b_experience_locked = true;
+        experience.b_can_promote = true;
+        experience.b_can_promote_notify_needed = true;
+        let index = state
+            .unit_runtime(unit.player(), unit.id)
+            .map_err(ChangeError::State)?
+            .definition_index;
+        let index = usize::try_from(index)
+            .ok()
+            .ok_or(ChangeError::Query(Error::Missing("Unit definition")))?;
+        if *defs
+            .random_choices
+            .get(index)
+            .ok_or(ChangeError::Query(Error::Missing("Unit definition")))?
+            != 0
+        {
+            return Err(ChangeError::RandomPromotionOptions);
+        }
+    }
+    let owner = super::actor(state, unit)
+        .map_err(|e| ChangeError::Query(Error::Actor(e)))?
+        .e_owner;
+    if effects
+        .observer_can_see_player(state, owner)
+        .map_err(ChangeError::Effect)?
+    {
+        effects
+            .gained(state, unit, amount, promoted)
+            .map_err(ChangeError::Effect)?;
+    }
+    effects.changed(state, unit).map_err(ChangeError::Effect)
 }

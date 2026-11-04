@@ -135,6 +135,19 @@ mod tests {
         assert_eq!(melee(&mut c, rules(), Side::Defender, false), Ok(3));
     }
     #[test]
+    fn next_level_keeps_native_factor_three_and_cvtt_boundary() {
+        assert_eq!(next_level_experience(1, 5), 15);
+        assert_eq!(next_level_experience(2, 5), 45);
+        assert_eq!(
+            next_level_experience(46341, 5),
+            (-2147483648i32)
+                .wrapping_add(46341)
+                .wrapping_div(2)
+                .wrapping_mul(5)
+                .wrapping_mul(3)
+        );
+    }
+    #[test]
     fn disabled_and_soft_capped_units_do_not_read_modifiers() {
         let mut c = C {
             can: false,
@@ -149,4 +162,18 @@ mod tests {
         assert_eq!(melee(&mut c, rules(), Side::Attacker, true), Ok(1));
         assert_eq!(c.calls, ["can", "opponent", "level"]);
     }
+}
+
+/// GetExperienceForNextLevel2c186f0: binary64 square converted by CVTTSD2SI,
+/// then wrapping add, signed division by two, multiplier and final factor3.
+pub fn next_level_experience(level: i32, multiplier: i32) -> i32 {
+    let square = f64::from(level) * f64::from(level);
+    let square = if !(-2147483648.0..2147483648.0).contains(&square) {
+        i32::MIN
+    } else {
+        square as i32
+    };
+    (square.wrapping_add(level) / 2)
+        .wrapping_mul(multiplier)
+        .wrapping_mul(3)
 }
