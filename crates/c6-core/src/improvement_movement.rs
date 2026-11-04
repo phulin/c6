@@ -87,8 +87,10 @@ pub fn activate_improvement<C: Context>(c: &mut C, plot: C::Plot) -> Result<bool
         return Ok(false);
     }
     let definition = c.improvement_at(kind).map_err(Error::Context)?;
-    let clans = c.clans_active().map_err(Error::Context)?;
-    if kind == camp && clans {
+    // The native capability lookup is readonly and its result is consumed
+    // only for the camp branch. Avoid requiring that unrelated runtime input
+    // for an ordinary improvement; no gameplay callback or RNG is omitted.
+    if kind == camp && c.clans_active().map_err(Error::Context)? {
         return Err(Error::UnsupportedCampActivation);
     }
     if !c.remove_on_entry(definition).map_err(Error::Context)? {
@@ -347,7 +349,7 @@ mod tests {
             Ok(false)
         }
         fn clans_active(&mut self) -> Result<bool, Self::Error> {
-            Ok(false)
+            Err("unavailable clan capability")
         }
         fn unit_plot(&mut self) -> Result<Option<usize>, Self::Error> {
             Ok(Some(0))
@@ -467,6 +469,12 @@ mod tests {
             unit_moved(&mut c, OLD),
             Err(Error::UnsupportedRemovableActivation)
         );
+        assert!(c.calls.is_empty());
+    }
+    #[test]
+    fn ordinary_inert_improvement_does_not_require_unused_clan_capability() {
+        let mut c = Fixture::new(0, 0);
+        assert_eq!(activate_improvement(&mut c, 0), Ok(false));
         assert!(c.calls.is_empty());
     }
     #[test]

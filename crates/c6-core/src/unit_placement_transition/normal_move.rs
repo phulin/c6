@@ -28,8 +28,9 @@ pub trait Context:
         destination: PlotCoord,
         flags: u32,
     ) -> Result<Validation, E<Self>>;
-    /// Check all reached continuations before membership mutation, including
-    /// branch changes by callbacks. No mutable-state clone is required.
+    /// Validate current actor/destination and required initial provider inputs.
+    /// Later unsupported effects return errors with the completed native prefix
+    /// retained; this hook is not a whole-program callback approval gate.
     fn preflight_normal_placement(&self, destination: PlotCoord) -> Result<(), E<Self>>;
     fn local_player(&mut self) -> Result<i32, E<Self>>;
     fn outgoing_visibility_to(&mut self, owner: i32, viewer: i32) -> Result<bool, E<Self>>;
