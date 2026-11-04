@@ -79,6 +79,120 @@ pub fn opening_terms<C: Context>(c: &mut C, side: Side) -> Result<i32, Error<C::
     }
     Ok(total)
 }
+/// 2bdda90: count times the current global flanking value, followed by a
+/// separately quantized percentage adjustment. Nonpositive counts return before
+/// either rule or Unit coefficient is read by the enclosing current-state query.
+pub fn flanking_from_count(count: i32, global: i32, modifier: i32) -> i32 {
+    if count <= 0 {
+        return 0;
+    }
+    let base = count.wrapping_mul(global).wrapping_shl(8);
+    let ratio = ((i64::from(modifier.wrapping_shl(8)) << 8) / (100 << 8)) as i32;
+    base.wrapping_add(multiply(base, ratio))
+}
+/// 2bdc460: the coefficient's signed positivity gate precedes the movement
+/// query. This retains fractional moves and the wrapping integer constructor.
+pub fn unused_movement_bonus(moves_raw: i32, modifier: i32) -> i32 {
+    if modifier <= 0 {
+        0
+    } else {
+        multiply(moves_raw, modifier.wrapping_shl(8))
+    }
+}
+/// Native ordinary Unit/Unit attack bonus order. Each stage is a concrete
+/// Rules.Combat helper, not a precomputed total or implicit zero capability.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AttackBonus {
+    Amphibious,
+    VersusOpponent,
+    Territory,
+    Flanking,
+    Miscellaneous,
+    HolyCities,
+    Neighbors,
+    MilitaryPolicies,
+    Diplomatic,
+    Espionage,
+    City,
+    AdjacentLevy,
+    Allies,
+    UnusedMovement,
+    FriendlyCity,
+    SpecificReligion,
+}
+pub const ORDINARY_ATTACK_BONUSES: [AttackBonus; 16] = [
+    AttackBonus::Amphibious,
+    AttackBonus::VersusOpponent,
+    AttackBonus::Territory,
+    AttackBonus::Flanking,
+    AttackBonus::Miscellaneous,
+    AttackBonus::HolyCities,
+    AttackBonus::Neighbors,
+    AttackBonus::MilitaryPolicies,
+    AttackBonus::Diplomatic,
+    AttackBonus::Espionage,
+    AttackBonus::City,
+    AttackBonus::AdjacentLevy,
+    AttackBonus::Allies,
+    AttackBonus::UnusedMovement,
+    AttackBonus::FriendlyCity,
+    AttackBonus::SpecificReligion,
+];
+pub trait AttackContext: Context {
+    fn defender_exists(&mut self) -> Result<bool, Self::Error>;
+    fn defender_delayed_death(&mut self) -> Result<bool, Self::Error>;
+    fn attacker_exists(&mut self) -> Result<bool, Self::Error>;
+    fn attacker_delayed_death(&mut self) -> Result<bool, Self::Error>;
+    fn bonus(&mut self, bonus: AttackBonus) -> Result<i32, Self::Error>;
+    /// Resolve the CURRENT registry by native proposal ID after all prior reads.
+    /// None means verified absent proposal; an unavailable registry is an error.
+    fn proposal_modifier(&mut self) -> Result<Option<i32>, Self::Error>;
+}
+#[derive(Debug, Eq, PartialEq)]
+pub enum AttackError<E> {
+    Opening(Error<E>),
+    Bonus {
+        stage: AttackBonus,
+        completed_raw: i32,
+        error: E,
+    },
+    Proposal {
+        completed_raw: i32,
+        error: E,
+    },
+}
+/// Full ordinary attack aggregation2bde530, excluding preview DTO text. Unknown
+/// bonus queries propagate at their native position, with the computed prefix;
+/// callers cannot substitute that prefix for a successful modifier result.
+pub fn ordinary_attack_modifier<C: AttackContext>(c: &mut C) -> Result<i32, AttackError<C::Error>> {
+    let query = |e| AttackError::Opening(Error::Query(e));
+    if !c.defender_exists().map_err(query)?
+        || c.defender_delayed_death().map_err(query)?
+        || !c.attacker_exists().map_err(query)?
+        || c.attacker_delayed_death().map_err(query)?
+    {
+        return Ok(0);
+    }
+    let mut total = opening_terms(c, Side::Attack).map_err(AttackError::Opening)?;
+    for stage in ORDINARY_ATTACK_BONUSES {
+        let value = c.bonus(stage).map_err(|error| AttackError::Bonus {
+            stage,
+            completed_raw: total,
+            error,
+        })?;
+        total = total.wrapping_add(value);
+    }
+    if let Some(modifier) = c
+        .proposal_modifier()
+        .map_err(|error| AttackError::Proposal {
+            completed_raw: total,
+            error,
+        })?
+    {
+        total = total.wrapping_add(modifier.wrapping_shl(8));
+    }
+    Ok(total)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,6 +280,142 @@ mod tests {
         x.major = false;
         assert_eq!(opening_terms(&mut x, Side::Defense), Ok(0));
         assert_eq!(x.calls, ["immune", "major"]);
+    }
+    struct A {
+        opening: C,
+        stages: Vec<AttackBonus>,
+        fail: Option<AttackBonus>,
+        proposal_read: bool,
+        dead: bool,
+    }
+    impl Context for A {
+        type Error = &'static str;
+        fn no_damage_reduction(&mut self) -> Result<bool, Self::Error> {
+            self.opening.no_damage_reduction()
+        }
+        fn damage(&mut self) -> Result<i32, Self::Error> {
+            self.opening.damage()
+        }
+        fn max_hit_points(&mut self) -> Result<i32, Self::Error> {
+            self.opening.max_hit_points()
+        }
+        fn damage_reduction_modifier(&mut self) -> Result<i32, Self::Error> {
+            self.opening.damage_reduction_modifier()
+        }
+        fn wounded_multiplier(&mut self) -> Result<i32, Self::Error> {
+            self.opening.wounded_multiplier()
+        }
+        fn owner_is_major(&mut self) -> Result<bool, Self::Error> {
+            self.opening.owner_is_major()
+        }
+        fn fuel_reduction(&mut self) -> Result<i32, Self::Error> {
+            self.opening.fuel_reduction()
+        }
+    }
+    impl AttackContext for A {
+        fn defender_exists(&mut self) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+        fn defender_delayed_death(&mut self) -> Result<bool, Self::Error> {
+            Ok(self.dead)
+        }
+        fn attacker_exists(&mut self) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+        fn attacker_delayed_death(&mut self) -> Result<bool, Self::Error> {
+            Ok(false)
+        }
+        fn bonus(&mut self, b: AttackBonus) -> Result<i32, Self::Error> {
+            self.stages.push(b);
+            if self.fail == Some(b) {
+                Err("missing current bonus")
+            } else {
+                Ok(match b {
+                    AttackBonus::Amphibious => 128,
+                    AttackBonus::SpecificReligion => 64,
+                    _ => 0,
+                })
+            }
+        }
+        fn proposal_modifier(&mut self) -> Result<Option<i32>, Self::Error> {
+            assert_eq!(self.stages.last(), Some(&AttackBonus::SpecificReligion));
+            self.proposal_read = true;
+            Ok(Some(2))
+        }
+    }
+    fn a() -> A {
+        A {
+            opening: c(),
+            stages: vec![],
+            fail: None,
+            proposal_read: false,
+            dead: false,
+        }
+    }
+    #[test]
+    fn attack_order_stops_at_unknown_bonus_and_reads_current_proposal_last() {
+        use AttackBonus::*;
+        let mut x = a();
+        assert_eq!(ordinary_attack_modifier(&mut x), Ok(-1344));
+        assert_eq!(
+            x.stages,
+            [
+                Amphibious,
+                VersusOpponent,
+                Territory,
+                Flanking,
+                Miscellaneous,
+                HolyCities,
+                Neighbors,
+                MilitaryPolicies,
+                Diplomatic,
+                Espionage,
+                City,
+                AdjacentLevy,
+                Allies,
+                UnusedMovement,
+                FriendlyCity,
+                SpecificReligion
+            ]
+        );
+        assert!(x.proposal_read);
+        let mut x = a();
+        x.fail = Some(HolyCities);
+        assert_eq!(
+            ordinary_attack_modifier(&mut x),
+            Err(AttackError::Bonus {
+                stage: HolyCities,
+                completed_raw: -1920,
+                error: "missing current bonus"
+            })
+        );
+        assert_eq!(
+            x.stages,
+            [
+                Amphibious,
+                VersusOpponent,
+                Territory,
+                Flanking,
+                Miscellaneous,
+                HolyCities
+            ]
+        );
+        assert!(!x.proposal_read);
+        let mut x = a();
+        x.dead = true;
+        assert_eq!(ordinary_attack_modifier(&mut x), Ok(0));
+        assert!(x.opening.calls.is_empty());
+        assert!(x.stages.is_empty());
+        assert!(!x.proposal_read);
+    }
+    #[test]
+    fn flanking_percent_keeps_q8_division_and_unused_moves_keep_fraction() {
+        assert_eq!(flanking_from_count(2, 2, 33), 1360);
+        assert_eq!(flanking_from_count(1, 2, -50), 256);
+        assert_eq!(flanking_from_count(0, i32::MAX, i32::MAX), 0);
+        assert_eq!(unused_movement_bonus(128, 3), 384);
+        assert_eq!(unused_movement_bonus(-1, 3), -3);
+        assert_eq!(unused_movement_bonus(i32::MAX, -1), 0);
     }
     #[test]
     fn quantization_negative_and_wrapping_are_preserved() {
