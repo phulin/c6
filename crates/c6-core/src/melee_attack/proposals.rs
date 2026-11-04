@@ -3,6 +3,7 @@
 //! Other registered consumers and their modifier effects remain mandatory.
 use crate::unit::ComponentId;
 pub mod registry;
+pub mod collections;
 
 pub trait ComponentCreatedContext {
     type Error;
