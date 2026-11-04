@@ -163,7 +163,16 @@ fn revealed(state: &LoadedState, owner: i32, index: usize) -> Result<bool, Error
     }
 }
 fn visible(runtime: &Runtime<'_>, owner: i32, index: usize) -> Result<bool, Error> {
-    let layers = &runtime.visibility.shared(owner).map_err(Error::Missing)?.0;
+    shared_plot_visible(runtime.visibility, owner, index)
+}
+
+/// Native IsVisible over the actual live shared normal layer, with signed i16 counts.
+pub fn shared_plot_visible(
+    runtime: &crate::unit_sight_state::Runtime,
+    owner: i32,
+    index: usize,
+) -> Result<bool, Error> {
+    let layers = &runtime.shared(owner).map_err(Error::Missing)?.0;
     let mut normal = layers
         .iter()
         .filter(|l| l.type_hash == c6_core::visibility_change::BASE_LAYER_HASH);
@@ -691,6 +700,35 @@ impl Context<'_, '_, '_> {
         Ok(None)
     }
 }
+/// Native IncludesUnitOfDomain ordered member lookup. Null members are not
+/// silently skipped by this getter, unlike PathInitialize's scalar reduction.
+pub fn includes_unit_of_domain(
+    state: &LoadedState,
+    formation: &Formation,
+    domain: i32,
+) -> Result<bool, Error> {
+    let player = state
+        .world()
+        .player(formation.owner)
+        .map_err(Error::World)?;
+    for &id in &formation.unit_ids {
+        let unit = player
+            .unit(id)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing("domain member"))?
+            .record;
+        if state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?
+            .domain
+            == domain
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 impl GenerationContext for Context<'_, '_, '_> {
     fn formation(&self) -> &Formation {
         self.record()
@@ -701,28 +739,7 @@ impl GenerationContext for Context<'_, '_, '_> {
             .map_err(Error::State)
     }
     fn includes_unit_of_domain(&mut self, domain: i32) -> Result<bool, Error> {
-        let player = self
-            .state
-            .world()
-            .player(self.record().owner)
-            .map_err(Error::World)?;
-        for &id in &self.record().unit_ids {
-            let u = player
-                .unit(id)
-                .map_err(Error::World)?
-                .ok_or(Error::Missing("domain member"))?
-                .record;
-            if self
-                .state
-                .unit_runtime(u.e_owner, u.id)
-                .map_err(Error::State)?
-                .domain
-                == domain
-            {
-                return Ok(true);
-            }
-        }
-        Ok(false)
+        includes_unit_of_domain(self.state, self.record(), domain)
     }
     fn is_plot(&mut self, at: PlotCoord) -> Result<bool, Error> {
         Ok(self.plot(at)?.is_some())
