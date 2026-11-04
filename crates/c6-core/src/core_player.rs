@@ -2806,6 +2806,7 @@ pub(crate) mod tests {
             policy_analyzers: vec![pmod::HashEntry {
                 hash: u32::MAX,
                 value: pmod::PolicyAnalysis {
+                    wire_version: 4,
                     player_id: -7992,
                     policy_hash: 3203334153,
                     slot_type_hash: 3203334154,

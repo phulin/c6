@@ -162,7 +162,61 @@ macro_rules! record {
  };
 }
 record!(CivicAnalysis,2,{player_id:i32,civic_hash:u32,next_civic_needed_hash:u32,is_owned:BoolByte,is_favored:BoolByte,has_boost:BoolByte,is_repeatable:BoolByte,solo_value_q8:i32,full_value_q8:i32,turns_to_unlock:i32});
-record!(PolicyAnalysis,4,{player_id:i32,policy_hash:u32,slot_type_hash:u32,dark_age_policy:BoolByte,golden_age_policy:BoolByte,min_era_chronology:i32,max_era_chronology:i32,value_q8:i32});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PolicyAnalysis {
+    pub wire_version: u32,
+    pub player_id: i32,
+    pub policy_hash: u32,
+    pub slot_type_hash: u32,
+    pub dark_age_policy: BoolByte,
+    pub golden_age_policy: BoolByte,
+    pub min_era_chronology: i32,
+    pub max_era_chronology: i32,
+    pub value_q8: i32,
+}
+impl Wire for PolicyAnalysis {
+    const MIN: usize = 29;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if wire_version != 3 && wire_version != 4 {
+            return Err(Error::Version {
+                expected: 4,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_id: <i32 as Wire>::read(r)?,
+            policy_hash: <u32 as Wire>::read(r)?,
+            slot_type_hash: <u32 as Wire>::read(r)?,
+            dark_age_policy: <BoolByte as Wire>::read(r)?,
+            golden_age_policy: if wire_version == 3 {
+                BoolByte(0)
+            } else {
+                <BoolByte as Wire>::read(r)?
+            },
+            min_era_chronology: <i32 as Wire>::read(r)?,
+            max_era_chronology: <i32 as Wire>::read(r)?,
+            value_q8: <i32 as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 4 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        4u32.write(w)?;
+        self.player_id.write(w)?;
+        self.policy_hash.write(w)?;
+        self.slot_type_hash.write(w)?;
+        self.dark_age_policy.write(w)?;
+        self.golden_age_policy.write(w)?;
+        self.min_era_chronology.write(w)?;
+        self.max_era_chronology.write(w)?;
+        self.value_q8.write(w)?;
+        Ok(())
+    }
+}
+
 record!(ResolutionAnalysis,2,{player_id:i32,resolution_hash:u32,value_q8:i32,option_one_value_q8:i32,option_two_value_q8:i32,best_option:i32});
 // PlotCoord is two signed 32-bit coordinates, without a version word.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -406,6 +460,7 @@ mod tests {
             policy_analyzers: vec![HashEntry {
                 hash: 7,
                 value: PolicyAnalysis {
+                    wire_version: 4,
                     player_id: -1,
                     policy_hash: 7,
                     slot_type_hash: 6,
@@ -643,6 +698,94 @@ mod tests {
             Err(Error::Version {
                 expected: 15,
                 actual: 13
+            })
+        );
+    }
+    #[test]
+    fn policy_analysis3_one_byte_default_and_independent_tag() {
+        let mut value = PolicyAnalysis {
+            wire_version: 4,
+            player_id: -1,
+            policy_hash: u32::MAX,
+            slot_type_hash: 0x80000001,
+            dark_age_policy: BoolByte(197),
+            golden_age_policy: BoolByte(197),
+            min_era_chronology: i32::MIN,
+            max_era_chronology: i32::MAX,
+            value_q8: -257,
+        };
+        let mut w = Writer {
+            data: Some(Vec::new()),
+            pos: 0,
+            items: 0,
+            limits: Limits::default(),
+        };
+        value.write(&mut w).unwrap();
+        let current = w.data.take().unwrap();
+        assert_eq!(current.len(), 30);
+        let mut bytes = current[..17].to_vec();
+        bytes.extend_from_slice(&current[18..]);
+        bytes[..4].copy_from_slice(&3u32.to_le_bytes());
+        value.wire_version = 3;
+        value.golden_age_policy = BoolByte(0);
+        let exact = Limits {
+            max_bytes: 29,
+            max_items: 0,
+        };
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(PolicyAnalysis::read(&mut r).unwrap(), value);
+        assert_eq!((r.pos, r.items), (29, 0));
+        assert_eq!(value.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..bytes.len() {
+            assert!(PolicyAnalysis::read(&mut Reader {
+                data: &bytes[..n],
+                pos: 0,
+                items: 0,
+                limits: exact
+            })
+            .is_err());
+        }
+        assert_eq!(
+            PolicyAnalysis::read(&mut Reader {
+                data: &bytes,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes: 28,
+                    ..exact
+                }
+            }),
+            Err(Error::ResourceLimit)
+        );
+        let mut wrapped = 1u32.to_le_bytes().to_vec();
+        wrapped.extend_from_slice(&bytes);
+        let values = Vec::<PolicyAnalysis>::read(&mut Reader {
+            data: &wrapped,
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: 33,
+                max_items: 1,
+            },
+        })
+        .unwrap();
+        assert_eq!(values, vec![value]);
+        bytes[..4].copy_from_slice(&2u32.to_le_bytes());
+        assert_eq!(
+            PolicyAnalysis::read(&mut Reader {
+                data: &bytes,
+                pos: 0,
+                items: 0,
+                limits: exact
+            }),
+            Err(Error::Version {
+                expected: 4,
+                actual: 2
             })
         );
     }
