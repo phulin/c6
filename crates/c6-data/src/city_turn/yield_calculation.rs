@@ -36,7 +36,7 @@ impl Definitions {
             buildings: buildings::Definitions::from_current_rules(
                 state, rules, start_era, game_speed,
             )
-            .map_err(|_| Error::Unsupported("current building yield definitions"))?,
+            .map_err(Error::Production)?,
             districts: district_yields::Definitions::from_rules(rules)?,
             growth: GrowthRules::from_rules(rules, game_speed)?,
         })
@@ -131,7 +131,7 @@ pub fn calculate(
                 fully_powered: definitions.amenities.fully_powered(city)?,
             },
         )
-        .map_err(|_| Error::Unsupported("current building yield contribution"))?,
+        .map_err(Error::Production)?,
     );
     base = base.wrapping_add(definitions.economy.population_yield(
         state,
@@ -147,9 +147,20 @@ pub fn calculate(
         false,
         &definitions.districts,
     )?);
-    // The route graph is the current owner. Nonempty route evaluation needs its
-    // route/domain continuation; an absent graph is never treated as empty.
-    if !current.trade.graph().origins().is_empty() {
+    // Only edges incident to this City enter its incoming/outgoing queries.
+    // Routes belonging to unrelated cities must not reject this query.
+    let vertex = c6_core::trade::Vertex {
+        kind: 0,
+        data1: owner,
+        data2: id as i32,
+    };
+    if current.trade.graph().origins().iter().any(|origin| {
+        (origin.vertex == vertex && !origin.destinations.is_empty())
+            || origin
+                .destinations
+                .iter()
+                .any(|destination| destination.vertex == vertex)
+    }) {
         return Err(Error::Unsupported("current trade route yield evaluation"));
     }
     let passing = pair(&city.trade.yield_from_foreign_routes_passing_through, hash)?;

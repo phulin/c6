@@ -20,6 +20,7 @@ pub enum Error {
     Definitions(crate::unit_initialization_definitions::Error),
     State(c6_core::loaded_state::Error),
     PlotYield(c6_core::plot_yield::Error),
+    Production(crate::city_production_turn::Error),
     Unsupported(&'static str),
 }
 impl std::fmt::Display for Error {
