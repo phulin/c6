@@ -489,3 +489,6 @@ pub mod unit_kill;
 
 pub mod city_build_initialization;
 pub mod city_religion;
+
+pub mod city_territory;
+pub mod influence_map_update;

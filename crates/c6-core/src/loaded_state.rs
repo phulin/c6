@@ -8,6 +8,7 @@ use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
 pub mod combat_proposals;
 pub mod city_initialization;
+pub mod influence_map_update;
 pub mod game_update;
 pub mod game_sync;
 pub mod observed_controls;
@@ -3177,6 +3178,7 @@ pub enum MissingInput {
     PlayerConfiguration(i32),
     PlayerTurnActive(i32),
     PlayerAlive(i32),
+    PlayerInfluenceMap(i32),
     PlayerTeam(i32),
     Player(i32),
     Unit { owner: i32, id: u32 },
@@ -5398,3 +5400,5 @@ pub mod district_initialization;
 pub mod game_city_names;
 
 pub mod city_build_initialization;
+
+mod object_pairing_current;
