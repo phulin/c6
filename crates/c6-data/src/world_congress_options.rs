@@ -12,7 +12,15 @@
 //! mutation; callers tracking longer-lived aliases must refer back to that
 //! same cache field. This API does not implement arbitrary Lua table aliasing.
 
-/// Hash bits supplied by GameInfo; this module does not calculate hashes.
+/// Raw 32-bit definition identity, not a Lua numeric value.
+///
+/// Only rows with an admitted numeric 32-bit Hash are supported. Missing,
+/// nonnumeric, and out-of-range Hash values are unsupported and cannot be
+/// represented here; their Lua insertion behavior is outside this boundary.
+/// Callers must preserve signed i32 Hash bit patterns by reinterpreting them
+/// as u32 (for example, `u32::from_ne_bytes(hash_i32.to_ne_bytes())`). Do not
+/// use a saturating float-to-u32 conversion: it destroys negative identities.
+/// This module neither calculates hashes nor validates the input binding.
 pub type OptionHash = u32;
 
 /// Scalar values at this boundary retain Lua type and truth semantics.
@@ -94,7 +102,8 @@ pub struct OperationRow<'a> {
 
 /// Independent lazy globals for nine definition-driven callbacks.
 ///
-/// None means not yet initialized; Some(empty) is an initialized empty list.
+/// None means not yet initialized; Some(empty) is an initialized empty list
+/// (the source Lua empty table remains truthy).
 /// Construct an explicit seed for an existing script environment. No Default
 /// implementation infers cache state from a save or native snapshot.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -296,6 +305,21 @@ mod tests {
             WorldCongressOptionCaches::new_script().power_resource_ban(&rows),
             [8, 8, 10]
         );
+    }
+
+    #[test]
+    fn signed_hash_bits_survive_filter_duplicates_and_cache_reuse() {
+        let signed_hash = -1_234_567_i32;
+        let hash = u32::from_ne_bytes(signed_hash.to_ne_bytes());
+        let row = YieldRow {
+            hash,
+            yield_type: Some("YIELD_GOLD"),
+        };
+        let mut caches = WorldCongressOptionCaches::new_script();
+        let options = caches.yield_ban(&[row, row]);
+        assert_eq!(options, [0xffed_2979, 0xffed_2979]);
+        assert_eq!(i32::from_ne_bytes(options[0].to_ne_bytes()), signed_hash);
+        assert_eq!(caches.yield_ban(&[]), [hash, hash]);
     }
 
     #[test]
