@@ -543,9 +543,15 @@ impl Definitions<'_> {
         &self,
         district: &c6_core::player_districts::District,
     ) -> Result<Option<i32>, Error> {
-        let index = self.districts.registry.find_index(district.district_hash)
+        let index = self
+            .districts
+            .registry
+            .find_index(district.district_hash)
             .ok_or(Error::Missing("District definition"))?;
-        self.district_hit_points.get(index).copied().ok_or(Error::Missing("District HitPoints"))
+        self.district_hit_points
+            .get(index)
+            .copied()
+            .ok_or(Error::Missing("District HitPoints"))
     }
     pub fn unit_visible(
         &self,
@@ -583,29 +589,35 @@ impl Definitions<'_> {
         )
     }
     pub fn maximum_damage(&self, unit: &Unit) -> Result<i32, Error> {
-        let mut entries = unit
-            .k_properties
-            .entries
-            .iter()
-            .filter(|e| e.key == 0x7d3fc711);
-        let Some(entry) = entries.next() else {
-            return Ok(self.max_hit_points);
-        };
-        if entries.next().is_some() {
-            return Err(Error::Missing("duplicate MaxDamage property"));
-        }
-        let v = &entry.value;
-        if v.type_bits != 2
-            || v.modifier_bits != 0
-            || v.value.count_flags != 0
-            || v.value.element_size != 0
-        {
-            return Err(Error::Missing("MaxDamage typed conversion"));
-        }
-        match v.value.payload {
-            c6_core::unit::variants::VariantPayload::Inline32(n) => Ok(n as i32),
-            _ => Err(Error::Missing("MaxDamage typed payload")),
-        }
+        unit_maximum_damage(unit, self.max_hit_points)
+    }
+}
+/// Current Unit.GetMaxDamage without unrelated terrain/path definitions.
+/// The baseline is the cached admitted COMBAT_MAX_HIT_POINTS parameter; a
+/// current typed MaxDamage property overrides it with the original conversion.
+pub fn unit_maximum_damage(unit: &Unit, baseline: i32) -> Result<i32, Error> {
+    let mut entries = unit
+        .k_properties
+        .entries
+        .iter()
+        .filter(|e| e.key == 0x7d3fc711);
+    let Some(entry) = entries.next() else {
+        return Ok(baseline);
+    };
+    if entries.next().is_some() {
+        return Err(Error::Missing("duplicate MaxDamage property"));
+    }
+    let v = &entry.value;
+    if v.type_bits != 2
+        || v.modifier_bits != 0
+        || v.value.count_flags != 0
+        || v.value.element_size != 0
+    {
+        return Err(Error::Missing("MaxDamage typed conversion"));
+    }
+    match v.value.payload {
+        c6_core::unit::variants::VariantPayload::Inline32(n) => Ok(n as i32),
+        _ => Err(Error::Missing("MaxDamage typed payload")),
     }
 }
 fn find_district<'s>(

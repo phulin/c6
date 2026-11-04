@@ -301,7 +301,7 @@ pub fn military_strength<E>(
     order: &[u32],
     domain: i32,
     combat_defs: &combat::Definitions,
-    damage_defs: &crate::formation_movement_cost::Definitions<'_>,
+    max_hit_points: i32,
 ) -> Result<i32, Error<E>> {
     let mut raw = 0_i32;
     for &id in order {
@@ -319,7 +319,8 @@ pub fn military_strength<E>(
             combat::unit_ranged_combat(state, u, combat_defs)
         }
         .map_err(Error::Combat)?;
-        let maximum = damage_defs.maximum_damage(u).map_err(Error::Damage)?;
+        let maximum = crate::formation_movement_cost::unit_maximum_damage(u, max_hit_points)
+            .map_err(Error::Damage)?;
         raw = raw.wrapping_add(contribution(strength, u.i_damage, maximum)?);
     }
     if domain == -1 {
@@ -341,11 +342,11 @@ pub fn stats_turn_activate<E: Effects>(
     order: &[u32],
     city_order: Option<&[u32]>,
     combat_defs: &combat::Definitions,
-    damage_defs: &crate::formation_movement_cost::Definitions<'_>,
+    max_hit_points: i32,
     effects: &mut E,
 ) -> Result<(), Error<E::Error>> {
     for domain in [-1, 1, 2, 0] {
-        let value = military_strength(state, owner, order, domain, combat_defs, damage_defs)?;
+        let value = military_strength(state, owner, order, domain, combat_defs, max_hit_points)?;
         let stats = state.player_stats_mut(owner).map_err(Error::State)?;
         match domain {
             -1 => stats.military_strength = value,
