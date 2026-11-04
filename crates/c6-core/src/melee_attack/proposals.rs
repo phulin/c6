@@ -3,6 +3,8 @@
 //! none of these stages completes melee generation or an applied attack.
 use crate::unit::ComponentId;
 pub mod alliance;
+pub mod alliance_strength;
+pub mod collection_modifiers;
 pub mod collections;
 pub mod player_strength;
 pub mod registry;

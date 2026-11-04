@@ -81,12 +81,17 @@ pub enum Error {
     MissingSignal(Signal),
     DuplicateScope,
     InvalidHandle,
+    MissingDestructionSignal,
+    MissingCollectionModifiers,
+    Affected(crate::unit_moved_signal::modifiers::AffectedError),
     MissingCollections,
     AlreadyInitialized,
     Ring(RegistryError),
 }
 #[derive(Debug)]
 pub struct Runtime {
+    collection_modifiers: Option<super::collection_modifiers::Runtime>,
+    destruction: Vec<Option<ListenerRing<u64>>>,
     counter: u32,
     // Stable logical labels retain a proposal across Forget/reentrant appends.
     // This is object identity bookkeeping, not a second gameplay payload copy.
@@ -121,7 +126,10 @@ impl Runtime {
             .enumerate()
             .map(|(i, (id, p))| ((id, Handle(i)), p))
             .unzip();
+        let destruction = (0..objects.len()).map(|_| None).collect();
         Ok(Self {
+            collection_modifiers: None,
+            destruction,
             counter,
             objects,
             active: ids,
@@ -147,6 +155,46 @@ impl Runtime {
     pub fn collections_mut(&mut self) -> Result<&mut super::collections::Runtime, Error> {
         self.collections.as_mut().ok_or(Error::MissingCollections)
     }
+    pub fn with_collection_modifiers(
+        mut self,
+        modifiers: super::collection_modifiers::Runtime,
+    ) -> Self {
+        self.collection_modifiers = Some(modifiers);
+        self
+    }
+    pub fn collection_modifiers(&self) -> Result<&super::collection_modifiers::Runtime, Error> {
+        self.collection_modifiers
+            .as_ref()
+            .ok_or(Error::MissingCollectionModifiers)
+    }
+    pub fn collection_modifiers_mut(
+        &mut self,
+    ) -> Result<&mut super::collection_modifiers::Runtime, Error> {
+        self.collection_modifiers
+            .as_mut()
+            .ok_or(Error::MissingCollectionModifiers)
+    }
+    pub fn destruction_mut(&mut self, handle: Handle) -> Result<&mut ListenerRing<u64>, Error> {
+        self.destruction
+            .get_mut(handle.0)
+            .ok_or(Error::InvalidHandle)?
+            .as_mut()
+            .ok_or(Error::MissingDestructionSignal)
+    }
+    pub fn mark_subject_affected(&mut self, modifier: u64, handle: Handle) -> Result<(), Error> {
+        let m = self
+            .collection_modifiers
+            .as_ref()
+            .ok_or(Error::MissingCollectionModifiers)?
+            .modifier(modifier)
+            .ok_or(Error::MissingCollectionModifiers)?;
+        self.objects
+            .get_mut(handle.0)
+            .ok_or(Error::InvalidHandle)?
+            .modifiers_affecting
+            .mark(&m.definition, m.instance)
+            .map_err(Error::Affected)
+    }
     pub fn counter(&self) -> u32 {
         self.counter
     }
@@ -164,9 +212,14 @@ impl Runtime {
     pub fn register(&mut self, proposal: Proposal) -> Result<(u32, Handle), Error> {
         self.counter = self.counter.wrapping_add(1);
         self.objects.try_reserve(1).map_err(|_| Error::Allocation)?;
+        self.destruction
+            .try_reserve(1)
+            .map_err(|_| Error::Allocation)?;
+        let destruction = ListenerRing::from_ordered(&[]).map_err(Error::Ring)?;
         self.active.try_reserve(1).map_err(|_| Error::Allocation)?;
         let handle = Handle(self.objects.len());
         self.objects.push(proposal);
+        self.destruction.push(Some(destruction));
         self.active.push((self.counter, handle));
         Ok((self.counter, handle))
     }

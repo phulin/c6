@@ -1,5 +1,6 @@
 //! Current-state Unit/Unit proposal registration and synchronous ObjectCreated.
 //! This is an internal generation stage, not AttackInto or damage resolution.
+pub mod collection_modifiers;
 use c6_core::melee_attack::proposals::{alliance, collections};
 use c6_core::{
     loaded_state::{combat_proposals::AccessError, LoadedState},
