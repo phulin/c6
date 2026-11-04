@@ -1,4 +1,4 @@
-//! Current Linux XP2 Trade graph wire codec (Graph 1 / Edge 3 / Route 4 / Vertex 1).
+//! Linux XP2 Trade graph wire codec (Graph1 / Edge1,3 / Route4 / Vertex1).
 //!
 //! Evidence: `docs/linux-trade-serialization-contracts.md`, pinned GameCore SHA-256
 //! a0b6611f45ed28fa7bf6e18d608cafddbdd5b1c20cfd880cb50937af731c1faa.
@@ -48,6 +48,8 @@ pub struct Route {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Edge {
+    /// Source wire tag. Versions1/3 share the same serialized fields.
+    pub wire_version: i32,
     pub id: i32,
     pub most_recent_route: Route,
     pub has_active_route: bool,
@@ -58,6 +60,34 @@ pub struct Edge {
     pub path_traversal_going_forward: bool,
     pub from_vertex: Vertex,
     pub to_vertex: Vertex,
+}
+
+impl Edge {
+    fn payload_eq(&self, other: &Self) -> bool {
+        (
+            &self.id,
+            &self.most_recent_route,
+            &self.has_active_route,
+            &self.routes_started,
+            &self.routes_completed,
+            &self.most_recent_path,
+            &self.path_traversal_index,
+            &self.path_traversal_going_forward,
+            &self.from_vertex,
+            &self.to_vertex,
+        ) == (
+            &other.id,
+            &other.most_recent_route,
+            &other.has_active_route,
+            &other.routes_started,
+            &other.routes_completed,
+            &other.most_recent_path,
+            &other.path_traversal_index,
+            &other.path_traversal_going_forward,
+            &other.from_vertex,
+            &other.to_vertex,
+        )
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -104,6 +134,7 @@ impl Default for Limits {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     TrailingBytes,
     Version { expected: i32, actual: i32 },
     NegativeCount,
@@ -188,10 +219,11 @@ impl Graph {
                 .iter()
                 .all(|origin| other.origin_index.contains_key(&origin.vertex))
             && self.origins.iter().all(|origin| {
-                origin
-                    .destinations
-                    .iter()
-                    .all(|d| other.get_edge(origin.vertex, d.vertex) == Some(&d.edge))
+                origin.destinations.iter().all(|d| {
+                    other
+                        .get_edge(origin.vertex, d.vertex)
+                        .is_some_and(|edge| edge.payload_eq(&d.edge))
+                })
             })
     }
     /// Compares observed outer and inner vertex order, independently of payloads.
@@ -388,7 +420,13 @@ impl<'a> Reader<'a> {
         })
     }
     fn edge(&mut self) -> Result<Edge, Error> {
-        self.version(3)?;
+        let wire_version = self.i32()?;
+        if !matches!(wire_version, 1 | 3) {
+            return Err(Error::Version {
+                expected: 3,
+                actual: wire_version,
+            });
+        }
         let id = self.i32()?;
         let most_recent_route = self.route()?;
         let has_active_route = self.boolean()?;
@@ -400,6 +438,7 @@ impl<'a> Reader<'a> {
             most_recent_path.push(self.i32()?);
         }
         Ok(Edge {
+            wire_version,
             id,
             most_recent_route,
             has_active_route,
@@ -508,6 +547,9 @@ impl Writer {
         self.yields(&r.destination_yields)
     }
     fn edge(&mut self, e: &Edge) -> Result<(), Error> {
+        if e.wire_version != 3 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         self.i32(3)?;
         self.i32(e.id)?;
         self.route(&e.most_recent_route)?;
@@ -566,6 +608,7 @@ mod tests {
         Destination {
             vertex: to,
             edge: Edge {
+                wire_version: 3,
                 id,
                 most_recent_route: route(),
                 has_active_route: true,
@@ -602,6 +645,49 @@ mod tests {
         Limits::default()
     }
 
+    #[test]
+    fn edge1_keeps_same_payload_and_wire_tag_without_legacy_rewrite() {
+        let original = graph();
+        let mut bytes = original.encode(limits()).unwrap();
+        // Source order: Graph header12, outerVertex16/count4, innerVertex16.
+        assert_eq!(i32::from_le_bytes(bytes[48..52].try_into().unwrap()), 3);
+        bytes[48..52].copy_from_slice(&1i32.to_le_bytes());
+        let legacy = Graph::decode(&bytes, limits()).unwrap();
+        assert_eq!(
+            legacy.get_edge(vertex(1), vertex(2)).unwrap().wire_version,
+            1
+        );
+        assert!(legacy.logical_eq(&original));
+        assert!(!legacy.wire_state_eq(&original));
+        assert!(legacy.iteration_order_eq(&original));
+        assert_eq!(
+            legacy.encode(limits()).unwrap_err(),
+            Error::UnsupportedLegacyWrite
+        );
+        let mut larger = bytes.clone();
+        larger.push(0xaa);
+        let (decoded, n, i) = Graph::decode_prefix_with_items(
+            &larger,
+            Limits {
+                max_bytes: bytes.len(),
+                max_items: 16,
+            },
+        )
+        .unwrap();
+        assert_eq!((n, i), (bytes.len(), 16));
+        assert!(decoded.wire_state_eq(&legacy));
+        for cut in 0..bytes.len() {
+            assert!(Graph::decode_prefix_with_items(&bytes[..cut], limits()).is_err());
+        }
+        bytes[48..52].copy_from_slice(&2i32.to_le_bytes());
+        assert_eq!(
+            Graph::decode_prefix_with_items(&bytes, limits()).unwrap_err(),
+            Error::Version {
+                expected: 3,
+                actual: 2
+            }
+        );
+    }
     #[test]
     fn graph_prefix_preserves_trailing_manager_data_and_aggregate_charge() {
         let g = graph();

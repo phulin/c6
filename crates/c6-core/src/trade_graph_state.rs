@@ -113,6 +113,7 @@ mod tests {
         Destination {
             vertex: to,
             edge: Edge {
+                wire_version: 3,
                 id,
                 most_recent_route: Route {
                     id: 99,
@@ -143,6 +144,23 @@ mod tests {
             trade::Limits::default(),
         )
         .unwrap()
+    }
+    #[test]
+    fn saved_edge1_path_queries_do_not_require_legacy_encoding() {
+        let (a, b) = (city_vertex(city(1, 2)), city_vertex(city(3, 4)));
+        let current = state(vec![Origin {
+            vertex: a,
+            destinations: vec![edge(a, b, 1, vec![7, 7, 2])],
+        }]);
+        let mut bytes = current.graph().encode(trade::Limits::default()).unwrap();
+        bytes[48..52].copy_from_slice(&1i32.to_le_bytes());
+        let legacy = GraphState::decode(&bytes, trade::Limits::default()).unwrap();
+        assert_eq!(legacy.get_path(a, b), Some(&[7, 7, 2][..]));
+        assert!(legacy.graph().logical_eq(current.graph()));
+        assert_eq!(
+            legacy.graph().encode(trade::Limits::default()).unwrap_err(),
+            trade::Error::UnsupportedLegacyWrite
+        );
     }
     #[test]
     fn city_key_uses_signed_owner_full_id_and_ignores_component_type() {
