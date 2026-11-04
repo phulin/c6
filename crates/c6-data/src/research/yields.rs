@@ -435,4 +435,102 @@ impl<E: Effects> Context<'_, E> {
         }
         Ok(total)
     }
+    fn tourism_on(&self, owner: i32, other: i32) -> Result<i32, Error<E::Error>> {
+        if other as u32 >= 64 || other >= 22 {
+            return Ok(0);
+        }
+        self.state
+            .research_components(owner)
+            .map_err(Error::State)?
+            .1
+            .tourism_on_bits
+            .get(other as u32 as usize)
+            .copied()
+            .ok_or(Error::Missing("current TourismOn cell"))
+    }
+    pub(super) fn total_tourists_from_current(
+        &mut self,
+        owner: i32,
+    ) -> Result<i32, Error<E::Error>> {
+        let majors = self
+            .effects
+            .runtime()
+            .alive_majors
+            .as_ref()
+            .ok_or(Error::Missing("current GetAliveMajors order"))?
+            .clone();
+        let mut total = 0_i32;
+        for other in majors.iter().copied() {
+            if other == owner
+                || !self
+                    .state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .has_met(owner, other)
+                    .map_err(Error::Relations)?
+            {
+                continue;
+            }
+            let per = self
+                .definitions
+                .tourism_per_citizen
+                .ok_or(Error::Missing("TOURISM_CULTURE_PER_CITIZEN"))?;
+            if per <= 0 {
+                continue;
+            }
+            let movement = self
+                .definitions
+                .tourism_to_move
+                .ok_or(Error::Missing("TOURISM_TOURISM_TO_MOVE_CITIZEN"))?;
+            if movement <= 0 {
+                continue;
+            }
+            let ever = self.query(Query::EverAliveMajorsCount)?;
+            if ever <= 0 {
+                continue;
+            }
+            let lifetime = self
+                .state
+                .research_components(owner)
+                .map_err(Error::State)?
+                .1
+                .lifetime_culture_bits
+                >> 8;
+            let mut theoretical = 0_i32;
+            let theoretical_ever = self.query(Query::EverAliveMajorsCount)?;
+            for candidate in majors.iter().copied().filter(|_| theoretical_ever > 0) {
+                if candidate == owner {
+                    continue;
+                }
+                if self
+                    .state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .has_met(owner, candidate)
+                    .map_err(Error::Relations)?
+                {
+                    theoretical = theoretical.wrapping_add(
+                        (self.tourism_on(candidate, owner)? >> 8) / movement / theoretical_ever,
+                    );
+                }
+            }
+            // Native queries the manager count again after the theoretical sum.
+            let current_ever = self.query(Query::EverAliveMajorsCount)?;
+            if current_ever <= 0 {
+                return Err(Error::Missing(
+                    "changed ever-alive-major count at native division",
+                ));
+            }
+            let tourism = self.tourism_on(other, owner)? >> 8;
+            total = total.wrapping_add(research_turn::tourists_from_amount(
+                lifetime,
+                per,
+                theoretical,
+                tourism,
+                movement,
+                current_ever,
+            ));
+        }
+        Ok(total)
+    }
 }

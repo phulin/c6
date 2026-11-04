@@ -120,6 +120,7 @@ pub enum Query {
     EarnedGreatPeople(i32),
     CultureYield(i32),
     TouristsFrom(i32),
+    EverAliveMajorsCount,
     ResearchAgreementTech {
         player: i32,
         other: i32,
@@ -158,12 +159,17 @@ pub struct Definitions {
     technology_hashes: Vec<u32>,
     route_prerequisites: Vec<Option<i32>>,
     technology_modifiers: Vec<u32>,
+    civic_modifiers: Vec<u32>,
+    civic_resource_prerequisites: Vec<u32>,
+    civic_random_agendas: Vec<u32>,
+    civic_obsolete_actions: Vec<u32>,
     resource_tech_prerequisites: Vec<u32>,
     district_costs: districts::Definitions,
     diplomatic_visibility: diplomacy::Definitions,
     chronology: Vec<i32>,
     era_percent: [Option<i32>; 4],
     tourism_per_citizen: Option<i32>,
+    tourism_to_move: Option<i32>,
     speed: Option<i32>,
     unit_costs: crate::research_unit_costs::Definitions,
 }
@@ -360,6 +366,28 @@ impl Definitions {
                 _ => return Err(Error::Missing("Resource.PrereqTech")),
             }
         }
+        let mut civic_columns = Vec::new();
+        for (table, column) in [
+            ("CivicModifiers", "CivicType"),
+            ("Resources", "PrereqCivic"),
+            ("RandomAgendasForCivic", "CivicType"),
+            ("DiplomaticActions", "InitiatorObsoleteCivic"),
+        ] {
+            let mut values = Vec::new();
+            for row in rules
+                .gameplay()
+                .table(table)
+                .ok_or(Error::Missing(table))?
+                .rows()
+            {
+                match row.get(column).map_err(Error::Rules)? {
+                    SqlValue::Null => {}
+                    SqlValue::Text(name) => values.push(linux_type_hash(name)),
+                    _ => return Err(Error::Missing(column)),
+                }
+            }
+            civic_columns.push(values);
+        }
         let unit_costs =
             crate::research_unit_costs::Definitions::from_rules(rules, bound, game_speed)
                 .map_err(Error::Costs)?;
@@ -370,6 +398,10 @@ impl Definitions {
             binding: bound.destination_binding().clone(),
             route_prerequisites,
             technology_modifiers,
+            civic_modifiers: civic_columns.remove(0),
+            civic_resource_prerequisites: civic_columns.remove(0),
+            civic_random_agendas: civic_columns.remove(0),
+            civic_obsolete_actions: civic_columns.remove(0),
             resource_tech_prerequisites,
             district_costs,
             diplomatic_visibility: diplomacy::Definitions::from_rules(rules, bound)
@@ -396,6 +428,7 @@ impl Definitions {
                 parameter(rules, "CIVIC_COST_PERCENT_CHANGE_BEFORE_GAME_ERA"),
             ],
             tourism_per_citizen: parameter(rules, "TOURISM_CULTURE_PER_CITIZEN"),
+            tourism_to_move: parameter(rules, "TOURISM_TOURISM_TO_MOVE_CITIZEN"),
             speed,
             unit_costs,
         })
@@ -506,6 +539,31 @@ impl Definitions {
             .ok_or(Error::IllegalTechnology(index))?;
         Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
     }
+    pub fn civic_acquisition_filters(
+        &self,
+        index: i32,
+    ) -> Result<(bool, bool, bool, bool), Error<std::convert::Infallible>> {
+        let hash = self
+            .civics
+            .get(index as u32 as usize)
+            .ok_or(Error::IllegalCivic(index))?
+            .hash;
+        Ok((
+            self.civic_modifiers.contains(&hash),
+            self.civic_resource_prerequisites.contains(&hash),
+            self.civic_random_agendas.contains(&hash),
+            self.civic_obsolete_actions.contains(&hash),
+        ))
+    }
+    pub fn civic_era_hash(
+        &self,
+        index: i32,
+    ) -> Result<Option<u32>, Error<std::convert::Infallible>> {
+        let cost = self.costs[1]
+            .get(index as u32 as usize)
+            .ok_or(Error::IllegalCivic(index))?;
+        Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
+    }
     pub fn diplomatic_visibility(&self) -> &diplomacy::Definitions {
         &self.diplomatic_visibility
     }
@@ -572,6 +630,25 @@ impl<E: Effects> Context<'_, E> {
         event_player: i32,
         index: i32,
     ) -> Result<(), boost::Error<Error<E::Error>>> {
+        self.stock_player_research_catchup(owner, event_player, index, Kind::Technology)
+    }
+    /// Culture.OnPlayerCivicCulturevated uses the same current major threshold;
+    /// its SetCulturalProgress also updates lifetime culture and notices.
+    pub fn stock_player_civic_catchup(
+        &mut self,
+        owner: i32,
+        event_player: i32,
+        index: i32,
+    ) -> Result<(), boost::Error<Error<E::Error>>> {
+        self.stock_player_research_catchup(owner, event_player, index, Kind::Civic)
+    }
+    fn stock_player_research_catchup(
+        &mut self,
+        owner: i32,
+        event_player: i32,
+        index: i32,
+        kind: Kind,
+    ) -> Result<(), boost::Error<Error<E::Error>>> {
         self.check().map_err(boost::Error::Context)?;
         let level = |owner| {
             self.effects
@@ -585,28 +662,30 @@ impl<E: Effects> Context<'_, E> {
         if level(event_player).map_err(boost::Error::Context)? != 0x253718b0 {
             return Ok(());
         }
-        let hash = self
-            .definitions
-            .boost
-            .technologies
-            .iter()
-            .flatten()
-            .find(|d| d.index == index)
-            .ok_or(boost::Error::Definition)?
-            .hash;
-        let has = self
+        let hash = (match kind {
+            Kind::Technology => &self.definitions.boost.technologies,
+            Kind::Civic => &self.definitions.boost.civics,
+        })
+        .iter()
+        .flatten()
+        .find(|d| d.index == index)
+        .ok_or(boost::Error::Definition)?
+        .hash;
+        let components = self
             .state
             .research_components(owner)
             .map_err(Error::State)
-            .map_err(boost::Error::Context)?
-            .0
-            .has_tech
-            .pairs
-            .iter()
-            .rev()
-            .find(|p| p.definition_hash == hash)
-            .map(|p| p.value)
-            .ok_or(boost::Error::MissingBool(hash))?;
+            .map_err(boost::Error::Context)?;
+        let has = (match kind {
+            Kind::Technology => &components.0.has_tech,
+            Kind::Civic => &components.1.has_civic,
+        })
+        .pairs
+        .iter()
+        .rev()
+        .find(|p| p.definition_hash == hash)
+        .map(|p| p.value)
+        .ok_or(boost::Error::MissingBool(hash))?;
         if has {
             return Ok(());
         }
@@ -625,29 +704,31 @@ impl<E: Effects> Context<'_, E> {
         let threshold = research_turn::minor_technology_catchup_threshold(alive.len() as i32);
         let mut count = 0i32;
         for &other in alive {
-            if self
+            let components = self
                 .state
                 .research_components(other)
                 .map_err(Error::State)
-                .map_err(boost::Error::Context)?
-                .0
-                .has_tech
-                .pairs
-                .iter()
-                .rev()
-                .find(|p| p.definition_hash == hash)
-                .map(|p| p.value)
-                .ok_or(boost::Error::MissingBool(hash))?
+                .map_err(boost::Error::Context)?;
+            if (match kind {
+                Kind::Technology => &components.0.has_tech,
+                Kind::Civic => &components.1.has_civic,
+            })
+            .pairs
+            .iter()
+            .rev()
+            .find(|p| p.definition_hash == hash)
+            .map(|p| p.value)
+            .ok_or(boost::Error::MissingBool(hash))?
             {
                 count = count.wrapping_add(1);
             }
         }
         if count >= threshold {
-            let cost = boost::research_cost(self, Kind::Technology, index, false)?;
+            let cost = boost::research_cost(self, kind, index, false)?;
             boost::set_research_progress(
                 self,
                 owner,
-                Kind::Technology,
+                kind,
                 index,
                 cost.wrapping_sub(1).wrapping_shl(8),
             )?;
@@ -1194,27 +1275,7 @@ impl<E: Effects> boost::Context for Context<'_, E> {
             .ok_or(Error::Missing("TOURISM_CULTURE_PER_CITIZEN"))
     }
     fn total_tourists_from(&mut self, player: i32) -> Result<i32, Self::Error> {
-        let majors = self
-            .effects
-            .runtime()
-            .alive_majors
-            .as_ref()
-            .ok_or(Error::Missing("current GetAliveMajors order"))?;
-        for &other in majors {
-            if other != player
-                && self
-                    .state
-                    .game_relations()
-                    .map_err(Error::State)?
-                    .has_met(player, other)
-                    .map_err(Error::Relations)?
-            {
-                return Err(Error::Missing(
-                    "current ComputeTouristsFrom for contacted major",
-                ));
-            }
-        }
-        Ok(0)
+        self.total_tourists_from_current(player)
     }
     fn government_notifications(&mut self, player: i32) -> Result<(), Self::Error> {
         self.emit(Effect::GovernmentNotifications(player))

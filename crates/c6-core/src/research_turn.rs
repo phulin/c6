@@ -328,3 +328,42 @@ mod catchup_threshold_tests {
         assert_eq!(minor_technology_catchup_threshold(i32::MAX), 1);
     }
 }
+
+/// ComputeTouristsFrom's final whole-integer arithmetic, after the source
+/// current-player/contact and positive parameter guards have run.
+pub fn tourists_from_amount(
+    lifetime_culture: i32,
+    culture_per_citizen: i32,
+    theoretical: i32,
+    tourism: i32,
+    tourism_per_citizen: i32,
+    ever_major_count: i32,
+) -> i32 {
+    if culture_per_citizen <= 0 || tourism_per_citizen <= 0 || ever_major_count <= 0 {
+        return 0;
+    }
+    let capacity = lifetime_culture / culture_per_citizen;
+    let tourists = tourism / tourism_per_citizen / ever_major_count;
+    if capacity < theoretical {
+        tourists.wrapping_mul(capacity) / theoretical.max(1)
+    } else {
+        tourists
+    }
+}
+#[cfg(test)]
+mod tourist_tests {
+    use super::tourists_from_amount;
+    #[test]
+    fn tourist_rounding_occurs_before_capacity_scaling() {
+        assert_eq!(tourists_from_amount(300, 100, 5, 1999, 100, 2), 5);
+        assert_eq!(tourists_from_amount(500, 100, 5, 1999, 100, 2), 9);
+        assert_eq!(tourists_from_amount(0, 100, 5, 1999, 100, 2), 0);
+    }
+    #[test]
+    fn tourists_preserve_wrapping_capacity_product_and_parameter_guards() {
+        assert_eq!(tourists_from_amount(2, 1, 3, i32::MAX, 1, 1), 0);
+        assert_eq!(tourists_from_amount(1, 0, 1, 1, 1, 1), 0);
+        assert_eq!(tourists_from_amount(1, 1, 1, 1, 0, 1), 0);
+        assert_eq!(tourists_from_amount(1, 1, 1, 1, 1, 0), 0);
+    }
+}
