@@ -306,3 +306,38 @@ pub fn check_num_themed_buildings<C: BoostContext>(
     }
     Ok(())
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum JoinedBoostError<E> {
+    Theming(Error<E>),
+    Boost(super::boost::Error<E>),
+    MissingBoostDefinition(usize),
+}
+
+/// Execute the native themed-building Boost registration through the concrete
+/// BoostManager/Techs/Culture/progress/acquisition implementation. The dynamic
+/// signal registry supplies the actual registered Boost definition index; this
+/// does not invent registrations or treat uncaptured subscriber lists as empty.
+pub fn execute_themed_building_boost<C>(
+    c: &mut C,
+    city: <C as RelicContext>::City,
+    boost_index: usize,
+) -> Result<(), JoinedBoostError<<C as RelicContext>::Error>>
+where
+    C: BoostContext + super::boost::Context<Error = <C as RelicContext>::Error>,
+{
+    let player = c
+        .city_owner(city)
+        .map_err(|e| JoinedBoostError::Theming(Error::Context(e)))?;
+    let count = count_themed_buildings(c, player).map_err(JoinedBoostError::Theming)?;
+    let required = super::boost::Context::boost_rules(c)
+        .boosts
+        .get(boost_index)
+        .ok_or(JoinedBoostError::MissingBoostDefinition(boost_index))?
+        .num_items;
+    if count >= required {
+        super::boost::trigger_boost(c, Some(player), boost_index)
+            .map_err(JoinedBoostError::Boost)?;
+    }
+    Ok(())
+}

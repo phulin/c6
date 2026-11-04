@@ -2,6 +2,7 @@
 //! Runtime definition order, complete GreatWork state and the actual Game RNG
 //! are required. Theming rules execute locally; reporting and synchronous signals retain required
 //! providers; this is not complete action/turn equivalence.
+pub mod boost;
 pub mod theming;
 
 use crate::city_production::Buildings;
