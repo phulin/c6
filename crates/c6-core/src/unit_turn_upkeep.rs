@@ -301,12 +301,12 @@ pub fn restore_movement<C: RestoreMovementContext>(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     // SourceOnly synthetic DTO carrier, adapted from loaded_actions' literal.
     // No initialized engine World, native capture, or native parity is implied.
-    fn source_only_unit() -> Unit {
+    pub(crate) fn source_only_unit() -> Unit {
         crate::unit::Unit {
             id: 0,
             e_type_index: 0,
