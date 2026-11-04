@@ -15,6 +15,55 @@ impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
 }
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 
+/// Map.IInstance.GetPlotFromDeltaWithRangeCheck2103f20 + GetPlotFromDelta
+/// 2104a50 + stock Map.Instance.GetPlot(x,y)2a48a30. Range precedes wrapping.
+pub fn plot_from_delta(
+    map: &crate::map::Map,
+    center: PlotCoord,
+    dx: i32,
+    dy: i32,
+    range: i32,
+) -> Result<Option<usize>, crate::movement_world::MissingInput> {
+    let ax = dx.wrapping_abs();
+    let ay = dy.wrapping_abs();
+    let distance = if (dx ^ dy) >= 0 {
+        ax.wrapping_add(ay)
+    } else {
+        ax.max(ay)
+    };
+    if distance > range {
+        return Ok(None);
+    }
+    fn half(y: i32) -> i32 {
+        if y >= 0 {
+            y >> 1
+        } else {
+            let n = y.wrapping_sub(1);
+            n.wrapping_sub(n >> 31) >> 1
+        }
+    }
+    let y = center.y.wrapping_add(dy);
+    let x = center
+        .x
+        .wrapping_sub(half(center.y))
+        .wrapping_add(dx)
+        .wrapping_add(half(y));
+    if !crate::geometry::plot_valid(x, y) {
+        return Ok(None);
+    }
+    if map.header.width <= 0 || map.header.height <= 0 {
+        return Err(crate::movement_world::MissingInput::InvalidMapDimensions);
+    }
+    let x = crate::movement_world::coord_range(x, map.header.width, map.header.wrap_x);
+    let y = crate::movement_world::coord_range(y, map.header.height, map.header.wrap_y);
+    if x < 0 || y < 0 || x >= map.header.width || y >= map.header.height {
+        return Ok(None);
+    }
+    Ok(Some(
+        crate::movement_world::plot_at(map, PlotCoord { x, y })?.0,
+    ))
+}
+
 pub trait Context {
     type Error;
     type Plot: Copy;
