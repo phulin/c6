@@ -16,6 +16,8 @@ pub enum Error {
     UnsupportedNodeType(u32),
     NodeFieldShape,
     PresenceShape,
+    UnsupportedLegacyWrite,
+    MissingRetainedDefinitionHash(&'static str),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -236,17 +238,289 @@ impl<T: Wire> Wire for Presence<T> {
         Ok(())
     }
 }
-record!(GameModifierAnalysis,17,{
- belief_hash:u32,building_hash:u32,civic_hash:u32,district_hash:u32,feature_hash:u32,
- handicap_hash:u32,improvement_hash:u32,minor_civ_type_hash:u32,technology_hash:u32,
- unit1_hash:u32,unit2_hash:u32,yield_hash:u32,resource_hash:u32,great_work_object_hash:u32,
- policy_hash:u32,governor_hash:u32,government_hash:u32,government_slot_hash:u32,
- project_hash:u32,great_person_class_hash:u32,unit_operation_hash:u32,unit_promotion_class_hash:u32,
- opponent:i32,religion:i32,count:i32,city_id:ComponentId,start_turn:i32,time_horizon:i32,
- discount_rate_bits:u32,expected_bonus_value:i32,expected_turns_to_meet:i32,analysis_depth:i32,
- unit_list:Vec<u32>,best_improvement:BoolByte,collection_found_item:BoolByte,collection_iterator_index:i32,
- city:Presence<ComponentId>,district:Presence<ComponentId>,player:Presence<i32>,plot:Presence<i32>,unit:Presence<ComponentId>
-});
+/// Saved analysis trigger, with definition hashes distinct from native collection indexes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GameModifierAnalysis {
+    pub wire_version: u32,
+    pub belief_hash: u32,
+    pub building_hash: u32,
+    pub civic_hash: u32,
+    pub district_hash: u32,
+    /// None at12: native Read defaults the corresponding definition index to-1.
+    pub feature_hash: Option<u32>,
+    pub handicap_hash: u32,
+    pub improvement_hash: u32,
+    /// None at12: native Read defaults the corresponding definition index to-1.
+    pub minor_civ_type_hash: Option<u32>,
+    pub technology_hash: u32,
+    pub unit1_hash: u32,
+    pub unit2_hash: u32,
+    pub yield_hash: u32,
+    pub resource_hash: u32,
+    pub great_work_object_hash: u32,
+    pub policy_hash: u32,
+    /// None at12: native Read defaults the corresponding definition index to-1.
+    pub governor_hash: Option<u32>,
+    pub government_hash: u32,
+    pub government_slot_hash: u32,
+    pub project_hash: u32,
+    pub great_person_class_hash: u32,
+    /// None at12: native Read defaults the corresponding definition index to-1.
+    pub unit_operation_hash: Option<u32>,
+    /// None at12: native Read defaults the corresponding definition index to-1.
+    pub unit_promotion_class_hash: Option<u32>,
+    pub opponent: i32,
+    pub religion: i32,
+    pub count: i32,
+    pub city_id: ComponentId,
+    pub start_turn: i32,
+    pub time_horizon: i32,
+    pub discount_rate_bits: u32,
+    pub expected_bonus_value: i32,
+    pub expected_turns_to_meet: i32,
+    pub analysis_depth: i32,
+    pub unit_list: Vec<u32>,
+    pub best_improvement: BoolByte,
+    pub collection_found_item: BoolByte,
+    pub collection_iterator_index: i32,
+    pub city: Presence<ComponentId>,
+    pub district: Presence<ComponentId>,
+    pub player: Presence<i32>,
+    pub plot: Presence<i32>,
+    pub unit: Presence<ComponentId>,
+}
+impl Default for GameModifierAnalysis {
+    fn default() -> Self {
+        Self {
+            wire_version: 17,
+            belief_hash: Default::default(),
+            building_hash: Default::default(),
+            civic_hash: Default::default(),
+            district_hash: Default::default(),
+            feature_hash: Some(0),
+            handicap_hash: Default::default(),
+            improvement_hash: Default::default(),
+            minor_civ_type_hash: Some(0),
+            technology_hash: Default::default(),
+            unit1_hash: Default::default(),
+            unit2_hash: Default::default(),
+            yield_hash: Default::default(),
+            resource_hash: Default::default(),
+            great_work_object_hash: Default::default(),
+            policy_hash: Default::default(),
+            governor_hash: Some(0),
+            government_hash: Default::default(),
+            government_slot_hash: Default::default(),
+            project_hash: Default::default(),
+            great_person_class_hash: Default::default(),
+            unit_operation_hash: Some(0),
+            unit_promotion_class_hash: Some(0),
+            opponent: Default::default(),
+            religion: Default::default(),
+            count: Default::default(),
+            city_id: Default::default(),
+            start_turn: Default::default(),
+            time_horizon: Default::default(),
+            discount_rate_bits: Default::default(),
+            expected_bonus_value: Default::default(),
+            expected_turns_to_meet: Default::default(),
+            analysis_depth: Default::default(),
+            unit_list: Default::default(),
+            best_improvement: Default::default(),
+            collection_found_item: Default::default(),
+            collection_iterator_index: Default::default(),
+            city: Default::default(),
+            district: Default::default(),
+            player: Default::default(),
+            plot: Default::default(),
+            unit: Default::default(),
+        }
+    }
+}
+impl GameModifierAnalysis {
+    /// Applies only to the five absent definition fields at version12.
+    /// This is a native index default, not serialized hash bits or an executed remap.
+    pub fn omitted_definition_default_index(&self) -> Option<i32> {
+        (self.wire_version == 12).then_some(-1)
+    }
+}
+impl Wire for GameModifierAnalysis {
+    const MIN: usize = 4
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <ComponentId as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Presence<ComponentId> as Wire>::MIN
+        + <Presence<ComponentId> as Wire>::MIN
+        + <Presence<i32> as Wire>::MIN
+        + <Presence<i32> as Wire>::MIN
+        + <Presence<ComponentId> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 12 | 17) {
+            return Err(Error::Version {
+                expected: 17,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            belief_hash: <u32 as Wire>::read(r)?,
+            building_hash: <u32 as Wire>::read(r)?,
+            civic_hash: <u32 as Wire>::read(r)?,
+            district_hash: <u32 as Wire>::read(r)?,
+            feature_hash: if wire_version == 17 {
+                Some(<u32 as Wire>::read(r)?)
+            } else {
+                None
+            },
+            handicap_hash: <u32 as Wire>::read(r)?,
+            improvement_hash: <u32 as Wire>::read(r)?,
+            minor_civ_type_hash: if wire_version == 17 {
+                Some(<u32 as Wire>::read(r)?)
+            } else {
+                None
+            },
+            technology_hash: <u32 as Wire>::read(r)?,
+            unit1_hash: <u32 as Wire>::read(r)?,
+            unit2_hash: <u32 as Wire>::read(r)?,
+            yield_hash: <u32 as Wire>::read(r)?,
+            resource_hash: <u32 as Wire>::read(r)?,
+            great_work_object_hash: <u32 as Wire>::read(r)?,
+            policy_hash: <u32 as Wire>::read(r)?,
+            governor_hash: if wire_version == 17 {
+                Some(<u32 as Wire>::read(r)?)
+            } else {
+                None
+            },
+            government_hash: <u32 as Wire>::read(r)?,
+            government_slot_hash: <u32 as Wire>::read(r)?,
+            project_hash: <u32 as Wire>::read(r)?,
+            great_person_class_hash: <u32 as Wire>::read(r)?,
+            unit_operation_hash: if wire_version == 17 {
+                Some(<u32 as Wire>::read(r)?)
+            } else {
+                None
+            },
+            unit_promotion_class_hash: if wire_version == 17 {
+                Some(<u32 as Wire>::read(r)?)
+            } else {
+                None
+            },
+            opponent: <i32 as Wire>::read(r)?,
+            religion: <i32 as Wire>::read(r)?,
+            count: <i32 as Wire>::read(r)?,
+            city_id: <ComponentId as Wire>::read(r)?,
+            start_turn: <i32 as Wire>::read(r)?,
+            time_horizon: <i32 as Wire>::read(r)?,
+            discount_rate_bits: <u32 as Wire>::read(r)?,
+            expected_bonus_value: <i32 as Wire>::read(r)?,
+            expected_turns_to_meet: <i32 as Wire>::read(r)?,
+            analysis_depth: <i32 as Wire>::read(r)?,
+            unit_list: <Vec<u32> as Wire>::read(r)?,
+            best_improvement: <BoolByte as Wire>::read(r)?,
+            collection_found_item: <BoolByte as Wire>::read(r)?,
+            collection_iterator_index: <i32 as Wire>::read(r)?,
+            city: <Presence<ComponentId> as Wire>::read(r)?,
+            district: <Presence<ComponentId> as Wire>::read(r)?,
+            player: <Presence<i32> as Wire>::read(r)?,
+            plot: <Presence<i32> as Wire>::read(r)?,
+            unit: <Presence<ComponentId> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 17 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let feature_hash = self
+            .feature_hash
+            .ok_or(Error::MissingRetainedDefinitionHash("feature_hash"))?;
+        let minor_civ_type_hash = self
+            .minor_civ_type_hash
+            .ok_or(Error::MissingRetainedDefinitionHash("minor_civ_type_hash"))?;
+        let governor_hash = self
+            .governor_hash
+            .ok_or(Error::MissingRetainedDefinitionHash("governor_hash"))?;
+        let unit_operation_hash = self
+            .unit_operation_hash
+            .ok_or(Error::MissingRetainedDefinitionHash("unit_operation_hash"))?;
+        let unit_promotion_class_hash =
+            self.unit_promotion_class_hash
+                .ok_or(Error::MissingRetainedDefinitionHash(
+                    "unit_promotion_class_hash",
+                ))?;
+        17u32.write(w)?;
+        self.belief_hash.write(w)?;
+        self.building_hash.write(w)?;
+        self.civic_hash.write(w)?;
+        self.district_hash.write(w)?;
+        feature_hash.write(w)?;
+        self.handicap_hash.write(w)?;
+        self.improvement_hash.write(w)?;
+        minor_civ_type_hash.write(w)?;
+        self.technology_hash.write(w)?;
+        self.unit1_hash.write(w)?;
+        self.unit2_hash.write(w)?;
+        self.yield_hash.write(w)?;
+        self.resource_hash.write(w)?;
+        self.great_work_object_hash.write(w)?;
+        self.policy_hash.write(w)?;
+        governor_hash.write(w)?;
+        self.government_hash.write(w)?;
+        self.government_slot_hash.write(w)?;
+        self.project_hash.write(w)?;
+        self.great_person_class_hash.write(w)?;
+        unit_operation_hash.write(w)?;
+        unit_promotion_class_hash.write(w)?;
+        self.opponent.write(w)?;
+        self.religion.write(w)?;
+        self.count.write(w)?;
+        self.city_id.write(w)?;
+        self.start_turn.write(w)?;
+        self.time_horizon.write(w)?;
+        self.discount_rate_bits.write(w)?;
+        self.expected_bonus_value.write(w)?;
+        self.expected_turns_to_meet.write(w)?;
+        self.analysis_depth.write(w)?;
+        self.unit_list.write(w)?;
+        self.best_improvement.write(w)?;
+        self.collection_found_item.write(w)?;
+        self.collection_iterator_index.write(w)?;
+        self.city.write(w)?;
+        self.district.write(w)?;
+        self.player.write(w)?;
+        self.plot.write(w)?;
+        self.unit.write(w)?;
+        Ok(())
+    }
+}
 /// Entry order and duplicate labels remain intact.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DataEntry {
@@ -643,6 +917,124 @@ mod tests {
             max_bytes: 1 << 20,
             max_items: 1 << 16,
         }
+    }
+    #[test]
+    fn legacy_analysis12_absent_hashes_are_not_index_bits() {
+        fn words(raw: &mut Vec<u8>, xs: &[u32]) {
+            for v in xs {
+                raw.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        let mut raw = Vec::new();
+        words(&mut raw, &[12]);
+        for i in 0..17 {
+            words(&mut raw, &[0x80000000 + i]);
+        }
+        words(
+            &mut raw,
+            &[
+                u32::MAX,
+                i32::MIN as u32,
+                i32::MAX as u32,
+                0x0002ffff,
+                u32::MAX,
+                i32::MIN as u32,
+                i32::MAX as u32,
+                0x7fc00001,
+                (-257i32) as u32,
+                u32::MAX,
+                i32::MIN as u32,
+                2,
+                0x80000001,
+                u32::MAX,
+            ],
+        );
+        raw.extend_from_slice(&[197, 2]);
+        words(&mut raw, &[u32::MAX]);
+        raw.push(197);
+        words(&mut raw, &[0x0002ffff, u32::MAX]);
+        raw.push(0);
+        raw.push(2);
+        words(&mut raw, &[i32::MIN as u32]);
+        raw.extend_from_slice(&[0, 0]);
+        assert_eq!(raw.len(), 151);
+        let cap = Limits {
+            max_bytes: 151,
+            max_items: 2,
+        };
+        let mut r = Reader {
+            data: &raw,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        let v = GameModifierAnalysis::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (151, 2));
+        assert_eq!(v.wire_version, 12);
+        assert_eq!(
+            [
+                v.feature_hash,
+                v.minor_civ_type_hash,
+                v.governor_hash,
+                v.unit_operation_hash,
+                v.unit_promotion_class_hash
+            ],
+            [None; 5]
+        );
+        assert_eq!(v.omitted_definition_default_index(), Some(-1));
+        assert_eq!(v.belief_hash, 0x80000000);
+        assert_eq!(v.great_person_class_hash, 0x80000010);
+        assert_eq!(v.discount_rate_bits, 0x7fc00001);
+        assert_eq!(v.unit_list, [0x80000001, u32::MAX]);
+        assert_eq!(v.city.present, BoolByte(197));
+        assert_eq!(v.city.value.as_ref().unwrap().id, u32::MAX);
+        assert_eq!(v.player.value, Some(i32::MIN));
+        let mut w = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits: cap,
+            measuring: true,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..raw.len() {
+            let mut r = Reader {
+                data: &raw[..n],
+                pos: 0,
+                items: 0,
+                limits: cap,
+            };
+            assert!(GameModifierAnalysis::read(&mut r).is_err());
+        }
+        for limits in [
+            Limits {
+                max_bytes: 150,
+                ..cap
+            },
+            Limits {
+                max_items: 1,
+                ..cap
+            },
+        ] {
+            let mut r = Reader {
+                data: &raw,
+                pos: 0,
+                items: 0,
+                limits,
+            };
+            assert_eq!(
+                GameModifierAnalysis::read(&mut r),
+                Err(Error::ResourceLimit)
+            );
+        }
+        let mut current = GameModifierAnalysis::default();
+        assert_eq!(current.wire_version, 17);
+        assert_eq!(current.omitted_definition_default_index(), None);
+        current.feature_hash = None;
+        assert_eq!(
+            current.write(&mut w),
+            Err(Error::MissingRetainedDefinitionHash("feature_hash"))
+        );
     }
     #[test]
     fn all_current_dispatches_and_boundaries() {
