@@ -10,18 +10,20 @@ use super::{
     reporting::yield_monitor::WarmRouteDomain,
     stock_script,
 };
-#[path = "stock_notifications_game_update.rs"]
-pub mod game_update;
-#[path = "stock_skip_turn.rs"]
-pub mod skip_turn;
-#[path = "stock_movement.rs"]
-pub mod movement;
-#[path = "stock_manager_queries.rs"]
-mod manager_queries;
 #[path = "stock_activation.rs"]
 mod activation;
+#[path = "stock_notifications_game_update.rs"]
+pub mod game_update;
+#[path = "stock_manager_queries.rs"]
+mod manager_queries;
+#[path = "stock_movement.rs"]
+pub mod movement;
 #[path = "stock_research.rs"]
 pub mod research;
+#[path = "stock_scoring.rs"]
+pub mod scoring;
+#[path = "stock_skip_turn.rs"]
+pub mod skip_turn;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -113,7 +115,9 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         let owner = match &notice {
-            Notice::TechnologyCompleted { owner, .. } | Notice::CivicCompleted { owner, .. } => *owner,
+            Notice::TechnologyCompleted { owner, .. } | Notice::CivicCompleted { owner, .. } => {
+                *owner
+            }
         };
         if !self
             .facts
