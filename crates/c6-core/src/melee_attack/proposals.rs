@@ -4,6 +4,7 @@
 use crate::unit::ComponentId;
 pub mod alliance;
 pub mod collections;
+pub mod player_strength;
 pub mod registry;
 
 pub trait ComponentCreatedContext {
