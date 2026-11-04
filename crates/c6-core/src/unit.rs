@@ -1,6 +1,6 @@
 //! Bounded Linux XP2 Unit/Formation wire records, not a Core Save loader or gameplay.
 //!
-//! Current operation queues support nine verified handlers and their exact
+//! Current operation queues support ten verified handlers and their exact
 //! parameter formats. Wire operation hashes are distinct from live numeric IDs.
 //! Unit17/28 wire/default profiles retain independent nested-codec gates.
 //! Legacy omitted runtime effects and missing prior scalars remain explicit.
@@ -18,6 +18,7 @@ pub use state::*;
 
 /// The original registered SkipTurn operation hash, never a numeric handler ID.
 pub const SKIP_TURN_HASH: u32 = 0x2c681908;
+pub const FOUND_CITY_HASH: u32 = 0x5733ac6c;
 pub const MOVE_TO_HASH: u32 = 0x580f2f68;
 pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
 pub const ALERT_HASH: u32 = 0xe547bc17;
@@ -44,6 +45,7 @@ pub enum OperationParameters {
 fn parameter_kind(hash: u32) -> Result<u8, Error> {
     match hash {
         SKIP_TURN_HASH
+        | FOUND_CITY_HASH
         | ALERT_HASH
         | FORTIFY_HASH
         | SPY_SIPHON_FUNDS_HASH
@@ -726,6 +728,32 @@ mod tests {
                 ..exact
             }),
             Err(Error::ResourceLimit)
+        );
+    }
+    #[test]
+    fn found_city_queue_uses_exact_parameterless_node() {
+        let words = [
+            1u32,
+            1,
+            FOUND_CITY_HASH,
+            2,
+            u32::MAX,
+            0,
+            5,
+            0x490cc8e1,
+            u32::MAX,
+            0,
+        ];
+        let bytes: Vec<u8> = words.into_iter().flat_map(u32::to_le_bytes).collect();
+        let queue = OperationQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(queue.nodes[0].operation_hash, FOUND_CITY_HASH);
+        assert_eq!(queue.nodes[0].parameters, OperationParameters::None);
+        assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
+        let mut bad = queue;
+        bad.nodes[0].operation_hash = 0;
+        assert_eq!(
+            bad.encode(Limits::default()),
+            Err(Error::UnsupportedHandler(0))
         );
     }
     #[test]
