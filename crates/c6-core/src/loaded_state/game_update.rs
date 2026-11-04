@@ -41,6 +41,7 @@ pub struct Runtime {
     pass_processed_ai: bool,
     player_frame: Option<PlayerFrame>,
     deactivation_started: bool,
+    local_observer: Option<i32>,
 }
 impl Runtime {
     /// Binding checks identity, not provenance of caller-supplied runtime facts.
@@ -55,6 +56,7 @@ impl Runtime {
             pass_processed_ai: false,
             player_frame: None,
             deactivation_started: false,
+            local_observer: None,
         }
     }
     pub fn pending(&self) -> Option<&core::Continuation> {

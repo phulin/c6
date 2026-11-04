@@ -1,6 +1,7 @@
 //! Current Game.Processor.ActivateNextPlayer selection (2a0bf90). Selection
 //! does not perform SetTurnActive, its report, or first-activation upkeep.
 use crate::{game_update::Error, loaded_state::LoadedState};
+pub mod local_player;
 
 #[derive(Debug)]
 #[must_use = "SetTurnActive(true) still owes its log/flags/report continuation"]
