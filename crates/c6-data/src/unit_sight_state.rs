@@ -205,49 +205,6 @@ impl<E: Effects> Context<'_, E> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    fn row(owner: i32) -> c6_core::map::PlayerVisibility {
-        c6_core::map::PlayerVisibility {
-            player: owner,
-            visibility: Visibility {
-                player_id: owner,
-                cached_num_revealed_hexes: 0,
-                cached_old: false,
-                revealed: vec![0],
-                layers: vec![],
-                outgoing_visibility: vec![],
-                outgoing_visibility_blockers: vec![],
-            },
-        }
-    }
-    #[test]
-    fn reordered_visibility_requires_actual_manager_mapping() {
-        let rows = vec![row(7), row(2)];
-        let mut mapping = [-1; 65];
-        mapping[7] = 0;
-        mapping[2] = 1;
-        assert!(std::ptr::eq(
-            mapped_visibility(&rows, Some(&mapping), 2).unwrap(),
-            &rows[1].visibility
-        ));
-        mapping[2] = 0;
-        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
-        assert!(mapped_visibility(&rows, None, 2).is_err());
-    }
-    #[test]
-    fn contradictory_or_duplicate_owner_is_not_silently_selected() {
-        let mut rows = vec![row(2)];
-        let mut mapping = [-1; 65];
-        mapping[2] = 0;
-        rows[0].visibility.player_id = 7;
-        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
-        rows[0].visibility.player_id = 2;
-        rows.push(row(2));
-        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
-    }
-}
 impl<E: Effects> visibility_change::Context for Context<'_, E> {
     type Error = Error<E::Error>;
     fn is_valid(&self, owner: i32) -> Result<bool, Self::Error> {
@@ -483,5 +440,49 @@ impl<E: Effects> SightContext for Context<'_, E> {
         self.effects
             .signal_unit_plot(self.state, self.runtime, self.actor, plot)
             .map_err(Error::Effect)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn row(owner: i32) -> c6_core::map::PlayerVisibility {
+        c6_core::map::PlayerVisibility {
+            player: owner,
+            visibility: Visibility {
+                player_id: owner,
+                cached_num_revealed_hexes: 0,
+                cached_old: false,
+                revealed: vec![0],
+                layers: vec![],
+                outgoing_visibility: vec![],
+                outgoing_visibility_blockers: vec![],
+            },
+        }
+    }
+    #[test]
+    fn reordered_visibility_requires_actual_manager_mapping() {
+        let rows = vec![row(7), row(2)];
+        let mut mapping = [-1; 65];
+        mapping[7] = 0;
+        mapping[2] = 1;
+        assert!(std::ptr::eq(
+            mapped_visibility(&rows, Some(&mapping), 2).unwrap(),
+            &rows[1].visibility
+        ));
+        mapping[2] = 0;
+        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
+        assert!(mapped_visibility(&rows, None, 2).is_err());
+    }
+    #[test]
+    fn contradictory_or_duplicate_owner_is_not_silently_selected() {
+        let mut rows = vec![row(2)];
+        let mut mapping = [-1; 65];
+        mapping[2] = 0;
+        rows[0].visibility.player_id = 7;
+        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
+        rows[0].visibility.player_id = 2;
+        rows.push(row(2));
+        assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
     }
 }
