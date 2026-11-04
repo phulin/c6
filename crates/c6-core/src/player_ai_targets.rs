@@ -1,4 +1,4 @@
-//! Exact current Linux XP2 AI.Targets saved wire and transitive knowledge records.
+//! Linux XP2 AI.Targets version3/4 saved wire and bounded knowledge records.
 //! No native lookups, archive changes, analyzers, callbacks, decisions or RNG run.
 use crate::unit::Limits;
 pub const VERSION: u32 = 4;
@@ -8,6 +8,7 @@ pub enum Error {
     Trailing,
     ResourceLimit,
     InvalidShape,
+    UnsupportedLegacyWrite,
     Version { expected: u32, actual: u32 },
 }
 impl std::fmt::Display for Error {
@@ -295,7 +296,71 @@ record!(CivKnowledge,7,{owner:i32,known_cities:Vec<CityKnowledge>,barbarians:Vec
 record!(ExplorationInfo,1,{num_cells:u32,cells_visible:u32,cells_revealed:u32});
 record!(AiTarget,3,{target_type:i32,location:PlotCoord,target_id:ComponentId,target_range:i32,target_priority:i32,refresh_location:BoolByte,refresh_priority:BoolByte,is_currently_visible:BoolByte});
 record!(TargetList,1,{targets:Vec<AiTarget>});
-record!(Targets,4,{player_id:i32,desired_targets:Vec<HashEntry<BoolByte>>,new_war_started:BoolByte,knowledge_base:CivKnowledge,operation_start_points:Vec<PlotCoord>,release_turn:i32,map_area_visibility:Vec<MapEntry<ExplorationInfo>>,map_visibility:Vec<MapEntry<ExplorationInfo>>,targets:TargetList});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Targets {
+    pub wire_version: u32,
+    pub player_id: i32,
+    pub desired_targets: Vec<HashEntry<BoolByte>>,
+    pub new_war_started: BoolByte,
+    pub knowledge_base: CivKnowledge,
+    pub operation_start_points: Vec<PlotCoord>,
+    pub release_turn: i32,
+    pub map_area_visibility: Vec<MapEntry<ExplorationInfo>>,
+    pub map_visibility: Vec<MapEntry<ExplorationInfo>>,
+    pub targets: TargetList,
+}
+impl Wire for Targets {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <Vec<HashEntry<BoolByte>> as Wire>::MIN
+        + <CivKnowledge as Wire>::MIN
+        + <Vec<PlotCoord> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<MapEntry<ExplorationInfo>> as Wire>::MIN
+        + <Vec<MapEntry<ExplorationInfo>> as Wire>::MIN
+        + <TargetList as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 3 | 4) {
+            return Err(Error::Version {
+                expected: 4,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_id: <i32 as Wire>::read(r)?,
+            desired_targets: <Vec<HashEntry<BoolByte>> as Wire>::read(r)?,
+            new_war_started: if wire_version == 4 {
+                <BoolByte as Wire>::read(r)?
+            } else {
+                BoolByte(0)
+            },
+            knowledge_base: <CivKnowledge as Wire>::read(r)?,
+            operation_start_points: <Vec<PlotCoord> as Wire>::read(r)?,
+            release_turn: <i32 as Wire>::read(r)?,
+            map_area_visibility: <Vec<MapEntry<ExplorationInfo>> as Wire>::read(r)?,
+            map_visibility: <Vec<MapEntry<ExplorationInfo>> as Wire>::read(r)?,
+            targets: <TargetList as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 4 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        4u32.write(w)?;
+        self.player_id.write(w)?;
+        self.desired_targets.write(w)?;
+        self.new_war_started.write(w)?;
+        self.knowledge_base.write(w)?;
+        self.operation_start_points.write(w)?;
+        self.release_turn.write(w)?;
+        self.map_area_visibility.write(w)?;
+        self.map_visibility.write(w)?;
+        self.targets.write(w)?;
+        Ok(())
+    }
+}
 macro_rules! bounded_codec {
     ($name:ident) => {
         impl $name {
@@ -368,6 +433,79 @@ bounded_codec!(Targets);
 mod tests {
     use super::*;
     #[test]
+    fn legacy_targets3_default_and_independent_knowledge_tag() {
+        fn words(raw: &mut Vec<u8>, xs: &[u32]) {
+            for v in xs {
+                raw.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        let mut raw = Vec::new();
+        words(&mut raw, &[3, u32::MAX, 1, u32::MAX]);
+        raw.push(197);
+        words(&mut raw, &[7, u32::MAX, 0, 0, 0, 0, 0, 64]);
+        for _ in 0..64 {
+            words(&mut raw, &[4]);
+            raw.push(0);
+        }
+        // TradeKnowledge1, two raw ComponentIDs, empty yield vectors.
+        words(
+            &mut raw,
+            &[
+                1,
+                u32::MAX,
+                u32::MAX,
+                u32::MAX,
+                u32::MAX,
+                u32::MAX,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+        );
+        words(&mut raw, &[0, 0, 0, u32::MAX, 0, 0, 1, 0]);
+        assert_eq!(raw.len(), 445);
+        let cap = Limits {
+            max_bytes: 445,
+            max_items: 65,
+        };
+        let (v, n, i) = Targets::decode_prefix_with_items(&raw, cap).unwrap();
+        assert_eq!((n, i), (445, 65));
+        assert_eq!(v.wire_version, 3);
+        assert_eq!(v.new_war_started, BoolByte(0));
+        assert_eq!(
+            (v.desired_targets[0].hash, v.desired_targets[0].value),
+            (u32::MAX, BoolByte(197))
+        );
+        assert_eq!(v.release_turn, -1);
+        assert_eq!(v.encode(cap), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..raw.len() {
+            assert!(Targets::decode(&raw[..n], cap).is_err());
+        }
+        for short in [
+            Limits {
+                max_bytes: 444,
+                ..cap
+            },
+            Limits {
+                max_items: 64,
+                ..cap
+            },
+        ] {
+            assert_eq!(Targets::decode(&raw, short), Err(Error::ResourceLimit));
+        }
+        let mut bad = raw.clone();
+        bad[17..21].copy_from_slice(&6u32.to_le_bytes());
+        assert_eq!(
+            Targets::decode(&bad, cap),
+            Err(Error::Version {
+                expected: 7,
+                actual: 6
+            })
+        );
+    }
+    #[test]
     fn targets_raw_carriers() {
         for byte in 0..=255 {
             let v = AiTarget {
@@ -420,7 +558,7 @@ mod tests {
             Vec::<CityKnowledge>::read(&mut r),
             Err(Error::ResourceLimit)
         );
-        for version in [0, 1, 3, 5, u32::MAX] {
+        for version in [0, 1, 2, 5, u32::MAX] {
             assert!(matches!(
                 Targets::decode(&version.to_le_bytes(), Limits::default()),
                 Err(Error::Version { .. })
@@ -829,6 +967,7 @@ mod tests {
             }],
         });
         carrier(Targets {
+            wire_version: 4,
             player_id: i32::MIN,
             desired_targets: vec![HashEntry {
                 hash: 0x87654321,
