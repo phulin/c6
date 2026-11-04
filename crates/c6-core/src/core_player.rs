@@ -3170,7 +3170,7 @@ pub(crate) mod tests {
             prioritized_moves: pmod::MoveList {
                 base_moves: vec![i32::MIN, -1, i32::MAX],
                 moves: vec![pmod::Move {
-                    allowed_move_hash: 3735879684,
+                    allowed_move: pmod::MoveReference::AllowedMoveHash(3735879684),
                     priority: -8995,
                 }],
             },

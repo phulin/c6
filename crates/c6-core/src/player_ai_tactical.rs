@@ -7,6 +7,7 @@ pub enum Error {
     Truncated,
     Trailing,
     ResourceLimit,
+    UnsupportedLegacyWrite,
     Version { expected: u32, actual: u32 },
 }
 impl std::fmt::Display for Error {
@@ -19,6 +20,7 @@ impl From<crate::player_ai_homeland::Error> for Error {
     fn from(value: crate::player_ai_homeland::Error) -> Self {
         use crate::player_ai_homeland::Error as E;
         match value {
+            E::UnsupportedLegacyWrite => Self::UnsupportedLegacyWrite,
             E::Truncated => Self::Truncated,
             E::Trailing => Self::Trailing,
             E::ResourceLimit => Self::ResourceLimit,
@@ -126,7 +128,9 @@ mod tests {
             prioritized_moves: MoveList {
                 base_moves: vec![i32::MIN, i32::MAX],
                 moves: vec![Move {
-                    allowed_move_hash: u32::MAX,
+                    allowed_move: crate::player_ai_homeland::MoveReference::AllowedMoveHash(
+                        u32::MAX,
+                    ),
                     priority: i32::MIN,
                 }],
             },

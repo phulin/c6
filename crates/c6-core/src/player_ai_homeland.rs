@@ -7,6 +7,7 @@ pub enum Error {
     Truncated,
     Trailing,
     ResourceLimit,
+    UnsupportedLegacyWrite,
     Version { expected: u32, actual: u32 },
 }
 impl std::fmt::Display for Error {
@@ -129,8 +130,45 @@ macro_rules! record {
  fn write(&self,w:&mut Writer)->Result<(),Error>{($version as u32).write(w)?;$(self.$field.write(w)?;)*Ok(())}}
  };
 }
-// Current Move v2 stores an AllowedMove definition hash, not a live ordinal.
-record!(Move,2,{allowed_move_hash:u32,priority:i32});
+/// Legacy MoveType ordinals and current AllowedMove hashes are distinct wire identities.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MoveReference {
+    LegacyType(i32),
+    AllowedMoveHash(u32),
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Move {
+    pub allowed_move: MoveReference,
+    pub priority: i32,
+}
+impl Wire for Move {
+    const MIN: usize = 12;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let version = u32::read(r)?;
+        let allowed_move = match version {
+            1 => MoveReference::LegacyType(i32::read(r)?),
+            2 => MoveReference::AllowedMoveHash(u32::read(r)?),
+            actual => {
+                return Err(Error::Version {
+                    expected: 2,
+                    actual,
+                })
+            }
+        };
+        Ok(Self {
+            allowed_move,
+            priority: i32::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        let MoveReference::AllowedMoveHash(hash) = self.allowed_move else {
+            return Err(Error::UnsupportedLegacyWrite);
+        };
+        2u32.write(w)?;
+        hash.write(w)?;
+        self.priority.write(w)
+    }
+}
 record!(MoveList,1,{base_moves:Vec<i32>,moves:Vec<Move>});
 // `additional_priority` is m_additionalPriority (+0xf8), not m_priority.
 record!(Homeland,1,{player_id:i32,control_instance_id:u32,additional_priority:i32,prioritized_moves:MoveList});
@@ -201,15 +239,61 @@ mod tests {
                 base_moves: vec![i32::MIN, 0, i32::MAX],
                 moves: vec![
                     Move {
-                        allowed_move_hash: u32::MAX,
+                        allowed_move: MoveReference::AllowedMoveHash(u32::MAX),
                         priority: i32::MIN,
                     },
                     Move {
-                        allowed_move_hash: 0,
+                        allowed_move: MoveReference::AllowedMoveHash(0),
                         priority: i32::MAX,
                     },
                 ],
             },
+        }
+    }
+    #[test]
+    fn legacy_move_type_is_not_a_hash() {
+        let mut raw = Vec::new();
+        // MoveList1, two raw base values, two Move1 occurrences.
+        for v in [
+            1u32,
+            2,
+            i32::MIN as u32,
+            u32::MAX,
+            2,
+            1,
+            u32::MAX,
+            (-257i32) as u32,
+            1,
+            i32::MIN as u32,
+            i32::MAX as u32,
+        ] {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        let cap = Limits {
+            max_bytes: raw.len(),
+            max_items: 4,
+        };
+        let (v, n, items) = MoveList::decode_prefix_with_items(&raw, cap).unwrap();
+        assert_eq!((n, items), (44, 4));
+        assert_eq!(v.base_moves, [i32::MIN, -1]);
+        assert_eq!(v.moves[0].allowed_move, MoveReference::LegacyType(-1));
+        assert_eq!(v.moves[1].allowed_move, MoveReference::LegacyType(i32::MIN));
+        assert_eq!(v.moves[0].priority, -257);
+        assert_eq!(v.encode(cap), Err(Error::UnsupportedLegacyWrite));
+        for end in 0..raw.len() {
+            assert!(MoveList::decode(&raw[..end], cap).is_err());
+        }
+        for cap in [
+            Limits {
+                max_bytes: 43,
+                ..cap
+            },
+            Limits {
+                max_items: 3,
+                ..cap
+            },
+        ] {
+            assert_eq!(MoveList::decode(&raw, cap), Err(Error::ResourceLimit));
         }
     }
     #[test]
