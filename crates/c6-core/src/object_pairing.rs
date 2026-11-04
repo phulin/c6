@@ -40,6 +40,47 @@ pub struct DecodedPrefix<'a> {
     pub tail: &'a [u8],
 }
 impl Manager {
+    /// Complete current native map snapshots. Keep both independently captured
+    /// maps; never synthesize the reverse map from child relationships.
+    pub fn from_current_maps(
+        children: Vec<(ComponentId, Vec<ComponentId>)>,
+        parents: Vec<(ComponentId, ComponentId)>,
+        limits: Limits,
+    ) -> Result<Self, Error> {
+        let items = children
+            .len()
+            .checked_add(parents.len())
+            .and_then(|n| children.iter().try_fold(n, |n, r| n.checked_add(r.1.len())))
+            .ok_or(Error::ResourceLimit)?;
+        if items > limits.max_items || items.checked_mul(16).is_none_or(|n| n > limits.max_bytes) {
+            return Err(Error::ResourceLimit);
+        }
+        let mut canonical_children = Vec::new();
+        for (key, value) in children {
+            assign(&mut canonical_children, key, value)?;
+        }
+        let mut canonical_parents = Vec::new();
+        for (key, value) in parents {
+            assign(&mut canonical_parents, key, value)?;
+        }
+        canonical_children.sort_by_key(|r| bits(r.0));
+        canonical_parents.sort_by_key(|r| bits(r.0));
+        Ok(Self {
+            wire_version: 1,
+            children: canonical_children,
+            parents: canonical_parents,
+        })
+    }
+    /// Native2696bb0 returns the shared null component for null/absent keys.
+    pub fn get_parent(&self, child: ComponentId) -> ComponentId {
+        if child == NULL_COMPONENT {
+            return NULL_COMPONENT;
+        }
+        self.parents
+            .binary_search_by_key(&bits(child), |r| bits(r.0))
+            .ok()
+            .map_or(NULL_COMPONENT, |at| self.parents[at].1)
+    }
     /// Source26962f0 ignores the version and skips negative signed map counts.
     /// Child vectors use unsigned counts; duplicate map keys overwrite in order.
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<DecodedPrefix<'_>, Error> {
@@ -193,6 +234,32 @@ mod tests {
         for end in 0..decoded.consumed {
             assert!(Manager::decode_prefix(&bytes[..end], Limits::default()).is_err());
         }
+    }
+    #[test]
+    fn current_independent_maps_preserve_parent_lookup_and_null_early_return() {
+        let child = id(2, 1, 7);
+        let parent = id(0, 1, 8);
+        let state = Manager::from_current_maps(
+            vec![],
+            vec![(child, parent), (NULL_COMPONENT, parent)],
+            Limits::default(),
+        )
+        .unwrap();
+        assert_eq!(state.get_parent(child), parent);
+        assert_eq!(state.get_parent(id(2, 1, 99)), NULL_COMPONENT);
+        assert_eq!(state.get_parent(NULL_COMPONENT), NULL_COMPONENT);
+        assert!(state.get_children(parent).is_empty());
+        assert!(matches!(
+            Manager::from_current_maps(
+                vec![],
+                vec![(child, parent)],
+                Limits {
+                    max_items: 0,
+                    max_bytes: 100
+                }
+            ),
+            Err(Error::ResourceLimit)
+        ));
     }
     #[test]
     fn signed_map_counts_skip_but_unsigned_child_counts_are_bounded() {
