@@ -2,6 +2,42 @@
 //! Threshold rules and all ChangePopulation subscribers are required services;
 //! this leaf is not City.DoTurn or a complete city economy implementation.
 
+/// Static current rules inputs; no captured threshold answers are stored.
+#[derive(Clone, Copy, Debug)]
+pub struct Parameters {
+    pub base: i32,
+    pub multiplier: i32,
+    pub exponent: f32,
+    pub speed_cost_multiplier: i32,
+}
+fn native_cvtt(value: f32) -> i32 {
+    if value.is_finite() && (-2147483648.0..2147483648.0).contains(&value) {
+        value as i32
+    } else {
+        i32::MIN
+    }
+}
+fn float_q8(value: f32) -> i32 {
+    // Native separates floor/integer and the low fractional byte. Rust's
+    // saturating float cast alone differs for NaNs and large values.
+    let whole = value.floor();
+    native_cvtt(whole).wrapping_shl(8) | i32::from(native_cvtt((value - whole) * 256.0) as u8)
+}
+impl Parameters {
+    /// 2be3230: Q8 arithmetic precedes clamped game-speed scaling and AsInt.
+    /// powf follows the target float dependency; native boundary comparison is
+    /// required before extending the supported input/domain claim.
+    pub fn threshold(self, population: i32) -> i32 {
+        let population = population.wrapping_sub(1);
+        let base = self.base.wrapping_shl(8);
+        let linear = self.multiplier.wrapping_mul(population).wrapping_shl(8);
+        let power = float_q8((population as f32).powf(self.exponent));
+        let value = base.wrapping_add(linear).wrapping_add(power) as i64;
+        let speed = self.speed_cost_multiplier.wrapping_shl(8) as i64;
+        ((value * speed / 25_600).clamp(i32::MIN as i64, i32::MAX as i64) as i32) >> 8
+    }
+}
+
 pub trait World {
     type Error;
     fn food_raw(&mut self) -> Result<i32, Self::Error>;
@@ -98,6 +134,29 @@ mod tests {
             Ok(())
         }
     }
+    #[test]
+    fn rules_threshold_keeps_fraction_before_game_speed_and_native_cast_bits() {
+        let p = Parameters {
+            base: 15,
+            multiplier: 8,
+            exponent: 1.5,
+            speed_cost_multiplier: 100,
+        };
+        assert_eq!(p.threshold(1), 15);
+        assert_eq!(p.threshold(2), 24);
+        assert_eq!(
+            Parameters {
+                speed_cost_multiplier: 150,
+                ..p
+            }
+            .threshold(3),
+            50
+        );
+        assert_eq!(float_q8(-0.1), -26);
+        assert_eq!(float_q8(f32::NAN), 0);
+        assert_eq!(float_q8(f32::INFINITY), 0);
+    }
+
     #[test]
     fn accumulates_fractional_food_without_population_change() {
         let mut c = City::new(256, 2);
