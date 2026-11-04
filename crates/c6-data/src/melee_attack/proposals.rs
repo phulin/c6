@@ -1,5 +1,6 @@
 //! Current-state Unit/Unit proposal registration and synchronous ObjectCreated.
 //! This is an internal generation stage, not AttackInto or damage resolution.
+use c6_core::melee_attack::proposals::{alliance, collections};
 use c6_core::{
     loaded_state::{combat_proposals::AccessError, LoadedState},
     map::UnitReference,
@@ -13,17 +14,23 @@ pub enum Error<E> {
     Actor(super::Error),
     Effects(E),
     UnsupportedDistrictReference,
+    Runtime(kernel::Error),
+    MissingCollection(u64),
+    MissingCollectionKind(u64),
+    Alliance(Box<alliance::Error<Error<E>>>),
+    Collection(Box<collections::Error<Error<E>>>),
 }
-/// Execute a source-qualified receiver against the SAME mutable state and
-/// canonical proposal. The receiver's collection/requirement/effect algorithms
-/// must be concrete; unknown or missing profiles return an error, never no-op.
+/// Execute a source-qualified downstream modifier receiver against the SAME
+/// state and canonical proposal. Collection filtering/AddItem dispatch is
+/// computed here; unknown modifier profiles return errors, never no-op.
 pub trait Effects {
     type Error;
-    fn object_created_receiver(
+    fn collection_item_changed(
         &mut self,
         state: &mut LoadedState,
         receiver: u64,
-        proposal: kernel::Handle,
+        proposal: &mut kernel::Handle,
+        added: bool,
     ) -> Result<(), Self::Error>;
 }
 pub struct Context<'a, E> {
@@ -79,8 +86,52 @@ impl<E: Effects> kernel::Context for Context<'_, E> {
         })
     }
     fn callback(&mut self, receiver: u64, proposal: kernel::Handle) -> Result<(), Self::Error> {
+        let kind = self
+            .state
+            .combat_proposals()
+            .map_err(Error::Access)?
+            .collections()
+            .map_err(Error::Runtime)?
+            .collection(receiver)
+            .ok_or(Error::MissingCollection(receiver))?
+            .kind
+            .ok_or(Error::MissingCollectionKind(receiver))?;
+        match kind {
+            collections::Kind::Alliance { .. } => {
+                alliance::on_combat_proposed(self, receiver, proposal)
+                    .map_err(|e| Error::Alliance(Box::new(e)))
+            }
+            collections::Kind::Player { .. } | collections::Kind::Unit { .. } => {
+                collections::add_item(self, receiver, proposal)
+                    .map_err(|e| Error::Collection(Box::new(e)))
+            }
+        }
+    }
+}
+impl<E: Effects> collections::Context for Context<'_, E> {
+    type Error = Error<E::Error>;
+    fn collections(&self) -> Result<&collections::Runtime, Self::Error> {
+        self.state
+            .combat_proposals()
+            .map_err(Error::Access)?
+            .collections()
+            .map_err(Error::Runtime)
+    }
+    fn collections_mut(&mut self) -> Result<&mut collections::Runtime, Self::Error> {
+        self.state
+            .combat_proposals_mut()
+            .map_err(Error::Access)?
+            .collections_mut()
+            .map_err(Error::Runtime)
+    }
+    fn item_changed(
+        &mut self,
+        receiver: u64,
+        proposal: &mut kernel::Handle,
+        added: bool,
+    ) -> Result<(), Self::Error> {
         self.effects
-            .object_created_receiver(self.state, receiver, proposal)
+            .collection_item_changed(self.state, receiver, proposal, added)
             .map_err(Error::Effects)
     }
 }

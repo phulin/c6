@@ -43,7 +43,7 @@ pub enum RegistryError {
     RetainOverflow,
 }
 
-/// One specific UnitMoved listener ring. Logical labels preserve callback
+/// One source-bound SignalBase listener ring. Logical labels preserve callback
 /// insertion/removal behavior; native allocations, addresses and pool sizes are
 /// not simulated. Removed labels are never reused while this owner is alive.
 #[derive(Debug)]

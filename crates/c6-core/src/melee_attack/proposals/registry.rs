@@ -76,6 +76,8 @@ pub enum Error {
     MissingSignal(Signal),
     DuplicateScope,
     InvalidHandle,
+    MissingCollections,
+    AlreadyInitialized,
     Ring(RegistryError),
 }
 #[derive(Debug)]
@@ -88,6 +90,7 @@ pub struct Runtime {
     global: Option<ListenerRing<Subscriber>>,
     owners: Option<Vec<(i32, ListenerRing<Subscriber>)>>,
     units: Option<Vec<(ComponentId, ListenerRing<Subscriber>)>>,
+    collections: Option<super::collections::Runtime>,
 }
 impl Runtime {
     pub fn from_initial(
@@ -120,7 +123,24 @@ impl Runtime {
             global,
             owners,
             units,
+            collections: None,
         })
+    }
+    pub fn with_collections(
+        mut self,
+        collections: super::collections::Runtime,
+    ) -> Result<Self, Error> {
+        if self.collections.is_some() {
+            return Err(Error::AlreadyInitialized);
+        }
+        self.collections = Some(collections);
+        Ok(self)
+    }
+    pub fn collections(&self) -> Result<&super::collections::Runtime, Error> {
+        self.collections.as_ref().ok_or(Error::MissingCollections)
+    }
+    pub fn collections_mut(&mut self) -> Result<&mut super::collections::Runtime, Error> {
+        self.collections.as_mut().ok_or(Error::MissingCollections)
     }
     pub fn counter(&self) -> u32 {
         self.counter

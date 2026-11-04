@@ -1,9 +1,10 @@
-//! One stock CombatProposals ObjectCreated listener, not the entire signal.
-//! The proposal registry must register the object before invoking this listener.
-//! Other registered consumers and their modifier effects remain mandatory.
+//! Linux CombatProposals ownership and source-qualified ObjectCreated listeners.
+//! Registered consumers and their current modifier effects remain mandatory;
+//! none of these stages completes melee generation or an applied attack.
 use crate::unit::ComponentId;
-pub mod registry;
+pub mod alliance;
 pub mod collections;
+pub mod registry;
 
 pub trait ComponentCreatedContext {
     type Error;
