@@ -1,17 +1,18 @@
 //! Canonical current global Game.Stats domains. This begins with the actual
-//! building-count array; other global counters remain unavailable, not zero.
+//! building-count array and lethal-combat counter; absent domains stay unknown.
 //! Saved Stats overlays are not substituted for a current dense snapshot.
 use super::{Error, LoadedState, ObservedSnapshotWitness, WireBinding};
 use crate::unit::HashValue;
 
 #[derive(Debug)]
 pub struct Statistics {
-    buildings: Vec<HashValue<i32>>,
+    buildings: Option<Vec<HashValue<i32>>>,
+    units_killed: Option<i32>,
     source: Option<ObservedSnapshotWitness>,
 }
 impl Statistics {
-    pub fn building_counts(&self) -> &[HashValue<i32>] {
-        &self.buildings
+    pub fn building_counts(&self) -> Option<&[HashValue<i32>]> {
+        self.buildings.as_deref()
     }
     pub fn source(&self) -> Option<&ObservedSnapshotWitness> {
         self.source.as_ref()
@@ -47,7 +48,11 @@ impl LoadedState {
         {
             return Err(AccessError::State(Error::Binding));
         }
-        if self.game_statistics.is_some() {
+        if self
+            .game_statistics
+            .as_ref()
+            .is_some_and(|s| s.buildings.is_some())
+        {
             return Err(AccessError::State(Error::AlreadyBound));
         }
         if buildings.len() > self.limits.max_runtime_array_items {
@@ -65,9 +70,82 @@ impl LoadedState {
             .revision
             .checked_add(1)
             .ok_or(AccessError::State(Error::ResourceLimit))?;
-        self.game_statistics = Some(Statistics { buildings, source });
+        if let Some(stats) = &mut self.game_statistics {
+            stats.buildings = Some(buildings);
+        } else {
+            self.game_statistics = Some(Statistics {
+                buildings: Some(buildings),
+                units_killed: None,
+                source,
+            });
+        }
         self.revision = next;
         Ok(())
+    }
+    /// Current native Game.Stats+1a8 value (FAutoVariable payload at+8).
+    /// Installing this scalar does not supply the independent building domain.
+    pub fn install_game_units_killed(
+        &mut self,
+        binding: &WireBinding,
+        value: i32,
+        source: Option<ObservedSnapshotWitness>,
+    ) -> Result<(), AccessError> {
+        if binding != &self.binding
+            || source.as_ref().is_some_and(|s| {
+                s.capture_configuration_sha256 != binding.inputs.configuration_sha256
+            })
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        if self
+            .game_statistics
+            .as_ref()
+            .is_some_and(|s| s.units_killed.is_some())
+        {
+            return Err(AccessError::State(Error::AlreadyBound));
+        }
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(AccessError::State(Error::ResourceLimit))?;
+        if let Some(stats) = &mut self.game_statistics {
+            stats.units_killed = Some(value);
+        } else {
+            self.game_statistics = Some(Statistics {
+                buildings: None,
+                units_killed: Some(value),
+                source,
+            });
+        }
+        self.revision = next;
+        Ok(())
+    }
+    pub fn game_units_killed(&self) -> Result<i32, AccessError> {
+        self.game_statistics()?
+            .units_killed
+            .ok_or(AccessError::Unavailable)
+    }
+    /// OnCombatOccuredBeforeSignal2a1c080 tests attacker then defender delayed
+    /// death, incrementing once even when both are dead. No callback or RNG.
+    pub fn record_game_combat_death(
+        &mut self,
+        attacker_delayed: bool,
+        defender_delayed: impl FnOnce() -> Result<bool, AccessError>,
+    ) -> Result<bool, AccessError> {
+        if !attacker_delayed && !defender_delayed()? {
+            return Ok(false);
+        }
+        let value = self.game_units_killed()?;
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(AccessError::State(Error::ResourceLimit))?;
+        self.game_statistics
+            .as_mut()
+            .expect("validated stats")
+            .units_killed = Some(value.wrapping_add(1));
+        self.revision = next;
+        Ok(true)
     }
     pub fn game_statistics(&self) -> Result<&Statistics, AccessError> {
         self.game_statistics
@@ -77,6 +155,8 @@ impl LoadedState {
     pub fn game_building_count(&self, building: u32) -> Result<i32, AccessError> {
         self.game_statistics()?
             .buildings
+            .as_ref()
+            .ok_or(AccessError::Unavailable)?
             .iter()
             .find(|v| v.definition_hash == building)
             .map(|v| v.value)
@@ -100,6 +180,8 @@ impl LoadedState {
             .ok_or(AccessError::Unavailable)?;
         let index = stats
             .buildings
+            .as_ref()
+            .ok_or(AccessError::Unavailable)?
             .iter()
             .position(|v| v.definition_hash == building)
             .ok_or(AccessError::UnknownBuilding(building))?;
@@ -108,7 +190,8 @@ impl LoadedState {
             .checked_add(1)
             .ok_or(AccessError::State(Error::ResourceLimit))?;
         let stats = self.game_statistics.as_mut().expect("validated domain");
-        stats.buildings[index].value = stats.buildings[index].value.wrapping_add(1);
+        let buildings = stats.buildings.as_mut().expect("validated building domain");
+        buildings[index].value = buildings[index].value.wrapping_add(1);
         self.revision = next;
         Ok(true)
     }
@@ -155,6 +238,29 @@ mod tests {
             Err(AccessError::UnknownBuilding(8))
         ));
         assert_eq!(state.revision(), stamp);
+    }
+    #[test]
+    fn combat_death_is_lazy_wraps_once_and_does_not_supply_buildings() {
+        let mut state = super::super::tests::state();
+        let revision = state.revision();
+        assert!(!state.record_game_combat_death(false, || Ok(false)).unwrap());
+        assert_eq!(state.revision(), revision);
+        let binding = state.binding().clone();
+        state
+            .install_game_units_killed(&binding, i32::MAX, None)
+            .unwrap();
+        assert!(state
+            .record_game_combat_death(true, || panic!("native skips defender query"))
+            .unwrap());
+        assert_eq!(state.game_units_killed().unwrap(), i32::MIN);
+        assert!(matches!(
+            state.game_building_count(7),
+            Err(AccessError::Unavailable)
+        ));
+        state
+            .install_game_building_counts(&binding, vec![], None)
+            .unwrap();
+        assert_eq!(state.game_units_killed().unwrap(), i32::MIN);
     }
     #[test]
     fn duplicate_or_foreign_inputs_reject_before_installing() {
