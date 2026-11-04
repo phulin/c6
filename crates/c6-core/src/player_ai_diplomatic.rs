@@ -1,4 +1,4 @@
-//! Exact current Linux XP2 AI.Diplomatic saved wire, distinct from Player.Diplomacy.
+//! Linux XP2 AI.Diplomatic version 15/18 saved wire, distinct from Player.Diplomacy.
 //! No native lookups, archive changes, analyzers, callbacks, decisions or RNG run.
 use crate::unit::Limits;
 pub const VERSION: u32 = 18;
@@ -8,6 +8,7 @@ pub enum Error {
     Trailing,
     ResourceLimit,
     ConditionalPayload,
+    UnsupportedLegacyWrite,
     Version { expected: u32, actual: u32 },
 }
 impl std::fmt::Display for Error {
@@ -177,7 +178,152 @@ record!(DiplomaticTransition,2,{player_diplomacy_player:i32,opponent_player:i32,
 record!(TriggeredTransition,1,{next_state_name:Vec<u8>,next_state_index:i32,trigger:i32});
 record!(ActionEvalVector,2,{handlers:Vec<DiplomaticActionHandler>,is_updated:BoolByte});
 record!(ControlHandle,1,{player_id:i32,id:u32});
-record!(Diplomatic,18,{player_id:i32,min_force_to_notice_q8:i32,min_troubling_force_q8:i32,diplomatic_scores_q8:Vec<i32>,base_diplo_scores_q8:Vec<i32>,visible_scores_q8:Vec<Vec<i32>>,diplomatic_states:StateVector,diplo_action_evaluator:ActionEvalVector,num_majors_met:i32,player_threats_q8:Vec<i32>,player_major_threats:Vec<BoolByte>,player_trusts_q8:Vec<i32>,managed_contracts:Vec<ControlHandle>,best_potential_friend:i32,partner_action_preference:Vec<Vec<HashEntry<i32>>>,partner_action_worth_q8:Vec<Vec<HashEntry<i32>>>,closed_partner_action:Vec<Vec<HashEntry<BoolByte>>>,requested_items:Vec<TradeItem>,excluded_items:Vec<TradeItem>,favor_traded_this_turn:i32,done_off_turn:BoolByte});
+/// Saved rows remain ordered wire pairs, not initialized native definition arrays.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Diplomatic {
+    pub wire_version: u32,
+    pub player_id: i32,
+    pub min_force_to_notice_q8: i32,
+    pub min_troubling_force_q8: i32,
+    pub diplomatic_scores_q8: Vec<i32>,
+    pub base_diplo_scores_q8: Vec<i32>,
+    pub visible_scores_q8: Vec<Vec<i32>>,
+    pub diplomatic_states: StateVector,
+    pub diplo_action_evaluator: ActionEvalVector,
+    pub num_majors_met: i32,
+    pub player_threats_q8: Vec<i32>,
+    pub player_major_threats: Vec<BoolByte>,
+    pub player_trusts_q8: Vec<i32>,
+    pub managed_contracts: Vec<ControlHandle>,
+    pub best_potential_friend: i32,
+    pub partner_action_preference: Vec<Vec<HashEntry<i32>>>,
+    pub partner_action_worth_q8: Vec<Vec<HashEntry<i32>>>,
+    pub closed_partner_action: Vec<Vec<HashEntry<BoolByte>>>,
+    pub requested_items: Vec<TradeItem>,
+    /// None at version 15: no payload; native initialization is not applied.
+    pub excluded_items: Option<Vec<TradeItem>>,
+    pub favor_traded_this_turn: i32,
+    pub done_off_turn: BoolByte,
+}
+/// Native Read resets each omitted row at the actual DiplomaticAction definition count.
+/// This descriptor does not invent that count or materialize a runtime table.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct OmittedPartnerTableDefaults {
+    pub rows: usize,
+    pub worth_q8: i32,
+    pub closed: bool,
+}
+impl Diplomatic {
+    pub fn omitted_partner_table_defaults(&self) -> Option<OmittedPartnerTableDefaults> {
+        (self.wire_version == 15).then_some(OmittedPartnerTableDefaults {
+            rows: 64,
+            worth_q8: 0,
+            closed: false,
+        })
+    }
+}
+impl Wire for Diplomatic {
+    // Minimum version-15 wire; omitted tables have no wire count or item charge.
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<Vec<i32>> as Wire>::MIN
+        + <StateVector as Wire>::MIN
+        + <ActionEvalVector as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<BoolByte> as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<ControlHandle> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<Vec<HashEntry<i32>>> as Wire>::MIN
+        + <Vec<TradeItem> as Wire>::MIN
+        + <BoolByte as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | 18) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_id: <i32 as Wire>::read(r)?,
+            min_force_to_notice_q8: <i32 as Wire>::read(r)?,
+            min_troubling_force_q8: <i32 as Wire>::read(r)?,
+            diplomatic_scores_q8: <Vec<i32> as Wire>::read(r)?,
+            base_diplo_scores_q8: <Vec<i32> as Wire>::read(r)?,
+            visible_scores_q8: <Vec<Vec<i32>> as Wire>::read(r)?,
+            diplomatic_states: <StateVector as Wire>::read(r)?,
+            diplo_action_evaluator: <ActionEvalVector as Wire>::read(r)?,
+            num_majors_met: <i32 as Wire>::read(r)?,
+            player_threats_q8: <Vec<i32> as Wire>::read(r)?,
+            player_major_threats: <Vec<BoolByte> as Wire>::read(r)?,
+            player_trusts_q8: <Vec<i32> as Wire>::read(r)?,
+            managed_contracts: <Vec<ControlHandle> as Wire>::read(r)?,
+            best_potential_friend: <i32 as Wire>::read(r)?,
+            partner_action_preference: <Vec<Vec<HashEntry<i32>>> as Wire>::read(r)?,
+            partner_action_worth_q8: if wire_version == 18 {
+                <Vec<Vec<HashEntry<i32>>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            closed_partner_action: if wire_version == 18 {
+                <Vec<Vec<HashEntry<BoolByte>>> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            requested_items: <Vec<TradeItem> as Wire>::read(r)?,
+            excluded_items: if wire_version == 18 {
+                Some(<Vec<TradeItem> as Wire>::read(r)?)
+            } else {
+                None
+            },
+            favor_traded_this_turn: if wire_version == 18 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            done_off_turn: <BoolByte as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let excluded = self
+            .excluded_items
+            .as_ref()
+            .ok_or(Error::ConditionalPayload)?;
+        VERSION.write(w)?;
+        self.player_id.write(w)?;
+        self.min_force_to_notice_q8.write(w)?;
+        self.min_troubling_force_q8.write(w)?;
+        self.diplomatic_scores_q8.write(w)?;
+        self.base_diplo_scores_q8.write(w)?;
+        self.visible_scores_q8.write(w)?;
+        self.diplomatic_states.write(w)?;
+        self.diplo_action_evaluator.write(w)?;
+        self.num_majors_met.write(w)?;
+        self.player_threats_q8.write(w)?;
+        self.player_major_threats.write(w)?;
+        self.player_trusts_q8.write(w)?;
+        self.managed_contracts.write(w)?;
+        self.best_potential_friend.write(w)?;
+        self.partner_action_preference.write(w)?;
+        self.partner_action_worth_q8.write(w)?;
+        self.closed_partner_action.write(w)?;
+        self.requested_items.write(w)?;
+        excluded.write(w)?;
+        self.favor_traded_this_turn.write(w)?;
+        self.done_off_turn.write(w)?;
+        Ok(())
+    }
+}
 /// The two indexed arrays exist only when both saved player IDs differ from -1.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DiplomaticActionHandler {
@@ -282,6 +428,7 @@ mod tests {
     use super::*;
     fn sample() -> Diplomatic {
         Diplomatic {
+            wire_version: VERSION,
             player_id: -7,
             min_force_to_notice_q8: i32::MIN,
             min_troubling_force_q8: i32::MAX,
@@ -380,16 +527,152 @@ mod tests {
                 item_sub_type: u32::MAX,
                 item_value: u32::MAX,
             }],
-            excluded_items: vec![TradeItem {
+            excluded_items: Some(vec![TradeItem {
                 game_turn: i32::MIN,
                 other_player: i32::MAX,
                 item_type: u32::MAX,
                 item_sub_type: u32::MAX,
                 item_value: u32::MAX,
-            }],
+            }]),
             favor_traded_this_turn: -7,
             done_off_turn: BoolByte(2),
         }
+    }
+    fn legacy15() -> Vec<u8> {
+        fn words(raw: &mut Vec<u8>, values: &[u32]) {
+            for value in values {
+                raw.extend_from_slice(&value.to_le_bytes());
+            }
+        }
+        let mut raw = Vec::new();
+        words(
+            &mut raw,
+            &[
+                15,
+                u32::MAX,
+                i32::MIN as u32,
+                i32::MAX as u32,
+                2,
+                i32::MIN as u32,
+                (-257i32) as u32,
+                1,
+                i32::MAX as u32,
+                1,
+                2,
+                u32::MAX,
+                23,
+                2,
+                0,
+            ],
+        );
+        raw.push(197); // StateVector raw updated byte
+        words(&mut raw, &[2, 0]);
+        raw.push(2); // ActionEvalVector raw updated byte
+        words(&mut raw, &[u32::MAX, 1, (-257i32) as u32, 1]);
+        raw.push(197); // raw major-threat byte
+        words(
+            &mut raw,
+            &[
+                1,
+                i32::MIN as u32,
+                1,
+                1,
+                u32::MAX,
+                u32::MAX,
+                u32::MAX,
+                1,
+                2,
+                u32::MAX,
+                i32::MIN as u32,
+                u32::MAX,
+                i32::MAX as u32,
+                1,
+                1,
+                u32::MAX,
+                i32::MAX as u32,
+                u32::MAX,
+                0x80000001,
+                7,
+            ],
+        );
+        raw.push(197);
+        raw
+    }
+    #[test]
+    fn legacy15_omissions_and_shared_budget() {
+        let raw = legacy15();
+        assert_eq!(raw.len(), 168);
+        let cap = Limits {
+            max_bytes: raw.len(),
+            max_items: 14,
+        };
+        let (v, used, items) = Diplomatic::decode_prefix_with_items(&raw, cap).unwrap();
+        assert_eq!((used, items), (168, 14));
+        assert_eq!(v.wire_version, 15);
+        assert_eq!(v.player_id, -1);
+        assert_eq!(v.diplomatic_scores_q8, [i32::MIN, -257]);
+        assert_eq!(
+            v.partner_action_preference[0]
+                .iter()
+                .map(|x| (x.hash, x.value))
+                .collect::<Vec<_>>(),
+            [(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)]
+        );
+        assert!(v.partner_action_worth_q8.is_empty());
+        assert!(v.closed_partner_action.is_empty());
+        assert_eq!(
+            v.omitted_partner_table_defaults(),
+            Some(OmittedPartnerTableDefaults {
+                rows: 64,
+                worth_q8: 0,
+                closed: false,
+            })
+        );
+        assert_eq!(v.excluded_items, None);
+        assert_eq!(v.favor_traded_this_turn, 0);
+        assert_eq!(v.requested_items[0].item_sub_type, 0x80000001);
+        assert_eq!(v.done_off_turn, BoolByte(197));
+        assert_eq!(v.encode(cap), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..raw.len() {
+            assert!(Diplomatic::decode(&raw[..n], cap).is_err());
+        }
+        for short in [
+            Limits {
+                max_bytes: 167,
+                ..cap
+            },
+            Limits {
+                max_items: 13,
+                ..cap
+            },
+        ] {
+            assert_eq!(Diplomatic::decode(&raw, short), Err(Error::ResourceLimit));
+        }
+        let mut nested = raw.clone();
+        nested[52..56].copy_from_slice(&1u32.to_le_bytes());
+        assert_eq!(
+            Diplomatic::decode(&nested, cap),
+            Err(Error::Version {
+                expected: 2,
+                actual: 1
+            })
+        );
+        let mut unsupported = raw.clone();
+        unsupported[..4].copy_from_slice(&16u32.to_le_bytes());
+        assert_eq!(
+            Diplomatic::decode(&unsupported, cap),
+            Err(Error::Version {
+                expected: 18,
+                actual: 16
+            })
+        );
+    }
+    #[test]
+    fn current_excluded_items_must_be_retained() {
+        let mut v = sample();
+        assert_eq!(v.omitted_partner_table_defaults(), None);
+        v.excluded_items = None;
+        assert_eq!(v.encode(Limits::default()), Err(Error::ConditionalPayload));
     }
     #[test]
     fn all_nested_boundaries() {

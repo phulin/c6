@@ -2854,6 +2854,7 @@ pub(crate) mod tests {
     fn ai_diplomatic_carrier() -> player_ai_diplomatic::Diplomatic {
         use crate::player_ai_diplomatic as pmod;
         pmod::Diplomatic {
+            wire_version: 18,
             player_id: -9000,
             min_force_to_notice_q8: -8999,
             min_troubling_force_q8: -8998,
@@ -2952,13 +2953,13 @@ pub(crate) mod tests {
                 item_sub_type: 3735879700,
                 item_value: 3735879701,
             }],
-            excluded_items: vec![pmod::TradeItem {
+            excluded_items: Some(vec![pmod::TradeItem {
                 game_turn: -8982,
                 other_player: -8981,
                 item_type: 3735879700,
                 item_sub_type: 3735879701,
                 item_value: 3735879702,
-            }],
+            }]),
             favor_traded_this_turn: -8981,
             done_off_turn: pmod::BoolByte(197),
         }
