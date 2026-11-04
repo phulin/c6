@@ -2644,6 +2644,7 @@ pub(crate) mod tests {
                         food_loss_turns: vec![i32::MIN, -1, i32::MAX],
                         food_loss_populations: vec![i32::MIN, -1, i32::MAX],
                         city_unit_efficiencies: vec![pmod::UnitEfficiency {
+                            wire_version: 4,
                             unit_hash: 3203334169,
                             max_damage: -7974,
                             is_obsolete: pmod::BoolByte(197),
@@ -2662,7 +2663,7 @@ pub(crate) mod tests {
                             efficiency_against_everyone: -7960,
                             efficiency_against_player: vec![i32::MIN, -1, i32::MAX],
                             raw_efficiency: -7958,
-                            maintenance_resource_hash: 3203334187,
+                            maintenance_resource_hash: Some(3203334187),
                             num_resource_needed: -7956,
                         }],
                         city_trade: pmod::TradeCity {

@@ -14,6 +14,7 @@ pub const RECYCLED_VERSION: u32 = 0x10001;
 pub enum Error {
     UnsupportedLegacyWrite,
     MissingRetainedCurrentBaseYields,
+    MissingRetainedMaintenanceResourceHash,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -205,15 +206,156 @@ record!(PlotReservation, 1, { controller: u32, value: i32, tag: u32 });
 record!(TradeConnection, 1, { city: ComponentId, rail_connection: BoolByte, rail_value: i32 });
 record!(TradeCity, 3, { city: ComponentId, current_routes: i32, current_units: i32,
     connected_cities: Vec<TradeConnection>, known_failed_connections: Vec<ComponentId> });
-record!(UnitEfficiency, 4, {
-    unit_hash: u32, max_damage: i32, is_obsolete: BoolByte, is_ranged: BoolByte,
-    is_naval: BoolByte, has_zone_of_control: BoolByte, civ_unique: BoolByte,
-    exclude_from_efficiency_calculation: BoolByte, can_build: BoolByte,
-    speed: i32, range: i32, main_combat_strength: i32, defense: i32, num_in_use: i32,
-    efficiency_against_all_enemies: i32, efficiency_against_everyone: i32,
-    efficiency_against_player: Vec<i32>, raw_efficiency: i32,
-    maintenance_resource_hash: u32, num_resource_needed: i32
-});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnitEfficiency {
+    pub wire_version: u32,
+    pub unit_hash: u32,
+    pub max_damage: i32,
+    pub is_obsolete: BoolByte,
+    pub is_ranged: BoolByte,
+    pub is_naval: BoolByte,
+    pub has_zone_of_control: BoolByte,
+    pub civ_unique: BoolByte,
+    pub exclude_from_efficiency_calculation: BoolByte,
+    pub can_build: BoolByte,
+    pub speed: i32,
+    pub range: i32,
+    pub main_combat_strength: i32,
+    pub defense: i32,
+    pub num_in_use: i32,
+    pub efficiency_against_all_enemies: i32,
+    pub efficiency_against_everyone: i32,
+    pub efficiency_against_player: Vec<i32>,
+    pub raw_efficiency: i32,
+    /// None at version 3: no saved hash; native Read assigns index-1.
+    pub maintenance_resource_hash: Option<u32>,
+    pub num_resource_needed: i32,
+}
+impl Default for UnitEfficiency {
+    fn default() -> Self {
+        Self {
+            wire_version: 4,
+            unit_hash: Default::default(),
+            max_damage: Default::default(),
+            is_obsolete: Default::default(),
+            is_ranged: Default::default(),
+            is_naval: Default::default(),
+            has_zone_of_control: Default::default(),
+            civ_unique: Default::default(),
+            exclude_from_efficiency_calculation: Default::default(),
+            can_build: Default::default(),
+            speed: Default::default(),
+            range: Default::default(),
+            main_combat_strength: Default::default(),
+            defense: Default::default(),
+            num_in_use: Default::default(),
+            efficiency_against_all_enemies: Default::default(),
+            efficiency_against_everyone: Default::default(),
+            efficiency_against_player: Default::default(),
+            raw_efficiency: Default::default(),
+            maintenance_resource_hash: Some(0),
+            num_resource_needed: Default::default(),
+        }
+    }
+}
+impl UnitEfficiency {
+    /// Native collection-index default, kept distinct from absent hash bits.
+    pub fn maintenance_resource_default_index(&self) -> Option<i32> {
+        (self.wire_version == 3).then_some(-1)
+    }
+}
+impl Wire for UnitEfficiency {
+    const MIN: usize = 4
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <i32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if wire_version != 3 && wire_version != 4 {
+            return Err(Error::Version {
+                expected: 4,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            unit_hash: <u32 as Wire>::read(r)?,
+            max_damage: <i32 as Wire>::read(r)?,
+            is_obsolete: <BoolByte as Wire>::read(r)?,
+            is_ranged: <BoolByte as Wire>::read(r)?,
+            is_naval: <BoolByte as Wire>::read(r)?,
+            has_zone_of_control: <BoolByte as Wire>::read(r)?,
+            civ_unique: <BoolByte as Wire>::read(r)?,
+            exclude_from_efficiency_calculation: <BoolByte as Wire>::read(r)?,
+            can_build: <BoolByte as Wire>::read(r)?,
+            speed: <i32 as Wire>::read(r)?,
+            range: <i32 as Wire>::read(r)?,
+            main_combat_strength: <i32 as Wire>::read(r)?,
+            defense: <i32 as Wire>::read(r)?,
+            num_in_use: <i32 as Wire>::read(r)?,
+            efficiency_against_all_enemies: <i32 as Wire>::read(r)?,
+            efficiency_against_everyone: <i32 as Wire>::read(r)?,
+            efficiency_against_player: <Vec<i32> as Wire>::read(r)?,
+            raw_efficiency: <i32 as Wire>::read(r)?,
+            maintenance_resource_hash: if wire_version == 3 {
+                None
+            } else {
+                Some(<u32 as Wire>::read(r)?)
+            },
+            num_resource_needed: if wire_version == 3 {
+                0
+            } else {
+                <i32 as Wire>::read(r)?
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 4 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let resource = self
+            .maintenance_resource_hash
+            .ok_or(Error::MissingRetainedMaintenanceResourceHash)?;
+        4u32.write(w)?;
+        self.unit_hash.write(w)?;
+        self.max_damage.write(w)?;
+        self.is_obsolete.write(w)?;
+        self.is_ranged.write(w)?;
+        self.is_naval.write(w)?;
+        self.has_zone_of_control.write(w)?;
+        self.civ_unique.write(w)?;
+        self.exclude_from_efficiency_calculation.write(w)?;
+        self.can_build.write(w)?;
+        self.speed.write(w)?;
+        self.range.write(w)?;
+        self.main_combat_strength.write(w)?;
+        self.defense.write(w)?;
+        self.num_in_use.write(w)?;
+        self.efficiency_against_all_enemies.write(w)?;
+        self.efficiency_against_everyone.write(w)?;
+        self.efficiency_against_player.write(w)?;
+        self.raw_efficiency.write(w)?;
+        resource.write(w)?;
+        self.num_resource_needed.write(w)?;
+        Ok(())
+    }
+}
+
 /// Native WriteArray saves a count (exactly six in the current writer).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Neighbors(pub [i16; 6]);
@@ -914,6 +1056,134 @@ mod tests {
         assert_eq!(
             invalid.write(&mut w),
             Err(Error::MissingRetainedCurrentBaseYields)
+        );
+    }
+    #[test]
+    fn unit_efficiency3_keeps_absent_hash_distinct_from_native_index() {
+        let mut value = UnitEfficiency {
+            unit_hash: u32::MAX,
+            maintenance_resource_hash: Some(0xfedcba98),
+            num_resource_needed: -8,
+            civ_unique: BoolByte(197),
+            raw_efficiency: i32::MIN,
+            efficiency_against_player: vec![i32::MIN, -257, i32::MAX],
+            ..Default::default()
+        };
+        let limits = Limits::default();
+        let mut w = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits,
+            measuring: false,
+        };
+        value.write(&mut w).unwrap();
+        w.data.truncate(w.data.len() - 8);
+        w.data[..4].copy_from_slice(&3u32.to_le_bytes());
+        value.wire_version = 3;
+        value.maintenance_resource_hash = None;
+        value.num_resource_needed = 0;
+        let exact = Limits {
+            max_bytes: w.data.len(),
+            max_items: 3,
+        };
+        let mut r = Reader {
+            data: &w.data,
+            pos: 0,
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(UnitEfficiency::read(&mut r).unwrap(), value);
+        assert_eq!((r.pos, r.items), (w.data.len(), 3));
+        assert_eq!(value.maintenance_resource_default_index(), Some(-1));
+        let mut out = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits,
+            measuring: false,
+        };
+        assert_eq!(value.write(&mut out), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..w.data.len() {
+            assert!(UnitEfficiency::read(&mut Reader {
+                data: &w.data[..n],
+                pos: 0,
+                items: 0,
+                limits: exact
+            })
+            .is_err());
+        }
+        assert_eq!(
+            UnitEfficiency::read(&mut Reader {
+                data: &w.data,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_items: 2,
+                    ..exact
+                }
+            }),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            UnitEfficiency::read(&mut Reader {
+                data: &w.data,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes: w.data.len() - 1,
+                    ..exact
+                }
+            }),
+            Err(Error::ResourceLimit)
+        );
+        w.data[..4].copy_from_slice(&2u32.to_le_bytes());
+        assert_eq!(
+            UnitEfficiency::read(&mut Reader {
+                data: &w.data,
+                pos: 0,
+                items: 0,
+                limits: exact
+            }),
+            Err(Error::Version {
+                expected: 4,
+                actual: 2
+            })
+        );
+        let missing = UnitEfficiency {
+            maintenance_resource_hash: None,
+            ..Default::default()
+        };
+        assert_eq!(
+            missing.write(&mut out),
+            Err(Error::MissingRetainedMaintenanceResourceHash)
+        );
+        let mut minimal = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits,
+            measuring: false,
+        };
+        UnitEfficiency::default().write(&mut minimal).unwrap();
+        minimal.data.truncate(minimal.data.len() - 8);
+        minimal.data[..4].copy_from_slice(&3u32.to_le_bytes());
+        assert_eq!(minimal.data.len(), UnitEfficiency::MIN);
+        let mut wrapped = 1u32.to_le_bytes().to_vec();
+        wrapped.extend_from_slice(&minimal.data);
+        assert_eq!(
+            Vec::<UnitEfficiency>::read(&mut Reader {
+                data: &wrapped,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes: wrapped.len(),
+                    max_items: 1
+                }
+            })
+            .unwrap()
+            .len(),
+            1
         );
     }
 }
