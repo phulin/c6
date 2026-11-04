@@ -258,6 +258,7 @@ pub struct Context<'s, 'a, 'r> {
     layer: u32,
     memo: logic::MovementMemo,
     starting_remaining_override: Option<i32>,
+    capabilities: Option<&'a c6_core::game_capabilities::Membership>,
 }
 impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
     pub fn new(
@@ -288,6 +289,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             layer: u32::MAX,
             memo: logic::MovementMemo::default(),
             starting_remaining_override: None,
+            capabilities: None,
         })
     }
     fn record(&self) -> &Formation {
@@ -300,8 +302,19 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .expect("retained Formation")
             .record
     }
+    pub fn with_capabilities(
+        mut self,
+        capabilities: &'a c6_core::game_capabilities::Membership,
+    ) -> Self {
+        self.capabilities = Some(capabilities);
+        self
+    }
     pub fn placement(&self) -> Result<placement::Context<'_, 'a, 'r>, Error> {
-        placement_context(self.state, self.definitions, &self.runtime)
+        let view = placement_context(self.state, self.definitions, &self.runtime)?;
+        Ok(match self.capabilities {
+            Some(capabilities) => view.with_capabilities(capabilities),
+            None => view,
+        })
     }
     fn init(&self) -> Result<logic::InitializedMembers, Error> {
         self.initialized.ok_or(Error::Missing("PathInitialize"))
@@ -912,7 +925,10 @@ impl LazyPathQueries for Queries<'_, '_, '_, '_> {
                 self.child(),
                 Some((allow_unembarked, self.search.flags & (1 << 13) != 0)),
             ),
-            B::BarbarianClansActive => Err(Error::Missing("current Barbarian Clans activation")),
+            B::BarbarianClansActive => c
+                .capabilities
+                .map(|capabilities| capabilities.has(c6_core::game_capabilities::BARBARIAN_CLANS))
+                .ok_or(Error::Missing("current Barbarian Clans activation")),
             B::FeatureAllowPassthrough | B::FeatureAllowDestination => {
                 Err(Error::Missing("ordered Feature_UnitMovement import"))
             }

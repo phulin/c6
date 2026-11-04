@@ -456,6 +456,9 @@ impl<'a, 'r> Definitions<'a, 'r> {
 }
 
 impl<'a, 'r> Definitions<'a, 'r> {
+    pub fn unit_team_visibility(&self, index: usize) -> Option<bool> {
+        self.unit_team_visibility.get(index).copied()
+    }
     pub fn unit_definitions(&self) -> &DefinitionTable<'a, Option<placement::UnitProperties>> {
         &self.units
     }
@@ -477,6 +480,7 @@ pub struct Context<'s, 'a, 'r> {
     city_domains: Option<std::borrow::Cow<'a, [Option<c6_core::city_district::DomainMask>]>>,
     civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
     combat_definitions: Option<&'a crate::formation_rules::Definitions>,
+    clans_active: Option<bool>,
     district_definitions: Option<&'a crate::formation_movement_cost::Definitions<'a>>,
 }
 impl<'a, 'r> std::ops::Deref for Context<'_, 'a, 'r> {
@@ -513,6 +517,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             city_domains: None,
             civic_activity: None,
             combat_definitions: None,
+            clans_active: None,
             district_definitions: None,
         })
     }
@@ -531,12 +536,20 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             city_domains: None,
             civic_activity: None,
             combat_definitions: None,
+            clans_active: None,
             district_definitions: None,
         })
     }
     /// Reuse current GetCombat(false) for the source-qualified shore defender
     /// comparison (flags0x108). Existing candidate filters/order are unchanged;
     /// no supplied strength answers or cached per-Unit values are accepted.
+    pub fn with_capabilities(
+        mut self,
+        capabilities: &c6_core::game_capabilities::Membership,
+    ) -> Self {
+        self.clans_active = Some(capabilities.has(c6_core::game_capabilities::BARBARIAN_CLANS));
+        self
+    }
     pub fn with_combat_definitions(
         mut self,
         definitions: &'a crate::formation_rules::Definitions,
@@ -1218,6 +1231,12 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                     }
                     PlacementMissing::Barbarian => {
                         f.barbarian = Some(self.civilization_level(unit.e_owner)? == 0xd959ec24)
+                    }
+                    PlacementMissing::ClansActive => {
+                        f.clans_active = Some(
+                            self.clans_active
+                                .ok_or(Error::Capability(Capability::ForeignContext(missing)))?,
+                        );
                     }
                     PlacementMissing::TribeIndex => {
                         f.tribe_index = Some(unit.i_barbarian_tribe_index)

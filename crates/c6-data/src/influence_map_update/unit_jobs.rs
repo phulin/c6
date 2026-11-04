@@ -141,13 +141,16 @@ impl Current<'_, '_, '_> {
                 execution: source_runtime.execution,
                 is_evaluating_operation: source_runtime.is_evaluating_operation,
             };
-            let context = crate::formation_path_state::Context::new(
+            let mut context = crate::formation_path_state::Context::new(
                 self.state,
                 path,
                 current_runtime,
                 (formation.owner, formation.resolved_id),
             )
             .map_err(Error::Path)?;
+            if let Some(capabilities) = self.queries.capabilities {
+                context = context.with_capabilities(capabilities);
+            }
             let positions = crate::formation_path_state::breadth_first::influence_positions(
                 context,
                 initial_range > 0,

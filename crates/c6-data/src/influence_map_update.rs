@@ -121,6 +121,7 @@ impl Definitions {
 
 pub struct Queries<'a, 'r> {
     pub alive_players: &'a AlivePlayers,
+    pub capabilities: Option<&'a c6_core::game_capabilities::Membership>,
     pub visibility: &'a unit_sight_state::Runtime,
     pub movement: &'a formation_movement_cost::Definitions<'r>,
     pub formation: &'a formation_rules::Definitions,
