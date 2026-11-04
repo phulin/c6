@@ -308,12 +308,54 @@ record!(TourismLocation, false, {
     lifetime_tourism: i32,
     tourist_counts: Vec<TouristCount>,
 });
-record!(CultureBombTrigger, true, {
-    building_hash: u32,
-    district_hash: u32,
-    improvement_hash: u32,
-    captures_owned_territory: bool,
-});
+/// CultureBombTrigger38/45 wire/default projection. Native Read explicitly
+/// sets captures_owned_territory=true before reading it only since44.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CultureBombTrigger {
+    pub wire_version: u32,
+    pub building_hash: u32,
+    pub district_hash: u32,
+    pub improvement_hash: u32,
+    pub captures_owned_territory: bool,
+}
+impl CultureBombTrigger {
+    pub fn captures_owned_territory_wire_present(&self) -> bool {
+        self.wire_version == VERSION
+    }
+}
+impl Wire for CultureBombTrigger {
+    const MIN: usize = 16;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 38 | VERSION) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            building_hash: u32::read(r)?,
+            district_hash: u32::read(r)?,
+            improvement_hash: u32::read(r)?,
+            captures_owned_territory: if wire_version == VERSION {
+                bool::read(r)?
+            } else {
+                true
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.building_hash.write(w)?;
+        self.district_hash.write(w)?;
+        self.improvement_hash.write(w)?;
+        self.captures_owned_territory.write(w)
+    }
+}
 /// Independently tagged TourismIntoFavor38/45. Both signed words are
 /// unconditional on the wire; no conversion or favor gameplay runs here.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -928,6 +970,7 @@ mod tests {
                 ],
             }],
             culture_bomb_triggers: vec![CultureBombTrigger {
+                wire_version: VERSION,
                 building_hash: 0x80000000,
                 district_hash: 0xffffffff,
                 improvement_hash: 4,
@@ -982,6 +1025,83 @@ mod tests {
                 delta: i32::MIN,
             }],
         }
+    }
+    #[test]
+    fn culture_bomb38_defaults_true_without_reading_next_tag() {
+        let mut b = Vec::new();
+        for word in [2u32, 38, 0x81234567, u32::MAX, 0, 45, 1, 2, 3] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        b.push(0);
+        let decode = |data: &[u8], max_bytes, max_items| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items,
+                },
+            };
+            Vec::<CultureBombTrigger>::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&b, 40, 2).unwrap();
+        assert_eq!((n, i), (37, 2));
+        // Two owned records occupy40 bytes; the caller cap independently
+        // bounds each vector allocation as well as37 serialized bytes.
+        assert_eq!(decode(&b, 37, 2), Err(Error::ResourceLimit));
+        let mut legacy = Reader {
+            data: &b[4..20],
+            pos: 0,
+            items: 0,
+            limits: Limits {
+                max_bytes: 16,
+                max_items: 0,
+            },
+        };
+        assert!(
+            CultureBombTrigger::read(&mut legacy)
+                .unwrap()
+                .captures_owned_territory
+        );
+        assert_eq!(legacy.pos, 16);
+        assert_eq!(
+            (
+                v[0].wire_version,
+                v[0].building_hash,
+                v[0].district_hash,
+                v[0].improvement_hash
+            ),
+            (38, 0x81234567, u32::MAX, 0)
+        );
+        assert!(v[0].captures_owned_territory);
+        assert!(!v[0].captures_owned_territory_wire_present());
+        assert!(!v[1].captures_owned_territory);
+        assert!(v[1].captures_owned_territory_wire_present());
+        for cut in 0..37 {
+            assert!(decode(&b[..cut], 40, 2).is_err());
+        }
+        assert!(decode(&b, 36, 2).is_err());
+        assert!(decode(&b, 40, 1).is_err());
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        assert_eq!(v[0].write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        v[1].write(&mut w).unwrap();
+        assert_eq!(w.data, &b[20..]);
+        b[36] = 2;
+        assert_eq!(decode(&b, 40, 2), Err(Error::InvalidBool(2)));
+        b[4..8].copy_from_slice(&39u32.to_le_bytes());
+        assert_eq!(
+            decode(&b, 40, 2),
+            Err(Error::Version {
+                expected: 45,
+                actual: 39
+            })
+        );
     }
     #[test]
     fn replacement38_present_bool_and_independent_version() {

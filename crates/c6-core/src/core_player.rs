@@ -1666,6 +1666,7 @@ pub(crate) mod tests {
                 ],
             }],
             culture_bomb_triggers: vec![pculture::CultureBombTrigger {
+                wire_version: 45,
                 building_hash: 0x80000000,
                 district_hash: u32::MAX,
                 improvement_hash: 3,
