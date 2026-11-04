@@ -173,7 +173,7 @@ impl ScriptState {
                     &self.factory,
                     self.intern.as_ref(),
                 )
-                .map(ScriptExecutionPlan::Exact),
+                .map(|plan| ScriptExecutionPlan::Exact(Box::new(plan))),
         }
     }
     pub fn plan_call_six(
@@ -217,9 +217,9 @@ impl ScriptState {
                     &mut self.execution,
                     &mut self.factory,
                     self.intern.as_mut(),
-                    plan,
+                    *plan,
                 )
-                .map(PreparedScriptCommit::Exact),
+                .map(|commit| PreparedScriptCommit::Exact(Box::new(commit))),
             ScriptExecutionPlan::Sequence(plan) => {
                 let state = self
                     .bounded
@@ -253,7 +253,7 @@ impl ScriptState {
 }
 
 pub enum ScriptExecutionPlan {
-    Exact(RegistryExecutionPlan),
+    Exact(Box<RegistryExecutionPlan>),
     Bounded(c6_core::script_event_registry::BoundedRegistryExecutionPlan),
     Sequence(c6_core::script_event_registry::RegistrySequencePlan),
 }
@@ -275,14 +275,14 @@ impl ScriptExecutionPlan {
     }
 }
 pub enum PreparedScriptCommit<'a> {
-    Exact(c6_core::script_event_registry::PreparedRegistryCommit<'a>),
+    Exact(Box<c6_core::script_event_registry::PreparedRegistryCommit<'a>>),
     Bounded(c6_core::script_event_registry::PreparedBoundedRegistryCommit<'a>),
     Sequence(c6_core::script_event_registry::PreparedRegistrySequenceCommit<'a>),
 }
 impl PreparedScriptCommit<'_> {
     pub fn commit(self) -> Option<bool> {
         match self {
-            Self::Exact(p) => p.commit(),
+            Self::Exact(p) => (*p).commit(),
             Self::Bounded(p) => p.commit(),
             Self::Sequence(p) => p.commit()[0],
         }
