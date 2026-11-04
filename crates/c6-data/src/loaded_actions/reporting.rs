@@ -23,6 +23,7 @@ use c6_core::{
         placement::{self as unit_placement, UnitProperties},
     },
     unit::{ComponentId, PlotCoord, Unit},
+    unit_placement_transition::{PlacementPayload, PlacementReport},
 };
 
 const ACTIVITY_CHANGED: u32 = 0xe23b112d;
@@ -94,6 +95,25 @@ impl Definitions {
 pub struct ActivityPublication {
     pub identity: ComponentId,
     pub activity: i32,
+}
+
+/// Host UnitMoved event 23, prepared at the synchronous BE121408 translator.
+/// These are its actual EventData1 identity/coordinate and four keyed values;
+/// the record does not imply that prepublish or queued consumers were delivered.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MovedPublication {
+    pub host_event: u32,
+    pub event_data_type: u32,
+    pub identity: ComponentId,
+    pub location: PlotCoord,
+    /// Native TypedVariant bool at key 476bda03.
+    pub locally_visible: bool,
+    /// Native TypedVariant bool at key c6a27b74.
+    pub newly_locally_visible: bool,
+    /// Native TypedVariant unsigned integer at key 15808e44.
+    pub embark_event: u32,
+    /// Native GetComponentID at key c02eac8a.
+    pub parent: ComponentId,
 }
 
 /// Logical host publication fields, prepared in original Send order. EventData1
@@ -268,6 +288,7 @@ pub struct Provider<'a> {
     publications: Vec<Publication>,
     skip_turn_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
+    moved_publications: Vec<MovedPublication>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
     current_placement_queries: Option<CurrentPlacementQueries<'a>>,
@@ -284,6 +305,7 @@ impl<'a> Provider<'a> {
             publications: Vec::new(),
             skip_turn_handler: None,
             snapshots: Vec::new(),
+            moved_publications: Vec::new(),
             command_queries: None,
             placement_queries: None,
             current_placement_queries: None,
@@ -373,6 +395,57 @@ impl<'a> Provider<'a> {
     }
     pub fn snapshot_observations(&self) -> &[SnapshotObservation] {
         &self.snapshots
+    }
+    pub fn pending_moved_publications(&self) -> &[MovedPublication] {
+        &self.moved_publications
+    }
+
+    /// Source-bounded UnitMoved native cache receiver followed by host event23
+    /// translation. The caller must first qualify the CURRENT BE121408 receiver
+    /// list, translator, nested CacheUpdated275 and host23 prepublish/queue
+    /// bindings. A Scope value or an earlier event's bindings cannot do so.
+    ///
+    /// OnUnitUpdate27ff430 -> PublishUpdate27ff860 -> Add27ff2d0 invokes the
+    /// existing CURRENT actor snapshot/query path, including readiness and the
+    /// property-copy guard. The distinct host translator320ad70 follows those
+    /// effects. A failed snapshot does not prepare the later host publication.
+    /// Output-only reflected cache storage remains excluded by the established
+    /// Unit stream source contract; reached gameplay queries are not omitted.
+    pub fn send_moved_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        report: PlacementReport,
+    ) -> Result<(), Error> {
+        if report.event_hash != 0xbe121408
+            || report.identity != reference.component_id()
+            || report.identity.component_type
+                != c6_core::formation_initialization::UNIT_COMPONENT_TYPE
+        {
+            return Err(Error::Provider("UnitMoved current report identity/event"));
+        }
+        let PlacementPayload::Moved {
+            location,
+            locally_visible,
+            newly_locally_visible,
+            embark_event,
+            parent,
+        } = report.payload
+        else {
+            return Err(Error::Provider("UnitMoved typed argument shape"));
+        };
+        self.observe_unit_snapshot(state, reference)?;
+        self.moved_publications.push(MovedPublication {
+            host_event: 23,
+            event_data_type: 0x6447c33d,
+            identity: report.identity,
+            location,
+            locally_visible,
+            newly_locally_visible,
+            embark_event,
+            parent,
+        });
+        Ok(())
     }
     /// Execute the existing source-bounded Unit snapshot queries on the actual
     /// retained actor. Event bindings and omitted DTO/cache/output stores must
