@@ -1,10 +1,11 @@
-//! Current Linux XP2 Player.Treasury v10 wire transport.
+//! Current Linux XP2 Player.Treasury v8/v10 wire transport.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::Limits;
 
 pub const VERSION: u32 = 10;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -55,15 +56,15 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self) -> Result<(), Error> {
+    fn version(&mut self) -> Result<u32, Error> {
         let actual = u32::read(self)?;
-        if actual != VERSION {
+        if actual != 8 && actual != VERSION {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
             });
         }
-        Ok(())
+        Ok(actual)
     }
 }
 struct Writer {
@@ -182,20 +183,71 @@ impl Wire for HashValue<i32> {
     }
 }
 record!(DiplomaticDeal,false,{ first:u32, second:u32 });
-record!(Treasury,true,{
-    gold_balance_q8:i32,
-    gold_rate_change_q8:i32,
-    cached_net_income_excluding_trade_q8:i32,
-    bankruptcy_amenities:i32,
-    maintenance_discount_per_unit:i32,
-    unit_upgrade_discount_percent:i32,
-    maintenance_discount_per_wmd_modifier:i32,
-    levied_unit_upgrade_discount_percent:i32,
-    cached_net_income_q8:i32,
-    gold_interest_percent_q8:i32,
-    gold_dispersal_change_q8:Vec<HashValue<i32>>,
-    gold_diplomatic_deals:Vec<DiplomaticDeal>,
-});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Treasury {
+    pub wire_version: u32,
+    pub gold_balance_q8: i32,
+    pub gold_rate_change_q8: i32,
+    pub cached_net_income_excluding_trade_q8: i32,
+    pub bankruptcy_amenities: i32,
+    pub maintenance_discount_per_unit: i32,
+    pub unit_upgrade_discount_percent: i32,
+    pub maintenance_discount_per_wmd_modifier: i32,
+    pub levied_unit_upgrade_discount_percent: i32,
+    pub cached_net_income_q8: i32,
+    pub gold_interest_percent_q8: i32,
+    pub gold_dispersal_change_q8: Vec<HashValue<i32>>,
+    pub gold_diplomatic_deals: Vec<DiplomaticDeal>,
+}
+impl Wire for Treasury {
+    const MIN: usize = 4;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = r.version()?;
+        Ok(Self {
+            wire_version,
+            gold_balance_q8: <i32 as Wire>::read(r)?,
+            gold_rate_change_q8: <i32 as Wire>::read(r)?,
+            cached_net_income_excluding_trade_q8: if wire_version == 8 {
+                0
+            } else {
+                <i32 as Wire>::read(r)?
+            },
+            bankruptcy_amenities: <i32 as Wire>::read(r)?,
+            maintenance_discount_per_unit: <i32 as Wire>::read(r)?,
+            unit_upgrade_discount_percent: <i32 as Wire>::read(r)?,
+            maintenance_discount_per_wmd_modifier: <i32 as Wire>::read(r)?,
+            levied_unit_upgrade_discount_percent: <i32 as Wire>::read(r)?,
+            cached_net_income_q8: <i32 as Wire>::read(r)?,
+            gold_interest_percent_q8: if wire_version == 8 {
+                0
+            } else {
+                <i32 as Wire>::read(r)?
+            },
+            gold_dispersal_change_q8: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            gold_diplomatic_deals: <Vec<DiplomaticDeal> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.gold_balance_q8.write(w)?;
+        self.gold_rate_change_q8.write(w)?;
+        self.cached_net_income_excluding_trade_q8.write(w)?;
+        self.bankruptcy_amenities.write(w)?;
+        self.maintenance_discount_per_unit.write(w)?;
+        self.unit_upgrade_discount_percent.write(w)?;
+        self.maintenance_discount_per_wmd_modifier.write(w)?;
+        self.levied_unit_upgrade_discount_percent.write(w)?;
+        self.cached_net_income_q8.write(w)?;
+        self.gold_interest_percent_q8.write(w)?;
+        self.gold_dispersal_change_q8.write(w)?;
+        self.gold_diplomatic_deals.write(w)?;
+        Ok(())
+    }
+}
+
 impl Treasury {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -240,6 +292,7 @@ mod tests {
     use super::*;
     fn sample() -> Treasury {
         Treasury {
+            wire_version: VERSION,
             gold_balance_q8: i32::MIN,
             gold_rate_change_q8: -1,
             cached_net_income_excluding_trade_q8: 256,
@@ -341,5 +394,75 @@ mod tests {
         let mut bytes = sample().encode(limits).unwrap();
         bytes[44..48].copy_from_slice(&u32::MAX.to_le_bytes());
         assert_eq!(Treasury::decode(&bytes, limits), Err(Error::ResourceLimit));
+    }
+    #[test]
+    fn legacy8_missing_scalars_are_explicit_zero() {
+        let current = sample();
+        let encoded = current.encode(Limits::default()).unwrap();
+        // Remove exactly the since9 word after two scalars, and since10 word
+        // after cachedNetIncome. All remaining fields retain their wire order.
+        let mut b = 8u32.to_le_bytes().to_vec();
+        b.extend_from_slice(&encoded[4..12]);
+        b.extend_from_slice(&encoded[16..40]);
+        b.extend_from_slice(&encoded[44..]);
+        let (v, n, items) = Treasury::decode_prefix_with_items(&b, Limits::default()).unwrap();
+        let mut expected = current;
+        expected.wire_version = 8;
+        expected.cached_net_income_excluding_trade_q8 = 0;
+        expected.gold_interest_percent_q8 = 0;
+        assert_eq!(v, expected);
+        assert_eq!(n, b.len());
+        assert_eq!(
+            v.encode(Limits::default()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        assert!(Treasury::decode_prefix_with_items(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: items
+            }
+        )
+        .is_ok());
+        assert_eq!(
+            Treasury::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len() - 1,
+                    max_items: items
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Treasury::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len(),
+                    max_items: items - 1
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for end in 0..b.len() {
+            assert!(
+                Treasury::decode(&b[..end], Limits::default()).is_err(),
+                "prefix {end}"
+            );
+        }
+        let mut unsupported = b.clone();
+        unsupported[..4].copy_from_slice(&9u32.to_le_bytes());
+        assert_eq!(
+            Treasury::decode(&unsupported, Limits::default()),
+            Err(Error::Version {
+                expected: 10,
+                actual: 9
+            })
+        );
+        b.push(0);
+        assert_eq!(
+            Treasury::decode(&b, Limits::default()),
+            Err(Error::Trailing)
+        );
     }
 }

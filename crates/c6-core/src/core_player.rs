@@ -2001,6 +2001,7 @@ pub(crate) mod tests {
     fn treasury_carrier() -> player_treasury::Treasury {
         use crate::player_treasury as pmod;
         pmod::Treasury {
+            wire_version: 10,
             gold_balance_q8: -1999,
             gold_rate_change_q8: -1998,
             cached_net_income_excluding_trade_q8: -1997,
