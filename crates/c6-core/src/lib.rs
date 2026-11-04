@@ -417,6 +417,7 @@ pub mod game_diplomatic_relations;
 pub mod game_diplomatic_relations_wire;
 pub mod game_gossip_wire;
 pub mod game_name_manager_wire;
+pub mod congress_wire;
 pub mod game_global_ai;
 pub mod game_great_people;
 pub mod game_quests;
