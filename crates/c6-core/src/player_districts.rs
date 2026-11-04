@@ -1,4 +1,4 @@
-//! Linux XP2 District v15 and Player.Districts v4/v8 wire transport.
+//! Linux XP2 District v13/v15 and Player.Districts v4/v8 wire transport.
 //! No definition remapping, live Read fixups, actual plot owner reconstruction,
 //! initialized world, gameplay, actions or turns are provided by these codecs.
 //! Methods and field identities: docs/linux-player-districts.md.
@@ -242,19 +242,166 @@ record!(DistrictUnlockCivic, 1, { district_hash: u32, civic_hash: u32 });
 // Serialized fields only. The actual District owner is Plot.GetOwner and is
 // deliberately absent; enclosing player/table ownership is a different value.
 // Ordered hash arrays retain duplicate keys and unknown definitions verbatim.
-record!(District, 15, {
-    id: u32, location: (i32, i32), city_id: u32, district_hash: u32,
-    garrison_damage: i32, outer_defenses_damage: i32, last_turn_damaged: i32,
-    remaining_attacks: i32, cost: i32, is_complete: bool, properties: TypedVariantMap,
-    yield_changes: Vec<HashValue<i32>>, base_yield_changes: Vec<HashValue<i32>>,
-    yield_adjacency_modifiers: Vec<HashValue<i32>>,
-    extra_regional_range: i32, extra_regional_entertainment: i32, extra_entertainment: i32,
-    extra_regional_yields: Vec<HashValue<i32>>, tourism_adjacency_yield_modifier: Vec<HashValue<i32>>,
-    tourism_change: i32, yield_adjacency_mirrors: Vec<AdjacencyBonusMirror>,
-    great_person_point_changes_q8: Vec<HashValue<i32>>, great_person_point_multiplier: i32,
-    great_person_point_adder: i32, air_slots_modifier: i32, within_one_hex_espionage_defense_bonus: i32,
-    under_siege: bool, pillaged: bool,
-});
+/// District13/15 wire/default projection. Native plot-owner lookup and archive
+/// ID fixups are not performed by this decoder.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct District {
+    pub wire_version: u32,
+    pub id: u32,
+    pub location: (i32, i32),
+    pub city_id: u32,
+    pub district_hash: u32,
+    pub garrison_damage: i32,
+    pub outer_defenses_damage: i32,
+    pub last_turn_damaged: i32,
+    pub remaining_attacks: i32,
+    pub cost: i32,
+    pub is_complete: bool,
+    pub properties: TypedVariantMap,
+    pub yield_changes: Vec<HashValue<i32>>,
+    pub base_yield_changes: Vec<HashValue<i32>>,
+    pub yield_adjacency_modifiers: Vec<HashValue<i32>>,
+    pub extra_regional_range: i32,
+    pub extra_regional_entertainment: i32,
+    pub extra_entertainment: i32,
+    pub extra_regional_yields: Vec<HashValue<i32>>,
+    pub tourism_adjacency_yield_modifier: Vec<HashValue<i32>>,
+    pub tourism_change: i32,
+    pub yield_adjacency_mirrors: Vec<AdjacencyBonusMirror>,
+    pub great_person_point_changes_q8: Vec<HashValue<i32>>,
+    pub great_person_point_multiplier: i32,
+    pub great_person_point_adder: i32,
+    pub air_slots_modifier: i32,
+    pub within_one_hex_espionage_defense_bonus: i32,
+    pub under_siege: bool,
+    pub pillaged: bool,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DistrictYieldReadEffect {
+    ZeroResetDefinitionCountUnknown,
+}
+impl District {
+    /// At13, the absent tourism-adjacency array is explicitly reset to zero at
+    /// each actual Yield definition index. Empty wire entries are not the array.
+    pub fn tourism_adjacency_yield_read_effect(&self) -> Option<DistrictYieldReadEffect> {
+        (self.wire_version == 13)
+            .then_some(DistrictYieldReadEffect::ZeroResetDefinitionCountUnknown)
+    }
+}
+impl Wire for District {
+    const MIN: usize = 4
+        + <u32 as Wire>::MIN
+        + <(i32, i32) as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <TypedVariantMap as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<AdjacencyBonusMirror> as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <bool as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "District";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 13 | 15) {
+            return Err(Error::Version {
+                expected: 15,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            id: <u32>::read(r)?,
+            location: <(i32, i32)>::read(r)?,
+            city_id: <u32>::read(r)?,
+            district_hash: <u32>::read(r)?,
+            garrison_damage: <i32>::read(r)?,
+            outer_defenses_damage: <i32>::read(r)?,
+            last_turn_damaged: <i32>::read(r)?,
+            remaining_attacks: <i32>::read(r)?,
+            cost: <i32>::read(r)?,
+            is_complete: <bool>::read(r)?,
+            properties: <TypedVariantMap>::read(r)?,
+            yield_changes: <Vec<HashValue<i32>>>::read(r)?,
+            base_yield_changes: <Vec<HashValue<i32>>>::read(r)?,
+            yield_adjacency_modifiers: <Vec<HashValue<i32>>>::read(r)?,
+            extra_regional_range: <i32>::read(r)?,
+            extra_regional_entertainment: <i32>::read(r)?,
+            extra_entertainment: <i32>::read(r)?,
+            extra_regional_yields: <Vec<HashValue<i32>>>::read(r)?,
+            tourism_adjacency_yield_modifier: if wire_version == 15 {
+                <Vec<HashValue<i32>>>::read(r)?
+            } else {
+                Vec::new()
+            },
+            tourism_change: <i32>::read(r)?,
+            yield_adjacency_mirrors: <Vec<AdjacencyBonusMirror>>::read(r)?,
+            great_person_point_changes_q8: <Vec<HashValue<i32>>>::read(r)?,
+            great_person_point_multiplier: <i32>::read(r)?,
+            great_person_point_adder: <i32>::read(r)?,
+            air_slots_modifier: <i32>::read(r)?,
+            within_one_hex_espionage_defense_bonus: if wire_version == 15 {
+                <i32>::read(r)?
+            } else {
+                0
+            },
+            under_siege: <bool>::read(r)?,
+            pillaged: <bool>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 15 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        15u32.write(w)?;
+        self.id.write(w)?;
+        self.location.write(w)?;
+        self.city_id.write(w)?;
+        self.district_hash.write(w)?;
+        self.garrison_damage.write(w)?;
+        self.outer_defenses_damage.write(w)?;
+        self.last_turn_damaged.write(w)?;
+        self.remaining_attacks.write(w)?;
+        self.cost.write(w)?;
+        self.is_complete.write(w)?;
+        self.properties.write(w)?;
+        self.yield_changes.write(w)?;
+        self.base_yield_changes.write(w)?;
+        self.yield_adjacency_modifiers.write(w)?;
+        self.extra_regional_range.write(w)?;
+        self.extra_regional_entertainment.write(w)?;
+        self.extra_entertainment.write(w)?;
+        self.extra_regional_yields.write(w)?;
+        self.tourism_adjacency_yield_modifier.write(w)?;
+        self.tourism_change.write(w)?;
+        self.yield_adjacency_mirrors.write(w)?;
+        self.great_person_point_changes_q8.write(w)?;
+        self.great_person_point_multiplier.write(w)?;
+        self.great_person_point_adder.write(w)?;
+        self.air_slots_modifier.write(w)?;
+        self.within_one_hex_espionage_defense_bonus.write(w)?;
+        self.under_siege.write(w)?;
+        self.pillaged.write(w)?;
+        Ok(())
+    }
+}
+
 impl<T: Wire> Wire for Recycled<T> {
     const MIN: usize = 32;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
@@ -622,6 +769,99 @@ mod tests {
         b
     }
     #[test]
+    fn district13_omitted_defaults_keep_present_pillaged_and_independent_mirror() {
+        let mut bytes = Vec::new();
+        words(
+            &mut bytes,
+            &[
+                13,
+                0xab010002,
+                u32::MAX,
+                17,
+                0xab020003,
+                0xfedcba98,
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+        );
+        bytes.push(1); // complete
+        words(&mut bytes, &[0x80000001, 0]); // empty named TypedVariantMap
+        words(&mut bytes, &[2, 0x98765432, u32::MAX, 0x98765432, 257]);
+        words(&mut bytes, &[0, 0]); // base yield and adjacency modifiers
+        words(&mut bytes, &[6, 7, 8, 0]); // three ints and regional yield list
+        word(&mut bytes, 9); // tourism change; no preceding tourism-adjacency list
+        word(&mut bytes, 1);
+        let mirror_tag = bytes.len();
+        words(&mut bytes, &[15, 0x11111111, 0x22222222, u32::MAX]);
+        words(&mut bytes, &[0, 10, 11, 12]); // GPP list and three present scalars
+        bytes.extend([0, 1]); // under siege/pillaged, no espionage-defense scalar
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: end,
+            max_items: 3,
+        };
+        let (v, used, items) = District::decode_prefix_with_items(&bytes, limits).unwrap();
+        assert_eq!((used, items, v.wire_version), (end, 3, 13));
+        assert_eq!(v.location, (-1, 17));
+        assert_eq!(v.tourism_change, 9);
+        assert_eq!(v.within_one_hex_espionage_defense_bonus, 0);
+        assert_eq!(
+            v.tourism_adjacency_yield_read_effect(),
+            Some(DistrictYieldReadEffect::ZeroResetDefinitionCountUnknown)
+        );
+        assert!(v.tourism_adjacency_yield_modifier.is_empty());
+        assert_eq!(
+            v.yield_changes
+                .iter()
+                .map(|x| (x.definition_hash, x.value))
+                .collect::<Vec<_>>(),
+            vec![(0x98765432, -1), (0x98765432, 257)]
+        );
+        assert_eq!(v.yield_adjacency_mirrors[0].mirror_count, -1);
+        assert!(!v.under_siege && v.pillaged);
+        assert_eq!(v.encode(limits), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(
+                District::decode_prefix_with_items(&bytes[..n], limits).is_err(),
+                "{n}"
+            );
+        }
+        assert_eq!(
+            District::decode_prefix_with_items(
+                &bytes,
+                Limits {
+                    max_items: 2,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut mirror = bytes.clone();
+        mirror[mirror_tag..mirror_tag + 4].copy_from_slice(&13u32.to_le_bytes());
+        let b = District::decode_prefix_with_boundary(&mirror, limits).unwrap_err();
+        assert_eq!(
+            (b.component, b.consumed),
+            ("AdjacencyBonusMirror", mirror_tag + 4)
+        );
+        assert_eq!(
+            b.error,
+            Error::Version {
+                expected: 15,
+                actual: 13
+            }
+        );
+        let mut bad = bytes.clone();
+        bad[end - 1] = 2;
+        assert_eq!(
+            District::decode_prefix_with_items(&bad, limits),
+            Err(Error::InvalidBool(2))
+        );
+    }
+    #[test]
     fn districts4_omits_wire_fields_without_inventing_prior_lists() {
         let mut bytes = Vec::new();
         words(&mut bytes, &[4, 65537, 16, 0, 0, 0, 0, u32::MAX, u32::MAX]);
@@ -720,6 +960,8 @@ mod tests {
         let b = district();
         let (v, n, items) = District::decode_prefix_with_items(&b, Limits::default()).unwrap();
         assert_eq!(n, b.len());
+        assert_eq!(v.wire_version, 15);
+        assert_eq!(v.tourism_adjacency_yield_read_effect(), None);
         assert_eq!(v.location, (-3, 77));
         assert_eq!(v.id, 0xf0010007);
         assert_eq!(
