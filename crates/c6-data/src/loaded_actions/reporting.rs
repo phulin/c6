@@ -7,7 +7,7 @@ pub mod hold_cycling;
 #[path = "yield_monitor.rs"]
 pub mod yield_monitor;
 
-use super::{Error, IdentityReport, Reports};
+use super::{arena::ActorRecords, Error, IdentityReport, Reports};
 use crate::resource_binding::ResourceAuthority;
 use crate::{
     registry::LinuxDefinitionRegistry,
@@ -138,8 +138,119 @@ pub struct SnapshotObservation {
 
 /// Scope must be admitted by the caller for its active configuration. Stock Lua
 /// source hashes alone do not establish absence of an added gameplay consumer.
+#[derive(Clone, Copy)]
 pub enum Scope {
     StockHeadlessNoAddedConsumers,
+}
+
+/// Borrowed replacement admitted against the exact current actor records.
+/// Its private fields prevent bypassing the authoritative query checks.
+pub(crate) struct ActorOverlay<'s> {
+    state: &'s LoadedState,
+    after: &'s ActorRecords,
+}
+impl<'s> ActorOverlay<'s> {
+    pub(crate) fn checked(
+        state: &'s LoadedState,
+        before: &ActorRecords,
+        after: &'s ActorRecords,
+    ) -> Result<Self, Error> {
+        use c6_core::formation_initialization::{FORMATION_COMPONENT_TYPE, UNIT_COMPONENT_TYPE};
+        let reference = before.reference;
+        let owner = reference.player();
+        let actual = state
+            .world()
+            .unit(reference)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingUnit)?;
+        let formation = state
+            .world()
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(before.unit.formation_id)
+            .map_err(Error::World)?
+            .ok_or(Error::Provider("count overlay Formation absent"))?;
+        if actual.record != &before.unit || formation.record != &before.formation {
+            return Err(Error::Provider("count overlay before records changed"));
+        }
+        let runtime = state
+            .unit_runtime(owner, reference.id)
+            .map_err(Error::State)?;
+        let formation_runtime = state
+            .formation_runtime(owner, before.formation.id)
+            .map_err(Error::State)?;
+        let unit_identity = runtime.archive.identity();
+        let formation_identity = formation_runtime.archive.identity();
+        let link = runtime
+            .formation
+            .ok_or(Error::Provider("count overlay Formation binding absent"))?;
+        if reference.component_id().component_type != UNIT_COMPONENT_TYPE
+            || unit_identity != reference.component_id()
+            || actual.resolved_id != reference.id
+            || before.unit.id != reference.id
+            || before.unit.e_owner != owner
+            || formation_identity.component_type != FORMATION_COMPONENT_TYPE
+            || i32::from(formation_identity.owner) != owner
+            || formation_identity.id != before.formation.id
+            || before.formation.owner != owner
+            || formation.resolved_id != before.formation.id
+            || before.unit.formation_id != before.formation.id
+            || link.owner != owner
+            || link.requested_id != before.unit.formation_id
+            || link.resolved_id != before.formation.id
+            || before.formation.unit_ids != [before.unit.id]
+            || after.reference != reference
+            || after.unit.id != before.unit.id
+            || after.unit.e_owner != owner
+            || after.unit.formation_id != before.unit.formation_id
+            || after.formation.id != before.formation.id
+            || after.formation.owner != owner
+            || after.formation.unit_ids != before.formation.unit_ids
+        {
+            return Err(Error::Provider("count overlay actor/Formation identity"));
+        }
+        // LoadedState's runtime admission is derived from these wire fields.
+        // The actual records above have already passed its current-basis guard.
+        let a = &before.unit;
+        let b = &after.unit;
+        if a.e_type_index != b.e_type_index
+            || a.ai_abilities_possessed != b.ai_abilities_possessed
+            || a.ab_invalid_terrain_types != b.ab_invalid_terrain_types
+            || a.ab_ignore_terrain_types != b.ab_ignore_terrain_types
+            || a.ab_ignore_feature_types != b.ab_ignore_feature_types
+            || a.ai_bonus_points_per_kill != b.ai_bonus_points_per_kill
+            || a.ai_bonus_points_per_kill_strength != b.ai_bonus_points_per_kill_strength
+            || a.k_operations_disabled != b.k_operations_disabled
+        {
+            return Err(Error::Provider("count overlay runtime basis changed"));
+        }
+        Ok(Self { state, after })
+    }
+
+    pub(crate) fn unit<'u>(&'u self, unit: &'u Unit) -> &'u Unit {
+        if unit.e_owner == self.after.unit.e_owner && unit.id == self.after.unit.id {
+            &self.after.unit
+        } else {
+            unit
+        }
+    }
+
+    pub(crate) fn formation<'u>(
+        &'u self,
+        formation: &'u c6_core::unit::Formation,
+    ) -> &'u c6_core::unit::Formation {
+        if formation.owner == self.after.formation.owner && formation.id == self.after.formation.id
+        {
+            &self.after.formation
+        } else {
+            formation
+        }
+    }
+
+    fn actor_formation(&self, unit: &Unit) -> Option<&c6_core::unit::Formation> {
+        (unit.e_owner == self.after.unit.e_owner && unit.id == self.after.unit.id)
+            .then_some(&self.after.formation)
+    }
 }
 
 pub struct Provider<'a> {
@@ -481,8 +592,17 @@ impl<'a> Provider<'a> {
     /// members are visited in stored order. CanCyclePast is a separate query.
     pub fn is_ready_to_move(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
         self.validate_readiness_unit(state, unit)?;
+        self.readiness_result(state, unit, None)
+    }
+
+    fn readiness_result(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+        formation: Option<&c6_core::unit::Formation>,
+    ) -> Result<bool, Error> {
         Ok(!matches!(
-            self.member_readiness_path(state, unit, None)?,
+            self.member_readiness_path(state, unit, formation)?,
             Some(ReadinessPath::MemberNotReady | ReadinessPath::OtherFormationMemberNotReady)
         ))
     }
@@ -490,7 +610,47 @@ impl<'a> Provider<'a> {
     /// Independent native CanCyclePast. Pending operations do not short-circuit
     /// this getter. Reached HoldCycling callbacks remain genuine dependencies.
     pub fn can_cycle_past(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
-        if let Some(result) = self.cycle_past_early_result(state, unit)? {
+        self.validate_readiness_unit(state, unit)?;
+        self.cycle_past_result(state, unit, None)
+    }
+
+    pub(crate) fn overlay_ready_to_move(
+        &self,
+        overlay: &ActorOverlay<'_>,
+        unit: &Unit,
+    ) -> Result<bool, Error> {
+        if self.definitions.binding != *overlay.state.binding() {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let unit = overlay.unit(unit);
+        if !std::ptr::eq(unit, &overlay.after.unit) {
+            self.validate_readiness_unit(overlay.state, unit)?;
+        }
+        self.readiness_result(overlay.state, unit, overlay.actor_formation(unit))
+    }
+
+    pub(crate) fn overlay_can_cycle_past(
+        &self,
+        overlay: &ActorOverlay<'_>,
+        unit: &Unit,
+    ) -> Result<bool, Error> {
+        if self.definitions.binding != *overlay.state.binding() {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let unit = overlay.unit(unit);
+        if !std::ptr::eq(unit, &overlay.after.unit) {
+            self.validate_readiness_unit(overlay.state, unit)?;
+        }
+        self.cycle_past_result(overlay.state, unit, overlay.actor_formation(unit))
+    }
+
+    fn cycle_past_result(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+        formation: Option<&c6_core::unit::Formation>,
+    ) -> Result<bool, Error> {
+        if let Some(result) = self.cycle_past_record_early_result(state, unit, formation)? {
             return Ok(result);
         }
         if let Some(inputs) = self.command_queries {
@@ -599,10 +759,19 @@ impl<'a> Provider<'a> {
         unit: &Unit,
     ) -> Result<Option<bool>, Error> {
         self.validate_readiness_unit(state, unit)?;
+        self.cycle_past_record_early_result(state, unit, None)
+    }
+
+    fn cycle_past_record_early_result(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+        formation: Option<&c6_core::unit::Formation>,
+    ) -> Result<Option<bool>, Error> {
         if !unit_placement::coordinate_valid(unit.k_location) || unit.b_delayed_death {
             return Ok(Some(true));
         }
-        if self.bound_formation(state, unit, None)?.is_none() {
+        if self.bound_formation(state, unit, formation)?.is_none() {
             return Ok(Some(true));
         }
         if unit.b_needs_attention || self.has_adjacent_move(state, unit)?.is_some() {

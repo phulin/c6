@@ -63,6 +63,28 @@ pub fn get_unit_counts(
     owner: i32,
     queries: &reporting::Provider<'_>,
 ) -> Result<UnitCounts, Error> {
+    count_records(state, owner, queries, None)
+}
+
+/// Read the staged actor without committing it or cloning World. The complete
+/// before records and unchanged runtime basis are checked even for early exits.
+pub(crate) fn get_unit_counts_overlay(
+    state: &LoadedState,
+    owner: i32,
+    queries: &reporting::Provider<'_>,
+    before: &super::arena::ActorRecords,
+    after: &super::arena::ActorRecords,
+) -> Result<UnitCounts, Error> {
+    let overlay = reporting::ActorOverlay::checked(state, before, after)?;
+    count_records(state, owner, queries, Some(&overlay))
+}
+
+fn count_records(
+    state: &LoadedState,
+    owner: i32,
+    queries: &reporting::Provider<'_>,
+    overlay: Option<&reporting::ActorOverlay<'_>>,
+) -> Result<UnitCounts, Error> {
     let mut counts = UnitCounts::default();
     if owner == -1 {
         return Ok(counts);
@@ -72,7 +94,7 @@ pub fn get_unit_counts(
     }
     let player = state.world().player(owner).map_err(Error::World)?;
     for slot in player.unit_records().map_err(Error::World)? {
-        let unit = &slot.value;
+        let unit = overlay.map_or(&slot.value, |overlay| overlay.unit(&slot.value));
         counts.total = counts.total.wrapping_add(1);
         if unit.b_delayed_death {
             continue;
@@ -80,13 +102,22 @@ pub fn get_unit_counts(
         if unit.b_needs_attention {
             counts.needing_attention = counts.needing_attention.wrapping_add(1);
         }
-        if !legality::can_move(unit) || queries.can_cycle_past(state, unit)? {
+        if !legality::can_move(unit) {
+            continue;
+        }
+        let can_cycle_past = match overlay {
+            Some(overlay) => queries.overlay_can_cycle_past(overlay, unit)?,
+            None => queries.can_cycle_past(state, unit)?,
+        };
+        if can_cycle_past {
             continue;
         }
         counts.movable_noncycling = counts.movable_noncycling.wrapping_add(1);
-        if !queries.is_ready_to_move(state, unit)?
-            || (unit.e_automation != -1 && unit.e_ai_type != -1)
-        {
+        let ready = match overlay {
+            Some(overlay) => queries.overlay_ready_to_move(overlay, unit)?,
+            None => queries.is_ready_to_move(state, unit)?,
+        };
+        if !ready || (unit.e_automation != -1 && unit.e_ai_type != -1) {
             counts.unavailable = counts.unavailable.wrapping_add(1);
             continue;
         }
@@ -113,7 +144,10 @@ pub fn get_unit_counts(
                 "CommandUnits formation runtime binding changed",
             ));
         }
-        if formation.record.has_moved && !unit.b_needs_attention {
+        let formation = overlay.map_or(formation.record, |overlay| {
+            overlay.formation(formation.record)
+        });
+        if formation.has_moved && !unit.b_needs_attention {
             counts.unavailable = counts.unavailable.wrapping_add(1);
         }
     }
