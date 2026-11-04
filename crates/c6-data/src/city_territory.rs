@@ -898,3 +898,67 @@ pub fn expel_stationary(
     }
     Ok(())
 }
+
+#[derive(Debug)]
+pub enum OwnerChangedError {
+    State(loaded_state::Error),
+    Missing(&'static str),
+    /// Current nonempty coastal protection requires its actual building/range
+    /// and reporting continuations; it must never become an inland no-op.
+    CoastalProtection {
+        plot: u32,
+        protected: bool,
+        submerged: bool,
+    },
+}
+/// Rules.Cities.OnPlotCityOwnershipChanged2bd5360, reached by the stock
+/// GameSignals+1128 receiver. No coastal record proves all three lookups miss:
+/// IsProtected=false, HasFloodProtectionAt=false, SetProtected does not write.
+/// This does not classify an unknown Terrain component as an empty collection.
+pub fn rules_cities_owner_changed(
+    state: &LoadedState,
+    location: PlotCoord,
+    new_city: CityId,
+    _old_city: CityId,
+) -> Result<(), OwnerChangedError> {
+    if !new_city.is_valid() {
+        return Ok(());
+    }
+    match state.city(new_city.owner, new_city.id) {
+        Ok(_) => {}
+        Err(loaded_state::Error::Missing(loaded_state::MissingInput::City { .. })) => return Ok(()),
+        Err(e) => return Err(OwnerChangedError::State(e)),
+    }
+    let Some(plot) = crate::unit_placement_services::plot_index_at::<()>(state, location)
+        .map_err(|_| OwnerChangedError::Missing("owner change map geometry"))?
+    else {
+        return Ok(());
+    };
+    let mut rows = state
+        .world()
+        .map()
+        .components
+        .iter()
+        .filter_map(|c| match c {
+            c6_core::map::Component::Terrain(t) => Some(t),
+            _ => None,
+        });
+    let terrain = rows.next().ok_or(OwnerChangedError::Missing(
+        "current Terrain coastal lowlands",
+    ))?;
+    if rows.next().is_some() {
+        return Err(OwnerChangedError::Missing("duplicate current Terrain"));
+    }
+    if let Some(row) = terrain
+        .coastal_lowlands
+        .iter()
+        .find(|r| r.plot_index == plot as i32)
+    {
+        return Err(OwnerChangedError::CoastalProtection {
+            plot,
+            protected: row.protected,
+            submerged: row.submerged,
+        });
+    }
+    Ok(())
+}
