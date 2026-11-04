@@ -43,6 +43,8 @@ pub struct OwnedCore {
 /// World. These are saved values, not inferred initialized runtime defaults.
 #[derive(Debug, Eq, PartialEq)]
 pub struct RetainedUnits {
+    pub wire_version: u32,
+    pub legacy_wall_attack_promotion_class_values: Option<Vec<i32>>,
     pub current_unit_cost: Vec<unit::HashValue<i32>>,
     pub unit_production_multiplier_q8: Vec<unit::HashValue<i32>>,
     pub extra_unit_copy: Vec<unit::HashValue<i32>>,
@@ -298,6 +300,8 @@ pub fn split_player(
         tail,
     } = player;
     let player_units::Units {
+        wire_version,
+        legacy_wall_attack_promotion_class_values,
         records,
         current_unit_cost,
         unit_production_multiplier_q8,
@@ -344,6 +348,8 @@ pub fn split_player(
     let units = move_unit_records(records)?;
     let lookup = world::Player::new(owner, Some(units), Some(formations)).map_err(Error::World)?;
     let units = RetainedUnits {
+        wire_version,
+        legacy_wall_attack_promotion_class_values,
         current_unit_cost,
         unit_production_multiplier_q8,
         extra_unit_copy,
@@ -573,5 +579,26 @@ mod tests {
             split_player(player),
             Err(Error::World(world::MissingInput::InvalidSlot))
         ));
+    }
+    #[test]
+    fn split_moves_legacy_units_wire_metadata_without_clone_or_remap() {
+        let mut player = with_formation();
+        player.units.wire_version = 16;
+        player.units.legacy_wall_attack_promotion_class_values = Some(vec![i32::MIN, -3, 7]);
+        let pointer = player
+            .units
+            .legacy_wall_attack_promotion_class_values
+            .as_ref()
+            .unwrap()
+            .as_ptr();
+        let (_, retained) = split_player(player).unwrap();
+        assert_eq!(retained.units.wire_version, 16);
+        let values = retained
+            .units
+            .legacy_wall_attack_promotion_class_values
+            .as_ref()
+            .unwrap();
+        assert_eq!(values.as_ptr(), pointer);
+        assert_eq!(values, &[i32::MIN, -3, 7]);
     }
 }

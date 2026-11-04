@@ -2026,6 +2026,8 @@ pub(crate) mod tests {
     fn units_carrier() -> player_units::Units {
         use crate::player_units as pmod;
         pmod::Units {
+            wire_version: 22,
+            legacy_wall_attack_promotion_class_values: None,
             records: pmod::UnitTable {
                 capacity: 257,
                 entries: vec![],

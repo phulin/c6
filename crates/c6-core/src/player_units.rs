@@ -1,10 +1,11 @@
-//! Current Linux XP2 Player.Units v22 wire transport.
+//! Linux XP2 Player.Units v16/v22 wire transport.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::Limits;
 
 pub const VERSION: u32 = 22;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     InvalidBool(u8),
     InvalidContainer,
@@ -24,6 +25,7 @@ struct Reader<'a> {
     pos: usize,
     items: usize,
     limits: Limits,
+    unit_start: Option<usize>,
 }
 impl Reader<'_> {
     fn remaining(&self) -> Limits {
@@ -286,10 +288,11 @@ impl Wire for UnitTable {
             .try_reserve_exact(n)
             .map_err(|_| Error::ResourceLimit)?;
         for _ in 0..n {
-            entries.push(Slot {
-                index: i32::read(r)?,
-                value: crate::unit::Unit::read(r)?,
-            });
+            let index = i32::read(r)?;
+            r.unit_start = Some(r.pos);
+            let value = crate::unit::Unit::read(r)?;
+            r.unit_start = None;
+            entries.push(Slot { index, value });
         }
         indices(capacity, &entries)?;
         let current_id_bits = u32::read(r)?;
@@ -391,6 +394,10 @@ fn write_free_pass_hashes(values: &[u32], w: &mut Writer) -> Result<(), Error> {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Units {
+    pub wire_version: u32,
+    /// At v16 these are unkeyed native-vector values, not hash/index pairs.
+    /// No actual promotion-class registry ordering is inferred here.
+    pub legacy_wall_attack_promotion_class_values: Option<Vec<i32>>,
     pub records: UnitTable,
     pub current_unit_cost: Vec<HashValue<i32>>,
     pub unit_production_multiplier_q8: Vec<HashValue<i32>>,
@@ -435,72 +442,64 @@ pub struct Units {
     pub unit_fuel_demands: Vec<HashValue<i32>>,
 }
 impl Wire for Units {
-    const MIN: usize = 4
-        + <UnitTable as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN
-        + <Vec<HashValue<bool>> as Wire>::MIN
-        + <bool as Wire>::MIN
-        + <bool as Wire>::MIN
-        + <bool as Wire>::MIN
-        + <Vec<DistrictFoundingUnits> as Wire>::MIN
-        + <Vec<u32> as Wire>::MIN
-        + <Vec<u32> as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <Vec<RandomPromotionSelection> as Wire>::MIN
-        + <Vec<ProposedPromotion> as Wire>::MIN
-        + <Vec<BasePromotion> as Wire>::MIN
-        + <Vec<u32> as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <u32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <i32 as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN
-        + <Vec<HashValue<i32>> as Wire>::MIN;
+    const MIN: usize = 4 + <UnitTable as Wire>::MIN;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(22)?;
+        let wire_version = u32::read(r)?;
+        if wire_version != 16 && wire_version != VERSION {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        let records = <UnitTable as Wire>::read(r)?;
+        let current_unit_cost = <Vec<HashValue<i32>> as Wire>::read(r)?;
+        let unit_production_multiplier_q8 = <Vec<HashValue<i32>> as Wire>::read(r)?;
+        let extra_unit_copy = <Vec<HashValue<i32>> as Wire>::read(r)?;
+        let legacy_wall_attack_promotion_class_values = if wire_version == 16 {
+            Some(Vec::<i32>::read(r)?)
+        } else {
+            None
+        };
+        let enable_wall_attack_whole_game_promotion_class = if wire_version == 16 {
+            Vec::new()
+        } else {
+            Vec::<HashValue<i32>>::read(r)?
+        };
         Ok(Self {
-            records: <UnitTable as Wire>::read(r)?,
-            current_unit_cost: <Vec<HashValue<i32>> as Wire>::read(r)?,
-            unit_production_multiplier_q8: <Vec<HashValue<i32>> as Wire>::read(r)?,
-            extra_unit_copy: <Vec<HashValue<i32>> as Wire>::read(r)?,
-            enable_wall_attack_whole_game_promotion_class: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            wire_version,
+            legacy_wall_attack_promotion_class_values,
+            records,
+            current_unit_cost,
+            unit_production_multiplier_q8,
+            extra_unit_copy,
+            enable_wall_attack_whole_game_promotion_class,
             unit_build_disabled: <Vec<HashValue<bool>> as Wire>::read(r)?,
             no_settling_cities: <bool as Wire>::read(r)?,
             no_foreign_heal: <bool as Wire>::read(r)?,
             no_neutral_heal: <bool as Wire>::read(r)?,
             add_on_district_founding: <Vec<DistrictFoundingUnits> as Wire>::read(r)?,
             unit_free_pass_hashes: read_free_pass_hashes(r)?,
-            unit_embarkation_pass_hashes: <Vec<u32> as Wire>::read(r)?,
+            unit_embarkation_pass_hashes: if wire_version == 16 {
+                Vec::new()
+            } else {
+                <Vec<u32> as Wire>::read(r)?
+            },
             extra_build_charges: <i32 as Wire>::read(r)?,
-            extra_build_charges_by_unit: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            extra_build_charges_by_unit: if wire_version == 16 {
+                Vec::new()
+            } else {
+                <Vec<HashValue<i32>> as Wire>::read(r)?
+            },
             extra_spread_charges: <i32 as Wire>::read(r)?,
             embarked_movement_modifier: <i32 as Wire>::read(r)?,
             upgrade_military_formation_on_city_conquest_count: <i32 as Wire>::read(r)?,
             promotion_selections: <Vec<RandomPromotionSelection> as Wire>::read(r)?,
             proposed_promotions: <Vec<ProposedPromotion> as Wire>::read(r)?,
-            base_promotions: <Vec<BasePromotion> as Wire>::read(r)?,
+            base_promotions: if wire_version == 16 {
+                Vec::new()
+            } else {
+                <Vec<BasePromotion> as Wire>::read(r)?
+            },
             unlimited_promotion_choice_unit_hashes: <Vec<u32> as Wire>::read(r)?,
             land_corps_unlock_civic_hash: <u32 as Wire>::read(r)?,
             land_army_unlock_civic_hash: <u32 as Wire>::read(r)?,
@@ -516,16 +515,34 @@ impl Wire for Units {
             naval_corps_modified_strength: <i32 as Wire>::read(r)?,
             naval_army_modified_strength: <i32 as Wire>::read(r)?,
             enable_wall_attack_whole_game: <i32 as Wire>::read(r)?,
-            rock_band_album_sales_modifier: <i32 as Wire>::read(r)?,
+            rock_band_album_sales_modifier: if wire_version == 16 {
+                0
+            } else {
+                <i32 as Wire>::read(r)?
+            },
             banned_production_yield: <i32 as Wire>::read(r)?,
             favored_production_yield: <i32 as Wire>::read(r)?,
             favored_production_modifier_q8: <i32 as Wire>::read(r)?,
-            upgrade_cost_modifier_q8: <i32 as Wire>::read(r)?,
+            upgrade_cost_modifier_q8: if wire_version == 16 {
+                0
+            } else {
+                <i32 as Wire>::read(r)?
+            },
             current_unit_resource_cost: <Vec<HashValue<i32>> as Wire>::read(r)?,
-            unit_fuel_demands: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            unit_fuel_demands: if wire_version == 16 {
+                Vec::new()
+            } else {
+                <Vec<HashValue<i32>> as Wire>::read(r)?
+            },
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        if self.legacy_wall_attack_promotion_class_values.is_some() {
+            return Err(Error::InvalidContainer);
+        }
         22u32.write(w)?;
         self.records.write(w)?;
         self.current_unit_cost.write(w)?;
@@ -574,19 +591,70 @@ impl Wire for Units {
         Ok(())
     }
 }
+/// Cursor at the failed read, or exact Unit start when the delegated Unit
+/// decoder fails. The nested error does not imply its own tag was the Unit tag.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Boundary {
+    pub component: &'static str,
+    pub consumed: usize,
+    pub error: Error,
+}
+/// Unapplied native Read migration, conditional on an actual registry lookup
+/// and an in-range destination index. The old array value is a separate input.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BuildChargeMigration {
+    pub unit_type_hash: u32,
+    pub delta: i32,
+}
 impl Units {
-    pub fn decode_prefix_with_items(
+    /// v16 omits embarkationPass and basePromotions: native self-copy retains
+    /// prior values. Their empty DTO vectors represent no serialized elements.
+    pub fn omitted_lists_retain_prior_value(&self) -> bool {
+        self.wire_version == 16
+    }
+    /// v16 omits fuel demand: native Read fills int0 at actual Resource indexes.
+    /// Registry count/order and other logical slots are not inferred.
+    pub fn fuel_demands_zero_at_actual_resource_indexes(&self) -> bool {
+        self.wire_version == 16
+    }
+    /// For v16, a positive scalar may update the prior per-Unit array at Builder.
+    /// Native ChangeExtraBuildCharges uses wrapping add and clamps a negative
+    /// signed result to0; invalid/missing actual indexes leave it unchanged.
+    pub fn extra_build_charges_read_migration(&self) -> Option<BuildChargeMigration> {
+        (self.wire_version == 16 && self.extra_build_charges > 0).then_some(BuildChargeMigration {
+            unit_type_hash: 0x11d57532,
+            delta: self.extra_build_charges,
+        })
+    }
+    pub fn decode_prefix_with_boundary(
         bytes: &[u8],
         limits: Limits,
-    ) -> Result<(Self, usize, usize), Error> {
+    ) -> Result<(Self, usize, usize), Boundary> {
         let mut r = Reader {
             data: bytes,
             pos: 0,
             items: 0,
             limits,
+            unit_start: None,
         };
-        let v = Self::read(&mut r)?;
-        Ok((v, r.pos, r.items))
+        match Self::read(&mut r) {
+            Ok(value) => Ok((value, r.pos, r.items)),
+            Err(error) => Err(Boundary {
+                component: if r.unit_start.is_some() {
+                    "Unit"
+                } else {
+                    "Units"
+                },
+                consumed: r.unit_start.unwrap_or(r.pos),
+                error,
+            }),
+        }
+    }
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_prefix_with_boundary(bytes, limits).map_err(|boundary| boundary.error)
     }
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
         let (v, n, _) = Self::decode_prefix_with_items(bytes, limits)?;
@@ -618,6 +686,8 @@ mod tests {
     use super::*;
     fn sample() -> Units {
         Units {
+            wire_version: VERSION,
+            legacy_wall_attack_promotion_class_values: None,
             records: UnitTable {
                 capacity: 257,
                 entries: vec![],
@@ -844,6 +914,7 @@ mod tests {
             assert_eq!(Units::decode(&bad, limits()), Err(Error::InvalidBool(2)));
         }
         let mut r = Reader {
+            unit_start: None,
             data: &bytes,
             pos: hash_bool_start,
             items: 0,
@@ -872,6 +943,7 @@ mod tests {
         );
         w.data[0..4].copy_from_slice(&21u32.to_le_bytes());
         let mut r = Reader {
+            unit_start: None,
             data: &w.data,
             pos: 0,
             items: 0,
@@ -888,6 +960,7 @@ mod tests {
             let mut bytes = data;
             bytes[0..4].copy_from_slice(&22u32.to_le_bytes());
             let mut r = Reader {
+                unit_start: None,
                 data: &bytes,
                 pos: 0,
                 items: 0,
@@ -905,6 +978,7 @@ mod tests {
         for count in [0x80000000u32, u32::MAX] {
             let data = count.to_le_bytes();
             let mut r = Reader {
+                unit_start: None,
                 data: &data,
                 pos: 0,
                 items: 0,
@@ -932,6 +1006,7 @@ mod tests {
         write_free_pass_hashes(&values, &mut w).unwrap();
         assert_eq!(&w.data[..4], &2i32.to_le_bytes());
         let mut r = Reader {
+            unit_start: None,
             data: &w.data,
             pos: 0,
             items: 0,
@@ -950,6 +1025,7 @@ mod tests {
             },
         ] {
             let mut r = Reader {
+                unit_start: None,
                 data: &w.data,
                 pos: 0,
                 items: 0,
@@ -992,5 +1068,156 @@ mod tests {
             Units::decode_prefix(&prefix.data, huge),
             Err(Error::InvalidContainer)
         );
+    }
+    fn legacy16_fixture() -> (Vec<u8>, Units) {
+        let mut value = sample();
+        value.records.entries.clear();
+        value.extra_build_charges = 7;
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        16u32.write(&mut w).unwrap();
+        value.records.write(&mut w).unwrap();
+        value.current_unit_cost.write(&mut w).unwrap();
+        value.unit_production_multiplier_q8.write(&mut w).unwrap();
+        value.extra_unit_copy.write(&mut w).unwrap();
+        vec![7i32, -3, i32::MIN].write(&mut w).unwrap();
+        value.unit_build_disabled.write(&mut w).unwrap();
+        value.no_settling_cities.write(&mut w).unwrap();
+        value.no_foreign_heal.write(&mut w).unwrap();
+        value.no_neutral_heal.write(&mut w).unwrap();
+        value.add_on_district_founding.write(&mut w).unwrap();
+        write_free_pass_hashes(&value.unit_free_pass_hashes, &mut w).unwrap();
+        value.extra_build_charges.write(&mut w).unwrap();
+        value.extra_spread_charges.write(&mut w).unwrap();
+        value.embarked_movement_modifier.write(&mut w).unwrap();
+        value
+            .upgrade_military_formation_on_city_conquest_count
+            .write(&mut w)
+            .unwrap();
+        value.promotion_selections.write(&mut w).unwrap();
+        value.proposed_promotions.write(&mut w).unwrap();
+        value
+            .unlimited_promotion_choice_unit_hashes
+            .write(&mut w)
+            .unwrap();
+        value.land_corps_unlock_civic_hash.write(&mut w).unwrap();
+        value.land_army_unlock_civic_hash.write(&mut w).unwrap();
+        value.naval_corps_unlock_civic_hash.write(&mut w).unwrap();
+        value.naval_army_unlock_civic_hash.write(&mut w).unwrap();
+        value.land_corps_unlock_tech_hash.write(&mut w).unwrap();
+        value.land_army_unlock_tech_hash.write(&mut w).unwrap();
+        value.naval_corps_unlock_tech_hash.write(&mut w).unwrap();
+        value.naval_army_unlock_tech_hash.write(&mut w).unwrap();
+        value.peak_units.write(&mut w).unwrap();
+        value.land_corps_modified_strength.write(&mut w).unwrap();
+        value.land_army_modified_strength.write(&mut w).unwrap();
+        value.naval_corps_modified_strength.write(&mut w).unwrap();
+        value.naval_army_modified_strength.write(&mut w).unwrap();
+        value.enable_wall_attack_whole_game.write(&mut w).unwrap();
+        value.banned_production_yield.write(&mut w).unwrap();
+        value.favored_production_yield.write(&mut w).unwrap();
+        value.favored_production_modifier_q8.write(&mut w).unwrap();
+        value.current_unit_resource_cost.write(&mut w).unwrap();
+        value.wire_version = 16;
+        value.legacy_wall_attack_promotion_class_values = Some(vec![7, -3, i32::MIN]);
+        value.enable_wall_attack_whole_game_promotion_class.clear();
+        value.unit_embarkation_pass_hashes.clear();
+        value.extra_build_charges_by_unit.clear();
+        value.base_promotions.clear();
+        value.rock_band_album_sales_modifier = 0;
+        value.upgrade_cost_modifier_q8 = 0;
+        value.unit_fuel_demands.clear();
+        (w.data, value)
+    }
+    #[test]
+    fn legacy16_raw_vector_and_unapplied_read_effects() {
+        let (b, expected) = legacy16_fixture();
+        let (mut value, used, items) = Units::decode_prefix_with_items(&b, limits()).unwrap();
+        assert_eq!(value, expected);
+        assert_eq!(used, b.len());
+        assert!(value.omitted_lists_retain_prior_value());
+        assert!(value.fuel_demands_zero_at_actual_resource_indexes());
+        assert_eq!(
+            value.extra_build_charges_read_migration(),
+            Some(BuildChargeMigration {
+                unit_type_hash: 0x11d57532,
+                delta: 7
+            })
+        );
+        for delta in [-1, 0] {
+            value.extra_build_charges = delta;
+            assert_eq!(value.extra_build_charges_read_migration(), None);
+        }
+        assert_eq!(value.encode(limits()), Err(Error::UnsupportedLegacyWrite));
+        assert!(Units::decode_prefix_with_items(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: items
+            }
+        )
+        .is_ok());
+        assert_eq!(
+            Units::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len() - 1,
+                    max_items: items
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Units::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len(),
+                    max_items: items - 1
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for end in 0..b.len() {
+            assert!(Units::decode(&b[..end], limits()).is_err(), "prefix {end}");
+        }
+        let mut unsupported = b.clone();
+        unsupported[..4].copy_from_slice(&17u32.to_le_bytes());
+        assert_eq!(
+            Units::decode(&unsupported, limits()),
+            Err(Error::Version {
+                expected: 22,
+                actual: 17
+            })
+        );
+        let mut trailing = b;
+        trailing.push(0);
+        assert_eq!(Units::decode(&trailing, limits()), Err(Error::Trailing));
+        let current = sample();
+        assert!(!current.omitted_lists_retain_prior_value());
+        assert!(!current.fuel_demands_zero_at_actual_resource_indexes());
+        assert_eq!(current.extra_build_charges_read_migration(), None);
+    }
+    #[test]
+    fn independent_unit_failure_reports_exact_child_start() {
+        let mut b = Vec::new();
+        for value in [16u32, 65537, 16, 1, 1, 0, 0] {
+            b.extend_from_slice(&value.to_le_bytes());
+        }
+        let boundary = Units::decode_prefix_with_boundary(&b, limits()).unwrap_err();
+        assert_eq!((boundary.component, boundary.consumed), ("Unit", 24));
+        assert!(matches!(
+            boundary.error,
+            Error::Unit(crate::unit::Error::Version { actual: 0, .. })
+        ));
+        assert_eq!(
+            Units::decode_prefix_with_items(&b, limits()),
+            Err(boundary.error)
+        );
+        b[..4].copy_from_slice(&17u32.to_le_bytes());
+        let boundary = Units::decode_prefix_with_boundary(&b, limits()).unwrap_err();
+        assert_eq!((boundary.component, boundary.consumed), ("Units", 4));
     }
 }
