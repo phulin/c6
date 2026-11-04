@@ -71,6 +71,102 @@ fn location(
     Ok((x >= 0 && y >= 0 && x < width && y < height).then_some(crate::unit::PlotCoord { x, y }))
 }
 
+/// Native 28c90d0 inverse. Radius four has indices beyond the ordinary37 slots;
+/// callers must retain the worker-vector bounds test rather than clamp them.
+pub fn plot_index(
+    map: &crate::map::Map,
+    center: crate::unit::PlotCoord,
+    plot: crate::unit::PlotCoord,
+) -> Result<i32, crate::movement_world::MissingInput> {
+    inverse(
+        map.header.width,
+        map.header.height,
+        map.header.wrap_x,
+        map.header.wrap_y,
+        center,
+        plot,
+    )
+}
+fn inverse(
+    width: i32,
+    height: i32,
+    wrap_x: bool,
+    wrap_y: bool,
+    center: crate::unit::PlotCoord,
+    plot: crate::unit::PlotCoord,
+) -> Result<i32, crate::movement_world::MissingInput> {
+    if width <= 0 || height <= 0 {
+        return Err(crate::movement_world::MissingInput::InvalidMapDimensions);
+    }
+    fn difference(value: i32, size: i32, wrap: bool) -> i32 {
+        if !wrap {
+            return value;
+        }
+        let half = ((size as u32) >> 1) as i32;
+        if value > half {
+            value.wrapping_sub(size)
+        } else if value < half.wrapping_neg() {
+            value.wrapping_add(size)
+        } else {
+            value
+        }
+    }
+    const XY: [[i32; 9]; 9] = [
+        [-1, -1, -1, -1, 53, 54, 55, 56, 57],
+        [-1, -1, -1, 52, 31, 32, 33, 34, 58],
+        [-1, -1, 51, 30, 15, 16, 17, 35, 59],
+        [-1, 50, 29, 14, 5, 6, 18, 36, 60],
+        [49, 28, 13, 4, 0, 1, 7, 19, 37],
+        [48, 27, 12, 3, 2, 8, 20, 38, -1],
+        [47, 26, 11, 10, 9, 21, 39, -1, -1],
+        [46, 25, 24, 23, 22, 40, -1, -1, -1],
+        [45, 44, 43, 42, 41, -1, -1, -1, -1],
+    ];
+    let dx = difference(plot.x.wrapping_sub(center.x), width, wrap_x);
+    let dy = difference(plot.y.wrapping_sub(center.y), height, wrap_y);
+    let new_y = center.y.wrapping_add(dy);
+    let axial = center
+        .x
+        .wrapping_add(dx)
+        .wrapping_sub(row_half(new_y))
+        .wrapping_sub(center.x.wrapping_sub(row_half(center.y)));
+    let dx = difference(axial, width, wrap_x);
+    let distance = if (dx >= 0) == (dy >= 0) {
+        dx.wrapping_abs().wrapping_add(dy.wrapping_abs())
+    } else {
+        dx.wrapping_abs().max(dy.wrapping_abs())
+    };
+    if distance > 4 {
+        return Ok(-1);
+    }
+    XY.get(dx.wrapping_add(4) as u32 as usize)
+        .and_then(|r| r.get(dy.wrapping_add(4) as u32 as usize))
+        .copied()
+        .ok_or(crate::movement_world::MissingInput::PlotOutsideMap)
+}
+/// Native286f480 adds both ordinary and forced workers, wrapping the sum.
+/// A short ordinary vector proves out-of-range0; it does not supply missing
+/// forced-vector contents for an otherwise in-range ordinary slot.
+pub fn plot_workers(
+    citizens: &Citizens,
+    map: &crate::map::Map,
+    center: crate::unit::PlotCoord,
+    plot: crate::unit::PlotCoord,
+) -> Result<i32, &'static str> {
+    let index = plot_index(map, center, plot).map_err(|_| "current citizen plot index")?;
+    index_workers(citizens, index)
+}
+fn index_workers(citizens: &Citizens, index: i32) -> Result<i32, &'static str> {
+    let Some(ordinary) = citizens.working_plot.get(index as u32 as usize) else {
+        return Ok(0);
+    };
+    let forced = citizens
+        .forced_working_plot
+        .get(index as usize)
+        .ok_or("current forced-worker vector")?;
+    Ok(ordinary.wrapping_add(*forced))
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Scoring {
     pub food: i32,
@@ -395,5 +491,70 @@ mod tests {
                 previous_workers: 2
             }))
         );
+    }
+}
+
+#[cfg(test)]
+mod inverse_tests {
+    use super::*;
+    use crate::unit::PlotCoord;
+    #[test]
+    fn all_standard_slots_roundtrip_across_both_wrapped_edges() {
+        for center in [
+            PlotCoord { x: 0, y: 0 },
+            PlotCoord { x: 43, y: 25 },
+            PlotCoord { x: 18, y: 11 },
+        ] {
+            for index in 0..37 {
+                let plot = location(44, 26, true, true, center, index)
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(inverse(44, 26, true, true, center, plot), Ok(index));
+            }
+        }
+    }
+    #[test]
+    fn half_map_ties_keep_direction_and_small_maps_keep_aliases() {
+        assert_eq!(
+            inverse(
+                8,
+                8,
+                true,
+                true,
+                PlotCoord { x: 0, y: 0 },
+                PlotCoord { x: 4, y: 0 }
+            ),
+            Ok(41)
+        );
+        assert_eq!(
+            inverse(
+                8,
+                8,
+                true,
+                true,
+                PlotCoord { x: 4, y: 0 },
+                PlotCoord { x: 0, y: 0 }
+            ),
+            Ok(53)
+        );
+        let center = PlotCoord { x: 0, y: 0 };
+        let alias = location(3, 3, true, true, center, 22).unwrap().unwrap();
+        assert_eq!(alias, center);
+        assert_eq!(inverse(3, 3, true, true, center, alias), Ok(0));
+    }
+    #[test]
+    fn worker_count_sums_forced_and_ordinary_and_bounds_before_reading() {
+        let citizens = Citizens {
+            working_plot: vec![i32::MAX],
+            forced_working_plot: vec![1],
+            favored_yields: vec![],
+            disfavored_yields: vec![],
+            num_unassigned_citizens: 0,
+            num_citizens_working_plots: 0,
+            force_update_plot_appeal: false,
+        };
+        assert_eq!(index_workers(&citizens, 0), Ok(i32::MIN));
+        assert_eq!(index_workers(&citizens, -1), Ok(0));
+        assert_eq!(index_workers(&citizens, 41), Ok(0));
     }
 }

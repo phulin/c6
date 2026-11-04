@@ -259,7 +259,11 @@ pub trait Runtime {
     fn unowned_appeal(&self, _plot: u32) -> Result<i32, Error> {
         Err(Error::Provider("Rules.Appeal"))
     }
-    fn city_buildings_at_location(&self, _city: ComponentId, _plot: u32) -> Result<&[u32], Error> {
+    fn city_buildings_at_location(
+        &self,
+        _city: ComponentId,
+        _plot: u32,
+    ) -> Result<Vec<u32>, Error> {
         Err(Error::Provider("BuildingsAtLocation"))
     }
     fn city_effect_yield(&self, _plot: u32, _yield: i32) -> Result<Option<i32>, Error> {
@@ -490,7 +494,7 @@ pub fn get_yield<R: Runtime, A: ImprovementAdjacency>(
                 requested,
             );
             if let Some((city, _)) = ctx.owning_city(plot)? {
-                for &building in ctx.runtime.city_buildings_at_location(city, plot)? {
+                for building in ctx.runtime.city_buildings_at_location(city, plot)? {
                     let index = rules.buildings.find_index(building)?;
                     let definition = rules.buildings.at(index).ok_or(Error::DefinitionIndex)?;
                     result = result.wrapping_add(named_sum(
@@ -921,9 +925,9 @@ mod tests {
             self.calls.borrow_mut().push("effects");
             Ok(self.effects)
         }
-        fn city_buildings_at_location(&self, _: ComponentId, _: u32) -> Result<&[u32], Error> {
+        fn city_buildings_at_location(&self, _: ComponentId, _: u32) -> Result<Vec<u32>, Error> {
             self.calls.borrow_mut().push("buildings");
-            Ok(&[600])
+            Ok(vec![600])
         }
         fn active_drought_type(&self, _: u32) -> Result<i32, Error> {
             self.calls.borrow_mut().push("drought");
