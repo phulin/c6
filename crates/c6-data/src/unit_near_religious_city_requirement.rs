@@ -33,7 +33,7 @@ impl Definitions {
             religions: collection(rules, "Religions", "ReligionType")?,
         })
     }
-    fn religion(&self, hash: u32) -> i32 {
+    pub(crate) fn religion(&self, hash: u32) -> i32 {
         self.religions.find_index(hash).map_or(-1, |i| i as i32)
     }
 }

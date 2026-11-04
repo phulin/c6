@@ -1,5 +1,5 @@
-//! Linux unit-versus-unit strength opening terms. Remaining situational bonuses
-//! and current proposal modifiers must still be evaluated before damage.
+//! Linux unit-versus-unit strength arithmetic and ordered ordinary attack terms.
+//! Query errors identify unsupported branches; this does not resolve combat.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
     Attack,
@@ -99,6 +99,36 @@ pub fn unused_movement_bonus(moves_raw: i32, modifier: i32) -> i32 {
         multiply(moves_raw, modifier.wrapping_shl(8))
     }
 }
+/// 2aaf660: ordinary/religious records are disjoint; expiry equality is
+/// inclusive. Unknown source kinds and nonpositive source timestamps do not add.
+pub fn diplomatic_combat_bonus(
+    modifiers: &[crate::player_diplomacy::CombatModifier],
+    turns: &[i32; 10],
+    current: i32,
+    religious: bool,
+) -> i32 {
+    modifiers.iter().fold(0_i32, |sum, m| {
+        if m.religious_only != religious {
+            return sum;
+        }
+        let index = match m.source {
+            1 => 2,
+            2 => 0,
+            3 => 1,
+            4 => 3,
+            5 => 4,
+            6 => 6,
+            8 => 5,
+            _ => return sum,
+        };
+        let last = turns[index];
+        if last > 0 && last.wrapping_add(m.turns_active) >= current {
+            sum.wrapping_add(m.combat_bonus)
+        } else {
+            sum
+        }
+    })
+}
 /// Native ordinary Unit/Unit attack bonus order. Each stage is a concrete
 /// Rules.Combat helper, not a precomputed total or implicit zero capability.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -161,7 +191,8 @@ pub enum AttackError<E> {
         error: E,
     },
 }
-/// Full ordinary attack aggregation2bde530, excluding preview DTO text. Unknown
+/// Ordinary attack aggregation2bde530 for the native NULL-Results branch.
+/// Live-Results preview callbacks are not implemented here. Unknown
 /// bonus queries propagate at their native position, with the computed prefix;
 /// callers cannot substitute that prefix for a successful modifier result.
 pub fn ordinary_attack_modifier<C: AttackContext>(c: &mut C) -> Result<i32, AttackError<C::Error>> {
@@ -351,6 +382,30 @@ mod tests {
             proposal_read: false,
             dead: false,
         }
+    }
+    #[test]
+    fn diplomatic_scope_expiry_and_wrapping_match_native_timing() {
+        use crate::player_diplomacy::CombatModifier as M;
+        let record = |source, turns_active, combat_bonus, religious_only| M {
+            source,
+            turns_active,
+            combat_bonus,
+            religious_only,
+        };
+        let mut times = [0; 10];
+        times[2] = 10;
+        times[0] = i32::MAX;
+        let values = [
+            record(1, 5, 7, false),
+            record(1, 5, 99, true),
+            record(7, i32::MAX, 999, false),
+            record(2, 1, 88, false),
+        ];
+        assert_eq!(diplomatic_combat_bonus(&values, &times, 15, false), 7);
+        assert_eq!(diplomatic_combat_bonus(&values, &times, 16, false), 0);
+        assert_eq!(diplomatic_combat_bonus(&values, &times, 15, true), 99);
+        times[2] = 0;
+        assert_eq!(diplomatic_combat_bonus(&values, &times, 0, false), 0);
     }
     #[test]
     fn attack_order_stops_at_unknown_bonus_and_reads_current_proposal_last() {
