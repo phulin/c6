@@ -2722,6 +2722,28 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn current_trade_graph_requires_same_snapshot_and_binds_once() {
+        let mut s = state();
+        let witness = ObservedSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: [1; 32], snapshot_bytes: 1,
+            capture_runtime_sha256: [2; 32], capture_facts_sha256: [3; 32],
+            capture_configuration_sha256: [4; 32],
+        };
+        let graph = || crate::trade_graph_state::GraphState::from_graph(
+            crate::trade::Graph::new(17, vec![]).unwrap()).unwrap();
+        assert!(matches!(s.initialize_current_trade_graph(&witness, graph()), Err(Error::Binding)));
+        s.observed_snapshot = Some(witness.clone());
+        s.initialize_current_trade_graph(&witness, graph()).unwrap();
+        assert_eq!(s.trade_graph().unwrap().graph().total_edges_created(), 17);
+        assert!(s.trade_graph_source().is_none());
+        assert!(matches!(s.initialize_current_trade_graph(&witness, graph()), Err(Error::AlreadyBound)));
+        let mut late = state();
+        late.observed_snapshot = Some(witness.clone());
+        late.revision += 1;
+        assert!(matches!(late.initialize_current_trade_graph(&witness, graph()), Err(Error::NotPristine)));
+    }
     fn trade_graph_carrier(frame: &[u8]) -> (LoadedState, ComponentSnapshotWitness, [u8; 32]) {
         use sha2::{Digest, Sha256};
         let mut s = state();
@@ -3910,6 +3932,27 @@ impl LoadedState {
         self.advance_admission_generation()?;
         self.trade_graph = Some(graph);
         self.trade_graph_source = Some(witness);
+        Ok(())
+    }
+    /// Admit actual current logical graph values from the same initial stopped
+    /// snapshot, without manufacturing an attributed Save frame. The caller
+    /// decodes and authenticates both graph entries and its allocation counter.
+    pub fn initialize_current_trade_graph(
+        &mut self,
+        witness: &ObservedSnapshotWitness,
+        graph: crate::trade_graph_state::GraphState,
+    ) -> Result<(), Error> {
+        if self.trade_graph.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if self.observed_snapshot.as_ref() != Some(witness) {
+            return Err(Error::Binding);
+        }
+        self.advance_admission_generation()?;
+        self.trade_graph = Some(graph);
         Ok(())
     }
     /// Point queries do not scan source hashes or consult a global revision.
