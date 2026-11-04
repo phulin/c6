@@ -24,6 +24,7 @@ use c6_core::{
 #[derive(Debug)]
 pub enum Error {
     Combat(Box<crate::loaded_actions::Error>),
+    District(Box<crate::formation_movement_cost::Error>),
     State(c6_core::loaded_state::Error),
     Relations(c6_core::game_diplomatic_relations::Error),
     World(c6_core::world::MissingInput),
@@ -476,6 +477,7 @@ pub struct Context<'s, 'a, 'r> {
     city_domains: Option<std::borrow::Cow<'a, [Option<c6_core::city_district::DomainMask>]>>,
     civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
     combat_definitions: Option<&'a crate::formation_rules::Definitions>,
+    district_definitions: Option<&'a crate::formation_movement_cost::Definitions<'a>>,
 }
 impl<'a, 'r> std::ops::Deref for Context<'_, 'a, 'r> {
     type Target = Definitions<'a, 'r>;
@@ -511,6 +513,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             city_domains: None,
             civic_activity: None,
             combat_definitions: None,
+            district_definitions: None,
         })
     }
     /// Reborrow the live state without rebuilding native registries or rules.
@@ -528,6 +531,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             city_domains: None,
             civic_activity: None,
             combat_definitions: None,
+            district_definitions: None,
         })
     }
     /// Reuse current GetCombat(false) for the source-qualified shore defender
@@ -538,6 +542,15 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         definitions: &'a crate::formation_rules::Definitions,
     ) -> Self {
         self.combat_definitions = Some(definitions);
+        self
+    }
+    /// Current District.IsDefensible over the same admitted static definitions;
+    /// District records remain canonical in LoadedState, never copied answers.
+    pub fn with_district_definitions(
+        mut self,
+        definitions: &'a crate::formation_movement_cost::Definitions<'a>,
+    ) -> Self {
+        self.district_definitions = Some(definitions);
         self
     }
     /// Borrow masks rebuilt once from this exact current state. Identity and
@@ -952,15 +965,15 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             }
         }
     }
-    fn district_type(&self, plot: &Plot) -> Result<i32, Error> {
+    fn district(&self, plot: &Plot) -> Result<Option<&c6_core::player_districts::District>, Error> {
         if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
             return Err(Error::Geometry);
         }
         let Some(attrs) = plot.city_attributes.as_ref() else {
-            return Ok(-1);
+            return Ok(None);
         };
         if attrs.player == -1 || attrs.district == u32::MAX {
-            return Ok(-1);
+            return Ok(None);
         }
         if self
             .state
@@ -969,7 +982,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .map_err(Error::World)?
             .is_none()
         {
-            return Ok(-1);
+            return Ok(None);
         }
         let owner = self
             .state
@@ -984,8 +997,12 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .entries
             .iter()
             .find(|s| s.index == (attrs.district & 0xffff) as i32);
-        Ok(found
-            .and_then(|d| self.districts.find_index(d.value.district_hash))
+        Ok(found.map(|d| &d.value))
+    }
+    fn district_type(&self, plot: &Plot) -> Result<i32, Error> {
+        Ok(self
+            .district(plot)?
+            .and_then(|d| self.districts.find_index(d.district_hash))
             .map_or(-1, |i| i as i32))
     }
     fn best_defender(&self, unit: &Unit, destination: PlotCoord) -> Result<Option<&Unit>, Error> {
@@ -1046,6 +1063,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             ..ShoreUnitFacts::default()
         };
         let mut selected: Option<Option<&Unit>> = None;
+        let mut district_at_location: Option<Option<&c6_core::player_districts::District>> = None;
         loop {
             match logic::shore_unit_result(ShorePlacementPlot::Present(&f)) {
                 Ok(value) => return Ok(value),
@@ -1133,6 +1151,22 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                                 .diplomacy
                                 .can_enforce_borders,
                         )
+                    }
+                    PlacementMissing::DistrictAtLocation => {
+                        let district = self.district(plot)?;
+                        f.district_at_location_present = Some(district.is_some());
+                        district_at_location = Some(district);
+                    }
+                    PlacementMissing::Defensible => {
+                        let district = district_at_location.flatten().ok_or(Error::Definitions)?;
+                        let definitions = self
+                            .district_definitions
+                            .ok_or(Error::Capability(Capability::ForeignContext(missing)))?;
+                        f.district_defensible = Some(
+                            definitions
+                                .district_defensible(district)
+                                .map_err(|error| Error::District(Box::new(error)))?,
+                        );
                     }
                     PlacementMissing::Barbarian => {
                         f.barbarian = Some(self.civilization_level(unit.e_owner)? == 0xd959ec24)

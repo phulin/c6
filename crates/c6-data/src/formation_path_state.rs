@@ -196,7 +196,8 @@ pub fn placement_context<'s, 'a, 'r>(
     runtime: &Runtime<'a>,
 ) -> Result<placement::Context<'s, 'a, 'r>, Error> {
     let mut p = placement::Context::from_definitions(state, &definitions.placement)
-        .map_err(Error::Placement)?;
+        .map_err(Error::Placement)?
+        .with_district_definitions(&definitions.movement);
     if let Some(levels) = &runtime.civilization_levels {
         p = p
             .with_civilization_levels(placement::CurrentCivilizationLevels {
