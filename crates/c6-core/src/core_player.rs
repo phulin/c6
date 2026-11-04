@@ -2124,6 +2124,7 @@ pub(crate) mod tests {
     // Arbitrary complete Trade35 wire values; no runtime defaults/remapping.
     fn trade_carrier() -> player_trade::Trade {
         player_trade::Trade {
+            wire_version: 35,
             player: -3000,
             outgoing_route_capacity: -2999,
             notified_outgoing_route_capacity: -2998,
