@@ -50,6 +50,12 @@ impl Runtime {
     pub fn modifier_mut(&mut self, receiver: u64) -> Option<&mut Modifier> {
         self.modifiers.iter_mut().find(|m| m.receiver == receiver)
     }
+    /// ClearModifier erases registration before releasing the modifier owner.
+    /// The returned value remains live while its synchronous destructor runs.
+    pub fn remove_registration(&mut self, receiver: u64) -> Option<Modifier> {
+        let index = self.modifiers.iter().position(|m| m.receiver == receiver)?;
+        Some(self.modifiers.remove(index))
+    }
 }
 #[derive(Debug)]
 pub enum Error<E> {

@@ -106,6 +106,23 @@ impl<S: Copy> ListenerRing<S> {
         }
         Ok(())
     }
+    /// Resolve an imported handle against its source-qualified, unique current
+    /// callback. Removed registrations are excluded, including retained links.
+    pub fn subscription_for(
+        &self,
+        matches: impl Fn(S) -> bool,
+    ) -> Result<Subscription, RegistryError> {
+        let mut found = None;
+        for (index, link) in self.links.iter().enumerate().skip(1) {
+            if link.handle_alive && link.subscriber.is_some_and(&matches) {
+                if found.is_some() {
+                    return Err(RegistryError::DuplicateScope);
+                }
+                found = Some(Subscription(index));
+            }
+        }
+        found.ok_or(RegistryError::InvalidSubscription)
+    }
     fn unlink(&mut self, id: usize) -> Result<(), RegistryError> {
         let link = *self.links.get(id).ok_or(RegistryError::CursorInvalidated)?;
         self.links
@@ -469,6 +486,24 @@ pub fn dispatch<C: Context>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn imported_handle_lookup_rejects_ambiguity_and_retained_removed_links() {
+        let mut ring = ListenerRing::from_ordered(&[7_u64, 8]).unwrap();
+        let cursor = ring.cursor_start().unwrap();
+        let first = ring.subscription_for(|route| route == 7).unwrap();
+        ring.unsubscribe(first).unwrap();
+        assert_eq!(
+            ring.subscription_for(|route| route == 7),
+            Err(RegistryError::InvalidSubscription)
+        );
+        ring.subscribe(8).unwrap();
+        assert_eq!(
+            ring.subscription_for(|route| route == 8),
+            Err(RegistryError::DuplicateScope)
+        );
+        assert_eq!(ring.cursor_route(cursor).unwrap(), None);
+        ring.cursor_release(cursor).unwrap();
+    }
     const OLD: PlotCoord = PlotCoord { x: 81, y: 58 };
     const NEW: PlotCoord = PlotCoord { x: 80, y: 57 };
     struct Fixture {

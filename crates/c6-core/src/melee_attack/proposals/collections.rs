@@ -65,6 +65,19 @@ impl Runtime {
             .find(|v| v.0 == collection)
             .map(|v| &mut v.1.added)
     }
+    /// Unsubscribe the actual unique DynamicModifier item-change binding. This
+    /// uses the same ring as AddItem, including an in-progress held cursor.
+    pub fn unsubscribe_added_receiver(
+        &mut self,
+        collection: u64,
+        receiver: u64,
+    ) -> Result<(), RegistryError> {
+        let ring = self
+            .ring_mut(collection)
+            .ok_or(RegistryError::MissingGlobalOrder)?;
+        let subscription = ring.subscription_for(|current| current == receiver)?;
+        ring.unsubscribe(subscription)
+    }
 }
 
 pub trait Context<Item = Handle> {
