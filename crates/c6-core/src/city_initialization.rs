@@ -2,12 +2,20 @@
 //! This preserves slot/free order and wrapping generated IDs. It does not
 //! initialize a City or dispatch its creation effects by itself.
 use crate::map::{Recycled, Slot};
+pub mod constructor;
+pub use constructor::{BuildingSupport, Definitions, Parameters};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Allocator,
     ResourceLimit,
 }
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "City initialization: {self:?}")
+    }
+}
+impl std::error::Error for Error {}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Allocation {
     pub slot: u32,
@@ -179,4 +187,78 @@ mod tests {
         assert_eq!(records.capacity, 0);
         assert_eq!(records.current_id_bits, 0);
     }
+}
+
+/// Current creation effects reached by the native constructor/Initialize.
+/// Implementations register the actual logical subscribers and call the
+/// concrete CityBuild initializer on this same exclusively owned state.
+pub trait Context {
+    type Error;
+    fn state(&self) -> &crate::loaded_state::LoadedState;
+    fn state_mut(&mut self) -> &mut crate::loaded_state::LoadedState;
+    fn subscribe_city_signals(&mut self, city: crate::unit::ComponentId)
+        -> Result<(), Self::Error>;
+    fn initialize_city_build(
+        &mut self,
+        city: crate::unit::ComponentId,
+    ) -> Result<Option<u32>, Self::Error>;
+}
+#[derive(Debug)]
+pub enum CreationError<E> {
+    State(crate::loaded_state::Error),
+    Initialization(Error),
+    Effect(E),
+}
+impl<E: std::fmt::Debug> std::fmt::Display for CreationError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "City creation prefix: {self:?}")
+    }
+}
+impl<E: std::fmt::Debug> std::error::Error for CreationError<E> {}
+/// Player.Cities.Create2a58e10, ending before placement/name/CityCreated.
+/// Signal registration does not invoke the registered callbacks. The canonical
+/// state assignments preceding CityBuild are installed together, then all
+/// synchronous initialization effects observe that same owned City.
+pub fn create<C: Context>(
+    context: &mut C,
+    definitions: &Definitions<'_>,
+    owner: i32,
+    parameters: Parameters,
+) -> Result<Option<crate::unit::ComponentId>, CreationError<C::Error>> {
+    let Some(city) = context
+        .state_mut()
+        .begin_city_creation(definitions, owner, parameters)
+        .map_err(|error| match error {
+            CreationError::State(error) => CreationError::State(error),
+            CreationError::Initialization(error) => CreationError::Initialization(error),
+            CreationError::Effect(never) => match never {},
+        })?
+    else {
+        return Ok(None);
+    };
+    context
+        .subscribe_city_signals(city)
+        .map_err(CreationError::Effect)?;
+    let city_ai_id = context
+        .initialize_city_build(city)
+        .map_err(CreationError::Effect)?;
+    context
+        .state_mut()
+        .city_mut(owner, city.id)
+        .map_err(CreationError::State)?
+        .header
+        .city_ai_id = city_ai_id.unwrap_or(u32::MAX);
+    // The original current-turn getter is lazy and follows CityBuild effects.
+    let founded_turn = if parameters.founded_turn >= 0 {
+        parameters.founded_turn
+    } else {
+        context.state().retained().core.current_turn
+    };
+    let current = context
+        .state_mut()
+        .city_mut(owner, city.id)
+        .map_err(CreationError::State)?;
+    current.turn_city_founded = founded_turn;
+    current.header.last_warmonger_penalty.fill(0);
+    Ok(Some(city))
 }

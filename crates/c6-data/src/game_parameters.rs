@@ -17,6 +17,7 @@ pub enum IntegerParameter {
     CombatMaxHitPoints,
     CombatMaxNumAttacks,
     FortifyTurnMax,
+    LoyaltyStart,
     HealCityGarrison,
     HealLandEnemy,
     HealLandFriendly,
@@ -39,6 +40,7 @@ impl IntegerParameter {
             Self::CombatMaxHitPoints => "COMBAT_MAX_HIT_POINTS",
             Self::CombatMaxNumAttacks => "COMBAT_MAX_NUM_ATTACKS",
             Self::FortifyTurnMax => "FORTIFY_TURN_MAX",
+            Self::LoyaltyStart => "LOYALTY_START",
             Self::HealCityGarrison => "COMBAT_HEAL_CITY_GARRISON",
             Self::HealLandEnemy => "COMBAT_HEAL_LAND_ENEMY",
             Self::HealLandFriendly => "COMBAT_HEAL_LAND_FRIENDLY",
@@ -65,7 +67,7 @@ impl IntegerParameter {
             | Self::MovementRiverCost
             | Self::MovementPortalCost
             | Self::MovementEmbarkCost => 2,
-            Self::CombatMaxHitPoints => 100,
+            Self::CombatMaxHitPoints | Self::LoyaltyStart => 100,
             Self::HealCityGarrison | Self::HealNavalFriendly => 20,
             Self::HealLandEnemy => 5,
             Self::HealLandFriendly => 15,
@@ -199,7 +201,7 @@ impl<'a> Parameters<'a> {
 // u64, then chooses an i64 endpoint when the accumulated sign bit is set.
 // Its validation/range status is ignored by sqlite3_value_int; do not replace
 // this old target behavior with a modern saturating decimal parser.
-fn sql_integer(value: &SqlValue) -> Option<i32> {
+pub(crate) fn sql_integer(value: &SqlValue) -> Option<i32> {
     Some(match value {
         SqlValue::Null => 0,
         SqlValue::Integer(n) => *n as i32,
@@ -273,6 +275,26 @@ mod tests {
         assert_eq!(p.integer(IntegerParameter::MovementRiverCost).unwrap(), 0);
         assert_eq!(p.integer(IntegerParameter::MovementPortalCost).unwrap(), -3);
         assert_eq!(p.integer(IntegerParameter::MovementEmbarkCost).unwrap(), 2);
+    }
+
+    #[test]
+    fn city_loyalty_uses_native_hundred_fallback_and_present_null_zero() {
+        let empty = database("CREATE TABLE GlobalParameters(Name TEXT,Value);");
+        assert_eq!(
+            Parameters::from_database(&empty)
+                .unwrap()
+                .integer(IntegerParameter::LoyaltyStart)
+                .unwrap(),
+            100
+        );
+        let null = database("CREATE TABLE GlobalParameters(Name TEXT,Value); INSERT INTO GlobalParameters VALUES('LOYALTY_START',NULL);");
+        assert_eq!(
+            Parameters::from_database(&null)
+                .unwrap()
+                .integer(IntegerParameter::LoyaltyStart)
+                .unwrap(),
+            0
+        );
     }
 
     #[test]

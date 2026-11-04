@@ -35,6 +35,7 @@ pub enum Error {
     Version { expected: i32, actual: i32 },
     InvalidBool,
     UnsupportedLegacyWrite,
+    UninitializedDerivedCache,
     Trailing,
     ResourceLimit,
 }
@@ -125,6 +126,18 @@ impl Wire for u32 {
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
         w.put(&self.to_le_bytes())
+    }
+}
+// City.CulturalIdentity constructor/Initialize leave these two raw caches
+// unwritten. Read supplies actual saved values; DoCityCreated computes them.
+// None is an unavailable live cache, never a fabricated integer/default.
+impl Wire for Option<i32> {
+    const MIN_SIZE: usize = 4;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Some(i32::read(r)?))
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        (*self).ok_or(Error::UninitializedDerivedCache)?.write(w)
     }
 }
 impl Wire for bool {
@@ -389,8 +402,8 @@ record!(PlayerIdentityPresence, CULTURAL_IDENTITY_VERSION, {
 });
 record!(CulturalIdentity, CULTURAL_IDENTITY_VERSION, {
  loyalty_raw_q8:i32, last_loyalty_change_raw_q8:i32,
- identities_present:Vec<PlayerIdentityPresence>, conversion_outcome:i32,
- turns_to_conversion:i32, transfer_to:i32, identity_pressure_from_ages_raw_q8:i32,
+ identities_present:Vec<PlayerIdentityPresence>, conversion_outcome:Option<i32>,
+ turns_to_conversion:Option<i32>, transfer_to:i32, identity_pressure_from_ages_raw_q8:i32,
  identity_pressure_from_governor_on_domestic_raw_q8:i32,
  identity_pressure_from_governor_on_foreign_raw_q8:i32,
  identity_pressure_from_modifiers_raw_q8:i32, turn_last_notified_losing_cultural_identity:i32,
