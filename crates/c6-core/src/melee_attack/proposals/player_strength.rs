@@ -70,7 +70,7 @@ fn truncate_f32(value: f32) -> i32 {
     }
 }
 
-fn adjust<C: registry::Context>(
+pub(crate) fn adjust<C: registry::Context>(
     c: &mut C,
     proposal: registry::Handle,
     player: i32,
