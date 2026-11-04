@@ -73,6 +73,20 @@ pub fn melee<C: Context>(
     );
     Ok(ceil(mul(first.wrapping_shl(8), modifier)).min(rules.maximum))
 }
+/// GetExperienceForNextLevel2c186f0: binary64 square converted by CVTTSD2SI,
+/// then wrapping add, signed division by two, multiplier and final factor3.
+pub fn next_level_experience(level: i32, multiplier: i32) -> i32 {
+    let square = f64::from(level) * f64::from(level);
+    let square = if !(-2147483648.0..2147483648.0).contains(&square) {
+        i32::MIN
+    } else {
+        square as i32
+    };
+    (square.wrapping_add(level) / 2)
+        .wrapping_mul(multiplier)
+        .wrapping_mul(3)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,18 +176,4 @@ mod tests {
         assert_eq!(melee(&mut c, rules(), Side::Attacker, true), Ok(1));
         assert_eq!(c.calls, ["can", "opponent", "level"]);
     }
-}
-
-/// GetExperienceForNextLevel2c186f0: binary64 square converted by CVTTSD2SI,
-/// then wrapping add, signed division by two, multiplier and final factor3.
-pub fn next_level_experience(level: i32, multiplier: i32) -> i32 {
-    let square = f64::from(level) * f64::from(level);
-    let square = if !(-2147483648.0..2147483648.0).contains(&square) {
-        i32::MIN
-    } else {
-        square as i32
-    };
-    (square.wrapping_add(level) / 2)
-        .wrapping_mul(multiplier)
-        .wrapping_mul(3)
 }
