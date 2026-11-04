@@ -20,7 +20,10 @@ use c6_core::{
         self, AttacksRemainingReport, MovementReport, RestoreAttacksContext, RestoreMovementContext,
     },
 };
-pub use operations::{pop_front_operation, OperationReports};
+pub use operations::{
+    clear_current_formation_path, clear_unit_operations, complete_unit_movement,
+    pop_front_operation, set_unit_activity, OperationReports,
+};
 
 /// Identity of a retained collection slot, independent of mutable Unit ID/owner.
 /// Native Find resolves generation bits through the low sixteen slot bits.
@@ -30,6 +33,20 @@ pub struct UnitHandle {
     id: u32,
 }
 impl UnitHandle {
+    /// Resolve the real recycled slot while preserving the requesting collection
+    /// owner and full ID. A verified null Find remains distinct from missing state.
+    pub fn resolve(
+        state: &LoadedState,
+        owner: i32,
+        id: u32,
+    ) -> Result<Option<Self>, c6_core::world::MissingInput> {
+        Ok(state
+            .world()
+            .player(owner)?
+            .unit(id)?
+            .map(|_| Self { owner, id }))
+    }
+
     pub fn collection_owner(self) -> i32 {
         self.owner
     }
@@ -657,6 +674,220 @@ pub fn update_formation<E: Effects>(
         .and_then(|f| f.ok_or(c6_core::world::MissingInput::InvalidSlot))
         .map_err(|e| formation_upkeep::FormationUpkeepError::EffectsUnavailable(Error::World(e)))?;
     formation_upkeep::update_attributes(&mut Members {
+        state,
+        inputs,
+        effects,
+        owner,
+        id,
+    })
+}
+
+impl<E: Effects> c6_core::movement_execution::FormationMovementContext for Members<'_, '_, '_, E> {
+    fn unit_mut(&mut self, actor: UnitHandle) -> Result<&mut Unit, Self::Error> {
+        actor.get_mut(self.state).map_err(Error::State)
+    }
+    fn preflight_change_movement(&self) -> Result<(), Self::Error> {
+        self.effects
+            .preflight_formation(self.state, self.owner, self.id)
+            .map_err(Error::Provider)?;
+        let formation = self.formation()?;
+        let player = self
+            .state
+            .world()
+            .player(formation.owner)
+            .map_err(Error::World)?;
+        for &id in &formation.unit_ids {
+            if player.unit(id).map_err(Error::World)?.is_some() {
+                self.effects
+                    .preflight_movement(
+                        self.state,
+                        UnitHandle {
+                            owner: formation.owner,
+                            id,
+                        },
+                        true,
+                    )
+                    .map_err(Error::Provider)?;
+            }
+        }
+        Ok(())
+    }
+    fn sync_unit_current_formation(&mut self, actor: UnitHandle) -> Result<(), Self::Error> {
+        let unit = actor.get(self.state).map_err(Error::World)?;
+        let current = self
+            .state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?
+            .formation;
+        if let Some(current) = current {
+            let found = self
+                .state
+                .world()
+                .player(current.owner)
+                .map_err(Error::World)?
+                .formation(current.requested_id)
+                .map_err(Error::World)?
+                .ok_or(Error::Unsupported("retained current Formation lifetime"))?;
+            if found.resolved_id != current.resolved_id {
+                return Err(Error::Unsupported("replaced current Formation identity"));
+            }
+            update_formation(
+                self.state,
+                current.owner,
+                current.requested_id,
+                self.inputs,
+                self.effects,
+            )
+            .map_err(|e| Error::Formation(Box::new(e)))?;
+        }
+        Ok(())
+    }
+}
+
+/// Actual Formation::ChangeMovesRemaining over the same canonical World as
+/// Placement and its subscribers. The supplied delta is the negated cached
+/// pre-Placement cost; it must never be recomputed from post-move coordinates.
+pub fn change_formation_moves<E: Effects>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+    delta_q8: i32,
+) -> Result<(), c6_core::movement_execution::FormationMovementError<Error<E::Error>>> {
+    c6_core::movement_execution::change_formation_moves(
+        &mut Members {
+            state,
+            inputs,
+            effects,
+            owner,
+            id,
+        },
+        delta_q8,
+    )
+}
+
+/// Original SetHasMoved clears NeedsAttention for every found current member,
+/// including equal-value calls. No callback, movement expenditure or ZOC write
+/// is added by this adapter.
+pub fn set_formation_has_moved<E: Effects>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+    value: bool,
+) -> Result<(), formation_upkeep::FormationUpkeepError<Error<E::Error>>> {
+    c6_core::movement_execution::set_formation_has_moved(
+        &mut Members {
+            state,
+            inputs,
+            effects,
+            owner,
+            id,
+        },
+        value,
+        |members, unit, attention| {
+            unit.get_mut(members.state)
+                .map_err(Error::State)?
+                .b_needs_attention = attention;
+            Ok(())
+        },
+    )
+}
+
+/// Formation CompleteMovement (0x2c438f0) captures its member count once, then
+/// rereads each indexed ID and skips null Find. Existing Unit completion handles
+/// every reached identity report and pending movement flag on canonical state.
+pub fn complete_formation_movement<E: OperationReports>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    effects: &mut E,
+) -> Result<(), Error<E::Error>> {
+    let formation = state
+        .world()
+        .player(owner)
+        .map_err(Error::World)?
+        .formation(id)
+        .map_err(Error::World)?
+        .ok_or(Error::Unsupported("Formation CompleteMovement identity"))?;
+    let count = formation.record.unit_ids.len();
+    let member_owner = formation.record.owner;
+    state.world().player(member_owner).map_err(Error::World)?;
+    for index in 0..count {
+        let formation = state
+            .world()
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(id)
+            .map_err(Error::World)?
+            .ok_or(Error::Unsupported("Formation CompleteMovement lifetime"))?;
+        let member = *formation
+            .record
+            .unit_ids
+            .get(index)
+            .ok_or(Error::Unsupported(
+                "Formation CompleteMovement member cursor",
+            ))?;
+        if UnitHandle::resolve(state, member_owner, member)
+            .map_err(Error::World)?
+            .is_some()
+        {
+            complete_unit_movement(state, member_owner, member, effects)?;
+        }
+    }
+    Ok(())
+}
+
+/// Formation SetHasMovedIntoZOC (0x293cef0) assigns even on equality and sends
+/// the actual integer-bool Formation event after reading current identity/value.
+pub fn set_formation_has_moved_into_zoc<E: FormationRestoreEffects>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    effects: &mut E,
+    value: bool,
+) -> Result<(), Error<E::Error>> {
+    effects
+        .preflight_formation(state, owner, id)
+        .map_err(Error::Provider)?;
+    state
+        .formation_mut(owner, id)
+        .map_err(Error::State)?
+        .has_moved_into_zoc = value;
+    let formation = state
+        .world()
+        .player(owner)
+        .map_err(Error::World)?
+        .formation(id)
+        .map_err(Error::World)?
+        .ok_or(Error::Unsupported("retained ZOC Formation"))?
+        .record;
+    let report = FormationRestoredReport {
+        event_hash: 0xc52231ab,
+        identity: c6_core::unit::ComponentId {
+            owner: formation.owner as i16,
+            component_type: 0x2c,
+            id: formation.id,
+        },
+        value: i32::from(formation.has_moved_into_zoc),
+    };
+    effects
+        .formation_restored(state, report)
+        .map_err(Error::Provider)
+}
+
+/// Admit the complete movement/report/current-Formation continuation before an
+/// enclosing action changes membership. This performs support reads only.
+pub fn preflight_formation_movement<E: Effects>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+) -> Result<(), Error<E::Error>> {
+    c6_core::movement_execution::FormationMovementContext::preflight_change_movement(&Members {
         state,
         inputs,
         effects,

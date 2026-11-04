@@ -209,6 +209,32 @@ impl<'a> Definitions<'a> {
             improvement_damage: improvement_properties(rules)?,
         })
     }
+    /// Actual Improvement definition Find plus FindProperty and native integer
+    /// conversion, shared by ZOC and movement-damage consumers. The index/hash
+    /// lookup keeps DefinitionCollection semantics; absent definition/property
+    /// stays absent rather than becoming an invented zero-cost definition.
+    pub fn improvement_damage_property(
+        &self,
+        index_or_hash: u32,
+        key: u32,
+    ) -> Result<Option<i32>, Error> {
+        let property = match key {
+            0x7d27db83 => 0,
+            0x8634aa0f => 1,
+            _ => {
+                return Err(Error::Missing(
+                    "unsupported Improvement damage property key",
+                ))
+            }
+        };
+        let Some(index) = self.improvements.registry.find_index(index_or_hash) else {
+            return Ok(None);
+        };
+        Ok(match self.improvement_damage[index][property] {
+            PropertyValue::Absent => None,
+            PropertyValue::Integer(value) => Some(value),
+        })
+    }
     pub fn plot_unit_limit(&self) -> u32 {
         self.plot_unit_limit
     }
@@ -546,7 +572,7 @@ impl Definitions<'_> {
             },
         )
     }
-    fn maximum_damage(&self, unit: &Unit) -> Result<i32, Error> {
+    pub fn maximum_damage(&self, unit: &Unit) -> Result<i32, Error> {
         let mut entries = unit
             .k_properties
             .entries

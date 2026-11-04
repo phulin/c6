@@ -10,6 +10,7 @@ pub mod city_power;
 pub mod city_movement;
 pub mod formation_rules;
 pub mod formation_movement_cost;
+pub mod formation_move_to;
 pub mod formation_path_state;
 pub mod game_relations;
 pub mod game_parameters;
@@ -834,3 +835,7 @@ pub mod random_event_definitions;
 
 #[cfg(test)]
 mod tests;
+
+pub mod unit_placement_state;
+
+pub mod unit_placement_services;
