@@ -160,6 +160,10 @@ impl Definitions {
     pub fn combat(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
         city_range_attack::unit_combat(state, unit, &self.combat)
     }
+    pub fn era_strength(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
+        self.check(state)?;
+        city_range_attack::era_strength(state, unit, &self.combat)
+    }
     pub fn formation_class(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
         city_range_attack::unit_formation_class(state, unit, &self.combat)
     }

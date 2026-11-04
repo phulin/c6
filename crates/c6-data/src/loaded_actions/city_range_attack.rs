@@ -1307,7 +1307,7 @@ fn era_index(
 ) -> Option<usize> {
     definitions.eras.find_index(player.eras.era_hash)
 }
-fn era_strength(
+pub(crate) fn era_strength(
     state: &LoadedState,
     unit: &c6_core::unit::Unit,
     definitions: &Definitions,

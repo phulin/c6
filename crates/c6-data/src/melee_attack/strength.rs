@@ -1,4 +1,4 @@
-//! Current canonical Linux ordinary attack strength queries, in native order.
+//! Current canonical Linux ordinary melee strength queries, in native order.
 //! Positive branches without admitted inputs remain explicit errors.
 use crate::{
     game_parameters::{IntegerParameter, Parameters},
@@ -34,6 +34,74 @@ pub struct Definitions {
     wounded_multiplier: i32,
     flanking_modifier: Option<i32>,
     bonuses: Option<BonusDefinitions>,
+    defense: Option<DefenseDefinitions>,
+}
+struct ScalarDefinitions {
+    registry: crate::registry::LinuxDefinitionRegistry,
+    values: Vec<i32>,
+}
+impl ScalarDefinitions {
+    fn load(
+        rules: &Rules,
+        table: &'static str,
+        key: &'static str,
+        field: &str,
+    ) -> Result<Self, Error> {
+        let registry = crate::unit_initialization_definitions::collection(rules, table, key)
+            .map_err(Error::Definitions)?;
+        let rows = rules
+            .gameplay()
+            .table(table)
+            .ok_or(Error::Missing("strength definition table"))?;
+        let values = registry
+            .entries()
+            .iter()
+            .map(|entry| {
+                let row = rows
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("strength definition row"))?;
+                match row
+                    .get(field)
+                    .map_err(|_| Error::Missing("strength definition scalar"))?
+                {
+                    SqlValue::Integer(value) => Ok(*value as i32),
+                    _ => Err(Error::Missing("strength definition integer")),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self { registry, values })
+    }
+    fn index(&self, key: u32) -> Option<usize> {
+        self.registry.find_index(key)
+    }
+}
+struct DefenseDefinitions {
+    anti_air: ScalarDefinitions,
+    terrains: ScalarDefinitions,
+    features: ScalarDefinitions,
+    improvements: ScalarDefinitions,
+    buildings: ScalarDefinitions,
+    support: Option<i32>,
+    fortify: Option<i32>,
+    river: Option<i32>,
+    corps_anti_air: Option<i32>,
+    army_anti_air: Option<i32>,
+}
+fn optional_parameter(rules: &Rules, name: &str) -> Option<i32> {
+    let mut rows = rules
+        .gameplay()
+        .table("GlobalParameters")?
+        .rows()
+        .filter(|row| row.text("Name").ok() == Some(name));
+    let first = rows.next()?;
+    if rows.next().is_some() {
+        return None;
+    }
+    match first.get("Value").ok()? {
+        SqlValue::Integer(value) => Some(*value as i32),
+        SqlValue::Text(value) => std::str::from_utf8(value).ok()?.parse().ok(),
+        _ => None,
+    }
 }
 struct BonusDefinitions {
     religions: crate::unit_near_religious_city_requirement::Definitions,
@@ -73,6 +141,28 @@ impl Definitions {
             policy_slots.push(slot);
         }
         result.binding = Some(bound.destination_binding().clone());
+        result.defense = Some(DefenseDefinitions {
+            anti_air: ScalarDefinitions::load(rules, "Units", "UnitType", "AntiAirCombat")?,
+            terrains: ScalarDefinitions::load(rules, "Terrains", "TerrainType", "DefenseModifier")?,
+            features: ScalarDefinitions::load(rules, "Features", "FeatureType", "DefenseModifier")?,
+            improvements: ScalarDefinitions::load(
+                rules,
+                "Improvements",
+                "ImprovementType",
+                "DefenseModifier",
+            )?,
+            buildings: ScalarDefinitions::load(
+                rules,
+                "Buildings",
+                "BuildingType",
+                "DefenseModifier",
+            )?,
+            support: optional_parameter(rules, "COMBAT_SUPPORT_BONUS_MODIFIER"),
+            fortify: optional_parameter(rules, "FORTIFY_BONUS_PER_TURN"),
+            river: optional_parameter(rules, "COMBAT_RIVER_DEFENSE"),
+            corps_anti_air: optional_parameter(rules, "COMBAT_CORPS_ANTIAIR_STRENGTH_MODIFIER"),
+            army_anti_air: optional_parameter(rules, "COMBAT_ARMY_ANTIAIR_STRENGTH_MODIFIER"),
+        });
         result.bonuses = Some(BonusDefinitions {
             religions,
             policies,
@@ -141,6 +231,7 @@ impl Definitions {
             wounded_multiplier,
             flanking_modifier,
             bonuses: None,
+            defense: None,
         })
     }
 }
@@ -616,6 +707,366 @@ pub fn ordinary_attack_modifier<'a>(
     })
 }
 
+fn defense_definitions(definitions: &Definitions) -> Result<&DefenseDefinitions, Error> {
+    definitions
+        .defense
+        .as_ref()
+        .ok_or(Error::Missing("bound defense definitions"))
+}
+/// Current GetAntiAirCombat: nonpositive base bypasses all modifiers. The era
+/// gate tests x86 signed addition flags, including overflow, before wrapping.
+pub fn anti_air_combat(
+    state: &LoadedState,
+    definitions: &Definitions,
+    combat: &crate::formation_rules::Definitions,
+    unit: UnitReference,
+) -> Result<i32, Error> {
+    definitions.check(state)?;
+    let unit = super::actor(state, unit).map_err(Error::Actor)?;
+    let index = combat
+        .native_type_index(state, unit)
+        .map_err(Error::Combat)?;
+    if index == u32::MAX {
+        return Ok(0);
+    }
+    let d = defense_definitions(definitions)?;
+    if d.anti_air.index(unit.e_type_index) != Some(index as usize) {
+        return Err(Error::Binding);
+    }
+    let mut value = *d
+        .anti_air
+        .values
+        .get(index as usize)
+        .ok_or(Error::Missing("AntiAir definition index"))?;
+    if value <= 0 {
+        return Ok(value);
+    }
+    if unit.e_military_formation == 1 {
+        value = value.wrapping_add(
+            d.corps_anti_air
+                .ok_or(Error::Missing("COMBAT_CORPS_ANTIAIR_STRENGTH_MODIFIER"))?,
+        );
+    } else if unit.e_military_formation == 2 {
+        value = value.wrapping_add(
+            d.army_anti_air
+                .ok_or(Error::Missing("COMBAT_ARMY_ANTIAIR_STRENGTH_MODIFIER"))?,
+        );
+    }
+    let modifier = unit.k_combat_modifers.i_anti_air_strength_modifier.max(0);
+    let positive = i64::from(value) + i64::from(modifier) > 0;
+    value = value.wrapping_add(modifier);
+    if positive {
+        value = value.wrapping_add(combat.era_strength(state, unit).map_err(Error::Combat)?);
+    }
+    Ok(value)
+}
+pub fn fortification_bonus(
+    state: &LoadedState,
+    definitions: &Definitions,
+    unit: UnitReference,
+) -> Result<i32, Error> {
+    definitions.check(state)?;
+    let turns = super::actor(state, unit)
+        .map_err(Error::Actor)?
+        .i_fortify_turns;
+    if turns <= 0 {
+        return Ok(0);
+    }
+    let coefficient = defense_definitions(definitions)?
+        .fortify
+        .ok_or(Error::Missing("FORTIFY_BONUS_PER_TURN"))?;
+    Ok(turns.wrapping_mul(coefficient).wrapping_shl(8))
+}
+/// Unlike flanking, support has no domain/embark filter. IsCombat precedes the
+/// owner and full-identity checks. Nonpositive count skips both rule and stat.
+pub fn support_bonus(
+    state: &LoadedState,
+    definitions: &Definitions,
+    combat: &crate::formation_rules::Definitions,
+    players: &CurrentPlayerCombat<'_>,
+    unit: UnitReference,
+) -> Result<i32, Error> {
+    definitions.check(state)?;
+    let unit = super::actor(state, unit).map_err(Error::Actor)?;
+    if !players.has_adjacency(state, unit.e_owner)? {
+        return Ok(0);
+    }
+    let mut count = 0_i32;
+    visit_neighbor_units(state, unit.k_location, |candidate| {
+        if is_combat(state, combat, candidate)?
+            && candidate.e_owner == unit.e_owner
+            && candidate.id != unit.id
+        {
+            count = count.wrapping_add(1);
+        }
+        Ok(())
+    })?;
+    if count <= 0 {
+        return Ok(0);
+    }
+    let global = defense_definitions(definitions)?
+        .support
+        .ok_or(Error::Missing("COMBAT_SUPPORT_BONUS_MODIFIER"))?;
+    Ok(kernel::flanking_from_count(
+        count,
+        global,
+        unit.k_combat_modifers.i_support_bonus_modifier,
+    ))
+}
+/// NULL-Results GetTerrainBonus. An existing improvement bypasses building
+/// enumeration even if its defense is nonpositive or it is pillaged.
+pub fn terrain_bonus(
+    state: &LoadedState,
+    definitions: &Definitions,
+    defender_plot: c6_core::unit::PlotCoord,
+    attacker_plot: c6_core::unit::PlotCoord,
+    attacker: UnitReference,
+) -> Result<i32, Error> {
+    definitions.check(state)?;
+    let d = defense_definitions(definitions)?;
+    let (_, plot) = c6_core::movement_world::plot_at(state.world().map(), defender_plot)
+        .map_err(Error::Plot)?;
+    let mut value = 0_i32;
+    if let Some(terrain) = d.terrains.index(plot.terrain_hash) {
+        value = d.terrains.values[terrain];
+        if let Some(feature) = d.features.index(plot.feature_hash) {
+            value = value.wrapping_add(d.features.values[feature]);
+        }
+    }
+    if let Some(improvement) = d.improvements.index(plot.improvement_hash) {
+        let modifier = d.improvements.values[improvement];
+        if modifier > 0 && !plot.flags.get(c6_core::map::PlotFlag::ImprovementPillaged) {
+            value = value.wrapping_add(modifier);
+        }
+    } else if let Some(attrs) = &plot.city_attributes {
+        if attrs.player != -1 && attrs.owning_city != u32::MAX {
+            let city = player(state, i32::from(attrs.player))?
+                .cities
+                .records
+                .entries
+                .iter()
+                .find(|entry| entry.index == (attrs.owning_city & 0xffff) as i32)
+                .map(|entry| &entry.value);
+            if let Some(city) = city {
+                let (plot_index, _) =
+                    c6_core::movement_world::plot_at(state.world().map(), defender_plot)
+                        .map_err(Error::Plot)?;
+                for index in 0..d.buildings.registry.entries().len() {
+                    let location = building_location(
+                        &d.buildings.registry,
+                        &city.buildings.building_locations,
+                        index,
+                    );
+                    if i32::from(location) == plot_index as i32 && d.buildings.values[index] > 0 {
+                        value = value.wrapping_add(d.buildings.values[index]);
+                    }
+                }
+            }
+        }
+    }
+    if let Some(direction) =
+        c6_core::movement_world::direction_to(state.world().map(), defender_plot, attacker_plot)
+            .map_err(Error::Plot)?
+    {
+        if plot.river_crossing_mask & (1 << direction) != 0 {
+            let attacker = super::actor(state, attacker).map_err(Error::Actor)?;
+            if !attacker.k_movement_modifiers.b_ignore_rivers {
+                value = value.wrapping_add(d.river.ok_or(Error::Missing("COMBAT_RIVER_DEFENSE"))?);
+            }
+        }
+    }
+    Ok(value.wrapping_shl(8))
+}
+
+/// Buildings.Reset initializes every current definition to -1, then Read's
+/// hash remap overlays in wire order. Unknown hashes do not change any cell;
+/// index aliases and duplicate hashes overwrite the same initialized cell.
+fn building_location(
+    registry: &crate::registry::LinuxDefinitionRegistry,
+    pairs: &[c6_core::unit::HashValue<i16>],
+    index: usize,
+) -> i16 {
+    pairs.iter().fold(-1, |value, pair| {
+        if registry.find_index(pair.definition_hash) == Some(index) {
+            pair.value
+        } else {
+            value
+        }
+    })
+}
+
+struct CurrentDefense<'a>(CurrentAttack<'a>);
+impl kernel::Context for CurrentDefense<'_> {
+    type Error = Error;
+    fn no_damage_reduction(&mut self) -> Result<bool, Error> {
+        self.0.no_damage_reduction()
+    }
+    fn damage(&mut self) -> Result<i32, Error> {
+        self.0.damage()
+    }
+    fn max_hit_points(&mut self) -> Result<i32, Error> {
+        self.0.max_hit_points()
+    }
+    fn damage_reduction_modifier(&mut self) -> Result<i32, Error> {
+        self.0.damage_reduction_modifier()
+    }
+    fn wounded_multiplier(&mut self) -> Result<i32, Error> {
+        self.0.wounded_multiplier()
+    }
+    fn owner_is_major(&mut self) -> Result<bool, Error> {
+        self.0.owner_is_major()
+    }
+    fn fuel_reduction(&mut self) -> Result<i32, Error> {
+        self.0.fuel_reduction()
+    }
+}
+impl kernel::DefenseContext for CurrentDefense<'_> {
+    fn formation_class(&mut self) -> Result<i32, Error> {
+        self.0
+            .combat
+            .formation_class(self.0.state, self.0.unit(self.0.attacker)?)
+            .map_err(Error::Combat)
+    }
+    fn combat(&mut self) -> Result<i32, Error> {
+        self.0
+            .combat
+            .combat(self.0.state, self.0.unit(self.0.attacker)?)
+            .map_err(Error::Combat)
+    }
+    fn anti_air_combat(&mut self) -> Result<i32, Error> {
+        anti_air_combat(
+            self.0.state,
+            self.0.definitions,
+            self.0.combat,
+            self.0.attacker,
+        )
+    }
+    fn embarked(&mut self) -> Result<bool, Error> {
+        Ok(crate::unit_movement_state::unit_is_embarked(
+            self.0.unit(self.0.attacker)?,
+        ))
+    }
+    fn can_fight_embarked(&mut self) -> Result<bool, Error> {
+        Ok(self
+            .0
+            .unit(self.0.attacker)?
+            .k_combat_modifers
+            .b_fight_while_embarked)
+    }
+    fn defender_domain(&mut self) -> Result<i32, Error> {
+        Ok(self
+            .0
+            .state
+            .unit_runtime(self.0.attacker.player(), self.0.attacker.id)
+            .map_err(Error::State)?
+            .domain)
+    }
+    fn attacker_domain(&mut self) -> Result<i32, Error> {
+        Ok(self
+            .0
+            .state
+            .unit_runtime(self.0.defender.player(), self.0.defender.id)
+            .map_err(Error::State)?
+            .domain)
+    }
+    fn bonus(&mut self, stage: kernel::DefenseBonus) -> Result<i32, Error> {
+        use kernel::{AttackBonus as A, AttackContext, DefenseBonus as D};
+        let common = match stage {
+            D::VersusOpponent => A::VersusOpponent,
+            D::HolyCities => A::HolyCities,
+            D::Neighbors => A::Neighbors,
+            D::MilitaryPolicies => A::MilitaryPolicies,
+            D::Diplomatic => A::Diplomatic,
+            D::Espionage => A::Espionage,
+            D::City => A::City,
+            D::AdjacentLevy => A::AdjacentLevy,
+            D::Allies => A::Allies,
+            D::UnusedMovement => A::UnusedMovement,
+            D::FriendlyCity => A::FriendlyCity,
+            D::SpecificReligion => A::SpecificReligion,
+            D::Territory => {
+                return territory_bonus(
+                    self.0.state,
+                    self.0.attacker,
+                    self.0.unit(self.0.attacker)?.k_location,
+                )
+            }
+            D::Terrain => {
+                return terrain_bonus(
+                    self.0.state,
+                    self.0.definitions,
+                    self.0.unit(self.0.attacker)?.k_location,
+                    self.0.unit(self.0.defender)?.k_location,
+                    self.0.defender,
+                )
+            }
+            D::Fortification => {
+                return fortification_bonus(self.0.state, self.0.definitions, self.0.attacker)
+            }
+            D::Support => {
+                return support_bonus(
+                    self.0.state,
+                    self.0.definitions,
+                    self.0.combat,
+                    self.0.players,
+                    self.0.attacker,
+                )
+            }
+            D::AirSupport | D::AntiAirSupport | D::AntiAirDefense => {
+                return Err(Error::Missing("current air defense support branch"))
+            }
+        };
+        self.0.bonus(common)
+    }
+    fn proposal_modifier(&mut self) -> Result<Option<i32>, Error> {
+        let registry = self
+            .0
+            .state
+            .combat_proposals()
+            .map_err(Error::ProposalAccess)?;
+        let Some((_, handle)) = registry
+            .active()
+            .iter()
+            .find(|entry| entry.0 == self.0.proposal_id)
+        else {
+            return Ok(None);
+        };
+        Ok(Some(
+            registry
+                .proposal(*handle)
+                .map_err(Error::Proposal)?
+                .defender_strength_modifier,
+        ))
+    }
+}
+/// Ordinary Unit/Unit defense, NULL Results profile. Both Unit references retain
+/// their attacking/defending meaning; only the internal acting-unit view swaps.
+#[allow(clippy::too_many_arguments)]
+pub fn ordinary_defense_modifier<'a>(
+    state: &'a LoadedState,
+    definitions: &'a Definitions,
+    combat: &'a crate::formation_rules::Definitions,
+    levels: &'a [(i32, u32)],
+    players: &'a CurrentPlayerCombat<'a>,
+    attacker: UnitReference,
+    defender: UnitReference,
+    proposal_id: u32,
+) -> Result<i32, kernel::DefenseError<Error>> {
+    definitions
+        .check(state)
+        .map_err(kernel::DefenseError::Query)?;
+    kernel::ordinary_defense_modifier(&mut CurrentDefense(CurrentAttack {
+        state,
+        definitions,
+        combat,
+        levels,
+        players,
+        attacker: defender,
+        defender: attacker,
+        proposal_id,
+    }))
+}
+
 fn player(
     state: &LoadedState,
     owner: i32,
@@ -1044,6 +1495,44 @@ fn military_policy_count(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn building_reset_overlay_preserves_native_alias_order_and_missing_default() {
+        use crate::registry::{linux_type_hash, DefinitionEntry, LinuxDefinitionRegistry};
+        use c6_core::unit::HashValue;
+        let registry = LinuxDefinitionRegistry::from_native_order(vec![
+            DefinitionEntry {
+                database_rowid: crate::RulesRowId(3),
+                type_name: b"SYNTHETIC_BUILDING_A".to_vec(),
+            },
+            DefinitionEntry {
+                database_rowid: crate::RulesRowId(9),
+                type_name: b"SYNTHETIC_BUILDING_B".to_vec(),
+            },
+        ]);
+        assert_eq!(building_location(&registry, &[], 1), -1);
+        let a = linux_type_hash(b"SYNTHETIC_BUILDING_A");
+        let pairs = [
+            HashValue {
+                definition_hash: a,
+                value: 17,
+            },
+            HashValue {
+                definition_hash: u32::MAX,
+                value: 99,
+            },
+            HashValue {
+                definition_hash: 0,
+                value: 23,
+            },
+            HashValue {
+                definition_hash: a,
+                value: -2,
+            },
+        ];
+        assert_eq!(building_location(&registry, &pairs, 0), -2);
+        assert_eq!(building_location(&registry, &pairs, 1), -1);
+        assert_eq!(building_location(&registry, &pairs[..3], 0), 23);
+    }
     #[test]
     fn military_count_uses_declared_policy_type_not_occupied_storage_slot() {
         use crate::{

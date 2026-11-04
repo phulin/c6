@@ -1,4 +1,4 @@
-//! Linux unit-versus-unit strength arithmetic and ordered ordinary attack terms.
+//! Linux unit-versus-unit strength arithmetic and ordered ordinary modifiers.
 //! Query errors identify unsupported branches; this does not resolve combat.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
@@ -224,6 +224,124 @@ pub fn ordinary_attack_modifier<C: AttackContext>(c: &mut C) -> Result<i32, Atta
     }
     Ok(total)
 }
+/// Ordered contributions to the ordinary NULL-Results defense routine.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DefenseBonus {
+    VersusOpponent,
+    AirSupport,
+    AntiAirSupport,
+    AntiAirDefense,
+    Territory,
+    Terrain,
+    Fortification,
+    Support,
+    HolyCities,
+    Neighbors,
+    MilitaryPolicies,
+    Diplomatic,
+    Espionage,
+    City,
+    AdjacentLevy,
+    Allies,
+    UnusedMovement,
+    FriendlyCity,
+    SpecificReligion,
+}
+pub const ORDINARY_DEFENSE_BONUSES: [DefenseBonus; 15] = [
+    DefenseBonus::Territory,
+    DefenseBonus::Terrain,
+    DefenseBonus::Fortification,
+    DefenseBonus::Support,
+    DefenseBonus::HolyCities,
+    DefenseBonus::Neighbors,
+    DefenseBonus::MilitaryPolicies,
+    DefenseBonus::Diplomatic,
+    DefenseBonus::Espionage,
+    DefenseBonus::City,
+    DefenseBonus::AdjacentLevy,
+    DefenseBonus::Allies,
+    DefenseBonus::UnusedMovement,
+    DefenseBonus::FriendlyCity,
+    DefenseBonus::SpecificReligion,
+];
+pub trait DefenseContext: Context {
+    fn formation_class(&mut self) -> Result<i32, Self::Error>;
+    fn combat(&mut self) -> Result<i32, Self::Error>;
+    fn anti_air_combat(&mut self) -> Result<i32, Self::Error>;
+    fn embarked(&mut self) -> Result<bool, Self::Error>;
+    fn can_fight_embarked(&mut self) -> Result<bool, Self::Error>;
+    fn defender_domain(&mut self) -> Result<i32, Self::Error>;
+    fn attacker_domain(&mut self) -> Result<i32, Self::Error>;
+    fn bonus(&mut self, stage: DefenseBonus) -> Result<i32, Self::Error>;
+    fn proposal_modifier(&mut self) -> Result<Option<i32>, Self::Error>;
+}
+#[derive(Debug, Eq, PartialEq)]
+pub enum DefenseError<E> {
+    Query(E),
+    Opening(Error<E>),
+    Bonus {
+        stage: DefenseBonus,
+        completed_raw: i32,
+        error: E,
+    },
+    Proposal {
+        completed_raw: i32,
+        error: E,
+    },
+}
+/// Native 2bd99d0 ordinary defense profile with NULL Results. In this profile
+/// inability to fight while embarked does not suppress subsequent bonuses.
+/// Air branches bypass the common sequence but still read the current proposal.
+pub fn ordinary_defense_modifier<C: DefenseContext>(
+    c: &mut C,
+) -> Result<i32, DefenseError<C::Error>> {
+    if c.formation_class().map_err(DefenseError::Query)? == 1
+        && c.combat().map_err(DefenseError::Query)? == 0
+        && c.anti_air_combat().map_err(DefenseError::Query)? == 0
+    {
+        return Ok(0);
+    }
+    let mut total = opening_terms(c, Side::Defense).map_err(DefenseError::Opening)?;
+    if c.embarked().map_err(DefenseError::Query)? {
+        c.can_fight_embarked().map_err(DefenseError::Query)?;
+    }
+    fn add<C: DefenseContext>(
+        c: &mut C,
+        total: &mut i32,
+        stage: DefenseBonus,
+    ) -> Result<(), DefenseError<C::Error>> {
+        let value = c.bonus(stage).map_err(|error| DefenseError::Bonus {
+            stage,
+            completed_raw: *total,
+            error,
+        })?;
+        *total = total.wrapping_add(value);
+        Ok(())
+    }
+    add(c, &mut total, DefenseBonus::VersusOpponent)?;
+    if c.defender_domain().map_err(DefenseError::Query)? == 1 {
+        add(c, &mut total, DefenseBonus::AirSupport)?;
+    } else if c.anti_air_combat().map_err(DefenseError::Query)? > 0
+        && c.attacker_domain().map_err(DefenseError::Query)? == 1
+    {
+        add(c, &mut total, DefenseBonus::AntiAirSupport)?;
+        add(c, &mut total, DefenseBonus::AntiAirDefense)?;
+    } else {
+        for stage in ORDINARY_DEFENSE_BONUSES {
+            add(c, &mut total, stage)?;
+        }
+    }
+    if let Some(modifier) = c
+        .proposal_modifier()
+        .map_err(|error| DefenseError::Proposal {
+            completed_raw: total,
+            error,
+        })?
+    {
+        total = total.wrapping_add(modifier.wrapping_shl(8));
+    }
+    Ok(total)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,6 +352,12 @@ mod tests {
         major: bool,
         fuel: i32,
         calls: Vec<&'static str>,
+        class: i32,
+        combat: i32,
+        anti_air: i32,
+        air: bool,
+        attacking_air: bool,
+        stages: Vec<DefenseBonus>,
     }
     impl Context for C {
         type Error = &'static str;
@@ -274,7 +398,107 @@ mod tests {
             major: true,
             fuel: 3,
             calls: vec![],
+            class: 0,
+            combat: 10,
+            anti_air: 0,
+            air: false,
+            attacking_air: false,
+            stages: vec![],
         }
+    }
+    impl DefenseContext for C {
+        fn formation_class(&mut self) -> Result<i32, Self::Error> {
+            self.calls.push("class");
+            Ok(self.class)
+        }
+        fn combat(&mut self) -> Result<i32, Self::Error> {
+            self.calls.push("combat");
+            Ok(self.combat)
+        }
+        fn anti_air_combat(&mut self) -> Result<i32, Self::Error> {
+            self.calls.push("anti_air");
+            Ok(self.anti_air)
+        }
+        fn embarked(&mut self) -> Result<bool, Self::Error> {
+            self.calls.push("embarked");
+            Ok(true)
+        }
+        fn can_fight_embarked(&mut self) -> Result<bool, Self::Error> {
+            self.calls.push("fight_embarked");
+            Ok(false)
+        }
+        fn defender_domain(&mut self) -> Result<i32, Self::Error> {
+            self.calls.push("domain");
+            Ok(if self.air { 1 } else { 2 })
+        }
+        fn attacker_domain(&mut self) -> Result<i32, Self::Error> {
+            self.calls.push("attacker_domain");
+            Ok(if self.attacking_air { 1 } else { 2 })
+        }
+        fn bonus(&mut self, stage: DefenseBonus) -> Result<i32, Self::Error> {
+            self.stages.push(stage);
+            Ok(1)
+        }
+        fn proposal_modifier(&mut self) -> Result<Option<i32>, Self::Error> {
+            self.calls.push("proposal");
+            Ok(Some(2))
+        }
+    }
+    #[test]
+    fn defense_zero_gate_uses_exact_zero_and_skips_unread_dependencies() {
+        let mut x = c();
+        x.class = 1;
+        x.combat = 0;
+        x.anti_air = 0;
+        assert_eq!(ordinary_defense_modifier(&mut x), Ok(0));
+        assert_eq!(x.calls, ["class", "combat", "anti_air"]);
+        assert!(x.stages.is_empty());
+        let mut x = c();
+        x.class = 1;
+        x.combat = -1;
+        x.no = true;
+        x.major = false;
+        assert_eq!(ordinary_defense_modifier(&mut x), Ok(528));
+        assert_eq!(
+            x.calls.iter().filter(|&&call| call == "anti_air").count(),
+            1
+        );
+        assert_eq!(x.stages[0], DefenseBonus::VersusOpponent);
+        assert_eq!(&x.stages[1..], &ORDINARY_DEFENSE_BONUSES);
+        assert!(x
+            .calls
+            .windows(2)
+            .any(|calls| calls == ["embarked", "fight_embarked"]));
+        assert_eq!(x.calls.last(), Some(&"proposal"));
+    }
+    #[test]
+    fn defense_air_branches_bypass_common_bonuses_but_keep_current_proposal() {
+        let mut x = c();
+        x.no = true;
+        x.major = false;
+        x.air = true;
+        assert_eq!(ordinary_defense_modifier(&mut x), Ok(514));
+        assert_eq!(
+            x.stages,
+            [DefenseBonus::VersusOpponent, DefenseBonus::AirSupport]
+        );
+        assert!(!x.calls.contains(&"anti_air"));
+        assert!(!x.calls.contains(&"attacker_domain"));
+        let mut x = c();
+        x.no = true;
+        x.major = false;
+        x.anti_air = 1;
+        x.attacking_air = true;
+        assert_eq!(ordinary_defense_modifier(&mut x), Ok(515));
+        assert_eq!(
+            x.stages,
+            [
+                DefenseBonus::VersusOpponent,
+                DefenseBonus::AntiAirSupport,
+                DefenseBonus::AntiAirDefense
+            ]
+        );
+        assert_eq!(x.calls.last(), Some(&"proposal"));
     }
     #[test]
     fn side_order_and_nonpositive_maximum_are_distinct() {
