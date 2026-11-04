@@ -17,6 +17,7 @@ pub struct OperationStorageHandle {
     owner: u64,
     allocation: u64,
     slot: usize,
+    inline: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -24,7 +25,7 @@ pub enum OperationStorageError {
     InvalidCapacity,
     UnknownCapacityGrowth,
     QueueReplaced,
-    /// A second growth could reuse an older freed allocation's address. That
+    /// A second growth could reuse an older freed heap allocation's address. That
     /// allocator behavior is not inferred from abstract allocation generations.
     OlderAllocationReuse,
 }
@@ -100,6 +101,7 @@ impl OperationNodes {
                 .allocation
                 .ok_or(OperationStorageError::UnknownCapacityGrowth)?,
             slot: 0,
+            inline: self.capacity.map(|capacity| capacity <= 4),
         }))
     }
     fn storage_index(
@@ -114,6 +116,11 @@ impl OperationNodes {
             .ok_or(OperationStorageError::UnknownCapacityGrowth)?;
         if allocation == handle.allocation {
             return Ok((handle.slot < self.entries.len()).then_some(handle.slot));
+        }
+        if handle.inline == Some(true) {
+            // The inline buffer remains part of the live queue object and is
+            // never passed to StaticFree, even after repeated heap growth.
+            return Ok(None);
         }
         if handle.allocation.checked_add(1) == Some(allocation) {
             // New buffer is allocated before the retained old buffer is freed.
@@ -414,6 +421,24 @@ mod tests {
     #[test]
     fn multiple_growths_do_not_invent_old_freed_address_reuse_behavior() {
         let mut queue = OperationNodes::default();
+        for _ in 0..8 {
+            queue.push(node());
+        }
+        let retained = queue.front_storage().unwrap().unwrap();
+        for _ in 0..9 {
+            queue.push(node());
+        }
+        assert_eq!(queue.native_capacity(), Some(32));
+        assert_eq!(
+            queue.remove_storage(retained),
+            Err(OperationStorageError::OlderAllocationReuse)
+        );
+        assert_eq!(queue.len(), 17);
+    }
+
+    #[test]
+    fn retained_inline_buffer_cannot_be_reused_by_later_heap_growths() {
+        let mut queue = OperationNodes::default();
         for _ in 0..4 {
             queue.push(node());
         }
@@ -422,10 +447,7 @@ mod tests {
             queue.push(node());
         }
         assert_eq!(queue.native_capacity(), Some(16));
-        assert_eq!(
-            queue.remove_storage(retained),
-            Err(OperationStorageError::OlderAllocationReuse)
-        );
+        assert_eq!(queue.remove_storage(retained), Ok(None));
         assert_eq!(queue.len(), 9);
     }
 }
