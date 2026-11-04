@@ -214,7 +214,7 @@ pub fn previously_active_this_turn(state: &LoadedState, owner: i32) -> Result<bo
 
 /// Source leaf used by the inherited duplicate slot of ChooseTech,
 /// ChooseCivic, FillCivicSlot and ConsiderGovernmentChange. This is only the
-/// auto=true/parameters=null creation path: IsNeeded and the receiver's actual
+/// parameters=null creation paths (manual or auto): IsNeeded and the receiver's actual
 /// virtual binding must be established by the caller before invoking it.
 /// It does not inspect either object's own ID, so a recycled pre-Add ID cannot
 /// affect this supported duplicate comparison.
@@ -224,7 +224,7 @@ pub fn base_auto_duplicate(
 ) -> Result<bool, Error> {
     if !candidate.parameters.entries.is_empty() {
         return Err(Error::Unsupported(
-            "base auto duplicate requires null creation parameters",
+            "base duplicate requires null creation parameters",
         ));
     }
     if candidate.type_hash != existing.type_hash

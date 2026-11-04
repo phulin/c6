@@ -18,12 +18,15 @@ pub mod game_update;
 mod manager_queries;
 #[path = "stock_maintenance.rs"]
 pub mod maintenance;
+pub mod social;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]
 pub mod research;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
+#[path = "stock_turn.rs"]
+pub mod turn;
 #[path = "stock_turn_reports.rs"]
 pub mod turn_reports;
 #[path = "stock_skip_turn.rs"]

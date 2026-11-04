@@ -1,4 +1,4 @@
-//! Base InitializeText for the six source-bound stock XP2 auto subtypes.
+//! Base InitializeText for source-bound stock XP2 notification subtypes.
 //!
 //! Base bytes are real definition keys, never translated placeholders. Parsed
 //! forms and rendered caches require either the explicit headless projection
@@ -106,12 +106,15 @@ fn definition<'a, E>(
         choose_tech::TYPE_HASH => Some(choose_tech::VTABLE_ADDRESSPOINT),
         command_units::TYPE_HASH => Some(command_units::VTABLE_ADDRESSPOINT),
         city_range_attack::TYPE_HASH => Some(city_range_attack::VTABLE_ADDRESSPOINT),
-        _ => culture_notifications::Kind::from_hash(hash).map(|kind| kind.vtable()),
+        _ => culture_notifications::Kind::from_hash(hash)
+            .map(|kind| kind.vtable())
+            .or_else(|| {
+                crate::loaded_actions::stock_notifications::social::Kind::from_hash(hash)
+                    .map(|kind| kind.vtable())
+            }),
     };
     if expected != Some(candidate.vtable_addresspoint) {
-        return Err(Error::Unsupported(
-            "six stock auto InitializeText virtual binding",
-        ));
+        return Err(Error::Unsupported("stock InitializeText virtual binding"));
     }
     Ok(definitions.find(hash))
 }
