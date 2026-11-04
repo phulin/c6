@@ -344,17 +344,12 @@ fn records(
     }
     Ok(result)
 }
-/// Source2895950: current37 plot order, BOTH forced and ordinary workers,
-/// integer plot yield*worker count before Q8 conversion. Nothing imports final
-/// native tile-yield answers; the existing core kernel computes every value.
-pub fn get_yield_from_tiles_q8(
+fn with_context<T>(
     state: &LoadedState,
-    owner: i32,
-    id: u32,
-    kind: i32,
     definitions: &Definitions,
     current: &Current<'_>,
-) -> Result<i32, Error> {
+    query: impl FnOnce(&kernel::Context<'_, Runtime<'_>, Runtime<'_>>) -> Result<T, Error>,
+) -> Result<T, Error> {
     let owned = records(state, definitions)?;
     let mut players = [PlayerRegistry::Unavailable; PLAYER_COUNT];
     for (slot, records) in owned.iter().enumerate() {
@@ -380,11 +375,6 @@ pub fn get_yield_from_tiles_q8(
     }
     let registry = Registry::new(players);
     let map = state.world().map();
-    let city = state.city(owner, id)?;
-    let center = PlotCoord {
-        x: city.header.location_x,
-        y: city.header.location_y,
-    };
     let mut adjacency = Vec::with_capacity(map.plots.len());
     for index in 0..map.plots.len() {
         let location = (
@@ -419,6 +409,56 @@ pub fn get_yield_from_tiles_q8(
             feature_yields: Some(&feature_yields),
             adjacency: Some(&adjacency),
         };
+        query(&context)
+    })
+}
+
+/// Ordered current integer plot yields for citizen scoring. Rows follow the
+/// supplied plots; columns follow the supplied native Yield indices. Duplicate
+/// plots and definitions are evaluated in place, not deduplicated or sorted.
+/// Query the same Effects/territory owner used by assignment mutations.
+pub fn get_plot_yields(
+    state: &LoadedState,
+    owner: i32,
+    plot_indices: &[u32],
+    yield_indices: &[i32],
+    definitions: &Definitions,
+    current: &Current<'_>,
+) -> Result<Vec<Vec<i32>>, Error> {
+    with_context(state, definitions, current, |context| {
+        plot_indices
+            .iter()
+            .map(|&plot| {
+                yield_indices
+                    .iter()
+                    .map(|&kind| {
+                        kernel::get_yield(context, plot, kind, owner, false)
+                            .map_err(Error::PlotYield)
+                    })
+                    .collect()
+            })
+            .collect()
+    })
+}
+
+/// Source2895950: current37 plot order, BOTH forced and ordinary workers,
+/// integer plot yield*worker count before Q8 conversion. Nothing imports final
+/// native tile-yield answers; the existing core kernel computes every value.
+pub fn get_yield_from_tiles_q8(
+    state: &LoadedState,
+    owner: i32,
+    id: u32,
+    kind: i32,
+    definitions: &Definitions,
+    current: &Current<'_>,
+) -> Result<i32, Error> {
+    let map = state.world().map();
+    let city = state.city(owner, id)?;
+    let center = PlotCoord {
+        x: city.header.location_x,
+        y: city.header.location_y,
+    };
+    with_context(state, definitions, current, |context| {
         let mut result = 0i32;
         for index in 0..c6_core::city_citizen_assignment::NUM_PLOTS as i32 {
             let Some(plot) = c6_core::city_citizen_assignment::plot_location(map, center, index)
@@ -434,7 +474,7 @@ pub fn get_yield_from_tiles_q8(
             }
             let (at, _) = movement_world::plot_at(map, plot)
                 .map_err(|_| Error::Unsupported("current City tile"))?;
-            let value = kernel::get_yield(&context, at as u32, kind, owner, false)
+            let value = kernel::get_yield(context, at as u32, kind, owner, false)
                 .map_err(Error::PlotYield)?;
             result = result.wrapping_add(value.wrapping_mul(workers).wrapping_shl(8));
         }
@@ -459,7 +499,7 @@ pub fn get_yield_from_tiles_q8(
                     {
                         continue;
                     }
-                    let value = kernel::get_yield(&context, plot_index as u32, kind, owner, false)
+                    let value = kernel::get_yield(context, plot_index as u32, kind, owner, false)
                         .map_err(Error::PlotYield)?;
                     result = result.wrapping_add(value.wrapping_shl(8));
                 }

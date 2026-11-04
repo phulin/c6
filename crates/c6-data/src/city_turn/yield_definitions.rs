@@ -64,6 +64,11 @@ fn index(lookup: &LinuxDefinitionRegistry, hash: u32) -> Option<NativeDefinition
         .and_then(|i| NativeDefinitionIndex::new(i as u32, lookup.count() as u32))
 }
 impl Definitions {
+    /// Actual native Yield collection order used by citizen scoring.
+    pub fn yield_indices(&self) -> std::ops::Range<i32> {
+        0..self.yields.count() as i32
+    }
+
     pub fn from_rules(rules: &Rules) -> Result<Self, Error> {
         let table = |name| rules.gameplay().table(name).ok_or(Error::Unsupported(name));
         let registry = |name, col| collection(rules, name, col).map_err(Error::Definitions);
