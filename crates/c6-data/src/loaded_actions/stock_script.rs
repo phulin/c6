@@ -174,6 +174,12 @@ impl<P> Runtime<P> {
                 .map_err(Error::Registry)
         })
     }
+    /// First TurnManager activation signal's stock Lua consumer (2c9c7d0).
+    /// Execute against this same persistent registry; subscribed unsupported
+    /// callbacks remain errors, never an inferred empty hook.
+    pub fn on_player_turn_started(&mut self, state: &LoadedState, owner: i32) -> Result<(), Error> {
+        self.call_empty(state, "PlayerTurnStarted", &[owner])
+    }
     pub fn call_two_empty(
         &mut self,
         state: &LoadedState,
