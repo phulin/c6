@@ -1,5 +1,7 @@
 //! Ordinary melee resolution over the current owned Units. Partial failures keep
 //! the native prefix; generated damage is never reported as a resolved attack.
+pub mod budget;
+
 use super::execution::{GeneratedMembers, RequiresResolve};
 use crate::{
     loaded_upkeep, unit_kill, unit_placement_state as placement, unit_sight_state as sight,

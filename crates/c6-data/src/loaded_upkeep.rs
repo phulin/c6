@@ -5,6 +5,8 @@
 //! are mandatory providers, never invented values or silent no-ops. This is not
 //! native RestoreMovement acceptance, complete action execution, or a turn.
 use crate::unit_movement_state::{self, Inputs};
+mod finish;
+pub use finish::{finish_unit_moves,finish_formation_moves};
 mod activation;
 pub use activation::activate_unit;
 mod alert;

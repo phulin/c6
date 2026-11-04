@@ -90,6 +90,105 @@ pub fn change_unit_moves<C: UnitMovementContext>(
     Ok(true)
 }
 
+/// FinishMoves retains the pre-report Formation, unlike ChangeMovesRemaining.
+pub trait FinishMovementContext: UnitMovementContext {
+    type Formation: Copy;
+    fn current_formation(&mut self) -> Result<Option<Self::Formation>, Self::Error>;
+    fn sync_retained_formation(&mut self, formation: Self::Formation) -> Result<(), Self::Error>;
+}
+/// Unit.FinishMoves2c27d40: no movement or null Formation returns unchanged.
+/// Exhausted is unconditional after the changed report, even if a subscriber
+/// grants movement. Synchronization targets the Formation captured before writes.
+pub fn finish_unit_moves<C: FinishMovementContext>(
+    c: &mut C,
+) -> Result<(), UnitMovementError<C::Error>> {
+    if c.unit()
+        .map_err(UnitMovementError::UnitUnavailable)?
+        .x_moves_remaining
+        == 0
+    {
+        return Ok(());
+    }
+    let Some(formation) = c
+        .current_formation()
+        .map_err(UnitMovementError::UnitUnavailable)?
+    else {
+        return Ok(());
+    };
+    let unit = c.unit_mut().map_err(UnitMovementError::UnitUnavailable)?;
+    unit.x_moves_remaining = 0;
+    unit.b_eligible_to_heal = false;
+    let read = |error| UnitMovementError::ContinuationFailed {
+        stage: MovementStage::UnitReadback,
+        error,
+    };
+    let report = MovementReport {
+        event_hash: MOVES_REMAINING_CHANGED,
+        identity: identity(c.unit().map_err(read)?),
+        raw_q8: Some(c.unit().map_err(read)?.x_moves_remaining),
+    };
+    c.send_movement_report(report)
+        .map_err(|error| UnitMovementError::ContinuationFailed {
+            stage: MovementStage::ChangedReport,
+            error,
+        })?;
+    let report = MovementReport {
+        event_hash: MOVES_EXHAUSTED,
+        identity: identity(c.unit().map_err(read)?),
+        raw_q8: None,
+    };
+    c.send_movement_report(report)
+        .map_err(|error| UnitMovementError::ContinuationFailed {
+            stage: MovementStage::ExhaustedReport,
+            error,
+        })?;
+    c.sync_retained_formation(formation)
+        .map_err(|error| UnitMovementError::ContinuationFailed {
+            stage: MovementStage::FormationSync,
+            error,
+        })
+}
+
+pub trait FinishFormationContext: FormationUpkeepContext {
+    fn finish_unit(&mut self, unit: Self::UnitHandle)
+        -> Result<(), UnitMovementError<Self::Error>>;
+}
+/// Formation.FinishMoves293d350 assigns its own movement/HasMoved before
+/// visiting current member IDs; it does not call SetHasMoved's attention loop.
+pub fn finish_formation_moves<C: FinishFormationContext>(
+    c: &mut C,
+) -> Result<(), FormationMovementError<C::Error>> {
+    let f = c
+        .formation_mut()
+        .map_err(FormationMovementError::ContinuationFailed)?;
+    f.moves_remaining_raw = 0;
+    f.has_moved = true;
+    let units = c
+        .units()
+        .map_err(FormationMovementError::ContinuationFailed)?;
+    let mut index = 0;
+    loop {
+        let ids = &c
+            .formation()
+            .map_err(FormationMovementError::ContinuationFailed)?
+            .unit_ids;
+        if index == ids.len() {
+            break;
+        }
+        let id = *ids
+            .get(index)
+            .ok_or(FormationMovementError::InvalidatedMemberCursor { index })?;
+        if let Some(unit) = c
+            .find_unit(units, id)
+            .map_err(FormationMovementError::ContinuationFailed)?
+        {
+            c.finish_unit(unit).map_err(FormationMovementError::Unit)?;
+        }
+        index += 1;
+    }
+    formation_upkeep::update_attributes(c).map_err(FormationMovementError::Attributes)
+}
+
 /// Formation movement expenditure borrows the existing attribute computation.
 /// Unit/Units handles keep their retained native receiver identity. The native
 /// member cursor must remain valid across callbacks (no invalidating vector
@@ -485,6 +584,93 @@ mod tests {
         assert!(c.f.has_moved && c.f.has_moved_into_zoc);
         assert!(c.units.iter().all(|u| !u.b_needs_attention));
         assert_eq!(c.f.moves_remaining_raw, 256);
+        assert!(c.reports.is_empty());
+    }
+    struct Finish {
+        unit: Unit,
+        current: Option<u32>,
+        reports: Vec<MovementReport>,
+        synced: Vec<u32>,
+        fail: bool,
+    }
+    impl UnitMovementContext for Finish {
+        type Error = &'static str;
+        fn unit(&self) -> Result<&Unit, Self::Error> {
+            Ok(&self.unit)
+        }
+        fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+            Ok(&mut self.unit)
+        }
+        fn send_movement_report(&mut self, r: MovementReport) -> Result<(), Self::Error> {
+            self.reports.push(r);
+            if r.event_hash == MOVES_REMAINING_CHANGED {
+                self.unit.x_moves_remaining = 512;
+                self.current = Some(99);
+            } else if self.fail {
+                return Err("exhausted callback");
+            }
+            Ok(())
+        }
+        fn sync_current_formation(&mut self) -> Result<(), Self::Error> {
+            panic!("must retain earlier Formation")
+        }
+    }
+    impl FinishMovementContext for Finish {
+        type Formation = u32;
+        fn current_formation(&mut self) -> Result<Option<u32>, Self::Error> {
+            Ok(self.current)
+        }
+        fn sync_retained_formation(&mut self, f: u32) -> Result<(), Self::Error> {
+            self.synced.push(f);
+            Ok(())
+        }
+    }
+    fn finish_fixture() -> Finish {
+        let mut unit = crate::unit_turn_upkeep::tests::source_only_unit();
+        unit.x_moves_remaining = 256;
+        unit.b_eligible_to_heal = true;
+        Finish {
+            unit,
+            current: Some(17),
+            reports: vec![],
+            synced: vec![],
+            fail: false,
+        }
+    }
+    #[test]
+    fn finish_retains_formation_and_exhausted_report_after_callback_grants_moves() {
+        let mut c = finish_fixture();
+        finish_unit_moves(&mut c).unwrap();
+        assert_eq!(c.unit.x_moves_remaining, 512);
+        assert!(!c.unit.b_eligible_to_heal);
+        assert_eq!(
+            c.reports.iter().map(|r| r.event_hash).collect::<Vec<_>>(),
+            [MOVES_REMAINING_CHANGED, MOVES_EXHAUSTED]
+        );
+        assert_eq!(c.synced, [17]);
+    }
+    #[test]
+    fn finish_failure_keeps_completed_writes_and_does_not_sync() {
+        let mut c = finish_fixture();
+        c.fail = true;
+        assert!(matches!(
+            finish_unit_moves(&mut c),
+            Err(UnitMovementError::ContinuationFailed {
+                stage: MovementStage::ExhaustedReport,
+                ..
+            })
+        ));
+        assert_eq!(c.unit.x_moves_remaining, 512);
+        assert!(!c.unit.b_eligible_to_heal);
+        assert!(c.synced.is_empty());
+    }
+    #[test]
+    fn finish_without_formation_keeps_unit_and_healing_unchanged() {
+        let mut c = finish_fixture();
+        c.current = None;
+        finish_unit_moves(&mut c).unwrap();
+        assert_eq!(c.unit.x_moves_remaining, 256);
+        assert!(c.unit.b_eligible_to_heal);
         assert!(c.reports.is_empty());
     }
 }
