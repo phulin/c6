@@ -61,6 +61,20 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
+/// Plot.GetOwner dereferences the reserved CityAttributes slot when the plot's
+/// attribute index is zero. Linux Initialize reserves slot zero with player -1;
+/// Plot.Read and EditCityAttributes allocate a separate slot before any write.
+/// A contradictory wire flag is rejected instead of selecting a representation.
+pub fn plot_owner(plot: &Plot) -> Result<i32, Error> {
+    if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
+        return Err(Error::Geometry);
+    }
+    Ok(plot
+        .city_attributes
+        .as_ref()
+        .map_or(-1, |a| i32::from(a.player)))
+}
+
 /// Reconstruct only the requested scalar from an actual bound collection.
 /// The admitted owner Reset initializes false before ordered hash overlay;
 /// omitted-wire support is specific to the diplomacy owner. This does
@@ -915,10 +929,12 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         }
     }
     fn district_type(&self, plot: &Plot) -> Result<i32, Error> {
-        let attrs = plot
-            .city_attributes
-            .as_ref()
-            .ok_or(Error::Capability(Capability::ReservedAttributeDistrict))?;
+        if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
+            return Err(Error::Geometry);
+        }
+        let Some(attrs) = plot.city_attributes.as_ref() else {
+            return Ok(-1);
+        };
         if attrs.player == -1 || attrs.district == u32::MAX {
             return Ok(-1);
         }
@@ -1011,14 +1027,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                         f.district_type = Some(self.district_type(plot)?)
                     }
                     PlacementMissing::UnitOwner => f.unit_owner = Some(unit.e_owner),
-                    PlacementMissing::PlotOwner => {
-                        f.plot_owner = Some(i32::from(
-                            plot.city_attributes
-                                .as_ref()
-                                .ok_or(Error::Capability(Capability::ReservedAttributeOwner))?
-                                .player,
-                        ))
-                    }
+                    PlacementMissing::PlotOwner => f.plot_owner = Some(plot_owner(plot)?),
                     PlacementMissing::BestDefender => {
                         let found = self.best_defender(unit, destination)?;
                         f.best_defender_present = Some(found.is_some());
