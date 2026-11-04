@@ -17,6 +17,7 @@ pub mod game_relations;
 pub mod game_parameters;
 pub mod loaded_actions;
 pub mod loaded_upkeep;
+pub mod melee_attack;
 pub mod movement;
 pub mod movement_placement_state;
 pub mod registry;

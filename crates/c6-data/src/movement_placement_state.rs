@@ -23,6 +23,7 @@ use c6_core::{
 
 #[derive(Debug)]
 pub enum Error {
+    Combat(Box<crate::loaded_actions::Error>),
     State(c6_core::loaded_state::Error),
     Relations(c6_core::game_diplomatic_relations::Error),
     World(c6_core::world::MissingInput),
@@ -277,9 +278,14 @@ pub fn best_defender<'s>(
     unit: &Unit,
     destination: PlotCoord,
 ) -> Result<Option<&'s Unit>, Error> {
-    best_defender_with_visibility(state, unit, destination, None, |_| {
-        Ok(DefenderDefinition::Unresolved)
-    })
+    best_defender_with_visibility(
+        state,
+        unit,
+        destination,
+        None,
+        |_| Ok(DefenderDefinition::Unresolved),
+        |_| Err(Error::Capability(Capability::CombatStrength)),
+    )
 }
 
 // The selected flags0x108 call uses only the presence of this context, not
@@ -312,6 +318,7 @@ fn best_defender_with_visibility<'s>(
     destination: PlotCoord,
     visibility_present: Option<bool>,
     definition: impl Fn(&Unit) -> Result<DefenderDefinition, Error>,
+    mut combat_false: impl FnMut(&Unit) -> Result<i32, Error>,
 ) -> Result<Option<&'s Unit>, Error> {
     let map = state.world().map();
     let raw_index = destination
@@ -362,7 +369,7 @@ fn best_defender_with_visibility<'s>(
         unit.e_owner,
         visibility_present,
         Some(unit.k_religion.i_religious_strength),
-        |_| Err(Error::Capability(Capability::CombatStrength)),
+        |unit| combat_false(unit),
     )
     .map_err(|error| match error {
         DefenderError::Candidate(e) | DefenderError::CombatStrength(e) => e,
@@ -468,6 +475,7 @@ pub struct Context<'s, 'a, 'r> {
     civilization_levels: Option<&'a [(i32, u32)]>,
     city_domains: Option<std::borrow::Cow<'a, [Option<c6_core::city_district::DomainMask>]>>,
     civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
+    combat_definitions: Option<&'a crate::formation_rules::Definitions>,
 }
 impl<'a, 'r> std::ops::Deref for Context<'_, 'a, 'r> {
     type Target = Definitions<'a, 'r>;
@@ -498,6 +506,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             civilization_levels: None,
             city_domains: None,
             civic_activity: None,
+            combat_definitions: None,
         })
     }
     /// Reborrow the live state without rebuilding native registries or rules.
@@ -514,7 +523,18 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             civilization_levels: None,
             city_domains: None,
             civic_activity: None,
+            combat_definitions: None,
         })
+    }
+    /// Reuse current GetCombat(false) for the source-qualified shore defender
+    /// comparison (flags0x108). Existing candidate filters/order are unchanged;
+    /// no supplied strength answers or cached per-Unit values are accepted.
+    pub fn with_combat_definitions(
+        mut self,
+        definitions: &'a crate::formation_rules::Definitions,
+    ) -> Self {
+        self.combat_definitions = Some(definitions);
+        self
     }
     /// Borrow masks rebuilt once from this exact current state. Identity and
     /// action stamp must match the rebuild's dependency epoch.
@@ -971,29 +991,41 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             unit.e_owner,
         )
         .ok();
-        best_defender_with_visibility(self.state, unit, destination, present, |candidate| {
-            let runtime = self
-                .state
-                .unit_runtime(candidate.e_owner, candidate.id)
-                .map_err(Error::State)?;
-            if self
-                .units
-                .at(runtime.definition_index)
-                .copied()
-                .flatten()
-                .is_none()
-            {
-                return Ok(DefenderDefinition::Absent);
-            }
-            let index =
-                usize::try_from(runtime.definition_index).map_err(|_| Error::Definitions)?;
-            Ok(DefenderDefinition::Present {
-                team_visibility: *self
-                    .unit_team_visibility
-                    .get(index)
-                    .ok_or(Error::Definitions)?,
-            })
-        })
+        best_defender_with_visibility(
+            self.state,
+            unit,
+            destination,
+            present,
+            |candidate| {
+                let runtime = self
+                    .state
+                    .unit_runtime(candidate.e_owner, candidate.id)
+                    .map_err(Error::State)?;
+                if self
+                    .units
+                    .at(runtime.definition_index)
+                    .copied()
+                    .flatten()
+                    .is_none()
+                {
+                    return Ok(DefenderDefinition::Absent);
+                }
+                let index =
+                    usize::try_from(runtime.definition_index).map_err(|_| Error::Definitions)?;
+                Ok(DefenderDefinition::Present {
+                    team_visibility: *self
+                        .unit_team_visibility
+                        .get(index)
+                        .ok_or(Error::Definitions)?,
+                })
+            },
+            |candidate| {
+                self.combat_definitions
+                    .ok_or(Error::Capability(Capability::CombatStrength))?
+                    .combat(self.state, candidate)
+                    .map_err(|error| Error::Combat(Box::new(error)))
+            },
+        )
     }
     fn query(
         &self,
