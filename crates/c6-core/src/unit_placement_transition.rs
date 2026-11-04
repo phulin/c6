@@ -179,6 +179,91 @@ pub fn set_membership<C: PlacementMembershipContext>(
     })
 }
 
+pub const MOVEMENT_COMPLETED: u32 = 0x6e7ef927;
+pub const EMBARKED_CHANGED: u32 = 0x84c1fdd6;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlacementPayload {
+    Coordinate(PlotCoord),
+    Integer(i32),
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlacementReport {
+    pub event_hash: u32,
+    pub identity: ComponentId,
+    pub payload: PlacementPayload,
+}
+/// Live setter/report boundary. Send executes the actual enabled/suspended
+/// reporting contract and all reached subscribers/scripts/RNG.
+pub trait PlacementStateContext {
+    type Error;
+    fn unit(&self) -> Result<&Unit, Self::Error>;
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error>;
+    fn preflight_placement_report(&self, event: u32) -> Result<(), Self::Error>;
+    fn send_placement_report(&mut self, report: PlacementReport) -> Result<(), Self::Error>;
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlacementStateError<E> {
+    EffectsUnavailable(E),
+    Context(E),
+    ReportFailed(E),
+}
+fn current_identity(unit: &Unit) -> ComponentId {
+    ComponentId {
+        owner: unit.e_owner as i16,
+        component_type: 1,
+        id: unit.id,
+    }
+}
+
+/// CompleteMovement(Unit*) at 0x2c42ab0. Clear the real flag before reporting
+/// current identity/location. Subscriber writes survive. Native null is invalid.
+pub fn complete_movement<C: PlacementStateContext>(
+    c: &mut C,
+) -> Result<bool, PlacementStateError<C::Error>> {
+    use PlacementStateError::{Context, EffectsUnavailable, ReportFailed};
+    if !c.unit().map_err(Context)?.b_needs_movement_completion {
+        return Ok(false);
+    }
+    c.preflight_placement_report(MOVEMENT_COMPLETED)
+        .map_err(EffectsUnavailable)?;
+    c.unit_mut().map_err(Context)?.b_needs_movement_completion = false;
+    let identity = current_identity(c.unit().map_err(Context)?);
+    let location = c.unit().map_err(Context)?.k_location;
+    c.send_placement_report(PlacementReport {
+        event_hash: MOVEMENT_COMPLETED,
+        identity,
+        payload: PlacementPayload::Coordinate(location),
+    })
+    .map_err(ReportFailed)?;
+    Ok(true)
+}
+
+/// SetEmbarked(bool) at 0x2c28a70 compares the raw flag, independently of HOLD
+/// activity. Assignment precedes current identity/integer reporting. No Formation
+/// update occurs in this body.
+pub fn set_embarked<C: PlacementStateContext>(
+    c: &mut C,
+    embarked: bool,
+) -> Result<bool, PlacementStateError<C::Error>> {
+    use PlacementStateError::{Context, EffectsUnavailable, ReportFailed};
+    if c.unit().map_err(Context)?.b_embarked == embarked {
+        return Ok(false);
+    }
+    c.preflight_placement_report(EMBARKED_CHANGED)
+        .map_err(EffectsUnavailable)?;
+    c.unit_mut().map_err(Context)?.b_embarked = embarked;
+    let identity = current_identity(c.unit().map_err(Context)?);
+    let value = i32::from(c.unit().map_err(Context)?.b_embarked);
+    c.send_placement_report(PlacementReport {
+        event_hash: EMBARKED_CHANGED,
+        identity,
+        payload: PlacementPayload::Integer(value),
+    })
+    .map_err(ReportFailed)?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -500,5 +585,114 @@ mod tests {
         );
         assert_eq!(c.world.plot_units(3, 1).unwrap()[0].id, 9);
         assert_eq!(c.world.map().plots[0].unit_count, 1);
+    }
+}
+
+#[cfg(test)]
+mod state_tests {
+    use super::*;
+    struct Context {
+        unit: Unit,
+        reports: Vec<PlacementReport>,
+        admitted: bool,
+        fail: bool,
+        mutate: bool,
+    }
+    impl Context {
+        fn new() -> Self {
+            let mut unit = crate::unit_turn_upkeep::tests::source_only_unit();
+            unit.b_needs_movement_completion = false;
+            unit.k_location = PlotCoord { x: 2, y: 3 };
+            Self {
+                unit,
+                reports: vec![],
+                admitted: true,
+                fail: false,
+                mutate: false,
+            }
+        }
+    }
+    impl PlacementStateContext for Context {
+        type Error = &'static str;
+        fn unit(&self) -> Result<&Unit, Self::Error> {
+            Ok(&self.unit)
+        }
+        fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+            Ok(&mut self.unit)
+        }
+        fn preflight_placement_report(&self, _: u32) -> Result<(), Self::Error> {
+            if self.admitted {
+                Ok(())
+            } else {
+                Err("unknown report effects")
+            }
+        }
+        fn send_placement_report(&mut self, r: PlacementReport) -> Result<(), Self::Error> {
+            self.reports.push(r);
+            if self.mutate {
+                self.unit.b_needs_movement_completion = true;
+                self.unit.k_location = PlotCoord { x: 7, y: 8 };
+                self.unit.b_embarked = false;
+            }
+            if self.fail {
+                Err("subscriber failed")
+            } else {
+                Ok(())
+            }
+        }
+    }
+    #[test]
+    fn completion_clears_before_report_and_preserves_subscriber_changes() {
+        let mut c = Context::new();
+        c.unit.b_needs_movement_completion = true;
+        c.mutate = true;
+        assert_eq!(complete_movement(&mut c), Ok(true));
+        assert_eq!(
+            c.reports[0].payload,
+            PlacementPayload::Coordinate(PlotCoord { x: 2, y: 3 })
+        );
+        assert_eq!(c.reports[0].event_hash, MOVEMENT_COMPLETED);
+        assert!(c.unit.b_needs_movement_completion);
+        assert_eq!(c.unit.k_location, PlotCoord { x: 7, y: 8 });
+    }
+    #[test]
+    fn raw_embarked_equality_ignores_activity_and_subscriber_mutation_survives() {
+        let mut c = Context::new();
+        c.unit.e_activity = ACTIVITY_HOLD;
+        c.unit.b_embarked = true;
+        c.admitted = false;
+        assert_eq!(set_embarked(&mut c, true), Ok(false));
+        c.admitted = true;
+        c.unit.b_embarked = false;
+        c.mutate = true;
+        assert_eq!(set_embarked(&mut c, true), Ok(true));
+        assert_eq!(c.reports[0].payload, PlacementPayload::Integer(1));
+        assert_eq!(c.reports[0].event_hash, EMBARKED_CHANGED);
+        assert!(!c.unit.b_embarked);
+    }
+    #[test]
+    fn unchanged_completion_skips_unknown_effects_but_reached_refusal_is_inert() {
+        let mut c = Context::new();
+        c.admitted = false;
+        assert_eq!(complete_movement(&mut c), Ok(false));
+        c.unit.b_needs_movement_completion = true;
+        assert!(matches!(
+            complete_movement(&mut c),
+            Err(PlacementStateError::EffectsUnavailable(_))
+        ));
+        assert!(c.unit.b_needs_movement_completion);
+        assert!(c.reports.is_empty());
+    }
+    #[test]
+    fn failed_completion_send_keeps_native_flag_clear() {
+        let mut c = Context::new();
+        c.unit.b_needs_movement_completion = true;
+        c.fail = true;
+        assert_eq!(
+            complete_movement(&mut c),
+            Err(PlacementStateError::ReportFailed("subscriber failed"))
+        );
+        assert!(!c.unit.b_needs_movement_completion);
+        assert_eq!(c.reports.len(), 1);
     }
 }
