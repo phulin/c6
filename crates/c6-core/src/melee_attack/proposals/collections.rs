@@ -16,6 +16,7 @@ pub enum Error<E> {
 pub struct Runtime {
     collections: Vec<(u64, Collection)>,
     changed: Option<Vec<(u64, ListenerRing<u64>)>>,
+    retained_owners: Option<Vec<(u64, u64)>>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Kind {
@@ -46,6 +47,7 @@ impl Runtime {
         Ok(Self {
             collections,
             changed: None,
+            retained_owners: None,
         })
     }
     /// The separate SimpleCollection.GetOnChanged signal (+0x28), supplied
@@ -71,6 +73,36 @@ impl Runtime {
         }
         self.changed = Some(changed);
         Ok(())
+    }
+    /// Current shared lifetime owners, needed only when a modifier release can
+    /// destroy a collection and unsubscribe its gameplay listener.
+    pub fn bind_retained_owners(
+        &mut self,
+        owners: Vec<(u64, u64)>,
+    ) -> Result<(), RegistryError> {
+        if self.retained_owners.is_some()
+            || owners.iter().enumerate().any(|(index, row)| {
+                row.1 == 0
+                    || self.collection(row.0).is_none()
+                    || owners[..index].iter().any(|other| other.0 == row.0)
+            })
+        {
+            return Err(RegistryError::DuplicateScope);
+        }
+        self.retained_owners = Some(owners);
+        Ok(())
+    }
+    /// Returns true exactly when the caller must execute the concrete derived
+    /// collection destructor. It does not silently erase that callback owner.
+    pub fn release_owner(&mut self, collection: u64) -> Result<bool, RegistryError> {
+        let count = self
+            .retained_owners
+            .as_mut()
+            .and_then(|rows| rows.iter_mut().find(|row| row.0 == collection))
+            .map(|row| &mut row.1)
+            .ok_or(RegistryError::MissingGlobalOrder)?;
+        *count = count.checked_sub(1).ok_or(RegistryError::InvalidSubscription)?;
+        Ok(*count == 0)
     }
     pub fn unsubscribe_changed_receiver(
         &mut self,
@@ -218,6 +250,15 @@ mod tests {
         runtime.unsubscribe_added_receiver(5, 7).unwrap();
         assert_eq!(
             runtime.unsubscribe_changed_receiver(5, 7),
+            Err(RegistryError::InvalidSubscription)
+        );
+        runtime.bind_retained_owners(vec![(5, 3)]).unwrap();
+        assert!(!runtime.release_owner(5).unwrap());
+        assert!(!runtime.release_owner(5).unwrap());
+        assert!(runtime.release_owner(5).unwrap());
+        assert!(runtime.collection(5).is_some());
+        assert_eq!(
+            runtime.release_owner(5),
             Err(RegistryError::InvalidSubscription)
         );
     }
