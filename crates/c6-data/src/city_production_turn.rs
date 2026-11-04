@@ -11,6 +11,7 @@ pub mod building_callbacks;
 pub mod buildings;
 pub mod modifier_effects;
 pub mod selection;
+pub mod units;
 
 use c6_core::{
     city_production::{execution, Order, QueueEntry},
