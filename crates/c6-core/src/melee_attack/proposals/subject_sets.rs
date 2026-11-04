@@ -1,9 +1,29 @@
-//! Fresh constant combat-subject requirement sets. Native definition lookup,
+//! Shared subject requirement sets. Native definition lookup,
 //! child initialization order, inverse, TestAll pruning and weak cache lifetime
-//! are preserved. This is not the general dynamic RequirementSystem.
+//! are preserved. Only the explicitly supplied factories/predicates are supported.
 use super::registry::Handle;
 use crate::unit_moved_signal::requirement_sets as all;
 
+/// Actual modifier-object identity. A City wrapper never masquerades as a
+/// ProposedCombat handle, even if native integer bits happen to coincide.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Subject {
+    Proposal(Handle),
+    ModifierObject(u64),
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InitializedRequirement {
+    Const(i32),
+    Simple(crate::simple_requirement::Requirement),
+}
+impl InitializedRequirement {
+    pub fn state(&self) -> i32 {
+        match self {
+            Self::Const(state) => *state,
+            Self::Simple(value) => value.state,
+        }
+    }
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Predicate {
     AllianceWar,
@@ -35,15 +55,17 @@ pub enum Error<E> {
     MissingSet,
     MissingSubscription,
     CounterExhausted,
+    UnsupportedSubject,
+    DynamicReleaseRequired(u64),
 }
 #[derive(Debug)]
 struct Requirement {
     label: u64,
     native_id: u32,
     context: i32,
-    subject: Handle,
+    subject: Subject,
     definition: usize,
-    state: i32,
+    value: InitializedRequirement,
     references: u32,
 }
 #[derive(Debug)]
@@ -51,7 +73,7 @@ struct Set {
     label: u64,
     native_id: u32,
     context: i32,
-    subject: Handle,
+    subject: Subject,
     definition: usize,
     state: i32,
     children: Vec<u64>,
@@ -120,6 +142,46 @@ impl Runtime {
             .find(|s| s.label == id && s.alive)
             .map(|s| s.children.as_slice())
     }
+    pub fn requirement_state(&self, label: u64) -> Option<i32> {
+        self.requirements
+            .iter()
+            .find(|r| r.label == label && r.references != 0)
+            .map(|r| r.value.state())
+    }
+    pub fn simple_requirement(
+        &self,
+        label: u64,
+    ) -> Option<&crate::simple_requirement::Requirement> {
+        match &self
+            .requirements
+            .iter()
+            .find(|r| r.label == label && r.references != 0)?
+            .value
+        {
+            InitializedRequirement::Simple(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn simple_requirement_mut(
+        &mut self,
+        label: u64,
+    ) -> Option<&mut crate::simple_requirement::Requirement> {
+        match &mut self
+            .requirements
+            .iter_mut()
+            .find(|r| r.label == label && r.references != 0)?
+            .value
+        {
+            InitializedRequirement::Simple(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn requirement_subject(&self, label: u64) -> Option<Subject> {
+        self.requirements
+            .iter()
+            .find(|r| r.label == label && r.references != 0)
+            .map(|r| r.subject)
+    }
     fn label<E>(&mut self) -> Result<u64, Error<E>> {
         let id = self.next_label;
         self.next_label = self
@@ -139,6 +201,9 @@ impl Runtime {
             .iter_mut()
             .find(|r| r.label == id)
             .ok_or(Error::MissingSet)?;
+        if r.references == 1 && matches!(r.value, InitializedRequirement::Simple(_)) {
+            return Err(Error::DynamicReleaseRequired(id));
+        }
         r.references = r.references.checked_sub(1).ok_or(Error::MissingSet)?;
         Ok(())
     }
@@ -159,6 +224,20 @@ impl Runtime {
         Ok(())
     }
     pub fn release<E>(&mut self, id: u64) -> Result<(), Error<E>> {
+        if let Some(s) = self.sets.iter().find(|s| s.label == id && s.alive) {
+            if s.references == 1 {
+                for child in &s.children {
+                    if self.requirements.iter().any(|r| {
+                        r.label == *child
+                            && r.references
+                                <= s.children.iter().filter(|id| *id == child).count() as u32
+                            && matches!(r.value, InitializedRequirement::Simple(_))
+                    }) {
+                        return Err(Error::DynamicReleaseRequired(*child));
+                    }
+                }
+            }
+        }
         let s = self
             .sets
             .iter_mut()
@@ -191,6 +270,66 @@ pub trait Context {
     fn log_created_requirement(&mut self, id: u32) -> Result<(), Self::Error>;
     fn log_created_set(&mut self, id: u32) -> Result<(), Self::Error>;
 }
+/// Generic initialization over the SAME store/cache/counter. Source-specific
+/// dynamic factories register their actual listeners before returning a Simple
+/// control; a Test answer alone is not an initialized requirement.
+pub trait SubjectContext {
+    type Error;
+    fn subject_sets(&self) -> Result<&Runtime, Self::Error>;
+    fn subject_sets_mut(&mut self) -> Result<&mut Runtime, Self::Error>;
+    fn initialize_requirement(
+        &mut self,
+        label: u64,
+        definition: &RequirementDefinition,
+        context: i32,
+        subject: Subject,
+    ) -> Result<InitializedRequirement, Error<Self::Error>>;
+    fn log_missing_set(&mut self, id: &[u8]) -> Result<(), Self::Error>;
+    fn log_created_requirement(&mut self, id: u32) -> Result<(), Self::Error>;
+    fn log_created_set(&mut self, id: u32) -> Result<(), Self::Error>;
+}
+struct ProposalContext<'a, C>(&'a mut C);
+impl<C: Context> SubjectContext for ProposalContext<'_, C> {
+    type Error = C::Error;
+    fn subject_sets(&self) -> Result<&Runtime, Self::Error> {
+        self.0.subject_sets()
+    }
+    fn subject_sets_mut(&mut self) -> Result<&mut Runtime, Self::Error> {
+        self.0.subject_sets_mut()
+    }
+    fn initialize_requirement(
+        &mut self,
+        _: u64,
+        d: &RequirementDefinition,
+        context: i32,
+        subject: Subject,
+    ) -> Result<InitializedRequirement, Error<Self::Error>> {
+        let Subject::Proposal(subject) = subject else {
+            return Err(Error::UnsupportedSubject);
+        };
+        if let Predicate::Unsupported(kind) = d.predicate {
+            return Err(Error::UnsupportedPredicate(kind));
+        }
+        let state = self
+            .0
+            .evaluate_constant(&d.predicate, context, subject)
+            .map_err(Error::Context)?;
+        Ok(InitializedRequirement::Const(if d.inverse {
+            inverse(state)
+        } else {
+            state
+        }))
+    }
+    fn log_missing_set(&mut self, id: &[u8]) -> Result<(), Self::Error> {
+        self.0.log_missing_set(id)
+    }
+    fn log_created_requirement(&mut self, id: u32) -> Result<(), Self::Error> {
+        self.0.log_created_requirement(id)
+    }
+    fn log_created_set(&mut self, id: u32) -> Result<(), Self::Error> {
+        self.0.log_created_set(id)
+    }
+}
 /// Exact ConstRequirement.Inverse233a9f0, including out-of-range fallback.
 pub fn inverse(state: i32) -> i32 {
     match state {
@@ -211,6 +350,21 @@ pub fn get_or_create<C: Context>(
     receiver: u64,
     context: i32,
     subject: Handle,
+    id: &[u8],
+) -> Result<Option<u64>, Error<C::Error>> {
+    get_or_create_subject(
+        &mut ProposalContext(c),
+        receiver,
+        context,
+        Subject::Proposal(subject),
+        id,
+    )
+}
+pub fn get_or_create_subject<C: SubjectContext>(
+    c: &mut C,
+    receiver: u64,
+    context: i32,
+    subject: Subject,
     id: &[u8],
 ) -> Result<Option<u64>, Error<C::Error>> {
     use Error::Context as Cx;
@@ -277,22 +431,16 @@ pub fn get_or_create<C: Context>(
             children.push(r.label);
             continue;
         }
-        let (predicate, do_inverse) = {
-            let d = &c.subject_sets().map_err(Cx)?.requirement_definitions[requirement];
-            (d.predicate.clone(), d.inverse)
-        };
-        if let Predicate::Unsupported(t) = predicate {
-            return Err(Error::UnsupportedPredicate(t));
-        }
-        let state = c
-            .evaluate_constant(&predicate, context, subject)
-            .map_err(Cx)?;
-        let state = if do_inverse { inverse(state) } else { state };
+        let definition_data =
+            c.subject_sets().map_err(Cx)?.requirement_definitions[requirement].clone();
+        // Logical object identity exists during OnInitialize subscriptions;
+        // the native numeric ID is assigned only AFTER initialization returns.
+        let label = c.subject_sets_mut().map_err(Cx)?.label()?;
+        let value = c.initialize_requirement(label, &definition_data, context, subject)?;
         let r = c.subject_sets_mut().map_err(Cx)?;
         r.requirements
             .try_reserve(1)
             .map_err(|_| Error::Allocation)?;
-        let label = r.label()?;
         let native_id = r.native_id();
         r.requirements.push(Requirement {
             label,
@@ -300,7 +448,7 @@ pub fn get_or_create<C: Context>(
             context,
             subject,
             definition: requirement,
-            state,
+            value,
             references: 1,
         });
         children.push(label);
@@ -378,7 +526,7 @@ impl<E> all::Context for Initial<'_, E> {
             .requirements
             .iter()
             .find(|r| r.label == id && r.references != 0)
-            .map(|r| r.state)
+            .map(|r| r.value.state())
             .ok_or(Error::MissingSet)
     }
     fn child_persistent(&self, id: u64) -> Result<bool, Self::Error> {
@@ -605,5 +753,98 @@ mod tests {
         );
         assert_eq!(f.runtime.native_set_id(id), Some(0));
         assert_eq!(f.runtime.next_native_id(), 1);
+    }
+    #[test]
+    fn dynamic_city_subject_uses_same_counter_cache_and_preserves_simple_state() {
+        struct Dynamic {
+            runtime: Runtime,
+            initializations: Vec<(u64, Subject)>,
+        }
+        impl SubjectContext for Dynamic {
+            type Error = &'static str;
+            fn subject_sets(&self) -> Result<&Runtime, Self::Error> {
+                Ok(&self.runtime)
+            }
+            fn subject_sets_mut(&mut self) -> Result<&mut Runtime, Self::Error> {
+                Ok(&mut self.runtime)
+            }
+            fn initialize_requirement(
+                &mut self,
+                label: u64,
+                _: &RequirementDefinition,
+                _: i32,
+                subject: Subject,
+            ) -> Result<InitializedRequirement, Error<Self::Error>> {
+                self.initializations.push((label, subject));
+                // The real initializer owns its source callback registrations;
+                // this test demonstrates retained Simple flags, not a native Test.
+                Ok(InitializedRequirement::Simple(
+                    crate::simple_requirement::Requirement {
+                        active: true,
+                        state: 1,
+                        inverse: false,
+                        persistent: false,
+                        triggered: true,
+                    },
+                ))
+            }
+            fn log_missing_set(&mut self, _: &[u8]) -> Result<(), Self::Error> {
+                Ok(())
+            }
+            fn log_created_requirement(&mut self, _: u32) -> Result<(), Self::Error> {
+                Ok(())
+            }
+            fn log_created_set(&mut self, _: u32) -> Result<(), Self::Error> {
+                Ok(())
+            }
+        }
+        let mut c = Dynamic {
+            runtime: Runtime::from_initial(
+                18921,
+                vec![(
+                    b"S".to_vec(),
+                    Some(SetDefinition {
+                        id: b"S".to_vec(),
+                        requirements: vec![b"R".to_vec()],
+                    }),
+                )],
+                vec![RequirementDefinition {
+                    id: b"R".to_vec(),
+                    predicate: Predicate::Unsupported(0xc88bd7ea),
+                    inverse: false,
+                    persistent: false,
+                }],
+            )
+            .unwrap(),
+            initializations: vec![],
+        };
+        let a = get_or_create_subject(&mut c, 7, 172, Subject::ModifierObject(123), b"S")
+            .unwrap()
+            .unwrap();
+        assert_eq!(c.runtime.state(a), Some(1));
+        assert_eq!(c.runtime.next_native_id(), 18923);
+        let child = c.runtime.children(a).unwrap()[0];
+        assert!(c.runtime.simple_requirement(child).unwrap().triggered);
+        assert_eq!(
+            c.runtime.requirement_subject(child),
+            Some(Subject::ModifierObject(123))
+        );
+        let same = get_or_create_subject(&mut c, 8, 172, Subject::ModifierObject(123), b"S")
+            .unwrap()
+            .unwrap();
+        assert_eq!(a, same);
+        assert_eq!(c.initializations.len(), 1);
+        let other = get_or_create_subject(&mut c, 9, 173, Subject::ModifierObject(123), b"S")
+            .unwrap()
+            .unwrap();
+        assert_ne!(a, other);
+        assert_eq!(c.runtime.next_native_id(), 18925);
+        c.runtime.unsubscribe::<()>(7, a).unwrap();
+        c.runtime.release::<()>(a).unwrap();
+        c.runtime.unsubscribe::<()>(8, a).unwrap();
+        assert!(
+            matches!(c.runtime.release::<()>(a),Err(Error::DynamicReleaseRequired(id))if id==child)
+        );
+        assert_eq!(c.runtime.state(a), Some(1));
     }
 }
