@@ -454,3 +454,4 @@ pub mod unit_modifier_effect;
 pub mod game_emergency;
 pub mod game_climate;
 pub mod game_random_events;
+pub mod game_national_parks;
