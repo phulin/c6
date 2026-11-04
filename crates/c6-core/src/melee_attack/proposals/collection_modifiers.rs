@@ -150,6 +150,133 @@ impl<C: Context> Adapter<'_, C> {
         Ok(&mut self.record_mut()?.tracked[i])
     }
 }
+/// ModifierSystem.ObjectDestroyed: ClearModifiers precedes the reentrant
+/// per-object destruction signal. A genuinely reached owned modifier remains
+/// unsupported; new native ProposedCombat objects start with an empty list.
+pub fn forget_combat<C: Context>(c: &mut C, id: u32) -> Result<(), Error<C::Error>> {
+    let Some(proposal) = c
+        .proposals_mut()
+        .map_err(Error::Context)?
+        .forget_registration(id)
+    else {
+        return Ok(());
+    };
+    if !c
+        .proposals()
+        .map_err(Error::Context)?
+        .proposal(proposal)
+        .map_err(Error::Runtime)?
+        .owned_modifiers
+        .is_empty()
+    {
+        return Err(Error::RemovalUnsupported);
+    }
+    let mut cursor = c
+        .proposals_mut()
+        .map_err(Error::Context)?
+        .destruction_mut(proposal)
+        .map_err(Error::Runtime)?
+        .cursor_start()
+        .map_err(Error::Ring)?;
+    loop {
+        let receiver = c
+            .proposals_mut()
+            .map_err(Error::Context)?
+            .destruction_mut(proposal)
+            .map_err(Error::Runtime)?
+            .cursor_route(cursor)
+            .map_err(Error::Ring)?;
+        if let Some(receiver) = receiver {
+            if let Err(error) = object_destroyed(c, receiver, proposal) {
+                c.proposals_mut()
+                    .map_err(Error::Context)?
+                    .destruction_mut(proposal)
+                    .map_err(Error::Runtime)?
+                    .cursor_release(cursor)
+                    .map_err(Error::Ring)?;
+                return Err(error);
+            }
+        }
+        match c
+            .proposals_mut()
+            .map_err(Error::Context)?
+            .destruction_mut(proposal)
+            .map_err(Error::Runtime)?
+            .cursor_next(cursor)
+            .map_err(Error::Ring)?
+        {
+            Some(next) => cursor = next,
+            None => break,
+        }
+    }
+    Ok(())
+}
+
+/// DynamicModifier.ObjectDestroyed2334610. Temporary proposed combats bypass
+/// RemoveEffects; tracked destruction still unsubscribes both signal handles
+/// and releases the owned requirement set before removing the applied entry.
+pub fn object_destroyed<C: Context>(
+    c: &mut C,
+    receiver: u64,
+    proposal: Handle,
+) -> Result<(), Error<C::Error>> {
+    let mut a = Adapter {
+        context: c,
+        receiver,
+        proposal,
+    };
+    let (position, found) = a.tracked_position()?;
+    if found {
+        if !a.record()?.control.suppressed
+            && a.record()?.control.enabled
+            && !a
+                .context
+                .proposals()
+                .map_err(Error::Context)?
+                .proposal(proposal)
+                .map_err(Error::Runtime)?
+                .temporary
+        {
+            common::Context::remove_effects(&mut a)?;
+        }
+        // TrackedSubject destructor: destruction unsubscribe, requirement
+        // unsubscribe, clear/release requirement, then release subject.
+        let subscription = a.tracked()?.destruction_subscription;
+        a.context
+            .proposals_mut()
+            .map_err(Error::Context)?
+            .destruction_mut(proposal)
+            .map_err(Error::Runtime)?
+            .unsubscribe(subscription)
+            .map_err(Error::Ring)?;
+        if a.tracked()?.state.requirement_set.is_some() {
+            common::Context::unsubscribe_subject_requirement(&mut a)?;
+            common::Context::clear_subject_requirement(&mut a)?;
+        }
+        a.record_mut()?.tracked.remove(position);
+    }
+    // Native always edits the applied vector, even if tracked lookup missed.
+    // Comparator equality, rather than handle identity, selects its entry.
+    let mut index = 0;
+    while index < a.record()?.applied.len() {
+        let other = a.record()?.applied[index];
+        let equal = if other == proposal {
+            true
+        } else {
+            a.context
+                .proposal_order(other, proposal)
+                .map_err(Error::Context)?
+                == std::cmp::Ordering::Equal
+        };
+        if equal {
+            a.record_mut()?.applied.remove(index);
+            break;
+        }
+        index += 1;
+    }
+    Ok(())
+}
+
 /// Source OnCollectionItemAddedOrRemoved2332cc0. The actual strength-effect
 /// BeforeUpdate/AfterUpdate slots are one-byte RETs; this entry is restricted to
 /// the two typed player/alliance strength families. Other classes require their own hooks.
@@ -408,10 +535,23 @@ mod tests {
             _: Handle,
             _: u64,
         ) -> Result<(), Self::Error> {
-            Err("unexpected unsubscribe")
+            assert!(self.proposals.active().is_empty());
+            self.calls.push("unsubscribe");
+            Ok(())
         }
         fn release_subject_requirements(&mut self, _: u64) -> Result<(), Self::Error> {
-            Err("unexpected release")
+            assert!(self
+                .proposals
+                .collection_modifiers()
+                .unwrap()
+                .modifier(7)
+                .unwrap()
+                .tracked[0]
+                .state
+                .requirement_set
+                .is_none());
+            self.calls.push("release");
+            Ok(())
         }
         fn apply_strength_effect(&mut self, _: u64, p: Handle) -> Result<bool, Self::Error> {
             assert_eq!(
@@ -486,6 +626,79 @@ mod tests {
             },
             p,
         )
+    }
+    #[test]
+    fn temporary_forget_unsubscribes_without_reversing_strength() {
+        let (mut f, p) = fixture(vec![], true);
+        item_changed(&mut f, 7, p, true).unwrap();
+        forget_combat(&mut f, 1).unwrap();
+        assert!(f.proposals.active().is_empty());
+        assert_eq!(f.proposals.object_id(p).unwrap(), 1);
+        assert_eq!(
+            f.proposals.proposal(p).unwrap().attacker_strength_modifier,
+            5
+        );
+        let m = f
+            .proposals
+            .collection_modifiers()
+            .unwrap()
+            .modifier(7)
+            .unwrap();
+        assert!(m.tracked.is_empty());
+        assert!(m.applied.is_empty());
+        assert_eq!(f.calls, ["applying", "kernel", "failed"]);
+        forget_combat(&mut f, 1).unwrap();
+        assert_eq!(f.calls.len(), 3);
+    }
+    #[test]
+    fn forget_unregisters_before_requirement_unsubscribe_and_clears_before_release() {
+        let (mut f, p) = fixture(vec![], true);
+        item_changed(&mut f, 7, p, true).unwrap();
+        f.proposals
+            .collection_modifiers_mut()
+            .unwrap()
+            .modifier_mut(7)
+            .unwrap()
+            .tracked[0]
+            .state
+            .requirement_set = Some(9);
+        forget_combat(&mut f, 1).unwrap();
+        assert_eq!(
+            f.calls,
+            ["applying", "kernel", "failed", "unsubscribe", "release"]
+        );
+    }
+    #[test]
+    fn unsupported_owned_modifier_preserves_unregistration_prefix() {
+        let (mut f, p) = fixture(vec![], true);
+        f.proposals.proposal_mut(p).unwrap().owned_modifiers.push(9);
+        assert!(matches!(
+            forget_combat(&mut f, 1),
+            Err(Error::RemovalUnsupported)
+        ));
+        assert!(f.proposals.active().is_empty());
+        assert_eq!(f.proposals.object_id(p).unwrap(), 1);
+    }
+    #[test]
+    fn non_temporary_applied_removal_is_an_explicit_prefix_gap() {
+        let (mut f, p) = fixture(vec![], true);
+        item_changed(&mut f, 7, p, true).unwrap();
+        f.proposals.proposal_mut(p).unwrap().temporary = false;
+        assert!(matches!(
+            forget_combat(&mut f, 1),
+            Err(Error::RemovalUnsupported)
+        ));
+        assert!(f.proposals.active().is_empty());
+        assert_eq!(
+            f.proposals
+                .collection_modifiers()
+                .unwrap()
+                .modifier(7)
+                .unwrap()
+                .tracked
+                .len(),
+            1
+        );
     }
     #[test]
     fn canonical_apply_marks_before_kernel_and_duplicate_add_does_not_reapply() {

@@ -142,3 +142,13 @@ pub fn item_changed<S: Services>(
 ) -> Result<(), kernel::Error<Error<S::Error>>> {
     kernel::item_changed(&mut Context { state, services }, receiver, proposal, added)
 }
+
+/// Forget registration and execute native synchronous modifier destruction.
+/// Reached errors retain the native mutation prefix, including unregistration.
+pub fn forget_combat<S: Services>(
+    state: &mut LoadedState,
+    services: &mut S,
+    id: u32,
+) -> Result<(), kernel::Error<Error<S::Error>>> {
+    kernel::forget_combat(&mut Context { state, services }, id)
+}

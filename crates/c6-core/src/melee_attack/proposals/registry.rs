@@ -22,6 +22,10 @@ pub struct PostCombatYield {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proposal {
+    /// Current ModifierObject owned modifier IDs used by ClearModifiers.
+    pub owned_modifiers: Vec<i32>,
+    /// Native object virtual IsTemporary, distinct from registration lifetime.
+    pub temporary: bool,
     /// Current ModifierObject.MarkAsAffected entries, not a strength cache.
     pub modifiers_affecting: crate::unit_moved_signal::modifiers::AffectedModifiers,
     pub attacker: Participant,
@@ -43,6 +47,8 @@ impl Proposal {
         plot: Option<PlotCoord>,
     ) -> Self {
         Self {
+            owned_modifiers: vec![],
+            temporary: true,
             modifiers_affecting:
                 crate::unit_moved_signal::modifiers::AffectedModifiers::from_sorted(vec![])
                     .expect("new object has empty sorted modifier list"),
@@ -96,6 +102,7 @@ pub struct Runtime {
     // Stable logical labels retain a proposal across Forget/reentrant appends.
     // This is object identity bookkeeping, not a second gameplay payload copy.
     objects: Vec<Proposal>,
+    object_ids: Vec<u32>,
     active: Vec<(u32, Handle)>,
     global: Option<ListenerRing<Subscriber>>,
     owners: Option<Vec<(i32, ListenerRing<Subscriber>)>>,
@@ -126,12 +133,14 @@ impl Runtime {
             .enumerate()
             .map(|(i, (id, p))| ((id, Handle(i)), p))
             .unzip();
+        let object_ids = ids.iter().map(|r: &(u32, Handle)| r.0).collect();
         let destruction = (0..objects.len()).map(|_| None).collect();
         Ok(Self {
             collection_modifiers: None,
             destruction,
             counter,
             objects,
+            object_ids,
             active: ids,
             global,
             owners,
@@ -195,6 +204,18 @@ impl Runtime {
             .mark(&m.definition, m.instance)
             .map_err(Error::Affected)
     }
+    /// Object identity remains readable after Forget removes its active entry.
+    pub fn object_id(&self, handle: Handle) -> Result<u32, Error> {
+        self.object_ids
+            .get(handle.0)
+            .copied()
+            .ok_or(Error::InvalidHandle)
+    }
+    /// Remove registration before destruction callbacks, retaining the one live payload.
+    pub(crate) fn forget_registration(&mut self, id: u32) -> Option<Handle> {
+        let position = self.active.iter().position(|r| r.0 == id)?;
+        Some(self.active.remove(position).1)
+    }
     pub fn counter(&self) -> u32 {
         self.counter
     }
@@ -217,8 +238,12 @@ impl Runtime {
             .map_err(|_| Error::Allocation)?;
         let destruction = ListenerRing::from_ordered(&[]).map_err(Error::Ring)?;
         self.active.try_reserve(1).map_err(|_| Error::Allocation)?;
+        self.object_ids
+            .try_reserve(1)
+            .map_err(|_| Error::Allocation)?;
         let handle = Handle(self.objects.len());
         self.objects.push(proposal);
+        self.object_ids.push(self.counter);
         self.destruction.push(Some(destruction));
         self.active.push((self.counter, handle));
         Ok((self.counter, handle))
