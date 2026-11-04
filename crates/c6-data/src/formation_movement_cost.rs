@@ -376,6 +376,55 @@ pub fn movement_cost(
     };
     let mut result = CostAccumulator::default();
     movement::apply_zoc_minimum(&mut result, budget, zoc, flags, slowed);
+    apply_world_rules(
+        state,
+        definitions,
+        placement,
+        formation,
+        from,
+        to,
+        budget,
+        result,
+    )
+}
+
+/// MovementCostNoZOC (0x2948430) omits the entire hard-minimum prelude,
+/// including the ordinary exit-moves minimum. The caller's flags and exception
+/// plot are not consulted by this native wrapper.
+#[allow(clippy::too_many_arguments)]
+pub fn movement_cost_no_zoc(
+    state: &LoadedState,
+    definitions: &Definitions<'_>,
+    placement: &Placement<'_, '_, '_>,
+    formation: &Formation,
+    from: PlotCoord,
+    to: PlotCoord,
+    budget: MoveBudget,
+) -> Result<CostAccumulator, Error> {
+    definitions.check(state)?;
+    apply_world_rules(
+        state,
+        definitions,
+        placement,
+        formation,
+        from,
+        to,
+        budget,
+        CostAccumulator::default(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_world_rules(
+    state: &LoadedState,
+    definitions: &Definitions<'_>,
+    placement: &Placement<'_, '_, '_>,
+    formation: &Formation,
+    from: PlotCoord,
+    to: PlotCoord,
+    budget: MoveBudget,
+    mut result: CostAccumulator,
+) -> Result<CostAccumulator, Error> {
     let map = state.world().map();
     let (source_index, source) = movement_world::plot_at(map, from).map_err(Error::Movement)?;
     let (target_index, target) = movement_world::plot_at(map, to).map_err(Error::Movement)?;
