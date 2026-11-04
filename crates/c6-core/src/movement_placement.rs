@@ -888,6 +888,22 @@ mod unit_result_tests {
         assert_eq!(result(&f), Ok(1));
     }
     #[test]
+    fn nondefensible_war_district_skips_strength_but_retains_barbarian_continuation() {
+        let mut f = own();
+        f.plot_owner = Some(7);
+        f.blocked_entry = Some(false);
+        f.at_war = Some(true);
+        f.district_at_location_present = Some(true);
+        assert_eq!(result(&f), Err(PlacementMissing::Defensible));
+        f.district_defensible = Some(false);
+        // All ranged/melee/bombard/combat facts remain unresolved. A present
+        // pillaged/nondefensible district does not mean "no district", and
+        // its false predicate still must not drop the later barbarian query.
+        assert_eq!(result(&f), Err(PlacementMissing::Barbarian));
+        f.barbarian = Some(false);
+        assert_eq!(result(&f), Ok(1));
+    }
+    #[test]
     fn clan_bribe_depends_on_actual_branch_and_exclusion_without_mutation() {
         let mut f = own();
         f.plot_owner = Some(7);

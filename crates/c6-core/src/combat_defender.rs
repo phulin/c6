@@ -46,7 +46,7 @@ pub fn select_default<C: Context>(c: &mut C) -> Result<Option<C::Unit>, C::Error
 }
 
 /// GetBestDefender flags0x9/0x19 with a nonnull attacker. These profiles examine
-/// all eligible units (bit8), require enemies (bit1), and use actual visibility.
+/// all eligible units (mask0x8), require enemies (mask0x1), and use actual visibility.
 pub trait MeleeContext: Context {
     fn is_enemy(&mut self, candidate_owner: i32, actor_owner: i32) -> Result<bool, Self::Error>;
     fn visible(&mut self, unit: Self::Unit) -> Result<bool, Self::Error>;
@@ -174,7 +174,7 @@ mod tests {
         c.calls.clear();
         c.domain[3] = 2;
         c.fail = Some((3, "combat"));
-        assert_eq!(select_melee(&mut c, 0, true), Ok(Some(3))); // bit8 has no IsCombat filter
+        assert_eq!(select_melee(&mut c, 0, true), Ok(Some(3))); // mask0x8 has no IsCombat filter
     }
     #[test]
     fn melee_profile9_allows_air_and_keeps_first_tie_without_iscombat_queries() {
