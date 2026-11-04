@@ -200,8 +200,8 @@ mod tests {
             context: object(Interface::Present(id(9))),
             subject: object(Interface::Present(id(8))),
             type_mask: Some(TypeMask {
-                bit_count: 116,
-                words: vec![0, 0x400000008],
+                bit_count: 129,
+                words: vec![0, 1 << 5, 0],
             }),
         }
     }
@@ -210,7 +210,7 @@ mod tests {
         let r = receiver();
         assert!(filter(7, &r, id(1), || Ok(1)).is_ok());
         assert!(matches!(
-            filter(7, &r, id(1), || Ok(67)),
+            filter(7, &r, id(1), || Ok(69)),
             Err(Error::PositiveMaskContinuationUnavailable(7))
         ));
     }
