@@ -72,6 +72,10 @@ fn disposition(trace: &[Event]) -> Disposition {
     }
 }
 
+#[path = "transition_math_rng.rs"]
+mod math_rng;
+pub use math_rng::ScriptMathRngError;
+
 /// Logical initialized ScriptSystem identity, not a native pointer or OS handle.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ScriptSystemIdentity(pub u64);
@@ -87,6 +91,7 @@ pub struct ScriptState {
     factory: FactoryExecutionState,
     intern: Option<InternExecutionState>,
     bounded: Option<c6_core::script_event_registry::BoundedExecutionState>,
+    math_rng: math_rng::OwnedMathRng,
 }
 impl ScriptState {
     #[allow(clippy::too_many_arguments)]
@@ -108,6 +113,7 @@ impl ScriptState {
             factory,
             intern,
             bounded: None,
+            math_rng: math_rng::OwnedMathRng::unobserved(),
         }
     }
     pub fn registry(&self) -> &ScriptEventRegistry {
