@@ -213,6 +213,28 @@ impl<'a> Provider<'a> {
         reference: UnitReference,
         report: IdentityReport,
     ) -> Result<(), Error> {
+        self.send_actor_report(state, reference, None, report)
+    }
+    /// Read the staged actor/Formation at the same synchronous query boundary.
+    /// Only the source state-phase record fields may differ from World. This
+    /// provider changes its local publications/observations, never live World.
+    pub fn send_overlay_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        unit: &Unit,
+        formation: &c6_core::unit::Formation,
+        report: IdentityReport,
+    ) -> Result<(), Error> {
+        self.send_actor_report(state, reference, Some((unit, formation)), report)
+    }
+    fn send_actor_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        overlay: Option<(&Unit, &c6_core::unit::Formation)>,
+        report: IdentityReport,
+    ) -> Result<(), Error> {
         if state.binding() != &self.definitions.binding {
             return Err(Error::ConfigurationIdentity);
         }
@@ -263,6 +285,42 @@ impl<'a> Provider<'a> {
             .map_err(Error::World)?
             .ok_or(Error::MissingUnit)?
             .record;
+        let unit = match overlay {
+            None => unit,
+            Some((staged, formation)) => {
+                if reference.component_id().component_type
+                    != c6_core::formation_initialization::UNIT_COMPONENT_TYPE
+                {
+                    return Err(Error::Provider("report overlay Unit identity"));
+                }
+                let mut expected = unit.clone();
+                expected.e_activity = staged.e_activity;
+                expected.i_operation_timer = staged.i_operation_timer;
+                expected.k_operations = staged.k_operations.clone();
+                if expected != *staged {
+                    return Err(Error::Provider(
+                        "report overlay changed non-phase Unit fields",
+                    ));
+                }
+                let actual = state
+                    .world()
+                    .player(staged.e_owner)
+                    .map_err(Error::World)?
+                    .formation(staged.formation_id)
+                    .map_err(Error::World)?
+                    .ok_or(Error::Provider("report overlay Formation absent"))?
+                    .record;
+                let mut expected = actual.clone();
+                expected.last_path = formation.last_path.clone();
+                expected.last_path_cache_location = formation.last_path_cache_location;
+                if expected != *formation || formation.unit_ids != [staged.id] {
+                    return Err(Error::Provider(
+                        "report overlay changed non-phase Formation fields",
+                    ));
+                }
+                staged
+            }
+        };
         let runtime = state
             .unit_runtime(unit.e_owner, unit.id)
             .map_err(Error::State)?;
@@ -275,7 +333,7 @@ impl<'a> Provider<'a> {
                     "Unit snapshot nonempty/custom property copy effects",
                 ));
             }
-            let path = self.check_snapshot_query_effects(state, unit)?;
+            let path = self.check_snapshot_query_effects(state, unit, overlay.map(|(_, f)| f))?;
             self.snapshots.push(SnapshotObservation {
                 identity: report.identity,
                 current_activity: unit.e_activity,
@@ -328,8 +386,9 @@ impl<'a> Provider<'a> {
         &self,
         state: &LoadedState,
         unit: &Unit,
+        formation: Option<&c6_core::unit::Formation>,
     ) -> Result<ReadinessPath, Error> {
-        if let Some(path) = self.member_readiness_path(state, unit)? {
+        if let Some(path) = self.member_readiness_path(state, unit, formation)? {
             return Ok(path);
         }
         if !unit_placement::coordinate_valid(unit.k_location)
@@ -349,7 +408,7 @@ impl<'a> Provider<'a> {
     pub fn is_ready_to_move(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
         self.validate_readiness_unit(state, unit)?;
         Ok(!matches!(
-            self.member_readiness_path(state, unit)?,
+            self.member_readiness_path(state, unit, None)?,
             Some(ReadinessPath::MemberNotReady | ReadinessPath::OtherFormationMemberNotReady)
         ))
     }
@@ -361,7 +420,7 @@ impl<'a> Provider<'a> {
         if !unit_placement::coordinate_valid(unit.k_location) || unit.b_delayed_death {
             return Ok(true);
         }
-        if self.bound_formation(state, unit)?.is_none() {
+        if self.bound_formation(state, unit, None)?.is_none() {
             return Ok(true);
         }
         if unit.b_needs_attention || self.has_adjacent_move(state, unit)?.is_some() {
@@ -394,6 +453,7 @@ impl<'a> Provider<'a> {
         &self,
         state: &'s LoadedState,
         unit: &Unit,
+        overlay: Option<&'s c6_core::unit::Formation>,
     ) -> Result<Option<&'s c6_core::unit::Formation>, Error> {
         let runtime = state
             .unit_runtime(unit.e_owner, unit.id)
@@ -425,18 +485,19 @@ impl<'a> Provider<'a> {
         if formation.id != reference.resolved_id {
             return Err(Error::Provider("snapshot formation binding changed"));
         }
-        Ok(Some(formation))
+        Ok(Some(overlay.unwrap_or(formation)))
     }
 
     fn member_readiness_path(
         &self,
         state: &LoadedState,
         unit: &Unit,
+        formation: Option<&c6_core::unit::Formation>,
     ) -> Result<Option<ReadinessPath>, Error> {
         if !member_ready(unit) {
             return Ok(Some(ReadinessPath::MemberNotReady));
         }
-        let Some(formation) = self.bound_formation(state, unit)? else {
+        let Some(formation) = self.bound_formation(state, unit, formation)? else {
             return Ok(Some(ReadinessPath::NoFormation));
         };
         if formation.unit_ids.len() >= 2 {

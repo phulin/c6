@@ -29,6 +29,7 @@ pub mod handlers;
 pub mod notifications;
 pub mod reporting;
 pub mod scripting;
+pub mod transition;
 
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
@@ -46,6 +47,7 @@ pub enum Stage {
     Diplomacy,
     Notifications,
     DiagnosticComplete,
+    Committed,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct IdentityReport {
@@ -82,6 +84,7 @@ pub fn trace_json(trace: &[Event]) -> serde_json::Value {
 #[derive(Debug)]
 pub enum Error {
     State(StateError),
+    ScriptRegistry(c6_core::script_event_registry::RegistryError),
     World(c6_core::world::MissingInput),
     Manager(crate::unit_operation_manager::Error),
     Placement(placement::Error),
