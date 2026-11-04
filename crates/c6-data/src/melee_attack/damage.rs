@@ -15,6 +15,8 @@ pub enum Error {
     Rule(&'static str),
     World(c6_core::world::MissingInput),
     MissingUnit(c6_core::map::UnitReference),
+    State(c6_core::loaded_state::Error),
+    RetreatWhenKilled(c6_core::map::UnitReference),
     GameSync(c6_core::loaded_state::game_sync::AccessError),
     Math(c6_core::combat::DamageError),
     NativeArithmeticFault {
@@ -31,6 +33,7 @@ pub struct Definitions {
     power_dampener: i32,
     minimum_civilian_damage_percent: i32,
     max_extra_damage: i32,
+    retreat_unit_types: Vec<u32>,
 }
 fn value<'a>(rules: &'a Rules, name: &'static str) -> Result<&'a SqlValue, Error> {
     let table = rules
@@ -90,7 +93,48 @@ impl Definitions {
             power_dampener: integer(rules, "COMBAT_POWER_DAMPENER")?,
             minimum_civilian_damage_percent: integer(rules, "COMBAT_MIN_CIVILIAN_DAMAGE_PERCENT")?,
             max_extra_damage: integer(rules, "COMBAT_MAX_EXTRA_DAMAGE")?,
+            retreat_unit_types: rules
+                .gameplay()
+                .table("UnitRetreats_XP1")
+                .ok_or(Error::Rule("UnitRetreats_XP1"))?
+                .rows()
+                .map(|row| {
+                    row.text("UnitType")
+                        .map(|name| crate::registry::linux_type_hash(name.as_bytes()))
+                        .map_err(|_| Error::Rule("UnitRetreats_XP1.UnitType"))
+                })
+                .collect::<Result<Vec<_>, _>>()?,
         })
+    }
+    /// Generic GenerateCombatResults' lethal-member pass. A matching retreat
+    /// rule requires FindRetreatWhenKilledPlot (including its genuine draws)
+    /// before flag/damage changes; it is never modeled as an ordinary death.
+    pub fn retreat_when_killed_flag(
+        &self,
+        state: &LoadedState,
+        reference: c6_core::map::UnitReference,
+        final_damage: i32,
+        maximum: i32,
+    ) -> Result<bool, Error> {
+        if final_damage < maximum {
+            return Ok(false);
+        }
+        if state.binding().inputs != self.identities {
+            return Err(Error::Binding);
+        }
+        let unit = state
+            .world()
+            .unit(reference)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingUnit(reference))?
+            .record;
+        let runtime = state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        if runtime.definition_index >= 0 && self.retreat_unit_types.contains(&unit.e_type_index) {
+            return Err(Error::RetreatWhenKilled(reference));
+        }
+        Ok(false)
     }
     pub fn max_extra_damage(&self) -> i32 {
         self.max_extra_damage

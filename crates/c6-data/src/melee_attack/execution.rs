@@ -367,11 +367,15 @@ pub struct GeneratedMembers {
     /// Generated permission only. Resolve must still check both survival and
     /// defender defeat before moving the attacker.
     pub attacker_advances: bool,
+    /// Computed by the generic lethal-member pass, not inferred from damage.
+    pub attacker_retreats_when_killed: bool,
+    pub defender_retreats_when_killed: bool,
 }
 #[derive(Debug)]
 pub enum MemberError<E> {
     Damage(DamageError<E>),
     Experience(super::experience::Error),
+    Retreat(super::damage::Error),
     Actor(super::Error),
     Maximum(crate::formation_movement_cost::Error),
     World(c6_core::world::MissingInput),
@@ -457,6 +461,24 @@ impl<E> Generation<'_, '_, E> {
                 }
             }
         }
+        let attacker_retreats_when_killed = rules
+            .damage
+            .retreat_when_killed_flag(
+                self.state,
+                damage.attacker,
+                damage.attacker_final_damage,
+                attacker_maximum_damage,
+            )
+            .map_err(MemberError::Retreat)?;
+        let defender_retreats_when_killed = rules
+            .damage
+            .retreat_when_killed_flag(
+                self.state,
+                damage.defender,
+                damage.defender_final_damage,
+                defender_maximum_damage,
+            )
+            .map_err(MemberError::Retreat)?;
         Ok(GeneratedMembers {
             location,
             damage,
@@ -465,6 +487,8 @@ impl<E> Generation<'_, '_, E> {
             attacker_maximum_damage,
             defender_maximum_damage,
             attacker_advances: count < 2,
+            attacker_retreats_when_killed,
+            defender_retreats_when_killed,
         })
     }
 }
