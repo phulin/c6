@@ -43,6 +43,8 @@ use c6_core::{
     unit::{ComponentId, Formation, OperationNode, Unit, MOVE_TO_HASH},
 };
 
+pub type EffectError<E> = <E as OperationReports>::Error;
+
 /// Read the same current service owner used by Placement; no detached alive
 /// list or per-viewer width snapshot is introduced by queue processing.
 pub trait Effects: OperationReports {
@@ -177,7 +179,7 @@ fn emit<E: OperationReports, M>(
     event: u32,
     first: Option<i32>,
     second: Option<i32>,
-) -> Result<(), Error<E::Error, M>> {
+) -> Result<(), Error<EffectError<E>, M>> {
     let report = IdentityReport {
         event,
         subtype: 0,
@@ -249,7 +251,7 @@ fn any_human_visible<E: Effects, M>(
     runtime: &Runtime<'_>,
     effects: &E,
     location: PlotCoord,
-) -> Result<bool, Error<E::Error, M>> {
+) -> Result<bool, Error<EffectError<E>, M>> {
     let index = runtime
         .manager_width
         .wrapping_mul(location.y as u32)
@@ -348,20 +350,18 @@ fn friendly_count<E, M>(
 /// before accepting a whole action. Errors preserve completed native-order
 /// effects; this live leaf is deliberately not a transaction or Engine::apply.
 #[allow(clippy::too_many_arguments)]
-pub fn execute_manager<Q, E, M>(
+pub fn execute_manager<E, M>(
     state: &mut LoadedState,
     actor: (i32, u32),
     request: Request,
     inputs: &Inputs<'_, '_>,
     handlers: &BoundHandlers<'_>,
-    queries: &mut Q,
     runtime: &mut Runtime<'_>,
     effects: &mut E,
     movement: &mut M,
-) -> Result<Applied, Error<E::Error, M::Error>>
+) -> Result<Applied, Error<EffectError<E>, M::Error>>
 where
-    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
-    E: Effects,
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
     if request.from_user || request.modifiers != 0 {
@@ -399,9 +399,7 @@ where
         .push(node);
     emit(state, actor, effects, 0x15c35863, Some(runtime_id), None)?;
     if !request.append && unit(state, actor)?.k_operations.nodes.len() == 1 {
-        activate(
-            state, actor, inputs, handlers, queries, runtime, effects, movement,
-        )?;
+        activate(state, actor, inputs, handlers, runtime, effects, movement)?;
     }
     Ok(Applied {
         queued: !unit(state, actor)?.k_operations.nodes.is_empty(),
@@ -409,19 +407,17 @@ where
     })
 }
 #[allow(clippy::too_many_arguments)]
-fn activate<Q, E, M>(
+fn activate<E, M>(
     state: &mut LoadedState,
     actor: (i32, u32),
     inputs: &Inputs<'_, '_>,
     handlers: &BoundHandlers<'_>,
-    queries: &mut Q,
     runtime: &mut Runtime<'_>,
     effects: &mut E,
     movement: &mut M,
-) -> Result<(), Error<E::Error, M::Error>>
+) -> Result<(), Error<EffectError<E>, M::Error>>
 where
-    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
-    E: Effects,
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
     if unit(state, actor)?.k_operations.nodes.is_empty() || legality::is_busy(unit(state, actor)?) {
@@ -449,7 +445,7 @@ where
                 parameters: node.parameters.clone(),
             };
             let reference = UnitReference::from_component_id(identity(state, actor)?);
-            if super::can_start_typed(state, reference, inputs, queries, handlers, &mut operation)
+            if super::can_start_typed(state, reference, inputs, effects, handlers, &mut operation)
                 .map_err(Error::Query)?
             {
                 if operation.runtime_id != id
@@ -535,7 +531,7 @@ fn update<E: Effects, M: Movement<E>>(
     runtime: &mut Runtime<'_>,
     effects: &mut E,
     movement: &mut M,
-) -> Result<(), Error<E::Error, M::Error>> {
+) -> Result<(), Error<EffectError<E>, M::Error>> {
     let node = front(state, actor)?;
     let (destination, modifiers) = target(&node)?;
     if node.push_turn == state.retained().core.current_turn {
@@ -665,7 +661,7 @@ fn continue_operation<E: Effects, M: Movement<E>>(
     runtime: &mut Runtime<'_>,
     effects: &mut E,
     movement: &mut M,
-) -> Result<bool, Error<E::Error, M::Error>> {
+) -> Result<bool, Error<EffectError<E>, M::Error>> {
     let retained = formation_id(state, actor)?;
     loaded_upkeep::clear_current_formation_path(state, actor.0, actor.1).map_err(Error::Upkeep)?;
     let mut data = Processing {
@@ -937,21 +933,19 @@ pub enum RequestOutcome {
 /// A returned Executed still requires outer UnitOperation aftermath and the
 /// final messages-processed observer; it is not whole-action acceptance.
 #[allow(clippy::too_many_arguments)]
-pub fn request_active_player<Q, E, M>(
+pub fn request_active_player<E, M>(
     state: &mut LoadedState,
     issuer: i32,
     actor: (i32, u32),
     request: Request,
     inputs: &Inputs<'_, '_>,
     handlers: &BoundHandlers<'_>,
-    queries: &mut Q,
     runtime: &mut Runtime<'_>,
     effects: &mut E,
     movement: &mut M,
-) -> Result<RequestOutcome, Error<E::Error, M::Error>>
+) -> Result<RequestOutcome, Error<EffectError<E>, M::Error>>
 where
-    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
-    E: Effects,
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
     if issuer != actor.0 {
@@ -1001,7 +995,95 @@ where
     }
 
     execute_manager(
-        state, actor, request, inputs, handlers, queries, runtime, effects, movement,
+        state, actor, request, inputs, handlers, runtime, effects, movement,
     )
     .map(RequestOutcome::Executed)
+}
+
+#[derive(Debug)]
+pub enum ActionError<E, M, O> {
+    Manager(Error<E, M>),
+    Aftermath(super::current_aftermath::Error<O>),
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProcessedRequest {
+    /// None is a delivered message whose Unit lookup returned null. Native
+    /// Execute skips Add/aftermath there but its outer batch observer still runs.
+    pub manager: Option<Applied>,
+    pub boundary: super::transition::ExecutionBoundary,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ActionOutcome {
+    NotSent(IgnoredRequest),
+    Processed(ProcessedRequest),
+}
+/// Execute one serialized active-player request through the supported headless
+/// MessagesProcessed boundary. The existing aftermath context keeps the SAME
+/// owned World, backend, script registry and pending notification allocations.
+/// No native AI policy is called. A failure retains its completed prefix and
+/// must not be retried as if the original request had never run.
+///
+/// This joins existing gameplay algorithms; callback/backend admission remains
+/// required. Success is not evidence of complete Civ VI state/RNG/turn parity.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn execute_active_request<B, M>(
+    context: &mut super::current_aftermath::Context<'_, B>,
+    issuer: i32,
+    actor: (i32, u32),
+    request: Request,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    movement: &mut M,
+    budget: &mut usize,
+) -> Result<
+    ActionOutcome,
+    ActionError<EffectError<B>, M::Error, <B as super::current_aftermath::Backend>::ObserverError>,
+>
+where
+    B: Effects
+        + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>
+        + super::current_aftermath::Backend
+        + c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
+    M: Movement<B>,
+{
+    if let Some(stage) = context.failed_at() {
+        return Err(ActionError::Aftermath(
+            super::current_aftermath::Error::FailedContinuation(stage),
+        ));
+    }
+    let outcome = {
+        let provider = &mut context.notifications;
+        request_active_player(
+            provider.state,
+            issuer,
+            actor,
+            request,
+            inputs,
+            handlers,
+            runtime,
+            &mut provider.backend,
+            movement,
+        )
+        .map_err(ActionError::Manager)?
+    };
+    let manager = match outcome {
+        RequestOutcome::Ignored(IgnoredRequest::InvalidPlayer) => {
+            return Ok(ActionOutcome::NotSent(IgnoredRequest::InvalidPlayer))
+        }
+        RequestOutcome::Ignored(IgnoredRequest::MissingUnit) => None,
+        RequestOutcome::Executed(manager) => {
+            context
+                .after_manager(actor.0, budget)
+                .map_err(ActionError::Aftermath)?;
+            Some(manager)
+        }
+    };
+    context
+        .messages_processed()
+        .map_err(ActionError::Aftermath)?;
+    Ok(ActionOutcome::Processed(ProcessedRequest {
+        manager,
+        boundary: super::transition::ExecutionBoundary::HeadlessMessagesProcessed,
+    }))
 }
