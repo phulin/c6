@@ -2,6 +2,7 @@
 //! Unsaved globals are explicit live inputs; no defaults or duplicate saved state.
 use super::LoadedState;
 pub mod deactivation;
+pub mod automation;
 use crate::{
     core_player::initialization::WireBinding,
     game_update::{self as core, Error},

@@ -10,13 +10,86 @@ pub struct Continuation {
     alive_nonhuman: bool,
     stamp: crate::loaded_state::ActionStamp,
     binding: crate::core_player::initialization::WireBinding,
+    automation_started: bool,
 }
 
 /// Source-qualified stock Platform file logger only. Clock/formatting, channel
 /// cache, offset counters and output have no gameplay/RNG effects. Custom log
 /// callbacks must execute their actual effects. Reporting remains mandatory.
+#[derive(Clone, Copy)]
 pub enum LoggingScope {
     StockFileSink,
+}
+
+#[derive(Debug)]
+pub enum ReportError<E> {
+    Prefix(Error),
+    Effect(E),
+}
+
+/// Deliver the actual current report on the SAME state/effect owner. Failed
+/// synchronous consumers retain their mutations and forbid replay. Only a
+/// completed Send permits entry into Player.DoAutomation.
+pub fn deliver_turn_active_report<E>(
+    state: &mut crate::loaded_state::LoadedState,
+    runtime: &mut super::Runtime,
+    pending: &mut Continuation,
+    send: impl FnOnce(&mut crate::loaded_state::LoadedState, u32, i32) -> Result<(), E>,
+) -> Result<(), ReportError<E>> {
+    if runtime.failed
+        || state.binding() != &pending.binding
+        || state.binding() != &runtime.binding
+        || state.action_stamp() != pending.stamp
+        || pending.automation_started
+    {
+        return Err(ReportError::Prefix(Error::Unsupported(
+            "SetTurnActive report continuation binding",
+        )));
+    }
+    let Some(core::Effect::TurnActiveReport { player, event }) = pending.effect else {
+        return Err(ReportError::Prefix(Error::Unsupported(
+            "SetTurnActive report continuation ordering",
+        )));
+    };
+    if let Err(error) = send(state, event, player) {
+        runtime.failed = true;
+        return Err(ReportError::Effect(error));
+    }
+    pending.stamp = state.action_stamp();
+    pending.effect = Some(core::Effect::Automation { player });
+    Ok(())
+}
+
+/// This remains a mandatory internal continuation, never a completed
+/// DoTurnDeactivate. The returned frame still owes unit and diplomacy work.
+pub fn begin_automation(
+    state: &mut crate::loaded_state::LoadedState,
+    runtime: &mut super::Runtime,
+    pending: &mut Continuation,
+    allow_tactical: impl FnMut(&crate::loaded_state::LoadedState, i32) -> Result<bool, Error>,
+) -> Result<super::automation::Begin, Error> {
+    if runtime.failed
+        || state.binding() != &pending.binding
+        || state.binding() != &runtime.binding
+        || state.action_stamp() != pending.stamp
+        || pending.automation_started
+    {
+        return Err(Error::Unsupported(
+            "DoTurnDeactivate automation continuation binding",
+        ));
+    }
+    let Some(core::Effect::Automation { player }) = pending.effect else {
+        return Err(Error::Unsupported(
+            "DoTurnDeactivate still requires turn-active report",
+        ));
+    };
+    pending.automation_started = true;
+    let result = super::automation::begin(state, player, allow_tactical);
+    pending.stamp = state.action_stamp();
+    if result.is_err() {
+        runtime.failed = true;
+    }
+    result
 }
 
 pub fn omit_stock_file_log(
@@ -121,6 +194,7 @@ pub fn begin<S: Services>(c: &mut Context<'_, S>) -> Result<Continuation, Error>
             alive_nonhuman,
             stamp: c.state.action_stamp(),
             binding: c.state.binding().clone(),
+            automation_started: false,
         })
     })();
     if result.is_err() {
@@ -379,5 +453,80 @@ mod tests {
             Some(core::Effect::TurnActiveLog { .. })
         ));
         assert!(runtime.failed());
+    }
+    #[test]
+    fn report_is_mandatory_before_automation_and_failure_preserves_callback_prefix() {
+        let (mut state, mut runtime, owner) = fixture();
+        runtime.inputs.local_player = Some(owner);
+        let mut pending =
+            begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap()).unwrap();
+        assert!(
+            begin_automation(&mut state, &mut runtime, &mut pending, |_, _| panic!(
+                "report first"
+            ))
+            .is_err()
+        );
+        omit_stock_file_log(
+            &state,
+            &mut runtime,
+            &mut pending,
+            LoggingScope::StockFileSink,
+        )
+        .unwrap();
+        let result = deliver_turn_active_report(
+            &mut state,
+            &mut runtime,
+            &mut pending,
+            |state, event, p| {
+                assert_eq!((event, p), (0x6e63_a083, owner));
+                assert!(!state.turn_active(p).unwrap());
+                state.retained.core.player_processor.player_complete[p as usize] = false;
+                Err("required consumer")
+            },
+        );
+        assert!(matches!(
+            result,
+            Err(ReportError::Effect("required consumer"))
+        ));
+        assert!(!state.retained.core.player_processor.player_complete[owner as usize]);
+        assert!(runtime.failed());
+        assert!(
+            begin_automation(&mut state, &mut runtime, &mut pending, |_, _| panic!(
+                "failed report"
+            ))
+            .is_err()
+        );
+    }
+    #[test]
+    fn delivered_report_enters_live_automation_once_and_keeps_diplomacy_required() {
+        let (mut state, mut runtime, owner) = fixture();
+        runtime.inputs.local_player = Some(owner);
+        let mut pending =
+            begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap()).unwrap();
+        omit_stock_file_log(
+            &state,
+            &mut runtime,
+            &mut pending,
+            LoggingScope::StockFileSink,
+        )
+        .unwrap();
+        deliver_turn_active_report(&mut state, &mut runtime, &mut pending, |_, _, _| {
+            Ok::<_, ()>(())
+        })
+        .unwrap();
+        let super::super::automation::Begin::Units(mut frame) =
+            begin_automation(&mut state, &mut runtime, &mut pending, |_, _| Ok(true)).unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(frame.take_unit(&state).unwrap(), None);
+        let tail = frame.finish(&mut state).unwrap();
+        assert_eq!(tail.owner, owner);
+        assert!(
+            begin_automation(&mut state, &mut runtime, &mut pending, |_, _| panic!(
+                "replay"
+            ))
+            .is_err()
+        );
     }
 }

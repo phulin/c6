@@ -481,7 +481,7 @@ mod tests {
     }
 
     // Source-only complete typed actor; no native initialization is inferred.
-    fn commit_fixture_unit() -> unit::Unit {
+    pub(super) fn commit_fixture_unit() -> unit::Unit {
         // Synthetic all-zero fields/empty arrays with current nested wire versions.
         // Generated from the public typed Unit fixture; these are not save bytes.
         let mut bytes = vec![0; 762];
