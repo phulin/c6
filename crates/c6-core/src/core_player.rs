@@ -1709,6 +1709,7 @@ pub(crate) mod tests {
             all_great_works_tourism_modifier: -9941,
             all_great_works_yield_modifier: -9940,
             replaced_slots: vec![pculture::GovernmentSlotReplacement {
+                wire_version: 45,
                 replaced_slot_ordinal: -1,
                 added_slot_ordinal: 7,
                 replaces_all: true,

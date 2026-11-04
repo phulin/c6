@@ -258,11 +258,42 @@ record!(GovernmentSlot, false, {
     policy_hash: u32,
     slot_ordinal: i32,
 });
-record!(GovernmentSlotReplacement, true, {
-    replaced_slot_ordinal: i32,
-    added_slot_ordinal: i32,
-    replaces_all: bool,
-});
+/// GovernmentSlotReplacement38/45 wire data. The bool is present since27;
+/// neither slot definition lookup nor government-policy mutation runs here.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GovernmentSlotReplacement {
+    pub wire_version: u32,
+    pub replaced_slot_ordinal: i32,
+    pub added_slot_ordinal: i32,
+    pub replaces_all: bool,
+}
+impl Wire for GovernmentSlotReplacement {
+    const MIN: usize = 13;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 38 | VERSION) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            replaced_slot_ordinal: i32::read(r)?,
+            added_slot_ordinal: i32::read(r)?,
+            replaces_all: bool::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.replaced_slot_ordinal.write(w)?;
+        self.added_slot_ordinal.write(w)?;
+        self.replaces_all.write(w)
+    }
+}
 record!(GovernmentTypeSlotModifier, true, {
     government_hash: u32,
     slot_ordinal: i32,
@@ -940,6 +971,7 @@ mod tests {
             all_great_works_tourism_modifier: -123456730,
             all_great_works_yield_modifier: -123456729,
             replaced_slots: vec![GovernmentSlotReplacement {
+                wire_version: VERSION,
                 replaced_slot_ordinal: -2,
                 added_slot_ordinal: 9,
                 replaces_all: true,
@@ -949,6 +981,64 @@ mod tests {
                 slot_ordinal: -8,
                 delta: i32::MIN,
             }],
+        }
+    }
+    #[test]
+    fn replacement38_present_bool_and_independent_version() {
+        let decode = |data: &[u8], max_bytes| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items: 0,
+                },
+            };
+            GovernmentSlotReplacement::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        for flag in [false, true] {
+            let mut b = Vec::new();
+            for word in [38u32, i32::MIN as u32, i32::MAX as u32] {
+                b.extend_from_slice(&word.to_le_bytes());
+            }
+            b.extend_from_slice(&[u8::from(flag), 0xfe]);
+            let (v, n, i) = decode(&b, 13).unwrap();
+            assert_eq!(
+                (
+                    v.wire_version,
+                    v.replaced_slot_ordinal,
+                    v.added_slot_ordinal,
+                    v.replaces_all,
+                    n,
+                    i
+                ),
+                (38, i32::MIN, i32::MAX, flag, 13, 0)
+            );
+            for cut in 0..13 {
+                assert!(decode(&b[..cut], 13).is_err());
+            }
+            assert!(decode(&b, 12).is_err());
+            let mut w = Writer {
+                data: Vec::new(),
+                items: 0,
+                limits: limits(),
+            };
+            assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+            assert!(w.data.is_empty());
+            b[..4].copy_from_slice(&39u32.to_le_bytes());
+            assert_eq!(
+                decode(&b, 13),
+                Err(Error::Version {
+                    expected: 45,
+                    actual: 39
+                })
+            );
+            b[..4].copy_from_slice(&45u32.to_le_bytes());
+            decode(&b, 13).unwrap().0.write(&mut w).unwrap();
+            assert_eq!(w.data, &b[..13]);
+            b[12] = 2;
+            assert_eq!(decode(&b, 13), Err(Error::InvalidBool(2)));
         }
     }
     #[test]
