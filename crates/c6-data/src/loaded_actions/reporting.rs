@@ -287,6 +287,7 @@ pub struct Provider<'a> {
     movement: &'a unit_movement_state::Inputs<'a>,
     publications: Vec<Publication>,
     skip_turn_handler: Option<i32>,
+    move_to_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
@@ -304,6 +305,7 @@ impl<'a> Provider<'a> {
             movement,
             publications: Vec::new(),
             skip_turn_handler: None,
+            move_to_handler: None,
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
             command_queries: None,
@@ -376,22 +378,52 @@ impl<'a> Provider<'a> {
         authority: &super::handlers::BoundHandlers<'_>,
         operations: &crate::unit_operation_manager::OperationDefinitions,
     ) -> Result<(), Error> {
+        self.skip_turn_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::SKIP_TURN_HASH,
+        )?);
+        Ok(())
+    }
+    /// Admit the stock MoveTo facade used by CURRENT-front activity reporting.
+    /// Its SingleLocation parameter object's map writer is inherited and empty;
+    /// this is distinct from its coordinate wire writer and map reader.
+    pub fn bind_move_to_handler(
+        &mut self,
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.move_to_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::MOVE_TO_HASH,
+        )?);
+        Ok(())
+    }
+    fn checked_handler(
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+        hash: u32,
+    ) -> Result<i32, Error> {
         let registry = authority.registry().map_err(Error::HandlerObservation)?;
         authority
             .validate_execution(state, &registry, operations)
             .map_err(Error::HandlerObservation)?;
         let id = authority
-            .runtime_id(c6_core::unit::SKIP_TURN_HASH)
+            .runtime_id(hash)
             .map_err(Error::HandlerObservation)?;
         let handler = registry
             .handler(id)
             .map_err(Error::Registry)?
-            .ok_or(Error::Provider("actual SkipTurn facade handler absent"))?;
-        if handler.identity().operation_hash.0 != c6_core::unit::SKIP_TURN_HASH {
-            return Err(Error::Provider("actual SkipTurn facade handler identity"));
+            .ok_or(Error::Provider("actual facade handler absent"))?;
+        if handler.identity().operation_hash.0 != hash {
+            return Err(Error::Provider("actual facade handler identity"));
         }
-        self.skip_turn_handler = Some(id.0);
-        Ok(())
+        Ok(id.0)
     }
     pub fn snapshot_observations(&self) -> &[SnapshotObservation] {
         &self.snapshots
@@ -542,7 +574,9 @@ impl<'a> Provider<'a> {
                 (67, true)
             }
             OPERATION_STARTED
-                if report.subtype == c6_core::unit::SKIP_TURN_HASH
+                if (report.subtype == c6_core::unit::SKIP_TURN_HASH
+                    || (report.subtype == c6_core::unit::MOVE_TO_HASH
+                        && self.move_to_handler.is_some()))
                     && report.first.is_some()
                     && report.second.is_none() =>
             {
@@ -640,6 +674,22 @@ impl<'a> Provider<'a> {
                     // Original handler +10 returns the SkipTurn hash; concrete
                     // parameter writer +28 is RET and leaves the fresh map empty.
                     c6_core::unit::SKIP_TURN_HASH
+                }
+                Some(node)
+                    if node.operation_hash == c6_core::unit::MOVE_TO_HASH
+                        && matches!(
+                            node.parameters,
+                            c6_core::unit::OperationParameters::MoveTo { .. }
+                                | c6_core::unit::OperationParameters::None
+                        ) =>
+                {
+                    self.move_to_handler.ok_or(Error::Provider(
+                        "actual MoveTo facade handler binding unavailable",
+                    ))?;
+                    // Exports::Unit.GetOperationType calls BaseHandler +10.
+                    // GetOperationParams calls SingleLocation +28, inherited
+                    // Instance::Write(map) RET; constructor parameters stay -1.
+                    c6_core::unit::MOVE_TO_HASH
                 }
                 Some(_) => {
                     return Err(Error::Provider(
