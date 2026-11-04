@@ -10,6 +10,9 @@ use crate::{Database, Rules, RulesProfile, SqlValue, Table};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IntegerParameter {
     CityMovementCost,
+    MovementRiverCost,
+    MovementPortalCost,
+    MovementEmbarkCost,
     MovementWhileEmbarkedBase,
     CombatMaxHitPoints,
     CombatMaxNumAttacks,
@@ -28,6 +31,9 @@ impl IntegerParameter {
     pub const fn name(self) -> &'static str {
         match self {
             Self::CityMovementCost => "CITY_MOVEMENT_COST",
+            Self::MovementRiverCost => "MOVEMENT_RIVER_COST",
+            Self::MovementPortalCost => "MOVEMENT_PORTAL_COST",
+            Self::MovementEmbarkCost => "MOVEMENT_EMBARK_COST",
             Self::MovementWhileEmbarkedBase => "MOVEMENT_WHILE_EMBARKED_BASE",
             Self::CombatMaxHitPoints => "COMBAT_MAX_HIT_POINTS",
             Self::CombatMaxNumAttacks => "COMBAT_MAX_NUM_ATTACKS",
@@ -52,7 +58,10 @@ impl IntegerParameter {
             Self::CityMovementCost
             | Self::CombatMaxNumAttacks
             | Self::StrategicResourceMinimumForUnitHealing => 1,
-            Self::MovementWhileEmbarkedBase => 2,
+            Self::MovementWhileEmbarkedBase
+            | Self::MovementRiverCost
+            | Self::MovementPortalCost
+            | Self::MovementEmbarkCost => 2,
             Self::CombatMaxHitPoints => 100,
             Self::HealCityGarrison | Self::HealNavalFriendly => 20,
             Self::HealLandEnemy => 5,
@@ -252,6 +261,15 @@ mod tests {
         let database = crate::inspect(&path).unwrap();
         std::fs::remove_file(path).unwrap();
         database
+    }
+
+    #[test]
+    fn movement_phase_integer_parameters_use_native_two_fallback_and_sql_conversion() {
+        let db = database("CREATE TABLE GlobalParameters(Name TEXT,Value); INSERT INTO GlobalParameters VALUES('MOVEMENT_RIVER_COST',NULL),('MOVEMENT_PORTAL_COST','-3tail');");
+        let p = Parameters::from_database(&db).unwrap();
+        assert_eq!(p.integer(IntegerParameter::MovementRiverCost).unwrap(), 0);
+        assert_eq!(p.integer(IntegerParameter::MovementPortalCost).unwrap(), -3);
+        assert_eq!(p.integer(IntegerParameter::MovementEmbarkCost).unwrap(), 2);
     }
 
     #[test]

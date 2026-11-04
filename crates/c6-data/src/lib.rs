@@ -9,6 +9,7 @@ use std::{collections::HashMap, fmt, fs, path::Path};
 pub mod city_power;
 pub mod city_movement;
 pub mod formation_rules;
+pub mod formation_movement_cost;
 pub mod game_relations;
 pub mod game_parameters;
 pub mod loaded_actions;
