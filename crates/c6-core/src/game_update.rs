@@ -2,6 +2,7 @@
 //! This is an internal partial continuation, never a completed Game.Update or
 //! an external player decision. Unimplemented upkeep must remain unsupported.
 pub use crate::turn_completion::Error;
+pub mod deactivation;
 
 pub const AI_PROCESSED: u32 = 0x4fc6_296a;
 pub const INITIAL_AI_PROCESSED: u32 = 0x91d5_ac36;

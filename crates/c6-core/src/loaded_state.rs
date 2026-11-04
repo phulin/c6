@@ -186,7 +186,7 @@ mod tests {
         assert!(!context.state.retained.core.player_processor.player_complete[owner as usize]);
     }
 
-    struct UpdateServices;
+    pub(super) struct UpdateServices;
     impl game_update::Services for UpdateServices {
         type Alive = ();
         fn alive_begin(
@@ -317,7 +317,7 @@ mod tests {
         assert_eq!(ctx.state.revision(), 2);
     }
 
-    fn current_update_player_fixture() -> (LoadedState, game_update::Runtime, i32) {
+    pub(super) fn current_update_player_fixture() -> (LoadedState, game_update::Runtime, i32) {
         let mut state = state();
         let owner = state.world.players()[0].owner();
         let mut input = controls(&state);

@@ -1,6 +1,7 @@
 //! Current-state partial Game.Update over canonical saved processor/control data.
 //! Unsaved globals are explicit live inputs; no defaults or duplicate saved state.
 use super::LoadedState;
+pub mod deactivation;
 use crate::{
     core_player::initialization::WireBinding,
     game_update::{self as core, Error},
@@ -35,6 +36,7 @@ pub struct Runtime {
     pass_has_human: bool,
     pass_processed_ai: bool,
     player_frame: Option<PlayerFrame>,
+    deactivation_started: bool,
 }
 impl Runtime {
     /// Binding checks identity, not provenance of caller-supplied runtime facts.
@@ -48,6 +50,7 @@ impl Runtime {
             pass_has_human: false,
             pass_processed_ai: false,
             player_frame: None,
+            deactivation_started: false,
         }
     }
     pub fn pending(&self) -> Option<&core::Continuation> {
