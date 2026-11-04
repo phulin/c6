@@ -141,6 +141,19 @@ mod tests {
     }
 
     #[test]
+    fn action_stamp_same_instance_survives_writes_but_rejects_another_load() {
+        let mut first = state();
+        let initial = first.action_stamp();
+        let second = state();
+        assert_eq!(first.binding(), second.binding());
+        assert!(!initial.same_instance(second.action_stamp()));
+        first.revision += 1;
+        first.admission_generation += 1;
+        assert_ne!(initial, first.action_stamp());
+        assert!(initial.same_instance(first.action_stamp()));
+    }
+
+    #[test]
     fn loaded_turn_completion_uses_canonical_flag_and_retains_failure_prefix() {
         use crate::turn_completion::{Error as TurnError, LogBranch, Prefix, NONE};
         struct Effects;
@@ -3363,6 +3376,13 @@ pub struct ActionStamp {
     instance: u64,
     revision: u64,
     admission_generation: u64,
+}
+impl ActionStamp {
+    /// Same exclusively owned loaded World, independent of later gameplay
+    /// writes/admissions. This does not establish revision or input freshness.
+    pub fn same_instance(self, other: Self) -> bool {
+        self.instance == other.instance
+    }
 }
 static NEXT_STATE_IDENTITY: AtomicU64 = AtomicU64::new(1);
 fn fresh_state_identity() -> Result<u64, Error> {

@@ -24,6 +24,7 @@ pub mod choose_tech;
 pub mod city_range_attack;
 pub mod command_units;
 pub mod configuration;
+pub mod diplomacy_pending_deals;
 pub mod culture_notifications;
 pub mod handlers;
 pub mod move_to;
