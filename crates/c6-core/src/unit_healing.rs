@@ -323,39 +323,14 @@ pub enum UnitHealingOutcome {
     Signalled(UnitHealedSignal),
 }
 
-/// Apply the healing path's real damage write and synchronous continuations.
-///
-/// The queue stores admitted logical operation hashes. Its live numeric-ID
-/// registry mapping must have been established by the runtime binding; a raw
-/// numeric ID must never be placed in OperationNode::operation_hash.
-pub fn heal_unit<C: UnitHealingContext>(
-    context: Option<&mut C>,
-) -> Result<UnitHealingOutcome, UnitHealingError<C::Error>> {
-    let Some(context) = context else {
-        return Ok(UnitHealingOutcome::Skipped);
-    };
-    let world = context
-        .healing_world_state()
-        .map_err(UnitHealingError::InputsUnavailable)?;
-    let rules = context
-        .healing_rules()
-        .map_err(UnitHealingError::InputsUnavailable)?;
-    let state = UnitHealingState::from_unit(
-        context
-            .unit()
-            .map_err(|error| UnitHealingError::ContinuationFailed {
-                stage: HealingStage::ActorAccess,
-                error,
-            })?,
-        world,
-    );
-    let requested = healing_amount(Some(&state), &rules);
-    if requested == 0 {
-        return Ok(UnitHealingOutcome::Skipped);
-    }
-    context
-        .preflight_healing_effects()
-        .map_err(UnitHealingError::EffectsUnavailable)?;
+/// Actual Unit::ChangeDamage/SetDamage, shared by healing and movement damage.
+/// The caller checks support for all reached reports/Clear effects before this
+/// function. This leaf does not perform Manager::IsDead/Kill or a healed signal.
+/// Returns damage captured before the write; callbacks may change current damage.
+pub fn change_damage<C: UnitHealingContext>(
+    context: &mut C,
+    delta: i32,
+) -> Result<i32, UnitHealingError<C::Error>> {
     let limit = context
         .combat_max_hit_points()
         .map_err(UnitHealingError::InputsUnavailable)?;
@@ -366,7 +341,7 @@ pub fn heal_unit<C: UnitHealingContext>(
             error,
         })?
         .i_damage;
-    let candidate = previous_damage.wrapping_sub(requested);
+    let candidate = previous_damage.wrapping_add(delta);
     // Utilities::Range(candidate, 0, limit) compares candidate twice. In
     // particular, a negative configured upper bound is not normalized to zero.
     let damage = if candidate < 0 {
@@ -434,6 +409,43 @@ pub fn heal_unit<C: UnitHealingContext>(
             }
         })?;
     }
+    Ok(previous_damage)
+}
+
+/// Apply the healing path's real damage write and synchronous continuations.
+///
+/// The queue stores admitted logical operation hashes. Its live numeric-ID
+/// registry mapping must have been established by the runtime binding; a raw
+/// numeric ID must never be placed in OperationNode::operation_hash.
+pub fn heal_unit<C: UnitHealingContext>(
+    context: Option<&mut C>,
+) -> Result<UnitHealingOutcome, UnitHealingError<C::Error>> {
+    let Some(context) = context else {
+        return Ok(UnitHealingOutcome::Skipped);
+    };
+    let world = context
+        .healing_world_state()
+        .map_err(UnitHealingError::InputsUnavailable)?;
+    let rules = context
+        .healing_rules()
+        .map_err(UnitHealingError::InputsUnavailable)?;
+    let state = UnitHealingState::from_unit(
+        context
+            .unit()
+            .map_err(|error| UnitHealingError::ContinuationFailed {
+                stage: HealingStage::ActorAccess,
+                error,
+            })?,
+        world,
+    );
+    let requested = healing_amount(Some(&state), &rules);
+    if requested == 0 {
+        return Ok(UnitHealingOutcome::Skipped);
+    }
+    context
+        .preflight_healing_effects()
+        .map_err(UnitHealingError::EffectsUnavailable)?;
+    let previous_damage = change_damage(context, requested.wrapping_neg())?;
     let signal = UnitHealedSignal {
         requested,
         actual: previous_damage.wrapping_sub(
