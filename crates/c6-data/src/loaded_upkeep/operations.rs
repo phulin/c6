@@ -229,6 +229,98 @@ impl<E: OperationReports> c6_core::unit_placement_transition::PlacementStateCont
     }
 }
 
+pub fn set_unit_activity<E: OperationReports>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    effects: &mut E,
+    activity: i32,
+) -> Result<(), Error<E::Error>> {
+    set_activity(state, UnitHandle { owner, id }, effects, activity)
+}
+pub fn clear_current_formation_path<E>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+) -> Result<(), Error<E>> {
+    clear_path(state, UnitHandle { owner, id })
+}
+impl<E: OperationReports> unit_operations_clear::ClearOperationsContext for Base<'_, E> {
+    type Error = Error<E::Error>;
+    fn unit(&self) -> Result<&Unit, Self::Error> {
+        self.actor.get(self.state).map_err(Error::World)
+    }
+    fn deactivate_operations(&mut self) -> Result<(), Self::Error> {
+        if self
+            .actor
+            .get(self.state)
+            .map_err(Error::World)?
+            .k_operations
+            .nodes
+            .is_empty()
+        {
+            return Ok(());
+        }
+        if self.actor.get(self.state).map_err(Error::World)?.e_activity
+            == unit_operations_clear::ACTIVITY_OPERATION
+        {
+            set_activity(
+                self.state,
+                self.actor,
+                self.effects,
+                unit_operations_clear::ACTIVITY_AWAKE,
+            )?;
+        }
+        self.actor
+            .get_mut(self.state)
+            .map_err(Error::State)?
+            .i_operation_timer = 0;
+        Ok(())
+    }
+    fn pop_front_operation(&mut self) -> Result<(), Self::Error> {
+        pop_front_operation(self.state, self.actor.owner, self.actor.id, self.effects)
+    }
+    fn clear_current_formation_path(&mut self) -> Result<(), Self::Error> {
+        clear_path(self.state, self.actor)
+    }
+}
+/// Real Manager.Clear with current queue rereads after every subscriber. This
+/// preserves capacity/storage IDs rather than rebuilding an empty DTO vector.
+pub fn clear_unit_operations<E: OperationReports>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    effects: &mut E,
+) -> Result<(), Error<E::Error>> {
+    unit_operations_clear::clear_operations(&mut Base {
+        state,
+        actor: UnitHandle { owner, id },
+        effects,
+    })
+}
+
+/// Complete the current owned Unit's real pending movement before continuing.
+/// Subscribers see the cleared flag and may mutate the same current state.
+/// Errors retain the source-ordered completed prefix.
+pub fn complete_unit_movement<E: OperationReports>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    effects: &mut E,
+) -> Result<bool, Error<E::Error>> {
+    use c6_core::unit_placement_transition::{complete_movement, PlacementStateError};
+    complete_movement(&mut Base {
+        state,
+        actor: UnitHandle { owner, id },
+        effects,
+    })
+    .map_err(|error| match error {
+        PlacementStateError::EffectsUnavailable(e)
+        | PlacementStateError::Context(e)
+        | PlacementStateError::ReportFailed(e) => e,
+    })
+}
+
 /// Original PopFront selects the current front on entry, then retains its
 /// allocation/slot through handler callbacks. DeleteNode compares that token to
 /// current Front, deactivates only on equality, and removes the CURRENT payload
@@ -261,17 +353,7 @@ pub fn pop_front_operation<E: OperationReports>(
         }
         SKIP_TURN_HASH | FORTIFY_HASH => {}
         MOVE_TO_HASH => {
-            use c6_core::unit_placement_transition::{complete_movement, PlacementStateError};
-            complete_movement(&mut Base {
-                state,
-                actor,
-                effects,
-            })
-            .map_err(|error| match error {
-                PlacementStateError::EffectsUnavailable(e)
-                | PlacementStateError::Context(e)
-                | PlacementStateError::ReportFailed(e) => e,
-            })?;
+            complete_unit_movement(state, owner, id, effects)?;
         }
         _ => {
             return Err(Error::Unsupported(

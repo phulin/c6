@@ -72,16 +72,15 @@ pub trait ClearOperationsContext {
     /// Manager::Deactivate, not the handler's Deactivate: if nonempty, change
     /// OPERATION activity to AWAKE synchronously, then set current timer to 0.
     fn deactivate_operations(&mut self) -> Result<(), Self::Error>;
-    /// Complete Manager::PopFront for the current front. Retain the ORIGINAL
-    /// node's logical identity across handler/report callbacks. DeleteNode
-    /// deactivates only if that original node is still front, removes that
-    /// original node, clears current formation if empty, and PopFront sends
-    /// the empty-queue report after a further current-queue read.
-    ///
-    /// Insertion before the retained node must not remove the inserted front.
-    /// Missing/replaced original nodes require an explicit identity-resolution
-    /// error unless their actual native identity behavior has been established.
-    /// Vec::remove(0) after callbacks is not this provider's implementation.
+    /// Complete Manager::PopFront for the current front. Retain its original
+    /// allocation/slot token across handler/report callbacks, as Queue::Remove
+    /// scans current element addresses rather than payload occurrence IDs.
+    /// Inserts/removes without growth can replace the payload at that slot;
+    /// removal then deletes that current payload. A growth can make the retained
+    /// token miss. Preserve explicit errors for unknown allocation reuse or
+    /// queue replacement, and reread current queue/Formation before clearing or
+    /// sending the empty-queue report. Vec::remove(0) after callbacks alone does
+    /// not implement these storage semantics.
     fn pop_front_operation(&mut self) -> Result<(), Self::Error>;
     /// Resolve CURRENT EditFormation; if present perform ClearPathCache.
     /// A source-qualified absent formation is a successful no-op; unknown
