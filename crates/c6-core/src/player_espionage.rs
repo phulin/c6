@@ -23,6 +23,7 @@ struct Reader<'a> {
     items: usize,
     allocated: usize,
     limits: Limits,
+    version_component: &'static str,
 }
 impl Reader<'_> {
     fn remaining(&self) -> Limits {
@@ -60,7 +61,8 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self) -> Result<(), Error> {
+    fn version(&mut self, component: &'static str) -> Result<(), Error> {
+        self.version_component = component;
         let actual = u32::read(self)?;
         if actual != VERSION {
             return Err(Error::Version {
@@ -161,7 +163,7 @@ macro_rules! record {
         impl Wire for $name {
             const MIN: usize = (if $version { 4 } else { 0 }) $(+ <$ty as Wire>::MIN)*;
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-                if $version { r.version()?; }
+                if $version { r.version(stringify!($name))?; }
                 Ok(Self { $($field: <$ty as Wire>::read(r)?),* })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
@@ -257,6 +259,7 @@ impl Wire for Espionage {
         + <i32 as Wire>::MIN
         + <Vec<MissionHistoryRecord> as Wire>::MIN;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "Espionage";
         let wire_version = u32::read(r)?;
         if !matches!(wire_version, 15 | 17) {
             return Err(Error::Version {
@@ -305,20 +308,45 @@ impl Wire for Espionage {
     }
 }
 
+/// Exact Rust reader cursor before refusal. Direct version errors include
+/// their four-byte tag; this is not an original native execution failure PC.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Boundary {
+    pub consumed: usize,
+    pub component: &'static str,
+    pub error: Error,
+}
 impl Espionage {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_prefix_with_boundary(bytes, limits).map_err(|b| b.error)
+    }
+    pub fn decode_prefix_with_boundary(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Boundary> {
         let mut r = Reader {
             data: bytes,
             pos: 0,
             items: 0,
             allocated: 0,
             limits,
+            version_component: "Espionage",
         };
-        let v = Self::read(&mut r)?;
-        Ok((v, r.pos, r.items))
+        match Self::read(&mut r) {
+            Ok(v) => Ok((v, r.pos, r.items)),
+            Err(error) => Err(Boundary {
+                consumed: r.pos,
+                component: if matches!(error, Error::Version { .. }) {
+                    r.version_component
+                } else {
+                    "Espionage field"
+                },
+                error,
+            }),
+        }
     }
     pub fn decode_prefix(bytes: &[u8], limits: Limits) -> Result<(Self, usize), Error> {
         let (v, n, _) = Self::decode_prefix_with_items(bytes, limits)?;
@@ -537,6 +565,18 @@ mod tests {
                 actual: 15
             })
         );
+        let boundary = Espionage::decode_prefix_with_boundary(&nested, exact).unwrap_err();
+        assert_eq!(
+            (boundary.component, boundary.consumed),
+            ("MissionHistoryRecord", history_tag + 4)
+        );
+        assert_eq!(
+            boundary.error,
+            Error::Version {
+                expected: 17,
+                actual: 15
+            }
+        );
         let mut unknown = b.clone();
         unknown[..4].copy_from_slice(&16u32.to_le_bytes());
         assert_eq!(
@@ -637,6 +677,7 @@ mod tests {
             items: 0,
             allocated: 0,
             limits: limits(),
+            version_component: "Espionage",
         };
         assert_eq!(Vec::<CapturedSpy>::read(&mut r), Err(Error::Truncated));
     }
