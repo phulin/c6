@@ -24,6 +24,9 @@ use c6_core::{
     },
     unit::{ComponentId, PlotCoord, Unit},
     unit_placement_transition::{PlacementPayload, PlacementReport},
+    unit_turn_upkeep::{
+        MovementReport, MOVEMENT_RESTORED, MOVES_EXHAUSTED, MOVES_REMAINING_CHANGED,
+    },
 };
 
 const ACTIVITY_CHANGED: u32 = 0xe23b112d;
@@ -95,6 +98,51 @@ impl Definitions {
 pub struct ActivityPublication {
     pub identity: ComponentId,
     pub activity: i32,
+}
+
+/// Typed host movement output, pending later playback. Q8 is transmitted as
+/// native f32 first, then reconstructed by the host FixedPointT<8> constructor.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MovementPublication {
+    pub host_event: u32,
+    pub identity: ComponentId,
+    pub source_raw_q8: Option<i32>,
+    pub wire_float_bits: Option<u32>,
+    pub host_raw_q8: Option<i32>,
+}
+fn movement_publication(report: MovementReport) -> Result<(MovementPublication, bool), Error> {
+    let (host_event, snapshot, scalar) = match report.event_hash {
+        MOVES_REMAINING_CHANGED => (25, true, true),
+        MOVES_EXHAUSTED => (26, false, false),
+        MOVEMENT_RESTORED => (27, false, true),
+        _ => return Err(Error::Provider("unsupported movement report event")),
+    };
+    if report.raw_q8.is_some() != scalar
+        || report.identity.component_type != c6_core::formation_initialization::UNIT_COMPONENT_TYPE
+    {
+        return Err(Error::Provider("movement report typed argument shape"));
+    }
+    let projection = report.raw_q8.map(|raw| {
+        // XP2 AsFloat1fe2170: integer and low-byte fractional terms are
+        // converted independently, then added with f32 precision.
+        let value = ((raw >> 8) as f32) + (f32::from(raw as u8) * (1.0f32 / 256.0));
+        // Host AssignFloat32272a0: floor, shift integer bits, retain the
+        // fractional byte. Wrapping is observable at the positive endpoint.
+        let floor = value.floor();
+        let integer = (floor as i32).wrapping_shl(8);
+        let fraction = (((value - floor) * 256.0) as i32) & 255;
+        (value.to_bits(), integer | fraction)
+    });
+    Ok((
+        MovementPublication {
+            host_event,
+            identity: report.identity,
+            source_raw_q8: report.raw_q8,
+            wire_float_bits: projection.map(|p| p.0),
+            host_raw_q8: projection.map(|p| p.1),
+        },
+        snapshot,
+    ))
 }
 
 /// Host UnitMoved event 23, prepared at the synchronous BE121408 translator.
@@ -290,6 +338,7 @@ pub struct Provider<'a> {
     move_to_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
+    movement_publications: Vec<MovementPublication>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
     current_placement_queries: Option<CurrentPlacementQueries<'a>>,
@@ -308,6 +357,7 @@ impl<'a> Provider<'a> {
             move_to_handler: None,
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
+            movement_publications: Vec::new(),
             command_queries: None,
             placement_queries: None,
             current_placement_queries: None,
@@ -427,6 +477,27 @@ impl<'a> Provider<'a> {
     }
     pub fn snapshot_observations(&self) -> &[SnapshotObservation] {
         &self.snapshots
+    }
+    pub fn pending_movement_publications(&self) -> &[MovementPublication] {
+        &self.movement_publications
+    }
+    /// Caller qualifies this event's CURRENT native receiver, translator and
+    /// host prepublish/queue route. This executes the actual current snapshot
+    /// for c50d66d6 only; exhausted/restored have no native cache receiver.
+    pub fn send_movement_report(
+        &mut self,
+        state: &LoadedState,
+        report: MovementReport,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let (publication, snapshot) = movement_publication(report)?;
+        if snapshot {
+            self.observe_unit_snapshot(state, UnitReference::from_component_id(report.identity))?;
+        }
+        self.movement_publications.push(publication);
+        Ok(())
     }
     pub fn pending_moved_publications(&self) -> &[MovedPublication] {
         &self.moved_publications
@@ -1193,5 +1264,53 @@ impl Reports for Provider<'_> {
         self.send_loaded_report(context.state(), context.reference(), report)?;
         // Existing loaded continuation ignores this diagnostic hook result.
         Ok(0)
+    }
+}
+
+#[cfg(test)]
+mod movement_reporting_tests {
+    use super::*;
+    fn report(event_hash: u32, raw_q8: Option<i32>) -> MovementReport {
+        MovementReport {
+            event_hash,
+            identity: ComponentId {
+                owner: 2,
+                component_type: 1,
+                id: 123,
+            },
+            raw_q8,
+        }
+    }
+    #[test]
+    fn scalar_wire_roundtrip_has_native_signed_fraction_and_rounding() {
+        for (raw, expected) in [
+            (0, 0),
+            (257, 257),
+            (-1, -1),
+            (16_777_217, 16_777_216),
+            (i32::MAX, i32::MIN),
+        ] {
+            let (p, snapshot) =
+                movement_publication(report(MOVES_REMAINING_CHANGED, Some(raw))).unwrap();
+            assert!(snapshot);
+            assert_eq!(p.host_raw_q8, Some(expected));
+        }
+        let (zero, _) = movement_publication(report(MOVES_REMAINING_CHANGED, Some(0))).unwrap();
+        assert_eq!(zero.wire_float_bits, Some(0));
+    }
+    #[test]
+    fn identity_exhausted_and_restored_skip_snapshot_and_reject_wrong_shapes() {
+        let (cleared, snapshot) = movement_publication(report(MOVES_EXHAUSTED, None)).unwrap();
+        assert_eq!(cleared.host_event, 26);
+        assert!(!snapshot);
+        assert_eq!(cleared.host_raw_q8, None);
+        let (restored, snapshot) =
+            movement_publication(report(MOVEMENT_RESTORED, Some(768))).unwrap();
+        assert_eq!(restored.host_event, 27);
+        assert!(!snapshot);
+        assert_eq!(restored.host_raw_q8, Some(768));
+        assert!(movement_publication(report(MOVES_EXHAUSTED, Some(0))).is_err());
+        assert!(movement_publication(report(MOVES_REMAINING_CHANGED, None)).is_err());
+        assert!(movement_publication(report(0, None)).is_err());
     }
 }
