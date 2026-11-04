@@ -360,8 +360,7 @@ fn best_defender_with_visibility<'s>(
 /// Construct once from the same registered rules/resources and actual exported
 /// terrain definitions. Fields are borrowed immutable definitions; each query
 /// reads the current state rather than a per-action oracle result or clone.
-pub struct Context<'s, 'a, 'r> {
-    state: &'s LoadedState,
+pub struct Definitions<'a, 'r> {
     units: DefinitionTable<'a, Option<placement::UnitProperties>>,
     terrains: DefinitionTable<'a, TerrainProperties>,
     districts: crate::registry::LinuxDefinitionRegistry,
@@ -370,14 +369,11 @@ pub struct Context<'s, 'a, 'r> {
     technologies: EmbarkDefinitions,
     civics: EmbarkDefinitions,
     unlock_embarkation: bool,
-    civilization_levels: Option<&'a [(i32, u32)]>,
-    city_domains: Option<Vec<Option<c6_core::city_district::DomainMask>>>,
-    civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
     _resources: &'a ResourceAuthority<'r>,
 }
-impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
+impl<'a, 'r> Definitions<'a, 'r> {
     pub fn new(
-        state: &'s LoadedState,
+        state: &LoadedState,
         rules: &Rules,
         resources: &'a ResourceAuthority<'r>,
         terrains: &'a NativeTerrainDefinitions,
@@ -424,20 +420,107 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             })
             .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
-            state,
             unit_names,
             unit_team_visibility,
             technologies: EmbarkDefinitions::from_rules(rules, "Technologies", "TechnologyType")?,
             civics: EmbarkDefinitions::from_rules(rules, "Civics", "CivicType")?,
             unlock_embarkation: unlock_embarkation(rules)?,
-            civilization_levels: None,
-            city_domains: None,
-            civic_activity: None,
             units,
             terrains: table,
             districts: collection(rules, "Districts", "DistrictType").map_err(Error::Rules)?,
             _resources: resources,
         })
+    }
+}
+
+impl<'a, 'r> Definitions<'a, 'r> {
+    pub fn unit_definitions(&self) -> &DefinitionTable<'a, Option<placement::UnitProperties>> {
+        &self.units
+    }
+    pub fn terrain_definitions(&self) -> &DefinitionTable<'a, TerrainProperties> {
+        &self.terrains
+    }
+}
+
+enum BoundDefinitions<'a, 'r> {
+    Owned(Box<Definitions<'a, 'r>>),
+    Borrowed(&'a Definitions<'a, 'r>),
+}
+
+/// A cheap current-state view over definitions admitted once for their binding.
+pub struct Context<'s, 'a, 'r> {
+    state: &'s LoadedState,
+    definitions: BoundDefinitions<'a, 'r>,
+    civilization_levels: Option<&'a [(i32, u32)]>,
+    city_domains: Option<std::borrow::Cow<'a, [Option<c6_core::city_district::DomainMask>]>>,
+    civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
+}
+impl<'a, 'r> std::ops::Deref for Context<'_, 'a, 'r> {
+    type Target = Definitions<'a, 'r>;
+    fn deref(&self) -> &Self::Target {
+        match &self.definitions {
+            BoundDefinitions::Owned(value) => value,
+            BoundDefinitions::Borrowed(value) => value,
+        }
+    }
+}
+impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
+    pub fn new(
+        state: &'s LoadedState,
+        rules: &Rules,
+        resources: &'a ResourceAuthority<'r>,
+        terrains: &'a NativeTerrainDefinitions,
+        terrain_resources: &ResourceIdentity,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            state,
+            definitions: BoundDefinitions::Owned(Box::new(Definitions::new(
+                state,
+                rules,
+                resources,
+                terrains,
+                terrain_resources,
+            )?)),
+            civilization_levels: None,
+            city_domains: None,
+            civic_activity: None,
+        })
+    }
+    /// Reborrow the live state without rebuilding native registries or rules.
+    pub fn from_definitions(
+        state: &'s LoadedState,
+        definitions: &'a Definitions<'a, 'r>,
+    ) -> Result<Self, Error> {
+        if state.binding() != definitions._resources.destination_binding() {
+            return Err(Error::Binding);
+        }
+        Ok(Self {
+            state,
+            definitions: BoundDefinitions::Borrowed(definitions),
+            civilization_levels: None,
+            city_domains: None,
+            civic_activity: None,
+        })
+    }
+    /// Borrow masks rebuilt once from this exact current state. Identity and
+    /// action stamp must match the rebuild's dependency epoch.
+    pub fn with_city_domain_masks(
+        mut self,
+        binding: &WireBinding,
+        stamp: c6_core::loaded_state::ActionStamp,
+        masks: &'a [Option<c6_core::city_district::DomainMask>],
+    ) -> Result<Self, Error> {
+        if binding != self.state.binding()
+            || stamp != self.state.action_stamp()
+            || masks.len() != self.state.world().map().plots.len()
+        {
+            return Err(Error::Binding);
+        }
+        self.city_domains = Some(std::borrow::Cow::Borrowed(masks));
+        Ok(self)
+    }
+    pub fn city_domain_masks(&self) -> Option<&[Option<c6_core::city_district::DomainMask>]> {
+        self.city_domains.as_deref()
     }
     /// Bind a borrowed current configuration projection once. Its owner must
     /// maintain it when configuration changes; this accepts no per-query oracle.
@@ -495,7 +578,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             cities: &cities,
             building_definitions: domains.building_lookup(),
         };
-        self.city_domains = Some(
+        self.city_domains = Some(std::borrow::Cow::Owned(
             c6_core::city_district::rebuild_valid_domains(
                 self.state.world().map(),
                 &registry,
@@ -504,7 +587,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                 max_plots,
             )
             .map_err(Error::CityDomainRebuild)?,
-        );
+        ));
         Ok(self)
     }
 
@@ -598,7 +681,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                 owner,
             )))
     }
-    fn open_borders(&self, owner: i32, from: i32) -> Result<bool, Error> {
+    pub fn open_borders(&self, owner: i32, from: i32) -> Result<bool, Error> {
         self.state.world().player(owner).map_err(Error::World)?;
         let diplomacy = &self
             .state
@@ -678,6 +761,41 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             },
         )
     }
+    pub fn city_domain_valid(&self, plot_index: usize, domain: i32) -> Result<bool, Error> {
+        self.city_domains
+            .as_ref()
+            .and_then(|m| m.get(plot_index))
+            .copied()
+            .flatten()
+            .map(|m| m.is_valid(domain))
+            .ok_or(Error::Capability(Capability::CityDomain))
+    }
+    /// Actual layered candidate order and native per-member maximum. War state
+    /// is demanded by the core count only if a resolved candidate reaches it.
+    pub fn formation_count(
+        &self,
+        formation: &c6_core::unit::Formation,
+        location: PlotCoord,
+        layer: u32,
+    ) -> Result<u32, Error> {
+        let candidates = placement::units_at(self.state.world(), Some(layer), location)
+            .map_err(|_| Error::Definitions)?;
+        let owner = self.state.game_relations().ok();
+        let relations = owner.and_then(|r| {
+            r.war().map(|w| placement::WarRelations {
+                player_count: r.player_count(),
+                war_types: w.values(),
+            })
+        });
+        placement::Inputs {
+            world: self.state.world(),
+            definitions: Some(&self.units),
+            relations: relations.as_ref(),
+            plot_unit_limit: None,
+        }
+        .formation_count(formation, candidates)
+        .map_err(|_| Error::Definitions)
+    }
     pub fn can_embark(&self, unit: &Unit) -> Result<bool, Error> {
         let runtime = self
             .state
@@ -727,7 +845,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .map_err(Error::State)?;
         Ok(self.units.at(runtime.definition_index).copied().flatten())
     }
-    fn water(&self, plot: &Plot) -> Result<bool, Error> {
+    pub fn water(&self, plot: &Plot) -> Result<bool, Error> {
         let index = self
             .terrains
             .plot_index(plot.terrain_hash)
