@@ -213,13 +213,15 @@ pub fn ordered_candidates(
                         score = score.wrapping_add(defs.ring);
                     }
                 }
-                if plot.improvement_hash != u32::MAX {
-                    score =
-                        score.wrapping_add(if Some(plot.improvement_hash) == defs.barbarian_camp {
-                            defs.ring
-                        } else {
-                            defs.improvement
-                        });
+                if let Some(improvement) = yields.improvements.find_index(plot.improvement_hash) {
+                    let camp = defs
+                        .barbarian_camp
+                        .and_then(|hash| yields.improvements.find_index(hash));
+                    score = score.wrapping_add(if Some(improvement) == camp {
+                        defs.ring
+                    } else {
+                        defs.improvement
+                    });
                 }
                 if defs.natural_wonder(plot)? {
                     score = score.wrapping_add(defs.wonder);
