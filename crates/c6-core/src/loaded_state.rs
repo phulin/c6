@@ -12,6 +12,7 @@ pub mod influence_map_update;
 pub mod game_update;
 pub mod game_sync;
 pub mod game_statistics;
+pub mod player_social;
 pub mod notification_snapshot;
 pub mod observed_controls;
 pub mod research;
