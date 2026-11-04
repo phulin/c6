@@ -31,6 +31,7 @@ pub enum Error<E> {
     AcquiredWrite(c6_core::loaded_state::research::WriteError),
     Binding,
     IllegalTechnology(i32),
+    IllegalCivic(i32),
     Missing(&'static str),
     Effect(E),
     Kernel(Box<boost::Error<Error<E>>>),
@@ -153,6 +154,7 @@ pub struct Definitions {
     eras: LinuxDefinitionRegistry,
     yields: LinuxDefinitionRegistry,
     research_alliance: i32,
+    culture_alliance: i32,
     technology_hashes: Vec<u32>,
     route_prerequisites: Vec<Option<i32>>,
     technology_modifiers: Vec<u32>,
@@ -199,6 +201,7 @@ impl Definitions {
         let yields = collection(rules, "Yields", "YieldType").map_err(Error::Definitions)?;
         let alliances =
             collection(rules, "Alliances", "AllianceType").map_err(Error::Definitions)?;
+        let culture_alliance = alliances.find_index(0x40c39831).map_or(-1, |i| i as i32);
         let research_alliance = alliances.find_index(0xd22c5d65).map_or(-1, |i| i as i32);
         let era_rows = rules
             .gameplay()
@@ -384,6 +387,7 @@ impl Definitions {
             eras,
             yields,
             research_alliance,
+            culture_alliance,
             chronology,
             era_percent: [
                 parameter(rules, "TECH_COST_PERCENT_CHANGE_AFTER_GAME_ERA"),
@@ -537,6 +541,28 @@ impl<E: Effects> Context<'_, E> {
         research_turn::technology_publication_yields(self, report.player)
             .map_err(|e| Error::Kernel(Box::new(e)))
     }
+    /// Current stock PlayerCulture publication reads culture for the current
+    /// civic's turns-left, then calculates it independently for Values.Fill.
+    /// The caller qualifies its actual synchronous consumers separately.
+    pub fn stock_civic_publication_yields(
+        &mut self,
+        report: &boost::Report,
+    ) -> Result<Vec<i32>, Error<E::Error>> {
+        self.check()?;
+        if !matches!(report.event, 0xc5613042 | 0xac2769a3 | 0x87667464)
+            || report.specialization.is_some()
+            || report.old_progress.is_some()
+            || report.source.is_some()
+        {
+            return Err(Error::Missing("unsupported stock civic publication"));
+        }
+        let mut values = Vec::with_capacity(2);
+        if research_turn::current(self, report.player, Kind::Civic)? != -1 {
+            values.push(self.culture_yield(report.player)?);
+        }
+        values.push(self.culture_yield(report.player)?);
+        Ok(values)
+    }
     /// Techs.OnPlayerTechResearched: minor catch-up progresses to one whole
     /// science below cost, rather than granting the technology. Queries use the
     /// current acquired aliases and actual alive-major vector.
@@ -680,6 +706,59 @@ impl<E: Effects> Context<'_, E> {
             return Err(Error::IllegalTechnology(index));
         }
         self.choose(player, Kind::Technology, index, mode)
+            .map_err(|error| Error::Kernel(Box::new(error)))
+    }
+    /// Current CanProgress legality for an externally supplied civic index.
+    /// All prerequisites imply the hidden-civic reveal condition; no policy
+    /// selection or recommendation score is consulted.
+    pub fn can_progress_civic(&self, player: i32, index: i32) -> Result<bool, Error<E::Error>> {
+        self.check()?;
+        let Some(definition) = self.definitions.civics.get(index as u32 as usize) else {
+            return Ok(false);
+        };
+        if !self.globally_available(Kind::Civic, index)? {
+            return Ok(false);
+        }
+        if self.has_current_civic(player, index)? && definition.repeatable != Some(true) {
+            return Ok(false);
+        }
+        let node = self
+            .node(Kind::Civic, index)?
+            .ok_or(Error::Missing("active civic node"))?;
+        for &prerequisite in &node.prerequisites {
+            if !self.has_current_civic(player, prerequisite)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+    /// Preserve the admitted current Game.Culture iteration order. An empty
+    /// legal set differs from unavailable graph or acquired-flag inputs.
+    pub fn civic_choices(&self, player: i32) -> Result<Vec<i32>, Error<E::Error>> {
+        let graph = self
+            .effects
+            .runtime()
+            .civic_graph
+            .as_ref()
+            .ok_or(Error::Missing("current Game.Culture graph"))?;
+        let mut choices = Vec::new();
+        for &index in &graph.iteration {
+            if self.can_progress_civic(player, index)? {
+                choices.push(index);
+            }
+        }
+        Ok(choices)
+    }
+    pub fn request_civic(
+        &mut self,
+        player: i32,
+        index: i32,
+        mode: InsertMode,
+    ) -> Result<(), Error<E::Error>> {
+        if !self.can_progress_civic(player, index)? {
+            return Err(Error::IllegalCivic(index));
+        }
+        self.choose(player, Kind::Civic, index, mode)
             .map_err(|error| Error::Kernel(Box::new(error)))
     }
     /// Stock AI Research.OnResearchCompleted callback in the no-contract,
@@ -1115,7 +1194,27 @@ impl<E: Effects> boost::Context for Context<'_, E> {
             .ok_or(Error::Missing("TOURISM_CULTURE_PER_CITIZEN"))
     }
     fn total_tourists_from(&mut self, player: i32) -> Result<i32, Self::Error> {
-        self.query(Query::TouristsFrom(player))
+        let majors = self
+            .effects
+            .runtime()
+            .alive_majors
+            .as_ref()
+            .ok_or(Error::Missing("current GetAliveMajors order"))?;
+        for &other in majors {
+            if other != player
+                && self
+                    .state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .has_met(player, other)
+                    .map_err(Error::Relations)?
+            {
+                return Err(Error::Missing(
+                    "current ComputeTouristsFrom for contacted major",
+                ));
+            }
+        }
+        Ok(0)
     }
     fn government_notifications(&mut self, player: i32) -> Result<(), Self::Error> {
         self.emit(Effect::GovernmentNotifications(player))
@@ -1163,10 +1262,10 @@ impl<E: Effects> boost::Context for Context<'_, E> {
 }
 impl<E: Effects> research_turn::Context for Context<'_, E> {
     fn research_yield_q8(&mut self, player: i32, kind: Kind) -> Result<i32, Self::Error> {
-        self.query(match kind {
-            Kind::Technology => return self.science_yield(player),
-            Kind::Civic => Query::CultureYield(player),
-        })
+        match kind {
+            Kind::Technology => self.science_yield(player),
+            Kind::Civic => self.culture_yield(player),
+        }
     }
     fn notify_choose_technology(&mut self, player: i32) -> Result<(), Self::Error> {
         self.emit(Effect::ChooseTechnology(player))

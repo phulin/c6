@@ -42,6 +42,28 @@ impl<E: Effects> Context<'_, E> {
             .find(|p| p.header.owner == owner)
             .ok_or(Error::Missing("current research Player"))
     }
+    pub(super) fn has_current_civic(
+        &self,
+        player: i32,
+        index: i32,
+    ) -> Result<bool, Error<E::Error>> {
+        let Some(definition) = self.definitions.civics.get(index as u32 as usize) else {
+            return Ok(false);
+        };
+        if !self.globally_available(Kind::Civic, index)? {
+            return Ok(false);
+        }
+        self.state
+            .research_components(player)
+            .map_err(Error::State)?
+            .1
+            .has_civic
+            .pairs
+            .iter()
+            .rfind(|p| p.definition_hash == definition.hash)
+            .map(|p| p.value)
+            .ok_or(Error::Missing("current acquired civic flag"))
+    }
     pub(super) fn has_current_tech(
         &self,
         player: i32,
@@ -183,6 +205,16 @@ impl<E: Effects> Context<'_, E> {
             .yields
             .find_index(linux_type_hash(b"YIELD_SCIENCE"))
             .ok_or(Error::Missing("YIELD_SCIENCE definition"))?;
+        let (base, mut modifier) = self.ordinary_yield_terms(owner, index, Kind::Technology)?;
+        modifier = modifier.wrapping_add(self.science_alliance_modifier(owner)?);
+        Ok(research_turn::yield_attribute_value(base, modifier))
+    }
+    fn ordinary_yield_terms(
+        &mut self,
+        owner: i32,
+        index: usize,
+        kind: Kind,
+    ) -> Result<(i32, i32), Error<E::Error>> {
         let city_count = self.player(owner)?.cities.records.entries.len();
         let mut base = 0_i32;
         if city_count != 0 {
@@ -268,13 +300,14 @@ impl<E: Effects> Context<'_, E> {
         }
         base = base.wrapping_add(self.diplomacy_yield(owner, index, false)?);
         base = base.wrapping_add(self.diplomacy_yield(owner, index, true)?);
-        base = base.wrapping_add(
-            self.state
-                .research_components(owner)
-                .map_err(Error::State)?
-                .0
-                .science_rate_change_q8,
-        );
+        let components = self
+            .state
+            .research_components(owner)
+            .map_err(Error::State)?;
+        base = base.wrapping_add(match kind {
+            Kind::Technology => components.0.science_rate_change_q8,
+            Kind::Civic => components.1.culture_rate_change_bits,
+        });
         let mut modifier = 0_i32;
         let tributary_modifier = tuple_value(
             &self.definitions.yields,
@@ -302,7 +335,104 @@ impl<E: Effects> Context<'_, E> {
             let count = self.query(Query::EarnedGreatPeople(owner))?;
             modifier = modifier.wrapping_add(product(great_people, count.wrapping_shl(8)));
         }
-        modifier = modifier.wrapping_add(self.science_alliance_modifier(owner)?);
+        Ok((base, modifier))
+    }
+    pub fn culture_yield(&mut self, owner: i32) -> Result<i32, Error<E::Error>> {
+        self.check()?;
+        if self
+            .state
+            .research_components(owner)
+            .map_err(Error::State)?
+            .1
+            .anarchy_end_turn
+            >= 0
+        {
+            return Ok(0);
+        }
+        let index = self
+            .definitions
+            .yields
+            .find_index(linux_type_hash(b"YIELD_CULTURE"))
+            .ok_or(Error::Missing("YIELD_CULTURE definition"))?;
+        let (base, mut modifier) = self.ordinary_yield_terms(owner, index, Kind::Civic)?;
+        let current = research_turn::yield_attribute_value(base, modifier);
+        if current != 0 {
+            let amount = self.culture_alliance_yield(owner, index)?;
+            let numerator = product(100 << 8, amount);
+            modifier =
+                modifier.wrapping_add(((i64::from(numerator) << 8) / i64::from(current)) as i32);
+        }
         Ok(research_turn::yield_attribute_value(base, modifier))
+    }
+    fn culture_alliance_yield(&mut self, owner: i32, index: usize) -> Result<i32, Error<E::Error>> {
+        let ids = self
+            .effects
+            .runtime()
+            .alive_major_ids
+            .as_ref()
+            .ok_or(Error::Missing("current GetAliveMajorIDs order"))?;
+        let mut ally = None;
+        for &other in ids {
+            if other != owner
+                && self
+                    .state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .alliance_type(owner, other)
+                    .map_err(Error::Relations)?
+                    == self.definitions.culture_alliance
+            {
+                ally = Some(other);
+                break;
+            }
+        }
+        let Some(other) = ally else { return Ok(0) };
+        let coefficient = self.player(owner)?.diplomacy.alliance_and_favor_modifiers[2];
+        if coefficient == 0
+            || !self
+                .state
+                .world()
+                .player_is_valid(other)
+                .map_err(Error::World)?
+        {
+            return Ok(0);
+        }
+        let fraction = ((i64::from(coefficient.wrapping_shl(8)) << 8) / i64::from(100 << 8)) as i32;
+        let count = self.player(other)?.cities.records.entries.len();
+        if count == 0 {
+            return Ok(0);
+        }
+        let order = self
+            .effects
+            .runtime()
+            .city_order
+            .iter()
+            .find(|r| r.0 == other)
+            .ok_or(Error::Missing("current alliance City order"))?
+            .1
+            .clone();
+        if order.len() != count {
+            return Err(Error::Missing("current alliance City extent"));
+        }
+        let mut total = 0_i32;
+        for city in order {
+            if i32::from(city.owner) != other
+                || !self
+                    .player(other)?
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .any(|entry| entry.value.header.id == city.id)
+            {
+                return Err(Error::Missing("current alliance City identity"));
+            }
+            let amount = self.query(Query::CityYield {
+                city,
+                yield_index: index as i32,
+            })?;
+            total = total.wrapping_add(product(fraction, amount));
+        }
+        Ok(total)
     }
 }
