@@ -106,6 +106,17 @@ impl<S: Copy> ListenerRing<S> {
         }
         Ok(())
     }
+    /// Signal destruction clears every callable without dispatch. Held cursors
+    /// keep their links until released, exactly as individual Unsubscribe.
+    /// Owning-capture teardown remains the source-specific caller's duty.
+    pub fn clear_subscriptions(&mut self) -> Result<(), RegistryError> {
+        for index in 1..self.links.len() {
+            if self.links[index].handle_alive {
+                self.unsubscribe(Subscription(index))?;
+            }
+        }
+        Ok(())
+    }
     /// Resolve an imported handle against its source-qualified, unique current
     /// callback. Removed registrations are excluded, including retained links.
     pub fn subscription_for(
@@ -714,5 +725,19 @@ mod tests {
         f.registry = f.registry.with_unit_lookups(vec![(id, None)]).unwrap();
         assert_eq!(dispatch(&mut f, OLD, NEW), Ok(()));
         assert_eq!(f.calls.len(), 1);
+    }
+    #[test]
+    fn clear_subscriptions_preserves_a_held_cursor_until_release() {
+        let mut ring = ListenerRing::from_ordered(&[10u64, 20, 30]).unwrap();
+        let start = ring.cursor_start().unwrap();
+        let current = ring.cursor_next(start).unwrap().unwrap();
+        ring.clear_subscriptions().unwrap();
+        assert_eq!(ring.cursor_route(current).unwrap(), None);
+        assert_eq!(ring.cursor_next(current).unwrap(), None);
+        assert!(ring.subscription_for(|_| true).is_err());
+        assert_eq!(
+            ring.unsubscribe(Subscription(current)),
+            Err(RegistryError::InvalidSubscription)
+        );
     }
 }

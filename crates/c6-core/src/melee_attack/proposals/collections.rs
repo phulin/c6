@@ -1,5 +1,7 @@
 //! Source-bound SimpleCollection item notifications used by combat collections.
 //! AddItem notifies subscribers; it does not append an object to a stored list.
+pub mod destruction;
+
 use super::registry::Handle;
 use crate::unit_moved_signal::{ListenerRing, RegistryError};
 
@@ -76,10 +78,7 @@ impl Runtime {
     }
     /// Current shared lifetime owners, needed only when a modifier release can
     /// destroy a collection and unsubscribe its gameplay listener.
-    pub fn bind_retained_owners(
-        &mut self,
-        owners: Vec<(u64, u64)>,
-    ) -> Result<(), RegistryError> {
+    pub fn bind_retained_owners(&mut self, owners: Vec<(u64, u64)>) -> Result<(), RegistryError> {
         if self.retained_owners.is_some()
             || owners.iter().enumerate().any(|(index, row)| {
                 row.1 == 0
@@ -101,7 +100,9 @@ impl Runtime {
             .and_then(|rows| rows.iter_mut().find(|row| row.0 == collection))
             .map(|row| &mut row.1)
             .ok_or(RegistryError::MissingGlobalOrder)?;
-        *count = count.checked_sub(1).ok_or(RegistryError::InvalidSubscription)?;
+        *count = count
+            .checked_sub(1)
+            .ok_or(RegistryError::InvalidSubscription)?;
         Ok(*count == 0)
     }
     pub fn unsubscribe_changed_receiver(
@@ -117,6 +118,52 @@ impl Runtime {
             .ok_or(RegistryError::MissingGlobalOrder)?;
         let subscription = ring.subscription_for(|route| route == receiver)?;
         ring.unsubscribe(subscription)
+    }
+    pub fn retained_owners(&self, collection: u64) -> Option<u64> {
+        self.retained_owners
+            .as_ref()?
+            .iter()
+            .find(|r| r.0 == collection)
+            .map(|r| r.1)
+    }
+    /// Native SimpleCollection destroys +40 before +28. Keep these separate
+    /// so a missing second signal retains the already-completed first clear.
+    pub fn clear_added_subscriptions(&mut self, collection: u64) -> Result<(), RegistryError> {
+        self.ring_mut(collection)
+            .ok_or(RegistryError::MissingGlobalOrder)?
+            .clear_subscriptions()
+    }
+    pub fn clear_changed_subscriptions(&mut self, collection: u64) -> Result<(), RegistryError> {
+        self.changed
+            .as_mut()
+            .and_then(|v| v.iter_mut().find(|r| r.0 == collection))
+            .ok_or(RegistryError::MissingGlobalOrder)?
+            .1
+            .clear_subscriptions()
+    }
+    /// After both signal destructors, drop the collection's logical owner edge.
+    /// The caller retains the owner object throughout this destructor.
+    pub fn retire_collection(&mut self, collection: u64) -> Result<Kind, RegistryError> {
+        if self.retained_owners(collection) != Some(0) {
+            return Err(RegistryError::InvalidSubscription);
+        }
+        let index = self
+            .collections
+            .iter()
+            .position(|r| r.0 == collection)
+            .ok_or(RegistryError::MissingGlobalOrder)?;
+        let kind = self.collections[index]
+            .1
+            .kind
+            .ok_or(RegistryError::MissingGlobalOrder)?;
+        self.collections.remove(index);
+        if let Some(rows) = &mut self.changed {
+            rows.retain(|r| r.0 != collection)
+        }
+        if let Some(rows) = &mut self.retained_owners {
+            rows.retain(|r| r.0 != collection)
+        }
+        Ok(kind)
     }
     pub fn collection(&self, id: u64) -> Option<&Collection> {
         self.collections.iter().find(|v| v.0 == id).map(|v| &v.1)

@@ -152,3 +152,23 @@ pub fn forget_combat<S: Services>(
 ) -> Result<(), kernel::Error<Error<S::Error>>> {
     kernel::forget_combat(&mut Context { state, services }, id)
 }
+
+/// Final source UnitCombat release during Unit object teardown. Its owner is
+/// retained by the caller's current detach operation throughout this call.
+pub fn destroy_unit_combat_collection(
+    state: &mut LoadedState,
+    collection: u64,
+) -> Result<c6_core::melee_attack::proposals::collections::Kind, DestroyCollectionError> {
+    c6_core::melee_attack::proposals::collections::destruction::destroy_unit_combat(
+        state
+            .combat_proposals_mut()
+            .map_err(DestroyCollectionError::Access)?,
+        collection,
+    )
+    .map_err(DestroyCollectionError::Destroy)
+}
+#[derive(Debug)]
+pub enum DestroyCollectionError {
+    Access(AccessError),
+    Destroy(c6_core::melee_attack::proposals::collections::destruction::Error),
+}
