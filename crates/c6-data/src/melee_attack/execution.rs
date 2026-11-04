@@ -353,3 +353,114 @@ impl<E> Generation<'_, '_, E> {
         })
     }
 }
+
+/// Completed ordinary generated members, before attacker completion and Resolve.
+/// This value is deliberately distinct from an applied/resolved action.
+#[derive(Debug)]
+pub struct GeneratedMembers {
+    pub damage: GeneratedDamage,
+    pub attacker_experience: i32,
+    pub defender_experience: i32,
+    pub attacker_maximum_damage: i32,
+    pub defender_maximum_damage: i32,
+    pub attacker_advances: bool,
+}
+#[derive(Debug)]
+pub enum MemberError<E> {
+    Damage(DamageError<E>),
+    Experience(super::experience::Error),
+    Actor(super::Error),
+    Maximum(crate::formation_movement_cost::Error),
+    World(c6_core::world::MissingInput),
+    Combat(crate::loaded_actions::Error),
+}
+impl<E> Generation<'_, '_, E> {
+    /// Finish current ordinary Unit/Unit generation. No HP is applied here.
+    pub fn advance_members(
+        &mut self,
+        rules: &GenerateRules<'_>,
+        experience: &super::experience::Definitions,
+    ) -> Result<GeneratedMembers, MemberError<<E as proposals::Effects>::Error>>
+    where
+        E: proposals::Effects
+            + proposals::collection_modifiers::Services<Error = <E as proposals::Effects>::Error>,
+    {
+        let damage = self.advance_damage(rules).map_err(MemberError::Damage)?;
+        let attacker_maximum_damage = rules
+            .maximum_damage
+            .maximum_damage(super::actor(self.state, damage.attacker).map_err(MemberError::Actor)?)
+            .map_err(MemberError::Maximum)?;
+        let defender_maximum_damage = rules
+            .maximum_damage
+            .maximum_damage(super::actor(self.state, damage.defender).map_err(MemberError::Actor)?)
+            .map_err(MemberError::Maximum)?;
+        let (attacker_experience, defender_experience) = super::experience::melee(
+            self.state,
+            experience,
+            rules.formation,
+            rules.levels,
+            damage.attacker,
+            damage.defender,
+            damage.defender_final_damage >= rules.damage.maximum_hit_points(),
+        )
+        .map_err(MemberError::Experience)?;
+        let location = self.members.location;
+        let mut count = 0u32;
+        if c6_core::geometry::plot_valid(location.x, location.y) {
+            let map = self.state.world().map();
+            let index = (location.y as u32)
+                .wrapping_mul(map.units.width)
+                .wrapping_add(location.x as u32);
+            for layer in &map.units.layers {
+                if index >= layer.maximum || index as usize >= map.plots.len() {
+                    continue;
+                }
+                for reference in self
+                    .state
+                    .world()
+                    .plot_units(layer.layer_id, index as usize)
+                    .map_err(MemberError::World)?
+                {
+                    let Some(unit) = self
+                        .state
+                        .world()
+                        .unit(*reference)
+                        .map_err(MemberError::World)?
+                    else {
+                        continue;
+                    };
+                    let unit = unit.record;
+                    if unit.b_delayed_death {
+                        continue;
+                    }
+                    if rules
+                        .formation
+                        .combat(self.state, unit)
+                        .map_err(MemberError::Combat)?
+                        > 0
+                        || rules
+                            .formation
+                            .ranged(self.state, unit)
+                            .map_err(MemberError::Combat)?
+                            > 0
+                        || rules
+                            .formation
+                            .bombard(self.state, unit)
+                            .map_err(MemberError::Combat)?
+                            > 0
+                    {
+                        count = count.wrapping_add(1);
+                    }
+                }
+            }
+        }
+        Ok(GeneratedMembers {
+            damage,
+            attacker_experience,
+            defender_experience,
+            attacker_maximum_damage,
+            defender_maximum_damage,
+            attacker_advances: count < 2,
+        })
+    }
+}

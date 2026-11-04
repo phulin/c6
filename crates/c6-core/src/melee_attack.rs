@@ -2,6 +2,7 @@
 //! These are mandatory query stages, NOT a successful attack or resolution.
 use crate::unit::PlotCoord;
 pub mod damage;
+pub mod experience;
 pub mod proposals;
 pub mod results;
 pub mod strength;

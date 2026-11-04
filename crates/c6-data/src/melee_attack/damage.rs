@@ -44,7 +44,7 @@ fn value<'a>(rules: &'a Rules, name: &'static str) -> Result<&'a SqlValue, Error
     }
     row.get("Value").map_err(|_| Error::Rule(name))
 }
-fn integer(rules: &Rules, name: &'static str) -> Result<i32, Error> {
+pub(super) fn integer(rules: &Rules, name: &'static str) -> Result<i32, Error> {
     match value(rules, name)? {
         SqlValue::Integer(n) => Ok(*n as i32),
         SqlValue::Text(bytes) => std::str::from_utf8(bytes)

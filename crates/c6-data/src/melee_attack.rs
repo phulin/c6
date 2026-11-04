@@ -3,6 +3,7 @@
 use crate::{formation_path_state as path, formation_rules, movement_placement_state};
 pub mod backend;
 pub mod damage;
+pub mod experience;
 pub mod execution;
 pub mod proposals;
 pub mod results;
