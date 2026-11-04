@@ -19,6 +19,8 @@ use c6_core::{
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ContextObject {
+    /// Global Game wrapper; never substituted for a Plot or Player interface.
+    Game,
     Player(i32),
     /// Objects.Unit's IPlayer interface uses its stored CID owner, while its
     /// IUnit interface resolves the CURRENT corresponding canonical Unit.
@@ -565,7 +567,7 @@ impl player_strength::Context for EffectContext<'_> {
             ContextObject::Player(owner) => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
             ContextObject::Alliance { .. } => return Ok(None),
-            ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 return Err(QueryError::Unsupported(
                     "new context IPlayer query requires source-qualified adapter",
                 ))
@@ -610,7 +612,7 @@ impl player_strength::Context for EffectContext<'_> {
         self.start_turn()
     }
     fn unit_property(&mut self, _: u32) -> Result<Option<i32>, QueryError> {
-        if matches!(self.object, ContextObject::City(_) | ContextObject::Plot(_)) {
+        if matches!(self.object, ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)) {
             return Err(QueryError::Unsupported(
                 "new context IUnit query requires source-qualified adapter",
             ));
@@ -627,7 +629,7 @@ impl player_strength::Context for EffectContext<'_> {
         ))
     }
     fn has_game_interface(&mut self) -> Result<bool, QueryError> {
-        if matches!(self.object, ContextObject::City(_) | ContextObject::Plot(_)) {
+        if matches!(self.object, ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)) {
             return Err(QueryError::Unsupported(
                 "new context IGame query requires source-qualified adapter",
             ));
@@ -651,7 +653,7 @@ fn configured_end_turn(limit: u32, start: i32, maximum: i32) -> i32 {
 
 impl alliance_strength::Context for EffectContext<'_> {
     fn context_alliance_interface(&mut self) -> Result<bool, QueryError> {
-        if matches!(self.object, ContextObject::City(_) | ContextObject::Plot(_)) {
+        if matches!(self.object, ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)) {
             return Err(QueryError::Unsupported(
                 "new context IAlliance query requires source-qualified adapter",
             ));
