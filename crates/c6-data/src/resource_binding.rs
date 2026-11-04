@@ -22,7 +22,8 @@ pub struct ResourceIdentity {
     pub host_sha256: [u8; 32],
     pub assets_sha256: [u8; 32],
     pub base_content_sha256: [u8; 32],
-    pub saved_configuration_sha256: [u8; 32],
+    /// None for an original-engine initialized game without a loaded save.
+    pub saved_configuration_sha256: Option<[u8; 32]>,
     pub dlc_descriptors_sha256: [u8; 32],
     pub full_content_sha256: [u8; 32],
     pub activation_selection_sha256: [u8; 32],
@@ -147,6 +148,46 @@ pub struct ResourceAuthority<'a> {
     definitions: ResourceDefinitions,
 }
 impl<'a> ResourceAuthority<'a> {
+    /// Bind an initialized or loaded snapshot using its actual exported SQL
+    /// database bytes. A saved-game configuration is optional; no previous
+    /// fixture's saved configuration or dynamic answers are substituted.
+    /// Native ordered definitions remain explicit inputs and receive the same
+    /// complete unit/hash-order checks as the loaded-game constructor.
+    pub fn bind_database_snapshot(
+        destination: WireBinding,
+        rules: &'a Rules,
+        runtime: RuntimeResourceSource,
+        configuration_database_sha256: [u8; 32],
+        gameplay_database_sha256: [u8; 32],
+        definitions: ResourceDefinitions,
+    ) -> Result<Self, Error> {
+        if !digest_matches(
+            &rules.configuration().fingerprint().file_sha256,
+            &configuration_database_sha256,
+        ) || !digest_matches(
+            &rules.gameplay().fingerprint().file_sha256,
+            &gameplay_database_sha256,
+        ) {
+            return Err(Error::Identity("snapshot rules databases"));
+        }
+        let text = &rules.source().native_configuration_sha256;
+        if text.len() != 64 {
+            return Err(Error::Identity("rules configuration"));
+        }
+        let mut source_configuration = [0; 32];
+        for (index, byte) in source_configuration.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&text[index * 2..index * 2 + 2], 16)
+                .map_err(|_| Error::Identity("rules configuration"))?;
+        }
+        // The exported databases establish the immutable rules values. Current
+        // runtime resources describe this destination, including absence of a
+        // saved configuration; they do not assert old process identity.
+        let source = RulesResourceSource {
+            configuration_sha256: source_configuration,
+            resources: runtime.resources.clone(),
+        };
+        Self::bind(destination, rules, source, runtime, definitions)
+    }
     pub fn bind(
         destination: WireBinding,
         rules: &'a Rules,
@@ -297,7 +338,7 @@ mod tests {
             host_sha256: [2; 32],
             assets_sha256: [3; 32],
             base_content_sha256: [4; 32],
-            saved_configuration_sha256: [5; 32],
+            saved_configuration_sha256: Some([5; 32]),
             dlc_descriptors_sha256: [6; 32],
             full_content_sha256: [7; 32],
             activation_selection_sha256: [8; 32],
@@ -332,7 +373,11 @@ mod tests {
                 &mut changed.resources.host_sha256,
                 &mut changed.resources.assets_sha256,
                 &mut changed.resources.base_content_sha256,
-                &mut changed.resources.saved_configuration_sha256,
+                changed
+                    .resources
+                    .saved_configuration_sha256
+                    .as_mut()
+                    .unwrap(),
                 &mut changed.resources.dlc_descriptors_sha256,
                 &mut changed.resources.full_content_sha256,
                 &mut changed.resources.activation_selection_sha256,
@@ -340,6 +385,12 @@ mod tests {
             fields[index][31] ^= 1;
             assert!(validate_sources(&destination, &source, &changed).is_err());
         }
+        let mut missing = runtime.clone();
+        missing.resources.saved_configuration_sha256 = None;
+        assert!(validate_sources(&destination, &source, &missing).is_err());
+        let mut initialized_source = source.clone();
+        initialized_source.resources.saved_configuration_sha256 = None;
+        assert!(validate_sources(&destination, &initialized_source, &missing).is_ok());
         let mut changed = runtime;
         changed.configuration_sha256[31] ^= 1;
         assert!(validate_sources(&destination, &source, &changed).is_err());

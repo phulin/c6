@@ -42,6 +42,34 @@ pub struct RuntimeHandlerFacts<'a> {
     identity: ObservationIdentity<'a>,
     slots: &'a [Option<ObservedHandler>],
 }
+/// Construct fixed stock registrations at their actual native definition indexes.
+/// Registration entries are semantic source inputs, never vtable observations.
+/// A missing factory registration remains a genuine empty slot; this function
+/// does not infer classes from operation names or numeric SQL row identifiers.
+pub fn source_initialized_slots(
+    definitions: &OperationDefinitions,
+    registrations: &[(u32, interruption::StockInterruption)],
+) -> Result<Vec<Option<ObservedHandler>>, Error> {
+    let mut slots = vec![None; definitions.count()];
+    for &(hash, implementation) in registrations {
+        let runtime_id = definitions
+            .find_index(hash)
+            .ok_or(Error::UnregisteredHash(hash))?;
+        let slot = &mut slots[runtime_id.0 as usize];
+        if slot.is_some() {
+            return Err(Error::Identity("duplicate source handler registration"));
+        }
+        *slot = Some(ObservedHandler {
+            runtime_id: HandlerId(runtime_id.0),
+            operation_hash: OperationHash(hash),
+            interruption_target: interruption::InterruptionTarget::SourceInitialized(
+                implementation,
+            ),
+        });
+    }
+    Ok(slots)
+}
+
 impl<'a> RuntimeHandlerFacts<'a> {
     pub fn new(
         identity: ObservationIdentity<'a>,
@@ -355,6 +383,35 @@ mod tests {
             }],
         }
     }
+    #[test]
+    fn stock_registration_uses_definition_indexes_and_rejects_duplicate_or_unknown_hashes() {
+        use crate::unit_operation_manager::OperationDefinition;
+        use interruption::StockInterruption;
+        let defs = OperationDefinitions::from_native_order(&[
+            OperationDefinition {
+                collection_index: 0,
+                hash: 20,
+            },
+            OperationDefinition {
+                collection_index: 1,
+                hash: 10,
+            },
+        ])
+        .unwrap();
+        let slots = source_initialized_slots(&defs, &[(10, StockInterruption::Base)]).unwrap();
+        assert!(slots[0].is_none());
+        assert_eq!(slots[1].unwrap().runtime_id, HandlerId(1));
+        assert!(source_initialized_slots(&defs, &[(30, StockInterruption::Base)]).is_err());
+        assert!(source_initialized_slots(
+            &defs,
+            &[
+                (10, StockInterruption::Base),
+                (10, StockInterruption::MakeTradeRoute)
+            ]
+        )
+        .is_err());
+    }
+
     #[test]
     fn slots_require_ids_unique_hashes_supported_code_and_complete_definitions() {
         assert!(matches!(

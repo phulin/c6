@@ -33,12 +33,23 @@ pub struct ObservedHandler {
 /// or synthetic test inputs as a genuine live observation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InterruptionTarget {
+    /// Fixed target implementation selected by the stock source registration
+    /// lifecycle. This is a semantic implementation, not a native pointer read.
+    SourceInitialized(StockInterruption),
     /// Actual pointer read from the retained handler's live vptr + 0x20, with
     /// owning module and complete live leaf code bytes validated against the exact
     /// original before normalization in the same admitted context.
     LiveSlotObservation(u64),
     /// ELF relocation lookup does not exclude runtime interposition or rewriting.
     OriginalImagePrediction(u64),
+}
+
+/// Supported fixed stock handler implementations. The caller supplies the
+/// actual source registration table; native definition indexes stay separate.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StockInterruption {
+    Base,
+    MakeTradeRoute,
 }
 
 /// A genuine original reverse-map answer. None means an observed native -1,
@@ -146,6 +157,12 @@ impl<'a> ObservedRegistry<'a> {
 
     fn leaf(target: InterruptionTarget) -> Result<Leaf, Error> {
         let rva = match target {
+            InterruptionTarget::SourceInitialized(StockInterruption::Base) => {
+                return Ok(Leaf::Base)
+            }
+            InterruptionTarget::SourceInitialized(StockInterruption::MakeTradeRoute) => {
+                return Ok(Leaf::MakeTradeRoute)
+            }
             InterruptionTarget::LiveSlotObservation(rva) => rva,
             InterruptionTarget::OriginalImagePrediction(rva) => {
                 return Err(Error::UnobservedLiveBinding(rva));
@@ -202,6 +219,38 @@ impl<'a> ObservedRegistry<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn source_initialized_leaves_do_not_claim_native_slot_observations() {
+        let slots = [
+            Some(ObservedHandler {
+                runtime_id: HandlerId(0),
+                operation_hash: OperationHash(10),
+                interruption_target: InterruptionTarget::SourceInitialized(StockInterruption::Base),
+            }),
+            Some(ObservedHandler {
+                runtime_id: HandlerId(1),
+                operation_hash: OperationHash(20),
+                interruption_target: InterruptionTarget::SourceInitialized(
+                    StockInterruption::MakeTradeRoute,
+                ),
+            }),
+        ];
+        let registry = ObservedRegistry::new(identity(), &slots, &[]).unwrap();
+        assert!(registry
+            .handler(HandlerId(0))
+            .unwrap()
+            .unwrap()
+            .can_be_interrupted());
+        assert!(!registry
+            .handler(HandlerId(1))
+            .unwrap()
+            .unwrap()
+            .can_be_interrupted());
+        assert_eq!(
+            registry.saved_hash_runtime_id(OperationHash(10)),
+            Err(Error::UnobservedHash(OperationHash(10)))
+        );
+    }
     fn identity() -> ObservationIdentity<'static> {
         ObservationIdentity {
             gamecore_sha256: GAME_SHA,
