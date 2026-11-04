@@ -3,10 +3,18 @@
 //! follower-count transition can still invalidate Player requirements.
 use super::{Error as CityError, GrowthRules};
 use c6_core::{
-    city_religion::NO_RELIGION, game_quests::QuestData, loaded_state::LoadedState,
-    melee_attack::proposals::subject_sets, simple_requirement,
+    city_religion::NO_RELIGION, loaded_state::LoadedState, melee_attack::proposals::subject_sets,
+    simple_requirement,
 };
 
+/// Current native QuestData fields queried by this listener, distinct from
+/// the saved-wire definition hash and from a complete quest-completion owner.
+#[derive(Clone, Debug)]
+pub struct CurrentQuest {
+    pub quest_type_index: u32,
+    pub client: i32,
+    pub religion_parameter: i32,
+}
 #[derive(Clone, Debug)]
 pub enum CityListener {
     Gossip,
@@ -125,7 +133,7 @@ pub fn city_changed(
     old: i32,
     new: i32,
     listeners: &[CityListener],
-    current_quests: &[QuestData],
+    current_quests: &[CurrentQuest],
     rules: &GrowthRules,
     requirements: &mut subject_sets::Runtime,
 ) -> Result<(), Error> {
@@ -148,9 +156,11 @@ pub fn city_changed(
             | CityListener::Achievements => {}
             CityListener::QuestConvertCapital { quest_type } => {
                 if city.header.capital
-                    && current_quests
-                        .iter()
-                        .any(|q| q.type_hash == quest_type && q.client_ordinal == owner)
+                    && current_quests.iter().any(|q| {
+                        q.quest_type_index == quest_type
+                            && q.client == owner
+                            && q.religion_parameter == new
+                    })
                 {
                     return Err(Error::Unsupported(
                         "current matching quest parameters and completion",
