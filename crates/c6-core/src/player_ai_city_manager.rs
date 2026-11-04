@@ -13,6 +13,7 @@ pub const RECYCLED_VERSION: u32 = 0x10001;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     UnsupportedLegacyWrite,
+    ExternalPolicyPlanningOmitted,
     MissingRetainedCurrentBaseYields,
     MissingRetainedMaintenanceResourceHash,
     Truncated,
@@ -406,9 +407,17 @@ impl Wire for EvaluationLayers {
         w.sequence(&self.0)
     }
 }
-/// Saved CityBuild profile only; native Initialize/analyzers are unapplied.
+/// Planner payload provenance. External policies choose production; omitted
+/// native planning caches may not be read as known values or used for parity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlanningData {
+    Retained,
+    ExternalPolicyOmitted,
+}
+/// Saved CityBuild fields plus explicit externally controlled planning coverage.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CityBuild {
+    pub planning_data: PlanningData,
     pub wire_version: u32,
     pub city: ComponentId,
     pub city_id: u32,
@@ -450,6 +459,7 @@ pub struct CityBuild {
 impl Default for CityBuild {
     fn default() -> Self {
         Self {
+            planning_data: PlanningData::Retained,
             wire_version: CITY_BUILD_VERSION,
             city: Default::default(),
             city_id: Default::default(),
@@ -488,6 +498,15 @@ impl Default for CityBuild {
     }
 }
 impl CityBuild {
+    /// All native planner payload queries must pass this check. Empty backing
+    /// vectors in an omitted record are unavailable data, not native empty caches.
+    pub fn require_retained_planning(&self) -> Result<&Self, Error> {
+        match self.planning_data {
+            PlanningData::Retained => Ok(self),
+            PlanningData::ExternalPolicyOmitted => Err(Error::ExternalPolicyPlanningOmitted),
+        }
+    }
+
     /// Unapplied zero default at actual Unit collection indexes, without
     /// inferring dense index order or an empty effective native array.
     pub fn cached_unit_evaluations_default_q8(&self) -> Option<i32> {
@@ -536,6 +555,7 @@ impl Wire for CityBuild {
             });
         }
         Ok(Self {
+            planning_data: PlanningData::Retained,
             wire_version,
             city: <ComponentId as Wire>::read(r)?,
             city_id: <u32 as Wire>::read(r)?,
@@ -581,6 +601,7 @@ impl Wire for CityBuild {
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        self.require_retained_planning()?;
         if self.wire_version != CITY_BUILD_VERSION {
             return Err(Error::UnsupportedLegacyWrite);
         }

@@ -2717,6 +2717,7 @@ pub(crate) mod tests {
                 entries: vec![pmod::CityBuildEntry {
                     index: 3,
                     city_build: pmod::CityBuild {
+                        planning_data: pmod::PlanningData::Retained,
                         wire_version: 17,
                         city: pmod::ComponentId {
                             owner: i16::MIN,
