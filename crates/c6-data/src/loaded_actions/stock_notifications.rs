@@ -19,6 +19,7 @@ mod manager_queries;
 #[path = "stock_maintenance.rs"]
 pub mod maintenance;
 pub mod social;
+pub mod cityless_managers;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]

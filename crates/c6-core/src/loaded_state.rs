@@ -14,6 +14,7 @@ pub mod game_sync;
 pub mod game_statistics;
 pub mod game_eras;
 pub mod player_social;
+pub mod activation_managers;
 pub mod player_treasury;
 pub mod notification_snapshot;
 pub mod observed_controls;
