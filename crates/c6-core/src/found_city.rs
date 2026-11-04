@@ -6,6 +6,7 @@ use crate::{
     skip_turn::StartData,
     unit::{ComponentId, PlotCoord},
 };
+pub mod names;
 pub mod placement;
 
 pub const OPERATION_HASH: u32 = 0x5733_ac6c;

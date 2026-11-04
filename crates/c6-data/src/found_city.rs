@@ -1,5 +1,7 @@
 //! Current admitted definitions for Linux FoundCity and placement gates.
 //! This does not construct a City or bypass Manager/script legality.
+pub mod names;
+
 use crate::{
     registry::LinuxDefinitionRegistry,
     resource_binding::ResourceAuthority,
