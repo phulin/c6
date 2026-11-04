@@ -1,11 +1,11 @@
 //! Current-state partial Game.Update over canonical saved processor/control data.
 //! Unsaved globals are explicit live inputs; no defaults or duplicate saved state.
 use super::LoadedState;
-pub mod maintenance;
 pub mod activation;
 pub mod automation;
 pub mod deactivation;
 pub mod human_control;
+pub mod maintenance;
 pub mod resources;
 use crate::{
     core_player::initialization::WireBinding,
@@ -191,6 +191,45 @@ impl<'a, S: Services> Context<'a, S> {
             }
         };
         Err(Error::Unsupported(error))
+    }
+    /// Finish the current stock human pass after deactivation/next selection.
+    /// This exclusive synchronous executor has no outstanding native AI jobs.
+    /// The supplied callback is Game.Instance.Update's mandatory pending-
+    /// diplomacy tail, executed after the final Autoplay.Update.
+    pub fn finish_exclusive_human_update(
+        &mut self,
+        pending_diplomacy: impl FnOnce(&mut LoadedState, &mut S) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        let progress = self.runtime.player_progress();
+        if self.runtime.failed
+            || self.runtime.player_frame.is_some()
+            || !matches!(
+                self.runtime.pending,
+                Some(core::Continuation::PlayerUpdates(_))
+            )
+            || progress.completed != progress.selected
+            || !progress.has_human
+            || progress.processed_ai
+            || self.state.retained.core.player_processor.active_count == 0
+        {
+            return Err(Error::Unsupported(
+                "Game.Update unfinished human processor pass",
+            ));
+        }
+        let result = (|| {
+            core::update_autoplay(self)?;
+            pending_diplomacy(self.state, &mut self.services)
+        })();
+        if result.is_err() {
+            self.runtime.failed = true;
+            return result;
+        }
+        self.runtime.pending = None;
+        self.runtime.player_cursor = 0;
+        self.runtime.pass_has_human = false;
+        self.runtime.pass_processed_ai = false;
+        self.runtime.deactivation_started = false;
+        Ok(())
     }
     fn revision(&mut self) -> Result<(), Error> {
         self.state.revision = self
@@ -502,6 +541,42 @@ pub fn prepare_current_player(
         runtime.failed = true;
     }
     result
+}
+
+/// Resume Player.Update after the actual activation upkeep and activation
+/// report returned. Human DoTurn then returns without a policy callback.
+pub fn complete_activation(
+    state: &mut LoadedState,
+    runtime: &mut Runtime,
+) -> Result<core::PlayerEffect<i32>, Error> {
+    if state.binding() != &runtime.binding || runtime.failed {
+        return Err(Error::Unsupported(
+            "Game.Update activation binding or failure",
+        ));
+    }
+    let frame = runtime
+        .player_frame
+        .as_ref()
+        .ok_or(Error::Unsupported("Game.Update no activation continuation"))?;
+    if !matches!(frame.effect, Some(core::PlayerEffect::Activation { player, .. }) if player == frame.player)
+    {
+        return Err(Error::Unsupported(
+            "Game.Update activation continuation ordering",
+        ));
+    }
+    let player = frame.player;
+    if state.player_slot_status(player).map_err(missing)? != 3 {
+        return Err(Error::Unsupported(
+            "Game.Update activation requires current AI Control.DoTurn",
+        ));
+    }
+    let effect = core::after_turn_manager(&mut PlayerState { state }, player)?;
+    runtime
+        .player_frame
+        .as_mut()
+        .expect("retained activation")
+        .effect = Some(effect);
+    Ok(effect)
 }
 
 /// Invoke ONLY after the SAME current notification provider completed the
