@@ -59,15 +59,43 @@ pub trait Effects:
         actor: (i32, u32),
         destination: PlotCoord,
     ) -> Result<(), Error<EffectsError<Self>>>;
-    fn signal_unit_moved(
+    fn unit_moved_registrations(
+        &self,
+    ) -> Result<&c6_core::unit_moved_signal::Registry, Error<EffectsError<Self>>> {
+        Err(Error::Missing(
+            "current UnitMoved global/scoped subscriber registrations",
+        ))
+    }
+    fn unit_moved_registrations_mut(
+        &mut self,
+    ) -> Result<&mut c6_core::unit_moved_signal::Registry, Error<EffectsError<Self>>> {
+        Err(Error::Missing(
+            "current UnitMoved global/scoped subscriber registrations",
+        ))
+    }
+    /// Stock Lua subscriber leaf only, after source-computed fanout/order.
+    fn on_unit_moved_script(
         &mut self,
         _state: &mut LoadedState,
         _runtime: &mut sight::Runtime,
-        _actor: (i32, u32),
+        _current: c6_core::unit::ComponentId,
         _old: PlotCoord,
         _new: PlotCoord,
     ) -> Result<(), Error<EffectsError<Self>>> {
-        Err(Error::Missing("GameSignals.UnitMoved"))
+        Err(Error::Missing("OnUnitMoved ScriptState Call6 leaf"))
+    }
+    fn signal_unit_moved(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut sight::Runtime,
+        actor: (i32, u32),
+        old: PlotCoord,
+        new: PlotCoord,
+    ) -> Result<(), Error<EffectsError<Self>>>
+    where
+        Self: Sized,
+    {
+        dispatch_unit_moved(state, runtime, self, actor, old, new)
     }
     fn embarked_state_change(
         &mut self,
@@ -144,6 +172,7 @@ pub enum Error<E> {
     Services(crate::unit_placement_services::Error<E>),
     Bonus(crate::loaded_upkeep::placement_tails::Error<E>),
     Cost(crate::formation_movement_cost::Error),
+    UnitMoved(Box<c6_core::unit_moved_signal::Error<Error<E>>>),
     World(c6_core::world::MissingInput),
     State(c6_core::loaded_state::Error),
     Query(crate::loaded_actions::Error),
@@ -1190,4 +1219,63 @@ impl<E: Effects> Context<'_, '_, '_, E> {
             .map(|i| i as u32)
             .ok_or(Error::Missing("saved improvement hash mapping"))
     }
+}
+
+struct UnitMovedContext<'a, E> {
+    state: &'a mut LoadedState,
+    runtime: &'a mut sight::Runtime,
+    effects: &'a mut E,
+    actor: (i32, u32),
+}
+impl<E: Effects> c6_core::unit_moved_signal::Context for UnitMovedContext<'_, E> {
+    type Error = Error<EffectsError<E>>;
+    fn unit(&self) -> Result<&Unit, Self::Error> {
+        self.state
+            .world()
+            .player(self.actor.0)
+            .map_err(Error::World)?
+            .unit(self.actor.1)
+            .map_err(Error::World)?
+            .map(|u| u.record)
+            .ok_or(Error::Missing("retained UnitMoved actor"))
+    }
+    fn registrations(&self) -> Result<&c6_core::unit_moved_signal::Registry, Self::Error> {
+        self.effects.unit_moved_registrations()
+    }
+    fn registrations_mut(
+        &mut self,
+    ) -> Result<&mut c6_core::unit_moved_signal::Registry, Self::Error> {
+        self.effects.unit_moved_registrations_mut()
+    }
+    fn call_on_unit_moved(
+        &mut self,
+        current: ComponentId,
+        old: PlotCoord,
+        new: PlotCoord,
+    ) -> Result<(), Self::Error> {
+        self.effects
+            .on_unit_moved_script(self.state, self.runtime, current, old, new)
+    }
+}
+/// Execute the specific live UnitMoved subscriber sequence. Current registrations
+/// are mandatory; supplying only the Lua leaf cannot qualify whole dispatch.
+pub fn dispatch_unit_moved<E: Effects>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    effects: &mut E,
+    actor: (i32, u32),
+    old: PlotCoord,
+    new: PlotCoord,
+) -> Result<(), Error<EffectsError<E>>> {
+    c6_core::unit_moved_signal::dispatch(
+        &mut UnitMovedContext {
+            state,
+            runtime,
+            effects,
+            actor,
+        },
+        old,
+        new,
+    )
+    .map_err(|e| Error::UnitMoved(Box::new(e)))
 }
