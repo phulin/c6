@@ -3,6 +3,8 @@
 //! The caller initializes one ScriptState and retains it between requests. These
 //! services execute its real registry plans; they do not supply callback answers.
 use super::transition::ScriptState;
+#[path = "stock_script_queries.rs"]
+pub mod queries;
 use c6_core::{
     loaded_state::LoadedState, script_event_registry::RegistryError,
     skip_turn::legality::ScriptTestAllResult, unit::PlotCoord,
@@ -124,6 +126,11 @@ impl<P> Runtime<P> {
             synchronization: Synchronization::exclusive(),
         })
     }
+    /// Borrow this SAME registry/RNG/synchronization owner for another action
+    /// parameter transport. No script state is cloned, reimported or reset.
+    pub fn queries<Q>(&mut self) -> queries::View<'_, P, Q> {
+        queries::View { runtime: self, parameters: std::marker::PhantomData }
+    }
     pub fn last_error(&self) -> Option<&Error> {
         self.last_error.as_ref()
     }
@@ -152,20 +159,28 @@ impl<P> Runtime<P> {
     }
     /// Source CallHook with two integer arguments and no reached subscribers.
     /// Nonempty callback groups refuse; uses this runtime's persistent registry.
-    pub fn call_two_empty(
+    pub fn call_empty(
         &mut self,
         state: &LoadedState,
         event: &str,
-        arguments: [i32; 2],
+        arguments: &[i32],
     ) -> Result<(), Error> {
         if !self.script.matches(state) {
             return Err(Error::Identity);
         }
         self.synchronization.call(|| {
             self.script
-                .call_empty(event, &arguments)
+                .call_empty(event, arguments)
                 .map_err(Error::Registry)
         })
+    }
+    pub fn call_two_empty(
+        &mut self,
+        state: &LoadedState,
+        event: &str,
+        arguments: [i32; 2],
+    ) -> Result<(), Error> {
+        self.call_empty(state, event, &arguments)
     }
     pub fn on_unit_moved(
         &mut self,

@@ -8,7 +8,7 @@
 //! use c6_core::{map::UnitReference, unit::ComponentId};
 //!
 //! fn order_units(
-//!     session: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_, ()>>,
+//!     session: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_>>,
 //!     inputs: &Inputs<'_, '_>,
 //!     handlers: &handlers::BoundHandlers<'_>,
 //!     owner: i32,
@@ -56,8 +56,8 @@ pub struct Outcome {
 /// provider retained by `context`. Callers may invoke this repeatedly without
 /// rebuilding rules or importing state. Failure retains its completed prefix.
 /// Inactive-player unready scheduling remains explicitly unsupported.
-pub fn execute(
-    context: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_, ()>>,
+pub fn execute<P>(
+    context: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_, P>>,
     issuer: i32,
     actor: UnitReference,
     inputs: &Inputs<'_, '_>,
@@ -100,12 +100,13 @@ pub fn execute(
         .is_some();
     let events = if exists {
         let backend = &mut context.notifications.backend;
+        let mut queries = backend.script.queries::<()>();
         let events = actions::skip_turn_state_phase_observed(
             state,
             actor,
             inputs,
             handlers,
-            &mut backend.script,
+            &mut queries,
             &mut backend.reporting,
         )
         .map_err(Error::Manager)?;
