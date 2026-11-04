@@ -36,6 +36,14 @@ pub struct PlacementRequest {
     flags: u32,
 }
 impl PlacementRequest {
+    /// Construct the fixed shore placement argument policy. This does not
+    /// assert that a shore gate or any placement validity test has passed.
+    pub const fn shore_query(flag7: bool) -> Self {
+        Self {
+            flags: 1 | ((flag7 as u32) << 7),
+        }
+    }
+
     pub const fn flags(self) -> u32 {
         self.flags
     }

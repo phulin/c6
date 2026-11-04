@@ -10,6 +10,7 @@ pub mod city_movement;
 pub mod game_relations;
 pub mod loaded_actions;
 pub mod movement;
+pub mod movement_placement_state;
 pub mod registry;
 pub mod resource_binding;
 pub mod unit_initialization_definitions;
