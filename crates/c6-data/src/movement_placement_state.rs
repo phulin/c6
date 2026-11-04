@@ -263,6 +263,42 @@ pub fn best_defender<'s>(
     unit: &Unit,
     destination: PlotCoord,
 ) -> Result<Option<&'s Unit>, Error> {
+    best_defender_with_visibility(state, unit, destination, None, |_| {
+        Ok(DefenderDefinition::Unresolved)
+    })
+}
+
+// The selected flags0x108 call uses only the presence of this context, not
+// normal/hidden visibility arrays. A missing/contradictory row is unknown.
+fn visibility_context_present(
+    rows: &[c6_core::map::PlayerVisibility],
+    mapping: Option<&[i32; 65]>,
+    owner: i32,
+) -> Result<bool, Error> {
+    if owner == -1 {
+        return Ok(false); // GetBestDefender explicitly skips Globals lookup.
+    }
+    if !(0..64).contains(&owner) {
+        return Err(Error::Capability(Capability::VisibilityContext));
+    }
+    let index = mapping
+        .and_then(|m| usize::try_from(m[owner as usize]).ok())
+        .ok_or(Error::Capability(Capability::VisibilityContext))?;
+    let row = rows
+        .get(index)
+        .filter(|row| row.player == owner && row.visibility.player_id == owner)
+        .ok_or(Error::Capability(Capability::VisibilityContext))?;
+    let _ = row; // Source Write dereferences this actual vector occurrence.
+    Ok(true)
+}
+
+fn best_defender_with_visibility<'s>(
+    state: &'s LoadedState,
+    unit: &Unit,
+    destination: PlotCoord,
+    visibility_present: Option<bool>,
+    definition: impl Fn(&Unit) -> Result<DefenderDefinition, Error>,
+) -> Result<Option<&'s Unit>, Error> {
     let map = state.world().map();
     let raw_index = destination
         .y
@@ -282,28 +318,35 @@ pub fn best_defender<'s>(
         }
     };
     let candidates = references.iter().map(|reference| {
-        state
-            .world()
-            .unit(*reference)
-            .map_err(Error::World)
-            .map(|found| {
-                found.map(|found| {
-                    let u = found.record;
-                    ShoreDefender {
-                        unit: u,
-                        owner: u.e_owner,
-                        delayed_death: u.b_delayed_death,
-                        location: Some(u.k_location),
-                        definition: DefenderDefinition::Unresolved,
-                        religious_strength: Some(u.k_religion.i_religious_strength),
-                    }
-                })
-            })
+        let Some(found) = state.world().unit(*reference).map_err(Error::World)? else {
+            return Ok(None);
+        };
+        let candidate = found.record;
+        // Resolve the pure definition getter only on the branch on which the
+        // core selector will consume it. Own/delayed/invalid-coordinate guards
+        // retain their source short circuits and never demand a definition.
+        let definition = if !candidate.b_delayed_death
+            && candidate.e_owner != unit.e_owner
+            && visibility_present == Some(true)
+            && placement::coordinate_valid(candidate.k_location)
+        {
+            definition(candidate)?
+        } else {
+            DefenderDefinition::Unresolved
+        };
+        Ok(Some(ShoreDefender {
+            unit: candidate,
+            owner: candidate.e_owner,
+            delayed_death: candidate.b_delayed_death,
+            location: Some(candidate.k_location),
+            definition,
+            religious_strength: Some(candidate.k_religion.i_religious_strength),
+        }))
     });
     logic::select_shore_defender(
         candidates,
         unit.e_owner,
-        None,
+        visibility_present,
         Some(unit.k_religion.i_religious_strength),
         |_| Err(Error::Capability(Capability::CombatStrength)),
     )
@@ -323,6 +366,7 @@ pub struct Context<'s, 'a, 'r> {
     terrains: DefinitionTable<'a, TerrainProperties>,
     districts: crate::registry::LinuxDefinitionRegistry,
     unit_names: crate::registry::LinuxDefinitionRegistry,
+    unit_team_visibility: Vec<bool>,
     technologies: EmbarkDefinitions,
     civics: EmbarkDefinitions,
     unlock_embarkation: bool,
@@ -363,9 +407,26 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         {
             return Err(Error::Definitions);
         }
+        let unit_rows = rules.gameplay().table("Units").ok_or(Error::Definitions)?;
+        let unit_team_visibility = unit_names
+            .entries()
+            .iter()
+            .map(|entry| {
+                match unit_rows
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Definitions)?
+                    .integer("TeamVisibility")
+                {
+                    Ok(0) => Ok(false),
+                    Ok(1) => Ok(true),
+                    _ => Err(Error::Definitions),
+                }
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
             state,
             unit_names,
+            unit_team_visibility,
             technologies: EmbarkDefinitions::from_rules(rules, "Technologies", "TechnologyType")?,
             civics: EmbarkDefinitions::from_rules(rules, "Civics", "CivicType")?,
             unlock_embarkation: unlock_embarkation(rules)?,
@@ -770,7 +831,35 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             .map_or(-1, |i| i as i32))
     }
     fn best_defender(&self, unit: &Unit, destination: PlotCoord) -> Result<Option<&Unit>, Error> {
-        best_defender(self.state, unit, destination)
+        let present = visibility_context_present(
+            &self.state.world().map().visibility,
+            self.state.world().player_mapping.as_ref(),
+            unit.e_owner,
+        )
+        .ok();
+        best_defender_with_visibility(self.state, unit, destination, present, |candidate| {
+            let runtime = self
+                .state
+                .unit_runtime(candidate.e_owner, candidate.id)
+                .map_err(Error::State)?;
+            if self
+                .units
+                .at(runtime.definition_index)
+                .copied()
+                .flatten()
+                .is_none()
+            {
+                return Ok(DefenderDefinition::Absent);
+            }
+            let index =
+                usize::try_from(runtime.definition_index).map_err(|_| Error::Definitions)?;
+            Ok(DefenderDefinition::Present {
+                team_visibility: *self
+                    .unit_team_visibility
+                    .get(index)
+                    .ok_or(Error::Definitions)?,
+            })
+        })
     }
     fn query(
         &self,
@@ -965,6 +1054,32 @@ mod tests {
     use super::*;
     use crate::registry::LinuxDefinitionHashRegistry;
     use c6_core::unit::HashValue;
+
+    #[test]
+    fn defender_flag100_context_needs_no_fog_arrays_but_keeps_native_mapping() {
+        let rows = [c6_core::map::PlayerVisibility {
+            player: 3,
+            visibility: c6_core::map::Visibility {
+                player_id: 3,
+                cached_num_revealed_hexes: 0,
+                cached_old: false,
+                revealed: vec![],
+                layers: vec![],
+                outgoing_visibility: vec![],
+                outgoing_visibility_blockers: vec![],
+            },
+        }];
+        let mut mapping = [-1; 65];
+        mapping[3] = 0;
+        assert!(visibility_context_present(&rows, Some(&mapping), 3).unwrap());
+        assert!(visibility_context_present(&rows, None, 3).is_err());
+        assert!(visibility_context_present(&rows, Some(&mapping), 2).is_err());
+        mapping[3] = 1;
+        assert!(visibility_context_present(&rows, Some(&mapping), 3).is_err());
+        mapping[2] = 0;
+        assert!(visibility_context_present(&rows, Some(&mapping), 2).is_err());
+        assert!(!visibility_context_present(&[], None, -1).unwrap());
+    }
 
     #[test]
     fn omitted_wire_resets_actual_definition_indexes() {
