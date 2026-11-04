@@ -10,6 +10,7 @@ use c6_core::world::{Player, World};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     DefinitionOrder,
+    LegacyOperationDisabledDefaults { wire_version: i32 },
     ResourceLimit,
     RulesProfile,
     RulesData,
@@ -92,6 +93,14 @@ impl OperationDefinitions {
         &'a self,
         unit: &Unit,
     ) -> Result<DisabledOperations<'a>, Error> {
+        // Before Unit20 the wire omits this collection. Native Reset seeds
+        // definition IsDisabled defaults before Read; absent pairs do not prove
+        // the all-false storage used by the version20+ remapping below.
+        if unit.wire_version < 20 {
+            return Err(Error::LegacyOperationDisabledDefaults {
+                wire_version: unit.wire_version,
+            });
+        }
         self.restore_disabled(&unit.k_operations_disabled)
     }
 }
@@ -431,6 +440,54 @@ mod tests {
             [false, true]
         );
         assert_eq!(low.find_index(0x200), Some(RuntimeOperationId(1)));
+    }
+    #[test]
+    fn legacy_unit_without_disabled_pairs_requires_native_definition_defaults() {
+        // Existing synthetic Unit28 fixture: zero fields/empty arrays with
+        // explicit nested versions. This is not an original-game observation.
+        let mut bytes = vec![0; 762];
+        for (offset, value) in [
+            (0, 28),
+            (142, 2),
+            (159, 1),
+            (176, 28),
+            (311, 8),
+            (341, 1),
+            (353, 1),
+            (397, 7),
+            (436, 1),
+            (452, 8),
+            (516, 10),
+            (590, 2),
+            (630, 4),
+            (652, 7),
+            (730, 1),
+            (742, 5),
+        ] {
+            bytes[offset] = value;
+        }
+        let mut unit = Unit::decode(&bytes, c6_core::unit::Limits::default()).unwrap();
+        let definitions = definitions(&[0x100, 0x200]);
+        assert_eq!(unit.wire_version, 28);
+        assert!(unit.k_operations_disabled.is_empty());
+        assert_eq!(
+            definitions.restore_unit_disabled(&unit).unwrap().values(),
+            [false, false]
+        );
+        unit.k_operations_disabled = vec![pair(0x200, true)];
+        assert_eq!(
+            definitions.restore_unit_disabled(&unit).unwrap().values(),
+            [false, true]
+        );
+        // Exercise the version-presence guard with an explicitly absent list;
+        // the other synthetic fields are irrelevant to this narrow boundary.
+        unit.wire_version = 17;
+        unit.k_operations_disabled.clear();
+        assert!(matches!(
+            definitions.restore_unit_disabled(&unit),
+            Err(Error::LegacyOperationDisabledDefaults { wire_version: 17 })
+        ));
+        assert!(unit.k_operations_disabled.is_empty());
     }
     #[test]
     fn tactical_selected_signed_order_nulls_ignored_owner_and_ties() {
