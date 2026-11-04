@@ -1,0 +1,258 @@
+//! Source-ordered completion of the selected human's current processor pass.
+//! Next-player activation is performed here; its first-activation upkeep and
+//! the next Game.Update remain mandatory caller continuations.
+use super::{turn_reports, Runtime};
+use crate::{
+    game_update_state as data,
+    loaded_actions::{
+        configuration::Configuration, current_aftermath, diplomacy_pending_deals, reporting,
+    },
+    unit_operation_manager::PhaseDefinitions,
+    Rules,
+};
+use c6_core::{
+    game_update,
+    loaded_state::{game_update as loaded, LoadedState},
+};
+use std::convert::Infallible;
+
+pub struct Inputs<'a, 'q, 'c> {
+    pub readiness: &'a reporting::Provider<'q>,
+    pub phase_definitions: &'a PhaseDefinitions,
+    pub phases: &'a data::activation::Phases,
+    pub configuration: &'a Configuration<'c>,
+    pub rules: &'a Rules,
+    pub pending_deals: &'a diplomacy_pending_deals::CurrentPendingDeals,
+    pub host_reactivation_requested: Option<bool>,
+    pub game_speed_type: u32,
+    pub game_uninitializing: bool,
+    pub visibility_messages_disabled: bool,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Completed {
+    pub deactivated_owner: i32,
+    pub selection: loaded::activation::Selection,
+    pub units_advanced: usize,
+    pub visibility_records: usize,
+    pub resources_changed: usize,
+}
+#[derive(Debug)]
+pub enum Error {
+    Prefix(game_update::Error),
+    State(c6_core::loaded_state::Error),
+    Report(loaded::deactivation::ReportError<turn_reports::Error>),
+    Automation(c6_core::turn_completion::Error),
+    Unit(data::automation::PlayerError<Infallible, Infallible>),
+    Diplomacy(loaded::automation::diplomacy::Error<DiplomacyError>),
+    Visibility(data::deactivation::Error),
+    UnsupportedSelection(Vec<i32>),
+    UnsupportedAutomation,
+    RequiresQueuedHandler,
+    SelectedOwnerStillActive(i32),
+    UnsupportedNextSelection(loaded::activation::Selection),
+    Budget,
+}
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "stock completed-human pass: {self:?}")
+    }
+}
+impl std::error::Error for Error {}
+#[derive(Debug)]
+pub enum DiplomacyError {
+    PendingDeals(diplomacy_pending_deals::Error),
+    Configuration(crate::loaded_actions::configuration::Error),
+    MissingHostReactivation,
+    RequestUnready { owner: i32, reason: u32 },
+    SetActive(i32),
+}
+struct Diplomacy<'a, 'c> {
+    configuration: &'a Configuration<'c>,
+    pending: &'a diplomacy_pending_deals::CurrentPendingDeals,
+    host_reactivation: Option<bool>,
+}
+impl loaded::automation::diplomacy::Services for Diplomacy<'_, '_> {
+    type Error = DiplomacyError;
+    fn pending_deal(&mut self, state: &LoadedState, owner: i32) -> Result<bool, Self::Error> {
+        diplomacy_pending_deals::has_pending_deal(state, owner, self.pending)
+            .map_err(DiplomacyError::PendingDeals)
+    }
+    fn any_multiplayer(&mut self, state: &LoadedState) -> Result<bool, Self::Error> {
+        self.configuration
+            .is_any_multiplayer(state.binding())
+            .map_err(DiplomacyError::Configuration)
+    }
+    fn network_multiplayer(&mut self, state: &LoadedState) -> Result<bool, Self::Error> {
+        self.configuration
+            .is_network_multiplayer(state.binding())
+            .map_err(DiplomacyError::Configuration)
+    }
+    fn reactivation_requested(
+        &mut self,
+        _state: &LoadedState,
+        _owner: i32,
+    ) -> Result<bool, Self::Error> {
+        self.host_reactivation
+            .ok_or(DiplomacyError::MissingHostReactivation)
+    }
+    fn request_unready(
+        &mut self,
+        _state: &mut LoadedState,
+        owner: i32,
+        reason: u32,
+    ) -> Result<bool, Self::Error> {
+        Err(DiplomacyError::RequestUnready { owner, reason })
+    }
+    fn set_active(&mut self, _state: &mut LoadedState, owner: i32) -> Result<(), Self::Error> {
+        Err(DiplomacyError::SetActive(owner))
+    }
+}
+/// Continue after all selected Player.Update calls have completed. Every
+/// callback uses the existing action backend and canonical state. On failure,
+/// the native prefix remains visible and this update runtime cannot be replayed.
+pub fn finish_completed_human_pass<P>(
+    context: &mut current_aftermath::Context<'_, Runtime<'_, P>>,
+    runtime: &mut loaded::Runtime,
+    inputs: &Inputs<'_, '_, '_>,
+    visibility: &mut data::deactivation::VisibilityHistory,
+    budget: &mut usize,
+) -> Result<Completed, Error> {
+    let result = (|| {
+        let mut c = data::context(
+            context.notifications.state,
+            runtime,
+            inputs.readiness,
+            &mut context.notifications.backend,
+        )
+        .map_err(Error::Prefix)?;
+        let mut pending = loaded::deactivation::begin(&mut c).map_err(Error::Prefix)?;
+        let [owner] = pending.selected() else {
+            return Err(Error::UnsupportedSelection(pending.selected().to_vec()));
+        };
+        let owner = *owner;
+        if matches!(
+            pending.effect(),
+            Some(game_update::deactivation::Effect::TurnActiveLog { .. })
+        ) {
+            loaded::deactivation::omit_stock_file_log(
+                c.state,
+                c.runtime,
+                &mut pending,
+                loaded::deactivation::LoggingScope::StockFileSink,
+            )
+            .map_err(Error::Prefix)?;
+        }
+        let backend = &mut *c.services.effects;
+        loaded::deactivation::deliver_turn_active_report(
+            c.state,
+            c.runtime,
+            &mut pending,
+            |state, event, owner| {
+                backend.deliver_turn_report(
+                    state,
+                    event,
+                    owner,
+                    turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+                )
+            },
+        )
+        .map_err(Error::Report)?;
+        let loaded::automation::Begin::Units(mut frame) =
+            data::automation::begin_after_deactivation_report(
+                c.state,
+                c.runtime,
+                &mut pending,
+                inputs.phase_definitions,
+            )
+            .map_err(Error::Automation)?
+        else {
+            return Err(Error::UnsupportedAutomation);
+        };
+        let mut units_advanced = 0;
+        loop {
+            if *budget == 0 {
+                return Err(Error::Budget);
+            }
+            *budget -= 1;
+            match data::automation::advance_idle_player_unit(
+                c.state,
+                &mut frame,
+                inputs.readiness,
+                Some(loaded::deactivation::LoggingScope::StockFileSink),
+            )
+            .map_err(Error::Unit)?
+            {
+                data::automation::IdleProgress::Advanced => units_advanced += 1,
+                data::automation::IdleProgress::RequiresQueuedHandler => {
+                    return Err(Error::RequiresQueuedHandler)
+                }
+                data::automation::IdleProgress::NoUnit => break,
+            }
+        }
+        let diplomacy = frame.finish(c.state).map_err(Error::Prefix)?;
+        let mut services = Diplomacy {
+            configuration: inputs.configuration,
+            pending: inputs.pending_deals,
+            host_reactivation: inputs.host_reactivation_requested,
+        };
+        loaded::automation::diplomacy::finish(c.state, diplomacy, &mut services)
+            .map_err(Error::Diplomacy)?;
+        if c.state.turn_active(owner).map_err(Error::State)? {
+            return Err(Error::SelectedOwnerStillActive(owner));
+        }
+        let visibility_records = visibility
+            .record(c.state, owner)
+            .map_err(Error::Visibility)?;
+        loaded::human_control::deactivate(c.state, owner).map_err(Error::Prefix)?;
+        let resources_changed = c
+            .services
+            .effects
+            .finish_deactivation_resources(
+                c.state,
+                inputs.rules,
+                owner,
+                inputs.game_speed_type,
+                inputs.game_uninitializing,
+                turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+            )
+            .map_err(Error::Prefix)?;
+        let selection = c
+            .services
+            .effects
+            .select_next_player(c.state, inputs.configuration, inputs.phases)
+            .map_err(Error::Prefix)?;
+        let loaded::activation::Selection::Sequential(next) = selection else {
+            return Err(Error::UnsupportedNextSelection(selection));
+        };
+        c.services
+            .effects
+            .activate_selected_player(
+                c.state,
+                c.runtime,
+                inputs.configuration,
+                next,
+                inputs.visibility_messages_disabled,
+                turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+            )
+            .map_err(Error::Prefix)?;
+        c.finish_exclusive_human_update(|state, services| {
+            state
+                .process_pending_diplomacy(&mut *services.effects, budget)
+                .map_err(|_| {
+                    game_update::Error::Unsupported("Game.Instance.Update pending diplomacy")
+                })
+        })
+        .map_err(Error::Prefix)?;
+        Ok(Completed {
+            deactivated_owner: owner,
+            selection,
+            units_advanced,
+            visibility_records,
+            resources_changed,
+        })
+    })();
+    if result.is_err() {
+        runtime.fail_player_callback();
+    }
+    result
+}
