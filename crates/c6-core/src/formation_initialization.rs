@@ -208,6 +208,19 @@ pub struct FormationRuntime {
     evaluating_operation: bool,
 }
 impl FormationRuntime {
+    /// Formation.Initialize binds the actual parent Player directly. This is
+    /// neither a Read postlude nor an invented clean archive baseline.
+    pub fn from_created(formation: &Formation) -> Self {
+        Self {
+            archive: LogicalArchive::new(
+                ComponentId { owner: formation.owner as i16, component_type: FORMATION_COMPONENT_TYPE, id: formation.id },
+                &FORMATION_FIELDS,
+                DirtyBaseline::Unavailable,
+            ),
+            owner: OwnerBinding::Lookup { requested: formation.owner, resolved: Some(formation.owner) },
+            evaluating_operation: false,
+        }
+    }
     /// Bind only the Player whose Manager entry encloses this Formation Read.
     /// Manager::AllocateInstance publishes that requested owner before Player
     /// Read begins. The decoded entry must preserve requested/header identity.

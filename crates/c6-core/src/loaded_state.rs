@@ -5280,19 +5280,18 @@ impl LoadedState {
         if !row.units[index].dependencies.matches(found.record) {
             return Err(Error::RuntimeDependenciesChanged);
         }
-        let current = self
-            .world
-            .player(owner)
-            .map_err(Error::World)?
-            .formation(found.record.formation_id)
-            .map_err(Error::World)?;
-        match (row.units[index].value.formation, current) {
-            (None, None) => {}
-            (Some(saved), Some(actual))
-                if saved.owner == actual.record.owner
+        // GetFormation reads a cached pointer. A source-created Unit has
+        // formationID0 but a NULL pointer until AddUnit/OnFormationIDChanged;
+        // unrelated slot0 records do not automatically attach it.
+        if let Some(saved) = row.units[index].value.formation {
+            let current = self.world.player(owner).map_err(Error::World)?
+                .formation(found.record.formation_id).map_err(Error::World)?;
+            match current {
+                Some(actual) if saved.owner == actual.record.owner
                     && saved.requested_id == actual.requested_id
-                    && saved.resolved_id == actual.resolved_id => {}
-            _ => return Err(Error::RuntimeDependenciesChanged),
+                    && saved.resolved_id == actual.resolved_id => {},
+                _ => return Err(Error::RuntimeDependenciesChanged),
+            }
         }
         Ok(&row.units[index].value)
     }
@@ -5402,3 +5401,5 @@ pub mod game_city_names;
 pub mod city_build_initialization;
 
 mod object_pairing_current;
+
+pub mod unit_creation;

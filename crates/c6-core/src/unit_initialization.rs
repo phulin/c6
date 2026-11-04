@@ -177,6 +177,27 @@ impl UnitRuntime {
                 requested_id: found.requested_id,
                 resolved_id: found.resolved_id,
             });
+        Self::project_fields(unit, inputs, (definition_index, domain), formation)
+    }
+    /// Current source Unit.Initialize prefix, after definition/domain and
+    /// Reset arrays, before Player.Units.Create attaches any Formation.
+    pub fn from_created_prefix(
+        unit: &Unit,
+        admitted_inputs: &InputIdentities,
+        inputs: &InitializationInputs<'_>,
+    ) -> Result<Self, Error> {
+        if unit.wire_version != 28 {
+            return Err(Error::LegacyReadEffects(unit.wire_version));
+        }
+        let definition = inputs.resolve_definition(unit.e_type_index, admitted_inputs)?;
+        Self::project_fields(unit, inputs, definition, None)
+    }
+    fn project_fields(
+        unit: &Unit,
+        inputs: &InitializationInputs<'_>,
+        (definition_index, domain): (i32, i32),
+        formation: Option<FormationReference>,
+    ) -> Result<Self, Error> {
         Ok(Self {
             archive: LogicalArchive::new(
                 ComponentId {

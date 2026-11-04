@@ -492,3 +492,5 @@ pub mod city_religion;
 
 pub mod city_territory;
 pub mod influence_map_update;
+
+pub mod unit_creation;
