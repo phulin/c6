@@ -24,18 +24,20 @@ pub mod movement_shore;
 pub mod movement_world;
 pub mod notification_lifecycle;
 pub mod notifications;
+pub mod player_ai_identity;
 pub mod player_components;
-pub mod player_culture;
 pub mod player_cultural_identity;
+pub mod player_culture;
 pub mod player_diplomacy;
 pub mod player_diplomacy_blackboard;
 pub mod player_districts;
 pub mod player_eras;
 pub mod player_espionage;
 pub mod player_great_people_points;
-pub mod player_ai_identity;
 pub mod player_improvements;
 pub mod player_influence;
+pub mod player_name_manager;
+pub mod player_prerequisites;
 pub mod player_quests;
 pub mod player_religion;
 pub mod player_resources;
@@ -45,8 +47,6 @@ pub mod player_trade;
 pub mod player_treasury;
 pub mod player_units;
 pub mod player_wmds;
-pub mod player_name_manager;
-pub mod player_prerequisites;
 pub mod plot_yield;
 pub mod random_variants;
 pub mod requirements;
@@ -387,8 +387,8 @@ pub mod player_ai_behavior_tree;
 
 pub mod unit_operation_interruption;
 
-pub mod game_global_ai;
 pub mod game_diplomatic_relations;
+pub mod game_global_ai;
 
 pub mod game_barbarian;
 
