@@ -82,6 +82,7 @@ impl LoadedState {
             game_sync_runtime: None,
             game_city_names: None,
             game_statistics: None,
+            game_eras: None,
             limits,
             revision: 0,
             instance_identity: fresh_state_identity()?,
