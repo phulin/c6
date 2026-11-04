@@ -741,6 +741,57 @@ impl<'a> Provider<'a> {
         });
         Ok(())
     }
+    /// Stock OnFormationUpdateEvent27ff480: validate the current Formation CID,
+    /// capture its ordered member span and PublishUpdate for each member. This
+    /// uses the same current query path as Unit updates. The caller qualifies
+    /// the event's receivers and CacheUpdated consumers; no host event is added.
+    pub fn observe_formation_snapshot(
+        &mut self,
+        state: &LoadedState,
+        identity: c6_core::unit::ComponentId,
+    ) -> Result<(), Error> {
+        if identity.owner == -1 || identity.id == u32::MAX || identity.component_type != 0x2c {
+            return Ok(());
+        }
+        let owner = i32::from(identity.owner);
+        if !state.world().player_is_valid(owner).map_err(Error::World)? {
+            return Ok(());
+        }
+        let Some(formation) = state
+            .world()
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(identity.id)
+            .map_err(Error::World)?
+        else {
+            return Ok(());
+        };
+        for &id in &formation.record.unit_ids {
+            let reference = UnitReference::from_component_id(c6_core::unit::ComponentId {
+                owner: identity.owner,
+                component_type: 1,
+                id,
+            });
+            if id == u32::MAX
+                || state
+                    .world()
+                    .unit(reference)
+                    .map_err(Error::World)?
+                    .is_none()
+            {
+                continue;
+            }
+            self.observe_unit_snapshot(
+                state,
+                UnitReference::from_component_id(c6_core::unit::ComponentId {
+                    owner: identity.owner,
+                    component_type: 1,
+                    id,
+                }),
+            )?;
+        }
+        Ok(())
+    }
     /// Execute the existing source-bounded Unit snapshot queries on the actual
     /// retained actor. Event bindings and omitted DTO/cache/output stores must
     /// be qualified by the caller; this does not invent a new event mapping.
