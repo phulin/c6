@@ -10,6 +10,8 @@ use super::{
     reporting::yield_monitor::WarmRouteDomain,
     stock_script,
 };
+#[path = "stock_notifications_game_update.rs"]
+pub mod game_update;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -46,6 +48,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     binding: WireBinding,
     facts: Facts,
     temporary_serial: u64,
+    player_services: Option<crate::unit_placement_services::Runtime>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn new(
@@ -69,6 +72,7 @@ impl<'a, P> Runtime<'a, P> {
             binding: state.binding().clone(),
             facts,
             temporary_serial: 0,
+            player_services: None,
         })
     }
     /// Publish a decision already established by the source gameplay caller
