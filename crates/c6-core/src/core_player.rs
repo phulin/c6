@@ -1307,6 +1307,41 @@ impl Prefix {
     }
 }
 impl FirstPlayer {
+    /// Read a standalone original Player component through the existing
+    /// context-free prefix ending before Military. Returns its typed Cities
+    /// for action comparisons without requiring later Military framing inputs.
+    /// No Manager bytes or initialization state are synthesized.
+    pub fn decode_cities_component_prefix(
+        bytes: &[u8],
+        limits: Limits,
+        requested_owner: i32,
+    ) -> Result<(Cities, usize), Error> {
+        let mut reader = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let prefix = reader.player_prefix_for_owner(requested_owner)?;
+        Ok((prefix.cities, reader.pos))
+    }
+    /// Decode the existing context-free Player.Write prefix and return its
+    /// research owners. This ends before Military and supplies no missing
+    /// initialization context or later Player state.
+    pub fn decode_research_component_prefix(
+        bytes: &[u8],
+        limits: Limits,
+        requested_owner: i32,
+    ) -> Result<((player_techs::Techs, player_culture::Culture), usize), Error> {
+        let mut reader = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let prefix = reader.player_prefix_for_owner(requested_owner)?;
+        Ok(((prefix.techs, prefix.culture), reader.pos))
+    }
     /// Decode one original Player.Write component without inventing a Manager
     /// count or requested-owner wire prefix. `component_origin` is its actual
     /// offset in the attributed source bundle; initialization cursors retain
