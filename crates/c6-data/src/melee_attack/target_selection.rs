@@ -147,7 +147,7 @@ pub enum Defender {
     District(ComponentId),
 }
 /// TestAttackInto returned true. AttackInto must STILL resolve its actual target
-/// again (its profile differs), generate/resolve results, RNG and all callbacks.
+/// again from CURRENT state, generate/resolve results, RNG and all callbacks.
 #[derive(Debug, Eq, PartialEq)]
 pub struct AttackInto {
     actor: UnitReference,
@@ -565,21 +565,7 @@ fn finish(
             }),
         }));
     }
-    let exclude_air = !super::can_attack_domain(state, inputs.combat, actor_id, 1, 0)
-        .map_err(|e| Error::Stage(Box::new(e)))?;
-    // GetBestDefender captures bypass/layer before scanning; these profiles do
-    // not use bypass, but the current actual location layer remains mandatory.
-    let _bypass = u.k_combat_modifers.b_bypass_combat_units;
-    let layer = placement::unit_layer(state.world(), u).map_err(Error::Placement)?;
-    let mut selector = Selector {
-        state,
-        base: combat_defender::Current::new(state, inputs.combat, at, layer),
-        inputs,
-        actor: actor_id,
-    };
-    let Some(defender) =
-        c6_core::combat_defender::select_melee(&mut selector, u.e_owner, exclude_air)?
-    else {
+    let Some(defender) = ordinary_defender(state, inputs, actor_id, at)? else {
         return Ok(Outcome::Rejected);
     };
     let mut target = Target {
@@ -603,6 +589,53 @@ fn finish(
         destination: at,
         defender: Defender::Unit(defender),
     }))
+}
+
+fn ordinary_defender(
+    state: &LoadedState,
+    inputs: &Inputs<'_>,
+    actor_id: UnitReference,
+    at: PlotCoord,
+) -> Result<Option<UnitReference>, Error> {
+    let exclude_air = !super::can_attack_domain(state, inputs.combat, actor_id, 1, 0)
+        .map_err(|e| Error::Stage(Box::new(e)))?;
+    let u = lookup(state, actor_id)?;
+    // GetBestDefender captures bypass/layer before scanning; these profiles do
+    // not use bypass, but the current actual location layer remains mandatory.
+    let _bypass = u.k_combat_modifers.b_bypass_combat_units;
+    let layer = placement::unit_layer(state.world(), u).map_err(Error::Placement)?;
+    let mut selector = Selector {
+        state,
+        base: combat_defender::Current::new(state, inputs.combat, at, layer),
+        inputs,
+        actor: actor_id,
+    };
+    c6_core::combat_defender::select_melee(&mut selector, u.e_owner, exclude_air)
+}
+
+/// AttackInto's own selection, 28c97b7/28c9baa..28c9c9e. Ordinary execution
+/// uses flags9/19 too; it does NOT repeat TestAttackInto readiness/CanAttackTarget.
+/// The returned Unit must be retained through Clear and generation callbacks.
+pub(crate) fn select_execution_target(
+    state: &LoadedState,
+    inputs: &Inputs<'_>,
+    actor_id: UnitReference,
+    at: PlotCoord,
+) -> Result<Option<Defender>, Error> {
+    let u = lookup(state, actor_id)?;
+    if u.k_religion.i_religious_strength > 0 {
+        return Err(Error::Unsupported(
+            "AttackInto religious selection/resolution",
+        ));
+    }
+    if let Some(d) = enemy_defensible_district(state, inputs, u.e_owner, at)? {
+        return Ok(Some(Defender::District(ComponentId {
+            owner: district_owner(state, d)? as i16,
+            component_type: 3,
+            id: d.id,
+        })));
+    }
+    ordinary_defender(state, inputs, actor_id, at).map(|selected| selected.map(Defender::Unit))
 }
 /// Complete ordinary unit/district TestAttackInto query. Religious selection
 /// remains an explicit error, never a false result or fabricated target.

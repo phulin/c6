@@ -67,6 +67,22 @@ impl RequiresGenerate<'_> {
     }
 }
 
+pub(crate) fn current_unit_strengths(
+    state: &LoadedState,
+    definitions: &formation_rules::Definitions,
+    attacker: UnitReference,
+    defender: UnitReference,
+    location: PlotCoord,
+) -> Result<kernel::UnitGeneration, Error> {
+    kernel::prepare_unit_strengths(&mut CurrentStrengths {
+        state,
+        definitions,
+        attacker: super::actor(state, attacker).map_err(Error::Actor)?,
+        defender: super::actor(state, defender).map_err(Error::Actor)?,
+        location,
+    })
+}
+
 struct CurrentStrengths<'a> {
     state: &'a LoadedState,
     definitions: &'a formation_rules::Definitions,
