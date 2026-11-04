@@ -15,6 +15,7 @@ pub enum Error {
     MissingWar,
     MissingAlliances,
     MissingPermanentAlliances,
+    MissingHasMet,
     DefinitionInputs,
     AlreadyInitialized,
     InvalidStorage,
@@ -194,6 +195,41 @@ impl GameDiplomaticRelations {
             .copied()
             .ok_or(Error::Index)
     }
+    /// Native Game.DiplomaticRelations.HasMet: equal arguments return true
+    /// before storage checks. Player.Diplomacy adds its own validity/self gate.
+    pub fn has_met(&self, a: i32, b: i32) -> Result<bool, Error> {
+        if a == b {
+            return Ok(true);
+        }
+        let values = &self.read_prefix.as_ref().ok_or(Error::MissingHasMet)?.at_c8;
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        values
+            .get(self.index(a, b)?)
+            .map(|cell| cell.value)
+            .ok_or(Error::Index)
+    }
+    /// The actual symmetric contact payload write, including repeated turn
+    /// assignment for distinct players. Equal-player writes are unsupported.
+    /// The caller must then execute LogDiplomaticEvent in order;
+    /// this storage operation does not pretend to deliver the native logger.
+    pub fn set_has_met(&mut self, a: i32, b: i32, turn: i32) -> Result<(), Error> {
+        if a == b {
+            return Err(Error::Index);
+        }
+        let index = self.index(a, b)?;
+        let count = total(self.player_count)?;
+        let values = &mut self.read_prefix.as_mut().ok_or(Error::MissingHasMet)?.at_c8;
+        if values.len() != count {
+            return Err(Error::InvalidStorage);
+        }
+        let cell = values.get_mut(index).ok_or(Error::Index)?;
+        cell.value = true;
+        cell.changed_turn = turn;
+        Ok(())
+    }
+
     /// Native GetWarType and GetAllianceType return -1 for equal players before
     /// reading storage, even if that equal integer is not a valid player slot.
     pub fn war_type(&self, a: i32, b: i32) -> Result<i32, Error> {

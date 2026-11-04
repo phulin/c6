@@ -1,4 +1,5 @@
 //! Deterministic simulator kernel. Gameplay beyond declared coverage fails closed.
+pub mod relic_creation;
 pub mod city;
 pub mod city_citizens;
 pub mod city_district;
@@ -413,6 +414,7 @@ pub mod game_random_wire;
 pub mod trade_read_order;
 
 pub mod diplomacy_manager;
+pub mod diplomacy_meeting;
 
 pub mod player_notifications_owner;
 
