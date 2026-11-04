@@ -433,3 +433,5 @@ pub mod game_techs;
 pub mod hero_discovery_order;
 
 pub mod script_event_registry;
+
+pub mod object_pairing;

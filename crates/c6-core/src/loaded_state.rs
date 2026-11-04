@@ -98,6 +98,8 @@ mod tests {
             observed_snapshot: None,
             game_relations: None,
             game_relations_source: None,
+            object_pairing: None,
+            object_pairing_source: None,
             diplomacy_manager: None,
             diplomacy_manager_source: None,
             player_notifications: None,
@@ -2649,6 +2651,59 @@ mod tests {
             .unwrap());
     }
     #[test]
+    fn pairing_export_is_complete_bound_once_and_not_assumed_empty() {
+        let mut s = state();
+        assert!(matches!(
+            s.object_pairing(),
+            Err(Error::Missing(MissingInput::ObjectPairing))
+        ));
+        // A synthetic attributed frame appended to this test-only state image.
+        let start = s.source_image().len();
+        let CoreImage::Unique(image) = &mut s.image else {
+            unreachable!()
+        };
+        for word in [1i32, 0, 0] {
+            image.extend(word.to_le_bytes());
+        }
+        let w = ComponentSnapshotWitness {
+            source_role: core_player::initialization::WireRole::SavedOutputCore,
+            snapshot_sha256: s.binding.core_sha256,
+            snapshot_bytes: s.source_image().len(),
+            owner_trace_sha256: [5; 32],
+            owner_range: [start, start + 12],
+            decoded_prefix_bytes: 12,
+        };
+        let mut wrong = w.clone();
+        wrong.snapshot_sha256[0] ^= 1;
+        assert!(matches!(
+            s.install_object_pairing(wrong, unit::Limits::default()),
+            Err(Error::Binding)
+        ));
+        let mut wrong = w.clone();
+        wrong.decoded_prefix_bytes = 8;
+        assert!(matches!(
+            s.install_object_pairing(wrong, unit::Limits::default()),
+            Err(Error::Binding)
+        ));
+        assert!(matches!(
+            s.object_pairing(),
+            Err(Error::Missing(MissingInput::ObjectPairing))
+        ));
+        s.install_object_pairing(w.clone(), unit::Limits::default())
+            .unwrap();
+        assert!(s
+            .object_pairing()
+            .unwrap()
+            .get_children(crate::object_pairing::NULL_COMPONENT)
+            .is_empty());
+        assert_eq!(s.object_pairing_source(), Some(&w));
+        assert_eq!(s.revision(), 0);
+        assert!(matches!(
+            s.install_object_pairing(w, unit::Limits::default()),
+            Err(Error::AlreadyBound)
+        ));
+    }
+    #[test]
     fn component_export_requires_exact_snapshot_and_bounded_owner_witness() {
         let mut s = state();
         let mut w = ComponentSnapshotWitness {
@@ -2704,6 +2759,7 @@ pub enum Error {
     AlreadyBound,
     NotPristine,
     GameRelations(crate::game_diplomatic_relations::Error),
+    ObjectPairing(crate::object_pairing::Error),
     DiplomacyManager(crate::diplomacy_manager::Error),
     DiplomacyDrain(crate::diplomacy_drain::Error),
     PlayerNotifications(crate::player_notifications_owner::Error),
@@ -2740,6 +2796,7 @@ pub enum MissingInput {
     ProcessingAutomation,
     GamePause,
     GameRelations,
+    ObjectPairing,
     DiplomacyManager,
 }
 
@@ -2984,6 +3041,8 @@ pub struct LoadedState {
     observed_snapshot: Option<ObservedSnapshotWitness>,
     game_relations: Option<crate::game_diplomatic_relations::GameDiplomaticRelations>,
     game_relations_source: Option<ComponentSnapshotWitness>,
+    object_pairing: Option<crate::object_pairing::Manager>,
+    object_pairing_source: Option<ComponentSnapshotWitness>,
     diplomacy_manager: Option<crate::diplomacy_manager::Manager>,
     diplomacy_manager_source: Option<ObservedSnapshotWitness>,
     player_notifications: Option<crate::player_notifications_owner::Owner>,
@@ -3184,6 +3243,8 @@ impl LoadedState {
             observed_snapshot: None,
             game_relations: None,
             game_relations_source: None,
+            object_pairing: None,
+            object_pairing_source: None,
             diplomacy_manager: None,
             diplomacy_manager_source: None,
             player_notifications: None,
@@ -3264,6 +3325,51 @@ impl LoadedState {
     }
     pub fn observed_snapshot(&self) -> Option<&ObservedSnapshotWitness> {
         self.observed_snapshot.as_ref()
+    }
+    /// Current owned ObjectPairing manager; a missing export is never empty.
+    pub fn object_pairing(&self) -> Result<&crate::object_pairing::Manager, Error> {
+        self.object_pairing
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::ObjectPairing))
+    }
+    pub fn object_pairing_source(&self) -> Option<&ComponentSnapshotWitness> {
+        self.object_pairing_source.as_ref()
+    }
+    /// Import a complete independently attributed owner frame from this exact
+    /// saved initial image. This does not extend the byte-zero legacy parser.
+    pub fn install_object_pairing(
+        &mut self,
+        witness: ComponentSnapshotWitness,
+        limits: unit::Limits,
+    ) -> Result<(), Error> {
+        if self.object_pairing.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if witness.source_role != core_player::initialization::WireRole::SavedOutputCore
+            || witness.snapshot_sha256 != self.binding.core_sha256
+            || witness.snapshot_bytes != self.image.as_ref().len()
+            || witness.owner_range[0] >= witness.owner_range[1]
+        {
+            return Err(Error::Binding);
+        }
+        let bytes = self
+            .image
+            .as_ref()
+            .get(witness.owner_range[0]..witness.owner_range[1])
+            .ok_or(Error::Binding)?;
+        let decoded = crate::object_pairing::Manager::decode_prefix(bytes, limits)
+            .map_err(Error::ObjectPairing)?;
+        if decoded.consumed != bytes.len() || decoded.consumed != witness.decoded_prefix_bytes {
+            return Err(Error::Binding);
+        }
+        let owner = decoded.state;
+        self.advance_admission_generation()?;
+        self.object_pairing = Some(owner);
+        self.object_pairing_source = Some(witness);
+        Ok(())
     }
     pub fn game_relations(
         &self,
