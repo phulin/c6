@@ -100,6 +100,16 @@ pub struct ActivityPublication {
     pub activity: i32,
 }
 
+/// Host257 NotificationActivated output pending later playback. Preparing this
+/// payload does not execute or classify unknown later UI/Lua subscribers.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NotificationActivatedPublication {
+    pub host_event: u32,
+    pub event_data_type: u32,
+    pub identity: c6_core::notifications::ComponentId,
+    pub argument: bool,
+}
+
 /// Typed host movement output, pending later playback. Q8 is transmitted as
 /// native f32 first, then reconstructed by the host FixedPointT<8> constructor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -191,6 +201,17 @@ pub struct Publication {
     pub value: i32,
     pub activity_operation: Option<u32>,
     pub activity_parameters: Option<[i32; 4]>,
+}
+
+/// Cross-kind source order of retained typed host outputs. Reflected DTO output
+/// excluded by the admitted presentation scope is not a queued gameplay effect.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationIndex {
+    Identity(usize),
+    Movement(usize),
+    Moved(usize),
+    MoveComplete(usize),
+    NotificationActivated(usize),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -350,11 +371,13 @@ pub struct Provider<'a> {
     definitions: &'a Definitions,
     movement: &'a unit_movement_state::Inputs<'a>,
     publications: Vec<Publication>,
+    publication_order: Vec<PublicationIndex>,
     skip_turn_handler: Option<i32>,
     move_to_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
     movement_publications: Vec<MovementPublication>,
+    notification_activated_publications: Vec<NotificationActivatedPublication>,
     move_complete_publications: Vec<MoveCompletePublication>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
@@ -370,11 +393,13 @@ impl<'a> Provider<'a> {
             definitions,
             movement,
             publications: Vec::new(),
+            publication_order: Vec::new(),
             skip_turn_handler: None,
             move_to_handler: None,
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
             movement_publications: Vec::new(),
+            notification_activated_publications: Vec::new(),
             move_complete_publications: Vec::new(),
             command_queries: None,
             placement_queries: None,
@@ -425,6 +450,9 @@ impl<'a> Provider<'a> {
         }
         self.command_queries = Some(inputs);
         Ok(())
+    }
+    pub fn pending_publication_order(&self) -> &[PublicationIndex] {
+        &self.publication_order
     }
     pub fn pending_publications(&self) -> &[Publication] {
         &self.publications
@@ -566,11 +594,56 @@ impl<'a> Provider<'a> {
         // Host GetUnit/Exports.FillCache is separate from the guarded all-unit
         // cache loop and invokes the same false-mode FillVariants again.
         self.observe_unit_snapshot(state, actor)?;
+        self.publication_order.push(PublicationIndex::MoveComplete(
+            self.move_complete_publications.len(),
+        ));
         self.move_complete_publications
             .push(MoveCompletePublication {
                 identity: report.identity,
                 location,
                 blocking: true,
+            });
+        Ok(())
+    }
+    pub fn pending_notification_activated_publications(
+        &self,
+    ) -> &[NotificationActivatedPublication] {
+        &self.notification_activated_publications
+    }
+    /// Prepare the original Activated identity/bool payload after the lifecycle
+    /// write. Caller must qualify this event's CURRENT cache receiver list,
+    /// translator and synchronous host257 prepublish delegate first. Unknown
+    /// later playback is retained as pending output, not treated as inert.
+    pub fn send_notification_activated_report(
+        &mut self,
+        state: &LoadedState,
+        object: c6_core::player_notifications_owner::ObjectId,
+        identity: c6_core::notifications::ComponentId,
+        argument: bool,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let record = state
+            .player_notifications()
+            .map_err(Error::State)?
+            .record_by_object(object)
+            .map_err(|_| Error::Provider("current activated notification occurrence"))?;
+        if record.id != identity || !record.has_been_activated {
+            return Err(Error::Provider(
+                "current activated notification identity/write",
+            ));
+        }
+        self.publication_order
+            .push(PublicationIndex::NotificationActivated(
+                self.notification_activated_publications.len(),
+            ));
+        self.notification_activated_publications
+            .push(NotificationActivatedPublication {
+                host_event: 257,
+                event_data_type: 0x6447c33d,
+                identity,
+                argument,
             });
         Ok(())
     }
@@ -592,6 +665,8 @@ impl<'a> Provider<'a> {
         if snapshot {
             self.observe_unit_snapshot(state, UnitReference::from_component_id(report.identity))?;
         }
+        self.publication_order
+            .push(PublicationIndex::Movement(self.movement_publications.len()));
         self.movement_publications.push(publication);
         Ok(())
     }
@@ -634,6 +709,8 @@ impl<'a> Provider<'a> {
             return Err(Error::Provider("UnitMoved typed argument shape"));
         };
         self.observe_unit_snapshot(state, reference)?;
+        self.publication_order
+            .push(PublicationIndex::Moved(self.moved_publications.len()));
         self.moved_publications.push(MovedPublication {
             host_event: 23,
             event_data_type: 0x6447c33d,
@@ -870,6 +947,8 @@ impl<'a> Provider<'a> {
             70 | 71 => (report.first.unwrap_or(0), report.second.unwrap_or(0)),
             _ => (activity_operation.unwrap_or(0) as i32, -1),
         };
+        self.publication_order
+            .push(PublicationIndex::Identity(self.publications.len()));
         self.publications.push(Publication {
             host_event,
             source: report,
