@@ -2317,6 +2317,7 @@ pub(crate) mod tests {
     fn governors_carrier() -> player_governors::Governors {
         use crate::player_governors as pmod;
         pmod::Governors {
+            wire_version: 6,
             governor_points: -5000,
             capacity: 8,
             entries: vec![pmod::Slot {

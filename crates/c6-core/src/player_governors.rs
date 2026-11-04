@@ -1,10 +1,11 @@
-//! Current Linux Player.Governors and transitive Governor instance saved wire only.
+//! Linux Player.Governors v5/v6 and transitive Governor instance saved wire only.
 //! Decisions remain external; native allocation, remapping and archive effects are not run.
 use crate::unit::Limits;
 pub const VERSION: u32 = 6;
 pub const INSTANCE_VERSION: u32 = 16;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -81,6 +82,7 @@ pub struct Slot {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Governors {
+    pub wire_version: u32,
     pub governor_points: i32,
     pub capacity: u32,
     pub entries: Vec<Slot>,
@@ -239,7 +241,13 @@ impl<'a> Reader<'a> {
         })
     }
     fn record(&mut self) -> Result<Governors, Error> {
-        self.version(VERSION)?;
+        let wire_version = self.u32()?;
+        if wire_version != 5 && wire_version != VERSION {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
         let governor_points = self.i32()?;
         self.version(65537)?;
         if self.u32()? != 16 {
@@ -265,6 +273,7 @@ impl<'a> Reader<'a> {
         let free_tail = self.u32()?;
         let free_links = self.list_n(n as usize, 4, |r| r.u32())?;
         Ok(Governors {
+            wire_version,
             governor_points,
             capacity,
             entries,
@@ -272,7 +281,7 @@ impl<'a> Reader<'a> {
             free_head,
             free_tail,
             free_links,
-            neutralized_indefinitely: self.i32()?,
+            neutralized_indefinitely: if wire_version == 5 { 0 } else { self.i32()? },
             title_considered: self.bool()?,
             favored_governor_hash: self.u32()?,
             diplomatic_favor: self.i32()?,
@@ -382,6 +391,9 @@ impl Writer {
         Ok(())
     }
     fn record(&mut self, g: &Governors) -> Result<(), Error> {
+        if g.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         if g.entries.len() > g.capacity as usize {
             return Err(Error::InvalidContainerMetadata);
         }
@@ -480,6 +492,7 @@ mod tests {
     use super::*;
     fn sample() -> Governors {
         Governors {
+            wire_version: VERSION,
             governor_points: i32::MIN,
             capacity: 12,
             entries: vec![Slot {
@@ -640,6 +653,74 @@ mod tests {
         assert_eq!(
             Governors::decode(&bad, lim),
             Err(Error::InvalidContainerMetadata)
+        );
+    }
+    #[test]
+    fn legacy5_neutralized_default_preserves_instance_and_container() {
+        let mut expected = sample();
+        let (current, items) = expected.encode_with_items(Limits::default()).unwrap();
+        // The13-byte current tail begins with the since6 neutralization scalar.
+        let split = current.len() - 13;
+        let mut bytes = current[..split].to_vec();
+        bytes.extend_from_slice(&current[split + 4..]);
+        bytes[..4].copy_from_slice(&5u32.to_le_bytes());
+        expected.wire_version = 5;
+        expected.neutralized_indefinitely = 0;
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: items,
+        };
+        assert_eq!(
+            Governors::decode_prefix_with_items(&bytes, exact).unwrap(),
+            (expected.clone(), bytes.len(), items)
+        );
+        assert_eq!(Governors::decode(&bytes, exact).unwrap(), expected);
+        assert_eq!(expected.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..bytes.len() {
+            assert!(Governors::decode(&bytes[..n], exact).is_err(), "prefix {n}");
+        }
+        assert_eq!(
+            Governors::decode(
+                &bytes,
+                Limits {
+                    max_items: items - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Governors::decode(
+                &bytes,
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut bad = bytes.clone();
+        bad[28..32].copy_from_slice(&15u32.to_le_bytes());
+        assert_eq!(
+            Governors::decode(&bad, exact),
+            Err(Error::Version {
+                expected: 16,
+                actual: 15
+            })
+        );
+        bad = bytes.clone();
+        bad[split] = 2;
+        assert_eq!(
+            Governors::decode(&bad, exact),
+            Err(Error::NoncanonicalBool(2))
+        );
+        bytes[..4].copy_from_slice(&4u32.to_le_bytes());
+        assert_eq!(
+            Governors::decode(&bytes, exact),
+            Err(Error::Version {
+                expected: 6,
+                actual: 4
+            })
         );
     }
 }
