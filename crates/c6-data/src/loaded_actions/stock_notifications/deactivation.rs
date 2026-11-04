@@ -36,6 +36,13 @@ pub struct Completed {
     pub visibility_records: usize,
     pub resources_changed: usize,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Outcome {
+    Deactivated(Completed),
+    /// An active human remains. The current processor pass, final Autoplay
+    /// update and pending diplomacy have completed without selecting anyone.
+    NoDeactivation,
+}
 #[derive(Debug)]
 pub enum Error {
     Prefix(game_update::Error),
@@ -46,6 +53,7 @@ pub enum Error {
     Diplomacy(loaded::automation::diplomacy::Error<DiplomacyError>),
     Visibility(data::deactivation::Error),
     UnsupportedSelection(Vec<i32>),
+    RequiresPhaseAdvance,
     UnsupportedAutomation,
     RequiresQueuedHandler,
     SelectedOwnerStillActive(i32),
@@ -116,7 +124,7 @@ pub fn finish_completed_human_pass<P>(
     inputs: &Inputs<'_, '_, '_>,
     visibility: &mut data::deactivation::VisibilityHistory,
     budget: &mut usize,
-) -> Result<Completed, Error> {
+) -> Result<Outcome, Error> {
     let result = (|| {
         let mut c = data::context(
             context.notifications.state,
@@ -126,6 +134,20 @@ pub fn finish_completed_human_pass<P>(
         )
         .map_err(Error::Prefix)?;
         let mut pending = loaded::deactivation::begin(&mut c).map_err(Error::Prefix)?;
+        if pending.selected().is_empty() {
+            if c.state.retained().core.player_processor.active_count == 0 {
+                return Err(Error::RequiresPhaseAdvance);
+            }
+            c.finish_exclusive_human_update(|state, services| {
+                state
+                    .process_pending_diplomacy(&mut *services.effects, budget)
+                    .map_err(|_| {
+                        game_update::Error::Unsupported("Game.Instance.Update pending diplomacy")
+                    })
+            })
+            .map_err(Error::Prefix)?;
+            return Ok(Outcome::NoDeactivation);
+        }
         let [owner] = pending.selected() else {
             return Err(Error::UnsupportedSelection(pending.selected().to_vec()));
         };
@@ -243,13 +265,13 @@ pub fn finish_completed_human_pass<P>(
                 })
         })
         .map_err(Error::Prefix)?;
-        Ok(Completed {
+        Ok(Outcome::Deactivated(Completed {
             deactivated_owner: owner,
             selection,
             units_advanced,
             visibility_records,
             resources_changed,
-        })
+        }))
     })();
     if result.is_err() {
         runtime.fail_player_callback();
