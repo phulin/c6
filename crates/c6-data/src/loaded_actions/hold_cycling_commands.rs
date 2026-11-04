@@ -334,6 +334,7 @@ impl Definitions {
 /// a captured HasTag answer. A missing repository must not become an empty one.
 pub struct Tags {
     names: Vec<Vec<u8>>,
+    type_names: Option<Vec<Vec<u8>>>,
     type_lookup: Vec<(u32, u32)>,
     memberships: Vec<(u32, u32)>,
 }
@@ -356,9 +357,40 @@ impl Tags {
         }
         Ok(Self {
             names,
+            type_names: None,
             type_lookup,
             memberships,
         })
+    }
+    /// Native full-name lookup uses a separate sorted vector. Its positions
+    /// are the type IDs; hash-collision precedence does not replace this lookup.
+    pub fn with_type_names(mut self, names: Vec<Vec<u8>>) -> Result<Self, Error> {
+        if names.len() > u32::MAX as usize
+            || names.iter().any(|name| name.contains(&0))
+            || names.windows(2).any(|pair| pair[0] > pair[1])
+            || self.type_lookup.iter().any(|&(_, index)| index as usize >= names.len())
+            || self.memberships.iter().any(|&(index, _)| index as usize >= names.len())
+        {
+            return Err(Error::Unsupported("current Tag full-name lookup shape"));
+        }
+        self.type_names = Some(names);
+        Ok(self)
+    }
+    /// Unit.CanHaveAbility obtains the Unit tags by its full definition name,
+    /// then tests each tag against the ability's hash lookup.
+    pub fn shares_named_type_tags(&self, left: &[u8], right: u32) -> Result<bool, Error> {
+        let names = self.type_names.as_ref().ok_or(Error::Unsupported("current Tag full-name lookup"))?;
+        let left_index = names.partition_point(|name| name.as_slice() < left);
+        if !names.get(left_index).is_some_and(|name| name == left) {
+            return Ok(false);
+        }
+        let right_at = self.type_lookup.partition_point(|&(hash, _)| hash < right);
+        let Some(&(hash, right_index)) = self.type_lookup.get(right_at) else {
+            return Ok(false);
+        };
+        if hash != right { return Ok(false); }
+        Ok(self.memberships.iter().filter(|&&(index, _)| index == left_index as u32)
+            .any(|&(_, tag)| self.memberships.contains(&(right_index, tag))))
     }
     pub fn has(&self, type_hash: u32, name: &[u8]) -> bool {
         let tag = self.names.partition_point(|s| s.as_slice() < name);
@@ -372,6 +404,19 @@ impl Tags {
             return false;
         };
         hash == type_hash && self.memberships.contains(&(type_index, tag as u32))
+    }
+    /// Current GetTypeTags(left) followed by HasTag(right, tag), preserving
+    /// first duplicate type lookup precedence in the owned native repository.
+    pub fn shares_type_tags(&self, left: u32, right: u32) -> bool {
+        let resolve = |hash| {
+            let at = self.type_lookup.partition_point(|&(key, _)| key < hash);
+            self.type_lookup.get(at).filter(|&&(key, _)| key == hash).map(|&(_, index)| index)
+        };
+        let (Some(left), Some(right)) = (resolve(left), resolve(right)) else {
+            return false;
+        };
+        self.memberships.iter().filter(|&&(index, _)| index == left)
+            .any(|&(_, tag)| self.memberships.contains(&(right, tag)))
     }
 }
 fn max_damage_from_properties(
@@ -762,4 +807,22 @@ mod membership_tests {
         map.entries.push(entry);
         assert!(max_damage_from_properties(&map, 100).is_err());
     }
+    #[test]
+    fn shared_tags_reuse_first_type_lookup_and_actual_tag_ids() {
+        let tags=Tags::from_current(vec![b"A".to_vec(),b"B".to_vec()],vec![(10,0),(10,1),(20,2),(30,3)],vec![(0,0),(1,1),(2,1),(3,0)]).unwrap();
+        assert!(tags.shares_type_tags(10,30));
+        assert!(!tags.shares_type_tags(10,20));
+        assert!(!tags.shares_type_tags(20,10));
+        assert!(!tags.shares_type_tags(99,30));
+    }
+
+    #[test]
+    fn full_name_left_lookup_is_distinct_from_first_hash_alias() {
+        let tags=Tags::from_current(vec![b"A".to_vec(),b"B".to_vec()],vec![(10,0),(10,1),(20,2)],vec![(0,0),(1,1),(2,1)]).unwrap()
+            .with_type_names(vec![b"UNIT_A".to_vec(),b"UNIT_B".to_vec(),b"UNIT_C".to_vec()]).unwrap();
+        assert!(!tags.shares_type_tags(10,20));
+        assert!(tags.shares_named_type_tags(b"UNIT_B",20).unwrap());
+        assert!(!tags.shares_named_type_tags(b"UNIT_UNKNOWN",20).unwrap());
+    }
+
 }

@@ -1,6 +1,7 @@
 //! Live normal Placement over the canonical loaded Unit and World.
 //! Definitions are retained across actions; query views borrow current state.
 pub mod requirement_changes;
+pub mod creation;
 
 use crate::{movement_placement_state as placement, unit_sight_state as sight};
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
@@ -227,6 +228,7 @@ pub fn set<E: Effects>(
         },
         definitions,
         queries,
+        creation_tags:None,
     };
     c6_core::unit_placement_transition::normal_move::set(
         &mut context,
@@ -261,6 +263,7 @@ pub fn change_damage<E: Effects>(
         },
         definitions,
         queries,
+        creation_tags:None,
     };
     c6_core::unit_healing::change_damage(&mut context, delta)
 }
@@ -274,6 +277,7 @@ struct Context<'a, 'd, 'r, E> {
     sight: sight::Context<'a, E>,
     definitions: &'a Definitions<'d, 'r>,
     queries: &'a Queries<'d>,
+    creation_tags:Option<&'a crate::loaded_actions::reporting::hold_cycling::commands::Tags>,
 }
 impl<E: Effects> Context<'_, '_, '_, E> {
     fn actor(&self) -> Result<&c6_core::unit::Unit, Error<EffectsError<E>>> {
@@ -535,7 +539,16 @@ impl<E: Effects> c6_core::unit_placement_transition::PlacementMembershipContext
             .map_err(Error::Placement)
     }
     fn placement_layer(&mut self) -> Result<u32, Self::Error> {
-        Err(Error::Missing("PlacementMembershipContext.placement_layer"))
+        let unit=self.actor()?;
+        let index=self.sight.state.unit_runtime(unit.e_owner,unit.id).map_err(Error::State)?.definition_index;
+        let hash=self.definitions.placement.unit_definitions().lookup.type_hash(usize::try_from(index).map_err(|_|Error::Missing("Unit layer definition index"))?)
+            .ok_or(Error::Missing("Unit layer definition hash"))?;
+        // Stock GetDefaultMapLayer2bef3a0: two special hashes precede Tags.
+        match hash {
+            0xe2be9ece=>Ok(1),
+            0x2373daa6=>Ok(2),
+            _=>Ok(if self.creation_tags.ok_or(Error::Missing("current Unit layer Tags repository"))?.has(hash,b"CLASS_RELIGIOUS_ALL") {3}else{0}),
+        }
     }
 }
 
@@ -994,10 +1007,11 @@ impl<E: Effects> c6_core::unit_placement_transition::normal_move::Context
         location: PlotCoord,
         owner: i32,
     ) -> Result<(), Error<EffectsError<E>>> {
-        crate::unit_placement_services::run_siege(
+        crate::unit_placement_services::siege::run(
             self.sight.state,
             self.sight.runtime,
             self.sight.effects,
+            self.definitions,
             location,
             owner,
         )

@@ -5,8 +5,59 @@ use crate::{city_initialization::Allocation, world::unit_creation as storage};
 pub enum CreationError {
     State(Error),
     Storage(storage::Error),
+    MissingConstructed(u32),
 }
 impl LoadedState {
+    /// Stats.IncrementNumUnitsConstructed2b81c50: one wrapping i32 increment.
+    /// Missing remapped storage is not treated as a captured zero.
+    pub fn increment_units_constructed(
+        &mut self,
+        owner: i32,
+        hash: u32,
+    ) -> Result<(), CreationError> {
+        let player = self
+            .retained
+            .players
+            .iter_mut()
+            .find(|p| p.header.owner == owner)
+            .ok_or(CreationError::State(Error::Missing(MissingInput::Player(
+                owner,
+            ))))?;
+        let at = player
+            .stats
+            .num_units_constructed
+            .iter()
+            .rposition(|entry| entry.definition_hash == hash)
+            .ok_or(CreationError::MissingConstructed(hash))?;
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .ok_or(CreationError::State(Error::ResourceLimit))?;
+        player.stats.num_units_constructed[at].value =
+            player.stats.num_units_constructed[at].value.wrapping_add(1);
+        Ok(())
+    }
+    /// Player.Units.Create updates peak after successful initialization, before
+    /// Formation attachment and synchronous Unit-created signals.
+    pub fn record_created_unit_peak(&mut self, owner: i32) -> Result<(), Error> {
+        let count = self
+            .world
+            .player(owner)
+            .map_err(Error::World)?
+            .unit_records()
+            .map_err(Error::World)?
+            .len();
+        let count = u32::try_from(count).map_err(|_| Error::ResourceLimit)?;
+        let player = self
+            .retained
+            .players
+            .iter_mut()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Missing(MissingInput::Player(owner)))?;
+        self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        player.units.peak_units = player.units.peak_units.max(count);
+        Ok(())
+    }
     pub fn reserve_unit_creation(
         &mut self,
         owner: i32,

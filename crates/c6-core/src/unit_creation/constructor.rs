@@ -41,14 +41,14 @@ pub fn before_max_moves(
         ai_controller: u32::MAX,
         ai_goal: INVALID_LOCATION,
         k_location: INVALID_LOCATION,
-        e_facing_direction: 0,
+        e_facing_direction: -1,
         e_owner: owner,
         e_original_owner: owner,
         b_is_levied: false,
         formation_id: 0,
         e_military_formation: if properties.combat > 0 { 0 } else { -1 },
-        e_automation: 0,
-        e_activity: 0,
+        e_automation: -1,
+        e_activity: 0x6b25012e,
         i_damage: 0,
         i_fortify_turns: 0,
         i_upgrade_discount: 0,
@@ -300,6 +300,29 @@ pub fn after_max_moves(unit: &mut Unit, properties: &Properties, max_moves: i32)
     unit.k_religion.i_evict_percent = properties.religion_evict_percent;
 }
 
+/// Formation ctor293b6f0 plus Initialize293c040 before its first AddUnit.
+/// Empty member-list CanAddUnit returns true without member/domain predicates.
+pub fn formation(owner: i32, id: u32) -> Formation {
+    Formation {
+        id,
+        location: INVALID_LOCATION,
+        owner,
+        moves_remaining_raw: 0,
+        domain: 0,
+        is_embarked: false,
+        can_embark: false,
+        can_attack: false,
+        is_ranged_combat: false,
+        can_capture: false,
+        has_moved: false,
+        has_moved_into_zoc: false,
+        ignores_zoc: false,
+        last_path: Vec::new(),
+        last_path_cache_location: INVALID_LOCATION,
+        unit_ids: Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,6 +367,10 @@ mod tests {
         assert_eq!(unit.k_location, INVALID_LOCATION);
         assert_eq!(unit.ai_controller, u32::MAX);
         assert_eq!(
+            (unit.e_facing_direction, unit.e_automation, unit.e_activity),
+            (-1, -1, 0x6b25012e)
+        );
+        assert_eq!(
             (
                 unit.i_build_charges,
                 unit.i_attacks_remaining,
@@ -371,6 +398,21 @@ mod tests {
         assert_eq!(
             Unit::decode(&bytes, crate::unit::Limits::default()).unwrap(),
             unit
+        );
+    }
+    #[test]
+    fn fresh_formation_keeps_constructor_cache_and_does_not_apply_read_deltas() {
+        let formation = formation(3, 0x40002);
+        let runtime = crate::formation_initialization::FormationRuntime::from_created(&formation);
+        assert_eq!(formation.location, INVALID_LOCATION);
+        assert_eq!(formation.last_path_cache_location, INVALID_LOCATION);
+        assert_eq!(formation.moves_remaining_raw, 0);
+        assert!(formation.unit_ids.is_empty());
+        assert!(!runtime.evaluating_operation());
+        assert!(runtime.archive.dirty_calls().is_empty());
+        assert_eq!(
+            runtime.archive.dirty_indices(),
+            Err(crate::formation_initialization::Error::DirtyBaselineUnavailable)
         );
     }
 }

@@ -194,6 +194,13 @@ pub enum PlacementPayload {
         state: i32,
         initial_placement: Option<bool>,
     },
+    Initial {
+        location: PlotCoord,
+        layer: i32,
+        maximum_charges: i32,
+        embark_event: u32,
+        team_visible: bool,
+    },
     Moved {
         location: PlotCoord,
         locally_visible: bool,

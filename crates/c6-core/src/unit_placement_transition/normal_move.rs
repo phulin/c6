@@ -62,6 +62,13 @@ pub trait Context:
     fn rules_unit_moved(&mut self, old: PlotCoord) -> Result<(), E<Self>>;
 }
 
+/// Extra pure queries reached only for invalid old coordinates.
+pub trait InitialContext: Context {
+    fn definition_team_visibility(&mut self) -> Result<bool, E<Self>>;
+    fn local_observer(&mut self) -> Result<i32, E<Self>>;
+    fn same_team(&mut self, observer: i32, owner: i32) -> Result<bool, E<Self>>;
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<T> {
     Context(T),
@@ -136,6 +143,29 @@ pub fn set<C: Context>(
     destination: PlotCoord,
     validation_flags: u32,
 ) -> Result<i32, Error<E<C>>> {
+    set_impl(c, destination, validation_flags, false, |_, _, _| Ok(()))
+}
+/// Source flags1 and invalid old location, retaining the complete shared tail.
+pub fn set_initial<C: InitialContext>(
+    c: &mut C, destination: PlotCoord, validation_flags: u32,
+) -> Result<i32, Error<E<C>>> {
+    set_impl(c, destination, validation_flags, true, |c, membership, maximum| {
+        let team_visible = if c.definition_team_visibility().map_err(Error::Context)? {
+            let observer = InitialContext::local_observer(c).map_err(Error::Context)?;
+            let owner = unit(c)?.e_owner;
+            c.same_team(observer, owner).map_err(Error::Context)?
+        } else { true };
+        let location = unit(c)?.k_location;
+        report(c, 0xb8515a41, membership.identity, PlacementPayload::Initial {
+            location, layer: membership.layer as i32, maximum_charges: maximum,
+            embark_event: membership.embark_event, team_visible,
+        })
+    })
+}
+fn set_impl<C: Context>(
+    c: &mut C, destination: PlotCoord, validation_flags: u32, initial: bool,
+    mut initial_report: impl FnMut(&mut C, &PlacementMembership, i32) -> Result<(), Error<E<C>>>,
+) -> Result<i32, Error<E<C>>> {
     let validation = c
         .validate_location(destination, validation_flags)
         .map_err(Error::Context)?;
@@ -144,7 +174,7 @@ pub fn set<C: Context>(
         Validation::Exact => (destination, 1),
         Validation::Alternate(p) => (p, 2),
     };
-    if !crate::skip_turn::placement::coordinate_valid(unit(c)?.k_location) {
+    if initial == crate::skip_turn::placement::coordinate_valid(unit(c)?.k_location) {
         return Err(Error::UnsupportedInitialLocation);
     }
     c.preflight_normal_placement(destination)
@@ -157,11 +187,12 @@ pub fn set<C: Context>(
     // same reads even though only the initial-placement report uses this max.
     let build = unit(c)?.i_build_charges;
     let spreads = unit(c)?.k_religion.i_spread_charges;
-    let _maximum = if build > spreads {
+    let maximum = if build > spreads {
         unit(c)?.i_build_charges
     } else {
         unit(c)?.k_religion.i_spread_charges
     };
+    if initial { initial_report(c, &m, maximum)?; }
     let owner = i32::from(m.identity.owner);
     let viewer = c.local_player().map_err(Error::Context)?;
     let shared = viewer == owner
@@ -191,7 +222,7 @@ pub fn set<C: Context>(
                 m.identity,
                 PlacementPayload::Visibility {
                     state: revealed,
-                    initial_placement: Some(false),
+                    initial_placement: Some(initial),
                 },
             )?;
         }
@@ -201,10 +232,9 @@ pub fn set<C: Context>(
     })
     .map_err(Error::State)?;
     let air = PlacementMembershipContext::domain(c).map_err(Error::Context)? == 1;
-    if air
+    if !initial && (air
         || c.plot_distance(m.old_location, unit(c)?.k_location)
-            .map_err(Error::Context)?
-            == 1
+            .map_err(Error::Context)? == 1)
     {
         edit(c)?.b_needs_movement_completion = true;
         let position = unit(c)?.k_location;

@@ -118,6 +118,17 @@ pub fn overlay<T: Copy>(
     Ok(())
 }
 
+/// Fresh Reset writes native slots directly; Read's hash overlay is different
+/// when two definition slots share a hash (notably operation defaults).
+fn created_values<T:Copy>(pairs:&[HashValue<T>],definitions:&dyn DefinitionLookup)->Result<Vec<T>,Error>{
+    if pairs.len()!=definitions.count() || pairs.len()>i32::MAX as usize {return Err(Error::ArrayStorage);}
+    if pairs.iter().enumerate().any(|(index,pair)|definitions.type_hash(index)!=Some(pair.definition_hash)){return Err(Error::DefinitionIndex);}
+    let mut values=Vec::new();
+    values.try_reserve_exact(pairs.len()).map_err(|_|Error::ResourceLimit)?;
+    values.extend(pairs.iter().map(|pair|pair.value));
+    Ok(values)
+}
+
 fn reset_overlay<T: Copy>(
     pairs: &[HashValue<T>],
     definitions: &dyn DefinitionLookup,
@@ -177,7 +188,7 @@ impl UnitRuntime {
                 requested_id: found.requested_id,
                 resolved_id: found.resolved_id,
             });
-        Self::project_fields(unit, inputs, (definition_index, domain), formation)
+        Self::project_fields(unit, inputs, (definition_index, domain), formation, false)
     }
     /// Current source Unit.Initialize prefix, after definition/domain and
     /// Reset arrays, before Player.Units.Create attaches any Formation.
@@ -190,14 +201,20 @@ impl UnitRuntime {
             return Err(Error::LegacyReadEffects(unit.wire_version));
         }
         let definition = inputs.resolve_definition(unit.e_type_index, admitted_inputs)?;
-        Self::project_fields(unit, inputs, definition, None)
+        Self::project_fields(unit, inputs, definition, None, true)
     }
     fn project_fields(
         unit: &Unit,
         inputs: &InitializationInputs<'_>,
         (definition_index, domain): (i32, i32),
         formation: Option<FormationReference>,
+        fresh:bool,
     ) -> Result<Self, Error> {
+        macro_rules! array {
+            ($pairs:expr,$definitions:expr,$default:expr $(,)?)=>{
+                if fresh {created_values($pairs,$definitions)}else{reset_overlay($pairs,$definitions,$default)}
+            };
+        }
         Ok(Self {
             archive: LogicalArchive::new(
                 ComponentId {
@@ -211,21 +228,21 @@ impl UnitRuntime {
             definition_index,
             domain,
             formation,
-            abilities: reset_overlay(&unit.ai_abilities_possessed, inputs.abilities, 0)?,
-            invalid_terrain: reset_overlay(&unit.ab_invalid_terrain_types, inputs.terrains, false)?,
-            ignore_terrain: reset_overlay(&unit.ab_ignore_terrain_types, inputs.terrains, false)?,
-            ignore_feature: reset_overlay(&unit.ab_ignore_feature_types, inputs.features, false)?,
-            bonus_points_per_kill: reset_overlay(
+            abilities: array!(&unit.ai_abilities_possessed, inputs.abilities, 0)?,
+            invalid_terrain: array!(&unit.ab_invalid_terrain_types, inputs.terrains, false)?,
+            ignore_terrain: array!(&unit.ab_ignore_terrain_types, inputs.terrains, false)?,
+            ignore_feature: array!(&unit.ab_ignore_feature_types, inputs.features, false)?,
+            bonus_points_per_kill: array!(
                 &unit.ai_bonus_points_per_kill,
                 inputs.great_person_classes,
                 0,
             )?,
-            bonus_points_per_kill_strength: reset_overlay(
+            bonus_points_per_kill_strength: array!(
                 &unit.ai_bonus_points_per_kill_strength,
                 inputs.great_person_classes,
                 0,
             )?,
-            operations_disabled: reset_overlay(
+            operations_disabled: array!(
                 &unit.k_operations_disabled,
                 inputs.operations,
                 false,
@@ -379,4 +396,17 @@ mod tests {
             assert_eq!(domain_from_hash(hash), expected);
         }
     }
+    #[test]
+    fn created_defaults_preserve_equal_hash_slots_without_read_remapping() {
+        struct Duplicate;
+        impl DefinitionLookup for Duplicate {
+            fn count(&self)->usize{2}
+            fn find_index(&self,key:u32)->Option<usize>{if key==99 {Some(1)}else{None}}
+            fn type_hash(&self,index:usize)->Option<u32>{(index<2).then_some(99)}
+        }
+        let pairs=[HashValue{definition_hash:99,value:true},HashValue{definition_hash:99,value:false}];
+        assert_eq!(created_values(&pairs,&Duplicate).unwrap(),[true,false]);
+        assert_eq!(reset_overlay(&pairs,&Duplicate,false).unwrap(),[false,false]);
+    }
+
 }
