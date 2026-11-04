@@ -168,6 +168,19 @@ impl Runtime {
     pub fn collection(&self, id: u64) -> Option<&Collection> {
         self.collections.iter().find(|v| v.0 == id).map(|v| &v.1)
     }
+    /// Bind additional existing collections into this same current owner. This
+    /// allocates no gameplay IDs and leaves existing held cursors untouched.
+    pub fn import_current(&mut self, collections: Vec<(u64, Collection)>) -> Result<(), u64> {
+        for (index, row) in collections.iter().enumerate() {
+            if self.collection(row.0).is_some()
+                || collections[..index].iter().any(|other| other.0 == row.0)
+            {
+                return Err(row.0);
+            }
+        }
+        self.collections.extend(collections);
+        Ok(())
+    }
     pub fn collection_mut(&mut self, id: u64) -> Option<&mut Collection> {
         self.collections
             .iter_mut()
@@ -230,7 +243,24 @@ pub fn add_item<C: Context>(
 pub fn add_typed_item<Item, C: Context<Item>>(
     c: &mut C,
     collection: u64,
+    proposal: Item,
+) -> Result<(), Error<C::Error>> {
+    dispatch_item(c, collection, proposal, true)
+}
+/// Linux SimpleCollection.RemoveItem (0x2327300) dispatches the same live
+/// signal with false. There is no stored collection-item list to erase.
+pub fn remove_typed_item<Item, C: Context<Item>>(
+    c: &mut C,
+    collection: u64,
+    item: Item,
+) -> Result<(), Error<C::Error>> {
+    dispatch_item(c, collection, item, false)
+}
+fn dispatch_item<Item, C: Context<Item>>(
+    c: &mut C,
+    collection: u64,
     mut proposal: Item,
+    added: bool,
 ) -> Result<(), Error<C::Error>> {
     use Error::{Context as Cx, MissingCollection as Missing, Ring};
     let mut cursor = c
@@ -249,7 +279,7 @@ pub fn add_typed_item<Item, C: Context<Item>>(
             .cursor_route(cursor)
             .map_err(Ring)?;
         if let Some(receiver) = route {
-            if let Err(error) = c.item_changed(receiver, &mut proposal, true) {
+            if let Err(error) = c.item_changed(receiver, &mut proposal, added) {
                 c.collections_mut()
                     .map_err(Cx)?
                     .ring_mut(collection)
@@ -381,6 +411,19 @@ mod tests {
                 (10, first, true),
                 (20, f.replacement, true),
                 (30, f.replacement, true)
+            ]
+        );
+    }
+    #[test]
+    fn removal_preserves_false_replacement_and_reentrant_append() {
+        let (mut f, first) = fixture();
+        remove_typed_item(&mut f, 7, first).unwrap();
+        assert_eq!(
+            f.calls,
+            vec![
+                (10, first, false),
+                (20, f.replacement, false),
+                (30, f.replacement, false)
             ]
         );
     }
