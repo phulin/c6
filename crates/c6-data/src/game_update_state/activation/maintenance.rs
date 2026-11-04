@@ -32,6 +32,9 @@ pub struct Definitions {
     resources: LinuxDefinitionRegistry,
     fuel: Vec<Option<(usize, i32)>>,
     yields: LinuxDefinitionRegistry,
+    ai_membership: Vec<Vec<bool>>,
+    naval_ai_type: usize,
+    scout_uses: LinuxDefinitionRegistry,
 }
 impl Definitions {
     pub fn from_rules(
@@ -111,8 +114,35 @@ impl Definitions {
             }
             fuel.push(entry);
         }
+        let ai_types =
+            init::collection(rules, "UnitAiTypes", "AiType").map_err(Error::Definitions)?;
+        let naval_ai_type = ai_types
+            .find_index(crate::registry::linux_type_hash(b"UNITTYPE_NAVAL"))
+            .ok_or(Error::Missing("UNITTYPE_NAVAL definition"))?;
+        let mut ai_membership = vec![vec![false; ai_types.entries().len()]; units.entries().len()];
+        for row in rules
+            .gameplay()
+            .table("UnitAiInfos")
+            .ok_or(Error::Missing("UnitAiInfos"))?
+            .rows()
+        {
+            if let (Some(u), Some(a)) = (
+                units.find_index(crate::registry::linux_type_hash(
+                    row.text("UnitType").map_err(Error::Rules)?.as_bytes(),
+                )),
+                ai_types.find_index(crate::registry::linux_type_hash(
+                    row.text("AiType").map_err(Error::Rules)?.as_bytes(),
+                )),
+            ) {
+                ai_membership[u][a] = true;
+            }
+        }
         Ok(Self {
             eras,
+            ai_membership,
+            naval_ai_type,
+            scout_uses: init::collection(rules, "AiScoutUses", "ScoutUseType")
+                .map_err(Error::Definitions)?,
             technologies: refs("Technologies", "TechnologyType")?,
             civics: refs("Civics", "CivicType")?,
             resources,
@@ -177,6 +207,18 @@ pub trait Effects {
         new: i32,
     ) -> Result<(), Self::Error>;
 }
+/// Stock Linux grouping for this exact fuel block. Core's balanced in-block
+/// vector only marks reporting output. Host Translate.BeginBlock3206a90 and
+/// EndBlock3206ab0 return immediately unless hash==5a9a0329; this block is
+/// 1153df52. There is no signal, getter, RNG or gameplay store on that branch.
+/// A caller with replaced host utility methods must execute its own effects.
+pub fn stock_fuel_report_block(hash: u32) -> Result<(), &'static str> {
+    if hash != 0x1153df52 {
+        return Err("unsupported stock reporting block");
+    }
+    Ok(())
+}
+
 /// Player.Units.DoTurnActivate2ba7360. Unit order is the current native chain.
 /// Positive resource consumption delegates to the canonical resources/climate
 /// backend; zero-demand units still reset hidden-visibility forfeiture.
@@ -375,6 +417,257 @@ pub fn stats_turn_activate<E: Effects>(
     }
     Ok(())
 }
+/// Current inputs used by the reached no-city/no-region force-analysis
+/// prefix. These are initialized gameplay-affecting AI fields, not requested
+/// unit orders. A live producer must refresh them after relevant mutations.
+pub struct ScoutInputs {
+    pub binding: c6_core::core_player::initialization::WireBinding,
+    pub uses_q8: Vec<i32>,
+    pub fallback_q8: Option<i32>,
+    pub primary_regions: Vec<u32>,
+    pub secondary_regions: Vec<u32>,
+    pub continent_discovery_bonus: i32,
+    pub natural_wonder_discovery_bonus: i32,
+}
+impl Definitions {
+    fn scout_value<E>(&self, inputs: &ScoutInputs, name: &[u8]) -> Result<i32, Error<E>> {
+        let index = self
+            .scout_uses
+            .find_index(crate::registry::linux_type_hash(name));
+        index
+            .and_then(|i| inputs.uses_q8.get(i).copied())
+            .or(inputs.fallback_q8)
+            .ok_or(Error::Missing("current scout-use index/default"))
+    }
+}
+/// AnalyzeForces214a3d1..214a7e4 updates desired counts before the actual
+/// AnalyzeExplorers role loop. Nonempty regions/capital require current reveal
+/// queries; they never receive a guessed percent or planning score.
+pub fn prepare_explorer_demand<E>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    owner: i32,
+    major: bool,
+    inputs: &ScoutInputs,
+) -> Result<(), Error<E>> {
+    if !major {
+        return Ok(());
+    }
+    if inputs.binding != *state.binding() {
+        return Err(Error::Missing("scout input binding"));
+    }
+    let land = defs.scout_value::<E>(inputs, b"DEFAULT_LAND_SCOUTS")? >> 8;
+    state
+        .player_ai_military_mut(owner)
+        .map_err(Error::State)?
+        .as_mut()
+        .ok_or(Error::Missing("current AI.Military"))?
+        .desired_explorers = land;
+    if !inputs.primary_regions.is_empty() {
+        return Err(Error::Missing("current primary region reveal queries"));
+    }
+    // Empty primary still performs the IndexList read and Fixed multiply.
+    let _ = q8_mul(
+        defs.scout_value::<E>(inputs, b"LAND_SCOUTS_PER_PRIMARY_REGION")?,
+        0,
+    );
+    if !inputs.secondary_regions.is_empty() {
+        return Err(Error::Missing("current secondary region reveal queries"));
+    }
+    let _ = q8_mul(
+        defs.scout_value::<E>(inputs, b"LAND_SCOUTS_PER_SECONDARY_REGION")?,
+        0,
+    );
+    let naval = defs.scout_value::<E>(inputs, b"DEFAULT_NAVAL_SCOUTS")? >> 8;
+    state
+        .player_ai_military_mut(owner)
+        .map_err(Error::State)?
+        .as_mut()
+        .ok_or(Error::Missing("current AI.Military"))?
+        .desired_naval_explorers = naval;
+    if !player::<E>(state, owner)?.cities.records.entries.is_empty() {
+        return Err(Error::Missing("current capital exploration query"));
+    }
+    let bonus = inputs
+        .continent_discovery_bonus
+        .wrapping_add(inputs.natural_wonder_discovery_bonus);
+    let m = state
+        .player_ai_military_mut(owner)
+        .map_err(Error::State)?
+        .as_mut()
+        .ok_or(Error::Missing("current AI.Military"))?;
+    m.desired_explorers = m.desired_explorers.wrapping_add(bonus);
+    m.desired_naval_explorers = m.desired_naval_explorers.wrapping_add(bonus >> 1);
+    Ok(())
+}
+
+fn military<E>(
+    state: &LoadedState,
+    owner: i32,
+) -> Result<&c6_core::player_ai_military::Military, Error<E>> {
+    player(state, owner)?
+        .ai_military
+        .as_ref()
+        .ok_or(Error::Missing("current AI.Military"))
+}
+fn store_explorers<E>(
+    state: &mut LoadedState,
+    owner: i32,
+    naval: bool,
+    value: i32,
+) -> Result<(), Error<E>> {
+    let m = state
+        .player_ai_military_mut(owner)
+        .map_err(Error::State)?
+        .as_mut()
+        .ok_or(Error::Missing("current AI.Military"))?;
+    if naval {
+        m.current_naval_explorers = value;
+    } else {
+        m.current_explorers = value;
+    }
+    Ok(())
+}
+impl Definitions {
+    fn has_ai<E>(&self, unit: &Unit, role: usize, initialized: bool) -> Result<bool, Error<E>> {
+        ai_bit(&self.ai_membership, unit.e_type_index, role, initialized).map_err(Error::Missing)
+    }
+}
+fn ai_bit(
+    membership: &[Vec<bool>],
+    unit_type: u32,
+    role: usize,
+    initialized: bool,
+) -> Result<bool, &'static str> {
+    if unit_type == u32::MAX || role == usize::MAX || !initialized {
+        return Ok(false);
+    }
+    membership
+        .get(unit_type as usize)
+        .and_then(|r| r.get(role))
+        .copied()
+        .ok_or("current unit AI membership definition")
+}
+/// AI.Military.AnalyzeExplorers214bcd0's current no-city branch. This retains
+/// the actual role/count writes; desired counts are current Military state,
+/// not a native order/settlement/production policy choice. Membership bits are
+/// the UnitAiInfos mapping populated at CalculateEfficiencies21bd1cf.
+/// Invoke at the actual Military callback, separately from Player.Units upkeep.
+pub fn analyze_explorers<E>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    owner: i32,
+    order: &[u32],
+    global_ai_initialized: bool,
+) -> Result<(), Error<E>> {
+    store_explorers(state, owner, false, 0)?;
+    store_explorers(state, owner, true, 0)?;
+    for &id in order {
+        let u = unit(state, owner, id)?;
+        if u.e_ai_type == 2 {
+            let naval = defs.has_ai(u, defs.naval_ai_type, global_ai_initialized)?;
+            let m = military(state, owner)?;
+            let value = if naval {
+                m.current_naval_explorers
+            } else {
+                m.current_explorers
+            };
+            store_explorers(state, owner, naval, value.wrapping_add(1))?;
+        }
+    }
+    if !player::<E>(state, owner)?.cities.records.entries.is_empty() {
+        return Err(Error::Missing("current City build-front explorer count"));
+    }
+    // Land growth has two passes: preserve assigned defenders in the first,
+    // then admit combat-capable defenders only if demand is still unmet.
+    for pass in 0..2 {
+        if military::<E>(state, owner)?.current_explorers
+            >= military::<E>(state, owner)?.desired_explorers
+        {
+            break;
+        }
+        for &id in order {
+            let u = unit(state, owner, id)?;
+            if u.ai_controller != u32::MAX || u.e_ai_type == 2 || (pass == 0 && u.e_ai_type == 4) {
+                continue;
+            }
+            if !defs.has_ai(u, if pass == 0 { 2 } else { 3 }, global_ai_initialized)? {
+                continue;
+            }
+            state.unit_mut(owner, id).map_err(Error::State)?.e_ai_type = 2;
+            let count = military::<E>(state, owner)?
+                .current_explorers
+                .wrapping_add(1);
+            store_explorers(state, owner, false, count)?;
+            if count >= military::<E>(state, owner)?.desired_explorers {
+                break;
+            }
+        }
+    }
+    if military::<E>(state, owner)?.current_explorers
+        > military::<E>(state, owner)?.desired_explorers
+    {
+        for &id in order {
+            let u = unit(state, owner, id)?;
+            if u.ai_controller != u32::MAX
+                || u.e_ai_type != 2
+                || !defs.has_ai(u, 3, global_ai_initialized)?
+            {
+                continue;
+            }
+            state.unit_mut(owner, id).map_err(Error::State)?.e_ai_type = 3;
+            let count = military::<E>(state, owner)?
+                .current_explorers
+                .wrapping_sub(1);
+            store_explorers(state, owner, false, count)?;
+            if count <= military::<E>(state, owner)?.desired_explorers {
+                break;
+            }
+        }
+    }
+    let m = military::<E>(state, owner)?;
+    if m.current_naval_explorers < m.desired_naval_explorers {
+        for &id in order {
+            let u = unit(state, owner, id)?;
+            if u.ai_controller != u32::MAX
+                || u.e_ai_type == 2
+                || !defs.has_ai(u, 2, global_ai_initialized)?
+                || !defs.has_ai(u, defs.naval_ai_type, global_ai_initialized)?
+            {
+                continue;
+            }
+            state.unit_mut(owner, id).map_err(Error::State)?.e_ai_type = 2;
+            let count = military::<E>(state, owner)?
+                .current_naval_explorers
+                .wrapping_add(1);
+            store_explorers(state, owner, true, count)?;
+            if count >= military::<E>(state, owner)?.desired_naval_explorers {
+                break;
+            }
+        }
+    } else if m.current_naval_explorers > m.desired_naval_explorers {
+        for &id in order {
+            let u = unit(state, owner, id)?;
+            if u.ai_controller != u32::MAX
+                || u.e_ai_type != 2
+                || !defs.has_ai(u, 3, global_ai_initialized)?
+                || !defs.has_ai(u, defs.naval_ai_type, global_ai_initialized)?
+            {
+                continue;
+            }
+            state.unit_mut(owner, id).map_err(Error::State)?.e_ai_type = 3;
+            let count = military::<E>(state, owner)?
+                .current_naval_explorers
+                .wrapping_sub(1);
+            store_explorers(state, owner, true, count)?;
+            if count <= military::<E>(state, owner)?.desired_naval_explorers {
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn first_era(eras: &[Era]) -> Option<usize> {
     let mut best = None;
     let mut chronology = i32::MAX;
@@ -502,5 +795,12 @@ mod tests {
             1
         );
         assert_eq!(gold >> 8, 0);
+    }
+    #[test]
+    fn membership_guards_skip_uninitialized_arrays_but_unknown_initialized_is_error() {
+        assert_eq!(ai_bit(&[], 99, 2, false), Ok(false));
+        assert_eq!(ai_bit(&[], u32::MAX, 2, true), Ok(false));
+        assert!(ai_bit(&[], 99, 2, true).is_err());
+        assert_eq!(ai_bit(&[vec![false, false, true]], 0, 2, true), Ok(true));
     }
 }

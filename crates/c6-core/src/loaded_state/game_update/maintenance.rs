@@ -30,4 +30,11 @@ impl LoadedState {
         let i = self.maintenance_player(owner)?;
         Ok(&mut self.retained.players[i].units)
     }
+    pub fn player_ai_military_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut Option<crate::player_ai_military::Military>, Error> {
+        let i = self.maintenance_player(owner)?;
+        Ok(&mut self.retained.players[i].ai_military)
+    }
 }
