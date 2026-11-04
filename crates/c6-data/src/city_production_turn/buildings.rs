@@ -67,6 +67,24 @@ impl Definitions {
         }
         crate::unit_initialization_definitions::Definitions::validate_resources(rules, authority)
             .map_err(Error::Definitions)?;
+        Self::from_current_rules(state, rules, start_era, game_speed)
+    }
+    /// Cache static rows from an already profile-validated current Rules owner.
+    /// Like growth parameters, this does not need Unit runtime reconstruction.
+    /// The caller joins that Rules owner and actual era/speed configuration to
+    /// the state; the cache remains bound to the state's complete input identity.
+    pub fn from_current_rules(
+        state: &LoadedState,
+        rules: &Rules,
+        start_era: u32,
+        game_speed: u32,
+    ) -> Result<Self, Error> {
+        if !matches!(
+            rules.profile(),
+            crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
+        ) {
+            return Err(Error::Unsupported("Linux building rules"));
+        }
         let registry = |table, column| collection(rules, table, column).map_err(Error::Definitions);
         let building_registry = registry("Buildings", "BuildingType")?;
         // GetBuilderSql21fdd10 ->2e3c7b1 orders GreatWorkSlotTypes by rowid.
