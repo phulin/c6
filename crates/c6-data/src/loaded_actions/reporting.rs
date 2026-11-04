@@ -804,11 +804,10 @@ impl<'a> Provider<'a> {
                 "adjacent placement selected defender continuation unavailable",
             ));
         }
-        if unit.i_barbarian_tribe_index >= 0 {
-            return Err(Error::Provider(
-                "adjacent placement barbarian clan/bribe branch unavailable",
-            ));
-        }
+        // The native clan/bribe stage belongs only to the valid foreign-owned,
+        // non-spy/non-trader territory branch. That branch is explicitly
+        // unsupported above. Own/unowned destinations reach no civilization,
+        // tribe, clan or bribe query, even with a nonnegative stored tribe ID.
         Ok(true)
     }
 }
