@@ -1401,6 +1401,7 @@ pub(crate) mod tests {
                 entries: vec![(
                     -1,
                     player_diplomacy::PromiseData {
+                        wire_version: 50,
                         turn_made: i32::MIN,
                         skipped: true,
                         broken: false,

@@ -313,10 +313,73 @@ impl Wire for CasusBelliData {
         Ok(())
     }
 }
-record!(PromiseData, 50, {
-    turn_made: i32, skipped: bool, broken: bool,
-    broken_notification_sent: bool, report_repeat_offense: bool, turn_broken: i32,
-});
+/// Independently versioned promise wire data; omitted41 booleans have explicit
+/// native Read defaults, rather than a claim about native constructor state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PromiseData {
+    pub wire_version: u32,
+    pub turn_made: i32,
+    pub skipped: bool,
+    pub broken: bool,
+    pub broken_notification_sent: bool,
+    pub report_repeat_offense: bool,
+    pub turn_broken: i32,
+}
+impl Default for PromiseData {
+    fn default() -> Self {
+        Self {
+            wire_version: 50,
+            turn_made: 0,
+            skipped: false,
+            broken: false,
+            broken_notification_sent: false,
+            report_repeat_offense: false,
+            turn_broken: 0,
+        }
+    }
+}
+impl Wire for PromiseData {
+    const MIN: usize = 14;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.last_version_component = "PromiseData";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 41 | 50) {
+            return Err(Error::Version {
+                expected: 50,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            turn_made: i32::read(r)?,
+            skipped: bool::read(r)?,
+            broken: bool::read(r)?,
+            broken_notification_sent: if wire_version == 50 {
+                bool::read(r)?
+            } else {
+                false
+            },
+            report_repeat_offense: if wire_version == 50 {
+                bool::read(r)?
+            } else {
+                false
+            },
+            turn_broken: i32::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 50 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        50u32.write(w)?;
+        self.turn_made.write(w)?;
+        self.skipped.write(w)?;
+        self.broken.write(w)?;
+        self.broken_notification_sent.write(w)?;
+        self.report_repeat_offense.write(w)?;
+        self.turn_broken.write(w)
+    }
+}
 record!(MessageData, 1, { is_kudo: bool, is_hidden_agenda: bool, recipient: i32, message_hash: u32 });
 /// A wire projection: source_hash is retained before native registry lookup.
 /// The independent 41/50 tag is read but does not change these three fields.
@@ -825,6 +888,7 @@ mod tests {
             vec![(
                 3,
                 PromiseData {
+                    wire_version: 50,
                     turn_made: i32::MIN,
                     skipped: true,
                     broken: true,
@@ -847,6 +911,65 @@ mod tests {
             value: -1,
         }];
         value
+    }
+    #[test]
+    fn promise41_omitted_flags_default_false_without_consuming_tail() {
+        let mut bytes = 41u32.to_le_bytes().to_vec();
+        bytes.extend(i32::MIN.to_le_bytes());
+        bytes.extend([1, 0]);
+        bytes.extend(i32::MAX.to_le_bytes());
+        bytes.extend([0xaa, 0xbb]);
+        let limits = Limits {
+            max_bytes: 14,
+            max_items: 0,
+        };
+        let read = |data| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                limits,
+                last_version_component: "Diplomacy",
+            };
+            let value = PromiseData::read(&mut r)?;
+            Ok::<_, Error>((value, r.pos, r.items))
+        };
+        let (value, used, items) = read(&bytes).unwrap();
+        assert_eq!((used, items), (14, 0));
+        assert_eq!(
+            value,
+            PromiseData {
+                wire_version: 41,
+                turn_made: i32::MIN,
+                skipped: true,
+                broken: false,
+                broken_notification_sent: false,
+                report_repeat_offense: false,
+                turn_broken: i32::MAX
+            }
+        );
+        for n in 0..14 {
+            assert!(read(&bytes[..n]).is_err(), "{n}");
+        }
+        let mut bad = bytes.clone();
+        bad[9] = 2;
+        assert_eq!(read(&bad), Err(Error::InvalidBool(2)));
+        let mut bad_version = bytes.clone();
+        bad_version[..4].copy_from_slice(&43u32.to_le_bytes());
+        assert_eq!(
+            read(&bad_version),
+            Err(Error::Version {
+                expected: 50,
+                actual: 43
+            })
+        );
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits,
+        };
+        assert_eq!(value.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
     }
     #[test]
     fn visibility41_own_tag_preserves_wire_hash_and_signed_fields() {
@@ -1007,9 +1130,21 @@ mod tests {
         bytes.extend((-9i32).to_le_bytes());
         bytes.extend(0xfedcba98u32.to_le_bytes());
         bytes.extend((-1i32).to_le_bytes());
-        for _ in 0..5 {
+        for _ in 0..2 {
             bytes.extend(0u32.to_le_bytes());
-        } // maps/messages
+        } // gossip/messages
+        bytes.extend(1u32.to_le_bytes()); // one player's promises
+        bytes.extend(9i32.to_le_bytes());
+        bytes.extend(1u32.to_le_bytes()); // TypeMap own version
+        bytes.extend(1u32.to_le_bytes()); // one promise
+        bytes.extend((-1i32).to_le_bytes());
+        bytes.extend(41u32.to_le_bytes());
+        bytes.extend((-77i32).to_le_bytes());
+        bytes.extend([1, 0]);
+        bytes.extend(123i32.to_le_bytes());
+        for _ in 0..2 {
+            bytes.extend(0u32.to_le_bytes());
+        } // incursions/last promises
           // No Unit blocked-entry list at41; alliance points/action counts remain.
         for _ in 0..2 {
             bytes.extend(0u32.to_le_bytes());
@@ -1027,10 +1162,10 @@ mod tests {
         bytes.extend([0xaa, 0xbb]);
         let limits = Limits {
             max_bytes: end,
-            max_items: 3,
+            max_items: 5,
         };
         let (v, used, items) = Diplomacy::decode_prefix_with_items(&bytes, limits).unwrap();
-        assert_eq!((used, items), (end, 3));
+        assert_eq!((used, items), (end, 5));
         assert_eq!(v.wire_version, 41);
         assert!(
             v.can_enforce_borders && v.no_occupation_penalties && v.all_alliances_shared_visibility
@@ -1058,6 +1193,14 @@ mod tests {
         );
         assert!(!v.delegation_embassy_yields_wire_present());
         assert!(!v.blocked_entry_wire_present());
+        assert_eq!(v.promises_made[0].0, 9);
+        let promise = &v.promises_made[0].1.entries[0].1;
+        assert_eq!(
+            (promise.wire_version, promise.turn_made, promise.turn_broken),
+            (41, -77, 123)
+        );
+        assert!(promise.skipped && !promise.broken);
+        assert!(!promise.broken_notification_sent && !promise.report_repeat_offense);
         let legacy = v.legacy_available_congress_discussions.as_ref().unwrap();
         assert_eq!(legacy.players[3].len(), 2);
         assert_eq!(
