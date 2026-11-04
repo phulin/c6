@@ -279,7 +279,7 @@ mod tests {
         let mut b = Vec::new();
         words(&mut b, &[7, 224, 1, 5]);
         for i in 0..64 {
-            words(&mut b, &[(i as i32 - 32) as u32]);
+            words(&mut b, &[(i - 32) as u32]);
         }
         words(&mut b, &[0x81234567, 63, 999, 1, 1, u32::MAX]);
         for i in 0..64 {
