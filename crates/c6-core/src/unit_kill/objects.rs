@@ -27,6 +27,7 @@ pub struct Tracked {
 #[derive(Debug)]
 pub struct Modifier {
     pub receiver: u64,
+    pub context: u64,
     pub instance: i32,
     pub enabled: bool,
     pub suppressed: bool,
@@ -320,6 +321,7 @@ mod tests {
         };
         let modifier = Modifier {
             receiver: 7,
+            context: 1,
             instance: 3,
             enabled: true,
             suppressed: false,

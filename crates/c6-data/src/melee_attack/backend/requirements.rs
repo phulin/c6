@@ -60,6 +60,33 @@ impl Runtime {
     pub fn sets_mut(&mut self) -> &mut sets::Runtime {
         &mut self.sets
     }
+    /// Promote captured live records into the SAME mutable owner. Once present
+    /// here they must not fall back to a stale captured scalar after destruction.
+    pub fn import_current_requirements(
+        &mut self,
+        requirements: Vec<sets::changes::CurrentRequirement>,
+        current: Vec<sets::changes::CurrentSet>,
+    ) -> Result<(), Error> {
+        for set in &current {
+            if self
+                .existing
+                .iter()
+                .any(|row| row.0 == set.label && row.1 != set.state)
+            {
+                return Err(Error::Missing("current requirement state binding mismatch"));
+            }
+        }
+        let mut labels = Vec::new();
+        labels
+            .try_reserve(current.len())
+            .map_err(|_| Error::Missing("current requirement labels allocation"))?;
+        labels.extend(current.iter().map(|row| row.label));
+        self.sets
+            .import_current(requirements, current)
+            .map_err(|e| Error::Factory(Box::new(e)))?;
+        self.existing.retain(|row| !labels.contains(&row.0));
+        Ok(())
+    }
     pub fn with_unit_definitions(
         mut self,
         definitions: crate::melee_attack::proposals::unit_subject_predicates::Definitions,
