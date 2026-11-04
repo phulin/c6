@@ -555,6 +555,7 @@ pub(crate) mod tests {
                 i_action_charges: 0,
             },
             k_religion: crate::unit::Religion {
+                wire_version: 8,
                 i_religious_strength: 0,
                 e_religion_type: 0,
                 i_spread_charges: 0,

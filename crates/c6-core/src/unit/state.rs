@@ -669,6 +669,7 @@ impl Wire for GreatPerson {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Religion {
+    pub wire_version: i32,
     /// Original m_iReligiousStrength at 0x8.
     pub i_religious_strength: i32,
     /// Original m_eReligionType at 0xc.
@@ -707,10 +708,17 @@ pub struct Religion {
     pub e_relic_source: i32,
 }
 impl Wire for Religion {
-    const MIN: usize = 64;
+    const MIN: usize = 56;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(8)?;
+        let wire_version = r.i32()?;
+        if wire_version != 6 && wire_version != 8 {
+            return Err(Error::Version {
+                expected: 8,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
+            wire_version,
             i_religious_strength: <i32>::read(r)?,
             e_religion_type: <u32>::read(r)?,
             i_spread_charges: <i32>::read(r)?,
@@ -724,14 +732,25 @@ impl Wire for Religion {
             b_no_foreign_spread: <bool>::read(r)?,
             b_relic_upon_death: <bool>::read(r)?,
             b_land_victory_spread: <bool>::read(r)?,
-            i_land_victory_spread: <i32>::read(r)?,
+            i_land_victory_spread: if wire_version == 6 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
             i_plunder_improvement_faith_yield: <i32>::read(r)?,
             i_plunder_district_faith_yield: <i32>::read(r)?,
             a_initiation_yield_population: <Vec<InitiationYieldPopulation>>::read(r)?,
-            e_relic_source: <i32>::read(r)?,
+            e_relic_source: if wire_version == 6 {
+                -1
+            } else {
+                <i32>::read(r)?
+            },
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 8 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         (8i32).write(w)?;
         self.i_religious_strength.write(w)?;
         self.e_religion_type.write(w)?;
@@ -2739,6 +2758,83 @@ mod tests {
             Err(Error::Version {
                 expected: 7,
                 actual: 5
+            })
+        );
+    }
+    #[test]
+    fn unit_religion6_keeps_population_rows_and_exact_scalar_defaults() {
+        let mut value = crate::unit_turn_upkeep::tests::source_only_unit().k_religion;
+        value.i_religious_strength = -257;
+        value.e_religion_type = 0x80000001;
+        value.i_foreign_spread_modifier = -7;
+        value.b_land_victory_spread = true;
+        value.i_land_victory_spread = 37;
+        value.e_relic_source = 5;
+        value.a_initiation_yield_population = vec![InitiationYieldPopulation {
+            e_yield_type: i32::MIN,
+            i_population_amount: -9,
+        }];
+        let mut w = writer();
+        value.write(&mut w).unwrap();
+        let mut r = Reader::new(&w.bytes, Limits::default()).unwrap();
+        assert_eq!(Religion::read(&mut r).unwrap(), value);
+        r.finish().unwrap();
+        let mut bytes = 6i32.to_le_bytes().to_vec();
+        bytes.extend_from_slice(&w.bytes[4..44]);
+        bytes.extend_from_slice(&w.bytes[48..w.bytes.len() - 4]);
+        value.wire_version = 6;
+        value.i_land_victory_spread = 0;
+        value.e_relic_source = -1;
+        assert_eq!(bytes.len(), 68);
+        let mut r = Reader::new(
+            &bytes,
+            Limits {
+                max_bytes: bytes.len(),
+                max_items: 1,
+            },
+        )
+        .unwrap();
+        assert_eq!(Religion::read(&mut r).unwrap(), value);
+        assert_eq!(r.budget, 0);
+        r.finish().unwrap();
+        assert_eq!(
+            value.write(&mut writer()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        for end in 0..bytes.len() {
+            let mut r = Reader::new(&bytes[..end], Limits::default()).unwrap();
+            assert!(Religion::read(&mut r).is_err(), "prefix {end}");
+        }
+        let mut r = Reader::new(
+            &bytes,
+            Limits {
+                max_bytes: bytes.len(),
+                max_items: 0,
+            },
+        )
+        .unwrap();
+        assert_eq!(Religion::read(&mut r), Err(Error::ResourceLimit));
+        let mut bad = bytes.clone();
+        bad[40] = 2;
+        assert_eq!(
+            Religion::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::NoncanonicalBool(2))
+        );
+        bad = bytes.clone();
+        bad[56..60].copy_from_slice(&2i32.to_le_bytes());
+        assert_eq!(
+            Religion::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::Version {
+                expected: 1,
+                actual: 2
+            })
+        );
+        bad[..4].copy_from_slice(&7i32.to_le_bytes());
+        assert_eq!(
+            Religion::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::Version {
+                expected: 8,
+                actual: 7
             })
         );
     }
