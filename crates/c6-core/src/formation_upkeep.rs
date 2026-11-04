@@ -30,14 +30,16 @@ pub enum BooleanQuery {
 /// Preflight must admit all reachable getter/subscriber gameplay and RNG effects
 /// and valid native member iterators (no invalidating reallocation/erasure).
 /// Unknown effects reject before resets. Reentrant callbacks may mutate current
-/// members and fields; completed effects survive subsequent failure.
+/// members and fields; completed effects survive subsequent failure. Accessors
+/// return errors for unavailable retained records, including after callbacks;
+/// invalidated handles must not panic.
 pub trait FormationUpkeepContext {
     type Error;
     type UnitHandle: Copy;
     type Definitions: Copy;
     type Units: Copy;
-    fn formation(&self) -> &Formation;
-    fn formation_mut(&mut self) -> &mut Formation;
+    fn formation(&self) -> Result<&Formation, Self::Error>;
+    fn formation_mut(&mut self) -> Result<&mut Formation, Self::Error>;
     fn preflight_update_attributes(&self) -> Result<(), Self::Error>;
     /// The actual definitions collection, obtained after initial field resets.
     fn definitions(&mut self) -> Result<Self::Definitions, Self::Error>;
@@ -49,7 +51,7 @@ pub trait FormationUpkeepContext {
         units: Self::Units,
         id: u32,
     ) -> Result<Option<Self::UnitHandle>, Self::Error>;
-    fn unit(&self, handle: Self::UnitHandle) -> &Unit;
+    fn unit(&self, handle: Self::UnitHandle) -> Result<&Unit, Self::Error>;
     fn integer(
         &mut self,
         handle: Self::UnitHandle,
@@ -97,7 +99,10 @@ fn member<C: FormationUpkeepContext>(
     c: &C,
     index: usize,
 ) -> Result<Option<u32>, FormationUpkeepError<C::Error>> {
-    let ids = &c.formation().unit_ids;
+    let ids = &c
+        .formation()
+        .map_err(FormationUpkeepError::ContinuationFailed)?
+        .unit_ids;
     if index == ids.len() {
         Ok(None)
     } else {
@@ -129,12 +134,17 @@ fn formation_moves<C: FormationUpkeepContext>(
     let units = c
         .units()
         .map_err(FormationUpkeepError::ContinuationFailed)?;
-    let end = c.formation().unit_ids.len();
+    let end = c
+        .formation()
+        .map_err(FormationUpkeepError::ContinuationFailed)?
+        .unit_ids
+        .len();
     let mut minimum = 9001_i32.wrapping_shl(8);
     let mut escort_maximum = 0;
     for index in 0..end {
         let id = c
             .formation()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
             .unit_ids
             .get(index)
             .copied()
@@ -149,10 +159,16 @@ fn formation_moves<C: FormationUpkeepContext>(
             let moves = if disabled {
                 0
             } else {
-                c.unit(unit).x_moves_remaining
+                c.unit(unit)
+                    .map_err(FormationUpkeepError::ContinuationFailed)?
+                    .x_moves_remaining
             };
             minimum = minimum.min(moves);
-            if c.unit(unit).k_movement_modifiers.b_escort_mobility {
+            if c.unit(unit)
+                .map_err(FormationUpkeepError::ContinuationFailed)?
+                .k_movement_modifiers
+                .b_escort_mobility
+            {
                 escort_maximum = escort_maximum.max(moves);
             }
         }
@@ -167,7 +183,9 @@ pub fn update_attributes<C: FormationUpkeepContext>(
 ) -> Result<(), FormationUpkeepError<C::Error>> {
     c.preflight_update_attributes()
         .map_err(FormationUpkeepError::EffectsUnavailable)?;
-    let f = c.formation_mut();
+    let f = c
+        .formation_mut()
+        .map_err(FormationUpkeepError::EffectsUnavailable)?;
     f.is_embarked = false;
     f.can_embark = false;
     f.can_attack = false;
@@ -182,18 +200,32 @@ pub fn update_attributes<C: FormationUpkeepContext>(
     let mut index = 0;
     while let Some(id) = member(c, index)? {
         let unit = required(c, index, id)?;
-        let embarked = is_embarked(c.unit(unit));
-        c.formation_mut().is_embarked |= embarked;
+        let embarked = is_embarked(
+            c.unit(unit)
+                .map_err(FormationUpkeepError::ContinuationFailed)?,
+        );
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .is_embarked |= embarked;
         let can_embark = c
             .boolean(unit, BooleanQuery::CanEmbark)
             .map_err(FormationUpkeepError::ContinuationFailed)?;
-        c.formation_mut().can_embark |= can_embark;
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .can_embark |= can_embark;
         let can_attack = c
             .boolean(unit, BooleanQuery::CanAttack)
             .map_err(FormationUpkeepError::ContinuationFailed)?;
-        c.formation_mut().can_attack |= can_attack;
-        let ignores_zoc = c.unit(unit).b_ignore_zoc;
-        c.formation_mut().ignores_zoc |= ignores_zoc;
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .can_attack |= can_attack;
+        let ignores_zoc = c
+            .unit(unit)
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .b_ignore_zoc;
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .ignores_zoc |= ignores_zoc;
         let ranged = c
             .integer(unit, IntegerQuery::RangedCombat)
             .map_err(FormationUpkeepError::ContinuationFailed)?;
@@ -211,14 +243,21 @@ pub fn update_attributes<C: FormationUpkeepContext>(
                 .map_err(FormationUpkeepError::ContinuationFailed)?;
             bombard > combat
         };
-        c.formation_mut().is_ranged_combat |= preferred;
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .is_ranged_combat |= preferred;
         // HasMoved captures raw moves *before* querying actual MaxMoves.
-        let raw = c.unit(unit).x_moves_remaining;
+        let raw = c
+            .unit(unit)
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .x_moves_remaining;
         let maximum = c
             .integer(unit, IntegerQuery::MaxMoves)
             .map_err(FormationUpkeepError::ContinuationFailed)?
             .wrapping_shl(8);
-        c.formation_mut().has_moved |= raw < maximum;
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .has_moved |= raw < maximum;
         let type_index = c
             .native_type_index(unit)
             .map_err(FormationUpkeepError::ContinuationFailed)?;
@@ -226,37 +265,68 @@ pub fn update_attributes<C: FormationUpkeepContext>(
             .definition_can_capture(definitions, type_index)
             .map_err(FormationUpkeepError::ContinuationFailed)?;
         match capture {
-            Some(value) => c.formation_mut().can_capture |= value,
-            None => c.formation_mut().can_capture = false,
+            Some(value) => {
+                c.formation_mut()
+                    .map_err(FormationUpkeepError::ContinuationFailed)?
+                    .can_capture |= value
+            }
+            None => {
+                c.formation_mut()
+                    .map_err(FormationUpkeepError::ContinuationFailed)?
+                    .can_capture = false
+            }
         }
         // Native re-queries embarked, and may query domain twice.
-        let domain = if is_embarked(c.unit(unit)) {
+        let domain = if is_embarked(
+            c.unit(unit)
+                .map_err(FormationUpkeepError::ContinuationFailed)?,
+        ) {
             0
-        } else if c.formation().domain == -1 {
+        } else if c
+            .formation()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .domain
+            == -1
+        {
             c.integer(unit, IntegerQuery::Domain)
                 .map_err(FormationUpkeepError::ContinuationFailed)?
         } else {
-            let previous = c.formation().domain;
+            let previous = c
+                .formation()
+                .map_err(FormationUpkeepError::ContinuationFailed)?
+                .domain;
             let current = c
                 .integer(unit, IntegerQuery::Domain)
                 .map_err(FormationUpkeepError::ContinuationFailed)?;
             if previous < current {
-                c.formation().domain
+                c.formation()
+                    .map_err(FormationUpkeepError::ContinuationFailed)?
+                    .domain
             } else {
                 c.integer(unit, IntegerQuery::Domain)
                     .map_err(FormationUpkeepError::ContinuationFailed)?
             }
         };
-        c.formation_mut().domain = domain;
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .domain = domain;
         index += 1;
     }
     let moves = formation_moves(c)?;
-    if moves != c.formation().moves_remaining_raw {
-        c.formation_mut().moves_remaining_raw = moves;
+    if moves
+        != c.formation()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .moves_remaining_raw
+    {
+        c.formation_mut()
+            .map_err(FormationUpkeepError::ContinuationFailed)?
+            .moves_remaining_raw = moves;
         let mut index = 0;
         while let Some(id) = member(c, index)? {
             let unit = required(c, index, id)?;
-            let actor = c.unit(unit);
+            let actor = c
+                .unit(unit)
+                .map_err(FormationUpkeepError::ContinuationFailed)?;
             let identity = ComponentId {
                 owner: actor.e_owner as i16,
                 component_type: 1,
@@ -265,7 +335,11 @@ pub fn update_attributes<C: FormationUpkeepContext>(
             let report = MovementReport {
                 event_hash: MOVES_REMAINING_CHANGED,
                 identity,
-                raw_q8: Some(c.formation().moves_remaining_raw),
+                raw_q8: Some(
+                    c.formation()
+                        .map_err(FormationUpkeepError::ContinuationFailed)?
+                        .moves_remaining_raw,
+                ),
             };
             c.send_member_movement(report)
                 .map_err(FormationUpkeepError::ContinuationFailed)?;
@@ -529,6 +603,10 @@ mod tests {
     }
     struct Context {
         formation: Formation,
+        formation_available: bool,
+        invalidate_member: bool,
+        member_available: bool,
+        invalidate_report: bool,
         units: Vec<Unit>,
         calls: Vec<(usize, IntegerQuery)>,
         domains: Vec<i32>,
@@ -559,6 +637,10 @@ mod tests {
                 })
                 .collect();
             Self {
+                formation_available: true,
+                invalidate_member: false,
+                member_available: true,
+                invalidate_report: false,
                 formation: Formation {
                     id: 7,
                     owner: 0,
@@ -599,11 +681,15 @@ mod tests {
         type UnitHandle = usize;
         type Definitions = ();
         type Units = ();
-        fn formation(&self) -> &Formation {
-            &self.formation
+        fn formation(&self) -> Result<&Formation, Self::Error> {
+            self.formation_available
+                .then_some(&self.formation)
+                .ok_or("missing current formation")
         }
-        fn formation_mut(&mut self) -> &mut Formation {
-            &mut self.formation
+        fn formation_mut(&mut self) -> Result<&mut Formation, Self::Error> {
+            self.formation_available
+                .then_some(&mut self.formation)
+                .ok_or("missing current formation")
         }
         fn preflight_update_attributes(&self) -> Result<(), Self::Error> {
             if self.admitted {
@@ -626,11 +712,18 @@ mod tests {
                 self.units.iter().position(|u| u.id as u16 == id as u16)
             })
         }
-        fn unit(&self, unit: usize) -> &Unit {
-            &self.units[unit]
+        fn unit(&self, unit: usize) -> Result<&Unit, Self::Error> {
+            if self.member_available {
+                self.units.get(unit).ok_or("missing current unit")
+            } else {
+                Err("invalidated current unit")
+            }
         }
         fn integer(&mut self, unit: usize, query: IntegerQuery) -> Result<i32, Self::Error> {
             self.calls.push((unit, query));
+            if self.invalidate_member {
+                self.member_available = false;
+            }
             if self.fail_query == Some(query) {
                 return Err("getter failure");
             }
@@ -670,6 +763,9 @@ mod tests {
             Ok(self.capture[index as usize])
         }
         fn send_member_movement(&mut self, report: MovementReport) -> Result<(), Self::Error> {
+            if self.invalidate_report {
+                self.formation_available = false;
+            }
             assert_eq!(report.raw_q8, Some(self.formation.moves_remaining_raw));
             self.reports.push(report);
             if self.callback && self.reports.len() == 1 {
@@ -841,5 +937,46 @@ mod tests {
         c.maximum = i32::MAX; // raw maximum wraps to -256
         update_attributes(&mut c).unwrap();
         assert!(!c.formation.has_moved);
+    }
+    #[test]
+    fn missing_current_formation_rejects_before_resets() {
+        let mut c = Context::new(&[7]);
+        c.formation_available = false;
+        let before = c.formation.clone();
+        assert_eq!(
+            update_attributes(&mut c),
+            Err(FormationUpkeepError::EffectsUnavailable(
+                "missing current formation"
+            ))
+        );
+        assert_eq!(c.formation, before);
+        assert!(c.calls.is_empty());
+    }
+
+    #[test]
+    fn invalidated_member_and_formation_keep_completed_getter_and_report_prefixes() {
+        let mut c = Context::new(&[7]);
+        c.invalidate_member = true;
+        assert_eq!(
+            update_attributes(&mut c),
+            Err(FormationUpkeepError::ContinuationFailed(
+                "invalidated current unit"
+            ))
+        );
+        assert!(!c.formation.is_embarked);
+        assert!(c.formation.is_ranged_combat);
+        assert_eq!(c.formation.domain, -1);
+        assert!(c.reports.is_empty());
+
+        let mut c = Context::new(&[7, 9]);
+        c.invalidate_report = true;
+        assert_eq!(
+            update_attributes(&mut c),
+            Err(FormationUpkeepError::ContinuationFailed(
+                "missing current formation"
+            ))
+        );
+        assert_eq!(c.reports.len(), 1);
+        assert_eq!(c.formation.moves_remaining_raw, 7);
     }
 }

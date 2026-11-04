@@ -23,12 +23,14 @@ pub struct AttacksRemainingReport {
 /// Accessors must borrow the authoritative Unit rather than a scratch copy.
 /// Reporting receives the entire context so synchronous subscribers can read or
 /// mutate the current actor and its world without later copyback overwriting
-/// their changes. No default reporting implementation or RNG assumption exists.
+/// their changes. Accessors return an error when the current retained record is
+/// unavailable; implementations must not panic on invalidated handles. No default
+/// reporting implementation or RNG assumption exists.
 pub trait RestoreAttacksContext {
     type Error;
 
-    fn unit(&self) -> &Unit;
-    fn unit_mut(&mut self) -> &mut Unit;
+    fn unit(&self) -> Result<&Unit, Self::Error>;
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error>;
 
     /// Read the actual configured COMBAT_MAX_NUM_ATTACKS. Missing/unavailable
     /// rules must return Err; actual zero has distinct native semantics.
@@ -54,6 +56,9 @@ pub enum RestoreAttacksOutcome {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RestoreAttacksError<E> {
+    UnitUnavailable(E),
+    /// Assignment completed; subsequent access to the retained unit failed.
+    UnitAccessFailed(E),
     RuleUnavailable(E),
     ReportUnavailable(E),
     /// The assignment and any completed subscriber effects have already happened.
@@ -63,6 +68,10 @@ pub enum RestoreAttacksError<E> {
 impl<E: std::fmt::Display> std::fmt::Display for RestoreAttacksError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::UnitUnavailable(e) => write!(f, "current attack unit unavailable: {e}"),
+            Self::UnitAccessFailed(e) => {
+                write!(f, "current attack unit access failed after assignment: {e}")
+            }
             Self::RuleUnavailable(e) => write!(f, "attack rule unavailable: {e}"),
             Self::ReportUnavailable(e) => write!(f, "attack reporting unavailable: {e}"),
             Self::ReportFailed(e) => write!(f, "attack reporting failed after assignment: {e}"),
@@ -85,25 +94,44 @@ pub fn restore_attacks_remaining<C: RestoreAttacksContext>(
         .combat_max_num_attacks()
         .map_err(RestoreAttacksError::RuleUnavailable)?;
     let base = if base == 0 { 1 } else { base };
-    let restored = base.wrapping_add(context.unit().k_combat_modifers.i_bonus_attacks);
-    if context.unit().i_attacks_remaining == restored {
+    let restored = base.wrapping_add(
+        context
+            .unit()
+            .map_err(RestoreAttacksError::UnitUnavailable)?
+            .k_combat_modifers
+            .i_bonus_attacks,
+    );
+    if context
+        .unit()
+        .map_err(RestoreAttacksError::UnitUnavailable)?
+        .i_attacks_remaining
+        == restored
+    {
         return Ok(RestoreAttacksOutcome::Unchanged);
     }
     context
         .preflight_attacks_report()
         .map_err(RestoreAttacksError::ReportUnavailable)?;
-    context.unit_mut().i_attacks_remaining = restored;
+    context
+        .unit_mut()
+        .map_err(RestoreAttacksError::UnitUnavailable)?
+        .i_attacks_remaining = restored;
     // GetComponentID reads the current owner/ID, then the setter rereads attacks.
     // UnitID construction uses ComponentID type 1 and the owner's low 16 bits.
     let identity = {
-        let unit = context.unit();
+        let unit = context
+            .unit()
+            .map_err(RestoreAttacksError::UnitAccessFailed)?;
         ComponentId {
             owner: unit.e_owner as i16,
             component_type: 1,
             id: unit.id,
         }
     };
-    let value = context.unit().i_attacks_remaining;
+    let value = context
+        .unit()
+        .map_err(RestoreAttacksError::UnitAccessFailed)?
+        .i_attacks_remaining;
     context
         .send_attacks_report(AttacksRemainingReport {
             event_hash: ATTACKS_REMAINING_CHANGED,
@@ -129,11 +157,12 @@ pub struct MovementReport {
 }
 
 /// Same authoritative actor/world contract as RestoreAttacksContext.
-/// Native null input is represented by None at the function boundary.
+/// Native null input is represented by None at the function boundary. Accessors
+/// return errors for unavailable current records, including after callbacks.
 pub trait RestoreMovementContext {
     type Error;
-    fn unit(&self) -> &Unit;
-    fn unit_mut(&mut self) -> &mut Unit;
+    fn unit(&self) -> Result<&Unit, Self::Error>;
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error>;
 
     /// Query actual current Linux MaxMoves in whole moves. The data-layer
     /// implementation is c6_data::unit_movement_state::unit_max_moves; bindings
@@ -165,6 +194,8 @@ pub trait RestoreMovementContext {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MovementStage {
+    UnitReadback,
+    HealingEligibility,
     ChangedReport,
     ExhaustedReport,
     FormationSync,
@@ -174,6 +205,7 @@ pub enum MovementStage {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RestoreMovementError<E> {
+    UnitUnavailable(E),
     MaxMovesUnavailable(E),
     EffectsUnavailable(E),
     /// The actual field assignment and completed callbacks remain visible.
@@ -186,6 +218,7 @@ pub enum RestoreMovementError<E> {
 impl<E: std::fmt::Display> std::fmt::Display for RestoreMovementError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::UnitUnavailable(e) => write!(f, "current movement unit unavailable: {e}"),
             Self::MaxMovesUnavailable(e) => write!(f, "maximum movement unavailable: {e}"),
             Self::EffectsUnavailable(e) => write!(f, "movement effects unavailable: {e}"),
             Self::ContinuationFailed { stage, error } => {
@@ -228,19 +261,54 @@ pub fn restore_movement<C: RestoreMovementContext>(
         .max_moves()
         .map_err(RestoreMovementError::MaxMovesUnavailable)?
         .wrapping_shl(8);
-    let branch = maximum != context.unit().x_moves_remaining;
+    let branch = maximum
+        != context
+            .unit()
+            .map_err(RestoreMovementError::UnitUnavailable)?
+            .x_moves_remaining;
     context
         .preflight_restore_movement(branch)
         .map_err(RestoreMovementError::EffectsUnavailable)?;
     if branch {
-        let delta = maximum.wrapping_sub(context.unit().x_moves_remaining);
-        let changed = context.unit().x_moves_remaining.wrapping_add(delta).max(0);
-        if changed != context.unit().x_moves_remaining {
-            context.unit_mut().x_moves_remaining = changed;
+        let delta = maximum.wrapping_sub(
+            context
+                .unit()
+                .map_err(RestoreMovementError::UnitUnavailable)?
+                .x_moves_remaining,
+        );
+        let changed = context
+            .unit()
+            .map_err(RestoreMovementError::UnitUnavailable)?
+            .x_moves_remaining
+            .wrapping_add(delta)
+            .max(0);
+        if changed
+            != context
+                .unit()
+                .map_err(RestoreMovementError::UnitUnavailable)?
+                .x_moves_remaining
+        {
+            context
+                .unit_mut()
+                .map_err(RestoreMovementError::UnitUnavailable)?
+                .x_moves_remaining = changed;
             let report = MovementReport {
                 event_hash: MOVES_REMAINING_CHANGED,
-                identity: movement_identity(context.unit()),
-                raw_q8: Some(context.unit().x_moves_remaining),
+                identity: movement_identity(context.unit().map_err(|error| {
+                    RestoreMovementError::ContinuationFailed {
+                        stage: MovementStage::UnitReadback,
+                        error,
+                    }
+                })?),
+                raw_q8: Some(
+                    context
+                        .unit()
+                        .map_err(|error| RestoreMovementError::ContinuationFailed {
+                            stage: MovementStage::UnitReadback,
+                            error,
+                        })?
+                        .x_moves_remaining,
+                ),
             };
             context.send_movement_report(report).map_err(|error| {
                 RestoreMovementError::ContinuationFailed {
@@ -249,10 +317,23 @@ pub fn restore_movement<C: RestoreMovementContext>(
                 }
             })?;
             // Test current field after synchronous subscribers, not changed/max.
-            if context.unit().x_moves_remaining == 0 {
+            if context
+                .unit()
+                .map_err(|error| RestoreMovementError::ContinuationFailed {
+                    stage: MovementStage::UnitReadback,
+                    error,
+                })?
+                .x_moves_remaining
+                == 0
+            {
                 let report = MovementReport {
                     event_hash: MOVES_EXHAUSTED,
-                    identity: movement_identity(context.unit()),
+                    identity: movement_identity(context.unit().map_err(|error| {
+                        RestoreMovementError::ContinuationFailed {
+                            stage: MovementStage::UnitReadback,
+                            error,
+                        }
+                    })?),
                     raw_q8: None,
                 };
                 context.send_movement_report(report).map_err(|error| {
@@ -272,7 +353,12 @@ pub fn restore_movement<C: RestoreMovementContext>(
         // Outer report uses cached maximum, even after clamping or subscribers.
         let report = MovementReport {
             event_hash: MOVEMENT_RESTORED,
-            identity: movement_identity(context.unit()),
+            identity: movement_identity(context.unit().map_err(|error| {
+                RestoreMovementError::ContinuationFailed {
+                    stage: MovementStage::UnitReadback,
+                    error,
+                }
+            })?),
             raw_q8: Some(maximum),
         };
         context.send_movement_report(report).map_err(|error| {
@@ -289,10 +375,21 @@ pub fn restore_movement<C: RestoreMovementContext>(
                 stage: MovementStage::OwnerQuery,
                 error,
             })?;
-    let unit = context.unit();
+    let unit = context
+        .unit()
+        .map_err(|error| RestoreMovementError::ContinuationFailed {
+            stage: MovementStage::HealingEligibility,
+            error,
+        })?;
     let eligible = !barbarian
         && (unit.e_activity != ACTIVITY_HOLD || unit.k_health_modifiers.b_can_heal_after_action);
-    context.unit_mut().b_eligible_to_heal = eligible;
+    context
+        .unit_mut()
+        .map_err(|error| RestoreMovementError::ContinuationFailed {
+            stage: MovementStage::HealingEligibility,
+            error,
+        })?
+        .b_eligible_to_heal = eligible;
     Ok(if branch {
         RestoreMovementOutcome::Restored
     } else {
@@ -558,6 +655,7 @@ pub(crate) mod tests {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     enum Failure {
         MissingRule,
+        MissingUnit,
         UnknownSubscribers,
         Subscriber,
     }
@@ -570,6 +668,9 @@ pub(crate) mod tests {
         mutate_report: bool,
         reports: Vec<AttacksRemainingReport>,
         world_counter: u32,
+        invalidate_after_write: bool,
+        unit_available: bool,
+        write_available: bool,
     }
 
     impl SourceOnlyContext {
@@ -588,17 +689,28 @@ pub(crate) mod tests {
                 mutate_report: false,
                 reports: Vec::new(),
                 world_counter: 0,
+                invalidate_after_write: false,
+                unit_available: true,
+                write_available: true,
             }
         }
     }
 
     impl RestoreAttacksContext for SourceOnlyContext {
         type Error = Failure;
-        fn unit(&self) -> &Unit {
-            &self.actor
+        fn unit(&self) -> Result<&Unit, Self::Error> {
+            self.unit_available
+                .then_some(&self.actor)
+                .ok_or(Failure::MissingUnit)
         }
-        fn unit_mut(&mut self) -> &mut Unit {
-            &mut self.actor
+        fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+            if !self.write_available {
+                return Err(Failure::MissingUnit);
+            }
+            if self.invalidate_after_write {
+                self.unit_available = false;
+            }
+            Ok(&mut self.actor)
         }
         fn combat_max_num_attacks(&self) -> Result<i32, Failure> {
             self.rule
@@ -748,8 +860,39 @@ pub(crate) mod tests {
         assert_eq!(context.world_counter, 1);
         assert_eq!(context.reports.len(), 1);
     }
+    #[test]
+    fn attacks_missing_read_or_write_rejects_without_assignment() {
+        for write_failure in [false, true] {
+            let mut c = SourceOnlyContext::new(2, 0, 19);
+            c.unit_available = write_failure;
+            c.write_available = !write_failure;
+            let before = c.actor.clone();
+            assert_eq!(
+                restore_attacks_remaining(&mut c),
+                Err(RestoreAttacksError::UnitUnavailable(Failure::MissingUnit))
+            );
+            assert_eq!(c.actor, before);
+            assert!(c.reports.is_empty());
+        }
+    }
+    #[test]
+    fn attacks_post_assignment_access_failure_preserves_field_without_reporting() {
+        let mut c = SourceOnlyContext::new(2, 0, 19);
+        c.invalidate_after_write = true;
+        assert_eq!(
+            restore_attacks_remaining(&mut c),
+            Err(RestoreAttacksError::UnitAccessFailed(Failure::MissingUnit))
+        );
+        assert_eq!(c.actor.i_attacks_remaining, 2);
+        assert!(c.reports.is_empty());
+    }
+
     struct MovementContext {
         actor: Unit,
+        unit_available: bool,
+        write_available: bool,
+        invalidate_changed: bool,
+        fail_healing_write: bool,
         maximum: Result<i32, &'static str>,
         admitted: bool,
         barbarian: bool,
@@ -766,6 +909,10 @@ pub(crate) mod tests {
             actor.i_attacks_remaining = 7;
             Self {
                 actor,
+                unit_available: true,
+                write_available: true,
+                invalidate_changed: false,
+                fail_healing_write: false,
                 maximum: Ok(maximum),
                 admitted: true,
                 barbarian: false,
@@ -778,11 +925,17 @@ pub(crate) mod tests {
     }
     impl RestoreMovementContext for MovementContext {
         type Error = &'static str;
-        fn unit(&self) -> &Unit {
-            &self.actor
+        fn unit(&self) -> Result<&Unit, Self::Error> {
+            self.unit_available
+                .then_some(&self.actor)
+                .ok_or("missing current unit")
         }
-        fn unit_mut(&mut self) -> &mut Unit {
-            &mut self.actor
+        fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+            if !self.write_available || (self.fail_healing_write && self.reports.len() == 2) {
+                Err("current unit write unavailable")
+            } else {
+                Ok(&mut self.actor)
+            }
         }
         fn max_moves(&self) -> Result<i32, Self::Error> {
             self.maximum
@@ -800,6 +953,9 @@ pub(crate) mod tests {
                 MOVES_REMAINING_CHANGED => {
                     assert_eq!(report.raw_q8, Some(self.actor.x_moves_remaining));
                     self.order.push("changed");
+                    if self.invalidate_changed {
+                        self.unit_available = false;
+                    }
                     if self.mutate_changed {
                         self.actor.x_moves_remaining = 0;
                         self.actor.id = 77;
@@ -984,5 +1140,50 @@ pub(crate) mod tests {
                 }
             );
         }
+    }
+    #[test]
+    fn movement_missing_access_preserves_state_before_assignment_and_callback_prefix_after() {
+        for write_failure in [false, true] {
+            let mut c = MovementContext::new(3, 1);
+            c.unit_available = write_failure;
+            c.write_available = !write_failure;
+            let before = c.actor.clone();
+            assert!(matches!(
+                restore_movement(Some(&mut c)),
+                Err(RestoreMovementError::UnitUnavailable(_))
+            ));
+            assert_eq!(c.actor, before);
+            assert!(c.reports.is_empty());
+        }
+        let mut c = MovementContext::new(3, 1);
+        c.invalidate_changed = true;
+        c.mutate_changed = true;
+        assert_eq!(
+            restore_movement(Some(&mut c)),
+            Err(RestoreMovementError::ContinuationFailed {
+                stage: MovementStage::UnitReadback,
+                error: "missing current unit"
+            })
+        );
+        assert_eq!(c.order, ["changed"]);
+        assert_eq!(c.actor.x_moves_remaining, 0);
+        assert_eq!(c.actor.id, 77);
+        assert!(!c.actor.b_eligible_to_heal);
+    }
+
+    #[test]
+    fn movement_final_write_failure_keeps_completed_reports_and_healing_value() {
+        let mut c = MovementContext::new(3, 1);
+        c.fail_healing_write = true;
+        assert_eq!(
+            restore_movement(Some(&mut c)),
+            Err(RestoreMovementError::ContinuationFailed {
+                stage: MovementStage::HealingEligibility,
+                error: "current unit write unavailable"
+            })
+        );
+        assert_eq!(c.order, ["changed", "formation", "restored"]);
+        assert_eq!(c.actor.x_moves_remaining, 768);
+        assert!(!c.actor.b_eligible_to_heal);
     }
 }
