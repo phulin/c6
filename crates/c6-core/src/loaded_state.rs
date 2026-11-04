@@ -127,6 +127,236 @@ mod tests {
             pause_storage: Some(0),
         }
     }
+
+    // Source-only complete typed actor; no native initialization is inferred.
+    fn commit_fixture_unit() -> unit::Unit {
+        // Synthetic all-zero fields/empty arrays with current nested wire versions.
+        // Generated from the public typed Unit fixture; these are not save bytes.
+        let mut bytes = vec![0; 762];
+        for (offset, value) in [
+            (0, 28),
+            (142, 2),
+            (159, 1),
+            (176, 28),
+            (311, 8),
+            (341, 1),
+            (353, 1),
+            (397, 7),
+            (436, 1),
+            (452, 8),
+            (516, 10),
+            (590, 2),
+            (630, 4),
+            (652, 7),
+            (730, 1),
+            (742, 5),
+        ] {
+            bytes[offset] = value;
+        }
+        unit::Unit::decode(&bytes, unit::Limits::default()).unwrap()
+    }
+    fn actor_commit_state() -> (LoadedState, map::UnitReference) {
+        use crate::formation_initialization::{DirtyBaseline, LogicalArchive, UNIT_FIELDS};
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let mut unit = commit_fixture_unit();
+        unit.id = 0x10001;
+        unit.e_owner = owner;
+        unit.formation_id = 0x10001;
+        let mut formations = state.world.players()[0].formations().unwrap().clone();
+        formations.entries[0].value.unit_ids = vec![unit.id];
+        let runtime = UnitRuntime {
+            archive: LogicalArchive::new(
+                unit::ComponentId {
+                    owner: owner as i16,
+                    component_type: 1,
+                    id: unit.id,
+                },
+                &UNIT_FIELDS,
+                DirtyBaseline::Unavailable,
+            ),
+            definition_index: 0,
+            domain: 0,
+            formation: Some(crate::unit_initialization::FormationReference {
+                owner,
+                requested_id: unit.formation_id,
+                resolved_id: unit.formation_id,
+            }),
+            abilities: vec![],
+            invalid_terrain: vec![],
+            ignore_terrain: vec![],
+            ignore_feature: vec![],
+            bonus_points_per_kill: vec![],
+            bonus_points_per_kill_strength: vec![],
+            operations_disabled: vec![],
+        };
+        let dependencies = UnitDependencies::capture(&unit).unwrap();
+        let units = map::Recycled {
+            capacity: 2,
+            entries: vec![map::Slot {
+                index: 1,
+                value: unit,
+            }],
+            current_id_bits: 0x10000,
+            free_head: u32::MAX,
+            free_tail: u32::MAX,
+            free_links: vec![u32::MAX; 2],
+        };
+        let player = world::Player::new(owner, Some(units), Some(formations)).unwrap();
+        state.world = world::World::new(state.world.map().clone(), vec![player]).unwrap();
+        state.bind_controls(controls(&state)).unwrap();
+        state.runtime = Some(vec![RuntimePlayer {
+            owner,
+            unit_index: vec![None, Some(0)],
+            units: vec![RuntimeUnit {
+                value: runtime,
+                dependencies,
+            }],
+        }]);
+        state.initialize_formations().unwrap();
+        (
+            state,
+            map::UnitReference {
+                owner: (1 << 16) | owner,
+                id: 0x10001,
+            },
+        )
+    }
+    #[test]
+    fn prepared_actor_commit_is_exclusive_infallible_and_drop_is_inert() {
+        let (mut state, reference) = actor_commit_state();
+        let unit = state.world.unit(reference).unwrap().unwrap().record.clone();
+        let formation = state
+            .world
+            .player(reference.player())
+            .unwrap()
+            .formation(unit.formation_id)
+            .unwrap()
+            .unwrap()
+            .record
+            .clone();
+        let mut next_unit = unit.clone();
+        next_unit.e_activity = crate::skip_turn::HOLD;
+        let mut next_formation = formation.clone();
+        next_formation.last_path_cache_location = unit::PlotCoord { x: -9999, y: -9999 };
+        drop(
+            state
+                .prepare_unit_formation_commit(
+                    reference,
+                    0,
+                    &unit,
+                    &formation,
+                    next_unit.clone(),
+                    next_formation.clone(),
+                )
+                .unwrap(),
+        );
+        assert_eq!(state.revision(), 0);
+        assert_eq!(state.world.unit(reference).unwrap().unwrap().record, &unit);
+        state
+            .prepare_unit_formation_commit(
+                reference,
+                0,
+                &unit,
+                &formation,
+                next_unit.clone(),
+                next_formation.clone(),
+            )
+            .unwrap()
+            .commit();
+        assert_eq!(state.revision(), 1);
+        assert_eq!(
+            state.world.unit(reference).unwrap().unwrap().record,
+            &next_unit
+        );
+        assert_eq!(
+            state
+                .world
+                .player(reference.player())
+                .unwrap()
+                .formation(unit.formation_id)
+                .unwrap()
+                .unwrap()
+                .record,
+            &next_formation
+        );
+        state
+            .unit_runtime(reference.player(), reference.id)
+            .unwrap();
+        state
+            .formation_runtime(reference.player(), unit.formation_id)
+            .unwrap();
+    }
+    #[test]
+    fn actor_commit_preconditions_refuse_without_any_record_or_revision_change() {
+        let (mut state, reference) = actor_commit_state();
+        let unit = state.world.unit(reference).unwrap().unwrap().record.clone();
+        let formation = state
+            .world
+            .player(reference.player())
+            .unwrap()
+            .formation(unit.formation_id)
+            .unwrap()
+            .unwrap()
+            .record
+            .clone();
+        for variant in 0..7 {
+            let mut requested = reference;
+            let mut before_unit = unit.clone();
+            let mut before_formation = formation.clone();
+            let mut next_unit = unit.clone();
+            let mut next_formation = formation.clone();
+            let mut revision = 0;
+            match variant {
+                0 => requested.owner = 44 << 16 | reference.player(),
+                1 => revision = 1,
+                2 => before_unit.i_damage = 1,
+                3 => before_formation.moves_remaining_raw += 1,
+                4 => next_unit.id += 1,
+                5 => next_formation.unit_ids.clear(),
+                6 => next_unit.e_type_index += 1,
+                _ => unreachable!(),
+            }
+            assert!(state
+                .prepare_unit_formation_commit(
+                    requested,
+                    revision,
+                    &before_unit,
+                    &before_formation,
+                    next_unit,
+                    next_formation
+                )
+                .is_err());
+            assert_eq!(state.revision(), 0);
+            assert_eq!(state.world.unit(reference).unwrap().unwrap().record, &unit);
+            assert_eq!(
+                state
+                    .world
+                    .player(reference.player())
+                    .unwrap()
+                    .formation(unit.formation_id)
+                    .unwrap()
+                    .unwrap()
+                    .record,
+                &formation
+            );
+        }
+        state.revision = u64::MAX;
+        assert!(matches!(
+            state.prepare_unit_formation_commit(
+                reference,
+                u64::MAX,
+                &unit,
+                &formation,
+                unit.clone(),
+                formation.clone()
+            ),
+            Err(Error::ResourceLimit)
+        ));
+        assert_eq!(state.revision(), u64::MAX);
+        assert_eq!(state.world.unit(reference).unwrap().unwrap().record, &unit);
+    }
+
     #[test]
     fn explicit_image_sharing_never_copies_bytes() {
         let bytes: Arc<[u8]> = Arc::from([1u8, 2, 3]);
@@ -1890,6 +2120,8 @@ pub enum Error {
     FormationOwner(crate::formation_initialization::OwnerLookupError),
     RuntimeIdentity,
     RuntimeDependenciesChanged,
+    ActorCommitConflict,
+    ActorCommitIdentity,
     AlreadyInitialized,
     AlreadyBound,
     NotPristine,
@@ -2120,6 +2352,42 @@ pub struct LoadedState {
     trade_graph: Option<crate::trade_graph_state::GraphState>,
     trade_graph_source: Option<ComponentSnapshotWitness>,
 }
+/// Exclusive, validated replacement of one actor and its singleton Formation.
+/// Dropping this guard changes nothing. Commit moves only these two records and
+/// advances the checked revision once; it never invokes callbacks or clones World.
+#[must_use = "a prepared actor commit must be committed or deliberately discarded"]
+pub struct PreparedUnitFormationCommit<'a> {
+    state: &'a mut LoadedState,
+    owner: i32,
+    unit_id: u32,
+    formation_id: u32,
+    next_revision: u64,
+    unit: unit::Unit,
+    formation: unit::Formation,
+}
+impl PreparedUnitFormationCommit<'_> {
+    pub fn commit(self) {
+        // prepare validated both slots, and this guard exclusively owns State.
+        *self
+            .state
+            .world
+            .player_mut(self.owner)
+            .expect("prepared owner")
+            .unit_mut(self.unit_id)
+            .expect("prepared Unit collection")
+            .expect("prepared Unit slot") = self.unit;
+        *self
+            .state
+            .world
+            .player_mut(self.owner)
+            .expect("prepared owner")
+            .formation_mut(self.formation_id)
+            .expect("prepared Formation collection")
+            .expect("prepared Formation slot") = self.formation;
+        self.state.revision = self.next_revision;
+    }
+}
+
 fn reserved<T>(n: usize) -> Result<Vec<T>, Error> {
     n.checked_mul(std::mem::size_of::<T>())
         .filter(|n| *n <= isize::MAX as usize)
@@ -3398,6 +3666,91 @@ impl LoadedState {
         self.formation_runtime = Some(runtime);
         Ok(())
     }
+    /// Validate a small staged actor replacement before exposing any mutation.
+    /// These are consistency checks, not native execution or action admission.
+    /// Runtime-derived dependencies and ownership stay fixed; callers must plan
+    /// all gameplay effects before preparing the exclusive commit guards.
+    pub fn prepare_unit_formation_commit(
+        &mut self,
+        reference: map::UnitReference,
+        expected_revision: u64,
+        before_unit: &unit::Unit,
+        before_formation: &unit::Formation,
+        unit: unit::Unit,
+        formation: unit::Formation,
+    ) -> Result<PreparedUnitFormationCommit<'_>, Error> {
+        use crate::formation_initialization::{FORMATION_COMPONENT_TYPE, UNIT_COMPONENT_TYPE};
+        if self.revision != expected_revision {
+            return Err(Error::ActorCommitConflict);
+        }
+        let next_revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        if reference.component_id().component_type != UNIT_COMPONENT_TYPE {
+            return Err(Error::ActorCommitIdentity);
+        }
+        let owner = reference.player();
+        let actual = self
+            .world
+            .unit(reference)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing(MissingInput::Unit {
+                owner,
+                id: reference.id,
+            }))?;
+        if actual.record != before_unit {
+            return Err(Error::ActorCommitConflict);
+        }
+        let current_formation = self
+            .world
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(actual.record.formation_id)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing(MissingInput::Formation {
+                owner,
+                id: actual.record.formation_id,
+            }))?;
+        if current_formation.record != before_formation {
+            return Err(Error::ActorCommitConflict);
+        }
+        let runtime = self.unit_runtime(owner, reference.id)?;
+        let formation_runtime = self.formation_runtime(owner, before_formation.id)?;
+        if runtime.archive.identity().component_type != UNIT_COMPONENT_TYPE
+            || formation_runtime.archive.identity().component_type != FORMATION_COMPONENT_TYPE
+            || before_unit.e_owner != owner
+            || before_formation.owner != owner
+            || before_formation.unit_ids != [before_unit.id]
+            || unit.id != before_unit.id
+            || unit.e_owner != owner
+            || unit.formation_id != before_unit.formation_id
+            || formation.id != before_formation.id
+            || formation.owner != owner
+            || formation.unit_ids != before_formation.unit_ids
+        {
+            return Err(Error::ActorCommitIdentity);
+        }
+        let row = self
+            .runtime
+            .as_ref()
+            .expect("validated Unit runtime")
+            .iter()
+            .find(|p| p.owner == owner)
+            .expect("validated runtime owner");
+        let index =
+            row.unit_index[(reference.id & 0xffff) as usize].expect("validated runtime slot");
+        if !row.units[index].dependencies.matches(&unit) {
+            return Err(Error::RuntimeDependenciesChanged);
+        }
+        Ok(PreparedUnitFormationCommit {
+            state: self,
+            owner,
+            unit_id: unit.id,
+            formation_id: formation.id,
+            next_revision,
+            unit,
+            formation,
+        })
+    }
+
     /// Existing pure legality queries can use the actual imported Unit without
     /// requiring unrelated UI or native dirty-tree machinery.
     pub fn unit_mut(&mut self, owner: i32, id: u32) -> Result<&mut unit::Unit, Error> {
