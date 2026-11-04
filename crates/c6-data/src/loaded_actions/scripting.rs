@@ -88,12 +88,12 @@ impl<'a, Q: ManagerQueries<Unit>> RegistryQueries<'a, Q> {
 }
 impl<Q> ManagerQueries<Unit> for RegistryQueries<'_, Q>
 where
-    Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>,
+    Q: ManagerQueries<Unit, Error = &'static str>,
     Q::Script: PartialEq,
     Q::Args: AsRef<[i32]>,
 {
     type Error = &'static str;
-    type Parameters = ();
+    type Parameters = Q::Parameters;
     type Player = Q::Player;
     type Game = Q::Game;
     type Script = Q::Script;

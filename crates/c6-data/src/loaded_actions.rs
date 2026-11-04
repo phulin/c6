@@ -26,6 +26,7 @@ pub mod command_units;
 pub mod configuration;
 pub mod culture_notifications;
 pub mod handlers;
+pub mod move_to;
 pub mod notifications;
 pub mod reporting;
 pub mod scripting;
@@ -217,12 +218,31 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     external: &'q mut Q,
     authority: HandlerAuthority<'h, 'capture>,
 }
-type QueryState<'a> = ManagerQueryState<'a, Unit, ()>;
-impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQueries<Unit>
+pub(super) trait TypedParameters {
+    fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
+}
+impl TypedParameters for () {
+    fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error> {
+        Err(Error::Unsupported("typed MoveTo request parameters"))
+    }
+}
+impl TypedParameters for OperationParameters {
+    fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error> {
+        match self {
+            Self::None => Ok(None),
+            Self::MoveTo { location, .. } => Ok(Some(*location)),
+            _ => Err(Error::Unsupported("MoveTo SingleLocation parameter type")),
+        }
+    }
+}
+type QueryState<'a, P = ()> = ManagerQueryState<'a, Unit, P>;
+impl<Q: ManagerQueries<Unit, Error = &'static str>> ManagerQueries<Unit>
     for Queries<'_, '_, '_, '_, '_, Q>
+where
+    Q::Parameters: TypedParameters,
 {
     type Error = Error;
-    type Parameters = ();
+    type Parameters = Q::Parameters;
     type Player = i32;
     type Game = ();
     type Script = Q::Script;
@@ -233,7 +253,7 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
     type Results = ();
     fn allow_tactical_commands(
         &mut self,
-        _: &mut QueryState<'_>,
+        _: &mut QueryState<'_, Q::Parameters>,
         owner: i32,
     ) -> Result<bool, Error> {
         self.inputs
@@ -241,33 +261,52 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
             .from_processor(&self.state.retained().core.phase_processor, owner)
             .map_err(Error::Manager)
     }
-    fn player(&mut self, _: &mut QueryState<'_>, owner: i32) -> Result<i32, Error> {
+    fn player(&mut self, _: &mut QueryState<'_, Q::Parameters>, owner: i32) -> Result<i32, Error> {
         Ok(WorldPlayer::resolve(self.state.world(), owner, None)
             .map_err(Error::Manager)?
             .id())
     }
-    fn turn_active(&mut self, _: &mut QueryState<'_>, player: i32) -> Result<bool, Error> {
+    fn turn_active(
+        &mut self,
+        _: &mut QueryState<'_, Q::Parameters>,
+        player: i32,
+    ) -> Result<bool, Error> {
         self.state.turn_active(player).map_err(Error::State)
     }
-    fn processing_automation(&mut self, _: &mut QueryState<'_>) -> Result<i32, Error> {
+    fn processing_automation(
+        &mut self,
+        _: &mut QueryState<'_, Q::Parameters>,
+    ) -> Result<i32, Error> {
         self.state.processing_automation().map_err(Error::State)
     }
-    fn player_id(&mut self, _: &mut QueryState<'_>, player: i32) -> Result<i32, Error> {
+    fn player_id(
+        &mut self,
+        _: &mut QueryState<'_, Q::Parameters>,
+        player: i32,
+    ) -> Result<i32, Error> {
         Ok(player)
     }
-    fn game(&mut self, _: &mut QueryState<'_>) -> Result<(), Error> {
+    fn game(&mut self, _: &mut QueryState<'_, Q::Parameters>) -> Result<(), Error> {
         Ok(())
     }
-    fn player_human(&mut self, _: &mut QueryState<'_>, player: i32) -> Result<bool, Error> {
+    fn player_human(
+        &mut self,
+        _: &mut QueryState<'_, Q::Parameters>,
+        player: i32,
+    ) -> Result<bool, Error> {
         WorldPlayer::resolve(self.state.world(), player, None)
             .map_err(Error::Manager)?
             .is_human()
             .map_err(Error::Manager)
     }
-    fn paused(&mut self, _: &mut QueryState<'_>, _: ()) -> Result<bool, Error> {
+    fn paused(&mut self, _: &mut QueryState<'_, Q::Parameters>, _: ()) -> Result<bool, Error> {
         Ok(self.state.pause_storage().map_err(Error::State)? != 0)
     }
-    fn runtime_id(&mut self, _: &mut QueryState<'_>, hash: u32) -> Result<i32, Error> {
+    fn runtime_id(
+        &mut self,
+        _: &mut QueryState<'_, Q::Parameters>,
+        hash: u32,
+    ) -> Result<i32, Error> {
         match self.authority {
             HandlerAuthority::DecoderBinding => self
                 .inputs
@@ -281,7 +320,11 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
                 .map_err(Error::HandlerObservation),
         }
     }
-    fn handler(&mut self, _: &mut QueryState<'_>, id: i32) -> Result<Option<Handler>, Error> {
+    fn handler(
+        &mut self,
+        _: &mut QueryState<'_, Q::Parameters>,
+        id: i32,
+    ) -> Result<Option<Handler>, Error> {
         self.inputs
             .handlers
             .handler(HandlerId(id))
@@ -289,12 +332,16 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
     }
     fn can_be_interrupted(
         &mut self,
-        _: &mut QueryState<'_>,
+        _: &mut QueryState<'_, Q::Parameters>,
         handler: Handler,
     ) -> Result<bool, Error> {
         Ok(handler.can_be_interrupted())
     }
-    fn operation_disabled(&mut self, s: &mut QueryState<'_>, id: i32) -> Result<bool, Error> {
+    fn operation_disabled(
+        &mut self,
+        s: &mut QueryState<'_, Q::Parameters>,
+        id: i32,
+    ) -> Result<bool, Error> {
         let runtime = self
             .state
             .unit_runtime(s.unit.e_owner, s.unit.id)
@@ -310,15 +357,18 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
             .find_index(id as u32)
             .is_some_and(|RuntimeOperationId(i)| runtime.operations_disabled[i as usize]))
     }
-    fn script_system(&mut self, s: &mut QueryState<'_>) -> Result<Option<Q::Script>, Error> {
+    fn script_system(
+        &mut self,
+        s: &mut QueryState<'_, Q::Parameters>,
+    ) -> Result<Option<Q::Script>, Error> {
         self.external.script_system(s).map_err(Error::Provider)
     }
-    fn args_begin(&mut self, s: &mut QueryState<'_>) -> Result<Q::Args, Error> {
+    fn args_begin(&mut self, s: &mut QueryState<'_, Q::Parameters>) -> Result<Q::Args, Error> {
         self.external.args_begin(s).map_err(Error::Provider)
     }
     fn args_push_int(
         &mut self,
-        s: &mut QueryState<'_>,
+        s: &mut QueryState<'_, Q::Parameters>,
         a: &mut Q::Args,
         v: i32,
     ) -> Result<(), Error> {
@@ -326,12 +376,15 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
             .args_push_int(s, a, v)
             .map_err(Error::Provider)
     }
-    fn engine_utility(&mut self, s: &mut QueryState<'_>) -> Result<Q::EngineUtility, Error> {
+    fn engine_utility(
+        &mut self,
+        s: &mut QueryState<'_, Q::Parameters>,
+    ) -> Result<Q::EngineUtility, Error> {
         self.external.engine_utility(s).map_err(Error::Provider)
     }
     fn has_game_core_lock(
         &mut self,
-        s: &mut QueryState<'_>,
+        s: &mut QueryState<'_, Q::Parameters>,
         u: Q::EngineUtility,
     ) -> Result<bool, Error> {
         self.external
@@ -340,7 +393,7 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
     }
     fn release_game_core_lock(
         &mut self,
-        s: &mut QueryState<'_>,
+        s: &mut QueryState<'_, Q::Parameters>,
         u: Q::EngineUtility,
     ) -> Result<(), Error> {
         self.external
@@ -349,7 +402,7 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
     }
     fn get_game_core_lock(
         &mut self,
-        s: &mut QueryState<'_>,
+        s: &mut QueryState<'_, Q::Parameters>,
         u: Q::EngineUtility,
     ) -> Result<(), Error> {
         self.external
@@ -358,7 +411,7 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
     }
     fn script_call_test_all(
         &mut self,
-        s: &mut QueryState<'_>,
+        s: &mut QueryState<'_, Q::Parameters>,
         script: Q::Script,
         a: &mut Q::Args,
         event: &'static str,
@@ -368,10 +421,10 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
             .script_call_test_all(s, script, a, event, initial)
             .map_err(Error::Provider)
     }
-    fn args_end(&mut self, s: &mut QueryState<'_>, a: Q::Args) -> Result<(), Error> {
+    fn args_end(&mut self, s: &mut QueryState<'_, Q::Parameters>, a: Q::Args) -> Result<(), Error> {
         self.external.args_end(s, a).map_err(Error::Provider)
     }
-    fn unit_plot(&mut self, s: &mut QueryState<'_>) -> Result<Option<usize>, Error> {
+    fn unit_plot(&mut self, s: &mut QueryState<'_, Q::Parameters>) -> Result<Option<usize>, Error> {
         Ok(
             c6_core::movement_world::plot_at(self.state.world().map(), s.unit.k_location)
                 .ok()
@@ -380,10 +433,10 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
     }
     fn handler_can_start(
         &mut self,
-        s: &mut QueryState<'_>,
+        s: &mut QueryState<'_, Q::Parameters>,
         h: Handler,
-        _: usize,
-        _: bool,
+        plot: usize,
+        visible_only: bool,
         _: Option<&mut ()>,
     ) -> Result<bool, Error> {
         if s.unit != self.expected_actor {
@@ -391,8 +444,45 @@ impl<Q: ManagerQueries<Unit, Parameters = (), Error = &'static str>> ManagerQuer
                 "script changed Unit before world-backed placement; effects retained",
             ));
         }
+        if h.identity().operation_hash == OperationHash(MOVE_TO_HASH) {
+            let runtime = self
+                .state
+                .unit_runtime(s.unit.e_owner, s.unit.id)
+                .map_err(Error::State)?;
+            let domain = runtime.domain;
+            if (domain == 3 || s.unit.b_immobile) && domain != 1 {
+                return Ok(false);
+            }
+            if let Some(definitions) = self.inputs.placement_definitions {
+                if let Some(Some(definition)) = definitions.at(runtime.definition_index) {
+                    if definition.spy || definition.make_trade_route {
+                        return Ok(false);
+                    }
+                }
+            } else {
+                return Err(Error::Unsupported("MoveTo actual Unit definitions"));
+            }
+            if domain == 1 {
+                return Ok(false);
+            }
+            if visible_only {
+                return Ok(true);
+            }
+            let target = s
+                .operation
+                .parameters
+                .location()?
+                .unwrap_or(c6_core::unit::PlotCoord { x: -9999, y: -9999 });
+            let (x, y) = self
+                .state
+                .world()
+                .map()
+                .coordinates(plot as u32)
+                .ok_or(Error::Unsupported("MoveTo current CanStart plot"))?;
+            return Ok(c6_core::unit::PlotCoord { x, y } != target);
+        }
         if h.identity().operation_hash != OperationHash(SKIP_TURN_HASH) {
-            return Err(Error::Unsupported("requested handler is not SkipTurn"));
+            return Err(Error::Unsupported("requested handler is not supported"));
         }
         // An installed owned component is the only live authority. Never use
         // an older independently mutable captured vector after this handoff.
@@ -484,6 +574,88 @@ pub(super) fn can_start_for_actor<
             Error::Unsupported("missing requested handler")
         }
     })
+}
+/// Full Manager legality for a typed queued operation against the current
+/// loaded actor. Synchronous script Unit edits are retained; unsupported owner
+/// or ID replacement remains explicit. The supplied request itself stays live.
+pub fn can_start_typed<
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+) -> Result<bool, Error> {
+    handlers
+        .validate_execution(state, inputs.handlers, inputs.operations)
+        .map_err(Error::HandlerObservation)?;
+    let mut actor = unit_ref(state, reference)?.clone();
+    let baseline = actor.clone();
+    let node_ids = (0..actor.k_operations.nodes.len())
+        .map(|index| actor.k_operations.nodes.id_at(index))
+        .collect::<Vec<_>>();
+    let identity = (actor.e_owner, actor.id);
+    let answer = legality::manager_can_start(
+        &mut actor,
+        operation,
+        None,
+        false,
+        None,
+        &mut Queries {
+            state,
+            expected_actor: &baseline,
+            inputs,
+            external,
+            authority: HandlerAuthority::RuntimeBinding(handlers),
+        },
+    );
+    if (actor.e_owner, actor.id) != identity {
+        return Err(Error::ActorIdentityChanged(Box::new(actor)));
+    }
+    // Readonly legality must not refresh canonical storage identity or even
+    // reserve a gameplay revision. Check structural history independently of
+    // payload equality, since remove/reinsert of identical nodes is observable.
+    let stable = query_queue_stable(&actor, &node_ids);
+    if !stable || actor != baseline {
+        merge_queried_actor(unit(state, reference)?, actor, &node_ids)?;
+    }
+    answer.map_err(|error| match error {
+        ManagerQueryError::Provider(e) => e,
+        ManagerQueryError::MissingRequestedHandler(_) => {
+            Error::Unsupported("missing typed requested handler")
+        }
+    })
+}
+fn query_queue_stable(actor: &Unit, ids: &[Option<c6_core::unit::OperationNodeId>]) -> bool {
+    ids.len() == actor.k_operations.nodes.len()
+        && ids
+            .iter()
+            .enumerate()
+            .all(|(index, id)| actor.k_operations.nodes.id_at(index) == *id)
+}
+fn merge_queried_actor(
+    live: &mut Unit,
+    mut actor: Unit,
+    ids: &[Option<c6_core::unit::OperationNodeId>],
+) -> Result<(), Error> {
+    if !query_queue_stable(&actor, ids) {
+        // Structural staging mutations cannot be transplanted into retained
+        // canonical allocation identity. Keep their partial effects and make
+        // that identity invalidation explicit rather than infer equal payloads.
+        *live = actor;
+        return Err(Error::Unsupported(
+            "query structurally changed canonical queue; partial actor effects retained",
+        ));
+    }
+    let mut canonical = std::mem::take(&mut live.k_operations.nodes);
+    for (current, returned) in canonical.iter_mut().zip(actor.k_operations.nodes.iter()) {
+        *current = returned.clone();
+    }
+    actor.k_operations.nodes = canonical;
+    *live = actor;
+    Ok(())
 }
 
 fn unit_ref(state: &LoadedState, r: UnitReference) -> Result<&Unit, Error> {
@@ -1332,6 +1504,52 @@ fn finish_notifications<W: aftermath::Blocking>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn typed_query_field_writes_preserve_canonical_slots_and_identical_reinsert_is_detected() {
+        use c6_core::unit::{OperationNode, OperationNodes, PlotCoord, MOVE_TO_HASH};
+        let node = OperationNode {
+            operation_hash: MOVE_TO_HASH,
+            directive: -1,
+            flags: 0,
+            push_turn: 1,
+            previous_activity: 0,
+            previous_automation: -1,
+            parameters: OperationParameters::MoveTo {
+                location: PlotCoord { x: 1, y: 1 },
+                modifiers: 0,
+            },
+        };
+        let mut live = synthetic_unit();
+        live.k_operations.nodes = OperationNodes::default();
+        live.k_operations.nodes.push(node.clone());
+        live.k_operations.nodes.push(node);
+        let retained = live.k_operations.nodes.front_storage().unwrap().unwrap();
+        let original = live.k_operations.nodes.front_id();
+        let mut staged = live.clone();
+        let ids = (0..staged.k_operations.nodes.len())
+            .map(|i| staged.k_operations.nodes.id_at(i))
+            .collect::<Vec<_>>();
+        staged.i_damage = 87;
+        staged.k_operations.nodes[0].flags = 4;
+        merge_queried_actor(&mut live, staged, &ids).unwrap();
+        assert_eq!(live.i_damage, 87);
+        assert_eq!(live.k_operations.nodes.front_id(), original);
+        assert_eq!(live.k_operations.nodes.native_capacity(), Some(4));
+        assert!(live.k_operations.nodes.storage_is_front(retained).unwrap());
+        let mut staged = live.clone();
+        let ids = (0..staged.k_operations.nodes.len())
+            .map(|i| staged.k_operations.nodes.id_at(i))
+            .collect::<Vec<_>>();
+        let same = staged.k_operations.nodes.remove(0);
+        staged.k_operations.nodes.insert(0, same);
+        assert_eq!(staged, live); // equal payloads cannot establish occurrence identity
+        assert!(merge_queried_actor(&mut live, staged, &ids).is_err());
+        assert_eq!(
+            live.k_operations.nodes.storage_is_front(retained),
+            Err(c6_core::unit::OperationStorageError::QueueReplaced)
+        );
+    }
 
     #[test]
     fn report_trace_preserves_signed_identity_bits_and_optional_arguments() {
