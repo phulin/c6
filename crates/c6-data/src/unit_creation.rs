@@ -1,6 +1,9 @@
 //! Ordinary fresh Unit initialization over the current canonical World.
 //! The native source orders MaxMoves, static charges, abilities and promotions;
 //! later unsupported leaves retain that prefix and never count as completion.
+pub mod signals;
+pub mod collections;
+
 use crate::{
     registry::LinuxDefinitionRegistry,
     resource_binding::ResourceAuthority,
@@ -49,6 +52,7 @@ pub struct Definitions {
     initialization: unit_initialization_definitions::Definitions,
     promotions: LinuxDefinitionRegistry,
     districts: LinuxDefinitionRegistry,
+    continents: LinuxDefinitionRegistry,
     improvements: LinuxDefinitionRegistry,
     yields: LinuxDefinitionRegistry,
     ability_inactive: Vec<bool>,
@@ -56,6 +60,37 @@ pub struct Definitions {
     operations: Vec<(u32, bool)>,
 }
 impl Definitions {
+    pub fn continent_index(&self, hash:u32)->Option<usize>{self.continents.find_index(hash)}
+    ///2c291e0 uses static definition strength and the current named Tags owner.
+    pub fn can_have_ability<E>(&self,state:&LoadedState,unit:(i32,u32),tags:&crate::loaded_actions::reporting::hold_cycling::commands::Tags,index:usize)->Result<bool,Error<E>>{
+        let unit = actor(state,unit.0,unit.1)?;
+        let Some(unit_index) = self.units.find_index(unit.e_type_index) else {
+            return Ok(false);
+        };
+        let Some(hash) = self.initialization.abilities().type_hash(index) else {
+            return Ok(false);
+        };
+        if tags.has(hash, b"CLASS_ALL_UNITS") {
+            return Ok(true);
+        }
+        // Source combat/ranged/bombard tests are independent of a combat class.
+        let properties = self.properties[unit_index];
+        if tags.has(hash, b"CLASS_ALL_COMBAT_UNITS") {
+            if properties.base.combat > 0 {
+                return Ok(true);
+            }
+            // These static fields are retained explicitly by the rules adapter.
+            if properties.ranged > 0 || properties.bombard > 0 {
+                return Ok(true);
+            }
+        }
+        tags
+            .shares_named_type_tags(
+                &self.units.entries()[unit_index].type_name,
+                hash,
+            )
+            .map_err(|_| Error::Missing("current Tags full-name lookup"))
+    }
     pub fn from_rules(
         state: &LoadedState,
         rules: &Rules,
@@ -196,6 +231,7 @@ impl Definitions {
             })
             .collect::<Result<_, _>>()?;
         Ok(Self {
+            continents: collection(rules,"Continents","ContinentType").map_err(Error::Resources)?,
             hero_units,
             identities: state.binding().inputs.clone(),
             units,
@@ -501,35 +537,8 @@ impl<E: Effects> kernel::abilities::Context for Abilities<'_, E> {
         }
         Ok(index)
     }
-    fn can_have(&self, index: usize) -> Result<bool, Self::Error> {
-        let unit = actor(self.state, self.owner, self.id)?;
-        let Some(unit_index) = self.definitions.units.find_index(unit.e_type_index) else {
-            return Ok(false);
-        };
-        let Some(hash) = self.definitions.initialization.abilities().type_hash(index) else {
-            return Ok(false);
-        };
-        if self.tags.has(hash, b"CLASS_ALL_UNITS") {
-            return Ok(true);
-        }
-        // Source combat/ranged/bombard tests are independent of a combat class.
-        let properties = self.definitions.properties[unit_index];
-        if self.tags.has(hash, b"CLASS_ALL_COMBAT_UNITS") {
-            if properties.base.combat > 0 {
-                return Ok(true);
-            }
-            // These static fields are retained explicitly by the rules adapter.
-            if properties.ranged > 0 || properties.bombard > 0 {
-                return Ok(true);
-            }
-        }
-        self.tags
-            .shares_named_type_tags(
-                &self.definitions.units.entries()[unit_index].type_name,
-                hash,
-            )
-            .map_err(|_| Error::Missing("current Tags full-name lookup"))
-    }
+    fn can_have(&self,index:usize)->Result<bool,Self::Error>{self.definitions.can_have_ability(self.state,(self.owner,self.id),self.tags,index)}
+
     fn inactive(&self, index: usize) -> Result<bool, Self::Error> {
         self.definitions
             .ability_inactive

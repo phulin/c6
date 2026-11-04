@@ -17,6 +17,7 @@ pub struct Definitions {
     units: LinuxDefinitionRegistry,
     eras: LinuxDefinitionRegistry,
     found_city: Vec<bool>,
+    makes_trade_route: Vec<bool>,
     prerequisite_era: Vec<i32>,
     obsolete: i32,
     history_special: Vec<bool>,
@@ -108,6 +109,7 @@ impl Definitions {
             )))
         };
         let mut found_city = Vec::new();
+        let mut makes_trade_route = Vec::new();
         let mut history_special = Vec::new();
         let mut prerequisite_era = Vec::new();
         for entry in units.entries() {
@@ -115,6 +117,7 @@ impl Definitions {
                 .row_by_id(entry.database_rowid)
                 .ok_or(Error::Missing("Unit row"))?;
             found_city.push(row.integer("FoundCity").map_err(Error::Rules)? != 0);
+            makes_trade_route.push(row.integer("MakeTradeRoute").map_err(Error::Rules)? != 0);
             history_special.push(
                 !matches!(row.get("TraitType").map_err(Error::Rules)?, SqlValue::Null)
                     || !matches!(
@@ -178,12 +181,51 @@ impl Definitions {
             units,
             eras,
             found_city,
+            makes_trade_route,
             prerequisite_era,
             obsolete,
             history_special,
             boosts,
             replacements,
         })
+    }
+    ///201dc60: active-player control may only schedule a new unit for AI
+    /// players. Human/inactive branches return before controller iteration.
+    pub fn player_control_created(&self, state: &LoadedState, owner: i32) -> Result<(), Error> {
+        if state.binding() != &self.binding {
+            return Err(Error::Missing("creation control binding"));
+        }
+        if !state.turn_active(owner).map_err(Error::State)? {
+            return Ok(());
+        }
+        if state
+            .partial_player_controls(owner)
+            .map_err(Error::State)?
+            .slot_status
+            == 3
+        {
+            return Ok(());
+        }
+        Err(Error::Missing(
+            "AI unit-controller scheduling after creation",
+        ))
+    }
+    ///20a8520→21b5120: archive edit has no gameplay side effect; non-Trader
+    /// returns before changing the new unit's controller or querying movement.
+    pub fn economic_created(&self, state: &LoadedState, unit: UnitReference) -> Result<(), Error> {
+        self.actor(state, unit)?;
+        let index = state
+            .unit_runtime(unit.player(), unit.id)
+            .map_err(Error::State)?
+            .definition_index;
+        if !*self
+            .makes_trade_route
+            .get(usize::try_from(index).map_err(|_| Error::Missing("trade Unit index"))?)
+            .ok_or(Error::Missing("trade Unit definition"))?
+        {
+            return Ok(());
+        }
+        Err(Error::Missing("new Trade unit controller assignment"))
     }
     ///28fa530: qualify the ordinary creation branch without emulating native
     /// achievement-local counters. Those counters feed only platform awards;
@@ -565,6 +607,24 @@ pub fn script_created(
     unit: UnitReference,
     city: Option<ComponentId>,
 ) -> Result<(), Error> {
+    script_unit_event(state, script, unit, city, "UnitCreated")
+}
+///2c9d510 uses the same four identity arguments for UnitInitialized.
+pub fn script_initialized(
+    state: &LoadedState,
+    script: &mut stock_script::Runtime,
+    unit: UnitReference,
+    city: Option<ComponentId>,
+) -> Result<(), Error> {
+    script_unit_event(state, script, unit, city, "UnitInitialized")
+}
+fn script_unit_event(
+    state: &LoadedState,
+    script: &mut stock_script::Runtime,
+    unit: UnitReference,
+    city: Option<ComponentId>,
+    event: &str,
+) -> Result<(), Error> {
     let actor = state
         .world()
         .unit(unit)
@@ -582,7 +642,30 @@ pub fn script_created(
         args.extend([city.header.owner, city.header.id as i32]);
     }
     script
-        .call_empty(state, "UnitCreated", &args)
+        .call_empty(state, event, &args)
+        .map_err(Error::Script)
+}
+
+///2c9e7e0 emits owner, ID and both coordinates through the same Script owner.
+pub fn script_moved(
+    state: &LoadedState,
+    script: &mut stock_script::Runtime,
+    unit: UnitReference,
+    old: c6_core::unit::PlotCoord,
+    new: c6_core::unit::PlotCoord,
+) -> Result<(), Error> {
+    let actor = state
+        .world()
+        .unit(unit)
+        .map_err(Error::World)?
+        .ok_or(Error::Missing("current moved Script Unit"))?
+        .record;
+    script
+        .call_empty(
+            state,
+            "OnUnitMoved",
+            &[actor.e_owner, actor.id as i32, old.x, old.y, new.x, new.y],
+        )
         .map_err(Error::Script)
 }
 
