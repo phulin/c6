@@ -3,6 +3,22 @@
 //! are preserved. Only the explicitly supplied factories/predicates are supported.
 use super::registry::Handle;
 use crate::unit_moved_signal::requirement_sets as all;
+use crate::unit_moved_signal::{ListenerRing, RegistryError, Subscription};
+
+pub mod changes;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SetListener {
+    Subject(u64),
+    Owner(u64),
+}
+impl SetListener {
+    fn receiver(self) -> u64 {
+        match self {
+            Self::Subject(id) | Self::Owner(id) => id,
+        }
+    }
+}
 
 /// Actual modifier-object identity. A City wrapper never masquerades as a
 /// ProposedCombat handle, even if native integer bits happen to coincide.
@@ -57,6 +73,8 @@ pub enum Error<E> {
     CounterExhausted,
     UnsupportedSubject,
     DynamicReleaseRequired(u64),
+    Ring(RegistryError),
+    CurrentInput(&'static str),
 }
 #[derive(Debug)]
 struct Requirement {
@@ -67,6 +85,7 @@ struct Requirement {
     definition: usize,
     value: InitializedRequirement,
     references: u32,
+    changed: ListenerRing<u64>,
 }
 #[derive(Debug)]
 struct Set {
@@ -77,7 +96,9 @@ struct Set {
     definition: usize,
     state: i32,
     children: Vec<u64>,
-    subscribers: Vec<u64>,
+    subscribers: Vec<(SetListener, Subscription)>,
+    changed: ListenerRing<SetListener>,
+    child_subscriptions: Vec<Subscription>,
     alive: bool,
     references: u32,
 }
@@ -207,6 +228,52 @@ impl Runtime {
         r.references = r.references.checked_sub(1).ok_or(Error::MissingSet)?;
         Ok(())
     }
+    fn detach_child<E>(&mut self, set: u64, child: u64) -> Result<(), Error<E>> {
+        let set = self
+            .sets
+            .iter_mut()
+            .find(|row| row.label == set && row.alive)
+            .ok_or(Error::MissingSet)?;
+        let index = set
+            .children
+            .iter()
+            .position(|id| *id == child)
+            .ok_or(Error::MissingSet)?;
+        if index >= set.child_subscriptions.len() {
+            return Err(Error::MissingSubscription);
+        }
+        set.children.remove(index);
+        let token = set.child_subscriptions.remove(index);
+        self.requirements
+            .iter_mut()
+            .find(|row| row.label == child)
+            .ok_or(Error::MissingSet)?
+            .changed
+            .unsubscribe(token)
+            .map_err(Error::Ring)
+    }
+    fn detach_all_children<E>(&mut self, set: u64) -> Result<Vec<u64>, Error<E>> {
+        let set = self
+            .sets
+            .iter_mut()
+            .find(|row| row.label == set)
+            .ok_or(Error::MissingSet)?;
+        if set.children.len() != set.child_subscriptions.len() {
+            return Err(Error::MissingSubscription);
+        }
+        let children = std::mem::take(&mut set.children);
+        let tokens = std::mem::take(&mut set.child_subscriptions);
+        for (child, token) in children.iter().zip(tokens) {
+            self.requirements
+                .iter_mut()
+                .find(|row| row.label == *child)
+                .ok_or(Error::MissingSet)?
+                .changed
+                .unsubscribe(token)
+                .map_err(Error::Ring)?;
+        }
+        Ok(children)
+    }
     /// Unsubscribe one actual modifier binding then release its set reference.
     /// Constant children have no state-change dispatch after their initialization.
     pub fn unsubscribe<E>(&mut self, receiver: u64, id: u64) -> Result<(), Error<E>> {
@@ -218,9 +285,10 @@ impl Runtime {
         let i = s
             .subscribers
             .iter()
-            .position(|r| *r == receiver)
+            .position(|r| r.0.receiver() == receiver)
             .ok_or(Error::MissingSubscription)?;
-        s.subscribers.remove(i);
+        let (_, token) = s.subscribers.remove(i);
+        s.changed.unsubscribe(token).map_err(Error::Ring)?;
         Ok(())
     }
     pub fn release<E>(&mut self, id: u64) -> Result<(), Error<E>> {
@@ -246,7 +314,7 @@ impl Runtime {
         s.references = s.references.checked_sub(1).ok_or(Error::MissingSet)?;
         if s.references == 0 {
             s.alive = false;
-            let children = std::mem::take(&mut s.children);
+            let children = self.detach_all_children(id)?;
             for id in children {
                 self.release_child(id)?;
             }
@@ -381,7 +449,9 @@ pub fn get_or_create_subject<C: SubjectContext>(
         s.subscribers
             .try_reserve(1)
             .map_err(|_| Error::Allocation)?;
-        s.subscribers.push(receiver);
+        let listener = SetListener::Subject(receiver);
+        let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
+        s.subscribers.push((listener, token));
         s.references = s.references.checked_add(1).ok_or(Error::CounterExhausted)?;
         return Ok(Some(s.label));
     }
@@ -450,6 +520,7 @@ pub fn get_or_create_subject<C: SubjectContext>(
             definition: requirement,
             value,
             references: 1,
+            changed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
         });
         children.push(label);
         c.log_created_requirement(native_id).map_err(Cx)?;
@@ -457,6 +528,18 @@ pub fn get_or_create_subject<C: SubjectContext>(
     let r = c.subject_sets_mut().map_err(Cx)?;
     r.sets.try_reserve(1).map_err(|_| Error::Allocation)?;
     let label = r.label()?;
+    let mut child_subscriptions = Vec::new();
+    child_subscriptions
+        .try_reserve(children.len())
+        .map_err(|_| Error::Allocation)?;
+    for child in &children {
+        let requirement = r
+            .requirements
+            .iter_mut()
+            .find(|row| row.label == *child && row.references != 0)
+            .ok_or(Error::MissingSet)?;
+        child_subscriptions.push(requirement.changed.subscribe(label).map_err(Error::Ring)?);
+    }
     r.sets.push(Set {
         label,
         native_id: u32::MAX,
@@ -466,6 +549,8 @@ pub fn get_or_create_subject<C: SubjectContext>(
         state: 1,
         children,
         subscribers: vec![],
+        changed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
+        child_subscriptions,
         alive: true,
         references: 1,
     });
@@ -492,7 +577,9 @@ pub fn get_or_create_subject<C: SubjectContext>(
     s.subscribers
         .try_reserve(1)
         .map_err(|_| Error::Allocation)?;
-    s.subscribers.push(receiver);
+    let listener = SetListener::Subject(receiver);
+    let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
+    s.subscribers.push((listener, token));
     Ok(Some(label))
 }
 struct Initial<'a, E> {
@@ -539,17 +626,11 @@ impl<E> all::Context for Initial<'_, E> {
         Ok(self.runtime.requirement_definitions[r.definition].persistent)
     }
     fn remove_child(&mut self, id: u64) -> Result<(), Self::Error> {
-        let s = self.set_mut();
-        let i = s
-            .children
-            .iter()
-            .position(|x| *x == id)
-            .ok_or(Error::MissingSet)?;
-        s.children.remove(i);
+        self.runtime.detach_child(self.label, id)?;
         self.runtime.release_child(id)
     }
     fn remove_all_children(&mut self) -> Result<(), Self::Error> {
-        let children = std::mem::take(&mut self.set_mut().children);
+        let children = self.runtime.detach_all_children(self.label)?;
         for id in children {
             self.runtime.release_child(id)?;
         }
