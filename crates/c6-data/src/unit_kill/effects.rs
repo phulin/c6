@@ -42,7 +42,6 @@ pub fn remove_fields<C, P>(
             })
             .map_err(Error::CommonEffect);
     }
-    let mut ability_index = None;
     let resolved = match effect {
         Effect::Unsupported(_) => {
             return Err(Error::Missing("unimplemented Unit effect Remove class"))
@@ -63,7 +62,19 @@ pub fn remove_fields<C, P>(
                 .terrains()
                 .type_hash(index)
                 .ok_or(Error::Missing("valid-terrain effect hash"))?;
-            kernel::Effect::ValidTerrain { terrain_hash }
+            let old = *state
+                .unit_runtime(actor.0, actor.1)
+                .map_err(Error::State)?
+                .invalid_terrain
+                .get(index)
+                .ok_or(Error::Missing("valid-terrain current index"))?;
+            state
+                .set_unit_invalid_terrain(actor.0, actor.1, index, terrain_hash, !old)
+                .map_err(Error::State)?;
+            return Ok(FieldRemoval {
+                success: true,
+                ability_lost: None,
+            });
         }
         Effect::GrantAbility(value) => {
             // Native ChangeAbilityCount returns before a vector write for
@@ -74,22 +85,29 @@ pub fn remove_fields<C, P>(
                     ability_lost: None,
                 });
             };
-            let unit = super::unit(state, actor)?;
-            if index >= unit.ai_abilities_possessed.len() {
+            let runtime = state.unit_runtime(actor.0, actor.1).map_err(Error::State)?;
+            let Some(old) = runtime.abilities.get(index).copied() else {
                 return Ok(FieldRemoval {
                     success: true,
                     ability_lost: None,
                 });
-            }
+            };
             let ability_hash = definitions
                 .abilities()
                 .type_hash(index)
                 .ok_or(Error::Missing("grant ability effect hash"))?;
-            ability_index = Some(
-                i32::try_from(index)
-                    .map_err(|_| Error::Missing("ability index exceeds native i32"))?,
-            );
-            kernel::Effect::GrantAbility { ability_hash }
+            let sum = old.wrapping_sub(1);
+            state
+                .set_unit_ability_count(actor.0, actor.1, index, ability_hash, sum.max(0))
+                .map_err(Error::State)?;
+            return Ok(FieldRemoval {
+                success: true,
+                ability_lost: if old > 0 && sum <= 0 {
+                    Some(i32::try_from(index).map_err(|_| Error::Missing("ability native index"))?)
+                } else {
+                    None
+                },
+            });
         }
     };
     let domain = if matches!(effect, Effect::SeaMovement(_)) {
@@ -103,13 +121,7 @@ pub fn remove_fields<C, P>(
     };
     let continuation = kernel::remove(super::unit_mut(state, actor)?, resolved, domain)
         .map_err(Error::EffectFields)?;
-    if continuation == kernel::Continuation::AbilityLost {
-        let ability = ability_index.ok_or(Error::Missing("lost ability native index"))?;
-        return Ok(FieldRemoval {
-            success: true,
-            ability_lost: Some(ability),
-        });
-    }
+    debug_assert_eq!(continuation, kernel::Continuation::None);
     Ok(FieldRemoval {
         success: true,
         ability_lost: None,

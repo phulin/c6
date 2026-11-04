@@ -553,7 +553,7 @@ mod tests {
         }
         unit::Unit::decode(&bytes, unit::Limits::default()).unwrap()
     }
-    fn actor_commit_state() -> (LoadedState, map::UnitReference) {
+    pub(super) fn actor_commit_state() -> (LoadedState, map::UnitReference) {
         use crate::formation_initialization::{DirtyBaseline, LogicalArchive, UNIT_FIELDS};
         let mut state = state();
         let owner = state.world.players()[0].owner();
@@ -5431,3 +5431,4 @@ pub mod city_build_initialization;
 mod object_pairing_current;
 
 pub mod unit_creation;
+pub mod unit_arrays;

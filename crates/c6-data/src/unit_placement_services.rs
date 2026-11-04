@@ -1219,6 +1219,12 @@ pub fn owning_city<E: Services>(
         .map(|c| (owner, c.value.header.id)))
 }
 
+impl<E> From<crate::loaded_actions::Error> for Error<E> {
+    fn from(value: crate::loaded_actions::Error) -> Self {
+        Self::Combat(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1291,8 +1297,3 @@ mod tests {
     }
 }
 
-impl<E> From<crate::loaded_actions::Error> for Error<E> {
-    fn from(value: crate::loaded_actions::Error) -> Self {
-        Self::Combat(value)
-    }
-}
