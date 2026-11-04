@@ -204,7 +204,8 @@ pub struct PlayerPreCities {
     pub congress: pc::Congress,
 }
 /// Explicit failure at an unconsumed nested component. Offset is relative to
-/// the supplied post-Map bytes; nested errors never authorize skipping bytes.
+/// the supplied bytes; each prefix API documents its starting boundary.
+/// Nested errors never authorize skipping bytes.
 #[derive(Debug, Eq, PartialEq)]
 pub struct PlayerPrefixBoundary {
     pub offset: usize,
@@ -215,6 +216,62 @@ pub struct PlayerPrefixBoundary {
 pub struct FirstPlayerCitiesPrefix {
     pub header_prefix: FirstPlayerHeaderPrefix,
     pub body: PlayerPreCities,
+}
+/// One saved Manager entry through its pre-Cities body, beginning at the
+/// explicit requested owner. It does not construct a full Player/runtime state.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PlayerRecordCitiesPrefix {
+    pub requested_owner: i32,
+    pub header: VersionedPlayerHeader,
+    pub body: PlayerPreCities,
+}
+impl PlayerRecordCitiesPrefix {
+    pub fn decode_prefix(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize), PlayerPrefixBoundary> {
+        Self::decode_prefix_with_items(bytes, limits).map(|(v, n, _)| (v, n))
+    }
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), PlayerPrefixBoundary> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let mut read_header = || -> Result<(i32, VersionedPlayerHeader), Error> {
+            r.charge(0, 1)?;
+            let requested_owner = r.i32()?;
+            let (header, n) =
+                VersionedPlayerHeader::decode_prefix(&r.bytes[r.pos..], r.remaining())?;
+            r.charge(n, 0)?;
+            if requested_owner != header.saved.owner {
+                return Err(Error::OwnerMismatch {
+                    requested: requested_owner,
+                    record: header.saved.owner,
+                });
+            }
+            Ok((requested_owner, header))
+        };
+        let (requested_owner, header) = read_header().map_err(|error| PlayerPrefixBoundary {
+            offset: r.pos,
+            component: "Player header",
+            error,
+        })?;
+        let body = r.pre_cities()?;
+        Ok((
+            Self {
+                requested_owner,
+                header,
+                body,
+            },
+            r.pos,
+            r.items,
+        ))
+    }
 }
 impl FirstPlayerCitiesPrefix {
     /// Stops before Cities, retaining the saved version and Read projection.
@@ -2566,8 +2623,8 @@ pub(crate) mod tests {
     // Common false-branch saved tail; all fields explicit, no runtime defaults.
     fn false_tail_carrier() -> player_tail::Tail {
         player_tail::Tail {
-            player_version:47,
-            legacy_improvement_replacement_hashes:None,
+            player_version: 47,
+            legacy_improvement_replacement_hashes: None,
             alive: None,
             properties: unit::variants::TypedVariantMap {
                 header: unit::variants::KeyedHeader::Count,
@@ -5556,6 +5613,72 @@ pub(crate) mod header_versions_tests {
         let end = bytes.len();
         bytes.extend(12345u32.to_le_bytes());
         (bytes, end)
+    }
+    #[test]
+    fn standalone_player_record_prefix_preserves_owner_and_shared_budgets() {
+        for version in [38, 47] {
+            let (bytes, end) = cities_prefix_wire(version);
+            // This synthetic fixture explicitly has Religion + Manager count
+            // in its first six words; the seventh starts the saved entry.
+            let record = &bytes[24..];
+            let size = end - 24;
+            let (v, n, items) =
+                PlayerRecordCitiesPrefix::decode_prefix_with_items(record, Limits::default())
+                    .unwrap();
+            assert_eq!(n, size);
+            assert_eq!(v.requested_owner, 7);
+            assert_eq!(v.header.version, version);
+            assert_eq!(v.header.saved.owner, 7);
+            assert!(items > 1);
+            let cap = Limits {
+                max_bytes: size,
+                max_items: items,
+            };
+            assert_eq!(
+                PlayerRecordCitiesPrefix::decode_prefix_with_items(record, cap),
+                Ok((v, size, items))
+            );
+            for end in 0..size {
+                assert!(PlayerRecordCitiesPrefix::decode_prefix(&record[..end], cap).is_err());
+            }
+            for short in [
+                Limits {
+                    max_bytes: size - 1,
+                    ..cap
+                },
+                Limits {
+                    max_items: items - 1,
+                    ..cap
+                },
+            ] {
+                assert!(PlayerRecordCitiesPrefix::decode_prefix(record, short).is_err());
+            }
+            let mut mismatch = record.to_vec();
+            mismatch[..4].copy_from_slice(&8i32.to_le_bytes());
+            assert!(matches!(
+                PlayerRecordCitiesPrefix::decode_prefix(&mismatch, cap),
+                Err(PlayerPrefixBoundary {
+                    component: "Player header",
+                    error: Error::OwnerMismatch {
+                        requested: 8,
+                        record: 7
+                    },
+                    ..
+                })
+            ));
+            let mut unsupported = record.to_vec();
+            unsupported[4..8].copy_from_slice(&39u32.to_le_bytes());
+            assert!(matches!(
+                PlayerRecordCitiesPrefix::decode_prefix(&unsupported, cap),
+                Err(PlayerPrefixBoundary {
+                    error: Error::Version {
+                        expected: 47,
+                        actual: 39
+                    },
+                    ..
+                })
+            ));
+        }
     }
     #[test]
     fn shared_pre_cities_versions_preserve_fields_and_exact_boundary() {
