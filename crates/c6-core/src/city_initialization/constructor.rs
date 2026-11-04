@@ -396,7 +396,7 @@ pub fn construct(
         ai_controller: u32::MAX,
         turn_city_founded: 0,
         allowed_improvement_hashes: Vec::new(),
-        population_change_on_creation: Vec::new(),
+        population_change_on_creation: vec![0; definitions.units.len()],
         yield_change_bonus_with_power_modifier: pairs(definitions.yields, 0),
     })
 }
@@ -452,6 +452,7 @@ mod tests {
         assert_eq!(city.citizens.working_plot, vec![0; 37]);
         assert_eq!(city.header.yield_modifiers, pairs(&[9, 7], 0));
         assert_eq!(city.resources.extra_accumulation_terrain_modifier.len(), 4);
+        assert_eq!(city.population_change_on_creation, [0, 0, 0]);
         assert_eq!(city.cultural_identity.loyalty_raw_q8, 25600);
         assert_eq!(city.cultural_identity.conversion_outcome, None);
         assert_eq!(city.cultural_identity.turns_to_conversion, None);
