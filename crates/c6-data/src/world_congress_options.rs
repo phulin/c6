@@ -1,10 +1,19 @@
-//! Bounded Linux World Congress definition-driven option callbacks.
+//! Bounded Linux World Congress resolution and option filtering callbacks.
 //!
 //! Callers supply the exact GameInfo iteration order, resolved resource lookups,
 //! scalar types, and hash bit patterns for their rules configuration. No database
 //! bridge, callback dispatcher, resolution execution, or initialized game is
 //! provided. These source-backed predicates have synthetic regression coverage;
 //! they do not establish native parity or complete state/action/turn support.
+//! All twenty registrations are represented as filtering algorithms only. Game
+//! providers, callback registration/dispatch, voting and resolution effects are
+//! not implemented; external policies still choose every player decision.
+//!
+//! Typed rows/queries admit ordinary numeric, string/nil and boolean contracts
+//! only. Bindings must preserve actual ordered rows, keyed lookups, return types
+//! and reached failures; missing data must never become a default value. Errors
+//! leave reached global cache/counter writes intact and prevent output assignment.
+//! Such partial writes are callback diagnostics, not action acceptance.
 //!
 //! Each method's borrowed slice represents assignment of ResolutionOptions to
 //! the corresponding global cached list. The source aliases that list rather
@@ -100,7 +109,7 @@ pub struct OperationRow<'a> {
     pub base_probability: f64,
 }
 
-/// Independent lazy globals for nine definition-driven callbacks.
+/// Script globals used by the bounded option callbacks.
 ///
 /// None means not yet initialized; Some(empty) is an initialized empty list
 /// (the source Lua empty table remains truthy).
@@ -108,6 +117,14 @@ pub struct OperationRow<'a> {
 /// implementation infers cache state from a save or native snapshot.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorldCongressOptionCaches {
+    pub luxury_resources: Option<Vec<OptionHash>>,
+    pub policy_types: Option<Vec<OptionHash>>,
+    pub district_types: Option<Vec<OptionHash>>,
+    pub players: Option<Vec<CongressPlayerId>>,
+    pub great_people_classes: Option<Vec<OptionHash>>,
+    /// None represents an absent global before its first luxury branch.
+    /// Admitted resource-row counts are <= 2^53, preserving Lua integer steps.
+    pub luxury_resources_count: Option<u64>,
     pub power_resources: Option<Vec<OptionHash>>,
     pub unit_yields: Option<Vec<OptionHash>>,
     pub power_buildings: Option<Vec<OptionHash>>,
@@ -123,6 +140,12 @@ impl WorldCongressOptionCaches {
     /// Use only for a newly initialized script with no preexisting cache globals.
     pub const fn new_script() -> Self {
         Self {
+            luxury_resources: None,
+            policy_types: None,
+            district_types: None,
+            players: None,
+            great_people_classes: None,
+            luxury_resources_count: None,
             power_resources: None,
             unit_yields: None,
             power_buildings: None,
@@ -272,9 +295,713 @@ impl WorldCongressOptionCaches {
     }
 }
 
+/// Player identity is distinct from a rules definition hash.
+pub type CongressPlayerId = i32;
+
+/// Errors stop assignment of the callback output, but do not undo global writes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CongressQueryError<E> {
+    Query(E),
+    Missing(&'static str),
+}
+use CongressQueryError::{Missing, Query};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LuxuryResourceRow<'a> {
+    pub hash: OptionHash,
+    pub resource_class_type: Option<&'a str>,
+    pub frequency: f64,
+    pub sea_frequency: f64,
+}
+impl LuxuryResourceRow<'_> {
+    fn candidate(self) -> bool {
+        self.resource_class_type == Some("RESOURCECLASS_LUXURY")
+            && (self.frequency > 0.0 || self.sea_frequency > 0.0)
+    }
+}
+
+/// Every method is required; unavailable queries must return an error.
+/// Numeric inputs/results must retain the source Lua numbers, without defaults.
+pub trait LuxuryWorld {
+    type Error;
+    fn resource_count(&self, hash: OptionHash) -> Result<f64, Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResolutionDefinition {
+    WorldReligion,
+    DiploVictory,
+    Luxury,
+}
+pub trait ResolutionWorld: LuxuryWorld {
+    fn resolution_hash(
+        &self,
+        definition: ResolutionDefinition,
+    ) -> Result<Option<OptionHash>, Self::Error>;
+    /// Resolve Game.GetReligion before querying its list; nil is an error.
+    /// Return the actual Lua table length (#GetReligions()), including its
+    /// traversal/length contract, rather than an inferred world religion count.
+    fn religion_count(&self) -> Result<usize, Self::Error>;
+    fn diplomatic_victory_enabled(&self) -> Result<bool, Self::Error>;
+}
+
+pub trait CultureQueries {
+    type Error;
+    fn is_policy_unlocked(&self, hash: OptionHash) -> Result<bool, Self::Error>;
+    fn is_policy_obsolete(&self, hash: OptionHash) -> Result<bool, Self::Error>;
+}
+pub trait CultureWorld {
+    type Error;
+    /// Resolve Players[player] first; a missing player must be an error.
+    /// None represents only a nil GetCulture result.
+    fn culture(
+        &self,
+        player: CongressPlayerId,
+    ) -> Result<Option<&dyn CultureQueries<Error = Self::Error>>, Self::Error>;
+}
+pub trait DiplomacyQueries {
+    type Error;
+    fn has_met(&self, player: CongressPlayerId) -> Result<bool, Self::Error>;
+}
+pub trait CongressPlayer {
+    type Error;
+    fn id(&self) -> Result<CongressPlayerId, Self::Error>;
+}
+pub type CongressPlayerEntry<'a, E> = Option<&'a dyn CongressPlayer<Error = E>>;
+
+pub trait PlayerWorld {
+    type Error;
+    /// Ordered entries from GetAliveMajors, preserving duplicates. The slice
+    /// contains numeric entries; traversal ends at the first None, as ipairs does.
+    fn alive_majors(&self) -> Result<&[CongressPlayerEntry<'_, Self::Error>], Self::Error>;
+    /// Resolve Players[player] and then GetDiplomacy. Missing player is an
+    /// error; None represents a nil diplomacy handle (dereferenced in loop).
+    fn diplomacy(
+        &self,
+        player: CongressPlayerId,
+    ) -> Result<Option<&dyn DiplomacyQueries<Error = Self::Error>>, Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GreatPersonClassRow {
+    pub hash: OptionHash,
+    pub index: i32,
+}
+pub trait GreatPeopleQueries {
+    type Error;
+    fn is_class_available(&self, index: i32) -> Result<bool, Self::Error>;
+}
+pub trait GreatPeopleWorld {
+    type Error;
+    fn great_people(
+        &self,
+    ) -> Result<Option<&dyn GreatPeopleQueries<Error = Self::Error>>, Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DistrictRow<'a> {
+    pub hash: OptionHash,
+    pub district_type: Option<&'a str>,
+    pub prereq_civic: Option<&'a str>,
+    pub prereq_tech: Option<&'a str>,
+}
+pub trait UrbanWorld {
+    type Error;
+    /// Includes GetEras/GetCurrentEra and the keyed Eras lookup. Missing
+    /// handles/rows must return errors rather than invented chronology values.
+    fn current_era_chronology(&self) -> Result<f64, Self::Error>;
+    fn district(&self, hash: OptionHash) -> Result<Option<DistrictRow<'_>>, Self::Error>;
+    /// Resolve Civic/Technology, then its EraType, then Eras[EraType].
+    /// A missing lookup at either step must return an error.
+    fn civic_era_chronology(&self, civic: &str) -> Result<f64, Self::Error>;
+    fn tech_era_chronology(&self, tech: &str) -> Result<f64, Self::Error>;
+}
+
+/// The empty GreatWorkObjects callback performs no options assignment.
+pub const fn great_work_objects() {}
+
+impl WorldCongressOptionCaches {
+    pub fn can_use_resolutions<W: ResolutionWorld>(
+        &mut self,
+        resolutions: &mut Vec<OptionHash>,
+        resources: &[LuxuryResourceRow<'_>],
+        world: &W,
+    ) -> Result<(), CongressQueryError<W::Error>> {
+        let religion = world
+            .resolution_hash(ResolutionDefinition::WorldReligion)
+            .map_err(Query)?;
+        let victory = world
+            .resolution_hash(ResolutionDefinition::DiploVictory)
+            .map_err(Query)?;
+        let luxury = world
+            .resolution_hash(ResolutionDefinition::Luxury)
+            .map_err(Query)?;
+        let mut allowed = Vec::new();
+        for &hash in resolutions.iter() {
+            let include = if Some(hash) == religion {
+                world.religion_count().map_err(Query)? > 0
+            } else if Some(hash) == victory {
+                world.diplomatic_victory_enabled().map_err(Query)?
+            } else if Some(hash) == luxury {
+                self.luxury_resources_count = Some(0);
+                for row in resources.iter().filter(|row| row.candidate()) {
+                    if world.resource_count(row.hash).map_err(Query)? > 0.0 {
+                        *self.luxury_resources_count.as_mut().unwrap() += 1;
+                    }
+                }
+                self.luxury_resources_count.unwrap() > 0
+            } else {
+                true
+            };
+            if include {
+                allowed.push(hash);
+            }
+        }
+        *resolutions = allowed;
+        Ok(())
+    }
+
+    pub fn luxury_ban<W: LuxuryWorld>(
+        &mut self,
+        rows: &[LuxuryResourceRow<'_>],
+        world: &W,
+    ) -> Result<&[OptionHash], CongressQueryError<W::Error>> {
+        if self.luxury_resources.is_none() {
+            self.luxury_resources = Some(Vec::new());
+            for row in rows.iter().filter(|row| row.candidate()) {
+                if world.resource_count(row.hash).map_err(Query)? > 0.0 {
+                    self.luxury_resources.as_mut().unwrap().push(row.hash);
+                }
+            }
+        }
+        Ok(self.luxury_resources.as_deref().unwrap())
+    }
+
+    pub fn policy_treaty<W: CultureWorld>(
+        &mut self,
+        player: CongressPlayerId,
+        rows: &[OptionHash],
+        world: &W,
+    ) -> Result<&[OptionHash], CongressQueryError<W::Error>> {
+        self.policy_types = Some(Vec::new());
+        if let Some(culture) = world.culture(player).map_err(Query)? {
+            for &hash in rows {
+                if culture.is_policy_unlocked(hash).map_err(Query)?
+                    && !culture.is_policy_obsolete(hash).map_err(Query)?
+                {
+                    self.policy_types.as_mut().unwrap().push(hash);
+                }
+            }
+        }
+        Ok(self.policy_types.as_deref().unwrap())
+    }
+
+    pub fn urban_development<W: UrbanWorld>(
+        &mut self,
+        rows: &[DistrictRow<'_>],
+        world: &W,
+    ) -> Result<Vec<OptionHash>, CongressQueryError<W::Error>> {
+        if self.district_types.is_none() {
+            self.district_types = Some(Vec::new());
+            for row in rows {
+                if matches!(
+                    row.district_type,
+                    Some(
+                        "DISTRICT_CITY_CENTER"
+                            | "DISTRICT_HOLY_SITE"
+                            | "DISTRICT_CAMPUS"
+                            | "DISTRICT_ENCAMPMENT"
+                            | "DISTRICT_HARBOR"
+                            | "DISTRICT_AERODROME"
+                            | "DISTRICT_COMMERCIAL_HUB"
+                            | "DISTRICT_ENTERTAINMENT_COMPLEX"
+                            | "DISTRICT_THEATER"
+                            | "DISTRICT_INDUSTRIAL_ZONE"
+                            | "DISTRICT_GOVERNMENT"
+                            | "DISTRICT_WATER_ENTERTAINMENT_COMPLEX"
+                            | "DISTRICT_DIPLOMATIC_QUARTER"
+                            | "DISTRICT_PRESERVE"
+                    )
+                ) {
+                    self.district_types.as_mut().unwrap().push(row.hash);
+                }
+            }
+        }
+        let current = world.current_era_chronology().map_err(Query)?;
+        let mut output = Vec::new();
+        for &hash in self.district_types.as_ref().unwrap() {
+            let row = world
+                .district(hash)
+                .map_err(Query)?
+                .ok_or(Missing("Districts[hash]"))?;
+            let mut allowed = true;
+            if let Some(civic) = row.prereq_civic.filter(|s| !s.is_empty()) {
+                if world.civic_era_chronology(civic).map_err(Query)? > current {
+                    allowed = false;
+                }
+            }
+            if let Some(tech) = row.prereq_tech.filter(|s| !s.is_empty()) {
+                if world.tech_era_chronology(tech).map_err(Query)? > current {
+                    allowed = false;
+                }
+            }
+            if allowed {
+                output.push(hash);
+            }
+        }
+        Ok(output)
+    }
+
+    fn player_options<W: PlayerWorld>(
+        &mut self,
+        player: CongressPlayerId,
+        world: &W,
+    ) -> Result<&[CongressPlayerId], CongressQueryError<W::Error>> {
+        self.players = Some(Vec::new());
+        let players = world.alive_majors().map_err(Query)?;
+        let diplomacy = world.diplomacy(player).map_err(Query)?;
+        for p in players.iter().take_while(|p| p.is_some()).flatten() {
+            let id = p.id().map_err(Query)?;
+            let met = diplomacy
+                .ok_or(Missing("GetDiplomacy"))?
+                .has_met(id)
+                .map_err(Query)?;
+            if met || id == player {
+                self.players.as_mut().unwrap().push(id);
+            }
+        }
+        Ok(self.players.as_deref().unwrap())
+    }
+
+    /// None means return without assigning ResolutionOptions. Some aliases the
+    /// rebuilt global cache, including when the assigned list is empty.
+    pub fn patronage<W: GreatPeopleWorld>(
+        &mut self,
+        rows: &[GreatPersonClassRow],
+        world: &W,
+    ) -> Result<Option<&[OptionHash]>, CongressQueryError<W::Error>> {
+        self.great_people_classes = Some(Vec::new());
+        let Some(people) = world.great_people().map_err(Query)? else {
+            return Ok(None);
+        };
+        for row in rows {
+            if people.is_class_available(row.index).map_err(Query)? {
+                self.great_people_classes.as_mut().unwrap().push(row.hash);
+            }
+        }
+        Ok(Some(self.great_people_classes.as_deref().unwrap()))
+    }
+}
+
+macro_rules! player_callback {
+    ($($name:ident),+) => { impl WorldCongressOptionCaches { $(
+        pub fn $name<W: PlayerWorld>(&mut self, player: CongressPlayerId, world: &W) -> Result<&[CongressPlayerId], CongressQueryError<W::Error>> {
+            self.player_options(player, world)
+        }
+    )+ } };
+}
+player_callback!(
+    border_control,
+    migration_treaty,
+    arms_control_treaty,
+    trade_treaty,
+    diplo_victory
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    struct World {
+        calls: RefCell<Vec<String>>,
+        fail: Option<&'static str>,
+        nil: bool,
+    }
+    impl World {
+        fn call(&self, name: String) -> Result<(), &'static str> {
+            self.calls.borrow_mut().push(name.clone());
+            if self.fail == Some(name.as_str()) {
+                Err("fixture failure")
+            } else {
+                Ok(())
+            }
+        }
+        fn new() -> Self {
+            Self {
+                calls: RefCell::new(Vec::new()),
+                fail: None,
+                nil: false,
+            }
+        }
+    }
+    impl LuxuryWorld for World {
+        type Error = &'static str;
+        fn resource_count(&self, hash: u32) -> Result<f64, Self::Error> {
+            self.call(format!("resource:{hash}"))?;
+            Ok(if hash == 2 { 0.0 } else { 1.0 })
+        }
+    }
+    impl ResolutionWorld for World {
+        fn resolution_hash(&self, def: ResolutionDefinition) -> Result<Option<u32>, Self::Error> {
+            self.call(format!("definition:{def:?}"))?;
+            Ok(Some(match def {
+                ResolutionDefinition::WorldReligion => 10,
+                ResolutionDefinition::DiploVictory => 11,
+                ResolutionDefinition::Luxury => 12,
+            }))
+        }
+        fn religion_count(&self) -> Result<usize, Self::Error> {
+            self.call("religion".into())?;
+            Ok(0)
+        }
+        fn diplomatic_victory_enabled(&self) -> Result<bool, Self::Error> {
+            self.call("victory".into())?;
+            Ok(false)
+        }
+    }
+    fn lux(hash: u32) -> LuxuryResourceRow<'static> {
+        LuxuryResourceRow {
+            hash,
+            resource_class_type: Some("RESOURCECLASS_LUXURY"),
+            frequency: 1.0,
+            sea_frequency: 0.0,
+        }
+    }
+
+    #[test]
+    fn luxury_failure_retains_prefix_and_next_call_uses_it_without_queries() {
+        let mut world = World::new();
+        world.fail = Some("resource:3");
+        let mut caches = WorldCongressOptionCaches::new_script();
+        assert_eq!(
+            caches.luxury_ban(&[lux(1), lux(2), lux(3)], &world),
+            Err(Query("fixture failure"))
+        );
+        assert_eq!(caches.luxury_resources, Some(vec![1]));
+        assert_eq!(caches.luxury_ban(&[lux(9)], &world).unwrap(), [1]);
+        assert_eq!(
+            *world.calls.borrow(),
+            ["resource:1", "resource:2", "resource:3"]
+        );
+    }
+
+    #[test]
+    fn resolution_assignment_is_atomic_but_luxury_counter_is_not() {
+        let mut world = World::new();
+        world.fail = Some("victory");
+        let mut caches = WorldCongressOptionCaches::new_script();
+        let mut resolutions = vec![12, 11, 10, 99];
+        assert_eq!(
+            caches.can_use_resolutions(&mut resolutions, &[lux(1), lux(2), lux(1)], &world),
+            Err(Query("fixture failure"))
+        );
+        assert_eq!(resolutions, [12, 11, 10, 99]);
+        assert_eq!(caches.luxury_resources_count, Some(2));
+        assert_eq!(
+            *world.calls.borrow(),
+            [
+                "definition:WorldReligion",
+                "definition:DiploVictory",
+                "definition:Luxury",
+                "resource:1",
+                "resource:2",
+                "resource:1",
+                "victory"
+            ]
+        );
+        world.calls.borrow_mut().clear();
+        caches
+            .can_use_resolutions(&mut vec![], &[], &world)
+            .unwrap();
+        assert_eq!(world.calls.borrow().len(), 3);
+        world.fail = None;
+        caches
+            .can_use_resolutions(&mut resolutions, &[lux(1)], &world)
+            .unwrap();
+        assert_eq!(resolutions, [12, 99]);
+    }
+    impl CultureQueries for World {
+        type Error = &'static str;
+        fn is_policy_unlocked(&self, h: u32) -> Result<bool, Self::Error> {
+            self.call(format!("unlocked:{h}"))?;
+            Ok(h != 2)
+        }
+        fn is_policy_obsolete(&self, h: u32) -> Result<bool, Self::Error> {
+            self.call(format!("obsolete:{h}"))?;
+            Ok(h == 3)
+        }
+    }
+    impl CultureWorld for World {
+        type Error = &'static str;
+        fn culture(
+            &self,
+            p: i32,
+        ) -> Result<Option<&dyn CultureQueries<Error = Self::Error>>, Self::Error> {
+            self.call(format!("culture:{p}"))?;
+            Ok(if self.nil { None } else { Some(self) })
+        }
+    }
+    impl GreatPeopleQueries for World {
+        type Error = &'static str;
+        fn is_class_available(&self, i: i32) -> Result<bool, Self::Error> {
+            self.call(format!("class:{i}"))?;
+            Ok(i != 2)
+        }
+    }
+    impl GreatPeopleWorld for World {
+        type Error = &'static str;
+        fn great_people(
+            &self,
+        ) -> Result<Option<&dyn GreatPeopleQueries<Error = Self::Error>>, Self::Error> {
+            self.call("great_people".into())?;
+            Ok(if self.nil { None } else { Some(self) })
+        }
+    }
+    #[test]
+    fn policies_short_circuit_rebuild_and_nil_patronage_does_not_assign() {
+        let mut caches = WorldCongressOptionCaches::new_script();
+        let mut world = World::new();
+        assert_eq!(
+            caches.policy_treaty(4, &[1, 2, 3, 1], &world).unwrap(),
+            [1, 1]
+        );
+        assert_eq!(
+            *world.calls.borrow(),
+            [
+                "culture:4",
+                "unlocked:1",
+                "obsolete:1",
+                "unlocked:2",
+                "unlocked:3",
+                "obsolete:3",
+                "unlocked:1",
+                "obsolete:1"
+            ]
+        );
+        world.nil = true;
+        assert!(caches.policy_treaty(4, &[1], &world).unwrap().is_empty());
+        caches.great_people_classes = Some(vec![99]);
+        assert_eq!(caches.patronage(&[], &world).unwrap(), None);
+        assert_eq!(caches.great_people_classes, Some(vec![]));
+        world.nil = false;
+        assert_eq!(
+            caches
+                .patronage(
+                    &[
+                        GreatPersonClassRow { hash: 91, index: 1 },
+                        GreatPersonClassRow { hash: 92, index: 2 }
+                    ],
+                    &world
+                )
+                .unwrap(),
+            Some([91].as_slice())
+        );
+        world.fail = Some("obsolete:3");
+        assert_eq!(
+            caches.policy_treaty(4, &[1, 3], &world),
+            Err(Query("fixture failure"))
+        );
+        assert_eq!(caches.policy_types, Some(vec![1]));
+    }
+    impl UrbanWorld for World {
+        type Error = &'static str;
+        fn current_era_chronology(&self) -> Result<f64, Self::Error> {
+            self.call("era".into())?;
+            Ok(2.0)
+        }
+        fn district(&self, h: u32) -> Result<Option<DistrictRow<'_>>, Self::Error> {
+            self.call(format!("district:{h}"))?;
+            Ok(if self.nil {
+                None
+            } else {
+                Some(DistrictRow {
+                    hash: h,
+                    district_type: None,
+                    prereq_civic: if h == 2 { Some("") } else { Some("C") },
+                    prereq_tech: Some("T"),
+                })
+            })
+        }
+        fn civic_era_chronology(&self, c: &str) -> Result<f64, Self::Error> {
+            self.call(format!("civic:{c}"))?;
+            Ok(3.0)
+        }
+        fn tech_era_chronology(&self, t: &str) -> Result<f64, Self::Error> {
+            self.call(format!("tech:{t}"))?;
+            Ok(1.0)
+        }
+    }
+    #[test]
+    fn urban_checks_tech_after_future_civic_and_reuses_only_base_cache() {
+        let mut caches = WorldCongressOptionCaches::new_script();
+        let mut world = World::new();
+        let rows = [1, 2].map(|h| DistrictRow {
+            hash: h,
+            district_type: Some("DISTRICT_CAMPUS"),
+            prereq_civic: None,
+            prereq_tech: None,
+        });
+        assert_eq!(caches.urban_development(&rows, &world).unwrap(), [2]);
+        assert_eq!(
+            *world.calls.borrow(),
+            [
+                "era",
+                "district:1",
+                "civic:C",
+                "tech:T",
+                "district:2",
+                "tech:T"
+            ]
+        );
+        world.calls.borrow_mut().clear();
+        world.fail = Some("tech:T");
+        assert_eq!(
+            caches.urban_development(&[], &world),
+            Err(Query("fixture failure"))
+        );
+        assert_eq!(caches.district_types, Some(vec![1, 2]));
+        assert_eq!(
+            *world.calls.borrow(),
+            ["era", "district:1", "civic:C", "tech:T"]
+        );
+        world.fail = None;
+        world.nil = true;
+        assert_eq!(
+            caches.urban_development(&[], &world),
+            Err(Missing("Districts[hash]"))
+        );
+    }
+    struct Player<'a> {
+        id: i32,
+        world: &'a World,
+    }
+    impl CongressPlayer for Player<'_> {
+        type Error = &'static str;
+        fn id(&self) -> Result<i32, Self::Error> {
+            self.world.call(format!("id:{}", self.id))?;
+            Ok(self.id)
+        }
+    }
+    struct Players<'a> {
+        world: &'a World,
+        rows: Vec<Option<&'a dyn CongressPlayer<Error = &'static str>>>,
+    }
+    impl DiplomacyQueries for World {
+        type Error = &'static str;
+        fn has_met(&self, p: i32) -> Result<bool, Self::Error> {
+            self.call(format!("met:{p}"))?;
+            Ok(p == 8)
+        }
+    }
+    impl PlayerWorld for Players<'_> {
+        type Error = &'static str;
+        fn alive_majors(&self) -> Result<&[CongressPlayerEntry<'_, Self::Error>], Self::Error> {
+            self.world.call("majors".into())?;
+            Ok(&self.rows)
+        }
+        fn diplomacy(
+            &self,
+            p: i32,
+        ) -> Result<Option<&dyn DiplomacyQueries<Error = Self::Error>>, Self::Error> {
+            self.world.call(format!("diplomacy:{p}"))?;
+            Ok(if self.world.nil {
+                None
+            } else {
+                Some(self.world)
+            })
+        }
+    }
+    #[test]
+    fn player_callbacks_query_self_and_share_rebuilt_cache() {
+        let mut caches = WorldCongressOptionCaches::new_script();
+        let world = World::new();
+        let own = Player {
+            id: 4,
+            world: &world,
+        };
+        let other = Player {
+            id: 8,
+            world: &world,
+        };
+        let players = Players {
+            world: &world,
+            rows: vec![Some(&own), Some(&other), Some(&other)],
+        };
+        assert_eq!(caches.border_control(4, &players).unwrap(), [4, 8, 8]);
+        assert_eq!(
+            *world.calls.borrow(),
+            [
+                "majors",
+                "diplomacy:4",
+                "id:4",
+                "met:4",
+                "id:8",
+                "met:8",
+                "id:8",
+                "met:8"
+            ]
+        );
+        let hole = Players {
+            world: &world,
+            rows: vec![None, Some(&other)],
+        };
+        world.calls.borrow_mut().clear();
+        assert!(caches.border_control(4, &hole).unwrap().is_empty());
+        assert_eq!(*world.calls.borrow(), ["majors", "diplomacy:4"]);
+        let empty = Players {
+            world: &world,
+            rows: vec![],
+        };
+        assert!(caches.migration_treaty(4, &empty).unwrap().is_empty());
+        assert!(caches.arms_control_treaty(4, &empty).unwrap().is_empty());
+        assert!(caches.trade_treaty(4, &empty).unwrap().is_empty());
+        assert!(caches.diplo_victory(4, &empty).unwrap().is_empty());
+        assert_eq!(caches.players, Some(vec![]));
+    }
+    #[test]
+    fn player_error_preserves_prefix_and_nil_diplomacy_is_lazy_error() {
+        let mut caches = WorldCongressOptionCaches::new_script();
+        let mut world = World::new();
+        world.fail = Some("met:8");
+        let own = Player {
+            id: 4,
+            world: &world,
+        };
+        let other = Player {
+            id: 8,
+            world: &world,
+        };
+        let players = Players {
+            world: &world,
+            rows: vec![Some(&own), Some(&other)],
+        };
+        assert_eq!(
+            caches.trade_treaty(4, &players),
+            Err(Query("fixture failure"))
+        );
+        assert_eq!(caches.players, Some(vec![4]));
+        world.fail = None;
+        world.nil = true;
+        let empty = Players {
+            world: &world,
+            rows: vec![],
+        };
+        assert!(caches.border_control(4, &empty).unwrap().is_empty());
+        let own = Player {
+            id: 4,
+            world: &world,
+        };
+        let players = Players {
+            world: &world,
+            rows: vec![Some(&own)],
+        };
+        assert_eq!(
+            caches.border_control(4, &players),
+            Err(Missing("GetDiplomacy"))
+        );
+        assert_eq!(caches.players, Some(vec![]));
+    }
 
     #[test]
     fn power_lookup_duplicates_and_non_numeric_zero_distinction() {
