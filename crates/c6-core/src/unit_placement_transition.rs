@@ -10,6 +10,8 @@ use crate::unit_occupancy::{self, OccupancyError};
 use crate::unit_turn_upkeep::ACTIVITY_HOLD;
 use crate::world::World;
 
+pub mod normal_move;
+
 pub const EMBARK_EVENT: u32 = 0x0fbb4f61;
 pub const DISEMBARK_EVENT: u32 = 0x23c8f020;
 
@@ -186,6 +188,18 @@ pub const EMBARKED_CHANGED: u32 = 0x84c1fdd6;
 pub enum PlacementPayload {
     Coordinate(PlotCoord),
     Integer(i32),
+    Visibility {
+        state: i32,
+        initial_placement: Option<bool>,
+    },
+    Moved {
+        location: PlotCoord,
+        locally_visible: bool,
+        newly_locally_visible: bool,
+        embark_event: u32,
+        parent: ComponentId,
+    },
+    OtherIdentity(ComponentId),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlacementReport {
@@ -617,6 +631,7 @@ mod tests {
         assert_eq!(c.world.plot_units(3, 1).unwrap()[0].id, 9);
         assert_eq!(c.world.map().plots[0].unit_count, 1);
     }
+    include!("unit_placement_transition/normal_move_tests.rs");
 }
 
 #[cfg(test)]
@@ -763,7 +778,10 @@ mod state_tests {
             apply_embark_change(
                 &mut c,
                 EMBARK_EVENT,
-                PlotCoord { x: i32::MIN, y: i32::MIN },
+                PlotCoord {
+                    x: i32::MIN,
+                    y: i32::MIN
+                },
                 |c, target, old_valid| {
                     assert!(target && !old_valid);
                     assert!(c.reports.is_empty());
