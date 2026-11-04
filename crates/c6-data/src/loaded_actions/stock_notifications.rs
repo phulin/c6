@@ -14,6 +14,10 @@ use super::{
 pub mod game_update;
 #[path = "stock_skip_turn.rs"]
 pub mod skip_turn;
+#[path = "stock_movement.rs"]
+pub mod movement;
+#[path = "stock_manager_queries.rs"]
+mod manager_queries;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -41,10 +45,16 @@ pub struct Decision {
     pub location: [i32; 2],
     pub component: Option<ComponentId>,
 }
+/// Informational gameplay output; it never requests a policy choice.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Notice {
+    TechnologyCompleted { owner: i32, technology: i32 },
+}
 pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
+    pub notices: Vec<Notice>,
     /// Ordered emitted notification publications; client UI playback is omitted.
     pub publications: Vec<lifecycle::Report>,
     /// Source-ordered changes after the canonical Player blocking store.
@@ -56,6 +66,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     temporary_serial: u64,
     positive_temporaries: Vec<c6_core::notification_lifecycle::ObjectId>,
     player_services: Option<crate::unit_placement_services::Runtime>,
+    movement: Option<movement::State<'a>>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn new(
@@ -74,6 +85,7 @@ impl<'a, P> Runtime<'a, P> {
             script,
             reporting,
             decisions: Vec::new(),
+            notices: Vec::new(),
             publications: Vec::new(),
             blocking_changes: Vec::new(),
             last_error: None,
@@ -83,7 +95,42 @@ impl<'a, P> Runtime<'a, P> {
             temporary_serial: 0,
             positive_temporaries: Vec::new(),
             player_services: None,
+            movement: None,
         })
+    }
+    /// Semantic stock informational publication. The source caller has run its
+    /// gameplay predicates and qualified the plain stock factory/consumer path.
+    /// Native text, UI occurrence pools and display cache identity are omitted.
+    pub fn publish_notice(
+        &mut self,
+        state: &LoadedState,
+        notice: Notice,
+    ) -> Result<(), processing::Error> {
+        self.check(state)?;
+        let owner = match &notice {
+            Notice::TechnologyCompleted { owner, .. } => *owner,
+        };
+        if !self
+            .facts
+            .manager_initialized
+            .ok_or(processing::Error::Unsupported(
+                "notice manager initialization",
+            ))?
+        {
+            return Ok(());
+        }
+        if self
+            .facts
+            .game_uninitializing
+            .ok_or(processing::Error::Unsupported("notice game uninitializing"))?
+        {
+            return Ok(());
+        }
+        if state.partial_player_controls(owner)?.slot_status != 3 {
+            return Ok(());
+        }
+        self.notices.push(notice);
+        Ok(())
     }
     /// Publish a decision already established by the source gameplay caller
     /// (for example, completed research requiring the next technology). This
