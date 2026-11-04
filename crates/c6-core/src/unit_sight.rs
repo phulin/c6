@@ -54,9 +54,6 @@ pub trait SightContext {
     ) -> Result<Self::Visibility, Self::Error>;
     fn player(&mut self, owner: i32) -> Result<Self::Player, Self::Error>;
     fn domain(&mut self) -> Result<i32, Self::Error>;
-    /// Actual runtime HiddenVisibilityTypes enum. The saved SightModifiers
-    /// field is definition-hash serialized and must be resolved, not cast.
-    fn hidden_type(&mut self) -> Result<i32, Self::Error>;
     fn plot_index(&mut self, map: Self::Map, origin: PlotCoord) -> Result<i32, Self::Error>;
     fn plot_xy(&mut self, map: Self::Map, index: i32) -> Result<PlotCoord, Self::Error>;
     fn plot(&mut self, map: Self::Map, index: u32) -> Result<Self::Plot, Self::Error>;
@@ -144,7 +141,12 @@ fn apply<C: SightContext>(
     let range = c.unit().map_err(Context)?.k_sight_modifiers.i_sight_range;
     let map = c.globals_map().map_err(Context)?;
     let manager = c.visibility_manager().map_err(Context)?;
-    let hidden = c.hidden_type().map_err(Context)?;
+    // HiddenVisibilityTypes writer/reader store raw i32, not a definition hash.
+    let hidden = c
+        .unit()
+        .map_err(Context)?
+        .k_sight_modifiers
+        .e_can_see_hidden_type;
     let owner = c.unit().map_err(Context)?.e_owner;
     let origin_index = c.plot_index(map, origin).map_err(Context)?;
     let visibility = c.owner_visibility(manager, owner).map_err(Context)?;
@@ -356,9 +358,6 @@ mod tests {
         }
         fn domain(&mut self) -> Result<i32, Self::Error> {
             Ok(self.domain)
-        }
-        fn hidden_type(&mut self) -> Result<i32, Self::Error> {
-            Ok(7)
         }
         fn plot_index(&mut self, map: u32, p: PlotCoord) -> Result<i32, Self::Error> {
             assert_eq!(map, 1);
