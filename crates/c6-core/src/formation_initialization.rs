@@ -3,7 +3,9 @@
 //! This is the state immediately after Formation/collection Read, not a claim
 //! about global load completion. Sync-manager acceptance and gameplay report
 //! subscribers are separate live inputs; no subscriber is synthesized here.
-use crate::unit::{ComponentId, Formation, PlotCoord};
+use crate::unit::{ComponentId, Formation};
+#[cfg(test)]
+use crate::unit::PlotCoord;
 use std::collections::BTreeSet;
 
 pub const FORMATION_COMPONENT_TYPE: i16 = 44;
@@ -299,7 +301,7 @@ impl FormationRuntime {
         self.archive.mark_dirty(14)?;
         formation.last_path.clear();
         self.archive.mark_dirty(15)?;
-        formation.last_path_cache_location = PlotCoord { x: -1, y: -1 };
+        formation.last_path_cache_location = crate::formation_path_cache::INVALID_CACHE_LOCATION;
         Ok(())
     }
 }
@@ -389,7 +391,7 @@ mod tests {
         assert_eq!(r.archive.dirty_indices(), Ok(vec![4, 13, 14, 15]));
         assert!(f.last_path.is_empty());
         assert_eq!(f.unit_ids, members);
-        assert_eq!(f.last_path_cache_location, PlotCoord { x: -1, y: -1 });
+        assert_eq!(f.last_path_cache_location, PlotCoord { x: -9999, y: -9999 });
         f.id ^= 0x10000;
         let before = f.clone();
         let trace = r.archive.dirty_calls().to_vec();

@@ -5,11 +5,14 @@
 use crate::pathfinder::{PathCallbacks, TwoLayer};
 use crate::unit::{Formation, PathNode, PlotCoord};
 
+/// Native PlotCoord.SetInvalid value used by every path-cache invalidation.
+pub const INVALID_CACHE_LOCATION: PlotCoord = PlotCoord { x: -9999, y: -9999 };
+
 /// Formation::Instance::ClearPathCache (0x293d8e0). Clear nodes before assigning
 /// the invalid coordinate pair, retaining every other Formation field.
 pub fn clear_path_cache(formation: &mut Formation) {
     formation.last_path.clear();
-    formation.last_path_cache_location = PlotCoord { x: -9999, y: -9999 };
+    formation.last_path_cache_location = INVALID_CACHE_LOCATION;
 }
 
 /// Formation::Movement::MoveTo's final cache continuation (0x2948034..2948081).
