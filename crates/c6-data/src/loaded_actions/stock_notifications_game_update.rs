@@ -52,3 +52,34 @@ impl<P> Effects for Runtime<'_, P> {
         ))
     }
 }
+
+impl<P> c6_core::loaded_state::turn_completion::Effects for Runtime<'_, P> {
+    fn log(
+        &mut self,
+        _: &mut LoadedState,
+        _: c6_core::turn_completion::LogBranch,
+        _: i32,
+    ) -> Result<(), Error> {
+        self.reached.push("PlayerTurnComplete log branch");
+        Err(Error::Unsupported("stock PlayerTurnComplete log callback"))
+    }
+    fn report(&mut self, _: &mut LoadedState, _: u32, _: i32) -> Result<(), Error> {
+        self.reached.push("PlayerTurnComplete report");
+        Err(Error::Unsupported(
+            "stock PlayerTurnComplete synchronous report",
+        ))
+    }
+    fn edit_build_queue(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<(), Error> {
+        // Native accessor marks its archive before exposing the same queue.
+        // The caller performs the subsequent locked/front scalar accesses.
+        let _ = state
+            .city_mut(owner, city)
+            .map_err(|_| Error::Unsupported("completion current city queue archive"))?;
+        Ok(())
+    }
+}
