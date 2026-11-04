@@ -19,6 +19,20 @@ admitted schemas. This does not reproduce every initialization side effect,
 validate all runtime authority or restore complete gameplay state. Separately
 owned later components do not establish complete continuous Core import.
 
+The qualified Linux loaded-state SkipTurn path uses
+`c6_data::loaded_actions::transition::prepare_with_auto_notification_queries`
+then `PreparedSkipTurn::commit`; successful `AppliedSkipTurn.boundary` reaches
+`HeadlessMessagesProcessed` with HOLD and an empty queue. Its typed current
+state, rules and profile inputs do not require native per-step answers. One
+native loaded initial fixture comparison matches the affected actor/Formation,
+actual actor report prefix, serialized complement and captured runtime subset;
+complete gameplay state and RNG parity remain unproven.
+
+This finite headless projection excludes source-proven presentation work.
+Unknown callbacks or queries return `Unsupported` without mutation; modeled
+native rejection can commit its known prefix. Other actions and EndTurn remain
+unsupported through the general gameplay API.
+
 The small `Engine::apply` rejects unsupported gameplay actions without mutation.
 Some lower-level diagnostic phases preserve completed work on provider errors;
 callers must inspect the specific API contract rather than assume rollback or

@@ -10,6 +10,12 @@ owned state components, rules/registry inputs and bounded action phases. General
 `Engine::apply` gameplay requests and EndTurn return unsupported errors. It is
 not ready for complete-game AI evaluation. See [current limits](docs/status.md).
 
+A finite Linux loaded-state SkipTurn path is available through
+`c6_data::loaded_actions::transition::prepare_with_auto_notification_queries`
+and `PreparedSkipTurn::commit`, reaching `HeadlessMessagesProcessed` for its
+qualified inputs. It takes typed current state, rules and profile inputs;
+complete gameplay state and RNG parity remain unproven.
+
 The active compatibility target is the supplied Linux XP2 profile. Historical
 Windows data does not establish Linux coverage. Supported operations retain
 explicit versions, input identities and missing-provider errors; unknown bytes
