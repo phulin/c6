@@ -80,6 +80,20 @@ where
 /// can retain its search/definitions here while this module owns queue control.
 pub trait Movement<E: OperationReports> {
     type Error;
+    /// Opt-in exact FoundCity composition. The default leaves this operation
+    /// unsupported before Add/Clear; it never supplies a success/no-op handler.
+    fn found_city_rules(&self) -> Option<(&crate::found_city::Definitions, &crate::Rules)> {
+        None
+    }
+    fn start_found_city(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _effects: &mut E,
+    ) -> Result<Option<skip_turn::StartData>, Self::Error> {
+        Ok(None)
+    }
     fn fortify_turn_max(&self) -> i32;
     fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error>;
     fn alert_enemy_visible(
@@ -363,6 +377,60 @@ fn friendly_count<E, M>(
         .map_err(|e| Error::Query(super::Error::Placement(e)))
 }
 
+/// The source parameterless FoundCity Add path. Runtime ID is resolved from
+/// the admitted handler registry; no captured CanStart answer is used.
+#[allow(clippy::too_many_arguments)]
+pub fn execute_found_city_manager<E, M>(
+    state: &mut LoadedState,
+    actor: (i32, u32),
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
+) -> Result<Applied, Error<EffectError<E>, M::Error>>
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
+    if movement.found_city_rules().is_none() {
+        return Err(Error::Unsupported("FoundCity composition unavailable"));
+    }
+    handlers
+        .validate_execution(state, inputs.handlers, inputs.operations)
+        .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?;
+    let id = handlers
+        .runtime_id(c6_core::unit::FOUND_CITY_HASH)
+        .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?
+        .0;
+    loaded_upkeep::clear_unit_operations(state, actor.0, actor.1, effects)
+        .map_err(Error::Upkeep)?;
+    let current = unit(state, actor)?;
+    let node = OperationNode {
+        operation_hash: c6_core::unit::FOUND_CITY_HASH,
+        directive: -1,
+        flags: 0,
+        push_turn: state.retained().core.current_turn,
+        previous_activity: current.e_activity,
+        previous_automation: current.e_automation,
+        parameters: OperationParameters::None,
+    };
+    state
+        .unit_mut(actor.0, actor.1)
+        .map_err(Error::State)?
+        .k_operations
+        .nodes
+        .push(node);
+    emit(state, actor, effects, 0x15c35863, Some(id), None)?;
+    if unit(state, actor)?.k_operations.nodes.len() == 1 {
+        activate(state, actor, inputs, handlers, runtime, effects, movement)?;
+    }
+    Ok(Applied {
+        queued: !unit(state, actor)?.k_operations.nodes.is_empty(),
+        delayed_death: unit(state, actor)?.b_delayed_death,
+    })
+}
+
 /// Execute real Manager.Add/Activate for the finite ordinary MoveTo request.
 /// Callers must finish outer UnitOperation diplomacy/notification/message tails
 /// before accepting a whole action. Errors preserve completed native-order
@@ -474,7 +542,11 @@ where
             delete
         } else {
             let node = front(state, actor)?;
-            let (destination, modifiers) = target(&node)?;
+            let target_before = if node.operation_hash == c6_core::unit::FOUND_CITY_HASH {
+                None
+            } else {
+                Some(target(&node)?)
+            };
             let id = handlers
                 .runtime_id(node.operation_hash)
                 .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?
@@ -486,8 +558,16 @@ where
                 parameters: node.parameters.clone(),
             };
             let reference = UnitReference::from_component_id(identity(state, actor)?);
-            if super::can_start_typed(state, reference, inputs, effects, handlers, &mut operation)
-                .map_err(Error::Query)?
+            if super::can_start_typed_with_found_city(
+                state,
+                reference,
+                inputs,
+                effects,
+                handlers,
+                &mut operation,
+                movement.found_city_rules(),
+            )
+            .map_err(Error::Query)?
             {
                 if operation.runtime_id != id
                     || operation.parameters != node.parameters
@@ -503,29 +583,61 @@ where
                 } else {
                     skip_turn::HOLD
                 };
+                let start_location = unit(state, actor)?.k_location;
                 loaded_upkeep::set_unit_activity(state, actor.0, actor.1, effects, activity)
                     .map_err(Error::Upkeep)?;
                 // Start selects CURRENT front after activity subscribers.
                 let node = front(state, actor)?;
-                let (destination, modifiers) = target(&node)?;
-                if c6_core::movement_world::plot_at(state.world().map(), destination).is_ok()
-                    && !visible(state, runtime, unit(state, actor)?.e_owner, destination)?
-                {
-                    if let OperationParameters::MoveTo { modifiers, .. } = &mut state
-                        .unit_mut(actor.0, actor.1)
-                        .map_err(Error::State)?
-                        .k_operations
-                        .nodes[0]
-                        .parameters
+                if node.operation_hash == c6_core::unit::FOUND_CITY_HASH {
+                    let data = movement
+                        .start_found_city(state, runtime.visibility, actor, effects)
+                        .map_err(Error::Movement)?
+                        .ok_or(Error::Unsupported(
+                            "FoundCity Start composition unavailable",
+                        ))?;
+                    if !unit(state, actor)?.k_operations.nodes.is_empty()
+                        && data.action
+                        && state
+                            .player_slot_status(unit(state, actor)?.e_owner)
+                            .map_err(Error::State)?
+                            == 3
+                        && c6_core::geometry::plot_valid(start_location.x, start_location.y)
+                        && any_human_visible(state, runtime, effects, start_location)?
                     {
-                        *modifiers &= !0x10;
+                        if front(state, actor)?.operation_hash != c6_core::unit::FOUND_CITY_HASH {
+                            return Err(Error::Unsupported(
+                                "FoundCity callback replaced timer handler",
+                            ));
+                        }
+                        // FoundCity uses BaseHandler.CalculateTimer2d956b0,
+                        // which returns the supplied base1, independent of iteration.
+                        state
+                            .unit_mut(actor.0, actor.1)
+                            .map_err(Error::State)?
+                            .i_operation_timer = 1;
                     }
+                    data.delete
+                } else {
+                    let (destination, modifiers) = target(&node)?;
+                    if c6_core::movement_world::plot_at(state.world().map(), destination).is_ok()
+                        && !visible(state, runtime, unit(state, actor)?.e_owner, destination)?
+                    {
+                        if let OperationParameters::MoveTo { modifiers, .. } = &mut state
+                            .unit_mut(actor.0, actor.1)
+                            .map_err(Error::State)?
+                            .k_operations
+                            .nodes[0]
+                            .parameters
+                        {
+                            *modifiers &= !0x10;
+                        }
+                    }
+                    let _ = (destination, modifiers);
+                    if unit(state, actor)?.e_activity != 0x490cc8e1 {
+                        return Ok(());
+                    }
+                    false
                 }
-                let _ = (destination, modifiers);
-                if unit(state, actor)?.e_activity != 0x490cc8e1 {
-                    return Ok(());
-                }
-                false
             } else {
                 let moved = crate::unit_movement_state::unit_has_moved(
                     state,
@@ -538,7 +650,7 @@ where
                 if moved && node.push_turn >= state.retained().core.current_turn {
                     return Ok(());
                 }
-                let _ = (destination, modifiers);
+                let _ = target_before;
                 true
             }
         };

@@ -24,19 +24,19 @@ pub mod choose_tech;
 pub mod city_range_attack;
 pub mod command_units;
 pub mod configuration;
-pub mod diplomacy_pending_deals;
 pub mod culture_notifications;
+#[path = "loaded_actions/aftermath.rs"]
+pub mod current_aftermath;
+pub mod current_city_domains;
+pub mod diplomacy_pending_deals;
 pub mod handlers;
 pub mod move_to;
 pub mod notifications;
 pub mod reporting;
 pub mod scripting;
-pub mod stock_script;
 pub mod stock_notifications;
-pub mod current_city_domains;
+pub mod stock_script;
 pub mod transition;
-#[path = "loaded_actions/aftermath.rs"]
-pub mod current_aftermath;
 
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
@@ -122,6 +122,7 @@ pub enum Error {
     Provider(&'static str),
     Aftermath(aftermath::Error),
     MissingUnit,
+    FoundCity(crate::found_city::legality::Error),
     ActorIdentityChanged(Box<Unit>),
     ConfigurationIdentity,
     Unsupported(&'static str),
@@ -223,6 +224,7 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     inputs: &'a Inputs<'a, 'd>,
     external: &'q mut Q,
     authority: HandlerAuthority<'h, 'capture>,
+    found_city: Option<(&'a crate::found_city::Definitions, &'a crate::Rules)>,
 }
 pub(super) trait TypedParameters {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
@@ -450,6 +452,24 @@ where
                 "script changed Unit before world-backed placement; effects retained",
             ));
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::FOUND_CITY_HASH) {
+            let (definitions, rules) = self
+                .found_city
+                .ok_or(Error::Unsupported("current FoundCity definitions"))?;
+            return c6_core::found_city::can_start(
+                &mut crate::found_city::legality::Context {
+                    state: self.state,
+                    definitions,
+                    rules,
+                    unit: s.unit,
+                    plot: Some(plot),
+                    max_probes: 16384,
+                },
+                visible_only,
+                false,
+            )
+            .map_err(Error::FoundCity);
+        }
         if h.identity().operation_hash == OperationHash(MOVE_TO_HASH) {
             let runtime = self
                 .state
@@ -564,6 +584,7 @@ pub(super) fn can_start_for_actor<
             inputs,
             external,
             authority,
+            found_city: None,
         },
     );
     if (actor.e_owner, actor.id) != identity {
@@ -594,6 +615,22 @@ pub fn can_start_typed<
     handlers: &handlers::BoundHandlers<'_>,
     operation: &mut ManagerOperation<OperationParameters>,
 ) -> Result<bool, Error> {
+    can_start_typed_with_found_city(
+        state, reference, inputs, external, handlers, operation, None,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub fn can_start_typed_with_found_city<
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+    found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
+) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(Error::HandlerObservation)?;
@@ -615,6 +652,7 @@ pub fn can_start_typed<
             inputs,
             external,
             authority: HandlerAuthority::RuntimeBinding(handlers),
+            found_city,
         },
     );
     if (actor.e_owner, actor.id) != identity {
