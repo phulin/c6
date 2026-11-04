@@ -147,6 +147,18 @@ impl LoadedState {
         self.revision = next;
         Ok(true)
     }
+    /// GlobalAi.MayhemTracker uses a separate binary32 addition for each
+    /// combat/death contribution. It is gameplay-affecting retained state.
+    pub fn add_global_mayhem(&mut self, contribution: f32) -> Result<u32, AccessError> {
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(AccessError::State(Error::ResourceLimit))?;
+        let value = &mut self.retained.global_ai.mayhem.native_f32_bits;
+        *value = (f32::from_bits(*value) + contribution).to_bits();
+        self.revision = next;
+        Ok(*value)
+    }
     pub fn game_statistics(&self) -> Result<&Statistics, AccessError> {
         self.game_statistics
             .as_ref()
@@ -261,6 +273,16 @@ mod tests {
             .install_game_building_counts(&binding, vec![], None)
             .unwrap();
         assert_eq!(state.game_units_killed().unwrap(), i32::MIN);
+    }
+    #[test]
+    fn mayhem_rounds_each_contribution_in_binary32() {
+        let mut state = super::super::tests::state();
+        state.retained.global_ai.mayhem.native_f32_bits = 16_777_216.0f32.to_bits();
+        state.add_global_mayhem(1.0).unwrap();
+        assert_eq!(
+            state.add_global_mayhem(1.0).unwrap(),
+            16_777_216.0f32.to_bits()
+        );
     }
     #[test]
     fn duplicate_or_foreign_inputs_reject_before_installing() {
