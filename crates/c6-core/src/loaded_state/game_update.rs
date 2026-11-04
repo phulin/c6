@@ -1,6 +1,7 @@
 //! Current-state partial Game.Update over canonical saved processor/control data.
 //! Unsaved globals are explicit live inputs; no defaults or duplicate saved state.
 use super::LoadedState;
+pub mod maintenance;
 pub mod activation;
 pub mod automation;
 pub mod deactivation;
