@@ -72,6 +72,7 @@ pub mod unit_sight;
 pub mod unit_turn_start;
 pub mod unit_turn_upkeep;
 pub mod visibility_change;
+pub mod visibility_propagation;
 pub mod visibility_contents;
 pub mod world;
 pub mod yields;

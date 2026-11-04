@@ -8,7 +8,7 @@ use c6_core::{
     unit::{ComponentId, PlotCoord, SightPlotEntry, Unit},
     unit_sight::{self, SightContext, VisibilityChange},
     visibility_change::{self, Propagation, SharedLayers, ViewContents},
-    visibility_contents, world,
+    visibility_contents, visibility_propagation, world,
 };
 
 /// Native-order owner records. Duplicate owners are rejected rather than merged.
@@ -21,7 +21,8 @@ pub struct Runtime {
     /// Actual manager enum-index to definition-ID mapping.
     pub hidden_layer_hashes: Vec<u32>,
     pub messages_disabled: bool,
-    pub local_observer: i32,
+    /// Unknown is valid only while no observer-dependent effect is reached.
+    pub local_observer: Option<i32>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlotVisibilityChanged {
@@ -60,6 +61,12 @@ pub enum Error<E> {
     Visibility(visibility_change::StateError),
     ContentsMissingPlot(u32),
     Effect(E),
+    Propagation(visibility_propagation::Error<E>),
+}
+impl<E> From<crate::loaded_actions::Error> for Error<E> {
+    fn from(error: crate::loaded_actions::Error) -> Self {
+        Self::Query(error)
+    }
 }
 
 /// Live effects operate on the SAME state and sharing arrays as the transition.
@@ -116,6 +123,20 @@ pub trait Effects {
         runtime: &mut Runtime,
         player: i32,
         plot: u32,
+    ) -> Result<(), Self::Error>;
+    fn preflight_hidden_propagation(
+        &self,
+        state: &LoadedState,
+        runtime: &Runtime,
+        event: Propagation,
+    ) -> Result<(), Self::Error>;
+    /// Actual Core block stack and qualified stock EngineUtility block methods.
+    fn visibility_reporting_blocks(&mut self) -> Result<&mut Vec<u32>, Self::Error>;
+    fn unit_visibility_changed(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut Runtime,
+        event: visibility_propagation::UnitVisibilityChanged,
     ) -> Result<(), Self::Error>;
     fn propagate(
         &mut self,
@@ -214,6 +235,87 @@ impl<E: Effects> visibility_change::Context for Context<'_, E> {
             .map_err(Error::World)
     }
     fn preflight(&self, change: VisibilityChange) -> Result<(), Self::Error> {
+        // Unknown observer is permitted only when the concrete reached branches
+        // are independent of it. Validate this before the first count write.
+        if self.runtime.local_observer.is_none() && !self.runtime.messages_disabled {
+            let source = self.own_visibility(change.owner)?;
+            for recipient in &source.outgoing_visibility {
+                let player = recipient.player_id;
+                if self
+                    .state
+                    .world()
+                    .player_is_valid(player)
+                    .map_err(Error::World)?
+                    && player != change.owner
+                    && source
+                        .outgoing_visibility_blockers
+                        .iter()
+                        .any(|b| b.player_id == player)
+                {
+                    continue;
+                }
+                let own = self.own_visibility(player)?;
+                let mut shared = self.runtime.shared(player).map_err(Error::Missing)?.clone();
+                let before = shared
+                    .0
+                    .iter()
+                    .find(|l| l.type_hash == visibility_change::BASE_LAYER_HASH)
+                    .and_then(|l| l.values.get(change.plot_index as usize))
+                    .copied()
+                    .ok_or(Error::Missing("shared base visibility count"))?;
+                let after = visibility_change::change_base_count(
+                    &mut shared.0,
+                    change.plot_index,
+                    change.delta,
+                )
+                .map_err(Error::Visibility)?;
+                if (before > 0) != (after > 0)
+                    || (after == 0
+                        && change.delta == 0
+                        && own.revealed.get(change.plot_index as usize) == Some(&0))
+                {
+                    return Err(Error::Missing("local observer"));
+                }
+                let hidden_type = if change.near_origin {
+                    0
+                } else {
+                    change.hidden_type
+                };
+                if hidden_type != -1 && change.delta != 0 {
+                    let hash = usize::try_from(hidden_type)
+                        .ok()
+                        .and_then(|i| self.runtime.hidden_layer_hashes.get(i))
+                        .copied()
+                        .ok_or(Error::Missing("hidden visibility layer mapping"))?;
+                    let mut changed = visibility_change::change_hidden_count(
+                        &mut shared.0,
+                        change.plot_index,
+                        hash,
+                        change.delta,
+                    )
+                    .map_err(Error::Visibility)?;
+                    if player == change.owner {
+                        let mut layers = own.layers.clone();
+                        changed |= visibility_change::change_hidden_count(
+                            &mut layers,
+                            change.plot_index,
+                            hash,
+                            change.delta,
+                        )
+                        .map_err(Error::Visibility)?;
+                    }
+                    if changed
+                        && !visibility_propagation::hidden_propagation_is_empty(
+                            self.state.world(),
+                            change.plot_index,
+                        )
+                        .map_err(Error::World)?
+                    {
+                        return Err(Error::Missing("local observer"));
+                    }
+                }
+            }
+        }
         self.effects
             .preflight_visibility(self.state, self.runtime, change)
             .map_err(Error::Effect)
@@ -246,11 +348,17 @@ impl<E: Effects> visibility_change::Context for Context<'_, E> {
             .copied()
             .ok_or(Error::Missing("hidden visibility layer mapping"))
     }
+    fn empty_hidden_propagation(&self, plot: u32) -> Result<bool, Self::Error> {
+        visibility_propagation::hidden_propagation_is_empty(self.state.world(), plot)
+            .map_err(Error::World)
+    }
     fn messages_disabled(&mut self) -> Result<bool, Self::Error> {
         Ok(self.runtime.messages_disabled)
     }
     fn local_observer(&mut self) -> Result<i32, Self::Error> {
-        Ok(self.runtime.local_observer)
+        self.runtime
+            .local_observer
+            .ok_or(Error::Missing("local observer"))
     }
     fn update_resource_revealed(&mut self, player: i32, plot: u32) -> Result<(), Self::Error> {
         self.effects
@@ -258,9 +366,28 @@ impl<E: Effects> visibility_change::Context for Context<'_, E> {
             .map_err(Error::Effect)
     }
     fn propagate(&mut self, event: Propagation) -> Result<(), Self::Error> {
-        self.effects
-            .propagate(self.state, self.runtime, event)
-            .map_err(Error::Effect)
+        if event.mask == 0x80 {
+            visibility_propagation::propagate_hidden(self, event).map_err(|error| match error {
+                visibility_propagation::Error::Context(error) => error,
+                visibility_propagation::Error::World(error) => Error::World(error),
+                visibility_propagation::Error::UnsupportedMask(mask) => {
+                    Error::Propagation(visibility_propagation::Error::UnsupportedMask(mask))
+                }
+                visibility_propagation::Error::MissingVisibility(player) => {
+                    Error::Propagation(visibility_propagation::Error::MissingVisibility(player))
+                }
+                visibility_propagation::Error::NoncanonicalRevealed => {
+                    Error::Propagation(visibility_propagation::Error::NoncanonicalRevealed)
+                }
+                visibility_propagation::Error::Allocation => {
+                    Error::Propagation(visibility_propagation::Error::Allocation)
+                }
+            })
+        } else {
+            self.effects
+                .propagate(self.state, self.runtime, event)
+                .map_err(Error::Effect)
+        }
     }
     fn view_plot_contents(&mut self, event: ViewContents) -> Result<(), Self::Error> {
         let mut contents = self
@@ -484,5 +611,72 @@ mod tests {
         rows[0].visibility.player_id = 2;
         rows.push(row(2));
         assert!(mapped_visibility(&rows, Some(&mapping), 2).is_err());
+    }
+}
+
+impl<E: Effects> visibility_propagation::Context for Context<'_, E> {
+    type Error = Error<E::Error>;
+    fn world(&self) -> &world::World {
+        self.state.world()
+    }
+    fn preflight_hidden(&self, event: Propagation) -> Result<(), Self::Error> {
+        self.effects
+            .preflight_hidden_propagation(self.state, self.runtime, event)
+            .map_err(Error::Effect)
+    }
+    fn reporting_blocks(&mut self) -> Result<&mut Vec<u32>, Self::Error> {
+        self.effects
+            .visibility_reporting_blocks()
+            .map_err(Error::Effect)
+    }
+    fn unit_visible(
+        &mut self,
+        player: i32,
+        reference: c6_core::map::UnitReference,
+    ) -> Result<bool, Self::Error> {
+        let unit = self
+            .state
+            .world()
+            .unit(reference)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing("propagation unit lifetime"))?
+            .record;
+        let location = unit.k_location;
+        city_range_attack::unit_visible_with_counts(
+            self.state,
+            unit,
+            player,
+            self.sight_definitions,
+            |hash, normal| {
+                let layers = self.runtime.shared(player).map_err(Error::Missing)?;
+                let Some(layer) = layers.0.iter().find(|l| l.type_hash == hash) else {
+                    return if normal {
+                        Err(Error::Missing("shared normal visibility layer"))
+                    } else {
+                        Ok(0)
+                    };
+                };
+                let index = layer
+                    .grid_width
+                    .wrapping_mul(location.y as u32)
+                    .wrapping_add(location.x as u32) as usize;
+                Ok(layer.values.get(index).copied().unwrap_or(0))
+            },
+            || {
+                self.runtime
+                    .hidden_layer_hashes
+                    .first()
+                    .copied()
+                    .ok_or(Error::Missing("hidden visibility layer0"))
+            },
+        )
+    }
+    fn unit_visibility_changed(
+        &mut self,
+        event: visibility_propagation::UnitVisibilityChanged,
+    ) -> Result<(), Self::Error> {
+        self.effects
+            .unit_visibility_changed(self.state, self.runtime, event)
+            .map_err(Error::Effect)
     }
 }

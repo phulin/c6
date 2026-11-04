@@ -69,6 +69,8 @@ pub trait Context {
     fn shared_layers_mut(&mut self, player: i32) -> Result<&mut SharedLayers, Self::Error>;
     /// Actual manager runtime enum-to-layer-ID mapping, not a saved hash cast.
     fn hidden_layer_hash(&self, hidden_type: i32) -> Result<u32, Self::Error>;
+    /// Concrete all-layer emptiness proof; never inferred from absent Unit imports.
+    fn empty_hidden_propagation(&self, plot: u32) -> Result<bool, Self::Error>;
     fn messages_disabled(&mut self) -> Result<bool, Self::Error>;
     fn local_observer(&mut self) -> Result<i32, Self::Error>;
     /// Resource::Builder::UpdateRevealedAt, including all reachable effects.
@@ -164,6 +166,9 @@ fn state<C: Context>(c: &C, player: i32, plot: u32) -> Result<i32, ChangeError<C
 
 fn propagate<C: Context>(c: &mut C, event: Propagation) -> Result<(), ChangeError<C::Error>> {
     use ChangeError::Context;
+    if event.mask == 0x80 && c.empty_hidden_propagation(event.plot).map_err(Context)? {
+        return Ok(());
+    }
     if !c.messages_disabled().map_err(Context)?
         && c.local_observer().map_err(Context)? == event.player
     {
@@ -411,6 +416,7 @@ mod tests {
         events: Vec<String>,
         observer: i32,
         available: bool,
+        empty_hidden: bool,
     }
     impl Fixture {
         fn new() -> Self {
@@ -432,6 +438,7 @@ mod tests {
                 events: vec![],
                 observer: 0,
                 available: true,
+                empty_hidden: false,
             }
         }
         fn recipients(&mut self, players: &[i32]) {
@@ -475,11 +482,18 @@ mod tests {
                 Err("hidden definition")
             }
         }
+        fn empty_hidden_propagation(&self, _: u32) -> Result<bool, Self::Error> {
+            Ok(self.empty_hidden)
+        }
         fn messages_disabled(&mut self) -> Result<bool, Self::Error> {
             Ok(false)
         }
         fn local_observer(&mut self) -> Result<i32, Self::Error> {
-            Ok(self.observer)
+            if self.observer == i32::MIN {
+                Err("unknown observer")
+            } else {
+                Ok(self.observer)
+            }
         }
         fn update_resource_revealed(&mut self, p: i32, _: u32) -> Result<(), Self::Error> {
             self.events.push(format!("resource {p}"));
@@ -657,5 +671,27 @@ mod tests {
         r.hidden_type = 9;
         assert_eq!(change_visibility_count(&mut f, r), Ok(0));
         assert!(f.events.is_empty());
+    }
+    #[test]
+    fn proven_empty_hidden_branch_preserves_counts_without_inventing_observer() {
+        let mut f = Fixture::new();
+        f.recipients(&[0]);
+        f.empty_hidden = true;
+        f.observer = i32::MIN;
+        f.own[0].layers[0].values[0] = 2;
+        f.shared[0].0[0].values[0] = 2;
+        f.own[0].revealed[0] = 1;
+        let r = VisibilityChange {
+            near_origin: true,
+            ..request(1)
+        };
+        assert_eq!(change_visibility_count(&mut f, r), Ok(0));
+        assert!(f.events.is_empty());
+        assert_eq!(f.shared[0].0[1].values, [1]);
+        f.empty_hidden = false;
+        assert_eq!(
+            change_visibility_count(&mut f, VisibilityChange { delta: -1, ..r }),
+            Err(ChangeError::Context("unknown observer"))
+        );
     }
 }
