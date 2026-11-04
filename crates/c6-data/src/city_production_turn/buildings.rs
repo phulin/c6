@@ -373,6 +373,11 @@ pub enum Report {
     /// 4d2a6519/d8a30267; the report carries no location.
     QueueChanged,
     ConstructionStarted,
+    /// OnNewFrontBuilding285b141: event2842ce14, Construct order=1.
+    ProductionChanged,
+    /// DoNewFrontCheck284dc11 / Add285a904: event92492f56,
+    /// subtype d3a03c77 and current queue index.
+    QueueEntryChanged { index: usize },
     BuildingProgress {
         percent: i32,
     },
@@ -434,7 +439,7 @@ pub(super) fn index<T>(values: &[c6_core::unit::HashValue<T>], hash: u32) -> Res
     }
     Ok(index)
 }
-fn plot_index(state: &LoadedState, location: [i32; 2]) -> Result<i32, Error> {
+pub(super) fn plot_index(state: &LoadedState, location: [i32; 2]) -> Result<i32, Error> {
     let map = state.world().map();
     map.plot_at(location[0], location[1])
         .ok_or(Error::Unsupported("building plot"))?;

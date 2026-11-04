@@ -10,6 +10,7 @@ pub mod building_yields;
 pub mod building_callbacks;
 pub mod buildings;
 pub mod modifier_effects;
+pub mod selection;
 
 use c6_core::{
     city_production::{execution, Order, QueueEntry},
@@ -26,6 +27,7 @@ pub enum Error {
     State(c6_core::loaded_state::Error),
     Statistics(c6_core::loaded_state::game_statistics::AccessError),
     MissingProgress(Order),
+    IllegalSelection(Order),
     Unsupported(&'static str),
 }
 impl From<c6_core::loaded_state::Error> for Error {
