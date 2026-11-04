@@ -99,6 +99,15 @@ pub trait Effects:
             "source-backed UnitMoved requirement continuation",
         ))
     }
+    fn on_unit_moved_achievement(
+        &mut self,
+        _state: &mut LoadedState,
+        _runtime: &mut sight::Runtime,
+        _old: PlotCoord,
+        _new: PlotCoord,
+    ) -> Result<(), Error<EffectsError<Self>>> {
+        Err(Error::Missing("stock UnitMoved achievement continuation"))
+    }
     fn signal_unit_moved(
         &mut self,
         state: &mut LoadedState,
@@ -1277,6 +1286,15 @@ impl<E: Effects> c6_core::unit_moved_signal::Context for UnitMovedContext<'_, E>
         };
         self.effects
             .on_unit_moved_requirement(self.state, self.runtime, receiver, current, old, new)
+            .map_err(c6_core::unit_moved_signal::Error::Context)
+    }
+    fn on_achievement(
+        &mut self,
+        old: PlotCoord,
+        new: PlotCoord,
+    ) -> Result<(), c6_core::unit_moved_signal::Error<Self::Error>> {
+        self.effects
+            .on_unit_moved_achievement(self.state, self.runtime, old, new)
             .map_err(c6_core::unit_moved_signal::Error::Context)
     }
     fn call_on_unit_moved(

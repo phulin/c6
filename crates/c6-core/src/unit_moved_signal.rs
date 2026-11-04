@@ -288,6 +288,14 @@ pub trait Context {
     ) -> Result<(), Error<Self::Error>> {
         Err(Error::UnsupportedRequirement(receiver))
     }
+    /// Execute the stock achievement listener or a source-proven inert branch.
+    fn on_achievement(
+        &mut self,
+        _old: PlotCoord,
+        _new: PlotCoord,
+    ) -> Result<(), Error<Self::Error>> {
+        Err(Error::UnsupportedAchievement)
+    }
     /// The existing stock Utility.CallHook/ScriptState Call6 leaf, with full
     /// synchronization and reached Lua/GC effects. This is not whole dispatch.
     fn call_on_unit_moved(
@@ -348,7 +356,7 @@ fn invoke<C: Context>(
         Subscriber::GameEffectsUnitFanout => game_effects_unit_moved(c, old, new),
         Subscriber::GameEffectsPlayerFanout => game_effects_player_unit_moved(c, old, new),
         Subscriber::Requirement { receiver } => c.on_requirement(receiver, old, new),
-        Subscriber::Achievement => Err(Error::UnsupportedAchievement),
+        Subscriber::Achievement => c.on_achievement(old, new),
         Subscriber::Unknown { identity } => Err(Error::UnknownSubscriber(identity)),
     }
 }
