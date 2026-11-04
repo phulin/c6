@@ -1508,6 +1508,7 @@ mod tests {
                 e_relic_source: 0,
             },
             k_rock_band: c6_core::unit::RockBand {
+                wire_version: 10,
                 b_max_level: false,
                 b_max_promotions: false,
                 i_level: 0,

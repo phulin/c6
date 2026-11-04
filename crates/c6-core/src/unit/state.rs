@@ -775,6 +775,7 @@ impl Wire for Religion {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RockBand {
+    pub wire_version: i32,
     /// Original m_bMaxLevel at 0x8.
     pub b_max_level: bool,
     /// Original m_bMaxPromotions at 0x9.
@@ -803,7 +804,8 @@ pub struct RockBand {
     pub i_modified_tourism_bomb_value_target_peace: i32,
     /// Original m_aModifiedYieldPerTourismBomb at 0xb0.
     pub a_modified_yield_per_tourism_bomb: Vec<HashValue<i32>>,
-    /// Original m_aiConcertPlots at 0x98.
+    /// Original m_aiConcertPlots at 0x98. At6 no list is serialized; the
+    /// empty projection relies on parent Unit.Reset clearing this vector.
     pub ai_concert_plots: Vec<i32>,
     /// Original m_aiModifiedRockbandLevelDistrict at 0x38.
     pub ai_modified_rockband_level_district: Vec<HashValue<i32>>,
@@ -815,25 +817,56 @@ pub struct RockBand {
     pub ai_modified_tourism_bomb_value_improvement: Vec<HashValue<i32>>,
 }
 impl Wire for RockBand {
-    const MIN: usize = 74;
+    const MIN: usize = 56;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(10)?;
+        let wire_version = r.i32()?;
+        if wire_version != 6 && wire_version != 10 {
+            return Err(Error::Version {
+                expected: 10,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
-            b_max_level: <bool>::read(r)?,
-            b_max_promotions: <bool>::read(r)?,
+            wire_version,
+            b_max_level: if wire_version == 6 {
+                false
+            } else {
+                <bool>::read(r)?
+            },
+            b_max_promotions: if wire_version == 6 {
+                false
+            } else {
+                <bool>::read(r)?
+            },
             i_level: <i32>::read(r)?,
             i_album_sales: <i32>::read(r)?,
             i_post_tourism_bomb_foreign_loyalty: <i32>::read(r)?,
             i_modified_rockband_level_national_park: <i32>::read(r)?,
             i_modified_tourism_bomb_value_national_park: <i32>::read(r)?,
-            i_modified_rockband_level_natural_wonder: <i32>::read(r)?,
-            i_modified_tourism_bomb_value_natural_wonder: <i32>::read(r)?,
+            i_modified_rockband_level_natural_wonder: if wire_version == 6 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_modified_tourism_bomb_value_natural_wonder: if wire_version == 6 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
             i_modified_tourism_bomb_player_range: <i32>::read(r)?,
             i_modified_tourism_bomb_value_at_range: <i32>::read(r)?,
             i_modified_tourism_bomb_convert_city: <i32>::read(r)?,
-            i_modified_tourism_bomb_value_target_peace: <i32>::read(r)?,
+            i_modified_tourism_bomb_value_target_peace: if wire_version == 6 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
             a_modified_yield_per_tourism_bomb: <Vec<HashValue<i32>>>::read(r)?,
-            ai_concert_plots: <Vec<i32>>::read(r)?,
+            ai_concert_plots: if wire_version == 6 {
+                Vec::new()
+            } else {
+                <Vec<i32>>::read(r)?
+            },
             ai_modified_rockband_level_district: <Vec<HashValue<i32>>>::read(r)?,
             ai_modified_rockband_level_improvement: <Vec<HashValue<i32>>>::read(r)?,
             ai_modified_tourism_bomb_value_district: <Vec<HashValue<i32>>>::read(r)?,
@@ -841,6 +874,9 @@ impl Wire for RockBand {
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 10 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         (10i32).write(w)?;
         self.b_max_level.write(w)?;
         self.b_max_promotions.write(w)?;
@@ -2834,6 +2870,148 @@ mod tests {
             Religion::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
             Err(Error::Version {
                 expected: 8,
+                actual: 7
+            })
+        );
+    }
+    #[test]
+    fn rockband6_keeps_all_five_arrays_and_parent_reset_concert_baseline() {
+        let mut value = crate::unit_turn_upkeep::tests::source_only_unit().k_rock_band;
+        value.b_max_level = true;
+        value.b_max_promotions = true;
+        value.i_level = 6;
+        value.i_album_sales = i32::MIN;
+        value.i_modified_rockband_level_natural_wonder = 13;
+        value.i_modified_tourism_bomb_value_natural_wonder = 14;
+        value.i_modified_tourism_bomb_value_target_peace = 15;
+        value.a_modified_yield_per_tourism_bomb = vec![
+            HashValue {
+                definition_hash: 0x80000001,
+                value: -257,
+            },
+            HashValue {
+                definition_hash: 0x80000001,
+                value: 513,
+            },
+        ];
+        value.ai_concert_plots = vec![17, -1];
+        value.ai_modified_rockband_level_district = vec![HashValue {
+            definition_hash: 0x80000002,
+            value: -1,
+        }];
+        value.ai_modified_rockband_level_improvement = vec![HashValue {
+            definition_hash: 0x80000003,
+            value: 2,
+        }];
+        value.ai_modified_tourism_bomb_value_district = vec![HashValue {
+            definition_hash: 0x80000004,
+            value: 3,
+        }];
+        value.ai_modified_tourism_bomb_value_improvement = vec![HashValue {
+            definition_hash: 0x80000005,
+            value: 4,
+        }];
+        let mut current = writer();
+        value.write(&mut current).unwrap();
+        let mut r = Reader::new(&current.bytes, Limits::default()).unwrap();
+        assert_eq!(RockBand::read(&mut r).unwrap(), value);
+        r.finish().unwrap();
+        let mut old = writer();
+        6i32.write(&mut old).unwrap();
+        value.i_level.write(&mut old).unwrap();
+        value.i_album_sales.write(&mut old).unwrap();
+        value
+            .i_post_tourism_bomb_foreign_loyalty
+            .write(&mut old)
+            .unwrap();
+        value
+            .i_modified_rockband_level_national_park
+            .write(&mut old)
+            .unwrap();
+        value
+            .i_modified_tourism_bomb_value_national_park
+            .write(&mut old)
+            .unwrap();
+        value
+            .i_modified_tourism_bomb_player_range
+            .write(&mut old)
+            .unwrap();
+        value
+            .i_modified_tourism_bomb_value_at_range
+            .write(&mut old)
+            .unwrap();
+        value
+            .i_modified_tourism_bomb_convert_city
+            .write(&mut old)
+            .unwrap();
+        value
+            .a_modified_yield_per_tourism_bomb
+            .write(&mut old)
+            .unwrap();
+        value
+            .ai_modified_rockband_level_district
+            .write(&mut old)
+            .unwrap();
+        value
+            .ai_modified_rockband_level_improvement
+            .write(&mut old)
+            .unwrap();
+        value
+            .ai_modified_tourism_bomb_value_district
+            .write(&mut old)
+            .unwrap();
+        value
+            .ai_modified_tourism_bomb_value_improvement
+            .write(&mut old)
+            .unwrap();
+        value.wire_version = 6;
+        value.b_max_level = false;
+        value.b_max_promotions = false;
+        value.i_modified_rockband_level_natural_wonder = 0;
+        value.i_modified_tourism_bomb_value_natural_wonder = 0;
+        value.i_modified_tourism_bomb_value_target_peace = 0;
+        value.ai_concert_plots.clear();
+        let bytes = old.bytes;
+        assert_eq!(bytes.len(), 104);
+        let mut r = Reader::new(
+            &bytes,
+            Limits {
+                max_bytes: bytes.len(),
+                max_items: 6,
+            },
+        )
+        .unwrap();
+        assert_eq!(RockBand::read(&mut r).unwrap(), value);
+        assert_eq!(r.budget, 0);
+        r.finish().unwrap();
+        assert_eq!(
+            value.write(&mut writer()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        for end in 0..bytes.len() {
+            let mut r = Reader::new(&bytes[..end], Limits::default()).unwrap();
+            assert!(RockBand::read(&mut r).is_err(), "prefix {end}");
+        }
+        let mut r = Reader::new(
+            &bytes,
+            Limits {
+                max_bytes: bytes.len(),
+                max_items: 5,
+            },
+        )
+        .unwrap();
+        assert_eq!(RockBand::read(&mut r), Err(Error::ResourceLimit));
+        let mut bad = bytes.clone();
+        bad[36..40].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(
+            RockBand::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::ResourceLimit)
+        );
+        bad[..4].copy_from_slice(&7i32.to_le_bytes());
+        assert_eq!(
+            RockBand::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::Version {
+                expected: 10,
                 actual: 7
             })
         );
