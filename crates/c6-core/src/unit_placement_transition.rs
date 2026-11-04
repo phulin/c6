@@ -186,6 +186,8 @@ pub const EMBARKED_CHANGED: u32 = 0x84c1fdd6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlacementPayload {
+    /// Native Event.Send(Type, ComponentID) overload.
+    Identity,
     Coordinate(PlotCoord),
     Integer(i32),
     Visibility {
