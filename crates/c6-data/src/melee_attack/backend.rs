@@ -282,17 +282,13 @@ impl player_strength::Context for EffectContext<'_> {
     fn game_end_turn(&mut self) -> Result<i32, QueryError> {
         let start = self.start_turn()?;
         let maximum = self.state.retained().core.max_turns;
-        Ok(
-            match self
-                .inputs
+        Ok(configured_end_turn(
+            self.inputs
                 .turn_limit_type
-                .ok_or(QueryError::Missing("current TurnLimitType"))?
-            {
-                u32::MAX => 0,
-                0xdef9_f0af | 0x8099_25de => maximum.wrapping_add(1),
-                _ => start.wrapping_add(maximum),
-            },
-        )
+                .ok_or(QueryError::Missing("current TurnLimitType"))?,
+            start,
+            maximum,
+        ))
     }
     fn game_start_turn(&mut self) -> Result<i32, QueryError> {
         self.start_turn()
@@ -317,6 +313,27 @@ impl player_strength::Context for EffectContext<'_> {
     }
     fn ever_alive_majors(&mut self) -> Result<i32, QueryError> {
         Err(QueryError::Unsupported("current ever-alive major roster"))
+    }
+}
+fn configured_end_turn(limit: u32, start: i32, maximum: i32) -> i32 {
+    match limit {
+        u32::MAX | 0x8099_25de => 0,
+        0xdef9_f0af => maximum.wrapping_add(1),
+        _ => start.wrapping_add(maximum),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::configured_end_turn;
+    #[test]
+    fn end_turn_distinguishes_score_limit_from_enabled_turn_limit() {
+        assert_eq!(configured_end_turn(0x8099_25de, 50, 0), 0);
+        assert_eq!(configured_end_turn(u32::MAX, 50, 500), 0);
+        assert_eq!(configured_end_turn(0xdef9_f0af, 50, 500), 501);
+        assert_eq!(configured_end_turn(123, 50, 500), 550);
+        assert_eq!(configured_end_turn(0xdef9_f0af, 0, i32::MAX), i32::MIN);
+        assert_eq!(configured_end_turn(123, i32::MAX, 1), i32::MIN);
     }
 }
 impl alliance_strength::Context for EffectContext<'_> {

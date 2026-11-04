@@ -18,12 +18,15 @@ pub enum Error {
     Actor(Box<crate::melee_attack::Error>),
     Factory(Box<sets::Error<Error>>),
     Predicate(Box<predicates::Error<Error>>),
+    UnitPredicate(Box<c6_core::melee_attack::proposals::unit_subject_predicates::Error<Error>>),
+    Promotion(crate::melee_attack::proposals::unit_subject_predicates::Error),
 }
 pub struct Runtime {
     sets: sets::Runtime,
     existing: Vec<(u64, i32)>,
     levels: Vec<(i32, u32)>,
     logging_priority: Option<i32>,
+    units: Option<crate::melee_attack::proposals::unit_subject_predicates::Definitions>,
 }
 impl Runtime {
     pub fn new(
@@ -48,10 +51,18 @@ impl Runtime {
             existing,
             levels,
             logging_priority,
+            units: None,
         })
     }
     pub fn sets(&self) -> &sets::Runtime {
         &self.sets
+    }
+    pub fn with_unit_definitions(
+        mut self,
+        definitions: crate::melee_attack::proposals::unit_subject_predicates::Definitions,
+    ) -> Self {
+        self.units = Some(definitions);
+        self
     }
 }
 impl Requirements for Runtime {
@@ -235,11 +246,13 @@ impl sets::Context for Context<'_> {
             sets::Predicate::AllianceReligion => {
                 predicates::alliance_not_combat_target_religion(self)
             }
-            sets::Predicate::OpponentPromotionClass { .. } => {
-                return Err(Error::Missing("current opponent promotion-class predicate"))
+            sets::Predicate::OpponentPromotionClass { expected } => {
+                return c6_core::melee_attack::proposals::unit_subject_predicates::opponent_promotion_class_matches(self, expected)
+                    .map_err(|e|Error::UnitPredicate(Box::new(e)))
             }
             sets::Predicate::PlayerIsAttacking => {
-                return Err(Error::Missing("current PlayerIsAttacking predicate"))
+                return c6_core::melee_attack::proposals::unit_subject_predicates::player_is_attacking(self)
+                    .map_err(|e|Error::UnitPredicate(Box::new(e)))
             }
             sets::Predicate::Unsupported(_) => {
                 return Err(Error::Missing("source-qualified requirement predicate"))
@@ -257,9 +270,48 @@ impl sets::Context for Context<'_> {
         log_disabled(self.runtime.logging_priority, 4)
     }
 }
+impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Context<'_> {
+    type PlayerInterface = ContextObject;
+    fn context_player_interface(&mut self) -> Result<Option<ContextObject>, Error> {
+        Ok(match self.object {
+            ContextObject::Alliance { .. } => None,
+            other => Some(other),
+        })
+    }
+    fn subject_proposal_interface(&mut self) -> Result<Option<registry::Handle>, Error> {
+        <Self as predicates::Context>::subject_proposal(self)
+    }
+    fn context_player_id(&mut self, interface: ContextObject) -> Result<i32, Error> {
+        match interface {
+            ContextObject::Player(id) => Ok(id),
+            ContextObject::Unit(unit) => Ok(i32::from(unit.component_id().owner)),
+            ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
+        }
+    }
+    fn promotion_class(&mut self, unit: UnitReference) -> Result<Option<&[u8]>, Error> {
+        self.runtime
+            .units
+            .as_ref()
+            .ok_or(Error::Missing("current promotion definitions"))?
+            .promotion_class(self.state, unit)
+            .map_err(Error::Promotion)
+    }
+}
 fn log_disabled(priority: Option<i32>, enabled_at: i32) -> Result<(), Error> {
     match priority {
         Some(p) if p < enabled_at => Ok(()),
         _ => Err(Error::Missing("enabled requirement log callback")),
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::log_disabled;
+    #[test]
+    fn missing_definition_logging_has_a_different_native_threshold() {
+        assert!(log_disabled(Some(0), 1).is_ok());
+        assert!(log_disabled(Some(1), 1).is_err());
+        assert!(log_disabled(Some(3), 4).is_ok());
+        assert!(log_disabled(Some(4), 4).is_err());
+        assert!(log_disabled(None, 4).is_err());
     }
 }
