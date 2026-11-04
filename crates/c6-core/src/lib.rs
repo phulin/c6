@@ -457,3 +457,4 @@ pub mod game_climate;
 pub mod game_random_events;
 pub mod game_national_parks;
 pub mod game_stats;
+pub mod game_history;
