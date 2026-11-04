@@ -31,6 +31,7 @@ pub enum Error {
     Membership,
     UnmatchedSerializedInstance,
     Registry(city_district::Error),
+    World(c6_core::world::MissingInput),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -303,6 +304,86 @@ pub struct WorldInstances {
     resolved: [bool; PLAYER_COUNT],
 }
 impl WorldInstances {
+    /// Project current authoritative Player-manager slots and owned containers.
+    /// Requested slots remain distinct from each record's actual owner. This
+    /// allocates only small lookup records, never a World or City clone.
+    pub fn from_current(
+        state: &c6_core::loaded_state::LoadedState,
+        definitions: &NativeDomainDefinitions,
+        max_records: usize,
+    ) -> Result<Self, Error> {
+        let mut records: [PlayerRecords; PLAYER_COUNT] =
+            std::array::from_fn(|_| PlayerRecords::default());
+        let mut resolved = [false; PLAYER_COUNT];
+        let mut count = 0usize;
+        for slot in 0..PLAYER_COUNT {
+            if state
+                .world()
+                .valid_player(slot as i32)
+                .map_err(Error::World)?
+                .is_none()
+            {
+                continue;
+            }
+            let player = state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.requested_owner == slot as i32)
+                .ok_or(Error::MetadataPlayer)?;
+            resolved[slot] = true;
+            let cities = &player.cities.records.entries;
+            let districts = &player.districts.records.entries;
+            count = count
+                .checked_add(cities.len())
+                .and_then(|n| n.checked_add(districts.len()))
+                .filter(|n| *n <= max_records)
+                .ok_or(Error::ResourceLimit)?;
+            records[slot]
+                .cities
+                .try_reserve_exact(cities.len())
+                .map_err(|_| Error::ResourceLimit)?;
+            records[slot]
+                .districts
+                .try_reserve_exact(districts.len())
+                .map_err(|_| Error::ResourceLimit)?;
+            for entry in cities {
+                if entry.index != (entry.value.header.id & 0xffff) as i32 {
+                    return Err(Error::Membership);
+                }
+                records[slot].cities.push(city_record(&entry.value.header));
+            }
+            for entry in districts {
+                let district = &entry.value;
+                if entry.index != (district.id & 0xffff) as i32 {
+                    return Err(Error::Membership);
+                }
+                records[slot].districts.push(
+                    DistrictPrefix {
+                        id: district.id,
+                        location: PlotCoord {
+                            x: district.location.0,
+                            y: district.location.1,
+                        },
+                        parent_city: district.city_id,
+                        type_hash: district.district_hash,
+                        complete: district.is_complete,
+                    }
+                    .movement_record(state.world().map(), definitions.district_lookup())?,
+                );
+            }
+            records[slot]
+                .cities
+                .sort_unstable_by_key(|record| record.id as u16);
+            records[slot]
+                .districts
+                .sort_unstable_by_key(|record| record.id as u16);
+            SlotTable::new(&records[slot].cities).map_err(Error::Registry)?;
+            SlotTable::new(&records[slot].districts).map_err(Error::Registry)?;
+        }
+        Ok(Self { records, resolved })
+    }
+
     pub fn from_metadata(
         map: &Map,
         cities: &[City],
@@ -653,18 +734,21 @@ pub struct CityBuildings<'a> {
 }
 impl<'a> CityBuildings<'a> {
     pub fn new(cities: &'a [City], max_cities: usize) -> Result<Self, Error> {
-        if cities.len() > max_cities {
-            return Err(Error::ResourceLimit);
-        }
+        Self::from_references(cities.iter(), max_cities)
+    }
+    /// Borrow Cities in their current owned containers without copying them.
+    pub fn from_references(
+        cities: impl IntoIterator<Item = &'a City>,
+        max_cities: usize,
+    ) -> Result<Self, Error> {
         let mut records = Vec::new();
-        records
-            .try_reserve_exact(cities.len())
-            .map_err(|_| Error::ResourceLimit)?;
-        records.extend(
-            cities
-                .iter()
-                .map(|city| (city_record(&city.header), &city.buildings)),
-        );
+        for city in cities {
+            if records.len() >= max_cities {
+                return Err(Error::ResourceLimit);
+            }
+            records.try_reserve(1).map_err(|_| Error::ResourceLimit)?;
+            records.push((city_record(&city.header), &city.buildings));
+        }
         records.sort_unstable_by_key(|(city, _)| (city.owner, city.id as u16));
         if records.iter().any(|(city, _)| city.id == u32::MAX)
             || records.windows(2).any(|pair| {

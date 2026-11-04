@@ -37,6 +37,8 @@ pub enum Error {
     Placement(PlacementMissing),
     Capability(Capability),
     BlockedEntryState,
+    CityDomains(crate::city_movement::Error),
+    CityDomainRebuild(c6_core::city_district::Error),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Capability {
@@ -325,6 +327,7 @@ pub struct Context<'s, 'a, 'r> {
     civics: EmbarkDefinitions,
     unlock_embarkation: bool,
     civilization_levels: Option<&'a [(i32, u32)]>,
+    city_domains: Option<Vec<Option<c6_core::city_district::DomainMask>>>,
     civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
     _resources: &'a ResourceAuthority<'r>,
 }
@@ -367,6 +370,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             civics: EmbarkDefinitions::from_rules(rules, "Civics", "CivicType")?,
             unlock_embarkation: unlock_embarkation(rules)?,
             civilization_levels: None,
+            city_domains: None,
             civic_activity: None,
             units,
             terrains: table,
@@ -384,6 +388,65 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         self.civilization_levels = Some(levels.values);
         Ok(self)
     }
+    /// Rebuild the native CityAttributes domain masks from current owned
+    /// City/District/Building state and admitted ordered static definitions.
+    /// This uses both original passes, including coastal centers, canals,
+    /// adjacent-city propagation and Canal/Bridge wonders. No mask answers or
+    /// native pointers are inputs. The borrowed World cannot change underneath
+    /// this context; constructing another current context recomputes its masks.
+    pub fn with_rebuilt_city_domains(
+        mut self,
+        domains: &crate::city_movement::NativeDomainDefinitions,
+        domain_resources: &ResourceIdentity,
+        max_records: usize,
+        max_plots: usize,
+    ) -> Result<Self, Error> {
+        use crate::city_movement::{
+            CityBuildings, MapDomainInputs, TypedDomainInputs, WorldInstances,
+        };
+        if domain_resources != self._resources.resource_identity() {
+            return Err(Error::Binding);
+        }
+        if domains.district_lookup().count() != self.districts.count()
+            || (0..self.districts.count()).any(|index| {
+                domains.district_lookup().type_hash(index) != self.districts.type_hash(index)
+            })
+        {
+            return Err(Error::Definitions);
+        }
+        let instances = WorldInstances::from_current(self.state, domains, max_records)
+            .map_err(Error::CityDomains)?;
+        let registry = instances.registry().map_err(Error::CityDomains)?;
+        let cities = CityBuildings::from_references(
+            self.state
+                .retained()
+                .players
+                .iter()
+                .flat_map(|p| p.cities.records.entries.iter().map(|s| &s.value)),
+            max_records,
+        )
+        .map_err(Error::CityDomains)?;
+        let definitions = domains.as_core().map_err(Error::CityDomains)?;
+        let inputs = TypedDomainInputs {
+            map: MapDomainInputs::new(self.state.world().map(), &self.terrains)
+                .map_err(Error::CityDomains)?,
+            registry: &registry,
+            cities: &cities,
+            building_definitions: domains.building_lookup(),
+        };
+        self.city_domains = Some(
+            c6_core::city_district::rebuild_valid_domains(
+                self.state.world().map(),
+                &registry,
+                &definitions,
+                &inputs,
+                max_plots,
+            )
+            .map_err(Error::CityDomainRebuild)?,
+        );
+        Ok(self)
+    }
+
     /// Borrow current global Civic node activity from an existing typed owner.
     /// The caller maintains current values and their source provenance. This
     /// uses only HasCivic, not unrelated graph/cost/prerequisite lifecycle.
@@ -614,6 +677,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         &self,
         unit: &Unit,
         plot: &Plot,
+        plot_index: usize,
         request: PlacementRequest,
     ) -> Result<logic::TerrainAssessment, Error> {
         if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
@@ -657,7 +721,15 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                     }
                     logic::MissingFact::CanEmbark => f.can_embark = Some(self.can_embark(unit)?),
                     logic::MissingFact::CityDomainValid => {
-                        return Err(Error::Capability(Capability::CityDomain))
+                        f.city_domain_valid = Some(
+                            self.city_domains
+                                .as_ref()
+                                .and_then(|masks| masks.get(plot_index))
+                                .copied()
+                                .flatten()
+                                .ok_or(Error::Capability(Capability::CityDomain))?
+                                .is_valid(runtime.domain),
+                        );
                     }
                 },
             }
@@ -706,12 +778,12 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         destination: PlotCoord,
         request: PlacementRequest,
     ) -> Result<i32, Error> {
-        let Some((_index, plot)) = self.plot(destination)? else {
+        let Some((plot_index, plot)) = self.plot(destination)? else {
             return logic::shore_unit_result(ShorePlacementPlot::KnownAbsent)
                 .map_err(Error::Placement);
         };
         let mut f = ShoreUnitFacts {
-            terrain: Some(self.terrain(unit, plot, request)?),
+            terrain: Some(self.terrain(unit, plot, plot_index, request)?),
             ..ShoreUnitFacts::default()
         };
         let mut selected: Option<Option<&Unit>> = None;
