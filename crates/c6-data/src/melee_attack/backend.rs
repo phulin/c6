@@ -3,6 +3,7 @@
 //! canonical LoadedState registry. This does not complete melee resolution.
 use super::proposals;
 pub mod requirements;
+pub mod city_creation;
 use crate::{
     loaded_actions::{configuration::RawGameConfiguration, culture_notifications as calendar},
     loaded_upkeep,
@@ -125,6 +126,7 @@ pub struct EffectRuntime {
     effects: Vec<(u64, EffectState)>,
     objects: Vec<(u64, Object)>,
     unit_modifiers: Option<Vec<c6_core::unit_kill::objects::Modifier>>,
+    city_creation: Option<city_creation::Creation>,
 }
 #[derive(Debug)]
 pub enum QueryError {
@@ -172,6 +174,7 @@ impl EffectRuntime {
             effects,
             objects,
             unit_modifiers: None,
+            city_creation: None,
         })
     }
     fn current_owner(&self, state: &LoadedState) -> Result<(), QueryError> {
@@ -320,6 +323,16 @@ impl EffectRuntime {
             .iter_mut()
             .find(|m| m.receiver == receiver)
             .ok_or(QueryError::MissingEffect(receiver))
+    }
+    pub fn remove_unit_modifier_registration(
+        &mut self,
+        receiver: u64,
+    ) -> Result<c6_core::unit_kill::objects::Modifier, QueryError> {
+        let modifiers = self.unit_modifiers.as_mut()
+            .ok_or(QueryError::Missing("current Unit modifier cleanup state"))?;
+        let index = modifiers.iter().position(|m|m.receiver==receiver)
+            .ok_or(QueryError::MissingEffect(receiver))?;
+        Ok(modifiers.remove(index))
     }
     pub fn effect(&self, identity: u64) -> Result<&EffectState, QueryError> {
         self.effects
