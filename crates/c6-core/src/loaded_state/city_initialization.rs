@@ -102,6 +102,8 @@ mod placed_tests {
         reverse_capital: bool,
         placement: i32,
         rename_invalidates_location: bool,
+        collection_runtime: crate::melee_attack::proposals::collections::Runtime,
+        object_city: Option<ComponentId>,
     }
     impl base::Context for Context {
         type Error = &'static str;
@@ -209,6 +211,51 @@ mod placed_tests {
             Ok(())
         }
     }
+    impl crate::melee_attack::proposals::collections::Context<u64> for Context {
+        type Error = &'static str;
+        fn collections(
+            &self,
+        ) -> Result<&crate::melee_attack::proposals::collections::Runtime, Self::Error> {
+            Ok(&self.collection_runtime)
+        }
+        fn collections_mut(
+            &mut self,
+        ) -> Result<&mut crate::melee_attack::proposals::collections::Runtime, Self::Error>
+        {
+            Ok(&mut self.collection_runtime)
+        }
+        fn item_changed(
+            &mut self,
+            receiver: u64,
+            object: &mut u64,
+            added: bool,
+        ) -> Result<(), Self::Error> {
+            assert!(added);
+            assert_eq!(*object, 123);
+            let city = self.object_city.unwrap();
+            let value = self.state.city_mut(i32::from(city.owner), city.id).unwrap();
+            value.header.production_unit_changes = value
+                .header
+                .production_unit_changes
+                .wrapping_add(receiver as i32);
+            Ok(())
+        }
+    }
+    impl crate::found_city::collections::Context for Context {
+        fn state(&self) -> &LoadedState {
+            &self.state
+        }
+        fn make_city_object(&mut self, city: ComponentId) -> Result<u64, Self::Error> {
+            self.log.push("make-object");
+            self.object_city = Some(city);
+            Ok(123)
+        }
+        fn release_city_object(&mut self, object: u64) -> Result<(), Self::Error> {
+            assert_eq!(object, 123);
+            self.log.push("release-object");
+            Ok(())
+        }
+    }
     fn context() -> Context {
         let mut state = super::super::tests::state();
         let binding = state.binding().clone();
@@ -239,6 +286,18 @@ mod placed_tests {
             reverse_capital: false,
             placement: 1,
             rename_invalidates_location: false,
+            collection_runtime: crate::melee_attack::proposals::collections::Runtime::from_initial(
+                vec![(
+                    100,
+                    crate::melee_attack::proposals::collections::Collection {
+                        kind: None,
+                        added: crate::unit_moved_signal::ListenerRing::from_ordered(&[11, 12])
+                            .unwrap(),
+                    },
+                )],
+            )
+            .unwrap(),
+            object_city: None,
         }
     }
     fn create(context: &mut Context) -> Result<Option<ComponentId>, creation::Error<&'static str>> {
@@ -251,7 +310,7 @@ mod placed_tests {
             projects: &[],
             terrains: &[],
             resources: &[],
-            features: &[],
+            features: &[0x1111, 0x2222],
             production_yield: 1,
             loyalty_start: 100,
             building_support: &[],
@@ -360,5 +419,121 @@ mod placed_tests {
                 .len(),
             1
         );
+    }
+    #[test]
+    fn city_collections_filter_current_owner_and_death_without_faking_proposals() {
+        use crate::found_city::collections::{self, Collection};
+        let mut c = context();
+        let city = create(&mut c).unwrap().unwrap();
+        c.log.clear();
+        collections::city_created(
+            &mut c,
+            Collection::PlayerCities {
+                receiver: 100,
+                owner: i32::from(city.owner) + 1,
+            },
+            city,
+        )
+        .unwrap();
+        assert!(c.log.is_empty());
+        collections::city_created(
+            &mut c,
+            Collection::PlayerCities {
+                receiver: 100,
+                owner: i32::from(city.owner),
+            },
+            city,
+        )
+        .unwrap();
+        assert_eq!(c.log, ["make-object", "release-object"]);
+        assert_eq!(
+            c.state
+                .city(i32::from(city.owner), city.id)
+                .unwrap()
+                .header
+                .production_unit_changes,
+            23
+        );
+        c.state
+            .city_mut(i32::from(city.owner), city.id)
+            .unwrap()
+            .header
+            .delayed_death = true;
+        c.log.clear();
+        collections::city_created(
+            &mut c,
+            Collection::PlayerCities {
+                receiver: 100,
+                owner: i32::from(city.owner),
+            },
+            city,
+        )
+        .unwrap();
+        assert!(c.log.is_empty());
+        collections::city_created(&mut c, Collection::AllCities { receiver: 100 }, city).unwrap();
+        assert_eq!(c.log, ["make-object", "release-object"]);
+    }
+    #[test]
+    fn general_feature_effect_mutates_only_admitted_current_definition_slot() {
+        use crate::found_city::feature_production::{self as effects, Effect, Target};
+        let mut c = context();
+        let city = create(&mut c).unwrap().unwrap();
+        let hashes = [0x1111, 0x2222];
+        let e = Effect {
+            target: Target::District,
+            native_feature: 1,
+            percent: 50,
+        };
+        effects::apply(&mut c.state, city, &hashes, e, false).unwrap();
+        let q = &c
+            .state
+            .city(i32::from(city.owner), city.id)
+            .unwrap()
+            .build_queue;
+        assert_eq!(
+            q.district_adjacent_natural_wonder_production_modifier
+                .iter()
+                .map(|v| v.value)
+                .collect::<Vec<_>>(),
+            [256, 384]
+        );
+        assert_eq!(
+            q.wonder_adjacent_natural_wonder_production_modifier
+                .iter()
+                .map(|v| v.value)
+                .collect::<Vec<_>>(),
+            [256, 256]
+        );
+        let revision = c.state.revision();
+        assert!(matches!(
+            effects::apply(&mut c.state, city, &[0, 1], e, false),
+            Err(effects::Error::CurrentArrayShape)
+        ));
+        assert_eq!(c.state.revision(), revision);
+        effects::apply(&mut c.state, city, &hashes, e, true).unwrap();
+        assert_eq!(
+            c.state
+                .city(i32::from(city.owner), city.id)
+                .unwrap()
+                .build_queue
+                .district_adjacent_natural_wonder_production_modifier[1]
+                .value,
+            256
+        );
+        effects::apply(
+            &mut c.state,
+            ComponentId {
+                owner: -1,
+                component_type: 0,
+                id: u32::MAX,
+            },
+            &[],
+            Effect {
+                native_feature: -1,
+                ..e
+            },
+            false,
+        )
+        .unwrap();
     }
 }

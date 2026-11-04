@@ -6,7 +6,9 @@ use crate::{
     skip_turn::StartData,
     unit::{ComponentId, PlotCoord},
 };
+pub mod collections;
 pub mod creation;
+pub mod feature_production;
 pub mod names;
 pub mod placement;
 

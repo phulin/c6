@@ -286,84 +286,86 @@ pub fn item_changed<C: Context>(
     proposal: Handle,
     added: bool,
 ) -> Result<(), Error<C::Error>> {
-    let mut a = Adapter {
-        context: c,
-        receiver,
-        proposal,
-    };
-    if a.record()?.control.suppressed || !a.record()?.control.enabled {
-        return Ok(());
+    crate::unit_moved_signal::collection_addition::item_changed(
+        &mut Adapter {
+            context: c,
+            receiver,
+            proposal,
+        },
+        added,
+    )
+}
+impl<C: Context> crate::unit_moved_signal::collection_addition::Context for Adapter<'_, C> {
+    type DestructionSubscription = Subscription;
+    fn instance_id(&self) -> Result<i32, Self::Error> {
+        Ok(self.record()?.instance)
     }
-    if let Some(id) = a.record()?.control.owner_requirement_set {
-        let state = a
-            .context
-            .requirement_set_state(id)
-            .map_err(Error::Context)?;
-        if (state | 2) != 2
-            && a.context
-                .requirement_set_state(id)
-                .map_err(Error::Context)?
-                != 4
-        {
-            return Ok(());
-        }
+    // These two admitted strength classes have source-qualified literal RET
+    // BeforeUpdate/AfterUpdate slots. The common kernel does not assume this.
+    fn before_update(&mut self, _: i32) -> Result<(), Self::Error> {
+        Ok(())
     }
-    if !added {
-        return Err(Error::RemovalUnsupported);
+    fn after_update(&mut self, _: i32) -> Result<(), Self::Error> {
+        Ok(())
     }
-    // TrackedSubject constructor always subscribes before unique insertion.
-    let subscription = a
-        .context
-        .proposals_mut()
-        .map_err(Error::Context)?
-        .destruction_mut(proposal)
-        .map_err(Error::Runtime)?
-        .subscribe(receiver)
-        .map_err(Error::Ring)?;
-    let (position, exists) = a.tracked_position()?;
-    if exists {
-        a.context
+    fn subscribe_destroyed(&mut self) -> Result<Subscription, Self::Error> {
+        self.context
             .proposals_mut()
             .map_err(Error::Context)?
-            .destruction_mut(proposal)
+            .destruction_mut(self.proposal)
             .map_err(Error::Runtime)?
-            .unsubscribe(subscription)
-            .map_err(Error::Ring)?;
-    } else {
-        a.record_mut()?
+            .subscribe(self.receiver)
+            .map_err(Error::Ring)
+    }
+    fn tracked_exists(&self) -> Result<bool, Self::Error> {
+        Ok(self.tracked_position()?.1)
+    }
+    fn insert_tracked(
+        &mut self,
+        state: common::TrackedSubject,
+        subscription: Subscription,
+    ) -> Result<(), Self::Error> {
+        let (position, exists) = self.tracked_position()?;
+        if exists {
+            return Err(Error::MissingTrackedSubject);
+        }
+        let proposal = self.proposal;
+        self.record_mut()?
             .tracked
             .try_reserve(1)
             .map_err(|_| Error::Allocation)?;
-        a.record_mut()?.tracked.insert(
+        self.record_mut()?.tracked.insert(
             position,
             Tracked {
                 proposal,
-                state: common::TrackedSubject {
-                    requirement_set: None,
-                    applied: 0,
-                    removed: false,
-                },
+                state,
                 destruction_subscription: subscription,
             },
         );
+        Ok(())
     }
-    if !a.tracked()?.state.removed
-        && a.tracked()?.state.requirement_set.is_none()
-        && !a.record()?.subject_requirements.is_empty()
-    {
-        let set = a
-            .context
-            .create_subject_requirements(receiver, proposal)
-            .map_err(Error::Context)?;
-        if let Some(id) = set {
-            a.tracked_mut()?.state.requirement_set = Some(id);
-        } else {
-            a.tracked_mut()?.state.removed = true;
-        }
+    fn unsubscribe_temporary(&mut self, subscription: Subscription) -> Result<(), Self::Error> {
+        self.context
+            .proposals_mut()
+            .map_err(Error::Context)?
+            .destruction_mut(self.proposal)
+            .map_err(Error::Runtime)?
+            .unsubscribe(subscription)
+            .map_err(Error::Ring)
     }
-    let _ = common::check_apply_effects(&mut a)?;
-    Ok(())
+    fn has_subject_requirement_definition(&self) -> Result<bool, Self::Error> {
+        Ok(!self.record()?.subject_requirements.is_empty())
+    }
+    fn create_subject_requirement_set(&mut self) -> Result<Option<u64>, Self::Error> {
+        self.context
+            .create_subject_requirements(self.receiver, self.proposal)
+            .map_err(Error::Context)
+    }
+    fn remove_tracked_subject(&mut self) -> Result<(), Self::Error> {
+        Err(Error::RemovalUnsupported)
+    }
 }
+
 impl<C: Context> common::Context for Adapter<'_, C> {
     type Error = Error<C::Error>;
     fn modifier(&self) -> Result<&common::Modifier, Self::Error> {

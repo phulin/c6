@@ -3,6 +3,7 @@
 //! listeners from an observed Lua call, Rules rows, or saved Requirement states.
 use crate::unit::{ComponentId, PlotCoord, Unit};
 
+pub mod collection_addition;
 pub mod modifiers;
 pub mod requirement_sets;
 

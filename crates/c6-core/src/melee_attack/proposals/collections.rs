@@ -67,7 +67,7 @@ impl Runtime {
     }
 }
 
-pub trait Context {
+pub trait Context<Item = Handle> {
     type Error;
     fn collections(&self) -> Result<&Runtime, Self::Error>;
     fn collections_mut(&mut self) -> Result<&mut Runtime, Self::Error>;
@@ -77,7 +77,7 @@ pub trait Context {
     fn item_changed(
         &mut self,
         receiver: u64,
-        proposal: &mut Handle,
+        proposal: &mut Item,
         added: bool,
     ) -> Result<(), Self::Error>;
 }
@@ -87,7 +87,16 @@ pub trait Context {
 pub fn add_item<C: Context>(
     c: &mut C,
     collection: u64,
-    mut proposal: Handle,
+    proposal: Handle,
+) -> Result<(), Error<C::Error>> {
+    add_typed_item(c, collection, proposal)
+}
+/// Same SimpleCollection signal for an actual typed subject (for example a
+/// City ModifierObject handle). This does not register or reinterpret an item.
+pub fn add_typed_item<Item, C: Context<Item>>(
+    c: &mut C,
+    collection: u64,
+    mut proposal: Item,
 ) -> Result<(), Error<C::Error>> {
     use Error::{Context as Cx, MissingCollection as Missing, Ring};
     let mut cursor = c
