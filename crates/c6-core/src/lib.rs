@@ -451,3 +451,4 @@ pub mod simple_requirement;
 pub mod unit_near_religious_city_requirement;
 pub mod unit_modifier_effect;
 pub mod game_emergency;
+pub mod game_climate;
