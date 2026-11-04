@@ -1,6 +1,39 @@
 //! One stock CombatProposals ObjectCreated listener, not the entire signal.
 //! The proposal registry must register the object before invoking this listener.
 //! Other registered consumers and their modifier effects remain mandatory.
+use crate::unit::ComponentId;
+pub mod registry;
+
+pub trait ComponentCreatedContext {
+    type Error;
+    /// Native missing Unit member becomes the default invalid ComponentID;
+    /// District members are not substituted by this particular listener.
+    fn attacker_unit_id(&mut self) -> Result<ComponentId, Self::Error>;
+    fn defender_unit_id(&mut self) -> Result<ComponentId, Self::Error>;
+    fn has_component_signal(&mut self, identity: ComponentId) -> Result<bool, Self::Error>;
+    fn dispatch_component_created(&mut self, identity: ComponentId) -> Result<(), Self::Error>;
+}
+pub fn component_valid(identity: ComponentId) -> bool {
+    identity.owner != -1 && identity.id != u32::MAX
+}
+/// Stock lambda5652419860. Compare the complete owner/type/id tuple; capture
+/// both current IDs before callbacks, but perform each map lookup when reached.
+pub fn unit_components_created<C: ComponentCreatedContext>(
+    context: &mut C,
+) -> Result<(), C::Error> {
+    let attacker = context.attacker_unit_id()?;
+    let defender = context.defender_unit_id()?;
+    if component_valid(attacker) && context.has_component_signal(attacker)? {
+        context.dispatch_component_created(attacker)?;
+    }
+    if component_valid(defender)
+        && defender != attacker
+        && context.has_component_signal(defender)?
+    {
+        context.dispatch_component_created(defender)?;
+    }
+    Ok(())
+}
 
 /// Typed Unit/Unit proposal receiver. Both owners are read from the retained
 /// current units before any signal dispatch. Signal registrations themselves
@@ -31,6 +64,53 @@ pub fn unit_owners_created<C: OwnerCreatedContext>(context: &mut C) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct Components {
+        attacker: ComponentId,
+        defender: ComponentId,
+        dispatched: Vec<ComponentId>,
+    }
+    impl ComponentCreatedContext for Components {
+        type Error = ();
+        fn attacker_unit_id(&mut self) -> Result<ComponentId, ()> {
+            Ok(self.attacker)
+        }
+        fn defender_unit_id(&mut self) -> Result<ComponentId, ()> {
+            Ok(self.defender)
+        }
+        fn has_component_signal(&mut self, _: ComponentId) -> Result<bool, ()> {
+            Ok(true)
+        }
+        fn dispatch_component_created(&mut self, id: ComponentId) -> Result<(), ()> {
+            self.dispatched.push(id);
+            self.defender.id = 999;
+            Ok(())
+        }
+    }
+    #[test]
+    fn complete_component_tuple_is_cached_and_type_is_not_ignored() {
+        let a = ComponentId {
+            owner: 2,
+            component_type: 1,
+            id: 7,
+        };
+        let b = ComponentId {
+            component_type: 3,
+            ..a
+        };
+        let mut c = Components {
+            attacker: a,
+            defender: b,
+            dispatched: vec![],
+        };
+        unit_components_created(&mut c).unwrap();
+        assert_eq!(c.dispatched, [a, b]);
+        assert!(!component_valid(ComponentId { owner: -1, ..a }));
+        assert!(!component_valid(ComponentId { id: u32::MAX, ..a }));
+        assert!(component_valid(ComponentId {
+            component_type: 0,
+            ..a
+        }));
+    }
     struct C {
         attacker: i32,
         defender: i32,

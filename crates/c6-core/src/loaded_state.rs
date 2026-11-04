@@ -6,6 +6,7 @@ use crate::formation_initialization::FormationRuntime;
 use crate::loaded_components::{self, OwnedCore, RetainedPlayer};
 use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
+pub mod combat_proposals;
 pub mod game_update;
 pub mod turn_completion;
 use std::sync::{
@@ -93,6 +94,7 @@ mod tests {
             controls: None,
             runtime: None,
             formation_runtime: None,
+            combat_proposals: None,
             limits: AssemblyLimits::default(),
             revision: 0,
             instance_identity: fresh_state_identity().unwrap(),
@@ -3379,6 +3381,7 @@ pub struct LoadedState {
     controls: Option<PartialControlInputs>,
     runtime: Option<Vec<RuntimePlayer>>,
     formation_runtime: Option<Vec<RuntimeFormations>>,
+    combat_proposals: Option<crate::melee_attack::proposals::registry::Runtime>,
     limits: AssemblyLimits,
     revision: u64,
     instance_identity: u64,
@@ -3581,6 +3584,7 @@ impl LoadedState {
             controls: None,
             runtime: None,
             formation_runtime: None,
+            combat_proposals: None,
             limits,
             revision: 0,
             instance_identity: fresh_state_identity()?,

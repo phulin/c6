@@ -23,10 +23,10 @@ pub enum Subscriber {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Subscription(usize);
 #[derive(Clone, Copy, Debug)]
-struct Link {
+struct Link<S = Subscriber> {
     next: usize,
     previous: usize,
-    subscriber: Option<Subscriber>,
+    subscriber: Option<S>,
     handle_alive: bool,
     retained: usize,
 }
@@ -47,11 +47,11 @@ pub enum RegistryError {
 /// insertion/removal behavior; native allocations, addresses and pool sizes are
 /// not simulated. Removed labels are never reused while this owner is alive.
 #[derive(Debug)]
-pub struct ListenerRing {
-    links: Vec<Link>,
+pub struct ListenerRing<S = Subscriber> {
+    links: Vec<Link<S>>,
 }
-impl ListenerRing {
-    pub fn from_ordered(subscribers: &[Subscriber]) -> Result<Self, RegistryError> {
+impl<S: Copy> ListenerRing<S> {
+    pub fn from_ordered(subscribers: &[S]) -> Result<Self, RegistryError> {
         let mut ring = Self { links: Vec::new() };
         ring.links
             .try_reserve(subscribers.len().saturating_add(1))
@@ -70,7 +70,7 @@ impl ListenerRing {
     }
     /// Native Subscribe appends immediately before the sentinel. Appending in
     /// a callback can therefore be reached by this same dispatch.
-    pub fn subscribe(&mut self, subscriber: Subscriber) -> Result<Subscription, RegistryError> {
+    pub fn subscribe(&mut self, subscriber: S) -> Result<Subscription, RegistryError> {
         self.links
             .try_reserve(1)
             .map_err(|_| RegistryError::Allocation)?;
@@ -145,6 +145,34 @@ impl ListenerRing {
             self.unlink(id)?;
         }
         Ok(())
+    }
+    pub(crate) fn cursor_start(&mut self) -> Result<usize, RegistryError> {
+        self.retain(0)?;
+        Ok(0)
+    }
+    pub(crate) fn cursor_route(&self, current: usize) -> Result<Option<S>, RegistryError> {
+        self.links
+            .get(current)
+            .map(|l| l.subscriber)
+            .ok_or(RegistryError::CursorInvalidated)
+    }
+    pub(crate) fn cursor_release(&mut self, current: usize) -> Result<(), RegistryError> {
+        self.release(current)
+    }
+    pub(crate) fn cursor_next(&mut self, current: usize) -> Result<Option<usize>, RegistryError> {
+        let next = self
+            .links
+            .get(current)
+            .ok_or(RegistryError::CursorInvalidated)?
+            .next;
+        self.retain(next)?;
+        self.release(current)?;
+        if next == 0 {
+            self.release(next)?;
+            Ok(None)
+        } else {
+            Ok(Some(next))
+        }
     }
 }
 
