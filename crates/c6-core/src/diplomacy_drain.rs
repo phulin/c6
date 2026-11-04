@@ -489,7 +489,7 @@ mod tests {
         assert_eq!(manager.statement_inventory().unwrap(), [facts[0], facts[2]]);
         assert_eq!(manager.active_session().unwrap(), Some(SessionHandle(10)));
         assert_eq!(
-            manager.pending_actions(),
+            manager.pending_actions().unwrap(),
             [PendingAction {
                 id: 99,
                 from: 1,
@@ -571,7 +571,7 @@ mod tests {
         let facts = [info(1, 7, 1, 0, StatementKind::Response)];
         let mut manager = initialized(&facts, None);
         let p = plan(&manager, inputs(None)).unwrap();
-        manager.pending_actions_mut().push(PendingAction {
+        manager.pending_actions_mut().unwrap().push(PendingAction {
             id: 4,
             from: 0,
             to: 1,
@@ -643,7 +643,7 @@ mod tests {
         let mut manager = initialized(&facts, None);
         manager.drain_revision = Some(u64::MAX);
         let p = plan(&manager, inputs(None)).unwrap();
-        manager.pending_actions_mut();
+        manager.pending_actions_mut().unwrap();
         assert_eq!(manager.drain_revision, None);
         assert!(matches!(
             p.prepare(&mut manager, Some(context(None))),
@@ -653,7 +653,7 @@ mod tests {
             plan(&manager, inputs(None)).unwrap_err(),
             Error::ResourceLimit
         );
-        manager.pending_actions_mut();
+        manager.pending_actions_mut().unwrap();
         assert_eq!(manager.drain_revision, None);
         assert_eq!(manager.open_sessions()[0].pending.len(), 1);
     }

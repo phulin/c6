@@ -43,6 +43,7 @@ pub enum Error {
     InvalidStatementInventory,
     StatementInventoryAlreadyInitialized,
     ExecutionProfileAlreadyInitialized,
+    PendingActionsUnavailable,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -119,7 +120,7 @@ pub(crate) struct Routing {
 pub struct Manager {
     ever_alive: Vec<PlayerHandle>,
     pub(crate) open_sessions: Vec<Session<StatementHandle>>,
-    pending_actions: Vec<PendingAction>,
+    pending_actions: Option<Vec<PendingAction>>,
     pub(crate) routing: Option<Routing>,
     pub(crate) statements: Option<Vec<StatementInfo>>,
     execution_profile: Option<(u32, statement::Logging)>,
@@ -230,7 +231,7 @@ impl Manager {
         Ok(Self {
             ever_alive,
             open_sessions: Vec::new(),
-            pending_actions,
+            pending_actions: Some(pending_actions),
             routing: None,
             statements: None,
             execution_profile: None,
@@ -247,6 +248,31 @@ impl Manager {
     pub fn from_observed_sessions(
         ever_alive: Vec<PlayerHandle>,
         pending_actions: Vec<PendingAction>,
+        sessions: Vec<ObservedSession>,
+        active: Option<SessionHandle>,
+        next_object_label: u64,
+    ) -> Result<Self, Error> {
+        Self::from_observed_sessions_inner(
+            ever_alive,
+            Some(pending_actions),
+            sessions,
+            active,
+            next_object_label,
+        )
+    }
+    /// Preserve unobserved PendingActions independently of the session drain.
+    /// ProcessPending does not read or mutate this separate action collection.
+    pub fn from_observed_sessions_with_unknown_pending_actions(
+        ever_alive: Vec<PlayerHandle>,
+        sessions: Vec<ObservedSession>,
+        active: Option<SessionHandle>,
+        next_object_label: u64,
+    ) -> Result<Self, Error> {
+        Self::from_observed_sessions_inner(ever_alive, None, sessions, active, next_object_label)
+    }
+    fn from_observed_sessions_inner(
+        ever_alive: Vec<PlayerHandle>,
+        pending_actions: Option<Vec<PendingAction>>,
         sessions: Vec<ObservedSession>,
         active: Option<SessionHandle>,
         next_object_label: u64,
@@ -592,12 +618,20 @@ impl Manager {
         }
         &mut self.open_sessions
     }
-    pub fn pending_actions(&self) -> &[PendingAction] {
-        &self.pending_actions
+    /// None means contents were not observed; Some(empty) proves emptiness.
+    pub fn pending_actions_known(&self) -> Option<&[PendingAction]> {
+        self.pending_actions.as_deref()
     }
-    pub fn pending_actions_mut(&mut self) -> &mut Vec<PendingAction> {
+    pub fn pending_actions(&self) -> Result<&[PendingAction], Error> {
+        self.pending_actions_known()
+            .ok_or(Error::PendingActionsUnavailable)
+    }
+    pub fn pending_actions_mut(&mut self) -> Result<&mut Vec<PendingAction>, Error> {
+        if self.pending_actions.is_none() {
+            return Err(Error::PendingActionsUnavailable);
+        }
         self.invalidate_drain_plans();
-        &mut self.pending_actions
+        Ok(self.pending_actions.as_mut().unwrap())
     }
     pub fn has_outgoing(&self, player: i32) -> bool {
         self.open_sessions.iter().any(|session| {
@@ -655,7 +689,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(state.copy_ever_alive().unwrap(), players);
-        assert_eq!(state.pending_actions(), actions);
+        assert_eq!(state.pending_actions().unwrap(), actions);
         assert!(state.open_sessions().is_empty());
     }
     #[test]
@@ -1199,5 +1233,81 @@ mod inventory_tests {
             Err(statement::Error::Conflict)
         );
         assert_eq!(format!("{manager:?}"), before);
+    }
+}
+
+#[cfg(test)]
+mod unknown_pending_actions_tests {
+    use super::*;
+    use crate::diplomacy_drain::{self, Inputs};
+    use crate::diplomacy_statement::{Logging, StatementKind, SINGLE_PLAYER_MODE};
+    use crate::unit_operation_aftermath::Pending;
+
+    #[test]
+    fn unknown_actions_are_distinct_from_empty_and_untouched_by_response_drain() {
+        let known = Manager::from_observed_sessions(vec![], vec![], vec![], None, 1).unwrap();
+        assert_eq!(known.pending_actions_known(), Some([].as_slice()));
+        let fact = StatementInfo {
+            handle: StatementHandle(1),
+            session_id: 7,
+            from: 1,
+            to: 0,
+            kind: StatementKind::Response,
+        };
+        let session = ObservedSession {
+            header: SessionHeader {
+                handle: SessionHandle(1),
+                id: 7,
+                from: 1,
+                to: 0,
+            },
+            history: vec![],
+            queued: vec![],
+            pending: vec![Pending {
+                from: 1,
+                to: 0,
+                statement: fact.handle,
+            }],
+        };
+        let mut manager = Manager::from_observed_sessions_with_unknown_pending_actions(
+            vec![PlayerHandle { owner: 1 }],
+            vec![session],
+            None,
+            2,
+        )
+        .unwrap();
+        assert_eq!(manager.pending_actions_known(), None);
+        assert_eq!(
+            manager.pending_actions(),
+            Err(Error::PendingActionsUnavailable)
+        );
+        let revision = manager.drain_revision;
+        assert_eq!(
+            manager.pending_actions_mut(),
+            Err(Error::PendingActionsUnavailable)
+        );
+        assert_eq!(manager.drain_revision, revision);
+        manager.initialize_statement_inventory(vec![fact]).unwrap();
+        manager
+            .initialize_execution_profile(SINGLE_PLAYER_MODE, Logging::OrdinaryHostDisabled)
+            .unwrap();
+        let context = Context {
+            local_player: 0,
+            game_mode: SINGLE_PLAYER_MODE,
+            active_session: None,
+            logging: Logging::OrdinaryHostDisabled,
+        };
+        let inputs = Inputs {
+            context: Some(context),
+            slot_statuses: &[(PlayerHandle { owner: 1 }, 2)],
+        };
+        let plan = diplomacy_drain::plan(&manager, inputs).unwrap();
+        plan.prepare(&mut manager, Some(context)).unwrap().commit();
+        assert!(manager.open_sessions()[0].pending.is_empty());
+        assert_eq!(manager.pending_actions_known(), None);
+        assert_eq!(
+            manager.session_metadata().unwrap()[0].history,
+            [fact.handle]
+        );
     }
 }

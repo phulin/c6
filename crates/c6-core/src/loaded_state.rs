@@ -435,7 +435,7 @@ mod tests {
                 crate::skip_turn::HOLD
             );
             let manager = state.diplomacy_manager().unwrap();
-            assert_eq!(manager.pending_actions()[0].id, 9);
+            assert_eq!(manager.pending_actions().unwrap()[0].id, 9);
             assert_eq!(
                 manager
                     .statement_inventory()
@@ -559,6 +559,7 @@ mod tests {
             .as_mut()
             .unwrap()
             .pending_actions_mut()
+            .unwrap()
             .push(crate::diplomacy_manager::PendingAction {
                 id: 77,
                 from: 0,
@@ -585,7 +586,7 @@ mod tests {
         let manager = state.diplomacy_manager().unwrap();
         assert_eq!(manager.statement_inventory().unwrap().len(), 2);
         assert_eq!(manager.open_sessions()[0].pending.len(), 2);
-        assert_eq!(manager.pending_actions().last().unwrap().id, 77);
+        assert_eq!(manager.pending_actions().unwrap().last().unwrap().id, 77);
     }
     #[test]
     fn prepared_actor_commit_is_exclusive_infallible_and_drop_is_inert() {
@@ -943,6 +944,7 @@ mod tests {
             .diplomacy_manager_mut()
             .unwrap()
             .pending_actions_mut()
+            .unwrap()
             .push(crate::diplomacy_manager::PendingAction {
                 id: 9,
                 from: 0,
@@ -950,7 +952,12 @@ mod tests {
             });
         assert_eq!(state.diplomacy_manager_source(), Some(&source));
         assert_eq!(
-            state.diplomacy_manager().unwrap().pending_actions().len(),
+            state
+                .diplomacy_manager()
+                .unwrap()
+                .pending_actions()
+                .unwrap()
+                .len(),
             1
         );
     }
