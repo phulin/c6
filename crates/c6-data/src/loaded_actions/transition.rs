@@ -759,6 +759,7 @@ fn plan_auto_notification_queries(
         &phase.before,
         &phase.after,
     )?;
+    trace.push(Event::CommandUnitsQuery { initial, current });
     let needed = current.command_count() > 0 && current.command_count() == initial.command_count();
     trace.push(Event::AutoNotificationQuery {
         type_hash: expected[1],

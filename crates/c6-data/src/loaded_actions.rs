@@ -61,9 +61,19 @@ pub struct IdentityReport {
 pub enum Event {
     Stage(Stage),
     Legality(bool),
-    AutoNotificationQuery { type_hash: u32, needed: bool },
+    AutoNotificationQuery {
+        type_hash: u32,
+        needed: bool,
+    },
+    CommandUnitsQuery {
+        initial: command_units::UnitCounts,
+        current: command_units::UnitCounts,
+    },
     Report(IdentityReport),
-    UnitAbsent { owner: i32, id: u32 },
+    UnitAbsent {
+        owner: i32,
+        id: u32,
+    },
     AddHandlerAbsent(i32),
 }
 /// Stable report rows share the existing kernel/native differential shape.
@@ -74,6 +84,7 @@ pub fn trace_json(trace: &[Event]) -> serde_json::Value {
         Event::Stage(stage)=>serde_json::json!({"kind":"stage","stage":format!("{stage:?}")}),
         Event::Legality(allowed)=>serde_json::json!({"kind":"legality","allowed":allowed}),
         Event::AutoNotificationQuery {type_hash,needed}=>serde_json::json!({"kind":"auto_notification_query","type_hash":type_hash,"needed":needed}),
+        Event::CommandUnitsQuery {initial,current}=>serde_json::json!({"kind":"command_units_query","initial":[initial.total,initial.movable_noncycling,initial.unavailable,initial.needing_attention],"current":[current.total,current.movable_noncycling,current.unavailable,current.needing_attention]}),
         Event::UnitAbsent {owner,id}=>serde_json::json!({"kind":"execute_unit_absent","owner":owner,"id":id}),
         Event::AddHandlerAbsent(id)=>serde_json::json!({"kind":"add_handler_absent","runtime_id":id}),
         Event::Report(r)=>{
