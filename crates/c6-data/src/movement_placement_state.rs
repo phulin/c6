@@ -487,6 +487,10 @@ impl<'a, 'r> std::ops::Deref for Context<'_, 'a, 'r> {
     }
 }
 impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
+    /// The authoritative state borrowed by every placement query in this view.
+    pub fn current_state(&self) -> &'s LoadedState {
+        self.state
+    }
     pub fn new(
         state: &'s LoadedState,
         rules: &Rules,

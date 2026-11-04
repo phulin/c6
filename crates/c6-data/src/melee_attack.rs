@@ -47,12 +47,11 @@ impl TargetSelection {
     }
 }
 
-struct Current<'s, 'a, 'r> {
+struct Current<'s, 'd, P> {
     state: &'s LoadedState,
     actor: UnitReference,
-    combat: &'a formation_rules::Definitions,
-    path: &'a path::Definitions<'a, 'r>,
-    runtime: &'s path::Runtime<'a>,
+    combat: &'d formation_rules::Definitions,
+    placement: P,
 }
 fn actor(state: &LoadedState, id: UnitReference) -> Result<&Unit, Error> {
     state
@@ -62,7 +61,7 @@ fn actor(state: &LoadedState, id: UnitReference) -> Result<&Unit, Error> {
         .map(|u| u.record)
         .ok_or(Error::MissingActor(id))
 }
-impl kernel::Context for Current<'_, '_, '_> {
+impl<P: FnMut(PlotCoord) -> Result<i32, Error>> kernel::Context for Current<'_, '_, P> {
     type Error = Error;
     fn attacks_remaining(&mut self) -> Result<i32, Error> {
         Ok(actor(self.state, self.actor)?.i_attacks_remaining)
@@ -73,20 +72,7 @@ impl kernel::Context for Current<'_, '_, '_> {
             .map_err(Error::Combat)
     }
     fn formation_placement(&mut self, destination: PlotCoord) -> Result<i32, Error> {
-        let u = actor(self.state, self.actor)?;
-        // Construct only after native attack-count/CanAttack guards; unknown
-        // placement inputs cannot block a source-proven early rejection.
-        let placement = path::placement_context(self.state, self.path, self.runtime)
-            .map_err(Error::Path)?
-            .with_combat_definitions(self.combat);
-        placement
-            .formation_placement(
-                u.e_owner,
-                u.formation_id,
-                destination,
-                PlacementRequest::from_validate_options(1),
-            )
-            .map_err(Error::Placement)
+        (self.placement)(destination)
     }
 }
 
@@ -102,12 +88,57 @@ pub fn test_attack_into_prefix<'a, 'r>(
     actor: UnitReference,
     destination: PlotCoord,
 ) -> Result<Prefix, Error> {
+    run_prefix(state, combat, actor, destination, |destination| {
+        let u = self::actor(state, actor)?;
+        let placement = path::placement_context(state, definitions, runtime)
+            .map_err(Error::Path)?
+            .with_combat_definitions(combat);
+        placement
+            .formation_placement(
+                u.e_owner,
+                u.formation_id,
+                destination,
+                PlacementRequest::from_validate_options(1),
+            )
+            .map_err(Error::Placement)
+    })
+}
+
+/// Reuse an existing current placement view without requiring path generation's
+/// unrelated runtime fields. Attach its computed combat definitions once when
+/// constructing the view if stacked target comparison is reached.
+pub fn test_attack_into_prefix_with_placement(
+    combat: &formation_rules::Definitions,
+    placement: &movement_placement_state::Context<'_, '_, '_>,
+    actor: UnitReference,
+    destination: PlotCoord,
+) -> Result<Prefix, Error> {
+    let state = placement.current_state();
+    run_prefix(state, combat, actor, destination, |destination| {
+        let u = self::actor(state, actor)?;
+        placement
+            .formation_placement(
+                u.e_owner,
+                u.formation_id,
+                destination,
+                PlacementRequest::from_validate_options(1),
+            )
+            .map_err(Error::Placement)
+    })
+}
+
+fn run_prefix(
+    state: &LoadedState,
+    combat: &formation_rules::Definitions,
+    actor: UnitReference,
+    destination: PlotCoord,
+    placement: impl FnMut(PlotCoord) -> Result<i32, Error>,
+) -> Result<Prefix, Error> {
     let mut current = Current {
         state,
         actor,
         combat,
-        path: definitions,
-        runtime,
+        placement,
     };
     match kernel::test_attack_into_prefix(&mut current, destination)? {
         kernel::Prefix::Rejected(why) => Ok(Prefix::Rejected(why)),
