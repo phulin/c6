@@ -128,8 +128,9 @@ pub struct ScriptEventRegistry {
 /// VM stack layouts.
 ///
 /// Interned names must describe the current intern table, not names observed in
-/// an unrelated capture. This model cannot intern a missing string, advance a
-/// collector, or discharge temporary swept allocations.
+/// an unrelated capture. Factory intern misses additionally require explicit
+/// `InternExecutionState`. This model cannot advance a collector or discharge
+/// temporary swept allocations.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CachedExecutionState {
     pub call_capacity: CachedCallCapacity,
@@ -158,8 +159,7 @@ pub enum CachedCallCapacity {
     NoGrowthForFactoryThreeIntegers,
 }
 
-/// Current semantic facts for the all-intern-hit, no-destination-growth factory
-/// frontier. Facts are supplied from actual initial state, not inferred from a
+/// Current semantic facts for the no-destination-growth factory frontier. Facts are supplied from actual initial state, not inferred from a
 /// successful call. Insertion facts are one-use and must be invalidated by any
 /// external VM activity. An absent fact is unsupported, never spare capacity.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -172,6 +172,104 @@ pub struct FactoryExecutionState {
     pub weak_shared_groups: std::collections::BTreeSet<ScriptObjectId>,
     /// Retained identities in execution order, including unswept temporaries.
     pub factory_objects: Vec<FactoryObjects>,
+}
+
+/// Current ordinary intern-table facts. Missing names are unknown unless in
+/// `known_absent`; external string/collector activity must invalidate these facts.
+/// Growth requires scan index zero, so no old-string marking prefix must be
+/// preserved. Hit-only calls do not read count/capacity/scan index; misses without
+/// growth preserve any scan index. Collection and nonzero-prefix marking are unsupported.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternExecutionState {
+    /// Exact native count from a valid, probe-consistent current intern table.
+    pub count: u32,
+    /// Logical mask+1; this bounded profile admits powers of two through 2^31.
+    pub capacity: u32,
+    pub scan_index: u32,
+    pub known_absent: std::collections::BTreeSet<String>,
+}
+
+struct InternPlan<'a> {
+    initial: &'a InternExecutionState,
+    count: u32,
+    capacity: u32,
+    added: std::collections::BTreeSet<String>,
+}
+impl<'a> InternPlan<'a> {
+    fn new(initial: &'a InternExecutionState) -> Self {
+        Self {
+            initial,
+            count: initial.count,
+            capacity: initial.capacity,
+            added: Default::default(),
+        }
+    }
+}
+
+fn plan_intern(
+    name: &str,
+    effects: &CachedExecutionState,
+    intern: &mut Option<InternPlan<'_>>,
+    allocation: &mut AllocationPlan,
+) -> Result<(), RegistryError> {
+    if effects.interned_names.contains(name) {
+        if intern
+            .as_ref()
+            .is_some_and(|p| p.initial.known_absent.contains(name))
+        {
+            return Err(RegistryError::UnsupportedEffect(
+                "contradictory intern membership",
+            ));
+        }
+        return Ok(());
+    }
+    let plan = intern
+        .as_mut()
+        .ok_or(RegistryError::UnsupportedEffect("string intern miss"))?;
+    if plan.added.contains(name) {
+        return Ok(());
+    }
+    if !plan.initial.known_absent.contains(name) {
+        return Err(RegistryError::UnsupportedEffect(
+            "unknown string intern membership",
+        ));
+    }
+    if !plan.capacity.is_power_of_two()
+        || plan.count >= plan.capacity
+        || effects.interned_names.len() as u64 > u64::from(plan.initial.count)
+    {
+        return Err(RegistryError::UnsupportedEffect(
+            "unknown intern table count or capacity",
+        ));
+    }
+    let next = plan
+        .count
+        .checked_add(1)
+        .ok_or(RegistryError::UnsupportedEffect("intern count overflow"))?;
+    if next > plan.capacity / 2 {
+        if plan.initial.scan_index != 0 {
+            return Err(RegistryError::UnsupportedEffect(
+                "unknown intern growth mark prefix",
+            ));
+        }
+        let capacity = plan
+            .capacity
+            .checked_mul(2)
+            .ok_or(RegistryError::UnsupportedEffect("intern capacity overflow"))?;
+        // DIRECT ordinary allocation: no checkStep; allocate before old backing free.
+        allocation.allocate(&[8 * u64::from(capacity)], 8 * u64::from(plan.capacity))?;
+        plan.capacity = capacity;
+    }
+    let bytes = u64::try_from(name.len())
+        .ok()
+        .and_then(|n| n.checked_add(27))
+        .ok_or(RegistryError::UnsupportedEffect(
+            "intern string size overflow",
+        ))?;
+    allocation.charge(1, &[bytes], 0)?;
+    plan.count = next;
+    plan.added.insert(name.to_owned());
+    Ok(())
 }
 
 /// All newly linked swept objects, in native construction order. Backing
@@ -205,6 +303,10 @@ impl AllocationPlan {
             return Err(RegistryError::UnsupportedEffect("collector progression"));
         }
         self.countdown = self.countdown.wrapping_sub(units);
+        self.allocate(allocations, free)
+    }
+
+    fn allocate(&mut self, allocations: &[u64], free: u64) -> Result<(), RegistryError> {
         for bytes in allocations {
             self.allocated =
                 self.allocated
@@ -591,7 +693,42 @@ impl ScriptEventRegistry {
         effects: &mut CachedExecutionState,
         factory: &mut FactoryExecutionState,
     ) -> Result<Option<bool>, RegistryError> {
+        self.test_all_bounded_inner(name, arguments, effects, factory, None)
+    }
+
+    /// Extend the bounded source projection with explicitly known intern misses.
+    /// Ordinary allocation success is an initial-context requirement, as for
+    /// `test_all_bounded`. Cached calls still require all three intern hits.
+    /// No collector or unknown intern membership is admitted.
+    pub fn test_all_with_intern(
+        &mut self,
+        name: &str,
+        arguments: [i32; 3],
+        effects: &mut CachedExecutionState,
+        factory: &mut FactoryExecutionState,
+        intern: &mut InternExecutionState,
+    ) -> Result<Option<bool>, RegistryError> {
+        self.test_all_bounded_inner(name, arguments, effects, factory, Some(intern))
+    }
+
+    fn test_all_bounded_inner(
+        &mut self,
+        name: &str,
+        arguments: [i32; 3],
+        effects: &mut CachedExecutionState,
+        factory: &mut FactoryExecutionState,
+        intern: Option<&mut InternExecutionState>,
+    ) -> Result<Option<bool>, RegistryError> {
         if self.cached_event(name).is_some() {
+            if intern.as_ref().is_some_and(|state| {
+                ["GameEvents", name, "TestAll"]
+                    .iter()
+                    .any(|key| state.known_absent.contains(*key))
+            }) {
+                return Err(RegistryError::UnsupportedEffect(
+                    "contradictory cached intern membership",
+                ));
+            }
             return self.test_all_cached(name, arguments, effects);
         }
         if name.as_bytes().contains(&0) {
@@ -614,27 +751,6 @@ impl ScriptEventRegistry {
                 "collector phase outside factory frontier",
             ));
         }
-        for key in [
-            "GameEvents",
-            name,
-            "TestAll",
-            "GameEvent::lCreate",
-            "func",
-            "Add",
-            "Count",
-            "Remove",
-            "RemoveAll",
-            "Call",
-            "Accumulate",
-            "AccumulateINT",
-            "TestAny",
-            "__newindex",
-            "__metatable",
-        ] {
-            if !effects.interned_names.contains(key) {
-                return Err(RegistryError::UnsupportedEffect("string intern miss"));
-            }
-        }
         if !factory.game_event_spare_names.contains(name) {
             return Err(RegistryError::UnsupportedEffect(
                 "unknown GameEvents insertion growth",
@@ -646,11 +762,6 @@ impl ScriptEventRegistry {
                     return Err(RegistryError::UnsupportedEffect(
                         "unknown name-map insertion growth",
                     ));
-                }
-                if !effects.interned_names.contains("__mode")
-                    || !effects.interned_names.contains("v")
-                {
-                    return Err(RegistryError::UnsupportedEffect("string intern miss"));
                 }
                 0
             }
@@ -702,6 +813,50 @@ impl ScriptEventRegistry {
                 }
             }
         };
+        // These existing rooted string keys cannot coherently be intern misses.
+        // Native lookup compares intern identity, rather than Rust string bytes.
+        if intern.is_some()
+            && (!effects.interned_names.contains("GameEvents")
+                || (matches!(entry, KnownNameEntry::Shared(_))
+                    && !effects.interned_names.contains(name)))
+        {
+            return Err(RegistryError::UnsupportedEffect(
+                "unknown rooted string intern membership",
+            ));
+        }
+        if intern.is_some() {
+            // Known retained event objects root their keys and closure names.
+            // A miss cannot create a second native intern identity for them.
+            let retained_event = !self.cache.is_empty() || !factory.factory_objects.is_empty();
+            let retained_factory = !factory.factory_objects.is_empty();
+            let retained_weak = factory
+                .factory_objects
+                .iter()
+                .any(|o| o.weak_metatable.is_some());
+            for key in REGISTERED_METHODS.into_iter().chain([
+                "func",
+                "__metatable",
+                "GameEvent::lCreate",
+                "__mode",
+                "v",
+            ]) {
+                let rooted = if key == "GameEvent::lCreate" {
+                    retained_factory
+                } else if matches!(key, "__mode" | "v") {
+                    retained_weak && entry == KnownNameEntry::Absent
+                } else {
+                    retained_event
+                };
+                let rooted = rooted
+                    || matches!(self.names.get(key), Some(KnownNameEntry::Shared(_)))
+                    || self.cache.contains_key(key);
+                if rooted && !effects.interned_names.contains(key) {
+                    return Err(RegistryError::UnsupportedEffect(
+                        "unknown retained object intern membership",
+                    ));
+                }
+            }
+        }
         let protected_obligations = effects.protected_closure_obligations.checked_add(1).ok_or(
             RegistryError::UnsupportedEffect("cached allocation accounting overflow"),
         )?;
@@ -712,16 +867,27 @@ impl ScriptEventRegistry {
             threshold: effects.collection_threshold,
             inhibited: effects.collection_inhibited,
         };
+        let mut intern_plan = intern.as_deref().map(InternPlan::new);
         // Ordered source ledger: each check sees OLD signed countdown and OLD
         // current bytes. Resize allocates before freeing old backing. Intern
-        // hits at phase zero have no charge; missing membership was rejected.
+        // operations occur at their source positions, including repeated hits.
         allocation.charge(1, &[48], 0)?;
+        plan_intern("GameEvents", effects, &mut intern_plan, &mut allocation)?;
+        plan_intern(name, effects, &mut intern_plan, &mut allocation)?;
         if entry == KnownNameEntry::Absent {
             allocation.charge(3, &[64], 0)?; // shared table
             allocation.charge(3, &[64, 16], 0)?; // weak metatable
+            plan_intern("__mode", effects, &mut intern_plan, &mut allocation)?;
+            plan_intern("v", effects, &mut intern_plan, &mut allocation)?;
             allocation.charge(1, &[40], 16)?; // __mode string insertion
         }
         allocation.charge(1, &[64], 0)?; // temporary factory closure
+        plan_intern(
+            "GameEvent::lCreate",
+            effects,
+            &mut intern_plan,
+            &mut allocation,
+        )?;
         allocation.charge(3, &[64], 0)?; // event
         allocation.charge(3, &[64], 0)?; // local array
         if entry == KnownNameEntry::Absent {
@@ -731,7 +897,15 @@ impl ScriptEventRegistry {
         const METHOD_ORDER: [usize; 9] = [0, 3, 1, 2, 4, 7, 8, 6, 5];
         let mut old_hash_bytes = 0;
         for insertion in 1u64..=9 {
+            let method = METHOD_ORDER[insertion as usize - 1];
+            plan_intern(
+                REGISTERED_METHODS[method],
+                effects,
+                &mut intern_plan,
+                &mut allocation,
+            )?;
             allocation.charge(1, &[64], 0)?;
+            plan_intern("func", effects, &mut intern_plan, &mut allocation)?;
             if matches!(insertion, 1 | 2 | 3 | 5 | 9) {
                 let hash_bytes = 40 * insertion.next_power_of_two();
                 allocation.charge(1, &[hash_bytes], old_hash_bytes)?;
@@ -739,7 +913,11 @@ impl ScriptEventRegistry {
             }
         }
         allocation.charge(3, &[64, 160], 0)?; // event metatable
+        plan_intern("__newindex", effects, &mut intern_plan, &mut allocation)?;
+        plan_intern("__metatable", effects, &mut intern_plan, &mut allocation)?;
         allocation.charge(3, &[64], 0)?; // protected empty metatable
+        plan_intern("TestAll", effects, &mut intern_plan, &mut allocation)?;
+        let intern_delta = intern_plan.map(|p| (p.count, p.capacity, p.added));
 
         // Reserve every new swept identity before mutation, including garbage
         // obligations and metatables. Assign in actual source construction order.
@@ -828,6 +1006,14 @@ impl ScriptEventRegistry {
             weak_metatable,
             swept_construction_order: order,
         });
+        if let (Some(intern), Some((count, capacity, added))) = (intern, intern_delta) {
+            intern.count = count;
+            intern.capacity = capacity;
+            for name in added {
+                intern.known_absent.remove(&name);
+                effects.interned_names.insert(name);
+            }
+        }
         effects.step_countdown = allocation.countdown;
         effects.allocated_bytes = allocation.allocated;
         effects.peak_allocated_bytes = allocation.peak;
@@ -1117,6 +1303,276 @@ mod tests {
             effects,
             factory,
         )
+    }
+
+    fn intern_state(effects: &mut CachedExecutionState, missing: &[&str]) -> InternExecutionState {
+        for name in missing {
+            effects.interned_names.remove(*name);
+        }
+        InternExecutionState {
+            count: 64,
+            capacity: 128,
+            scan_index: 0,
+            known_absent: missing.iter().map(|s| (*s).to_owned()).collect(),
+        }
+    }
+
+    #[test]
+    fn factory_intern_misses_are_charged_once_and_persist_into_cached_calls() {
+        for reused in [false, true] {
+            let (mut registry, mut effects, mut factory) = factory_context(reused);
+            let missing: &[&str] = if reused {
+                &["func", "TestAll"]
+            } else {
+                &["CanStartOperation", "func", "TestAll"]
+            };
+            let mut intern = intern_state(&mut effects, missing);
+            let initial = effects.clone();
+            assert_eq!(
+                registry.test_all_with_intern(
+                    "CanStartOperation",
+                    [0; 3],
+                    &mut effects,
+                    &mut factory,
+                    &mut intern
+                ),
+                Ok(None)
+            );
+            let bytes: u64 = missing.iter().map(|name| name.len() as u64 + 27).sum();
+            assert_eq!(
+                effects.allocated_bytes,
+                initial.allocated_bytes + if reused { 1744 } else { 1928 } + 1024 + bytes
+            );
+            assert_eq!(
+                effects.step_countdown,
+                initial.step_countdown - if reused { 28 } else { 36 } - missing.len() as i32
+            );
+            assert_eq!(intern.count, 64 + missing.len() as u32);
+            assert_eq!(intern.capacity, 256);
+            assert_eq!(intern.scan_index, 0);
+            assert!(intern.known_absent.is_empty());
+            for name in missing {
+                assert!(effects.interned_names.contains(*name));
+            }
+            let before_intern = intern.clone();
+            let before_bytes = effects.allocated_bytes;
+            let before_countdown = effects.step_countdown;
+            assert_eq!(
+                registry.test_all_with_intern(
+                    "CanStartOperation",
+                    [0; 3],
+                    &mut effects,
+                    &mut factory,
+                    &mut intern
+                ),
+                Ok(None)
+            );
+            assert_eq!(intern, before_intern);
+            assert_eq!(effects.allocated_bytes, before_bytes + 48);
+            assert_eq!(effects.step_countdown, before_countdown - 1);
+        }
+    }
+
+    #[test]
+    fn intern_growth_has_no_charge_and_guard_sees_net_after_free() {
+        let (_, mut effects, _) = factory_context(true);
+        let mut initial = intern_state(&mut effects, &["func"]);
+        initial.count = 32;
+        initial.capacity = 64;
+        let mut plan = Some(InternPlan::new(&initial));
+        let mut allocation = AllocationPlan {
+            countdown: 1,
+            allocated: 100,
+            peak: 100,
+            threshold: 612,
+            inhibited: false,
+        };
+        plan_intern("func", &effects, &mut plan, &mut allocation).unwrap();
+        assert_eq!(allocation.countdown, 0);
+        assert_eq!(allocation.allocated, 643);
+        assert_eq!(allocation.peak, 1124);
+        assert_eq!(plan.as_ref().unwrap().capacity, 128);
+        // Repeated hit neither charges nor rechecks the now-exceeded threshold.
+        plan_intern("func", &effects, &mut plan, &mut allocation).unwrap();
+        assert_eq!(allocation.countdown, 0);
+        assert_eq!(allocation.allocated, 643);
+        let mut plan = Some(InternPlan::new(&initial));
+        let mut allocation = AllocationPlan {
+            countdown: 1,
+            allocated: 100,
+            peak: 100,
+            threshold: 611,
+            inhibited: false,
+        };
+        assert_eq!(
+            plan_intern("func", &effects, &mut plan, &mut allocation),
+            Err(RegistryError::UnsupportedEffect("collector progression"))
+        );
+    }
+
+    #[test]
+    fn intern_metadata_is_read_only_when_reached_and_count_guard_is_in_source_order() {
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        let mut intern = InternExecutionState {
+            count: 0,
+            capacity: 0,
+            scan_index: 42,
+            known_absent: Default::default(),
+        };
+        let before = intern.clone();
+        assert_eq!(
+            registry.test_all_with_intern(
+                "CanStartOperation",
+                [0; 3],
+                &mut effects,
+                &mut factory,
+                &mut intern
+            ),
+            Ok(None)
+        );
+        assert_eq!(intern, before);
+
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        let mut intern = intern_state(&mut effects, &["Count"]);
+        intern.capacity = 256;
+        intern.scan_index = 42;
+        let initial = effects.allocated_bytes;
+        assert_eq!(
+            registry.test_all_with_intern(
+                "CanStartOperation",
+                [0; 3],
+                &mut effects,
+                &mut factory,
+                &mut intern
+            ),
+            Ok(None)
+        );
+        assert_eq!(intern.scan_index, 42);
+        assert_eq!(intern.capacity, 256);
+        assert_eq!(effects.allocated_bytes, initial + 1744 + 32);
+
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        let mut intern = intern_state(&mut effects, &["Count"]);
+        intern.capacity = 256;
+        effects.step_countdown = 10;
+        // Before Count's intern: protected, factory, event, local, Add closure,
+        // hash1 have allocated 344 bytes. Every preceding guard still passes.
+        effects.collection_threshold = effects.allocated_bytes + 343;
+        let before = (
+            registry.clone(),
+            effects.clone(),
+            factory.clone(),
+            intern.clone(),
+        );
+        assert_eq!(
+            registry.test_all_with_intern(
+                "CanStartOperation",
+                [0; 3],
+                &mut effects,
+                &mut factory,
+                &mut intern
+            ),
+            Err(RegistryError::UnsupportedEffect("collector progression"))
+        );
+        assert_eq!((registry, effects, factory, intern), before);
+    }
+
+    #[test]
+    fn intern_misses_cannot_contradict_reached_rooted_keys() {
+        for case in 0..3 {
+            let (mut registry, mut effects, mut factory) = factory_context(true);
+            let missing = match case {
+                0 => "GameEvents",
+                1 => "CanStartOperation",
+                _ => "Count",
+            };
+            if case == 2 {
+                registry.lookup("CanStartOperation").unwrap();
+                factory.game_event_spare_names.insert("later".into());
+                factory.name_map_spare_names.insert("later".into());
+            }
+            let mut intern = intern_state(&mut effects, &[missing]);
+            let before = (
+                registry.clone(),
+                effects.clone(),
+                factory.clone(),
+                intern.clone(),
+            );
+            let name = if case == 2 {
+                "later"
+            } else {
+                "CanStartOperation"
+            };
+            assert!(registry
+                .test_all_with_intern(name, [0; 3], &mut effects, &mut factory, &mut intern)
+                .is_err());
+            assert_eq!((registry, effects, factory, intern), before);
+        }
+    }
+
+    #[test]
+    fn intern_unknown_marks_overflow_and_signed_guards_refuse_atomically() {
+        for case in 0..10 {
+            let (mut registry, mut effects, mut factory) = factory_context(true);
+            let mut intern = intern_state(&mut effects, &["func"]);
+            match case {
+                0 => {
+                    intern.known_absent.remove("func");
+                }
+                1 => intern.scan_index = 1,
+                2 => intern.capacity = 127,
+                3 => intern.count = u32::MAX,
+                4 => {
+                    intern.count = 1 << 30;
+                    intern.capacity = 1 << 31;
+                }
+                5 => effects.allocated_bytes = u64::MAX - 100,
+                6 => effects.collector_phase = 1,
+                7 => {
+                    effects.step_countdown = i32::MIN;
+                    effects.collection_threshold = effects.allocated_bytes - 1;
+                }
+                8 => {
+                    intern.known_absent.insert("GameEvents".into());
+                }
+                9 => registry.next_identity = u64::MAX,
+                _ => unreachable!(),
+            }
+            let before = (
+                registry.clone(),
+                effects.clone(),
+                factory.clone(),
+                intern.clone(),
+            );
+            assert!(
+                registry
+                    .test_all_with_intern(
+                        "CanStartOperation",
+                        [0; 3],
+                        &mut effects,
+                        &mut factory,
+                        &mut intern
+                    )
+                    .is_err(),
+                "case {case}"
+            );
+            assert_eq!((registry, effects, factory, intern), before, "case {case}");
+        }
+        let (mut registry, mut effects, mut factory) = factory_context(true);
+        let mut intern = intern_state(&mut effects, &["func"]);
+        effects.step_countdown = i32::MIN;
+        effects.collection_threshold = u64::MAX;
+        assert_eq!(
+            registry.test_all_with_intern(
+                "CanStartOperation",
+                [0; 3],
+                &mut effects,
+                &mut factory,
+                &mut intern
+            ),
+            Ok(None)
+        );
+        assert_eq!(effects.step_countdown, i32::MIN.wrapping_sub(29));
     }
 
     #[test]
