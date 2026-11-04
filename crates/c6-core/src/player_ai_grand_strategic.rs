@@ -7,6 +7,8 @@ pub enum Error {
     Truncated,
     Trailing,
     ResourceLimit,
+    UnsupportedLegacyWrite,
+    MissingRetainedMaintenanceResourceHash,
     Version { expected: u32, actual: u32 },
 }
 impl std::fmt::Display for Error {
@@ -154,7 +156,128 @@ record!(CitySettleSiteEvaluation,1, {x:i32,y:i32,score_q8:i32});
 record!(PlotEvaluation,5, {x:i32,y:i32,my_nearest_city:i32,nearest_enemy_city:i32,danger:i32,cultural_pressure:i32,is_coastal_raw:u8,has_fresh_water_raw:u8,is_valid_raw:u8,new_resources_in_inner_ring:i32,plot_score_q8:i32,inner_ring_yield:Vec<HashEntry<i32>>,full_city_yield:Vec<HashEntry<i32>>,num_terrains:Vec<HashEntry<i32>>,num_resources_inner_ring:Vec<HashEntry<i32>>,num_resources:Vec<HashEntry<i32>>,num_features:Vec<HashEntry<i32>>});
 record!(RegionEvaluator,1, {player_id:i32,region_id:u32,evaluations:Vec<CitySettleSiteEvaluation>,intermediate_data:PlotEvaluation,has_positive_eval_raw:u8});
 record!(VictoryStrategy,4, {player_id:i32,pursuing_strategies:Vec<HashEntry<u8>>,forbidden_strategies:Vec<HashEntry<u8>>,must_change_state:Vec<HashEntry<u8>>,meets_exclusive_condition:Vec<HashEntry<u8>>,next_turn_change_allowed:Vec<HashEntry<i32>>,yield_priorities_q8:Vec<HashEntry<i32>>,pseudo_yield_priorities_saved_as_yield_hash_q8:Vec<HashEntry<i32>>});
-record!(UnitEfficiencyInfo,4, {unit_hash:u32,max_damage:i32,is_obsolete_raw:u8,is_ranged_raw:u8,is_naval_raw:u8,has_zone_of_control_raw:u8,civ_unique_raw:u8,exclude_from_efficiency_calculation_raw:u8,can_build_raw:u8,speed:i32,range:i32,main_combat_strength:i32,defense:i32,num_in_use:i32,efficiency_against_all_enemies_q8:i32,efficiency_against_everyone_q8:i32,efficiency_against_player_q8:Vec<i32>,raw_efficiency_q8:i32,maintenance_resource_hash:u32,num_resource_needed:i32});
+/// Shared native UnitEfficiencyInfo wire (independent of the owning manager tag).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnitEfficiencyInfo {
+    pub wire_version: u32,
+    pub unit_hash: u32,
+    pub max_damage: i32,
+    pub is_obsolete_raw: u8,
+    pub is_ranged_raw: u8,
+    pub is_naval_raw: u8,
+    pub has_zone_of_control_raw: u8,
+    pub civ_unique_raw: u8,
+    pub exclude_from_efficiency_calculation_raw: u8,
+    pub can_build_raw: u8,
+    pub speed: i32,
+    pub range: i32,
+    pub main_combat_strength: i32,
+    pub defense: i32,
+    pub num_in_use: i32,
+    pub efficiency_against_all_enemies_q8: i32,
+    pub efficiency_against_everyone_q8: i32,
+    pub efficiency_against_player_q8: Vec<i32>,
+    pub raw_efficiency_q8: i32,
+    /// None at version3: native Read defaults to Resource index-1, not a hash.
+    pub maintenance_resource_hash: Option<u32>,
+    pub num_resource_needed: i32,
+}
+impl UnitEfficiencyInfo {
+    pub fn maintenance_resource_default_index(&self) -> Option<i32> {
+        (self.wire_version == 3).then_some(-1)
+    }
+}
+impl Wire for UnitEfficiencyInfo {
+    const MIN: usize = 4
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <i32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 3 | 4) {
+            return Err(Error::Version {
+                expected: 4,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            unit_hash: <u32 as Wire>::read(r)?,
+            max_damage: <i32 as Wire>::read(r)?,
+            is_obsolete_raw: <u8 as Wire>::read(r)?,
+            is_ranged_raw: <u8 as Wire>::read(r)?,
+            is_naval_raw: <u8 as Wire>::read(r)?,
+            has_zone_of_control_raw: <u8 as Wire>::read(r)?,
+            civ_unique_raw: <u8 as Wire>::read(r)?,
+            exclude_from_efficiency_calculation_raw: <u8 as Wire>::read(r)?,
+            can_build_raw: <u8 as Wire>::read(r)?,
+            speed: <i32 as Wire>::read(r)?,
+            range: <i32 as Wire>::read(r)?,
+            main_combat_strength: <i32 as Wire>::read(r)?,
+            defense: <i32 as Wire>::read(r)?,
+            num_in_use: <i32 as Wire>::read(r)?,
+            efficiency_against_all_enemies_q8: <i32 as Wire>::read(r)?,
+            efficiency_against_everyone_q8: <i32 as Wire>::read(r)?,
+            efficiency_against_player_q8: <Vec<i32> as Wire>::read(r)?,
+            raw_efficiency_q8: <i32 as Wire>::read(r)?,
+            maintenance_resource_hash: if wire_version == 4 {
+                Some(<u32 as Wire>::read(r)?)
+            } else {
+                None
+            },
+            num_resource_needed: if wire_version == 4 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 4 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let resource = self
+            .maintenance_resource_hash
+            .ok_or(Error::MissingRetainedMaintenanceResourceHash)?;
+        4u32.write(w)?;
+        self.unit_hash.write(w)?;
+        self.max_damage.write(w)?;
+        self.is_obsolete_raw.write(w)?;
+        self.is_ranged_raw.write(w)?;
+        self.is_naval_raw.write(w)?;
+        self.has_zone_of_control_raw.write(w)?;
+        self.civ_unique_raw.write(w)?;
+        self.exclude_from_efficiency_calculation_raw.write(w)?;
+        self.can_build_raw.write(w)?;
+        self.speed.write(w)?;
+        self.range.write(w)?;
+        self.main_combat_strength.write(w)?;
+        self.defense.write(w)?;
+        self.num_in_use.write(w)?;
+        self.efficiency_against_all_enemies_q8.write(w)?;
+        self.efficiency_against_everyone_q8.write(w)?;
+        self.efficiency_against_player_q8.write(w)?;
+        self.raw_efficiency_q8.write(w)?;
+        resource.write(w)?;
+        self.num_resource_needed.write(w)?;
+        Ok(())
+    }
+}
 record!(UnitProduction,1, {player_id:i32,offense_units:Vec<UnitEfficiencyInfo>,has_targets_raw:u8});
 record!(GrandStrategic,12, {player_id:i32,city_planner:CityPlanner,primary_regions:Vec<u32>,expansion_regions:Vec<u32>,tertiary_regions:Vec<u32>,settle_cities:Vec<RegionEvaluator>,done_island_check_raw:u8,is_on_island_raw:u8,commemorate_era_raw:u8,victory_manager:VictoryStrategy,pseudo_yield_priority_boost_q8:Vec<HashEntry<i32>>,pseudo_yield_adjustments_q8:Vec<HashEntry<i32>>,unit_production:UnitProduction,yield_sensitivity_boost_q8:Vec<HashEntry<i32>>});
 impl GrandStrategic {
@@ -313,6 +436,7 @@ mod tests {
             unit_production: UnitProduction {
                 player_id: i32::MIN,
                 offense_units: vec![UnitEfficiencyInfo {
+                    wire_version: 4,
                     unit_hash: u32::MAX,
                     max_damage: i32::MIN,
                     is_obsolete_raw: 254u8,
@@ -331,7 +455,7 @@ mod tests {
                     efficiency_against_everyone_q8: i32::MIN,
                     efficiency_against_player_q8: vec![i32::MIN],
                     raw_efficiency_q8: i32::MIN,
-                    maintenance_resource_hash: u32::MAX,
+                    maintenance_resource_hash: Some(u32::MAX),
                     num_resource_needed: i32::MIN,
                 }],
                 has_targets_raw: 254u8,
@@ -341,6 +465,133 @@ mod tests {
                 value: i32::MIN,
             }],
         }
+    }
+    fn legacy_efficiency3() -> Vec<u8> {
+        let mut raw = Vec::new();
+        for v in [3u32, u32::MAX, i32::MIN as u32] {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        raw.extend_from_slice(&[197, 2, 3, 4, 5, 6, 7]);
+        for v in [
+            i32::MIN,
+            -1,
+            i32::MAX,
+            23,
+            -257,
+            0,
+            17,
+            3,
+            i32::MIN,
+            -1,
+            i32::MAX,
+            -257,
+        ] {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        raw
+    }
+    #[test]
+    fn legacy_efficiency3_minimum_and_occurrence_budgets() {
+        let raw = legacy_efficiency3();
+        assert_eq!(raw.len(), 67);
+        let cap = Limits {
+            max_bytes: raw.len(),
+            max_items: 3,
+        };
+        let mut r = Reader {
+            data: &raw,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        let v = UnitEfficiencyInfo::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (67, 3));
+        assert_eq!(v.wire_version, 3);
+        assert_eq!(v.unit_hash, u32::MAX);
+        assert_eq!(v.is_obsolete_raw, 197);
+        assert_eq!(v.efficiency_against_player_q8, [i32::MIN, -1, i32::MAX]);
+        assert_eq!(v.raw_efficiency_q8, -257);
+        assert_eq!(v.maintenance_resource_hash, None);
+        assert_eq!(v.maintenance_resource_default_index(), Some(-1));
+        assert_eq!(v.num_resource_needed, 0);
+        let mut w = Writer {
+            data: None,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for end in 0..raw.len() {
+            let mut r = Reader {
+                data: &raw[..end],
+                pos: 0,
+                items: 0,
+                limits: cap,
+            };
+            assert!(UnitEfficiencyInfo::read(&mut r).is_err());
+        }
+        let mut rows = 2u32.to_le_bytes().to_vec();
+        rows.extend_from_slice(&raw);
+        rows.extend_from_slice(&raw);
+        let limits = Limits {
+            max_bytes: rows.len(),
+            max_items: 8,
+        };
+        let mut r = Reader {
+            data: &rows,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        assert_eq!(Vec::<UnitEfficiencyInfo>::read(&mut r).unwrap().len(), 2);
+        assert_eq!((r.pos, r.items), (138, 8));
+        for limits in [
+            Limits {
+                max_items: 7,
+                ..limits
+            },
+            Limits {
+                max_bytes: 137,
+                ..limits
+            },
+        ] {
+            let mut r = Reader {
+                data: &rows,
+                pos: 0,
+                items: 0,
+                limits,
+            };
+            assert_eq!(
+                Vec::<UnitEfficiencyInfo>::read(&mut r),
+                Err(Error::ResourceLimit)
+            );
+        }
+    }
+    #[test]
+    fn current_efficiency_hash_presence_and_independent_version() {
+        let mut v = sample();
+        let row = &mut v.unit_production.offense_units[0];
+        assert_eq!(row.maintenance_resource_default_index(), None);
+        row.maintenance_resource_hash = None;
+        assert_eq!(
+            v.encode(Limits::default()),
+            Err(Error::MissingRetainedMaintenanceResourceHash)
+        );
+        let mut raw = legacy_efficiency3();
+        raw[..4].copy_from_slice(&2u32.to_le_bytes());
+        let mut r = Reader {
+            data: &raw,
+            pos: 0,
+            items: 0,
+            limits: Limits::default(),
+        };
+        assert_eq!(
+            UnitEfficiencyInfo::read(&mut r),
+            Err(Error::Version {
+                expected: 4,
+                actual: 2
+            })
+        );
     }
     #[test]
     fn nested_boundaries() {

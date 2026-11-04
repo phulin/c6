@@ -3130,6 +3130,7 @@ pub(crate) mod tests {
             unit_production: pmod::UnitProduction {
                 player_id: -8988,
                 offense_units: vec![pmod::UnitEfficiencyInfo {
+                    wire_version: 4,
                     unit_hash: 3735879693,
                     max_damage: -8986,
                     is_obsolete_raw: 197,
@@ -3148,7 +3149,7 @@ pub(crate) mod tests {
                     efficiency_against_everyone_q8: -8972,
                     efficiency_against_player_q8: vec![i32::MIN, -1, i32::MAX],
                     raw_efficiency_q8: -8970,
-                    maintenance_resource_hash: 3735879711,
+                    maintenance_resource_hash: Some(3735879711),
                     num_resource_needed: -8968,
                 }],
                 has_targets_raw: 197,
