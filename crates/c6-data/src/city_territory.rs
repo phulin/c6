@@ -43,6 +43,30 @@ pub struct Runtime {
     /// Actual Manager.GetAliveMajorIDs cached order, not an alive-player filter.
     pub alive_major_ids: Option<Vec<i32>>,
 }
+impl Runtime {
+    /// Map.CityPlots.GetPlotYieldData2a41890 uses the current attribute effect
+    /// ID exclusively. Other temporary objects sharing this plot are irrelevant.
+    pub fn plot_yield_data(&self, plot: u32) -> Result<Option<&plot_yields::Object>, &'static str> {
+        let mut attributes = self.attributes.iter().filter(|r| r.plot == plot);
+        let current = attributes.next().ok_or("current plot yield-effect ID")?;
+        if attributes.next().is_some() {
+            return Err("duplicate current plot attributes");
+        }
+        if current.yield_effect == 0 {
+            return Ok(None);
+        }
+        let at = self
+            .plot_yields
+            .objects
+            .partition_point(|r| r.id < current.yield_effect);
+        self.plot_yields
+            .objects
+            .get(at)
+            .filter(|r| r.id == current.yield_effect)
+            .map(Some)
+            .ok_or("current nonzero plot yield-effect object")
+    }
+}
 pub struct Definitions {
     binding: c6_core::core_player::initialization::WireBinding,
     levels: Vec<(u32, i32)>,
@@ -1000,4 +1024,39 @@ pub fn annexed_improvement_reapply(
         improvement_type,
         old_city,
     }))
+}
+
+#[cfg(test)]
+mod lookup_tests {
+    use super::*;
+    #[test]
+    fn yield_lookup_uses_current_effect_id_not_other_objects_with_same_plot() {
+        let mut one = plot_yields::Object::new(4, None, -1);
+        one.id = 1;
+        one.change_yield(2, 9);
+        let mut two = plot_yields::Object::new(4, Some(CityId { owner: 0, id: 7 }), 8);
+        two.id = 2;
+        two.change_yield(2, 3);
+        let mut r = Runtime {
+            attributes: vec![PlotRuntime {
+                plot: 4,
+                valid_domains: 0,
+                yield_effect: 2,
+            }],
+            plot_yields: plot_yields::Runtime {
+                counter: 2,
+                objects: vec![one, two],
+                created: None,
+            },
+            players: vec![],
+            start_era: None,
+            alive_major_ids: None,
+        };
+        assert_eq!(r.plot_yield_data(4).unwrap().unwrap().yield_value(2), 3);
+        r.attributes[0].yield_effect = 0;
+        assert!(r.plot_yield_data(4).unwrap().is_none());
+        r.attributes[0].yield_effect = 8;
+        assert!(r.plot_yield_data(4).is_err());
+        assert!(r.plot_yield_data(9).is_err());
+    }
 }

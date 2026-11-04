@@ -862,3 +862,5 @@ pub mod unit_kill;
 
 pub mod city_territory;
 pub mod influence_map_update;
+
+pub mod found_city_requirement_queries;

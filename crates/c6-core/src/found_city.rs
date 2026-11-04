@@ -11,6 +11,7 @@ pub mod creation;
 pub mod feature_production;
 pub mod names;
 pub mod placement;
+pub mod requirement_queries;
 
 pub const OPERATION_HASH: u32 = 0x5733_ac6c;
 pub const FOUNDING_TRANSFER_HASH: u32 = 0x6172_3064;
