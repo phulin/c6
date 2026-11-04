@@ -264,6 +264,37 @@ pub fn set_embarked<C: PlacementStateContext>(
     Ok(true)
 }
 
+/// Placement::Set 0x2c41b5c..0x2c41bc9, after its local-visibility reporting.
+/// CompleteMovement's subscribers run before rereading effective IsEmbarked.
+/// The Rules.Placement virtual+0x70 callback receives the selected target and
+/// old-coordinate validity even if the raw SetEmbarked setter itself skipped.
+/// The caller supplies the full reached rules handler, never a no-op default.
+pub fn apply_embark_change<C: PlacementStateContext>(
+    c: &mut C,
+    pending_event: u32,
+    old_location: PlotCoord,
+    on_embark: impl FnOnce(&mut C, bool, bool) -> Result<(), C::Error>,
+) -> Result<bool, PlacementStateError<C::Error>> {
+    if pending_event == u32::MAX {
+        return Ok(false);
+    }
+    complete_movement(c)?;
+    let target = pending_event == EMBARK_EVENT;
+    let u = c.unit().map_err(PlacementStateError::Context)?;
+    let effective = u.e_activity != ACTIVITY_HOLD && u.b_embarked;
+    if effective == target {
+        return Ok(false);
+    }
+    set_embarked(c, target)?;
+    on_embark(
+        c,
+        target,
+        crate::skip_turn::placement::coordinate_valid(old_location),
+    )
+    .map_err(PlacementStateError::Context)?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -694,5 +725,61 @@ mod state_tests {
         );
         assert!(!c.unit.b_needs_movement_completion);
         assert_eq!(c.reports.len(), 1);
+    }
+    #[test]
+    fn embark_rules_run_after_completion_and_setter_subscribers() {
+        let mut c = Context::new();
+        c.unit.e_activity = 0;
+        c.unit.b_needs_movement_completion = true;
+        c.unit.b_embarked = true;
+        c.mutate = true; // Completion changes effective embarked to false.
+        assert_eq!(
+            apply_embark_change(
+                &mut c,
+                EMBARK_EVENT,
+                PlotCoord { x: 1, y: 2 },
+                |c, target, old_valid| {
+                    assert!(target && old_valid);
+                    assert_eq!(
+                        c.reports.iter().map(|r| r.event_hash).collect::<Vec<_>>(),
+                        vec![MOVEMENT_COMPLETED, EMBARKED_CHANGED]
+                    );
+                    // The setter's own subscriber changed the raw flag back to false.
+                    assert!(!c.unit.b_embarked);
+                    c.unit.b_embarked = true;
+                    Ok(())
+                }
+            ),
+            Ok(true)
+        );
+        assert!(c.unit.b_embarked);
+    }
+    #[test]
+    fn hold_effective_difference_still_calls_rules_when_raw_setter_skips() {
+        let mut c = Context::new();
+        c.unit.e_activity = ACTIVITY_HOLD;
+        c.unit.b_embarked = true;
+        assert_eq!(
+            apply_embark_change(
+                &mut c,
+                EMBARK_EVENT,
+                PlotCoord { x: i32::MIN, y: i32::MIN },
+                |c, target, old_valid| {
+                    assert!(target && !old_valid);
+                    assert!(c.reports.is_empty());
+                    Ok(())
+                }
+            ),
+            Ok(true)
+        );
+        assert_eq!(
+            apply_embark_change(
+                &mut c,
+                u32::MAX,
+                PlotCoord { x: 0, y: 0 },
+                |_, _, _| panic!("absent branch")
+            ),
+            Ok(false)
+        );
     }
 }
