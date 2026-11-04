@@ -18,6 +18,7 @@ pub enum Effect {
     ValidTerrain(u32),
     GrantAbility(u32),
     ExtractSeaArtifacts(bool),
+    CombatStrength { amount: i32, kind: i32 },
 }
 /// The definitions must be the existing cached maps built for this state's
 /// admitted resources. No table is rebuilt during a modifier callback.
@@ -25,12 +26,35 @@ pub struct FieldRemoval {
     pub success: bool,
     pub ability_lost: Option<i32>,
 }
+/// AdjustUnitCombatStrength23560a0 uses wrapping native integers and selects
+/// exactly one scalar. It does not require the subject to be a combat Unit.
+pub fn adjust_combat_strength(unit: &mut c6_core::unit::Unit, kind: i32, amount: i32) {
+    let field = match kind {
+        1 => &mut unit.k_combat_modifers.i_combat_strength_modifier,
+        2 => &mut unit.k_combat_modifers.i_ranged_strength_modifier,
+        3 => &mut unit.k_combat_modifers.i_bombard_strength_modifier,
+        4 => &mut unit.k_combat_modifers.i_anti_air_strength_modifier,
+        _ => return,
+    };
+    *field = field.wrapping_add(amount);
+}
 pub fn remove_fields<C, P>(
     state: &mut LoadedState,
     definitions: &Definitions,
     actor: (i32, u32),
     effect: Effect,
 ) -> Result<FieldRemoval, Error<C, P>> {
+    if let Effect::CombatStrength { amount, kind } = effect {
+        adjust_combat_strength(
+            state.unit_mut(actor.0, actor.1).map_err(Error::State)?,
+            kind,
+            amount.wrapping_neg(),
+        );
+        return Ok(FieldRemoval {
+            success: true,
+            ability_lost: None,
+        });
+    }
     if let Effect::Common(effect) = effect {
         let reference = c6_core::map::UnitReference::from_component_id(super::identity(
             super::unit(state, actor)?,
@@ -47,6 +71,7 @@ pub fn remove_fields<C, P>(
             return Err(Error::Missing("unimplemented Unit effect Remove class"))
         }
         Effect::Common(_) => unreachable!("common UnitEffect returned above"),
+        Effect::CombatStrength { .. } => unreachable!("strength effect returned above"),
         Effect::ExperienceModifier(n) => kernel::Effect::ExperienceModifier(n),
         Effect::DiploVisibilityCombat { amount, higher } => {
             kernel::Effect::DiploVisibilityCombat { amount, higher }
