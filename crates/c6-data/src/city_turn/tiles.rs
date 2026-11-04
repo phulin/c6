@@ -19,7 +19,7 @@ pub struct Current<'a> {
     pub drought_ids: Option<&'a [i32]>,
     pub resource_visibility: &'a resources::Definitions,
 }
-struct Runtime<'a> {
+pub(in crate::city_turn) struct Runtime<'a> {
     state: &'a LoadedState,
     definitions: &'a Definitions,
     current: &'a Current<'a>,
@@ -344,7 +344,7 @@ fn records(
     }
     Ok(result)
 }
-fn with_context<T>(
+pub(in crate::city_turn) fn with_context<T>(
     state: &LoadedState,
     definitions: &Definitions,
     current: &Current<'_>,
