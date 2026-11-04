@@ -3,6 +3,24 @@
 use crate::{game_update::Error, loaded_state::LoadedState};
 pub mod local_player;
 
+/// Player.Processor.DoTurnActivate (2b5ac00) prefix. Consume the actual event
+/// and first-activation flags before TurnManager upkeep. This is only that
+/// subphase: callers still owe the surrounding Game.Update and activation report.
+/// An absent event does not enter DoTurn or alter update counters.
+pub fn begin_upkeep(state: &mut LoadedState, owner: i32) -> Result<Option<bool>, Error> {
+    let i = index(owner)?;
+    if !state.turn_active(owner).map_err(super::missing)? {
+        return Err(Error::Unsupported("activation upkeep inactive player"));
+    }
+    if !state.retained.core.player_processor.activation_event[i] {
+        return Ok(None);
+    }
+    match crate::game_update::prepare_player(&mut super::PlayerState { state }, owner)? {
+        crate::game_update::PlayerEffect::Activation { first, .. } => Ok(Some(first)),
+        _ => unreachable!("active event checked before scalar source body"),
+    }
+}
+
 #[derive(Debug)]
 #[must_use = "SetTurnActive(true) still owes its log/flags/report continuation"]
 pub struct Active {
@@ -258,6 +276,23 @@ mod tests {
         state.retained.core.game_processor.turn_order.fill(-1);
         state.retained.core.game_processor.turn_order[17] = owner;
         (state, owner)
+    }
+    #[test]
+    fn upkeep_consumes_first_and_event_before_callback_without_counters() {
+        let (mut state, owner) = current();
+        let _active = begin_active(&mut state, owner).unwrap().unwrap();
+        let i = owner as usize;
+        state.retained.core.player_processor.first_activation[i] = true;
+        state.retained.core.player_processor.activation_event[i] = true;
+        let phase = state.retained.core.player_processor.updates_this_phase[i];
+        assert_eq!(begin_upkeep(&mut state, owner), Ok(Some(true)));
+        assert!(!state.retained.core.player_processor.first_activation[i]);
+        assert!(!state.retained.core.player_processor.activation_event[i]);
+        assert_eq!(begin_upkeep(&mut state, owner), Ok(None));
+        assert_eq!(
+            state.retained.core.player_processor.updates_this_phase[i],
+            phase
+        );
     }
     #[test]
     fn dynamic_uses_canonical_simultaneous_flag_without_changing_control_roles() {
