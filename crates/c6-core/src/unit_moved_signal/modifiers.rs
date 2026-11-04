@@ -203,6 +203,11 @@ impl AffectedModifiers {
         );
         Ok(())
     }
+    /// ModifierObject.ClearAffected2335ac0 removes all entries of this instance,
+    /// preserving the order of all other definitions/instances.
+    pub fn clear_instance(&mut self, instance: i32) {
+        self.entries.retain(|entry| entry.instance != instance);
+    }
     /// GetModifierAffectedByCount2331500 counts the current matching instances.
     pub fn count(&self, definition: &[u8]) -> i32 {
         let lower = self

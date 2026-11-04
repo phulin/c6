@@ -1,5 +1,7 @@
 //! Linux Player.Units delayed destruction. A delayed Unit remains in its roster
 //! for subsequent combat XP/results; placement and sight are removed separately.
+pub mod effects;
+pub mod objects;
 use crate::unit::Unit;
 
 pub trait Context {

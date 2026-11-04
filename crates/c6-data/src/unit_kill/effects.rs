@@ -1,0 +1,160 @@
+//! Current Unit effect Remove leaves, using existing configured definition maps.
+use super::{EffectError, Effects, Error};
+use crate::{unit_initialization_definitions::Definitions, unit_sight_state as sight};
+use c6_core::{
+    loaded_state::LoadedState,
+    movement_world::DefinitionLookup,
+    unit_kill::effects as kernel,
+    unit_placement_transition::{PlacementPayload, PlacementReport},
+};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Effect {
+    Unsupported(u64),
+    Common(c6_core::unit_modifier_effect::Effect),
+    ExperienceModifier(i32),
+    DiploVisibilityCombat { amount: i32, higher: bool },
+    SeaMovement(i32),
+    ValidTerrain(u32),
+    GrantAbility(u32),
+    ExtractSeaArtifacts(bool),
+}
+/// The definitions must be the existing cached maps built for this state's
+/// admitted resources. No table is rebuilt during a modifier callback.
+pub struct FieldRemoval {
+    pub success: bool,
+    pub ability_lost: Option<i32>,
+}
+pub fn remove_fields<C, P>(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    actor: (i32, u32),
+    effect: Effect,
+) -> Result<FieldRemoval, Error<C, P>> {
+    if let Effect::Common(effect) = effect {
+        let reference = c6_core::map::UnitReference::from_component_id(super::identity(
+            super::unit(state, actor)?,
+        ));
+        return crate::unit_modifier_effect::remove(state, Some(reference), effect)
+            .map(|success| FieldRemoval {
+                success,
+                ability_lost: None,
+            })
+            .map_err(Error::CommonEffect);
+    }
+    let mut ability_index = None;
+    let resolved = match effect {
+        Effect::Unsupported(_) => {
+            return Err(Error::Missing("unimplemented Unit effect Remove class"))
+        }
+        Effect::Common(_) => unreachable!("common UnitEffect returned above"),
+        Effect::ExperienceModifier(n) => kernel::Effect::ExperienceModifier(n),
+        Effect::DiploVisibilityCombat { amount, higher } => {
+            kernel::Effect::DiploVisibilityCombat { amount, higher }
+        }
+        Effect::SeaMovement(n) => kernel::Effect::SeaMovement(n),
+        Effect::ExtractSeaArtifacts(b) => kernel::Effect::ExtractSeaArtifacts(b),
+        Effect::ValidTerrain(value) => {
+            let index = definitions
+                .terrains()
+                .find_index(value)
+                .ok_or(Error::Missing("valid-terrain effect index"))?;
+            let terrain_hash = definitions
+                .terrains()
+                .type_hash(index)
+                .ok_or(Error::Missing("valid-terrain effect hash"))?;
+            kernel::Effect::ValidTerrain { terrain_hash }
+        }
+        Effect::GrantAbility(value) => {
+            // Native ChangeAbilityCount returns before a vector write for
+            // GetIndex==-1 or an index outside the current vector size.
+            let Some(index) = definitions.abilities().find_index(value) else {
+                return Ok(FieldRemoval {
+                    success: true,
+                    ability_lost: None,
+                });
+            };
+            let unit = super::unit(state, actor)?;
+            if index >= unit.ai_abilities_possessed.len() {
+                return Ok(FieldRemoval {
+                    success: true,
+                    ability_lost: None,
+                });
+            }
+            let ability_hash = definitions
+                .abilities()
+                .type_hash(index)
+                .ok_or(Error::Missing("grant ability effect hash"))?;
+            ability_index = Some(
+                i32::try_from(index)
+                    .map_err(|_| Error::Missing("ability index exceeds native i32"))?,
+            );
+            kernel::Effect::GrantAbility { ability_hash }
+        }
+    };
+    let domain = if matches!(effect, Effect::SeaMovement(_)) {
+        let unit = super::unit(state, actor)?;
+        state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?
+            .domain
+    } else {
+        0
+    };
+    let continuation = kernel::remove(super::unit_mut(state, actor)?, resolved, domain)
+        .map_err(Error::EffectFields)?;
+    if continuation == kernel::Continuation::AbilityLost {
+        let ability = ability_index.ok_or(Error::Missing("lost ability native index"))?;
+        return Ok(FieldRemoval {
+            success: true,
+            ability_lost: Some(ability),
+        });
+    }
+    Ok(FieldRemoval {
+        success: true,
+        ability_lost: None,
+    })
+}
+pub fn remove_with_continuations<P: super::Providers, C: super::Continuations<P>>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    providers: &mut P,
+    continuations: &mut C,
+    definitions: &Definitions,
+    actor: (i32, u32),
+    effect: Effect,
+) -> Result<bool, Error<C::Error, EffectError<P>>> {
+    let result = remove_fields(state, definitions, actor, effect)?;
+    if let Some(ability) = result.ability_lost {
+        continuations.ability_lost(state, runtime, providers, actor, ability)?;
+        let id = super::identity(super::unit(state, actor)?);
+        super::send(
+            state,
+            providers,
+            PlacementReport {
+                event_hash: 0x7274f04b,
+                identity: id,
+                payload: PlacementPayload::Integer(ability),
+            },
+        )?;
+    }
+    Ok(result.success)
+}
+pub fn remove<E: Effects>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    effects: &mut E,
+    definitions: &Definitions,
+    actor: (i32, u32),
+    effect: Effect,
+) -> Result<bool, Error<EffectError<E>>> {
+    remove_with_continuations(
+        state,
+        runtime,
+        effects,
+        &mut super::Legacy,
+        definitions,
+        actor,
+        effect,
+    )
+}

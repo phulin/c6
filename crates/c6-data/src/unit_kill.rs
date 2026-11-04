@@ -1,5 +1,8 @@
 //! Live Linux delayed Unit death and Placement.Remove. Reached unsupported
 //! synchronous consumers retain their native state prefix and return an error.
+pub mod effects;
+pub mod objects;
+
 use crate::{loaded_upkeep, unit_placement_services as services, unit_sight_state as sight};
 use c6_core::{
     loaded_state::LoadedState,
@@ -9,23 +12,47 @@ use c6_core::{
 
 type EffectError<E> = <E as sight::Effects>::Error;
 #[derive(Debug)]
-pub enum Error<E> {
+pub enum Error<E, P = E> {
     Missing(&'static str),
+    EffectFields(c6_core::unit_kill::effects::Error),
+    CleanupQuery(crate::melee_attack::backend::QueryError),
+    ObjectCleanup(Box<c6_core::unit_kill::objects::Error<Error<E, P>>>),
+    CommonEffect(crate::unit_modifier_effect::Error),
     State(c6_core::loaded_state::Error),
     World(c6_core::world::MissingInput),
     Occupancy(c6_core::unit_occupancy::OccupancyError),
-    Sight(c6_core::unit_sight::SightError<sight::Error<E>>),
-    Services(services::Error<E>),
+    Sight(c6_core::unit_sight::SightError<sight::Error<P>>),
+    Services(services::Error<P>),
     Effect(E),
+    Provider(P),
     Cost(crate::formation_movement_cost::Error),
     Placement(crate::movement_placement_state::Error),
-    Upkeep(loaded_upkeep::Error<E>),
+    Upkeep(loaded_upkeep::Error<P>),
 }
-pub trait Effects:
+pub trait Providers:
     sight::Effects
     + services::Services<Error = EffectError<Self>>
     + loaded_upkeep::OperationReports<Error = EffectError<Self>>
 {
+}
+impl<T> Providers for T where
+    T: sight::Effects
+        + services::Services<Error = EffectError<T>>
+        + loaded_upkeep::OperationReports<Error = EffectError<T>>
+{
+}
+pub trait Effects: Providers {
+    fn signal_ability_lost(
+        &mut self,
+        _state: &mut LoadedState,
+        _runtime: &mut sight::Runtime,
+        _actor: (i32, u32),
+        _ability: i32,
+    ) -> Result<(), Error<EffectError<Self>>> {
+        Err(Error::Missing(
+            "current GameSignals+1578 ability lost consumers",
+        ))
+    }
     fn signal_unit_removed(
         &mut self,
         _state: &mut LoadedState,
@@ -64,7 +91,106 @@ pub trait Effects:
         ))
     }
 }
-fn unit<E>(state: &LoadedState, actor: (i32, u32)) -> Result<&Unit, Error<E>> {
+/// Lifecycle services may borrow separate fields of the same persistent
+/// backend. Report/sight providers keep their existing error and GAT types.
+pub trait Continuations<P: Providers> {
+    type Error;
+    fn removed(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        _providers: &mut P,
+        _actor: (i32, u32),
+    ) -> Result<(), Error<Self::Error, EffectError<P>>> {
+        Err(Error::Missing("current UnitRemoved dispatch"))
+    }
+    fn ability_lost(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        _providers: &mut P,
+        _actor: (i32, u32),
+        _ability: i32,
+    ) -> Result<(), Error<Self::Error, EffectError<P>>> {
+        Err(Error::Missing("current ability-revoked dispatch"))
+    }
+    fn split(
+        &mut self,
+        _state: &mut LoadedState,
+        _providers: &mut P,
+        _actor: (i32, u32),
+    ) -> Result<(), Error<Self::Error, EffectError<P>>> {
+        Err(Error::Missing("dying Formation split"))
+    }
+    fn unpair(
+        &mut self,
+        _state: &mut LoadedState,
+        _providers: &mut P,
+        _parent: ComponentId,
+        _child: ComponentId,
+    ) -> Result<(), Error<Self::Error, EffectError<P>>> {
+        Err(Error::Missing("nonnull parent unpair"))
+    }
+    fn immediate(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        _providers: &mut P,
+        _actor: (i32, u32),
+    ) -> Result<(), Error<Self::Error, EffectError<P>>> {
+        Err(Error::Missing("immediate Unit destruction"))
+    }
+}
+struct Legacy;
+impl<P: Effects> Continuations<P> for Legacy {
+    type Error = EffectError<P>;
+    fn removed(
+        &mut self,
+        s: &mut LoadedState,
+        v: &mut sight::Runtime,
+        p: &mut P,
+        a: (i32, u32),
+    ) -> Result<(), Error<Self::Error>> {
+        p.signal_unit_removed(s, v, a)
+    }
+    fn ability_lost(
+        &mut self,
+        s: &mut LoadedState,
+        v: &mut sight::Runtime,
+        p: &mut P,
+        a: (i32, u32),
+        i: i32,
+    ) -> Result<(), Error<Self::Error>> {
+        p.signal_ability_lost(s, v, a, i)
+    }
+    fn split(
+        &mut self,
+        s: &mut LoadedState,
+        p: &mut P,
+        a: (i32, u32),
+    ) -> Result<(), Error<Self::Error>> {
+        p.split_dying_unit(s, a)
+    }
+    fn unpair(
+        &mut self,
+        s: &mut LoadedState,
+        p: &mut P,
+        a: ComponentId,
+        b: ComponentId,
+    ) -> Result<(), Error<Self::Error>> {
+        p.remove_pairing(s, a, b)
+    }
+    fn immediate(
+        &mut self,
+        s: &mut LoadedState,
+        v: &mut sight::Runtime,
+        p: &mut P,
+        a: (i32, u32),
+    ) -> Result<(), Error<Self::Error>> {
+        p.destroy_immediately(s, v, a)
+    }
+}
+fn unit<E, P>(state: &LoadedState, actor: (i32, u32)) -> Result<&Unit, Error<E, P>> {
     state
         .world()
         .player(actor.0)
@@ -74,7 +200,7 @@ fn unit<E>(state: &LoadedState, actor: (i32, u32)) -> Result<&Unit, Error<E>> {
         .map(|v| v.record)
         .ok_or(Error::Missing("retained dying Unit"))
 }
-fn unit_mut<E>(state: &mut LoadedState, actor: (i32, u32)) -> Result<&mut Unit, Error<E>> {
+fn unit_mut<E, P>(state: &mut LoadedState, actor: (i32, u32)) -> Result<&mut Unit, Error<E, P>> {
     state.unit_mut(actor.0, actor.1).map_err(Error::State)
 }
 fn identity(unit: &Unit) -> ComponentId {
@@ -84,11 +210,11 @@ fn identity(unit: &Unit) -> ComponentId {
         id: unit.id,
     }
 }
-fn send<E: Effects>(
+fn send<E: Providers, C>(
     state: &mut LoadedState,
     effects: &mut E,
     report: PlacementReport,
-) -> Result<(), Error<EffectError<E>>> {
+) -> Result<(), Error<C, EffectError<E>>> {
     let actor = loaded_upkeep::UnitHandle::resolve(
         state,
         i32::from(report.identity.owner),
@@ -98,22 +224,22 @@ fn send<E: Effects>(
     .ok_or(Error::Missing("kill report retained actor"))?;
     effects
         .preflight_placement_report(state, actor, report.event_hash)
-        .map_err(Error::Effect)?;
+        .map_err(Error::Provider)?;
     effects
         .placement_report(state, report)
-        .map_err(Error::Effect)
+        .map_err(Error::Provider)
 }
 
 /// Native Placement.Remove2c42bb0. All-layer membership removal precedes sight;
 /// invalid coordinate/report writes occur only after a successful removal.
 /// This helper retains the Unit in its roster and does not destroy its Formation.
-pub fn remove_placement<E: Effects>(
+fn remove_placement_inner<E: Providers, C>(
     state: &mut LoadedState,
     runtime: &mut sight::Runtime,
     effects: &mut E,
     definitions: &crate::loaded_actions::city_range_attack::Definitions,
     actor: (i32, u32),
-) -> Result<(), Error<EffectError<E>>> {
+) -> Result<(), Error<C, EffectError<E>>> {
     let old = unit(state, actor)?.k_location;
     if !c6_core::skip_turn::placement::coordinate_valid(old) {
         return Ok(());
@@ -201,15 +327,16 @@ pub fn remove_placement<E: Effects>(
     Ok(())
 }
 
-struct Context<'a, E> {
+struct Context<'a, P, C> {
     state: &'a mut LoadedState,
     runtime: &'a mut sight::Runtime,
-    effects: &'a mut E,
+    effects: &'a mut P,
+    continuations: &'a mut C,
     definitions: &'a crate::loaded_actions::city_range_attack::Definitions,
     actor: (i32, u32),
 }
-impl<E: Effects> c6_core::unit_kill::Context for Context<'_, E> {
-    type Error = Error<EffectError<E>>;
+impl<P: Providers, C: Continuations<P>> c6_core::unit_kill::Context for Context<'_, P, C> {
+    type Error = Error<C::Error, EffectError<P>>;
     fn unit(&self) -> Result<&Unit, Self::Error> {
         unit(self.state, self.actor)
     }
@@ -217,8 +344,8 @@ impl<E: Effects> c6_core::unit_kill::Context for Context<'_, E> {
         unit_mut(self.state, self.actor)
     }
     fn signal_removed(&mut self) -> Result<(), Self::Error> {
-        self.effects
-            .signal_unit_removed(self.state, self.runtime, self.actor)
+        self.continuations
+            .removed(self.state, self.runtime, self.effects, self.actor)
     }
     fn formation_unit_count(&self) -> Result<Option<usize>, Self::Error> {
         let unit = self.unit()?;
@@ -232,10 +359,11 @@ impl<E: Effects> c6_core::unit_kill::Context for Context<'_, E> {
             .map(|f| f.record.unit_ids.len()))
     }
     fn split_dying_unit(&mut self) -> Result<(), Self::Error> {
-        self.effects.split_dying_unit(self.state, self.actor)
+        self.continuations
+            .split(self.state, self.effects, self.actor)
     }
     fn remove_placement(&mut self) -> Result<(), Self::Error> {
-        remove_placement(
+        remove_placement_inner(
             self.state,
             self.runtime,
             self.effects,
@@ -253,10 +381,30 @@ pub fn delayed_destroy<E: Effects>(
     definitions: &crate::loaded_actions::city_range_attack::Definitions,
     actor: (i32, u32),
 ) -> Result<(), Error<EffectError<E>>> {
+    delayed_destroy_with_continuations(state, runtime, effects, &mut Legacy, definitions, actor)
+}
+pub fn remove_placement<P: Effects>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    providers: &mut P,
+    definitions: &crate::loaded_actions::city_range_attack::Definitions,
+    actor: (i32, u32),
+) -> Result<(), Error<EffectError<P>>> {
+    remove_placement_inner(state, runtime, providers, definitions, actor)
+}
+pub fn delayed_destroy_with_continuations<P: Providers, C: Continuations<P>>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    effects: &mut P,
+    continuations: &mut C,
+    definitions: &crate::loaded_actions::city_range_attack::Definitions,
+    actor: (i32, u32),
+) -> Result<(), Error<C::Error, EffectError<P>>> {
     c6_core::unit_kill::delayed_destroy(&mut Context {
         state,
         runtime,
         effects,
+        continuations,
         definitions,
         actor,
     })
@@ -267,18 +415,20 @@ pub fn delayed_destroy<E: Effects>(
 /// `killed_by` is accepted for the Manager.Kill ABI; this stock DestroyUnit target
 /// does not read it. A Rules override requires its own source-qualified route.
 #[allow(clippy::too_many_arguments)]
-pub fn kill<E>(
+pub fn kill_with_continuations<E, C>(
     state: &mut LoadedState,
     runtime: &mut sight::Runtime,
     effects: &mut E,
+    continuations: &mut C,
     definitions: &crate::unit_placement_state::Definitions<'_, '_>,
     queries: &crate::unit_placement_state::Queries<'_>,
     actor: (i32, u32),
     delayed: bool,
     _killed_by: i32,
-) -> Result<bool, Error<EffectError<E>>>
+) -> Result<bool, Error<C::Error, EffectError<E>>>
 where
-    E: Effects + loaded_upkeep::FormationRestoreEffects<Error = EffectError<E>>,
+    E: Providers + loaded_upkeep::FormationRestoreEffects<Error = EffectError<E>>,
+    C: Continuations<E>,
 {
     let Some(found) = state
         .world()
@@ -372,10 +522,11 @@ where
             .map_err(Error::World)?
             .is_some()
         {
-            kill(
+            kill_with_continuations(
                 state,
                 runtime,
                 effects,
+                continuations,
                 definitions,
                 queries,
                 (owner, child.id),
@@ -394,17 +545,51 @@ where
         .map(|(_, parent)| *parent)
         .unwrap_or(c6_core::object_pairing::NULL_COMPONENT);
     if parent != c6_core::object_pairing::NULL_COMPONENT {
-        effects.remove_pairing(state, parent, current)?;
+        continuations.unpair(state, effects, parent, current)?;
     }
     let current = unit(state, actor)?;
     services::run_siege(state, runtime, effects, current.k_location, current.e_owner)
         .map_err(Error::Services)?;
     if !(delayed && unit(state, actor)?.b_delayed_death) {
         if delayed {
-            delayed_destroy(state, runtime, effects, definitions.sight, actor)?;
+            delayed_destroy_with_continuations(
+                state,
+                runtime,
+                effects,
+                continuations,
+                definitions.sight,
+                actor,
+            )?;
         } else {
-            effects.destroy_immediately(state, runtime, actor)?;
+            continuations.immediate(state, runtime, effects, actor)?;
         }
     }
     Ok(true)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn kill<P>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    providers: &mut P,
+    definitions: &crate::unit_placement_state::Definitions<'_, '_>,
+    queries: &crate::unit_placement_state::Queries<'_>,
+    actor: (i32, u32),
+    delayed: bool,
+    killed_by: i32,
+) -> Result<bool, Error<EffectError<P>>>
+where
+    P: Effects + loaded_upkeep::FormationRestoreEffects<Error = EffectError<P>>,
+{
+    kill_with_continuations(
+        state,
+        runtime,
+        providers,
+        &mut Legacy,
+        definitions,
+        queries,
+        actor,
+        delayed,
+        killed_by,
+    )
 }
