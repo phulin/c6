@@ -274,6 +274,7 @@ mod tests {
                 tourism_adjacency_yield_modifier: vec![],
                 tourism_change: 0,
                 yield_adjacency_mirrors: vec![],
+                appeal_yield_changes: None,
                 great_person_point_changes_q8: vec![],
                 great_person_point_multiplier: 0,
                 great_person_point_adder: 0,

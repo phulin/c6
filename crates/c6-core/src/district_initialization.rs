@@ -54,6 +54,7 @@ pub fn construct(definitions: Definitions<'_>) -> Result<District, Error> {
         tourism_adjacency_yield_modifier: zeroes(definitions.yields)?,
         tourism_change: 0,
         yield_adjacency_mirrors: Vec::new(),
+        appeal_yield_changes: Some(Vec::new()),
         great_person_point_changes_q8: zeroes(definitions.great_person_classes)?,
         great_person_point_multiplier: 0,
         great_person_point_adder: 0,

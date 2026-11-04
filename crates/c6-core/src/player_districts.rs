@@ -239,11 +239,18 @@ record!(DistrictCreateUnit, 1, { district_hash: u32, unit_type_hash: u32 });
 record!(DistrictAndBuildingsCreateUnitWithAbilityByClass, 1, { ability_hash: u32, district_hash: u32, promotion_class_hash: u32 });
 record!(DistrictUnlockTech, 1, { district_hash: u32, technology_hash: u32 });
 record!(DistrictUnlockCivic, 1, { district_hash: u32, civic_hash: u32 });
-// Serialized fields only. The actual District owner is Plot.GetOwner and is
+// Serialized fields plus explicitly optional live supplements. District owner is Plot.GetOwner and is
 // deliberately absent; enclosing player/table ownership is a different value.
 // Ordered hash arrays retain duplicate keys and unknown definitions verbatim.
+/// Current unsaved District.GetAppealYield rows (native vector at +0x1d0).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AppealYieldChange {
+    pub yield_index: i32,
+    pub minimum_appeal: i32,
+    pub change: i32,
+}
 /// District13/15 wire/default projection. Native plot-owner lookup and archive
-/// ID fixups are not performed by this decoder.
+/// ID fixups are not performed by this decoder. Unsaved fields remain unknown.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct District {
     pub wire_version: u32,
@@ -268,6 +275,9 @@ pub struct District {
     pub tourism_adjacency_yield_modifier: Vec<HashValue<i32>>,
     pub tourism_change: i32,
     pub yield_adjacency_mirrors: Vec<AdjacencyBonusMirror>,
+    /// Save transport omits these live modifier rows. None is unavailable;
+    /// Some(empty) is an observed/source-constructed empty vector.
+    pub appeal_yield_changes: Option<Vec<AppealYieldChange>>,
     pub great_person_point_changes_q8: Vec<HashValue<i32>>,
     pub great_person_point_multiplier: i32,
     pub great_person_point_adder: i32,
@@ -352,6 +362,7 @@ impl Wire for District {
             },
             tourism_change: <i32>::read(r)?,
             yield_adjacency_mirrors: <Vec<AdjacencyBonusMirror>>::read(r)?,
+            appeal_yield_changes: None,
             great_person_point_changes_q8: <Vec<HashValue<i32>>>::read(r)?,
             great_person_point_multiplier: <i32>::read(r)?,
             great_person_point_adder: <i32>::read(r)?,
