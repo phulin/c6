@@ -11,6 +11,12 @@ pub trait Effects: PopulationEffects {
         owner: i32,
         city: u32,
     ) -> Result<i32, Error>;
+    fn other_growth_modifier_q8(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<i32, Error>;
     fn happiness_growth_modifier_q8(
         &mut self,
         state: &mut LoadedState,
@@ -67,7 +73,7 @@ pub fn overall_modifier(
     effects: &mut impl Effects,
 ) -> Result<i32, Error> {
     let happiness = effects.happiness_growth_modifier_q8(state, owner, city)?;
-    let other = state.city(owner, city)?.growth.other_growth_modifier_raw_q8;
+    let other = effects.other_growth_modifier_q8(state, owner, city)?;
     let modifier = 256i32.wrapping_add(happiness / 100).wrapping_add(other);
     if modifier < 0 {
         return Ok(0);

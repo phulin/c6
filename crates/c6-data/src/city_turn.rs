@@ -3,7 +3,9 @@
 //! are shared turn/founding effects, never substituted by a population scalar.
 use crate::{unit_initialization_definitions::collection, Rules, RulesProfile, SqlValue};
 use c6_core::{city_growth, loaded_state::LoadedState};
+pub mod economy;
 pub mod growth;
+pub mod housing;
 pub mod religion;
 
 #[derive(Debug)]
