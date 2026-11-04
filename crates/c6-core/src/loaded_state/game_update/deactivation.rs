@@ -8,6 +8,63 @@ pub struct Continuation {
     selected: Vec<i32>,
     effect: Option<core::Effect<i32>>,
     alive_nonhuman: bool,
+    stamp: crate::loaded_state::ActionStamp,
+    binding: crate::core_player::initialization::WireBinding,
+}
+
+/// Source-qualified stock Platform file logger only. Clock/formatting, channel
+/// cache, offset counters and output have no gameplay/RNG effects. Custom log
+/// callbacks must execute their actual effects. Reporting remains mandatory.
+pub enum LoggingScope {
+    StockFileSink,
+}
+
+pub fn omit_stock_file_log(
+    state: &crate::loaded_state::LoadedState,
+    runtime: &mut super::Runtime,
+    pending: &mut Continuation,
+    _: LoggingScope,
+) -> Result<core::Effect<i32>, Error> {
+    if runtime.failed
+        || !runtime.deactivation_started
+        || state.binding() != &runtime.binding
+        || state.binding() != &pending.binding
+        || state.action_stamp() != pending.stamp
+    {
+        return Err(Error::Unsupported(
+            "SetTurnActive logging continuation binding",
+        ));
+    }
+    let Some(core::Effect::TurnActiveLog {
+        player,
+        active: false,
+    }) = pending.effect
+    else {
+        return Err(Error::Unsupported(
+            "SetTurnActive logging continuation ordering",
+        ));
+    };
+    let result = (|| {
+        // Native GetID -> current local player -> fresh GetID, after logging.
+        state.world.player(player).map_err(missing)?;
+        let local = super::required(
+            runtime.inputs.local_player,
+            "SetTurnActive current local player",
+        )?;
+        let event = if player == local {
+            0x6e63_a083
+        } else {
+            0xf167_21cf
+        };
+        state.world.player(player).map_err(missing)?;
+        let effect = core::Effect::TurnActiveReport { player, event };
+        pending.effect = Some(effect);
+        Ok(effect)
+    })();
+    if result.is_err() {
+        runtime.failed = true;
+    }
+    result
 }
 impl Continuation {
     pub fn selected(&self) -> &[i32] {
@@ -62,6 +119,8 @@ pub fn begin<S: Services>(c: &mut Context<'_, S>) -> Result<Continuation, Error>
             selected,
             effect,
             alive_nonhuman,
+            stamp: c.state.action_stamp(),
+            binding: c.state.binding().clone(),
         })
     })();
     if result.is_err() {
@@ -273,5 +332,52 @@ mod tests {
         assert_eq!(state.player_slot_status(owner).unwrap(), 4);
         assert!(state.turn_active(owner).unwrap());
         assert_eq!(runtime.inputs.auto_player_game, Some(true));
+    }
+    #[test]
+    fn source_qualified_log_omission_requires_current_local_player_and_preserves_report() {
+        let (mut state, mut runtime, owner) = fixture();
+        runtime.inputs.local_player = Some(owner);
+        let mut pending =
+            begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap()).unwrap();
+        let stamp = state.action_stamp();
+        assert_eq!(
+            omit_stock_file_log(
+                &state,
+                &mut runtime,
+                &mut pending,
+                LoggingScope::StockFileSink
+            ),
+            Ok(core::Effect::TurnActiveReport {
+                player: owner,
+                event: 0x6e63_a083
+            })
+        );
+        assert_eq!(state.action_stamp(), stamp);
+        assert!(omit_stock_file_log(
+            &state,
+            &mut runtime,
+            &mut pending,
+            LoggingScope::StockFileSink
+        )
+        .is_err());
+    }
+    #[test]
+    fn log_omission_never_defaults_unknown_local_player() {
+        let (mut state, mut runtime, _) = fixture();
+        runtime.inputs.local_player = None;
+        let mut pending =
+            begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap()).unwrap();
+        assert!(omit_stock_file_log(
+            &state,
+            &mut runtime,
+            &mut pending,
+            LoggingScope::StockFileSink
+        )
+        .is_err());
+        assert!(matches!(
+            pending.effect(),
+            Some(core::Effect::TurnActiveLog { .. })
+        ));
+        assert!(runtime.failed());
     }
 }

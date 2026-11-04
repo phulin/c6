@@ -85,6 +85,10 @@ pub enum Effect<P> {
         player: P,
         active: bool,
     },
+    TurnActiveReport {
+        player: P,
+        event: u32,
+    },
     Automation {
         player: P,
     },
