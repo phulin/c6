@@ -935,8 +935,9 @@ pub(super) fn preflight(
     {
         return Err(Error::Kernel(skip_turn::Error::UnsupportedQueue));
     }
-    if ![OPERATION, AWAKE].contains(&u.e_activity)
+    if ![OPERATION, AWAKE, skip_turn::HOLD].contains(&u.e_activity)
         || (u.k_operations.nodes.is_empty() && u.e_activity == OPERATION)
+        || (!u.k_operations.nodes.is_empty() && u.e_activity == skip_turn::HOLD)
     {
         return Err(Error::Kernel(skip_turn::Error::UnsupportedInitialActivity));
     }
