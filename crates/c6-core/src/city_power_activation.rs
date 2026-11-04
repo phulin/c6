@@ -4,6 +4,8 @@
 //! Synchronous signal/report failures retain earlier mutations; this is not an
 //! atomic action or a claim of complete city/turn or native parity.
 
+pub mod stock_signals;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Source {
     pub amount_raw_q8: i32,

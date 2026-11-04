@@ -37,6 +37,7 @@ pub struct Definitions {
     xp_projects: LinuxDefinitionRegistry,
     building_power: Vec<BuildingPower>,
     project_power: Vec<i32>,
+    project_fully_powered: Vec<Option<bool>>,
 }
 impl Definitions {
     pub fn from_rules(rules: &Rules, authority: &ResourceAuthority<'_>) -> Result<Self, Error> {
@@ -84,14 +85,58 @@ impl Definitions {
                 )
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        let project_fully_powered = xp_projects
+            .entries()
+            .iter()
+            .map(|entry| {
+                let row = rules
+                    .gameplay()
+                    .table("Projects_XP2")
+                    .ok_or(Error::Missing("Projects_XP2"))?
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("Project_XP2 row"))?;
+                match row.get("FullyPoweredWhileActive").map_err(Error::Rules)? {
+                    SqlValue::Null => Ok(None),
+                    SqlValue::Integer(value) => Ok(Some(*value != 0)),
+                    _ => Err(Error::Missing("FullyPoweredWhileActive boolean")),
+                }
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
             buildings,
             projects,
             xp_projects,
             building_power,
             project_power,
+            project_fully_powered,
         })
     }
+    /// Exact lazy IsFullyPowered. The current project is not queried unless
+    /// missing raw Q8 power is positive; it is an index, not a saved hash.
+    pub fn is_fully_powered(
+        &self,
+        power: &State,
+        current_project: impl FnOnce() -> Result<i32, Error>,
+    ) -> Result<bool, Error> {
+        if power.missing_power_raw_q8() <= 0 {
+            return Ok(true);
+        }
+        let index = current_project()?;
+        if index == -1 {
+            return Ok(false);
+        }
+        let project = self
+            .projects
+            .find_index(index as u32)
+            .and_then(|index| self.projects.type_hash(index))
+            .and_then(|hash| self.xp_projects.find_index(hash));
+        Ok(project
+            .and_then(|index| self.project_fully_powered.get(index))
+            .copied()
+            .flatten()
+            .unwrap_or(false))
+    }
+
     /// Copies exactly the represented scalar values and performs the source
     /// enum lookup for each saved source key, preserving order and duplicates.
     /// The caller supplies authority for all native Read/current-state effects.
@@ -242,6 +287,7 @@ mod tests {
                 required: 3,
             }],
             project_power: vec![2],
+            project_fully_powered: vec![Some(true)],
         }
     }
     #[test]
@@ -291,6 +337,24 @@ mod tests {
         assert_eq!(power.turn_last_notified_need_power, 123);
         assert_eq!(state.modified_free_percent, 10);
     }
+    #[test]
+    fn fully_powered_short_circuits_and_resolves_optional_active_project() {
+        let mut defs = definitions();
+        let mut state = city().state;
+        assert!(defs
+            .is_fully_powered(&state, || panic!("project queried without shortage"))
+            .unwrap());
+        state.required_raw_q8 = 999;
+        assert!(defs.is_fully_powered(&state, || Ok(0)).unwrap());
+        assert!(!defs.is_fully_powered(&state, || Ok(-1)).unwrap());
+        defs.project_fully_powered[0] = None;
+        assert!(!defs.is_fully_powered(&state, || Ok(0)).unwrap());
+        assert!(matches!(
+            defs.is_fully_powered(&state, || Err(Error::Missing("project"))),
+            Err(Error::Missing("project"))
+        ));
+    }
+
     struct City {
         state: State,
         events: Vec<&'static str>,
