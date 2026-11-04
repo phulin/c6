@@ -6,7 +6,8 @@
 //! or collector paths refuse before changing the logical registry or collector.
 use c6_core::{
     script_event_registry::{
-        CachedExecutionState, FactoryExecutionState, RegistryError, ScriptEventRegistry,
+        CachedExecutionState, FactoryExecutionState, InternExecutionState, RegistryError,
+        ScriptEventRegistry,
     },
     skip_turn::legality::{ManagerQueries, ManagerQueryState, ScriptTestAllResult},
     unit::Unit,
@@ -15,6 +16,11 @@ use c6_core::{
 enum RegistryAccess<'a> {
     Cached(&'a ScriptEventRegistry),
     Factory(&'a mut ScriptEventRegistry, &'a mut FactoryExecutionState),
+    Intern(
+        &'a mut ScriptEventRegistry,
+        &'a mut FactoryExecutionState,
+        &'a mut InternExecutionState,
+    ),
 }
 
 pub struct RegistryQueries<'a, Q: ManagerQueries<Unit>> {
@@ -53,6 +59,24 @@ impl<'a, Q: ManagerQueries<Unit>> RegistryQueries<'a, Q> {
         Self {
             delegate,
             registry: RegistryAccess::Factory(registry, factory),
+            execution,
+            script,
+            last_error: None,
+        }
+    }
+    /// Adds persistent, explicitly known intern misses. Unknown membership is
+    /// refused; source-used strings become hits only after computed insertion.
+    pub fn with_intern(
+        delegate: &'a mut Q,
+        registry: &'a mut ScriptEventRegistry,
+        execution: &'a mut CachedExecutionState,
+        factory: &'a mut FactoryExecutionState,
+        intern: &'a mut InternExecutionState,
+        script: Q::Script,
+    ) -> Self {
+        Self {
+            delegate,
+            registry: RegistryAccess::Intern(registry, factory, intern),
             execution,
             script,
             last_error: None,
@@ -231,6 +255,9 @@ where
             }
             RegistryAccess::Factory(registry, factory) => {
                 registry.test_all_bounded(event, arguments, self.execution, factory)
+            }
+            RegistryAccess::Intern(registry, factory, intern) => {
+                registry.test_all_with_intern(event, arguments, self.execution, factory, intern)
             }
         };
         match answer {
@@ -721,5 +748,80 @@ mod tests {
             );
         }
         assert_eq!((registry, execution, factory), before);
+    }
+    #[test]
+    fn factory_query_computes_first_intern_growth_then_preserves_cached_identity() {
+        let (mut registry, mut execution, mut factory) = factory_fixture();
+        execution.interned_names.remove("CanStartOperation");
+        let mut intern = InternExecutionState {
+            count: 32,
+            capacity: 64,
+            scan_index: 0,
+            known_absent: ["CanStartOperation".into()].into(),
+        };
+        let mut environment = Environment;
+        let mut unit = crate::loaded_actions::tests::synthetic_unit();
+        let mut operation = ManagerOperation {
+            runtime_id: 36,
+            directive: -1,
+            parameters: (),
+            flags: 0,
+        };
+        let mut args = vec![unit.e_owner, unit.id as i32, 36];
+        let mut state = ManagerQueryState {
+            unit: &mut unit,
+            operation: &mut operation,
+        };
+        {
+            let mut query = RegistryQueries::with_intern(
+                &mut environment,
+                &mut registry,
+                &mut execution,
+                &mut factory,
+                &mut intern,
+                91,
+            );
+            assert_eq!(
+                query.script_call_test_all(&mut state, 91, &mut args, "CanStartOperation", false),
+                Ok(ScriptTestAllResult {
+                    called: false,
+                    value: false
+                })
+            );
+        }
+        let identity = registry.cached_event("CanStartOperation").unwrap();
+        let string_bytes = "CanStartOperation".len() as u64 + 27;
+        assert_eq!(intern.count, 33);
+        assert_eq!(intern.capacity, 128);
+        assert!(intern.known_absent.is_empty());
+        assert!(execution.interned_names.contains("CanStartOperation"));
+        assert_eq!(execution.step_countdown, 963);
+        assert_eq!(execution.allocated_bytes, 100 + 1928 + 512 + string_bytes);
+        assert_eq!(
+            execution.peak_allocated_bytes,
+            100 + 1960 + 512 + string_bytes
+        );
+        let intern_before = intern.clone();
+        {
+            let mut query = RegistryQueries::with_intern(
+                &mut environment,
+                &mut registry,
+                &mut execution,
+                &mut factory,
+                &mut intern,
+                91,
+            );
+            assert_eq!(
+                query.script_call_test_all(&mut state, 91, &mut args, "CanStartOperation", false),
+                Ok(ScriptTestAllResult {
+                    called: false,
+                    value: false
+                })
+            );
+        }
+        assert_eq!(registry.cached_event("CanStartOperation"), Some(identity));
+        assert_eq!(intern, intern_before);
+        assert_eq!(factory.factory_objects.len(), 1);
+        assert_eq!(execution.step_countdown, 962);
     }
 }
