@@ -2,6 +2,18 @@
 //! Values are signed raw Q8. This module does not select production or create
 //! completed objects; those operations belong to the canonical state adapter.
 
+/// GetCurrentProductionKind284dff0 for a resolved current order. In particular
+/// an empty/project queue returns NO_KIND (-1), while generic CalculateYield
+/// uses0. These are distinct arguments even when their values happen to match.
+pub fn production_kind(order: Option<super::Order>) -> u32 {
+    match order {
+        Some(super::Order::Construct { .. }) => 0xd8a30267,
+        Some(super::Order::Train { .. }) => 0x15d11e18,
+        Some(super::Order::Zone { .. }) => 0x080d3734,
+        _ => u32::MAX,
+    }
+}
+
 /// FixedPointT<8>::operator* at 1fceb20: signed 64-bit product, shift, low word.
 pub fn multiply(left: i32, right: i32) -> i32 {
     ((i64::from(left) * i64::from(right)) >> 8) as i32
@@ -60,6 +72,19 @@ pub fn percent_multiplier(percent: i32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn empty_project_and_generic_kind_are_not_conflated() {
+        assert_eq!(production_kind(None), u32::MAX);
+        assert_eq!(
+            production_kind(Some(super::super::Order::Advance { project_hash: 9 })),
+            u32::MAX
+        );
+        assert_eq!(
+            production_kind(Some(super::super::Order::Construct { building_hash: 9 })),
+            0xd8a30267
+        );
+        assert_ne!(production_kind(None), 0);
+    }
     #[test]
     fn multiplication_keeps_native_negative_floor_and_low_word() {
         assert_eq!(multiply(-1, 1), -1);

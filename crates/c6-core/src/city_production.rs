@@ -84,6 +84,23 @@ pub struct QueueEntry {
 /// codec preserves supplied hashes and does not silently canonicalize them.
 pub const BUILD_TYPE_HASH: u32 = 0x2c0f4a46;
 
+impl QueueEntry {
+    /// External building selection without opaque native operation parameters.
+    /// MakeRequest2822180 sets only the building/type. ClassParameters28229b0,
+    /// BuildQueueNode285ed00 and CopyFromOperation284ddd0 establish these exact
+    /// scalar and invalid-coordinate values; no native AI contract is created.
+    pub fn construct_request(building_hash: u32) -> Self {
+        Self {
+            type_hash: BUILD_TYPE_HASH,
+            node_type_hash: BUILD_TYPE_HASH,
+            order: Order::Construct { building_hash },
+            flags: 0,
+            request_id: 0,
+            location: [-9999, -9999],
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FeatureOverride {
     pub wire_version: i32,

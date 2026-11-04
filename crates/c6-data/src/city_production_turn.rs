@@ -62,7 +62,7 @@ pub trait Effects {
         owner: i32,
         city: u32,
         yield_index: i32,
-        production: Option<Order>,
+        production_kind: u32,
     ) -> Result<i32, Error>;
     /// Resolve current legality, cost and ordered multipliers. An unsupported
     /// upgrade/replacement branch returns an error before progress is written.
@@ -175,8 +175,14 @@ pub fn do_builds(
     let queue = &state.city(owner, city)?.build_queue;
     let order = queue.entries.first().map(|e| e.order);
     let yield_index = queue.yield_type;
-    let selected = effects.calculate_yield_q8(state, owner, city, yield_index, order)?;
-    let generic = effects.calculate_yield_q8(state, owner, city, yield_index, None)?;
+    let selected = effects.calculate_yield_q8(
+        state,
+        owner,
+        city,
+        yield_index,
+        execution::production_kind(order),
+    )?;
+    let generic = effects.calculate_yield_q8(state, owner, city, yield_index, 0)?;
     let header = &mut state.city_mut(owner, city)?.header;
     for value in &mut header.project_yield_q8 {
         value.value = 0;
@@ -293,4 +299,23 @@ pub fn append_selected(
     } else {
         effects.queue_changed(state, owner, city, index)
     }
+}
+
+/// Append an externally selected ordinary building using the source request
+/// factory parameters. Legal production and every reached front-entry effect
+/// remain mandatory; callers do not supply native request IDs or cache flags.
+pub fn append_building(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    building_hash: u32,
+    effects: &mut impl QueueEffects,
+) -> Result<(), Error> {
+    append_selected(
+        state,
+        owner,
+        city,
+        QueueEntry::construct_request(building_hash),
+        effects,
+    )
 }
