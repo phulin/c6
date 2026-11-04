@@ -94,6 +94,30 @@ pub trait Movement<E: OperationReports> {
     ) -> Result<Option<skip_turn::StartData>, Self::Error> {
         Ok(None)
     }
+    /// Source TestAttackInto on the CURRENT next cached path node. None means
+    /// this provider has not composed the combat kernel, never legal=false.
+    fn test_attack_into(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    /// Complete the actual AttackInto/Generate/Resolve call on the same state
+    /// and persistent effects owner. Some contains its native bool-out value;
+    /// an unfinished combat continuation must return an error, not Some.
+    fn attack_into(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _effects: &mut E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
     fn fortify_turn_max(&self) -> i32;
     fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error>;
     fn alert_enemy_visible(
@@ -672,6 +696,7 @@ struct Processing {
     moved: bool,
     result: i32,
     last_valid: Option<PlotCoord>,
+    combat_effects: bool,
 }
 #[allow(clippy::too_many_arguments)]
 fn update<E: Effects, M: Movement<E>>(
@@ -717,9 +742,6 @@ fn update<E: Effects, M: Movement<E>>(
     // Native2da4481 tests bit0x10, then push turn. Older requests with
     // that bit clear go directly to movement; other path flags are retained.
     if modifiers & 0x10 != 0 || node.push_turn == state.retained().core.current_turn {
-        if modifiers & 0x10 != 0 {
-            return Err(Error::Unsupported("MoveTo explicit attack modifier branch"));
-        }
         let processing = state.processing_automation().map_err(Error::State)?;
         let u = unit(state, actor)?;
         if processing == u.e_owner || u.e_automation != -1 {
@@ -754,7 +776,21 @@ fn update<E: Effects, M: Movement<E>>(
                         x: i32::from(first.x),
                         y: i32::from(first.y),
                     };
-                    if enemy_at(state, next)? {
+                    let attack = if modifiers & 0x10 != 0 && first.flags & 1 == 0 {
+                        movement
+                            .test_attack_into(state, runtime.visibility, actor, next)
+                            .map_err(Error::Movement)?
+                            .ok_or(Error::Unsupported("MoveTo TestAttackInto composition"))?
+                    } else {
+                        false
+                    };
+                    if attack {
+                        data.combat_effects = movement
+                            .attack_into(state, runtime.visibility, actor, next, effects)
+                            .map_err(Error::Movement)?
+                            .ok_or(Error::Unsupported("MoveTo complete AttackInto composition"))?;
+                        data.delete = true;
+                    } else if enemy_at(state, next)? {
                         data.delete = true;
                     }
                 }
@@ -813,6 +849,7 @@ fn update<E: Effects, M: Movement<E>>(
     if valid {
         data.last_valid = Some(current);
     } else if data.delete
+        && !data.combat_effects
         && data
             .last_valid
             .is_some_and(skip_turn::placement::coordinate_valid)
