@@ -536,6 +536,7 @@ pub(crate) mod tests {
             ai_bypass_walls_promotion_class: Vec::new(),
             ai_enable_wall_attack_promotion_class: Vec::new(),
             k_experience: crate::unit::Experience {
+                wire_version: 7,
                 b_can_promote: false,
                 b_experience_locked: false,
                 i_experience: 0,

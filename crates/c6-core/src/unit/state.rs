@@ -568,6 +568,7 @@ impl Wire for AttackRangeModifiers {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Experience {
+    pub wire_version: i32,
     /// Original m_bCanPromote at 0x8.
     pub b_can_promote: bool,
     /// Original m_bExperienceLocked at 0xa.
@@ -592,16 +593,27 @@ pub struct Experience {
     pub x_attacking_experience_modifier_percent: i32,
 }
 impl Wire for Experience {
-    const MIN: usize = 39;
+    const MIN: usize = 35;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(7)?;
+        let wire_version = r.i32()?;
+        if wire_version != 6 && wire_version != 7 {
+            return Err(Error::Version {
+                expected: 7,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
+            wire_version,
             b_can_promote: <bool>::read(r)?,
             b_experience_locked: <bool>::read(r)?,
             i_experience: <i32>::read(r)?,
             i_level: <i32>::read(r)?,
             i_stored_promotions: <i32>::read(r)?,
-            i_promote_no_finish_moves: <i32>::read(r)?,
+            i_promote_no_finish_moves: if wire_version == 6 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
             x_general_experience_modifier: <i32>::read(r)?,
             ab_promotions_earned: <Vec<HashValue<bool>>>::read(r)?,
             s_veteran_name: <Vec<u8>>::read(r)?,
@@ -610,6 +622,9 @@ impl Wire for Experience {
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 7 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         (7i32).write(w)?;
         self.b_can_promote.write(w)?;
         self.b_experience_locked.write(w)?;
@@ -2648,5 +2663,83 @@ mod tests {
         let mut r = Reader::new(&trailing, Limits::default()).unwrap();
         CombatModifiers::read(&mut r).unwrap();
         assert_eq!(r.finish(), Err(Error::TrailingBytes));
+    }
+    #[test]
+    fn experience6_omits_only_promote_no_finish_moves() {
+        let mut value = crate::unit_turn_upkeep::tests::source_only_unit().k_experience;
+        value.b_can_promote = true;
+        value.b_experience_locked = true;
+        value.i_experience = -257;
+        value.i_level = 3;
+        value.i_stored_promotions = 5;
+        value.i_promote_no_finish_moves = 37;
+        value.x_general_experience_modifier = -513;
+        value.ab_promotions_earned = vec![
+            HashValue {
+                definition_hash: 0x80000001,
+                value: true,
+            },
+            HashValue {
+                definition_hash: 0x80000001,
+                value: false,
+            },
+        ];
+        value.s_veteran_name = vec![0, 255, b'x'];
+        value.b_can_promote_notify_needed = true;
+        value.x_attacking_experience_modifier_percent = 257;
+        let mut w = writer();
+        value.write(&mut w).unwrap();
+        let mut current_reader = Reader::new(&w.bytes, Limits::default()).unwrap();
+        assert_eq!(Experience::read(&mut current_reader).unwrap(), value);
+        current_reader.finish().unwrap();
+        // Header + two bools + experience/level/stored scalar words precede
+        // the since7 word. Preserve both counted vectors and trailing fields.
+        let mut b = 6i32.to_le_bytes().to_vec();
+        b.extend_from_slice(&w.bytes[4..18]);
+        b.extend_from_slice(&w.bytes[22..]);
+        value.wire_version = 6;
+        value.i_promote_no_finish_moves = 0;
+        let mut r = Reader::new(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: 5,
+            },
+        )
+        .unwrap();
+        assert_eq!(Experience::read(&mut r).unwrap(), value);
+        assert_eq!(r.budget, 0);
+        r.finish().unwrap();
+        assert_eq!(
+            value.write(&mut writer()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        for end in 0..b.len() {
+            let mut r = Reader::new(&b[..end], Limits::default()).unwrap();
+            assert!(Experience::read(&mut r).is_err(), "prefix {end}");
+        }
+        let mut r = Reader::new(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: 4,
+            },
+        )
+        .unwrap();
+        assert_eq!(Experience::read(&mut r), Err(Error::ResourceLimit));
+        let mut bad = b.clone();
+        bad[4] = 2;
+        assert_eq!(
+            Experience::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::NoncanonicalBool(2))
+        );
+        bad[..4].copy_from_slice(&5i32.to_le_bytes());
+        assert_eq!(
+            Experience::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::Version {
+                expected: 7,
+                actual: 5
+            })
+        );
     }
 }
