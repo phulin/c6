@@ -1,4 +1,4 @@
-//! Exact current Linux XP2 AI.Tactical saved wire. Native Read callbacks,
+//! Linux XP2 AI.Tactical version1/2 saved wire. Native Read callbacks,
 //! subscriptions, zombie-type replacement, archive effects and policy do not run.
 use crate::{player_ai_homeland::MoveList, unit::Limits};
 pub const VERSION: u32 = 2;
@@ -30,10 +30,12 @@ impl From<crate::player_ai_homeland::Error> for Error {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Tactical {
+    pub wire_version: u32,
     pub player_id: i32,
     pub control_instance_id: u32,
     pub prioritized_moves: MoveList,
-    /// Saved raw UnitAITypes ordinal, not a definition hash.
+    /// Saved raw UnitAITypes ordinal at2; native Read default-1 at1.
+    /// Native Read subsequently replaces this through definition lookup, which is not run.
     pub zombie_type: i32,
 }
 fn word(data: &[u8], pos: usize, limits: Limits) -> Result<u32, Error> {
@@ -64,7 +66,7 @@ impl Tactical {
         limits: Limits,
     ) -> Result<(Self, usize, usize), Error> {
         let actual = word(data, 0, limits)?;
-        if actual != VERSION {
+        if !matches!(actual, 1 | VERSION) {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
@@ -80,15 +82,23 @@ impl Tactical {
             },
         )?;
         let pos = 12usize.checked_add(used).ok_or(Error::ResourceLimit)?;
-        let zombie_type = word(data, pos, limits)? as i32;
+        let (zombie_type, end) = if actual == VERSION {
+            (
+                word(data, pos, limits)? as i32,
+                pos.checked_add(4).ok_or(Error::ResourceLimit)?,
+            )
+        } else {
+            (-1, pos)
+        };
         Ok((
             Self {
+                wire_version: actual,
                 player_id,
                 control_instance_id,
                 prioritized_moves,
                 zombie_type,
             },
-            pos + 4,
+            end,
             items,
         ))
     }
@@ -96,6 +106,9 @@ impl Tactical {
         self.encode_with_items(limits).map(|(v, _)| v)
     }
     pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         let remaining = limits
             .max_bytes
             .checked_sub(16)
@@ -121,8 +134,63 @@ mod tests {
     use super::*;
     use crate::player_ai_homeland::Move;
     #[test]
+    fn legacy_tactical_omits_zombie_word_and_keeps_move_ordinal() {
+        let mut raw = Vec::new();
+        for v in [
+            1u32,
+            u32::MAX,
+            0x80000001,
+            1,
+            1,
+            i32::MIN as u32,
+            1,
+            1,
+            u32::MAX,
+            (-257i32) as u32,
+        ] {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        let cap = Limits {
+            max_bytes: 40,
+            max_items: 2,
+        };
+        let (v, n, items) = Tactical::decode_prefix_with_items(&raw, cap).unwrap();
+        assert_eq!((n, items), (40, 2));
+        assert_eq!(v.wire_version, 1);
+        assert_eq!(v.player_id, -1);
+        assert_eq!(v.control_instance_id, 0x80000001);
+        assert_eq!(v.zombie_type, -1);
+        assert_eq!(
+            v.prioritized_moves.moves[0].allowed_move,
+            crate::player_ai_homeland::MoveReference::LegacyType(-1)
+        );
+        assert_eq!(v.encode(cap), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..40 {
+            assert!(Tactical::decode(&raw[..n], cap).is_err());
+        }
+        for short in [
+            Limits {
+                max_bytes: 39,
+                ..cap
+            },
+            Limits {
+                max_items: 1,
+                ..cap
+            },
+        ] {
+            assert_eq!(Tactical::decode(&raw, short), Err(Error::ResourceLimit));
+        }
+        raw.extend_from_slice(&99u32.to_le_bytes());
+        assert_eq!(
+            Tactical::decode_prefix_with_items(&raw, cap),
+            Ok((v, 40, 2))
+        );
+        assert_eq!(Tactical::decode(&raw, cap), Err(Error::Trailing));
+    }
+    #[test]
     fn boundaries() {
         let v = Tactical {
+            wire_version: VERSION,
             player_id: i32::MIN,
             control_instance_id: u32::MAX,
             prioritized_moves: MoveList {

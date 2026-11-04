@@ -3261,6 +3261,7 @@ pub(crate) mod tests {
             turns_remaining_on_current_research: -1,
         });
         p.ai_tactical = Some(player_ai_tactical::Tactical {
+            wire_version: 2,
             player_id: -7,
             control_instance_id: u32::MAX,
             prioritized_moves: player_ai_homeland::MoveList {
