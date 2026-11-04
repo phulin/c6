@@ -90,28 +90,11 @@ impl Definitions {
                 }
             })
             .collect::<Result<Vec<_>, Error>>()?;
-        let parameters = rules
-            .gameplay()
-            .table("GlobalParameters")
-            .ok_or(Error::Unsupported("GlobalParameters"))?;
-        let mut rows = parameters
-            .rows()
-            .filter(|r| r.text("Name").ok() == Some("COMBAT_MAX_NUM_ATTACKS"));
-        let row = rows
-            .next()
-            .ok_or(Error::Unsupported("COMBAT_MAX_NUM_ATTACKS"))?;
-        if rows.next().is_some() {
-            return Err(Error::Unsupported("duplicate COMBAT_MAX_NUM_ATTACKS"));
-        }
-        let max_attacks = match row
-            .get("Value")
-            .map_err(|_| Error::Unsupported("COMBAT_MAX_NUM_ATTACKS"))?
-        {
-            SqlValue::Integer(n) => i32::try_from(*n).ok(),
-            SqlValue::Text(s) => std::str::from_utf8(s).ok().and_then(|s| s.parse().ok()),
-            _ => None,
-        }
-        .ok_or(Error::Unsupported("COMBAT_MAX_NUM_ATTACKS scalar"))?;
+        let max_attacks = crate::game_parameters::Parameters::from_rules(rules)
+            .and_then(|parameters| {
+                parameters.integer(crate::game_parameters::IntegerParameter::CombatMaxNumAttacks)
+            })
+            .map_err(|_| Error::Unsupported("COMBAT_MAX_NUM_ATTACKS parameter"))?;
         Ok(Self {
             binding: state.binding().clone(),
             combat,
