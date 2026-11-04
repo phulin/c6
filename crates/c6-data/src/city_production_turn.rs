@@ -23,6 +23,7 @@ pub enum Error {
     Definitions(crate::unit_initialization_definitions::Error),
     District(c6_core::loaded_state::district_initialization::DistrictError),
     State(c6_core::loaded_state::Error),
+    Statistics(c6_core::loaded_state::game_statistics::AccessError),
     MissingProgress(Order),
     Unsupported(&'static str),
 }

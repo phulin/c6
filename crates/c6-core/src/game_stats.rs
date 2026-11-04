@@ -119,6 +119,9 @@ pub struct Stats {
     /// Overlay over a native definition-sized zero-reset array, not its dense
     /// initialized result. Empty wire pairs do not establish an empty array.
     pub units_constructed_overlay: Vec<HashValue<i32>>,
+    /// Historical API label for the Building-definition domain. Native
+    /// OnBuildingConstructed2a1be80 also increments valid non-wonder buildings.
+    /// Current dense gameplay counts live in loaded_state::game_statistics.
     pub wonders_built_overlay: Vec<HashValue<i32>>,
     pub total_alliances_formed: i32,
     pub total_emergency_alliances_formed: i32,

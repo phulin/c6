@@ -11,6 +11,7 @@ pub mod city_initialization;
 pub mod influence_map_update;
 pub mod game_update;
 pub mod game_sync;
+pub mod game_statistics;
 pub mod notification_snapshot;
 pub mod observed_controls;
 pub mod research;
@@ -104,6 +105,7 @@ mod tests {
             combat_proposals: None,
             game_sync_runtime: None,
             game_city_names: None,
+            game_statistics: None,
             limits: AssemblyLimits::default(),
             revision: 0,
             instance_identity: fresh_state_identity().unwrap(),
@@ -3465,6 +3467,7 @@ pub struct LoadedState {
     combat_proposals: Option<crate::melee_attack::proposals::registry::Runtime>,
     game_sync_runtime: Option<game_sync::Runtime>,
     game_city_names: Option<game_city_names::Owner>,
+    game_statistics: Option<game_statistics::Statistics>,
     limits: AssemblyLimits,
     revision: u64,
     instance_identity: u64,
@@ -3673,6 +3676,7 @@ impl LoadedState {
             combat_proposals: None,
             game_sync_runtime: None,
             game_city_names: None,
+            game_statistics: None,
             limits,
             revision: 0,
             instance_identity: fresh_state_identity()?,
