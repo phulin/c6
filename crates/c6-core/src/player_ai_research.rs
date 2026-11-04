@@ -4,6 +4,7 @@ use crate::unit::Limits;
 pub const VERSION: u32 = 4;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -165,6 +166,7 @@ impl From<crate::player_ai_culture::Error> for Error {
     fn from(e: crate::player_ai_culture::Error) -> Self {
         use crate::player_ai_culture::Error as E;
         match e {
+            E::UnsupportedLegacyWrite => Self::UnsupportedLegacyWrite,
             E::Truncated => Self::Truncated,
             E::Trailing => Self::Trailing,
             E::ResourceLimit => Self::ResourceLimit,

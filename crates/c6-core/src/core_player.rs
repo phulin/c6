@@ -2761,6 +2761,7 @@ pub(crate) mod tests {
     fn ai_culture_carrier() -> player_ai_culture::CultureAi {
         use crate::player_ai_culture as pmod;
         pmod::CultureAi {
+            wire_version: 15,
             player_id: -8000,
             managed_contracts: vec![pmod::ControlHandle {
                 player_id: -7999,
