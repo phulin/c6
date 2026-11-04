@@ -5,6 +5,7 @@
 //! providers: this module alone does not establish full gameplay/RNG parity.
 pub use crate::yields::PrerequisiteKind as Kind;
 use crate::{player_culture::Culture, player_prerequisites::IndexedBools, player_techs::Techs};
+pub mod units;
 
 pub const TEAM_BOOST_SOURCE: i32 = 6;
 

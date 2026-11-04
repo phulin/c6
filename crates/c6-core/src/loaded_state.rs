@@ -2573,6 +2573,22 @@ mod tests {
     }
 
     #[test]
+    fn unit_cost_array_access_checks_owner_and_revision_before_exposure() {
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let before = state.retained.players[0].units.current_unit_cost.clone();
+        assert!(state.player_unit_costs_mut(-1).is_err());
+        assert_eq!(state.revision(), 0);
+        state.revision = u64::MAX;
+        assert!(matches!(state.player_unit_costs_mut(owner), Err(Error::ResourceLimit)));
+        assert_eq!(state.retained.players[0].units.current_unit_cost, before);
+        state.revision = 0;
+        let arrays = state.player_unit_costs_mut(owner).unwrap();
+        arrays.production[0].value = 17;
+        assert_eq!(state.revision(), 1);
+        assert_eq!(state.retained.players[0].units.current_unit_cost[0].value, 17);
+    }
+    #[test]
     fn blocking_store_preserves_raw_words_and_checks_revision_before_write() {
         let mut state = state();
         let owner = state.world.players()[0].owner();
@@ -3162,6 +3178,20 @@ impl LoadedState {
     }
     pub fn retained(&self) -> &RetainedComponents {
         &self.retained
+    }
+    /// Borrow authoritative Player.Units costs after reserving revision. Missing
+    /// owners and exhausted revisions leave all arrays and revision unchanged.
+    pub fn player_unit_costs_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<crate::research_acquisition::units::CostArrays<'_>, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        let index = self.retained.players.iter()
+            .position(|player| player.header.owner == owner)
+            .ok_or(Error::Missing(MissingInput::Player(owner)))?;
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.revision = next;
+        Ok((&mut self.retained.players[index].units).into())
     }
     pub fn binding(&self) -> &WireBinding {
         &self.binding

@@ -16,6 +16,7 @@ pub mod loaded_upkeep;
 pub mod movement;
 pub mod movement_placement_state;
 pub mod registry;
+pub mod research_unit_costs;
 pub mod resource_binding;
 pub mod unit_initialization_definitions;
 pub mod unit_movement_state;
