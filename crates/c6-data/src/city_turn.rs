@@ -9,6 +9,7 @@ pub mod economy;
 pub mod growth;
 pub mod housing;
 pub mod religion;
+pub mod religion_callbacks;
 pub mod resources;
 pub mod tiles;
 pub mod yield_definitions;
@@ -21,6 +22,7 @@ pub enum Error {
     State(c6_core::loaded_state::Error),
     PlotYield(c6_core::plot_yield::Error),
     Production(crate::city_production_turn::Error),
+    ReligionCallback(religion_callbacks::Error),
     Unsupported(&'static str),
 }
 impl std::fmt::Display for Error {
