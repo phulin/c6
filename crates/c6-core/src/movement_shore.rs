@@ -36,6 +36,12 @@ pub struct PlacementRequest {
     flags: u32,
 }
 impl PlacementRequest {
+    /// Carry actual native validate options (for example the computed Formation
+    /// movement conversion). This does not assert placement validity.
+    pub const fn from_validate_options(flags: u32) -> Self {
+        Self { flags }
+    }
+
     /// Construct the fixed shore placement argument policy. This does not
     /// assert that a shore gate or any placement validity test has passed.
     pub const fn shore_query(flag7: bool) -> Self {

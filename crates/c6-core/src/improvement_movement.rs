@@ -100,23 +100,15 @@ pub fn activate_improvement<C: Context>(c: &mut C, plot: C::Plot) -> Result<bool
 /// Exact radius-one EnumerateNeighborhood order: center, then the matching
 /// Linux host HEXVec_i::TRANSLATIONS array (not Unit direction order).
 pub fn neighborhood(center: PlotCoord) -> [PlotCoord; 7] {
-    fn half(y: i32) -> i32 {
-        if y >= 0 {
-            y >> 1
-        } else {
-            let a = y.wrapping_sub(1);
-            a.wrapping_add(((a as u32) >> 31) as i32) >> 1
-        }
-    }
-    let q = center.x.wrapping_sub(half(center.y));
-    let offsets = [(0, 0), (0, 1), (-1, 0), (1, -1), (0, -1), (1, 0), (-1, 1)];
-    offsets.map(|(x, y)| {
-        let row = center.y.wrapping_add(y);
-        PlotCoord {
-            x: q.wrapping_add(x).wrapping_add(half(row)),
-            y: row,
-        }
-    })
+    let mut result = [center; 7];
+    let mut index = 0;
+    let _: Result<(), std::convert::Infallible> =
+        crate::unit_placement_tails::neighborhood(center, 1, |plot| {
+            result[index] = plot;
+            index += 1;
+            Ok(())
+        });
+    result
 }
 
 fn scan<C: Context>(
