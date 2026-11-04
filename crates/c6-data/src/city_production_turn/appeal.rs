@@ -416,3 +416,86 @@ pub fn update<E: Effects>(
     }
     Ok(changed)
 }
+
+/// Source2bd3930: directions0..5, update, test, optional fresh update. The
+/// callback sees the SAME state/effects and may change later calculations.
+pub fn update_and_test_adjacent<E, F>(
+    state: &mut LoadedState,
+    center: Option<usize>,
+    definitions: &Definitions,
+    effects: &mut E,
+    predicate: F,
+) -> Result<usize, UpdateError<E::Error>>
+where
+    E: Effects,
+    F: FnMut(&mut LoadedState, &mut E, u32) -> Result<bool, E::Error>,
+{
+    struct Adjacent<'a, E, F> {
+        update: Update<'a, E>,
+        center_location: Option<PlotCoord>,
+        predicate: F,
+    }
+    impl<E: Effects, F> c6_core::map::appeal::Context for Adjacent<'_, E, F> {
+        type Error = UpdateError<E::Error>;
+        type Plot = usize;
+        fn calculate(&mut self, plot: usize) -> Result<i32, Self::Error> {
+            c6_core::map::appeal::Context::calculate(&mut self.update, plot)
+        }
+        fn cached(&mut self, plot: usize) -> Result<i16, Self::Error> {
+            c6_core::map::appeal::Context::cached(&mut self.update, plot)
+        }
+        fn store(&mut self, plot: usize, value: i16) -> Result<(), Self::Error> {
+            c6_core::map::appeal::Context::store(&mut self.update, plot, value)
+        }
+        fn changed(&mut self, plot: usize, value: i32) -> Result<(), Self::Error> {
+            c6_core::map::appeal::Context::changed(&mut self.update, plot, value)
+        }
+        fn report(&mut self, plot: usize) -> Result<(), Self::Error> {
+            c6_core::map::appeal::Context::report(&mut self.update, plot)
+        }
+    }
+    impl<E, F> c6_core::map::appeal::AdjacentContext for Adjacent<'_, E, F>
+    where
+        E: Effects,
+        F: FnMut(&mut LoadedState, &mut E, u32) -> Result<bool, E::Error>,
+    {
+        fn adjacent(&mut self, center: usize, direction: u8) -> Result<Option<usize>, Self::Error> {
+            let _ = center;
+            let location = self.center_location.ok_or(UpdateError::MissingPlot)?;
+            let index = [2, 1, 6, 5, 4, 3][usize::from(direction)];
+            c6_core::city_citizen_assignment::plot_location(
+                self.update.state.world().map(),
+                location,
+                index,
+            )
+            .map_err(UpdateError::Geometry)?
+            .map(|p| plot_index(self.update.state.world().map(), p).map_err(UpdateError::Query))
+            .transpose()
+        }
+        fn test_adjacent(&mut self, plot: usize) -> Result<bool, Self::Error> {
+            (self.predicate)(self.update.state, self.update.effects, plot as u32)
+                .map_err(UpdateError::Effect)
+        }
+    }
+    let center_location = match center {
+        Some(plot) => {
+            let (x, y) = state
+                .world()
+                .map()
+                .coordinates(plot as u32)
+                .ok_or(UpdateError::MissingPlot)?;
+            Some(PlotCoord { x, y })
+        }
+        None => None,
+    };
+    let mut context = Adjacent {
+        center_location,
+        update: Update {
+            state,
+            definitions,
+            effects,
+        },
+        predicate,
+    };
+    c6_core::map::appeal::update_and_test_adjacent(&mut context, center)
+}

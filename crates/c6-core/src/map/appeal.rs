@@ -22,6 +22,32 @@ pub fn update_only<C: Context>(c: &mut C, plot: Option<C::Plot>) -> Result<bool,
     c.report(plot)?;
     Ok(true)
 }
+/// Source UpdateAndTestAdjacent2bd3930. The predicate executes AFTER the
+/// first update/report and may change state before the optional second update.
+pub trait AdjacentContext: Context {
+    fn adjacent(
+        &mut self,
+        center: Self::Plot,
+        direction: u8,
+    ) -> Result<Option<Self::Plot>, Self::Error>;
+    fn test_adjacent(&mut self, plot: Self::Plot) -> Result<bool, Self::Error>;
+}
+pub fn update_and_test_adjacent<C: AdjacentContext>(
+    c: &mut C,
+    center: Option<C::Plot>,
+) -> Result<usize, C::Error> {
+    let Some(center) = center else { return Ok(0) };
+    let mut changed = 0;
+    for direction in 0..6 {
+        if let Some(plot) = c.adjacent(center, direction)? {
+            changed += usize::from(update_only(c, Some(plot))?);
+            if c.test_adjacent(plot)? {
+                changed += usize::from(update_only(c, Some(plot))?);
+            }
+        }
+    }
+    Ok(changed)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,6 +97,57 @@ mod tests {
             fail_signal: false,
             events: vec![],
         }
+    }
+    impl AdjacentContext for World {
+        fn adjacent(&mut self, _: (), direction: u8) -> Result<Option<()>, Self::Error> {
+            self.events.push(('d', i32::from(direction)));
+            Ok((direction == 0 || direction == 2).then_some(()))
+        }
+        fn test_adjacent(&mut self, _: ()) -> Result<bool, Self::Error> {
+            self.events.push(('t', i32::from(self.cached)));
+            self.calculated = 4;
+            Ok(true)
+        }
+    }
+    #[test]
+    fn adjacent_predicate_observes_report_and_repeat_recalculates() {
+        let mut w = world();
+        assert_eq!(update_and_test_adjacent(&mut w, Some(())), Ok(4));
+        assert_eq!(
+            w.events,
+            [
+                ('d', 0),
+                ('w', 2),
+                ('s', 2),
+                ('r', 9),
+                ('t', 9),
+                ('w', 4),
+                ('s', 4),
+                ('r', 9),
+                ('d', 1),
+                ('d', 2),
+                ('w', 4),
+                ('s', 4),
+                ('r', 9),
+                ('t', 9),
+                ('w', 4),
+                ('s', 4),
+                ('r', 9),
+                ('d', 3),
+                ('d', 4),
+                ('d', 5)
+            ]
+        );
+    }
+    #[test]
+    fn failed_adjacent_signal_suppresses_predicate_and_later_directions() {
+        let mut w = world();
+        w.fail_signal = true;
+        assert_eq!(update_and_test_adjacent(&mut w, Some(())), Err("signal"));
+        assert_eq!(w.events, [('d', 0), ('w', 2), ('s', 2)]);
+        w.events.clear();
+        assert_eq!(update_and_test_adjacent(&mut w, None), Ok(0));
+        assert!(w.events.is_empty());
     }
     #[test]
     fn stores_before_signal_and_report_observes_callback_prefix() {
