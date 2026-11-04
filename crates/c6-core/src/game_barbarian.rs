@@ -1,4 +1,4 @@
-//! Current Linux XP2 Barbarian Manager v5 wire transport, including concrete nested records.
+//! Linux XP2 Barbarian Manager3/5 and Instance8/15 wire/default transport.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::unit::Limits;
 
@@ -249,20 +249,206 @@ record!(ClanPlayerStats,15,{
     unit_hashes_hired:Vec<u32>,last_turn_raided:i32,last_turn_hired:i32,
     last_turn_bribed:i32,last_turn_incited:i32,last_turn_ransomed:i32,
 });
-record!(Instance,15,{
-    player_ordinal:i32,tribe_name_hash:u32,tribe_index:i32,camp_location:PlotCoord,
-    living_raw:u8,rampage_target_ordinal:i32,boldness:i32,max_num_scouts:i32,
-    cur_num_scouts:i32,turns_since_scout_death:i32,max_standard_military_units:i32,
-    num_standard_military_units:i32,turns_since_last_warrior_spawn:i32,
-    percent_ranged_units:i32,turns_between_warrior_spawn:i32,
-    required_melee_spawn:i32,required_ranged_spawn:i32,required_siege_spawn:i32,
-    required_support_spawn:i32,needed_unit_tags:Vec<AsciiString>,
-    scouting_behavior_tree:u32,raiding_behavior_tree:u32,city_attack_behavior_tree:u32,
-    scouted_cities:Vec<ComponentId>,raided_cities:Vec<ComponentId>,raiding_score:i32,
-    turns_in_enemy_territory:i32,properties:TypedVariantMap,clan_tech_hashes:Vec<u32>,
-    tech_steal_turns_cooldown:i32,conversion_points:i32,player_bribe_turns_remaining:Vec<i32>,
-    clan_player_stats:Vec<ClanPlayerStats>,incite_targets:Vec<WeightedPlayer>,
-});
+/// Instance8/15 wire/default projection. The five absent8 carriers preserve
+/// unknown native self-default state; no clan/NPC gameplay state is excluded.
+/// Native player/definition binding and archive effects remain unapplied.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Instance {
+    pub wire_version: u32,
+    pub player_ordinal: i32,
+    pub tribe_name_hash: u32,
+    pub tribe_index: i32,
+    pub camp_location: PlotCoord,
+    pub living_raw: u8,
+    pub rampage_target_ordinal: i32,
+    pub boldness: i32,
+    pub max_num_scouts: i32,
+    pub cur_num_scouts: i32,
+    pub turns_since_scout_death: i32,
+    pub max_standard_military_units: i32,
+    pub num_standard_military_units: i32,
+    pub turns_since_last_warrior_spawn: i32,
+    pub percent_ranged_units: i32,
+    pub turns_between_warrior_spawn: i32,
+    pub required_melee_spawn: i32,
+    pub required_ranged_spawn: i32,
+    pub required_siege_spawn: i32,
+    pub required_support_spawn: i32,
+    pub needed_unit_tags: Vec<AsciiString>,
+    pub scouting_behavior_tree: u32,
+    pub raiding_behavior_tree: u32,
+    pub city_attack_behavior_tree: u32,
+    pub scouted_cities: Vec<ComponentId>,
+    pub raided_cities: Vec<ComponentId>,
+    pub raiding_score: i32,
+    pub turns_in_enemy_territory: i32,
+    pub properties: Option<TypedVariantMap>,
+    pub clan_tech_hashes: Option<Vec<u32>>,
+    pub tech_steal_turns_cooldown: i32,
+    pub conversion_points: i32,
+    pub player_bribe_turns_remaining: Option<Vec<i32>>,
+    pub clan_player_stats: Option<Vec<ClanPlayerStats>>,
+    pub incite_targets: Option<Vec<WeightedPlayer>>,
+}
+impl Wire for Instance {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <PlotCoord as Wire>::MIN
+        + <u8 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<AsciiString> as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <Vec<ComponentId> as Wire>::MIN
+        + <Vec<ComponentId> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 8 | 15) {
+            return Err(Error::Version {
+                expected: 15,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_ordinal: <i32 as Wire>::read(r)?,
+            tribe_name_hash: <u32 as Wire>::read(r)?,
+            tribe_index: <i32 as Wire>::read(r)?,
+            camp_location: <PlotCoord as Wire>::read(r)?,
+            living_raw: <u8 as Wire>::read(r)?,
+            rampage_target_ordinal: <i32 as Wire>::read(r)?,
+            boldness: <i32 as Wire>::read(r)?,
+            max_num_scouts: <i32 as Wire>::read(r)?,
+            cur_num_scouts: <i32 as Wire>::read(r)?,
+            turns_since_scout_death: <i32 as Wire>::read(r)?,
+            max_standard_military_units: <i32 as Wire>::read(r)?,
+            num_standard_military_units: <i32 as Wire>::read(r)?,
+            turns_since_last_warrior_spawn: <i32 as Wire>::read(r)?,
+            percent_ranged_units: <i32 as Wire>::read(r)?,
+            turns_between_warrior_spawn: <i32 as Wire>::read(r)?,
+            required_melee_spawn: <i32 as Wire>::read(r)?,
+            required_ranged_spawn: <i32 as Wire>::read(r)?,
+            required_siege_spawn: <i32 as Wire>::read(r)?,
+            required_support_spawn: <i32 as Wire>::read(r)?,
+            needed_unit_tags: <Vec<AsciiString> as Wire>::read(r)?,
+            scouting_behavior_tree: <u32 as Wire>::read(r)?,
+            raiding_behavior_tree: <u32 as Wire>::read(r)?,
+            city_attack_behavior_tree: <u32 as Wire>::read(r)?,
+            scouted_cities: <Vec<ComponentId> as Wire>::read(r)?,
+            raided_cities: <Vec<ComponentId> as Wire>::read(r)?,
+            raiding_score: <i32 as Wire>::read(r)?,
+            turns_in_enemy_territory: <i32 as Wire>::read(r)?,
+            properties: if wire_version == 15 {
+                Some(<TypedVariantMap as Wire>::read(r)?)
+            } else {
+                None
+            },
+            clan_tech_hashes: if wire_version == 15 {
+                Some(<Vec<u32> as Wire>::read(r)?)
+            } else {
+                None
+            },
+            tech_steal_turns_cooldown: if wire_version == 15 {
+                i32::read(r)?
+            } else {
+                -1
+            },
+            conversion_points: if wire_version == 15 { i32::read(r)? } else { 0 },
+            player_bribe_turns_remaining: if wire_version == 15 {
+                Some(<Vec<i32> as Wire>::read(r)?)
+            } else {
+                None
+            },
+            clan_player_stats: if wire_version == 15 {
+                Some(<Vec<ClanPlayerStats> as Wire>::read(r)?)
+            } else {
+                None
+            },
+            incite_targets: if wire_version == 15 {
+                Some(<Vec<WeightedPlayer> as Wire>::read(r)?)
+            } else {
+                None
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 15 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let properties = self.properties.as_ref().ok_or(Error::MissingCurrentField)?;
+        let clan_tech_hashes = self
+            .clan_tech_hashes
+            .as_ref()
+            .ok_or(Error::MissingCurrentField)?;
+        let player_bribe_turns_remaining = self
+            .player_bribe_turns_remaining
+            .as_ref()
+            .ok_or(Error::MissingCurrentField)?;
+        let clan_player_stats = self
+            .clan_player_stats
+            .as_ref()
+            .ok_or(Error::MissingCurrentField)?;
+        let incite_targets = self
+            .incite_targets
+            .as_ref()
+            .ok_or(Error::MissingCurrentField)?;
+        15u32.write(w)?;
+        self.player_ordinal.write(w)?;
+        self.tribe_name_hash.write(w)?;
+        self.tribe_index.write(w)?;
+        self.camp_location.write(w)?;
+        self.living_raw.write(w)?;
+        self.rampage_target_ordinal.write(w)?;
+        self.boldness.write(w)?;
+        self.max_num_scouts.write(w)?;
+        self.cur_num_scouts.write(w)?;
+        self.turns_since_scout_death.write(w)?;
+        self.max_standard_military_units.write(w)?;
+        self.num_standard_military_units.write(w)?;
+        self.turns_since_last_warrior_spawn.write(w)?;
+        self.percent_ranged_units.write(w)?;
+        self.turns_between_warrior_spawn.write(w)?;
+        self.required_melee_spawn.write(w)?;
+        self.required_ranged_spawn.write(w)?;
+        self.required_siege_spawn.write(w)?;
+        self.required_support_spawn.write(w)?;
+        self.needed_unit_tags.write(w)?;
+        self.scouting_behavior_tree.write(w)?;
+        self.raiding_behavior_tree.write(w)?;
+        self.city_attack_behavior_tree.write(w)?;
+        self.scouted_cities.write(w)?;
+        self.raided_cities.write(w)?;
+        self.raiding_score.write(w)?;
+        self.turns_in_enemy_territory.write(w)?;
+        properties.write(w)?;
+        clan_tech_hashes.write(w)?;
+        self.tech_steal_turns_cooldown.write(w)?;
+        self.conversion_points.write(w)?;
+        player_bribe_turns_remaining.write(w)?;
+        clan_player_stats.write(w)?;
+        incite_targets.write(w)?;
+        Ok(())
+    }
+}
+
 /// Barbarian Manager3/5 wire projection. Missing camp locations(since4)
 /// and clan manager(since5) self-default, leaving their prior state unknown.
 /// Native player binding, signals/evaluators and definition remaps do not run.
@@ -417,6 +603,7 @@ mod tests {
             flag_168_raw: flag,
             values_1a8: vec![i32::MIN],
             instances: vec![Instance {
+                wire_version: 15,
                 player_ordinal: i32::MIN,
                 tribe_name_hash: u32::MAX,
                 tribe_index: i32::MIN,
@@ -455,12 +642,12 @@ mod tests {
                 }],
                 raiding_score: i32::MIN,
                 turns_in_enemy_territory: i32::MIN,
-                properties: properties(),
-                clan_tech_hashes: vec![u32::MAX],
+                properties: Some(properties()),
+                clan_tech_hashes: Some(vec![u32::MAX]),
                 tech_steal_turns_cooldown: i32::MIN,
                 conversion_points: i32::MIN,
-                player_bribe_turns_remaining: vec![i32::MIN],
-                clan_player_stats: vec![ClanPlayerStats {
+                player_bribe_turns_remaining: Some(vec![i32::MIN]),
+                clan_player_stats: Some(vec![ClanPlayerStats {
                     raid_count: i32::MIN,
                     hire_count: i32::MIN,
                     bribe_count: i32::MIN,
@@ -472,11 +659,11 @@ mod tests {
                     last_turn_bribed: i32::MIN,
                     last_turn_incited: i32::MIN,
                     last_turn_ransomed: i32::MIN,
-                }],
-                incite_targets: vec![WeightedPlayer {
+                }]),
+                incite_targets: Some(vec![WeightedPlayer {
                     player_ordinal: i32::MIN,
                     weight: i32::MIN,
-                }],
+                }]),
             }],
             camp_locations: Some(vec![CampLocation {
                 plot_index: i32::MIN,
@@ -490,6 +677,88 @@ mod tests {
                 value_100: i32::MIN,
             }),
         }
+    }
+    #[test]
+    fn instance8_preserves_omitted_prior_and_literal_defaults_without_wire_counts() {
+        let mut b = Vec::new();
+        for word in [8u32, 63, 0x81234567, 7, 100, (-100i32) as u32] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        b.push(0xfe);
+        for word in [u32::MAX, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        for word in [
+            0u32,
+            0x80000001,
+            0,
+            u32::MAX,
+            0,
+            0,
+            i32::MIN as u32,
+            i32::MAX as u32,
+        ] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        b.push(0xaa);
+        let decode = |data: &[u8], max_bytes| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items: 0,
+                },
+            };
+            Instance::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&b, 113).unwrap();
+        assert_eq!(
+            (v.wire_version, v.player_ordinal, v.living_raw, n, i),
+            (8, 63, 0xfe, 113, 0)
+        );
+        assert_eq!(
+            (
+                v.rampage_target_ordinal,
+                v.required_support_spawn,
+                v.raiding_score,
+                v.turns_in_enemy_territory
+            ),
+            (-1, 13, i32::MIN, i32::MAX)
+        );
+        assert_eq!((v.tech_steal_turns_cooldown, v.conversion_points), (-1, 0));
+        assert!(
+            v.properties.is_none()
+                && v.clan_tech_hashes.is_none()
+                && v.player_bribe_turns_remaining.is_none()
+                && v.clan_player_stats.is_none()
+                && v.incite_targets.is_none()
+        );
+        for cut in 0..113 {
+            assert!(decode(&b[..cut], 113).is_err());
+        }
+        assert!(decode(&b, 112).is_err());
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: Limits::default(),
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        let mut current = specimen(255).instances.remove(0);
+        current.properties = None;
+        assert_eq!(current.write(&mut w), Err(Error::MissingCurrentField));
+        assert!(w.data.is_empty());
+        b[..4].copy_from_slice(&9u32.to_le_bytes());
+        assert_eq!(
+            decode(&b, 113),
+            Err(Error::Version {
+                expected: 15,
+                actual: 9
+            })
+        );
     }
     #[test]
     fn manager3_missing_camps_and_clans_remain_unknown_prior() {
@@ -590,7 +859,7 @@ mod tests {
     fn nested_versions_counts_and_hash_order() {
         let mut value = specimen(255);
         value.values_1a8 = vec![-1, 0, i32::MAX];
-        value.instances[0].clan_tech_hashes = vec![0xffffffff, 0, 0xffffffff, 0x80000000];
+        value.instances[0].clan_tech_hashes = Some(vec![0xffffffff, 0, 0xffffffff, 0x80000000]);
         value.instances[0].needed_unit_tags = vec![
             AsciiString { bytes: vec![] },
             AsciiString {
