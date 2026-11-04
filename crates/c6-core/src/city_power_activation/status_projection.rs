@@ -21,9 +21,11 @@ pub struct Localization {
     pub formatters: Formatters,
 }
 impl Localization {
-    /// Semantic result of stock localization initialization with a null logger.
-    /// This constructor is not evidence about an existing native process.
-    pub const fn initialized_stock_without_logger() -> Self {
+    /// Semantic fresh initialization with the stock transform table and a null
+    /// logger. Existing overrides are not reset by native initialization, so a
+    /// null logger alone does not justify this state. This constructor is not
+    /// evidence about an existing native process.
+    pub const fn fresh_stock_without_logger() -> Self {
         Self {
             logger: Logger::Absent,
             formatters: Formatters::StockDefaults,
@@ -114,7 +116,7 @@ mod tests {
     }
     #[test]
     fn stock_construction_is_explicit_and_custom_formatters_or_logger_refuse() {
-        let mut l = Localization::initialized_stock_without_logger();
+        let mut l = Localization::fresh_stock_without_logger();
         assert!(l.permits_render_omission());
         l.logger = Logger::Unknown;
         assert!(!l.permits_render_omission());
