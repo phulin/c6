@@ -1,6 +1,7 @@
 //! Mutable queued MoveTo execution over authoritative loaded records.
 //! This internal action pipeline preserves completed callback effects on errors;
 //! complete outer message, diplomacy/notification and RNG parity is separate.
+mod alert;
 mod trade;
 
 use c6_core::{
@@ -72,13 +73,21 @@ where
     }
 }
 
-/// The three real lower movement entry points. Implementations must call the
+/// Current lower movement and stock queued-handler scalar queries. Implementations must call the
 /// computed Formation.TestMoveTo/MoveTo and actual Unit.IsValidLocation on the
 /// same current state, including their synchronous effects. These are not path
 /// answers or whole MoveTo-handler callbacks. A concrete production composition
 /// can retain its search/definitions here while this module owns queue control.
 pub trait Movement<E: OperationReports> {
     type Error;
+    fn fortify_turn_max(&self) -> i32;
+    fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error>;
+    fn alert_enemy_visible(
+        &self,
+        state: &LoadedState,
+        visibility: &unit_sight_state::Runtime,
+        actor: (i32, u32),
+    ) -> Result<bool, Self::Error>;
     /// Current CManager.EditCityAt, including CityAttributes::IsCity and the
     /// current logical owner/ID lookup. No initial city-location answer cache.
     fn city_at(
@@ -565,6 +574,18 @@ fn update<E: Effects, M: Movement<E>>(
     movement: &mut M,
 ) -> Result<(), Error<EffectError<E>, M::Error>> {
     let node = front(state, actor)?;
+    if node.operation_hash == c6_core::unit::ALERT_HASH {
+        return alert::update(state, actor, data, effects, movement);
+    }
+    if matches!(
+        node.operation_hash,
+        c6_core::unit::SPY_GAIN_SOURCES_HASH
+            | c6_core::unit::SPY_SIPHON_FUNDS_HASH
+            | c6_core::unit::SPY_SABOTAGE_PRODUCTION_HASH
+            | c6_core::unit::SPY_DISRUPT_ROCKETRY_HASH
+    ) {
+        return Err(Error::Unsupported("Spy Update Unit.FinishMoves"));
+    }
     if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
         return Err(Error::Unsupported(
             "MakeTradeRoute Update and Trade.Movement.MoveTo",
@@ -732,7 +753,19 @@ fn continue_operation<E: Effects, M: Movement<E>>(
         if !data.delete && !data.stop && !unit(state, actor)?.k_operations.nodes.is_empty() {
             // CheckComplete selects the CURRENT front following Update effects.
             let node = front(state, actor)?;
-            if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+            if matches!(
+                node.operation_hash,
+                c6_core::unit::SPY_GAIN_SOURCES_HASH
+                    | c6_core::unit::SPY_SIPHON_FUNDS_HASH
+                    | c6_core::unit::SPY_SABOTAGE_PRODUCTION_HASH
+                    | c6_core::unit::SPY_DISRUPT_ROCKETRY_HASH
+            ) {
+                // These four source bodies only clear ProcessingData.delete,
+                // return true (ignored by Continue), and perform no queries.
+                data.delete = false;
+            } else if node.operation_hash == c6_core::unit::ALERT_HASH {
+                alert::check_complete(state, actor, &mut data, runtime, effects, movement)?;
+            } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
                 trade::check_complete(state, actor, &node, &mut data, movement)?;
             } else {
                 let (destination, _) = target(&node)?;
@@ -821,6 +854,7 @@ pub enum ComputedError<E> {
     Path(crate::formation_path_state::Error),
     Step(crate::formation_move_to::Error<E, crate::formation_move_to::PlacementError<E>>),
     Placement(crate::movement_placement_state::Error),
+    Alert(loaded_upkeep::Error<&'static str>),
     Unsupported(&'static str),
 }
 impl<E> Movement<E> for ComputedMovement<'_, '_>
@@ -829,6 +863,65 @@ where
         + loaded_upkeep::FormationRestoreEffects<Error = crate::unit_placement_state::EffectsError<E>>,
 {
     type Error = ComputedError<crate::unit_placement_state::EffectsError<E>>;
+    fn fortify_turn_max(&self) -> i32 {
+        self.path.fortify_turn_max
+    }
+    fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error> {
+        let unit = state
+            .world()
+            .player(actor.0)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::World(e)))?
+            .unit(actor.1)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::World(e)))?
+            .ok_or(ComputedError::Unsupported("Alert current unit"))?
+            .record;
+        let rules = &self.path.formation;
+        let combat =
+            rules
+                .combat(state, unit)
+                .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::Rules(e)))?
+                > 0
+                || rules.ranged(state, unit).map_err(|e| {
+                    ComputedError::Path(crate::formation_path_state::Error::Rules(e))
+                })? > 0
+                || rules.bombard(state, unit).map_err(|e| {
+                    ComputedError::Path(crate::formation_path_state::Error::Rules(e))
+                })? > 0;
+        if !combat {
+            return Ok(false);
+        }
+        let domain = state
+            .unit_runtime(actor.0, actor.1)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::State(e)))?
+            .domain;
+        // NoDefensiveBonus reads domain0 before the domain2/domain3 test.
+        if domain == 0 {
+            return Ok(false);
+        }
+        Ok(domain == 2 || domain == 3)
+    }
+    fn alert_enemy_visible(
+        &self,
+        state: &LoadedState,
+        visibility: &unit_sight_state::Runtime,
+        actor: (i32, u32),
+    ) -> Result<bool, Self::Error> {
+        let unit = state
+            .world()
+            .player(actor.0)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::World(e)))?
+            .unit(actor.1)
+            .map_err(|e| ComputedError::Path(crate::formation_path_state::Error::World(e)))?
+            .ok_or(ComputedError::Unsupported("Alert current unit"))?
+            .record;
+        loaded_upkeep::alert_enemy_visible(
+            state,
+            unit,
+            &self.path.formation,
+            &alert::Visibility(visibility),
+        )
+        .map_err(ComputedError::Alert)
+    }
     fn city_at(
         &self,
         state: &LoadedState,

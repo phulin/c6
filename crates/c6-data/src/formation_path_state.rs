@@ -49,6 +49,7 @@ pub struct Definitions<'a, 'r> {
     pub movement: cost::Definitions<'a>,
     pub units: unit_moves::Definitions,
     pub formation: formation_rules::Definitions,
+    pub fortify_turn_max: i32,
     features: crate::registry::LinuxDefinitionRegistry,
     feature_danger: Vec<i32>,
     // Only the first native reference is consumed. Nonempty reference tables
@@ -92,7 +93,13 @@ impl<'a, 'r> Definitions<'a, 'r> {
             .gameplay()
             .table("Feature_UnitMovements")
             .ok_or(Error::Missing("Feature_UnitMovements table"))?;
+        let parameters = crate::game_parameters::Parameters::from_rules(rules)
+            .map_err(|_| Error::Missing("static gameplay parameters"))?;
+        let fortify_turn_max = parameters
+            .integer(crate::game_parameters::IntegerParameter::FortifyTurnMax)
+            .map_err(|_| Error::Missing("FORTIFY_TURN_MAX"))?;
         Ok(Self {
+            fortify_turn_max,
             placement,
             movement,
             units: unit_moves::Definitions::from_rules(state, rules, resources)

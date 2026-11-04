@@ -16,6 +16,7 @@ pub enum IntegerParameter {
     MovementWhileEmbarkedBase,
     CombatMaxHitPoints,
     CombatMaxNumAttacks,
+    FortifyTurnMax,
     HealCityGarrison,
     HealLandEnemy,
     HealLandFriendly,
@@ -37,6 +38,7 @@ impl IntegerParameter {
             Self::MovementWhileEmbarkedBase => "MOVEMENT_WHILE_EMBARKED_BASE",
             Self::CombatMaxHitPoints => "COMBAT_MAX_HIT_POINTS",
             Self::CombatMaxNumAttacks => "COMBAT_MAX_NUM_ATTACKS",
+            Self::FortifyTurnMax => "FORTIFY_TURN_MAX",
             Self::HealCityGarrison => "COMBAT_HEAL_CITY_GARRISON",
             Self::HealLandEnemy => "COMBAT_HEAL_LAND_ENEMY",
             Self::HealLandFriendly => "COMBAT_HEAL_LAND_FRIENDLY",
@@ -58,7 +60,8 @@ impl IntegerParameter {
             Self::CityMovementCost
             | Self::CombatMaxNumAttacks
             | Self::StrategicResourceMinimumForUnitHealing => 1,
-            Self::MovementWhileEmbarkedBase
+            Self::FortifyTurnMax
+            | Self::MovementWhileEmbarkedBase
             | Self::MovementRiverCost
             | Self::MovementPortalCost
             | Self::MovementEmbarkCost => 2,
@@ -280,6 +283,7 @@ mod tests {
         assert_eq!(p.plot_unit_limit_i32_bits().unwrap(), -1);
         assert_eq!(p.integer(IntegerParameter::CombatMaxHitPoints).unwrap(), 0);
         assert_eq!(p.integer(IntegerParameter::CombatMaxNumAttacks).unwrap(), 1);
+        assert_eq!(p.integer(IntegerParameter::FortifyTurnMax).unwrap(), 2);
         assert_eq!(p.healing_rules().unwrap().city_garrison, 0);
         assert_eq!(p.healing_rules().unwrap().land.friendly, 15);
         assert_eq!(p.healing_rules().unwrap().naval.enemy, 0);
