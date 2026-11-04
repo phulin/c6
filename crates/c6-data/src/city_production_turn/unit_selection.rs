@@ -18,6 +18,7 @@ struct Unit {
     index: usize,
     sea: bool,
     combat: bool,
+    civilian: bool,
     major_only: bool,
     prerequisites: [Option<usize>; 2],
     obsolete: [Option<usize>; 4],
@@ -39,6 +40,7 @@ pub struct Definitions {
     inputs: InputIdentities,
     units: Vec<Unit>,
     center_train_contaminated: bool,
+    government_bonuses: crate::registry::LinuxDefinitionRegistry,
 }
 /// Retained mutable replacement owner and actual Fallout current values. These
 /// are queried again for every decision/front entry; no cached legality bit.
@@ -102,6 +104,8 @@ impl Definitions {
             };
             values.push(Unit {
                 hash,
+                civilian: row.text("FormationClass").map_err(Error::Rules)?
+                    == "FORMATION_CLASS_CIVILIAN",
                 index: units
                     .find_index(hash)
                     .ok_or(Error::Unsupported("Unit definition index"))?,
@@ -141,13 +145,18 @@ impl Definitions {
         Ok(Self {
             inputs: state.binding().inputs.clone(),
             units: values,
+            government_bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
+                .map_err(Error::Definitions)?,
             center_train_contaminated: parameter
                 .ok_or(Error::Unsupported("CITY_CENTER_TRAIN_WHEN_CONTAMINATED"))?
                 != 0,
         })
     }
 }
-fn player(state: &LoadedState, owner: i32) -> Result<&c6_core::loaded_components::RetainedPlayer, Error> {
+fn player(
+    state: &LoadedState,
+    owner: i32,
+) -> Result<&c6_core::loaded_components::RetainedPlayer, Error> {
     state
         .retained()
         .players
@@ -385,6 +394,69 @@ pub fn append_unit(
     }
     super::append_selected(state, owner, city, QueueEntry::train_request(unit), effects)
 }
+/// Current required cost28553d0 and UpdateUnitProgress284f8c0 factors for
+/// ordinary civilian single formations. Cost is the player's canonical cached
+/// integer; no native threshold or static hardcoded Unit cost is accepted.
+pub fn current_build(
+    state: &LoadedState,
+    owner: i32,
+    city: u32,
+    entry: &QueueEntry,
+    definitions: &Definitions,
+) -> Result<super::CurrentBuild, Error> {
+    if definitions.inputs != state.binding().inputs {
+        return Err(Error::Binding);
+    }
+    let Order::Train {
+        unit_hash,
+        military_formation,
+    } = entry.order
+    else {
+        return Err(Error::Unsupported("non-Train current build"));
+    };
+    if !matches!(military_formation, -1 | 0) {
+        return Err(Error::Unsupported("corps/army Unit cost"));
+    }
+    let definition = definitions
+        .units
+        .iter()
+        .find(|d| d.hash == unit_hash)
+        .ok_or(Error::Unsupported("current Unit definition"))?;
+    if !definition.civilian {
+        return Err(Error::Unsupported("favored production Unit cost modifier"));
+    }
+    let player = player(state, owner)?;
+    let queue = &state.city(owner, city)?.build_queue;
+    let cell = |values: &[c6_core::unit::HashValue<i32>], hash: u32| -> Result<i32, Error> {
+        values
+            .iter()
+            .rev()
+            .find(|v| v.definition_hash == hash)
+            .map(|v| v.value)
+            .ok_or(Error::Unsupported("current Unit production array cell"))
+    };
+    let cost = cell(&player.units.current_unit_cost, unit_hash)?;
+    let multiplier = cell(&player.units.unit_production_multiplier_q8, unit_hash)?
+        .wrapping_add(cell(&queue.unit_production_multiplier, unit_hash)?);
+    let bonus = |hash| -> Result<i32, Error> {
+        if player.culture.anarchy_end_turn >= 0
+            || definitions.government_bonuses.find_index(hash).is_none()
+        {
+            return Ok(0);
+        }
+        cell(&player.bonuses.flat_bonuses, hash)
+    };
+    let total = bonus(0xc1a005d2)?.wrapping_add(bonus(0x3d5ff1a2)?);
+    let factor = c6_core::city_production::execution::multiply(
+        multiplier,
+        c6_core::city_production::execution::percent_multiplier(total),
+    );
+    Ok(super::CurrentBuild {
+        cost,
+        factors_q8: vec![factor],
+    })
+}
+
 pub trait FrontEffects {
     fn unit_front_report(
         &mut self,
