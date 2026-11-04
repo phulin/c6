@@ -3,6 +3,7 @@
 use crate::{formation_path_state as path, formation_rules, movement_placement_state};
 pub mod proposals;
 pub mod results;
+pub mod strength;
 pub mod target_selection;
 use c6_core::{
     loaded_state::LoadedState,

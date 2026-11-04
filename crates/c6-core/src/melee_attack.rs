@@ -3,6 +3,7 @@
 use crate::unit::PlotCoord;
 pub mod proposals;
 pub mod results;
+pub mod strength;
 pub mod target;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
