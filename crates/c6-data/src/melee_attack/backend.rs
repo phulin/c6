@@ -420,11 +420,9 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
             .map_err(|e| Error::Query(QueryError::Access(e)))?;
         let id = |h| {
             runtime
-                .active()
-                .iter()
-                .find(|r| r.1 == h)
-                .map(|r| r.0 as i32)
-                .ok_or(Error::Query(QueryError::Missing("active proposal ID")))
+                .object_id(h)
+                .map(|id| id as i32)
+                .map_err(|e| Error::Query(QueryError::Proposal(e)))
         };
         Ok(id(a)?.cmp(&id(b)?))
     }

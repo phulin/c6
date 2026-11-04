@@ -79,6 +79,7 @@ impl LoadedState {
             runtime: None,
             formation_runtime: None,
             combat_proposals: None,
+            game_sync_runtime: None,
             limits,
             revision: 0,
             instance_identity: fresh_state_identity()?,

@@ -7,7 +7,11 @@ use crate::loaded_components::{self, OwnedCore, RetainedPlayer};
 use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
 pub mod combat_proposals;
+pub mod city_initialization;
 pub mod game_update;
+pub mod game_sync;
+pub mod observed_controls;
+pub mod research;
 pub mod turn_completion;
 pub mod typed_components;
 use std::sync::{
@@ -96,6 +100,7 @@ mod tests {
             runtime: None,
             formation_runtime: None,
             combat_proposals: None,
+            game_sync_runtime: None,
             limits: AssemblyLimits::default(),
             revision: 0,
             instance_identity: fresh_state_identity().unwrap(),
@@ -494,6 +499,28 @@ mod tests {
             game_update::extend_observed_turn_activity(&mut state, &source, &[(owner, true)]),
             Err(Error::NotPristine)
         ));
+    }
+
+    #[test]
+    fn observed_team_refinement_updates_both_views_and_rejects_conflicts_atomically() {
+        let mut state=state();
+        let mut input:PartialControlInputs=controls(&state).into();
+        let owner=input.players[0].owner;
+        input.players[0].team=None;
+        let source=witness(&state);
+        state.bind_observed_snapshot_partial_controls(source.clone(),input).unwrap();
+        let before=state.action_stamp();
+        assert!(observed_controls::extend_teams(&mut state,&source,&[(owner,7),(owner,8)]).is_err());
+        assert_eq!(state.action_stamp(),before);
+        assert!(state.player_team(owner).is_err());
+        observed_controls::extend_teams(&mut state,&source,&[(owner,7)]).unwrap();
+        assert_eq!(state.player_team(owner).unwrap(),7);
+        assert_eq!(state.world.player(owner).unwrap().team,Some(7));
+        let bound=state.action_stamp();
+        assert!(observed_controls::extend_teams(&mut state,&source,&[(owner,8)]).is_err());
+        assert_eq!(state.action_stamp(),bound);
+        state.world_mut().unwrap();
+        assert!(matches!(observed_controls::extend_teams(&mut state,&source,&[(owner,7)]),Err(Error::NotPristine)));
     }
 
     // Source-only complete typed actor; no native initialization is inferred.
@@ -3404,6 +3431,7 @@ pub struct LoadedState {
     runtime: Option<Vec<RuntimePlayer>>,
     formation_runtime: Option<Vec<RuntimeFormations>>,
     combat_proposals: Option<crate::melee_attack::proposals::registry::Runtime>,
+    game_sync_runtime: Option<game_sync::Runtime>,
     limits: AssemblyLimits,
     revision: u64,
     instance_identity: u64,
@@ -3610,6 +3638,7 @@ impl LoadedState {
             runtime: None,
             formation_runtime: None,
             combat_proposals: None,
+            game_sync_runtime: None,
             limits,
             revision: 0,
             instance_identity: fresh_state_identity()?,

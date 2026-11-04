@@ -77,6 +77,25 @@ pub fn calculate_random_damage(
     global_max_extra_damage: i32,
     state: &mut GameSyncDamageState,
 ) -> Result<RandomDamageOutcome, PreflightRejection> {
+    calculate_random_damage_fields(
+        parameters,
+        global_max_extra_damage,
+        &mut state.random.record,
+        state.random.lock_count,
+        &mut state.archive,
+    )
+}
+
+/// Borrow an existing canonical record and its separate live runtime metadata.
+/// Same conditional logging/math contract as calculate_random_damage; this
+/// does not allocate a second stream or change the record's ownership.
+pub fn calculate_random_damage_fields(
+    parameters: &DamageParameters,
+    global_max_extra_damage: i32,
+    record: &mut SerializedRandomRecord,
+    lock_count: u32,
+    archive: &mut GameSyncArchiveTracking,
+) -> Result<RandomDamageOutcome, PreflightRejection> {
     if !cfg!(all(
         target_os = "linux",
         target_arch = "x86_64",
@@ -84,34 +103,31 @@ pub fn calculate_random_damage(
     )) {
         return Err(PreflightRejection::UnsupportedMathPlatform);
     }
-    if state
-        .archive
+    if archive
         .changed_keys
         .windows(2)
         .any(|keys| keys[0] >= keys[1])
     {
         return Err(PreflightRejection::InvalidArchiveKeyOrder);
     }
-    if let Err(index) = state
-        .archive
+    if let Err(index) = archive
         .changed_keys
-        .binary_search(&state.archive.sync_variable_key)
+        .binary_search(&archive.sync_variable_key)
     {
-        state
-            .archive
+        archive
             .changed_keys
-            .insert(index, state.archive.sync_variable_key);
+            .insert(index, archive.sync_variable_key);
     }
     let mut logical = RandomState {
-        seed: state.random.record.seed,
-        calls: state.random.record.calls,
-        resets: state.random.record.resets,
-        lock_count: state.random.lock_count,
-        synchronous: state.random.record.synchronous_byte != 0,
+        seed: record.seed,
+        calls: record.calls,
+        resets: record.resets,
+        lock_count,
+        synchronous: record.synchronous_byte != 0,
     };
     let draw = logical.draw(global_max_extra_damage as u16);
-    state.random.record.seed = logical.seed;
-    state.random.record.calls = logical.calls;
+    record.seed = logical.seed;
+    record.calls = logical.calls;
 
     if parameters.defender_strength_raw == 0 {
         return Ok(RandomDamageOutcome::Damage {
