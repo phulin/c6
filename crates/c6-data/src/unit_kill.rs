@@ -233,6 +233,12 @@ fn send<E: Providers, C>(
 /// Native Placement.Remove2c42bb0. All-layer membership removal precedes sight;
 /// invalid coordinate/report writes occur only after a successful removal.
 /// This helper retains the Unit in its roster and does not destroy its Formation.
+// Placement.Remove calls PlotCoord.SetInvalid; this is distinct from staging
+// defaults. Native legal combat20551 retains the dead Unit at (-9999,-9999).
+fn invalidate_removed_location(unit: &mut Unit) {
+    unit.k_location = PlotCoord { x: -9999, y: -9999 };
+}
+
 fn remove_placement_inner<E: Providers, C>(
     state: &mut LoadedState,
     runtime: &mut sight::Runtime,
@@ -278,7 +284,7 @@ fn remove_placement_inner<E: Providers, C>(
     }
     .update_map(old, false)
     .map_err(Error::Sight)?;
-    unit_mut(state, actor)?.k_location = PlotCoord { x: -1, y: -1 };
+    invalidate_removed_location(unit_mut(state, actor)?);
     send(
         state,
         effects,
@@ -548,8 +554,15 @@ where
         continuations.unpair(state, effects, parent, current)?;
     }
     let current = unit(state, actor)?;
-    services::siege::run(state, runtime, effects, definitions, current.k_location, current.e_owner)
-        .map_err(Error::Services)?;
+    services::siege::run(
+        state,
+        runtime,
+        effects,
+        definitions,
+        current.k_location,
+        current.e_owner,
+    )
+    .map_err(Error::Services)?;
     if !(delayed && unit(state, actor)?.b_delayed_death) {
         if delayed {
             delayed_destroy_with_continuations(
@@ -592,4 +605,47 @@ where
         delayed,
         killed_by,
     )
+}
+
+#[cfg(test)]
+mod removal_tests {
+    use super::*;
+    #[test]
+    fn legal_combat_removal_uses_set_invalid_without_erasing_dead_unit() {
+        // Existing synthetic Unit28 framing; no native object defaults are
+        // inferred from it. Only the reached removal mutation is exercised.
+        let mut bytes = vec![0; 762];
+        for (offset, value) in [
+            (0, 28),
+            (142, 2),
+            (159, 1),
+            (176, 28),
+            (311, 8),
+            (341, 1),
+            (353, 1),
+            (397, 7),
+            (436, 1),
+            (452, 8),
+            (516, 10),
+            (590, 2),
+            (630, 4),
+            (652, 7),
+            (730, 1),
+            (742, 5),
+        ] {
+            bytes[offset] = value;
+        }
+        let mut unit = Unit::decode(&bytes, c6_core::unit::Limits::default()).unwrap();
+        unit.id = 131073;
+        unit.e_owner = 0;
+        unit.i_damage = 100;
+        unit.b_delayed_death = true;
+        unit.k_location = PlotCoord { x: 17, y: 11 };
+        invalidate_removed_location(&mut unit);
+        assert_eq!(unit.k_location, PlotCoord { x: -9999, y: -9999 });
+        assert_eq!(
+            (unit.id, unit.e_owner, unit.i_damage, unit.b_delayed_death),
+            (131073, 0, 100, true)
+        );
+    }
 }
