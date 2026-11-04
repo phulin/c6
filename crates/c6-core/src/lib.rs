@@ -413,6 +413,7 @@ pub mod unit_operation_interruption;
 pub mod game_diplomatic_relations;
 pub mod game_global_ai;
 pub mod game_great_people;
+pub mod game_quests;
 
 pub mod game_barbarian;
 
@@ -438,3 +439,7 @@ pub mod script_event_registry;
 pub mod object_pairing;
 
 pub mod unit_moved_signal;
+
+pub mod plot_adjacent_owner_requirement;
+
+pub mod lua_math_random;

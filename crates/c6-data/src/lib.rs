@@ -839,3 +839,5 @@ mod tests;
 pub mod unit_placement_state;
 
 pub mod unit_placement_services;
+
+pub mod plot_adjacent_owner_requirement;
