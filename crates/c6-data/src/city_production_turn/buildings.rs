@@ -24,6 +24,7 @@ pub struct Building {
     pub outer_defense_strength: i32,
     pub base_cost: i32,
     pub housing: i32,
+    pub(super) yields: super::building_yields::StaticYields,
     pub great_work_slots: Vec<(i32, i32)>,
     great_work_rows_present: bool,
     pub mutually_exclusive: Vec<u32>,
@@ -34,6 +35,7 @@ pub struct Building {
 }
 pub struct Definitions {
     inputs: InputIdentities,
+    pub(super) yield_hashes: Vec<u32>,
     pub buildings: Vec<Building>,
     speed_cost_multiplier: i32,
     production_rate: i32,
@@ -171,6 +173,11 @@ impl Definitions {
                 outer_defense_strength: integer(row, "OuterDefenseStrength")?,
                 base_cost: integer(row, "Cost")?,
                 housing: integer(row, "Housing")?,
+                yields: super::building_yields::from_rules(
+                    rules,
+                    hash_value,
+                    integer(row, "RegionalRange")?,
+                )?,
                 great_work_slots,
                 great_work_rows_present,
                 mutually_exclusive,
@@ -205,6 +212,12 @@ impl Definitions {
         };
         Ok(Self {
             inputs: state.binding().inputs.clone(),
+            yield_hashes: {
+                let r = registry("Yields", "YieldType")?;
+                (0..r.entries().len())
+                    .map(|i| r.type_hash(i).ok_or(Error::Binding))
+                    .collect::<Result<Vec<_>, _>>()?
+            },
             buildings,
             speed_cost_multiplier,
             production_rate,
@@ -376,7 +389,7 @@ pub trait Effects {
         plot: i32,
     ) -> Result<(), Error>;
 }
-fn index<T>(values: &[c6_core::unit::HashValue<T>], hash: u32) -> Result<usize, Error> {
+pub(super) fn index<T>(values: &[c6_core::unit::HashValue<T>], hash: u32) -> Result<usize, Error> {
     let mut found = values
         .iter()
         .enumerate()
@@ -765,6 +778,7 @@ mod tests {
                 content_inputs_sha256: [0; 32],
             },
             buildings: vec![],
+            yield_hashes: vec![],
             speed_cost_multiplier: 150,
             production_rate: -100,
             government_bonuses: crate::registry::LinuxDefinitionRegistry::from_native_order(vec![]),
@@ -779,6 +793,7 @@ mod tests {
             outer_defense_strength: 0,
             base_cost: 1,
             housing: 0,
+            yields: super::super::building_yields::StaticYields::default(),
             great_work_slots: vec![],
             great_work_rows_present: false,
             mutually_exclusive: vec![],

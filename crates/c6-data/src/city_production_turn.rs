@@ -5,6 +5,7 @@
 //! rest of the turn. An effects error can follow a real mutation prefix; callers
 //! must retain that incomplete transition instead of treating it as a completed
 //! turn. No native production policy or host random stream is substituted.
+pub mod building_yields;
 pub mod buildings;
 
 use c6_core::{
