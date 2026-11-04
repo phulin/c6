@@ -9,7 +9,7 @@ pub struct Strength {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Next {
-    /// Native nonpositive BASE attack-strength branch, which never draws.
+    /// Native nonpositive BASE defending-strength branch, which never draws.
     FixedDamage(i32),
     RequiresCalculateDamage {
         parameters: DamageParameters,
@@ -25,6 +25,50 @@ pub trait Context {
     fn power_dampener(&mut self) -> Result<i32, Self::Error>;
     fn minimum_civilian_damage_percent(&mut self) -> Result<i32, Self::Error>;
 }
+pub trait ExchangeContext: Context {
+    fn calculate_damage(
+        &mut self,
+        parameters: &DamageParameters,
+        average: bool,
+    ) -> Result<i32, Self::Error>;
+    fn defender_embarked(&mut self) -> Result<bool, Self::Error>;
+    fn defender_can_fight_while_embarked(&mut self) -> Result<bool, Self::Error>;
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Exchange {
+    pub attacker_received: i32,
+    pub defender_received: i32,
+}
+fn execute<C: ExchangeContext>(c: &mut C, plan: Next) -> Result<i32, C::Error> {
+    match plan {
+        Next::FixedDamage(damage) => Ok(damage),
+        Next::RequiresCalculateDamage {
+            parameters,
+            average,
+        } => c.calculate_damage(&parameters, average),
+    }
+}
+/// Forward damage first, then the CURRENT defender's embark/fight guard, then
+/// retaliation. Each random CalculateDamage consumes its own same-stream draw.
+pub fn exchange<C: ExchangeContext>(
+    c: &mut C,
+    attacker: Strength,
+    defender: Strength,
+    average: bool,
+) -> Result<Exchange, C::Error> {
+    let forward = prepare(c, defender, attacker, average)?;
+    let defender_received = execute(c, forward)?;
+    let attacker_received = if !c.defender_embarked()? || c.defender_can_fight_while_embarked()? {
+        let reverse = prepare(c, attacker, defender, average)?;
+        execute(c, reverse)?
+    } else {
+        0
+    };
+    Ok(Exchange {
+        attacker_received,
+        defender_received,
+    })
+}
 fn cvtt(value: f32) -> i32 {
     if !(-2_147_483_648.0..2_147_483_648.0).contains(&value) {
         i32::MIN
@@ -32,15 +76,15 @@ fn cvtt(value: f32) -> i32 {
         value as i32
     }
 }
-/// CalculateUnitVsUnitDamage2bd8b80: the positive test uses the original base,
+/// CalculateUnitVsUnitDamage2bd8b80: the positive test uses the original defending base,
 /// before either modifier addition. Rule reads retain their native order.
 pub fn prepare<C: Context>(
     c: &mut C,
-    dealing: Strength,
-    receiving: Strength,
+    defender: Strength,
+    attacker: Strength,
     average: bool,
 ) -> Result<Next, C::Error> {
-    if dealing.base_raw <= 0 {
+    if defender.base_raw <= 0 {
         let maximum = c.maximum_hit_points()? as f32;
         let percentage = c.minimum_civilian_damage_percent()? as f32;
         return Ok(Next::FixedDamage(cvtt(
@@ -50,8 +94,8 @@ pub fn prepare<C: Context>(
     // Exact DamageParameters constructor defaults; fields overwritten below
     // still perform their real getters even when the value equals the default.
     let mut parameters = DamageParameters {
-        attacker_strength_raw: dealing.base_raw.wrapping_add(dealing.modifier_raw),
-        defender_strength_raw: receiving.base_raw.wrapping_add(receiving.modifier_raw),
+        attacker_strength_raw: attacker.base_raw.wrapping_add(attacker.modifier_raw),
+        defender_strength_raw: defender.base_raw.wrapping_add(defender.modifier_raw),
         defender_max_hit_points: 0,
         outer_defense_damage: 0,
         outer_defense_max_hit_points: 0,
@@ -80,6 +124,75 @@ mod tests {
     struct Rules {
         reads: Vec<&'static str>,
         fail_base: bool,
+    }
+    impl ExchangeContext for Rules {
+        fn calculate_damage(
+            &mut self,
+            p: &DamageParameters,
+            average: bool,
+        ) -> Result<i32, Self::Error> {
+            assert!(average);
+            self.reads
+                .push(if p.attacker_strength_raw < p.defender_strength_raw {
+                    "forward"
+                } else {
+                    "retaliation"
+                });
+            crate::combat::calculate_average_damage(p, 12).map_err(|_| "math")
+        }
+        fn defender_embarked(&mut self) -> Result<bool, Self::Error> {
+            self.reads.push("embarked");
+            Ok(false)
+        }
+        fn defender_can_fight_while_embarked(&mut self) -> Result<bool, Self::Error> {
+            panic!("unembarked short circuit")
+        }
+    }
+    #[test]
+    #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
+    fn asymmetric_exchange_keeps_forward_then_retaliation_and_parameter_sides() {
+        let mut c = Rules {
+            reads: vec![],
+            fail_base: false,
+        };
+        let result = exchange(
+            &mut c,
+            Strength {
+                base_raw: 85 << 8,
+                modifier_raw: 5 << 8,
+            },
+            Strength {
+                base_raw: 130 << 8,
+                modifier_raw: 0,
+            },
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            result,
+            Exchange {
+                attacker_received: 100,
+                defender_received: 6
+            }
+        );
+        assert_eq!(
+            c.reads,
+            [
+                "maximum",
+                "minimum",
+                "scaling",
+                "base",
+                "dampener",
+                "forward",
+                "embarked",
+                "maximum",
+                "minimum",
+                "scaling",
+                "base",
+                "dampener",
+                "retaliation"
+            ]
+        );
     }
     impl Context for Rules {
         type Error = &'static str;
@@ -137,8 +250,8 @@ mod tests {
         else {
             panic!()
         };
-        assert_eq!(p.attacker_strength_raw, i32::MIN);
-        assert_eq!(p.defender_strength_raw, 5);
+        assert_eq!(p.defender_strength_raw, i32::MIN);
+        assert_eq!(p.attacker_strength_raw, 5);
         assert_eq!(p.power_scaling_raw, 10);
         assert_eq!(p.defense_type, u32::MAX);
         assert!(!average);
@@ -148,7 +261,7 @@ mod tests {
         );
     }
     #[test]
-    fn nonpositive_base_ignores_positive_modifier_and_reads_no_random_rules() {
+    fn nonpositive_defender_base_ignores_positive_modifier_and_reads_no_random_rules() {
         let mut c = Rules {
             reads: vec![],
             fail_base: true,

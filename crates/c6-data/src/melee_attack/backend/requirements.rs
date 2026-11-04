@@ -87,7 +87,7 @@ impl Requirements for Runtime {
             .map_err(Error::Registry)?
             .modifier(receiver)
             .ok_or(Error::Missing("current collection modifier"))?;
-        let object = *objects.object(modifier.context).map_err(Error::Query)?;
+        let object = objects.object(modifier.context).map_err(Error::Query)?;
         let id = modifier.subject_requirements.clone();
         sets::get_or_create(
             &mut Context {

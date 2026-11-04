@@ -13,6 +13,14 @@ pub enum Error {
     Binding,
     Definitions(unit_initialization_definitions::Error),
     Rule(&'static str),
+    World(c6_core::world::MissingInput),
+    MissingUnit(c6_core::map::UnitReference),
+    GameSync(c6_core::loaded_state::game_sync::AccessError),
+    Math(c6_core::combat::DamageError),
+    NativeArithmeticFault {
+        draw: u16,
+        fault: c6_core::combat::DamageError,
+    },
 }
 pub struct Definitions {
     identities: InputIdentities,
@@ -87,6 +95,9 @@ impl Definitions {
     pub fn max_extra_damage(&self) -> i32 {
         self.max_extra_damage
     }
+    pub fn maximum_hit_points(&self) -> i32 {
+        self.maximum_hit_points
+    }
 }
 struct Context<'a>(&'a Definitions);
 impl kernel::Context for Context<'_> {
@@ -113,12 +124,104 @@ impl kernel::Context for Context<'_> {
 pub fn prepare(
     state: &LoadedState,
     definitions: &Definitions,
-    dealing: kernel::Strength,
-    receiving: kernel::Strength,
+    defender: kernel::Strength,
+    attacker: kernel::Strength,
     average: bool,
 ) -> Result<kernel::Next, Error> {
     if state.binding().inputs != definitions.identities {
         return Err(Error::Binding);
     }
-    kernel::prepare(&mut Context(definitions), dealing, receiving, average)
+    kernel::prepare(&mut Context(definitions), defender, attacker, average)
+}
+struct ExchangeContext<'a> {
+    state: &'a mut LoadedState,
+    definitions: &'a Definitions,
+    defender: c6_core::map::UnitReference,
+}
+impl kernel::Context for ExchangeContext<'_> {
+    type Error = Error;
+    fn maximum_hit_points(&mut self) -> Result<i32, Error> {
+        Ok(self.definitions.maximum_hit_points)
+    }
+    fn minimum_damage(&mut self) -> Result<i32, Error> {
+        Ok(self.definitions.minimum_damage)
+    }
+    fn power_scaling(&mut self) -> Result<f32, Error> {
+        Ok(self.definitions.power_scaling)
+    }
+    fn base_damage(&mut self) -> Result<i32, Error> {
+        Ok(self.definitions.base_damage)
+    }
+    fn power_dampener(&mut self) -> Result<i32, Error> {
+        Ok(self.definitions.power_dampener)
+    }
+    fn minimum_civilian_damage_percent(&mut self) -> Result<i32, Error> {
+        Ok(self.definitions.minimum_civilian_damage_percent)
+    }
+}
+impl kernel::ExchangeContext for ExchangeContext<'_> {
+    fn calculate_damage(
+        &mut self,
+        p: &c6_core::combat::DamageParameters,
+        average: bool,
+    ) -> Result<i32, Error> {
+        if average {
+            return c6_core::combat::calculate_average_damage(p, self.definitions.max_extra_damage)
+                .map_err(Error::Math);
+        }
+        match self
+            .state
+            .calculate_game_sync_damage(p, self.definitions.max_extra_damage)
+            .map_err(Error::GameSync)?
+        {
+            c6_core::combat_random::RandomDamageOutcome::Damage { amount, .. } => Ok(amount),
+            c6_core::combat_random::RandomDamageOutcome::NativeArithmeticFaultAfterDraw {
+                draw,
+                fault,
+            } => Err(Error::NativeArithmeticFault { draw, fault }),
+        }
+    }
+    fn defender_embarked(&mut self) -> Result<bool, Error> {
+        Ok(self
+            .state
+            .world()
+            .unit(self.defender)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingUnit(self.defender))?
+            .record
+            .b_embarked)
+    }
+    fn defender_can_fight_while_embarked(&mut self) -> Result<bool, Error> {
+        Ok(self
+            .state
+            .world()
+            .unit(self.defender)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingUnit(self.defender))?
+            .record
+            .k_combat_modifers
+            .b_fight_while_embarked)
+    }
+}
+pub fn exchange(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    defender: c6_core::map::UnitReference,
+    attacker_strength: kernel::Strength,
+    defender_strength: kernel::Strength,
+    average: bool,
+) -> Result<kernel::Exchange, Error> {
+    if state.binding().inputs != definitions.identities {
+        return Err(Error::Binding);
+    }
+    kernel::exchange(
+        &mut ExchangeContext {
+            state,
+            definitions,
+            defender,
+        },
+        attacker_strength,
+        defender_strength,
+        average,
+    )
 }

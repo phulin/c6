@@ -45,6 +45,48 @@ pub struct RequiresStrengthModifiers {
     pub proposal: registry::Handle,
     pub base_strengths: kernel::BaseStrengths,
 }
+pub struct GenerateRules<'a> {
+    pub formation: &'a formation_rules::Definitions,
+    pub strength: &'a super::strength::Definitions,
+    pub damage: &'a super::damage::Definitions,
+    pub maximum_damage: &'a crate::formation_movement_cost::Definitions<'a>,
+    pub levels: &'a [(i32, u32)],
+    pub players: &'a super::strength::CurrentPlayerCombat<'a>,
+}
+/// Generated numeric members, after both real draws and temporary-proposal
+/// destruction. Experience/member finalization and Resolve are still required.
+#[derive(Debug)]
+pub struct GeneratedDamage {
+    pub attacker: UnitReference,
+    pub defender: UnitReference,
+    pub attacker_received: i32,
+    pub defender_received: i32,
+    pub attacker_final_damage: i32,
+    pub defender_final_damage: i32,
+    pub attacker_modifier_raw: i32,
+    pub defender_modifier_raw: i32,
+    pub base_strengths: kernel::BaseStrengths,
+}
+#[derive(Debug)]
+pub enum DamageError<E> {
+    Generate(GenerateError<E>),
+    Attack(Box<c6_core::melee_attack::strength::AttackError<super::strength::Error>>),
+    Defense(Box<c6_core::melee_attack::strength::DefenseError<super::strength::Error>>),
+    Damage(super::damage::Error),
+    Actor(super::Error),
+    Combat(crate::loaded_actions::Error),
+    Maximum(crate::formation_movement_cost::Error),
+    State(c6_core::loaded_state::Error),
+    ProposalAccess(c6_core::loaded_state::combat_proposals::AccessError),
+    Proposal(registry::Error),
+    Cleanup(
+        Box<
+            c6_core::melee_attack::proposals::collection_modifiers::Error<
+                super::proposals::collection_modifiers::Error<E>,
+            >,
+        >,
+    ),
+}
 
 /// Fresh source selection: religion, enemy defensible District, otherwise
 /// CanAttackDomain/GetBestDefender flags9/19. No readiness or CanAttackTarget
@@ -139,6 +181,175 @@ impl<E> Generation<'_, '_, E> {
             proposal_id,
             proposal,
             base_strengths,
+        })
+    }
+    /// Source ordinary Unit/Unit path: proposal callbacks, attack then defense
+    /// modifiers, forward then retaliation damage, mutual-death correction,
+    /// then actual ForgetCombat/destruction before XP/member result fields.
+    pub fn advance_damage(
+        &mut self,
+        rules: &GenerateRules<'_>,
+    ) -> Result<GeneratedDamage, DamageError<<E as proposals::Effects>::Error>>
+    where
+        E: proposals::Effects
+            + proposals::collection_modifiers::Services<Error = <E as proposals::Effects>::Error>,
+    {
+        let next = self
+            .advance_proposal(rules.formation)
+            .map_err(DamageError::Generate)?;
+        let Defender::Unit(defender) = self.defender else {
+            unreachable!("advance_proposal checks Unit");
+        };
+        let attacker_modifier_raw = super::strength::ordinary_attack_modifier(
+            self.state,
+            rules.strength,
+            rules.formation,
+            rules.levels,
+            rules.players,
+            self.actor,
+            defender,
+            next.proposal_id,
+        )
+        .map_err(|e| DamageError::Attack(Box::new(e)))?;
+        let defender_modifier_raw = super::strength::ordinary_defense_modifier(
+            self.state,
+            rules.strength,
+            rules.formation,
+            rules.levels,
+            rules.players,
+            self.actor,
+            defender,
+            next.proposal_id,
+        )
+        .map_err(|e| DamageError::Defense(Box::new(e)))?;
+        let mut exchange = super::damage::exchange(
+            self.state,
+            rules.damage,
+            defender,
+            c6_core::melee_attack::damage::Strength {
+                base_raw: next.base_strengths.attacker_raw,
+                modifier_raw: attacker_modifier_raw,
+            },
+            c6_core::melee_attack::damage::Strength {
+                base_raw: next.base_strengths.defender_raw,
+                modifier_raw: defender_modifier_raw,
+            },
+            false,
+        )
+        .map_err(DamageError::Damage)?;
+        if rules
+            .formation
+            .formation_class(
+                self.state,
+                super::actor(self.state, defender).map_err(DamageError::Actor)?,
+            )
+            .map_err(DamageError::Combat)?
+            == 1
+        {
+            exchange.defender_received = rules.damage.maximum_hit_points();
+        }
+        let mut defender_final_damage = super::actor(self.state, defender)
+            .map_err(DamageError::Actor)?
+            .i_damage;
+        let mut attacker_final_damage = super::actor(self.state, self.actor)
+            .map_err(DamageError::Actor)?
+            .i_damage;
+        let defender_maximum = rules
+            .maximum_damage
+            .maximum_damage(super::actor(self.state, defender).map_err(DamageError::Actor)?)
+            .map_err(DamageError::Maximum)?;
+        defender_final_damage = defender_final_damage.wrapping_add(exchange.defender_received);
+        attacker_final_damage = attacker_final_damage.wrapping_add(exchange.attacker_received);
+        if defender_final_damage >= defender_maximum {
+            let captures = self
+                .state
+                .combat_proposals()
+                .map_err(DamageError::ProposalAccess)?
+                .proposal(next.proposal)
+                .map_err(DamageError::Proposal)?
+                .capture_combat_units;
+            if captures {
+                // Source still reads both domains before skipping preview text
+                // in this native no-Results-preview profile.
+                self.state
+                    .unit_runtime(i32::from(defender.component_id().owner), defender.id)
+                    .map_err(DamageError::State)?;
+                self.state
+                    .unit_runtime(i32::from(self.actor.component_id().owner), self.actor.id)
+                    .map_err(DamageError::State)?;
+            }
+            let attacker_maximum = rules
+                .maximum_damage
+                .maximum_damage(super::actor(self.state, self.actor).map_err(DamageError::Actor)?)
+                .map_err(DamageError::Maximum)?;
+            if attacker_final_damage >= attacker_maximum {
+                let a_max = rules
+                    .maximum_damage
+                    .maximum_damage(
+                        super::actor(self.state, self.actor).map_err(DamageError::Actor)?,
+                    )
+                    .map_err(DamageError::Maximum)?;
+                let d_max = rules
+                    .maximum_damage
+                    .maximum_damage(super::actor(self.state, defender).map_err(DamageError::Actor)?)
+                    .map_err(DamageError::Maximum)?;
+                if attacker_final_damage.wrapping_sub(a_max)
+                    > defender_final_damage.wrapping_sub(d_max)
+                {
+                    let maximum = rules
+                        .maximum_damage
+                        .maximum_damage(
+                            super::actor(self.state, defender).map_err(DamageError::Actor)?,
+                        )
+                        .map_err(DamageError::Maximum)?;
+                    let remaining = maximum.wrapping_sub(
+                        super::actor(self.state, defender)
+                            .map_err(DamageError::Actor)?
+                            .i_damage,
+                    );
+                    exchange.defender_received = remaining.wrapping_sub(1);
+                    defender_final_damage = remaining
+                        .wrapping_add(
+                            super::actor(self.state, defender)
+                                .map_err(DamageError::Actor)?
+                                .i_damage,
+                        )
+                        .wrapping_sub(1);
+                } else {
+                    let maximum = rules
+                        .maximum_damage
+                        .maximum_damage(
+                            super::actor(self.state, self.actor).map_err(DamageError::Actor)?,
+                        )
+                        .map_err(DamageError::Maximum)?;
+                    let remaining = maximum.wrapping_sub(
+                        super::actor(self.state, self.actor)
+                            .map_err(DamageError::Actor)?
+                            .i_damage,
+                    );
+                    exchange.attacker_received = remaining.wrapping_sub(1);
+                    attacker_final_damage = remaining
+                        .wrapping_add(
+                            super::actor(self.state, self.actor)
+                                .map_err(DamageError::Actor)?
+                                .i_damage,
+                        )
+                        .wrapping_sub(1);
+                }
+            }
+        }
+        proposals::collection_modifiers::forget_combat(self.state, self.effects, next.proposal_id)
+            .map_err(|e| DamageError::Cleanup(Box::new(e)))?;
+        Ok(GeneratedDamage {
+            attacker: self.actor,
+            defender,
+            attacker_received: exchange.attacker_received,
+            defender_received: exchange.defender_received,
+            attacker_final_damage,
+            defender_final_damage,
+            attacker_modifier_raw,
+            defender_modifier_raw,
+            base_strengths: next.base_strengths,
         })
     }
 }
