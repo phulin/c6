@@ -34,6 +34,7 @@ pub enum Error {
     Terrain(logic::MissingFact),
     Placement(PlacementMissing),
     Capability(Capability),
+    BlockedEntryState,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Capability {
@@ -45,7 +46,6 @@ pub enum Capability {
     ExtendedUnitDefinition,
     CombatStrength,
     SparseCoordinate,
-    BlockedEntry,
     ForeignContext(PlacementMissing),
 }
 impl std::fmt::Display for Error {
@@ -54,6 +54,37 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+
+/// Reconstruct only the requested scalar from the current typed diplomacy
+/// component and the actual bound Unit collection. Native Reset initializes
+/// that collection to false before Read overlays ordered known keys. This does
+/// not interpret an empty wire list as an empty runtime definition collection.
+fn blocked_entry_value(
+    lookup: &dyn DefinitionLookup,
+    unit_index: i32,
+    wire_present: bool,
+    pairs: &[c6_core::unit::HashValue<bool>],
+) -> Result<bool, Error> {
+    let index = usize::try_from(unit_index).map_err(|_| Error::BlockedEntryState)?;
+    if index >= lookup.count() || lookup.count() > i32::MAX as usize {
+        return Err(Error::BlockedEntryState);
+    }
+    if !wire_present && !pairs.is_empty() {
+        return Err(Error::BlockedEntryState);
+    }
+    let mut value = false;
+    for pair in pairs {
+        if let Some(found) = lookup.find_index(pair.definition_hash) {
+            if found >= lookup.count() {
+                return Err(Error::BlockedEntryState);
+            }
+            if found == index {
+                value = pair.value;
+            }
+        }
+    }
+    Ok(value)
+}
 
 /// Construct once from the same registered rules/resources and actual exported
 /// terrain definitions. Fields are borrowed immutable definitions; each query
@@ -340,7 +371,27 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                         )
                     }
                     PlacementMissing::BlockedEntry => {
-                        return Err(Error::Capability(Capability::BlockedEntry))
+                        let owner = f.plot_owner.ok_or(Error::Definitions)?;
+                        // GetPlayer, not GetValidPlayer: no extra validity filter.
+                        self.state.world().player(owner).map_err(Error::World)?;
+                        let diplomacy = &self
+                            .state
+                            .retained()
+                            .players
+                            .iter()
+                            .find(|p| p.header.owner == owner)
+                            .ok_or(Error::BlockedEntryState)?
+                            .diplomacy;
+                        let runtime = self
+                            .state
+                            .unit_runtime(unit.e_owner, unit.id)
+                            .map_err(Error::State)?;
+                        f.blocked_entry = Some(blocked_entry_value(
+                            self.units.lookup,
+                            runtime.definition_index,
+                            diplomacy.blocked_entry_wire_present(),
+                            &diplomacy.units_blocked_entry,
+                        )?);
                     }
                     _ => return Err(Error::Capability(Capability::ForeignContext(missing))),
                 },
@@ -392,5 +443,62 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                 .map_err(Error::World)
         });
         logic::formation_result(members, |unit| self.query(unit, destination, request))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::registry::LinuxDefinitionHashRegistry;
+    use c6_core::unit::HashValue;
+
+    #[test]
+    fn omitted_wire_resets_actual_definition_indexes() {
+        let definitions = LinuxDefinitionHashRegistry::from_native_order(vec![100, 200]);
+        assert!(!blocked_entry_value(&definitions, 1, false, &[]).unwrap());
+        assert!(blocked_entry_value(&definitions, -1, false, &[]).is_err());
+        assert!(blocked_entry_value(&definitions, 2, false, &[]).is_err());
+        let empty = LinuxDefinitionHashRegistry::from_native_order(vec![]);
+        assert!(blocked_entry_value(&empty, 0, false, &[]).is_err());
+    }
+
+    #[test]
+    fn current_overlay_keeps_native_lookup_and_last_duplicate_order() {
+        let definitions = LinuxDefinitionHashRegistry::from_native_order(vec![1, 200]);
+        let pairs = [
+            HashValue {
+                definition_hash: 200,
+                value: true,
+            },
+            HashValue {
+                definition_hash: 999,
+                value: true,
+            },
+            HashValue {
+                definition_hash: 200,
+                value: false,
+            },
+            // Small keys are indexes before hash lookup, even hash 1 at index0.
+            HashValue {
+                definition_hash: 1,
+                value: true,
+            },
+        ];
+        assert!(!blocked_entry_value(&definitions, 0, true, &pairs).unwrap());
+        assert!(blocked_entry_value(&definitions, 1, true, &pairs).unwrap());
+        assert!(!blocked_entry_value(&definitions, 1, true, &pairs[..3]).unwrap());
+        assert!(blocked_entry_value(&definitions, 1, true, &pairs[..1]).unwrap());
+        assert!(blocked_entry_value(&definitions, 1, false, &pairs).is_err());
+    }
+
+    #[test]
+    fn duplicate_definition_hash_uses_actual_last_inserted_index() {
+        let definitions = LinuxDefinitionHashRegistry::from_native_order(vec![200, 200]);
+        let pairs = [HashValue {
+            definition_hash: 200,
+            value: true,
+        }];
+        assert!(!blocked_entry_value(&definitions, 0, true, &pairs).unwrap());
+        assert!(blocked_entry_value(&definitions, 1, true, &pairs).unwrap());
     }
 }
