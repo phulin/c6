@@ -19,24 +19,43 @@ pub struct Object {
 #[derive(Debug)]
 pub struct Tracked {
     pub object: u64,
-    pub requirement_set: Option<u64>,
-    pub applied: u8,
-    pub removed: bool,
+    pub state: crate::unit_moved_signal::modifiers::TrackedSubject,
     pub destruction_subscription: Option<Subscription>,
+}
+impl std::ops::Deref for Tracked {
+    type Target = crate::unit_moved_signal::modifiers::TrackedSubject;
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+impl std::ops::DerefMut for Tracked {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 #[derive(Debug)]
 pub struct Modifier {
     pub receiver: u64,
     pub context: u64,
     pub instance: i32,
-    pub enabled: bool,
-    pub suppressed: bool,
+    pub control: crate::unit_moved_signal::modifiers::Modifier,
     pub permanent: bool,
     pub definition: Vec<u8>,
     pub stack_limit: u16,
     pub effect: u64,
     pub tracked: Vec<Tracked>,
     pub applied: Vec<u64>,
+}
+impl std::ops::Deref for Modifier {
+    type Target = crate::unit_moved_signal::modifiers::Modifier;
+    fn deref(&self) -> &Self::Target {
+        &self.control
+    }
+}
+impl std::ops::DerefMut for Modifier {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.control
+    }
 }
 #[derive(Debug)]
 pub enum Error<E> {
@@ -323,17 +342,22 @@ mod tests {
             receiver: 7,
             context: 1,
             instance: 3,
-            enabled: true,
-            suppressed: false,
+            control: crate::unit_moved_signal::modifiers::Modifier {
+                enabled: true,
+                suppressed: false,
+                owner_requirement_set: None,
+            },
             permanent: false,
             definition: b"experience".to_vec(),
             stack_limit: 1,
             effect: 8,
             tracked: vec![Tracked {
                 object: 1,
-                requirement_set: Some(9),
-                applied: 1,
-                removed: false,
+                state: crate::unit_moved_signal::modifiers::TrackedSubject {
+                    requirement_set: Some(9),
+                    applied: 1,
+                    removed: false,
+                },
                 destruction_subscription: Some(subscription),
             }],
             applied: vec![1],
