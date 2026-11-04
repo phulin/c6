@@ -1,6 +1,7 @@
 //! Linux Combat.Manager.TestAttackInto prefix and CanAttackDomain.
 //! These are mandatory query stages, NOT a successful attack or resolution.
 use crate::unit::PlotCoord;
+pub mod proposals;
 pub mod results;
 pub mod target;
 
