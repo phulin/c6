@@ -790,6 +790,13 @@ impl Reader<'_> {
     fn player_prefix(&mut self) -> Result<FirstPlayer, Error> {
         self.charge(0, 1)?;
         let requested_owner = self.i32()?;
+        self.player_body(requested_owner)
+    }
+    fn player_prefix_for_owner(&mut self, requested_owner: i32) -> Result<FirstPlayer, Error> {
+        self.charge(0, 1)?;
+        self.player_body(requested_owner)
+    }
+    fn player_body(&mut self, requested_owner: i32) -> Result<FirstPlayer, Error> {
         let header = self.header()?;
         if requested_owner != header.owner {
             return Err(Error::OwnerMismatch {
@@ -1283,6 +1290,36 @@ impl Prefix {
     }
 }
 impl FirstPlayer {
+    /// Decode one original Player.Write component without inventing a Manager
+    /// count or requested-owner wire prefix. `component_origin` is its actual
+    /// offset in the attributed source bundle; initialization cursors retain
+    /// that same coordinate system. Source metadata is checked, not created.
+    pub fn decode_conditional_at(
+        bytes: &[u8],
+        limits: Limits,
+        requested_owner: i32,
+        manager_index: u32,
+        binding: &initialization::WireBinding,
+        contexts: &impl PlayerInitializations,
+        component_origin: usize,
+    ) -> Result<(Self, usize, usize), Error> {
+        let mut reader = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+        };
+        let mut player = reader.player_prefix_for_owner(requested_owner)?;
+        reader.complete_player(
+            &mut player,
+            manager_index,
+            binding,
+            contexts,
+            component_origin,
+        )?;
+        Ok((player, reader.pos, reader.items))
+    }
+
     fn validate_entry(
         &self,
         index: u32,
@@ -3430,6 +3467,84 @@ pub(crate) mod tests {
         }
         (value, snapshots)
     }
+    #[test]
+    fn standalone_player_component_reuses_complete_grammar_and_limits() {
+        for was in [false, true] {
+            let (player, snapshot, binding) = complete_source_player(0, was, true);
+            let (entry, items) = player
+                .encode_entry_prefix_with_items(Limits::default(), 0, Some(&binding))
+                .unwrap();
+            let component = &entry[4..];
+            let contexts = |_: initialization::PlayerIdentity| snapshot.clone();
+            let exact = Limits {
+                max_bytes: component.len(),
+                max_items: items,
+            };
+            let (decoded, used, charged) = FirstPlayer::decode_conditional_at(
+                component,
+                exact,
+                player.requested_owner,
+                0,
+                &binding,
+                &contexts,
+                0,
+            )
+            .unwrap();
+            assert_eq!(decoded, player);
+            assert_eq!((used, charged), (component.len(), items));
+            assert!(matches!(
+                FirstPlayer::decode_conditional_at(
+                    component,
+                    exact,
+                    player.requested_owner.wrapping_add(1),
+                    0,
+                    &binding,
+                    &contexts,
+                    0
+                ),
+                Err(Error::OwnerMismatch { .. })
+            ));
+            assert!(FirstPlayer::decode_conditional_at(
+                component,
+                Limits {
+                    max_items: items - 1,
+                    ..exact
+                },
+                player.requested_owner,
+                0,
+                &binding,
+                &contexts,
+                0
+            )
+            .is_err());
+            assert!(FirstPlayer::decode_conditional_at(
+                &component[..component.len() - 1],
+                exact,
+                player.requested_owner,
+                0,
+                &binding,
+                &contexts,
+                0
+            )
+            .is_err());
+            if was {
+                let missing = |_: initialization::PlayerIdentity| None;
+                assert!(matches!(
+                    FirstPlayer::decode_conditional_at(
+                        component,
+                        exact,
+                        player.requested_owner,
+                        0,
+                        &binding,
+                        &missing,
+                        0
+                    ),
+                    Err(Error::MissingInitializationSnapshot(_))
+                ));
+            }
+        }
+    }
+
     #[test]
     fn conditional_source_manager_mixed_roster_exact_caps_entries_and_suffix() {
         for branches in [
