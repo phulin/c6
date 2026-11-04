@@ -87,7 +87,7 @@ pub struct ScriptState {
     origin: Option<ObservedSnapshotWitness>,
     identity: ScriptSystemIdentity,
     registry: ScriptEventRegistry,
-    execution: CachedExecutionState,
+    execution: Option<CachedExecutionState>,
     factory: FactoryExecutionState,
     intern: Option<InternExecutionState>,
     bounded: Option<c6_core::script_event_registry::BoundedExecutionState>,
@@ -109,9 +109,32 @@ impl ScriptState {
             origin,
             identity,
             registry,
-            execution,
+            execution: Some(execution),
             factory,
             intern,
+            bounded: None,
+            math_rng: math_rng::OwnedMathRng::unobserved(),
+        }
+    }
+    /// Current semantic registry without native allocator/collector accounting.
+    /// Empty-listener gameplay calls preserve this registry's logical identities.
+    /// Planning that actually consumes VM execution facts remains unsupported
+    /// until those facts are supplied; none are fabricated by this constructor.
+    pub fn from_semantic_registry(
+        binding: WireBinding,
+        origin: Option<ObservedSnapshotWitness>,
+        identity: ScriptSystemIdentity,
+        registry: ScriptEventRegistry,
+        factory: FactoryExecutionState,
+    ) -> Self {
+        Self {
+            binding,
+            origin,
+            identity,
+            registry,
+            execution: None,
+            factory,
+            intern: None,
             bounded: None,
             math_rng: math_rng::OwnedMathRng::unobserved(),
         }
@@ -124,7 +147,10 @@ impl ScriptState {
         self.identity
     }
     pub fn execution(&self) -> Option<&CachedExecutionState> {
-        self.bounded.is_none().then_some(&self.execution)
+        self.bounded
+            .is_none()
+            .then_some(self.execution.as_ref())
+            .flatten()
     }
     pub fn factory(&self) -> &FactoryExecutionState {
         &self.factory
@@ -151,7 +177,11 @@ impl ScriptState {
             .ok_or(RegistryError::InvalidSeed("bounded intern facts absent"))?;
         self.bounded = Some(
             c6_core::script_event_registry::BoundedExecutionState::from_unknown_memberships(
-                self.execution.clone(),
+                self.execution
+                    .clone()
+                    .ok_or(RegistryError::UnsupportedEffect(
+                        "native script execution facts not supplied",
+                    ))?,
                 intern.clone(),
                 unknown,
                 namespace,
@@ -179,7 +209,11 @@ impl ScriptState {
                 .plan_test_all(
                     name,
                     arguments,
-                    &self.execution,
+                    self.execution
+                        .as_ref()
+                        .ok_or(RegistryError::UnsupportedEffect(
+                            "native script execution facts not supplied",
+                        ))?,
                     &self.factory,
                     self.intern.as_ref(),
                 )
@@ -233,7 +267,11 @@ impl ScriptState {
             ScriptExecutionPlan::Exact(plan) if self.bounded.is_none() => self
                 .registry
                 .prepare_commit(
-                    &mut self.execution,
+                    self.execution
+                        .as_mut()
+                        .ok_or(RegistryError::UnsupportedEffect(
+                            "native script execution facts not supplied",
+                        ))?,
                     &mut self.factory,
                     self.intern.as_mut(),
                     *plan,
@@ -1249,5 +1287,74 @@ mod notification_initial_effect_tests {
                 "initial notification subtype query effects"
             ))
         ));
+    }
+}
+
+#[cfg(test)]
+mod semantic_script_tests {
+    use super::*;
+    use c6_core::{
+        core_player::initialization::{DatabaseIdentity, InputIdentities, WireRole},
+        script_event_registry::{
+            AppendOrder, GroupEntry, KnownNameEntry, LocalGroup, RegistrySeed, ScriptObjectId,
+            SharedGroup,
+        },
+    };
+    use std::collections::BTreeMap;
+    #[test]
+    fn empty_semantic_call_does_not_require_or_fabricate_vm_execution_facts() {
+        let shared = ScriptObjectId(1);
+        let local = ScriptObjectId(2);
+        let registry = ScriptEventRegistry::from_seed(RegistrySeed {
+            names: BTreeMap::from([("BuildingConstructed".into(), KnownNameEntry::Shared(shared))]),
+            shared_groups: BTreeMap::from([(
+                shared,
+                SharedGroup {
+                    entries_in_native_order: vec![GroupEntry::Table(local)],
+                    append_order: AppendOrder::DenseNumericArray,
+                },
+            )]),
+            local_groups: BTreeMap::from([(
+                local,
+                LocalGroup {
+                    objlen: 0,
+                    numeric_slots: BTreeMap::new(),
+                },
+            )]),
+        })
+        .unwrap();
+        let binding = WireBinding {
+            role: WireRole::ReadInputCore,
+            core_sha256: [0; 32],
+            occurrence_id: vec![],
+            output_id: None,
+            inputs: InputIdentities {
+                configuration_sha256: [0; 32],
+                rules_inputs_sha256: [0; 32],
+                database: DatabaseIdentity::LiveSnapshotUnavailable,
+                dlc_inputs_sha256: [0; 32],
+                mods_inputs_sha256: [0; 32],
+                content_inputs_sha256: [0; 32],
+            },
+        };
+        let mut script = ScriptState::from_semantic_registry(
+            binding,
+            None,
+            ScriptSystemIdentity(1),
+            registry,
+            FactoryExecutionState::default(),
+        );
+        assert!(script.execution().is_none());
+        script
+            .call_empty("BuildingConstructed", &[0, 65536, 1, 502, 1])
+            .unwrap();
+        assert!(script.execution().is_none());
+        assert!(matches!(
+            script.plan_test_all("BuildingConstructed", [0; 3]),
+            Err(RegistryError::UnsupportedEffect(
+                "native script execution facts not supplied"
+            ))
+        ));
+        assert!(script.call_empty("UnobservedEvent", &[]).is_err());
     }
 }
