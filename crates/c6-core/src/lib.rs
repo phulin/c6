@@ -469,3 +469,5 @@ pub mod game_stats;
 pub mod game_history;
 pub mod game_eras;
 pub mod game_archaeology;
+
+pub mod found_city;
