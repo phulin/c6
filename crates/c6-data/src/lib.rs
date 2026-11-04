@@ -6,9 +6,11 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
+pub mod city_initialization;
 pub mod city_power;
 pub mod city_movement;
 pub mod city_turn;
+pub mod city_production_turn;
 pub mod combat_defender;
 pub mod formation_rules;
 pub mod formation_movement_cost;
@@ -23,6 +25,7 @@ pub mod movement;
 pub mod movement_placement_state;
 pub mod registry;
 pub mod research_unit_costs;
+pub mod research;
 pub mod resource_binding;
 pub mod unit_initialization_definitions;
 pub mod unit_movement_state;
@@ -854,3 +857,8 @@ pub mod unit_near_religious_city_requirement;
 pub mod unit_modifier_effect;
 
 pub mod found_city;
+pub mod district_initialization;
+pub mod unit_kill;
+
+pub mod city_territory;
+pub mod influence_map_update;
