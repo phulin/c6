@@ -215,11 +215,17 @@ pub fn create_in_city<E: Effects>(
         else {
             return Ok(None);
         };
-        let value = kernel::construct(kernel::Definitions {
+        let mut value = kernel::construct(kernel::Definitions {
             yields: &definitions.yields,
             great_person_classes: &definitions.great_people,
         })
         .map_err(Error::Construction)?;
+        // Establish the generated identity before exposing the record to the
+        // checked canonical lookup used by Restore and synchronous callbacks.
+        value.id = allocation.id;
+        value.location = (creation.location.x, creation.location.y);
+        value.city_id = creation.city_id;
+        value.district_hash = hash;
         allocation
             .insert(records, value)
             .map_err(Error::Allocation)?;
@@ -229,15 +235,6 @@ pub fn create_in_city<E: Effects>(
         owner: creation.owner,
         id: allocation.id,
     };
-    {
-        let value = state
-            .district_mut(reference.owner, reference.id)
-            .map_err(Error::District)?;
-        value.id = allocation.id;
-        value.location = (creation.location.x, creation.location.y);
-        value.city_id = creation.city_id;
-        value.district_hash = hash;
-    }
     let strength = {
         let city = state
             .city(creation.owner, creation.city_id)
