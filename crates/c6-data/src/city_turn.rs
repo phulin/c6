@@ -3,6 +3,7 @@
 //! are shared turn/founding effects, never substituted by a population scalar.
 use crate::{unit_initialization_definitions::collection, Rules, RulesProfile, SqlValue};
 use c6_core::{city_growth, loaded_state::LoadedState};
+pub mod religion;
 
 #[derive(Debug)]
 pub enum Error {
@@ -25,8 +26,11 @@ impl From<c6_core::loaded_state::Error> for Error {
 
 /// Immutable parameters from the actual activated rules; no per-city answer
 /// cache. A present unsupported SQL scalar or missing row remains an error.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct GrowthRules {
+    religions: crate::registry::LinuxDefinitionRegistry,
+    pub atheism_pressure_per_pop: i32,
+    pub adjacent_religion_distance: i32,
     pub parameters: city_growth::Parameters,
 }
 fn numeric(value: &SqlValue) -> Option<f64> {
@@ -93,6 +97,10 @@ impl GrowthRules {
             }
         };
         Ok(Self {
+            religions: collection(rules, "Religions", "ReligionType")
+                .map_err(Error::Definitions)?,
+            atheism_pressure_per_pop: int("RELIGION_SPREAD_ATHEISM_PRESSURE_PER_POP")?,
+            adjacent_religion_distance: int("RELIGION_SPREAD_ADJACENT_CITY_DISTANCE")?,
             parameters: city_growth::Parameters {
                 base: int("CITY_GROWTH_THRESHOLD")?,
                 multiplier: int("CITY_GROWTH_MULTIPLIER")?,
@@ -106,7 +114,7 @@ impl GrowthRules {
 pub const POPULATION_REPORT: u32 = 0x10419f1f;
 /// Services execute against this same canonical state/Effects/Script owner.
 /// Implementations must perform every reached subscriber and RNG effect.
-pub trait PopulationEffects {
+pub trait PopulationEffects: religion::Effects {
     /// ChangeNumCitizens already added delta to the canonical unassigned count.
     /// `reallocate` selects the native negative-count branch; otherwise calls
     /// TryAssignAllWorkers(true), including its actual plot/yield selection.
@@ -116,13 +124,6 @@ pub trait PopulationEffects {
         owner: i32,
         city: u32,
         reallocate: bool,
-    ) -> Result<(), Error>;
-    fn religion_population_changed(
-        &mut self,
-        state: &mut LoadedState,
-        owner: i32,
-        city: u32,
-        delta: i32,
     ) -> Result<(), Error>;
     fn population_changed_signal(
         &mut self,
@@ -147,6 +148,7 @@ pub fn change_population(
     owner: i32,
     city: u32,
     delta: i32,
+    rules: &GrowthRules,
     effects: &mut impl PopulationEffects,
 ) -> Result<(), Error> {
     let next = state
@@ -168,7 +170,7 @@ pub fn change_population(
         .citizens
         .num_unassigned_citizens = unassigned;
     effects.assign_citizens(state, owner, city, unassigned < 0)?;
-    effects.religion_population_changed(state, owner, city, delta)?;
+    religion::population_changed(state, owner, city, delta, rules, effects)?;
     effects.population_changed_signal(state, owner, city, delta)?;
     let population = state.city(owner, city)?.header.population;
     effects.report_population(state, owner, city, POPULATION_REPORT, population)
@@ -199,7 +201,14 @@ impl<E: PopulationEffects> city_growth::World for GrowthContext<'_, E> {
         Ok(self.rules.parameters.threshold(population))
     }
     fn change_population(&mut self, delta: i32) -> Result<(), Error> {
-        change_population(self.state, self.owner, self.city, delta, self.effects)
+        change_population(
+            self.state,
+            self.owner,
+            self.city,
+            delta,
+            self.rules,
+            self.effects,
+        )
     }
 }
 pub fn add_growth(
