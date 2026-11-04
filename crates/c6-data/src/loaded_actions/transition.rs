@@ -113,6 +113,10 @@ impl ScriptState {
     pub fn registry(&self) -> &ScriptEventRegistry {
         &self.registry
     }
+    /// Retained logical ScriptSystem receiver shared by query and effect calls.
+    pub fn identity(&self) -> ScriptSystemIdentity {
+        self.identity
+    }
     pub fn execution(&self) -> Option<&CachedExecutionState> {
         self.bounded.is_none().then_some(&self.execution)
     }
@@ -247,7 +251,7 @@ impl ScriptState {
             )),
         }
     }
-    fn matches(&self, state: &LoadedState) -> bool {
+    pub fn matches(&self, state: &LoadedState) -> bool {
         self.binding == *state.binding() && self.origin.as_ref() == state.observed_snapshot()
     }
 }
