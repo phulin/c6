@@ -166,6 +166,10 @@ impl StatePhasePlan {
     pub fn publications(&self) -> &[reporting::Publication] {
         &self.publications
     }
+    /// Readonly query branches computed while projecting synchronous reports.
+    pub fn snapshot_observations(&self) -> &[reporting::SnapshotObservation] {
+        &self.snapshots
+    }
 }
 
 #[must_use = "a prepared SkipTurn must be committed or deliberately discarded"]
