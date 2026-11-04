@@ -91,8 +91,7 @@ pub enum QueryError {
     NullCityInterface,
     NullCity,
     MissingCachedUnit(u64),
-    MissingBestDefender(PlotCoord),
-    MapGeometry,
+    Defender(crate::combat_defender::Error),
     Rules(&'static str),
     Combat(RulesError),
     State(c6_core::loaded_state::Error),
@@ -353,32 +352,21 @@ fn test_garrison(state: &LoadedState, defs: &Definitions, r: &Receiver) -> Resul
                 if !d.is_complete || internal {
                     continue;
                 }
-                // Has/GetGarrisonedUnit both delegate GetBestDefender(-1,-1,
-                // null,0). Complete empty membership proves the null result;
-                // nonempty combat selection remains an explicit dependency.
-                let map = state.world().map();
-                let index = d
-                    .location
-                    .1
-                    .wrapping_mul(map.units.width as i32)
-                    .wrapping_add(d.location.0) as u32 as usize;
-                if index >= map.plots.len() {
-                    return Err(QueryError::MapGeometry);
+                let at = PlotCoord {
+                    x: d.location.0,
+                    y: d.location.1,
+                };
+                // Preserve BOTH native calls. HasGarrisonedUnit first selects
+                // and rechecks IsCombat; only its true result invokes the
+                // independent GetGarrisonedUnit selection and IsCombat again.
+                if crate::combat_defender::garrison_lookup(state, &defs.combat, at)
+                    .map_err(QueryError::Defender)?
+                    .is_none()
+                {
+                    continue;
                 }
-                for layer in &map.units.layers {
-                    if !state
-                        .world()
-                        .plot_units(layer.layer_id, index)
-                        .map_err(QueryError::World)?
-                        .is_empty()
-                    {
-                        return Err(QueryError::MissingBestDefender(PlotCoord {
-                            x: d.location.0,
-                            y: d.location.1,
-                        }));
-                    }
-                }
-                None
+                crate::combat_defender::garrison_lookup(state, &defs.combat, at)
+                    .map_err(QueryError::Defender)?
             }
         };
         if let Some(u) = candidate {

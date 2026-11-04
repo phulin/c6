@@ -9,6 +9,7 @@ pub mod city_services;
 pub mod city_wire;
 pub mod codec;
 pub mod combat;
+pub mod combat_defender;
 pub mod combat_random;
 pub mod core_player;
 pub mod core_stream;
