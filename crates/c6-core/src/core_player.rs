@@ -1722,6 +1722,7 @@ pub(crate) mod tests {
                 promotion_hashes: vec![3735879687],
             }],
             off_map_spies: vec![pmod::OffMapSpy {
+                wire_version: 17,
                 unit_type_hash: 3735879683,
                 name_index: -996,
                 level: -995,

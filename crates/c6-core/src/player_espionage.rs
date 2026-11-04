@@ -182,19 +182,80 @@ record!(CapturedSpy, true, {
     promotion_hash:u32,
     promotion_hashes:Vec<u32>,
 });
-record!(OffMapSpy, true, {
-    unit_type_hash:u32,
-    name_index:i32,
-    level:i32,
-    experience_points:i32,
-    return_turn:i32,
-    return_x:i32,
-    return_y:i32,
-    return_city_owner_ordinal:i32,
-    ai_controller:u32,
-    promotion_hashes:Vec<u32>,
-    old_unit_id:u32,
-});
+/// Independently tagged OffMapSpy wire data. All fields are present at15/17;
+/// hashes and the AI controller bits are retained without native index guesses.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OffMapSpy {
+    pub wire_version: u32,
+    pub unit_type_hash: u32,
+    pub name_index: i32,
+    pub level: i32,
+    pub experience_points: i32,
+    pub return_turn: i32,
+    pub return_x: i32,
+    pub return_y: i32,
+    pub return_city_owner_ordinal: i32,
+    pub ai_controller: u32,
+    pub promotion_hashes: Vec<u32>,
+    pub old_unit_id: u32,
+}
+impl Wire for OffMapSpy {
+    const MIN: usize = 4
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <u32 as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "OffMapSpy";
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 15 | 17) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            unit_type_hash: <u32 as Wire>::read(r)?,
+            name_index: <i32 as Wire>::read(r)?,
+            level: <i32 as Wire>::read(r)?,
+            experience_points: <i32 as Wire>::read(r)?,
+            return_turn: <i32 as Wire>::read(r)?,
+            return_x: <i32 as Wire>::read(r)?,
+            return_y: <i32 as Wire>::read(r)?,
+            return_city_owner_ordinal: <i32 as Wire>::read(r)?,
+            ai_controller: <u32 as Wire>::read(r)?,
+            promotion_hashes: <Vec<u32> as Wire>::read(r)?,
+            old_unit_id: <u32 as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.unit_type_hash.write(w)?;
+        self.name_index.write(w)?;
+        self.level.write(w)?;
+        self.experience_points.write(w)?;
+        self.return_turn.write(w)?;
+        self.return_x.write(w)?;
+        self.return_y.write(w)?;
+        self.return_city_owner_ordinal.write(w)?;
+        self.ai_controller.write(w)?;
+        self.promotion_hashes.write(w)?;
+        self.old_unit_id.write(w)?;
+        Ok(())
+    }
+}
+
 record!(CityWithSources, true, {
     player_ordinal:i32,
     city_id:u32,
@@ -395,6 +456,7 @@ mod tests {
                 promotion_hashes: vec![0xf1234567, 0xf1234567, 0xffffffff],
             }],
             off_map_spies: vec![OffMapSpy {
+                wire_version: VERSION,
                 unit_type_hash: 0x80000000,
                 name_index: 17,
                 level: -3,
@@ -506,10 +568,118 @@ mod tests {
         assert_eq!(Espionage::decode(&bytes, limits()).unwrap(), value);
         assert_eq!(value.encode_with_items(limits()).unwrap().1, 11);
     }
+    fn off_map_spy15_literal() -> Vec<u8> {
+        let mut bytes = Vec::new();
+        // Own tag; unit hash, name, level, XP, return turn, x/y, owner,
+        // raw AI controller, then ordered promotion hashes and old full Unit ID.
+        for value in [
+            15u32,
+            0xfedcba98,
+            (-17i32) as u32,
+            3,
+            (-257i32) as u32,
+            51,
+            u32::MAX,
+            77,
+            62,
+            0x87654321,
+            2,
+            u32::MAX,
+            u32::MAX,
+            0xab010007,
+        ] {
+            bytes.extend(value.to_le_bytes());
+        }
+        bytes
+    }
+    #[test]
+    fn off_map_spy15_retains_all_fields_in_source_wire_order() {
+        let mut bytes = off_map_spy15_literal();
+        let end = bytes.len();
+        bytes.extend([0xaa, 0xbb]);
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        let mut r = Reader {
+            data: &bytes,
+            pos: 0,
+            items: 0,
+            allocated: 0,
+            limits: exact,
+            version_component: "Espionage",
+        };
+        let v = OffMapSpy::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (end, 2));
+        assert_eq!(v.wire_version, 15);
+        assert_eq!(
+            (v.unit_type_hash, v.ai_controller, v.old_unit_id),
+            (0xfedcba98, 0x87654321, 0xab010007)
+        );
+        assert_eq!(
+            (v.name_index, v.level, v.experience_points, v.return_turn),
+            (-17, 3, -257, 51)
+        );
+        assert_eq!(
+            (v.return_x, v.return_y, v.return_city_owner_ordinal),
+            (-1, 77, 62)
+        );
+        assert_eq!(v.promotion_hashes, vec![u32::MAX, u32::MAX]);
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: exact,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        for n in 0..end {
+            let mut r = Reader {
+                data: &bytes[..n],
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: exact,
+                version_component: "Espionage",
+            };
+            assert!(OffMapSpy::read(&mut r).is_err(), "{n}");
+        }
+        let mut bad = bytes.clone();
+        bad[..4].copy_from_slice(&16u32.to_le_bytes());
+        let mut r = Reader {
+            data: &bad,
+            pos: 0,
+            items: 0,
+            allocated: 0,
+            limits: exact,
+            version_component: "Espionage",
+        };
+        assert_eq!(
+            OffMapSpy::read(&mut r),
+            Err(Error::Version {
+                expected: 17,
+                actual: 16
+            })
+        );
+        let mut count = bytes.clone();
+        count[40..44].copy_from_slice(&u32::MAX.to_le_bytes());
+        let mut r = Reader {
+            data: &count,
+            pos: 0,
+            items: 0,
+            allocated: 0,
+            limits: exact,
+            version_component: "Espionage",
+        };
+        assert_eq!(OffMapSpy::read(&mut r), Err(Error::ResourceLimit));
+    }
     #[test]
     fn espionage15_preserves_unknown_omitted_lists_and_present_history() {
         let mut b = Vec::new();
-        for v in [15i32, 7, 0, 0, 0, -1, 2, -3, 1] {
+        for v in [15i32, 7, 0, 1] {
+            b.extend(v.to_le_bytes());
+        }
+        b.extend(off_map_spy15_literal());
+        for v in [0i32, -1, 2, -3, 1] {
             b.extend(v.to_le_bytes());
         }
         let history_tag = b.len();
@@ -520,11 +690,12 @@ mod tests {
         b.extend([0xaa, 0xbb]);
         let exact = Limits {
             max_bytes: end,
-            max_items: 1,
+            max_items: 4,
         };
         let (v, used, items) = Espionage::decode_prefix_with_items(&b, exact).unwrap();
-        assert_eq!((used, items, v.wire_version), (end, 1, 15));
+        assert_eq!((used, items, v.wire_version), (end, 4, 15));
         assert_eq!(v.spy_capacity, 7);
+        assert_eq!(v.off_map_spies[0].wire_version, 15);
         assert_eq!(
             (
                 v.global_offense_bonus,
