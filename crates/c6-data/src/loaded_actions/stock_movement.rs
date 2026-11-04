@@ -366,6 +366,17 @@ impl<'a, P> loaded_upkeep::Effects for Runtime<'a, P> {
         if self.binding != *state.binding() {
             return Err(Error::Missing("player state identity"));
         }
+        if let Some(services) = &self.player_services {
+            let mut rows = services.players.iter().filter(|row| row.owner == owner);
+            let level = rows
+                .next()
+                .and_then(|row| row.civilization_level)
+                .ok_or(Error::Missing("current civilization level"))?;
+            if rows.next().is_some() {
+                return Err(Error::Missing("ambiguous civilization level"));
+            }
+            return Ok(level == 0xd959ec24);
+        }
         let mut rows = self
             .movement()?
             .civilization_levels

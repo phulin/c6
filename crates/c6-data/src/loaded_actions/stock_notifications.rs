@@ -18,6 +18,8 @@ pub mod skip_turn;
 pub mod movement;
 #[path = "stock_manager_queries.rs"]
 mod manager_queries;
+#[path = "stock_activation.rs"]
+mod activation;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
