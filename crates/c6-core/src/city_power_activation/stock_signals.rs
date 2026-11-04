@@ -16,7 +16,10 @@ pub struct Requirement {
     pub active: bool,
     pub state: i32,
     pub inverse: bool,
+    /// Separate IsPersistent flag; it does not promote successful state to four.
     pub persistent: bool,
+    /// IsTriggered (definition virtual slot +0x60) promotes success to four.
+    pub triggered: bool,
 }
 pub trait RequirementContext {
     type Error;
@@ -80,7 +83,7 @@ pub fn city_is_powered_changed<C: RequirementContext>(
         } else {
             tested
         };
-        if state.persistent && state.state == 0 {
+        if state.triggered && state.state == 0 {
             state.state = 4;
         }
         (old, state.state)
@@ -233,6 +236,7 @@ mod tests {
                 state: 1,
                 inverse: false,
                 persistent: false,
+                triggered: false,
             },
             subject: SubjectCity::City(id(3)),
             reads: 0,
@@ -262,12 +266,24 @@ mod tests {
         assert_eq!(c.reads, 1);
     }
     #[test]
-    fn persistent_success_dispatches_even_when_already_four() {
+    fn triggered_success_dispatches_even_when_already_four() {
         let mut c = r();
-        c.r.persistent = true;
+        c.r.triggered = true;
         c.r.state = 4;
         city_is_powered_changed(&mut c, (), id(3)).unwrap();
         assert_eq!(c.events, [(4, 4)]);
+    }
+    #[test]
+    fn persistent_and_triggered_success_are_distinct() {
+        for (persistent, triggered, expected) in [(true, false, 0), (false, true, 4)] {
+            let mut c = r();
+            c.r.persistent = persistent;
+            c.r.triggered = triggered;
+            city_is_powered_changed(&mut c, (), id(3)).unwrap();
+            assert_eq!(c.r.state, expected);
+            assert_eq!(c.events, [(1, expected)]);
+            assert_eq!(c.reads, 2);
+        }
     }
     #[test]
     fn inverse_and_unchanged_state_follow_native_table() {
