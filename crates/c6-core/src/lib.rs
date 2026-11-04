@@ -459,3 +459,4 @@ pub mod game_national_parks;
 pub mod game_stats;
 pub mod game_history;
 pub mod game_eras;
+pub mod game_archaeology;
