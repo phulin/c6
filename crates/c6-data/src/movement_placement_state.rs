@@ -821,6 +821,25 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             }
         }
     }
+    /// Query the actual supplied current/staged Unit record against this
+    /// borrowed World. Identity is resolved, but its fields are not replaced by
+    /// the older World actor during readonly action preparation.
+    pub fn unit_record_placement(
+        &self,
+        current: &LoadedState,
+        unit: &Unit,
+        destination: PlotCoord,
+        request: PlacementRequest,
+    ) -> Result<i32, Error> {
+        if current.binding() != self.state.binding()
+            || current.action_stamp() != self.state.action_stamp()
+        {
+            return Err(Error::Binding);
+        }
+        self.subject(unit.e_owner, unit.id)?;
+        self.query(unit, destination, request)
+    }
+
     /// Actual Unit placement query; no adjacency requirement is invented here.
     pub fn unit_placement(
         &self,

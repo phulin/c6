@@ -149,6 +149,7 @@ pub struct Provider<'a> {
     skip_turn_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
+    placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
 }
 impl<'a> Provider<'a> {
     pub fn new(
@@ -163,8 +164,24 @@ impl<'a> Provider<'a> {
             skip_turn_handler: None,
             snapshots: Vec::new(),
             command_queries: None,
+            placement_queries: None,
         }
     }
+    /// Reuse the computed shore-placement provider for the exact flags1,
+    /// null-output/empty-filter HasAdjacentMove call. The context borrows the
+    /// same current World and admitted definitions/configuration; no predicate
+    /// answers are supplied here. Actor overlay fields remain the query input.
+    pub fn bind_placement_queries(
+        &mut self,
+        context: &'a crate::movement_placement_state::Context<'a, 'a, 'a>,
+    ) -> Result<(), Error> {
+        if self.placement_queries.is_some() {
+            return Err(Error::Provider("placement queries already bound"));
+        }
+        self.placement_queries = Some(context);
+        Ok(())
+    }
+
     /// Bind reconstructed/observed current stock command state once. This
     /// establishes consistency only; actual startup/code authority is external.
     pub fn bind_command_queries(
@@ -753,6 +770,17 @@ impl<'a> Provider<'a> {
         plot: &Plot,
         coord: PlotCoord,
     ) -> Result<bool, Error> {
+        if let Some(queries) = self.placement_queries {
+            return queries
+                .unit_record_placement(
+                    state,
+                    unit,
+                    coord,
+                    c6_core::movement_shore::PlacementRequest::shore_query(false),
+                )
+                .map(|result| result == 1)
+                .map_err(Error::MovementPlacement);
+        }
         let runtime = state
             .unit_runtime(unit.e_owner, unit.id)
             .map_err(Error::State)?;
