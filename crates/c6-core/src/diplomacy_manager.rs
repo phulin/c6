@@ -44,6 +44,7 @@ pub enum Error {
     StatementInventoryAlreadyInitialized,
     ExecutionProfileAlreadyInitialized,
     PendingActionsUnavailable,
+    PendingActionsAlreadyInitialized,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -619,6 +620,19 @@ impl Manager {
         &mut self.open_sessions
     }
     /// None means contents were not observed; Some(empty) proves emptiness.
+    /// Fill previously unknown current runtime state once. LoadedState supplies
+    /// the initial-only same-snapshot admission guard, not a guessed empty list.
+    pub(crate) fn initialize_pending_actions(
+        &mut self,
+        actions: Vec<PendingAction>,
+    ) -> Result<(), Error> {
+        if self.pending_actions.is_some() {
+            return Err(Error::PendingActionsAlreadyInitialized);
+        }
+        self.invalidate_drain_plans();
+        self.pending_actions = Some(actions);
+        Ok(())
+    }
     pub fn pending_actions_known(&self) -> Option<&[PendingAction]> {
         self.pending_actions.as_deref()
     }

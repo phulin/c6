@@ -1,5 +1,6 @@
 //! Current Player.DoAutomation prefix and logical linked-unit cursor. Unit
 //! records must be in actual native live-chain order. No sorted ID snapshot.
+pub mod diplomacy;
 use super::{missing, required};
 use crate::{game_update::Error, loaded_state::LoadedState, unit::Unit};
 
@@ -26,6 +27,8 @@ pub struct UnitWork {
 }
 #[derive(Debug)]
 pub struct RequiresDiplomacy {
+    instance: u64,
+    stamp: crate::loaded_state::ActionStamp,
     pub owner: i32,
     pub human: bool,
     pub any_attention: bool,
@@ -202,6 +205,8 @@ impl Frame {
         }
         processing(state, -1)?;
         Ok(RequiresDiplomacy {
+            instance: self.instance,
+            stamp: state.action_stamp(),
             owner: self.owner,
             human: self.human,
             any_attention: self.any_attention,

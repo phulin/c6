@@ -1,6 +1,7 @@
 //! Operations.Manager.UpdateAutomation2da18b0, called for EVERY current unit
 //! during Player.DoAutomation. It does not choose new player orders.
 pub mod alert;
+pub mod diplomacy;
 use crate::skip_turn::StartData;
 
 pub trait Context {

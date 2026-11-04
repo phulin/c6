@@ -7,7 +7,7 @@ pub enum Pending {
     SessionStatements,
     Action,
     Deal,
-    HumanSessionStatements,
+    AiSessionStatements,
 }
 pub trait World {
     type Player: Copy;
@@ -64,7 +64,7 @@ pub fn select<W: World>(w: &mut W) -> Result<Vec<i32>, Error> {
                 has_pending = w.pending(current, Pending::Deal)?;
             }
             if !has_pending {
-                has_pending = w.pending(1, Pending::HumanSessionStatements)?;
+                has_pending = w.pending(1, Pending::AiSessionStatements)?;
             }
             if has_pending && !w.multiplayer()? {
                 continue;

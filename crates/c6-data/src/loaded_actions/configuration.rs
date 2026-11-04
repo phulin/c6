@@ -200,6 +200,11 @@ impl<'a> Configuration<'a> {
         self.require_binding(binding)?;
         Ok(self.game.game_mode.ok_or(Error::Missing("game_mode"))? == 0x10ff95a6)
     }
+    /// Native IsAnyMultiplayer28e4cf0 reads only the current GameMode key.
+    pub fn is_any_multiplayer(&self, binding: &WireBinding) -> Result<bool, Error> {
+        self.require_binding(binding)?;
+        Ok(self.game.game_mode.ok_or(Error::Missing("game_mode"))? != 0xe9685ee7)
+    }
     pub fn is_network_multiplayer(&self, binding: &WireBinding) -> Result<bool, Error> {
         self.require_binding(binding)?;
         Ok(matches!(
