@@ -2077,10 +2077,12 @@ pub(crate) mod tests {
             embarked_movement_modifier: -1984,
             upgrade_military_formation_on_city_conquest_count: -1983,
             promotion_selections: vec![pmod::RandomPromotionSelection {
+                wire_version: 22,
                 promotion_hash: 3203334162,
                 times_selected: -1981,
             }],
             proposed_promotions: vec![pmod::ProposedPromotion {
+                wire_version: 22,
                 promotion_hash: 3203334163,
                 unit_id: 3203334164,
             }],

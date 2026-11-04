@@ -354,8 +354,45 @@ record!(MapPair, 0, { key: u32, value: u32 });
 record!(DistrictFoundingUnits, 0, { key: u32, values: Vec<MapPair> });
 // These nested records write their own current Player.Units version.
 // Unit and promotion enum overloads write definition hashes.
-record!(RandomPromotionSelection, 22, { promotion_hash: u32, times_selected: i32 });
-record!(ProposedPromotion, 22, { promotion_hash: u32, unit_id: u32 });
+// These two readers consume their own tag and then both fields unconditionally.
+// Admit the observed legacy16 and current22 profiles without borrowing the outer tag.
+macro_rules! promotion_record {
+    ($name:ident, $field:ident: $ty:ty) => {
+        #[derive(Clone, Debug, Eq, PartialEq)]
+        pub struct $name {
+            pub wire_version: u32,
+            pub promotion_hash: u32,
+            pub $field: $ty,
+        }
+        impl Wire for $name {
+            const MIN: usize = 12;
+            fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+                let wire_version = u32::read(r)?;
+                if wire_version != 16 && wire_version != VERSION {
+                    return Err(Error::Version {
+                        expected: VERSION,
+                        actual: wire_version,
+                    });
+                }
+                Ok(Self {
+                    wire_version,
+                    promotion_hash: u32::read(r)?,
+                    $field: <$ty>::read(r)?,
+                })
+            }
+            fn write(&self, w: &mut Writer) -> Result<(), Error> {
+                if self.wire_version != VERSION {
+                    return Err(Error::UnsupportedLegacyWrite);
+                }
+                self.wire_version.write(w)?;
+                self.promotion_hash.write(w)?;
+                self.$field.write(w)
+            }
+        }
+    };
+}
+promotion_record!(RandomPromotionSelection, times_selected: i32);
+promotion_record!(ProposedPromotion, unit_id: u32);
 record!(BasePromotion, 22, { unit_hash: u32, promotion_hash: u32, count: i32 });
 // Unlike the other sequence counts, native free-pass count is signed i32:
 // writer 0x2ba1bae; reader 0x2ba2136, sign extension 0x2ba214a.
@@ -782,10 +819,12 @@ mod tests {
             embarked_movement_modifier: -7,
             upgrade_military_formation_on_city_conquest_count: -6,
             promotion_selections: vec![RandomPromotionSelection {
+                wire_version: 22,
                 promotion_hash: 0xf1234567,
                 times_selected: -7,
             }],
             proposed_promotions: vec![ProposedPromotion {
+                wire_version: 22,
                 promotion_hash: u32::MAX,
                 unit_id: 0xffff0001,
             }],
@@ -1223,5 +1262,58 @@ mod tests {
         b[..4].copy_from_slice(&17u32.to_le_bytes());
         let boundary = Units::decode_prefix_with_boundary(&b, limits()).unwrap_err();
         assert_eq!((boundary.component, boundary.consumed), ("Units", 4));
+    }
+    #[test]
+    fn legacy16_promotion_records_keep_independent_tags_and_identifiers() {
+        let value = sample();
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: Limits::default(),
+        };
+        value.promotion_selections.write(&mut w).unwrap();
+        value.proposed_promotions.write(&mut w).unwrap();
+        assert_eq!(w.data.len(), 32);
+        w.data[4..8].copy_from_slice(&16u32.to_le_bytes());
+        w.data[20..24].copy_from_slice(&16u32.to_le_bytes());
+        let read = |data: &[u8], budget: usize| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                limits: Limits {
+                    max_bytes: 32,
+                    max_items: budget,
+                },
+                unit_start: None,
+            };
+            let selections = Vec::<RandomPromotionSelection>::read(&mut r)?;
+            let proposed = Vec::<ProposedPromotion>::read(&mut r)?;
+            Ok::<_, Error>((selections, proposed, r.pos, r.items))
+        };
+        let (selections, proposed, n, items) = read(&w.data, 2).unwrap();
+        assert_eq!((n, items), (32, 2));
+        assert_eq!(selections[0].wire_version, 16);
+        assert_eq!(selections[0].promotion_hash, 0xf1234567);
+        assert_eq!(selections[0].times_selected, -7);
+        assert_eq!(proposed[0].wire_version, 16);
+        assert_eq!(proposed[0].promotion_hash, u32::MAX);
+        assert_eq!(proposed[0].unit_id, 0xffff0001);
+        assert_eq!(selections.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert_eq!(proposed.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        let original = &w.data[..32];
+        for n in 0..32 {
+            assert!(read(&original[..n], 2).is_err());
+        }
+        assert_eq!(read(original, 1), Err(Error::ResourceLimit));
+        let mut bad = original.to_vec();
+        bad[4..8].copy_from_slice(&15u32.to_le_bytes());
+        assert_eq!(
+            read(&bad, 2),
+            Err(Error::Version {
+                expected: 22,
+                actual: 15
+            })
+        );
     }
 }
