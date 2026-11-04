@@ -5,6 +5,8 @@
 //! are mandatory providers, never invented values or silent no-ops. This is not
 //! native RestoreMovement acceptance, complete action execution, or a turn.
 use crate::unit_movement_state::{self, Inputs};
+mod activation;
+pub use activation::activate_unit;
 use c6_core::{
     formation_upkeep::{self, BooleanQuery, FormationUpkeepContext, IntegerQuery},
     loaded_state::LoadedState,
@@ -51,6 +53,7 @@ pub enum Error<E> {
     State(c6_core::loaded_state::Error),
     Movement(unit_movement_state::Error),
     Rules(crate::loaded_actions::Error),
+    Unsupported(&'static str),
     Provider(E),
     Formation(Box<formation_upkeep::FormationUpkeepError<Error<E>>>),
 }
@@ -356,6 +359,31 @@ impl<C: FormationRestoreContinuations> FormationRestoreEffects for RulesEffects<
     ) -> Result<(), Self::Error> {
         self.continuations
             .formation_restored(state, report)
+            .map_err(RulesEffectError::Continuation)
+    }
+}
+
+impl<C> AttacksReports for RulesEffects<'_, C>
+where
+    C: Continuations + AttacksReports<Error = <C as Continuations>::Error>,
+{
+    type Error = RulesEffectError<<C as Continuations>::Error>;
+    fn preflight_attacks_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+    ) -> Result<(), Self::Error> {
+        self.continuations
+            .preflight_attacks_report(state, actor)
+            .map_err(RulesEffectError::Continuation)
+    }
+    fn attacks_report(
+        &mut self,
+        state: &mut LoadedState,
+        report: AttacksRemainingReport,
+    ) -> Result<(), Self::Error> {
+        self.continuations
+            .attacks_report(state, report)
             .map_err(RulesEffectError::Continuation)
     }
 }
