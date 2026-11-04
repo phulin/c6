@@ -6,6 +6,7 @@ use crate::formation_initialization::FormationRuntime;
 use crate::loaded_components::{self, OwnedCore, RetainedPlayer};
 use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
+pub mod turn_completion;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -133,6 +134,55 @@ mod tests {
             processing_automation: Some(-1),
             pause_storage: Some(0),
         }
+    }
+
+    #[test]
+    fn loaded_turn_completion_uses_canonical_flag_and_retains_failure_prefix() {
+        use crate::turn_completion::{Error as TurnError, LogBranch, Prefix, NONE};
+        struct Effects;
+        impl turn_completion::Effects for Effects {
+            fn log(&mut self, _: &mut LoadedState, _: LogBranch, _: i32) -> Result<(), TurnError> {
+                Ok(())
+            }
+            fn report(&mut self, _: &mut LoadedState, _: u32, _: i32) -> Result<(), TurnError> {
+                Err(TurnError::Unsupported("subscriber"))
+            }
+            fn edit_build_queue(
+                &mut self,
+                _: &mut LoadedState,
+                _: i32,
+                _: u32,
+            ) -> Result<(), TurnError> {
+                Err(TurnError::Unsupported("archive"))
+            }
+        }
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let input = controls(&state);
+        state.bind_controls(input).unwrap();
+        state.retained.core.player_processor.player_complete[owner as usize] = false;
+        let mut effects = Effects;
+        let mut context = turn_completion::Context {
+            state: &mut state,
+            effects: &mut effects,
+        };
+        assert!(matches!(
+            context.execute(owner, NONE),
+            Ok(Prefix::RequiresGameUpdate(_))
+        ));
+        assert!(context.state.retained.core.player_processor.player_complete[owner as usize]);
+        assert_eq!(context.state.revision(), 1);
+        assert_eq!(context.execute(owner, NONE), Ok(Prefix::AlreadyComplete));
+        assert_eq!(context.state.revision(), 1);
+        context.state.retained.core.player_processor.player_complete[owner as usize] = false;
+        context.state.controls.as_mut().unwrap().players[0].is_alive = None;
+        assert!(context.execute(owner, NONE).is_err());
+        assert!(context.state.retained.core.player_processor.player_complete[owner as usize]);
+        assert_eq!(context.state.revision(), 2);
+        context.state.retained.core.player_processor.player_complete[owner as usize] = false;
+        context.state.revision = u64::MAX;
+        assert!(context.execute(owner, NONE).is_err());
+        assert!(!context.state.retained.core.player_processor.player_complete[owner as usize]);
     }
 
     // Source-only complete typed actor; no native initialization is inferred.

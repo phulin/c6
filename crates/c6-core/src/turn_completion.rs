@@ -44,7 +44,8 @@ pub trait World {
     fn is_turn_active(&mut self, player: Self::Player) -> Result<bool, Error>;
     fn is_paused(&mut self, game: Self::Game) -> Result<bool, Error>;
     /// Actual Player::ms_abIsTurnComplete, not a field of a serialized player.
-    fn completion_flags(&mut self) -> &mut [bool; 64];
+    fn completion_flag(&mut self, id: usize) -> Result<bool, Error>;
+    fn set_completion_flag(&mut self, id: usize, complete: bool) -> Result<(), Error>;
     fn is_valid_slot(&mut self, manager: Self::PlayerManager, slot: i32) -> Result<bool, Error>;
     /// Exact logging-options/format/service branch; callbacks cannot be omitted.
     fn log(&mut self, branch: LogBranch, player: Self::Player) -> Result<(), Error>;
@@ -120,13 +121,7 @@ pub fn set_turn_complete<W: World>(
     reason: u32,
 ) -> Result<bool, Error> {
     let id = world.player_id(player)?;
-    let flag = world
-        .completion_flags()
-        .get_mut(id)
-        .ok_or(Error::Unsupported(
-            "requested player ID outside global completion array",
-        ))?;
-    *flag = complete;
+    world.set_completion_flag(id, complete)?;
     if complete {
         let manager = world.player_manager()?;
         for slot in 0..64 {
@@ -201,9 +196,7 @@ pub fn execute_prefix<W: World>(
         return Ok(Prefix::PausedHuman);
     }
     let id = world.player_id(player)?;
-    let complete = *world.completion_flags().get(id).ok_or(Error::Unsupported(
-        "requested player ID outside global completion array",
-    ))?;
+    let complete = world.completion_flag(id)?;
     if complete {
         world.log(LogBranch::AlreadyComplete, player)?;
         return Ok(Prefix::AlreadyComplete);
@@ -318,8 +311,18 @@ mod tests {
             self.events.push(format!("paused:{game}"));
             Ok(game == 10 && self.paused)
         }
-        fn completion_flags(&mut self) -> &mut [bool; 64] {
-            &mut self.flags
+        fn completion_flag(&mut self, id: usize) -> Result<bool, Error> {
+            self.flags
+                .get(id)
+                .copied()
+                .ok_or(Error::Unsupported("completion index"))
+        }
+        fn set_completion_flag(&mut self, id: usize, complete: bool) -> Result<(), Error> {
+            *self
+                .flags
+                .get_mut(id)
+                .ok_or(Error::Unsupported("completion index"))? = complete;
+            Ok(())
         }
         fn is_valid_slot(&mut self, manager: usize, slot: i32) -> Result<bool, Error> {
             self.events.push(format!("valid:{manager}:{slot}"));
