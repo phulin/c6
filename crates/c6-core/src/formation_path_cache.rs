@@ -5,6 +5,36 @@
 use crate::pathfinder::{PathCallbacks, TwoLayer};
 use crate::unit::{Formation, PathNode, PlotCoord};
 
+/// Formation::Instance::ClearPathCache (0x293d8e0). Clear nodes before assigning
+/// the invalid coordinate pair, retaining every other Formation field.
+pub fn clear_path_cache(formation: &mut Formation) {
+    formation.last_path.clear();
+    formation.last_path_cache_location = PlotCoord { x: -9999, y: -9999 };
+}
+
+/// Formation::Movement::MoveTo's final cache continuation (0x2948034..2948081).
+/// Call after CompleteMovement and its callbacks, on the retained current
+/// Formation. A successful step with at least three retained nodes removes the
+/// origin node; a shorter nonempty path clears the entire cache. Empty paths
+/// return turn one without changing the retained cache destination.
+pub fn finish_movement_path(formation: &mut Formation, placement_result: i32) -> i32 {
+    let count = formation.last_path.len();
+    if count == 0 {
+        return 1;
+    }
+    let turn = if placement_result == 1 {
+        formation.last_path[0].data2
+    } else {
+        0
+    };
+    if placement_result == 1 && count >= 3 {
+        formation.last_path.pop();
+    } else {
+        clear_path_cache(formation);
+    }
+    turn
+}
+
 /// Additional Formation::GeneratePath inputs. Domain membership must retain
 /// actual unit lookup semantics; visibility must use the formation owner.
 pub trait GenerationContext: PathCallbacks {
@@ -193,6 +223,54 @@ pub fn add_path_metadata<E>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn formation(path_len: usize) -> Formation {
+        Formation {
+            id: 1,
+            location: PlotCoord { x: 1, y: 1 },
+            owner: 0,
+            moves_remaining_raw: 256,
+            domain: 2,
+            is_embarked: false,
+            can_embark: false,
+            can_attack: false,
+            is_ranged_combat: false,
+            can_capture: false,
+            has_moved: false,
+            has_moved_into_zoc: false,
+            ignores_zoc: false,
+            last_path: (0..path_len)
+                .map(|i| PathNode {
+                    data1_raw: 0,
+                    data2: 3,
+                    flags: 0,
+                    x: i as i16,
+                    y: 0,
+                })
+                .collect(),
+            last_path_cache_location: PlotCoord { x: 9, y: 9 },
+            unit_ids: vec![1],
+        }
+    }
+    #[test]
+    fn movement_finish_clears_short_paths_and_preserves_empty_destination() {
+        let mut f = formation(0);
+        assert_eq!(finish_movement_path(&mut f, 0), 1);
+        assert_eq!(f.last_path_cache_location, PlotCoord { x: 9, y: 9 });
+        let mut f = formation(2);
+        assert_eq!(finish_movement_path(&mut f, 1), 3);
+        assert!(f.last_path.is_empty());
+        assert_eq!(f.last_path_cache_location, PlotCoord { x: -9999, y: -9999 });
+        let mut f = formation(3);
+        assert_eq!(finish_movement_path(&mut f, 1), 3);
+        assert_eq!(
+            f.last_path.iter().map(|n| n.x).collect::<Vec<_>>(),
+            vec![0, 1]
+        );
+        assert_eq!(f.last_path_cache_location, PlotCoord { x: 9, y: 9 });
+        assert_eq!(finish_movement_path(&mut f, 2), 0);
+        assert!(f.last_path.is_empty());
+        assert_eq!(f.last_path_cache_location, PlotCoord { x: -9999, y: -9999 });
+    }
     #[test]
     fn metadata_preserves_strict_following_node_bound() {
         let node = |x| PathNode {
