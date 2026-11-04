@@ -443,3 +443,7 @@ pub mod unit_moved_signal;
 pub mod plot_adjacent_owner_requirement;
 
 pub mod lua_math_random;
+
+pub mod game_update;
+
+pub mod simple_requirement;

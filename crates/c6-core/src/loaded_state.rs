@@ -6,6 +6,7 @@ use crate::formation_initialization::FormationRuntime;
 use crate::loaded_components::{self, OwnedCore, RetainedPlayer};
 use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
+pub mod game_update;
 pub mod turn_completion;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
@@ -183,6 +184,137 @@ mod tests {
         context.state.revision = u64::MAX;
         assert!(context.execute(owner, NONE).is_err());
         assert!(!context.state.retained.core.player_processor.player_complete[owner as usize]);
+    }
+
+    struct UpdateServices;
+    impl game_update::Services for UpdateServices {
+        type Alive = ();
+        fn alive_begin(
+            &mut self,
+            state: &LoadedState,
+        ) -> Result<((), usize), crate::game_update::Error> {
+            Ok(((), state.world.players().len()))
+        }
+        fn alive_at(
+            &mut self,
+            state: &LoadedState,
+            _: (),
+            index: usize,
+        ) -> Result<i32, crate::game_update::Error> {
+            Ok(state.world.players()[index].owner())
+        }
+        fn unavailable_units(
+            &mut self,
+            _: &mut LoadedState,
+            _: i32,
+        ) -> Result<i32, crate::game_update::Error> {
+            panic!("last-initial-turn match must skip UnitCounts")
+        }
+        fn notify_turn_request(
+            &mut self,
+            _: &mut LoadedState,
+            _: u32,
+        ) -> Result<(), crate::game_update::Error> {
+            Err(crate::game_update::Error::Unsupported(
+                "actual notify consumer",
+            ))
+        }
+        fn autoplay_transition(
+            &mut self,
+            _: &mut LoadedState,
+            _: &mut game_update::Runtime,
+            _: bool,
+        ) -> Result<(), crate::game_update::Error> {
+            panic!("known no-pending source branch must skip transition")
+        }
+    }
+    fn update_inputs(local: Option<i32>) -> game_update::Inputs {
+        game_update::Inputs {
+            autoplay: game_update::AutoplayInputs {
+                end_turn_signaled: Some(true),
+                has_pending_state_change: Some(false),
+                pending_state: None,
+                active: None,
+            },
+            needs_update: None,
+            auto_player_game: Some(false),
+            local_player: local,
+        }
+    }
+    #[test]
+    fn loaded_game_update_retains_current_selection_and_canonical_processor_storage() {
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let mut input = controls(&state);
+        input.players[0].turn_active = true;
+        state.bind_controls(input).unwrap();
+        let turn = state.retained.core.current_turn;
+        state.retained.core.game_processor.turn_complete = false;
+        state.retained.core.game_processor.new_game = false;
+        state.retained.core.game_processor.last_ai_processed_turn = turn;
+        state.retained.core.game_processor.last_initial_ai[owner as usize] = turn;
+        let mut runtime = game_update::Runtime::new(&state, update_inputs(Some(-1)));
+        let mut ctx = game_update::Context::new(&mut state, &mut runtime, UpdateServices).unwrap();
+        assert_eq!(
+            ctx.run_prefix(),
+            Err(crate::game_update::Error::Unsupported(
+                "Game.Update requires selected Player.Update gameplay callbacks"
+            ))
+        );
+        assert_eq!(
+            ctx.runtime.pending(),
+            Some(&crate::game_update::Continuation::PlayerUpdates(vec![
+                owner
+            ]))
+        );
+        assert_eq!(ctx.runtime.inputs.needs_update, Some(false));
+        assert_eq!(ctx.runtime.inputs.autoplay.end_turn_signaled, Some(false));
+        assert_eq!(
+            ctx.state
+                .retained
+                .core
+                .game_processor
+                .last_ai_processed_turn,
+            turn
+        );
+        assert!(ctx.state.turn_active(owner).unwrap());
+        assert_eq!(ctx.state.revision(), 2);
+        assert!(ctx.prepare_prefix().is_err());
+        assert_eq!(ctx.state.revision(), 2);
+    }
+    #[test]
+    fn loaded_game_update_notify_failure_retains_prefix_without_marking_ai_processed() {
+        let mut state = state();
+        let mut input = controls(&state);
+        input.players[0].turn_active = true;
+        state.bind_controls(input).unwrap();
+        state.retained.core.game_processor.turn_complete = false;
+        state.retained.core.game_processor.new_game = false;
+        let old = state.retained.core.current_turn.wrapping_sub(1);
+        state.retained.core.game_processor.last_ai_processed_turn = old;
+        let mut input = update_inputs(None);
+        input.auto_player_game = None;
+        let mut runtime = game_update::Runtime::new(&state, input);
+        let mut ctx = game_update::Context::new(&mut state, &mut runtime, UpdateServices).unwrap();
+        assert_eq!(
+            ctx.run_prefix(),
+            Err(crate::game_update::Error::Unsupported(
+                "actual notify consumer"
+            ))
+        );
+        assert!(ctx.runtime.failed());
+        assert!(ctx.runtime.pending().is_none());
+        assert_eq!(
+            ctx.state
+                .retained
+                .core
+                .game_processor
+                .last_ai_processed_turn,
+            old
+        );
+        assert_eq!(ctx.state.revision(), 2);
+        assert!(ctx.prepare_prefix().is_err());
+        assert_eq!(ctx.state.revision(), 2);
     }
 
     // Source-only complete typed actor; no native initialization is inferred.

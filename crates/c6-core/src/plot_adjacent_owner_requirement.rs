@@ -1,21 +1,8 @@
 //! Linux XP2 PlotAdjacentToOwner::Test and SimpleRequirement invalidation.
 //! Plot interfaces are resolved from live typed objects by the data adapter;
 //! no observed Test answer is accepted. Changed-state consumers are synchronous.
-use crate::{
-    city_power_activation::stock_signals::inverse_state,
-    geometry::plot_valid,
-    unit::PlotCoord,
-};
-
-/// Distinct definition flags: IsTriggered controls state four; IsPersistent does not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Requirement {
-    pub active: bool,
-    pub state: i32,
-    pub inverse: bool,
-    pub persistent: bool,
-    pub triggered: bool,
-}
+pub use crate::simple_requirement::Requirement;
+use crate::{geometry::plot_valid, simple_requirement, unit::PlotCoord};
 
 pub trait PlotContext {
     type Error;
@@ -66,47 +53,31 @@ pub fn test<C: PlotContext>(c: &mut C) -> Result<i32, C::Error> {
     })
 }
 
-/// The scalar portion of SetState(enum,notify), shared with the existing
-/// CityIsPowered inverse mapping, with its own definition flags. Active status is checked by callers.
-fn next_state(requirement: &Requirement, tested: i32) -> i32 {
-    let state = if requirement.inverse {
-        inverse_state(tested)
-    } else {
-        tested
-    };
-    if requirement.triggered && state == 0 {
-        4
-    } else {
-        state
+struct Simple<'a, C>(&'a mut C);
+impl<C: Context> simple_requirement::Context for Simple<'_, C> {
+    type Error = C::Error;
+    fn active(&mut self) -> Result<bool, Self::Error> {
+        self.0.active()
+    }
+    fn requirement(&mut self) -> Result<&mut Requirement, Self::Error> {
+        self.0.requirement()
+    }
+    fn changed(&mut self, old: i32, new: i32) -> Result<(), Self::Error> {
+        self.0.changed(old, new)
     }
 }
-
-/// 0x233b060. The second active guard occurs after the virtual Test. Equal state
-/// four still dispatches; notify=false still assigns but suppresses dispatch.
+impl<C: Context> simple_requirement::TestContext for Simple<'_, C> {
+    fn test(&mut self) -> Result<i32, Self::Error> {
+        test(self.0)
+    }
+}
+/// Shared native SimpleRequirement state assignment; existing API retained.
 pub fn set_state<C: Context>(c: &mut C, tested: i32, notify: bool) -> Result<(), C::Error> {
-    if !c.active()? {
-        return Ok(());
-    }
-    let (old, new) = {
-        let requirement = c.requirement()?;
-        (requirement.state, next_state(requirement, tested))
-    };
-    let signal = notify && (old != new || new == 4);
-    c.requirement()?.state = new;
-    if signal {
-        c.changed(old, new)?
-    }
-    Ok(())
+    simple_requirement::set_state(&mut Simple(c), tested, notify)
 }
-
-/// Invalidate0x233a290 -> SetState(bool=true)0x233ad40 -> virtual Test ->
-/// SetState(enum,true). This callback ignores incoming Unit/old/new arguments.
+/// This callback ignores incoming Unit/old/new arguments.
 pub fn invalidate<C: Context>(c: &mut C) -> Result<(), C::Error> {
-    if !c.active()? {
-        return Ok(());
-    }
-    let tested = test(c)?;
-    set_state(c, tested, true)
+    simple_requirement::invalidate(&mut Simple(c))
 }
 
 #[cfg(test)]

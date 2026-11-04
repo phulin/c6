@@ -66,6 +66,18 @@ pub fn get_unit_counts(
     count_records(state, owner, queries, None)
 }
 
+/// Zero-construct UnitCounts, then execute raw Player.Processor.GetUnitCounts
+/// (2b5c0d0). Unlike the CommandUnits notification wrapper, this includes
+/// nonhuman players; their already-processed units contribute only to total.
+/// Current formation/readiness/cycling dependencies retain the shared loop.
+pub fn processor_unit_counts(
+    state: &LoadedState,
+    owner: i32,
+    queries: &reporting::Provider<'_>,
+) -> Result<UnitCounts, Error> {
+    processor_count_records(state, owner, queries, None)
+}
+
 /// Read the staged actor without committing it or cloning World. The complete
 /// before records and unchanged runtime basis are checked even for early exits.
 pub(crate) fn get_unit_counts_overlay(
@@ -85,17 +97,28 @@ fn count_records(
     queries: &reporting::Provider<'_>,
     overlay: Option<&reporting::ActorOverlay<'_>>,
 ) -> Result<UnitCounts, Error> {
+    if owner == -1 || state.player_slot_status(owner).map_err(Error::State)? != 3 {
+        return Ok(UnitCounts::default());
+    }
+    processor_count_records(state, owner, queries, overlay)
+}
+
+fn processor_count_records(
+    state: &LoadedState,
+    owner: i32,
+    queries: &reporting::Provider<'_>,
+    overlay: Option<&reporting::ActorOverlay<'_>>,
+) -> Result<UnitCounts, Error> {
     let mut counts = UnitCounts::default();
-    if owner == -1 {
-        return Ok(counts);
-    }
-    if state.player_slot_status(owner).map_err(Error::State)? != 3 {
-        return Ok(counts);
-    }
     let player = state.world().player(owner).map_err(Error::World)?;
-    for slot in player.unit_records().map_err(Error::World)? {
+    let units = player.unit_records().map_err(Error::World)?;
+    let human = state.player_slot_status(owner).map_err(Error::State)? == 3;
+    for slot in units {
         let unit = overlay.map_or(&slot.value, |overlay| overlay.unit(&slot.value));
         counts.total = counts.total.wrapping_add(1);
+        if !human && unit.b_processed_turn {
+            continue;
+        }
         if unit.b_delayed_death {
             continue;
         }
