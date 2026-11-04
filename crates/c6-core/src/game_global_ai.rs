@@ -342,30 +342,94 @@ record!(CityReligionAnalysis, 4, {
 });
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Religious {
+    pub wire_version: u32,
     pub initialized_raw: u8,
     pub body: Option<ReligiousBody>,
 }
-record!(ReligiousBody, 0, {
-    player_ordinal:i32, religion_hash:u32, flag_118:u8,
-    beliefs:Vec<HashBeliefAnalysis>, handles:Vec<ControlHandle>, handle:ControlHandle,
-    flag_130:u8, cities:Vec<CityReligionAnalysis>, yields:Vec<HashQ8>,
-});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReligiousBody {
+    pub player_ordinal: i32,
+    pub religion_hash: u32,
+    pub flag_118: u8,
+    pub beliefs: Vec<HashBeliefAnalysis>,
+    pub handles: Vec<ControlHandle>,
+    pub handle: ControlHandle,
+    pub flag_130: u8,
+    pub cities: Vec<CityReligionAnalysis>,
+    /// Serialized pairs only. Empty at5 means no wire entries; native Read
+    /// resets actual Yield definition indices to0 without revealing their count.
+    pub yields: Vec<HashQ8>,
+}
+impl ReligiousBody {
+    fn read_in_version(r: &mut Reader<'_>, version: u32) -> Result<Self, Error> {
+        Ok(Self {
+            player_ordinal: <i32 as Wire>::read(r)?,
+            religion_hash: <u32 as Wire>::read(r)?,
+            flag_118: <u8 as Wire>::read(r)?,
+            beliefs: <Vec<HashBeliefAnalysis> as Wire>::read(r)?,
+            handles: <Vec<ControlHandle> as Wire>::read(r)?,
+            handle: <ControlHandle as Wire>::read(r)?,
+            flag_130: <u8 as Wire>::read(r)?,
+            cities: <Vec<CityReligionAnalysis> as Wire>::read(r)?,
+            yields: if version == 6 {
+                Vec::<HashQ8>::read(r)?
+            } else {
+                Vec::new()
+            },
+        })
+    }
+}
+impl Wire for ReligiousBody {
+    const MIN: usize = 34;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Self::read_in_version(r, 6)
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        self.player_ordinal.write(w)?;
+        self.religion_hash.write(w)?;
+        self.flag_118.write(w)?;
+        self.beliefs.write(w)?;
+        self.handles.write(w)?;
+        self.handle.write(w)?;
+        self.flag_130.write(w)?;
+        self.cities.write(w)?;
+        self.yields.write(w)?;
+        Ok(())
+    }
+}
+impl Religious {
+    /// True only for a present5 body: native Read resets every actual Yield
+    /// definition index to raw-Q8 zero. Its definition count remains unknown.
+    pub fn omitted_yields_reset_to_zero(&self) -> bool {
+        self.wire_version == 5 && self.body.is_some()
+    }
+}
 impl Wire for Religious {
     const MIN: usize = 5;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(6)?;
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 5 | 6) {
+            return Err(Error::Version {
+                expected: 6,
+                actual: wire_version,
+            });
+        }
         let initialized_raw = u8::read(r)?;
         let body = if initialized_raw != 0 {
-            Some(ReligiousBody::read(r)?)
+            Some(ReligiousBody::read_in_version(r, wire_version)?)
         } else {
             None
         };
         Ok(Self {
+            wire_version,
             initialized_raw,
             body,
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 6 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         if (self.initialized_raw != 0) != self.body.is_some() {
             return Err(Error::ConditionalBody);
         }
@@ -466,6 +530,7 @@ mod tests {
             },
             religious: ReligiousManager {
                 entries: vec![Religious {
+                    wire_version: 6,
                     initialized_raw: flag,
                     body: if flag == 0 {
                         None
@@ -532,6 +597,84 @@ mod tests {
             ],
             yields_d0: vec![],
         }
+    }
+    #[test]
+    fn religious5_zero_reset_is_not_an_empty_effective_yield_array() {
+        let mut b = 5u32.to_le_bytes().to_vec();
+        b.push(0xff);
+        for word in [u32::MAX, 0x81234567] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        b.push(0xfe);
+        for word in [0u32, 0, 1, i32::MIN as u32, u32::MAX] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        b.push(0x80);
+        b.extend_from_slice(&0u32.to_le_bytes());
+        b.push(0xaa);
+        let decode = |data: &[u8], max_bytes| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items: 0,
+                },
+            };
+            Religious::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&b, 39).unwrap();
+        assert_eq!((v.wire_version, v.initialized_raw, n, i), (5, 255, 39, 0));
+        assert!(v.omitted_yields_reset_to_zero());
+        let body = v.body.as_ref().unwrap();
+        assert_eq!(
+            (
+                body.player_ordinal,
+                body.religion_hash,
+                body.flag_118,
+                body.flag_130
+            ),
+            (-1, 0x81234567, 0xfe, 0x80)
+        );
+        assert!(body.yields.is_empty());
+        assert_eq!(
+            (body.handle.player_ordinal, body.handle.id),
+            (i32::MIN, u32::MAX)
+        );
+        for cut in 0..39 {
+            assert!(decode(&b[..cut], 39).is_err());
+        }
+        assert!(decode(&b, 38).is_err());
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        let mut current = b[..39].to_vec();
+        current[..4].copy_from_slice(&6u32.to_le_bytes());
+        assert!(decode(&current, 43).is_err());
+        current.extend_from_slice(&0u32.to_le_bytes());
+        let v = decode(&current, 43).unwrap().0;
+        assert!(!v.omitted_yields_reset_to_zero());
+        v.write(&mut w).unwrap();
+        assert_eq!(w.data, current);
+        let absent = [5, 0, 0, 0, 0, 0xee];
+        let (v, n, i) = decode(&absent, 5).unwrap();
+        assert_eq!((n, i), (5, 0));
+        assert!(v.body.is_none());
+        assert!(!v.omitted_yields_reset_to_zero());
+        b[..4].copy_from_slice(&4u32.to_le_bytes());
+        assert_eq!(
+            decode(&b, 39),
+            Err(Error::Version {
+                expected: 6,
+                actual: 4
+            })
+        );
     }
     #[test]
     fn espionage2_analysis2_omissions_preserve_unknown_prior_and_cursor() {
