@@ -2,6 +2,20 @@
 use super::{Error, LoadedState, MissingInput};
 
 impl LoadedState {
+    /// Current canonical owner collection. Reserve revision before exposing it;
+    /// callbacks may change collection size, so callers must reacquire it.
+    pub fn cities_mut(&mut self, owner: i32) -> Result<&mut crate::core_player::Cities, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        let player = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
+            .ok_or(Error::Binding)?;
+        self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        Ok(&mut self.retained.players[player].cities)
+    }
+
     /// Resolve full current identity before reserving a mutation revision.
     /// Callers keep any partially applied transition explicit on later failure.
     pub fn city_mut(&mut self, owner: i32, id: u32) -> Result<&mut crate::city::City, Error> {
@@ -71,5 +85,280 @@ impl LoadedState {
             component_type: 2,
             id: allocation.id,
         }))
+    }
+}
+
+#[cfg(test)]
+mod placed_tests {
+    use super::*;
+    use crate::{
+        city_initialization as base,
+        found_city::{creation, Creation},
+        unit::{ComponentId, PlotCoord},
+    };
+    struct Context {
+        state: LoadedState,
+        log: Vec<&'static str>,
+        reverse_capital: bool,
+        placement: i32,
+        rename_invalidates_location: bool,
+    }
+    impl base::Context for Context {
+        type Error = &'static str;
+        fn state(&self) -> &LoadedState {
+            &self.state
+        }
+        fn state_mut(&mut self) -> &mut LoadedState {
+            &mut self.state
+        }
+        fn subscribe_city_signals(&mut self, _: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("subscribe");
+            Ok(())
+        }
+        fn initialize_city_build(&mut self, _: ComponentId) -> Result<Option<u32>, Self::Error> {
+            self.log.push("citybuild");
+            Ok(Some(77))
+        }
+    }
+    impl creation::Context for Context {
+        fn generate_name(
+            &mut self,
+            _: ComponentId,
+            first: bool,
+            _: PlotCoord,
+        ) -> Result<Vec<u8>, Self::Error> {
+            assert!(first);
+            self.log.push("name");
+            crate::found_city::names::mark_used(
+                self.state.game_city_names_mut().unwrap(),
+                b"Capital",
+            )
+            .unwrap();
+            Ok(b"Capital".to_vec())
+        }
+        fn renamed_signal(&mut self, c: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("renamed");
+            if self.rename_invalidates_location {
+                let v = self.state.city_mut(i32::from(c.owner), c.id).unwrap();
+                v.header.location_x = -9999;
+            }
+            Ok(())
+        }
+        fn report(&mut self, h: u32, _: ComponentId) -> Result<(), Self::Error> {
+            self.log.push(if h == 0x7bbb_e6e0 {
+                "capitalreport"
+            } else {
+                "namereport"
+            });
+            Ok(())
+        }
+        fn place(
+            &mut self,
+            c: ComponentId,
+            p: PlotCoord,
+            initializing: bool,
+        ) -> Result<i32, Self::Error> {
+            assert!(!initializing);
+            self.log.push("place");
+            let v = self.state.city_mut(i32::from(c.owner), c.id).unwrap();
+            v.header.location_x = p.x;
+            v.header.location_y = p.y;
+            Ok(self.placement)
+        }
+        fn destroy_failed_placement(&mut self, _: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("destroy");
+            Err("required destroy")
+        }
+        fn city_created(&mut self, _: ComponentId, _: bool) -> Result<(), Self::Error> {
+            self.log.push("created");
+            Ok(())
+        }
+        fn current_continent(&mut self, _: ComponentId) -> Result<u32, Self::Error> {
+            self.log.push("continent");
+            Ok(0x12345678)
+        }
+        fn settled_on_continent(&mut self, _: ComponentId, _: u32) -> Result<(), Self::Error> {
+            self.log.push("settled");
+            Ok(())
+        }
+        fn is_free_cities(&mut self, _: i32) -> Result<bool, Self::Error> {
+            self.log.push("freecities");
+            Ok(false)
+        }
+        fn capital_changed(&mut self, c: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("capital");
+            if self.reverse_capital {
+                self.state
+                    .city_mut(i32::from(c.owner), c.id)
+                    .unwrap()
+                    .header
+                    .capital = false;
+            }
+            Ok(())
+        }
+        fn add_palace(&mut self, _: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("palace");
+            Ok(())
+        }
+        fn cultural_identity_created(&mut self, _: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("culture");
+            Ok(())
+        }
+        fn check_production(&mut self, _: ComponentId) -> Result<(), Self::Error> {
+            self.log.push("production");
+            Ok(())
+        }
+    }
+    fn context() -> Context {
+        let mut state = super::super::tests::state();
+        let binding = state.binding().clone();
+        state
+            .install_game_city_names(
+                &binding,
+                crate::game_name_manager_wire::NameManager {
+                    wire_version: 1,
+                    used_names: vec![],
+                },
+                None,
+            )
+            .unwrap();
+        let owner = state.retained.players[0].header.owner;
+        let cities = state.cities_mut(owner).unwrap();
+        cities.records = crate::map::Recycled {
+            capacity: 0,
+            entries: vec![],
+            current_id_bits: 0,
+            free_head: u32::MAX,
+            free_tail: u32::MAX,
+            free_links: vec![],
+        };
+        cities.settled_continent_hashes.clear();
+        Context {
+            state,
+            log: vec![],
+            reverse_capital: false,
+            placement: 1,
+            rename_invalidates_location: false,
+        }
+    }
+    fn create(context: &mut Context) -> Result<Option<ComponentId>, creation::Error<&'static str>> {
+        let owner = context.state.retained.players[0].header.owner;
+        let definitions = base::Definitions {
+            yields: &[0, 1],
+            units: &[],
+            buildings: &[],
+            districts: &[],
+            projects: &[],
+            terrains: &[],
+            resources: &[],
+            features: &[],
+            production_yield: 1,
+            loyalty_start: 100,
+            building_support: &[],
+        };
+        creation::create(
+            context,
+            &definitions,
+            base::Parameters {
+                original_owner: owner,
+                transfer_type: 0x61723064,
+                original_capital: true,
+                founded_turn: 8,
+            },
+            Creation {
+                owner,
+                location: PlotCoord { x: 18, y: 11 },
+                transfer_type: 0x61723064,
+                first_city: true,
+                original_capital: true,
+            },
+            false,
+        )
+    }
+    #[test]
+    fn placed_creation_edits_canonical_identity_and_preserves_synchronous_order() {
+        let mut c = context();
+        let city = create(&mut c).unwrap().unwrap();
+        let v = c.state.city(i32::from(city.owner), city.id).unwrap();
+        assert_eq!(city.id, 65536);
+        assert_eq!(v.header.city_ai_id, 77);
+        assert_eq!(v.turn_city_founded, 8);
+        assert_eq!(v.header.name, b"Capital");
+        assert!(v.header.capital && v.header.original_capital);
+        assert_eq!(
+            c.state.game_city_names().unwrap().used_names,
+            [b"Capital".to_vec()]
+        );
+        let p = c
+            .state
+            .retained
+            .players
+            .iter()
+            .find(|p| p.header.owner == i32::from(city.owner))
+            .unwrap();
+        assert_eq!(p.cities.home_continent_hash, 0x12345678);
+        assert_eq!(p.cities.settled_continent_hashes, [0x12345678]);
+        assert_eq!(
+            c.log,
+            [
+                "subscribe",
+                "citybuild",
+                "name",
+                "place",
+                "created",
+                "continent",
+                "settled",
+                "freecities",
+                "capital",
+                "capitalreport",
+                "palace",
+                "culture",
+                "production"
+            ]
+        );
+    }
+    #[test]
+    fn callbacks_are_reread_and_missing_destroy_retains_explicit_prefix() {
+        let mut c = context();
+        c.reverse_capital = true;
+        let city = create(&mut c).unwrap().unwrap();
+        assert!(!c.log.contains(&"palace"));
+        assert!(
+            !c.state
+                .city(i32::from(city.owner), city.id)
+                .unwrap()
+                .header
+                .capital
+        );
+        c.log.clear();
+        c.rename_invalidates_location = true;
+        creation::set_name(&mut c, city, b"Renamed\0ignored").unwrap();
+        assert_eq!(c.log, ["renamed"]);
+        assert_eq!(
+            c.state
+                .city(i32::from(city.owner), city.id)
+                .unwrap()
+                .header
+                .name,
+            b"Renamed"
+        );
+        let mut failed = context();
+        failed.placement = 0;
+        assert!(matches!(
+            create(&mut failed),
+            Err(creation::Error::Effect("required destroy"))
+        ));
+        assert_eq!(
+            failed.log,
+            ["subscribe", "citybuild", "name", "place", "destroy"]
+        );
+        assert_eq!(
+            failed.state.retained.players[0]
+                .cities
+                .records
+                .entries
+                .len(),
+            1
+        );
     }
 }
