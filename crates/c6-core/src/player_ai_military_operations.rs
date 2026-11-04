@@ -1,4 +1,4 @@
-// Included by player_ai_military.rs. Current pinned Linux saved wire only.
+// Included by player_ai_military.rs. Current and bounded legacy Linux saved wire.
 // Evidence and reproducible source checks: docs/linux-military-operations-contract.md.
 
 /// Native narrow string storage: a u32 byte count followed by those exact bytes.
@@ -30,16 +30,148 @@ impl Wire for SavedString {
     }
 }
 
-record!(TeamRequirement, 2, {
-    unit_tag_hash: i32, unit_requirement_hash: i32, min_units: i32,
-    max_units: i32, min_percentage_bits: u32, max_percentage_bits: u32,
-    reconsider_until_ready: BoolByte,
-});
-record!(TeamDefinition, 2, {
-    min_units: i32, max_units: i32, strength_advantage_bits: u32,
-    ongoing_strength_advantage_bits: u32, safe_rally_point: BoolByte,
-    condition_hash: u32, requirements: Vec<TeamRequirement>,
-});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TeamRequirement {
+    pub wire_version: u32,
+    pub unit_tag_hash: i32,
+    pub unit_requirement_hash: i32,
+    pub min_units: i32,
+    pub max_units: i32,
+    pub min_percentage_bits: u32,
+    pub max_percentage_bits: u32,
+    pub reconsider_until_ready: BoolByte,
+}
+impl Default for TeamRequirement {
+    fn default() -> Self {
+        Self {
+            wire_version: 2,
+            unit_tag_hash: Default::default(),
+            unit_requirement_hash: Default::default(),
+            min_units: Default::default(),
+            max_units: Default::default(),
+            min_percentage_bits: Default::default(),
+            max_percentage_bits: Default::default(),
+            reconsider_until_ready: Default::default(),
+        }
+    }
+}
+impl Wire for TeamRequirement {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <BoolByte as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 1 | 2) {
+            return Err(Error::Version {
+                expected: 2,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            unit_tag_hash: <i32 as Wire>::read(r)?,
+            unit_requirement_hash: if wire_version == 2 {
+                <i32 as Wire>::read(r)?
+            } else {
+                -1
+            },
+            min_units: <i32 as Wire>::read(r)?,
+            max_units: <i32 as Wire>::read(r)?,
+            min_percentage_bits: <u32 as Wire>::read(r)?,
+            max_percentage_bits: <u32 as Wire>::read(r)?,
+            reconsider_until_ready: <BoolByte as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 2 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        2u32.write(w)?;
+        self.unit_tag_hash.write(w)?;
+        self.unit_requirement_hash.write(w)?;
+        self.min_units.write(w)?;
+        self.max_units.write(w)?;
+        self.min_percentage_bits.write(w)?;
+        self.max_percentage_bits.write(w)?;
+        self.reconsider_until_ready.write(w)?;
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TeamDefinition {
+    pub wire_version: u32,
+    pub min_units: i32,
+    pub max_units: i32,
+    pub strength_advantage_bits: u32,
+    pub ongoing_strength_advantage_bits: u32,
+    pub safe_rally_point: BoolByte,
+    pub condition_hash: u32,
+    pub requirements: Vec<TeamRequirement>,
+}
+impl Default for TeamDefinition {
+    fn default() -> Self {
+        Self {
+            wire_version: 2,
+            min_units: Default::default(),
+            max_units: Default::default(),
+            strength_advantage_bits: Default::default(),
+            ongoing_strength_advantage_bits: Default::default(),
+            safe_rally_point: Default::default(),
+            condition_hash: Default::default(),
+            requirements: Default::default(),
+        }
+    }
+}
+impl Wire for TeamDefinition {
+    const MIN: usize = 4
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <Vec<TeamRequirement> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 1 | 2) {
+            return Err(Error::Version {
+                expected: 2,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            min_units: <i32 as Wire>::read(r)?,
+            max_units: <i32 as Wire>::read(r)?,
+            strength_advantage_bits: <u32 as Wire>::read(r)?,
+            ongoing_strength_advantage_bits: <u32 as Wire>::read(r)?,
+            safe_rally_point: <BoolByte as Wire>::read(r)?,
+            condition_hash: if wire_version == 2 {
+                <u32 as Wire>::read(r)?
+            } else {
+                u32::MAX
+            },
+            requirements: <Vec<TeamRequirement> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 2 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        2u32.write(w)?;
+        self.min_units.write(w)?;
+        self.max_units.write(w)?;
+        self.strength_advantage_bits.write(w)?;
+        self.ongoing_strength_advantage_bits.write(w)?;
+        self.safe_rally_point.write(w)?;
+        self.condition_hash.write(w)?;
+        self.requirements.write(w)?;
+        Ok(())
+    }
+}
 /// Independently versioned saved OperationDef; no planning or native initialization runs.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OperationDef {
@@ -264,6 +396,119 @@ mod operation_wire_tests {
         words(&mut raw, &[u32::MAX, 1]);
         raw.push(255);
         raw
+    }
+    #[test]
+    fn legacy_team_rows_defaults_and_occurrence_limits() {
+        let mut raw = Vec::new();
+        for v in [
+            1u32,
+            i32::MIN as u32,
+            i32::MAX as u32,
+            0x7fc00001,
+            0xffc01234,
+        ] {
+            raw.extend_from_slice(&v.to_le_bytes());
+        }
+        raw.push(197);
+        raw.extend_from_slice(&2u32.to_le_bytes());
+        for tag in [u32::MAX, 0x80000000] {
+            for v in [
+                1u32,
+                tag,
+                i32::MIN as u32,
+                i32::MAX as u32,
+                0x7fc00001,
+                0xffc01234,
+            ] {
+                raw.extend_from_slice(&v.to_le_bytes());
+            }
+            raw.push(197);
+        }
+        assert_eq!(raw.len(), 75);
+        let cap = Limits {
+            max_bytes: 75,
+            max_items: 2,
+        };
+        let mut r = Reader {
+            context: None,
+            data: &raw,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        let v = TeamDefinition::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (75, 2));
+        assert_eq!(v.wire_version, 1);
+        assert_eq!(v.condition_hash, u32::MAX);
+        assert_eq!(v.strength_advantage_bits, 0x7fc00001);
+        assert_eq!(v.ongoing_strength_advantage_bits, 0xffc01234);
+        for row in &v.requirements {
+            assert_eq!(row.wire_version, 1);
+            assert_eq!(row.unit_requirement_hash, -1);
+            assert_eq!(row.reconsider_until_ready, BoolByte(197));
+        }
+        assert_eq!(v.requirements[0].unit_tag_hash, -1);
+        assert_eq!(v.requirements[1].unit_tag_hash, i32::MIN);
+        let mut w = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits: cap,
+            measuring: true,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..raw.len() {
+            let mut r = Reader {
+                context: None,
+                data: &raw[..n],
+                pos: 0,
+                items: 0,
+                limits: cap,
+            };
+            assert!(TeamDefinition::read(&mut r).is_err());
+        }
+        for limits in [
+            Limits {
+                max_bytes: 74,
+                ..cap
+            },
+            Limits {
+                max_items: 1,
+                ..cap
+            },
+        ] {
+            let mut r = Reader {
+                context: None,
+                data: &raw,
+                pos: 0,
+                items: 0,
+                limits,
+            };
+            assert_eq!(TeamDefinition::read(&mut r), Err(Error::ResourceLimit));
+        }
+        let mut bad = raw.clone();
+        bad[25..29].copy_from_slice(&3u32.to_le_bytes());
+        let mut r = Reader {
+            context: None,
+            data: &bad,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        assert_eq!(
+            TeamDefinition::read(&mut r),
+            Err(Error::Version {
+                expected: 2,
+                actual: 3
+            })
+        );
+        assert_eq!(
+            (
+                TeamDefinition::default().wire_version,
+                TeamRequirement::default().wire_version
+            ),
+            (2, 2)
+        );
     }
     #[test]
     fn operation_definition5_defaults_and_exact_budgets() {
