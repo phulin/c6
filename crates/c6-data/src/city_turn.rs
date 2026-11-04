@@ -3,6 +3,7 @@
 //! are shared turn/founding effects, never substituted by a population scalar.
 use crate::{unit_initialization_definitions::collection, Rules, RulesProfile, SqlValue};
 use c6_core::{city_growth, loaded_state::LoadedState};
+pub mod growth;
 pub mod religion;
 
 #[derive(Debug)]
@@ -31,6 +32,7 @@ pub struct GrowthRules {
     religions: crate::registry::LinuxDefinitionRegistry,
     pub atheism_pressure_per_pop: i32,
     pub adjacent_religion_distance: i32,
+    pub food_consumption_per_population: i32,
     pub parameters: city_growth::Parameters,
 }
 fn numeric(value: &SqlValue) -> Option<f64> {
@@ -101,6 +103,7 @@ impl GrowthRules {
                 .map_err(Error::Definitions)?,
             atheism_pressure_per_pop: int("RELIGION_SPREAD_ATHEISM_PRESSURE_PER_POP")?,
             adjacent_religion_distance: int("RELIGION_SPREAD_ADJACENT_CITY_DISTANCE")?,
+            food_consumption_per_population: int("CITY_FOOD_CONSUMPTION_PER_POPULATION")?,
             parameters: city_growth::Parameters {
                 base: int("CITY_GROWTH_THRESHOLD")?,
                 multiplier: int("CITY_GROWTH_MULTIPLIER")?,

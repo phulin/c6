@@ -241,3 +241,26 @@ pub fn mark_nearby_cities_dirty(
     }
     Ok(())
 }
+
+/// AddReligiousPressure with the founding reason (10). Its native pre-report
+/// branch is exclusive to reason8; pressure addition and recomputation still
+/// run for zero/negative input, and the old majority is read before the add.
+#[allow(clippy::too_many_arguments)]
+pub fn add_founding_pressure(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    religion_hash: u32,
+    pressure_raw_q8: i32,
+    converter: i32,
+    rules: &GrowthRules,
+    effects: &mut impl Effects,
+) -> Result<(), Error> {
+    let old = state.city(owner, city)?.religion.majority_religion_hash;
+    core::add_pressure(
+        &mut state.city_mut(owner, city)?.religion.religion_status,
+        religion_hash,
+        pressure_raw_q8,
+    );
+    recompute(state, owner, city, old, converter, rules, effects)
+}
