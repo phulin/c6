@@ -126,12 +126,39 @@ impl ScriptState {
 }
 
 /// Concrete immutable definitions and input authorities for this command.
+#[derive(Clone, Copy)]
 pub struct Inputs<'a, 'd, 'capture> {
     pub operation: &'a super::Inputs<'a, 'd>,
     pub handlers: &'a handlers::BoundHandlers<'capture>,
     pub reports: &'a reporting::Definitions,
     pub movement: &'a crate::unit_movement_state::Inputs<'a>,
     pub report_scope: reporting::Scope,
+}
+
+/// Typed current inputs for the six stock auto-notification queries. These
+/// are owner fields and immutable rules, never captured predicate answers.
+/// Native fixture attribution belongs to the initial-state adapter.
+pub struct AutoNotificationInputs<'a> {
+    pub definitions: &'a super::notifications::Definitions,
+    pub technology_definitions: &'a super::choose_tech::Definitions,
+    pub technology: super::choose_tech::CurrentPlayer<'a>,
+    pub technology_graph: Option<&'a super::choose_tech::GameTechs>,
+    pub culture_definitions: &'a super::culture_notifications::Definitions,
+    pub culture: super::culture_notifications::CurrentPlayer<'a>,
+    pub culture_graph: Option<&'a super::culture_notifications::GameCulture>,
+    pub starting: Option<&'a super::culture_notifications::StartingContext>,
+    pub city_range: &'a super::city_range_attack::Queries<'a>,
+    pub placement: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
+}
+
+#[derive(Debug)]
+pub enum AutoQueryError {
+    Technology(super::choose_tech::Error),
+    Culture(super::culture_notifications::Error),
+}
+
+fn auto_query_error(error: AutoQueryError) -> Error {
+    Error::AutoNotificationQuery(Box::new(error))
 }
 
 /// Computed records and required deferred effects. There is deliberately no
@@ -642,6 +669,156 @@ fn check_initial_blocking_query_effects(
     Ok(())
 }
 
+fn plan_auto_notification_queries(
+    state: &LoadedState,
+    phase: &StatePhasePlan,
+    inputs: &Inputs<'_, '_, '_>,
+    auto: AutoNotificationInputs<'_>,
+    trace: &mut Vec<Event>,
+) -> Result<(), Error> {
+    use super::{choose_tech, command_units, culture_notifications};
+    let owner = phase.before.reference.player();
+    if auto.technology.owner != owner
+        || auto.culture.owner != owner
+        || auto.technology.binding != state.binding()
+        || auto.culture.binding != state.binding()
+    {
+        return Err(Error::ConfigurationIdentity);
+    }
+    let slot_status = state.player_slot_status(owner).map_err(Error::State)?;
+    if auto
+        .technology
+        .slot_status
+        .is_some_and(|value| value != slot_status)
+        || auto
+            .culture
+            .slot_status
+            .is_some_and(|value| value != slot_status)
+        || auto
+            .technology
+            .city_count
+            .is_some_and(|count| count != auto.culture.city_count)
+    {
+        return Err(Error::ConfigurationIdentity);
+    }
+    let expected = [
+        choose_tech::TYPE_HASH,
+        command_units::TYPE_HASH,
+        super::city_range_attack::TYPE_HASH,
+        culture_notifications::Kind::ConsiderGovernmentChange.type_hash(),
+        culture_notifications::Kind::FillCivicSlot.type_hash(),
+        culture_notifications::Kind::ChooseCivic.type_hash(),
+    ];
+    if auto
+        .definitions
+        .ordered()
+        .iter()
+        .filter(|d| d.auto_notify)
+        .map(|d| d.type_hash)
+        .ne(expected)
+    {
+        return Err(Error::Unsupported(
+            "auto-notification ordered subtype definitions",
+        ));
+    }
+    let research = auto
+        .technology_definitions
+        .current_player(owner, auto.technology, auto.technology_graph)
+        .map_err(|e| auto_query_error(AutoQueryError::Technology(e)))?;
+    let needed = research
+        .is_needed(true)
+        .map_err(|e| auto_query_error(AutoQueryError::Technology(e)))?;
+    trace.push(Event::AutoNotificationQuery {
+        type_hash: expected[0],
+        needed,
+    });
+    if needed {
+        return Err(Error::Unsupported(
+            "auto-notification Add/report effects require semantic planning",
+        ));
+    }
+
+    let mut queries =
+        reporting::Provider::new(inputs.reports, inputs.movement, inputs.report_scope);
+    if let Some(placement) = auto.placement {
+        queries.bind_placement_queries(placement)?;
+    }
+    // Initialize stores the first count. IsNeeded then calls IsExpired, which
+    // computes the second count; neither query is silently omitted.
+    let initial = command_units::get_unit_counts_overlay(
+        state,
+        owner,
+        &queries,
+        &phase.before,
+        &phase.after,
+    )?;
+    let current = command_units::get_unit_counts_overlay(
+        state,
+        owner,
+        &queries,
+        &phase.before,
+        &phase.after,
+    )?;
+    let needed = current.command_count() > 0 && current.command_count() == initial.command_count();
+    trace.push(Event::AutoNotificationQuery {
+        type_hash: expected[1],
+        needed,
+    });
+    if needed {
+        return Err(Error::Unsupported(
+            "auto-notification Add/report effects require semantic planning",
+        ));
+    }
+
+    let city =
+        super::city_range_attack::first_ranged_attack_city_id(state, owner, auto.city_range)?;
+    let needed = city != u32::MAX;
+    trace.push(Event::AutoNotificationQuery {
+        type_hash: expected[2],
+        needed,
+    });
+    if needed {
+        return Err(Error::Unsupported(
+            "auto-notification Add/report effects require semantic planning",
+        ));
+    }
+
+    let culture = auto
+        .culture_definitions
+        .current_player(
+            owner,
+            auto.culture,
+            auto.culture_graph,
+            Some(&research),
+            auto.starting,
+        )
+        .map_err(|e| auto_query_error(AutoQueryError::Culture(e)))?;
+    for kind in [
+        culture_notifications::Kind::ConsiderGovernmentChange,
+        culture_notifications::Kind::FillCivicSlot,
+        culture_notifications::Kind::ChooseCivic,
+    ] {
+        let needed = culture
+            .is_needed(kind, true)
+            .map_err(|e| auto_query_error(AutoQueryError::Culture(e)))?;
+        trace.push(Event::AutoNotificationQuery {
+            type_hash: kind.type_hash(),
+            needed,
+        });
+        if needed {
+            return Err(Error::Unsupported(
+                "auto-notification Add/report effects require semantic planning",
+            ));
+        }
+    }
+    // The six temporary objects have no needed notification. Plain parameter,
+    // localization and pool representation are omitted in the stock headless
+    // projection; this does not replace the final synchronous observer.
+    Err(Error::Unsupported(
+        "MessagesProcessed YieldMonitor query effects require semantic planning",
+    ))
+}
+
 /// Compute outgoing diplomacy and qualify the initial notification reduction.
 /// This finite transaction uses pinned stock factory initialization and the
 /// caller-admitted stock consumer scope. The pure Base/Pride reduction may be
@@ -705,6 +882,49 @@ pub fn prepare<'a, 'd, 'capture>(
     };
     Ok(PreparedSkipTurn { phase, diplomacy })
 }
+/// Compute the source-ordered auto queries against borrowed staged records.
+/// Missing query/callback effects still refuse before any live mutation.
+pub fn prepare_with_auto_notification_queries<'a, 'd, 'capture>(
+    state: &'a LoadedState,
+    reference: UnitReference,
+    inputs: Inputs<'a, 'd, 'capture>,
+    scripts: Option<&'a ScriptState>,
+    auto: AutoNotificationInputs<'a>,
+) -> Result<PreparedSkipTurn, Refusal> {
+    let mut phase = plan_state_phase(state, reference, inputs, scripts)?;
+    let result = (|| {
+        phase.trace.push(Event::Stage(Stage::Diplomacy));
+        let diplomacy = state.plan_pending_diplomacy().map_err(Error::State)?;
+        phase.trace.push(Event::Stage(Stage::Notifications));
+        let collection = state
+            .player_notifications()
+            .map_err(Error::State)?
+            .collection(reference.player())
+            .map_err(|e| Error::State(c6_core::loaded_state::Error::PlayerNotifications(e)))?;
+        check_initial_blocking_query_effects(&collection.records)?;
+        if !super::notifications::turn_complete(state, reference.player())
+            .map_err(|_| Error::Unsupported("actual Processor turn-complete input"))?
+        {
+            let mut trace = Vec::new();
+            let result = plan_auto_notification_queries(state, &phase, &inputs, auto, &mut trace);
+            phase.trace.extend(trace);
+            result?;
+        } else {
+            return Err(Error::Unsupported(
+                "notification final blocking/store/report effects require semantic planning",
+            ));
+        }
+        Ok(diplomacy)
+    })();
+    match result {
+        Ok(diplomacy) => Ok(PreparedSkipTurn { phase, diplomacy }),
+        Err(error) => Err(Refusal {
+            error,
+            planned_trace: phase.trace,
+        }),
+    }
+}
+
 impl PreparedSkipTurn {
     pub fn records(&self) -> (&ActorRecords, &ActorRecords) {
         (&self.phase.before, &self.phase.after)

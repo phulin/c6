@@ -61,6 +61,7 @@ pub struct IdentityReport {
 pub enum Event {
     Stage(Stage),
     Legality(bool),
+    AutoNotificationQuery { type_hash: u32, needed: bool },
     Report(IdentityReport),
     UnitAbsent { owner: i32, id: u32 },
     AddHandlerAbsent(i32),
@@ -72,6 +73,7 @@ pub fn trace_json(trace: &[Event]) -> serde_json::Value {
     serde_json::Value::Array(trace.iter().map(|event|match event {
         Event::Stage(stage)=>serde_json::json!({"kind":"stage","stage":format!("{stage:?}")}),
         Event::Legality(allowed)=>serde_json::json!({"kind":"legality","allowed":allowed}),
+        Event::AutoNotificationQuery {type_hash,needed}=>serde_json::json!({"kind":"auto_notification_query","type_hash":type_hash,"needed":needed}),
         Event::UnitAbsent {owner,id}=>serde_json::json!({"kind":"execute_unit_absent","owner":owner,"id":id}),
         Event::AddHandlerAbsent(id)=>serde_json::json!({"kind":"add_handler_absent","runtime_id":id}),
         Event::Report(r)=>{
@@ -83,6 +85,7 @@ pub fn trace_json(trace: &[Event]) -> serde_json::Value {
 }
 #[derive(Debug)]
 pub enum Error {
+    AutoNotificationQuery(Box<transition::AutoQueryError>),
     CommandHoldCycling(
         Box<reporting::hold_cycling::Error<reporting::hold_cycling::commands::Error>>,
     ),
