@@ -602,50 +602,49 @@ fn update<E: Effects, M: Movement<E>>(
             ));
         }
     }
-    if modifiers != 0 {
-        return Err(Error::Unsupported(
-            "MoveTo attack/parameter modifier branch",
-        ));
-    }
-    let processing = state.processing_automation().map_err(Error::State)?;
-    let u = unit(state, actor)?;
-    if processing == u.e_owner || u.e_automation != -1 {
-        return Err(Error::Unsupported("MoveTo automation attack branch"));
-    }
-    if c6_core::movement_world::plot_at(state.world().map(), destination).is_err() {
-        data.delete = true;
-        return Ok(());
-    }
-    if node.push_turn != state.retained().core.current_turn {
-        return Err(Error::Unsupported("MoveTo older request continuation"));
-    }
-    // Stock Tutorial.OnUnitMoveTo 0x2c11e20 is the fixed zero-return leaf.
-    let current_formation = formation_id(state, actor)?;
-    let tested = movement
-        .test_move_to(
-            state,
-            runtime.visibility,
-            current_formation,
-            destination,
-            modifiers,
-        )
-        .map_err(Error::Movement)?;
-    if tested <= 0 {
-        data.delete = true;
-    } else {
-        let f = formation(state, formation_id(state, actor)?)?;
-        let first = f
-            .last_path
-            .get(f.last_path.len().saturating_sub(2))
-            .cloned();
-        if let Some(first) = first {
-            if first.data2 <= 1 {
-                let next = PlotCoord {
-                    x: i32::from(first.x),
-                    y: i32::from(first.y),
-                };
-                if enemy_at(state, next)? {
-                    data.delete = true;
+    // Native2da4481 tests bit0x10, then push turn. Older requests with
+    // that bit clear go directly to movement; other path flags are retained.
+    if modifiers & 0x10 != 0 || node.push_turn == state.retained().core.current_turn {
+        if modifiers & 0x10 != 0 {
+            return Err(Error::Unsupported("MoveTo explicit attack modifier branch"));
+        }
+        let processing = state.processing_automation().map_err(Error::State)?;
+        let u = unit(state, actor)?;
+        if processing == u.e_owner || u.e_automation != -1 {
+            return Err(Error::Unsupported("MoveTo automation attack branch"));
+        }
+        if c6_core::movement_world::plot_at(state.world().map(), destination).is_err() {
+            data.delete = true;
+            return Ok(());
+        }
+        // Stock Tutorial.OnUnitMoveTo 0x2c11e20 is the fixed zero-return leaf.
+        let current_formation = formation_id(state, actor)?;
+        let tested = movement
+            .test_move_to(
+                state,
+                runtime.visibility,
+                current_formation,
+                destination,
+                modifiers,
+            )
+            .map_err(Error::Movement)?;
+        if tested <= 0 {
+            data.delete = true;
+        } else {
+            let f = formation(state, formation_id(state, actor)?)?;
+            let first = f
+                .last_path
+                .get(f.last_path.len().saturating_sub(2))
+                .cloned();
+            if let Some(first) = first {
+                if first.data2 <= 1 {
+                    let next = PlotCoord {
+                        x: i32::from(first.x),
+                        y: i32::from(first.y),
+                    };
+                    if enemy_at(state, next)? {
+                        data.delete = true;
+                    }
                 }
             }
         }

@@ -977,7 +977,22 @@ impl LazyPathQueries for Queries<'_, '_, '_, '_> {
                 }
                 Ok(count)
             }
-            I::Influence => Err(Error::Missing("current pathfinder influence map")),
+            I::Influence => {
+                let owner = c.record().owner;
+                let player = c
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("current influence player"))?;
+                let map = player
+                    .ai_influence_map
+                    .as_ref()
+                    .ok_or(Error::Missing("current pathfinder influence map"))?;
+                let (index, _) = c.require_plot(self.child())?;
+                Ok(map.influence_at(index as i32))
+            }
             I::BribeTurnsRemaining { .. } => {
                 Err(Error::Missing("current Barbarian Clan bribe state"))
             }

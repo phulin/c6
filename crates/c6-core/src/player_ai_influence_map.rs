@@ -67,6 +67,17 @@ impl Reader<'_> {
     }
 }
 impl InfluenceMap {
+    /// Actual GetInfluence2141d60 reads the current owned short vector without
+    /// rebuilding it. Negative/out-of-range indices and actual empty vectors
+    /// return zero; absence of the InfluenceMap owner is a separate error.
+    pub fn influence_at(&self, index: i32) -> i32 {
+        usize::try_from(index)
+            .ok()
+            .and_then(|i| self.influence.get(i))
+            .copied()
+            .map(i32::from)
+            .unwrap_or(0)
+    }
     /// Native version 1 takes an exact self-copy return before archive access.
     /// Preserve the supplied actual prior slice without allocation or mutation.
     pub fn religious_influence_after_read<'a>(
@@ -161,6 +172,24 @@ impl InfluenceMap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn current_influence_getter_sign_extends_and_checks_index() {
+        let map = InfluenceMap {
+            wire_version: 2,
+            influence: vec![i16::MIN, -1, 0, i16::MAX],
+            religious_influence: Some(vec![]),
+        };
+        assert_eq!(
+            (-1..=4).map(|i| map.influence_at(i)).collect::<Vec<_>>(),
+            [0, -32768, -1, 0, 32767, 0]
+        );
+        assert_eq!(map.influence_at(i32::MAX), 0);
+        let empty = InfluenceMap {
+            influence: vec![],
+            ..map
+        };
+        assert_eq!(empty.influence_at(0), 0);
+    }
     #[test]
     fn signed_order_and_bounds() {
         let v = InfluenceMap {
