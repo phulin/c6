@@ -1,9 +1,10 @@
-//! Current Linux XP2 Player.GreatPeoplePoints saved-state wire transport.
+//! Linux XP2 v12/v13 Player.GreatPeoplePoints saved-state wire transport.
 //! Does not execute Great Person recruitment, policy decisions, native initialization or remapping.
 use crate::unit::Limits;
 pub const VERSION: u32 = 13;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -33,6 +34,7 @@ pub struct GreatPersonEarnedBoost {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GreatPeoplePoints {
+    pub wire_version: u32,
     pub player: i32,
     /// Great Person class definition hashes with signed raw Q8 values.
     pub points_total: HashValues,
@@ -175,6 +177,12 @@ impl Writer {
     }
 }
 impl GreatPeoplePoints {
+    /// Version12 has no wire entries for this list. Native Read calls
+    /// Initialize/Reset, clearing the list before retaining that empty default.
+    pub fn yield_change_wire_present(&self) -> bool {
+        self.wire_version == VERSION
+    }
+
     pub fn decode(data: &[u8], limits: Limits) -> Result<Self, Error> {
         let (v, n, _) = Self::decode_prefix_with_items(data, limits)?;
         if n != data.len() {
@@ -195,8 +203,15 @@ impl GreatPeoplePoints {
             items: 0,
             limits,
         };
-        r.version()?;
+        let wire_version = r.u32()?;
+        if wire_version != 12 && wire_version != VERSION {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
         let v = Self {
+            wire_version,
             player: r.int()?,
             points_total: r.table()?,
             points_earned_this_turn: r.table()?,
@@ -208,15 +223,19 @@ impl GreatPeoplePoints {
             patronage_discount_percent: r.table()?,
             bonus_points_per_turn_percent: r.table()?,
             yield_modifier_per_earned_great_person: r.table()?,
-            yield_change_per_earned_great_person_class: r.sequence(20, |r| {
-                r.version()?;
-                Ok(YieldChangePerEarnedGreatPersonClassOnResource {
-                    yield_hash: r.u32()?,
-                    great_person_class_hash: r.u32()?,
-                    resource_hash: r.u32()?,
-                    amount: r.int()?,
-                })
-            })?,
+            yield_change_per_earned_great_person_class: if wire_version == 12 {
+                Vec::new()
+            } else {
+                r.sequence(20, |r| {
+                    r.version()?;
+                    Ok(YieldChangePerEarnedGreatPersonClassOnResource {
+                        yield_hash: r.u32()?,
+                        great_person_class_hash: r.u32()?,
+                        resource_hash: r.u32()?,
+                        amount: r.int()?,
+                    })
+                })?
+            },
             great_person_boost_list: r.sequence(10, |r| {
                 r.version()?;
                 Ok(GreatPersonEarnedBoost {
@@ -230,6 +249,9 @@ impl GreatPeoplePoints {
         Ok((v, r.pos, r.items))
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         w.word(VERSION)?;
         w.word(self.player as u32)?;
         for t in [
@@ -301,6 +323,7 @@ mod tests {
     use super::*;
     fn fixture() -> GreatPeoplePoints {
         GreatPeoplePoints {
+            wire_version: VERSION,
             player: -1,
             points_total: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
             points_earned_this_turn: vec![(0, -256)],
@@ -380,7 +403,8 @@ mod tests {
         let b = v.encode(lim).unwrap();
         for pos in [0, 102, 126] {
             let mut bad = b.clone();
-            bad[pos..pos + 4].copy_from_slice(&12u32.to_le_bytes());
+            bad[pos..pos + 4]
+                .copy_from_slice(&(if pos == 0 { 11u32 } else { 12u32 }).to_le_bytes());
             assert!(matches!(
                 GreatPeoplePoints::decode(&bad, lim),
                 Err(Error::Version { .. })
@@ -399,6 +423,63 @@ mod tests {
         assert_eq!(
             GreatPeoplePoints::decode(&bad, lim),
             Err(Error::ResourceLimit)
+        );
+    }
+    #[test]
+    fn legacy12_reset_empty_omission_keeps_present_lists() {
+        let mut expected = fixture();
+        let current = expected.encode(Limits::default()).unwrap();
+        // Current synthetic vector at98 has count1 plus one20-byte record.
+        // Version12 consumes none of those24 bytes; its later lists remain.
+        let mut bytes = current[..98].to_vec();
+        bytes.extend_from_slice(&current[122..]);
+        bytes[..4].copy_from_slice(&12u32.to_le_bytes());
+        expected.wire_version = 12;
+        expected.yield_change_per_earned_great_person_class.clear();
+        let exact = Limits {
+            max_bytes: bytes.len(),
+            max_items: 11,
+        };
+        let (v, n, items) = GreatPeoplePoints::decode_prefix_with_items(&bytes, exact).unwrap();
+        assert_eq!(v, expected);
+        assert_eq!((n, items), (bytes.len(), 11));
+        assert!(!v.yield_change_wire_present());
+        assert_eq!(v.great_person_class_no_points, vec![u32::MAX, 0, u32::MAX]);
+        assert_eq!(v.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..bytes.len() {
+            assert!(
+                GreatPeoplePoints::decode(&bytes[..n], exact).is_err(),
+                "prefix {n}"
+            );
+        }
+        assert_eq!(
+            GreatPeoplePoints::decode(
+                &bytes,
+                Limits {
+                    max_items: 10,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            GreatPeoplePoints::decode(
+                &bytes,
+                Limits {
+                    max_bytes: bytes.len() - 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        // The later Boost record still owns an independent strict13 tag.
+        bytes[102..106].copy_from_slice(&12u32.to_le_bytes());
+        assert_eq!(
+            GreatPeoplePoints::decode(&bytes, exact),
+            Err(Error::Version {
+                expected: 13,
+                actual: 12
+            })
         );
     }
 }

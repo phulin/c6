@@ -2223,6 +2223,7 @@ pub(crate) mod tests {
     // Explicit arbitrary saved-wire fields, not native initialization defaults.
     fn great_people_points_carrier() -> player_great_people_points::GreatPeoplePoints {
         player_great_people_points::GreatPeoplePoints {
+            wire_version: 13,
             player: -4000,
             points_total: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
             points_earned_this_turn: vec![(u32::MAX, i32::MIN), (u32::MAX, i32::MAX)],
