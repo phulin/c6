@@ -20,6 +20,8 @@ pub mod movement;
 mod manager_queries;
 #[path = "stock_activation.rs"]
 mod activation;
+#[path = "stock_research.rs"]
+pub mod research;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -51,6 +53,7 @@ pub struct Decision {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Notice {
     TechnologyCompleted { owner: i32, technology: i32 },
+    CivicCompleted { owner: i32, civic: i32 },
 }
 pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
@@ -110,7 +113,7 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         let owner = match &notice {
-            Notice::TechnologyCompleted { owner, .. } => *owner,
+            Notice::TechnologyCompleted { owner, .. } | Notice::CivicCompleted { owner, .. } => *owner,
         };
         if !self
             .facts
@@ -394,9 +397,11 @@ impl<P> processing::Backend for Runtime<'_, P> {
         state: &mut LoadedState,
     ) -> Result<Option<i32>, processing::Error> {
         self.check(state)?;
+        // Presence establishes initial knowledge; subsequent source hotseat
+        // changes update this canonical field on the same LoadedState.
         self.facts
             .local_player
-            .map(Some)
+            .map(|_| Some(state.retained().core.local_player))
             .ok_or(processing::Error::Unsupported("notification local player"))
     }
     fn blocking_changed(
