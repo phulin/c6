@@ -1,5 +1,8 @@
 //! Actual selected phase TurnMode rules for current next-player selection.
 pub mod social;
+pub mod relationship_requirements;
+pub mod requirement_changes;
+pub mod victory_requirements;
 use crate::{registry::linux_type_hash, resource_binding::ResourceAuthority, Rules};
 use c6_core::{game_update::Error, loaded_state::LoadedState};
 #[derive(Debug)]

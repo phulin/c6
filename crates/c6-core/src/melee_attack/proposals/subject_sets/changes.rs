@@ -212,6 +212,14 @@ fn set_mut<E>(runtime: &mut Runtime, label: u64) -> Result<&mut super::Set, Erro
         .find(|r| r.label == label)
         .ok_or(Error::MissingSet)
 }
+/// SimpleRequirementSet.ResetTrigger: only state4 resets to0; no signal.
+pub fn reset_trigger_state<E>(runtime: &mut Runtime, label: u64) -> Result<(), Error<E>> {
+    let set = set_mut(runtime, label)?;
+    if set.state == 4 {
+        set.state = 0;
+    }
+    Ok(())
+}
 fn release_child<C: Context>(c: &mut C, label: u64) -> Result<(), Error<C::Error>> {
     let destroy = {
         let r = requirement_mut(c.subject_sets_mut().map_err(Error::Context)?, label)?;
@@ -292,7 +300,7 @@ impl<C: Context> simple::Context for RequirementContext<'_, C> {
             .ok_or(Error::MissingSet)
     }
     fn changed(&mut self, old: i32, new: i32) -> Result<(), Self::Error> {
-        requirement_changed_dispatch(self.outer, self.label, old, new)
+        dispatch_requirement_changed(self.outer, self.label, old, new)
     }
 }
 impl<C: Context> simple::TestContext for RequirementContext<'_, C> {
@@ -311,7 +319,9 @@ pub fn set_requirement_state<C: Context>(
 ) -> Result<(), Error<C::Error>> {
     simple::set_state(&mut RequirementContext { outer: c, label }, tested, notify)
 }
-fn requirement_changed_dispatch<C: Context>(
+/// Dispatch the current requirement's existing listener ring after an external
+/// concrete predicate has already assigned its state. No second state store.
+pub fn dispatch_requirement_changed<C: Context>(
     c: &mut C,
     label: u64,
     _old: i32,
@@ -567,8 +577,8 @@ mod tests {
             self.calls.push((1, set));
             Ok(())
         }
-        fn reset_trigger(&mut self, _: u64) -> Result<(), Error<Self::Error>> {
-            Err(Error::Context("unexpected trigger"))
+        fn reset_trigger(&mut self, set: u64) -> Result<(), Error<Self::Error>> {
+            reset_trigger_state(&mut self.runtime, set)
         }
     }
     #[test]
@@ -607,5 +617,20 @@ mod tests {
                 ..
             })
         ));
+    }
+    #[test]
+    fn external_store_dispatches_trigger_then_resets_only_the_set() {
+        let mut f = Fixture::new(false, false);
+        f.runtime.simple_requirement_mut(CHILD).unwrap().state = 4;
+        dispatch_requirement_changed(&mut f, CHILD, 1, 4).unwrap();
+        assert_eq!(f.calls, [(10, A)]);
+        assert_eq!(f.runtime.state(A), Some(0));
+        assert_eq!(f.runtime.requirement_state(CHILD), Some(4));
+        dispatch_requirement_changed(&mut f, CHILD, 4, 4).unwrap();
+        assert_eq!(f.calls, [(10, A), (10, A)]);
+        assert_eq!(f.runtime.state(A), Some(0));
+        set_mut::<&str>(&mut f.runtime, A).unwrap().state = 1;
+        reset_trigger_state::<&str>(&mut f.runtime, A).unwrap();
+        assert_eq!(f.runtime.state(A), Some(1));
     }
 }

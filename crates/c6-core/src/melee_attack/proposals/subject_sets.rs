@@ -12,11 +12,14 @@ pub mod player_has_district;
 pub enum SetListener {
     Subject(u64),
     Owner(u64),
+    /// A different current synchronous set listener. Its concrete continuation
+    /// remains mandatory at dispatch; this token carries no native address.
+    External(u64),
 }
 impl SetListener {
     fn receiver(self) -> u64 {
         match self {
-            Self::Subject(id) | Self::Owner(id) => id,
+            Self::Subject(id) | Self::Owner(id) | Self::External(id) => id,
         }
     }
 }
