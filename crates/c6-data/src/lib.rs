@@ -20,6 +20,7 @@ pub mod resource_binding;
 pub mod unit_initialization_definitions;
 pub mod unit_movement_state;
 pub mod unit_operation_manager;
+pub mod unit_sight_state;
 pub mod world_congress_options;
 pub mod world_congress_rules;
 
