@@ -619,6 +619,7 @@ pub(crate) mod tests {
                 b_choosing_artifact: false,
             },
             k_espionage: crate::unit::Espionage {
+                wire_version: 7,
                 a_espionage_bonuses: Vec::new(),
                 a_espionage_time_reductions: Vec::new(),
                 e_operation: 0,
