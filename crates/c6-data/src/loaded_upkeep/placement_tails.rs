@@ -179,3 +179,65 @@ pub fn award_post_move_bonuses<E: Reports>(
         destination,
     )
 }
+
+/// Coordinate IsVisible at Linux 0x2004030 reads only the initialized normal
+/// shared layer. This borrows the current authoritative runtime used by sight
+/// mutations. The Visibility instance's actual +0xd0 width is an explicit raw
+/// input; it is not inferred from own/save layers or a per-unit answer.
+pub fn plot_visible(
+    runtime: &crate::unit_sight_state::Runtime,
+    viewer: i32,
+    native_visibility_width: u32,
+    location: PlotCoord,
+) -> Result<bool, &'static str> {
+    let layers = runtime.shared(viewer)?;
+    let normal = layers
+        .0
+        .iter()
+        .find(|layer| layer.type_hash == c6_core::visibility_change::BASE_LAYER_HASH)
+        .ok_or("missing initialized current shared normal visibility")?;
+    let index = native_visibility_width
+        .wrapping_mul(location.y as u32)
+        .wrapping_add(location.x as u32);
+    if index >= normal.count {
+        return Ok(false);
+    }
+    normal
+        .values
+        .get(index as usize)
+        .map(|count| *count > 0)
+        .ok_or("incomplete current shared normal visibility count array")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn coordinate_visibility_borrows_live_shared_counts_and_distinguishes_missing_data() {
+        let mut runtime = crate::unit_sight_state::Runtime {
+            shared: vec![crate::unit_sight_state::SharedVisibility {
+                owner: 7,
+                layers: c6_core::visibility_change::SharedLayers(vec![
+                    c6_core::map::VisibilityLayer {
+                        type_hash: c6_core::visibility_change::BASE_LAYER_HASH,
+                        index: 0,
+                        count: 3,
+                        grid_width: 1,
+                        values: vec![0, -1, 1],
+                    },
+                ]),
+            }],
+            hidden_layer_hashes: vec![],
+            messages_disabled: false,
+            local_observer: None,
+        };
+        let p = PlotCoord { x: 0, y: 1 };
+        assert_eq!(plot_visible(&runtime, 7, 2, p), Ok(true));
+        runtime.shared[0].layers.0[0].values[2] = -1;
+        assert_eq!(plot_visible(&runtime, 7, 2, p), Ok(false));
+        runtime.shared[0].layers.0[0].values.pop();
+        assert!(plot_visible(&runtime, 7, 2, p).is_err());
+        assert_eq!(plot_visible(&runtime, 7, 3, p), Ok(false));
+        assert!(plot_visible(&runtime, 8, 2, p).is_err());
+    }
+}
