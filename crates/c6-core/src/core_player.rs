@@ -1425,6 +1425,7 @@ pub(crate) mod tests {
     fn culture_carrier() -> player_culture::Culture {
         use crate::player_culture as pculture;
         pculture::Culture {
+            wire_version: 45,
             current_government_hash: 3735879680,
             post_anarchy_government_hash: 3735879681,
             anarchy_end_turn: -9998,

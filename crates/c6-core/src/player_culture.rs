@@ -1,4 +1,4 @@
-//! Current Linux XP2 Player.Culture v45 wire transport, including nested records.
+//! Bounded Linux XP2 Player.Culture v38/v45 wire transport, including strict nested records.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::player_prerequisites::IndexedBools;
 use crate::unit::{HashValue, Limits};
@@ -7,6 +7,7 @@ pub const VERSION: u32 = 45;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     Trailing,
     ResourceLimit,
     InvalidContainer,
@@ -303,71 +304,336 @@ record!(BuildingFavor, true, {
     building_hash: u32,
     favor_per_turn: i32,
 });
-record!(Culture, true, {
-    current_government_hash: u32,
-    post_anarchy_government_hash: u32,
-    anarchy_end_turn: i32,
-    turn_adopted: i32,
-    modified_boost: i32,
-    government_change_considered: bool,
-    government_unlocked: IndexedBools,
-    government_usage_count: Vec<HashValue<i32>>,
-    last_government_used: Vec<HashValue<u32>>,
-    policy_unlocked: IndexedBools,
-    policy_purchased: IndexedBools,
-    policy_has_been_enacted: IndexedBools,
-    policy_is_in_place: IndexedBools,
-    policy_banned: IndexedBools,
-    active_policies: GovernmentSlots,
-    modified_slots: GovernmentSlots,
-    modified_removed_slots: GovernmentSlots,
-    has_civic: IndexedBools,
-    boost_triggered: IndexedBools,
-    cultural_progress_bits: Vec<HashValue<i32>>,
-    civic_queue_hashes: Vec<u32>,
-    cultural_overflow_bits: i32,
-    culture_rate_change_bits: i32,
-    civic_completed_this_turn: bool,
-    civic_completed_this_turn_hash: u32,
-    turn_last_policy_change: i32,
-    num_random_civic_boosts_on_new_era: i32,
-    free_civic_boost_wonder_era: i32,
-    tourism_on_bits: Vec<i32>,
-    dominant_over: Vec<bool>,
-    turns_until_dominant: Vec<i32>,
-    tourism_modifier: i32,
-    cached_alliance_tourism_bonus_bits: i32,
-    cached_alliance_culture_bonus_bits: i32,
-    religious_tourism_reduction: i32,
-    overall_tourism_reduction: i32,
-    always_full_religious_tourism: i32,
-    lifetime_culture_bits: i32,
-    staycationers: i32,
-    last_turn_staycationers: i32,
-    last_turn_tourists_to: i32,
-    tourists_from: Vec<i32>,
-    extra_trade_route_tourism_modifier: i32,
-    auto_themed_building_hash: u32,
-    tourism_locations: Vec<TourismLocation>,
-    culture_bomb_triggers: Vec<CultureBombTrigger>,
-    tourism_into_favor: Vec<TourismIntoFavor>,
-    culture_bomb_converts_city: bool,
-    unlock_features: Vec<FeatureUnlock>,
-    tourism_national_parks_modifier_bits: i32,
-    great_work_object_tourism_modifiers: Vec<GreatWorkObjectTourismModifier>,
-    policy_favor_list: Vec<PolicyFavor>,
-    building_favor_list: Vec<BuildingFavor>,
-    other_government_intolerance_multiplier_bits: i32,
-    other_government_intolerance_modifier: i32,
-    previous_government_policies: GovernmentSlots,
-    num_civics_repeated: i32,
-    auto_themed_buildings_with_x_slots: i32,
-    auto_themed_wonders_with_x_slots: i32,
-    all_great_works_tourism_modifier: i32,
-    all_great_works_yield_modifier: i32,
-    replaced_slots: Vec<GovernmentSlotReplacement>,
-    government_type_modified_slots: Vec<GovernmentTypeSlotModifier>
-});
+/// Player.Culture38/45 wire/default projection. The legacy GreatWork list is
+/// retained as wire data; native Read discards and rebuilds it, as described by
+/// `great_work_modifier_read_effect`, rather than using these values at38.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Culture {
+    pub wire_version: u32,
+    pub current_government_hash: u32,
+    pub post_anarchy_government_hash: u32,
+    pub anarchy_end_turn: i32,
+    pub turn_adopted: i32,
+    pub modified_boost: i32,
+    pub government_change_considered: bool,
+    pub government_unlocked: IndexedBools,
+    pub government_usage_count: Vec<HashValue<i32>>,
+    pub last_government_used: Vec<HashValue<u32>>,
+    pub policy_unlocked: IndexedBools,
+    pub policy_purchased: IndexedBools,
+    pub policy_has_been_enacted: IndexedBools,
+    pub policy_is_in_place: IndexedBools,
+    pub policy_banned: IndexedBools,
+    pub active_policies: GovernmentSlots,
+    pub modified_slots: GovernmentSlots,
+    pub modified_removed_slots: GovernmentSlots,
+    pub has_civic: IndexedBools,
+    pub boost_triggered: IndexedBools,
+    pub cultural_progress_bits: Vec<HashValue<i32>>,
+    pub civic_queue_hashes: Vec<u32>,
+    pub cultural_overflow_bits: i32,
+    pub culture_rate_change_bits: i32,
+    pub civic_completed_this_turn: bool,
+    pub civic_completed_this_turn_hash: u32,
+    pub turn_last_policy_change: i32,
+    pub num_random_civic_boosts_on_new_era: i32,
+    pub free_civic_boost_wonder_era: i32,
+    pub tourism_on_bits: Vec<i32>,
+    pub dominant_over: Vec<bool>,
+    pub turns_until_dominant: Vec<i32>,
+    pub tourism_modifier: i32,
+    pub cached_alliance_tourism_bonus_bits: i32,
+    pub cached_alliance_culture_bonus_bits: i32,
+    pub religious_tourism_reduction: i32,
+    pub overall_tourism_reduction: i32,
+    pub always_full_religious_tourism: i32,
+    pub lifetime_culture_bits: i32,
+    pub staycationers: i32,
+    pub last_turn_staycationers: i32,
+    pub last_turn_tourists_to: i32,
+    pub tourists_from: Vec<i32>,
+    pub extra_trade_route_tourism_modifier: i32,
+    pub auto_themed_building_hash: u32,
+    pub tourism_locations: Vec<TourismLocation>,
+    pub culture_bomb_triggers: Vec<CultureBombTrigger>,
+    pub tourism_into_favor: Vec<TourismIntoFavor>,
+    pub culture_bomb_converts_city: bool,
+    pub unlock_features: Vec<FeatureUnlock>,
+    pub tourism_national_parks_modifier_bits: i32,
+    pub great_work_object_tourism_modifiers: Vec<GreatWorkObjectTourismModifier>,
+    pub policy_favor_list: Vec<PolicyFavor>,
+    pub building_favor_list: Vec<BuildingFavor>,
+    pub other_government_intolerance_multiplier_bits: i32,
+    pub other_government_intolerance_modifier: i32,
+    pub previous_government_policies: GovernmentSlots,
+    pub num_civics_repeated: i32,
+    pub auto_themed_buildings_with_x_slots: i32,
+    pub auto_themed_wonders_with_x_slots: i32,
+    pub all_great_works_tourism_modifier: i32,
+    pub all_great_works_yield_modifier: i32,
+    pub replaced_slots: Vec<GovernmentSlotReplacement>,
+    pub government_type_modified_slots: Vec<GovernmentTypeSlotModifier>,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GreatWorkModifierReadEffect {
+    WireValues,
+    /// One entry per actual GreatWorkObject definition in native iteration
+    /// order, using its collection index, modifier0 and noTourism=false.
+    DiscardWireAndRebuildInActualDefinitionOrder,
+}
+impl Culture {
+    /// The absent38 vector consumes no wire entries. Native Reset establishes
+    /// these64 values, preserved by the versioned self-copy. Not applied here.
+    pub fn turns_until_dominant_read_reset(&self) -> Option<[i32; 64]> {
+        (self.wire_version == 38).then_some([-1; 64])
+    }
+    /// At38, absent unlock_features and building_favor_list retain native
+    /// Reset-cleared logical empty vectors. No constructor baseline is assumed.
+    pub fn omitted_lists_read_reset_empty(&self) -> bool {
+        self.wire_version == 38
+    }
+    pub fn great_work_modifier_read_effect(&self) -> GreatWorkModifierReadEffect {
+        if self.wire_version == 38 {
+            GreatWorkModifierReadEffect::DiscardWireAndRebuildInActualDefinitionOrder
+        } else {
+            GreatWorkModifierReadEffect::WireValues
+        }
+    }
+}
+impl Wire for Culture {
+    const MIN: usize = 4
+        + <u32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<HashValue<u32>> as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <GovernmentSlots as Wire>::MIN
+        + <GovernmentSlots as Wire>::MIN
+        + <GovernmentSlots as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <IndexedBools as Wire>::MIN
+        + <Vec<HashValue<i32>> as Wire>::MIN
+        + <Vec<u32> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <Vec<bool> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<i32> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <Vec<TourismLocation> as Wire>::MIN
+        + <Vec<CultureBombTrigger> as Wire>::MIN
+        + <Vec<TourismIntoFavor> as Wire>::MIN
+        + <bool as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<GreatWorkObjectTourismModifier> as Wire>::MIN
+        + <Vec<PolicyFavor> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <GovernmentSlots as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<GovernmentSlotReplacement> as Wire>::MIN
+        + <Vec<GovernmentTypeSlotModifier> as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 38 | 45) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            current_government_hash: <u32 as Wire>::read(r)?,
+            post_anarchy_government_hash: <u32 as Wire>::read(r)?,
+            anarchy_end_turn: <i32 as Wire>::read(r)?,
+            turn_adopted: <i32 as Wire>::read(r)?,
+            modified_boost: <i32 as Wire>::read(r)?,
+            government_change_considered: <bool as Wire>::read(r)?,
+            government_unlocked: <IndexedBools as Wire>::read(r)?,
+            government_usage_count: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            last_government_used: <Vec<HashValue<u32>> as Wire>::read(r)?,
+            policy_unlocked: <IndexedBools as Wire>::read(r)?,
+            policy_purchased: <IndexedBools as Wire>::read(r)?,
+            policy_has_been_enacted: <IndexedBools as Wire>::read(r)?,
+            policy_is_in_place: <IndexedBools as Wire>::read(r)?,
+            policy_banned: <IndexedBools as Wire>::read(r)?,
+            active_policies: <GovernmentSlots as Wire>::read(r)?,
+            modified_slots: <GovernmentSlots as Wire>::read(r)?,
+            modified_removed_slots: <GovernmentSlots as Wire>::read(r)?,
+            has_civic: <IndexedBools as Wire>::read(r)?,
+            boost_triggered: <IndexedBools as Wire>::read(r)?,
+            cultural_progress_bits: <Vec<HashValue<i32>> as Wire>::read(r)?,
+            civic_queue_hashes: <Vec<u32> as Wire>::read(r)?,
+            cultural_overflow_bits: <i32 as Wire>::read(r)?,
+            culture_rate_change_bits: <i32 as Wire>::read(r)?,
+            civic_completed_this_turn: <bool as Wire>::read(r)?,
+            civic_completed_this_turn_hash: <u32 as Wire>::read(r)?,
+            turn_last_policy_change: <i32 as Wire>::read(r)?,
+            num_random_civic_boosts_on_new_era: <i32 as Wire>::read(r)?,
+            free_civic_boost_wonder_era: if wire_version == 45 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            tourism_on_bits: <Vec<i32> as Wire>::read(r)?,
+            dominant_over: <Vec<bool> as Wire>::read(r)?,
+            turns_until_dominant: if wire_version == 45 {
+                <Vec<i32> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            tourism_modifier: <i32 as Wire>::read(r)?,
+            cached_alliance_tourism_bonus_bits: <i32 as Wire>::read(r)?,
+            cached_alliance_culture_bonus_bits: <i32 as Wire>::read(r)?,
+            religious_tourism_reduction: <i32 as Wire>::read(r)?,
+            overall_tourism_reduction: <i32 as Wire>::read(r)?,
+            always_full_religious_tourism: <i32 as Wire>::read(r)?,
+            lifetime_culture_bits: <i32 as Wire>::read(r)?,
+            staycationers: <i32 as Wire>::read(r)?,
+            last_turn_staycationers: if wire_version == 45 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            last_turn_tourists_to: if wire_version == 45 {
+                <i32 as Wire>::read(r)?
+            } else {
+                0
+            },
+            tourists_from: <Vec<i32> as Wire>::read(r)?,
+            extra_trade_route_tourism_modifier: <i32 as Wire>::read(r)?,
+            auto_themed_building_hash: <u32 as Wire>::read(r)?,
+            tourism_locations: <Vec<TourismLocation> as Wire>::read(r)?,
+            culture_bomb_triggers: <Vec<CultureBombTrigger> as Wire>::read(r)?,
+            tourism_into_favor: <Vec<TourismIntoFavor> as Wire>::read(r)?,
+            culture_bomb_converts_city: <bool as Wire>::read(r)?,
+            unlock_features: if wire_version == 45 {
+                <Vec<FeatureUnlock> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            tourism_national_parks_modifier_bits: <i32 as Wire>::read(r)?,
+            great_work_object_tourism_modifiers:
+                <Vec<GreatWorkObjectTourismModifier> as Wire>::read(r)?,
+            policy_favor_list: <Vec<PolicyFavor> as Wire>::read(r)?,
+            building_favor_list: if wire_version == 45 {
+                <Vec<BuildingFavor> as Wire>::read(r)?
+            } else {
+                Vec::new()
+            },
+            other_government_intolerance_multiplier_bits: <i32 as Wire>::read(r)?,
+            other_government_intolerance_modifier: <i32 as Wire>::read(r)?,
+            previous_government_policies: <GovernmentSlots as Wire>::read(r)?,
+            num_civics_repeated: <i32 as Wire>::read(r)?,
+            auto_themed_buildings_with_x_slots: <i32 as Wire>::read(r)?,
+            auto_themed_wonders_with_x_slots: if wire_version == 45 {
+                <i32 as Wire>::read(r)?
+            } else {
+                i32::MAX
+            },
+            all_great_works_tourism_modifier: <i32 as Wire>::read(r)?,
+            all_great_works_yield_modifier: <i32 as Wire>::read(r)?,
+            replaced_slots: <Vec<GovernmentSlotReplacement> as Wire>::read(r)?,
+            government_type_modified_slots: <Vec<GovernmentTypeSlotModifier> as Wire>::read(r)?,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        VERSION.write(w)?;
+        self.current_government_hash.write(w)?;
+        self.post_anarchy_government_hash.write(w)?;
+        self.anarchy_end_turn.write(w)?;
+        self.turn_adopted.write(w)?;
+        self.modified_boost.write(w)?;
+        self.government_change_considered.write(w)?;
+        self.government_unlocked.write(w)?;
+        self.government_usage_count.write(w)?;
+        self.last_government_used.write(w)?;
+        self.policy_unlocked.write(w)?;
+        self.policy_purchased.write(w)?;
+        self.policy_has_been_enacted.write(w)?;
+        self.policy_is_in_place.write(w)?;
+        self.policy_banned.write(w)?;
+        self.active_policies.write(w)?;
+        self.modified_slots.write(w)?;
+        self.modified_removed_slots.write(w)?;
+        self.has_civic.write(w)?;
+        self.boost_triggered.write(w)?;
+        self.cultural_progress_bits.write(w)?;
+        self.civic_queue_hashes.write(w)?;
+        self.cultural_overflow_bits.write(w)?;
+        self.culture_rate_change_bits.write(w)?;
+        self.civic_completed_this_turn.write(w)?;
+        self.civic_completed_this_turn_hash.write(w)?;
+        self.turn_last_policy_change.write(w)?;
+        self.num_random_civic_boosts_on_new_era.write(w)?;
+        self.free_civic_boost_wonder_era.write(w)?;
+        self.tourism_on_bits.write(w)?;
+        self.dominant_over.write(w)?;
+        self.turns_until_dominant.write(w)?;
+        self.tourism_modifier.write(w)?;
+        self.cached_alliance_tourism_bonus_bits.write(w)?;
+        self.cached_alliance_culture_bonus_bits.write(w)?;
+        self.religious_tourism_reduction.write(w)?;
+        self.overall_tourism_reduction.write(w)?;
+        self.always_full_religious_tourism.write(w)?;
+        self.lifetime_culture_bits.write(w)?;
+        self.staycationers.write(w)?;
+        self.last_turn_staycationers.write(w)?;
+        self.last_turn_tourists_to.write(w)?;
+        self.tourists_from.write(w)?;
+        self.extra_trade_route_tourism_modifier.write(w)?;
+        self.auto_themed_building_hash.write(w)?;
+        self.tourism_locations.write(w)?;
+        self.culture_bomb_triggers.write(w)?;
+        self.tourism_into_favor.write(w)?;
+        self.culture_bomb_converts_city.write(w)?;
+        self.unlock_features.write(w)?;
+        self.tourism_national_parks_modifier_bits.write(w)?;
+        self.great_work_object_tourism_modifiers.write(w)?;
+        self.policy_favor_list.write(w)?;
+        self.building_favor_list.write(w)?;
+        self.other_government_intolerance_multiplier_bits.write(w)?;
+        self.other_government_intolerance_modifier.write(w)?;
+        self.previous_government_policies.write(w)?;
+        self.num_civics_repeated.write(w)?;
+        self.auto_themed_buildings_with_x_slots.write(w)?;
+        self.auto_themed_wonders_with_x_slots.write(w)?;
+        self.all_great_works_tourism_modifier.write(w)?;
+        self.all_great_works_yield_modifier.write(w)?;
+        self.replaced_slots.write(w)?;
+        self.government_type_modified_slots.write(w)?;
+        Ok(())
+    }
+}
+
 impl Culture {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -418,6 +684,7 @@ mod tests {
     }
     fn specimen() -> Culture {
         Culture {
+            wire_version: VERSION,
             current_government_hash: 3735879680,
             post_anarchy_government_hash: 3735879681,
             anarchy_end_turn: -123456787,
@@ -653,6 +920,101 @@ mod tests {
                 delta: i32::MIN,
             }],
         }
+    }
+    #[test]
+    fn culture38_literal_omissions_and_unapplied_definition_rebuild() {
+        fn words(bytes: &mut Vec<u8>, values: &[i32]) {
+            for value in values {
+                bytes.extend(value.to_le_bytes());
+            }
+        }
+        let mut b = Vec::new();
+        words(&mut b, &[38, -1, -2, 101, 102, 103]);
+        b.push(1);
+        words(&mut b, &[0; 8]); // three government arrays and five policy arrays
+        words(&mut b, &[0; 6]); // three present GovernmentSlots, each double-counted
+        words(&mut b, &[0; 4]); // civic/boost/progress arrays and queue
+        words(&mut b, &[-257, 513]);
+        b.push(1);
+        words(&mut b, &[-3, 104, 105]); // completed civic, last change, era boosts
+                                        // FreeCivicBoostWonderEra45 is absent, followed by two present vectors.
+        words(&mut b, &[0, 0]);
+        // TurnsUntilDominant41 absent; eight present tourism/culture scalars.
+        words(&mut b, &[106, -769, 1025, 107, 108, 109, 1281, 110]);
+        // Both last-turn counts41 absent; tourists-from, trade bonus, building.
+        words(&mut b, &[0, 111, -4]);
+        words(&mut b, &[0, 0, 0]); // locations, bombs, tourism favor
+        b.push(1); // converts city; unlockFeatures43 absent
+        words(&mut b, &[1537, 1]); // national parks and legacy wire modifier list
+        let great_work_tag = b.len();
+        words(&mut b, &[45, 17, 222]);
+        b.push(1);
+        words(&mut b, &[0]); // policy favor; buildingFavor42 absent
+        words(&mut b, &[1793, 112, 0, 0, 113, 114]);
+        // AutoThemedWonders40 absent; last modifiers and replacements.
+        words(&mut b, &[115, 116, 1, 45, 3, 4]);
+        b.push(1);
+        words(&mut b, &[0]); // government type modified slots38 present
+        let end = b.len();
+        b.extend([0xaa, 0xbb]);
+        let exact = Limits {
+            max_bytes: end,
+            max_items: 2,
+        };
+        let (v, used, items) = Culture::decode_prefix_with_items(&b, exact).unwrap();
+        assert_eq!((used, items, v.wire_version), (end, 2, 38));
+        assert_eq!(v.num_random_civic_boosts_on_new_era, 105);
+        assert_eq!(v.free_civic_boost_wonder_era, 0);
+        assert_eq!((v.last_turn_staycationers, v.last_turn_tourists_to), (0, 0));
+        assert_eq!(v.auto_themed_wonders_with_x_slots, i32::MAX);
+        assert_eq!(v.turns_until_dominant_read_reset(), Some([-1; 64]));
+        assert!(v.turns_until_dominant.is_empty()); // no wire vector at38
+        assert!(v.unlock_features.is_empty() && v.building_favor_list.is_empty());
+        assert!(v.omitted_lists_read_reset_empty());
+        // Preserve wire data despite native Read discarding/rebuilding it.
+        assert_eq!(
+            v.great_work_object_tourism_modifiers[0].tourism_modifier,
+            222
+        );
+        assert!(v.great_work_object_tourism_modifiers[0].no_tourism);
+        assert_eq!(
+            v.great_work_modifier_read_effect(),
+            GreatWorkModifierReadEffect::DiscardWireAndRebuildInActualDefinitionOrder
+        );
+        assert_eq!(v.government_type_modified_slots.len(), 0);
+        assert_eq!(v.replaced_slots[0].added_slot_ordinal, 4);
+        assert_eq!(v.encode(exact), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..end {
+            assert!(Culture::decode_prefix(&b[..n], exact).is_err(), "{n}");
+        }
+        assert_eq!(
+            Culture::decode_prefix(
+                &b,
+                Limits {
+                    max_items: 1,
+                    ..exact
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        let mut nested = b.clone();
+        nested[great_work_tag..great_work_tag + 4].copy_from_slice(&38u32.to_le_bytes());
+        assert_eq!(
+            Culture::decode_prefix(&nested, exact),
+            Err(Error::Version {
+                expected: 45,
+                actual: 38
+            })
+        );
+        let mut unknown = b.clone();
+        unknown[..4].copy_from_slice(&39u32.to_le_bytes());
+        assert_eq!(
+            Culture::decode_prefix(&unknown, exact),
+            Err(Error::Version {
+                expected: 45,
+                actual: 39
+            })
+        );
     }
     #[test]
     fn nonempty_roundtrip_and_prefix() {
