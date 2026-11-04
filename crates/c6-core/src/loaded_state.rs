@@ -288,6 +288,305 @@ mod tests {
         assert_eq!(state.revision(), 0);
         assert_ne!(state.action_stamp(), before);
     }
+    // Explicit synthetic current runtime, not an imported/native observation.
+    fn actor_diplomacy_state(create_session: bool) -> (LoadedState, map::UnitReference) {
+        use crate::diplomacy_manager::{Manager, ObservedSession, PlayerHandle, StatementHandle};
+        use crate::diplomacy_statement::{
+            Logging, SessionHandle, SessionHeader, StatementInfo, StatementKind, SINGLE_PLAYER_MODE,
+        };
+        use crate::unit_operation_aftermath::Pending;
+        let (mut state, reference) = actor_commit_state();
+        let owner = reference.player();
+        state.controls.as_mut().unwrap().players[0].slot_status = 2;
+        state.world.player_mut(owner).unwrap().slot_status = Some(2);
+        state.retained.core.local_player = owner;
+        let info = |id, session_id| StatementInfo {
+            handle: StatementHandle(id),
+            session_id,
+            from: owner,
+            to: 63,
+            kind: StatementKind::Response,
+        };
+        let incoming = info(1, if create_session { 8 } else { 7 });
+        let retired = info(2, 7);
+        let mut manager = Manager::from_observed_sessions(
+            vec![PlayerHandle { owner }],
+            vec![crate::diplomacy_manager::PendingAction {
+                id: 9,
+                from: owner,
+                to: 63,
+            }],
+            vec![ObservedSession {
+                header: SessionHeader {
+                    handle: SessionHandle(10),
+                    id: 7,
+                    from: owner,
+                    to: 63,
+                },
+                history: vec![],
+                pending: if create_session {
+                    vec![Pending {
+                        from: owner,
+                        to: 63,
+                        statement: incoming.handle,
+                    }]
+                } else {
+                    vec![
+                        Pending {
+                            from: owner,
+                            to: 63,
+                            statement: incoming.handle,
+                        },
+                        Pending {
+                            from: owner,
+                            to: 63,
+                            statement: retired.handle,
+                        },
+                    ]
+                },
+                queued: vec![],
+            }],
+            None,
+            11,
+        )
+        .unwrap();
+        manager
+            .initialize_statement_inventory(if create_session {
+                vec![incoming]
+            } else {
+                vec![incoming, retired]
+            })
+            .unwrap();
+        manager
+            .initialize_execution_profile(SINGLE_PLAYER_MODE, Logging::OrdinaryHostDisabled)
+            .unwrap();
+        state.diplomacy_manager = Some(manager);
+        (state, reference)
+    }
+    #[test]
+    fn joint_actor_diplomacy_commit_retires_inventory_and_reuses_computed_state() {
+        use crate::diplomacy_manager::StatementHandle;
+        for create in [false, true] {
+            let (mut state, reference) = actor_diplomacy_state(create);
+            let before = state.world.unit(reference).unwrap().unwrap().record.clone();
+            let before_formation = state
+                .world
+                .player(reference.player())
+                .unwrap()
+                .formation(before.formation_id)
+                .unwrap()
+                .unwrap()
+                .record
+                .clone();
+            let mut unit = before.clone();
+            unit.e_activity = crate::skip_turn::HOLD;
+            let diplomacy = state.plan_pending_diplomacy().unwrap();
+            let stamp = state.action_stamp();
+            // A late component refusal can discard the joint guard inertly.
+            drop(
+                state
+                    .prepare_unit_formation_diplomacy_commit(
+                        reference,
+                        stamp,
+                        &before,
+                        &before_formation,
+                        unit.clone(),
+                        before_formation.clone(),
+                        diplomacy,
+                    )
+                    .unwrap(),
+            );
+            assert_eq!(
+                state.world.unit(reference).unwrap().unwrap().record,
+                &before
+            );
+            assert_eq!(state.revision(), 0);
+            assert_eq!(
+                state
+                    .diplomacy_manager()
+                    .unwrap()
+                    .statement_inventory()
+                    .unwrap()
+                    .len(),
+                if create { 1 } else { 2 }
+            );
+            let diplomacy = state.plan_pending_diplomacy().unwrap();
+            state
+                .prepare_unit_formation_diplomacy_commit(
+                    reference,
+                    stamp,
+                    &before,
+                    &before_formation,
+                    unit,
+                    before_formation.clone(),
+                    diplomacy,
+                )
+                .unwrap()
+                .commit();
+            assert_eq!(state.revision(), 1);
+            assert_eq!(
+                state
+                    .world
+                    .unit(reference)
+                    .unwrap()
+                    .unwrap()
+                    .record
+                    .e_activity,
+                crate::skip_turn::HOLD
+            );
+            let manager = state.diplomacy_manager().unwrap();
+            assert_eq!(manager.pending_actions()[0].id, 9);
+            assert_eq!(
+                manager
+                    .statement_inventory()
+                    .unwrap()
+                    .iter()
+                    .map(|s| s.handle)
+                    .collect::<Vec<_>>(),
+                [StatementHandle(1)]
+            );
+            let target = if create { 1 } else { 0 };
+            assert_eq!(
+                manager.session_metadata().unwrap()[target].history,
+                [StatementHandle(1)]
+            );
+            assert!(manager.open_sessions().iter().all(|s| s.pending.is_empty()));
+            assert_eq!(manager.open_sessions().len(), if create { 2 } else { 1 });
+            if create {
+                assert_eq!(manager.session_metadata().unwrap()[1].header.id, 8);
+            }
+            // The next computation consumes evolved canonical lists, not a
+            // captured answer or a replayed first-step delta.
+            let next = state.plan_pending_diplomacy().unwrap();
+            let unit = state.world.unit(reference).unwrap().unwrap().record.clone();
+            let formation = state
+                .world
+                .player(reference.player())
+                .unwrap()
+                .formation(unit.formation_id)
+                .unwrap()
+                .unwrap()
+                .record
+                .clone();
+            state
+                .prepare_unit_formation_diplomacy_commit(
+                    reference,
+                    state.action_stamp(),
+                    &unit,
+                    &formation,
+                    unit.clone(),
+                    formation.clone(),
+                    next,
+                )
+                .unwrap()
+                .commit();
+            assert_eq!(state.revision(), 2);
+            assert_eq!(
+                state
+                    .diplomacy_manager()
+                    .unwrap()
+                    .session_metadata()
+                    .unwrap()[target]
+                    .history,
+                [StatementHandle(1)]
+            );
+        }
+    }
+    #[test]
+    fn canonical_diplomacy_admission_checks_runtime_membership_and_stales_plans() {
+        use crate::diplomacy_manager::PlayerHandle;
+        let mut state = state();
+        state.retained.players[0].header.ordered_flags[1] = true;
+        let origin = witness(&state);
+        let mut controls = controls(&state);
+        controls.players[0].slot_status = 2;
+        state
+            .bind_observed_snapshot_controls(origin.clone(), controls)
+            .unwrap();
+        let owner = state.world.players()[0].owner();
+        let mut slots = vec![None; 65];
+        slots[0] = Some(PlayerHandle { owner });
+        let before = state.action_stamp();
+        let manager = actor_diplomacy_state(false)
+            .0
+            .diplomacy_manager
+            .take()
+            .unwrap();
+        let mut wrong_slots = slots.clone();
+        wrong_slots[1] = wrong_slots[0];
+        assert!(matches!(
+            state.install_current_diplomacy_manager(origin.clone(), wrong_slots, manager),
+            Err(Error::Binding)
+        ));
+        assert_eq!(state.action_stamp(), before);
+        let manager = actor_diplomacy_state(false)
+            .0
+            .diplomacy_manager
+            .take()
+            .unwrap();
+        state
+            .install_current_diplomacy_manager(origin, slots, manager)
+            .unwrap();
+        assert_ne!(state.action_stamp(), before);
+        assert_eq!(state.revision(), 0);
+        assert_eq!(
+            state.diplomacy_manager().unwrap().open_sessions()[0]
+                .pending
+                .len(),
+            2
+        );
+        assert!(state.plan_pending_diplomacy().is_ok());
+    }
+    #[test]
+    fn joint_actor_diplomacy_late_manager_conflict_preserves_actor() {
+        let (mut state, reference) = actor_diplomacy_state(false);
+        let unit = state.world.unit(reference).unwrap().unwrap().record.clone();
+        let formation = state
+            .world
+            .player(reference.player())
+            .unwrap()
+            .formation(unit.formation_id)
+            .unwrap()
+            .unwrap()
+            .record
+            .clone();
+        let diplomacy = state.plan_pending_diplomacy().unwrap();
+        let stamp = state.action_stamp();
+        // Direct private access deliberately exercises the manager's own guard,
+        // independently of the public World mutation stamp.
+        state
+            .diplomacy_manager
+            .as_mut()
+            .unwrap()
+            .pending_actions_mut()
+            .push(crate::diplomacy_manager::PendingAction {
+                id: 77,
+                from: 0,
+                to: 1,
+            });
+        let mut next = unit.clone();
+        next.e_activity = crate::skip_turn::HOLD;
+        assert!(matches!(
+            state.prepare_unit_formation_diplomacy_commit(
+                reference,
+                stamp,
+                &unit,
+                &formation,
+                next,
+                formation.clone(),
+                diplomacy
+            ),
+            Err(Error::DiplomacyDrain(
+                crate::diplomacy_drain::Error::Conflict
+            ))
+        ));
+        assert_eq!(state.world.unit(reference).unwrap().unwrap().record, &unit);
+        assert_eq!(state.revision(), 0);
+        let manager = state.diplomacy_manager().unwrap();
+        assert_eq!(manager.statement_inventory().unwrap().len(), 2);
+        assert_eq!(manager.open_sessions()[0].pending.len(), 2);
+        assert_eq!(manager.pending_actions().last().unwrap().id, 77);
+    }
     #[test]
     fn prepared_actor_commit_is_exclusive_infallible_and_drop_is_inert() {
         let (mut state, reference) = actor_commit_state();
@@ -2193,6 +2492,7 @@ pub enum Error {
     NotPristine,
     GameRelations(crate::game_diplomatic_relations::Error),
     DiplomacyManager(crate::diplomacy_manager::Error),
+    DiplomacyDrain(crate::diplomacy_drain::Error),
     PlayerNotifications(crate::player_notifications_owner::Error),
     NotificationPoolPending {
         pool: crate::notification_lifecycle::PoolId,
@@ -2470,6 +2770,41 @@ impl PreparedUnitFormationCommit<'_> {
             .expect("prepared Formation collection")
             .expect("prepared Formation slot") = self.formation;
         self.state.revision = self.next_revision;
+    }
+}
+
+/// Joint actor/Formation and canonical diplomacy commit. The exclusive field
+/// borrows prevent changes after validation; no callbacks or fallible work remain.
+#[must_use = "a prepared action commit must be committed or deliberately discarded"]
+pub struct PreparedUnitFormationDiplomacyCommit<'a> {
+    world: &'a mut world::World,
+    revision: &'a mut u64,
+    diplomacy: crate::diplomacy_drain::Prepared<'a>,
+    owner: i32,
+    unit_id: u32,
+    formation_id: u32,
+    next_revision: u64,
+    unit: unit::Unit,
+    formation: unit::Formation,
+}
+impl PreparedUnitFormationDiplomacyCommit<'_> {
+    pub fn commit(self) {
+        *self
+            .world
+            .player_mut(self.owner)
+            .expect("prepared owner")
+            .unit_mut(self.unit_id)
+            .expect("prepared Unit collection")
+            .expect("prepared Unit slot") = self.unit;
+        *self
+            .world
+            .player_mut(self.owner)
+            .expect("prepared owner")
+            .formation_mut(self.formation_id)
+            .expect("prepared Formation collection")
+            .expect("prepared Formation slot") = self.formation;
+        self.diplomacy.commit();
+        *self.revision = self.next_revision;
     }
 }
 
@@ -3422,13 +3757,32 @@ impl LoadedState {
         &mut self,
         snapshot: crate::diplomacy_manager::PendingStateSnapshot,
     ) -> Result<(), Error> {
+        let manager = crate::diplomacy_manager::Manager::from_observed_empty_sessions(
+            snapshot.open_sessions,
+            snapshot.ever_alive,
+            snapshot.pending_actions,
+        )
+        .map_err(Error::DiplomacyManager)?;
+        self.install_current_diplomacy_manager(snapshot.witness, snapshot.allocation_slots, manager)
+    }
+    /// Admit a canonical typed current-session owner once, in the same observed
+    /// runtime as the controls. The importer authenticates initial capture facts;
+    /// this method validates their binding and membership, not native provenance.
+    /// Unknown statement inventory/profile remains unknown until actually read.
+    pub fn install_current_diplomacy_manager(
+        &mut self,
+        witness: ObservedSnapshotWitness,
+        allocation_slots: Vec<Option<crate::diplomacy_manager::PlayerHandle>>,
+        manager: crate::diplomacy_manager::Manager,
+    ) -> Result<(), Error> {
+        let ever_alive = manager.ever_alive();
         if self.diplomacy_manager.is_some() {
             return Err(Error::AlreadyBound);
         }
         if !self.is_pristine() {
             return Err(Error::NotPristine);
         }
-        if self.observed_snapshot.as_ref() != Some(&snapshot.witness) {
+        if self.observed_snapshot.as_ref() != Some(&witness) {
             return Err(Error::Binding);
         }
         let controls = self
@@ -3437,12 +3791,12 @@ impl LoadedState {
             .ok_or(Error::Missing(MissingInput::ManagerSlots))?;
         // These are two separate native tables. IDs need not follow allocation
         // order, and owner64 may occur within the first64 allocation slots.
-        if snapshot.allocation_slots.len() != 65 {
+        if allocation_slots.len() != 65 {
             return Err(Error::Binding);
         }
         let mut present = [false; 65];
         let mut expected = reserved(64)?;
-        for (index, handle) in snapshot.allocation_slots.iter().enumerate() {
+        for (index, handle) in allocation_slots.iter().enumerate() {
             let Some(handle) = handle else { continue };
             let owner = usize::try_from(handle.owner)
                 .ok()
@@ -3462,18 +3816,12 @@ impl LoadedState {
                 expected.push(*handle);
             }
         }
-        if present != controls.player_slots || snapshot.ever_alive != expected {
+        if present != controls.player_slots || ever_alive != expected {
             return Err(Error::Binding);
         }
-        let manager = crate::diplomacy_manager::Manager::from_observed_empty_sessions(
-            snapshot.open_sessions,
-            snapshot.ever_alive,
-            snapshot.pending_actions,
-        )
-        .map_err(Error::DiplomacyManager)?;
         self.advance_admission_generation()?;
         self.diplomacy_manager = Some(manager);
-        self.diplomacy_manager_source = Some(snapshot.witness);
+        self.diplomacy_manager_source = Some(witness);
         Ok(())
     }
     pub fn diplomacy_manager(&self) -> Result<&crate::diplomacy_manager::Manager, Error> {
@@ -3494,6 +3842,44 @@ impl LoadedState {
         }
         self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         Ok(self.diplomacy_manager.as_mut().unwrap())
+    }
+    fn current_diplomacy_context(&self) -> Result<crate::diplomacy_statement::Context, Error> {
+        let manager = self.diplomacy_manager()?;
+        let (game_mode, logging) = manager.execution_profile().ok_or(Error::DiplomacyDrain(
+            crate::diplomacy_drain::Error::ExecutionProfileRequired,
+        ))?;
+        Ok(crate::diplomacy_statement::Context {
+            local_player: self.retained.core.local_player,
+            game_mode,
+            active_session: manager.active_session().map_err(Error::DiplomacyManager)?,
+            logging,
+        })
+    }
+    /// Compute the source outgoing drain over current controls and canonical
+    /// session/statement ownership. PendingAction entries are retained untouched.
+    /// Unknown context is not read on the no-outgoing fast path.
+    pub fn plan_pending_diplomacy(&self) -> Result<crate::diplomacy_drain::Plan, Error> {
+        let manager = self.diplomacy_manager()?;
+        let mut statuses = reserved(manager.ever_alive().len())?;
+        for player in manager.ever_alive() {
+            statuses.push((*player, self.player_controls(player.owner)?.slot_status));
+        }
+        let has_work = statuses
+            .iter()
+            .any(|(p, status)| *status != 3 && manager.has_outgoing(p.owner));
+        let context = if has_work {
+            Some(self.current_diplomacy_context()?)
+        } else {
+            None
+        };
+        crate::diplomacy_drain::plan(
+            manager,
+            crate::diplomacy_drain::Inputs {
+                context,
+                slot_statuses: &statuses,
+            },
+        )
+        .map_err(Error::DiplomacyDrain)
     }
     /// Exact outgoing drain over stable copied handles and current configuration
     /// reads. Removal precedes the required synchronous ProcessStatement call.
@@ -3858,6 +4244,64 @@ impl LoadedState {
             owner,
             unit_id: unit.id,
             formation_id: formation.id,
+            next_revision,
+            unit,
+            formation,
+        })
+    }
+
+    /// Prepare the actor and the supported outgoing diplomacy effects under one
+    /// exact World stamp. All validation/reservation finishes before either state
+    /// changes. A late refusal drops both staged deltas without gameplay writes.
+    #[allow(clippy::too_many_arguments)]
+    pub fn prepare_unit_formation_diplomacy_commit(
+        &mut self,
+        reference: map::UnitReference,
+        expected_stamp: ActionStamp,
+        before_unit: &unit::Unit,
+        before_formation: &unit::Formation,
+        unit: unit::Unit,
+        formation: unit::Formation,
+        diplomacy: crate::diplomacy_drain::Plan,
+    ) -> Result<PreparedUnitFormationDiplomacyCommit<'_>, Error> {
+        if self.action_stamp() != expected_stamp {
+            return Err(Error::ActorCommitConflict);
+        }
+        let context = if diplomacy.context().is_some() {
+            Some(self.current_diplomacy_context()?)
+        } else {
+            None
+        };
+        let PreparedUnitFormationCommit {
+            state,
+            owner,
+            unit_id,
+            formation_id,
+            next_revision,
+            unit,
+            formation,
+        } = self.prepare_unit_formation_commit(
+            reference,
+            expected_stamp.revision,
+            before_unit,
+            before_formation,
+            unit,
+            formation,
+        )?;
+        let manager = state
+            .diplomacy_manager
+            .as_mut()
+            .ok_or(Error::Missing(MissingInput::DiplomacyManager))?;
+        let diplomacy = diplomacy
+            .prepare(manager, context)
+            .map_err(Error::DiplomacyDrain)?;
+        Ok(PreparedUnitFormationDiplomacyCommit {
+            world: &mut state.world,
+            revision: &mut state.revision,
+            diplomacy,
+            owner,
+            unit_id,
+            formation_id,
             next_revision,
             unit,
             formation,

@@ -11,6 +11,7 @@ pub mod combat;
 pub mod combat_random;
 pub mod core_player;
 pub mod core_stream;
+pub mod diplomacy_drain;
 pub mod diplomacy_statement;
 pub mod formation_initialization;
 pub mod geometry;

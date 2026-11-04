@@ -138,7 +138,6 @@ pub struct Inputs<'a, 'd, 'capture> {
 /// public state-phase commit: aftermath must also be supported before advance.
 pub struct StatePhasePlan {
     stamp: ActionStamp,
-    revision: u64,
     binding: WireBinding,
     before: ActorRecords,
     after: ActorRecords,
@@ -172,6 +171,7 @@ impl StatePhasePlan {
 #[must_use = "a prepared SkipTurn must be committed or deliberately discarded"]
 pub struct PreparedSkipTurn {
     phase: StatePhasePlan,
+    diplomacy: c6_core::diplomacy_drain::Plan,
 }
 /// The source-supported finite transition was computed and committed. These
 /// publications remain a presentation projection, not delivered subscribers.
@@ -592,7 +592,6 @@ pub fn plan_state_phase<'a, 'd, 'capture>(
         Ok((before, after, script, script_identity, publications, snapshots)) => {
             Ok(StatePhasePlan {
                 stamp: state.action_stamp(),
-                revision: state.revision(),
                 binding: state.binding().clone(),
                 before,
                 after,
@@ -610,30 +609,16 @@ pub fn plan_state_phase<'a, 'd, 'capture>(
     }
 }
 
-/// Finite no-write aftermath profile. This computes actual source fast paths;
-/// missing owners, pending processing, notification Update or changed blocking
-/// remain explicit semantic frontiers, not fabricated empty callbacks.
-fn quiet_aftermath(state: &LoadedState, owner: i32, trace: &mut Vec<Event>) -> Result<(), Error> {
+/// Compute the supported outgoing diplomacy transitions, then require the
+/// finite no-write notification fast path. Unknown callbacks, notification
+/// Update or changed blocking remain explicit semantic frontiers.
+fn plan_aftermath(
+    state: &LoadedState,
+    owner: i32,
+    trace: &mut Vec<Event>,
+) -> Result<c6_core::diplomacy_drain::Plan, Error> {
     trace.push(Event::Stage(Stage::Diplomacy));
-    let manager = state.diplomacy_manager().map_err(Error::State)?;
-    if !manager.pending_actions().is_empty() {
-        return Err(Error::Unsupported(
-            "Diplomacy pending actions require semantic planning",
-        ));
-    }
-    for player in manager.ever_alive() {
-        if state
-            .player_controls(player.owner)
-            .map_err(Error::State)?
-            .slot_status
-            != 3
-            && manager.has_outgoing(player.owner)
-        {
-            return Err(Error::Unsupported(
-                "Diplomacy ProcessStatement requires semantic planning",
-            ));
-        }
-    }
+    let diplomacy = state.plan_pending_diplomacy().map_err(Error::State)?;
     trace.push(Event::Stage(Stage::Notifications));
     let collection = state
         .player_notifications()
@@ -658,7 +643,7 @@ fn quiet_aftermath(state: &LoadedState, owner: i32, trace: &mut Vec<Event>) -> R
             "owner blocking store/report requires semantic planning",
         ));
     }
-    Ok(())
+    Ok(diplomacy)
 }
 
 /// Prepare a whole direct-Core SkipTurn only for the supported semantic profile.
@@ -671,13 +656,16 @@ pub fn prepare<'a, 'd, 'capture>(
     scripts: Option<&'a ScriptState>,
 ) -> Result<PreparedSkipTurn, Refusal> {
     let mut phase = plan_state_phase(state, reference, inputs, scripts)?;
-    if let Err(error) = quiet_aftermath(state, reference.player(), &mut phase.trace) {
-        return Err(Refusal {
-            error,
-            planned_trace: phase.trace,
-        });
-    }
-    Ok(PreparedSkipTurn { phase })
+    let diplomacy = match plan_aftermath(state, reference.player(), &mut phase.trace) {
+        Ok(plan) => plan,
+        Err(error) => {
+            return Err(Refusal {
+                error,
+                planned_trace: phase.trace,
+            })
+        }
+    };
+    Ok(PreparedSkipTurn { phase, diplomacy })
 }
 impl PreparedSkipTurn {
     pub fn records(&self) -> (&ActorRecords, &ActorRecords) {
@@ -688,7 +676,7 @@ impl PreparedSkipTurn {
         state: &mut LoadedState,
         scripts: Option<&mut ScriptState>,
     ) -> Result<AppliedSkipTurn, Refusal> {
-        let phase = self.phase;
+        let PreparedSkipTurn { phase, diplomacy } = self;
         let current = phase.is_current(state);
         let mut trace = phase.trace;
         let result = (|| {
@@ -708,13 +696,14 @@ impl PreparedSkipTurn {
                     return Err(Error::Unsupported("prepared ScriptSystem context changed"));
                 }
                 let actor = state
-                    .prepare_unit_formation_commit(
+                    .prepare_unit_formation_diplomacy_commit(
                         phase.before.reference,
-                        phase.revision,
+                        phase.stamp,
                         &phase.before.unit,
                         &phase.before.formation,
                         phase.after.unit,
                         phase.after.formation,
+                        diplomacy,
                     )
                     .map_err(Error::State)?;
                 let registry = script
@@ -730,13 +719,14 @@ impl PreparedSkipTurn {
                 registry.commit();
             } else {
                 state
-                    .prepare_unit_formation_commit(
+                    .prepare_unit_formation_diplomacy_commit(
                         phase.before.reference,
-                        phase.revision,
+                        phase.stamp,
                         &phase.before.unit,
                         &phase.before.formation,
                         phase.after.unit,
                         phase.after.formation,
+                        diplomacy,
                     )
                     .map_err(Error::State)?
                     .commit();
