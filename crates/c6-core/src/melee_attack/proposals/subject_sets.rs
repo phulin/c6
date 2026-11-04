@@ -167,6 +167,12 @@ impl Runtime {
             .find(|s| s.label == id && s.alive)
             .map(|s| s.children.as_slice())
     }
+    /// Immutable identity metadata remains available during the final derived
+    /// destructor after its last shared reference has been released.
+    pub fn requirement_definition(&self, label: u64) -> Option<&RequirementDefinition> {
+        let row = self.requirements.iter().find(|r| r.label == label)?;
+        self.requirement_definitions.get(row.definition)
+    }
     pub fn requirement_state(&self, label: u64) -> Option<i32> {
         self.requirements
             .iter()
@@ -338,6 +344,16 @@ pub trait Context {
         context: i32,
         subject: Handle,
     ) -> Result<i32, Self::Error>;
+    /// Source-specific Simple factories may initialize over the same store.
+    /// None retains the existing Const factory; this never imports a Test answer.
+    fn initialize_simple(
+        &mut self,
+        _definition: &RequirementDefinition,
+        _context: i32,
+        _subject: Handle,
+    ) -> Result<Option<crate::simple_requirement::Requirement>, Self::Error> {
+        Ok(None)
+    }
     fn log_missing_set(&mut self, id: &[u8]) -> Result<(), Self::Error>;
     fn log_created_requirement(&mut self, id: u32) -> Result<(), Self::Error>;
     fn log_created_set(&mut self, id: u32) -> Result<(), Self::Error>;
@@ -379,6 +395,13 @@ impl<C: Context> SubjectContext for ProposalContext<'_, C> {
         let Subject::Proposal(subject) = subject else {
             return Err(Error::UnsupportedSubject);
         };
+        if let Some(value) = self
+            .0
+            .initialize_simple(d, context, subject)
+            .map_err(Error::Context)?
+        {
+            return Ok(InitializedRequirement::Simple(value));
+        }
         if let Predicate::Unsupported(kind) = d.predicate {
             return Err(Error::UnsupportedPredicate(kind));
         }

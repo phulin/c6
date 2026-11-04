@@ -1,4 +1,5 @@
 //! Current constant combat requirements and their persistent native-ID owner.
+pub mod home_continent;
 use super::{ContextObject, EffectRuntime, Requirements};
 use c6_core::{
     loaded_state::LoadedState,
@@ -27,6 +28,7 @@ pub struct Runtime {
     levels: Vec<(i32, u32)>,
     logging_priority: Option<i32>,
     units: Option<crate::melee_attack::proposals::unit_subject_predicates::Definitions>,
+    home: Option<home_continent::Definitions>,
 }
 impl Runtime {
     pub fn new(
@@ -52,7 +54,15 @@ impl Runtime {
             levels,
             logging_priority,
             units: None,
+            home: None,
         })
+    }
+    pub fn with_home_continent_definitions(
+        mut self,
+        definitions: home_continent::Definitions,
+    ) -> Self {
+        self.home = Some(definitions);
+        self
     }
     pub fn sets(&self) -> &sets::Runtime {
         &self.sets
@@ -146,9 +156,7 @@ impl Requirements for Runtime {
             .map_err(|e| Error::Factory(Box::new(e)))
     }
     fn release_subject_set(&mut self, _: &mut LoadedState, set: u64) -> Result<(), Error> {
-        self.sets
-            .release(set)
-            .map_err(|e| Error::Factory(Box::new(e)))
+        home_continent::release(self, set).map_err(|e| Error::Factory(Box::new(e)))
     }
 }
 struct Context<'a> {
@@ -191,7 +199,7 @@ impl registry::Context for Context<'_> {
 impl predicates::Context for Context<'_> {
     fn alliance_pair(&mut self) -> Result<Option<(i32, i32)>, Error> {
         Ok(match self.object {
-            ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 return Err(Error::Missing("source-qualified new context IAlliance"))
             }
             ContextObject::Alliance {
@@ -293,6 +301,30 @@ impl sets::Context for Context<'_> {
         };
         value.map_err(|e| Error::Predicate(Box::new(e)))
     }
+    fn initialize_simple(
+        &mut self,
+        definition: &sets::RequirementDefinition,
+        instance: i32,
+        subject: registry::Handle,
+    ) -> Result<Option<c6_core::simple_requirement::Requirement>, Error> {
+        if definition.predicate
+            != sets::Predicate::Unsupported(crate::registry::linux_type_hash(
+                b"REQUIREMENT_UNIT_ON_HOME_CONTINENT",
+            ))
+        {
+            return Ok(None);
+        }
+        if instance != self.instance || subject != self.subject {
+            return Err(Error::Missing("home requirement identity changed"));
+        }
+        let definitions = self
+            .runtime
+            .home
+            .as_ref()
+            .ok_or(Error::Missing("home continent definitions"))?;
+        home_continent::initialize(self.state, definitions, self.object, subject, definition)
+            .map(Some)
+    }
     fn log_missing_set(&mut self, _: &[u8]) -> Result<(), Error> {
         log_disabled(self.runtime.logging_priority, 1)
     }
@@ -307,7 +339,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
     type PlayerInterface = ContextObject;
     fn context_player_interface(&mut self) -> Result<Option<ContextObject>, Error> {
         Ok(match self.object {
-            ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 return Err(Error::Missing("source-qualified new context IPlayer"))
             }
             ContextObject::Alliance { .. } => None,
@@ -322,7 +354,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
             ContextObject::Player(id) => Ok(id),
             ContextObject::Unit(unit) => Ok(i32::from(unit.component_id().owner)),
             ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
-            ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 Err(Error::Missing("source-qualified new context IPlayer"))
             }
         }
