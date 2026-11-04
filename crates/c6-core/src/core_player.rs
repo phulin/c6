@@ -1888,6 +1888,8 @@ pub(crate) mod tests {
     fn stats_carrier() -> player_stats::Stats {
         use crate::player_stats as pmod;
         pmod::Stats {
+            wire_version: 27,
+            legacy_diplomatic_victory_points: None,
             max_melee_strength_trained: -999,
             max_ranged_strength_trained: -998,
             max_bombard_strength_trained: -997,

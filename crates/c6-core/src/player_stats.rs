@@ -1,4 +1,4 @@
-//! Current Linux XP2 Player.Stats v27 wire transport, including nested records.
+//! Linux XP2 Player.Stats v23/v27 wire transport and source-defined legacy defaults.
 //! No live Reset, definition remapping, callbacks, gameplay, actions or turns.
 use crate::tracked_value::TrackedValue;
 use crate::unit::{HashValue, Limits};
@@ -6,6 +6,7 @@ use crate::unit::{HashValue, Limits};
 pub const VERSION: u32 = 27;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,
@@ -59,15 +60,15 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self) -> Result<(), Error> {
+    fn version(&mut self) -> Result<u32, Error> {
         let actual = u32::read(self)?;
-        if actual != VERSION {
+        if actual != 23 && actual != VERSION {
             return Err(Error::Version {
                 expected: VERSION,
                 actual,
             });
         }
-        Ok(())
+        Ok(actual)
     }
 }
 struct Writer {
@@ -153,24 +154,6 @@ impl<T: Wire> Wire for Vec<T> {
         Ok(())
     }
 }
-macro_rules! record {
-    ($name:ident, $version:expr, { $($field:ident: $ty:ty),* $(,)? }) => {
-        #[derive(Clone, Debug, Eq, PartialEq)]
-        pub struct $name { $(pub $field: $ty),* }
-        impl Wire for $name {
-            const MIN: usize = (if $version { 4 } else { 0 }) $(+ <$ty as Wire>::MIN)*;
-            fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-                if $version { r.version()?; }
-                Ok(Self { $($field: <$ty as Wire>::read(r)?),* })
-            }
-            fn write(&self, w: &mut Writer) -> Result<(), Error> {
-                if $version { VERSION.write(w)?; }
-                $(self.$field.write(w)?;)*
-                Ok(())
-            }
-        }
-    };
-}
 impl Wire for bool {
     const MIN: usize = 1;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
@@ -241,63 +224,339 @@ impl Wire for TrackedValue {
         w.raw(&bytes)
     }
 }
-record!(Stats,true,{
-    max_melee_strength_trained:i32,
-    max_ranged_strength_trained:i32,
-    max_bombard_strength_trained:i32,
-    military_strength:i32,
-    military_strength_from_gold:i32,
-    air_military_strength:i32,
-    land_military_strength:i32,
-    naval_military_strength:i32,
-    barbarians_killed:i32,
-    barbarian_camps_cleared:i32,
-    tiles_pillaged:i32,
-    wmd_city_hits:i32,
-    cities_revolted:i32,
-    cities_annexed:i32,
-    total_cities_lost_to_disloyalty:i32,
-    total_cities_gained_from_disloyalty:i32,
-    total_number_of_alliances_formed:i32,
-    total_number_of_emergency_alliances_formed:i32,
-    gold_spent_levying:i32,
-    emergencies_joined:i32,
-    total_governors_appointed:i32,
-    total_governor_assignments:i32,
-    diplomatic_victory_points:TrackedValue,
-    last_turn_favor:i32,
-    current_turn_favor:i32,
-    lifetime_favor:i32,
-    science_victory_points_q8:i32,
-    science_victory_points_per_turn_q8:i32,
-    num_units_constructed:Vec<HashValue<i32>>,
-    num_projects_advanced:Vec<HashValue<i32>>,
-    wonders_lost_plots:Vec<i32>,
-    cached_yields_q8:Vec<HashValue<i32>>,
-    removed_feature_counts:[i32; 64],
-    national_park_counts:[i32; 64],
-    placed_forest_counts:[i32; 64],
-    known_wmd_counts:[i32; 64],
-    cleared_bandit_camp_counts:[i32; 64],
-    city_state_war_counts:[i32; 64],
-    players_revived:[i32; 64],
-    fertility_added_by_droughts:i32,
-    tiles_damaged_by_droughts:i32,
-    population_lost_by_droughts:i32,
-    units_killed_by_droughts:i32,
-    fertility_added_by_floods:i32,
-    tiles_damaged_by_floods:i32,
-    population_lost_by_floods:i32,
-    units_killed_by_floods:i32,
-    fertility_added_by_storms:i32,
-    tiles_damaged_by_storms:i32,
-    population_lost_by_storms:i32,
-    units_killed_by_storms:i32,
-    fertility_added_by_volcanos:i32,
-    tiles_damaged_by_volcanos:i32,
-    population_lost_by_volcanos:i32,
-    units_killed_by_volcanos:i32,
-});
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Stats {
+    pub wire_version: u32,
+    /// Exact v23 integer before native doubling and Q8 conversion; absent at v27.
+    pub legacy_diplomatic_victory_points: Option<i32>,
+    pub max_melee_strength_trained: i32,
+    pub max_ranged_strength_trained: i32,
+    pub max_bombard_strength_trained: i32,
+    pub military_strength: i32,
+    pub military_strength_from_gold: i32,
+    pub air_military_strength: i32,
+    pub land_military_strength: i32,
+    pub naval_military_strength: i32,
+    pub barbarians_killed: i32,
+    pub barbarian_camps_cleared: i32,
+    pub tiles_pillaged: i32,
+    pub wmd_city_hits: i32,
+    pub cities_revolted: i32,
+    pub cities_annexed: i32,
+    pub total_cities_lost_to_disloyalty: i32,
+    pub total_cities_gained_from_disloyalty: i32,
+    pub total_number_of_alliances_formed: i32,
+    pub total_number_of_emergency_alliances_formed: i32,
+    pub gold_spent_levying: i32,
+    pub emergencies_joined: i32,
+    pub total_governors_appointed: i32,
+    pub total_governor_assignments: i32,
+    pub diplomatic_victory_points: TrackedValue,
+    pub last_turn_favor: i32,
+    pub current_turn_favor: i32,
+    pub lifetime_favor: i32,
+    pub science_victory_points_q8: i32,
+    pub science_victory_points_per_turn_q8: i32,
+    pub num_units_constructed: Vec<HashValue<i32>>,
+    pub num_projects_advanced: Vec<HashValue<i32>>,
+    pub wonders_lost_plots: Vec<i32>,
+    pub cached_yields_q8: Vec<HashValue<i32>>,
+    pub removed_feature_counts: [i32; 64],
+    pub national_park_counts: [i32; 64],
+    pub placed_forest_counts: [i32; 64],
+    pub known_wmd_counts: [i32; 64],
+    pub cleared_bandit_camp_counts: [i32; 64],
+    pub city_state_war_counts: [i32; 64],
+    pub players_revived: [i32; 64],
+    pub fertility_added_by_droughts: i32,
+    pub tiles_damaged_by_droughts: i32,
+    pub population_lost_by_droughts: i32,
+    pub units_killed_by_droughts: i32,
+    pub fertility_added_by_floods: i32,
+    pub tiles_damaged_by_floods: i32,
+    pub population_lost_by_floods: i32,
+    pub units_killed_by_floods: i32,
+    pub fertility_added_by_storms: i32,
+    pub tiles_damaged_by_storms: i32,
+    pub population_lost_by_storms: i32,
+    pub units_killed_by_storms: i32,
+    pub fertility_added_by_volcanos: i32,
+    pub tiles_damaged_by_volcanos: i32,
+    pub population_lost_by_volcanos: i32,
+    pub units_killed_by_volcanos: i32,
+}
+impl Wire for Stats {
+    const MIN: usize = 4;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = r.version()?;
+        let max_melee_strength_trained = <i32 as Wire>::read(r)?;
+        let max_ranged_strength_trained = <i32 as Wire>::read(r)?;
+        let max_bombard_strength_trained = <i32 as Wire>::read(r)?;
+        let military_strength = <i32 as Wire>::read(r)?;
+        let military_strength_from_gold = <i32 as Wire>::read(r)?;
+        let air_military_strength = <i32 as Wire>::read(r)?;
+        let land_military_strength = <i32 as Wire>::read(r)?;
+        let naval_military_strength = <i32 as Wire>::read(r)?;
+        let barbarians_killed = <i32 as Wire>::read(r)?;
+        let barbarian_camps_cleared = <i32 as Wire>::read(r)?;
+        let tiles_pillaged = <i32 as Wire>::read(r)?;
+        let wmd_city_hits = <i32 as Wire>::read(r)?;
+        let cities_revolted = <i32 as Wire>::read(r)?;
+        let cities_annexed = <i32 as Wire>::read(r)?;
+        let total_cities_lost_to_disloyalty = <i32 as Wire>::read(r)?;
+        let total_cities_gained_from_disloyalty = <i32 as Wire>::read(r)?;
+        let total_number_of_alliances_formed = <i32 as Wire>::read(r)?;
+        let total_number_of_emergency_alliances_formed = <i32 as Wire>::read(r)?;
+        let gold_spent_levying = <i32 as Wire>::read(r)?;
+        let emergencies_joined = <i32 as Wire>::read(r)?;
+        let total_governors_appointed = <i32 as Wire>::read(r)?;
+        let total_governor_assignments = <i32 as Wire>::read(r)?;
+        let legacy_diplomatic_victory_points = if wire_version == 23 {
+            Some(i32::read(r)?)
+        } else {
+            None
+        };
+        let diplomatic_victory_points = match legacy_diplomatic_victory_points {
+            Some(value) => TrackedValue {
+                value_q8: value.wrapping_shl(9),
+                include_steps: true,
+                min_q8: None,
+                max_q8: None,
+                steps: Vec::new(),
+            },
+            None => TrackedValue::read(r)?,
+        };
+        let last_turn_favor = <i32 as Wire>::read(r)?;
+        let current_turn_favor = <i32 as Wire>::read(r)?;
+        let lifetime_favor = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let science_victory_points_q8 = <i32 as Wire>::read(r)?;
+        let science_victory_points_per_turn_q8 = <i32 as Wire>::read(r)?;
+        let num_units_constructed = <Vec<HashValue<i32>> as Wire>::read(r)?;
+        let num_projects_advanced = <Vec<HashValue<i32>> as Wire>::read(r)?;
+        let wonders_lost_plots = <Vec<i32> as Wire>::read(r)?;
+        let cached_yields_q8 = <Vec<HashValue<i32>> as Wire>::read(r)?;
+        let removed_feature_counts = <[i32; 64] as Wire>::read(r)?;
+        let national_park_counts = <[i32; 64] as Wire>::read(r)?;
+        let placed_forest_counts = <[i32; 64] as Wire>::read(r)?;
+        let known_wmd_counts = <[i32; 64] as Wire>::read(r)?;
+        let cleared_bandit_camp_counts = <[i32; 64] as Wire>::read(r)?;
+        let city_state_war_counts = <[i32; 64] as Wire>::read(r)?;
+        let players_revived = if wire_version == 23 {
+            [0; 64]
+        } else {
+            <[i32; 64] as Wire>::read(r)?
+        };
+        let fertility_added_by_droughts = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let tiles_damaged_by_droughts = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let population_lost_by_droughts = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let units_killed_by_droughts = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let fertility_added_by_floods = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let tiles_damaged_by_floods = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let population_lost_by_floods = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let units_killed_by_floods = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let fertility_added_by_storms = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let tiles_damaged_by_storms = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let population_lost_by_storms = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let units_killed_by_storms = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let fertility_added_by_volcanos = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let tiles_damaged_by_volcanos = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let population_lost_by_volcanos = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        let units_killed_by_volcanos = if wire_version == 23 {
+            0
+        } else {
+            <i32 as Wire>::read(r)?
+        };
+        Ok(Self {
+            wire_version,
+            legacy_diplomatic_victory_points,
+            max_melee_strength_trained,
+            max_ranged_strength_trained,
+            max_bombard_strength_trained,
+            military_strength,
+            military_strength_from_gold,
+            air_military_strength,
+            land_military_strength,
+            naval_military_strength,
+            barbarians_killed,
+            barbarian_camps_cleared,
+            tiles_pillaged,
+            wmd_city_hits,
+            cities_revolted,
+            cities_annexed,
+            total_cities_lost_to_disloyalty,
+            total_cities_gained_from_disloyalty,
+            total_number_of_alliances_formed,
+            total_number_of_emergency_alliances_formed,
+            gold_spent_levying,
+            emergencies_joined,
+            total_governors_appointed,
+            total_governor_assignments,
+            diplomatic_victory_points,
+            last_turn_favor,
+            current_turn_favor,
+            lifetime_favor,
+            science_victory_points_q8,
+            science_victory_points_per_turn_q8,
+            num_units_constructed,
+            num_projects_advanced,
+            wonders_lost_plots,
+            cached_yields_q8,
+            removed_feature_counts,
+            national_park_counts,
+            placed_forest_counts,
+            known_wmd_counts,
+            cleared_bandit_camp_counts,
+            city_state_war_counts,
+            players_revived,
+            fertility_added_by_droughts,
+            tiles_damaged_by_droughts,
+            population_lost_by_droughts,
+            units_killed_by_droughts,
+            fertility_added_by_floods,
+            tiles_damaged_by_floods,
+            population_lost_by_floods,
+            units_killed_by_floods,
+            fertility_added_by_storms,
+            tiles_damaged_by_storms,
+            population_lost_by_storms,
+            units_killed_by_storms,
+            fertility_added_by_volcanos,
+            tiles_damaged_by_volcanos,
+            population_lost_by_volcanos,
+            units_killed_by_volcanos,
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        if self.legacy_diplomatic_victory_points.is_some() {
+            return Err(Error::InvalidContainer);
+        }
+        VERSION.write(w)?;
+        self.max_melee_strength_trained.write(w)?;
+        self.max_ranged_strength_trained.write(w)?;
+        self.max_bombard_strength_trained.write(w)?;
+        self.military_strength.write(w)?;
+        self.military_strength_from_gold.write(w)?;
+        self.air_military_strength.write(w)?;
+        self.land_military_strength.write(w)?;
+        self.naval_military_strength.write(w)?;
+        self.barbarians_killed.write(w)?;
+        self.barbarian_camps_cleared.write(w)?;
+        self.tiles_pillaged.write(w)?;
+        self.wmd_city_hits.write(w)?;
+        self.cities_revolted.write(w)?;
+        self.cities_annexed.write(w)?;
+        self.total_cities_lost_to_disloyalty.write(w)?;
+        self.total_cities_gained_from_disloyalty.write(w)?;
+        self.total_number_of_alliances_formed.write(w)?;
+        self.total_number_of_emergency_alliances_formed.write(w)?;
+        self.gold_spent_levying.write(w)?;
+        self.emergencies_joined.write(w)?;
+        self.total_governors_appointed.write(w)?;
+        self.total_governor_assignments.write(w)?;
+        self.diplomatic_victory_points.write(w)?;
+        self.last_turn_favor.write(w)?;
+        self.current_turn_favor.write(w)?;
+        self.lifetime_favor.write(w)?;
+        self.science_victory_points_q8.write(w)?;
+        self.science_victory_points_per_turn_q8.write(w)?;
+        self.num_units_constructed.write(w)?;
+        self.num_projects_advanced.write(w)?;
+        self.wonders_lost_plots.write(w)?;
+        self.cached_yields_q8.write(w)?;
+        self.removed_feature_counts.write(w)?;
+        self.national_park_counts.write(w)?;
+        self.placed_forest_counts.write(w)?;
+        self.known_wmd_counts.write(w)?;
+        self.cleared_bandit_camp_counts.write(w)?;
+        self.city_state_war_counts.write(w)?;
+        self.players_revived.write(w)?;
+        self.fertility_added_by_droughts.write(w)?;
+        self.tiles_damaged_by_droughts.write(w)?;
+        self.population_lost_by_droughts.write(w)?;
+        self.units_killed_by_droughts.write(w)?;
+        self.fertility_added_by_floods.write(w)?;
+        self.tiles_damaged_by_floods.write(w)?;
+        self.population_lost_by_floods.write(w)?;
+        self.units_killed_by_floods.write(w)?;
+        self.fertility_added_by_storms.write(w)?;
+        self.tiles_damaged_by_storms.write(w)?;
+        self.population_lost_by_storms.write(w)?;
+        self.units_killed_by_storms.write(w)?;
+        self.fertility_added_by_volcanos.write(w)?;
+        self.tiles_damaged_by_volcanos.write(w)?;
+        self.population_lost_by_volcanos.write(w)?;
+        self.units_killed_by_volcanos.write(w)?;
+        Ok(())
+    }
+}
+
 impl Stats {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -348,6 +607,8 @@ mod tests {
     }
     fn specimen() -> Stats {
         Stats {
+            wire_version: VERSION,
+            legacy_diplomatic_victory_points: None,
             max_melee_strength_trained: i32::MIN,
             max_ranged_strength_trained: i32::MIN,
             max_bombard_strength_trained: i32::MIN,
@@ -529,5 +790,149 @@ mod tests {
         let mut bad = bytes;
         bad[first_array..first_array + 4].copy_from_slice(&63u32.to_le_bytes());
         assert_eq!(Stats::decode(&bad, limits()), Err(Error::InvalidContainer));
+    }
+    fn legacy_bytes(points: i32) -> Vec<u8> {
+        let mut b = 23u32.to_le_bytes().to_vec();
+        for value in 0i32..22 {
+            b.extend_from_slice(&value.to_le_bytes());
+        }
+        b.extend_from_slice(&points.to_le_bytes());
+        // Last/current favor, science points/per-turn (no lifetime-favor word).
+        for value in [-7i32, 8, -257, 513] {
+            b.extend_from_slice(&value.to_le_bytes());
+        }
+        // Unit/project hash pairs, wonders plots and cached yield pairs.
+        b.extend_from_slice(&1u32.to_le_bytes());
+        b.extend_from_slice(&0x80000001u32.to_le_bytes());
+        b.extend_from_slice(&(-9i32).to_le_bytes());
+        b.extend_from_slice(&0u32.to_le_bytes());
+        b.extend_from_slice(&1u32.to_le_bytes());
+        b.extend_from_slice(&(-1i32).to_le_bytes());
+        b.extend_from_slice(&0u32.to_le_bytes());
+        for index in 0i32..6 {
+            b.extend_from_slice(&64u32.to_le_bytes());
+            for value in 0i32..64 {
+                b.extend_from_slice(&(index * 100 + value).to_le_bytes());
+            }
+        }
+        b
+    }
+    #[test]
+    fn legacy23_fields_defaults_and_exact_budget() {
+        let b = legacy_bytes(-257);
+        let (v, n, items) = Stats::decode_prefix_with_items(&b, limits()).unwrap();
+        assert_eq!((n, items), (b.len(), 386));
+        assert_eq!(v.wire_version, 23);
+        assert_eq!(v.legacy_diplomatic_victory_points, Some(-257));
+        assert_eq!(
+            v.diplomatic_victory_points,
+            TrackedValue {
+                value_q8: -131584,
+                include_steps: true,
+                min_q8: None,
+                max_q8: None,
+                steps: vec![]
+            }
+        );
+        assert_eq!(
+            (v.max_melee_strength_trained, v.total_governor_assignments),
+            (0, 21)
+        );
+        assert_eq!(
+            (v.last_turn_favor, v.current_turn_favor, v.lifetime_favor),
+            (-7, 8, 0)
+        );
+        assert_eq!(
+            (
+                v.science_victory_points_q8,
+                v.science_victory_points_per_turn_q8
+            ),
+            (-257, 513)
+        );
+        assert_eq!(
+            v.num_units_constructed[0],
+            HashValue {
+                definition_hash: 0x80000001,
+                value: -9
+            }
+        );
+        assert_eq!(v.wonders_lost_plots, vec![-1]);
+        assert_eq!(v.city_state_war_counts[63], 563);
+        assert_eq!(v.players_revived, [0; 64]);
+        assert_eq!(v.fertility_added_by_droughts, 0);
+        assert_eq!(v.tiles_damaged_by_droughts, 0);
+        assert_eq!(v.population_lost_by_droughts, 0);
+        assert_eq!(v.units_killed_by_droughts, 0);
+        assert_eq!(v.fertility_added_by_floods, 0);
+        assert_eq!(v.tiles_damaged_by_floods, 0);
+        assert_eq!(v.population_lost_by_floods, 0);
+        assert_eq!(v.units_killed_by_floods, 0);
+        assert_eq!(v.fertility_added_by_storms, 0);
+        assert_eq!(v.tiles_damaged_by_storms, 0);
+        assert_eq!(v.population_lost_by_storms, 0);
+        assert_eq!(v.units_killed_by_storms, 0);
+        assert_eq!(v.fertility_added_by_volcanos, 0);
+        assert_eq!(v.tiles_damaged_by_volcanos, 0);
+        assert_eq!(v.population_lost_by_volcanos, 0);
+        assert_eq!(v.units_killed_by_volcanos, 0);
+
+        assert!(Stats::decode_prefix_with_items(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: 386
+            }
+        )
+        .is_ok());
+        assert_eq!(
+            Stats::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len() - 1,
+                    max_items: 386
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Stats::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len(),
+                    max_items: 385
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(v.encode(limits()), Err(Error::UnsupportedLegacyWrite));
+    }
+    #[test]
+    fn legacy23_wrapping_conversion_and_refusals() {
+        for (wire, raw) in [
+            (i32::MIN, 0),
+            (i32::MAX, -512),
+            (0x40000001, 512),
+            (-1, -512),
+        ] {
+            let v = Stats::decode(&legacy_bytes(wire), limits()).unwrap();
+            assert_eq!(v.legacy_diplomatic_victory_points, Some(wire));
+            assert_eq!(v.diplomatic_victory_points.value_q8, raw);
+        }
+        let b = legacy_bytes(3);
+        for end in 0..b.len() {
+            assert!(Stats::decode(&b[..end], limits()).is_err(), "prefix {end}");
+        }
+        let mut bad = b.clone();
+        bad[..4].copy_from_slice(&24u32.to_le_bytes());
+        assert_eq!(
+            Stats::decode(&bad, limits()),
+            Err(Error::Version {
+                expected: 27,
+                actual: 24
+            })
+        );
+        let mut trailing = b;
+        trailing.push(0);
+        assert_eq!(Stats::decode(&trailing, limits()), Err(Error::Trailing));
     }
 }
