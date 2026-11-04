@@ -152,7 +152,7 @@ impl kernel::Context for Context<'_> {
         } else {
             self.attacker
         };
-        let mut entries = self.levels.iter().filter(|r| r.0 == other.owner);
+        let mut entries = self.levels.iter().filter(|r| r.0 == other.player());
         let level = entries
             .next()
             .ok_or(Error::Missing("current player level"))?
