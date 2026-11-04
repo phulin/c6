@@ -344,7 +344,8 @@ mod tests {
         (state, runtime, owner)
     }
     #[test]
-    fn loaded_game_update_selected_human_updates_canonical_counters_and_retains_blocking_callback() {
+    fn loaded_game_update_selected_human_updates_canonical_counters_and_retains_blocking_callback()
+    {
         let (mut state, mut runtime, owner) = current_update_player_fixture();
         assert_eq!(
             game_update::prepare_current_player(&mut state, &mut runtime),
@@ -407,7 +408,8 @@ mod tests {
         assert_eq!(state.revision(), u64::MAX);
     }
     #[test]
-    fn loaded_game_update_activation_flags_are_consumed_before_required_upkeep_without_role_change() {
+    fn loaded_game_update_activation_flags_are_consumed_before_required_upkeep_without_role_change()
+    {
         let (mut state, mut runtime, owner) = current_update_player_fixture();
         state.retained.core.player_processor.activation_event[owner as usize] = true;
         state.retained.core.player_processor.first_activation[owner as usize] = true;
@@ -431,6 +433,51 @@ mod tests {
         );
         assert_eq!(state.player_slot_status(owner).unwrap(), 3);
         assert!(game_update::complete_current_player(&state, &mut runtime).is_err());
+    }
+
+    #[test]
+    fn game_update_turn_activity_refinement_is_same_epoch_atomic_and_initial_only() {
+        let mut state = state();
+        let mut input: PartialControlInputs = controls(&state).into();
+        let owner = input.players[0].owner;
+        input.players[0].turn_active = None;
+        let source = witness(&state);
+        state
+            .bind_observed_snapshot_partial_controls(source.clone(), input)
+            .unwrap();
+        let before = state.action_stamp();
+        assert!(game_update::extend_observed_turn_activity(
+            &mut state,
+            &source,
+            &[(owner, true), (owner, true)]
+        )
+        .is_err());
+        assert_eq!(state.action_stamp(), before);
+        assert!(state.turn_active(owner).is_err());
+        let mut other = source.clone();
+        other.capture_facts_sha256[0] ^= 1;
+        assert!(
+            game_update::extend_observed_turn_activity(&mut state, &other, &[(owner, true)])
+                .is_err()
+        );
+        assert_eq!(state.action_stamp(), before);
+        game_update::extend_observed_turn_activity(&mut state, &source, &[(owner, true)]).unwrap();
+        assert!(state.turn_active(owner).unwrap());
+        assert_eq!(state.revision(), 0);
+        assert_ne!(state.action_stamp(), before);
+        let current = state.action_stamp();
+        game_update::extend_observed_turn_activity(&mut state, &source, &[(owner, true)]).unwrap();
+        assert_eq!(state.action_stamp(), current);
+        assert!(
+            game_update::extend_observed_turn_activity(&mut state, &source, &[(owner, false)])
+                .is_err()
+        );
+        assert!(state.turn_active(owner).unwrap());
+        state.revision = 1;
+        assert!(matches!(
+            game_update::extend_observed_turn_activity(&mut state, &source, &[(owner, true)]),
+            Err(Error::NotPristine)
+        ));
     }
 
     // Source-only complete typed actor; no native initialization is inferred.

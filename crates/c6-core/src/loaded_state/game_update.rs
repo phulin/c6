@@ -536,3 +536,45 @@ pub fn complete_current_player(
     runtime.player_frame = None;
     Ok(runtime.player_progress())
 }
+
+/// Refine only previously unread turn-activity facts from the SAME observed
+/// initial snapshot, before any gameplay mutation. Existing facts must agree;
+/// decoder fields, other controls and source identity are never overwritten.
+/// Caller-supplied values still require an attributed actual before readset.
+pub fn extend_observed_turn_activity(
+    state: &mut LoadedState,
+    witness: &super::ObservedSnapshotWitness,
+    values: &[(i32, bool)],
+) -> Result<(), super::Error> {
+    if !state.is_pristine() {
+        return Err(super::Error::NotPristine);
+    }
+    if state.observed_snapshot.as_ref() != Some(witness) {
+        return Err(super::Error::Binding);
+    }
+    let controls = state.controls.as_ref().ok_or(super::Error::Binding)?;
+    let mut positions = Vec::new();
+    for (n, (owner, active)) in values.iter().enumerate() {
+        if values[..n].iter().any(|(other, _)| other == owner) {
+            return Err(super::Error::Binding);
+        }
+        let index = controls
+            .players
+            .iter()
+            .position(|p| p.owner == *owner)
+            .ok_or(super::Error::Missing(super::MissingInput::Player(*owner)))?;
+        match controls.players[index].turn_active {
+            Some(old) if old != *active => return Err(super::Error::Binding),
+            Some(_) => {}
+            None => positions.push((index, *active)),
+        }
+    }
+    if !positions.is_empty() {
+        state.advance_admission_generation()?;
+        let controls = state.controls.as_mut().expect("checked");
+        for (index, active) in positions {
+            controls.players[index].turn_active = Some(active);
+        }
+    }
+    Ok(())
+}
