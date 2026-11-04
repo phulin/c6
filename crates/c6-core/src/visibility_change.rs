@@ -191,6 +191,50 @@ pub fn change_visibility_count<C: Context>(
         .map_err(Context)?
         .outgoing_visibility
         .clone();
+    // Validate concrete state and required definition mapping before writing a
+    // count. Effect availability is separately checked by the live preflight.
+    let hidden_type = if change.near_origin {
+        0
+    } else {
+        change.hidden_type
+    };
+    for recipient in &recipients {
+        let player = recipient.player_id;
+        let blocked = c.is_valid(player).map_err(Context)?
+            && player != change.owner
+            && c.visibility(change.owner)
+                .map_err(Context)?
+                .outgoing_visibility_blockers
+                .iter()
+                .any(|b| b.player_id == player);
+        if blocked {
+            continue;
+        }
+        let own = c.visibility(player).map_err(Context)?;
+        revealed(own, change.plot_index).map_err(State)?;
+        let shared = c.shared_layers(player).map_err(Context)?;
+        entry(&shared.0, change.plot_index).map_err(State)?;
+        if player == change.owner {
+            entry(&own.layers, change.plot_index).map_err(State)?;
+        }
+        if hidden_type != -1 && change.delta != 0 {
+            let hash = c.hidden_layer_hash(hidden_type).map_err(Context)?;
+            for layers in [
+                Some(shared.0.as_slice()),
+                (player == change.owner).then_some(own.layers.as_slice()),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Some(layer) = layers.iter().find(|l| l.type_hash == hash) {
+                    layer
+                        .values
+                        .get(change.plot_index as usize)
+                        .ok_or(State(StateError::PlotOutOfRange))?;
+                }
+            }
+        }
+    }
     let mut result = 0;
     let mut origin = change.origin_index;
     for recipient in recipients {
@@ -579,6 +623,39 @@ mod tests {
         );
         assert_eq!(f.own, own);
         assert_eq!(f.shared, shared);
+        assert!(f.events.is_empty());
+    }
+    #[test]
+    fn invalid_live_mapping_and_shared_state_fail_before_count_writes() {
+        let mut f = Fixture::new();
+        f.recipients(&[0]);
+        let original = f.own.clone();
+        let mut r = request(1);
+        r.hidden_type = 9;
+        assert_eq!(
+            change_visibility_count(&mut f, r),
+            Err(ChangeError::Context("hidden definition"))
+        );
+        assert_eq!(f.own, original);
+        f.shared[0].0.clear();
+        assert_eq!(
+            change_visibility_count(&mut f, request(1)),
+            Err(ChangeError::State(StateError::MissingBaseLayer))
+        );
+        assert_eq!(f.own, original);
+    }
+
+    #[test]
+    fn blocked_recipient_does_not_require_hidden_definition() {
+        let mut f = Fixture::new();
+        f.recipients(&[1]);
+        f.own[0].outgoing_visibility_blockers = vec![OutgoingVisibility {
+            player_id: 1,
+            count: 0,
+        }];
+        let mut r = request(1);
+        r.hidden_type = 9;
+        assert_eq!(change_visibility_count(&mut f, r), Ok(0));
         assert!(f.events.is_empty());
     }
 }
