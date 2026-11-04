@@ -5,6 +5,7 @@
 //! policy contract subscriptions are explicitly omitted for external policies.
 //! No constructor/initialization RNG call is replaced with a host PRNG.
 use crate::loaded_state::{ActionStamp, LoadedState};
+pub mod founding;
 use crate::map::{Recycled, Slot};
 use crate::player_ai_city_manager::{
     BoolByte, CityBuild, CityBuildEntry, CityManager, ComponentId, ControlHandle, EvaluationLayers,
