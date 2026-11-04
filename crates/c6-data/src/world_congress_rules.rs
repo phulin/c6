@@ -64,7 +64,13 @@ impl<'a> Definitions<'a> {
     fn from_database(db: &'a Database) -> Result<Self, Error> {
         let types = db.table("Types").ok_or(Error::MissingTable("Types"))?;
         let resource_table = CacheTable::new(db, "Resources", &["ResourceType", "PowerProvided"])?;
-        if resource_table.primary != Some("ResourceType") {
+        if resource_table.primary != Some("ResourceType")
+            || resource_table
+                .table
+                .columns()
+                .iter()
+                .any(|c| c == "PrimaryKey")
+        {
             return Err(Error::PrimaryKey("Resources"));
         }
         let mut resource_rows = Vec::new();
@@ -467,6 +473,11 @@ mod tests {
         assert!(matches!(
             Definitions::from_database(&db),
             Err(Error::NavigationOverride("Resources"))
+        ));
+        let db = database("ALTER TABLE Resources ADD COLUMN PrimaryKey TEXT; UPDATE Resources SET PrimaryKey='OTHER';");
+        assert!(matches!(
+            Definitions::from_database(&db),
+            Err(Error::PrimaryKey("Resources"))
         ));
         let db = database("ALTER TABLE Yields ADD COLUMN Hash BOOLEAN; UPDATE Yields SET Hash=1;");
         assert!(matches!(
