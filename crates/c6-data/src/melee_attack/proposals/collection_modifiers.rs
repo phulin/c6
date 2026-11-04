@@ -26,6 +26,18 @@ pub trait Services {
         modifier: u64,
         proposal: registry::Handle,
     ) -> Result<Option<u64>, Self::Error>;
+    fn unsubscribe_subject_requirements(
+        &mut self,
+        state: &mut LoadedState,
+        receiver: u64,
+        proposal: registry::Handle,
+        set: u64,
+    ) -> Result<(), Self::Error>;
+    fn release_subject_requirements(
+        &mut self,
+        state: &mut LoadedState,
+        set: u64,
+    ) -> Result<(), Self::Error>;
     fn apply_strength_effect(
         &mut self,
         state: &mut LoadedState,
@@ -78,6 +90,21 @@ impl<S: Services> kernel::Context for Context<'_, S> {
     ) -> Result<Option<u64>, Self::Error> {
         self.services
             .create_subject_requirements(self.state, modifier, proposal)
+            .map_err(Error::Services)
+    }
+    fn unsubscribe_subject_requirements(
+        &mut self,
+        receiver: u64,
+        proposal: registry::Handle,
+        set: u64,
+    ) -> Result<(), Self::Error> {
+        self.services
+            .unsubscribe_subject_requirements(self.state, receiver, proposal, set)
+            .map_err(Error::Services)
+    }
+    fn release_subject_requirements(&mut self, set: u64) -> Result<(), Self::Error> {
+        self.services
+            .release_subject_requirements(self.state, set)
             .map_err(Error::Services)
     }
     fn apply_strength_effect(

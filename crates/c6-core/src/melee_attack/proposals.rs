@@ -9,6 +9,7 @@ pub mod collections;
 pub mod player_strength;
 pub mod registry;
 pub mod subject_predicates;
+pub mod subject_sets;
 
 pub trait ComponentCreatedContext {
     type Error;

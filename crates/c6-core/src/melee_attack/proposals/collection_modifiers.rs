@@ -12,6 +12,9 @@ pub enum EffectFamily {
 pub struct Modifier {
     pub effect_family: EffectFamily,
     pub receiver: u64,
+    /// Stable context-wrapper identity, distinct from the effect owner even
+    /// when both wrappers reference the same Unit ComponentID.
+    pub context: u64,
     pub control: common::Modifier,
     pub instance: i32,
     pub definition: Vec<u8>,
@@ -79,6 +82,13 @@ pub trait Context {
         modifier: u64,
         proposal: Handle,
     ) -> Result<Option<u64>, Self::Error>;
+    fn unsubscribe_subject_requirements(
+        &mut self,
+        receiver: u64,
+        proposal: Handle,
+        set: u64,
+    ) -> Result<(), Self::Error>;
+    fn release_subject_requirements(&mut self, set: u64) -> Result<(), Self::Error>;
     fn apply_strength_effect(&mut self, effect: u64, proposal: Handle)
         -> Result<bool, Self::Error>;
     fn log_applying(&mut self, modifier: u64, proposal: Handle) -> Result<(), Self::Error>;
@@ -281,12 +291,31 @@ impl<C: Context> common::Context for Adapter<'_, C> {
         Ok(true)
     }
     fn unsubscribe_subject_requirement(&mut self) -> Result<(), Self::Error> {
-        Err(Error::RemovalUnsupported)
+        let set = Adapter::tracked(self)?
+            .state
+            .requirement_set
+            .ok_or(Error::MissingTrackedSubject)?;
+        self.context
+            .unsubscribe_subject_requirements(self.receiver, self.proposal, set)
+            .map_err(Error::Context)
     }
     fn clear_subject_requirement(&mut self) -> Result<(), Self::Error> {
-        Err(Error::RemovalUnsupported)
+        let set = Adapter::tracked_mut(self)?
+            .state
+            .requirement_set
+            .take()
+            .ok_or(Error::MissingTrackedSubject)?;
+        self.context
+            .release_subject_requirements(set)
+            .map_err(Error::Context)
     }
     fn remove_effects(&mut self) -> Result<(), Self::Error> {
+        // 2334770 returns before any removal when suppressed or applied==0.
+        // The intervening admitted SimpleModifierDefinition permanent getter
+        // is read-only; a reached applied-effect removal remains unsupported.
+        if self.record()?.control.suppressed || Adapter::tracked(self)?.state.applied == 0 {
+            return Ok(());
+        }
         Err(Error::RemovalUnsupported)
     }
 }
@@ -373,6 +402,17 @@ mod tests {
             self.calls.push("requirements");
             Err("actual subject predicates unavailable")
         }
+        fn unsubscribe_subject_requirements(
+            &mut self,
+            _: u64,
+            _: Handle,
+            _: u64,
+        ) -> Result<(), Self::Error> {
+            Err("unexpected unsubscribe")
+        }
+        fn release_subject_requirements(&mut self, _: u64) -> Result<(), Self::Error> {
+            Err("unexpected release")
+        }
         fn apply_strength_effect(&mut self, _: u64, p: Handle) -> Result<bool, Self::Error> {
             assert_eq!(
                 self.proposals
@@ -413,6 +453,7 @@ mod tests {
         let modifier = Modifier {
             effect_family: EffectFamily::PlayerStrength,
             receiver: 7,
+            context: 9,
             control: common::Modifier {
                 enabled: active,
                 suppressed: false,
