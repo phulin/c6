@@ -7,6 +7,7 @@ pub struct Definitions<'a, 'r> {
     pub placement: &'a placement::Definitions<'a, 'r>,
     pub sight: &'a crate::loaded_actions::city_range_attack::Definitions,
     pub mechanics: &'a Mechanics,
+    pub movement: &'a crate::formation_movement_cost::Definitions<'a>,
     pub bonus: &'a crate::loaded_upkeep::placement_tails::Definitions,
 }
 
@@ -46,7 +47,10 @@ pub type EffectsError<E> = <E as sight::Effects>::Error;
 /// Required reached synchronous effects. Defaults reject; they never discard
 /// a report, callback, operation transition, or RNG draw.
 pub trait Effects:
-    sight::Effects + crate::loaded_upkeep::OperationReports<Error = EffectsError<Self>>
+    sight::Effects
+    + crate::loaded_upkeep::OperationReports<Error = EffectsError<Self>>
+    + crate::unit_placement_services::Services<Error = EffectsError<Self>>
+    + crate::loaded_upkeep::placement_tails::Reports<Error = EffectsError<Self>>
 {
     fn preflight_normal(
         &self,
@@ -137,14 +141,18 @@ pub enum Error<E> {
     Sight(sight::Error<E>),
     Missing(&'static str),
     Effect(E),
+    Services(crate::unit_placement_services::Error<E>),
+    Bonus(crate::loaded_upkeep::placement_tails::Error<E>),
+    Cost(crate::formation_movement_cost::Error),
     World(c6_core::world::MissingInput),
     State(c6_core::loaded_state::Error),
     Query(crate::loaded_actions::Error),
     Transition(Box<c6_core::unit_placement_transition::normal_move::Error<Error<E>>>),
 }
 
-/// Normal flags3 Placement. An unavailable continuation is an error before
-/// mutation; callers must not treat a supported path query as movement success.
+/// Normal flags3 Placement. Initial validation precedes mutation. An unavailable
+/// later continuation returns an error retaining the completed native prefix;
+/// callers must not treat a supported path query as movement success.
 pub fn set<E: Effects>(
     state: &mut LoadedState,
     definitions: &Definitions<'_, '_>,
@@ -153,11 +161,7 @@ pub fn set<E: Effects>(
     effects: &mut E,
     request: Request,
 ) -> Result<i32, Error<EffectsError<E>>> {
-    if state.binding() != &definitions.mechanics.binding {
-        return Err(Error::Query(
-            crate::loaded_actions::Error::ConfigurationIdentity,
-        ));
-    }
+    definitions.validate_binding(state).map_err(Error::Query)?;
     let mut context = Context {
         sight: sight::Context {
             state,
@@ -499,16 +503,10 @@ impl<E: Effects> c6_core::unit_healing::UnitHealingContext for Context<'_, '_, '
         Ok(self.definitions.mechanics.maximum_hit_points)
     }
     fn maximum_damage_for_report(&self) -> Result<i32, Self::Error> {
-        if self
-            .actor()?
-            .k_properties
-            .entries
-            .iter()
-            .any(|e| e.key == 0x7d3fc711)
-        {
-            return Err(Error::Missing("dynamic maximum TypedVariant conversion"));
-        }
-        Ok(self.definitions.mechanics.maximum_hit_points)
+        self.definitions
+            .movement
+            .maximum_damage(self.actor()?)
+            .map_err(Error::Cost)
     }
     fn send_damage_changed(&mut self, report: DamageChangedReport) -> Result<(), Self::Error> {
         self.sight.effects.damage_changed(self.sight.state, report)
@@ -529,7 +527,7 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
     type Plot = u32;
     type Diplomacy = i32;
     type Definition = u32;
-    type AlivePlayers = ();
+    type AlivePlayers = (crate::unit_placement_services::AliveToken, usize);
     fn preflight_movement_damage(&self) -> Result<(), Self::Error> {
         Ok(()) // Normal Placement effects preflight already admitted this continuation.
     }
@@ -545,14 +543,19 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
             .ok_or(Error::Missing("current civilization level"))
     }
     fn clans_active(&mut self) -> Result<bool, Self::Error> {
-        Err(Error::Missing("Context.clans_active"))
+        self.sight
+            .effects
+            .placement_service_runtime()
+            .map_err(Error::Services)?
+            .clans_active
+            .ok_or(Error::Missing("current Clans capability"))
     }
     fn unit_plot(&mut self) -> Result<Option<Self::Plot>, Self::Error> {
         let p = self.actor()?.k_location;
         Ok(Some(self.index(p)?))
     }
     fn improvement_type(&mut self, plot: Self::Plot) -> Result<u32, Self::Error> {
-        Ok(self.plot_by_index(plot)?.improvement_hash)
+        self.native_improvement(self.plot_by_index(plot)?.improvement_hash)
     }
     fn improvement_owner(&mut self, plot: Self::Plot) -> Result<i32, Self::Error> {
         Ok(i32::from(self.plot_by_index(plot)?.improvement_owner))
@@ -592,14 +595,13 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
     }
     fn plot_at(
         &mut self,
-        map: Self::Map,
+        _map: Self::Map,
         location: PlotCoord,
     ) -> Result<Option<Self::Plot>, Self::Error> {
-        let () = map;
-        c6_core::movement_world::plot_at(self.sight.state.world().map(), location)
-            .map(|(i, _)| Some(i as u32))
-            .map_err(|_| Error::Missing("damage neighborhood GetPlot"))
+        crate::unit_placement_services::plot_index_at(self.sight.state, location)
+            .map_err(Error::Services)
     }
+
     fn plot_location(&mut self, plot: Self::Plot) -> Result<PlotCoord, Self::Error> {
         let width = self.sight.state.world().map().header.width;
         if width <= 0 {
@@ -631,9 +633,10 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
         definition: Self::Definition,
         key: u32,
     ) -> Result<Option<i32>, Self::Error> {
-        let _ = definition;
-        let _ = key;
-        Err(Error::Missing("Context.property"))
+        self.definitions
+            .movement
+            .improvement_damage_property(definition, key)
+            .map_err(Error::Cost)
     }
     fn update_improvement_visibility(
         &mut self,
@@ -653,20 +656,27 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
             .kill(self.sight.state, self.sight.actor, delayed, attacker)
     }
     fn alive_players(&mut self) -> Result<Self::AlivePlayers, Self::Error> {
-        Err(Error::Missing("Context.alive_players"))
+        self.sight
+            .effects
+            .placement_service_runtime()
+            .map_err(Error::Services)?
+            .alive_begin()
+            .map_err(Error::Services)
     }
     fn alive_player_count(&mut self, players: Self::AlivePlayers) -> Result<usize, Self::Error> {
-        let () = players;
-        Err(Error::Missing("Context.alive_player_count"))
+        Ok(players.1)
     }
     fn alive_player(
         &mut self,
         players: Self::AlivePlayers,
         index: usize,
     ) -> Result<i32, Self::Error> {
-        let () = players;
-        let _ = index;
-        Err(Error::Missing("Context.alive_player"))
+        self.sight
+            .effects
+            .placement_service_runtime()
+            .map_err(Error::Services)?
+            .alive_at(players.0, index)
+            .map_err(Error::Services)
     }
     fn signal_improvement_damage(&mut self, owner: i32, amount: i32) -> Result<(), Self::Error> {
         self.sight
@@ -754,8 +764,21 @@ impl<E: Effects> c6_core::unit_placement_transition::normal_move::Context
         &mut self,
         destination: PlotCoord,
     ) -> Result<i32, Error<EffectsError<E>>> {
-        let _ = destination;
-        Err(Error::Missing("Context.local_revealed_state"))
+        let local = self
+            .queries
+            .local_player
+            .ok_or(Error::Missing("current local player"))?;
+        if self.plot_visible(destination)? {
+            return Ok(2);
+        }
+        let i = self.index(destination)?;
+        crate::formation_path_state::mapped_visibility(self.sight.state, local)
+            .map_err(|_| Error::Missing("local visibility"))?
+            .revealed
+            .get(i as usize)
+            .copied()
+            .map(i32::from)
+            .ok_or(Error::Missing("local reveal cell"))
     }
     fn visibility_messages_disabled(&mut self) -> Result<bool, Error<EffectsError<E>>> {
         Ok(self.sight.runtime.messages_disabled)
@@ -788,16 +811,14 @@ impl<E: Effects> c6_core::unit_placement_transition::normal_move::Context
         &mut self,
         at: PlotCoord,
     ) -> Result<Option<Self::PlacementPlot>, Error<EffectsError<E>>> {
-        match c6_core::movement_world::plot_at(self.sight.state.world().map(), at) {
-            Ok((i, _)) => Ok(Some(i as u32)),
-            Err(_) => Err(Error::Missing("placement GetPlot")),
-        }
+        crate::unit_placement_services::plot_index_at(self.sight.state, at).map_err(Error::Services)
     }
+
     fn plot_improvement(
         &mut self,
         plot: Self::PlacementPlot,
     ) -> Result<u32, Error<EffectsError<E>>> {
-        Ok(self.plot_by_index(plot)?.improvement_hash)
+        self.native_improvement(self.plot_by_index(plot)?.improvement_hash)
     }
     fn improvement_fortification(&mut self, kind: u32) -> Result<i32, Error<EffectsError<E>>> {
         let i = self
@@ -857,29 +878,38 @@ impl<E: Effects> c6_core::unit_placement_transition::normal_move::Context
         )
     }
     fn plot_is_city(&mut self, plot: Self::PlacementPlot) -> Result<bool, Error<EffectsError<E>>> {
-        let _ = plot;
-        Err(Error::Missing("Context.plot_is_city"))
+        crate::unit_placement_services::plot_is_city(self.sight.state, self.sight.effects, plot)
+            .map_err(Error::Services)
     }
     fn plot_district_type(
         &mut self,
         plot: Self::PlacementPlot,
     ) -> Result<u32, Error<EffectsError<E>>> {
-        let _ = plot;
-        Err(Error::Missing("Context.plot_district_type"))
+        crate::unit_placement_services::district_type(self.sight.state, self.sight.effects, plot)
+            .map(|i| i as u32)
+            .map_err(Error::Services)
     }
     fn owning_city(
         &mut self,
         plot: Self::PlacementPlot,
     ) -> Result<ComponentId, Error<EffectsError<E>>> {
-        let _ = plot;
-        Err(Error::Missing("Context.owning_city"))
+        let attrs = self.plot_by_index(plot)?.city_attributes.as_ref();
+        Ok(ComponentId {
+            owner: attrs.map_or(-1, |a| i16::from(a.player)),
+            component_type: 2,
+            id: attrs.map_or(u32::MAX, |a| a.owning_city),
+        })
     }
     fn plot_district(
         &mut self,
         plot: Self::PlacementPlot,
     ) -> Result<ComponentId, Error<EffectsError<E>>> {
-        let _ = plot;
-        Err(Error::Missing("Context.plot_district"))
+        let attrs = self.plot_by_index(plot)?.city_attributes.as_ref();
+        Ok(ComponentId {
+            owner: attrs.map_or(-1, |a| i16::from(a.player)),
+            component_type: 3,
+            id: attrs.map_or(u32::MAX, |a| a.district),
+        })
     }
     fn city_unit_changed(&mut self, city: ComponentId) -> Result<(), Error<EffectsError<E>>> {
         self.sight.effects.city_unit_changed(self.sight.state, city)
@@ -889,31 +919,61 @@ impl<E: Effects> c6_core::unit_placement_transition::normal_move::Context
         location: PlotCoord,
         owner: i32,
     ) -> Result<(), Error<EffectsError<E>>> {
-        let _ = location;
-        let _ = owner;
-        Err(Error::Missing("Context.check_siege_near"))
+        crate::unit_placement_services::run_siege(
+            self.sight.state,
+            self.sight.runtime,
+            self.sight.effects,
+            location,
+            owner,
+        )
+        .map_err(Error::Services)
     }
     fn award_post_move_bonuses(
         &mut self,
         destination: PlotCoord,
     ) -> Result<(), Error<EffectsError<E>>> {
-        let _ = destination;
-        Err(Error::Missing("Context.award_post_move_bonuses"))
+        crate::loaded_upkeep::placement_tails::award_post_move_bonuses(
+            self.sight.state,
+            self.sight.actor.0,
+            self.sight.actor.1,
+            destination,
+            self.definitions.bonus,
+            self.sight.effects,
+        )
+        .map_err(Error::Bonus)
     }
     fn notify_barbarian_approach(
         &mut self,
         destination: PlotCoord,
     ) -> Result<(), Error<EffectsError<E>>> {
-        let _ = destination;
-        Err(Error::Missing("Context.notify_barbarian_approach"))
+        crate::unit_placement_services::run_barbarian(
+            self.sight.state,
+            self.sight.runtime,
+            self.sight.effects,
+            self.sight.actor,
+            destination,
+        )
+        .map_err(Error::Services)
     }
     fn diplomacy_unit_moved(&mut self, old: PlotCoord) -> Result<(), Error<EffectsError<E>>> {
         let _ = old;
-        Err(Error::Missing("Context.diplomacy_unit_moved"))
+        crate::unit_placement_services::run_contact(
+            self.sight.state,
+            self.sight.runtime,
+            self.sight.effects,
+            self.sight.actor,
+        )
+        .map_err(Error::Services)
     }
     fn rules_unit_moved(&mut self, old: PlotCoord) -> Result<(), Error<EffectsError<E>>> {
         let _ = old;
-        Err(Error::Missing("Context.rules_unit_moved"))
+        crate::unit_placement_services::run_units_moved(
+            self.sight.state,
+            self.sight.runtime,
+            self.sight.effects,
+            self.sight.actor,
+        )
+        .map_err(Error::Services)
     }
 }
 
@@ -928,10 +988,11 @@ impl<E: Effects> Context<'_, '_, '_, E> {
         .ok_or(Error::Missing("placement actor"))
     }
     fn index(&self, p: PlotCoord) -> Result<u32, Error<EffectsError<E>>> {
-        c6_core::movement_world::plot_at(self.sight.state.world().map(), p)
-            .map(|(i, _)| i as u32)
-            .map_err(|_| Error::Missing("placement coordinate"))
+        crate::unit_placement_services::plot_index_at(self.sight.state, p)
+            .map_err(Error::Services)?
+            .ok_or(Error::Missing("placement coordinate"))
     }
+
     fn plot_at_coordinate(&self, p: PlotCoord) -> Result<&Plot, Error<EffectsError<E>>> {
         self.plot_by_index(self.index(p)?)
     }
@@ -949,18 +1010,18 @@ impl<E: Effects> Context<'_, '_, '_, E> {
             .local_player
             .ok_or(Error::Missing("current local player"))?;
         let layers = self.sight.runtime.shared(local).map_err(Error::Missing)?;
-        let normal = layers
-            .0
-            .iter()
-            .find(|l| l.type_hash == c6_core::visibility_change::BASE_LAYER_HASH)
-            .ok_or(Error::Missing("local normal layer"))?;
-        crate::loaded_upkeep::placement_tails::plot_visible(
-            self.sight.runtime,
-            local,
-            normal.grid_width,
-            p,
-        )
-        .map_err(Error::Missing)
+        let _ = layers;
+        let width = self
+            .sight
+            .effects
+            .placement_service_runtime()
+            .map_err(Error::Services)?
+            .player(local)
+            .map_err(Error::Services)?
+            .native_visibility_width
+            .ok_or(Error::Missing("native Visibility.Instance width"))?;
+        crate::loaded_upkeep::placement_tails::plot_visible(self.sight.runtime, local, width, p)
+            .map_err(Error::Missing)
     }
     fn unit_visible(&self) -> Result<bool, Error<EffectsError<E>>> {
         let local = self
@@ -980,8 +1041,16 @@ impl<E: Effects> Context<'_, '_, '_, E> {
                     .iter()
                     .find(|l| l.type_hash == hash)
                     .ok_or(Error::Missing("local visibility layer"))?;
-                let i = l
-                    .grid_width
+                let width = self
+                    .sight
+                    .effects
+                    .placement_service_runtime()
+                    .map_err(Error::Services)?
+                    .player(local)
+                    .map_err(Error::Services)?
+                    .native_visibility_width
+                    .ok_or(Error::Missing("native Visibility.Instance width"))?;
+                let i = width
                     .wrapping_mul(unit.k_location.y as u32)
                     .wrapping_add(unit.k_location.x as u32);
                 if i >= l.count {
@@ -1088,5 +1157,32 @@ impl Mechanics {
             camp,
             maximum_hit_points,
         })
+    }
+}
+
+impl Definitions<'_, '_> {
+    pub fn validate_binding(
+        &self,
+        state: &LoadedState,
+    ) -> Result<(), crate::loaded_actions::Error> {
+        if state.binding() != &self.mechanics.binding {
+            return Err(crate::loaded_actions::Error::ConfigurationIdentity);
+        }
+        placement::Context::from_definitions(state, self.placement)
+            .map_err(|_| crate::loaded_actions::Error::ConfigurationIdentity)?;
+        Ok(())
+    }
+}
+impl<E: Effects> Context<'_, '_, '_, E> {
+    fn native_improvement(&self, hash: u32) -> Result<u32, Error<EffectsError<E>>> {
+        if hash == u32::MAX {
+            return Ok(u32::MAX);
+        }
+        self.definitions
+            .mechanics
+            .improvements
+            .find_index(hash)
+            .map(|i| i as u32)
+            .ok_or(Error::Missing("saved improvement hash mapping"))
     }
 }
