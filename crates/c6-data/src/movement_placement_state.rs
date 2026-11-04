@@ -5,9 +5,10 @@ use crate::{
     city_movement::NativeTerrainDefinitions,
     resource_binding::{ResourceAuthority, ResourceIdentity},
     unit_initialization_definitions::{self, collection},
-    Rules,
+    Rules, SqlValue,
 };
 use c6_core::{
+    core_player::initialization::WireBinding,
     loaded_state::LoadedState,
     map::{Plot, PlotFlag},
     movement_placement::{
@@ -41,7 +42,9 @@ pub enum Capability {
     ReservedAttributeOwner,
     ReservedAttributeDistrict,
     CityDomain,
-    UnitEmbark,
+    PlayerCivilizationLevel(i32),
+    GlobalTechnologyAvailability(i32),
+    GlobalCivicAvailability(i32),
     VisibilityContext,
     ExtendedUnitDefinition,
     CombatStrength,
@@ -55,11 +58,11 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-/// Reconstruct only the requested scalar from the current typed diplomacy
-/// component and the actual bound Unit collection. Native Reset initializes
-/// that collection to false before Read overlays ordered known keys. This does
+/// Reconstruct only the requested scalar from an actual bound collection.
+/// The admitted owner Reset initializes false before ordered hash overlay;
+/// omitted-wire support is specific to the diplomacy owner. This does
 /// not interpret an empty wire list as an empty runtime definition collection.
-fn blocked_entry_value(
+fn reset_bool_value(
     lookup: &dyn DefinitionLookup,
     unit_index: i32,
     wire_present: bool,
@@ -86,6 +89,156 @@ fn blocked_entry_value(
     Ok(value)
 }
 
+/// Borrowed current configuration state, maintained by its owning simulator.
+/// Values are type IDs, not CanEmbark answers. A source-only Configuration
+/// decoder is not implicitly promoted to this current runtime projection.
+/// Sparse entries remain unknown; binding checks consistency, not authenticity.
+pub struct CurrentCivilizationLevels<'a> {
+    pub binding: &'a WireBinding,
+    pub values: &'a [(i32, u32)],
+}
+
+fn validate_current_levels(
+    expected: &WireBinding,
+    levels: &CurrentCivilizationLevels<'_>,
+) -> Result<(), Error> {
+    if levels.binding != expected {
+        return Err(Error::Binding);
+    }
+    for (index, &(owner, _)) in levels.values.iter().enumerate() {
+        if !(0..65).contains(&owner) || levels.values[..index].iter().any(|p| p.0 == owner) {
+            return Err(Error::Definitions);
+        }
+    }
+    Ok(())
+}
+fn unit_embark_decision(
+    domain: i32,
+    owner: i32,
+    original_owner: i32,
+    mut ability: impl FnMut(i32) -> Result<bool, Error>,
+    mut valid: impl FnMut(i32) -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    if domain == 0 {
+        return Ok(false);
+    }
+    if ability(owner)? {
+        return Ok(true);
+    }
+    if original_owner == owner || !valid(original_owner)? {
+        return Ok(false);
+    }
+    ability(original_owner)
+}
+fn player_embark_decision<'a>(
+    level: u32,
+    unlock: bool,
+    pass: impl FnOnce() -> Result<bool, Error>,
+    definition: impl FnOnce() -> Option<&'a [u8]>,
+    unlocked: impl FnOnce(&[u8]) -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    if level == 0xd959ec24 {
+        return Ok(false);
+    }
+    if unlock || pass()? {
+        return Ok(true);
+    }
+    match definition() {
+        Some(name) => unlocked(name),
+        None => Ok(false),
+    }
+}
+fn acquired_with_global(
+    len: usize,
+    index: usize,
+    global: impl FnOnce() -> Result<bool, Error>,
+    local: impl FnOnce() -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    if index >= len || !global()? {
+        return Ok(false);
+    }
+    local()
+}
+fn unlocks_embark(
+    unit: &[u8],
+    technologies: &[EmbarkUnlock],
+    civics: &[EmbarkUnlock],
+    mut acquired: impl FnMut(bool, usize) -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    for (civic, definitions) in [(false, technologies), (true, civics)] {
+        for (index, unlock) in definitions.iter().enumerate() {
+            if acquired(civic, index)? && (unlock.all || unlock.unit_type.as_deref() == Some(unit))
+            {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+struct EmbarkUnlock {
+    all: bool,
+    unit_type: Option<Vec<u8>>,
+}
+struct EmbarkDefinitions {
+    registry: crate::registry::LinuxDefinitionRegistry,
+    properties: Vec<EmbarkUnlock>,
+}
+impl EmbarkDefinitions {
+    fn from_rules(rules: &Rules, table: &'static str, key: &'static str) -> Result<Self, Error> {
+        let registry = collection(rules, table, key).map_err(Error::Rules)?;
+        let rows = rules.gameplay().table(table).ok_or(Error::Definitions)?;
+        let properties = registry
+            .entries()
+            .iter()
+            .map(|entry| {
+                let row = rows
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Definitions)?;
+                let all = match row.get("EmbarkAll").map_err(|_| Error::Definitions)? {
+                    SqlValue::Integer(0) => false,
+                    SqlValue::Integer(1) => true,
+                    _ => return Err(Error::Definitions),
+                };
+                let unit_type = match row.get("EmbarkUnitType").map_err(|_| Error::Definitions)? {
+                    SqlValue::Null => None,
+                    SqlValue::Text(value) if !value.contains(&0) => Some(value.clone()),
+                    _ => return Err(Error::Definitions),
+                };
+                Ok(EmbarkUnlock { all, unit_type })
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self {
+            registry,
+            properties,
+        })
+    }
+}
+fn unlock_embarkation(rules: &Rules) -> Result<bool, Error> {
+    let table = rules
+        .gameplay()
+        .table("GlobalParameters")
+        .ok_or(Error::Definitions)?;
+    let mut rows = table
+        .rows()
+        .filter(|row| row.text("Name").ok() == Some("UNLOCK_EMBARKATION"));
+    let Some(row) = rows.next() else {
+        return Ok(false);
+    }; // native Get default
+    if rows.next().is_some() {
+        return Err(Error::Definitions);
+    }
+    let value = match row.get("Value").map_err(|_| Error::Definitions)? {
+        SqlValue::Integer(value) => i32::try_from(*value).map_err(|_| Error::Definitions)?,
+        SqlValue::Text(value) => std::str::from_utf8(value)
+            .ok()
+            .and_then(|v| v.parse::<i32>().ok())
+            .ok_or(Error::Definitions)?,
+        _ => return Err(Error::Definitions),
+    };
+    Ok(value != 0)
+}
+
 /// Construct once from the same registered rules/resources and actual exported
 /// terrain definitions. Fields are borrowed immutable definitions; each query
 /// reads the current state rather than a per-action oracle result or clone.
@@ -94,6 +247,11 @@ pub struct Context<'s, 'a, 'r> {
     units: DefinitionTable<'a, Option<placement::UnitProperties>>,
     terrains: DefinitionTable<'a, TerrainProperties>,
     districts: crate::registry::LinuxDefinitionRegistry,
+    unit_names: crate::registry::LinuxDefinitionRegistry,
+    technologies: EmbarkDefinitions,
+    civics: EmbarkDefinitions,
+    unlock_embarkation: bool,
+    civilization_levels: Option<&'a [(i32, u32)]>,
     _resources: &'a ResourceAuthority<'r>,
 }
 impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
@@ -119,15 +277,174 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
         {
             return Err(Error::Definitions);
         }
+        let unit_names = collection(rules, "Units", "UnitType").map_err(Error::Rules)?;
+        let units = resources
+            .placement_definitions()
+            .map_err(|_| Error::Definitions)?;
+        if unit_names.count() != units.lookup.count()
+            || (0..unit_names.count()).any(|i| unit_names.type_hash(i) != units.lookup.type_hash(i))
+        {
+            return Err(Error::Definitions);
+        }
         Ok(Self {
             state,
-            units: resources
-                .placement_definitions()
-                .map_err(|_| Error::Definitions)?,
+            unit_names,
+            technologies: EmbarkDefinitions::from_rules(rules, "Technologies", "TechnologyType")?,
+            civics: EmbarkDefinitions::from_rules(rules, "Civics", "CivicType")?,
+            unlock_embarkation: unlock_embarkation(rules)?,
+            civilization_levels: None,
+            units,
             terrains: table,
             districts: collection(rules, "Districts", "DistrictType").map_err(Error::Rules)?,
             _resources: resources,
         })
+    }
+    /// Bind a borrowed current configuration projection once. Its owner must
+    /// maintain it when configuration changes; this accepts no per-query oracle.
+    pub fn with_civilization_levels(
+        mut self,
+        levels: CurrentCivilizationLevels<'a>,
+    ) -> Result<Self, Error> {
+        validate_current_levels(self.state.binding(), &levels)?;
+        self.civilization_levels = Some(levels.values);
+        Ok(self)
+    }
+    fn has_embark_prerequisite(
+        &self,
+        player: &c6_core::loaded_components::RetainedPlayer,
+        index: usize,
+        civic: bool,
+    ) -> Result<bool, Error> {
+        let current = self
+            .state
+            .world()
+            .player(player.header.owner)
+            .map_err(Error::World)?;
+        let acquired = if civic {
+            &current.civics
+        } else {
+            &current.technologies
+        };
+        // Native bounds precede global-node activity, which precedes local bit.
+        let lookup = if civic {
+            &self.civics.registry
+        } else {
+            &self.technologies.registry
+        };
+        let len = acquired.as_ref().map_or(lookup.count(), Vec::len);
+        acquired_with_global(
+            len,
+            index,
+            || {
+                if civic {
+                    self.state
+                        .world()
+                        .civic_availability
+                        .as_ref()
+                        .and_then(|v| v.get(index))
+                        .copied()
+                        .ok_or(Error::Capability(Capability::GlobalCivicAvailability(
+                            index as i32,
+                        )))
+                } else if let Ok(graph) = self.state.game_techs() {
+                    Ok(graph.has_tech(index as i32))
+                } else {
+                    self.state
+                        .world()
+                        .technology_availability
+                        .as_ref()
+                        .and_then(|v| v.get(index))
+                        .copied()
+                        .ok_or(Error::Capability(Capability::GlobalTechnologyAvailability(
+                            index as i32,
+                        )))
+                }
+            },
+            || {
+                if let Some(values) = acquired {
+                    return Ok(values[index]);
+                }
+                let pairs = if civic {
+                    &player.culture.has_civic.pairs
+                } else {
+                    &player.techs.has_tech.pairs
+                };
+                reset_bool_value(lookup, index as i32, true, pairs).map_err(|_| Error::Definitions)
+            },
+        )
+    }
+    fn player_can_embark(&self, owner: i32, unit_type: i32) -> Result<bool, Error> {
+        self.state.world().player(owner).map_err(Error::World)?;
+        let level = self
+            .civilization_levels
+            .and_then(|v| v.iter().find(|p| p.0 == owner))
+            .map(|p| p.1)
+            .ok_or(Error::Capability(Capability::PlayerCivilizationLevel(
+                owner,
+            )))?;
+        player_embark_decision(
+            level,
+            self.unlock_embarkation,
+            || {
+                let player = self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Definitions)?;
+                // Enum Read maps unknown hashes to -1 and retains every element.
+                Ok(player
+                    .units
+                    .unit_embarkation_pass_hashes
+                    .iter()
+                    .any(|hash| {
+                        self.units
+                            .lookup
+                            .find_index(*hash)
+                            .map_or(-1, |index| index as i32)
+                            == unit_type
+                    }))
+            },
+            || {
+                self.unit_names
+                    .at(unit_type as u32)
+                    .map(|u| u.type_name.as_slice())
+            },
+            |name| {
+                let player = self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Definitions)?;
+                unlocks_embark(
+                    name,
+                    &self.technologies.properties,
+                    &self.civics.properties,
+                    |civic, index| self.has_embark_prerequisite(player, index, civic),
+                )
+            },
+        )
+    }
+    fn can_embark(&self, unit: &Unit) -> Result<bool, Error> {
+        let runtime = self
+            .state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        unit_embark_decision(
+            runtime.domain,
+            unit.e_owner,
+            unit.e_original_owner,
+            |owner| self.player_can_embark(owner, runtime.definition_index),
+            |owner| {
+                self.state
+                    .world()
+                    .player_is_valid(owner)
+                    .map_err(Error::World)
+            },
+        )
     }
     fn subject(&self, owner: i32, id: u32) -> Result<&Unit, Error> {
         self.state
@@ -212,9 +529,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                     logic::MissingFact::HasCityAttributes => {
                         f.has_city_attributes = Some(plot.city_attributes.is_some())
                     }
-                    logic::MissingFact::CanEmbark => {
-                        return Err(Error::Capability(Capability::UnitEmbark))
-                    }
+                    logic::MissingFact::CanEmbark => f.can_embark = Some(self.can_embark(unit)?),
                     logic::MissingFact::CityDomainValid => {
                         return Err(Error::Capability(Capability::CityDomain))
                     }
@@ -386,7 +701,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
                             .state
                             .unit_runtime(unit.e_owner, unit.id)
                             .map_err(Error::State)?;
-                        f.blocked_entry = Some(blocked_entry_value(
+                        f.blocked_entry = Some(reset_bool_value(
                             self.units.lookup,
                             runtime.definition_index,
                             diplomacy.blocked_entry_wire_present(),
@@ -455,11 +770,11 @@ mod tests {
     #[test]
     fn omitted_wire_resets_actual_definition_indexes() {
         let definitions = LinuxDefinitionHashRegistry::from_native_order(vec![100, 200]);
-        assert!(!blocked_entry_value(&definitions, 1, false, &[]).unwrap());
-        assert!(blocked_entry_value(&definitions, -1, false, &[]).is_err());
-        assert!(blocked_entry_value(&definitions, 2, false, &[]).is_err());
+        assert!(!reset_bool_value(&definitions, 1, false, &[]).unwrap());
+        assert!(reset_bool_value(&definitions, -1, false, &[]).is_err());
+        assert!(reset_bool_value(&definitions, 2, false, &[]).is_err());
         let empty = LinuxDefinitionHashRegistry::from_native_order(vec![]);
-        assert!(blocked_entry_value(&empty, 0, false, &[]).is_err());
+        assert!(reset_bool_value(&empty, 0, false, &[]).is_err());
     }
 
     #[test]
@@ -484,11 +799,11 @@ mod tests {
                 value: true,
             },
         ];
-        assert!(!blocked_entry_value(&definitions, 0, true, &pairs).unwrap());
-        assert!(blocked_entry_value(&definitions, 1, true, &pairs).unwrap());
-        assert!(!blocked_entry_value(&definitions, 1, true, &pairs[..3]).unwrap());
-        assert!(blocked_entry_value(&definitions, 1, true, &pairs[..1]).unwrap());
-        assert!(blocked_entry_value(&definitions, 1, false, &pairs).is_err());
+        assert!(!reset_bool_value(&definitions, 0, true, &pairs).unwrap());
+        assert!(reset_bool_value(&definitions, 1, true, &pairs).unwrap());
+        assert!(!reset_bool_value(&definitions, 1, true, &pairs[..3]).unwrap());
+        assert!(reset_bool_value(&definitions, 1, true, &pairs[..1]).unwrap());
+        assert!(reset_bool_value(&definitions, 1, false, &pairs).is_err());
     }
 
     #[test]
@@ -498,7 +813,216 @@ mod tests {
             definition_hash: 200,
             value: true,
         }];
-        assert!(!blocked_entry_value(&definitions, 0, true, &pairs).unwrap());
-        assert!(blocked_entry_value(&definitions, 1, true, &pairs).unwrap());
+        assert!(!reset_bool_value(&definitions, 0, true, &pairs).unwrap());
+        assert!(reset_bool_value(&definitions, 1, true, &pairs).unwrap());
+    }
+    #[test]
+    fn embark_domain_and_owner_fallback_are_lazy_and_ordered() {
+        assert!(
+            !unit_embark_decision(0, 2, 3, |_| panic!("ability"), |_| panic!("validity")).unwrap()
+        );
+        assert!(unit_embark_decision(
+            1,
+            2,
+            3,
+            |p| {
+                assert_eq!(p, 2);
+                Ok(true)
+            },
+            |_| panic!("validity")
+        )
+        .unwrap());
+        assert!(
+            !unit_embark_decision(1, 2, 2, |_| Ok(false), |_| panic!("same owner validity"))
+                .unwrap()
+        );
+        let mut calls = Vec::new();
+        assert!(unit_embark_decision(
+            1,
+            2,
+            3,
+            |p| {
+                calls.push(p);
+                Ok(p == 3)
+            },
+            |p| {
+                assert_eq!(p, 3);
+                Ok(true)
+            }
+        )
+        .unwrap());
+        assert_eq!(calls, [2, 3]);
+        assert!(!unit_embark_decision(
+            1,
+            2,
+            3,
+            |p| {
+                assert_eq!(p, 2);
+                Ok(false)
+            },
+            |_| Ok(false)
+        )
+        .unwrap());
+        assert!(unit_embark_decision(
+            1,
+            2,
+            3,
+            |_| Err(Error::Definitions),
+            |_| panic!("error fallback")
+        )
+        .is_err());
+    }
+    #[test]
+    fn embark_barbarian_unlock_pass_and_definition_gate_order() {
+        assert!(!player_embark_decision(
+            0xd959ec24,
+            true,
+            || panic!("pass"),
+            || panic!("definition"),
+            |_| panic!("unlock")
+        )
+        .unwrap());
+        assert!(player_embark_decision(
+            1,
+            true,
+            || panic!("pass"),
+            || panic!("definition"),
+            |_| panic!("unlock")
+        )
+        .unwrap());
+        assert!(player_embark_decision(
+            1,
+            false,
+            || Ok(true),
+            || panic!("definition"),
+            |_| panic!("unlock")
+        )
+        .unwrap());
+        assert!(!player_embark_decision(
+            1,
+            false,
+            || Ok(false),
+            || None,
+            |_| panic!("absent definition")
+        )
+        .unwrap());
+        assert!(player_embark_decision(
+            1,
+            false,
+            || Err(Error::Definitions),
+            || panic!("definition"),
+            |_| panic!("unlock")
+        )
+        .is_err());
+    }
+    #[test]
+    fn embark_global_check_precedes_local_even_when_local_false() {
+        assert!(!acquired_with_global(1, 1, || panic!("global"), || panic!("local")).unwrap());
+        assert!(!acquired_with_global(1, 0, || Ok(false), || panic!("local")).unwrap());
+        assert!(
+            acquired_with_global(1, 0, || Err(Error::Definitions), || panic!("local")).is_err()
+        );
+        let reads = std::cell::RefCell::new(Vec::new());
+        assert!(!acquired_with_global(
+            1,
+            0,
+            || {
+                reads.borrow_mut().push("global");
+                Ok(true)
+            },
+            || {
+                reads.borrow_mut().push("local");
+                Ok(false)
+            }
+        )
+        .unwrap());
+        assert_eq!(*reads.borrow(), ["global", "local"]);
+    }
+    #[test]
+    fn embark_technology_then_civic_order_and_first_unlock() {
+        let technologies = [
+            EmbarkUnlock {
+                all: true,
+                unit_type: None,
+            },
+            EmbarkUnlock {
+                all: false,
+                unit_type: Some(b"UNIT_A".to_vec()),
+            },
+        ];
+        let civics = [EmbarkUnlock {
+            all: true,
+            unit_type: None,
+        }];
+        let mut reads = Vec::new();
+        assert!(unlocks_embark(b"UNIT_A", &technologies, &civics, |c, i| {
+            reads.push((c, i));
+            Ok(c)
+        })
+        .unwrap());
+        assert_eq!(reads, [(false, 0), (false, 1), (true, 0)]);
+        reads.clear();
+        assert!(unlocks_embark(b"UNIT_A", &technologies, &civics, |c, i| {
+            reads.push((c, i));
+            Ok(i == 1)
+        })
+        .unwrap());
+        assert_eq!(reads, [(false, 0), (false, 1)]);
+        assert!(!unlocks_embark(b"unit_a", &technologies[1..], &[], |_, _| Ok(true)).unwrap());
+        assert!(
+            unlocks_embark(b"UNIT_A", &technologies, &civics, |_, _| Err(
+                Error::Definitions
+            ))
+            .is_err()
+        );
+        assert!(!unlocks_embark(b"UNIT_A", &[], &[], |_, _| panic!("empty definitions")).unwrap());
+    }
+    #[test]
+    fn current_levels_are_state_bound_sparse_and_not_defaulted() {
+        use c6_core::core_player::initialization::{DatabaseIdentity, InputIdentities, WireRole};
+        let binding = WireBinding {
+            role: WireRole::ReadInputCore,
+            core_sha256: [1; 32],
+            occurrence_id: b"1".to_vec(),
+            output_id: None,
+            inputs: InputIdentities {
+                configuration_sha256: [2; 32],
+                rules_inputs_sha256: [3; 32],
+                database: DatabaseIdentity::LiveSnapshotUnavailable,
+                dlc_inputs_sha256: [4; 32],
+                mods_inputs_sha256: [5; 32],
+                content_inputs_sha256: [6; 32],
+            },
+        };
+        let levels = CurrentCivilizationLevels {
+            binding: &binding,
+            values: &[(2, 0xd959ec24)],
+        };
+        validate_current_levels(&binding, &levels).unwrap();
+        assert!(levels.values.iter().all(|p| p.0 != 3));
+        let mut changed = binding.clone();
+        changed.core_sha256[0] ^= 1;
+        assert!(matches!(
+            validate_current_levels(&changed, &levels),
+            Err(Error::Binding)
+        ));
+        let duplicates = CurrentCivilizationLevels {
+            binding: &binding,
+            values: &[(2, 0), (2, 1)],
+        };
+        assert!(validate_current_levels(&binding, &duplicates).is_err());
+        let invalid = CurrentCivilizationLevels {
+            binding: &binding,
+            values: &[(65, 0)],
+        };
+        assert!(validate_current_levels(&binding, &invalid).is_err());
+        validate_current_levels(
+            &binding,
+            &CurrentCivilizationLevels {
+                binding: &binding,
+                values: &[],
+            },
+        )
+        .unwrap();
     }
 }
