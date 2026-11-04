@@ -439,6 +439,19 @@ impl GameCulture {
             costs_raw: Vec::new(),
         })
     }
+    pub fn binding(&self) -> &WireBinding {
+        &self.binding
+    }
+    /// Original node order, retaining duplicates and exact stored active bytes.
+    pub fn nodes(&self) -> &[CivicNode] {
+        &self.nodes
+    }
+    /// Native HasCivic: positional matching node, then first matching type;
+    /// absent nodes and -1 return false. Current source data must be established
+    /// by the caller; this does not promote costs/prerequisites or graph rebuild.
+    pub fn has_civic(&self, civic: i32) -> bool {
+        self.node(civic).is_some_and(|node| node.active)
+    }
     pub fn source(&self) -> GraphSource {
         self.source
     }
@@ -989,6 +1002,54 @@ fn decode_graph_prefix(
 #[cfg(test)]
 mod graph_tests {
     use super::*;
+    #[test]
+    fn activity_lookup_preserves_positional_duplicates_and_first_fallback() {
+        use c6_core::core_player::initialization::{DatabaseIdentity, InputIdentities, WireRole};
+        let binding = WireBinding {
+            role: WireRole::SavedOutputCore,
+            core_sha256: [1; 32],
+            occurrence_id: b"1".to_vec(),
+            output_id: Some(b"1".to_vec()),
+            inputs: InputIdentities {
+                configuration_sha256: [2; 32],
+                rules_inputs_sha256: [3; 32],
+                database: DatabaseIdentity::LiveSnapshotUnavailable,
+                dlc_inputs_sha256: [4; 32],
+                mods_inputs_sha256: [5; 32],
+                content_inputs_sha256: [6; 32],
+            },
+        };
+        let graph = GameCulture::from_complete_native(
+            binding.clone(),
+            vec![],
+            vec![
+                CivicNode {
+                    native_type: 1,
+                    active: false,
+                    prerequisites: vec![],
+                },
+                CivicNode {
+                    native_type: 1,
+                    active: true,
+                    prerequisites: vec![],
+                },
+                CivicNode {
+                    native_type: 0,
+                    active: true,
+                    prerequisites: vec![],
+                },
+            ],
+        )
+        .unwrap();
+        assert!(graph.has_civic(1)); // Matching position overrides earlier false duplicate.
+        assert!(graph.has_civic(0)); // Position mismatches, then first matching type.
+        assert!(!graph.has_civic(-1));
+        assert!(!graph.has_civic(2));
+        assert!(!graph.has_civic(i32::MAX));
+        assert_eq!(graph.nodes().len(), 3);
+        assert_eq!(graph.binding(), &binding);
+    }
+
     #[test]
     fn v6_prefix_remaps_and_filters_stably_without_consuming_suffix() {
         let registry = LinuxDefinitionRegistry::from_native_order(vec![

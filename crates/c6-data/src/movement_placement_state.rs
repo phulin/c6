@@ -264,6 +264,7 @@ pub struct Context<'s, 'a, 'r> {
     civics: EmbarkDefinitions,
     unlock_embarkation: bool,
     civilization_levels: Option<&'a [(i32, u32)]>,
+    civic_activity: Option<&'a crate::loaded_actions::culture_notifications::GameCulture>,
     _resources: &'a ResourceAuthority<'r>,
 }
 impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
@@ -305,6 +306,7 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             civics: EmbarkDefinitions::from_rules(rules, "Civics", "CivicType")?,
             unlock_embarkation: unlock_embarkation(rules)?,
             civilization_levels: None,
+            civic_activity: None,
             units,
             terrains: table,
             districts: collection(rules, "Districts", "DistrictType").map_err(Error::Rules)?,
@@ -319,6 +321,20 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
     ) -> Result<Self, Error> {
         validate_current_levels(self.state.binding(), &levels)?;
         self.civilization_levels = Some(levels.values);
+        Ok(self)
+    }
+    /// Borrow current global Civic node activity from an existing typed owner.
+    /// The caller maintains current values and their source provenance. This
+    /// uses only HasCivic, not unrelated graph/cost/prerequisite lifecycle.
+    /// Absence leaves the existing owned-world input/missing-input behavior.
+    pub fn with_civic_activity(
+        mut self,
+        culture: &'a crate::loaded_actions::culture_notifications::GameCulture,
+    ) -> Result<Self, Error> {
+        if culture.binding() != self.state.binding() {
+            return Err(Error::Binding);
+        }
+        self.civic_activity = Some(culture);
         Ok(self)
     }
     fn has_embark_prerequisite(
@@ -349,6 +365,9 @@ impl<'s, 'a, 'r> Context<'s, 'a, 'r> {
             index,
             || {
                 if civic {
+                    if let Some(culture) = self.civic_activity {
+                        return Ok(culture.has_civic(index as i32));
+                    }
                     self.state
                         .world()
                         .civic_availability
