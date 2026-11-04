@@ -237,6 +237,7 @@ impl Wire for HealthReligionModifiers {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CombatModifiers {
+    pub wire_version: i32,
     /// Original m_iVersusBarbarians at 0x4.
     pub i_versus_barbarians: i32,
     /// Original m_iFriendlyTerritoryCombatMod at 0x8.
@@ -321,10 +322,17 @@ pub struct CombatModifiers {
     pub i_direct_loyalty_damage: i32,
 }
 impl Wire for CombatModifiers {
-    const MIN: usize = 135;
+    const MIN: usize = 98;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(28)?;
+        let wire_version = r.i32()?;
+        if wire_version != 20 && wire_version != 28 {
+            return Err(Error::Version {
+                expected: 28,
+                actual: wire_version,
+            });
+        }
         Ok(Self {
+            wire_version,
             i_versus_barbarians: <i32>::read(r)?,
             i_friendly_territory_combat_mod: <i32>::read(r)?,
             b_bypass_walls: <bool>::read(r)?,
@@ -356,19 +364,62 @@ impl Wire for CombatModifiers {
             b_ignore_ranged_vs_district_penalty: <bool>::read(r)?,
             i_wmd_blast_resistance: <i32>::read(r)?,
             i_wmd_fallout_resistance: <i32>::read(r)?,
-            i_water_damage_resistance: <i32>::read(r)?,
-            i_number_holy_cities_combat_modifier: <i32>::read(r)?,
-            i_number_military_policies_combat_modifier: <i32>::read(r)?,
-            i_number_neighbor_combat_bonus: <i32>::read(r)?,
-            b_fight_while_embarked: <bool>::read(r)?,
-            i_anti_air_strength_modifier: <i32>::read(r)?,
-            i_combat_strength_modifier: <i32>::read(r)?,
-            i_ranged_strength_modifier: <i32>::read(r)?,
-            i_bombard_strength_modifier: <i32>::read(r)?,
-            i_direct_loyalty_damage: <i32>::read(r)?,
+            i_water_damage_resistance: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_number_holy_cities_combat_modifier: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_number_military_policies_combat_modifier: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_number_neighbor_combat_bonus: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            b_fight_while_embarked: if wire_version == 20 {
+                false
+            } else {
+                <bool>::read(r)?
+            },
+            i_anti_air_strength_modifier: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_combat_strength_modifier: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_ranged_strength_modifier: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_bombard_strength_modifier: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
+            i_direct_loyalty_damage: if wire_version == 20 {
+                0
+            } else {
+                <i32>::read(r)?
+            },
         })
     }
     fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 28 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
         (28i32).write(w)?;
         self.i_versus_barbarians.write(w)?;
         self.i_friendly_territory_combat_mod.write(w)?;
@@ -2493,5 +2544,109 @@ mod tests {
             Unit::decode(&trailing, Limits::default()),
             Err(Error::TrailingBytes)
         );
+    }
+    fn combat20_fixture() -> (Vec<u8>, CombatModifiers) {
+        let mut current = crate::unit_turn_upkeep::tests::source_only_unit().k_combat_modifers;
+        current.i_versus_barbarians = i32::MIN;
+        current.e_captured_combat_unit_type = 0x80000001;
+        current.b_bypass_walls = true;
+        current.i_water_damage_resistance = 37;
+        current.i_number_holy_cities_combat_modifier = 37;
+        current.i_number_military_policies_combat_modifier = 37;
+        current.i_number_neighbor_combat_bonus = 37;
+        current.i_anti_air_strength_modifier = 37;
+        current.i_combat_strength_modifier = 37;
+        current.i_ranged_strength_modifier = 37;
+        current.i_bombard_strength_modifier = 37;
+        current.i_direct_loyalty_damage = 37;
+        current.b_fight_while_embarked = true;
+        let mut w = writer();
+        current.write(&mut w).unwrap();
+        assert_eq!(w.bytes.len(), 135);
+        let mut bytes = w.bytes;
+        bytes[..4].copy_from_slice(&20i32.to_le_bytes());
+        bytes.truncate(98);
+        current.wire_version = 20;
+        current.i_water_damage_resistance = 0;
+        current.i_number_holy_cities_combat_modifier = 0;
+        current.i_number_military_policies_combat_modifier = 0;
+        current.i_number_neighbor_combat_bonus = 0;
+        current.i_anti_air_strength_modifier = 0;
+        current.i_combat_strength_modifier = 0;
+        current.i_ranged_strength_modifier = 0;
+        current.i_bombard_strength_modifier = 0;
+        current.i_direct_loyalty_damage = 0;
+        current.b_fight_while_embarked = false;
+        (bytes, current)
+    }
+    #[test]
+    fn combat20_explicit_defaults_and_independent_own_tag() {
+        let (bytes, expected) = combat20_fixture();
+        let mut r = Reader::new(
+            &bytes,
+            Limits {
+                max_bytes: 98,
+                max_items: 0,
+            },
+        )
+        .unwrap();
+        let value = CombatModifiers::read(&mut r).unwrap();
+        r.finish().unwrap();
+        assert_eq!(value, expected);
+        assert_eq!(
+            value.write(&mut writer()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        // A current outer Unit can independently contain older Combat20.
+        let unit = crate::unit_turn_upkeep::tests::source_only_unit();
+        let original = unit.encode(Limits::default()).unwrap();
+        let (_, ranges) = Unit::decode_with_ranges(&original, Limits::default()).unwrap();
+        let range = ranges
+            .iter()
+            .find(|r| r.name == "m_kCombatModifers")
+            .unwrap();
+        let mut mixed = original[..range.start].to_vec();
+        mixed.extend_from_slice(&bytes);
+        mixed.extend_from_slice(&original[range.end..]);
+        let decoded = Unit::decode(&mixed, Limits::default()).unwrap();
+        assert_eq!(decoded.wire_version, 28);
+        assert_eq!(decoded.k_combat_modifers, expected);
+    }
+    #[test]
+    fn combat20_truncation_bool_and_neighbor_refusals() {
+        let (bytes, _) = combat20_fixture();
+        for end in 0..bytes.len() {
+            let mut r = Reader::new(&bytes[..end], Limits::default()).unwrap();
+            assert!(CombatModifiers::read(&mut r).is_err(), "prefix {end}");
+        }
+        assert!(matches!(
+            Reader::new(
+                &bytes,
+                Limits {
+                    max_bytes: 97,
+                    max_items: 0
+                }
+            ),
+            Err(Error::ResourceLimit)
+        ));
+        let mut bad = bytes.clone();
+        bad[12] = 2;
+        assert_eq!(
+            CombatModifiers::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::NoncanonicalBool(2))
+        );
+        bad[..4].copy_from_slice(&21i32.to_le_bytes());
+        assert_eq!(
+            CombatModifiers::read(&mut Reader::new(&bad, Limits::default()).unwrap()),
+            Err(Error::Version {
+                expected: 28,
+                actual: 21
+            })
+        );
+        let mut trailing = bytes;
+        trailing.push(0);
+        let mut r = Reader::new(&trailing, Limits::default()).unwrap();
+        CombatModifiers::read(&mut r).unwrap();
+        assert_eq!(r.finish(), Err(Error::TrailingBytes));
     }
 }

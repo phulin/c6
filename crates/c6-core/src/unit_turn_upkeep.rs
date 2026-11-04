@@ -465,6 +465,7 @@ pub(crate) mod tests {
                 b_can_heal_after_action_religion: false,
             },
             k_combat_modifers: crate::unit::CombatModifiers {
+                wire_version: 28,
                 i_versus_barbarians: 0,
                 i_friendly_territory_combat_mod: 0,
                 b_bypass_walls: false,
