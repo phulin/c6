@@ -462,3 +462,250 @@ mod tests {
         assert_eq!(w.row(7).initial, 6);
     }
 }
+
+/// Required callback inside one selected Player.Update. These are gameplay
+/// continuations, not inferred player decisions. Activation flags have already
+/// been consumed when Activation is returned; its report still follows the hook.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlayerEffect<P> {
+    Activation { player: P, first: bool },
+    ActiveControl { player: P },
+    InactiveControl { player: P },
+    Blocking { player: P },
+}
+
+/// Scalar source body of Player.Update/DoTurnActivate/DoTurn. Actual callback
+/// bodies are required separately; unknown AI-control work is never a no-op.
+pub trait PlayerWorld {
+    type Player: Copy;
+    fn active(&mut self, player: Self::Player) -> Result<bool, Error>;
+    fn id(&mut self, player: Self::Player) -> Result<i32, Error>;
+    fn activation_event(&mut self, id: i32) -> Result<bool, Error>;
+    fn first_activation(&mut self, id: i32) -> Result<bool, Error>;
+    fn set_first_activation(&mut self, id: i32, value: bool) -> Result<(), Error>;
+    fn set_activation_event(&mut self, id: i32, value: bool) -> Result<(), Error>;
+    fn human(&mut self, player: Self::Player) -> Result<bool, Error>;
+    fn phase_updates(&mut self, id: i32) -> Result<u32, Error>;
+    fn set_phase_updates(&mut self, id: i32, value: u32) -> Result<(), Error>;
+    fn turn_updates(&mut self, id: i32) -> Result<u32, Error>;
+    fn set_turn_updates(&mut self, id: i32, value: u32) -> Result<(), Error>;
+    fn ai_updates(&mut self, id: i32) -> Result<u32, Error>;
+    fn set_ai_updates(&mut self, id: i32, value: u32) -> Result<(), Error>;
+    fn set_blocker(&mut self, player: Self::Player, value: i32) -> Result<(), Error>;
+}
+
+/// Source continuation after TurnManager.DoTurn returns. Human DoTurn returns
+/// directly; nonhuman callers must first execute the real mixed Control.DoTurn.
+pub fn after_turn_manager<W: PlayerWorld>(
+    w: &mut W,
+    player: W::Player,
+) -> Result<PlayerEffect<W::Player>, Error> {
+    let id = w.id(player)?;
+    let value = w.phase_updates(id)?.wrapping_add(1);
+    w.set_phase_updates(id, value)?;
+    let id = w.id(player)?;
+    let value = w.turn_updates(id)?.wrapping_add(1);
+    w.set_turn_updates(id, value)?;
+    if !w.human(player)? {
+        let id = w.id(player)?;
+        let value = w.ai_updates(id)?.wrapping_add(1);
+        w.set_ai_updates(id, value)?;
+    }
+    // Player.Update rereads the phase count AFTER DoTurn's counter stores.
+    let id = w.id(player)?;
+    if w.phase_updates(id)? == 1 {
+        w.set_blocker(player, -1)?;
+    }
+    Ok(PlayerEffect::Blocking { player })
+}
+
+/// 2b5c720 -> 2b5ac00 -> 2b5acb0. Source human/no-activation-event path reaches
+/// real blocking update; other hooks retain a precise unfinished callback.
+pub fn prepare_player<W: PlayerWorld>(
+    w: &mut W,
+    player: W::Player,
+) -> Result<PlayerEffect<W::Player>, Error> {
+    if !w.active(player)? {
+        return Ok(PlayerEffect::InactiveControl { player });
+    }
+    let id = w.id(player)?;
+    if w.activation_event(id)? {
+        let first = w.first_activation(id)?;
+        w.set_first_activation(id, false)?;
+        w.set_activation_event(id, false)?;
+        return Ok(PlayerEffect::Activation { player, first });
+    }
+    // TurnManager.DoTurn checks the current owner's actual IsHuman. Do not
+    // replace native roles to make external policies easier to implement.
+    if !w.human(player)? {
+        return Ok(PlayerEffect::ActiveControl { player });
+    }
+    after_turn_manager(w, player)
+}
+
+#[cfg(test)]
+mod player_tests {
+    use super::*;
+    struct Probe {
+        active: bool,
+        human: bool,
+        event: bool,
+        first: bool,
+        phase: u32,
+        turn: u32,
+        ai: u32,
+        blocker: i32,
+        trace: Vec<&'static str>,
+    }
+    impl Probe {
+        fn current() -> Self {
+            Self {
+                active: true,
+                human: true,
+                event: false,
+                first: false,
+                phase: 5,
+                turn: 5,
+                ai: 0,
+                blocker: 7,
+                trace: vec![],
+            }
+        }
+    }
+    impl PlayerWorld for Probe {
+        type Player = i32;
+        fn active(&mut self, _: i32) -> Result<bool, Error> {
+            self.trace.push("active");
+            Ok(self.active)
+        }
+        fn id(&mut self, p: i32) -> Result<i32, Error> {
+            Ok(p)
+        }
+        fn activation_event(&mut self, _: i32) -> Result<bool, Error> {
+            self.trace.push("event");
+            Ok(self.event)
+        }
+        fn first_activation(&mut self, _: i32) -> Result<bool, Error> {
+            self.trace.push("first");
+            Ok(self.first)
+        }
+        fn set_first_activation(&mut self, _: i32, v: bool) -> Result<(), Error> {
+            self.trace.push("first.write");
+            self.first = v;
+            Ok(())
+        }
+        fn set_activation_event(&mut self, _: i32, v: bool) -> Result<(), Error> {
+            self.trace.push("event.write");
+            self.event = v;
+            Ok(())
+        }
+        fn human(&mut self, _: i32) -> Result<bool, Error> {
+            self.trace.push("human");
+            Ok(self.human)
+        }
+        fn phase_updates(&mut self, _: i32) -> Result<u32, Error> {
+            Ok(self.phase)
+        }
+        fn set_phase_updates(&mut self, _: i32, v: u32) -> Result<(), Error> {
+            self.trace.push("phase.write");
+            self.phase = v;
+            Ok(())
+        }
+        fn turn_updates(&mut self, _: i32) -> Result<u32, Error> {
+            Ok(self.turn)
+        }
+        fn set_turn_updates(&mut self, _: i32, v: u32) -> Result<(), Error> {
+            self.trace.push("turn.write");
+            self.turn = v;
+            Ok(())
+        }
+        fn ai_updates(&mut self, _: i32) -> Result<u32, Error> {
+            Ok(self.ai)
+        }
+        fn set_ai_updates(&mut self, _: i32, v: u32) -> Result<(), Error> {
+            self.trace.push("ai.write");
+            self.ai = v;
+            Ok(())
+        }
+        fn set_blocker(&mut self, _: i32, v: i32) -> Result<(), Error> {
+            self.trace.push("blocker.write");
+            self.blocker = v;
+            Ok(())
+        }
+    }
+    #[test]
+    fn actual_human_leaf_advances_five_to_six_before_blocking_without_reset() {
+        let mut w = Probe::current();
+        assert_eq!(
+            prepare_player(&mut w, 0),
+            Ok(PlayerEffect::Blocking { player: 0 })
+        );
+        assert_eq!((w.phase, w.turn, w.ai, w.blocker), (6, 6, 0, 7));
+        assert_eq!(
+            w.trace,
+            [
+                "active",
+                "event",
+                "human",
+                "phase.write",
+                "turn.write",
+                "human"
+            ]
+        );
+    }
+    #[test]
+    fn first_phase_update_resets_blocker_but_wrapping_to_zero_does_not() {
+        let mut w = Probe::current();
+        w.phase = 0;
+        assert_eq!(
+            prepare_player(&mut w, 0),
+            Ok(PlayerEffect::Blocking { player: 0 })
+        );
+        assert_eq!((w.phase, w.blocker), (1, -1));
+        let mut w = Probe::current();
+        w.phase = u32::MAX;
+        w.turn = u32::MAX;
+        assert_eq!(
+            prepare_player(&mut w, 0),
+            Ok(PlayerEffect::Blocking { player: 0 })
+        );
+        assert_eq!((w.phase, w.turn, w.blocker), (0, 0, 7));
+    }
+    #[test]
+    fn activation_consumes_both_flags_before_unimplemented_hook_without_counters() {
+        let mut w = Probe::current();
+        w.event = true;
+        w.first = true;
+        assert_eq!(
+            prepare_player(&mut w, 0),
+            Ok(PlayerEffect::Activation {
+                player: 0,
+                first: true
+            })
+        );
+        assert!(!w.event && !w.first);
+        assert_eq!((w.phase, w.turn), (5, 5));
+        assert_eq!(
+            w.trace,
+            ["active", "event", "first", "first.write", "event.write"]
+        );
+    }
+    #[test]
+    fn inactive_and_nonhuman_paths_require_real_control_work_before_counters() {
+        let mut w = Probe::current();
+        w.active = false;
+        assert_eq!(
+            prepare_player(&mut w, 7),
+            Ok(PlayerEffect::InactiveControl { player: 7 })
+        );
+        assert_eq!(w.trace, ["active"]);
+        let mut w = Probe::current();
+        w.human = false;
+        assert_eq!(
+            prepare_player(&mut w, 7),
+            Ok(PlayerEffect::ActiveControl { player: 7 })
+        );
+        assert_eq!((w.phase, w.turn, w.ai), (5, 5, 0));
+        assert!(!w.human);
+    }
+}

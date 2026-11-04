@@ -317,6 +317,122 @@ mod tests {
         assert_eq!(ctx.state.revision(), 2);
     }
 
+    fn current_update_player_fixture() -> (LoadedState, game_update::Runtime, i32) {
+        let mut state = state();
+        let owner = state.world.players()[0].owner();
+        let mut input = controls(&state);
+        input.players[0].turn_active = true;
+        state.bind_controls(input).unwrap();
+        let turn = state.retained.core.current_turn;
+        let game = &mut state.retained.core.game_processor;
+        game.turn_complete = false;
+        game.new_game = false;
+        game.last_ai_processed_turn = turn;
+        game.last_initial_ai[owner as usize] = turn;
+        let player = &mut state.retained.core.player_processor;
+        player.activation_event[owner as usize] = false;
+        player.first_activation[owner as usize] = false;
+        player.updates_this_phase[owner as usize] = 5;
+        player.updates_this_turn[owner as usize] = 5;
+        player.ai_updates_this_turn[owner as usize] = 0;
+        state.retained.players[0].header.ordered_scalars[14] = 7;
+        let mut runtime = game_update::Runtime::new(&state, update_inputs(Some(-1)));
+        game_update::Context::new(&mut state, &mut runtime, UpdateServices)
+            .unwrap()
+            .prepare_prefix()
+            .unwrap();
+        (state, runtime, owner)
+    }
+    #[test]
+    fn loaded_game_update_selected_human_updates_canonical_counters_and_retains_blocking_callback() {
+        let (mut state, mut runtime, owner) = current_update_player_fixture();
+        assert_eq!(
+            game_update::prepare_current_player(&mut state, &mut runtime),
+            Ok(Some(crate::game_update::PlayerEffect::Blocking {
+                player: owner
+            }))
+        );
+        let player = &state.retained.core.player_processor;
+        assert_eq!(
+            (
+                player.updates_this_phase[owner as usize],
+                player.updates_this_turn[owner as usize],
+                player.ai_updates_this_turn[owner as usize]
+            ),
+            (6, 6, 0)
+        );
+        assert_eq!(state.player_end_turn_blocking(owner).unwrap(), 7);
+        assert_eq!(runtime.player_progress().completed, 0);
+        assert_eq!(state.revision(), 4);
+        assert!(game_update::prepare_current_player(&mut state, &mut runtime).is_err());
+        assert_eq!(state.revision(), 4);
+        // Model return from the required synchronous callback for this scalar
+        // continuation test. Production uses the same processing::Provider.
+        let progress = game_update::complete_current_player(&state, &mut runtime).unwrap();
+        assert_eq!(
+            (
+                progress.completed,
+                progress.selected,
+                progress.has_human,
+                progress.processed_ai
+            ),
+            (1, 1, true, false)
+        );
+        assert_eq!(
+            game_update::prepare_current_player(&mut state, &mut runtime),
+            Ok(None)
+        );
+    }
+    #[test]
+    fn loaded_game_update_player_counter_failure_keeps_first_store_and_cannot_replay() {
+        let (mut state, mut runtime, owner) = current_update_player_fixture();
+        state.revision = u64::MAX - 1;
+        assert_eq!(
+            game_update::prepare_current_player(&mut state, &mut runtime),
+            Err(crate::game_update::Error::Unsupported(
+                "loaded revision exhausted"
+            ))
+        );
+        let player = &state.retained.core.player_processor;
+        assert_eq!(
+            (
+                player.updates_this_phase[owner as usize],
+                player.updates_this_turn[owner as usize]
+            ),
+            (6, 5)
+        );
+        assert!(runtime.failed());
+        assert_eq!(runtime.pending_player(), Some(owner));
+        assert!(game_update::prepare_current_player(&mut state, &mut runtime).is_err());
+        assert_eq!(state.revision(), u64::MAX);
+    }
+    #[test]
+    fn loaded_game_update_activation_flags_are_consumed_before_required_upkeep_without_role_change() {
+        let (mut state, mut runtime, owner) = current_update_player_fixture();
+        state.retained.core.player_processor.activation_event[owner as usize] = true;
+        state.retained.core.player_processor.first_activation[owner as usize] = true;
+        assert_eq!(
+            game_update::prepare_current_player(&mut state, &mut runtime),
+            Ok(Some(crate::game_update::PlayerEffect::Activation {
+                player: owner,
+                first: true
+            }))
+        );
+        let player = &state.retained.core.player_processor;
+        assert!(
+            !player.activation_event[owner as usize] && !player.first_activation[owner as usize]
+        );
+        assert_eq!(
+            (
+                player.updates_this_phase[owner as usize],
+                player.updates_this_turn[owner as usize]
+            ),
+            (5, 5)
+        );
+        assert_eq!(state.player_slot_status(owner).unwrap(), 3);
+        assert!(game_update::complete_current_player(&state, &mut runtime).is_err());
+    }
+
     // Source-only complete typed actor; no native initialization is inferred.
     fn commit_fixture_unit() -> unit::Unit {
         // Synthetic all-zero fields/empty arrays with current nested wire versions.

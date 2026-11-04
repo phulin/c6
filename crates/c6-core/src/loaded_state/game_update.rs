@@ -31,6 +31,10 @@ pub struct Runtime {
     pub inputs: Inputs,
     pending: Option<core::Continuation>,
     failed: bool,
+    player_cursor: usize,
+    pass_has_human: bool,
+    pass_processed_ai: bool,
+    player_frame: Option<PlayerFrame>,
 }
 impl Runtime {
     /// Binding checks identity, not provenance of caller-supplied runtime facts.
@@ -40,6 +44,10 @@ impl Runtime {
             inputs,
             pending: None,
             failed: false,
+            player_cursor: 0,
+            pass_has_human: false,
+            pass_processed_ai: false,
+            player_frame: None,
         }
     }
     pub fn pending(&self) -> Option<&core::Continuation> {
@@ -47,6 +55,44 @@ impl Runtime {
     }
     pub fn failed(&self) -> bool {
         self.failed
+    }
+}
+
+struct PlayerFrame {
+    player: i32,
+    effect: Option<core::PlayerEffect<i32>>,
+    next_has_human: bool,
+    alive_nonhuman: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PlayerPassProgress {
+    pub completed: usize,
+    pub selected: usize,
+    pub has_human: bool,
+    pub processed_ai: bool,
+}
+impl Runtime {
+    pub fn player_progress(&self) -> PlayerPassProgress {
+        PlayerPassProgress {
+            completed: self.player_cursor,
+            selected: match &self.pending {
+                Some(core::Continuation::PlayerUpdates(ids)) => ids.len(),
+                _ => 0,
+            },
+            has_human: self.pass_has_human,
+            processed_ai: self.pass_processed_ai,
+        }
+    }
+    pub fn pending_player(&self) -> Option<i32> {
+        self.player_frame.as_ref().map(|f| f.player)
+    }
+    pub fn pending_player_effect(&self) -> Option<core::PlayerEffect<i32>> {
+        self.player_frame.as_ref().and_then(|f| f.effect)
+    }
+    /// A failed required synchronous callback cannot be retried as unchanged.
+    pub fn fail_player_callback(&mut self) {
+        self.failed = true;
     }
 }
 
@@ -299,4 +345,194 @@ impl<S: Services> core::World for Context<'_, S> {
         }
         Ok(control.has_out_of_turn_processing)
     }
+}
+
+struct PlayerState<'a> {
+    state: &'a mut LoadedState,
+}
+impl PlayerState<'_> {
+    fn index(id: i32) -> Result<usize, Error> {
+        usize::try_from(id)
+            .ok()
+            .filter(|&i| i < 64)
+            .ok_or(Error::Unsupported("Game.Update player counter index"))
+    }
+    fn revision(&mut self) -> Result<(), Error> {
+        self.state.revision = self
+            .state
+            .revision
+            .checked_add(1)
+            .ok_or(Error::Unsupported("loaded revision exhausted"))?;
+        Ok(())
+    }
+}
+impl core::PlayerWorld for PlayerState<'_> {
+    type Player = i32;
+    fn active(&mut self, player: i32) -> Result<bool, Error> {
+        self.state.turn_active(player).map_err(missing)
+    }
+    fn id(&mut self, player: i32) -> Result<i32, Error> {
+        self.state.world.player(player).map_err(missing)?;
+        Ok(player)
+    }
+    fn activation_event(&mut self, id: i32) -> Result<bool, Error> {
+        Ok(self.state.retained.core.player_processor.activation_event[Self::index(id)?])
+    }
+    fn first_activation(&mut self, id: i32) -> Result<bool, Error> {
+        Ok(self.state.retained.core.player_processor.first_activation[Self::index(id)?])
+    }
+    fn set_first_activation(&mut self, id: i32, value: bool) -> Result<(), Error> {
+        let i = Self::index(id)?;
+        self.revision()?;
+        self.state.retained.core.player_processor.first_activation[i] = value;
+        Ok(())
+    }
+    fn set_activation_event(&mut self, id: i32, value: bool) -> Result<(), Error> {
+        let i = Self::index(id)?;
+        self.revision()?;
+        self.state.retained.core.player_processor.activation_event[i] = value;
+        Ok(())
+    }
+    fn human(&mut self, player: i32) -> Result<bool, Error> {
+        Ok(self.state.player_slot_status(player).map_err(missing)? == 3)
+    }
+    fn phase_updates(&mut self, id: i32) -> Result<u32, Error> {
+        Ok(self.state.retained.core.player_processor.updates_this_phase[Self::index(id)?])
+    }
+    fn set_phase_updates(&mut self, id: i32, value: u32) -> Result<(), Error> {
+        let i = Self::index(id)?;
+        self.revision()?;
+        self.state.retained.core.player_processor.updates_this_phase[i] = value;
+        Ok(())
+    }
+    fn turn_updates(&mut self, id: i32) -> Result<u32, Error> {
+        Ok(self.state.retained.core.player_processor.updates_this_turn[Self::index(id)?])
+    }
+    fn set_turn_updates(&mut self, id: i32, value: u32) -> Result<(), Error> {
+        let i = Self::index(id)?;
+        self.revision()?;
+        self.state.retained.core.player_processor.updates_this_turn[i] = value;
+        Ok(())
+    }
+    fn ai_updates(&mut self, id: i32) -> Result<u32, Error> {
+        Ok(self
+            .state
+            .retained
+            .core
+            .player_processor
+            .ai_updates_this_turn[Self::index(id)?])
+    }
+    fn set_ai_updates(&mut self, id: i32, value: u32) -> Result<(), Error> {
+        let i = Self::index(id)?;
+        self.revision()?;
+        self.state
+            .retained
+            .core
+            .player_processor
+            .ai_updates_this_turn[i] = value;
+        Ok(())
+    }
+    fn set_blocker(&mut self, player: i32, value: i32) -> Result<(), Error> {
+        self.state
+            .store_player_end_turn_blocking(player, value)
+            .map_err(missing)?;
+        Ok(())
+    }
+}
+
+/// Advance the actual next selected player through the supported scalar body.
+/// None means the DEACTIVATION phase is required, not complete Game.Update.
+/// Native outer-loop human/alive facts are captured before Player.Update and
+/// retained across its callbacks; actual mutable player fields are never copied.
+pub fn prepare_current_player(
+    state: &mut LoadedState,
+    runtime: &mut Runtime,
+) -> Result<Option<core::PlayerEffect<i32>>, Error> {
+    if state.binding() != &runtime.binding || runtime.failed || runtime.player_frame.is_some() {
+        return Err(Error::Unsupported(
+            "Game.Update player continuation pending or failed",
+        ));
+    }
+    let player = match &runtime.pending {
+        Some(core::Continuation::PlayerUpdates(ids)) => ids.get(runtime.player_cursor).copied(),
+        Some(core::Continuation::BeginTurn) => {
+            return Err(Error::Unsupported(
+                "Game.Update requires Game.BeginTurn upkeep",
+            ))
+        }
+        None => {
+            return Err(Error::Unsupported(
+                "Game.Update prefix has not prepared a player pass",
+            ))
+        }
+    };
+    let Some(player) = player else {
+        return Ok(None);
+    };
+    let result = (|| {
+        state.world.player(player).map_err(missing)?;
+        let next_has_human =
+            state.player_slot_status(player).map_err(missing)? == 3 || runtime.pass_has_human;
+        let alive_nonhuman = if state.player_alive(player).map_err(missing)? {
+            state.player_slot_status(player).map_err(missing)? != 3
+        } else {
+            false
+        };
+        runtime.player_frame = Some(PlayerFrame {
+            player,
+            effect: None,
+            next_has_human,
+            alive_nonhuman,
+        });
+        let effect = core::prepare_player(&mut PlayerState { state }, player)?;
+        runtime.player_frame.as_mut().expect("installed").effect = Some(effect);
+        Ok(Some(effect))
+    })();
+    if result.is_err() {
+        runtime.failed = true;
+    }
+    result
+}
+
+/// Invoke ONLY after the SAME current notification provider completed the
+/// required blocking update. Current human tail: SetDisabled(true) writes the
+/// local stopwatch+41, End returns before logging, destructor changes only
+/// profiler nesting. No gameplay/RNG is omitted in this source-bound branch.
+/// A changed control role requires its own remaining continuation.
+pub fn complete_current_player(
+    state: &LoadedState,
+    runtime: &mut Runtime,
+) -> Result<PlayerPassProgress, Error> {
+    if state.binding() != &runtime.binding || runtime.failed {
+        return Err(Error::Unsupported(
+            "Game.Update current player binding or failure",
+        ));
+    }
+    let frame = runtime
+        .player_frame
+        .as_ref()
+        .ok_or(Error::Unsupported("Game.Update no current player callback"))?;
+    if frame.effect
+        != Some(core::PlayerEffect::Blocking {
+            player: frame.player,
+        })
+    {
+        return Err(Error::Unsupported(
+            "Game.Update blocking callback has not been reached",
+        ));
+    }
+    // Fresh post-callback IsHuman at2b5c7bd; do not reuse its earlier value.
+    if state.player_slot_status(frame.player).map_err(missing)? != 3 {
+        return Err(Error::Unsupported(
+            "Game.Update changed-control Player.Update tail",
+        ));
+    }
+    runtime.player_cursor = runtime
+        .player_cursor
+        .checked_add(1)
+        .ok_or(Error::Unsupported("Game.Update player cursor capacity"))?;
+    runtime.pass_has_human = frame.next_has_human;
+    runtime.pass_processed_ai |= frame.alive_nonhuman;
+    runtime.player_frame = None;
+    Ok(runtime.player_progress())
 }

@@ -105,3 +105,75 @@ pub fn context<'a, 'q, E: Effects>(
         },
     )
 }
+
+#[derive(Debug)]
+pub enum PlayerStepError {
+    Prefix(Error),
+    Notifications(c6_core::unit_operation_aftermath::Error),
+}
+impl std::fmt::Display for PlayerStepError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "current Player.Update continuation: {self:?}")
+    }
+}
+impl std::error::Error for PlayerStepError {}
+
+/// This outcome covers one selected Player.Update, not Game.Update completion.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlayerProgress {
+    MoreSelectedPlayers(loaded::PlayerPassProgress),
+    RequiresDeactivation(loaded::PlayerPassProgress),
+}
+
+/// Continue using the SAME persistent notification provider/backend/ScriptState.
+/// Failed allocation, reporting or subtype callbacks remain in that provider;
+/// there is no temporary backend, copied state or dropped pending candidate.
+/// Activation/AI-control callbacks remain unsupported before their actual body,
+/// with the exact preceding flag/counter mutations retained for inspection.
+pub fn advance_current_player<B: crate::loaded_actions::notifications::processing::Backend>(
+    notifications: &mut crate::loaded_actions::notifications::processing::Provider<'_, B>,
+    runtime: &mut Runtime,
+    budget: &mut usize,
+) -> Result<PlayerProgress, PlayerStepError> {
+    let effect = loaded::prepare_current_player(notifications.state, runtime)
+        .map_err(PlayerStepError::Prefix)?;
+    let Some(effect) = effect else {
+        return Ok(PlayerProgress::RequiresDeactivation(
+            runtime.player_progress(),
+        ));
+    };
+    let owner = match effect {
+        c6_core::game_update::PlayerEffect::Blocking { player } => player,
+        c6_core::game_update::PlayerEffect::Activation { .. } => {
+            return Err(PlayerStepError::Prefix(Error::Unsupported(
+                "Player.Update requires activation upkeep and reporting",
+            )))
+        }
+        c6_core::game_update::PlayerEffect::ActiveControl { .. } => {
+            return Err(PlayerStepError::Prefix(Error::Unsupported(
+                "Player.Update requires active mixed AI Control work",
+            )))
+        }
+        c6_core::game_update::PlayerEffect::InactiveControl { .. } => {
+            return Err(PlayerStepError::Prefix(Error::Unsupported(
+                "Player.Update requires inactive off-turn Control work",
+            )))
+        }
+    };
+    if let Err(error) = notifications.update(owner, budget) {
+        runtime.fail_player_callback();
+        return Err(PlayerStepError::Notifications(error));
+    }
+    let progress = match loaded::complete_current_player(notifications.state, runtime) {
+        Ok(progress) => progress,
+        Err(error) => {
+            runtime.fail_player_callback();
+            return Err(PlayerStepError::Prefix(error));
+        }
+    };
+    Ok(if progress.completed == progress.selected {
+        PlayerProgress::RequiresDeactivation(progress)
+    } else {
+        PlayerProgress::MoreSelectedPlayers(progress)
+    })
+}
