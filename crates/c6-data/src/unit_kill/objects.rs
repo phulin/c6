@@ -43,6 +43,9 @@ pub trait Services<P: super::Providers>: super::Continuations<P> {
     }
     fn unsubscribe_unit_requirement(
         &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        _providers: &mut P,
         _receiver: u64,
         _object: u64,
         _set: u64,
@@ -53,6 +56,9 @@ pub trait Services<P: super::Providers>: super::Continuations<P> {
     }
     fn release_unit_requirement(
         &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        _providers: &mut P,
         _set: u64,
     ) -> Result<(), Error<Self::Error, EffectError<P>>> {
         Err(Error::Missing("current Unit requirement reference release"))
@@ -150,10 +156,18 @@ impl<P: super::Providers, C: Services<P>> kernel::Context for Context<'_, P, C> 
         set: u64,
     ) -> Result<(), Self::Error> {
         self.effects
-            .unsubscribe_unit_requirement(receiver, object, set)
+            .unsubscribe_unit_requirement(
+                self.state,
+                self.sight,
+                self.providers,
+                receiver,
+                object,
+                set,
+            )
     }
     fn release_requirement(&mut self, set: u64) -> Result<(), Self::Error> {
-        self.effects.release_unit_requirement(set)
+        self.effects
+            .release_unit_requirement(self.state, self.sight, self.providers, set)
     }
     fn remove_effect(&mut self, effect: u64, object: u64) -> Result<bool, Self::Error> {
         let runtime = self
