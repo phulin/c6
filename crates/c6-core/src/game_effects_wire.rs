@@ -1,9 +1,9 @@
-//! Linux XP2 GameEffects4 serialized prefix through RequirementSystem3.
-//! Stops before ModifierSystem. Supports only the thirteen reached GUID domains
-//! and payload versions. This retains saved pool IDs and reference fields, not
-//! native object allocation/reuse/aliasing or requirement installation/state.
-//! Improvement2 omits owner: native Read looks it up from the current plot.
-//! Both allocator counters, runtime owners and PostLoad remain unresolved here.
+//! Linux XP2 GameEffects4 wire transport for the reached saved profile.
+//! ThroughRequirements stops before ModifierSystem; Effects composes the reached
+//! ModifierSystem5 and closing guard. Only thirteen GUID domains are supported.
+//! Saved IDs/reference fields are not native allocation, reuse or installation.
+//! Improvement2 requires current-plot owner lookup. ObjectPool allocator counters,
+//! runtime owners, callbacks/RNG effects and PostLoad remain unresolved here.
 
 pub use crate::unit::{ComponentId, Limits};
 pub const VERSION: u8 = 4;
@@ -12,6 +12,7 @@ pub const REQUIREMENTS_VERSION: u8 = 3;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    ModifierSystem(crate::game_effects_modifiers_wire::Error),
     UnsupportedGuid([u8; 16]),
     Trailing,
     ResourceLimit,
@@ -308,6 +309,61 @@ impl ThroughRequirements {
         Ok((v, r.pos, r.items))
     }
 }
+/// Complete reached serialized component, with native installation still absent.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Effects {
+    pub prefix: ThroughRequirements,
+    pub modifiers: crate::game_effects_modifiers_wire::ModifierSystem,
+    /// Native Read consumes this independently without comparing guard strings.
+    pub closing_guard: Vec<u8>,
+}
+impl Effects {
+    pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
+        let (v, n, _) = Self::decode_prefix_with_items(bytes, limits)?;
+        if n != bytes.len() {
+            return Err(Error::Trailing);
+        }
+        Ok(v)
+    }
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let (prefix, n, i) = ThroughRequirements::decode_prefix_with_items(bytes, limits)?;
+        let remaining = Limits {
+            max_bytes: limits
+                .max_bytes
+                .checked_sub(n)
+                .ok_or(Error::ResourceLimit)?,
+            max_items: limits
+                .max_items
+                .checked_sub(i)
+                .ok_or(Error::ResourceLimit)?,
+        };
+        let (modifiers, m, j) =
+            crate::game_effects_modifiers_wire::ModifierSystem::decode_prefix_with_items(
+                bytes.get(n..).ok_or(Error::Truncated)?,
+                remaining,
+            )
+            .map_err(Error::ModifierSystem)?;
+        let mut r = Reader {
+            data: bytes,
+            pos: n.checked_add(m).ok_or(Error::ResourceLimit)?,
+            items: i.checked_add(j).ok_or(Error::ResourceLimit)?,
+            limits,
+        };
+        let closing_guard = Vec::read(&mut r)?;
+        Ok((
+            Self {
+                prefix,
+                modifiers,
+                closing_guard,
+            },
+            r.pos,
+            r.items,
+        ))
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -568,6 +624,67 @@ mod tests {
         tail.extend([99, 98, 97]);
         assert_eq!(
             ThroughRequirements::decode_prefix_with_items(&tail, Limits::default())
+                .unwrap()
+                .1,
+            b.len()
+        );
+    }
+    #[test]
+    fn full_component_composes_shared_budget_and_independent_guard_strings() {
+        let mut b = Vec::new();
+        words(&mut b, &[1]);
+        b.extend([b'O', 4]);
+        words(&mut b, &[0]);
+        b.push(3);
+        words(&mut b, &[0]);
+        b.push(5);
+        words(&mut b, &[u32::MAX, 0, 0, 2]);
+        b.extend([0, 255]);
+        assert_eq!(b.len(), 34);
+        let (v, n, i) = Effects::decode_prefix_with_items(&b, Limits::default()).unwrap();
+        assert_eq!((n, i), (34, 3));
+        assert_eq!(v.prefix.opening_guard, b"O");
+        assert_eq!(v.closing_guard, vec![0, 255]);
+        assert_eq!(v.modifiers.next_modifier_id, -1);
+        for cut in 0..b.len() {
+            assert!(Effects::decode(&b[..cut], Limits::default()).is_err());
+        }
+        for cap in 0..b.len() {
+            assert!(Effects::decode(
+                &b,
+                Limits {
+                    max_bytes: cap,
+                    ..Limits::default()
+                }
+            )
+            .is_err());
+        }
+        for cap in 0..3 {
+            assert!(Effects::decode(
+                &b,
+                Limits {
+                    max_items: cap,
+                    ..Limits::default()
+                }
+            )
+            .is_err());
+        }
+        assert!(Effects::decode(
+            &b,
+            Limits {
+                max_bytes: 34,
+                max_items: 3
+            }
+        )
+        .is_ok());
+        let mut tail = b.clone();
+        tail.push(9);
+        assert_eq!(
+            Effects::decode(&tail, Limits::default()),
+            Err(Error::Trailing)
+        );
+        assert_eq!(
+            Effects::decode_prefix_with_items(&tail, Limits::default())
                 .unwrap()
                 .1,
             b.len()
