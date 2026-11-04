@@ -595,6 +595,8 @@ impl Wire for Units {
 /// decoder fails. The nested error does not imply its own tag was the Unit tag.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Boundary {
+    /// Parent aggregate item charge before the refused delegated Unit starts.
+    pub items_used: usize,
     pub component: &'static str,
     pub consumed: usize,
     pub error: Error,
@@ -640,6 +642,7 @@ impl Units {
         match Self::read(&mut r) {
             Ok(value) => Ok((value, r.pos, r.items)),
             Err(error) => Err(Boundary {
+                items_used: r.items,
                 component: if r.unit_start.is_some() {
                     "Unit"
                 } else {
@@ -1208,6 +1211,7 @@ mod tests {
         }
         let boundary = Units::decode_prefix_with_boundary(&b, limits()).unwrap_err();
         assert_eq!((boundary.component, boundary.consumed), ("Unit", 24));
+        assert_eq!(boundary.items_used, 1);
         assert!(matches!(
             boundary.error,
             Error::Unit(crate::unit::Error::Version { actual: 0, .. })
