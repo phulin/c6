@@ -4,6 +4,7 @@ pub const VERSION: u32 = 14;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     MissingContext,
+    UnsupportedLegacyWrite,
     Truncated,
     Trailing,
     ResourceLimit,

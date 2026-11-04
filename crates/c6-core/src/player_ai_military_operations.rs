@@ -40,17 +40,156 @@ record!(TeamDefinition, 2, {
     ongoing_strength_advantage_bits: u32, safe_rally_point: BoolByte,
     condition_hash: u32, requirements: Vec<TeamRequirement>,
 });
-record!(OperationDef, 7, {
-    op_name: SavedString, name_hash: i32, target_type: i32,
-    target_parameter: i32, update_team_points: BoolByte, op_type: i32,
-    behavior_tree_name: SavedString, priority: i32, teams: Vec<TeamDefinition>,
-    max_dist_in_region: i32, max_dist_in_area: i32, max_dist_in_world: i32,
-    max_target_strength: i32, max_target_defense: i32,
-    min_odds_of_success_bits: u32, self_start: BoolByte,
-    must_be_at_war: BoolByte, must_have_nukes: BoolByte, must_have_min_units: i32,
-    enemy_type: SavedString, target_lua_script: SavedString,
-    active_emergency: SavedString,
-});
+/// Independently versioned saved OperationDef; no planning or native initialization runs.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OperationDef {
+    pub wire_version: u32,
+    pub op_name: SavedString,
+    pub name_hash: i32,
+    pub target_type: i32,
+    pub target_parameter: i32,
+    pub update_team_points: BoolByte,
+    pub op_type: i32,
+    pub behavior_tree_name: SavedString,
+    pub priority: i32,
+    pub teams: Vec<TeamDefinition>,
+    pub max_dist_in_region: i32,
+    pub max_dist_in_area: i32,
+    pub max_dist_in_world: i32,
+    pub max_target_strength: i32,
+    pub max_target_defense: i32,
+    pub min_odds_of_success_bits: u32,
+    pub self_start: BoolByte,
+    pub must_be_at_war: BoolByte,
+    pub must_have_nukes: BoolByte,
+    pub must_have_min_units: i32,
+    pub enemy_type: SavedString,
+    pub target_lua_script: SavedString,
+    pub active_emergency: SavedString,
+}
+impl Default for OperationDef {
+    fn default() -> Self {
+        Self {
+            wire_version: 7,
+            op_name: Default::default(),
+            name_hash: Default::default(),
+            target_type: Default::default(),
+            target_parameter: Default::default(),
+            update_team_points: Default::default(),
+            op_type: Default::default(),
+            behavior_tree_name: Default::default(),
+            priority: Default::default(),
+            teams: Default::default(),
+            max_dist_in_region: Default::default(),
+            max_dist_in_area: Default::default(),
+            max_dist_in_world: Default::default(),
+            max_target_strength: Default::default(),
+            max_target_defense: Default::default(),
+            min_odds_of_success_bits: Default::default(),
+            self_start: Default::default(),
+            must_be_at_war: Default::default(),
+            must_have_nukes: Default::default(),
+            must_have_min_units: Default::default(),
+            enemy_type: Default::default(),
+            target_lua_script: Default::default(),
+            active_emergency: Default::default(),
+        }
+    }
+}
+impl Wire for OperationDef {
+    const MIN: usize = 4
+        + <SavedString as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <SavedString as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <Vec<TeamDefinition> as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <u32 as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <BoolByte as Wire>::MIN
+        + <i32 as Wire>::MIN
+        + <SavedString as Wire>::MIN;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 5 | 7) {
+            return Err(Error::Version {
+                expected: 7,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            op_name: <SavedString as Wire>::read(r)?,
+            name_hash: <i32 as Wire>::read(r)?,
+            target_type: <i32 as Wire>::read(r)?,
+            target_parameter: <i32 as Wire>::read(r)?,
+            update_team_points: <BoolByte as Wire>::read(r)?,
+            op_type: <i32 as Wire>::read(r)?,
+            behavior_tree_name: <SavedString as Wire>::read(r)?,
+            priority: <i32 as Wire>::read(r)?,
+            teams: <Vec<TeamDefinition> as Wire>::read(r)?,
+            max_dist_in_region: <i32 as Wire>::read(r)?,
+            max_dist_in_area: <i32 as Wire>::read(r)?,
+            max_dist_in_world: <i32 as Wire>::read(r)?,
+            max_target_strength: <i32 as Wire>::read(r)?,
+            max_target_defense: <i32 as Wire>::read(r)?,
+            min_odds_of_success_bits: <u32 as Wire>::read(r)?,
+            self_start: <BoolByte as Wire>::read(r)?,
+            must_be_at_war: <BoolByte as Wire>::read(r)?,
+            must_have_nukes: <BoolByte as Wire>::read(r)?,
+            must_have_min_units: <i32 as Wire>::read(r)?,
+            enemy_type: <SavedString as Wire>::read(r)?,
+            target_lua_script: if wire_version == 7 {
+                <SavedString as Wire>::read(r)?
+            } else {
+                SavedString(Vec::new())
+            },
+            active_emergency: if wire_version == 7 {
+                <SavedString as Wire>::read(r)?
+            } else {
+                SavedString(Vec::new())
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 7 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        7u32.write(w)?;
+        self.op_name.write(w)?;
+        self.name_hash.write(w)?;
+        self.target_type.write(w)?;
+        self.target_parameter.write(w)?;
+        self.update_team_points.write(w)?;
+        self.op_type.write(w)?;
+        self.behavior_tree_name.write(w)?;
+        self.priority.write(w)?;
+        self.teams.write(w)?;
+        self.max_dist_in_region.write(w)?;
+        self.max_dist_in_area.write(w)?;
+        self.max_dist_in_world.write(w)?;
+        self.max_target_strength.write(w)?;
+        self.max_target_defense.write(w)?;
+        self.min_odds_of_success_bits.write(w)?;
+        self.self_start.write(w)?;
+        self.must_be_at_war.write(w)?;
+        self.must_have_nukes.write(w)?;
+        self.must_have_min_units.write(w)?;
+        self.enemy_type.write(w)?;
+        self.target_lua_script.write(w)?;
+        self.active_emergency.write(w)?;
+        Ok(())
+    }
+}
 record!(OperationTarget, 1, {
     enemy: i32, target_type: i32, location: PlotCoord, rally: PlotCoord,
     target_id: ComponentId,
@@ -95,6 +234,118 @@ record!(Operation, 6, {
 mod operation_wire_tests {
     use super::*;
 
+    fn legacy_definition5() -> Vec<u8> {
+        fn words(raw: &mut Vec<u8>, xs: &[u32]) {
+            for v in xs {
+                raw.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        let mut raw = Vec::new();
+        words(&mut raw, &[5, 3]);
+        raw.extend_from_slice(&[0, 255, 1]);
+        words(&mut raw, &[u32::MAX, i32::MIN as u32, i32::MAX as u32]);
+        raw.push(197);
+        words(&mut raw, &[u32::MAX, 2]);
+        raw.extend_from_slice(&[255, 0]);
+        words(
+            &mut raw,
+            &[
+                i32::MIN as u32,
+                0,
+                i32::MIN as u32,
+                u32::MAX,
+                i32::MAX as u32,
+                23,
+                (-257i32) as u32,
+                0x7fc00001,
+            ],
+        );
+        raw.extend_from_slice(&[197, 2, 3]);
+        words(&mut raw, &[u32::MAX, 1]);
+        raw.push(255);
+        raw
+    }
+    #[test]
+    fn operation_definition5_defaults_and_exact_budgets() {
+        let raw = legacy_definition5();
+        assert_eq!(raw.len(), 78);
+        let cap = Limits {
+            max_bytes: 78,
+            max_items: 6,
+        };
+        let mut r = Reader {
+            context: None,
+            data: &raw,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        let v = OperationDef::read(&mut r).unwrap();
+        assert_eq!((r.pos, r.items), (78, 6));
+        assert_eq!(v.wire_version, 5);
+        assert_eq!(v.op_name.0, [0, 255, 1]);
+        assert_eq!(v.behavior_tree_name.0, [255, 0]);
+        assert_eq!(v.enemy_type.0, [255]);
+        assert_eq!(v.min_odds_of_success_bits, 0x7fc00001);
+        assert_eq!(v.update_team_points, BoolByte(197));
+        assert_eq!(v.must_have_min_units, -1);
+        assert_eq!(v.target_lua_script, SavedString(Vec::new()));
+        assert_eq!(v.active_emergency, SavedString(Vec::new()));
+        let mut w = Writer {
+            data: Vec::new(),
+            bytes: 0,
+            items: 0,
+            limits: cap,
+            measuring: true,
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        for n in 0..raw.len() {
+            let mut r = Reader {
+                context: None,
+                data: &raw[..n],
+                pos: 0,
+                items: 0,
+                limits: cap,
+            };
+            assert!(OperationDef::read(&mut r).is_err());
+        }
+        for limits in [
+            Limits {
+                max_bytes: 77,
+                ..cap
+            },
+            Limits {
+                max_items: 5,
+                ..cap
+            },
+        ] {
+            let mut r = Reader {
+                context: None,
+                data: &raw,
+                pos: 0,
+                items: 0,
+                limits,
+            };
+            assert_eq!(OperationDef::read(&mut r), Err(Error::ResourceLimit));
+        }
+        let mut unsupported = raw.clone();
+        unsupported[..4].copy_from_slice(&6u32.to_le_bytes());
+        let mut r = Reader {
+            context: None,
+            data: &unsupported,
+            pos: 0,
+            items: 0,
+            limits: cap,
+        };
+        assert_eq!(
+            OperationDef::read(&mut r),
+            Err(Error::Version {
+                expected: 7,
+                actual: 6
+            })
+        );
+        assert_eq!(OperationDef::default().wire_version, 7);
+    }
     #[test]
     fn player_ai_military_operations_nested_storage_bits_and_limits() {
         // Synthetic codec boundary fixture; native corpus parity is audited separately.
