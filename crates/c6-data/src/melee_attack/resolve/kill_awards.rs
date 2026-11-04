@@ -95,7 +95,7 @@ impl Definitions {
             levels,
         })
     }
-    fn cost(&self, game_speed: u32) -> i32 {
+    pub(crate) fn cost(&self, game_speed: u32) -> i32 {
         self.speeds
             .find_index(game_speed)
             .and_then(|i| self.speed_cost.get(i))
@@ -179,7 +179,7 @@ fn strength_bonus(bonus: i32, captured_combat: i32, cost_percent: i32) -> i32 {
     let whole = bonus.wrapping_mul(captured_combat) / 100;
     adjust_speed(whole, cost_percent)
 }
-fn adjust_speed(whole: i32, cost_percent: i32) -> i32 {
+pub(crate) fn adjust_speed(whole: i32, cost_percent: i32) -> i32 {
     // Economic2be38b0 -> Q8 constructor -> ScaleByPercentageClamped2b9c990
     // -> AsInt1fccdb0. Both constructors wrap BEFORE the 64-bit product.
     let scaled = i64::from(whole.wrapping_shl(8)) * i64::from(cost_percent.wrapping_shl(8)) / 25600;
