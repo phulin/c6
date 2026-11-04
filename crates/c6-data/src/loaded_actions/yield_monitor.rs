@@ -1,8 +1,9 @@
 //! Attributed owned Trade input and actual warm-path domain for YieldMonitor.
 //!
-//! This module does not yet authorize omission of the monitor. Its unsaved
-//! derived-cache initialization/history and complete query effects remain
-//! separate admission requirements. No captured numerical answer is installed.
+//! These checks supply the current route domain for the stock headless
+//! observer projection. They do not establish arbitrary callback/provider
+//! purity or install captured yield answers. The caller must separately admit
+//! the supported rules, plain providers and complete observer bindings.
 use c6_core::loaded_state::LoadedState;
 
 #[derive(Debug)]

@@ -46,6 +46,7 @@ pub enum Stage {
     Delete,
     Diplomacy,
     Notifications,
+    MessagesProcessed,
     DiagnosticComplete,
     Committed,
 }
@@ -97,6 +98,7 @@ pub fn trace_json(trace: &[Event]) -> serde_json::Value {
 #[derive(Debug)]
 pub enum Error {
     AutoNotificationQuery(Box<transition::AutoQueryError>),
+    YieldMonitor(reporting::yield_monitor::Error),
     CommandHoldCycling(
         Box<reporting::hold_cycling::Error<reporting::hold_cycling::commands::Error>>,
     ),
@@ -1589,7 +1591,9 @@ mod tests {
                 scalars: Vec::new(),
                 arrays: Vec::new(),
             },
-            k_operations: c6_core::unit::OperationQueue { nodes: Vec::new() },
+            k_operations: c6_core::unit::OperationQueue {
+                nodes: Vec::new().into(),
+            },
             k_operations_disabled: Vec::new(),
             k_hero: c6_core::unit::Hero {
                 e_class: 0,

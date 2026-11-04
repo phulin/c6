@@ -206,7 +206,14 @@ pub struct PreparedSkipTurn {
 }
 /// The source-supported finite transition was computed and committed. These
 /// publications remain a presentation projection, not delivered subscribers.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExecutionBoundary {
+    DirectCoreExecute,
+    HeadlessMessagesProcessed,
+}
+
 pub struct AppliedSkipTurn {
+    pub boundary: ExecutionBoundary,
     pub disposition: Disposition,
     pub trace: Vec<Event>,
     pub publications: Vec<reporting::Publication>,
@@ -815,9 +822,12 @@ fn plan_auto_notification_queries(
     // The six temporary objects have no needed notification. Plain parameter,
     // localization and pool representation are omitted in the stock headless
     // projection; this does not replace the final synchronous observer.
-    Err(Error::Unsupported(
-        "MessagesProcessed YieldMonitor query effects require semantic planning",
-    ))
+    // This scope covers the concrete stock observer/provider bindings, including
+    // possible changed plot/trade output. The owned route lookup excludes the
+    // cold finder/temporary-route effects; no native cache freshness is assumed.
+    reporting::yield_monitor::warm_route_domain(state).map_err(Error::YieldMonitor)?;
+    trace.push(Event::Stage(Stage::MessagesProcessed));
+    Ok(())
 }
 
 /// Compute outgoing diplomacy and qualify the initial notification reduction.
@@ -884,6 +894,10 @@ pub fn prepare<'a, 'd, 'capture>(
     Ok(PreparedSkipTurn { phase, diplomacy })
 }
 /// Compute the source-ordered auto queries against borrowed staged records.
+/// The report scope must cover the stock plain providers and complete initial
+/// observer routes, including activation, blocking, changed yields and cache
+/// output. Unknown/additional callbacks are outside this profile. The final
+/// observer is projected only within its checked current warm-route domain.
 /// Missing query/callback effects still refuse before any live mutation.
 pub fn prepare_with_auto_notification_queries<'a, 'd, 'capture>(
     state: &'a LoadedState,
@@ -996,7 +1010,16 @@ impl PreparedSkipTurn {
             Ok(()) => {
                 let disposition = disposition(&trace);
                 trace.push(Event::Stage(Stage::Committed));
+                let boundary = if trace
+                    .iter()
+                    .any(|event| matches!(event, Event::Stage(Stage::MessagesProcessed)))
+                {
+                    ExecutionBoundary::HeadlessMessagesProcessed
+                } else {
+                    ExecutionBoundary::DirectCoreExecute
+                };
                 Ok(AppliedSkipTurn {
+                    boundary,
                     disposition,
                     trace,
                     publications: phase.publications,
