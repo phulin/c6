@@ -2,6 +2,8 @@
 //! Reflected Unit snapshots are omitted under the evidenced no-UI boundary;
 //! their conditional gameplay-query effects are checked at the original Send.
 //! This does not drain host event playback or admit a complete action.
+#[path = "hold_cycling.rs"]
+pub mod hold_cycling;
 #[path = "yield_monitor.rs"]
 pub mod yield_monitor;
 
@@ -416,17 +418,52 @@ impl<'a> Provider<'a> {
     /// Independent native CanCyclePast. Pending operations do not short-circuit
     /// this getter. Reached HoldCycling callbacks remain genuine dependencies.
     pub fn can_cycle_past(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
+        self.cycle_past_early_result(state, unit)?.ok_or(Error::Provider(
+            "CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable",
+        ))
+    }
+
+    /// Compute command HoldCycling, then operation HoldCycling only if needed.
+    /// The continuation runs after the original early guards and can retain
+    /// synchronous gameplay/script/RNG effects in current state. The current
+    /// Unit borrow ends before invoking it; no stale Unit snapshot is substituted.
+    pub fn can_cycle_past_with_hold(
+        &self,
+        state: &mut LoadedState,
+        reference: UnitReference,
+        hold: impl FnOnce(&mut LoadedState, UnitReference) -> Result<bool, Error>,
+    ) -> Result<bool, Error> {
+        let early = {
+            let unit = state
+                .world()
+                .unit(reference)
+                .map_err(Error::World)?
+                .ok_or(Error::MissingUnit)?
+                .record;
+            self.cycle_past_early_result(state, unit)?
+        };
+        if let Some(result) = early {
+            return Ok(result);
+        }
+        Ok(!hold(state, reference)?)
+    }
+
+    fn cycle_past_early_result(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+    ) -> Result<Option<bool>, Error> {
         self.validate_readiness_unit(state, unit)?;
         if !unit_placement::coordinate_valid(unit.k_location) || unit.b_delayed_death {
-            return Ok(true);
+            return Ok(Some(true));
         }
         if self.bound_formation(state, unit, None)?.is_none() {
-            return Ok(true);
+            return Ok(Some(true));
         }
         if unit.b_needs_attention || self.has_adjacent_move(state, unit)?.is_some() {
-            return Ok(false);
+            return Ok(Some(false));
         }
-        Err(Error::Provider("CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable"))
+        Ok(None)
     }
 
     fn validate_readiness_unit(&self, state: &LoadedState, unit: &Unit) -> Result<(), Error> {
