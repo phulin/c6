@@ -353,6 +353,7 @@ fn record_changes(
         }
     // Exhaustive pattern forces review when serialized Unit fields grow.
     let Unit {
+        wire_version: _,
         id: _,
         e_type_index: _,
         e_ai_type: _,
@@ -428,6 +429,7 @@ fn record_changes(
         k_properties: _,
     } = before_unit;
     compare!(UnitRecord, before_unit, after_unit,
+        wire_version => false,
         id => false,
         e_type_index => false,
         e_ai_type => false,

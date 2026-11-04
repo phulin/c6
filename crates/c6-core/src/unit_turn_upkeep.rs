@@ -405,6 +405,7 @@ pub(crate) mod tests {
     // No initialized engine World, native capture, or native parity is implied.
     pub(crate) fn source_only_unit() -> Unit {
         crate::unit::Unit {
+            wire_version: 28,
             id: 0,
             e_type_index: 0,
             e_ai_type: 0,
@@ -432,7 +433,7 @@ pub(crate) mod tests {
             b_dominant_conquer: false,
             i_barbarian_tribe_index: 0,
             e_barbarian_player_target: 0,
-            i_disaster_charges: 0,
+            i_disaster_charges: Some(0),
             i_era_strength_modifier: 0,
             b_embarked: false,
             b_delayed_death: false,

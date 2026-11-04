@@ -1337,6 +1337,7 @@ mod tests {
     // It makes no claim about a native initialized Unit or complete gameplay.
     pub(super) fn synthetic_unit() -> Unit {
         c6_core::unit::Unit {
+            wire_version: 28,
             id: 0,
             e_type_index: 0,
             e_ai_type: 0,
@@ -1364,7 +1365,7 @@ mod tests {
             b_dominant_conquer: false,
             i_barbarian_tribe_index: 0,
             e_barbarian_player_target: 0,
-            i_disaster_charges: 0,
+            i_disaster_charges: Some(0),
             i_era_strength_modifier: 0,
             b_embarked: false,
             b_delayed_death: false,

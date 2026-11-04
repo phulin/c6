@@ -2,7 +2,8 @@
 //!
 //! Current operation queues support nine verified handlers and their exact
 //! parameter formats. Wire operation hashes are distinct from live numeric IDs.
-//! Unit version 28 supports all current fields with explicit nested-codec gates.
+//! Unit17/28 wire/default profiles retain independent nested-codec gates.
+//! Legacy omitted runtime effects and missing prior scalars remain explicit.
 //! Formation version 1 is decoded completely as serialized wire state.
 //! See `docs/linux-unit-archive.md`; unsupported handlers cannot be skipped because
 //! their bodies have no common length. No action transition is implemented here.
@@ -87,6 +88,8 @@ impl Default for Limits {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    UnsupportedLegacyWrite,
+    MissingRetainedValue(&'static str),
     Truncated,
     TrailingBytes,
     ResourceLimit,
@@ -410,6 +413,8 @@ struct Reader<'a> {
     bytes: &'a [u8],
     pos: usize,
     budget: usize,
+    field: &'static str,
+    field_start: usize,
 }
 impl<'a> Reader<'a> {
     fn new(bytes: &'a [u8], limits: Limits) -> Result<Self, Error> {
@@ -420,6 +425,8 @@ impl<'a> Reader<'a> {
             bytes,
             pos: 0,
             budget: limits.max_items,
+            field: "Unit",
+            field_start: 0,
         })
     }
     fn take<const N: usize>(&mut self) -> Result<[u8; N], Error> {

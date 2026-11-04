@@ -13,6 +13,7 @@ use crate::world::{MissingInput as WorldError, Player};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    LegacyReadEffects(i32),
     Profile,
     Owner,
     Definition,
@@ -160,6 +161,9 @@ impl UnitRuntime {
         inputs: &InitializationInputs<'_>,
         owner: &Player,
     ) -> Result<Self, Error> {
+        if unit.wire_version != 28 {
+            return Err(Error::LegacyReadEffects(unit.wire_version));
+        }
         if unit.e_owner != owner.owner() {
             return Err(Error::Owner);
         }
@@ -276,6 +280,13 @@ mod tests {
         let mut other = identity.clone();
         other.mods_inputs_sha256[0] ^= 1;
         assert_eq!(inputs.resolve_definition(99, &other), Err(Error::Profile));
+        let mut unit = crate::unit_turn_upkeep::tests::source_only_unit();
+        unit.wire_version = 17;
+        let owner = Player::new(unit.e_owner, None, None).unwrap();
+        assert_eq!(
+            UnitRuntime::from_read(&unit, &identity, &inputs, &owner),
+            Err(Error::LegacyReadEffects(17))
+        );
     }
     #[test]
     fn overlay_preserves_unsaved_destinations_and_stream_order() {

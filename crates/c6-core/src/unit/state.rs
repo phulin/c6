@@ -1,4 +1,4 @@
-//! Named current-version Linux Unit wire state. No native object reconstruction.
+//! Named Linux Unit17/28 wire/default projection. No native object reconstruction.
 //! Field ordering and versions follow evidence/linux/unit-wire-contracts.json.
 //! Definition enums use raw u32 hashes; plain enums use i32 bits. Fixedpoint
 //! values retain raw i32 storage. Byte strings are not assumed UTF-8. Ordered
@@ -1045,10 +1045,21 @@ impl Wire for InitiationYieldPopulation {
         Ok(())
     }
 }
-/// Complete current version-28 serialized Unit fields for supported nested codecs.
-/// Domain, live pointers, archive dirty history and native read-time fixups are absent.
+/// Exact outer field cursor when a Unit reader refuses. A nested error is
+/// attributed to that field; it is not relabeled as the outer Unit version.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnitReadBoundary {
+    pub field: &'static str,
+    pub field_start: usize,
+    pub consumed: usize,
+    pub error: Error,
+}
+/// Current28 fields and a bounded17 wire/default projection for supported nested codecs.
+/// Missing prior scalar state and omitted definition/configuration Read effects
+/// stay explicit. Domain, pointers, dirty history and runtime fixups are absent.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Unit {
+    pub wire_version: i32,
     /// Original m_id.
     pub id: u32,
     /// Original m_eTypeIndex.
@@ -1104,7 +1115,8 @@ pub struct Unit {
     /// Original m_eBarbarianPlayerTarget.
     pub e_barbarian_player_target: i32,
     /// Original m_iDisasterCharges.
-    pub i_disaster_charges: i32,
+    /// None at17: native Read retains a prior scalar not supplied by the wire.
+    pub i_disaster_charges: Option<i32>,
     /// Original m_iEraStrengthModifier.
     pub i_era_strength_modifier: i32,
     /// Original m_bEmbarked.
@@ -1197,6 +1209,13 @@ pub struct Unit {
     pub k_properties: TypedVariantMap,
 }
 impl Unit {
+    /// These absent17 arrays require actual-definition native Read application:
+    /// GreatPersonClass zero defaults, old promotion-class temporary rebuild,
+    /// and Operation false defaults plus XP2.IsDisabled overlays. Empty wire
+    /// vectors do not assert initialized empty/all-false native destinations.
+    pub fn legacy_definition_read_effects_unapplied(&self) -> bool {
+        self.wire_version == 17
+    }
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         Ok(Self::decode_with_ranges(bytes, limits)?.0)
     }
@@ -1216,19 +1235,35 @@ impl Unit {
         bytes: &[u8],
         limits: Limits,
     ) -> Result<(Self, usize, usize), Error> {
+        Self::decode_prefix_with_boundary(bytes, limits).map_err(|boundary| boundary.error)
+    }
+    pub fn decode_prefix_with_boundary(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), UnitReadBoundary> {
         let clipped = bytes.len() > limits.max_bytes;
         let input = &bytes[..bytes.len().min(limits.max_bytes)];
-        let mut r = Reader::new(input, limits)?;
+        let mut r = Reader::new(input, limits).map_err(|error| UnitReadBoundary {
+            field: "Unit",
+            field_start: 0,
+            consumed: 0,
+            error,
+        })?;
         let (value, _) = Self::read_with_ranges(&mut r).map_err(|error| {
-            if clipped
+            let error = if clipped
                 && matches!(
                     error,
                     Error::Truncated | Error::Variant(variants::VariantError::Truncated)
-                )
-            {
+                ) {
                 Error::ResourceLimit
             } else {
                 error
+            };
+            UnitReadBoundary {
+                field: r.field,
+                field_start: r.field_start,
+                consumed: r.pos,
+                error,
             }
         })?;
         Ok((value, r.pos, limits.max_items - r.budget))
@@ -1237,9 +1272,17 @@ impl Unit {
         Self::decode_prefix_with_items(bytes, limits).map(|(value, consumed, _)| (value, consumed))
     }
     fn read_with_ranges(r: &mut Reader<'_>) -> Result<(Self, Vec<FieldRange>), Error> {
-        r.version(28)?;
+        let wire_version = r.i32()?;
+        if wire_version != 17 && wire_version != 28 {
+            return Err(Error::Version {
+                expected: 28,
+                actual: wire_version,
+            });
+        }
         let mut ranges = Vec::new();
         let start = r.pos;
+        r.field = "m_id";
+        r.field_start = start;
         let id = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_id",
@@ -1247,6 +1290,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eTypeIndex";
+        r.field_start = start;
         let e_type_index = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eTypeIndex",
@@ -1254,6 +1299,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eAIType";
+        r.field_start = start;
         let e_ai_type = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eAIType",
@@ -1261,6 +1308,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_aiController";
+        r.field_start = start;
         let ai_controller = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiController",
@@ -1268,6 +1317,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_aiGoal";
+        r.field_start = start;
         let ai_goal = <PlotCoord>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiGoal",
@@ -1275,6 +1326,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kLocation";
+        r.field_start = start;
         let k_location = <PlotCoord>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kLocation",
@@ -1282,6 +1335,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eFacingDirection";
+        r.field_start = start;
         let e_facing_direction = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eFacingDirection",
@@ -1289,6 +1344,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eOwner";
+        r.field_start = start;
         let e_owner = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eOwner",
@@ -1296,6 +1353,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eOriginalOwner";
+        r.field_start = start;
         let e_original_owner = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eOriginalOwner",
@@ -1303,6 +1362,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bIsLevied";
+        r.field_start = start;
         let b_is_levied = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIsLevied",
@@ -1310,6 +1371,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_formationID";
+        r.field_start = start;
         let formation_id = <u32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_formationID",
@@ -1317,6 +1380,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eMilitaryFormation";
+        r.field_start = start;
         let e_military_formation = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eMilitaryFormation",
@@ -1324,6 +1389,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eAutomation";
+        r.field_start = start;
         let e_automation = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eAutomation",
@@ -1331,6 +1398,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eActivity";
+        r.field_start = start;
         let e_activity = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eActivity",
@@ -1338,6 +1407,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iDamage";
+        r.field_start = start;
         let i_damage = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iDamage",
@@ -1345,6 +1416,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iFortifyTurns";
+        r.field_start = start;
         let i_fortify_turns = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iFortifyTurns",
@@ -1352,6 +1425,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iUpgradeDiscount";
+        r.field_start = start;
         let i_upgrade_discount = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iUpgradeDiscount",
@@ -1359,6 +1434,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_xMovesRemaining";
+        r.field_start = start;
         let x_moves_remaining = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_xMovesRemaining",
@@ -1366,6 +1443,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iAttacksRemaining";
+        r.field_start = start;
         let i_attacks_remaining = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iAttacksRemaining",
@@ -1373,6 +1452,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iOperationTimer";
+        r.field_start = start;
         let i_operation_timer = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iOperationTimer",
@@ -1380,6 +1461,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iBuildCharges";
+        r.field_start = start;
         let i_build_charges = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iBuildCharges",
@@ -1387,6 +1470,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iParkCharges";
+        r.field_start = start;
         let i_park_charges = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iParkCharges",
@@ -1394,13 +1479,21 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let i_action_charges = <i32>::read(r)?;
+        r.field = "m_iActionCharges";
+        r.field_start = start;
+        let i_action_charges = if wire_version == 17 {
+            0
+        } else {
+            <i32>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_iActionCharges",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iAirSlotModifier";
+        r.field_start = start;
         let i_air_slot_modifier = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iAirSlotModifier",
@@ -1408,6 +1501,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bDominantConquer";
+        r.field_start = start;
         let b_dominant_conquer = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bDominantConquer",
@@ -1415,6 +1510,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_iBarbarianTribeIndex";
+        r.field_start = start;
         let i_barbarian_tribe_index = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_iBarbarianTribeIndex",
@@ -1422,6 +1519,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_eBarbarianPlayerTarget";
+        r.field_start = start;
         let e_barbarian_player_target = <i32>::read(r)?;
         ranges.push(FieldRange {
             name: "m_eBarbarianPlayerTarget",
@@ -1429,20 +1528,34 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let i_disaster_charges = <i32>::read(r)?;
+        r.field = "m_iDisasterCharges";
+        r.field_start = start;
+        let i_disaster_charges = if wire_version == 17 {
+            None
+        } else {
+            Some(<i32>::read(r)?)
+        };
         ranges.push(FieldRange {
             name: "m_iDisasterCharges",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let i_era_strength_modifier = <i32>::read(r)?;
+        r.field = "m_iEraStrengthModifier";
+        r.field_start = start;
+        let i_era_strength_modifier = if wire_version == 17 {
+            0
+        } else {
+            <i32>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_iEraStrengthModifier",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bEmbarked";
+        r.field_start = start;
         let b_embarked = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bEmbarked",
@@ -1450,6 +1563,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bDelayedDeath";
+        r.field_start = start;
         let b_delayed_death = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bDelayedDeath",
@@ -1457,6 +1572,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bImmobile";
+        r.field_start = start;
         let b_immobile = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bImmobile",
@@ -1464,6 +1581,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bProcessedTurn";
+        r.field_start = start;
         let b_processed_turn = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bProcessedTurn",
@@ -1471,6 +1590,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bNeedsMovementCompletion";
+        r.field_start = start;
         let b_needs_movement_completion = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bNeedsMovementCompletion",
@@ -1478,6 +1599,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bEligibleToHeal";
+        r.field_start = start;
         let b_eligible_to_heal = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bEligibleToHeal",
@@ -1485,6 +1608,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bHasHiddenVisibility";
+        r.field_start = start;
         let b_has_hidden_visibility = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bHasHiddenVisibility",
@@ -1492,6 +1617,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bHiddenVisibilityForfeited";
+        r.field_start = start;
         let b_hidden_visibility_forfeited = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bHiddenVisibilityForfeited",
@@ -1499,6 +1626,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bIgnoreTerrainCost";
+        r.field_start = start;
         let b_ignore_terrain_cost = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIgnoreTerrainCost",
@@ -1506,6 +1635,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bIgnoreZOC";
+        r.field_start = start;
         let b_ignore_zoc = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bIgnoreZOC",
@@ -1513,6 +1644,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bExertZOC";
+        r.field_start = start;
         let b_exert_zoc = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bExertZOC",
@@ -1520,6 +1653,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bCanSeeThroughFeatures";
+        r.field_start = start;
         let b_can_see_through_features = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bCanSeeThroughFeatures",
@@ -1527,13 +1662,21 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let b_can_see_through_terrain = <bool>::read(r)?;
+        r.field = "m_bCanSeeThroughTerrain";
+        r.field_start = start;
+        let b_can_see_through_terrain = if wire_version == 17 {
+            false
+        } else {
+            <bool>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_bCanSeeThroughTerrain",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bAttackAfterMoving";
+        r.field_start = start;
         let b_attack_after_moving = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bAttackAfterMoving",
@@ -1541,13 +1684,21 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let i_move_after_attacking = <i32>::read(r)?;
+        r.field = "m_iMoveAfterAttacking";
+        r.field_start = start;
+        let i_move_after_attacking = if wire_version == 17 {
+            i32::from(<bool>::read(r)?)
+        } else {
+            <i32>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_iMoveAfterAttacking",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_bNeedsAttention";
+        r.field_start = start;
         let b_needs_attention = <bool>::read(r)?;
         ranges.push(FieldRange {
             name: "m_bNeedsAttention",
@@ -1555,13 +1706,21 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let b_ignore_resource_maintenance = <bool>::read(r)?;
+        r.field = "m_bIgnoreResourceMaintenance";
+        r.field_start = start;
+        let b_ignore_resource_maintenance = if wire_version == 17 {
+            false
+        } else {
+            <bool>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_bIgnoreResourceMaintenance",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kHealthModifiers";
+        r.field_start = start;
         let k_health_modifiers = <HealthModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kHealthModifiers",
@@ -1569,6 +1728,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kHealthReligionModifiers";
+        r.field_start = start;
         let k_health_religion_modifiers = <HealthReligionModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kHealthReligionModifiers",
@@ -1576,6 +1737,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kCombatModifers";
+        r.field_start = start;
         let k_combat_modifers = <CombatModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kCombatModifers",
@@ -1583,6 +1746,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kMovementModifiers";
+        r.field_start = start;
         let k_movement_modifiers = <MovementModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kMovementModifiers",
@@ -1590,6 +1755,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kSightModifiers";
+        r.field_start = start;
         let k_sight_modifiers = <SightModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kSightModifiers",
@@ -1597,6 +1764,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kAttackRangeModifiers";
+        r.field_start = start;
         let k_attack_range_modifiers = <AttackRangeModifiers>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kAttackRangeModifiers",
@@ -1604,6 +1773,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kSightPlots";
+        r.field_start = start;
         let k_sight_plots = <Vec<SightPlotEntry>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kSightPlots",
@@ -1611,6 +1782,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_aiAbilitiesPossessed";
+        r.field_start = start;
         let ai_abilities_possessed = <Vec<HashValue<i32>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiAbilitiesPossessed",
@@ -1618,6 +1791,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_abInvalidTerrainTypes";
+        r.field_start = start;
         let ab_invalid_terrain_types = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_abInvalidTerrainTypes",
@@ -1625,6 +1800,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_abIgnoreTerrainTypes";
+        r.field_start = start;
         let ab_ignore_terrain_types = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_abIgnoreTerrainTypes",
@@ -1632,6 +1809,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_abIgnoreFeatureTypes";
+        r.field_start = start;
         let ab_ignore_feature_types = <Vec<HashValue<bool>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_abIgnoreFeatureTypes",
@@ -1639,6 +1818,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_aiBonusPointsPerKill";
+        r.field_start = start;
         let ai_bonus_points_per_kill = <Vec<HashValue<i32>>>::read(r)?;
         ranges.push(FieldRange {
             name: "m_aiBonusPointsPerKill",
@@ -1646,27 +1827,47 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let ai_bonus_points_per_kill_strength = <Vec<HashValue<i32>>>::read(r)?;
+        r.field = "m_aiBonusPointsPerKillStrength";
+        r.field_start = start;
+        let ai_bonus_points_per_kill_strength = if wire_version == 17 {
+            Vec::new()
+        } else {
+            <Vec<HashValue<i32>>>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_aiBonusPointsPerKillStrength",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_bypass_walls_promotion_class = <Vec<HashValue<u8>>>::read(r)?;
+        r.field = "m_aiBypassWallsPromotionClass";
+        r.field_start = start;
+        let ai_bypass_walls_promotion_class = if wire_version == 17 {
+            Vec::new()
+        } else {
+            <Vec<HashValue<u8>>>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_aiBypassWallsPromotionClass",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let ai_enable_wall_attack_promotion_class = <Vec<HashValue<u8>>>::read(r)?;
+        r.field = "m_aiEnableWallAttackPromotionClass";
+        r.field_start = start;
+        let ai_enable_wall_attack_promotion_class = if wire_version == 17 {
+            Vec::new()
+        } else {
+            <Vec<HashValue<u8>>>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_aiEnableWallAttackPromotionClass",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kExperience";
+        r.field_start = start;
         let k_experience = <Experience>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kExperience",
@@ -1674,6 +1875,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kGreatPerson";
+        r.field_start = start;
         let k_great_person = <GreatPerson>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kGreatPerson",
@@ -1681,6 +1884,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kReligion";
+        r.field_start = start;
         let k_religion = <Religion>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kReligion",
@@ -1688,6 +1893,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kRockBand";
+        r.field_start = start;
         let k_rock_band = <RockBand>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kRockBand",
@@ -1695,6 +1902,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kTrade";
+        r.field_start = start;
         let k_trade = <Trade>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kTrade",
@@ -1702,6 +1911,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kArchaeology";
+        r.field_start = start;
         let k_archaeology = <Archaeology>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kArchaeology",
@@ -1709,6 +1920,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kEspionage";
+        r.field_start = start;
         let k_espionage = <Espionage>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kEspionage",
@@ -1716,6 +1929,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kAttributes";
+        r.field_start = start;
         let k_attributes = <VariantMap>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kAttributes",
@@ -1723,6 +1938,8 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kOperations";
+        r.field_start = start;
         let k_operations = <OperationQueue>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kOperations",
@@ -1730,20 +1947,41 @@ impl Unit {
             end: r.pos,
         });
         let start = r.pos;
-        let k_operations_disabled = <Vec<HashValue<bool>>>::read(r)?;
+        r.field = "m_kOperationsDisabled";
+        r.field_start = start;
+        let k_operations_disabled = if wire_version == 17 {
+            Vec::new()
+        } else {
+            <Vec<HashValue<bool>>>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_kOperationsDisabled",
             start,
             end: r.pos,
         });
         let start = r.pos;
-        let k_hero = <Hero>::read(r)?;
+        r.field = "m_kHero";
+        r.field_start = start;
+        let k_hero = if wire_version == 17 {
+            Hero {
+                e_class: u32::MAX,
+                k_origin_city_id: ComponentId {
+                    owner: -1,
+                    component_type: 2,
+                    id: u32::MAX,
+                },
+            }
+        } else {
+            <Hero>::read(r)?
+        };
         ranges.push(FieldRange {
             name: "m_kHero",
             start,
             end: r.pos,
         });
         let start = r.pos;
+        r.field = "m_kProperties";
+        r.field_start = start;
         let k_properties = <TypedVariantMap>::read(r)?;
         ranges.push(FieldRange {
             name: "m_kProperties",
@@ -1752,6 +1990,7 @@ impl Unit {
         });
         Ok((
             Self {
+                wire_version,
                 id,
                 e_type_index,
                 e_ai_type,
@@ -1834,6 +2073,12 @@ impl Unit {
     }
     /// Encode the supported record and report its aggregate dynamic-item charge.
     pub fn encode_with_items(&self, limits: Limits) -> Result<(Vec<u8>, usize), Error> {
+        if self.wire_version != 28 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let disaster_charges = self
+            .i_disaster_charges
+            .ok_or(Error::MissingRetainedValue("m_iDisasterCharges"))?;
         let mut w = Writer {
             bytes: Vec::new(),
             budget: limits.max_items,
@@ -1867,7 +2112,7 @@ impl Unit {
         self.b_dominant_conquer.write(&mut w)?;
         self.i_barbarian_tribe_index.write(&mut w)?;
         self.e_barbarian_player_target.write(&mut w)?;
-        self.i_disaster_charges.write(&mut w)?;
+        disaster_charges.write(&mut w)?;
         self.i_era_strength_modifier.write(&mut w)?;
         self.b_embarked.write(&mut w)?;
         self.b_delayed_death.write(&mut w)?;
@@ -2076,5 +2321,177 @@ mod tests {
         let mut w = writer();
         raw.write(&mut w).unwrap();
         assert_eq!(w.bytes, bytes);
+    }
+    fn legacy17_fixture() -> (Vec<u8>, Unit) {
+        let mut current = crate::unit_turn_upkeep::tests::source_only_unit();
+        current.i_action_charges = 7;
+        current.i_disaster_charges = Some(9);
+        current.i_era_strength_modifier = 11;
+        current.b_can_see_through_terrain = true;
+        current.b_ignore_resource_maintenance = true;
+        current.i_move_after_attacking = 1;
+        current.ai_abilities_possessed = vec![HashValue {
+            definition_hash: 0x80000001,
+            value: 4,
+        }];
+        current.ai_bonus_points_per_kill_strength = vec![HashValue {
+            definition_hash: 0x80000002,
+            value: -257,
+        }];
+        current.ai_bypass_walls_promotion_class = vec![HashValue {
+            definition_hash: 0x80000003,
+            value: 7,
+        }];
+        current.ai_enable_wall_attack_promotion_class = vec![HashValue {
+            definition_hash: 0x80000004,
+            value: 8,
+        }];
+        current.k_operations_disabled = vec![HashValue {
+            definition_hash: 0x80000005,
+            value: true,
+        }];
+        let bytes = current.encode(Limits::default()).unwrap();
+        let (_, ranges) = Unit::decode_with_ranges(&bytes, Limits::default()).unwrap();
+        let mut legacy = 17i32.to_le_bytes().to_vec();
+        for range in ranges {
+            match range.name {
+                "m_iActionCharges"
+                | "m_iDisasterCharges"
+                | "m_iEraStrengthModifier"
+                | "m_bCanSeeThroughTerrain"
+                | "m_bIgnoreResourceMaintenance"
+                | "m_aiBonusPointsPerKillStrength"
+                | "m_aiBypassWallsPromotionClass"
+                | "m_aiEnableWallAttackPromotionClass"
+                | "m_kOperationsDisabled"
+                | "m_kHero" => {}
+                "m_iMoveAfterAttacking" => legacy.push(1),
+                _ => legacy.extend_from_slice(&bytes[range.start..range.end]),
+            }
+        }
+        current.wire_version = 17;
+        current.i_action_charges = 0;
+        current.i_disaster_charges = None;
+        current.i_era_strength_modifier = 0;
+        current.b_can_see_through_terrain = false;
+        current.b_ignore_resource_maintenance = false;
+        current.ai_bonus_points_per_kill_strength.clear();
+        current.ai_bypass_walls_promotion_class.clear();
+        current.ai_enable_wall_attack_promotion_class.clear();
+        current.k_operations_disabled.clear();
+        current.k_hero = Hero {
+            e_class: u32::MAX,
+            k_origin_city_id: ComponentId {
+                owner: -1,
+                component_type: 2,
+                id: u32::MAX,
+            },
+        };
+        (legacy, current)
+    }
+    #[test]
+    fn legacy17_presence_defaults_bool_migration_and_nested_independence() {
+        let (b, expected) = legacy17_fixture();
+        let (value, ranges) = Unit::decode_with_ranges(&b, Limits::default()).unwrap();
+        assert_eq!(value, expected);
+        assert!(value.legacy_definition_read_effects_unapplied());
+        assert_eq!(
+            value.encode(Limits::default()),
+            Err(Error::UnsupportedLegacyWrite)
+        );
+        assert_eq!(
+            ranges
+                .iter()
+                .find(|r| r.name == "m_iDisasterCharges")
+                .map(|r| r.end - r.start),
+            Some(0)
+        );
+        assert_eq!(
+            ranges
+                .iter()
+                .find(|r| r.name == "m_iMoveAfterAttacking")
+                .map(|r| r.end - r.start),
+            Some(1)
+        );
+        let combat = ranges
+            .iter()
+            .find(|r| r.name == "m_kCombatModifiers" || r.name == "m_kCombatModifers")
+            .unwrap();
+        let mut bad = b.clone();
+        bad[combat.start..combat.start + 4].copy_from_slice(&17i32.to_le_bytes());
+        let boundary = Unit::decode_prefix_with_boundary(&bad, Limits::default()).unwrap_err();
+        assert_eq!(
+            (boundary.field, boundary.field_start),
+            (combat.name, combat.start)
+        );
+        assert_eq!(
+            boundary.error,
+            Error::Version {
+                expected: 28,
+                actual: 17
+            }
+        );
+        let mut current = crate::unit_turn_upkeep::tests::source_only_unit();
+        current.i_disaster_charges = None;
+        assert_eq!(
+            current.encode(Limits::default()),
+            Err(Error::MissingRetainedValue("m_iDisasterCharges"))
+        );
+    }
+    #[test]
+    fn legacy17_exact_budgets_truncation_and_unsupported_neighbor() {
+        let (b, _) = legacy17_fixture();
+        let (_, n, items) = Unit::decode_prefix_with_items(&b, Limits::default()).unwrap();
+        assert_eq!(n, b.len());
+        assert!(items > 0);
+        assert!(Unit::decode_prefix_with_items(
+            &b,
+            Limits {
+                max_bytes: b.len(),
+                max_items: items
+            }
+        )
+        .is_ok());
+        assert_eq!(
+            Unit::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len() - 1,
+                    max_items: items
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        assert_eq!(
+            Unit::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: b.len(),
+                    max_items: items - 1
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        for end in 0..b.len() {
+            assert!(
+                Unit::decode(&b[..end], Limits::default()).is_err(),
+                "prefix {end}"
+            );
+        }
+        let mut bad = b.clone();
+        bad[..4].copy_from_slice(&18i32.to_le_bytes());
+        assert_eq!(
+            Unit::decode(&bad, Limits::default()),
+            Err(Error::Version {
+                expected: 28,
+                actual: 18
+            })
+        );
+        let mut trailing = b;
+        trailing.push(0);
+        assert_eq!(
+            Unit::decode(&trailing, Limits::default()),
+            Err(Error::TrailingBytes)
+        );
     }
 }
