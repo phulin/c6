@@ -543,10 +543,7 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
             .ok_or(Error::Missing("current civilization level"))
     }
     fn clans_active(&mut self) -> Result<bool, Self::Error> {
-        self.sight
-            .effects
-            .placement_service_runtime()
-            .map_err(Error::Services)?
+        self.service_runtime()?
             .clans_active
             .ok_or(Error::Missing("current Clans capability"))
     }
@@ -656,10 +653,7 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
             .kill(self.sight.state, self.sight.actor, delayed, attacker)
     }
     fn alive_players(&mut self) -> Result<Self::AlivePlayers, Self::Error> {
-        self.sight
-            .effects
-            .placement_service_runtime()
-            .map_err(Error::Services)?
+        self.service_runtime()?
             .alive_begin()
             .map_err(Error::Services)
     }
@@ -671,10 +665,7 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
         players: Self::AlivePlayers,
         index: usize,
     ) -> Result<i32, Self::Error> {
-        self.sight
-            .effects
-            .placement_service_runtime()
-            .map_err(Error::Services)?
+        self.service_runtime()?
             .alive_at(players.0, index)
             .map_err(Error::Services)
     }
@@ -777,7 +768,7 @@ impl<E: Effects> c6_core::unit_placement_transition::normal_move::Context
             .revealed
             .get(i as usize)
             .copied()
-            .map(i32::from)
+            .map(|v| i32::from(v != 0))
             .ok_or(Error::Missing("local reveal cell"))
     }
     fn visibility_messages_disabled(&mut self) -> Result<bool, Error<EffectsError<E>>> {
@@ -1012,10 +1003,7 @@ impl<E: Effects> Context<'_, '_, '_, E> {
         let layers = self.sight.runtime.shared(local).map_err(Error::Missing)?;
         let _ = layers;
         let width = self
-            .sight
-            .effects
-            .placement_service_runtime()
-            .map_err(Error::Services)?
+            .service_runtime()?
             .player(local)
             .map_err(Error::Services)?
             .native_visibility_width
@@ -1035,17 +1023,16 @@ impl<E: Effects> Context<'_, '_, '_, E> {
             unit,
             local,
             self.definitions.sight,
-            |hash, _| {
-                let l = layers
-                    .0
-                    .iter()
-                    .find(|l| l.type_hash == hash)
-                    .ok_or(Error::Missing("local visibility layer"))?;
+            |hash, normal| {
+                let Some(l) = layers.0.iter().find(|l| l.type_hash == hash) else {
+                    return if normal {
+                        Err(Error::Missing("local normal visibility layer"))
+                    } else {
+                        Ok(0)
+                    };
+                };
                 let width = self
-                    .sight
-                    .effects
-                    .placement_service_runtime()
-                    .map_err(Error::Services)?
+                    .service_runtime()?
                     .player(local)
                     .map_err(Error::Services)?
                     .native_visibility_width
@@ -1139,11 +1126,14 @@ impl Mechanics {
         let improvement_fortification =
             values(&improvements, "Improvements", "GrantFortification")?;
         let building_fortification = values(&buildings, "Buildings", "GrantFortification")?;
-        let camp = improvements
-            .entries()
+        // Map.Improvement.Builder.GetBarbarianCampImprovement scans native
+        // collection order and returns the FIRST BarbarianCamp definition.
+        // The type name is not the criterion, and no match returns NO_TYPE.
+        let camp_flags = values(&improvements, "Improvements", "BarbarianCamp")?;
+        let camp = camp_flags
             .iter()
-            .position(|e| e.type_name == b"IMPROVEMENT_BARBARIAN_CAMP")
-            .ok_or(Q::Unsupported("BarbarianCamp definition"))? as u32;
+            .position(|&flag| flag != 0)
+            .map_or(u32::MAX, |i| i as u32);
         let maximum_hit_points = crate::game_parameters::Parameters::from_rules(rules)
             .and_then(|p| p.integer(crate::game_parameters::IntegerParameter::CombatMaxHitPoints))
             .map_err(|_| Q::Unsupported("COMBAT_MAX_HIT_POINTS"))?;
@@ -1174,6 +1164,21 @@ impl Definitions<'_, '_> {
     }
 }
 impl<E: Effects> Context<'_, '_, '_, E> {
+    fn service_runtime(
+        &self,
+    ) -> Result<&crate::unit_placement_services::Runtime, Error<EffectsError<E>>> {
+        let runtime = self
+            .sight
+            .effects
+            .placement_service_runtime()
+            .map_err(Error::Services)?;
+        if &runtime.binding != self.sight.state.binding() {
+            return Err(Error::Services(
+                crate::unit_placement_services::Error::Binding,
+            ));
+        }
+        Ok(runtime)
+    }
     fn native_improvement(&self, hash: u32) -> Result<u32, Error<EffectsError<E>>> {
         if hash == u32::MAX {
             return Ok(u32::MAX);
