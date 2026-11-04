@@ -1,7 +1,9 @@
 //! Linux Religion::CreateRelic and Game::Culture::AddRelic state changes.
 //! Runtime definition order, complete GreatWork state and the actual Game RNG
-//! are required. Reporting, theming and synchronous signals retain required
+//! are required. Theming rules execute locally; reporting and synchronous signals retain required
 //! providers; this is not complete action/turn equivalence.
+pub mod theming;
+
 use crate::city_production::Buildings;
 use crate::rng::RandomState;
 use crate::unit::{ComponentId, PlotCoord};
@@ -84,11 +86,14 @@ pub enum Error<E> {
     MissingDefinition(i32),
     InvalidRandomIndex,
     TooManyGreatWorks,
+    Theming(theming::Error<E>),
 }
 
 pub trait Context {
     type Error;
     type City: Copy;
+    /// Verify every reached runtime lookup and effect provider, including theme
+    /// metadata/signal consumers, before RNG or GreatWork/slot mutation begins.
     fn preflight_relic(&self, player: i32, source: u32) -> Result<(), Self::Error>;
     fn rules(&self) -> &Rules;
     fn great_works(&self) -> &[GreatWork];
@@ -112,8 +117,6 @@ pub trait Context {
     fn plot_xy(&mut self, index: i32) -> Result<PlotCoord, Self::Error>;
     fn plot_distance(&mut self, first: PlotCoord, second: PlotCoord) -> Result<i32, Self::Error>;
     fn has_governor(&mut self, player: i32, governor: i32) -> Result<bool, Self::Error>;
-    /// Full CheckForThemedBuilding after the slot write, including callbacks.
-    fn check_themed(&mut self, city: Self::City, building: Building) -> Result<(), Self::Error>;
     /// GameSignals+0x1260 dispatch after slot/theming effects.
     fn signal_relic(&mut self, player: i32, work_type: i32) -> Result<(), Self::Error>;
     /// Full Notification::Send(RELIC_NOTIFICATION) with x/y/building/global-
@@ -232,7 +235,7 @@ fn creator_name(source: u32, governor: Option<&Governor>) -> Vec<u8> {
 
 /// Game::Culture::AddRelic returns the selected GreatWorkTypes enum, not its
 /// appended global list index. Empty eligible sets consume no RNG draw.
-pub fn add_relic<C: Context>(
+pub fn add_relic<C: theming::Context>(
     c: &mut C,
     city: C::City,
     building: Option<Building>,
@@ -295,7 +298,7 @@ pub fn add_relic<C: Context>(
             slot,
             list_index,
         ) {
-            c.check_themed(city, building).map_err(Context)?;
+            theming::check_for_themed_building(c, city, building).map_err(Error::Theming)?;
         }
     }
     let player = c.city_owner(city).map_err(Context)?;
@@ -316,7 +319,7 @@ pub fn add_relic<C: Context>(
     Ok(work_type)
 }
 
-pub fn create_relic<C: Context>(
+pub fn create_relic<C: theming::Context>(
     c: &mut C,
     player: i32,
     origin: PlotCoord,
@@ -366,6 +369,9 @@ mod tests {
         log: Vec<String>,
         change_slot_on_theme: bool,
         governor: bool,
+        theme: Option<theming::BuildingDefinition>,
+        theme_player: theming::PlayerTheme,
+        metadata: Vec<(i32, theming::WorkMetadata)>,
     }
     fn buildings() -> Buildings {
         Buildings {
@@ -412,6 +418,16 @@ mod tests {
                 log: vec![],
                 change_slot_on_theme: false,
                 governor: false,
+                theme: Some(theming::BuildingDefinition {
+                    wonder: false,
+                    great_work_rules: vec![],
+                }),
+                theme_player: theming::PlayerTheme {
+                    auto_building: 4,
+                    buildings_with_x_slots: i32::MAX,
+                    wonders_with_x_slots: i32::MAX,
+                },
+                metadata: vec![],
             }
         }
     }
@@ -469,17 +485,6 @@ mod tests {
         fn has_governor(&mut self, _: i32, _: i32) -> Result<bool, Self::Error> {
             Ok(self.governor)
         }
-        fn check_themed(&mut self, city: usize, _: Building) -> Result<(), Self::Error> {
-            assert_eq!(
-                self.cities[city].great_work_buildings[0].slots[0].great_work_index,
-                0
-            );
-            self.log.push("theme".into());
-            if self.change_slot_on_theme {
-                self.cities[city].great_work_buildings[0].slots[0].great_work_index = 42;
-            }
-            Ok(())
-        }
         fn signal_relic(&mut self, _: i32, kind: i32) -> Result<(), Self::Error> {
             self.log.push(format!("signal {kind}"));
             Ok(())
@@ -494,6 +499,35 @@ mod tests {
             assert_eq!(e.source.component_type, 1);
             assert_eq!(e.source.id, u32::MAX);
             self.log.push(format!("report {}", e.global_work_index));
+            Ok(())
+        }
+    }
+    impl theming::Context for Fixture {
+        fn theme_building_definition(
+            &self,
+            _: i32,
+        ) -> Result<Option<&theming::BuildingDefinition>, Self::Error> {
+            Ok(self.theme.as_ref())
+        }
+        fn theme_player(&mut self, _: i32) -> Result<theming::PlayerTheme, Self::Error> {
+            Ok(self.theme_player)
+        }
+        fn theme_work_metadata(&self, index: i32) -> Result<&theming::WorkMetadata, Self::Error> {
+            self.metadata
+                .iter()
+                .find(|(id, _)| *id == index)
+                .map(|(_, m)| m)
+                .ok_or("work metadata unavailable")
+        }
+        fn signal_themed_building(&mut self, city: usize, _: Building) -> Result<(), Self::Error> {
+            assert_eq!(
+                self.cities[city].great_work_buildings[0].slots[0].great_work_index,
+                0
+            );
+            self.log.push("theme".into());
+            if self.change_slot_on_theme {
+                self.cities[city].great_work_buildings[0].slots[0].great_work_index = 42;
+            }
             Ok(())
         }
     }
@@ -587,5 +621,199 @@ mod tests {
         assert_eq!(f.rng.calls, 0);
         assert!(f.works.is_empty());
         assert!(f.log.is_empty());
+    }
+    fn themed_fixture() -> Fixture {
+        let mut f = Fixture::new();
+        f.theme_player.auto_building = -1;
+        f.theme
+            .as_mut()
+            .unwrap()
+            .great_work_rules
+            .push(theming::GreatWorkRule {
+                num_slots: 3,
+                tourism_multiplier: 1,
+                yield_multiplier: 0,
+                unique_person: false,
+                unique_civs: false,
+                same_object: false,
+                same_eras: false,
+            });
+        f.cities[0].great_work_buildings[0].slots = (0..3)
+            .map(|great_work_index| GreatWorkSlot {
+                wire_version: 8,
+                slot_type: 3,
+                great_work_index,
+            })
+            .collect();
+        for index in 0..3 {
+            let kind = 9 + index;
+            f.works.push(GreatWork {
+                work_type: kind,
+                player: index,
+                created_turn: 0,
+                creator_name: vec![],
+            });
+            f.metadata.push((
+                kind,
+                theming::WorkMetadata {
+                    great_person_individual: Some(vec![b'A' + index as u8]),
+                    era: Some(2),
+                },
+            ));
+            if index != 0 {
+                f.rules.works.push(WorkDefinition {
+                    index: kind,
+                    object_type: 7,
+                    required_governor: None,
+                });
+            }
+        }
+        f
+    }
+    fn themed(f: &mut Fixture) -> Result<bool, theming::Error<&'static str>> {
+        theming::is_building_themed_correctly(
+            f,
+            0,
+            Building {
+                index: 4,
+                hash: 123,
+            },
+        )
+    }
+    #[test]
+    fn theming_missing_definition_and_auto_fullness_follow_native_fast_paths() {
+        let mut f = themed_fixture();
+        f.theme = None;
+        f.cities[0].great_work_buildings[0].slots[0].great_work_index = -1;
+        assert_eq!(themed(&mut f), Ok(true));
+        f.theme = Some(theming::BuildingDefinition {
+            wonder: false,
+            great_work_rules: vec![],
+        });
+        f.theme_player.auto_building = 4;
+        assert_eq!(themed(&mut f), Ok(false));
+        f.cities[0].great_work_buildings[0].slots.clear();
+        assert_eq!(themed(&mut f), Ok(true));
+    }
+    #[test]
+    fn theming_threshold_uses_extra_slots_and_signed_wrapping_total() {
+        let mut f = themed_fixture();
+        f.theme_player.buildings_with_x_slots = 4;
+        f.theme.as_mut().unwrap().great_work_rules[0].tourism_multiplier = 0;
+        assert_eq!(themed(&mut f), Ok(false));
+        f.cities[0]
+            .extra_great_works
+            .push(crate::city_production::ExtraGreatWorkSlots {
+                building_hash: 123,
+                slot_type: 99,
+                count: 1,
+            });
+        assert_eq!(themed(&mut f), Ok(true));
+        f.cities[0].extra_great_works[0].count = i32::MAX;
+        assert_eq!(themed(&mut f), Ok(false));
+    }
+    #[test]
+    fn theming_requires_full_slots_and_one_positive_multiplier_rule() {
+        let mut f = themed_fixture();
+        assert_eq!(themed(&mut f), Ok(true));
+        f.cities[0].great_work_buildings[0].slots[1].great_work_index = -1;
+        assert_eq!(themed(&mut f), Ok(false));
+        f.cities[0].great_work_buildings[0].slots[1].great_work_index = 1;
+        f.theme.as_mut().unwrap().great_work_rules[0].tourism_multiplier = 0;
+        assert_eq!(themed(&mut f), Ok(false));
+        f.theme.as_mut().unwrap().great_work_rules[0].yield_multiplier = 1;
+        assert_eq!(themed(&mut f), Ok(true));
+        let duplicate = f.theme.as_ref().unwrap().great_work_rules[0];
+        f.theme.as_mut().unwrap().great_work_rules.push(duplicate);
+        assert_eq!(themed(&mut f), Ok(false));
+    }
+    #[test]
+    fn theming_person_and_civilization_constraints_use_actual_work_data() {
+        let mut f = themed_fixture();
+        f.theme.as_mut().unwrap().great_work_rules[0].unique_person = true;
+        assert_eq!(themed(&mut f), Ok(true));
+        f.metadata[1].1.great_person_individual = Some(b"A\0different suffix".to_vec());
+        assert_eq!(themed(&mut f), Ok(false));
+        f.metadata[1].1.great_person_individual = None;
+        assert_eq!(themed(&mut f), Ok(true));
+        f.theme.as_mut().unwrap().great_work_rules[0].unique_civs = true;
+        f.works[1].player = 0;
+        assert_eq!(themed(&mut f), Ok(false));
+        f.works[0].player = -1;
+        f.works[1].player = -1;
+        assert_eq!(themed(&mut f), Ok(true));
+    }
+    #[test]
+    fn theming_object_and_era_constraints_retain_native_sentinel_cases() {
+        let mut f = themed_fixture();
+        f.theme.as_mut().unwrap().great_work_rules[0].same_object = true;
+        assert_eq!(themed(&mut f), Ok(true));
+        f.rules.works[1].object_type = 8;
+        assert_eq!(themed(&mut f), Ok(false));
+        f.works[0].work_type = -1;
+        assert_eq!(themed(&mut f), Ok(true));
+        f.works[0].work_type = 9;
+        f.rules.works[1].object_type = 7;
+        f.theme.as_mut().unwrap().great_work_rules[0].same_eras = true;
+        assert_eq!(themed(&mut f), Ok(true));
+        f.metadata[0].1.era = None;
+        assert_eq!(themed(&mut f), Ok(false));
+    }
+    #[test]
+    fn theming_dispatch_runs_only_after_true_predicate_and_keeps_rng_unchanged() {
+        let mut f = themed_fixture();
+        let before = f.rng;
+        theming::check_for_themed_building(
+            &mut f,
+            0,
+            Building {
+                index: 4,
+                hash: 123,
+            },
+        )
+        .unwrap();
+        assert_eq!(f.log, ["theme"]);
+        assert_eq!(f.rng, before);
+        f.cities[0].great_work_buildings[0].slots[1].great_work_index = -1;
+        f.log.clear();
+        theming::check_for_themed_building(
+            &mut f,
+            0,
+            Building {
+                index: 4,
+                hash: 123,
+            },
+        )
+        .unwrap();
+        assert!(f.log.is_empty());
+    }
+    impl theming::BoostContext for Fixture {
+        type Boost = i32;
+        fn theme_building_order(&self) -> Result<&[Building], Self::Error> {
+            Ok(std::slice::from_ref(
+                self.rules.relic_buildings.as_ref().unwrap()[0]
+                    .as_ref()
+                    .unwrap(),
+            ))
+        }
+        fn theme_boost_num_items(&self, boost: i32) -> Result<i32, Self::Error> {
+            Ok(boost)
+        }
+        fn trigger_theme_boost(&mut self, boost: i32, player: i32) -> Result<(), Self::Error> {
+            self.log.push(format!("boost {boost} {player}"));
+            Ok(())
+        }
+    }
+    #[test]
+    fn theming_boost_counts_current_full_buildings_and_checks_signed_threshold() {
+        let mut f = themed_fixture();
+        assert_eq!(theming::count_themed_buildings(&mut f, 0), Ok(1));
+        theming::check_num_themed_buildings(&mut f, 0, 2).unwrap();
+        assert!(f.log.is_empty());
+        theming::check_num_themed_buildings(&mut f, 0, 1).unwrap();
+        assert_eq!(f.log, ["boost 1 0"]);
+        f.cities[0].great_work_buildings[0].slots[0].great_work_index = -1;
+        theming::check_num_themed_buildings(&mut f, 0, 0).unwrap();
+        assert_eq!(f.log, ["boost 1 0", "boost 0 0"]);
     }
 }
