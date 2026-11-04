@@ -235,3 +235,75 @@ pub fn melee(
     let attack = kernel::melee(&mut c, defs.rules, kernel::Side::Attacker, defender_killed)?;
     Ok((attack, defense))
 }
+
+#[derive(Debug)]
+pub struct JointWarPartners {
+    pub owners: Vec<i32>,
+    pub range: i32,
+}
+/// GetJointWarExperiencePartners2aad070/GetJointWarPartners2aad0d0. The source
+/// chooses the LAST eligible supplier in cached major order, then traverses the
+/// same order again for its allies. It does not use the receiving player's list.
+pub fn joint_war_partners(
+    state: &LoadedState,
+    levels: &[(i32, u32)],
+    cached_majors: &[i32],
+    enemy: i32,
+) -> Result<JointWarPartners, Error> {
+    let mut result = JointWarPartners {
+        owners: vec![],
+        range: 0,
+    };
+    if !state
+        .world()
+        .player_is_valid(enemy)
+        .map_err(|_| Error::Missing("current player validity"))?
+    {
+        return Ok(result);
+    }
+    let level = levels
+        .iter()
+        .find(|r| r.0 == enemy)
+        .ok_or(Error::Missing("current player level"))?
+        .1;
+    if level == 0xd959ec24 {
+        return Ok(result);
+    }
+    let relations = state.game_relations().map_err(Error::State)?;
+    let mut supplier = None;
+    for &owner in cached_majors {
+        if !relations
+            .is_at_war(owner, enemy)
+            .map_err(|_| Error::Missing("current war relationship"))?
+        {
+            continue;
+        }
+        let p = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Missing("current Player"))?;
+        let values = p.diplomacy.war_and_alliance_modifiers;
+        if values[3] > 0 || values[4] > 0 {
+            supplier = Some(owner);
+            result.range = values[3];
+        }
+    }
+    let Some(supplier) = supplier else {
+        return Ok(result);
+    };
+    for &owner in cached_majors {
+        if owner == supplier
+            || (relations
+                .is_allied(owner, supplier)
+                .map_err(|_| Error::Missing("current alliance relationship"))?
+                && relations
+                    .is_at_war(owner, enemy)
+                    .map_err(|_| Error::Missing("current war relationship"))?)
+        {
+            result.owners.push(owner);
+        }
+    }
+    Ok(result)
+}
