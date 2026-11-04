@@ -4,17 +4,22 @@
 use crate::{unit_initialization_definitions::collection, Rules, RulesProfile, SqlValue};
 use c6_core::{city_growth, loaded_state::LoadedState};
 pub mod amenities;
+pub mod district_yields;
 pub mod economy;
 pub mod growth;
 pub mod housing;
 pub mod religion;
 pub mod resources;
+pub mod tiles;
+pub mod yield_definitions;
+pub mod yield_calculation;
 
 #[derive(Debug)]
 pub enum Error {
     Rules(crate::Error),
     Definitions(crate::unit_initialization_definitions::Error),
     State(c6_core::loaded_state::Error),
+    PlotYield(c6_core::plot_yield::Error),
     Unsupported(&'static str),
 }
 impl std::fmt::Display for Error {

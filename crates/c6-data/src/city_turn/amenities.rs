@@ -153,18 +153,19 @@ impl Definitions {
                     let Some(index) = building_location(source, definition.hash)? else {
                         continue;
                     };
-                    let location = c6_core::city_citizen_assignment::plot_location(
-                        state.world().map(),
-                        PlotCoord {
-                            x: source.header.location_x,
-                            y: source.header.location_y,
-                        },
-                        i32::from(index),
-                    )
-                    .map_err(|_| Error::Unsupported("regional building plot"))?
-                    .ok_or(Error::Unsupported("regional building location"))?;
-                    let (_, plot) = movement_world::plot_at(state.world().map(), location)
-                        .map_err(|_| Error::Unsupported("regional building plot"))?;
+                    // Buildings.GetBuildingLocation is a global PlotIndex,
+                    // unlike the citizen array's CityHexspace index.
+                    let map = state.world().map();
+                    let plot = map
+                        .plot_by_index(index as u32)
+                        .ok_or(Error::Unsupported("regional building plot"))?;
+                    if map.header.width <= 0 {
+                        return Err(Error::Unsupported("regional map width"));
+                    }
+                    let location = PlotCoord {
+                        x: i32::from(index) % map.header.width,
+                        y: i32::from(index) / map.header.width,
+                    };
                     let district = plot
                         .city_attributes
                         .as_ref()

@@ -12,6 +12,7 @@ struct Happiness {
     minimum: Option<i32>,
     maximum: Option<i32>,
     growth: Option<f32>,
+    nonfood: Option<f32>,
 }
 #[derive(Clone, Debug)]
 struct Loyalty {
@@ -83,6 +84,10 @@ impl Definitions {
                     minimum: optional_int("MinimumAmenityScore")?,
                     maximum: optional_int("MaximumAmenityScore")?,
                     growth,
+                    nonfood: match row.get("NonFoodYieldModifier").map_err(Error::Rules)? {
+                        SqlValue::Null => None,
+                        value => Some(float(value, "NonFoodYieldModifier")?),
+                    },
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
@@ -176,6 +181,12 @@ impl Definitions {
             .and_then(|row| row.growth)
             .map_or(0, execution::from_float)
     }
+    pub fn happiness_yield_modifier(&self, happiness: i32) -> i32 {
+        self.happiness
+            .get(happiness as u32 as usize)
+            .and_then(|r| r.nonfood)
+            .map_or(0, execution::from_float)
+    }
     pub fn loyalty_level(&self, state: &LoadedState, owner: i32, city: u32) -> Result<i32, Error> {
         let loyalty = state.city(owner, city)?.cultural_identity.loyalty_raw_q8 >> 8;
         Ok(self
@@ -206,7 +217,7 @@ impl Definitions {
         Ok(self
             .loyalty
             .get(level as u32 as usize)
-            .map_or(0, |row| execution::from_float(row.yield_change * 100.0)))
+            .map_or(0, |row| loyalty_percentage(row.yield_change)))
     }
     pub fn other_growth_modifier(
         &self,
@@ -289,6 +300,16 @@ fn population_percent(count: i32, percent: i32) -> i32 {
     let product = execution::multiply(count.wrapping_shl(8), percent.wrapping_shl(8));
     (i64::from(product) * 256 / 25600) as i32
 }
+fn loyalty_percentage(value: f32) -> i32 {
+    let raw = execution::from_float(value);
+    let percent = f64::from(raw as f32 / 256.0) * 100.0;
+    let integer = if percent.is_finite() && (-2147483648.0..2147483648.0).contains(&percent) {
+        percent as i32
+    } else {
+        i32::MIN
+    };
+    integer.wrapping_shl(8)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,16 +321,19 @@ mod tests {
                     minimum: None,
                     maximum: Some(-1),
                     growth: Some(-15.0),
+                    nonfood: None,
                 },
                 Happiness {
                     minimum: Some(0),
                     maximum: Some(2),
                     growth: Some(0.0),
+                    nonfood: None,
                 },
                 Happiness {
                     minimum: Some(2),
                     maximum: None,
                     growth: Some(20.0),
+                    nonfood: None,
                 },
             ],
             loyalty: vec![],
@@ -325,6 +349,13 @@ mod tests {
             culture_percent: 30,
             unassigned_gold_percent: 50,
         }
+    }
+    #[test]
+    fn loyalty_rounds_to_q8_before_integer_percentage() {
+        assert_eq!(loyalty_percentage(0.101), 9 * 256);
+        assert_eq!(loyalty_percentage(-0.101), -10 * 256);
+        assert_eq!(loyalty_percentage(0.001), 0);
+        assert_eq!(loyalty_percentage(-0.25), -25 * 256);
     }
     #[test]
     fn housing_zero_boundary_is_strict_and_half_reduction_is_exact_equality() {
