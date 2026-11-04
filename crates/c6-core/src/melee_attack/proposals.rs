@@ -8,6 +8,7 @@ pub mod collection_modifiers;
 pub mod collections;
 pub mod player_strength;
 pub mod registry;
+pub mod subject_predicates;
 
 pub trait ComponentCreatedContext {
     type Error;
