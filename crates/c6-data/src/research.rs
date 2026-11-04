@@ -14,6 +14,7 @@ use c6_core::{
     relic_creation::boost, research_acquisition as acquisition, research_turn,
 };
 pub use research_turn::{InsertMode, Kind};
+mod culture_turn;
 pub mod diplomacy;
 pub mod districts;
 pub mod units;
@@ -87,6 +88,7 @@ pub enum Effect {
     Report(boost::Report),
     Notification(boost::Notification),
     ChooseTechnology(i32),
+    ChooseCivic(i32),
     BoostSignal {
         player: i32,
         kind: Kind,
@@ -121,6 +123,12 @@ pub enum Query {
     CultureYield(i32),
     TouristsFrom(i32),
     EverAliveMajorsCount,
+    NationalParkCount,
+    PlayerAge {
+        owner: i32,
+        golden: bool,
+    },
+    CurrentEraStartTurn,
     ResearchAgreementTech {
         player: i32,
         other: i32,
@@ -154,6 +162,7 @@ pub struct Definitions {
     costs: [Vec<boost::CostDefinition>; 2],
     eras: LinuxDefinitionRegistry,
     yields: LinuxDefinitionRegistry,
+    policies: LinuxDefinitionRegistry,
     research_alliance: i32,
     culture_alliance: i32,
     technology_hashes: Vec<u32>,
@@ -205,6 +214,7 @@ impl Definitions {
             .map_err(Error::Definitions)?;
         let eras = collection(rules, "Eras", "EraType").map_err(Error::Definitions)?;
         let yields = collection(rules, "Yields", "YieldType").map_err(Error::Definitions)?;
+        let policies = collection(rules, "Policies", "PolicyType").map_err(Error::Definitions)?;
         let alliances =
             collection(rules, "Alliances", "AllianceType").map_err(Error::Definitions)?;
         let culture_alliance = alliances.find_index(0x40c39831).map_or(-1, |i| i as i32);
@@ -418,6 +428,7 @@ impl Definitions {
             costs: [costs.remove(0), costs.remove(0)],
             eras,
             yields,
+            policies,
             research_alliance,
             culture_alliance,
             chronology,
@@ -607,8 +618,10 @@ impl<E: Effects> Context<'_, E> {
         report: &boost::Report,
     ) -> Result<Vec<i32>, Error<E::Error>> {
         self.check()?;
-        if !matches!(report.event, 0xc5613042 | 0xac2769a3 | 0x87667464)
-            || report.specialization.is_some()
+        if !matches!(
+            report.event,
+            0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d
+        ) || report.specialization.is_some()
             || report.old_progress.is_some()
             || report.source.is_some()
         {
