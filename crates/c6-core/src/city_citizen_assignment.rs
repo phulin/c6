@@ -4,6 +4,73 @@
 //! calling state adapter before/after these same owned Citizens mutations.
 use crate::city_citizens::Citizens;
 
+/// CityHexspace.GetNumPlots1fe3bf0 -> ComputePlotsFromRadius(3).
+pub const NUM_PLOTS: usize = 37;
+/// Source CityHexspace offsets3bffdc0/3bffec0 in increasing City plot index.
+/// Preserve this order for scoring ties, callbacks and native array indexing.
+const PLOT_X: [i32; NUM_PLOTS] = [
+    0, 0, 1, 1, 0, -1, -1, 0, 1, 2, 2, 2, 1, 0, -1, -2, -2, -2, -1, 0, 1, 2, 3, 3, 3, 3, 2, 1, 0,
+    -1, -2, -3, -3, -3, -3, -2, -1,
+];
+const PLOT_Y: [i32; NUM_PLOTS] = [
+    0, 1, 0, -1, -1, 0, 1, 2, 1, 0, -1, -2, -2, -2, -1, 0, 1, 2, 2, 3, 2, 1, 0, -1, -2, -3, -3, -3,
+    -3, -2, -1, 0, 1, 2, 3, 3, 3,
+];
+fn row_half(y: i32) -> i32 {
+    if y >= 0 {
+        y >> 1
+    } else {
+        let n = y.wrapping_sub(1);
+        n.wrapping_sub(n >> 31) >> 1
+    }
+}
+/// Current canonical map lookup corresponding to GetPlotFromCenterLocation
+/// 28c9260. No sorting/dedup: a small wrapped map may repeat the same plot at
+/// multiple city indexes. Invalid index/center/off-map returns actual absence.
+pub fn plot_location(
+    map: &crate::map::Map,
+    center: crate::unit::PlotCoord,
+    index: i32,
+) -> Result<Option<crate::unit::PlotCoord>, crate::movement_world::MissingInput> {
+    let location = location(
+        map.header.width,
+        map.header.height,
+        map.header.wrap_x,
+        map.header.wrap_y,
+        center,
+        index,
+    )?;
+    if let Some(value) = location {
+        crate::movement_world::plot_at(map, value)?;
+    }
+    Ok(location)
+}
+fn location(
+    width: i32,
+    height: i32,
+    wrap_x: bool,
+    wrap_y: bool,
+    center: crate::unit::PlotCoord,
+    index: i32,
+) -> Result<Option<crate::unit::PlotCoord>, crate::movement_world::MissingInput> {
+    if !crate::geometry::plot_valid(center.x, center.y) || !(0..NUM_PLOTS as i32).contains(&index) {
+        return Ok(None);
+    }
+    if width <= 0 || height <= 0 {
+        return Err(crate::movement_world::MissingInput::InvalidMapDimensions);
+    }
+    let index = index as usize;
+    let y = center.y.wrapping_add(PLOT_Y[index]);
+    let x = center
+        .x
+        .wrapping_sub(row_half(center.y))
+        .wrapping_add(PLOT_X[index])
+        .wrapping_add(row_half(y));
+    let x = crate::movement_world::coord_range(x, width, wrap_x);
+    let y = crate::movement_world::coord_range(y, height, wrap_y);
+    Ok((x >= 0 && y >= 0 && x < width && y < height).then_some(crate::unit::PlotCoord { x, y }))
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Scoring {
     pub food: i32,
@@ -190,6 +257,45 @@ pub fn assign_to_index(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn city_index_order_preserves_odd_rows_and_wrapped_duplicates() {
+        use crate::unit::PlotCoord;
+        let center = PlotCoord { x: 18, y: 11 };
+        let ring = (0..7)
+            .map(|i| location(44, 26, true, false, center, i).unwrap().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            ring,
+            [
+                (18, 11),
+                (19, 12),
+                (19, 11),
+                (19, 10),
+                (18, 10),
+                (17, 11),
+                (18, 12)
+            ]
+            .map(|(x, y)| PlotCoord { x, y })
+        );
+        assert_eq!(
+            location(1, 1, true, true, PlotCoord { x: 0, y: 0 }, 0).unwrap(),
+            Some(PlotCoord { x: 0, y: 0 })
+        );
+        assert_eq!(
+            location(1, 1, true, true, PlotCoord { x: 0, y: 0 }, 2).unwrap(),
+            Some(PlotCoord { x: 0, y: 0 })
+        );
+        // Native CoordRange(-dimension) yields dimension, therefore no plot.
+        assert_eq!(
+            location(1, 1, true, true, PlotCoord { x: 0, y: 0 }, 5).unwrap(),
+            None
+        );
+        assert_eq!(location(44, 26, false, false, center, 37).unwrap(), None);
+        assert_eq!(
+            location(0, 0, true, true, PlotCoord { x: -9999, y: -9999 }, 0).unwrap(),
+            None
+        );
+    }
     #[test]
     fn scoring_keeps_food_when_disfavored_and_gold_unscaled() {
         assert_eq!(
