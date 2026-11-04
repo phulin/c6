@@ -413,6 +413,75 @@ impl World {
     pub fn plot_mut(&mut self, index: usize) -> Option<&mut Plot> {
         self.map.plots.get_mut(index)
     }
+    /// Native UnitContainer::AddUnit only. Placement owns Plot counters, sight,
+    /// Unit/Formation location and callbacks in their original order.
+    pub fn add_unit_occupancy(
+        &mut self,
+        identity: crate::unit::ComponentId,
+        location: crate::unit::PlotCoord,
+        layer_id: u32,
+    ) -> Result<bool, crate::unit_occupancy::OccupancyError> {
+        use crate::unit_occupancy::OccupancyError;
+        let count = self.map.plots.len();
+        let current = self
+            .map
+            .units
+            .layers
+            .iter()
+            .position(|l| l.layer_id == layer_id);
+        if current.is_some_and(|i| self.map.units.layers[i].maximum as usize != count) {
+            return Err(OccupancyError::InvalidWorldGrid);
+        }
+        let mut new_index = Vec::new();
+        if current.is_none() {
+            self.cells
+                .try_reserve(1)
+                .map_err(|_| OccupancyError::ResourceLimit)?;
+            self.by_layer
+                .try_reserve(1)
+                .map_err(|_| OccupancyError::ResourceLimit)?;
+            new_index
+                .try_reserve_exact(count)
+                .map_err(|_| OccupancyError::ResourceLimit)?;
+            new_index.resize(count, None);
+        }
+        let result =
+            crate::unit_occupancy::add_unit(&mut self.map.units, identity, location, layer_id)?;
+        let layer = current.unwrap_or_else(|| self.map.units.layers.len() - 1);
+        if current.is_none() {
+            self.cells.push(new_index);
+            let insertion = self
+                .by_layer
+                .binary_search_by_key(&layer_id, |&(id, _)| id)
+                .unwrap_err();
+            self.by_layer.insert(insertion, (layer_id, layer));
+        }
+        self.cells[layer].fill(None);
+        for (i, cell) in self.map.units.layers[layer].cells.iter().enumerate() {
+            self.cells[layer][cell.plot_index as usize] = Some(i);
+        }
+        Ok(result)
+    }
+
+    /// Native UnitContainer::RemoveUnit, preserving native all-layer traversal
+    /// and its last-successful-layer return. Existing lookup indexes stay live.
+    pub fn remove_unit_occupancy(
+        &mut self,
+        identity: crate::unit::ComponentId,
+        location: crate::unit::PlotCoord,
+        layer_id: u32,
+    ) -> Result<u32, crate::unit_occupancy::OccupancyError> {
+        let result =
+            crate::unit_occupancy::remove_unit(&mut self.map.units, identity, location, layer_id)?;
+        for (layer, indices) in self.map.units.layers.iter().zip(&mut self.cells) {
+            indices.fill(None);
+            for (i, cell) in layer.cells.iter().enumerate() {
+                indices[cell.plot_index as usize] = Some(i);
+            }
+        }
+        Ok(result)
+    }
+
     /// The original layer/cell UnitReference vector, with its exact candidate
     /// order. An absent layer/cell has the native empty-vector query result.
     pub fn plot_units(
@@ -538,7 +607,7 @@ impl crate::yields::PrerequisiteState for World {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::map::{Header, Slot, UnitCell, UnitContainer, UnitLayer};
     fn recycled<T>(capacity: u32, entries: Vec<(i32, T)>) -> Recycled<T> {
@@ -574,7 +643,7 @@ mod tests {
             unit_ids: ids,
         }
     }
-    fn map() -> Map {
+    pub(crate) fn map() -> Map {
         Map {
             header: Header {
                 width: 2,
@@ -633,6 +702,38 @@ mod tests {
             components: vec![],
         }
     }
+    #[test]
+    fn occupancy_updates_keep_current_layer_cell_indexes_live() {
+        let mut m = map();
+        m.units.layers.clear();
+        let mut w = World::new(m, vec![]).unwrap();
+        let a = crate::unit::ComponentId {
+            owner: 0,
+            component_type: 1,
+            id: 12,
+        };
+        let b = crate::unit::ComponentId {
+            owner: 0,
+            component_type: 1,
+            id: 13,
+        };
+        let first = crate::unit::PlotCoord { x: 0, y: 0 };
+        let second = crate::unit::PlotCoord { x: 1, y: 0 };
+        w.add_unit_occupancy(a, second, 7).unwrap();
+        w.add_unit_occupancy(b, first, 7).unwrap();
+        w.add_unit_occupancy(a, second, 0).unwrap();
+        assert_eq!(w.plot_units(7, 1).unwrap()[0].id, 12);
+        assert_eq!(w.plot_units(7, 0).unwrap()[0].id, 13);
+        assert_eq!(w.remove_unit_occupancy(b, first, 7).unwrap(), 7);
+        assert!(w.plot_units(7, 0).unwrap().is_empty());
+        assert_eq!(w.plot_units(7, 1).unwrap()[0].id, 12);
+        assert_eq!(w.remove_unit_occupancy(a, second, u32::MAX).unwrap(), 0);
+        assert!(w.plot_units(7, 1).unwrap().is_empty());
+        assert!(w.plot_units(0, 1).unwrap().is_empty());
+        // Plot counters are exclusively Placement's ordered responsibility.
+        assert_eq!(w.map().plots[0].unit_count, 0);
+    }
+
     #[test]
     fn recycled_lookup_uses_explicit_slot_and_keeps_requested_generation() {
         // Generated IDs deliberately differ from their slots: no guessed ID→slot

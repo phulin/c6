@@ -58,6 +58,8 @@ pub mod rng;
 pub mod skip_turn;
 pub mod trade;
 pub mod unit;
+pub mod unit_occupancy;
+pub mod unit_placement_transition;
 pub mod unit_healing;
 pub mod unit_operations_clear;
 pub mod unit_initialization;
