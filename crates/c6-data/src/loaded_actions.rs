@@ -31,6 +31,8 @@ pub mod notifications;
 pub mod reporting;
 pub mod scripting;
 pub mod transition;
+#[path = "loaded_actions/aftermath.rs"]
+pub mod current_aftermath;
 
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
