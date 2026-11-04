@@ -306,6 +306,7 @@ pub struct CurrentPlayerCombat<'a> {
     pub adjacency: &'a [(i32, bool)],
     cached_major_ids: Option<&'a [i32]>,
     ever_alive: Option<&'a [i32]>,
+    alive: Option<&'a [i32]>,
 }
 impl<'a> CurrentPlayerCombat<'a> {
     pub fn new(
@@ -317,6 +318,7 @@ impl<'a> CurrentPlayerCombat<'a> {
             adjacency,
             cached_major_ids: None,
             ever_alive: None,
+            alive: None,
         }
     }
     pub fn with_cached_major_ids(mut self, values: &'a [i32]) -> Self {
@@ -325,6 +327,10 @@ impl<'a> CurrentPlayerCombat<'a> {
     }
     pub fn with_ever_alive(mut self, values: &'a [i32]) -> Self {
         self.ever_alive = Some(values);
+        self
+    }
+    pub fn with_alive(mut self, values: &'a [i32]) -> Self {
+        self.alive = Some(values);
         self
     }
 
@@ -652,6 +658,7 @@ impl kernel::AttackContext for CurrentAttack<'_> {
             ),
             B::FriendlyCity => friendly_city_bonus(
                 self.state,
+                self.players,
                 self.attacker,
                 self.unit(self.attacker)?.k_location,
             ),
@@ -1407,6 +1414,7 @@ pub fn city_bonus(
 }
 pub fn friendly_city_bonus(
     state: &LoadedState,
+    players: &CurrentPlayerCombat<'_>,
     unit: UnitReference,
     plot: c6_core::unit::PlotCoord,
 ) -> Result<i32, Error> {
@@ -1419,13 +1427,67 @@ pub fn friendly_city_bonus(
     };
     // This getter is reached even for an owned city. Team friendship is queried
     // before the suzerain equality fallback for other owners.
-    let _suzerain = player(state, city.header.owner)?.influence.suzerain;
-    if city.header.owner != unit.e_owner {
-        return Err(Error::Missing(
-            "current AreTeamsFriendly before suzerain fallback",
-        ));
+    let suzerain = player(state, city.header.owner)?.influence.suzerain;
+    if city.header.owner != unit.e_owner
+        && !are_teams_friendly(state, players, city.header.owner, unit.e_owner)?
+        && suzerain != unit.e_owner
+    {
+        return Ok(0);
     }
     Ok(city.combat.city_friendly_combat_bonus.wrapping_shl(8))
+}
+struct CurrentTeams<'a> {
+    state: &'a LoadedState,
+    players: &'a CurrentPlayerCombat<'a>,
+}
+impl kernel::TeamFriendship for CurrentTeams<'_> {
+    type Error = Error;
+    fn valid(&self, owner: i32) -> Result<bool, Error> {
+        self.state
+            .world()
+            .player_is_valid(owner)
+            .map_err(Error::World)
+    }
+    fn team(&self, owner: i32) -> Result<i32, Error> {
+        self.state.player_team(owner).map_err(Error::State)
+    }
+    fn alive(&self) -> Result<&[i32], Error> {
+        if self.players.binding != self.state.binding() {
+            return Err(Error::Binding);
+        }
+        self.players
+            .alive
+            .ok_or(Error::Missing("current cached GetAlive order"))
+    }
+    fn declared_friendship(&self, owner: i32, other: i32) -> Result<bool, Error> {
+        self.state
+            .game_relations()
+            .map_err(Error::State)?
+            .has_declared_friendship(owner, other)
+            .map_err(Error::Relations)
+    }
+    fn allied(&self, owner: i32, other: i32) -> Result<bool, Error> {
+        self.state
+            .game_relations()
+            .map_err(Error::State)?
+            .is_allied(owner, other)
+            .map_err(Error::Relations)
+    }
+    fn permanently_allied(&self, owner: i32, other: i32) -> Result<bool, Error> {
+        self.state
+            .game_relations()
+            .map_err(Error::State)?
+            .is_permanently_allied(owner, other)
+            .map_err(Error::Relations)
+    }
+}
+pub fn are_teams_friendly(
+    state: &LoadedState,
+    players: &CurrentPlayerCombat<'_>,
+    owner: i32,
+    other: i32,
+) -> Result<bool, Error> {
+    kernel::are_teams_friendly(&CurrentTeams { state, players }, owner, other)
 }
 pub fn specific_religion_bonus(
     state: &LoadedState,

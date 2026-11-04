@@ -15,6 +15,7 @@ pub enum Error {
     MissingWar,
     MissingAlliances,
     MissingPermanentAlliances,
+    MissingDeclaredFriendships,
     MissingHasMet,
     DefinitionInputs,
     AlreadyInitialized,
@@ -253,6 +254,25 @@ impl GameDiplomaticRelations {
     }
     pub fn is_allied(&self, a: i32, b: i32) -> Result<bool, Error> {
         Ok(self.alliance_type(a, b)? != -1)
+    }
+    /// Native HasDeclaredFriendship uses the distinct symmetric bool vector.
+    /// Equal identities return false before consulting the current storage.
+    pub fn has_declared_friendship(&self, a: i32, b: i32) -> Result<bool, Error> {
+        if a == b {
+            return Ok(false);
+        }
+        let values = &self
+            .read_prefix
+            .as_ref()
+            .ok_or(Error::MissingDeclaredFriendships)?
+            .at_f0;
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        values
+            .get(self.index(a, b)?)
+            .map(|value| value.value)
+            .ok_or(Error::Index)
     }
     /// Current permanent-alliance bool relationship. Equal players return false
     /// before storage/range checks. Missing prefix/storage is not a false value.
@@ -494,6 +514,35 @@ mod tests {
             Err(Error::MissingPermanentAlliances)
         );
         assert_eq!(missing.is_permanently_allied(99, 99), Ok(false));
+    }
+    #[test]
+    fn declared_friendship_has_distinct_symmetric_storage_and_unknown_is_error() {
+        let mut state = GameDiplomaticRelations::decode_prefix(&fixture(), Limits::default())
+            .unwrap()
+            .state;
+        state.read_prefix.as_mut().unwrap().at_f0 = vec![
+            BoolRelationship {
+                value: true,
+                changed_turn: 1,
+            },
+            BoolRelationship {
+                value: false,
+                changed_turn: 2,
+            },
+            BoolRelationship {
+                value: false,
+                changed_turn: 3,
+            },
+        ];
+        assert_eq!(state.has_declared_friendship(0, 2), Ok(true));
+        assert_eq!(state.has_declared_friendship(2, 0), Ok(true));
+        assert_eq!(state.has_declared_friendship(1, 2), Ok(false));
+        state.read_prefix = None;
+        assert_eq!(state.has_declared_friendship(-1, -1), Ok(false));
+        assert_eq!(
+            state.has_declared_friendship(0, 2),
+            Err(Error::MissingDeclaredFriendships)
+        );
     }
     #[test]
     fn definition_misses_and_invalid_input_reject_without_partial_authority() {

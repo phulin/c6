@@ -129,6 +129,54 @@ pub fn diplomatic_combat_bonus(
         }
     })
 }
+/// Read-only current diplomacy queries used by native AreTeamsFriendly.
+/// `alive` is the actual cached GetAlive order, not an ID-sorted roster.
+pub trait TeamFriendship {
+    type Error;
+    fn valid(&self, owner: i32) -> Result<bool, Self::Error>;
+    fn team(&self, owner: i32) -> Result<i32, Self::Error>;
+    fn alive(&self) -> Result<&[i32], Self::Error>;
+    fn declared_friendship(&self, owner: i32, other: i32) -> Result<bool, Self::Error>;
+    fn allied(&self, owner: i32, other: i32) -> Result<bool, Self::Error>;
+    fn permanently_allied(&self, owner: i32, other: i32) -> Result<bool, Self::Error>;
+}
+/// 2aa6fd0. Assigned teams search both ordered live-player vectors, skipping
+/// equal player IDs before the second team's getter. Unassigned teams use only
+/// the original pair. There is no same-team shortcut or suzerain check here.
+pub fn are_teams_friendly<C: TeamFriendship>(
+    c: &C,
+    owner: i32,
+    other: i32,
+) -> Result<bool, C::Error> {
+    fn related<C: TeamFriendship>(c: &C, a: i32, b: i32) -> Result<bool, C::Error> {
+        Ok(c.declared_friendship(a, b)? || c.allied(a, b)? || c.permanently_allied(a, b)?)
+    }
+    if !c.valid(other)? {
+        return Ok(false);
+    }
+    let own_team = c.team(owner)?;
+    let other_team = c.team(other)?;
+    if own_team == -1 || other_team == -1 {
+        return related(c, owner, other);
+    }
+    for &a in c.alive()? {
+        if c.team(a)? != own_team {
+            continue;
+        }
+        for &b in c.alive()? {
+            if a == b {
+                continue;
+            }
+            if c.team(b)? != other_team {
+                continue;
+            }
+            if related(c, a, b)? {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
 /// Native ordinary Unit/Unit attack bonus order. Each stage is a concrete
 /// Rules.Combat helper, not a precomputed total or implicit zero capability.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -345,6 +393,77 @@ pub fn ordinary_defense_modifier<C: DefenseContext>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct Teams {
+        unassigned: bool,
+        valid: bool,
+        trace: std::cell::RefCell<Vec<(u8, i32, i32)>>,
+    }
+    impl TeamFriendship for Teams {
+        type Error = &'static str;
+        fn valid(&self, p: i32) -> Result<bool, Self::Error> {
+            self.trace.borrow_mut().push((0, p, 0));
+            Ok(self.valid)
+        }
+        fn team(&self, p: i32) -> Result<i32, Self::Error> {
+            self.trace.borrow_mut().push((1, p, 0));
+            Ok(if self.unassigned { -1 } else { p / 10 })
+        }
+        fn alive(&self) -> Result<&[i32], Self::Error> {
+            self.trace.borrow_mut().push((2, 0, 0));
+            if self.unassigned {
+                Err("unread alive")
+            } else {
+                Ok(&[31, 20, 21, 30])
+            }
+        }
+        fn declared_friendship(&self, a: i32, b: i32) -> Result<bool, Self::Error> {
+            self.trace.borrow_mut().push((3, a, b));
+            Ok((a, b) == (21, 31))
+        }
+        fn allied(&self, a: i32, b: i32) -> Result<bool, Self::Error> {
+            self.trace.borrow_mut().push((4, a, b));
+            Ok(false)
+        }
+        fn permanently_allied(&self, a: i32, b: i32) -> Result<bool, Self::Error> {
+            self.trace.borrow_mut().push((5, a, b));
+            Ok(false)
+        }
+    }
+    #[test]
+    fn team_friendship_uses_ordered_team_members_and_short_circuits_each_pair() {
+        let t = Teams {
+            unassigned: false,
+            valid: true,
+            trace: Default::default(),
+        };
+        assert_eq!(are_teams_friendly(&t, 20, 30), Ok(true));
+        let trace = t.trace.borrow();
+        let pairs: Vec<_> = trace.iter().filter(|entry| entry.0 == 3).copied().collect();
+        assert_eq!(pairs, [(3, 20, 31), (3, 20, 30), (3, 21, 31)]);
+        assert!(!trace.contains(&(3, 20, 20)));
+        assert!(!trace.contains(&(4, 21, 31)));
+        assert!(!trace.contains(&(5, 21, 31)));
+    }
+    #[test]
+    fn invalid_target_and_unassigned_team_do_not_read_alive_roster() {
+        let t = Teams {
+            unassigned: true,
+            valid: false,
+            trace: Default::default(),
+        };
+        assert_eq!(are_teams_friendly(&t, 21, 31), Ok(false));
+        assert_eq!(*t.trace.borrow(), [(0, 31, 0)]);
+        let t = Teams {
+            unassigned: true,
+            valid: true,
+            trace: Default::default(),
+        };
+        assert_eq!(are_teams_friendly(&t, 21, 31), Ok(true));
+        assert_eq!(
+            *t.trace.borrow(),
+            [(0, 31, 0), (1, 21, 0), (1, 31, 0), (3, 21, 31)]
+        );
+    }
     struct C {
         max: i32,
         damage: i32,
