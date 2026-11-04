@@ -3136,6 +3136,14 @@ impl LoadedState {
     pub fn world(&self) -> &world::World {
         &self.world
     }
+    /// Expose the owned gameplay world for ordered placement/visibility writes.
+    /// Reserve a revision first so prepared transactions and borrowed query
+    /// stamps cannot remain current after mutable access, even if unused.
+    pub fn world_mut(&mut self) -> Result<&mut world::World, Error> {
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.revision = next;
+        Ok(&mut self.world)
+    }
     pub fn retained(&self) -> &RetainedComponents {
         &self.retained
     }
