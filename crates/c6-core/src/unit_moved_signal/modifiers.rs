@@ -121,6 +121,28 @@ pub fn apply_effect<C: EffectContext>(c: &mut C) -> Result<(), EffectError<C::Er
     Ok(())
 }
 
+/// The actual Unit modifier-object comparator key (0x23f1160). Distinct Unit
+/// wrappers can share a ComponentID and still differ in the two signed suffixes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UnitObjectKey {
+    pub component: crate::unit::ComponentId,
+    pub first: i32,
+    pub second: i32,
+}
+impl UnitObjectKey {
+    fn component_bits(self) -> u64 {
+        u64::from(self.component.owner as u16)
+            | (u64::from(self.component.component_type as u16) << 16)
+            | (u64::from(self.component.id) << 32)
+    }
+    pub fn compare(self, other: Self) -> std::cmp::Ordering {
+        self.component_bits()
+            .cmp(&other.component_bits())
+            .then_with(|| self.first.cmp(&other.first))
+            .then_with(|| self.second.cmp(&other.second))
+    }
+}
+
 /// Canonical ModifierObject affected-instance list. Native entries are ordered
 /// by definition bytes; distinct instances of one definition insert first.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -315,6 +337,36 @@ mod tests {
         c.suppressed = true;
         apply_effect(&mut c).unwrap();
         assert_eq!(c.events, ["mark"]);
+    }
+    #[test]
+    fn unit_object_order_preserves_unsigned_component_bits_then_signed_suffixes() {
+        use crate::unit::ComponentId;
+        let a = UnitObjectKey {
+            component: ComponentId {
+                owner: 0,
+                component_type: 1,
+                id: 1,
+            },
+            first: 0,
+            second: 0,
+        };
+        let b = UnitObjectKey {
+            component: ComponentId {
+                owner: -1,
+                ..a.component
+            },
+            ..a
+        };
+        assert!(a.compare(b).is_lt());
+        assert!(UnitObjectKey { first: -1, ..a }.compare(a).is_lt());
+        assert!(UnitObjectKey { second: -1, ..a }.compare(a).is_lt());
+        assert!(UnitObjectKey {
+            first: 1,
+            second: i32::MIN,
+            ..a
+        }
+        .compare(a)
+        .is_gt());
     }
     #[test]
     fn affected_instances_preserve_definition_order_and_native_lower_bound_insertion() {
