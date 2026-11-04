@@ -96,6 +96,9 @@ struct Reader<'a> {
 impl<'a> Reader<'a> {
     fn take(&mut self, n: usize) -> Result<&'a [u8], Error> {
         let end = self.pos.checked_add(n).ok_or(Error::ResourceLimit)?;
+        if end > self.limits.max_bytes {
+            return Err(Error::ResourceLimit);
+        }
         let b = self.bytes.get(self.pos..end).ok_or(Error::Truncated)?;
         self.pos = end;
         Ok(b)
@@ -204,6 +207,12 @@ fn variant_limits(l: Limits) -> variants::Limits {
         max_depth: l.max_depth,
     }
 }
+type CollectionPrefix = (
+    PlayerNotifications,
+    Vec<std::ops::Range<usize>>,
+    usize,
+    usize,
+);
 impl PlayerNotifications {
     pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
         Self::decode_with_boundaries(bytes, limits).map(|x| x.0)
@@ -216,6 +225,22 @@ impl PlayerNotifications {
         if bytes.len() > limits.max_bytes {
             return Err(Error::ResourceLimit);
         }
+        let (value, boundaries, consumed, _) = Self::read_prefix(bytes, limits)?;
+        if consumed != bytes.len() {
+            return Err(Error::TrailingBytes);
+        }
+        Ok((value, boundaries))
+    }
+    /// Decode one existing supported collection, leaving caller suffix untouched.
+    /// The item charge includes records, localized base bytes and variant items.
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let (value, _, consumed, items) = Self::read_prefix(bytes, limits)?;
+        Ok((value, consumed, items))
+    }
+    fn read_prefix(bytes: &[u8], limits: Limits) -> Result<CollectionPrefix, Error> {
         let mut r = Reader {
             bytes,
             pos: 0,
@@ -248,9 +273,6 @@ impl PlayerNotifications {
             records.push(r.record()?);
             boundaries.push(start..r.pos);
         }
-        if r.pos != bytes.len() {
-            return Err(Error::TrailingBytes);
-        }
         Ok((
             Self {
                 owner,
@@ -258,6 +280,8 @@ impl PlayerNotifications {
                 records,
             },
             boundaries,
+            r.pos,
+            r.items + r.variants.items_used(),
         ))
     }
     pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
@@ -296,6 +320,72 @@ impl PlayerNotifications {
         // Reuse aggregate validation; no partially encoded output escapes.
         Self::decode(&w.bytes, limits)?;
         Ok(w.bytes)
+    }
+}
+/// Reached saved Manager1 projection. Collections are selected by wire slot,
+/// independently of each stored owner. Native reads at most 64 slots; omitted
+/// slots retain unknown prior state rather than implying empty collections.
+/// No native factory, pool allocation, activation or event delivery is applied.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Manager {
+    pub wire_version: u32,
+    pub advertised_player_count: i32,
+    pub collections: Vec<PlayerNotifications>,
+}
+impl Manager {
+    pub fn decode(bytes: &[u8], limits: Limits) -> Result<Self, Error> {
+        if bytes.len() > limits.max_bytes {
+            return Err(Error::ResourceLimit);
+        }
+        let (value, n, _) = Self::decode_prefix_with_items(bytes, limits)?;
+        if n != bytes.len() {
+            return Err(Error::TrailingBytes);
+        }
+        Ok(value)
+    }
+    pub fn decode_prefix_with_items(
+        bytes: &[u8],
+        limits: Limits,
+    ) -> Result<(Self, usize, usize), Error> {
+        let mut r = Reader {
+            bytes,
+            pos: 0,
+            items: 0,
+            limits,
+            variants: DecodeBudget::new(variant_limits(limits)),
+        };
+        r.version(1)?;
+        let advertised_player_count = r.u32()? as i32;
+        let count = advertised_player_count.clamp(0, 64) as usize;
+        r.charge(count)?;
+        let mut collections = Vec::new();
+        collections
+            .try_reserve_exact(count)
+            .map_err(|_| Error::ResourceLimit)?;
+        let mut records = 0;
+        for _ in 0..count {
+            let child_limits = Limits {
+                max_bytes: limits.max_bytes - r.pos,
+                max_items: limits.max_items - r.items,
+                max_records: limits.max_records - records,
+                ..limits
+            };
+            let (child, n, i) =
+                PlayerNotifications::decode_prefix_with_items(&bytes[r.pos..], child_limits)?;
+            r.take(n)?;
+            r.charge(i)?;
+            records += child.records.len();
+            collections.push(child);
+        }
+        Ok((
+            Self {
+                wire_version: 1,
+                advertised_player_count,
+                collections,
+            },
+            r.pos,
+            r.items,
+        ))
     }
 }
 struct Writer {
@@ -398,6 +488,123 @@ mod tests {
         assert_eq!(
             PlayerNotifications::decode(&b, l),
             Err(Error::ResourceLimit)
+        );
+    }
+    #[test]
+    fn manager_slots_preserve_stored_owner_and_native_signed_count_bounds() {
+        let empty_two = [
+            1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 255, 255, 255, 255, 7, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+            0, 0, 62, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let (m, n, i) = Manager::decode_prefix_with_items(&empty_two, Limits::default()).unwrap();
+        assert_eq!((n, i), (40, 2));
+        assert_eq!(m.advertised_player_count, 2);
+        assert_eq!(
+            m.collections.iter().map(|p| p.owner).collect::<Vec<_>>(),
+            [-1, 62]
+        );
+        assert_eq!(
+            m.collections.iter().map(|p| p.next_id).collect::<Vec<_>>(),
+            [7, 9]
+        );
+        for count in [-1i32, 0] {
+            let mut b = 1u32.to_le_bytes().to_vec();
+            b.extend(count.to_le_bytes());
+            b.push(0x55);
+            let (m, n, i) = Manager::decode_prefix_with_items(&b, Limits::default()).unwrap();
+            assert_eq!((m.advertised_player_count, n, i), (count, 8, 0));
+            assert!(m.collections.is_empty());
+        }
+        let mut b = 1u32.to_le_bytes().to_vec();
+        b.extend(65i32.to_le_bytes());
+        for _ in 0..64 {
+            b.extend([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        }
+        b.push(0x66);
+        let (m, n, i) = Manager::decode_prefix_with_items(&b, Limits::default()).unwrap();
+        assert_eq!(
+            (m.advertised_player_count, m.collections.len(), n, i),
+            (65, 64, 1032, 64)
+        );
+        assert_eq!(b[n], 0x66);
+    }
+    #[test]
+    fn prefixes_share_records_text_budget_and_leave_strict_calls_unchanged() {
+        let child = fixture().encode(Limits::default()).unwrap();
+        let mut b = vec![1, 0, 0, 0, 2, 0, 0, 0];
+        b.extend(&child);
+        b.extend([1, 0, 0, 0, 62, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0]);
+        let limits = Limits {
+            max_bytes: b.len(),
+            max_items: 14,
+            max_records: 2,
+            ..Limits::default()
+        };
+        let (m, n, i) = Manager::decode_prefix_with_items(&b, limits).unwrap();
+        assert_eq!((n, i), (b.len(), 14));
+        assert_eq!(m.collections[0], fixture());
+        let mut tail = b.clone();
+        tail.extend([0x55, 0xaa]);
+        assert_eq!(
+            Manager::decode_prefix_with_items(&tail, limits).unwrap().1,
+            b.len()
+        );
+        assert_eq!(
+            Manager::decode(&tail, Limits::default()),
+            Err(Error::TrailingBytes)
+        );
+        let mut child_tail = child.clone();
+        child_tail.push(0x55);
+        assert_eq!(
+            PlayerNotifications::decode_prefix_with_items(
+                &child_tail,
+                Limits {
+                    max_bytes: child.len(),
+                    ..Limits::default()
+                }
+            )
+            .unwrap(),
+            (fixture(), child.len(), 12)
+        );
+        assert_eq!(
+            PlayerNotifications::decode(&child_tail, Limits::default()),
+            Err(Error::TrailingBytes)
+        );
+        for cut in 0..b.len() {
+            assert!(Manager::decode(&b[..cut], Limits::default()).is_err());
+            assert!(Manager::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_bytes: cut,
+                    ..limits
+                }
+            )
+            .is_err());
+        }
+        for cap in 0..14 {
+            assert!(Manager::decode_prefix_with_items(
+                &b,
+                Limits {
+                    max_items: cap,
+                    ..limits
+                }
+            )
+            .is_err());
+        }
+        assert_eq!(
+            Manager::decode(
+                &b,
+                Limits {
+                    max_records: 1,
+                    ..limits
+                }
+            ),
+            Err(Error::ResourceLimit)
+        );
+        b[..4].copy_from_slice(&99u32.to_le_bytes());
+        assert_eq!(
+            Manager::decode(&b, Limits::default()),
+            Err(Error::UnsupportedVersion(99))
         );
     }
 }
