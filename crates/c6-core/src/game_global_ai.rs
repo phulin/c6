@@ -6,6 +6,7 @@ pub const VERSION: u32 = 4;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
     ConditionalBody,
     ArrayLength { expected: u32, actual: u32 },
     Trailing,
@@ -220,12 +221,115 @@ record!(ControlHandle, 1, { player_ordinal:i32, id:u32 });
 record!(HashQ8, 0, { definition_hash:u32, raw_q8:i32 });
 record!(MayhemTracker, 1, { native_f32_bits:u32 });
 record!(ControlFactory, 1, { next_id:u32 });
-record!(EspionageCityAnalysis, 3, { city:CityId, act_values_raw_q8:[i32;11], value_34:i32 });
-record!(Espionage, 4, {
-    player_ordinal:i32, control_priority:i32,
-    city_analyses:Vec<EspionageCityAnalysis>, flag_2a0:u8,
-    cities:Vec<CityId>, values_158:Vec<i32>, values_180:Vec<i32>, values_1a8:Vec<i32>,
-});
+/// Independently tagged saved analysis2/3. value_34 defaults to0 below3;
+/// the counted11-element raw-Q8 array is present at2, not an inferred default.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EspionageCityAnalysis {
+    pub wire_version: u32,
+    pub city: CityId,
+    pub act_values_raw_q8: [i32; 11],
+    pub value_34: i32,
+}
+impl Wire for EspionageCityAnalysis {
+    const MIN: usize = 60;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 2 | 3) {
+            return Err(Error::Version {
+                expected: 3,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            city: CityId::read(r)?,
+            act_values_raw_q8: <[i32; 11]>::read(r)?,
+            value_34: if wire_version == 3 { i32::read(r)? } else { 0 },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 3 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        3u32.write(w)?;
+        self.city.write(w)?;
+        self.act_values_raw_q8.write(w)?;
+        self.value_34.write(w)
+    }
+}
+/// Saved Espionage2/4 wire/default projection. Absent vectors at2 have a
+/// native self-default, so None preserves unknown prior state. Native Read's
+/// subsequent resize(values_1a8,11,0), signals/archive/player binding are
+/// unapplied; resize can preserve prior values and is not eleven known zeros.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Espionage {
+    pub wire_version: u32,
+    pub player_ordinal: i32,
+    pub control_priority: i32,
+    pub city_analyses: Vec<EspionageCityAnalysis>,
+    pub flag_2a0: u8,
+    pub cities: Option<Vec<CityId>>,
+    pub values_158: Option<Vec<i32>>,
+    pub values_180: Option<Vec<i32>>,
+    pub values_1a8: Option<Vec<i32>>,
+}
+impl Wire for Espionage {
+    const MIN: usize = 17;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 2 | 4) {
+            return Err(Error::Version {
+                expected: 4,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_ordinal: i32::read(r)?,
+            control_priority: i32::read(r)?,
+            city_analyses: Vec::<EspionageCityAnalysis>::read(r)?,
+            flag_2a0: u8::read(r)?,
+            cities: if wire_version == 4 {
+                Some(Vec::<CityId>::read(r)?)
+            } else {
+                None
+            },
+            values_158: if wire_version == 4 {
+                Some(Vec::<i32>::read(r)?)
+            } else {
+                None
+            },
+            values_180: if wire_version == 4 {
+                Some(Vec::<i32>::read(r)?)
+            } else {
+                None
+            },
+            values_1a8: if wire_version == 4 {
+                Some(Vec::<i32>::read(r)?)
+            } else {
+                None
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != 4 {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let cities = self.cities.as_ref().ok_or(Error::ConditionalBody)?;
+        let values_158 = self.values_158.as_ref().ok_or(Error::ConditionalBody)?;
+        let values_180 = self.values_180.as_ref().ok_or(Error::ConditionalBody)?;
+        let values_1a8 = self.values_1a8.as_ref().ok_or(Error::ConditionalBody)?;
+        4u32.write(w)?;
+        self.player_ordinal.write(w)?;
+        self.control_priority.write(w)?;
+        self.city_analyses.write(w)?;
+        self.flag_2a0.write(w)?;
+        cities.write(w)?;
+        values_158.write(w)?;
+        values_180.write(w)?;
+        values_1a8.write(w)
+    }
+}
 record!(EspionageManager, 1, { entries:Vec<Espionage> });
 record!(BeliefAnalysis, 1, {
     player_ordinal:i32, belief_hash:u32, belief_class_ordinal:i32, flag_10:u8, value_raw_q8:i32,
@@ -336,9 +440,11 @@ mod tests {
             control_factory: ControlFactory { next_id: u32::MAX },
             espionage: EspionageManager {
                 entries: vec![Espionage {
+                    wire_version: 4,
                     player_ordinal: -1,
                     control_priority: i32::MIN,
                     city_analyses: vec![EspionageCityAnalysis {
+                        wire_version: 3,
                         city: CityId {
                             owner: -1,
                             component_type: i16::MIN,
@@ -348,14 +454,14 @@ mod tests {
                         value_34: -9,
                     }],
                     flag_2a0: flag,
-                    cities: vec![CityId {
+                    cities: Some(vec![CityId {
                         owner: i16::MAX,
                         component_type: -3,
                         id: 1,
-                    }],
-                    values_158: vec![-1],
-                    values_180: vec![i32::MAX],
-                    values_1a8: vec![i32::MIN],
+                    }]),
+                    values_158: Some(vec![-1]),
+                    values_180: Some(vec![i32::MAX]),
+                    values_1a8: Some(vec![i32::MIN]),
                 }],
             },
             religious: ReligiousManager {
@@ -426,6 +532,97 @@ mod tests {
             ],
             yields_d0: vec![],
         }
+    }
+    #[test]
+    fn espionage2_analysis2_omissions_preserve_unknown_prior_and_cursor() {
+        let mut b = Vec::new();
+        for word in [
+            2u32,
+            u32::MAX,
+            i32::MIN as u32,
+            1,
+            2,
+            0x0002ffff,
+            0x81234567,
+            11,
+        ] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        for n in 0..11i32 {
+            b.extend_from_slice(&(n.wrapping_mul(i32::MIN + 1)).to_le_bytes());
+        }
+        b.extend_from_slice(&[0xfe, 0xaa]);
+        let decode = |data: &[u8], max_bytes, max_items| {
+            let mut r = Reader {
+                data,
+                pos: 0,
+                items: 0,
+                allocated: 0,
+                limits: Limits {
+                    max_bytes,
+                    max_items,
+                },
+            };
+            Espionage::read(&mut r).map(|v| (v, r.pos, r.items))
+        };
+        let (v, n, i) = decode(&b, 77, 12).unwrap();
+        assert_eq!((v.wire_version, n, i), (2, 77, 12));
+        assert_eq!(
+            (v.player_ordinal, v.control_priority, v.flag_2a0),
+            (-1, i32::MIN, 0xfe)
+        );
+        assert!(
+            v.cities.is_none()
+                && v.values_158.is_none()
+                && v.values_180.is_none()
+                && v.values_1a8.is_none()
+        );
+        let a = &v.city_analyses[0];
+        assert_eq!(
+            (
+                a.wire_version,
+                a.value_34,
+                a.city.owner,
+                a.city.component_type,
+                a.city.id
+            ),
+            (2, 0, -1, 2, 0x81234567)
+        );
+        assert_eq!(a.act_values_raw_q8[10], 10);
+        for cut in 0..77 {
+            assert!(decode(&b[..cut], 77, 12).is_err());
+        }
+        assert!(decode(&b, 76, 12).is_err());
+        assert!(decode(&b, 77, 11).is_err());
+        let mut w = Writer {
+            data: Vec::new(),
+            items: 0,
+            limits: limits(),
+        };
+        assert_eq!(v.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        assert_eq!(a.write(&mut w), Err(Error::UnsupportedLegacyWrite));
+        assert!(w.data.is_empty());
+        let mut current = specimen(255).espionage.entries.remove(0);
+        current.values_1a8 = None;
+        assert_eq!(current.write(&mut w), Err(Error::ConditionalBody));
+        assert!(w.data.is_empty());
+        b[16..20].copy_from_slice(&1u32.to_le_bytes());
+        assert_eq!(
+            decode(&b, 77, 12),
+            Err(Error::Version {
+                expected: 3,
+                actual: 1
+            })
+        );
+        b[..4].copy_from_slice(&3u32.to_le_bytes());
+        assert_eq!(
+            decode(&b, 77, 12),
+            Err(Error::Version {
+                expected: 4,
+                actual: 3
+            })
+        );
     }
     #[test]
     fn exhaustive_raw_bool_carriers_and_small_truncations() {
