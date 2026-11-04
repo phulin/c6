@@ -12,6 +12,12 @@ pub enum Error {
     Manager(actions::Failure),
     Aftermath(current_aftermath::Error<actions::notifications::processing::Error>),
 }
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "stock SkipTurn request: {self:?}")
+    }
+}
+impl std::error::Error for Error {}
 #[derive(Debug)]
 pub struct Outcome {
     /// No events for an invalid addressed player or a missing Unit.
