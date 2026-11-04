@@ -1,6 +1,7 @@
 //! Ordinary melee resolution over the current owned Units. Partial failures keep
 //! the native prefix; generated damage is never reported as a resolved attack.
 pub mod budget;
+pub mod completion;
 pub mod kill_awards;
 pub mod post_kill;
 pub mod post_yields;

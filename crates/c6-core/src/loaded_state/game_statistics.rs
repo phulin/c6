@@ -82,7 +82,7 @@ impl LoadedState {
         self.revision = next;
         Ok(())
     }
-    /// Current native Game.Stats+1a8 value (FAutoVariable payload at+8).
+    /// Current native Game.Stats.GetNumUnitsKilled241f0f0 value at+1b0.
     /// Installing this scalar does not supply the independent building domain.
     pub fn install_game_units_killed(
         &mut self,

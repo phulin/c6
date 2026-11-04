@@ -14,6 +14,7 @@ pub enum Error<E> {
     Finish(c6_core::movement_execution::FormationMovementError<upkeep::Error<E>>),
     Sync(c6_core::formation_upkeep::FormationUpkeepError<upkeep::Error<E>>),
     MissingFormation,
+    ForcedRetreat,
 }
 #[must_use]
 pub struct RequiresPostCombatEffects {
@@ -91,6 +92,13 @@ where
             effects,
         )
         .map_err(Error::Sync)?;
+    }
+    if super::super::actor(state, reference)
+        .map_err(Error::Actor)?
+        .k_combat_modifers
+        .b_can_force_retreat
+    {
+        return Err(Error::ForcedRetreat);
     }
     Ok(RequiresPostCombatEffects { members })
 }
