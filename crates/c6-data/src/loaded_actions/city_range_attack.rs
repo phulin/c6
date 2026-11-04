@@ -1318,6 +1318,13 @@ fn era_strength(
             .wrapping_mul(definitions.era_chronology[era])
     }))
 }
+pub(crate) fn unit_formation_class(
+    state: &LoadedState,
+    unit: &c6_core::unit::Unit,
+    definitions: &Definitions,
+) -> Result<i32, Error> {
+    Ok(unit_definition(state, unit, definitions)?.map_or(-1, |d| d.formation_class))
+}
 fn unit_definition<'a>(
     state: &LoadedState,
     unit: &c6_core::unit::Unit,

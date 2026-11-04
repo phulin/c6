@@ -49,6 +49,50 @@ pub struct RequiresGenerate {
     _private: (),
 }
 
+/// First ordinary Unit/Unit generator reads (28cf960..28cfa5a). Values are
+/// signed FixedPointT<8> storage, before modifiers, damage or any RNG draw.
+#[derive(Debug, Eq, PartialEq)]
+pub struct BaseStrengths {
+    pub attacker_raw: i32,
+    pub defender_raw: i32,
+}
+#[must_use]
+#[derive(Debug, Eq, PartialEq)]
+pub enum UnitGeneration {
+    /// The native support formation-class branch skips ProposeCombat.
+    RequiresSupportResolution(BaseStrengths),
+    RequiresProposeCombat(BaseStrengths),
+}
+pub trait StrengthContext {
+    type Error;
+    fn plot_exists(&mut self) -> Result<bool, Self::Error>;
+    fn attacker_embarked(&mut self) -> Result<bool, Self::Error>;
+    fn plot_is_coastal_land(&mut self) -> Result<bool, Self::Error>;
+    fn attacker_combat(&mut self, coastal_embarked: bool) -> Result<i32, Self::Error>;
+    fn defender_combat(&mut self) -> Result<i32, Self::Error>;
+    fn defender_formation_class(&mut self) -> Result<i32, Self::Error>;
+}
+pub fn prepare_unit_strengths<C: StrengthContext>(c: &mut C) -> Result<UnitGeneration, C::Error> {
+    let plot = c.plot_exists()?;
+    let embarked = c.attacker_embarked()?;
+    let coastal = if plot && embarked {
+        c.plot_is_coastal_land()?
+    } else {
+        false
+    };
+    let attacker_raw = c.attacker_combat(coastal)?.wrapping_shl(8);
+    let defender_raw = c.defender_combat()?.wrapping_shl(8);
+    let strengths = BaseStrengths {
+        attacker_raw,
+        defender_raw,
+    };
+    Ok(if c.defender_formation_class()? == 2 {
+        UnitGeneration::RequiresSupportResolution(strengths)
+    } else {
+        UnitGeneration::RequiresProposeCombat(strengths)
+    })
+}
+
 /// GenerateCombatResults(Unit,Unit), 28ca120: preserve a valid preexisting
 /// results location; otherwise use the defender's copied current location.
 pub fn prepare_units(
@@ -138,5 +182,94 @@ mod tests {
         assert_eq!(r.interceptor, Some(member(9)));
         let _next = prepare_units(&mut r, member(1), member(2), 0x8000_0000);
         assert_eq!(r.interceptor, None);
+    }
+
+    struct Strengths {
+        calls: Vec<&'static str>,
+        embarked: bool,
+        plot: bool,
+        class: i32,
+        fail: Option<&'static str>,
+    }
+    impl Strengths {
+        fn read<T>(&mut self, name: &'static str, value: T) -> Result<T, &'static str> {
+            self.calls.push(name);
+            if self.fail == Some(name) {
+                Err(name)
+            } else {
+                Ok(value)
+            }
+        }
+    }
+    impl StrengthContext for Strengths {
+        type Error = &'static str;
+        fn plot_exists(&mut self) -> Result<bool, Self::Error> {
+            self.read("plot", self.plot)
+        }
+        fn attacker_embarked(&mut self) -> Result<bool, Self::Error> {
+            self.read("embarked", self.embarked)
+        }
+        fn plot_is_coastal_land(&mut self) -> Result<bool, Self::Error> {
+            self.read("coastal", true)
+        }
+        fn attacker_combat(&mut self, coastal: bool) -> Result<i32, Self::Error> {
+            self.read(
+                if coastal {
+                    "attack_true"
+                } else {
+                    "attack_false"
+                },
+                i32::MAX,
+            )
+        }
+        fn defender_combat(&mut self) -> Result<i32, Self::Error> {
+            self.read("defend_false", 85)
+        }
+        fn defender_formation_class(&mut self) -> Result<i32, Self::Error> {
+            self.read("class", self.class)
+        }
+    }
+    #[test]
+    fn ordinary_strengths_read_before_proposal_and_keep_wrapping_q8() {
+        let mut c = Strengths {
+            calls: vec![],
+            embarked: false,
+            plot: true,
+            class: 0,
+            fail: None,
+        };
+        assert_eq!(
+            prepare_unit_strengths(&mut c),
+            Ok(UnitGeneration::RequiresProposeCombat(BaseStrengths {
+                attacker_raw: -256,
+                defender_raw: 85 << 8
+            }))
+        );
+        assert_eq!(
+            c.calls,
+            ["plot", "embarked", "attack_false", "defend_false", "class"]
+        );
+    }
+    #[test]
+    fn coastal_error_stops_before_strengths_and_missing_plot_skips_coastal() {
+        let mut c = Strengths {
+            calls: vec![],
+            embarked: true,
+            plot: true,
+            class: 2,
+            fail: Some("coastal"),
+        };
+        assert_eq!(prepare_unit_strengths(&mut c), Err("coastal"));
+        assert_eq!(c.calls, ["plot", "embarked", "coastal"]);
+        c.plot = false;
+        c.calls.clear();
+        assert!(matches!(
+            prepare_unit_strengths(&mut c),
+            Ok(UnitGeneration::RequiresSupportResolution(_))
+        ));
+        assert_eq!(
+            c.calls,
+            ["plot", "embarked", "attack_false", "defend_false", "class"]
+        );
     }
 }

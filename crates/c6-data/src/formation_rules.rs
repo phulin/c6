@@ -160,6 +160,9 @@ impl Definitions {
     pub fn combat(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
         city_range_attack::unit_combat(state, unit, &self.combat)
     }
+    pub fn formation_class(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
+        city_range_attack::unit_formation_class(state, unit, &self.combat)
+    }
     pub fn ranged(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
         city_range_attack::unit_ranged_combat(state, unit, &self.combat)
     }

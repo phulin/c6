@@ -1,7 +1,7 @@
 //! Current owned-object member preparation for ordinary melee generation.
 //! Callers must perform AttackInto's own target re-selection first. A successful
 //! readonly TestAttackInto continuation is not an entitlement to apply combat.
-use crate::{formation_movement_cost, movement_placement_state};
+use crate::{formation_movement_cost, formation_rules, movement_placement_state};
 use c6_core::{
     loaded_state::LoadedState,
     map::UnitReference,
@@ -18,6 +18,8 @@ pub enum Error {
     Owner(movement_placement_state::Error),
     MissingDistrict,
     OwnerRange,
+    Combat(crate::loaded_actions::Error),
+    Unsupported(&'static str),
 }
 
 /// Retains the actual current objects through the unfinished generation stage.
@@ -25,8 +27,10 @@ pub enum Error {
 /// preparation and this continuation. This does not implement Generate/Resolve.
 #[must_use]
 pub struct RequiresGenerate<'s> {
-    pub attacker: &'s Unit,
-    pub defender: Defender<'s>,
+    state: &'s LoadedState,
+    attacker: &'s Unit,
+    defender: Defender<'s>,
+    location: PlotCoord,
     next: kernel::RequiresGenerate,
 }
 pub enum Defender<'s> {
@@ -34,8 +38,76 @@ pub enum Defender<'s> {
     District(&'s District),
 }
 impl RequiresGenerate<'_> {
+    pub fn attacker(&self) -> &Unit {
+        self.attacker
+    }
+    pub fn defender(&self) -> &Defender<'_> {
+        &self.defender
+    }
     pub fn next(&self) -> &kernel::RequiresGenerate {
         &self.next
+    }
+    /// Compute the first Unit/Unit generation stage on the retained objects.
+    /// Reaching a proposal is still unfinished: its registry writes and ordered
+    /// synchronous modifier callbacks must run before strength modifiers.
+    pub fn prepare_unit_strengths(
+        &self,
+        definitions: &formation_rules::Definitions,
+    ) -> Result<kernel::UnitGeneration, Error> {
+        let Defender::Unit(defender) = self.defender else {
+            return Err(Error::Unsupported("Unit/District strength generation"));
+        };
+        kernel::prepare_unit_strengths(&mut CurrentStrengths {
+            state: self.state,
+            definitions,
+            attacker: self.attacker,
+            defender,
+            location: self.location,
+        })
+    }
+}
+
+struct CurrentStrengths<'a> {
+    state: &'a LoadedState,
+    definitions: &'a formation_rules::Definitions,
+    attacker: &'a Unit,
+    defender: &'a Unit,
+    location: PlotCoord,
+}
+impl kernel::StrengthContext for CurrentStrengths<'_> {
+    type Error = Error;
+    fn plot_exists(&mut self) -> Result<bool, Error> {
+        // The bounded adapter requires a canonical resident plot. It does not
+        // invent a null Map service result for missing imported map contents.
+        c6_core::movement_world::plot_at(self.state.world().map(), self.location)
+            .map_err(Error::Plot)?;
+        Ok(true)
+    }
+    fn attacker_embarked(&mut self) -> Result<bool, Error> {
+        Ok(crate::unit_movement_state::unit_is_embarked(self.attacker))
+    }
+    fn plot_is_coastal_land(&mut self) -> Result<bool, Error> {
+        Err(Error::Unsupported(
+            "current Plot.IsCoastalLand(-1) for embarked melee",
+        ))
+    }
+    fn attacker_combat(&mut self, coastal: bool) -> Result<i32, Error> {
+        if coastal {
+            return Err(Error::Unsupported("GetCombat(true)"));
+        }
+        self.definitions
+            .combat(self.state, self.attacker)
+            .map_err(Error::Combat)
+    }
+    fn defender_combat(&mut self) -> Result<i32, Error> {
+        self.definitions
+            .combat(self.state, self.defender)
+            .map_err(Error::Combat)
+    }
+    fn defender_formation_class(&mut self) -> Result<i32, Error> {
+        self.definitions
+            .formation_class(self.state, self.defender)
+            .map_err(Error::Combat)
     }
 }
 
@@ -66,8 +138,10 @@ pub fn prepare_units<'s>(
         flags,
     );
     Ok(RequiresGenerate {
+        state,
         attacker,
         defender: Defender::Unit(defender),
+        location: results.location,
         next,
     })
 }
@@ -106,8 +180,10 @@ pub fn prepare_district<'s>(
     };
     let next = kernel::prepare_district(results, unit_member(attacker)?, member, flags);
     Ok(RequiresGenerate {
+        state,
         attacker,
         defender: Defender::District(defender),
+        location: results.location,
         next,
     })
 }
