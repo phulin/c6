@@ -358,6 +358,7 @@ impl<E> Generation<'_, '_, E> {
 /// This value is deliberately distinct from an applied/resolved action.
 #[derive(Debug)]
 pub struct GeneratedMembers {
+    pub location: PlotCoord,
     pub damage: GeneratedDamage,
     pub attacker_experience: i32,
     pub defender_experience: i32,
@@ -457,6 +458,7 @@ impl<E> Generation<'_, '_, E> {
             }
         }
         Ok(GeneratedMembers {
+            location,
             damage,
             attacker_experience,
             defender_experience,

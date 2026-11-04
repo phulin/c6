@@ -7,11 +7,13 @@ use crate::{
 use c6_core::{loaded_state::LoadedState, map::UnitReference};
 type EffectsError<E> = <E as sight::Effects>::Error;
 #[derive(Debug)]
-pub enum Error<E> {
+pub enum Error<E, C = E> {
     Damage(c6_core::unit_healing::UnitHealingError<placement::Error<E>>),
     Actor(super::Error),
+    Combat(crate::loaded_actions::Error),
+    Missing(&'static str),
     Maximum(crate::formation_movement_cost::Error),
-    Kill(Box<unit_kill::Error<E>>),
+    Kill(Box<unit_kill::Error<C, E>>),
 }
 /// HP changes and delayed death have completed. XP, joint-war awards and the
 /// remaining combat aftermath must still run before an action can complete.
@@ -74,6 +76,7 @@ pub fn apply_damage<E>(
     effects: &mut E,
     definitions: &placement::Definitions<'_, '_>,
     queries: &placement::Queries<'_>,
+    formation: &crate::formation_rules::Definitions,
     pending: RequiresResolve,
 ) -> Result<RequiresExperience, Error<EffectsError<E>>>
 where
@@ -83,6 +86,32 @@ where
 {
     let members = pending.members;
     let d = &members.damage;
+    super::actor(state, d.attacker).map_err(Error::Actor)?;
+    let defender = super::actor(state, d.defender).map_err(Error::Actor)?;
+    let location = if state
+        .world()
+        .map()
+        .plot_at(members.location.x, members.location.y)
+        .is_some()
+    {
+        members.location
+    } else {
+        defender.k_location
+    };
+    if state
+        .world()
+        .map()
+        .plot_at(location.x, location.y)
+        .is_none()
+    {
+        return Err(Error::Missing("Resolve current combat plot"));
+    }
+    if !(formation.combat(state, defender).map_err(Error::Combat)? > 0
+        || formation.ranged(state, defender).map_err(Error::Combat)? > 0
+        || formation.bombard(state, defender).map_err(Error::Combat)? > 0)
+    {
+        return Err(Error::Missing("noncombat defender Resolve branch"));
+    }
     change_damage(
         state,
         sight,
@@ -104,4 +133,160 @@ where
         d.defender.player(),
     )?;
     Ok(RequiresExperience { members })
+}
+
+/// Split-provider variant for one persistent combat backend: sight/report
+/// providers and lifecycle continuations borrow disjoint fields of that owner.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_damage_with_continuations<P, C>(
+    state: &mut LoadedState,
+    sight: &mut sight::Runtime,
+    providers: &mut P,
+    continuations: &mut C,
+    definitions: &placement::Definitions<'_, '_>,
+    queries: &placement::Queries<'_>,
+    formation: &crate::formation_rules::Definitions,
+    pending: RequiresResolve,
+) -> Result<RequiresExperience, Error<EffectsError<P>, C::Error>>
+where
+    P: placement::Effects + loaded_upkeep::FormationRestoreEffects<Error = EffectsError<P>>,
+    C: unit_kill::Continuations<P>,
+{
+    let members = pending.members;
+    let d = &members.damage;
+    super::actor(state, d.attacker).map_err(Error::Actor)?;
+    let defender = super::actor(state, d.defender).map_err(Error::Actor)?;
+    let location = if state
+        .world()
+        .map()
+        .plot_at(members.location.x, members.location.y)
+        .is_some()
+    {
+        members.location
+    } else {
+        defender.k_location
+    };
+    if state
+        .world()
+        .map()
+        .plot_at(location.x, location.y)
+        .is_none()
+    {
+        return Err(Error::Missing("Resolve current combat plot"));
+    }
+    if !(formation.combat(state, defender).map_err(Error::Combat)? > 0
+        || formation.ranged(state, defender).map_err(Error::Combat)? > 0
+        || formation.bombard(state, defender).map_err(Error::Combat)? > 0)
+    {
+        return Err(Error::Missing("noncombat defender Resolve branch"));
+    }
+    for (unit, delta, killed_by) in [
+        (d.defender, d.defender_received, d.attacker.player()),
+        (d.attacker, d.attacker_received, d.defender.player()),
+    ] {
+        placement::change_damage(
+            state,
+            definitions,
+            queries,
+            sight,
+            providers,
+            (unit.player(), unit.id),
+            delta,
+        )
+        .map_err(Error::Damage)?;
+        let damage = super::actor(state, unit).map_err(Error::Actor)?.i_damage;
+        let maximum = definitions
+            .movement
+            .maximum_damage(super::actor(state, unit).map_err(Error::Actor)?)
+            .map_err(Error::Maximum)?;
+        if damage >= maximum {
+            unit_kill::kill_with_continuations(
+                state,
+                sight,
+                providers,
+                continuations,
+                definitions,
+                queries,
+                (unit.player(), unit.id),
+                true,
+                killed_by,
+            )
+            .map_err(|e| Error::Kill(Box::new(e)))?;
+        }
+    }
+    Ok(RequiresExperience { members })
+}
+
+#[derive(Debug)]
+pub enum ExperienceError<E> {
+    Change(super::experience::ChangeError<E>),
+    Query(super::experience::Error),
+    /// Partner discovery is computed; closest-current-unit XP sharing remains
+    /// mandatory on this positive branch and is never silently discarded.
+    JointWarAward {
+        receiving_player: i32,
+        partners: super::experience::JointWarPartners,
+        amount: i32,
+    },
+}
+#[must_use]
+pub struct RequiresCombatAftermath {
+    pub members: GeneratedMembers,
+}
+/// Resolve applies defender XP before attacker XP, then both joint-war awards.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_experience<E: super::experience::Reports>(
+    state: &mut LoadedState,
+    definitions: &super::experience::Definitions,
+    maximum: &crate::formation_movement_cost::Definitions<'_>,
+    levels: &[(i32, u32)],
+    cached_majors: &[i32],
+    effects: &mut E,
+    pending: RequiresExperience,
+) -> Result<RequiresCombatAftermath, ExperienceError<E::Error>> {
+    let members = pending.members;
+    let d = &members.damage;
+    super::experience::change(
+        state,
+        definitions,
+        maximum,
+        levels,
+        d.defender,
+        members.defender_experience,
+        effects,
+    )
+    .map_err(ExperienceError::Change)?;
+    super::experience::change(
+        state,
+        definitions,
+        maximum,
+        levels,
+        d.attacker,
+        members.attacker_experience,
+        effects,
+    )
+    .map_err(ExperienceError::Change)?;
+    for (receiving_player, enemy, amount) in [
+        (
+            d.defender.player(),
+            d.attacker.player(),
+            members.defender_experience,
+        ),
+        (
+            d.attacker.player(),
+            d.defender.player(),
+            members.attacker_experience,
+        ),
+    ] {
+        let partners = super::experience::joint_war_partners(state, levels, cached_majors, enemy)
+            .map_err(ExperienceError::Query)?;
+        if !partners.owners.is_empty() {
+            return Err(ExperienceError::JointWarAward {
+                receiving_player,
+                partners,
+                amount,
+            });
+        }
+    }
+    Ok(RequiresCombatAftermath { members })
 }
