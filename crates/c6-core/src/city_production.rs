@@ -85,6 +85,20 @@ pub struct QueueEntry {
 pub const BUILD_TYPE_HASH: u32 = 0x2c0f4a46;
 
 impl QueueEntry {
+    /// Original MakeRequest(UnitTypes)2822300: ordinary single formation.
+    pub fn train_request(unit_hash: u32) -> Self {
+        Self {
+            type_hash: BUILD_TYPE_HASH,
+            node_type_hash: BUILD_TYPE_HASH,
+            order: Order::Train {
+                unit_hash,
+                military_formation: 0,
+            },
+            flags: 0,
+            request_id: 0,
+            location: [-9999, -9999],
+        }
+    }
     /// External building selection without opaque native operation parameters.
     /// MakeRequest2822180 sets only the building/type. ClassParameters28229b0,
     /// BuildQueueNode285ed00 and CopyFromOperation284ddd0 establish these exact

@@ -6,11 +6,12 @@
 //! must retain that incomplete transition instead of treating it as a completed
 //! turn. No native production policy or host random stream is substituted.
 pub mod appeal;
-pub mod building_yields;
 pub mod building_callbacks;
+pub mod building_yields;
 pub mod buildings;
 pub mod modifier_effects;
 pub mod selection;
+pub mod unit_selection;
 pub mod units;
 
 use c6_core::{
