@@ -32,6 +32,7 @@ pub enum RegistryError {
     Allocation,
     MissingGlobalOrder,
     MissingUnitScopes,
+    MissingUnitLookup(ComponentId),
     MissingPlayerScopes,
     DuplicateScope,
     InvalidSubscription,
@@ -157,6 +158,7 @@ pub struct Registry {
     global: Option<ListenerRing>,
     units: Option<Vec<(ComponentId, ListenerRing)>>,
     players: Option<Vec<(i32, ListenerRing)>>,
+    unit_lookups: Option<Vec<(ComponentId, Option<ListenerRing>)>>,
 }
 impl Registry {
     pub fn new(
@@ -179,7 +181,26 @@ impl Registry {
             global,
             units,
             players,
+            unit_lookups: None,
         })
+    }
+    /// Partial initial/current inputs: each supplied key is either an actual
+    /// present scoped ring or an actual absent map entry. Every unsupplied key
+    /// remains unknown. No complete-map reconstruction is required for one Find.
+    pub fn with_unit_lookups(
+        mut self,
+        lookups: Vec<(ComponentId, Option<ListenerRing>)>,
+    ) -> Result<Self, RegistryError> {
+        if self.units.is_some()
+            || lookups
+                .iter()
+                .enumerate()
+                .any(|(i, a)| lookups[..i].iter().any(|b| a.0 == b.0))
+        {
+            return Err(RegistryError::DuplicateScope);
+        }
+        self.unit_lookups = Some(lookups);
+        Ok(self)
     }
     pub fn global_mut(&mut self) -> Result<&mut ListenerRing, RegistryError> {
         self.global
@@ -190,13 +211,17 @@ impl Registry {
         &mut self,
         id: ComponentId,
     ) -> Result<Option<&mut ListenerRing>, RegistryError> {
-        Ok(self
-            .units
-            .as_mut()
-            .ok_or(RegistryError::MissingUnitScopes)?
-            .iter_mut()
-            .find(|r| r.0 == id)
-            .map(|r| &mut r.1))
+        if let Some(units) = self.units.as_mut() {
+            return Ok(units.iter_mut().find(|r| r.0 == id).map(|r| &mut r.1));
+        }
+        if let Some(lookups) = self.unit_lookups.as_mut() {
+            return lookups
+                .iter_mut()
+                .find(|r| r.0 == id)
+                .map(|r| r.1.as_mut())
+                .ok_or(RegistryError::MissingUnitLookup(id));
+        }
+        Err(RegistryError::MissingUnitScopes)
     }
     pub fn player_mut(&mut self, owner: i32) -> Result<Option<&mut ListenerRing>, RegistryError> {
         Ok(self
@@ -214,13 +239,19 @@ impl Registry {
                 .as_ref()
                 .map(Some)
                 .ok_or(RegistryError::MissingGlobalOrder),
-            Signal::Unit(id) => Ok(self
-                .units
-                .as_ref()
-                .ok_or(RegistryError::MissingUnitScopes)?
-                .iter()
-                .find(|r| r.0 == id)
-                .map(|r| &r.1)),
+            Signal::Unit(id) => {
+                if let Some(units) = self.units.as_ref() {
+                    return Ok(units.iter().find(|r| r.0 == id).map(|r| &r.1));
+                }
+                if let Some(lookups) = self.unit_lookups.as_ref() {
+                    return lookups
+                        .iter()
+                        .find(|r| r.0 == id)
+                        .map(|r| r.1.as_ref())
+                        .ok_or(RegistryError::MissingUnitLookup(id));
+                }
+                Err(RegistryError::MissingUnitScopes)
+            }
             Signal::Player(owner) => Ok(self
                 .players
                 .as_ref()
@@ -558,5 +589,45 @@ mod tests {
             dispatch(&mut f, OLD, NEW),
             Err(Error::Registry(RegistryError::MissingGlobalOrder))
         );
+    }
+    #[test]
+    fn partial_unit_lookup_does_not_turn_unqueried_callback_changed_keys_into_absence() {
+        let mut f = Fixture::new(&[
+            Subscriber::GameEffectsUnitFanout,
+            Subscriber::GameEffectsUnitFanout,
+        ]);
+        let id = ComponentId {
+            owner: 1,
+            component_type: 1,
+            id: 10,
+        };
+        f.registry.units = None;
+        f.registry = f
+            .registry
+            .with_unit_lookups(vec![(
+                id,
+                Some(ListenerRing::from_ordered(&[Subscriber::LuaOnUnitMoved]).unwrap()),
+            )])
+            .unwrap();
+        f.mutate_owner = true;
+        assert_eq!(
+            dispatch(&mut f, OLD, NEW),
+            Err(Error::Registry(RegistryError::MissingUnitLookup(
+                ComponentId {
+                    owner: 7,
+                    component_type: 1,
+                    id: 11
+                }
+            )))
+        );
+        assert_eq!(f.calls.len(), 1);
+        let mut f = Fixture::new(&[
+            Subscriber::GameEffectsUnitFanout,
+            Subscriber::LuaOnUnitMoved,
+        ]);
+        f.registry.units = None;
+        f.registry = f.registry.with_unit_lookups(vec![(id, None)]).unwrap();
+        assert_eq!(dispatch(&mut f, OLD, NEW), Ok(()));
+        assert_eq!(f.calls.len(), 1);
     }
 }
