@@ -613,9 +613,40 @@ pub fn plan_state_phase<'a, 'd, 'capture>(
     }
 }
 
-/// Compute the supported outgoing diplomacy transitions, then require the
-/// finite no-write notification fast path. Unknown callbacks, notification
-/// Update or changed blocking remain explicit semantic frontiers.
+/// Qualify the initial reducer's query effects for the finite stock XP2
+/// source-initialized family. Factory/type identity alone does not authenticate
+/// a native object: the transaction's stock initialization/consumer scope must
+/// be established by its input adapter. No omitted runtime field is filled here.
+fn check_initial_blocking_query_effects(
+    records: &[c6_core::notifications::Notification],
+) -> Result<(), Error> {
+    for record in records {
+        if record.factory_type != record.type_hash {
+            return Err(Error::Unsupported(
+                "initial notification factory/type binding mismatch",
+            ));
+        }
+        match record.factory_type {
+            // Base fallback and PrideMomentRecorded all bind constant-true
+            // phase, Base expiry/blocking and scalar severity. Those queries
+            // only read state, including the unknown default-blocking scalar.
+            0xcb5eed15 | 0x9efbc217 | 0xffad0d16 | 0xba4af0fb | 0xe90d955a | 0x458dcd81
+            | 0x0c19b649 => {}
+            _ => {
+                return Err(Error::Unsupported(
+                    "initial notification subtype query effects",
+                ))
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Compute outgoing diplomacy and qualify the initial notification reduction.
+/// This finite transaction uses pinned stock factory initialization and the
+/// caller-admitted stock consumer scope. The pure Base/Pride reduction may be
+/// omitted without materializing its UI value; Update and any final changed
+/// report still require their own effect plan before a transaction can commit.
 fn plan_aftermath(
     state: &LoadedState,
     owner: i32,
@@ -629,15 +660,18 @@ fn plan_aftermath(
         .map_err(Error::State)?
         .collection(owner)
         .map_err(|e| Error::State(c6_core::loaded_state::Error::PlayerNotifications(e)))?;
-    if !collection.records.is_empty() {
-        return Err(Error::Unsupported(
-            "notification blocking subtype query effects require semantic planning",
-        ));
-    }
+    check_initial_blocking_query_effects(&collection.records)?;
     if !super::notifications::turn_complete(state, owner)
         .map_err(|_| Error::Unsupported("actual Processor turn-complete input"))?
     {
-        return Err(Error::Unsupported("NotificationManager.Update for incomplete turn requires gameplay/RNG effect projection"));
+        return Err(Error::Unsupported("NotificationManager.SendAutoNotify ordered six-subtype query/callback effects require semantic planning"));
+    }
+    if !collection.records.is_empty() {
+        // Query purity does not imply a zero result or absence of the setter's
+        // changed-local report. No action is accepted through this frontier.
+        return Err(Error::Unsupported(
+            "notification final blocking/store/report effects require semantic planning",
+        ));
     }
     if super::notifications::owner_blocking(state, owner)
         .map_err(|_| Error::Unsupported("actual owner blocking input"))?
@@ -753,5 +787,54 @@ impl PreparedSkipTurn {
                 planned_trace: trace,
             }),
         }
+    }
+}
+
+#[cfg(test)]
+mod notification_initial_effect_tests {
+    use super::*;
+    use c6_core::notifications::Notification;
+
+    #[test]
+    fn stock_initial_queries_do_not_require_ui_runtime_values() {
+        let records: Vec<_> = [
+            0xcb5eed15, 0x9efbc217, 0xffad0d16, 0xba4af0fb, 0xe90d955a, 0x458dcd81, 0x0c19b649,
+        ]
+        .into_iter()
+        .map(|hash| Notification {
+            factory_type: hash,
+            type_hash: hash,
+            // Expiry/severity/dismissal affect the UI result, not query purity.
+            severity: i32::MIN,
+            native_188: i32::MAX,
+            is_dismissed: false,
+            ..Notification::default()
+        })
+        .collect();
+        check_initial_blocking_query_effects(&records).unwrap();
+        assert_eq!(records[0].severity, i32::MIN);
+    }
+
+    #[test]
+    fn subtype_override_or_factory_mismatch_is_not_qualified() {
+        let mut record = Notification {
+            factory_type: 0x0c19b649,
+            type_hash: 0xcb5eed15,
+            ..Notification::default()
+        };
+        assert!(matches!(
+            check_initial_blocking_query_effects(&[record.clone()]),
+            Err(Error::Unsupported(
+                "initial notification factory/type binding mismatch"
+            ))
+        ));
+        record.factory_type = 0x12345678;
+        record.type_hash = record.factory_type;
+        assert!(matches!(
+            check_initial_blocking_query_effects(&[record]),
+            Err(Error::Unsupported(
+                "initial notification subtype query effects"
+            ))
+        ));
     }
 }
