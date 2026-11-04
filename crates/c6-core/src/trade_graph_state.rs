@@ -63,6 +63,10 @@ impl GraphState {
     /// this value as current authority. This constructor is not authentication.
     pub fn decode(frame: &[u8], limits: trade::Limits) -> Result<Self, Error> {
         let graph = Graph::decode(frame, limits).map_err(Error::Codec)?;
+        Self::from_graph(graph)
+    }
+    /// Construct current typed graph values without inventing saved bytes.
+    pub fn from_graph(graph: Graph) -> Result<Self, Error> {
         for origin in graph.origins() {
             for destination in &origin.destinations {
                 if vertex_hash(destination.vertex) == u32::MAX {

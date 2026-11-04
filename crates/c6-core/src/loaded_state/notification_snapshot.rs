@@ -36,3 +36,35 @@ impl LoadedState {
         Ok(())
     }
 }
+
+impl LoadedState {
+    /// Install an actual typed initial graph from the same observed runtime.
+    /// This does not supply omitted live Route fields or captured yield answers.
+    pub fn install_current_trade_graph(
+        &mut self,
+        witness: &ObservedSnapshotWitness,
+        graph: crate::trade::Graph,
+    ) -> Result<(), Error> {
+        if self.trade_graph.is_some() {
+            return Err(Error::AlreadyBound);
+        }
+        if !self.is_pristine() {
+            return Err(Error::NotPristine);
+        }
+        if self.observed_snapshot.as_ref() != Some(witness) {
+            return Err(Error::Binding);
+        }
+        let records = graph
+            .edge_count()
+            .checked_add(graph.origins().len())
+            .ok_or(Error::ResourceLimit)?;
+        if records > self.limits.max_runtime_array_items {
+            return Err(Error::ResourceLimit);
+        }
+        let graph =
+            crate::trade_graph_state::GraphState::from_graph(graph).map_err(Error::TradeGraph)?;
+        self.advance_admission_generation()?;
+        self.trade_graph = Some(graph);
+        Ok(())
+    }
+}
