@@ -10,6 +10,31 @@ use std::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct OperationNodeId(u64);
 
+/// Native retained pointer semantics expressed without a physical address.
+/// The slot remains fixed when payloads shift; it is not an occurrence ID.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct OperationStorageHandle {
+    owner: u64,
+    allocation: u64,
+    slot: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OperationStorageError {
+    InvalidCapacity,
+    UnknownCapacityGrowth,
+    QueueReplaced,
+    /// A second growth could reuse an older freed allocation's address. That
+    /// allocator behavior is not inferred from abstract allocation generations.
+    OlderAllocationReuse,
+}
+impl fmt::Display for OperationStorageError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for OperationStorageError {}
+
 fn fresh_id() -> OperationNodeId {
     static NEXT: AtomicU64 = AtomicU64::new(1);
     OperationNodeId(
@@ -25,12 +50,117 @@ fn fresh_id() -> OperationNodeId {
 /// Node-field edits preserve the occurrence. Cloning or replacing this queue
 /// creates new occurrences, even when all copied payloads compare equal.
 /// IDs do not participate in equality, iteration order, encoding or gameplay RNG.
-#[derive(Default)]
 pub struct OperationNodes {
     entries: Vec<OperationNode>,
     ids: Vec<OperationNodeId>,
+    storage_owner: u64,
+    allocation: Option<u64>,
+    capacity: Option<u32>,
+    minimum_capacity: u32,
+}
+impl Default for OperationNodes {
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+            ids: Vec::new(),
+            storage_owner: fresh_id().0,
+            allocation: Some(0),
+            capacity: Some(0),
+            minimum_capacity: 0,
+        }
+    }
 }
 impl OperationNodes {
+    /// Install an actual initial native capacity before any retained callback
+    /// can grow the queue. Wire count alone does not establish this field.
+    pub fn bind_native_capacity(&mut self, capacity: u32) -> Result<(), OperationStorageError> {
+        if capacity < self.minimum_capacity
+            || (capacity != 0 && capacity < 4)
+            || self.capacity.is_some_and(|old| old != capacity)
+        {
+            return Err(OperationStorageError::InvalidCapacity);
+        }
+        if self.allocation.is_none() {
+            return Err(OperationStorageError::UnknownCapacityGrowth);
+        }
+        self.capacity = Some(capacity);
+        self.minimum_capacity = capacity;
+        Ok(())
+    }
+    pub fn native_capacity(&self) -> Option<u32> {
+        self.capacity
+    }
+    pub fn front_storage(&self) -> Result<Option<OperationStorageHandle>, OperationStorageError> {
+        if self.entries.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(OperationStorageHandle {
+            owner: self.storage_owner,
+            allocation: self
+                .allocation
+                .ok_or(OperationStorageError::UnknownCapacityGrowth)?,
+            slot: 0,
+        }))
+    }
+    fn storage_index(
+        &self,
+        handle: OperationStorageHandle,
+    ) -> Result<Option<usize>, OperationStorageError> {
+        if handle.owner != self.storage_owner {
+            return Err(OperationStorageError::QueueReplaced);
+        }
+        let allocation = self
+            .allocation
+            .ok_or(OperationStorageError::UnknownCapacityGrowth)?;
+        if allocation == handle.allocation {
+            return Ok((handle.slot < self.entries.len()).then_some(handle.slot));
+        }
+        if handle.allocation.checked_add(1) == Some(allocation) {
+            // New buffer is allocated before the retained old buffer is freed.
+            return Ok(None);
+        }
+        Err(OperationStorageError::OlderAllocationReuse)
+    }
+    pub fn storage_is_front(
+        &self,
+        handle: OperationStorageHandle,
+    ) -> Result<bool, OperationStorageError> {
+        Ok(self.storage_index(handle)? == Some(0))
+    }
+    /// Native Queue::Remove scans current element addresses, not payload IDs.
+    /// A shifted/replaced payload at the retained slot is the one removed.
+    pub fn remove_storage(
+        &mut self,
+        handle: OperationStorageHandle,
+    ) -> Result<Option<OperationNode>, OperationStorageError> {
+        Ok(self.storage_index(handle)?.map(|index| self.remove(index)))
+    }
+    fn grow_for(&mut self, count: usize) {
+        let count = u32::try_from(count).expect("operation queue exceeds native u32 extent");
+        if let Some(capacity) = self.capacity {
+            if count <= capacity {
+                return;
+            }
+            // AllocLinearBlock(count,false), original wrapping u32 arithmetic.
+            let next = if count <= 4 {
+                4
+            } else {
+                count.max(capacity.wrapping_mul(2))
+            };
+            self.capacity = Some(next);
+            self.minimum_capacity = next;
+            self.allocation = self.allocation.and_then(|epoch| epoch.checked_add(1));
+        } else if self.minimum_capacity == 0 && count <= 4 {
+            // An initially empty imported queue has no retained element. Its
+            // first current allocation can be named without inferring capacity.
+            self.minimum_capacity = 4;
+        } else if count > self.minimum_capacity {
+            // Unknown imported capacity might already fit or require growth.
+            // Preserve payload execution but never invent retained-pointer parity.
+            self.allocation = None;
+            self.minimum_capacity = count;
+        }
+    }
     pub fn as_slice(&self) -> &[OperationNode] {
         &self.entries
     }
@@ -67,6 +197,7 @@ impl OperationNodes {
             "operation insertion index out of bounds"
         );
         let id = fresh_id();
+        self.grow_for(self.entries.len() + 1);
         self.entries.insert(index, node);
         self.ids.insert(index, id);
     }
@@ -99,7 +230,21 @@ impl OperationNodes {
 impl From<Vec<OperationNode>> for OperationNodes {
     fn from(entries: Vec<OperationNode>) -> Self {
         let ids = (0..entries.len()).map(|_| fresh_id()).collect();
-        Self { entries, ids }
+        let minimum_capacity = if entries.is_empty() {
+            0
+        } else {
+            u32::try_from(entries.len())
+                .expect("operation queue exceeds native u32 extent")
+                .max(4)
+        };
+        Self {
+            entries,
+            ids,
+            storage_owner: fresh_id().0,
+            allocation: Some(0),
+            capacity: None,
+            minimum_capacity,
+        }
     }
 }
 impl Clone for OperationNodes {
@@ -166,7 +311,7 @@ mod tests {
         }
     }
     #[test]
-    fn retained_duplicate_occurrence_survives_insertion_before_callback() {
+    fn occurrence_metadata_survives_insertion_without_claiming_native_pointer_identity() {
         let mut queue: OperationNodes = vec![node(), node()].into();
         let selected = queue.front_id().unwrap();
         let tail = queue.id_at(1).unwrap();
@@ -203,5 +348,84 @@ mod tests {
         assert_eq!(queue, decoded);
         assert_ne!(queue.nodes.front_id(), decoded.nodes.front_id());
         assert_eq!(bytes, decoded.encode(Limits::default()).unwrap());
+    }
+    #[test]
+    fn native_retained_slot_removes_current_shifted_payload_instead_of_old_occurrence() {
+        let mut queue = OperationNodes::default();
+        queue.push(node());
+        queue.push(node());
+        let retained = queue.front_storage().unwrap().unwrap();
+        let original = queue.front_id().unwrap();
+        // PushFront within capacity4 shifts the original payload, while the
+        // native retained pointer still addresses slot0 (now the inserted node).
+        queue.insert(0, node());
+        let inserted = queue.front_id().unwrap();
+        assert_ne!(inserted, original);
+        assert_eq!(queue.remove_storage(retained), Ok(Some(node())));
+        assert_eq!(queue.front_id(), Some(original));
+        assert!(queue.get_by_id(inserted).is_none());
+    }
+    #[test]
+    fn clear_and_repopulate_preserve_native_slot_alias_even_for_identical_payload() {
+        let mut queue = OperationNodes::default();
+        queue.push(node());
+        let retained = queue.front_storage().unwrap().unwrap();
+        let original = queue.front_id();
+        queue.clear();
+        queue.push(node());
+        assert_ne!(queue.front_id(), original);
+        assert_eq!(queue.native_capacity(), Some(4));
+        assert_eq!(queue.remove_storage(retained), Ok(Some(node())));
+        assert!(queue.is_empty());
+    }
+    #[test]
+    fn first_growth_cannot_reuse_retained_live_allocation_and_clear_keeps_capacity() {
+        let mut queue = OperationNodes::default();
+        for _ in 0..4 {
+            queue.push(node());
+        }
+        let old = queue.front_storage().unwrap().unwrap();
+        queue.push(node());
+        assert_eq!(queue.native_capacity(), Some(8));
+        assert_eq!(queue.remove_storage(old), Ok(None));
+        assert_eq!(queue.len(), 5);
+        let current = queue.front_storage().unwrap().unwrap();
+        queue.clear();
+        queue.push(node());
+        assert_eq!(queue.native_capacity(), Some(8));
+        assert_eq!(queue.remove_storage(current), Ok(Some(node())));
+    }
+    #[test]
+    fn unknown_imported_capacity_is_required_only_for_ambiguous_growth() {
+        let mut queue: OperationNodes = vec![node(); 4].into();
+        let retained = queue.front_storage().unwrap().unwrap();
+        queue.push(node());
+        assert_eq!(
+            queue.remove_storage(retained),
+            Err(OperationStorageError::UnknownCapacityGrowth)
+        );
+        assert_eq!(queue.len(), 5);
+        let mut admitted: OperationNodes = vec![node(); 4].into();
+        admitted.bind_native_capacity(8).unwrap();
+        let retained = admitted.front_storage().unwrap().unwrap();
+        admitted.push(node());
+        assert_eq!(admitted.remove_storage(retained), Ok(Some(node())));
+    }
+    #[test]
+    fn multiple_growths_do_not_invent_old_freed_address_reuse_behavior() {
+        let mut queue = OperationNodes::default();
+        for _ in 0..4 {
+            queue.push(node());
+        }
+        let retained = queue.front_storage().unwrap().unwrap();
+        for _ in 0..5 {
+            queue.push(node());
+        }
+        assert_eq!(queue.native_capacity(), Some(16));
+        assert_eq!(
+            queue.remove_storage(retained),
+            Err(OperationStorageError::OlderAllocationReuse)
+        );
+        assert_eq!(queue.len(), 9);
     }
 }

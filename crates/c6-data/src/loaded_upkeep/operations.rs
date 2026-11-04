@@ -1,0 +1,290 @@
+//! Stock operation callbacks and retained native storage-slot deletion.
+use super::*;
+use crate::loaded_actions::IdentityReport;
+use c6_core::{
+    unit::{ComponentId, ALERT_HASH, FORTIFY_HASH, MOVE_TO_HASH, SKIP_TURN_HASH},
+    unit_operations_clear::{self, BaseDeactivationContext, OperationDeactivatedReport},
+};
+
+/// Required synchronous operation subscribers. They may mutate authoritative
+/// Unit fields and queues through canonical OperationNodes methods. Preflight
+/// admits all reached gameplay/RNG effects; collecting reports is insufficient.
+pub trait OperationReports {
+    type Error;
+    fn preflight_operation_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+        report: IdentityReport,
+    ) -> Result<(), Self::Error>;
+    fn operation_report(
+        &mut self,
+        state: &mut LoadedState,
+        report: IdentityReport,
+    ) -> Result<i32, Self::Error>;
+}
+impl<C> OperationReports for RulesEffects<'_, C>
+where
+    C: Continuations + OperationReports<Error = <C as Continuations>::Error>,
+{
+    type Error = RulesEffectError<<C as Continuations>::Error>;
+    fn preflight_operation_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+        report: IdentityReport,
+    ) -> Result<(), Self::Error> {
+        self.continuations
+            .preflight_operation_report(state, actor, report)
+            .map_err(RulesEffectError::Continuation)
+    }
+    fn operation_report(
+        &mut self,
+        state: &mut LoadedState,
+        report: IdentityReport,
+    ) -> Result<i32, Self::Error> {
+        self.continuations
+            .operation_report(state, report)
+            .map_err(RulesEffectError::Continuation)
+    }
+}
+fn identity<E>(state: &LoadedState, actor: UnitHandle) -> Result<ComponentId, Error<E>> {
+    let unit = actor.get(state).map_err(Error::World)?;
+    Ok(ComponentId {
+        owner: unit.e_owner as i16,
+        component_type: 1,
+        id: unit.id,
+    })
+}
+fn emit<E: OperationReports>(
+    state: &mut LoadedState,
+    actor: UnitHandle,
+    effects: &mut E,
+    report: IdentityReport,
+) -> Result<(), Error<E::Error>> {
+    effects
+        .preflight_operation_report(state, actor, report)
+        .map_err(Error::Provider)?;
+    effects
+        .operation_report(state, report)
+        .map_err(Error::Provider)?;
+    Ok(())
+}
+// Only splits the existing setter at its synchronous report boundary. This
+// recorder executes no subscriber and supplies no native result; the real
+// required delivery immediately follows after the mutable Unit borrow ends.
+struct ActivityBoundary(Option<c6_core::skip_turn::IdentityIntReport>);
+impl c6_core::skip_turn::StartEffects for ActivityBoundary {
+    fn mark_activity_dirty(&mut self, _: &Unit, _: u32) {
+        unreachable!("local-authority transport excluded");
+    }
+    fn send(&mut self, _: &mut Unit, report: c6_core::skip_turn::IdentityIntReport) -> i32 {
+        self.0 = Some(report);
+        0
+    }
+}
+pub(super) fn set_activity<E: OperationReports>(
+    state: &mut LoadedState,
+    actor: UnitHandle,
+    effects: &mut E,
+    activity: i32,
+) -> Result<(), Error<E::Error>> {
+    if actor.get(state).map_err(Error::World)?.e_activity == activity {
+        return Ok(());
+    }
+    let id = identity(state, actor)?;
+    let report = IdentityReport {
+        event: 0xe23b112d,
+        subtype: 0,
+        identity: id,
+        first: Some(activity),
+        second: None,
+    };
+    effects
+        .preflight_operation_report(state, actor, report)
+        .map_err(Error::Provider)?;
+    let mut boundary = ActivityBoundary(None);
+    c6_core::skip_turn::set_activity(
+        actor.get_mut(state).map_err(Error::State)?,
+        id,
+        activity,
+        false,
+        &mut boundary,
+    )
+    .map_err(|_| Error::Unsupported("current activity identity"))?;
+    if boundary.0.is_some() {
+        effects
+            .operation_report(state, report)
+            .map_err(Error::Provider)?;
+    }
+    Ok(())
+}
+fn clear_path<E>(state: &mut LoadedState, actor: UnitHandle) -> Result<(), Error<E>> {
+    let unit = actor.get(state).map_err(Error::World)?;
+    if state
+        .unit_runtime(unit.e_owner, unit.id)
+        .map_err(Error::State)?
+        .formation
+        .is_none()
+    {
+        return Ok(());
+    }
+    let unit = actor.get(state).map_err(Error::World)?;
+    let formation = state
+        .unit_runtime(unit.e_owner, unit.id)
+        .map_err(Error::State)?
+        .formation
+        .ok_or(Error::Unsupported("current Formation attachment changed"))?;
+    let (record, runtime) = state
+        .formation_with_runtime_mut(formation.owner, formation.requested_id)
+        .map_err(Error::State)?;
+    runtime
+        .clear_path_cache(record)
+        .map_err(Error::FormationRuntime)
+}
+struct Base<'s, E> {
+    state: &'s mut LoadedState,
+    actor: UnitHandle,
+    effects: &'s mut E,
+}
+impl<E: OperationReports> BaseDeactivationContext for Base<'_, E> {
+    type Error = Error<E::Error>;
+    fn unit(&self) -> Result<&Unit, Self::Error> {
+        self.actor.get(self.state).map_err(Error::World)
+    }
+    fn local_player(&self) -> Result<i32, Self::Error> {
+        Ok(self.state.retained().core.local_player)
+    }
+    fn send_operation_deactivated(
+        &mut self,
+        report: OperationDeactivatedReport,
+    ) -> Result<(), Self::Error> {
+        emit(
+            self.state,
+            self.actor,
+            self.effects,
+            IdentityReport {
+                event: report.event_hash,
+                subtype: 0,
+                identity: report.identity,
+                first: Some(report.operation_hash as i32),
+                second: Some(i32::from(report.ready_to_select)),
+            },
+        )
+    }
+}
+
+/// Original PopFront selects the current front on entry, then retains its
+/// allocation/slot through handler callbacks. DeleteNode compares that token to
+/// current Front, deactivates only on equality, and removes the CURRENT payload
+/// at the retained slot. Occurrence IDs do not substitute for this behavior.
+/// Completed effects survive errors; unknown capacity/reuse and unsupported
+/// handlers remain explicit limits, never a removal of an arbitrary Vec front.
+pub fn pop_front_operation<E: OperationReports>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    effects: &mut E,
+) -> Result<(), Error<E::Error>> {
+    let actor = UnitHandle { owner, id };
+    let Some(selected) = actor
+        .get(state)
+        .map_err(Error::World)?
+        .k_operations
+        .nodes
+        .front_storage()
+        .map_err(Error::OperationStorage)?
+    else {
+        return Ok(());
+    };
+    let hash = actor.get(state).map_err(Error::World)?.k_operations.nodes[0].operation_hash;
+    match hash {
+        ALERT_HASH => {
+            if actor.get(state).map_err(Error::World)?.e_activity == 0xd0aed661_u32 as i32 {
+                set_activity(state, actor, effects, unit_operations_clear::ACTIVITY_AWAKE)?;
+            }
+        }
+        SKIP_TURN_HASH | FORTIFY_HASH => {}
+        MOVE_TO_HASH
+            if !actor
+                .get(state)
+                .map_err(Error::World)?
+                .b_needs_movement_completion => {}
+        _ => {
+            return Err(Error::Unsupported(
+                "selected handler Deactivate continuation",
+            ))
+        }
+    }
+    let delete = !unit_operations_clear::deactivate_base_handler(
+        &mut Base {
+            state,
+            actor,
+            effects,
+        },
+        hash,
+    )?;
+    if delete {
+        if actor
+            .get(state)
+            .map_err(Error::World)?
+            .k_operations
+            .nodes
+            .storage_is_front(selected)
+            .map_err(Error::OperationStorage)?
+            && !actor
+                .get(state)
+                .map_err(Error::World)?
+                .k_operations
+                .nodes
+                .is_empty()
+        {
+            if actor.get(state).map_err(Error::World)?.e_activity
+                == unit_operations_clear::ACTIVITY_OPERATION
+            {
+                set_activity(state, actor, effects, unit_operations_clear::ACTIVITY_AWAKE)?;
+            }
+            actor
+                .get_mut(state)
+                .map_err(Error::State)?
+                .i_operation_timer = 0;
+        }
+        actor
+            .get_mut(state)
+            .map_err(Error::State)?
+            .k_operations
+            .nodes
+            .remove_storage(selected)
+            .map_err(Error::OperationStorage)?;
+        if actor
+            .get(state)
+            .map_err(Error::World)?
+            .k_operations
+            .nodes
+            .is_empty()
+        {
+            clear_path(state, actor)?;
+        }
+    }
+    if actor
+        .get(state)
+        .map_err(Error::World)?
+        .k_operations
+        .nodes
+        .is_empty()
+    {
+        emit(
+            state,
+            actor,
+            effects,
+            IdentityReport {
+                event: 0x383669f1,
+                subtype: 0,
+                identity: identity(state, actor)?,
+                first: None,
+                second: None,
+            },
+        )?;
+    }
+    Ok(())
+}

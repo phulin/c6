@@ -809,6 +809,43 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn unrelated_unit_callback_fields_preserve_retained_operation_storage() {
+        let mut context = SourceOnlyContext::new(2, 3, 19);
+        context
+            .actor
+            .k_operations
+            .nodes
+            .push(crate::unit::OperationNode {
+                operation_hash: crate::unit::SKIP_TURN_HASH,
+                directive: 0,
+                flags: 0,
+                push_turn: 0,
+                previous_activity: 0,
+                previous_automation: -1,
+                parameters: crate::unit::OperationParameters::None,
+            });
+        let retained = context
+            .actor
+            .k_operations
+            .nodes
+            .front_storage()
+            .unwrap()
+            .unwrap();
+        let occurrence = context.actor.k_operations.nodes.front_id();
+        context.mutate_report = true;
+        assert_eq!(
+            restore_attacks_remaining(&mut context),
+            Ok(RestoreAttacksOutcome::Reported)
+        );
+        assert_eq!(context.actor.i_damage, 64);
+        assert_eq!(context.actor.k_operations.nodes.front_id(), occurrence);
+        assert_eq!(
+            context.actor.k_operations.nodes.storage_is_front(retained),
+            Ok(true)
+        );
+    }
+
+    #[test]
     fn source_only_failed_report_retains_assignment_and_prior_world_effects() {
         let mut context = SourceOnlyContext::new(3, 4, 19);
         context.fail_report = true;

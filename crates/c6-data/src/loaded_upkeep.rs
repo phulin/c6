@@ -9,6 +9,7 @@ mod activation;
 pub use activation::activate_unit;
 mod alert;
 pub use alert::{alert_enemy_visible, AlertVisibility};
+mod operations;
 use c6_core::{
     formation_upkeep::{self, BooleanQuery, FormationUpkeepContext, IntegerQuery},
     loaded_state::LoadedState,
@@ -18,6 +19,7 @@ use c6_core::{
         self, AttacksRemainingReport, MovementReport, RestoreAttacksContext, RestoreMovementContext,
     },
 };
+pub use operations::{pop_front_operation, OperationReports};
 
 /// Identity of a retained collection slot, independent of mutable Unit ID/owner.
 /// Native Find resolves generation bits through the low sixteen slot bits.
@@ -56,6 +58,8 @@ pub enum Error<E> {
     Movement(unit_movement_state::Error),
     Rules(crate::loaded_actions::Error),
     Unsupported(&'static str),
+    OperationStorage(c6_core::unit::OperationStorageError),
+    FormationRuntime(c6_core::formation_initialization::Error),
     Provider(E),
     Formation(Box<formation_upkeep::FormationUpkeepError<Error<E>>>),
 }

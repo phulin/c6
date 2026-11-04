@@ -65,8 +65,11 @@ where
             .map_err(Error::Provider)
     }
 }
-impl<E: Effects> ClearOperationsContext for Activation<'_, '_, '_, '_, E> {
-    type Error = Error<E::Error>;
+impl<E> ClearOperationsContext for Activation<'_, '_, '_, '_, E>
+where
+    E: Effects + OperationReports<Error = <E as Effects>::Error>,
+{
+    type Error = Error<<E as Effects>::Error>;
     fn unit(&self) -> Result<&Unit, Self::Error> {
         self.movement.unit()
     }
@@ -76,10 +79,12 @@ impl<E: Effects> ClearOperationsContext for Activation<'_, '_, '_, '_, E> {
         ))
     }
     fn pop_front_operation(&mut self) -> Result<(), Self::Error> {
-        // Never approximate retained native node identity by removing Vec[0].
-        Err(Error::Unsupported(
-            "turn-start identity-preserving PopFront continuation",
-        ))
+        operations::pop_front_operation(
+            self.movement.state,
+            self.movement.actor.owner,
+            self.movement.actor.id,
+            self.movement.effects,
+        )
     }
     fn clear_current_formation_path(&mut self) -> Result<(), Self::Error> {
         Err(Error::Unsupported(
@@ -89,7 +94,9 @@ impl<E: Effects> ClearOperationsContext for Activation<'_, '_, '_, '_, E> {
 }
 impl<E> OperationsTurnStartContext for Activation<'_, '_, '_, '_, E>
 where
-    E: Effects + AlertVisibility<Error = <E as Effects>::Error>,
+    E: Effects
+        + AlertVisibility<Error = <E as Effects>::Error>
+        + OperationReports<Error = <E as Effects>::Error>,
 {
     fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
         self.movement.unit_mut()
@@ -109,9 +116,13 @@ where
                 )? {
                     Ok(false)
                 } else {
-                    Err(Error::Unsupported(
-                        "Alert awakening report and identity-preserving PopFront continuation",
-                    ))
+                    operations::set_activity(
+                        self.movement.state,
+                        self.movement.actor,
+                        self.movement.effects,
+                        c6_core::unit_operations_clear::ACTIVITY_AWAKE,
+                    )?;
+                    Ok(true)
                 }
             }
             _ => Err(Error::Unsupported(
@@ -164,7 +175,8 @@ impl<E> UnitTurnStartContext for Activation<'_, '_, '_, '_, E>
 where
     E: Effects
         + AttacksReports<Error = <E as Effects>::Error>
-        + AlertVisibility<Error = <E as Effects>::Error>,
+        + AlertVisibility<Error = <E as Effects>::Error>
+        + OperationReports<Error = <E as Effects>::Error>,
 {
     fn current_unit_manager(&mut self) -> Result<(), Error<<E as Effects>::Error>> {
         // XP2 registers the concrete stock factory. Native addresses and vptrs
@@ -200,7 +212,8 @@ pub fn activate_unit<E>(
 where
     E: Effects
         + AttacksReports<Error = <E as Effects>::Error>
-        + AlertVisibility<Error = <E as Effects>::Error>,
+        + AlertVisibility<Error = <E as Effects>::Error>
+        + OperationReports<Error = <E as Effects>::Error>,
 {
     unit_turn_start::activate_unit(&mut Activation {
         movement: Movement {

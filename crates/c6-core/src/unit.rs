@@ -11,7 +11,9 @@
 mod operation_nodes;
 mod state;
 pub mod variants;
-pub use operation_nodes::{OperationNodeId, OperationNodes};
+pub use operation_nodes::{
+    OperationNodeId, OperationNodes, OperationStorageError, OperationStorageHandle,
+};
 pub use state::*;
 
 /// The original registered SkipTurn operation hash, never a numeric handler ID.
