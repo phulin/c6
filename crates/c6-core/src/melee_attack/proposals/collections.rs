@@ -15,6 +15,7 @@ pub enum Error<E> {
 #[derive(Debug)]
 pub struct Runtime {
     collections: Vec<(u64, Collection)>,
+    changed: Option<Vec<(u64, ListenerRing<u64>)>>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Kind {
@@ -42,7 +43,48 @@ impl Runtime {
                 return Err(entry.0);
             }
         }
-        Ok(Self { collections })
+        Ok(Self {
+            collections,
+            changed: None,
+        })
+    }
+    /// The separate SimpleCollection.GetOnChanged signal (+0x28), supplied
+    /// from the same current collection owner when a destructor reaches it.
+    pub fn with_changed_signals(
+        mut self,
+        changed: Vec<(u64, ListenerRing<u64>)>,
+    ) -> Result<Self, RegistryError> {
+        self.bind_changed_signals(changed)?;
+        Ok(self)
+    }
+    pub fn bind_changed_signals(
+        &mut self,
+        changed: Vec<(u64, ListenerRing<u64>)>,
+    ) -> Result<(), RegistryError> {
+        if self.changed.is_some()
+            || changed.iter().enumerate().any(|(index, row)| {
+                self.collection(row.0).is_none()
+                    || changed[..index].iter().any(|other| other.0 == row.0)
+            })
+        {
+            return Err(RegistryError::DuplicateScope);
+        }
+        self.changed = Some(changed);
+        Ok(())
+    }
+    pub fn unsubscribe_changed_receiver(
+        &mut self,
+        collection: u64,
+        receiver: u64,
+    ) -> Result<(), RegistryError> {
+        let ring = self
+            .changed
+            .as_mut()
+            .and_then(|rows| rows.iter_mut().find(|row| row.0 == collection))
+            .map(|row| &mut row.1)
+            .ok_or(RegistryError::MissingGlobalOrder)?;
+        let subscription = ring.subscription_for(|route| route == receiver)?;
+        ring.unsubscribe(subscription)
     }
     pub fn collection(&self, id: u64) -> Option<&Collection> {
         self.collections.iter().find(|v| v.0 == id).map(|v| &v.1)
@@ -155,6 +197,30 @@ pub fn add_typed_item<Item, C: Context<Item>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn destructor_unsubscribes_distinct_changed_and_item_signals() {
+        let mut runtime = Runtime::from_initial(vec![(
+            5,
+            Collection {
+                kind: None,
+                added: ListenerRing::from_ordered(&[7]).unwrap(),
+            },
+        )])
+        .unwrap();
+        assert_eq!(
+            runtime.unsubscribe_changed_receiver(5, 7),
+            Err(RegistryError::MissingGlobalOrder)
+        );
+        runtime
+            .bind_changed_signals(vec![(5, ListenerRing::from_ordered(&[7]).unwrap())])
+            .unwrap();
+        runtime.unsubscribe_changed_receiver(5, 7).unwrap();
+        runtime.unsubscribe_added_receiver(5, 7).unwrap();
+        assert_eq!(
+            runtime.unsubscribe_changed_receiver(5, 7),
+            Err(RegistryError::InvalidSubscription)
+        );
+    }
     use crate::{
         map::UnitReference,
         melee_attack::proposals::registry::{Proposal, Runtime as Proposals},
