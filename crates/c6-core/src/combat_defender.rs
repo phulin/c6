@@ -45,6 +45,49 @@ pub fn select_default<C: Context>(c: &mut C) -> Result<Option<C::Unit>, C::Error
     Ok(best)
 }
 
+/// GetBestDefender flags0x9/0x19 with a nonnull attacker. These profiles examine
+/// all eligible units (bit8), require enemies (bit1), and use actual visibility.
+pub trait MeleeContext: Context {
+    fn is_enemy(&mut self, candidate_owner: i32, actor_owner: i32) -> Result<bool, Self::Error>;
+    fn visible(&mut self, unit: Self::Unit) -> Result<bool, Self::Error>;
+    fn domain(&mut self, unit: Self::Unit) -> Result<i32, Self::Error>;
+    fn attacker_religious_strength(&mut self) -> Result<i32, Self::Error>;
+    fn religious_strength(&mut self, unit: Self::Unit) -> Result<i32, Self::Error>;
+}
+pub fn select_melee<C: MeleeContext>(
+    c: &mut C,
+    actor_owner: i32,
+    exclude_air: bool,
+) -> Result<Option<C::Unit>, C::Error> {
+    let mut best = None;
+    let mut index = 0;
+    while index < c.candidate_count()? {
+        if let Some(unit) = c.resolve(index)? {
+            let mut eligible = false;
+            if !c.delayed_death(unit)? && c.owner(unit)? != actor_owner {
+                let owner = c.owner(unit)?;
+                eligible = c.is_enemy(owner, actor_owner)?
+                    && c.visible(unit)?
+                    && (!exclude_air || c.domain(unit)? != 1);
+            }
+            if eligible {
+                if c.attacker_religious_strength()? > 0 && c.religious_strength(unit)? > 0 {
+                    return Ok(Some(unit));
+                }
+                let replace = match best {
+                    None => true,
+                    Some(old) => c.combat_false(unit)? > c.combat_false(old)?,
+                };
+                if replace {
+                    best = Some(unit)
+                }
+            }
+        }
+        index += 1;
+    }
+    Ok(best)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,6 +101,10 @@ mod tests {
         units: Vec<Option<Unit>>,
         calls: Vec<(usize, &'static str)>,
         fail: Option<(usize, &'static str)>,
+        visible: Vec<bool>,
+        domain: Vec<i32>,
+        religion: Vec<i32>,
+        attacker_religion: i32,
     }
     impl C {
         fn new(strengths: &[[i32; 3]]) -> Self {
@@ -74,6 +121,10 @@ mod tests {
                     .collect(),
                 calls: vec![],
                 fail: None,
+                visible: vec![true; strengths.len()],
+                domain: vec![2; strengths.len()],
+                religion: vec![0; strengths.len()],
+                attacker_religion: 0,
             }
         }
         fn query(&mut self, index: usize, name: &'static str) -> Result<Unit, &'static str> {
@@ -83,6 +134,79 @@ mod tests {
             }
             Ok(self.units[index].unwrap())
         }
+    }
+    impl MeleeContext for C {
+        fn is_enemy(&mut self, a: i32, _: i32) -> Result<bool, Self::Error> {
+            self.calls.push((a as usize, "enemy"));
+            Ok(a == 1)
+        }
+        fn visible(&mut self, u: usize) -> Result<bool, Self::Error> {
+            self.query(u, "visible")?;
+            Ok(self.visible[u])
+        }
+        fn domain(&mut self, u: usize) -> Result<i32, Self::Error> {
+            self.query(u, "domain")?;
+            Ok(self.domain[u])
+        }
+        fn attacker_religious_strength(&mut self) -> Result<i32, Self::Error> {
+            self.calls.push((usize::MAX, "actorReligion"));
+            Ok(self.attacker_religion)
+        }
+        fn religious_strength(&mut self, u: usize) -> Result<i32, Self::Error> {
+            self.query(u, "religion")?;
+            Ok(self.religion[u])
+        }
+    }
+    #[test]
+    fn melee_filters_owner_enemy_visibility_air_before_any_strength_query() {
+        let mut c = C::new(&[[0, 0, 0]; 4]);
+        for u in &mut c.units {
+            u.as_mut().unwrap().owner = 1;
+        }
+        c.units[0].as_mut().unwrap().owner = 0;
+        c.units[1].as_mut().unwrap().owner = 2;
+        c.visible[2] = false;
+        c.domain[3] = 1;
+        assert_eq!(select_melee(&mut c, 0, true), Ok(None));
+        assert!(!c.calls.iter().any(|(_, q)| *q == "combat"));
+        assert!(!c.calls.contains(&(1, "visible")));
+        assert!(!c.calls.contains(&(2, "domain")));
+        c.calls.clear();
+        c.domain[3] = 2;
+        c.fail = Some((3, "combat"));
+        assert_eq!(select_melee(&mut c, 0, true), Ok(Some(3))); // bit8 has no IsCombat filter
+    }
+    #[test]
+    fn melee_profile9_allows_air_and_keeps_first_tie_without_iscombat_queries() {
+        let mut c = C::new(&[[10, 0, 0]; 2]);
+        for u in &mut c.units {
+            u.as_mut().unwrap().owner = 1;
+        }
+        c.domain[0] = 1;
+        assert_eq!(select_melee(&mut c, 0, false), Ok(Some(0)));
+        let combat: Vec<_> = c
+            .calls
+            .iter()
+            .filter(|(_, q)| *q == "combat")
+            .copied()
+            .collect();
+        assert_eq!(combat, [(1, "combat"), (0, "combat")]);
+        assert!(!c.calls.iter().any(|(_, q)| *q == "domain"));
+        c.calls.clear();
+        assert_eq!(select_melee(&mut c, 0, true), Ok(Some(1)));
+        assert!(!c.calls.iter().any(|(_, q)| *q == "combat"));
+    }
+    #[test]
+    fn melee_first_religious_match_returns_before_strength_and_later_candidates() {
+        let mut c = C::new(&[[0, 0, 0]; 3]);
+        for u in &mut c.units {
+            u.as_mut().unwrap().owner = 1;
+        }
+        c.attacker_religion = 5;
+        c.religion[1] = 8;
+        assert_eq!(select_melee(&mut c, 0, false), Ok(Some(1)));
+        assert!(!c.calls.iter().any(|(_, q)| *q == "combat"));
+        assert!(!c.calls.contains(&(2, "resolve")));
     }
     impl Context for C {
         type Error = &'static str;

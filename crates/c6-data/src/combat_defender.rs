@@ -23,16 +23,35 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-struct Current<'a, 'd> {
+pub(crate) struct Current<'a, 'd> {
     state: &'a LoadedState,
     definitions: &'d formation_rules::Definitions,
     index: u32,
+    layer: u32,
 }
-impl<'a> Current<'a, '_> {
+impl<'a, 'd> Current<'a, 'd> {
+    pub(crate) fn new(
+        state: &'a LoadedState,
+        definitions: &'d formation_rules::Definitions,
+        location: PlotCoord,
+        layer: Option<u32>,
+    ) -> Self {
+        Current {
+            state,
+            definitions,
+            index: (location.y as u32)
+                .wrapping_mul(state.world().map().units.width)
+                .wrapping_add(location.x as u32),
+            layer: layer.unwrap_or(u32::MAX),
+        }
+    }
     fn members(&self) -> Result<&[UnitReference], Error> {
         let world = self.state.world();
         let map = world.map();
-        let Some(layer) = map.units.layers.iter().find(|l| l.layer_id == 0) else {
+        if self.layer == u32::MAX {
+            return Ok(&[]);
+        }
+        let Some(layer) = map.units.layers.iter().find(|l| l.layer_id == self.layer) else {
             return Ok(&[]);
         };
         // SparseGrid.Get uses wrapping width*y+x and the grid's own maximum,
@@ -43,10 +62,10 @@ impl<'a> Current<'a, '_> {
             return Ok(&[]);
         }
         world
-            .plot_units(0, self.index as usize)
+            .plot_units(self.layer, self.index as usize)
             .map_err(Error::World)
     }
-    fn unit(&self, id: UnitReference) -> Result<&'a Unit, Error> {
+    pub(crate) fn unit(&self, id: UnitReference) -> Result<&'a Unit, Error> {
         self.state
             .world()
             .unit(id)
@@ -103,14 +122,7 @@ pub fn get_best_defender<'a>(
     definitions: &formation_rules::Definitions,
     location: PlotCoord,
 ) -> Result<Option<&'a Unit>, Error> {
-    let index = (location.y as u32)
-        .wrapping_mul(state.world().map().units.width)
-        .wrapping_add(location.x as u32);
-    let mut current = Current {
-        state,
-        definitions,
-        index,
-    };
+    let mut current = Current::new(state, definitions, location, Some(0));
     let selected = kernel::select_default(&mut current)?;
     selected.map(|id| current.unit(id)).transpose()
 }
