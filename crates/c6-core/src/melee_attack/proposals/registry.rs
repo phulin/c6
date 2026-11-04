@@ -22,6 +22,8 @@ pub struct PostCombatYield {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proposal {
+    /// Current ModifierObject.MarkAsAffected entries, not a strength cache.
+    pub modifiers_affecting: crate::unit_moved_signal::modifiers::AffectedModifiers,
     pub attacker: Participant,
     pub defender: Option<Participant>,
     pub plot: Option<PlotCoord>,
@@ -41,6 +43,9 @@ impl Proposal {
         plot: Option<PlotCoord>,
     ) -> Self {
         Self {
+            modifiers_affecting:
+                crate::unit_moved_signal::modifiers::AffectedModifiers::from_sorted(vec![])
+                    .expect("new object has empty sorted modifier list"),
             attacker: Participant::Unit(attacker),
             defender: Some(Participant::Unit(defender)),
             plot,
