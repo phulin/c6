@@ -907,6 +907,22 @@ pub fn sight_plots(
     radius: i32,
     definitions: &Definitions,
 ) -> Result<Vec<SightPlot>, Error> {
+    sight_plots_with_flags(state, origin, radius, false, false, definitions)
+}
+
+/// Shared native GetSightPlots for Unit sight. The through flags suppress the
+/// corresponding obstruction modifier; they do not change the origin height.
+/// The final radius+1 lookahead ring suppresses both modifiers independently.
+/// GetSightDistanceModifier ignores its native PlayerTypes argument, so no
+/// invented owner decision or player visibility answer is needed here.
+pub fn sight_plots_with_flags(
+    state: &LoadedState,
+    origin: (i32, i32),
+    radius: i32,
+    through_features: bool,
+    through_terrain: bool,
+    definitions: &Definitions,
+) -> Result<Vec<SightPlot>, Error> {
     if state.binding() != &definitions.binding {
         return Err(Error::ConfigurationIdentity);
     }
@@ -984,8 +1000,8 @@ pub fn sight_plots(
                 let modifier = sight_through_modifier(
                     state,
                     location,
-                    ring != last,
-                    ring != last,
+                    ring != last && !through_features,
+                    ring != last && !through_terrain,
                     definitions,
                 )?;
                 let visible;

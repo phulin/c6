@@ -12,8 +12,9 @@ pub struct VisibilityChange {
     pub plot_index: u32,
     pub delta: i32,
     pub hidden_type: i32,
-    /// Native first bool argument is always true for Unit sight.
-    pub update_revealed: bool,
+    /// Native first bool argument is always true for Unit sight; the stock
+    /// visibility manager does not read it.
+    pub source_flag: bool,
     /// Native second bool argument is the signed ring comparison <2.
     pub near_origin: bool,
     pub origin_index: i32,
@@ -176,7 +177,7 @@ fn apply<C: SightContext>(
                     plot_index: entry.ui_index,
                     delta: if add { 1 } else { -1 },
                     hidden_type,
-                    update_revealed: true,
+                    source_flag: true,
                     near_origin: entry.i_ring < 2,
                     origin_index,
                     sight_range: range,
@@ -465,7 +466,7 @@ mod tests {
         );
         assert!(!c.changes[1].near_origin);
         assert!(c.changes[0].near_origin);
-        assert!(c.changes.iter().all(|v| v.update_revealed));
+        assert!(c.changes.iter().all(|v| v.source_flag));
     }
     #[test]
     fn first_natural_wonder_experience_precedes_contact_and_signal() {
