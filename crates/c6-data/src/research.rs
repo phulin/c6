@@ -137,6 +137,7 @@ pub struct Definitions {
     yields: LinuxDefinitionRegistry,
     research_alliance: i32,
     technology_hashes: Vec<u32>,
+    route_prerequisites: Vec<Option<i32>>,
     chronology: Vec<i32>,
     era_percent: [Option<i32>; 4],
     tourism_per_citizen: Option<i32>,
@@ -292,8 +293,27 @@ impl Definitions {
                 "CostMultiplier",
             )?)
         };
+        let mut route_prerequisites = Vec::new();
+        for row in rules
+            .gameplay()
+            .table("Routes_XP2")
+            .ok_or(Error::Missing("Routes_XP2"))?
+            .rows()
+        {
+            route_prerequisites.push(match row.get("PrereqTech").map_err(Error::Rules)? {
+                SqlValue::Null => None,
+                SqlValue::Text(name) => boost_rules
+                    .technologies
+                    .iter()
+                    .flatten()
+                    .rfind(|d| d.hash == linux_type_hash(name))
+                    .map(|d| d.index),
+                _ => return Err(Error::Missing("route prerequisite technology reference")),
+            });
+        }
         Ok(Self {
             binding: bound.destination_binding().clone(),
+            route_prerequisites,
             technology_hashes: boost_rules
                 .technologies
                 .iter()
@@ -462,6 +482,51 @@ impl<E: Effects> Context<'_, E> {
         }
         self.choose(player, Kind::Technology, index, mode)
             .map_err(|error| Error::Kernel(Box::new(error)))
+    }
+    /// Stock AI Research.OnResearchCompleted callback in the no-contract,
+    /// no-route-unlock branch. Recomputed recommendation scores are planning
+    /// data only; native QueueNextTech never supplies a policy decision here.
+    /// The actual subscriber identity must be checked by the invoking adapter.
+    pub fn stock_research_completed_without_contracts(
+        &mut self,
+        player: i32,
+        index: i32,
+    ) -> Result<(), Error<E::Error>> {
+        self.check()?;
+        let owner = self
+            .state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == player)
+            .ok_or(Error::Missing("research analysis player"))?;
+        let analysis = owner
+            .ai_research
+            .as_ref()
+            .ok_or(Error::Missing("current research analysis"))?;
+        if !analysis.managed_contracts.is_empty() {
+            return Err(Error::Missing("research completion AI contract consumers"));
+        }
+        if self
+            .definitions
+            .route_prerequisites
+            .iter()
+            .flatten()
+            .any(|tech| *tech == index && index != -1)
+        {
+            return Err(Error::Missing(
+                "research completion Economic.UnlockNewTradeRoute",
+            ));
+        }
+        if self
+            .state
+            .player_slot_status(player)
+            .map_err(Error::State)?
+            != 3
+        {
+            return Err(Error::Missing("external technology choice continuation"));
+        }
+        Ok(())
     }
     fn check(&self) -> Result<(), Error<E::Error>> {
         if self.state.binding() != &self.definitions.binding
