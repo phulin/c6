@@ -246,6 +246,25 @@ fn movement_identity(unit: &Unit) -> ComponentId {
     }
 }
 
+struct RestoreMovementAdapter<'a, C: RestoreMovementContext>(&'a mut C);
+impl<C: RestoreMovementContext> crate::movement_execution::UnitMovementContext
+    for RestoreMovementAdapter<'_, C>
+{
+    type Error = C::Error;
+    fn unit(&self) -> Result<&Unit, Self::Error> {
+        self.0.unit()
+    }
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+        self.0.unit_mut()
+    }
+    fn send_movement_report(&mut self, report: MovementReport) -> Result<(), Self::Error> {
+        self.0.send_movement_report(report)
+    }
+    fn sync_current_formation(&mut self) -> Result<(), Self::Error> {
+        self.0.sync_current_formation()
+    }
+}
+
 /// Manager::RestoreMovement (0x26af6c0), including the local-authority writes of
 /// ChangeMovesRemaining (0x2c277f0) and SetEligibleToHeal (0x26b0c90).
 /// Native archive dirty-tree bookkeeping is excluded under the audited profile.
@@ -276,80 +295,15 @@ pub fn restore_movement<C: RestoreMovementContext>(
                 .map_err(RestoreMovementError::UnitUnavailable)?
                 .x_moves_remaining,
         );
-        let changed = context
-            .unit()
-            .map_err(RestoreMovementError::UnitUnavailable)?
-            .x_moves_remaining
-            .wrapping_add(delta)
-            .max(0);
-        if changed
-            != context
-                .unit()
-                .map_err(RestoreMovementError::UnitUnavailable)?
-                .x_moves_remaining
-        {
-            context
-                .unit_mut()
-                .map_err(RestoreMovementError::UnitUnavailable)?
-                .x_moves_remaining = changed;
-            let report = MovementReport {
-                event_hash: MOVES_REMAINING_CHANGED,
-                identity: movement_identity(context.unit().map_err(|error| {
-                    RestoreMovementError::ContinuationFailed {
-                        stage: MovementStage::UnitReadback,
-                        error,
-                    }
-                })?),
-                raw_q8: Some(
-                    context
-                        .unit()
-                        .map_err(|error| RestoreMovementError::ContinuationFailed {
-                            stage: MovementStage::UnitReadback,
-                            error,
-                        })?
-                        .x_moves_remaining,
-                ),
-            };
-            context.send_movement_report(report).map_err(|error| {
-                RestoreMovementError::ContinuationFailed {
-                    stage: MovementStage::ChangedReport,
-                    error,
-                }
-            })?;
-            // Test current field after synchronous subscribers, not changed/max.
-            if context
-                .unit()
-                .map_err(|error| RestoreMovementError::ContinuationFailed {
-                    stage: MovementStage::UnitReadback,
-                    error,
-                })?
-                .x_moves_remaining
-                == 0
-            {
-                let report = MovementReport {
-                    event_hash: MOVES_EXHAUSTED,
-                    identity: movement_identity(context.unit().map_err(|error| {
-                        RestoreMovementError::ContinuationFailed {
-                            stage: MovementStage::UnitReadback,
-                            error,
-                        }
-                    })?),
-                    raw_q8: None,
-                };
-                context.send_movement_report(report).map_err(|error| {
-                    RestoreMovementError::ContinuationFailed {
-                        stage: MovementStage::ExhaustedReport,
-                        error,
-                    }
-                })?;
+        crate::movement_execution::change_unit_moves(&mut RestoreMovementAdapter(context), delta)
+            .map_err(|error| match error {
+            crate::movement_execution::UnitMovementError::UnitUnavailable(error) => {
+                RestoreMovementError::UnitUnavailable(error)
             }
-            context.sync_current_formation().map_err(|error| {
-                RestoreMovementError::ContinuationFailed {
-                    stage: MovementStage::FormationSync,
-                    error,
-                }
-            })?;
-        }
+            crate::movement_execution::UnitMovementError::ContinuationFailed { stage, error } => {
+                RestoreMovementError::ContinuationFailed { stage, error }
+            }
+        })?;
         // Outer report uses cached maximum, even after clamping or subscribers.
         let report = MovementReport {
             event_hash: MOVEMENT_RESTORED,

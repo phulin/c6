@@ -22,6 +22,7 @@ pub mod loaded_state;
 pub mod map;
 pub mod messages;
 pub mod movement;
+pub mod movement_execution;
 pub mod movement_placement;
 pub mod movement_shore;
 pub mod movement_world;
