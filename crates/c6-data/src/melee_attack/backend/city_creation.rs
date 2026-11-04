@@ -104,7 +104,7 @@ struct RequirementInitializer<'a> {
     state: &'a LoadedState,
     effects: &'a mut EffectRuntime,
     requirements: &'a mut super::requirements::Runtime,
-    maximum_loyalty: i32,
+    maximum_loyalty: Option<i32>,
 }
 impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for RequirementInitializer<'_> {
     type Error = Error;
@@ -166,7 +166,7 @@ impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for Requirem
             .map_err(|_| E::Context(Error::Missing("current loyalty City")))?;
         let tested = crate::city_production_turn::modifier_effects::test_full_loyalty(
             Some(city),
-            Some(self.maximum_loyalty),
+            self.maximum_loyalty,
         );
         Ok(sets::InitializedRequirement::Simple(
             c6_core::simple_requirement::Requirement {
@@ -234,7 +234,7 @@ struct Apply<'a, E> {
     runtime: &'a mut EffectRuntime,
     requirements: &'a mut super::requirements::Runtime,
     definition: &'a definitions::Attachment,
-    maximum_loyalty: i32,
+    maximum_loyalty: Option<i32>,
     index: usize,
     effects: &'a mut E,
 }
@@ -493,11 +493,9 @@ impl EffectRuntime {
                 "City modifier one-shot/permanent/new-only activation",
             ));
         }
-        let maximum = if definition.subject_requirements.is_some() {
-            maximum_loyalty.ok_or(Error::Missing("current maximum loyalty parameter"))?
-        } else {
-            0
-        };
+        // None is the compiled current parameter's actual absence. Native
+        // CityHasFullLoyalty.Test then returns failure, rather than a fake max.
+        let maximum = maximum_loyalty;
         let creation = self
             .city_creation
             .as_mut()

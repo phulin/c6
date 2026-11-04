@@ -7,6 +7,7 @@
 //! turn. No native production policy or host random stream is substituted.
 pub mod appeal;
 pub mod building_yields;
+pub mod building_callbacks;
 pub mod buildings;
 pub mod modifier_effects;
 
