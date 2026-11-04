@@ -28,6 +28,7 @@ struct Reader<'a> {
     pos: usize,
     items: usize,
     limits: Limits,
+    version_component: &'static str,
 }
 impl Reader<'_> {
     fn raw(&mut self, n: usize) -> Result<&[u8], Error> {
@@ -46,7 +47,8 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn version(&mut self, expected: u32) -> Result<(), Error> {
+    fn version(&mut self, expected: u32, component: &'static str) -> Result<(), Error> {
+        self.version_component = component;
         let actual = u32::read(self)?;
         if actual != expected {
             return Err(Error::Version { expected, actual });
@@ -222,7 +224,7 @@ macro_rules! record {
         impl Wire for $name {
             const MIN: usize = 4 + $(<$ty as Wire>::MIN +)* 0;
             fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-                r.version($version)?; Ok(Self { $($field: <$ty>::read(r)?),* })
+                r.version($version, stringify!($name))?; Ok(Self { $($field: <$ty>::read(r)?),* })
             }
             fn write(&self, w: &mut Writer) -> Result<(), Error> {
                 ($version as u32).write(w)?; $(self.$field.write(w)?;)* Ok(())
@@ -256,7 +258,7 @@ record!(District, 15, {
 impl<T: Wire> Wire for Recycled<T> {
     const MIN: usize = 32;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        r.version(65537)?;
+        r.version(65537, "Recycled")?;
         if u32::read(r)? != 16 {
             return Err(Error::InvalidContainer);
         }
@@ -413,6 +415,7 @@ impl Districts {
 impl Wire for Districts {
     const MIN: usize = 4 + <Recycled<District>>::MIN + 5 * 4;
     fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        r.version_component = "Districts";
         let wire_version = u32::read(r)?;
         if !matches!(wire_version, 4 | 8) {
             return Err(Error::Version {
@@ -489,6 +492,14 @@ impl Wire for Districts {
     }
 }
 
+/// Exact cursor of this Rust decoder before refusal. A direct version error
+/// includes its four-byte tag. A delegated variant failure stops at child start.
+#[derive(Debug, Eq, PartialEq)]
+pub struct Boundary {
+    pub consumed: usize,
+    pub component: &'static str,
+    pub error: Error,
+}
 macro_rules! codec {
     ($ty:ty) => {
         impl $ty {
@@ -503,14 +514,33 @@ macro_rules! codec {
                 bytes: &[u8],
                 limits: Limits,
             ) -> Result<(Self, usize, usize), Error> {
+                Self::decode_prefix_with_boundary(bytes, limits).map_err(|b| b.error)
+            }
+            pub fn decode_prefix_with_boundary(
+                bytes: &[u8],
+                limits: Limits,
+            ) -> Result<(Self, usize, usize), Boundary> {
                 let mut r = Reader {
                     data: bytes,
                     pos: 0,
                     items: 0,
                     limits,
+                    version_component: stringify!($ty),
                 };
-                let v = Self::read(&mut r)?;
-                Ok((v, r.pos, r.items))
+                match Self::read(&mut r) {
+                    Ok(v) => Ok((v, r.pos, r.items)),
+                    Err(error) => Err(Boundary {
+                        consumed: r.pos,
+                        component: if matches!(error, Error::Version { .. }) {
+                            r.version_component
+                        } else if matches!(error, Error::Variant(_)) {
+                            "TypedVariantMap"
+                        } else {
+                            "Districts field"
+                        },
+                        error,
+                    }),
+                }
             }
             pub fn encode(&self, limits: Limits) -> Result<Vec<u8>, Error> {
                 Ok(self.encode_with_items(limits)?.0)
@@ -674,6 +704,16 @@ mod tests {
                 actual: 14
             })
         );
+        let boundary =
+            Districts::decode_prefix_with_boundary(&nested, Limits::default()).unwrap_err();
+        assert_eq!((boundary.component, boundary.consumed), ("District", 28));
+        assert_eq!(
+            boundary.error,
+            Error::Version {
+                expected: 15,
+                actual: 14
+            }
+        );
     }
     #[test]
     fn nonempty_source_carriers_preserve_all_fields_and_allocator_order() {
@@ -768,6 +808,7 @@ mod tests {
                     max_bytes,
                     max_items: links as usize,
                 },
+                version_component: "Districts",
             };
             assert_eq!(
                 Recycled::<District>::read(&mut reader),
@@ -783,6 +824,7 @@ mod tests {
                 max_bytes: bytes.len(),
                 max_items: links as usize,
             },
+            version_component: "Districts",
         };
         let value = Recycled::<District>::read(&mut reader).unwrap();
         assert_eq!(value.free_links.len(), links as usize);
