@@ -10,6 +10,7 @@ pub mod player_strength;
 pub mod registry;
 pub mod subject_predicates;
 pub mod subject_sets;
+pub mod unit_subject_predicates;
 
 pub trait ComponentCreatedContext {
     type Error;
