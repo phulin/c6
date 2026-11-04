@@ -60,3 +60,34 @@ impl Phases {
             ))
     }
 }
+
+/// Current Player.Diplomacy turn-start subscriber (2aa1db0). Unrelated players
+/// return before processing; the empty canonical maps execute no promise or
+/// incursion gameplay. Nonempty maps need their actual expiration/effect path.
+pub fn diplomacy_turn_started(
+    state: &LoadedState,
+    receiver: i32,
+    player: i32,
+) -> Result<(), Error> {
+    state
+        .world()
+        .player(receiver)
+        .map_err(|_| Error::Unsupported("turn-start diplomacy receiver"))?;
+    if receiver != player {
+        return Ok(());
+    }
+    let diplomacy = &state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == receiver)
+        .ok_or(Error::Unsupported("turn-start canonical diplomacy"))?
+        .diplomacy;
+    if !diplomacy.promises_made.is_empty() {
+        return Err(Error::Unsupported("current promise processing"));
+    }
+    if !diplomacy.incursions_made.is_empty() {
+        return Err(Error::Unsupported("current incursion expiration"));
+    }
+    Ok(())
+}
