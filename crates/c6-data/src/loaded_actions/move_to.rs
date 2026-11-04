@@ -406,6 +406,29 @@ where
         delayed_death: unit(state, actor)?.b_delayed_death,
     })
 }
+/// Manager.Activate on the CURRENT retained queue, without Add, request
+/// translation, replacement or a newly selected player order. Existing finite
+/// handler coverage is unchanged. Errors preserve already completed prefixes.
+#[allow(clippy::too_many_arguments)]
+pub fn activate_current_queued_move_to<E, M>(
+    state: &mut LoadedState,
+    actor: (i32, u32),
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
+) -> Result<(), Error<EffectError<E>, M::Error>>
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
+    handlers
+        .validate_execution(state, inputs.handlers, inputs.operations)
+        .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?;
+    activate(state, actor, inputs, handlers, runtime, effects, movement)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn activate<E, M>(
     state: &mut LoadedState,
