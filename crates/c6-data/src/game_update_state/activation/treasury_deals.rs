@@ -5,8 +5,11 @@ use crate::{
     unit_initialization_definitions::collection, Rules, SqlValue,
 };
 use c6_core::{
-    core_player::initialization::WireBinding, game_capabilities::Membership, game_update::Error,
-    loaded_components::RetainedPlayer, loaded_state::LoadedState,
+    core_player::initialization::WireBinding,
+    game_capabilities::Membership,
+    game_update::Error,
+    loaded_components::RetainedPlayer,
+    loaded_state::{ActionStamp, LoadedState},
 };
 
 pub struct Definitions {
@@ -83,7 +86,7 @@ impl Definitions {
 /// Same live manager owner, separate from pending negotiation pairs. IDs are
 /// semantic native deal IDs; pointers are never manufactured as identities.
 pub struct CurrentDeals {
-    binding: WireBinding,
+    instance: ActionStamp,
     global: Vec<u32>,
     players: Vec<(i32, Vec<u32>)>,
 }
@@ -101,7 +104,7 @@ impl CurrentDeals {
             return Err(Error::Unsupported("current deal owner buckets"));
         }
         Ok(Self {
-            binding: state.binding().clone(),
+            instance: state.action_stamp(),
             global,
             players,
         })
@@ -113,7 +116,7 @@ impl CurrentDeals {
         &self.global
     }
     pub fn do_turn(&mut self, state: &LoadedState, owner: i32) -> Result<(), Error> {
-        if state.binding() != &self.binding {
+        if !self.instance.same_instance(state.action_stamp()) {
             return Err(Error::Unsupported("current deal binding"));
         }
         if owner >= 0 {
