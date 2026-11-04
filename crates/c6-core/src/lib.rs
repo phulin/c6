@@ -482,3 +482,10 @@ pub mod game_summary_wire;
 pub mod game_victory_wire;
 
 pub mod context_suffix_wire;
+pub mod district_initialization;
+
+pub mod city_citizen_assignment;
+pub mod unit_kill;
+
+pub mod city_build_initialization;
+pub mod city_religion;

@@ -101,6 +101,7 @@ mod tests {
             formation_runtime: None,
             combat_proposals: None,
             game_sync_runtime: None,
+            game_city_names: None,
             limits: AssemblyLimits::default(),
             revision: 0,
             instance_identity: fresh_state_identity().unwrap(),
@@ -3171,6 +3172,7 @@ pub enum MissingInput {
     PlayerNotifications,
     NotificationPool(crate::notification_lifecycle::PoolId),
     GameTechs,
+    GameCityNames,
     TradeGraph,
     PlayerConfiguration(i32),
     PlayerTurnActive(i32),
@@ -3432,6 +3434,7 @@ pub struct LoadedState {
     formation_runtime: Option<Vec<RuntimeFormations>>,
     combat_proposals: Option<crate::melee_attack::proposals::registry::Runtime>,
     game_sync_runtime: Option<game_sync::Runtime>,
+    game_city_names: Option<game_city_names::Owner>,
     limits: AssemblyLimits,
     revision: u64,
     instance_identity: u64,
@@ -3639,6 +3642,7 @@ impl LoadedState {
             formation_runtime: None,
             combat_proposals: None,
             game_sync_runtime: None,
+            game_city_names: None,
             limits,
             revision: 0,
             instance_identity: fresh_state_identity()?,
@@ -5389,3 +5393,8 @@ impl LoadedState {
         Ok((formation, &mut row.formations[index]))
     }
 }
+pub mod district_initialization;
+
+pub mod game_city_names;
+
+pub mod city_build_initialization;

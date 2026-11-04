@@ -9,7 +9,7 @@ use crate::{
 pub mod placement;
 
 pub const OPERATION_HASH: u32 = 0x5733_ac6c;
-pub const CITY_TYPE_HASH: u32 = 0x6172_3064;
+pub const FOUNDING_TRANSFER_HASH: u32 = 0x6172_3064;
 pub const NO_TYPE: i32 = -1;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -73,7 +73,7 @@ pub fn can_start<C: CanStartContext>(
 pub struct Creation {
     pub owner: i32,
     pub location: PlotCoord,
-    pub type_hash: u32,
+    pub transfer_type: u32,
     pub first_city: bool,
     pub original_capital: bool,
 }
@@ -200,7 +200,7 @@ pub fn start<C: StartContext>(c: &mut C, data: &mut StartData) -> Result<(), C::
     let city = c.create_city(Creation {
         owner: creation_owner,
         location,
-        type_hash: CITY_TYPE_HASH,
+        transfer_type: FOUNDING_TRANSFER_HASH,
         first_city: first,
         original_capital,
     })?;
@@ -464,7 +464,7 @@ mod tests {
             Some(Creation {
                 owner: 2,
                 location: PlotCoord { x: 10, y: 9 },
-                type_hash: CITY_TYPE_HASH,
+                transfer_type: FOUNDING_TRANSFER_HASH,
                 first_city: true,
                 original_capital: true
             })
