@@ -1,11 +1,11 @@
 //! Current-state partial Game.Update over canonical saved processor/control data.
 //! Unsaved globals are explicit live inputs; no defaults or duplicate saved state.
 use super::LoadedState;
-pub mod deactivation;
+pub mod activation;
 pub mod automation;
+pub mod deactivation;
 pub mod human_control;
 pub mod resources;
-pub mod activation;
 use crate::{
     core_player::initialization::WireBinding,
     game_update::{self as core, Error},
@@ -583,5 +583,33 @@ pub fn extend_observed_turn_activity(
             controls.players[index].turn_active = Some(active);
         }
     }
+    Ok(())
+}
+
+/// Install actual current symmetric contact cells on the existing canonical
+/// relation owner. No missing relation matrix or saved prefix is synthesized.
+pub fn install_current_game_contacts(
+    state: &mut LoadedState,
+    witness: &crate::loaded_state::ObservedSnapshotWitness,
+    player_count: i32,
+    contacts: Vec<crate::game_diplomatic_relations::BoolRelationship>,
+) -> Result<(), crate::loaded_state::Error> {
+    use crate::loaded_state::Error;
+    if !state.is_pristine() || state.observed_snapshot() != Some(witness) {
+        return Err(Error::Binding);
+    }
+    let mut owner = match &state.game_relations {
+        Some(existing) => existing.clone(),
+        None => crate::game_diplomatic_relations::GameDiplomaticRelations::from_current_contacts(
+            player_count,
+            contacts.clone(),
+        )
+        .map_err(Error::GameRelations)?,
+    };
+    owner
+        .initialize_current_contacts(player_count, contacts)
+        .map_err(Error::GameRelations)?;
+    state.advance_admission_generation()?;
+    state.game_relations = Some(owner);
     Ok(())
 }

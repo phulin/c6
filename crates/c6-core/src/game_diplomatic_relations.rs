@@ -1,7 +1,8 @@
 //! Owned Linux XP2 Game.DiplomaticRelations query state.
 //!
-//! Current v16 Read prefix only: no relation setters, callbacks, complete live
-//! initialization or turn equivalence. Player.Diplomacy is a separate owner.
+//! V16 Read prefix and explicitly supplied current relation matrices. Missing
+//! matrices remain unknown; setters do not execute their required callbacks.
+//! Player.Diplomacy is a separate owner; no complete turn equivalence is implied.
 use crate::unit::Limits;
 
 pub const VERSION: i32 = 16;
@@ -81,6 +82,7 @@ pub struct GameDiplomaticRelations {
     alliances: Option<Relationships>,
     read_prefix: Option<ReadPrefixFields>,
     current_research_agreements: Option<Relationships>,
+    current_contacts: Option<Vec<BoolRelationship>>,
 }
 
 pub struct DecodedPrefix<'a> {
@@ -127,6 +129,7 @@ impl GameDiplomaticRelations {
             alliances: None,
             read_prefix: None,
             current_research_agreements: None,
+            current_contacts: None,
         })
     }
     /// Complete current native enum values, with each companion changed turn.
@@ -154,6 +157,7 @@ impl GameDiplomaticRelations {
             alliances: Some(matrix(alliances)),
             read_prefix: None,
             current_research_agreements: Some(matrix(research_agreements)),
+            current_contacts: None,
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
@@ -226,13 +230,56 @@ impl GameDiplomaticRelations {
             .copied()
             .ok_or(Error::Index)
     }
+    /// Attach actual current contact values without inventing war/alliance or
+    /// unrelated saved-prefix fields. Existing initialized contacts must agree.
+    pub fn initialize_current_contacts(
+        &mut self,
+        player_count: i32,
+        values: Vec<BoolRelationship>,
+    ) -> Result<(), Error> {
+        if player_count != self.player_count || values.len() != total(player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        if let Some(existing) = self
+            .current_contacts
+            .as_ref()
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_c8))
+        {
+            return if existing == &values {
+                Ok(())
+            } else {
+                Err(Error::AlreadyInitialized)
+            };
+        }
+        self.current_contacts = Some(values);
+        Ok(())
+    }
+    pub fn from_current_contacts(
+        player_count: i32,
+        values: Vec<BoolRelationship>,
+    ) -> Result<Self, Error> {
+        let mut value = Self {
+            player_count,
+            war: None,
+            alliances: None,
+            read_prefix: None,
+            current_research_agreements: None,
+            current_contacts: None,
+        };
+        value.initialize_current_contacts(player_count, values)?;
+        Ok(value)
+    }
     /// Native Game.DiplomaticRelations.HasMet: equal arguments return true
     /// before storage checks. Player.Diplomacy adds its own validity/self gate.
     pub fn has_met(&self, a: i32, b: i32) -> Result<bool, Error> {
         if a == b {
             return Ok(true);
         }
-        let values = &self.read_prefix.as_ref().ok_or(Error::MissingHasMet)?.at_c8;
+        let values = self
+            .current_contacts
+            .as_ref()
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_c8))
+            .ok_or(Error::MissingHasMet)?;
         if values.len() != total(self.player_count)? {
             return Err(Error::InvalidStorage);
         }
@@ -251,7 +298,10 @@ impl GameDiplomaticRelations {
         }
         let index = self.index(a, b)?;
         let count = total(self.player_count)?;
-        let values = &mut self.read_prefix.as_mut().ok_or(Error::MissingHasMet)?.at_c8;
+        let values = match &mut self.current_contacts {
+            Some(values) => values,
+            None => &mut self.read_prefix.as_mut().ok_or(Error::MissingHasMet)?.at_c8,
+        };
         if values.len() != count {
             return Err(Error::InvalidStorage);
         }
@@ -384,6 +434,7 @@ impl GameDiplomaticRelations {
                 war: None,
                 alliances: None,
                 current_research_agreements: None,
+                current_contacts: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,
@@ -476,6 +527,61 @@ impl Reader<'_> {
             values,
             changed_turns: Some(turns),
         })
+    }
+}
+
+#[cfg(test)]
+mod current_contact_tests {
+    use super::*;
+    #[test]
+    fn actual_contacts_keep_unknown_relations_and_preserve_contact_turn_writes() {
+        let cells = vec![
+            BoolRelationship {
+                value: false,
+                changed_turn: -1
+            };
+            3
+        ];
+        let mut owner = GameDiplomaticRelations::from_current_contacts(3, cells.clone()).unwrap();
+        assert!(!owner.has_met(0, 2).unwrap());
+        assert_eq!(owner.war_type(0, 2), Err(Error::MissingWar));
+        assert_eq!(owner.alliance_type(0, 2), Err(Error::MissingAlliances));
+        owner.set_has_met(2, 0, 7).unwrap();
+        assert!(owner.has_met(0, 2).unwrap());
+        let index = owner.index(0, 2).unwrap();
+        assert_eq!(
+            owner.current_contacts.as_ref().unwrap()[index].changed_turn,
+            7
+        );
+        assert_eq!(
+            owner.initialize_current_contacts(3, cells),
+            Err(Error::AlreadyInitialized)
+        );
+        assert!(owner.has_met(-1, -1).unwrap());
+    }
+    #[test]
+    fn contact_refinement_preserves_other_current_relation_matrices() {
+        let mut owner = GameDiplomaticRelations::from_current_research_relations(
+            2,
+            vec![(-1, 4)],
+            vec![(2, 5)],
+        )
+        .unwrap();
+        owner
+            .initialize_current_contacts(
+                2,
+                vec![BoolRelationship {
+                    value: true,
+                    changed_turn: 3,
+                }],
+            )
+            .unwrap();
+        assert!(owner.has_met(0, 1).unwrap());
+        assert_eq!(owner.alliance_type(0, 1), Ok(-1));
+        assert_eq!(
+            owner.initialize_current_contacts(3, vec![]),
+            Err(Error::InvalidStorage)
+        );
     }
 }
 
