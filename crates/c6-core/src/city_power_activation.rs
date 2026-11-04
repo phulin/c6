@@ -5,6 +5,7 @@
 //! atomic action or a claim of complete city/turn or native parity.
 
 pub mod gossip_delivery;
+pub mod status_projection;
 pub mod stock_signals;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

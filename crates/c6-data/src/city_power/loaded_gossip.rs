@@ -247,3 +247,41 @@ pub fn powered_city_changed<T, E: Effects<T>>(
         first_generation,
     )
 }
+
+/// Render-free arena implementation for the source-qualified stock-owned
+/// localization domain. It is a semantic provider, not native capture authority.
+/// Current bindings are ordinary mutable state; none are inferred as empty.
+pub struct ArenaPresentation {
+    pub localization: c6_core::city_power_activation::status_projection::Localization,
+    pub status: c6_core::city_power_activation::status_projection::StatusState,
+}
+/// No formatted strings or desktop state are constructed for an unobserved
+/// presentation-only result. Reachable/unknown status callbacks still refuse.
+pub struct UnrenderedGossip(());
+impl<T> Effects<T> for ArenaPresentation {
+    type Error = c6_core::city_power_activation::status_projection::Error;
+    type Formatted = UnrenderedGossip;
+    fn format_gossip(
+        &mut self,
+        _: &mut LoadedState,
+        _: &mut core::Manager<T>,
+        _: &mut Vec<i32>,
+        _: Occurrence,
+        _: core::TurnVisibility,
+    ) -> Result<Self::Formatted, Self::Error> {
+        if !self.localization.permits_render_omission() {
+            return Err(Self::Error::UnmodeledLocalization);
+        }
+        Ok(UnrenderedGossip(()))
+    }
+    fn send_status(
+        &mut self,
+        _: &mut LoadedState,
+        _: &mut core::Manager<T>,
+        _: &mut Vec<i32>,
+        _: Self::Formatted,
+        status: core::Status,
+    ) -> Result<(), Self::Error> {
+        self.status.omit_status(status.recipient).map(|_| ())
+    }
+}
