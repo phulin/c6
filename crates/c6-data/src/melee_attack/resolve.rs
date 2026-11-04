@@ -1,6 +1,7 @@
 //! Ordinary melee resolution over the current owned Units. Partial failures keep
 //! the native prefix; generated damage is never reported as a resolved attack.
 pub mod budget;
+pub mod kill_awards;
 
 use super::execution::{GeneratedMembers, RequiresResolve};
 use crate::{
