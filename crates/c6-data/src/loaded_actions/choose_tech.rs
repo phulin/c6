@@ -32,6 +32,17 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
+/// Caller-supplied current owner and configuration fields. These are typed
+/// inputs, not predicate answers or a claim of observed native runtime state.
+/// The owner label and binding are checked for consistency only.
+pub struct CurrentPlayer<'a> {
+    pub binding: &'a WireBinding,
+    pub owner: i32,
+    pub techs: &'a Techs,
+    pub city_count: Option<usize>,
+    pub slot_status: Option<i32>,
+}
+
 pub struct Definitions {
     binding: WireBinding,
     technologies: LinuxDefinitionRegistry,
@@ -129,6 +140,30 @@ impl Definitions {
             .and_then(|i| i32::try_from(i).ok())
             .unwrap_or(-1)
     }
+    /// Compose current typed player/configuration fields without reading a
+    /// saved LoadedState. Graph provenance remains separately inspectable.
+    pub fn current_player<'a>(
+        &'a self,
+        owner: i32,
+        current: CurrentPlayer<'a>,
+        graph: Option<&'a GameTechs>,
+    ) -> Result<Research<'a>, Error> {
+        if current.binding != &self.binding || current.owner != owner {
+            return Err(Error::Unsupported("current research owner/binding"));
+        }
+        if graph.is_some_and(|graph| graph.binding != self.binding) {
+            return Err(Error::Unsupported("GameTechs session binding"));
+        }
+        Ok(Research {
+            definitions: self,
+            techs: current.techs,
+            city_count: current.city_count,
+            human: current.slot_status.map(|status| status == 3),
+            graph,
+        })
+    }
+    /// Convenience adapter over retained source fields. It does not establish
+    /// that those fields or a SourceRead graph equal final current runtime.
     pub fn player<'a>(
         &'a self,
         state: &'a LoadedState,
@@ -248,6 +283,9 @@ pub struct Research<'a> {
     pub graph: Option<&'a GameTechs>,
 }
 impl Research<'_> {
+    pub(crate) fn binding(&self) -> &WireBinding {
+        &self.definitions.binding
+    }
     fn graph(&self) -> Result<&GameTechs, Error> {
         let g = self.graph.ok_or(Error::Unsupported(
             "retained validated GameTechs active nodes/prerequisite graph",
@@ -520,5 +558,135 @@ mod component_tests {
         let mut changed = bytes;
         changed[4] ^= 1;
         assert!(checked_component_bytes(&changed, digest, &witness).is_err());
+    }
+}
+
+#[cfg(test)]
+pub(super) mod current_tests {
+    use super::*;
+    use c6_core::core_player::initialization::{DatabaseIdentity, InputIdentities};
+    pub(in crate::loaded_actions) fn binding() -> WireBinding {
+        WireBinding {
+            role: WireRole::SavedOutputCore,
+            core_sha256: [1; 32],
+            occurrence_id: b"0".to_vec(),
+            output_id: None,
+            inputs: InputIdentities {
+                configuration_sha256: [2; 32],
+                rules_inputs_sha256: [3; 32],
+                database: DatabaseIdentity::LiveSnapshotUnavailable,
+                dlc_inputs_sha256: [4; 32],
+                mods_inputs_sha256: [5; 32],
+                content_inputs_sha256: [6; 32],
+            },
+        }
+    }
+    pub(in crate::loaded_actions) fn registry(name: &[u8]) -> LinuxDefinitionRegistry {
+        LinuxDefinitionRegistry::from_native_order(vec![crate::registry::DefinitionEntry {
+            database_rowid: crate::RulesRowId(77),
+            type_name: name.to_vec(),
+        }])
+    }
+    pub(in crate::loaded_actions) fn definitions(binding: WireBinding) -> Definitions {
+        Definitions {
+            binding,
+            technologies: registry(b"TECH_A"),
+            repeatable: vec![false],
+            xp2: LinuxDefinitionRegistry::from_native_order(vec![]),
+            hidden_until_prereq: vec![],
+        }
+    }
+    pub(in crate::loaded_actions) fn techs() -> Techs {
+        Techs {
+            research_queue_hashes: vec![],
+            research_overflow_q8: 0,
+            science_rate_change_q8: 0,
+            modified_boost: 0,
+            has_tech: IndexedBools { pairs: vec![] },
+            boost_triggered: IndexedBools { pairs: vec![] },
+            research_progress_q8: vec![],
+            num_random_tech_boosts_on_new_era: 0,
+            num_techs_repeated: 0,
+            free_tech_boost_wonder_era: 0,
+        }
+    }
+    #[test]
+    fn current_inputs_preserve_city_human_graph_order_and_source_provenance() {
+        let binding = binding();
+        let definitions = definitions(binding.clone());
+        let techs = techs();
+        let query = |cities, status| {
+            definitions
+                .current_player(
+                    0,
+                    CurrentPlayer {
+                        binding: &binding,
+                        owner: 0,
+                        techs: &techs,
+                        city_count: cities,
+                        slot_status: status,
+                    },
+                    None,
+                )
+                .unwrap()
+        };
+        assert!(query(None, None).is_needed(false).unwrap());
+        assert!(!query(Some(0), None).is_needed(true).unwrap());
+        assert!(matches!(
+            query(Some(1), None).is_needed(true),
+            Err(Error::Unsupported("actual human configuration"))
+        ));
+        assert!(!query(Some(1), Some(2)).is_needed(true).unwrap());
+        assert!(matches!(
+            query(Some(1), Some(3)).is_needed(true),
+            Err(Error::Unsupported(
+                "retained validated GameTechs active nodes/prerequisite graph"
+            ))
+        ));
+        let mut graph = GameTechs::from_complete_native(binding.clone(), vec![], vec![]).unwrap();
+        graph.source = GraphSource::SourceReadNoRebuild;
+        let query = definitions
+            .current_player(
+                0,
+                CurrentPlayer {
+                    binding: &binding,
+                    owner: 0,
+                    techs: &techs,
+                    city_count: Some(1),
+                    slot_status: Some(3),
+                },
+                Some(&graph),
+            )
+            .unwrap();
+        assert!(!query.is_needed(true).unwrap());
+        assert_eq!(graph.source(), GraphSource::SourceReadNoRebuild);
+        assert!(definitions
+            .current_player(
+                1,
+                CurrentPlayer {
+                    binding: &binding,
+                    owner: 0,
+                    techs: &techs,
+                    city_count: None,
+                    slot_status: None
+                },
+                None
+            )
+            .is_err());
+        let mut other = binding.clone();
+        other.core_sha256[0] ^= 1;
+        assert!(definitions
+            .current_player(
+                0,
+                CurrentPlayer {
+                    binding: &other,
+                    owner: 0,
+                    techs: &techs,
+                    city_count: None,
+                    slot_status: None
+                },
+                None
+            )
+            .is_err());
     }
 }

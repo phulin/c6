@@ -85,6 +85,35 @@ pub enum StartingSource {
     CallerProvided,
     SourceConfigurationAndEraPrefix,
 }
+/// Current getter fields carry no observation authority merely by construction.
+impl StartingContext {
+    pub fn from_current_fields(
+        binding: WireBinding,
+        start_era_hash: u32,
+        game_start_turn: Option<i32>,
+        current_game_era: Option<i32>,
+    ) -> Self {
+        Self {
+            source: StartingSource::CallerProvided,
+            binding,
+            start_era_hash,
+            game_start_turn,
+            current_game_era,
+        }
+    }
+}
+
+/// Typed current owner/global/configuration inputs, never predicate answers.
+/// The owner is a caller label: Culture itself carries no owner identity.
+pub struct CurrentPlayer<'a> {
+    pub binding: &'a WireBinding,
+    pub owner: i32,
+    pub culture: &'a Culture,
+    pub city_count: usize,
+    pub current_turn: i32,
+    pub slot_status: Option<i32>,
+}
+
 pub struct StartingContext {
     source: StartingSource,
     pub binding: WireBinding,
@@ -304,6 +333,38 @@ impl Definitions {
     pub fn civic_lookup(&self) -> &dyn c6_core::movement_world::DefinitionLookup {
         &self.civics
     }
+    /// Compose current typed player, global and configuration fields. Checks
+    /// establish consistent labels/bindings, not native observation authority.
+    /// A source Read graph remains a source Read graph after composition.
+    pub fn current_player<'a>(
+        &'a self,
+        owner: i32,
+        current: CurrentPlayer<'a>,
+        graph: Option<&'a GameCulture>,
+        techs: Option<&'a choose_tech::Research<'a>>,
+        starting: Option<&'a StartingContext>,
+    ) -> Result<Queries<'a>, Error> {
+        if current.binding != &self.binding || current.owner != owner {
+            return Err(Error::Unsupported("current culture owner/binding"));
+        }
+        if graph.is_some_and(|graph| graph.binding != self.binding)
+            || starting.is_some_and(|context| context.binding != self.binding)
+            || techs.is_some_and(|research| research.binding() != &self.binding)
+        {
+            return Err(Error::Unsupported("current culture dependency binding"));
+        }
+        Ok(Queries {
+            definitions: self,
+            culture: current.culture,
+            city_count: current.city_count,
+            current_turn: current.current_turn,
+            human: current.slot_status.map(|status| status == 3),
+            graph,
+            techs,
+            starting,
+        })
+    }
+    /// Retained-source adapter; it does not certify current runtime fields.
     pub fn player<'a>(
         &'a self,
         state: &'a LoadedState,
@@ -323,9 +384,12 @@ impl Definitions {
             .ok_or(Error::Unsupported("retained PlayerCulture owner"))?;
         Ok(Queries {
             definitions: self,
-            state,
-            owner,
             culture: &player.culture,
+            current_turn: state.retained().core.current_turn,
+            human: state
+                .player_controls(owner)
+                .ok()
+                .map(|p| p.slot_status == 3),
             city_count: player.cities.records.entries.len(),
             graph,
             techs,
@@ -400,8 +464,8 @@ impl GameCulture {
 }
 pub struct Queries<'a> {
     definitions: &'a Definitions,
-    state: &'a LoadedState,
-    owner: i32,
+    current_turn: i32,
+    human: Option<bool>,
     culture: &'a Culture,
     city_count: usize,
     graph: Option<&'a GameCulture>,
@@ -559,15 +623,12 @@ impl Queries<'_> {
         let start = context
             .game_start_turn
             .ok_or(Error::Unsupported("current Game.GameStartTurn"))?;
-        if self.state.retained().core.current_turn.wrapping_sub(start) > 1 {
+        if self.current_turn.wrapping_sub(start) > 1 {
             return Ok(false);
         }
-        if self
-            .state
-            .player_controls(self.owner)
-            .map_err(|_| Error::Unsupported("current human configuration"))?
-            .slot_status
-            != 3
+        if !self
+            .human
+            .ok_or(Error::Unsupported("current human configuration"))?
         {
             return Ok(false);
         }
@@ -1316,5 +1377,183 @@ mod phase_tests {
         }
         assert!(strategic_phase(&phases, -2).is_err());
         assert!(strategic_phase(&phases, 5).is_err());
+    }
+}
+
+#[cfg(test)]
+mod current_tests {
+    use super::*;
+    use choose_tech::current_tests::{binding, registry};
+    fn culture() -> Culture {
+        Culture {
+            wire_version: 45,
+            current_government_hash: 0,
+            post_anarchy_government_hash: 0,
+            anarchy_end_turn: 0,
+            turn_adopted: 0,
+            modified_boost: 0,
+            government_change_considered: false,
+            government_unlocked: IndexedBools { pairs: vec![] },
+            government_usage_count: vec![],
+            last_government_used: vec![],
+            policy_unlocked: IndexedBools { pairs: vec![] },
+            policy_purchased: IndexedBools { pairs: vec![] },
+            policy_has_been_enacted: IndexedBools { pairs: vec![] },
+            policy_is_in_place: IndexedBools { pairs: vec![] },
+            policy_banned: IndexedBools { pairs: vec![] },
+            active_policies: c6_core::player_culture::GovernmentSlots { entries: vec![] },
+            modified_slots: c6_core::player_culture::GovernmentSlots { entries: vec![] },
+            modified_removed_slots: c6_core::player_culture::GovernmentSlots { entries: vec![] },
+            has_civic: IndexedBools { pairs: vec![] },
+            boost_triggered: IndexedBools { pairs: vec![] },
+            cultural_progress_bits: vec![],
+            civic_queue_hashes: vec![],
+            cultural_overflow_bits: 0,
+            culture_rate_change_bits: 0,
+            civic_completed_this_turn: false,
+            civic_completed_this_turn_hash: 0,
+            turn_last_policy_change: 0,
+            num_random_civic_boosts_on_new_era: 0,
+            free_civic_boost_wonder_era: 0,
+            tourism_on_bits: vec![],
+            dominant_over: vec![],
+            turns_until_dominant: vec![],
+            tourism_modifier: 0,
+            cached_alliance_tourism_bonus_bits: 0,
+            cached_alliance_culture_bonus_bits: 0,
+            religious_tourism_reduction: 0,
+            overall_tourism_reduction: 0,
+            always_full_religious_tourism: 0,
+            lifetime_culture_bits: 0,
+            staycationers: 0,
+            last_turn_staycationers: 0,
+            last_turn_tourists_to: 0,
+            tourists_from: vec![],
+            extra_trade_route_tourism_modifier: 0,
+            auto_themed_building_hash: 0,
+            tourism_locations: vec![],
+            culture_bomb_triggers: vec![],
+            tourism_into_favor: vec![],
+            culture_bomb_converts_city: false,
+            unlock_features: vec![],
+            tourism_national_parks_modifier_bits: 0,
+            great_work_object_tourism_modifiers: vec![],
+            policy_favor_list: vec![],
+            building_favor_list: vec![],
+            other_government_intolerance_multiplier_bits: 0,
+            other_government_intolerance_modifier: 0,
+            previous_government_policies: c6_core::player_culture::GovernmentSlots {
+                entries: vec![],
+            },
+            num_civics_repeated: 0,
+            auto_themed_buildings_with_x_slots: 0,
+            auto_themed_wonders_with_x_slots: 0,
+            all_great_works_tourism_modifier: 0,
+            all_great_works_yield_modifier: 0,
+            replaced_slots: vec![],
+            government_type_modified_slots: vec![],
+        }
+    }
+    fn definitions(binding: WireBinding) -> Definitions {
+        let empty = || LinuxDefinitionRegistry::from_native_order(vec![]);
+        Definitions {
+            binding,
+            civics: registry(b"CIVIC_A"),
+            repeatable: vec![false],
+            xp2: empty(),
+            hidden: vec![],
+            governments: empty(),
+            government_civics: vec![],
+            policies: empty(),
+            policy: vec![],
+            slots: vec![],
+            eras: registry(b"ERA_A"),
+            start_eras: registry(b"ERA_A"),
+            starting_change: vec![crate::registry::linux_type_hash(b"ERA_A")],
+            require_cities: true,
+            allow_empty: false,
+            phases: vec![],
+            calendar: CalendarDefinitions {
+                months: 12,
+                speeds: empty(),
+                speed_turns: vec![],
+                start_years: vec![],
+            },
+        }
+    }
+    #[test]
+    fn current_culture_uses_supplied_turn_and_preserves_eager_starting_query() {
+        let binding = binding();
+        let definitions = definitions(binding.clone());
+        let culture = culture();
+        let context = StartingContext::from_current_fields(binding.clone(), 0, Some(10), None);
+        let query = |turn, status, starting| {
+            definitions
+                .current_player(
+                    0,
+                    CurrentPlayer {
+                        binding: &binding,
+                        owner: 0,
+                        culture: &culture,
+                        city_count: 0,
+                        current_turn: turn,
+                        slot_status: status,
+                    },
+                    None,
+                    None,
+                    starting,
+                )
+                .unwrap()
+        };
+        // ChooseCivic's city branch skips graph, while government queries starting context eagerly.
+        assert!(query(10, None, None).is_expired(Kind::ChooseCivic).unwrap());
+        assert!(query(10, None, None)
+            .is_needed(Kind::ConsiderGovernmentChange, false)
+            .unwrap());
+        assert!(query(10, None, None)
+            .is_expired(Kind::ConsiderGovernmentChange)
+            .is_err());
+        assert!(query(12, None, Some(&context))
+            .is_expired(Kind::ConsiderGovernmentChange)
+            .unwrap());
+        assert!(matches!(
+            query(11, None, Some(&context)).is_expired(Kind::ConsiderGovernmentChange),
+            Err(Error::Unsupported("current human configuration"))
+        ));
+        assert!(query(11, Some(3), Some(&context))
+            .starting_government_notification()
+            .unwrap());
+        assert!(!query(11, Some(2), Some(&context))
+            .starting_government_notification()
+            .unwrap());
+        assert!(!query(12, Some(3), Some(&context))
+            .starting_government_notification()
+            .unwrap());
+        assert_eq!(context.source(), StartingSource::CallerProvided);
+        let current = || CurrentPlayer {
+            binding: &binding,
+            owner: 0,
+            culture: &culture,
+            city_count: 0,
+            current_turn: 12,
+            slot_status: None,
+        };
+        assert!(definitions
+            .current_player(1, current(), None, None, None)
+            .is_err());
+        let mut other = binding.clone();
+        other.core_sha256[0] ^= 1;
+        let other_definitions = choose_tech::current_tests::definitions(other);
+        let techs = choose_tech::current_tests::techs();
+        let research = choose_tech::Research {
+            definitions: &other_definitions,
+            techs: &techs,
+            city_count: None,
+            human: None,
+            graph: None,
+        };
+        assert!(definitions
+            .current_player(0, current(), None, Some(&research), None)
+            .is_err());
     }
 }
