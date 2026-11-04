@@ -182,7 +182,8 @@ pub fn do_builds(
         yield_index,
         execution::production_kind(order),
     )?;
-    let generic = effects.calculate_yield_q8(state, owner, city, yield_index, 0)?;
+    let generic_index = state.city(owner, city)?.build_queue.yield_type;
+    let generic = effects.calculate_yield_q8(state, owner, city, generic_index, 0)?;
     let header = &mut state.city_mut(owner, city)?.header;
     for value in &mut header.project_yield_q8 {
         value.value = 0;
@@ -318,4 +319,44 @@ pub fn append_building(
         QueueEntry::construct_request(building_hash),
         effects,
     )
+}
+
+/// Query services reached by the native CityBuildQueue report consumer.
+/// Generic GetYield may use the current logical cache; kind-specific GetYield
+/// calls CalculateYield. Both use the same authoritative state/RNG owner.
+pub trait QueueReportQueries {
+    fn get_yield_q8(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        yield_index: i32,
+        kind: Option<u32>,
+    ) -> Result<i32, Error>;
+}
+/// Effects of Cache.CityBuildQueue.Fill2709a90 for a current ordinary-building
+/// or empty queue. The dispatcher owns actual consumer qualification. Remaining
+/// fields are read-only progress/cost calculations and presentation copies;
+/// their UI preview tables are not constructed by the headless simulator.
+pub fn run_build_queue_report_queries(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    queries: &mut impl QueueReportQueries,
+) -> Result<(), Error> {
+    let queue = &state.city(owner, city)?.build_queue;
+    let yield_index = queue.yield_type;
+    // Fill.GetProductionYield2854780 -> City.GetYield (generic).
+    queries.get_yield_q8(state, owner, city, yield_index, None)?;
+    let queue = &state.city(owner, city)?.build_queue;
+    let yield_index = queue.yield_type;
+    match queue.entries.first().map(|v| v.order) {
+        None => Ok(()),
+        Some(Order::Construct { .. }) => {
+            // GetTurnsLeft.Building2854f50 -> GetProductionYield(kind).
+            queries.get_yield_q8(state, owner, city, yield_index, Some(0xd8a30267))?;
+            Ok(())
+        }
+        _ => Err(Error::Unsupported("queue report query branch")),
+    }
 }

@@ -42,6 +42,23 @@ pub fn completion_overflow(
         .max(0)
 }
 
+/// GetPercentComplete.Building2853260 includes the still-live overflow before
+/// AddProgress clears it. ComputePercentComplete2d57aa0 uses Q8 multiplication,
+/// Q8 division, arithmetic AsInt and an upper cap of100. None identifies the
+/// native divide-by-zero case caused by a wrapped positive cost.
+pub fn percent_complete(cost: i32, progress: i32, overflow: i32) -> Option<i32> {
+    if cost <= 0 {
+        return Some(-1);
+    }
+    let denominator = cost.wrapping_shl(8);
+    if denominator == 0 {
+        return None;
+    }
+    let numerator = multiply(progress.wrapping_add(overflow), 100 * 256);
+    let quotient = ((i64::from(numerator) << 8) / i64::from(denominator)) as i32;
+    Some((quotient >> 8).min(100))
+}
+
 /// UpdateUnit/BuildingProgress accumulates its Q8 multiplier first, then
 /// multiplies selected yield plus old overflow once. Reassociating these
 /// operations loses different fractional bits.
@@ -102,6 +119,15 @@ mod tests {
         assert_eq!(percent_multiplier(-1), 253);
         assert_eq!(percent_multiplier(-100), 0);
         assert_eq!(from_float(-0.1), -26);
+    }
+    #[test]
+    fn report_percentage_observes_overflow_before_it_is_cleared() {
+        assert_eq!(percent_complete(60, 1281, 1024), Some(15));
+        assert_eq!(percent_complete(60, 1281, 0), Some(8));
+        assert_eq!(percent_complete(60, 61 * 256, 0), Some(100));
+        assert_eq!(percent_complete(60, -1, 0), Some(-1));
+        assert_eq!(percent_complete(0, 256, 0), Some(-1));
+        assert_eq!(percent_complete(1 << 24, 256, 0), None);
     }
     #[test]
     fn completion_caps_kind_bonus_and_never_carries_old_overflow() {

@@ -30,6 +30,7 @@ pub struct Building {
     dynamic_climate_cost: bool,
     xp_construction_effects: bool,
     coastal_construction_effects: bool,
+    resource_cost_rows_present: bool,
 }
 pub struct Definitions {
     inputs: InputIdentities,
@@ -94,6 +95,8 @@ impl Definitions {
         let buildings_table = table("Buildings")?;
         let slots_table = table("Building_GreatWorks")?;
         let exclusive_table = table("MutuallyExclusiveBuildings")?;
+        let resource_costs = table("Building_ResourceCosts")?;
+        let resources = registry("Resources", "ResourceType")?;
         let xp = table("Buildings_XP2")?;
         let mut buildings = Vec::with_capacity(building_registry.entries().len());
         for (index, entry) in building_registry.entries().iter().enumerate() {
@@ -148,6 +151,16 @@ impl Definitions {
                         && integer(row, "CostMultiplierPerSeaLevel")? > 0;
                 }
             }
+            // UpdateBuildingProgress284ff30 and OnNewFrontBuilding285ada0
+            // skip rows unless both definition references resolve.
+            let mut resource_cost_rows_present = false;
+            for row in resource_costs.rows() {
+                if hash(row, "BuildingType")? == Some(hash_value)
+                    && hash(row, "ResourceType")?.is_some_and(|h| resources.find(h).is_some())
+                {
+                    resource_cost_rows_present = true;
+                }
+            }
             buildings.push(Building {
                 hash: hash_value,
                 capital: integer(row, "Capital")? != 0,
@@ -164,6 +177,7 @@ impl Definitions {
                 dynamic_climate_cost,
                 xp_construction_effects,
                 coastal_construction_effects,
+                resource_cost_rows_present,
             });
         }
         let speed_registry = registry("GameSpeeds", "GameSpeedType")?;
@@ -196,6 +210,23 @@ impl Definitions {
             production_rate,
             government_bonuses: registry("GovernmentBonusNames", "GovernmentBonusType")?,
         })
+    }
+    /// First-progress resource path284ff30 for a building with no resolved
+    /// strategic-resource rows. Such a definition reaches no reservation,
+    /// resource-stockpile or climate mutation. Resource-bearing definitions
+    /// require their actual player-resource/climate services.
+    pub fn start_building_progress(
+        &self,
+        state: &LoadedState,
+        building_hash: u32,
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.building(building_hash)?.resource_cost_rows_present {
+            return Err(Error::Unsupported(
+                "building strategic-resource consumption",
+            ));
+        }
+        Ok(())
     }
     /// Live non-wonder production factors; no captured yield/multiplier answer
     /// cache. Native GetFlatBonus returns zero in anarchy or for unknown types.
@@ -294,9 +325,15 @@ impl Definitions {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Report {
+    /// 4d2a6519/d8a30267; the report carries no location.
+    QueueChanged,
     ConstructionStarted,
-    BuildingProgress { percent: i32 },
-    BuildingCompleted { construction_plot: i32 },
+    BuildingProgress {
+        percent: i32,
+    },
+    BuildingCompleted {
+        construction_plot: i32,
+    },
 }
 pub trait Effects {
     /// Recheck current Construct after CreateBuilding changes legality.
@@ -422,6 +459,66 @@ pub fn pre_create(
     }
     Ok(Some(location))
 }
+/// UpdateBuildingProgress after the canonical progress addition: lazily begin
+/// construction, compute percent while overflow remains live, publish the queue
+/// change, then publish the sub-100 construction update. Synchronous consumers
+/// can mutate the current construction plot, so it is re-read after the report.
+pub fn progress_changed(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    building_hash: u32,
+    definitions: &Definitions,
+    effects: &mut impl Effects,
+) -> Result<(), Error> {
+    definitions.validate(state)?;
+    let building = definitions.building(building_hash)?;
+    if building.coastal_construction_effects {
+        return Err(Error::Unsupported("coastal construction progress effects"));
+    }
+    let queue = &state.city(owner, city)?.build_queue;
+    let construction = index(&queue.construction_plot, building_hash)?;
+    if queue.construction_plot[construction].value < 0 {
+        pre_create(state, owner, city, building, None, effects)?;
+    }
+    let queue = &state.city(owner, city)?.build_queue;
+    let progress = queue.building_progress[index(&queue.building_progress, building_hash)?].value;
+    let percent = c6_core::city_production::execution::percent_complete(
+        definitions.production_cost(building)?,
+        progress,
+        queue.production_overflow,
+    )
+    .ok_or(Error::Unsupported("wrapped building percentage divisor"))?;
+    effects.report(
+        state,
+        owner,
+        city,
+        building_hash,
+        [-9999, -9999],
+        Report::QueueChanged,
+    )?;
+    let plot = state.city(owner, city)?.build_queue.construction_plot[construction].value;
+    if percent < 100 && plot >= 0 {
+        let width = state.world().map().header.width;
+        if width <= 0 {
+            return Err(Error::Unsupported("building map width"));
+        }
+        let location = [i32::from(plot) % width, i32::from(plot) / width];
+        plot_index(state, location)?;
+        // OnConstructionChanged2bd4380 has no gameplay write or RNG once
+        // the actual BlocksCoastalFlooding definition branch is excluded.
+        effects.report(
+            state,
+            owner,
+            city,
+            building_hash,
+            location,
+            Report::BuildingProgress { percent },
+        )?;
+    }
+    Ok(())
+}
+
 /// PostCreate's non-wonder/non-defense branch, including actual slots, era,
 /// completion grants and the mandatory synchronous subscribers.
 pub fn post_create(
@@ -688,6 +785,7 @@ mod tests {
             dynamic_climate_cost: false,
             xp_construction_effects: false,
             coastal_construction_effects: false,
+            resource_cost_rows_present: false,
         };
         (definitions, building)
     }
