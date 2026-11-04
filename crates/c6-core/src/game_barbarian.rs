@@ -6,6 +6,8 @@ pub const VERSION: u32 = 5;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Truncated,
+    UnsupportedLegacyWrite,
+    MissingCurrentField,
     Variant(crate::unit::variants::VariantError),
     Trailing,
     ResourceLimit,
@@ -261,11 +263,80 @@ record!(Instance,15,{
     tech_steal_turns_cooldown:i32,conversion_points:i32,player_bribe_turns_remaining:Vec<i32>,
     clan_player_stats:Vec<ClanPlayerStats>,incite_targets:Vec<WeightedPlayer>,
 });
-record!(Manager,VERSION,{
-    player_ordinal:i32,value_c8:u32,value_e0:u32,value_f8:u32,
-    control_priority_ordinal:i32,improvement_hash:u32,flag_168_raw:u8,
-    values_1a8:Vec<i32>,instances:Vec<Instance>,camp_locations:Vec<CampLocation>,clans:ClansManager,
-});
+/// Barbarian Manager3/5 wire projection. Missing camp locations(since4)
+/// and clan manager(since5) self-default, leaving their prior state unknown.
+/// Native player binding, signals/evaluators and definition remaps do not run.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Manager {
+    pub wire_version: u32,
+    pub player_ordinal: i32,
+    pub value_c8: u32,
+    pub value_e0: u32,
+    pub value_f8: u32,
+    pub control_priority_ordinal: i32,
+    pub improvement_hash: u32,
+    pub flag_168_raw: u8,
+    pub values_1a8: Vec<i32>,
+    pub instances: Vec<Instance>,
+    pub camp_locations: Option<Vec<CampLocation>>,
+    pub clans: Option<ClansManager>,
+}
+impl Wire for Manager {
+    const MIN: usize = 37;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        let wire_version = u32::read(r)?;
+        if !matches!(wire_version, 3 | VERSION) {
+            return Err(Error::Version {
+                expected: VERSION,
+                actual: wire_version,
+            });
+        }
+        Ok(Self {
+            wire_version,
+            player_ordinal: <i32 as Wire>::read(r)?,
+            value_c8: <u32 as Wire>::read(r)?,
+            value_e0: <u32 as Wire>::read(r)?,
+            value_f8: <u32 as Wire>::read(r)?,
+            control_priority_ordinal: <i32 as Wire>::read(r)?,
+            improvement_hash: <u32 as Wire>::read(r)?,
+            flag_168_raw: <u8 as Wire>::read(r)?,
+            values_1a8: <Vec<i32> as Wire>::read(r)?,
+            instances: <Vec<Instance> as Wire>::read(r)?,
+            camp_locations: if wire_version == VERSION {
+                Some(Vec::<CampLocation>::read(r)?)
+            } else {
+                None
+            },
+            clans: if wire_version == VERSION {
+                Some(ClansManager::read(r)?)
+            } else {
+                None
+            },
+        })
+    }
+    fn write(&self, w: &mut Writer) -> Result<(), Error> {
+        if self.wire_version != VERSION {
+            return Err(Error::UnsupportedLegacyWrite);
+        }
+        let camp_locations = self
+            .camp_locations
+            .as_ref()
+            .ok_or(Error::MissingCurrentField)?;
+        let clans = self.clans.as_ref().ok_or(Error::MissingCurrentField)?;
+        VERSION.write(w)?;
+        self.player_ordinal.write(w)?;
+        self.value_c8.write(w)?;
+        self.value_e0.write(w)?;
+        self.value_f8.write(w)?;
+        self.control_priority_ordinal.write(w)?;
+        self.improvement_hash.write(w)?;
+        self.flag_168_raw.write(w)?;
+        self.values_1a8.write(w)?;
+        self.instances.write(w)?;
+        camp_locations.write(w)?;
+        clans.write(w)
+    }
+}
 impl Manager {
     pub fn decode_prefix_with_items(
         bytes: &[u8],
@@ -336,6 +407,7 @@ mod tests {
     }
     fn specimen(flag: u8) -> Manager {
         Manager {
+            wire_version: VERSION,
             player_ordinal: i32::MIN,
             value_c8: u32::MAX,
             value_e0: u32::MAX,
@@ -406,18 +478,74 @@ mod tests {
                     weight: i32::MIN,
                 }],
             }],
-            camp_locations: vec![CampLocation {
+            camp_locations: Some(vec![CampLocation {
                 plot_index: i32::MIN,
-            }],
-            clans: ClansManager {
+            }]),
+            clans: Some(ClansManager {
                 unique_unit_claims: vec![UniqueUnitClaimData {
                     unit_hash: u32::MAX,
                     value_4: i32::MIN,
                     value_8: i32::MIN,
                 }],
                 value_100: i32::MIN,
-            },
+            }),
         }
+    }
+    #[test]
+    fn manager3_missing_camps_and_clans_remain_unknown_prior() {
+        let mut b = Vec::new();
+        for word in [
+            3u32,
+            u32::MAX,
+            0x81234567,
+            0,
+            u32::MAX,
+            i32::MIN as u32,
+            u32::MAX,
+        ] {
+            b.extend_from_slice(&word.to_le_bytes());
+        }
+        b.push(0xfe);
+        b.extend_from_slice(&0u32.to_le_bytes());
+        b.extend_from_slice(&0u32.to_le_bytes());
+        b.push(0xaa);
+        let cap = Limits {
+            max_bytes: 37,
+            max_items: 0,
+        };
+        let (v, n, i) = Manager::decode_prefix_with_items(&b, cap).unwrap();
+        assert_eq!(
+            (v.wire_version, v.player_ordinal, v.flag_168_raw, n, i),
+            (3, -1, 0xfe, 37, 0)
+        );
+        assert!(v.camp_locations.is_none() && v.clans.is_none());
+        assert!(v.values_1a8.is_empty());
+        assert_eq!(v.encode(cap), Err(Error::UnsupportedLegacyWrite));
+        for cut in 0..37 {
+            assert!(Manager::decode_prefix(&b[..cut], cap).is_err());
+        }
+        assert!(Manager::decode_prefix(
+            &b,
+            Limits {
+                max_bytes: 36,
+                ..cap
+            }
+        )
+        .is_err());
+        let mut current = specimen(255);
+        current.clans = None;
+        assert_eq!(
+            current.encode(Limits::default()),
+            Err(Error::MissingCurrentField)
+        );
+        b[..4].copy_from_slice(&4u32.to_le_bytes());
+        assert_eq!(
+            Manager::decode_prefix(&b, cap),
+            Err(Error::Version {
+                expected: 5,
+                actual: 4
+            })
+        );
     }
     #[test]
     fn all_bool_carriers_and_small_truncations() {
@@ -511,6 +639,7 @@ mod tests {
     #[test]
     fn empty_manager_has_no_context_defaults() {
         let value = Manager {
+            wire_version: VERSION,
             player_ordinal: -1,
             value_c8: 0,
             value_e0: 1,
@@ -520,11 +649,11 @@ mod tests {
             flag_168_raw: 128,
             values_1a8: vec![],
             instances: vec![],
-            camp_locations: vec![],
-            clans: ClansManager {
+            camp_locations: Some(vec![]),
+            clans: Some(ClansManager {
                 unique_unit_claims: vec![],
                 value_100: -1,
-            },
+            }),
         };
         let bytes = value
             .encode(Limits {

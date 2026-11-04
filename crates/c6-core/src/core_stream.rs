@@ -1708,6 +1708,7 @@ pub(crate) mod tests {
             yields_d0: vec![],
         };
         let barbarian = b::Manager {
+            wire_version: 5,
             player_ordinal: -1,
             value_c8: u32::MAX,
             value_e0: 0x80000000,
@@ -1717,15 +1718,15 @@ pub(crate) mod tests {
             flag_168_raw: 197,
             values_1a8: vec![-1, 8, 9],
             instances: vec![],
-            camp_locations: vec![b::CampLocation { plot_index: -1 }],
-            clans: b::ClansManager {
+            camp_locations: Some(vec![b::CampLocation { plot_index: -1 }]),
+            clans: Some(b::ClansManager {
                 unique_unit_claims: vec![b::UniqueUnitClaimData {
                     unit_hash: u32::MAX,
                     value_4: i32::MIN,
                     value_8: -7,
                 }],
                 value_100: i32::MAX,
-            },
+            }),
         };
         let free = f::Manager {
             player_ordinal: -9,
@@ -1820,7 +1821,7 @@ pub(crate) mod tests {
         assert_eq!(items[2], 0);
         assert_eq!(value.barbarian.flag_168_raw, 197);
         assert_eq!(
-            value.barbarian.clans.unique_unit_claims[0].value_4,
+            value.barbarian.clans.as_ref().unwrap().unique_unit_claims[0].value_4,
             i32::MIN
         );
         assert_eq!(value.free_cities.instances[0].living_raw, 197);
