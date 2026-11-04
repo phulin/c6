@@ -78,6 +78,118 @@ pub fn check_apply_effects<C: Context>(c: &mut C) -> Result<bool, C::Error> {
     Ok(false)
 }
 
+/// Current concrete DynamicModifier.ApplyEffect continuation. Logging methods
+/// must route the actual stock output path or a source-qualified inert profile.
+pub trait EffectContext {
+    type Error;
+    fn mark_subject_affected(&mut self) -> Result<(), Self::Error>;
+    fn suppressed(&self) -> Result<bool, Self::Error>;
+    fn subject_stack_limit(&self) -> Result<Option<u16>, Self::Error>;
+    fn affected_count(&self) -> Result<i32, Self::Error>;
+    fn log_applying(&mut self) -> Result<(), Self::Error>;
+    fn apply_concrete_effect(&mut self) -> Result<bool, Self::Error>;
+    fn log_failed(&mut self) -> Result<(), Self::Error>;
+}
+#[derive(Debug, PartialEq, Eq)]
+pub enum EffectError<E> {
+    Context(E),
+    DefinitionDisappeared,
+}
+/// 0x23348b0: MarkAsAffected happens even when suppression/stack-limit subsequently
+/// skips the kernel. A count equal to the u16 limit still permits application.
+pub fn apply_effect<C: EffectContext>(c: &mut C) -> Result<(), EffectError<C::Error>> {
+    c.mark_subject_affected().map_err(EffectError::Context)?;
+    if c.suppressed().map_err(EffectError::Context)? {
+        return Ok(());
+    }
+    if let Some(limit) = c.subject_stack_limit().map_err(EffectError::Context)? {
+        if limit != 0 {
+            let count = c.affected_count().map_err(EffectError::Context)?;
+            let limit = c
+                .subject_stack_limit()
+                .map_err(EffectError::Context)?
+                .ok_or(EffectError::DefinitionDisappeared)?;
+            if count > i32::from(limit) {
+                return Ok(());
+            }
+        }
+    }
+    c.log_applying().map_err(EffectError::Context)?;
+    if !c.apply_concrete_effect().map_err(EffectError::Context)? {
+        c.log_failed().map_err(EffectError::Context)?;
+    }
+    Ok(())
+}
+
+/// Canonical ModifierObject affected-instance list. Native entries are ordered
+/// by definition bytes; distinct instances of one definition insert first.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AffectedEntry {
+    pub definition: Vec<u8>,
+    pub instance: i32,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AffectedModifiers {
+    entries: Vec<AffectedEntry>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AffectedError {
+    Order,
+    Allocation,
+}
+impl AffectedModifiers {
+    pub fn from_sorted(entries: Vec<AffectedEntry>) -> Result<Self, AffectedError> {
+        if entries
+            .windows(2)
+            .any(|r| r[0].definition > r[1].definition)
+        {
+            return Err(AffectedError::Order);
+        }
+        Ok(Self { entries })
+    }
+    pub fn entries(&self) -> &[AffectedEntry] {
+        &self.entries
+    }
+    /// ModifierObject.MarkAsAffected2335a30: duplicate same definition/instance
+    /// does nothing; a different instance inserts at the LOWER bound.
+    pub fn mark(&mut self, definition: &[u8], instance: i32) -> Result<(), AffectedError> {
+        let lower = self
+            .entries
+            .partition_point(|r| r.definition.as_slice() < definition);
+        let upper = lower
+            + self.entries[lower..].partition_point(|r| r.definition.as_slice() == definition);
+        if self.entries[lower..upper]
+            .iter()
+            .any(|r| r.instance == instance)
+        {
+            return Ok(());
+        }
+        let mut owned = Vec::new();
+        owned
+            .try_reserve(definition.len())
+            .map_err(|_| AffectedError::Allocation)?;
+        owned.extend_from_slice(definition);
+        self.entries
+            .try_reserve(1)
+            .map_err(|_| AffectedError::Allocation)?;
+        self.entries.insert(
+            lower,
+            AffectedEntry {
+                definition: owned,
+                instance,
+            },
+        );
+        Ok(())
+    }
+    /// GetModifierAffectedByCount2331500 counts the current matching instances.
+    pub fn count(&self, definition: &[u8]) -> i32 {
+        let lower = self
+            .entries
+            .partition_point(|r| r.definition.as_slice() < definition);
+        self.entries[lower..].partition_point(|r| r.definition.as_slice() == definition) as i32
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +256,82 @@ mod tests {
             repeat: false,
             events: vec![],
         }
+    }
+    struct ApplyTest {
+        count: i32,
+        limit: Option<u16>,
+        suppressed: bool,
+        events: Vec<&'static str>,
+    }
+    impl EffectContext for ApplyTest {
+        type Error = ();
+        fn mark_subject_affected(&mut self) -> Result<(), ()> {
+            self.count += 1;
+            self.events.push("mark");
+            Ok(())
+        }
+        fn suppressed(&self) -> Result<bool, ()> {
+            Ok(self.suppressed)
+        }
+        fn subject_stack_limit(&self) -> Result<Option<u16>, ()> {
+            Ok(self.limit)
+        }
+        fn affected_count(&self) -> Result<i32, ()> {
+            assert_ne!(self.limit, Some(0));
+            Ok(self.count)
+        }
+        fn log_applying(&mut self) -> Result<(), ()> {
+            self.events.push("log");
+            Ok(())
+        }
+        fn apply_concrete_effect(&mut self) -> Result<bool, ()> {
+            self.events.push("effect");
+            Ok(false)
+        }
+        fn log_failed(&mut self) -> Result<(), ()> {
+            self.events.push("failed");
+            Ok(())
+        }
+    }
+    #[test]
+    fn affected_mark_survives_stack_rejection_and_equal_limit_runs_effect() {
+        let mut c = ApplyTest {
+            count: 0,
+            limit: Some(1),
+            suppressed: false,
+            events: vec![],
+        };
+        apply_effect(&mut c).unwrap();
+        assert_eq!(c.events, ["mark", "log", "effect", "failed"]);
+        c.events.clear();
+        apply_effect(&mut c).unwrap();
+        assert_eq!(c.events, ["mark"]);
+        assert_eq!(c.count, 2);
+        c.events.clear();
+        c.limit = Some(0);
+        apply_effect(&mut c).unwrap();
+        assert_eq!(c.events, ["mark", "log", "effect", "failed"]);
+        c.events.clear();
+        c.suppressed = true;
+        apply_effect(&mut c).unwrap();
+        assert_eq!(c.events, ["mark"]);
+    }
+    #[test]
+    fn affected_instances_preserve_definition_order_and_native_lower_bound_insertion() {
+        let mut list = AffectedModifiers::from_sorted(vec![]).unwrap();
+        list.mark(b"Z", 7).unwrap();
+        list.mark(b"A", 2).unwrap();
+        list.mark(b"A", 1).unwrap();
+        list.mark(b"A", 2).unwrap();
+        assert_eq!(
+            list.entries()
+                .iter()
+                .map(|r| r.instance)
+                .collect::<Vec<_>>(),
+            [1, 2, 7]
+        );
+        assert_eq!(list.count(b"A"), 2);
+        assert_eq!(list.count(b"B"), 0);
     }
     #[test]
     fn inserts_and_marks_before_real_effect_even_if_apply_returns_false() {
