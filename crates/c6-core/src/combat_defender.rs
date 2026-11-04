@@ -45,6 +45,34 @@ pub fn select_default<C: Context>(c: &mut C) -> Result<Option<C::Unit>, C::Error
     Ok(best)
 }
 
+/// Null attacker, flags1: enemies that can fight and are currently visible.
+pub trait EnemyContext: Context {
+    fn is_enemy(&mut self, candidate_owner: i32, viewer: i32) -> Result<bool, Self::Error>;
+    fn visible(&mut self, unit: Self::Unit) -> Result<bool, Self::Error>;
+}
+pub fn select_enemy<C: EnemyContext>(c: &mut C, viewer: i32) -> Result<Option<C::Unit>, C::Error> {
+    let mut best = None;
+    let mut index = 0;
+    while index < c.candidate_count()? {
+        if let Some(unit) = c.resolve(index)? {
+            if !c.delayed_death(unit)? && c.owner(unit)? != viewer {
+                let owner = c.owner(unit)?;
+                if c.is_enemy(owner, viewer)? && is_combat(c, unit)? && c.visible(unit)? {
+                    let replace = match best {
+                        None => true,
+                        Some(old) => c.combat_false(unit)? > c.combat_false(old)?,
+                    };
+                    if replace {
+                        best = Some(unit);
+                    }
+                }
+            }
+        }
+        index += 1;
+    }
+    Ok(best)
+}
+
 /// GetBestDefender flags0x9/0x19 with a nonnull attacker. These profiles examine
 /// all eligible units (mask0x8), require enemies (mask0x1), and use actual visibility.
 pub trait MeleeContext: Context {
@@ -134,6 +162,39 @@ mod tests {
             }
             Ok(self.units[index].unwrap())
         }
+    }
+    impl EnemyContext for C {
+        fn is_enemy(&mut self, a: i32, b: i32) -> Result<bool, Self::Error> {
+            MeleeContext::is_enemy(self, a, b)
+        }
+        fn visible(&mut self, u: usize) -> Result<bool, Self::Error> {
+            MeleeContext::visible(self, u)
+        }
+    }
+    #[test]
+    fn flags_one_filters_combat_before_visibility_and_keeps_first_equal_strength() {
+        let mut c = C::new(&[[90, 0, 0], [100, 0, 0], [0, 0, 0], [5, 0, 0], [5, 0, 0]]);
+        for u in c.units.iter_mut().flatten() {
+            u.owner = 1;
+        }
+        c.units[0].as_mut().unwrap().owner = 0;
+        c.visible[1] = false;
+        assert_eq!(select_enemy(&mut c, 0), Ok(Some(3)));
+        assert!(!c.calls.contains(&(0, "combat")));
+        assert!(!c.calls.contains(&(2, "visible")));
+        let first_combat = c.calls.iter().position(|v| *v == (1, "combat")).unwrap();
+        let visible = c.calls.iter().position(|v| *v == (1, "visible")).unwrap();
+        assert!(first_combat < visible);
+        assert_eq!(c.calls.iter().filter(|v| **v == (3, "combat")).count(), 2);
+        assert_eq!(c.calls.iter().filter(|v| **v == (4, "combat")).count(), 2);
+    }
+    #[test]
+    fn flags_one_preserves_first_reached_query_error() {
+        let mut c = C::new(&[[3, 0, 0]]);
+        c.units[0].as_mut().unwrap().owner = 1;
+        c.fail = Some((0, "visible"));
+        assert_eq!(select_enemy(&mut c, 0), Err("missing getter input"));
+        assert_eq!(c.calls.last(), Some(&(0, "visible")));
     }
     impl MeleeContext for C {
         fn is_enemy(&mut self, a: i32, _: i32) -> Result<bool, Self::Error> {

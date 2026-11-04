@@ -548,7 +548,7 @@ where
         continuations.unpair(state, effects, parent, current)?;
     }
     let current = unit(state, actor)?;
-    services::run_siege(state, runtime, effects, current.k_location, current.e_owner)
+    services::siege::run(state, runtime, effects, definitions, current.k_location, current.e_owner)
         .map_err(Error::Services)?;
     if !(delayed && unit(state, actor)?.b_delayed_death) {
         if delayed {

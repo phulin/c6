@@ -25,6 +25,8 @@ use c6_core::{
     visibility_contents::{self as contents, Discovery, Notification, Signal},
 };
 
+pub mod siege;
+
 pub type Actor = (i32, u32);
 #[derive(Debug)]
 pub enum Error<E> {
@@ -34,6 +36,11 @@ pub enum Error<E> {
     Effect(E),
     Binding,
     AliveStorageChanged,
+    Combat(crate::loaded_actions::Error),
+    Zoc(crate::formation_movement_cost::Error),
+    Placement(crate::movement_placement_state::Error),
+    District(c6_core::loaded_state::district_initialization::DistrictError),
+    Relations(c6_core::game_diplomatic_relations::Error),
     Meeting(Box<meeting::Error<Error<E>>>),
     Units(Box<tails::UnitsMovedError<Error<E>>>),
 }
@@ -162,6 +169,7 @@ pub struct Definitions {
     districts: LinuxDefinitionRegistry,
     improvements: LinuxDefinitionRegistry,
     camps: Vec<bool>,
+    abilities: LinuxDefinitionRegistry,
 }
 impl Definitions {
     pub fn from_rules(
@@ -204,6 +212,8 @@ impl Definitions {
             districts,
             improvements,
             camps,
+            abilities: collection(rules, "UnitAbilities", "UnitAbilityType")
+                .map_err(|_| Error::Unsupported("UnitAbilities registry"))?,
         })
     }
 }
@@ -1278,5 +1288,11 @@ mod tests {
             Missing.placement_service_runtime_mut(),
             Err(Error::Missing(_))
         ));
+    }
+}
+
+impl<E> From<crate::loaded_actions::Error> for Error<E> {
+    fn from(value: crate::loaded_actions::Error) -> Self {
+        Self::Combat(value)
     }
 }
