@@ -134,6 +134,11 @@ impl Definitions {
                 && unit.i_move_after_attacking <= 0,
         )
     }
+    /// Actual configured rule, including zero before the native getter fallback.
+    pub fn combat_max_num_attacks(&self, state: &LoadedState) -> Result<i32, Error> {
+        self.check(state)?;
+        Ok(self.max_attacks)
+    }
     pub fn combat(&self, state: &LoadedState, unit: &Unit) -> Result<i32, Error> {
         city_range_attack::unit_combat(state, unit, &self.combat)
     }

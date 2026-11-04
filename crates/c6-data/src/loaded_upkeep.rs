@@ -10,7 +10,9 @@ use c6_core::{
     loaded_state::LoadedState,
     unit::{Formation, Unit},
     unit_turn_start::{self, FormationRestoreContext, FormationRestoredReport},
-    unit_turn_upkeep::{self, MovementReport, RestoreMovementContext},
+    unit_turn_upkeep::{
+        self, AttacksRemainingReport, MovementReport, RestoreAttacksContext, RestoreMovementContext,
+    },
 };
 
 /// Identity of a retained collection slot, independent of mutable Unit ID/owner.
@@ -48,6 +50,7 @@ pub enum Error<E> {
     World(c6_core::world::MissingInput),
     State(c6_core::loaded_state::Error),
     Movement(unit_movement_state::Error),
+    Rules(crate::loaded_actions::Error),
     Provider(E),
     Formation(Box<formation_upkeep::FormationUpkeepError<Error<E>>>),
 }
@@ -156,6 +159,77 @@ pub trait FormationRestoreContinuations: Continuations {
         state: &mut LoadedState,
         report: FormationRestoredReport,
     ) -> Result<(), Self::Error>;
+}
+
+/// Required changed-attacks subscribers on the authoritative loaded World.
+/// Unknown subscribers reject during the pure preflight, before assignment.
+/// Delivery must preserve every gameplay/RNG effect and callback mutation.
+pub trait AttacksReports {
+    type Error;
+    fn preflight_attacks_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+    ) -> Result<(), Self::Error>;
+    fn attacks_report(
+        &mut self,
+        state: &mut LoadedState,
+        report: AttacksRemainingReport,
+    ) -> Result<(), Self::Error>;
+}
+
+struct Attacks<'s, 'd, E> {
+    state: &'s mut LoadedState,
+    definitions: &'d crate::formation_rules::Definitions,
+    reports: &'s mut E,
+    actor: UnitHandle,
+}
+impl<E: AttacksReports> RestoreAttacksContext for Attacks<'_, '_, E> {
+    type Error = Error<E::Error>;
+    fn unit(&self) -> Result<&Unit, Self::Error> {
+        self.actor.get(self.state).map_err(Error::World)
+    }
+    fn unit_mut(&mut self) -> Result<&mut Unit, Self::Error> {
+        self.actor.get_mut(self.state).map_err(Error::State)
+    }
+    fn combat_max_num_attacks(&self) -> Result<i32, Self::Error> {
+        self.definitions
+            .combat_max_num_attacks(self.state)
+            .map_err(Error::Rules)
+    }
+    fn preflight_attacks_report(&self) -> Result<(), Self::Error> {
+        self.reports
+            .preflight_attacks_report(self.state, self.actor)
+            .map_err(Error::Provider)
+    }
+    fn send_attacks_report(&mut self, report: AttacksRemainingReport) -> Result<(), Self::Error> {
+        self.reports
+            .attacks_report(self.state, report)
+            .map_err(Error::Provider)
+    }
+}
+
+/// Restore the actual retained Unit's attacks from identity-gated rules and
+/// its current bonus. The core implementation owns zero fallback, wrapping
+/// arithmetic, equality, assignment and synchronous reporting order. Equal
+/// values require no reporting provider capability. Errors after delivery starts
+/// retain the assignment and subscriber effects; this is a leaf, not a turn.
+pub fn restore_attacks_remaining<E: AttacksReports>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    definitions: &crate::formation_rules::Definitions,
+    reports: &mut E,
+) -> Result<
+    unit_turn_upkeep::RestoreAttacksOutcome,
+    unit_turn_upkeep::RestoreAttacksError<Error<E::Error>>,
+> {
+    unit_turn_upkeep::restore_attacks_remaining(&mut Attacks {
+        state,
+        definitions,
+        reports,
+        actor: UnitHandle { owner, id },
+    })
 }
 
 #[derive(Debug)]
