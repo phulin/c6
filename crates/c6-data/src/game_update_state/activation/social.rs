@@ -266,7 +266,7 @@ pub fn religion(
             .any(|r| r.founder == owner);
         if !founded
             && state.retained().religion.next_pantheon_founder == owner
-            && new
+            && player(state, owner)?.religion.faith_balance_q8
                 >= state
                     .retained()
                     .religion
@@ -330,7 +330,8 @@ pub fn influence(
             .points_earned = value;
         effects.report(state, owner, 0xd35e571d)?;
         let p = player(state, owner)?;
-        if p.influence.points_threshold > 0
+        if defs.eligible(state, queries, owner)?.1
+            && p.influence.points_threshold > 0
             && p.influence.points_earned >= p.influence.points_threshold.wrapping_shl(8)
         {
             return Err(Error::Unsupported("earned envoy tokens"));
@@ -366,6 +367,21 @@ pub fn influence(
 /// Exact target Quests.DoTurn2b5cd40 is RET; there is no quest-manager call.
 pub fn quests(_: &mut LoadedState, _: i32) -> Result<(), Error> {
     Ok(())
+}
+
+/// TurnManager first-activation sequence2ba0bf9..2ba0c31. Later stages are not
+/// executed after a reached callback/decision failure; prior writes remain.
+pub fn run(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    effects: &mut impl Effects,
+    owner: i32,
+) -> Result<(), Error> {
+    religion(state, defs, queries, effects, owner)?;
+    great_people(state, defs, queries, owner)?;
+    influence(state, defs, queries, effects, owner)?;
+    quests(state, owner)
 }
 
 #[cfg(test)]
