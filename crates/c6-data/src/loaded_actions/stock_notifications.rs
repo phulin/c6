@@ -16,12 +16,16 @@ mod activation;
 pub mod game_update;
 #[path = "stock_manager_queries.rs"]
 mod manager_queries;
+#[path = "stock_maintenance.rs"]
+pub mod maintenance;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]
 pub mod research;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
+#[path = "stock_turn_reports.rs"]
+pub mod turn_reports;
 #[path = "stock_skip_turn.rs"]
 pub mod skip_turn;
 use c6_core::{
@@ -66,6 +70,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub publications: Vec<lifecycle::Report>,
     /// Source-ordered changes after the canonical Player blocking store.
     pub blocking_changes: Vec<(u32, i32, i32)>,
+    pub turn_report_records: Vec<turn_reports::Record>,
     pub last_error: Option<String>,
     pub reached: Vec<&'static str>,
     binding: WireBinding,
@@ -95,6 +100,7 @@ impl<'a, P> Runtime<'a, P> {
             notices: Vec::new(),
             publications: Vec::new(),
             blocking_changes: Vec::new(),
+            turn_report_records: Vec::new(),
             last_error: None,
             reached: Vec::new(),
             binding: state.binding().clone(),
