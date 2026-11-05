@@ -16,7 +16,7 @@ pub enum Error<E> {
     Actor(super::Error),
     Effects(E),
     District(c6_core::loaded_state::district_initialization::DistrictError),
-    DistrictOwner(crate::loaded_actions::Error),
+    DistrictOwner(crate::loaded_actions::city_range_attack::DistrictReferenceOwnerError),
     Runtime(kernel::Error),
     MissingCollection(u64),
     MissingCollectionKind(u64),
@@ -111,11 +111,7 @@ impl<E: Effects> kernel::Context for Context<'_, E> {
                 Ok(super::actor(self.state, id).map_err(Error::Actor)?.e_owner)
             }
             kernel::Participant::District(id) => {
-                let district = self
-                    .state
-                    .district(i32::from(id.owner), id.id)
-                    .map_err(Error::District)?;
-                crate::loaded_actions::city_range_attack::district_owner(self.state, district)
+                crate::loaded_actions::city_range_attack::district_reference_owner(self.state, id)
                     .map_err(Error::DistrictOwner)
             }
         }

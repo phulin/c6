@@ -223,8 +223,7 @@ pub enum QueryError {
     MissingEffect(u64),
     Missing(&'static str),
     Actor(Box<super::Error>),
-    District(c6_core::loaded_state::district_initialization::DistrictError),
-    DistrictOwner(crate::loaded_actions::Error),
+    DistrictOwner(crate::loaded_actions::city_range_attack::DistrictReferenceOwnerError),
     World(c6_core::world::MissingInput),
     Access(c6_core::loaded_state::combat_proposals::AccessError),
     Proposal(registry::Error),
@@ -749,11 +748,7 @@ impl registry::Context for EffectContext<'_> {
                 .map_err(|e| QueryError::Actor(Box::new(e)))?
                 .e_owner),
             registry::Participant::District(id) => {
-                let district = self
-                    .state
-                    .district(i32::from(id.owner), id.id)
-                    .map_err(QueryError::District)?;
-                crate::loaded_actions::city_range_attack::district_owner(self.state, district)
+                crate::loaded_actions::city_range_attack::district_reference_owner(self.state, id)
                     .map_err(QueryError::DistrictOwner)
             }
         }

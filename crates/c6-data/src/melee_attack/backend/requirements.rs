@@ -14,6 +14,7 @@ pub enum Error {
     Query(super::QueryError),
     State(c6_core::loaded_state::Error),
     World(c6_core::world::MissingInput),
+    DistrictOwner(crate::loaded_actions::city_range_attack::DistrictReferenceOwnerError),
     Registry(registry::Error),
     Access(c6_core::loaded_state::combat_proposals::AccessError),
     Actor(Box<crate::melee_attack::Error>),
@@ -179,8 +180,9 @@ impl registry::Context for Context<'_> {
             registry::Participant::Unit(u) => Ok(crate::melee_attack::actor(self.state, u)
                 .map_err(|e| Error::Actor(Box::new(e)))?
                 .e_owner),
-            registry::Participant::District(_) => {
-                Err(Error::Missing("current District requirement owner"))
+            registry::Participant::District(id) => {
+                crate::loaded_actions::city_range_attack::district_reference_owner(self.state, id)
+                    .map_err(Error::DistrictOwner)
             }
         }
     }
@@ -199,7 +201,10 @@ impl registry::Context for Context<'_> {
 impl predicates::Context for Context<'_> {
     fn alliance_pair(&mut self) -> Result<Option<(i32, i32)>, Error> {
         Ok(match self.object {
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
+            ContextObject::Game
+            | ContextObject::City(_)
+            | ContextObject::Plot(_)
+            | ContextObject::Improvement { .. } => {
                 return Err(Error::Missing("source-qualified new context IAlliance"))
             }
             ContextObject::Alliance {
@@ -343,7 +348,10 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
     type PlayerInterface = ContextObject;
     fn context_player_interface(&mut self) -> Result<Option<ContextObject>, Error> {
         Ok(match self.object {
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
+            ContextObject::Game
+            | ContextObject::City(_)
+            | ContextObject::Plot(_)
+            | ContextObject::Improvement { .. } => {
                 return Err(Error::Missing("source-qualified new context IPlayer"))
             }
             ContextObject::Alliance { .. } => None,
@@ -363,7 +371,10 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
                 Ok(i32::from(district.owner))
             }
             ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
+            ContextObject::Game
+            | ContextObject::City(_)
+            | ContextObject::Plot(_)
+            | ContextObject::Improvement { .. } => {
                 Err(Error::Missing("source-qualified new context IPlayer"))
             }
         }

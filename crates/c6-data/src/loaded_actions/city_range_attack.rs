@@ -661,6 +661,23 @@ pub(crate) fn district_city<'a>(
     ))
 }
 
+/// Failure to resolve the current logical District participant or its actual
+/// plot owner. The roster owner is never substituted for Plot.GetOwner.
+#[derive(Debug)]
+pub enum DistrictReferenceOwnerError {
+    Identity(c6_core::loaded_state::district_initialization::DistrictError),
+    Query(Error),
+}
+pub(crate) fn district_reference_owner(
+    state: &LoadedState,
+    id: c6_core::unit::ComponentId,
+) -> Result<i32, DistrictReferenceOwnerError> {
+    let district = state
+        .district(i32::from(id.owner), id.id)
+        .map_err(DistrictReferenceOwnerError::Identity)?;
+    district_owner(state, district).map_err(DistrictReferenceOwnerError::Query)
+}
+
 pub(crate) fn district_owner(
     state: &LoadedState,
     district: &c6_core::player_districts::District,
