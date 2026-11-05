@@ -417,12 +417,18 @@ pub fn requirement_changed<C: Context>(
     set: u64,
     incoming: i32,
 ) -> Result<(), Error<C::Error>> {
-    all::requirement_changed(
+    let any = c
+        .subject_sets()
+        .map_err(Error::Context)?
+        .is_any(set)
+        .ok_or(Error::MissingSet)?;
+    all::requirement_changed_kind(
         &mut SetContext {
             outer: c,
             label: set,
         },
         incoming,
+        any,
     )
     .map_err(|e| match e {
         all::Error::Context(e) => e,

@@ -62,6 +62,44 @@ pub fn test_all<C: Context>(c: &mut C) -> Result<i32, Error<C::Error>> {
     Ok(result)
 }
 
+/// TestAny2337b60. A terminal success removes all children immediately;
+/// terminal failures are collected and pruned after the complete second scan.
+pub fn test_any<C: Context>(c: &mut C) -> Result<i32, Error<C::Error>> {
+    let count = c.children().map_err(Error::Context)?.len();
+    let mut result = 1;
+    let mut has_three = false;
+    for index in 0..count {
+        let child = c.children().map_err(Error::Context)?[index];
+        match c.child_state(child).map_err(Error::Context)? {
+            0 | 4 => result = 0,
+            3 => has_three = true,
+            2 => {
+                c.remove_all_children().map_err(Error::Context)?;
+                return Ok(2);
+            }
+            _ => {}
+        }
+    }
+    if has_three {
+        let count = c.children().map_err(Error::Context)?.len();
+        let mut removed = Vec::new();
+        removed.try_reserve(count).map_err(|_| Error::Allocation)?;
+        for index in 0..count {
+            let child = c.children().map_err(Error::Context)?[index];
+            if c.child_state(child).map_err(Error::Context)? == 3 {
+                removed.push(child)
+            }
+        }
+        for child in removed {
+            c.remove_child(child).map_err(Error::Context)?;
+        }
+        if c.children().map_err(Error::Context)?.is_empty() {
+            result = 3
+        }
+    }
+    Ok(result)
+}
+
 /// 0x2337000 stores before dispatch and emits only if the state changed.
 pub fn set_state<C: Context>(c: &mut C, new: i32, notify: bool) -> Result<(), Error<C::Error>> {
     let old = c.state().map_err(Error::Context)?;
@@ -76,8 +114,16 @@ pub fn set_state<C: Context>(c: &mut C, new: i32, notify: bool) -> Result<(), Er
 /// 0x2337510: recompute first. Incoming4 can force a4 notification even when
 /// already4; ResetTrigger follows the complete synchronous listener dispatch.
 pub fn requirement_changed<C: Context>(c: &mut C, incoming: i32) -> Result<(), Error<C::Error>> {
+    requirement_changed_kind(c, incoming, false)
+}
+/// SimpleRequirementSet invokes the concrete virtual Test before notification.
+pub fn requirement_changed_kind<C: Context>(
+    c: &mut C,
+    incoming: i32,
+    any: bool,
+) -> Result<(), Error<C::Error>> {
     let old = c.state().map_err(Error::Context)?;
-    let tested = test_all(c)?;
+    let tested = if any { test_any(c)? } else { test_all(c)? };
     if incoming == 4 && (tested | 2) != 3 {
         set_state(c, 4, false)?;
         let current = c.state().map_err(Error::Context)?;
@@ -165,6 +211,30 @@ mod tests {
         assert!(c.children.is_empty());
         let mut c = fixture(&[(2, false)]);
         assert_eq!(test_all(&mut c), Ok(2));
+    }
+    #[test]
+    fn test_any_keeps_live_children_and_prunes_terminal_failures_in_order() {
+        let mut c = fixture(&[(3, true), (1, false), (4, false), (3, false)]);
+        assert_eq!(test_any(&mut c), Ok(0));
+        assert_eq!(c.children, [1, 2]);
+        assert_eq!(c.removed, [0, 3]);
+        c.states[2].0 = 1;
+        assert_eq!(test_any(&mut c), Ok(1));
+        c.states[1].0 = 2;
+        assert_eq!(test_any(&mut c), Ok(2));
+        assert!(c.children.is_empty());
+        assert_eq!(c.removed, [0, 3, 1, 2]);
+        assert_eq!(test_any(&mut fixture(&[])), Ok(1));
+        assert_eq!(test_any(&mut fixture(&[(3, false), (3, true)])), Ok(3));
+    }
+    #[test]
+    fn test_any_change_uses_any_eligibility_and_trigger_before_reset() {
+        let mut c = fixture(&[(1, false), (0, false)]);
+        requirement_changed_kind(&mut c, 0, true).unwrap();
+        assert_eq!(c.events, [(1, 0)]);
+        c.states[1].0 = 4;
+        requirement_changed_kind(&mut c, 4, true).unwrap();
+        assert_eq!(c.events, [(1, 0), (0, 4), (4, -1)]);
     }
     #[test]
     fn incoming_trigger_dispatches_equal_four_before_reset() {

@@ -116,6 +116,7 @@ pub struct Runtime {
     set_definitions: Vec<(Vec<u8>, Option<SetDefinition>)>,
     requirement_definitions: Vec<RequirementDefinition>,
     constant_any: Vec<Vec<u8>>,
+    dynamic_any: Vec<Vec<u8>>,
     requirements: Vec<Requirement>,
     sets: Vec<Set>,
 }
@@ -143,6 +144,7 @@ impl Runtime {
             set_definitions,
             requirement_definitions,
             constant_any: vec![],
+            dynamic_any: vec![],
             requirements: vec![],
             sets: vec![],
         })
@@ -169,6 +171,26 @@ impl Runtime {
             self.constant_any.push(id.to_vec());
         }
         Ok(())
+    }
+    /// Concrete TestAny factory metadata. Child state and subscription lifetime
+    /// remain in this same owner, including nonterminal SimpleRequirements.
+    pub fn install_any(&mut self, id: &[u8]) -> Result<(), &'static str> {
+        if !self
+            .set_definitions
+            .iter()
+            .any(|r| r.0 == id && r.1.is_some())
+        {
+            return Err("missing ANY definition");
+        }
+        if !self.dynamic_any.iter().any(|r| r == id) {
+            self.dynamic_any.push(id.to_vec())
+        }
+        Ok(())
+    }
+    pub fn is_any(&self, label: u64) -> Option<bool> {
+        let row = self.sets.iter().find(|r| r.label == label && r.alive)?;
+        let id = &self.set_definitions.get(row.definition)?.0;
+        Some(self.constant_any.contains(id) || self.dynamic_any.contains(id))
     }
     pub fn next_native_id(&self) -> u32 {
         self.next_native_id
@@ -629,7 +651,10 @@ pub fn get_or_create_subject<C: SubjectContext>(
         _error: std::marker::PhantomData,
     };
     let is_any = initial.runtime.constant_any.iter().any(|name| name == id);
-    let tested = if is_any {
+    let dynamic_any = initial.runtime.dynamic_any.iter().any(|name| name == id);
+    let tested = if dynamic_any {
+        all::test_any(&mut initial)
+    } else if is_any {
         test_constant_any(&mut initial)
     } else {
         all::test_all(&mut initial)
