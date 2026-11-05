@@ -21,6 +21,7 @@ The objective is an exact headless Civ VI state/action/turn library, checked aga
 ## Task coordination
 
 - Use a separate `gpt-6.1-sol` agent at `medium` reasoning effort for each individual implementation or research task, as requested by the project owner. Give each task explicit file ownership and a concrete result. Use a fresh context when selecting the model/effort.
+- Assign each distinct new task to a fresh agent with a fresh context. Reuse an agent only for follow-ups that finish the same task; do not repurpose completed feature agents for new features.
 - All agents share the checkout. Check `git status` before editing or committing; stage only owned files. Every commit must use `git commit --only -m "message" -- explicit/owned/path ...`, even after earlier staging: another agent may stage files concurrently, so a bare commit is insufficient. Preserve other agents' staged and untracked changes. Coordinate shared manifests, protocols and evidence identities; never discard another agent's edits or use broad staging.
 - If an owner-approved file is accidentally captured in a shared-index commit, preserve the approved history and coordinate a scoped follow-up. Do not rewrite shared history to repair that inclusion.
 - Task owners may add necessary module exports and narrow accessors for their assigned work after checking direct file ownership. Coordinate with any active owner, preserve unrelated WIP, and commit only owned paths; repeated root permission is not required.
