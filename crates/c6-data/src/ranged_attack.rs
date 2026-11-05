@@ -1,6 +1,7 @@
 //! Ordinary ranged Unit/Unit combat over the current canonical state.
-//! The supported branch requires both units to survive. Other reached branches
-//! fail explicitly and retain completed mutations and consumed gameplay RNG.
+//! Living and ordinary defender-killed branches retain source-ordered callbacks.
+//! Unsupported branches fail explicitly and retain prior state and gameplay RNG.
+pub mod death;
 pub mod query;
 use crate::{
     loaded_upkeep as upkeep, melee_attack as melee, unit_placement_state as placement,
@@ -38,6 +39,73 @@ pub trait Effects: placement::Effects {
         damage: i32,
         status: u32,
     ) -> Result<(), ProviderError<Self>>;
+}
+/// Bind the reached Unit.Manager damage/death path to the same stock owners.
+/// Providers preserve partial mutations when any continuation is unsupported.
+pub trait Damage<E: placement::Effects, R> {
+    type Error: std::fmt::Debug;
+    #[allow(clippy::too_many_arguments)]
+    fn apply(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut sight::Runtime,
+        effects: &mut E,
+        runtime: &mut backend::EffectRuntime,
+        requirements: &mut R,
+        definitions: &placement::Definitions<'_, '_>,
+        queries: &placement::Queries<'_>,
+        pending: execution::RequiresResolve,
+    ) -> Result<resolve::RequiresExperience, Self::Error>;
+}
+struct SurvivingDamage;
+impl<E: placement::Effects, R> Damage<E, R> for SurvivingDamage
+where
+    ProviderError<E>: std::fmt::Debug,
+{
+    type Error = Error;
+    fn apply(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut sight::Runtime,
+        effects: &mut E,
+        _runtime: &mut backend::EffectRuntime,
+        _requirements: &mut R,
+        definitions: &placement::Definitions<'_, '_>,
+        queries: &placement::Queries<'_>,
+        pending: execution::RequiresResolve,
+    ) -> Result<resolve::RequiresExperience, Error> {
+        let members = pending.members;
+        if members.damage.defender_final_damage >= members.defender_maximum_damage {
+            return Err(error(
+                "damage",
+                "stock ranged death continuation not composed",
+            ));
+        }
+        let defender = members.damage.defender;
+        placement::change_damage(
+            state,
+            definitions,
+            queries,
+            sight,
+            effects,
+            (defender.player(), defender.id),
+            members.damage.defender_received,
+        )
+        .map_err(|e| error("damage", e))?;
+        let current = melee::actor(state, defender).map_err(|e| error("damage", e))?;
+        if current.i_damage
+            >= definitions
+                .movement
+                .maximum_damage(current)
+                .map_err(|e| error("damage", e))?
+        {
+            return Err(error(
+                "damage",
+                "callback reached stock death without continuation",
+            ));
+        }
+        Ok(resolve::RequiresExperience { members })
+    }
 }
 pub struct Session<R> {
     backend: Option<backend::Backend<(), R>>,
@@ -80,12 +148,52 @@ impl<R: backend::Requirements> Session<R> {
     ) -> Result<Option<resolve::completion::ResolvedCombat>, Error>
     where
         E: Effects
+            + resolve::winning::Effects<Error = ProviderError<E>>
             + upkeep::Effects<Error = ProviderError<E>>
             + experience::Reports<Error = ProviderError<E>>
             + resolve::kill_awards::Effects
             + resolve::post_kill::Effects
             + backend::PostCombatYields
             + resolve::completion::stock::Effects,
+        ProviderError<E>: std::fmt::Debug,
+        R::Error: std::fmt::Debug,
+        <E as resolve::completion::stock::Effects>::Error: std::fmt::Debug,
+    {
+        self.execute_with_damage(
+            state,
+            sight,
+            effects,
+            &mut SurvivingDamage,
+            inputs,
+            bindings,
+            actor,
+            destination,
+        )
+    }
+    /// Complete ordinary ranged combat with the same persistent stock death
+    /// provider used by melee. No attacker movement or retaliation is inserted.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+    pub fn execute_with_damage<E, D>(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut sight::Runtime,
+        effects: &mut E,
+        damage: &mut D,
+        inputs: &melee::transition::Inputs<'_, '_, '_>,
+        bindings: &mut resolve::completion::stock::Bindings,
+        actor: UnitReference,
+        destination: PlotCoord,
+    ) -> Result<Option<resolve::completion::ResolvedCombat>, Error>
+    where
+        E: Effects
+            + resolve::winning::Effects<Error = ProviderError<E>>
+            + upkeep::Effects<Error = ProviderError<E>>
+            + experience::Reports<Error = ProviderError<E>>
+            + resolve::kill_awards::Effects
+            + resolve::post_kill::Effects
+            + backend::PostCombatYields
+            + resolve::completion::stock::Effects,
+        D: Damage<E, R>,
         ProviderError<E>: std::fmt::Debug,
         R::Error: std::fmt::Debug,
         <E as resolve::completion::stock::Effects>::Error: std::fmt::Debug,
@@ -161,17 +269,20 @@ impl<R: backend::Requirements> Session<R> {
                 .map_err(|e| error("attacker clear", e))?;
             upkeep::complete_unit_movement(state, actor.player(), actor.id, backend.reporting.0)
                 .map_err(|e| error("attacker complete", e))?;
-            placement::change_damage(
-                state,
-                inputs.placement,
-                inputs.queries,
-                sight,
-                backend.reporting.0,
-                (defender.player(), defender.id),
-                members.damage.defender_received,
-            )
-            .map_err(|e| error("damage", e))?;
-            ensure_alive(state, inputs, actor, defender)?;
+            let (reports, runtime, requirements, _) = backend.kill_parts();
+            let pending = damage
+                .apply(
+                    state,
+                    sight,
+                    reports.0,
+                    runtime,
+                    requirements,
+                    inputs.placement,
+                    inputs.queries,
+                    execution::RequiresResolve { members },
+                )
+                .map_err(|e| error("damage", e))?;
+            let members = pending.members;
             // Ranged Resolve awards attacker before defender; melee is reverse.
             for (unit, amount) in [
                 (actor, members.attacker_experience),
@@ -200,17 +311,64 @@ impl<R: backend::Requirements> Session<R> {
                     return Err(error("joint war", partners));
                 }
             }
-            backend
-                .reporting
-                .0
-                .ranged_surviving_statuses(
+            let pending = resolve::RequiresCombatAftermath { members };
+            let current =
+                melee::actor(state, defender).map_err(|e| error("defender survival", e))?;
+            let dead = current.i_damage
+                >= inputs
+                    .generation
+                    .maximum_damage
+                    .maximum_damage(current)
+                    .map_err(|e| error("defender survival", e))?;
+            if dead {
+                // Original ranged Resolve creates MELEE ProposedCombat before
+                // relic query, UnitDefeated and death feedback. It does not
+                // advance the attacker or invoke melee movement expenditure.
+                let (id, proposal) = proposals::Context::new(state, &mut backend)
+                    .propose_units(actor, defender, pending.members.location)
+                    .map_err(|e| error("death proposal", e))?;
+                let captures = state
+                    .combat_proposals()
+                    .map_err(|e| error("death proposal", e))?
+                    .proposal(proposal)
+                    .map_err(|e| error("death proposal", e))?
+                    .capture_combat_units;
+                if captures {
+                    return Err(error(
+                        "death proposal",
+                        "positive ranged combat capture unsupported",
+                    ));
+                }
+                resolve::winning::report(
                     state,
-                    actor,
-                    defender,
-                    members.damage.defender_received,
+                    inputs.generation.maximum_damage,
+                    backend.reporting.0,
+                    &pending,
+                )
+                .map_err(|e| error("death report", e))?;
+                resolve::winning::notify(
+                    state,
+                    backend.reporting.0,
+                    &pending,
                     inputs.death_report_status,
                 )
-                .map_err(|e| error("statuses", e))?;
+                .map_err(|e| error("death notifications", e))?;
+                proposals::collection_modifiers::forget_combat(state, &mut backend, id)
+                    .map_err(|e| error("death proposal destruction", e))?;
+            } else {
+                backend
+                    .reporting
+                    .0
+                    .ranged_surviving_statuses(
+                        state,
+                        actor,
+                        defender,
+                        pending.members.damage.defender_received,
+                        inputs.death_report_status,
+                    )
+                    .map_err(|e| error("statuses", e))?;
+            }
+            let members = pending.members;
             upkeep::clear_unit_operations(state, actor.player(), actor.id, backend.reporting.0)
                 .map_err(|e| error("resolve clear", e))?;
             upkeep::clear_unit_operations(
@@ -319,7 +477,7 @@ where
         .formation
         .combat(state, d)
         .map_err(|e| error("base", e))?;
-    let (id, _) = proposals::Context::new(state, backend)
+    let (id, proposal) = proposals::Context::new(state, backend)
         .propose_units_with_type(actor, defender, location, RANGED)
         .map_err(|e| error("proposal", e))?;
     let attack_modifier = melee::strength::ranged_attack_modifier(
@@ -372,14 +530,29 @@ where
         .maximum_damage
         .maximum_damage(melee::actor(state, defender).map_err(|e| error("maximum", e))?)
         .map_err(|e| error("maximum", e))?;
-    proposals::collection_modifiers::forget_combat(state, backend, id)
-        .map_err(|e| error("forget", e))?;
-    if defender_final >= defender_max {
+    if defender_final >= defender_max
+        && state
+            .combat_proposals()
+            .map_err(|e| error("generation capture", e))?
+            .proposal(proposal)
+            .map_err(|e| error("generation capture", e))?
+            .capture_combat_units
+    {
+        let _defender_domain = state
+            .unit_runtime(defender.player(), defender.id)
+            .map_err(|e| error("generation capture", e))?
+            .domain;
+        let _attacker_domain = state
+            .unit_runtime(actor.player(), actor.id)
+            .map_err(|e| error("generation capture", e))?
+            .domain;
         return Err(error(
-            "generation",
-            "lethal ranged continuation unsupported",
+            "generation capture",
+            "positive ranged capture continuation unsupported",
         ));
     }
+    proposals::collection_modifiers::forget_combat(state, backend, id)
+        .map_err(|e| error("forget", e))?;
     let (attacker_xp, defender_xp) = experience::awards(
         state,
         inputs.experience,
@@ -387,11 +560,21 @@ where
         inputs.generation.levels,
         actor,
         defender,
-        false,
+        defender_final >= inputs.generation.damage.maximum_hit_points(),
         true,
     )
     .map_err(|e| error("experience generation", e))?;
     ensure_alive(state, inputs, actor, defender)?;
+    let attacker_retreats_when_killed = inputs
+        .generation
+        .damage
+        .retreat_when_killed_flag(state, actor, 0, attacker_max)
+        .map_err(|e| error("retreat generation", e))?;
+    let defender_retreats_when_killed = inputs
+        .generation
+        .damage
+        .retreat_when_killed_flag(state, defender, defender_final, defender_max)
+        .map_err(|e| error("retreat generation", e))?;
     Ok(execution::GeneratedMembers {
         location,
         damage: execution::GeneratedDamage {
@@ -414,7 +597,7 @@ where
         attacker_maximum_damage: attacker_max,
         defender_maximum_damage: defender_max,
         attacker_advances: false,
-        attacker_retreats_when_killed: false,
-        defender_retreats_when_killed: false,
+        attacker_retreats_when_killed,
+        defender_retreats_when_killed,
     })
 }
