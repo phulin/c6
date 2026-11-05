@@ -10,12 +10,15 @@ use c6_core::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ImprovementSubscriber {
     DetachModifiers,
+    GlobalMayhem,
+    Lua,
     Economic,
     FreeCities { owner: i32 },
     PlayerResources { owner: i32 },
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PillageSubscriber {
+    Lua,
     Barbarian { owner: i32 },
     Gossip,
 }
@@ -24,6 +27,8 @@ pub struct Inputs {
     improvement_order: Vec<ImprovementSubscriber>,
     pillage_order: Vec<PillageSubscriber>,
     industry_or_corporation: Vec<u32>,
+    improvement_definitions: crate::registry::LinuxDefinitionRegistry,
+    improvement_mayhem: f32,
     /// Source-backed complete Improvement type domain in the canonical backend.
     /// This includes actual cache misses, not an absent import treated as empty.
     complete_improvement_objects: bool,
@@ -56,11 +61,35 @@ impl Inputs {
                 }
             }
         }
+        let improvement_definitions = crate::unit_initialization_definitions::collection(
+            rules,
+            "Improvements",
+            "ImprovementType",
+        )
+        .map_err(fail)?;
+        let parameter = rules
+            .gameplay()
+            .table("GlobalParameters")
+            .ok_or("Pillage GlobalParameters")?
+            .rows()
+            .find(|r| r.text("Name").ok() == Some("MAYHEM_IMPROVEMENT_PILLAGED"))
+            .ok_or("Pillage MAYHEM_IMPROVEMENT_PILLAGED")?;
+        let improvement_mayhem = match parameter.get("Value").map_err(fail)? {
+            crate::SqlValue::Integer(n) => *n as f32,
+            crate::SqlValue::RealBits(bits) => f64::from_bits(*bits) as f32,
+            crate::SqlValue::Text(bytes) => std::str::from_utf8(bytes)
+                .map_err(fail)?
+                .parse::<f64>()
+                .map_err(fail)? as f32,
+            _ => return Err("Pillage MAYHEM_IMPROVEMENT_PILLAGED type".into()),
+        };
         Ok(Self {
             binding: state.binding().clone(),
             improvement_order,
             pillage_order,
             industry_or_corporation,
+            improvement_definitions,
+            improvement_mayhem,
             complete_improvement_objects,
         })
     }
@@ -101,6 +130,23 @@ impl<P> Current<'_, '_, P> {
             }
             let owner = crate::movement_placement_state::plot_owner(p).map_err(fail)?;
             match *subscriber {
+                ImprovementSubscriber::GlobalMayhem => {
+                    state
+                        .add_global_mayhem(self.inputs.improvement_mayhem)
+                        .map_err(fail)?;
+                }
+                ImprovementSubscriber::Lua => {
+                    let index = self
+                        .inputs
+                        .improvement_definitions
+                        .find_index(improvement)
+                        .ok_or("Pillage Lua improvement definition")?
+                        as i32;
+                    self.backend
+                        .script
+                        .call_empty(state, "OnImprovementPillaged", &[plot as i32, index])
+                        .map_err(fail)?;
+                }
                 ImprovementSubscriber::DetachModifiers => {
                     let city = p
                         .city_attributes
@@ -162,12 +208,35 @@ impl<P> Current<'_, '_, P> {
         &mut self,
         state: &mut LoadedState,
         actor: ComponentId,
-        _plot: usize,
-        _improvement: u32,
+        plot: usize,
+        improvement: u32,
     ) -> Result<(), String> {
         self.check(state)?;
         for subscriber in &self.inputs.pillage_order {
             match *subscriber {
+                PillageSubscriber::Lua => {
+                    let index = self
+                        .inputs
+                        .improvement_definitions
+                        .find_index(improvement)
+                        .ok_or("Pillage Lua improvement definition")?
+                        as i32;
+                    self.backend
+                        .script
+                        .call_empty(
+                            state,
+                            "OnPillage",
+                            &[
+                                i32::from(actor.owner),
+                                actor.id as i32,
+                                index,
+                                -1,
+                                -1,
+                                plot as i32,
+                            ],
+                        )
+                        .map_err(fail)?;
+                }
                 PillageSubscriber::Barbarian { owner } => {
                     if i32::from(actor.owner) == owner {
                         return Err("Pillage reached Barbarian tribe counter".into());
