@@ -579,6 +579,7 @@ pub struct Inputs {
     pub logging_priority: Option<i32>,
 }
 pub struct Backend<O, R> {
+    origin: c6_core::loaded_state::ActionStamp,
     pub reporting: O,
     pub requirements: R,
     effects: EffectRuntime,
@@ -600,6 +601,9 @@ pub enum Error<O, R> {
     ),
 }
 impl<O, R> Backend<O, R> {
+    pub(crate) fn origin(&self) -> c6_core::loaded_state::ActionStamp {
+        self.origin
+    }
     /// Borrow the cached immutable configuration and calendar definitions.
     pub fn inputs(&self) -> &Inputs {
         &self.inputs
@@ -610,6 +614,7 @@ impl<O, R> Backend<O, R> {
         (
             self.reporting,
             Backend {
+                origin: self.origin,
                 reporting,
                 requirements: self.requirements,
                 effects: self.effects,
@@ -640,6 +645,7 @@ impl<O, R> Backend<O, R> {
             return Err(QueryError::Binding);
         }
         Ok(Self {
+            origin: state.action_stamp(),
             reporting,
             requirements,
             effects,
@@ -659,6 +665,7 @@ impl<O, R> Backend<O, R> {
         inputs: Inputs,
     ) -> Result<Self, Self> {
         let backend = Self {
+            origin,
             reporting,
             requirements,
             effects,

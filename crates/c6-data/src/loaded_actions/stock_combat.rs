@@ -43,19 +43,20 @@ impl<'a> State<'a> {
     /// Split an initialized backend once; install returned stores in the SAME
     /// stock ModifierOwners, alongside the current collection/factory owners.
     pub fn from_backend(
-        state: &LoadedState,
+        _state: &LoadedState,
         backend: backend::Backend<(), backend::requirements::Runtime>,
         bindings: resolve::completion::stock::Bindings,
         observer: Option<i32>,
         promotion: &'a dyn PromotionQuery,
         _: Scope,
     ) -> (Self, backend::requirements::Runtime, backend::EffectRuntime) {
+        let origin = backend.origin();
         let ((), requirements, effects, inputs) = backend.into_parts();
         let configuration = inputs.configuration;
         (
             Self {
                 configuration,
-                origin: state.action_stamp(),
+                origin,
                 inputs: Some(inputs),
                 bindings: Some(bindings),
                 observer,
@@ -86,6 +87,7 @@ impl<'a, P> Runtime<'a, P> {
             .as_ref()
             .ok_or(Error::Missing("current combat services"))
     }
+    #[allow(clippy::too_many_arguments)]
     /// Loan the SAME mutable modifier stores for one synchronous attack, then
     /// restore them, including every completed prefix when resolution fails.
     pub fn ranged_attack<D>(
@@ -198,15 +200,6 @@ impl<P> ranged_attack::Effects for Runtime<'_, P> {
         // Configuration lives in the loaned backend while resolving. Preserve
         // the explicit multiplayer gate using the current stock runtime facts.
         let configuration = combat.configuration;
-        let required = resolve::surviving::combat_notification_required(
-            state,
-            &configuration,
-            self.facts
-                .manager_initialized
-                .zip(self.facts.game_uninitializing),
-            defender,
-        )
-        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
         let _ = combat;
         let location = melee::actor(state, defender)
             .map_err(|e| Error::Requirement(format!("{e:?}")))?
@@ -223,6 +216,15 @@ impl<P> ranged_attack::Effects for Runtime<'_, P> {
                 defender_damage: damage,
                 status_id,
             });
+        let required = resolve::surviving::combat_notification_required(
+            state,
+            &configuration,
+            self.facts
+                .manager_initialized
+                .zip(self.facts.game_uninitializing),
+            defender,
+        )
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
         if required {
             return Err(Error::Missing(
                 "human multiplayer combat notification creation",
