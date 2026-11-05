@@ -94,6 +94,7 @@ pub struct GameDiplomaticRelations {
     current_grievances: Option<(Relationships, Relationships)>,
     current_war_aggressors: Option<Relationships>,
     current_defensive_pacts: Option<Vec<BoolRelationship>>,
+    current_war_consequences: Option<war::Consequences>,
 }
 
 pub struct DecodedPrefix<'a> {
@@ -146,6 +147,7 @@ impl GameDiplomaticRelations {
             current_grievances: None,
             current_war_aggressors: None,
             current_defensive_pacts: None,
+            current_war_consequences: None,
         })
     }
     /// Complete current native enum values, with each companion changed turn.
@@ -179,6 +181,7 @@ impl GameDiplomaticRelations {
             current_grievances: None,
             current_war_aggressors: None,
             current_defensive_pacts: None,
+            current_war_consequences: None,
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
@@ -291,6 +294,7 @@ impl GameDiplomaticRelations {
             current_grievances: None,
             current_war_aggressors: None,
             current_defensive_pacts: None,
+            current_war_consequences: None,
         };
         value.initialize_current_contacts(player_count, values)?;
         Ok(value)
@@ -558,6 +562,7 @@ impl GameDiplomaticRelations {
                 current_grievances: None,
             current_war_aggressors: None,
             current_defensive_pacts: None,
+            current_war_consequences: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,

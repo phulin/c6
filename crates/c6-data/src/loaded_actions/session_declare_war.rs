@@ -26,6 +26,8 @@ impl<'a, P> Session<'_, 'a, P> {
         let result = war::execute(
             self.context.notifications.state,
             &mut self.context.notifications.backend,
+            &mut self.research,
+            &mut self.visibility,
             issuer,
             target,
             inputs,

@@ -14,6 +14,11 @@ use c6_core::{
 
 pub const SURPRISE_WAR: i32 = 0x4396_d725;
 pub const SURPRISE_ACTION: u32 = 0x1b4d_9d8f;
+pub mod diplomacy;
+pub mod event_branches;
+pub mod plain;
+pub mod requirements;
+pub mod requirement_modifiers;
 
 #[derive(Debug)]
 pub enum Error<E> {
@@ -327,6 +332,8 @@ pub trait Effects<P> {
         &mut self,
         state: &mut LoadedState,
         backend: &mut P,
+        research: &mut crate::research::Runtime,
+        visibility: &mut crate::game_update_state::deactivation::VisibilityHistory,
         issuer: i32,
         target: i32,
     ) -> Result<(), Self::Error>;
@@ -344,9 +351,12 @@ pub enum Outcome {
     Rejected,
     Declared,
 }
+#[allow(clippy::too_many_arguments)]
 pub fn execute<P, E: Effects<P>>(
     state: &mut LoadedState,
     backend: &mut P,
+    research: &mut crate::research::Runtime,
+    visibility: &mut crate::game_update_state::deactivation::VisibilityHistory,
     issuer: i32,
     target: i32,
     inputs: &Inputs<'_, '_>,
@@ -447,7 +457,7 @@ pub fn execute<P, E: Effects<P>>(
     // Influence.CanReceiveInfluence is false for the admitted major target;
     // city-state influence blocking belongs to a separate explicit branch.
     effects
-        .war_declared(state, backend, issuer, target)
+        .war_declared(state, backend, research, visibility, issuer, target)
         .map_err(Error::Effect)?;
     effects
         .report_declaration(state, backend, issuer, target)
