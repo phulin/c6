@@ -222,6 +222,7 @@ pub struct Leaves<'i, P = c6_core::unit::OperationParameters> {
     visibility: Visibility<'i, P>,
     off_turn: Option<&'i mut inactive_control::Inputs>,
     managers: Option<&'i crate::game_update_state::activation::cityless_managers::Runtime>,
+    requirements: Option<&'i mut c6_core::melee_attack::proposals::subject_sets::Runtime>,
 }
 impl<'i, P> Leaves<'i, P> {
     pub fn new(
@@ -235,6 +236,7 @@ impl<'i, P> Leaves<'i, P> {
             visibility: Visibility::Borrowed(visibility),
             off_turn: None,
             managers: None,
+            requirements: None,
         }
     }
     pub fn new_with_camps(
@@ -248,6 +250,7 @@ impl<'i, P> Leaves<'i, P> {
             visibility: Visibility::Camps(camps),
             off_turn: None,
             managers: None,
+            requirements: None,
         }
     }
     fn visibility(&self) -> &crate::unit_sight_state::Runtime {
@@ -268,6 +271,15 @@ impl<'i, P> Leaves<'i, P> {
         managers: &'i crate::game_update_state::activation::cityless_managers::Runtime,
     ) -> Self {
         self.managers = Some(managers);
+        self
+    }
+    /// Borrow the current turn's single requirement owner only while camp
+    /// creation dispatches the reentrant factory effects.
+    pub fn with_requirements(
+        mut self,
+        requirements: &'i mut c6_core::melee_attack::proposals::subject_sets::Runtime,
+    ) -> Self {
+        self.requirements = Some(requirements);
         self
     }
 }
@@ -295,7 +307,18 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
             return Err(Error::Unsupported("NPC Barbarian current owner"));
         }
         if let Visibility::Camps(camps) = &mut self.visibility {
-            return camps.run(state, backend, runtime, owner);
+            let requirements = self
+                .requirements
+                .as_deref_mut()
+                .ok_or(Error::Unsupported("NPC camp current requirement owner"))?;
+            return backend
+                .with_modifier_requirement_sets(requirements, |backend| {
+                    camps.run(state, backend, runtime, owner)
+                })
+                .map_err(|error| {
+                    backend.last_error = Some(format!("camp shared requirements: {error:?}"));
+                    Error::Unsupported("camp shared requirement ownership")
+                })?;
         }
         if manager.improvement_hash != u32::MAX && manager.value_e0 < manager.value_c8 {
             return Err(Error::Unsupported("NPC Barbarian CreateCamps"));
