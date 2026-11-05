@@ -40,7 +40,7 @@ impl<'a> Session<'_, 'a, OperationParameters> {
         research_definitions: &research::Definitions,
         choices: &actions::choose_tech::Definitions,
         culture: Option<&stock_notifications::research::CultureInputs<'_>>,
-        quests: &round_quests::Runtime,
+        quests: &std::cell::RefCell<round_quests::Runtime>,
         reports: &mut dyn stock::Reports<OperationParameters>,
         budget: &mut usize,
     ) -> Result<move_to::ActionOutcome, Error<TradeRouteError>> {

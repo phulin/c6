@@ -125,7 +125,7 @@ pub struct Current<'s, 'a, P> {
     pub research_definitions: &'s research::Definitions,
     pub choices: &'s choose_tech::Definitions,
     pub culture: Option<&'s stock_research::CultureInputs<'s>>,
-    pub quests: &'s round_quests::Runtime,
+    pub quests: &'s std::cell::RefCell<round_quests::Runtime>,
     pub reports: &'s mut dyn Reports<P>,
 }
 impl<P> Current<'_, '_, P> {
@@ -147,10 +147,11 @@ impl<P> Current<'_, '_, P> {
         for subscriber in self.inputs.route_started {
             match *subscriber {
                 RouteSubscriber::QuestSendTradeRoute { quest_type } => {
-                    self.quests.validate(state).map_err(|e| format!("{e:?}"))?;
+                    let quests = self.quests.borrow();
+                    quests.validate(state).map_err(|e| format!("{e:?}"))?;
                     if origin.owner != -1
                         && destination.owner != -1
-                        && self.quests.current.iter().any(|q| {
+                        && quests.current.iter().any(|q| {
                             q.quest_type == quest_type
                                 && q.actor == i32::from(origin.owner)
                                 && q.client == i32::from(destination.owner)
