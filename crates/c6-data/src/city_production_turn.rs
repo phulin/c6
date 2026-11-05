@@ -9,6 +9,7 @@ pub mod appeal;
 pub mod building_callbacks;
 pub mod building_yields;
 pub mod buildings;
+pub mod district_boosts;
 pub mod modifier_effects;
 pub mod selection;
 pub mod unit_selection;
