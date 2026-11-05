@@ -28,6 +28,8 @@ pub struct Instance {
     pub id: u32,
     pub priority: i32,
     pub recruit_priority: i32,
+    /// Unsaved live ShouldDestroy bit; wire-only imports leave it unknown.
+    pub should_destroy: Option<bool>,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecycledInstances {
@@ -319,6 +321,7 @@ impl ControlManager {
                 id: r.u32()?,
                 priority: r.i32()?,
                 recruit_priority: r.i32()?,
+                should_destroy: None,
             });
         }
         let current_id_bits = r.u32()?;
@@ -486,6 +489,7 @@ mod tests {
                     id: u32::MAX,
                     priority: -1,
                     recruit_priority: 4,
+                    should_destroy: None,
                 }],
                 current_id_bits: 7,
                 first_free: 2,

@@ -256,14 +256,7 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
         }
     }
     fn cleanup(&mut self, state: &mut LoadedState, owner: i32) -> Result<(), Error> {
-        let control = player(state, owner)?
-            .ai_control
-            .as_ref()
-            .ok_or(Error::Unsupported("current NPC Control Manager"))?;
-        if !control.controls.instances.is_empty() {
-            return Err(Error::Unsupported("current Control ShouldDestroy fields"));
-        }
-        Ok(())
+        loaded::npc_deactivation::cleanup_controllers(state, owner)
     }
     fn turn_complete(
         &mut self,

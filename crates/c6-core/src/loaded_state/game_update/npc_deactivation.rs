@@ -4,6 +4,92 @@
 use super::{human_activation, npc_activation::Kind, Error, LoadedState, Runtime};
 use crate::loaded_state::ActionStamp;
 
+/// Supply the observed unsaved destroy marks on the canonical current instances.
+/// The complete current ID order must match before any field is refined.
+pub fn initialize_controller_destroy_marks(
+    state: &mut LoadedState,
+    binding: &crate::core_player::initialization::WireBinding,
+    owner: i32,
+    marks: &[(u32, bool)],
+) -> Result<(), Error> {
+    if state.binding() != binding || !state.is_pristine() {
+        return Err(Error::Unsupported("controller initial marks binding"));
+    }
+    let index = state
+        .retained
+        .players
+        .iter()
+        .position(|p| p.header.owner == owner)
+        .ok_or(Error::Unsupported("controller initial owner"))?;
+    let control = state.retained.players[index]
+        .ai_control
+        .as_mut()
+        .ok_or(Error::Unsupported("controller initial manager"))?;
+    if control.controls.instances.len() != marks.len()
+        || control
+            .controls
+            .instances
+            .iter()
+            .zip(marks)
+            .any(|(c, (id, mark))| c.id != *id || c.should_destroy.is_some_and(|old| old != *mark))
+    {
+        return Err(Error::Unsupported("controller initial instance marks"));
+    }
+    for (c, (_, mark)) in control.controls.instances.iter_mut().zip(marks) {
+        c.should_destroy = Some(*mark);
+    }
+    Ok(())
+}
+/// DoTurnDeactivate's full-pass cleanup. False marks retain their current
+/// controllers. True marks release current units before LIFO slot recycling;
+/// the native Instance destructor has no gameplay callback.
+pub fn cleanup_controllers(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
+    let index = state
+        .retained
+        .players
+        .iter()
+        .position(|p| p.header.owner == owner)
+        .ok_or(Error::Unsupported("controller cleanup owner"))?;
+    let mut cursor = 0;
+    loop {
+        let c = state.retained.players[index]
+            .ai_control
+            .as_ref()
+            .ok_or(Error::Unsupported("controller cleanup manager"))?;
+        let Some(instance) = c.controls.instances.get(cursor) else {
+            return Ok(());
+        };
+        let marked = instance
+            .should_destroy
+            .ok_or(Error::Unsupported("current Control ShouldDestroy field"))?;
+        if !marked {
+            cursor += 1;
+            continue;
+        }
+        let id = instance.id;
+        let slot = u32::try_from(instance.index)
+            .map_err(|_| Error::Unsupported("controller cleanup slot"))?;
+        if slot >= c.controls.capacity || (id & 0xffff) != slot {
+            return Err(Error::Unsupported("controller cleanup slot identity"));
+        }
+        super::human_control::release_controller(state, owner, id)?;
+        state.revision = state
+            .revision
+            .checked_add(1)
+            .ok_or(Error::Unsupported("controller cleanup revision overflow"))?;
+        let c = state.retained.players[index]
+            .ai_control
+            .as_mut()
+            .expect("checked");
+        c.controls.instances.remove(cursor);
+        c.controls.free_indices.insert(0, slot);
+        c.controls.first_free = slot;
+        if c.controls.last_free == u32::MAX {
+            c.controls.last_free = slot;
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Progress {
     Pending,
@@ -299,6 +385,83 @@ mod tests {
             change_priority: false,
             fail_cleanup: false,
         }
+    }
+    #[test]
+    fn controller_cleanup_requires_live_marks_and_recycles_only_marked_instances() {
+        use crate::player_ai_control::Instance;
+        let (mut s, _, owner) = fixture(-1);
+        // This generic update fixture includes prior synthetic writes; the
+        // observed initial refinement below intentionally begins at revision 0.
+        s.revision = 0;
+        let controls = &mut s.retained.players[0].ai_control.as_mut().unwrap().controls;
+        controls.capacity = 4;
+        controls.current_id_bits = 7;
+        controls.first_free = 3;
+        controls.last_free = 3;
+        controls.free_indices = vec![3];
+        controls.instances = (0..3)
+            .map(|index| Instance {
+                index,
+                id: ((index as u32 + 1) << 16) | index as u32,
+                priority: -1,
+                recruit_priority: 0,
+                should_destroy: None,
+            })
+            .collect();
+        assert!(cleanup_controllers(&mut s, owner).is_err());
+        assert_eq!(
+            s.retained.players[0]
+                .ai_control
+                .as_ref()
+                .unwrap()
+                .controls
+                .instances
+                .len(),
+            3
+        );
+        let binding = s.binding().clone();
+        let marks = [(65536, true), (131073, false), (196610, true)];
+        initialize_controller_destroy_marks(&mut s, &binding, owner, &marks).unwrap();
+        let id = 0x10001;
+        let mut unit = crate::loaded_state::tests::commit_fixture_unit();
+        unit.id = id;
+        unit.e_owner = owner;
+        unit.ai_controller = 65536;
+        let units = crate::map::Recycled {
+            capacity: 2,
+            entries: vec![crate::map::Slot {
+                index: 1,
+                value: unit,
+            }],
+            current_id_bits: 0x10000,
+            free_head: u32::MAX,
+            free_tail: u32::MAX,
+            free_links: vec![u32::MAX; 2],
+        };
+        s.world = crate::world::World::new(
+            s.world.map().clone(),
+            vec![crate::world::Player::new(owner, Some(units), None).unwrap()],
+        )
+        .unwrap();
+        cleanup_controllers(&mut s, owner).unwrap();
+        assert_eq!(
+            s.world()
+                .player(owner)
+                .unwrap()
+                .unit(id)
+                .unwrap()
+                .unwrap()
+                .record
+                .ai_controller,
+            u32::MAX
+        );
+        let c = &s.retained.players[0].ai_control.as_ref().unwrap().controls;
+        assert_eq!(
+            c.instances.iter().map(|v| v.id).collect::<Vec<_>>(),
+            [131073]
+        );
+        assert_eq!(c.free_indices, [2, 0, 3]);
+        assert_eq!((c.first_free, c.last_free, c.current_id_bits), (2, 3, 7));
     }
     #[test]
     fn pending_readiness_visits_all_consumers_and_retains_priority_and_depth() {

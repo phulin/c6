@@ -2673,6 +2673,7 @@ pub(crate) mod tests {
                     id: 0xffff0002,
                     priority: i32::MIN,
                     recruit_priority: 11,
+                    should_destroy: None,
                 }],
                 current_id_bits: 0xffff0000,
                 first_free: 7,
