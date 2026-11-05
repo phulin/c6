@@ -104,6 +104,15 @@ pub fn begin<'s, 'e, E: loaded_upkeep::OperationReports>(
     else {
         return Ok(Outcome::NoTarget);
     };
+    begin_selected(state, inputs.districts, actor, destination, defender, effects)
+}
+/// Internal continuation after the immediately preceding current target query.
+/// Splitting the borrows does not permit an intervening action or stale target.
+pub(crate) fn begin_selected<'s,'e,E:loaded_upkeep::OperationReports>(
+    state:&'s mut LoadedState,
+    districts:Option<&crate::formation_movement_cost::Definitions<'_>>,
+    actor:UnitReference,destination:PlotCoord,defender:Defender,effects:&'e mut E,
+)->Result<Outcome<'s,'e,E>,Error<E::Error>>{
     let mut members = kernel::Members::new(c6_core::formation_path_cache::INVALID_CACHE_LOCATION);
     match defender {
         Defender::Unit(unit) => {
@@ -117,7 +126,7 @@ pub fn begin<'s, 'e, E: loaded_upkeep::OperationReports>(
         }
         Defender::District(_) => {
             // District branch has no pre-Generate Unit Clear.
-            let definitions = inputs.districts.ok_or(Error::MissingDistrictDefinitions)?;
+            let definitions = districts.ok_or(Error::MissingDistrictDefinitions)?;
             let _next =
                 results::prepare_district(state, definitions, &mut members, actor, destination, 0)
                     .map_err(Error::Members)?;

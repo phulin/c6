@@ -117,7 +117,8 @@ pub fn finish_unit_moves<C: FinishMovementContext>(
     };
     let unit = c.unit_mut().map_err(UnitMovementError::UnitUnavailable)?;
     unit.x_moves_remaining = 0;
-    unit.b_eligible_to_heal = false;
+    // FinishMoves clears NeedsAttention (+738), not EligibleToHeal (+6f0).
+    unit.b_needs_attention = false;
     let read = |error| UnitMovementError::ContinuationFailed {
         stage: MovementStage::UnitReadback,
         error,
@@ -629,6 +630,7 @@ mod tests {
         let mut unit = crate::unit_turn_upkeep::tests::source_only_unit();
         unit.x_moves_remaining = 256;
         unit.b_eligible_to_heal = true;
+        unit.b_needs_attention = true;
         Finish {
             unit,
             current: Some(17),
@@ -642,7 +644,8 @@ mod tests {
         let mut c = finish_fixture();
         finish_unit_moves(&mut c).unwrap();
         assert_eq!(c.unit.x_moves_remaining, 512);
-        assert!(!c.unit.b_eligible_to_heal);
+        assert!(c.unit.b_eligible_to_heal);
+        assert!(!c.unit.b_needs_attention);
         assert_eq!(
             c.reports.iter().map(|r| r.event_hash).collect::<Vec<_>>(),
             [MOVES_REMAINING_CHANGED, MOVES_EXHAUSTED]
@@ -661,7 +664,8 @@ mod tests {
             })
         ));
         assert_eq!(c.unit.x_moves_remaining, 512);
-        assert!(!c.unit.b_eligible_to_heal);
+        assert!(c.unit.b_eligible_to_heal);
+        assert!(!c.unit.b_needs_attention);
         assert!(c.synced.is_empty());
     }
     #[test]
@@ -671,6 +675,7 @@ mod tests {
         finish_unit_moves(&mut c).unwrap();
         assert_eq!(c.unit.x_moves_remaining, 256);
         assert!(c.unit.b_eligible_to_heal);
+        assert!(c.unit.b_needs_attention);
         assert!(c.reports.is_empty());
     }
 }

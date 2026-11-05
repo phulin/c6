@@ -476,6 +476,18 @@ pub enum Error<O, R> {
     ),
 }
 impl<O, R> Backend<O, R> {
+    /// Lend a different reporting view while retaining the exact requirement,
+    /// effect and configuration owners. No initialization/admission is replayed.
+    pub fn with_reporting<N>(self,reporting:N)->(O,Backend<N,R>){
+        (self.reporting,Backend{reporting,requirements:self.requirements,effects:self.effects,inputs:self.inputs})
+    }
+    /// Return the SAME persistent owners after a borrowed reporting scope.
+    /// This supports an outer operation lending its provider for one attack;
+    /// no requirement/effect/Script state is rebuilt between callbacks.
+    pub fn into_parts(self) -> (O,R,EffectRuntime,Inputs) {
+        (self.reporting,self.requirements,self.effects,self.inputs)
+    }
+
     pub fn new(
         state: &LoadedState,
         reporting: O,

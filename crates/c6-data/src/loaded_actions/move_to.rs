@@ -2,6 +2,7 @@
 //! This internal action pipeline preserves completed callback effects on errors;
 //! complete outer message, diplomacy/notification and RNG parity is separate.
 mod alert;
+pub mod combat;
 mod trade;
 
 use c6_core::{
@@ -102,6 +103,7 @@ pub trait Movement<E: OperationReports> {
         _visibility: &unit_sight_state::Runtime,
         _actor: (i32, u32),
         _destination: PlotCoord,
+        _effects: &E,
     ) -> Result<Option<bool>, Self::Error> {
         Ok(None)
     }
@@ -474,7 +476,7 @@ where
     E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
-    if request.from_user || request.modifiers != 0 {
+    if request.from_user || request.modifiers & !0x10 != 0 {
         return Err(Error::Unsupported("MoveTo fromUser/modifier continuation"));
     }
     movement
@@ -778,7 +780,7 @@ fn update<E: Effects, M: Movement<E>>(
                     };
                     let attack = if modifiers & 0x10 != 0 && first.flags & 1 == 0 {
                         movement
-                            .test_attack_into(state, runtime.visibility, actor, next)
+                            .test_attack_into(state, runtime.visibility, actor, next, effects)
                             .map_err(Error::Movement)?
                             .ok_or(Error::Unsupported("MoveTo TestAttackInto composition"))?
                     } else {
