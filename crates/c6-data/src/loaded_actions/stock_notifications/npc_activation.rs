@@ -72,6 +72,25 @@ pub struct Context<'s, 'a, P, L> {
     pub leaves: &'s mut L,
 }
 impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
+    /// Return from the already-reached active-control decision after enqueueing
+    /// an external action. This does not execute that action or decrement the
+    /// activation processing depth; ordinary deactivation owns that decrement.
+    pub fn finish_active_return(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut loaded::Runtime,
+        owner: i32,
+    ) -> Result<ActivationOutcome, Error> {
+        if runtime.pending_player_effect()
+            != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
+            || core::controller(runtime).is_none_or(|frame| frame.owner() != owner)
+            || core::pending(runtime).is_some()
+        {
+            return Err(Error::Unsupported("NPC active return continuation differs"));
+        }
+        self.leaves.wait(state, self.backend, owner)?;
+        Ok(ActivationOutcome::Complete)
+    }
     fn fail(&mut self, cause: impl std::fmt::Debug) -> Error {
         self.backend.last_error = Some(format!("NPC activation: {cause:?}"));
         Error::Unsupported("stock NPC activation; inspect backend.last_error")

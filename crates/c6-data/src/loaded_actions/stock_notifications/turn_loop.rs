@@ -51,6 +51,7 @@ pub(crate) struct Progress {
     updates: usize,
     in_progress: bool,
     choice: Option<PolicyChoice>,
+    queued_completion: Option<(i32, u32)>,
 }
 impl<P> Runtime<'_, P> {
     pub fn pending_policy_choice(&self) -> Option<&PolicyChoice> {
@@ -196,6 +197,31 @@ fn drive<'b, P, E>(
                     }
                 }
                 Phase::Ordinary => {
+                    // Ordinary begins after the parent Complete.Execute has
+                    // returned. Only now may ProcessMessages drain a command
+                    // queued by its suspended active-control callback.
+                    if let Some((player, reason)) = progress.queued_completion.take() {
+                        let prefix = (turn_completion::Context {
+                            state: context.notifications.state,
+                            effects: &mut context.notifications.backend,
+                        })
+                        .execute(player, reason)
+                        .map_err(Error::Completion)?;
+                        match prefix {
+                            completion::Prefix::RequiresGameUpdate(_) => {
+                                progress.issuer = player;
+                                progress.phase = Phase::MandatoryFirst;
+                                continue;
+                            }
+                            completion::Prefix::AlreadyComplete => {}
+                            completion::Prefix::InvalidEncodedPlayer => {
+                                return Err(Error::Policy("queued completion player is invalid"))
+                            }
+                            completion::Prefix::PausedHuman => {
+                                return Err(Error::Policy("queued completion player is paused"))
+                            }
+                        }
+                    }
                     let state = &context.notifications.state;
                     let owner = state.retained().core.local_player;
                     let index = usize::try_from(owner)
@@ -318,6 +344,7 @@ pub fn execute<'b, P, E>(
                 updates: 0,
                 in_progress: false,
                 choice: None,
+                queued_completion: None,
             };
             let result = drive(
                 context,
@@ -334,6 +361,98 @@ pub fn execute<'b, P, E>(
         }
     }
 }
+/// Queue an ordinary completion message from a suspended player-action site.
+/// The required `return_active` callback executes only the current control
+/// frame's return/wait suffix. Completion is drained after the parent message
+/// returns, preserving the original non-reentrant QueueMessage ordering.
+#[allow(clippy::too_many_arguments)]
+pub fn resume_end_turn<'b, P, E>(
+    context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
+    runtime: &mut loaded::Runtime,
+    inputs: &deactivation::Inputs<'_, '_, '_>,
+    visibility: &mut data::deactivation::VisibilityHistory,
+    budget: &mut usize,
+    mut activation: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+        bool,
+    ) -> Result<ActivationOutcome, E>,
+    mut inactive: impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32) -> Result<(), E>,
+    mut active: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+    ) -> Result<ActivationOutcome, E>,
+    mut return_active: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+    ) -> Result<ActivationOutcome, E>,
+) -> Result<Outcome, Error<E>> {
+    let progress = context
+        .notifications
+        .backend
+        .turn_progress
+        .as_ref()
+        .ok_or(Error::Policy("no suspended player action"))?;
+    let choice = progress
+        .choice
+        .as_ref()
+        .ok_or(Error::Policy("no suspended player action"))?;
+    let owner = choice.player;
+    if !progress
+        .stamp
+        .same_instance(context.notifications.state.action_stamp())
+        || choice.kind != PolicyKind::PlayerActions
+        || progress.queued_completion.is_some()
+        || runtime.pending_player_effect()
+            != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
+        || !context
+            .notifications
+            .state
+            .turn_active(owner)
+            .map_err(|_| Error::Policy("current action player"))?
+    {
+        return Err(Error::Policy("player action continuation differs"));
+    }
+    let mut progress = context
+        .notifications
+        .backend
+        .turn_progress
+        .take()
+        .expect("checked");
+    progress.choice = None;
+    progress.queued_completion = Some((owner, completion::NONE));
+    let mut returned = false;
+    let mut resumed_active = |state: &mut LoadedState,
+                              backend: &mut Runtime<'b, P>,
+                              runtime: &mut loaded::Runtime,
+                              player: i32| {
+        if !returned && player == owner {
+            returned = true;
+            return_active(state, backend, runtime, player)
+        } else {
+            active(state, backend, runtime, player)
+        }
+    };
+    let result = drive(
+        context,
+        runtime,
+        inputs,
+        visibility,
+        budget,
+        &mut progress,
+        &mut activation,
+        &mut inactive,
+        &mut resumed_active,
+    );
+    retain(context, runtime, progress, result)
+}
+
 /// Validate and apply the actual external technology request, then resume at
 /// the suspended callback. No completion command, update prefix or activation
 /// upkeep is replayed. Invalid choices preserve the pending continuation.
