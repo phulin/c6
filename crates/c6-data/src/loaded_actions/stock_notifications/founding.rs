@@ -117,8 +117,9 @@ pub trait Effects<'a>: found_city::placement::Effects + buildings::Effects {
         state: &mut LoadedState,
         city: ComponentId,
     ) -> Result<(), String>;
-    /// Dispatch the actual ordered CityCreated ring. At GameEffects.CityAdded
-    /// invoke Runtime::founding_city_added for the newly registered collections.
+    /// Dispatch the actual ordered CityCreated/CityAdded+288 ring, including
+    /// its initial listeners and newly registered collection listeners at the
+    /// appended positions. The parts helper dispatches that new-listener tail.
     fn city_created(
         &mut self,
         state: &mut LoadedState,
@@ -688,9 +689,9 @@ pub fn capital_changed_parts(
     Ok(())
 }
 impl Runtime<'_> {
-    /// Invoke at GameEffects.CityAdded+288, after previously installed source
-    /// listeners and before later outer CityCreated consumers. Registration
-    /// order stays in the canonical EffectRuntime; no side registry exists.
+    /// Invoke the newly registered CityCreated/CityAdded+288 listener tail,
+    /// after previously installed source listeners in that same signal ring.
+    /// Registration order stays in the canonical owner; no side registry exists.
     pub fn founding_city_added(
         &mut self,
         state: &mut LoadedState,
