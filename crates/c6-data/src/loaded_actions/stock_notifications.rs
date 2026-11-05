@@ -22,6 +22,7 @@ pub mod gold;
 pub mod human_activation;
 pub mod inactive_control;
 pub mod npc_activation;
+pub mod npc_leaves;
 #[path = "stock_maintenance.rs"]
 pub mod maintenance;
 #[path = "stock_manager_queries.rs"]
@@ -94,6 +95,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
+    pub(crate) completion_inflight: Option<i32>,
     pub(crate) activation_progress:
         Option<crate::game_update_state::activation::upkeep::ActivationProgress>,
 }
@@ -130,6 +132,7 @@ impl<'a, P> Runtime<'a, P> {
             gold_signals: None,
             activation_progress: None,
             turn_progress: None,
+            completion_inflight: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its
