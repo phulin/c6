@@ -542,3 +542,83 @@ impl<P> Runtime<'_, P> {
         })
     }
 }
+
+impl<P> Runtime<'_, P> {
+    /// Synchronous SetPromotion gameplay subscriber over the canonical owners.
+    pub fn upgrade_promotion_earned(
+        &mut self,
+        state: &mut LoadedState,
+        rules: &crate::Rules,
+        unit: ComponentId,
+        name: &[u8],
+    ) -> Result<(), String> {
+        self.check(state)
+            .map_err(|e| format!("promotion binding: {e:?}"))?;
+        let input = self
+            .unit_creation
+            .as_ref()
+            .ok_or("current Unit creation inputs")?;
+        let modifier = self
+            .modifier_owners
+            .as_mut()
+            .ok_or("canonical modifier owners")?;
+        let movement = self.movement.as_mut().ok_or("current movement callbacks")?;
+        let mut effects = CollectionEffects {
+            definitions: input.definitions,
+            tags: input.tags,
+            moved: &mut movement.signal,
+            reporting: &mut self.reporting,
+            reporting_suspended: movement.reporting_suspended,
+        };
+        let mut owners = collections::Owners {
+            state,
+            effects: &mut modifier.effects,
+            requirements: &mut modifier.requirements,
+            collections: &mut modifier.collections,
+        };
+        collections::ability::on_promotion_earned(
+            &mut owners,
+            &mut modifier.unit_created,
+            &mut effects,
+            input.definitions,
+            rules,
+            UnitReference::from_component_id(unit),
+            name,
+        )
+        .map_err(|e| format!("promotion attachment: {e:?}"))
+    }
+    pub fn upgrade_processed_turn(
+        &mut self,
+        state: &mut LoadedState,
+        unit: ComponentId,
+    ) -> Result<(), String> {
+        self.check(state)
+            .map_err(|e| format!("processed binding: {e:?}"))?;
+        let snapshot = self
+            .unit_creation
+            .as_ref()
+            .and_then(|v| v.control.as_ref())
+            .ok_or("current processed-turn report inputs")?
+            .processed_report_snapshot;
+        if !snapshot {
+            return Err("unqualified processed-turn report consumers".into());
+        }
+        let reference = UnitReference::from_component_id(unit);
+        let current = state
+            .unit_mut(reference.player(), reference.id)
+            .map_err(|e| format!("processed Unit: {e:?}"))?;
+        if !current.b_processed_turn {
+            current.b_processed_turn = true;
+            if !self
+                .movement()
+                .map_err(|e| format!("processed movement: {e:?}"))?
+                .reporting_suspended
+            {
+                self.reporting
+                    .observe_unit_snapshot(state, reference)
+                    .map_err(|e| format!("processed report: {e:?}"))?;
+            }
+        }
+        Ok(())
+    }
+}

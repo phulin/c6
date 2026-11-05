@@ -48,13 +48,21 @@ fn integer(r: Row<'_>, k: &str) -> Result<i32, Error> {
     .ok_or(Error::Missing("ability rule integer"))
 }
 fn compile(db: &crate::Database, name: &[u8]) -> Result<Vec<Recipe>, Error> {
+    compile_source(db, name, "UnitAbilityModifiers", "UnitAbilityType")
+}
+fn compile_source(
+    db: &crate::Database,
+    name: &[u8],
+    source: &str,
+    column: &str,
+) -> Result<Vec<Recipe>, Error> {
     let table = |name: &str| {
         db.table(name)
             .ok_or(Error::Missing("ability modifier rules table"))
     };
     let mut ids = Vec::new();
-    for r in table("UnitAbilityModifiers")?.rows() {
-        if text(r, "UnitAbilityType")? == name {
+    for r in table(source)?.rows() {
+        if text(r, column)? == name {
             ids.push(text(r, "ModifierId")?.to_vec());
         }
     }
@@ -200,6 +208,55 @@ pub fn on_ability_earned<E: Effects>(
         Ok(rows) => rows.clone(),
         Err(_) => return Err(Error::Missing("unsupported earned ability recipe")),
     };
+    attach_recipes(owners, runtime, effects, definitions, unit, hash, recipes)
+}
+/// The promotion wrapper has the same native subtype 1 as an ability wrapper;
+/// the promotion type hash remains its distinct logical identity (23ddde0).
+pub fn on_promotion_earned<E: Effects>(
+    owners: &mut Owners<'_>,
+    runtime: &mut Runtime,
+    effects: &mut E,
+    definitions: &super::super::Definitions,
+    rules: &Rules,
+    unit: UnitReference,
+    name: &[u8],
+) -> Result<(), Error> {
+    let recipes = compile_source(
+        rules.gameplay(),
+        name,
+        "UnitPromotionModifiers",
+        "UnitPromotionType",
+    )?;
+    attach_recipes(
+        owners,
+        runtime,
+        effects,
+        definitions,
+        unit,
+        linux_type_hash(name),
+        recipes,
+    )
+}
+/// Validate immutable recipes before destroying the original unit.
+pub fn preflight_promotion(rules: &Rules, name: &[u8]) -> Result<(), Error> {
+    compile_source(
+        rules.gameplay(),
+        name,
+        "UnitPromotionModifiers",
+        "UnitPromotionType",
+    )
+    .map(|_| ())
+}
+#[allow(clippy::too_many_arguments)]
+fn attach_recipes<E: Effects>(
+    owners: &mut Owners<'_>,
+    runtime: &mut Runtime,
+    effects: &mut E,
+    definitions: &super::super::Definitions,
+    unit: UnitReference,
+    hash: u32,
+    recipes: Vec<Recipe>,
+) -> Result<(), Error> {
     if recipes.is_empty() {
         return Ok(());
     }
@@ -583,6 +640,26 @@ mod tests {
             (5, 1, 1)
         );
         assert!(compile(&db, b"NO_REFERENCES").unwrap().is_empty());
+    }
+    #[test]
+    fn promotion_source_keeps_its_own_rows_and_deferred_combat_effect() {
+        let db=database("CREATE TABLE UnitPromotionModifiers(UnitPromotionType TEXT,ModifierId TEXT); INSERT INTO UnitPromotionModifiers VALUES('PROMOTION_TEST','Z'); UPDATE DynamicModifiers SET CollectionType='COLLECTION_UNIT_COMBAT',EffectType='EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER';");
+        let rows = compile_source(
+            &db,
+            b"PROMOTION_TEST",
+            "UnitPromotionModifiers",
+            "UnitPromotionType",
+        )
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].effect, RecipeEffect::UnitCombatStrength);
+        assert_eq!(rows[0].subject, b"HOME");
+        assert_eq!(rows[0].amount, 5);
+        assert!(
+            compile_source(&db, b"A", "UnitPromotionModifiers", "UnitPromotionType")
+                .unwrap()
+                .is_empty()
+        );
     }
     #[test]
     fn unit_combat_recipe_retains_deferred_opponent_requirements() {
