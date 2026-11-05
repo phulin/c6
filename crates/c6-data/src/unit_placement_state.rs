@@ -1,6 +1,7 @@
 //! Live normal Placement over the canonical loaded Unit and World.
 //! Definitions are retained across actions; query views borrow current state.
 pub mod creation;
+pub mod round;
 pub mod requirement_changes;
 
 use crate::{movement_placement_state as placement, unit_sight_state as sight};

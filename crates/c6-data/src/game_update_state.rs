@@ -3,6 +3,7 @@
 pub mod automation;
 pub mod deactivation;
 pub mod activation;
+pub mod round_units;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,

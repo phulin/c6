@@ -145,6 +145,15 @@ impl<'a> Parameters<'a> {
         Ok(found)
     }
 
+    /// A reached parameter with a present native row, when its absent-row
+    /// initializer has not yet been established. Reuse native SQL conversion;
+    /// absence stays unsupported rather than inventing a fallback.
+    pub(crate) fn required_integer(&self, name: &'static str) -> Result<i32, Error> {
+        self.value(name)?
+            .and_then(sql_integer)
+            .ok_or(Error::UnsupportedScalar(name))
+    }
+
     pub fn integer(&self, parameter: IntegerParameter) -> Result<i32, Error> {
         match self.value(parameter.name())? {
             None => Ok(parameter.native_default()),
@@ -271,6 +280,24 @@ mod tests {
         let database = crate::inspect(&path).unwrap();
         std::fs::remove_file(path).unwrap();
         database
+    }
+
+    #[test]
+    fn required_round_parameter_uses_native_conversion_without_unknown_fallback() {
+        let absent = database("CREATE TABLE GlobalParameters(Name TEXT,Value);");
+        assert_eq!(
+            Parameters::from_database(&absent)
+                .unwrap()
+                .required_integer("PLOT_WATER_DAMAGE_BASE"),
+            Err(Error::UnsupportedScalar("PLOT_WATER_DAMAGE_BASE"))
+        );
+        let present=database("CREATE TABLE GlobalParameters(Name TEXT,Value); INSERT INTO GlobalParameters VALUES('PLOT_WATER_DAMAGE_BASE',' -12tail');");
+        assert_eq!(
+            Parameters::from_database(&present)
+                .unwrap()
+                .required_integer("PLOT_WATER_DAMAGE_BASE"),
+            Ok(-12)
+        );
     }
 
     #[test]
