@@ -550,7 +550,7 @@ mod tests {
             Proposal::ranged_district_unit(district, defender, Some(PlotCoord { x: 1, y: 2 })),
         )
         .unwrap();
-        assert_eq!(id, 0);
+        assert_eq!(id, 1);
         assert_eq!(c.events, [1, 2, 3]);
         let p = c.runtime.proposal(handle).unwrap();
         assert_eq!(p.attacker, Participant::District(district));
