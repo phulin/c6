@@ -43,7 +43,6 @@ impl<'a> State<'a> {
     /// Split an initialized backend once; install returned stores in the SAME
     /// stock ModifierOwners, alongside the current collection/factory owners.
     pub fn from_backend(
-        _state: &LoadedState,
         backend: backend::Backend<(), backend::requirements::Runtime>,
         bindings: resolve::completion::stock::Bindings,
         observer: Option<i32>,
