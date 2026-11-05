@@ -1,15 +1,19 @@
-//! External replacement for the reached empty-queue QueueNextTech decision.
+//! External replacement for the reached empty-queue technology/civic decisions.
 //! The caller retains the activation continuation; this does not repeat upkeep,
-//! select a technology, consume a native policy draw or complete the turn.
+//! select a research target, consume a native policy draw or complete the turn.
 use super::{Context, Effects, Error};
 #[derive(Debug, Eq, PartialEq)]
-pub enum TechnologyPolicy {
+pub enum ResearchPolicy {
     Continue,
     ChoicePending {
         player: i32,
         legal_indices: Vec<i32>,
     },
 }
+/// The caller retains the decision kind in its activation continuation.
+pub type TechnologyPolicy = ResearchPolicy;
+pub type CivicPolicy = ResearchPolicy;
+
 fn boundary<E>(
     player: i32,
     queued: bool,
@@ -42,6 +46,25 @@ impl<E: Effects> Context<'_, E> {
         selected_index: i32,
     ) -> Result<bool, Error<E::Error>> {
         Ok(self.selected_technology(player)? == Some(selected_index))
+    }
+    pub fn selected_civic(&self, player: i32) -> Result<Option<i32>, Error<E::Error>> {
+        self.check()?;
+        let current = super::research_turn::current(self, player, super::Kind::Civic)?;
+        Ok((current >= 0).then_some(current))
+    }
+    pub fn civic_choice_satisfied(
+        &self,
+        player: i32,
+        selected_index: i32,
+    ) -> Result<bool, Error<E::Error>> {
+        Ok(self.selected_civic(player)? == Some(selected_index))
+    }
+    /// Source QueueNextCivic frontier after its human/barbarian bypass. The
+    /// caller resumes this same activation with request_civic(...Replace).
+    pub fn civic_policy_boundary(&self, player: i32) -> Result<CivicPolicy, Error<E::Error>> {
+        self.check()?;
+        let queued = self.selected_civic(player)?.is_some();
+        boundary(player, queued, || self.civic_choices(player))
     }
     /// Invoke at the actual empty-queue controller policy stage, after the
     /// native human bypass. Missing legality inputs remain errors. Resume with
