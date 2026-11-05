@@ -178,6 +178,25 @@ impl Frame {
     pub fn is_complete(&self) -> bool {
         self.stage == Stage::Complete
     }
+    /// Call only at the real creation of a new activation controller. A
+    /// completed episode needs a fresh cursor over the retained callback lists;
+    /// an initial or pending frame keeps its executed prefix unchanged.
+    pub fn prepare_new_activation(&mut self, state: &LoadedState) -> Result<(), Error> {
+        if !self.identity.same_instance(state.action_stamp()) {
+            return Err(Error::Unsupported("NPC deactivation activation instance"));
+        }
+        if self.is_complete() {
+            *self = Self::new(
+                state,
+                self.owner,
+                self.full,
+                self.readiness.clone(),
+                self.priorities.clone(),
+                self.end.clone(),
+            )?;
+        }
+        Ok(())
+    }
     pub fn advance(
         &mut self,
         state: &mut LoadedState,
@@ -518,6 +537,55 @@ mod tests {
         );
         assert_eq!(c.seen.len(), n);
         assert_eq!(r.global_ai_processing_depth, Some(7));
+    }
+    #[test]
+    fn new_activation_rearms_completed_deactivation_without_replaying_same_episode() {
+        let (mut s, mut r, owner) = fixture(0);
+        let mut frame = Frame::new(
+            &s,
+            owner,
+            true,
+            vec![Kind::Targets],
+            vec![],
+            vec![Kind::Planning],
+        )
+        .unwrap();
+        let mut effects = calls();
+        for episode in 0..2 {
+            if episode == 1 {
+                human_activation::set_priority(&mut s, owner, 0).unwrap();
+                // Model the separate new activation's BeginAiProcessing.
+                r.global_ai_processing_depth = Some(8);
+                frame.prepare_new_activation(&s).unwrap();
+            }
+            assert_eq!(
+                frame.advance(&mut s, &mut r, &mut effects).unwrap(),
+                Progress::Complete
+            );
+            assert_eq!(r.global_ai_processing_depth, Some(7));
+            let count = effects.seen.len();
+            assert_eq!(
+                frame.advance(&mut s, &mut r, &mut effects).unwrap(),
+                Progress::Complete
+            );
+            assert_eq!(effects.seen.len(), count);
+        }
+        assert_eq!(
+            effects
+                .seen
+                .iter()
+                .filter(|call| **call == Call::Cleanup)
+                .count(),
+            2
+        );
+        assert_eq!(
+            effects
+                .seen
+                .iter()
+                .filter(|call| **call == Call::End(Kind::Planning, -1))
+                .count(),
+            2
+        );
     }
     #[test]
     fn callbacks_reread_current_priority_and_cleanup_failure_precedes_depth_release() {

@@ -325,6 +325,22 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
     }
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Retain current metadata and gameplay owners; only the completed
+    /// continuation cursor is renewed at the new activation boundary.
+    pub(super) fn prepare_npc_deactivation_activation(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+    ) -> Result<(), Error> {
+        if let Some(bound) = self
+            .npc_deactivation
+            .iter_mut()
+            .find(|b| b.inputs.owner == owner)
+        {
+            bound.frame.prepare_new_activation(state)?;
+        }
+        Ok(())
+    }
     pub fn bind_npc_deactivation(
         &mut self,
         state: &LoadedState,

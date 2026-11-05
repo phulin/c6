@@ -322,6 +322,8 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
                 full_turn,
                 self.leaves.callbacks().to_vec(),
             )?;
+            self.backend
+                .prepare_npc_deactivation_activation(state, owner)?;
         }
         if core::controller(runtime).is_none_or(|frame| frame.owner() != owner) {
             return Err(Error::Unsupported("NPC continuation player differs"));
