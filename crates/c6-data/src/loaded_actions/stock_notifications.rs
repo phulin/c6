@@ -22,6 +22,7 @@ pub mod gold;
 pub mod human_activation;
 pub mod inactive_control;
 pub mod npc_activation;
+pub mod npc_deactivation;
 pub mod npc_leaves;
 #[path = "stock_maintenance.rs"]
 pub mod maintenance;
@@ -86,6 +87,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub turn_report_records: Vec<turn_reports::Record>,
     pub last_error: Option<String>,
     pub reached: Vec<&'static str>,
+    npc_deactivation: Option<npc_deactivation::State>,
     binding: WireBinding,
     facts: Facts,
     temporary_serial: u64,
@@ -122,6 +124,7 @@ impl<'a, P> Runtime<'a, P> {
             turn_report_records: Vec::new(),
             last_error: None,
             reached: Vec::new(),
+            npc_deactivation: None,
             binding: state.binding().clone(),
             facts,
             temporary_serial: 0,

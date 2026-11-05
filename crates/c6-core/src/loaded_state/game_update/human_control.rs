@@ -97,7 +97,7 @@ pub fn deactivate(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
     Ok(())
 }
 
-fn release_controller(state: &mut LoadedState, owner: i32, controller: u32) -> Result<(), Error> {
+pub(super) fn release_controller(state: &mut LoadedState, owner: i32, controller: u32) -> Result<(), Error> {
     // Assigning INVALID to already-unowned units has no gameplay effect; native
     // archive-dirty metadata is not part of logical gameplay state.
     if controller == u32::MAX {

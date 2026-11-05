@@ -8,6 +8,7 @@ pub mod human_activation;
 pub mod human_control;
 pub mod inactive_control;
 pub mod npc_activation;
+pub mod npc_deactivation;
 pub mod maintenance;
 pub mod resources;
 pub mod round;
