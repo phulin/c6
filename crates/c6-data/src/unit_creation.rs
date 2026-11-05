@@ -4,6 +4,7 @@
 pub mod signals;
 pub mod collections;
 pub mod placement_effects;
+pub mod production_effects;
 
 use crate::{
     registry::LinuxDefinitionRegistry,

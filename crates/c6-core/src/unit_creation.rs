@@ -3,6 +3,7 @@
 pub mod abilities;
 pub mod constructor;
 pub mod default_ai;
+pub mod production_effects;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     ResourceLimit,
