@@ -209,7 +209,7 @@ impl<P> Services<P> for Current<'_> {
     fn constructed_gameplay(
         &mut self,
         state: &mut LoadedState,
-        _backend: &mut stock::Runtime<'_, P>,
+        backend: &mut stock::Runtime<'_, P>,
         plot: usize,
         receiver: usize,
     ) -> Result<(), Error> {
@@ -235,7 +235,9 @@ impl<P> Services<P> for Current<'_> {
             // City), then eight cached improvement-type comparisons.
             0x29ea410
                 if !self.camp_has_trait
-                    && p.city_attributes.is_none()
+                    && p.city_attributes
+                        .as_ref()
+                        .is_none_or(|a| a.owning_city == u32::MAX)
                     && self.history_special_improvements.len() == 8
                     && !self.history_special_improvements.contains(&self.camp_index) =>
             {
@@ -257,9 +259,12 @@ impl<P> Services<P> for Current<'_> {
             0x2b03c60 if owner == -1 => Ok(()),
             // Achievement handler rejects NO_PLAYER (28f9269).
             0x2903390 if owner == -1 => Ok(()),
-            _ => Err(Error::Unsupported(
-                "positive camp constructed subscriber continuation",
-            )),
+            _ => {
+                backend.last_error = Some(format!("camp constructed receiver {:#x} invoke {:#x}, territory owner {owner}, improvement owner {}, owning city {:?}",subscriber.receiver,subscriber.invoke,p.improvement_owner,p.city_attributes.as_ref().map(|a|a.owning_city)));
+                Err(Error::Unsupported(
+                    "positive camp constructed subscriber continuation",
+                ))
+            }
         }
     }
     fn spawn_turns(&self, state: &LoadedState, turns: i32) -> Result<i32, Error> {
