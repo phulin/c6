@@ -2,8 +2,8 @@
 //! effect-owned totals survive every callback; proposal payloads stay in the
 //! canonical LoadedState registry. This does not complete melee resolution.
 use super::proposals;
-pub mod city_creation;
 pub mod allocation;
+pub mod city_creation;
 pub mod requirements;
 use crate::{
     loaded_actions::{configuration::RawGameConfiguration, culture_notifications as calendar},
@@ -22,6 +22,11 @@ pub enum ContextObject {
     /// Global Game wrapper; never substituted for a Plot or Player interface.
     Game,
     Player(i32),
+    /// Objects::Player subtype3, subvalue native Policy definition index.
+    Policy {
+        owner: i32,
+        policy: u32,
+    },
     /// Objects.Unit's IPlayer interface uses its stored CID owner, while its
     /// IUnit interface resolves the CURRENT corresponding canonical Unit.
     Unit(UnitReference),
@@ -39,13 +44,22 @@ pub enum ContextObject {
 #[derive(Clone, Debug)]
 pub enum CityEffect {
     /// Retained class identity whose concrete gameplay leaf is unavailable.
-    Unsupported { native_type: u64 },
+    Unsupported {
+        native_type: u64,
+    },
     FeatureProduction(c6_core::found_city::feature_production::Effect),
-    IdentityPerTurn { amount: i32 },
+    IdentityPerTurn {
+        amount: i32,
+    },
     /// AdjustCityInnerDefense2347210/2347230 delegates to the add-only RET
     /// setter2420270; no report, query or RNG callback accompanies the write.
-    InnerDefense { amount: i32 },
-    YieldChanges { yields: Vec<u32>, amounts: Vec<i32> },
+    InnerDefense {
+        amount: i32,
+    },
+    YieldChanges {
+        yields: Vec<u32>,
+        amounts: Vec<i32>,
+    },
 }
 #[derive(Debug)]
 pub enum CityEffectError {
@@ -72,16 +86,27 @@ impl CityEffect {
             )));
         }
         match self {
-            Self::Unsupported { native_type } => Err(CityEffectError::Unsupported { native_type: *native_type }),
+            Self::Unsupported { native_type } => Err(CityEffectError::Unsupported {
+                native_type: *native_type,
+            }),
             Self::FeatureProduction(effect) => c6_core::found_city::feature_production::apply(
                 state, city, features, *effect, remove,
             )
             .map_err(CityEffectError::FeatureProduction),
             Self::InnerDefense { amount } => {
-                let combat = &mut state.city_mut(i32::from(city.owner), city.id)
-                    .map_err(|e| CityEffectError::Production(crate::city_production_turn::Error::State(e)))?.combat;
-                combat.inner_defense_strength_modifier = combat.inner_defense_strength_modifier
-                    .wrapping_add(if remove { amount.wrapping_neg() } else { *amount });
+                let combat = &mut state
+                    .city_mut(i32::from(city.owner), city.id)
+                    .map_err(|e| {
+                        CityEffectError::Production(crate::city_production_turn::Error::State(e))
+                    })?
+                    .combat;
+                combat.inner_defense_strength_modifier = combat
+                    .inner_defense_strength_modifier
+                    .wrapping_add(if remove {
+                        amount.wrapping_neg()
+                    } else {
+                        *amount
+                    });
                 Ok(true)
             }
             Self::IdentityPerTurn { amount } => {
@@ -245,6 +270,13 @@ impl EffectRuntime {
                     .city(i32::from(city.owner), city.id)
                     .map_err(|_| QueryError::Missing("current registered City"))?;
             }
+            ContextObject::Policy { owner, .. } => {
+                state
+                    .world()
+                    .valid_player(owner)
+                    .map_err(QueryError::World)?
+                    .ok_or(QueryError::Missing("current Policy wrapper Player"))?;
+            }
             ContextObject::Plot(plot) => {
                 state
                     .world()
@@ -287,7 +319,8 @@ impl EffectRuntime {
         if identity == 0 || self.effects.iter().any(|row| row.0 == identity) {
             return Err(QueryError::DuplicateEffect(identity));
         }
-        self.effects.push((identity, EffectState::Player { context, effect }));
+        self.effects
+            .push((identity, EffectState::Player { context, effect }));
         Ok(())
     }
     pub fn register_unit_modifier(
@@ -426,6 +459,26 @@ impl EffectRuntime {
             .ok_or(QueryError::MissingEffect(receiver))?;
         Ok(modifiers.remove(index))
     }
+    /// Release a concrete effect after its owning DynamicModifier is destroyed.
+    pub fn retire_effect(&mut self, state: &LoadedState, identity: u64) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        let at = self
+            .effects
+            .iter()
+            .position(|r| r.0 == identity)
+            .ok_or(QueryError::MissingEffect(identity))?;
+        if self
+            .unit_modifiers
+            .as_ref()
+            .is_some_and(|v| v.iter().any(|m| m.effect == identity))
+        {
+            return Err(QueryError::Unsupported(
+                "effect retirement before modifier destruction",
+            ));
+        }
+        self.effects.remove(at);
+        Ok(())
+    }
     pub fn effect(&self, identity: u64) -> Result<&EffectState, QueryError> {
         self.effects
             .iter()
@@ -494,17 +547,27 @@ pub enum Error<O, R> {
 }
 impl<O, R> Backend<O, R> {
     /// Borrow the cached immutable configuration and calendar definitions.
-    pub fn inputs(&self) -> &Inputs { &self.inputs }
+    pub fn inputs(&self) -> &Inputs {
+        &self.inputs
+    }
     /// Lend a different reporting view while retaining the exact requirement,
     /// effect and configuration owners. No initialization/admission is replayed.
-    pub fn with_reporting<N>(self,reporting:N)->(O,Backend<N,R>){
-        (self.reporting,Backend{reporting,requirements:self.requirements,effects:self.effects,inputs:self.inputs})
+    pub fn with_reporting<N>(self, reporting: N) -> (O, Backend<N, R>) {
+        (
+            self.reporting,
+            Backend {
+                reporting,
+                requirements: self.requirements,
+                effects: self.effects,
+                inputs: self.inputs,
+            },
+        )
     }
     /// Return the SAME persistent owners after a borrowed reporting scope.
     /// This supports an outer operation lending its provider for one attack;
     /// no requirement/effect/Script state is rebuilt between callbacks.
-    pub fn into_parts(self) -> (O,R,EffectRuntime,Inputs) {
-        (self.reporting,self.requirements,self.effects,self.inputs)
+    pub fn into_parts(self) -> (O, R, EffectRuntime, Inputs) {
+        (self.reporting, self.requirements, self.effects, self.inputs)
     }
 
     pub fn new(
@@ -609,7 +672,7 @@ impl registry::Context for EffectContext<'_> {
 impl player_strength::Context for EffectContext<'_> {
     fn context_player(&mut self) -> Result<Option<i32>, QueryError> {
         let owner = match self.object {
-            ContextObject::Player(owner) => owner,
+            ContextObject::Player(owner) | ContextObject::Policy { owner, .. } => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
             ContextObject::Alliance { .. } => return Ok(None),
             ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
@@ -657,7 +720,10 @@ impl player_strength::Context for EffectContext<'_> {
         self.start_turn()
     }
     fn unit_property(&mut self, _: u32) -> Result<Option<i32>, QueryError> {
-        if matches!(self.object, ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)) {
+        if matches!(
+            self.object,
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)
+        ) {
             return Err(QueryError::Unsupported(
                 "new context IUnit query requires source-qualified adapter",
             ));
@@ -674,7 +740,10 @@ impl player_strength::Context for EffectContext<'_> {
         ))
     }
     fn has_game_interface(&mut self) -> Result<bool, QueryError> {
-        if matches!(self.object, ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)) {
+        if matches!(
+            self.object,
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)
+        ) {
             return Err(QueryError::Unsupported(
                 "new context IGame query requires source-qualified adapter",
             ));
@@ -698,7 +767,10 @@ fn configured_end_turn(limit: u32, start: i32, maximum: i32) -> i32 {
 
 impl alliance_strength::Context for EffectContext<'_> {
     fn context_alliance_interface(&mut self) -> Result<bool, QueryError> {
-        if matches!(self.object, ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)) {
+        if matches!(
+            self.object,
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)
+        ) {
             return Err(QueryError::Unsupported(
                 "new context IAlliance query requires source-qualified adapter",
             ));
@@ -946,7 +1018,8 @@ impl<O: PostCombatYields, R: Requirements> super::resolve::post_yields::Effects 
         yield_type: i32,
         amount: i32,
     ) -> Result<(), <Self as proposals::Effects>::Error> {
-        self.reporting.credit_post_combat_yield(state, winner, yield_type, amount)
+        self.reporting
+            .credit_post_combat_yield(state, winner, yield_type, amount)
             .map_err(Error::Reporting)
     }
 }

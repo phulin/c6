@@ -65,7 +65,9 @@ impl<'a, P> Runtime<'a, P> {
         Ok(())
     }
     pub fn modifier_owners(&self) -> Result<&ModifierOwners, movement::Error> {
-        self.modifier_owners.as_ref().ok_or(movement::Error::Missing("canonical modifier owners"))
+        self.modifier_owners
+            .as_ref()
+            .ok_or(movement::Error::Missing("canonical modifier owners"))
     }
     pub fn modifier_owners_mut(&mut self) -> Result<&mut ModifierOwners, movement::Error> {
         self.modifier_owners
@@ -79,10 +81,12 @@ impl<'a, P> Runtime<'a, P> {
         &mut self,
         apply: impl FnOnce(&mut Self, &mut ModifierOwners) -> R,
     ) -> Result<R, movement::Error> {
-        let mut owners=self.modifier_owners.take()
+        let mut owners = self
+            .modifier_owners
+            .take()
             .ok_or(movement::Error::Missing("canonical modifier owners"))?;
-        let result=apply(self,&mut owners);
-        self.modifier_owners=Some(owners);
+        let result = apply(self, &mut owners);
+        self.modifier_owners = Some(owners);
         Ok(result)
     }
     /// Execute a synchronous factory scope against the ongoing turn's actual
@@ -124,12 +128,12 @@ impl<'a, P> Runtime<'a, P> {
         Ok(())
     }
 }
-struct CollectionEffects<'a, 'r> {
-    definitions: &'a creation::Definitions,
-    tags: &'a crate::loaded_actions::reporting::hold_cycling::commands::Tags,
-    moved: &'a mut c6_core::unit_moved_signal::Registry,
-    reporting: &'a mut crate::loaded_actions::reporting::Provider<'r>,
-    reporting_suspended: bool,
+pub(super) struct CollectionEffects<'a, 'r> {
+    pub(super) definitions: &'a creation::Definitions,
+    pub(super) tags: &'a crate::loaded_actions::reporting::hold_cycling::commands::Tags,
+    pub(super) moved: &'a mut c6_core::unit_moved_signal::Registry,
+    pub(super) reporting: &'a mut crate::loaded_actions::reporting::Provider<'r>,
+    pub(super) reporting_suspended: bool,
 }
 impl collections::Effects for CollectionEffects<'_, '_> {
     fn can_have_ability(
@@ -314,7 +318,24 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
             unit,
             city,
         )
-        .map_err(callback)
+        .map_err(callback)?;
+        // Policy-created PlayerUnits subscriptions append after the imported
+        // current Game.UnitCreated ring, in actual factory registration order.
+        let routes = modifier.unit_created.policy_unit_subscriptions().to_vec();
+        if let Some(unit) = unit {
+            for route in routes {
+                collections::policy::unit_created(
+                    &mut owners,
+                    &mut modifier.unit_created,
+                    &mut effects,
+                    input.definitions,
+                    route,
+                    UnitReference::from_component_id(unit),
+                )
+                .map_err(callback)?;
+            }
+        }
+        Ok(())
     }
     fn player_unit_created(
         &mut self,

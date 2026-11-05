@@ -4,6 +4,7 @@
 //! actual ModifierSystem counter; cached City objects keep their source IDs.
 pub mod collection;
 pub mod definitions;
+pub mod policy;
 use super::{EffectRuntime, QueryError};
 use c6_core::{
     loaded_state::LoadedState,
@@ -58,6 +59,8 @@ pub struct PlayerCitiesSubscription {
 }
 pub(super) struct Creation {
     player_cities_subscriptions: Vec<PlayerCitiesSubscription>,
+    player_capital_subscriptions: Vec<PlayerCitiesSubscription>,
+    city_removed_subscriptions: Vec<policy::CitySubscription>,
     modifiers: Vec<Dynamic>,
     objects: Vec<Object>,
     loyalty: ListenerRing<LoyaltyListener>,
@@ -104,6 +107,8 @@ impl EffectRuntime {
         .map_err(Error::Query)?;
         self.city_creation = Some(Creation {
             player_cities_subscriptions: Vec::new(),
+            player_capital_subscriptions: Vec::new(),
+            city_removed_subscriptions: Vec::new(),
             modifiers: Vec::new(),
             objects,
             loyalty,
@@ -355,7 +360,41 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         {
             return Ok(());
         }
-        Err(Error::Missing("City modifier removal continuation"))
+        if self.record()?.modifier.suppressed || self.record()?.definition.permanent {
+            return Ok(());
+        }
+        if c6_core::unit_moved_signal::modifiers::Context::tracked(self)?.applied == 0 {
+            return Ok(());
+        }
+        c6_core::unit_moved_signal::modifiers::Context::tracked_mut(self)?.applied = 0;
+        let subject = self.subject;
+        self.record_mut()?
+            .applied_subjects
+            .retain(|r| *r != subject);
+        let (instance, id, limit, effect) = {
+            let m = self.record()?;
+            (
+                m.instance,
+                m.definition.id.clone(),
+                m.definition.subject_stack_limit,
+                m.effect,
+            )
+        };
+        let affected = &mut self.creation_mut()?.object_mut(subject)?.affected;
+        affected.clear_instance(instance);
+        if limit != 0 && affected.count(&id) >= i32::from(limit) {
+            return Ok(());
+        }
+        let (_, effect) = self.runtime.city_effect(effect).map_err(Error::Query)?;
+        let super::ContextObject::City(city) =
+            self.runtime.object(subject).map_err(Error::Query)?.kind
+        else {
+            return Err(Error::Missing("ICity removal subject"));
+        };
+        effect
+            .apply(self.state, city, self.features, true, self.effects)
+            .map_err(Error::Effect)?;
+        Ok(())
     }
 }
 impl<E: crate::city_production_turn::modifier_effects::Effects>
@@ -512,7 +551,32 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         .map_err(|e| Error::Requirement(Box::new(e)))
     }
     fn remove_tracked_subject(&mut self) -> Result<(), Error> {
-        Err(Error::Missing("City tracked removal continuation"))
+        let subject = self.subject;
+        let Some(at) = self
+            .record()?
+            .tracked
+            .iter()
+            .position(|r| r.subject == subject)
+        else {
+            return Ok(());
+        };
+        if self.record()?.tracked[at].state.requirement_set.is_some() {
+            return Err(Error::Missing(
+                "City subject requirement release on removal",
+            ));
+        }
+        c6_core::unit_moved_signal::modifiers::Context::remove_effects(self)?;
+        let token = self.record()?.tracked[at].destruction;
+        self.creation_mut()?
+            .object_mut(subject)?
+            .destroyed
+            .unsubscribe(token)
+            .map_err(Error::Ring)?;
+        self.record_mut()?.tracked.remove(at);
+        self.record_mut()?
+            .applied_subjects
+            .retain(|r| *r != subject);
+        Ok(())
     }
 }
 
@@ -591,15 +655,17 @@ impl EffectRuntime {
         effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
     ) -> Result<i32, Error> {
         self.current_owner(state).map_err(Error::Query)?;
-        let super::ContextObject::City(context) = self.object(owner).map_err(Error::Query)?.kind
-        else {
-            return Err(Error::Missing("City attachment owner"));
+        let player_owner = match self.object(owner).map_err(Error::Query)?.kind {
+            super::ContextObject::City(context) => {
+                state
+                    .city(i32::from(context.owner), context.id)
+                    .map_err(|_| Error::Missing("current City collection owner"))?
+                    .header
+                    .owner
+            }
+            super::ContextObject::Policy { owner, .. } => owner,
+            _ => return Err(Error::Missing("City effect attachment owner interface")),
         };
-        let player_owner = state
-            .city(i32::from(context.owner), context.id)
-            .map_err(|_| Error::Missing("current City collection owner"))?
-            .header
-            .owner;
 
         if definition.owner_requirements.is_some() {
             return Err(Error::Missing("City modifier owner requirement factory"));
@@ -622,9 +688,9 @@ impl EffectRuntime {
             .as_mut()
             .ok_or(Error::Missing("current City creation domain"))?;
         creation.object_mut(owner)?;
-        let subjects = match definition.collection {
+        let mut subjects = match definition.collection {
             definitions::Collection::Owner => vec![owner],
-            definitions::Collection::PlayerCities => {
+            definitions::Collection::PlayerCities | definitions::Collection::PlayerCapitalCity => {
                 let player = state
                     .retained()
                     .players
@@ -636,7 +702,11 @@ impl EffectRuntime {
                     .records
                     .entries
                     .iter()
-                    .filter(|r| !r.value.header.delayed_death)
+                    .filter(|r| {
+                        !r.value.header.delayed_death
+                            && (definition.collection != definitions::Collection::PlayerCapitalCity
+                                || r.value.header.capital)
+                    })
                     .map(|r| c6_core::unit::ComponentId {
                         owner: r.value.header.owner as i16,
                         component_type: 2,
@@ -653,6 +723,13 @@ impl EffectRuntime {
                 return Err(Error::Missing("new City collection GetItems factory"));
             }
         };
+        // TrackSubjectsFromCollection2333f20 sorts GetItems before updates.
+        let mut keyed = subjects
+            .into_iter()
+            .map(|h| collection::city_key(self, h).map(|k| (k, h)))
+            .collect::<Result<Vec<_>, _>>()?;
+        keyed.sort_by_key(|r| r.0);
+        subjects = keyed.into_iter().map(|r| r.1).collect();
         let instance = self.allocate_modifier_id(state).map_err(Error::Query)?;
         // Logical effect handles occupy their own namespace. Native heap
         // addresses/allocator state are not fabricated or gameplay counters.
@@ -695,6 +772,30 @@ impl EffectRuntime {
                     owner: player_owner,
                 });
         }
+        if definition.collection == definitions::Collection::PlayerCapitalCity {
+            self.city_creation
+                .as_mut()
+                .unwrap()
+                .player_capital_subscriptions
+                .push(PlayerCitiesSubscription {
+                    receiver: (1u64 << 61) | u64::from(instance as u32),
+                    owner: player_owner,
+                });
+        }
+        if matches!(
+            definition.collection,
+            definitions::Collection::PlayerCities | definitions::Collection::PlayerCapitalCity
+        ) {
+            self.city_creation
+                .as_mut()
+                .unwrap()
+                .city_removed_subscriptions
+                .push(policy::CitySubscription {
+                    receiver: (1u64 << 61) | u64::from(instance as u32),
+                    owner: player_owner,
+                    capital: definition.collection == definitions::Collection::PlayerCapitalCity,
+                });
+        }
         // Factory hooks for these classes are BaseEffect single-RET methods.
         // GetItems has already produced the ordered snapshot before Activate.
         let mut factory = collection::MissingRequirements;
@@ -733,6 +834,197 @@ impl EffectRuntime {
             .find(|v| v.instance == instance)
             .and_then(|v| v.owner_destruction)
             .ok_or(Error::Missing("created City modifier"))
+    }
+    /// PlayerCapitalCity listens to CapitalCityChanged+408 and CityRemoved+2e8.
+    pub fn player_capital_subscriptions(&self) -> Result<&[PlayerCitiesSubscription], Error> {
+        Ok(&self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("current City creation domain"))?
+            .player_capital_subscriptions)
+    }
+    /// Policy MakeObject uses Objects::Player subtype3 and the shared pool.
+    /// Share compares owner/subtype/subvalue while a strong owner remains.
+    pub fn make_policy_object(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        policy: u32,
+    ) -> Result<u64, Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        let kind = super::ContextObject::Policy { owner, policy };
+        if let Some((handle, _)) = self.objects.iter().find(|(_, o)| o.kind == kind) {
+            return Ok(*handle);
+        }
+        if self.city_creation.is_none() {
+            return Err(Error::Missing("current modifier lifecycle domain"));
+        }
+        let handle = self
+            .append_normal_object(
+                state,
+                super::Object {
+                    kind,
+                    instance_id: 0,
+                    unit_sort_suffix: None,
+                    unit_lifecycle: Some(c6_core::unit_kill::objects::Object {
+                        pool_ordinal: 0,
+                        owned_modifiers: vec![],
+                        affected: AffectedModifiers::from_sorted(vec![]).unwrap(),
+                        destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
+                    }),
+                },
+            )
+            .map_err(Error::Query)?;
+        self.city_creation.as_mut().unwrap().objects.push(Object {
+            handle,
+            affected: AffectedModifiers::from_sorted(vec![]).unwrap(),
+            destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
+        });
+        Ok(handle)
+    }
+    /// Drop the Policy event's final strong reference after modifier teardown.
+    /// ObjectPool.Share/Append23353a0/2335530 retain weak references only;
+    /// unlike ordinary City/Unit wrappers, Policies have no gameplay cache.
+    pub fn retire_policy_object(&mut self, state: &LoadedState, owner: u64) -> Result<(), Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        let object = self.object(owner).map_err(Error::Query)?;
+        if !matches!(object.kind, super::ContextObject::Policy { .. }) {
+            return Err(Error::Missing("Policy object retirement"));
+        }
+        if object
+            .unit_lifecycle
+            .as_ref()
+            .is_some_and(|r| !r.owned_modifiers.is_empty() || !r.affected.entries().is_empty())
+        {
+            return Err(Error::Missing("Policy live owned/affected modifiers"));
+        }
+        if self.unit_modifiers.as_ref().is_some_and(|v| {
+            v.iter().any(|m| {
+                m.context == owner
+                    || m.applied.contains(&owner)
+                    || m.tracked.iter().any(|t| t.object == owner)
+            })
+        }) {
+            return Err(Error::Missing("Policy surviving Unit modifier references"));
+        }
+        let creation = self
+            .city_creation
+            .as_mut()
+            .ok_or(Error::Missing("current City creation domain"))?;
+        if creation.modifiers.iter().any(|m| {
+            m.owner == owner
+                || m.applied_subjects.contains(&owner)
+                || m.tracked.iter().any(|t| t.subject == owner)
+        }) {
+            return Err(Error::Missing("Policy surviving City modifier references"));
+        }
+        creation.objects.retain(|o| o.handle != owner);
+        self.objects.retain(|r| r.0 != owner);
+        Ok(())
+    }
+    /// Clear the actual created City modifiers owned by this Policy wrapper.
+    /// Source destruction removes registered modifiers in owned-ID order and
+    /// runs each leaf through Remove; unsupported requirement release is explicit.
+    pub fn remove_policy_city_modifiers(
+        &mut self,
+        state: &mut LoadedState,
+        _requirements: &mut super::requirements::Runtime,
+        owner: u64,
+        effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+    ) -> Result<(), Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        loop {
+            let Some(index) = self
+                .city_creation
+                .as_ref()
+                .ok_or(Error::Missing("current City creation domain"))?
+                .modifiers
+                .iter()
+                .position(|m| m.owner == owner)
+            else {
+                return Ok(());
+            };
+            // Deactivate23332b0 clears eligible tracked entries first. These
+            // admitted policy definitions have no permanent/removed subjects.
+            if self.city_creation.as_ref().unwrap().modifiers[index]
+                .tracked
+                .iter()
+                .any(|r| r.state.requirement_set.is_some() || r.state.removed)
+            {
+                return Err(Error::Missing(
+                    "Policy City Deactivate requirement/removed branch",
+                ));
+            }
+            self.city_creation.as_mut().unwrap().modifiers[index]
+                .modifier
+                .enabled = false;
+            let tracked =
+                std::mem::take(&mut self.city_creation.as_mut().unwrap().modifiers[index].tracked);
+            for row in tracked {
+                self.city_creation
+                    .as_mut()
+                    .unwrap()
+                    .object_mut(row.subject)?
+                    .destroyed
+                    .unsubscribe(row.destruction)
+                    .map_err(Error::Ring)?;
+            }
+            self.city_creation.as_mut().unwrap().modifiers[index]
+                .modifier
+                .enabled = false;
+            let applied = std::mem::take(
+                &mut self.city_creation.as_mut().unwrap().modifiers[index].applied_subjects,
+            );
+            for subject in applied {
+                let (instance, id, limit, effect) = {
+                    let m = &self.city_creation.as_ref().unwrap().modifiers[index];
+                    (
+                        m.instance,
+                        m.definition.id.clone(),
+                        m.definition.subject_stack_limit,
+                        m.effect,
+                    )
+                };
+                let affected = &mut self
+                    .city_creation
+                    .as_mut()
+                    .unwrap()
+                    .object_mut(subject)?
+                    .affected;
+                affected.clear_instance(instance);
+                if limit != 0 && affected.count(&id) >= i32::from(limit) {
+                    continue;
+                }
+                let (_, effect) = self.city_effect(effect).map_err(Error::Query)?;
+                let super::ContextObject::City(city) =
+                    self.object(subject).map_err(Error::Query)?.kind
+                else {
+                    return Err(Error::Missing("Policy Remove ICity"));
+                };
+                effect
+                    .apply(state, city, &[], true, effects)
+                    .map_err(Error::Effect)?;
+            }
+            let creation = self.city_creation.as_mut().unwrap();
+            let m = creation.modifiers.remove(index);
+            if let Some(token) = m.owner_destruction {
+                creation
+                    .object_mut(owner)?
+                    .destroyed
+                    .unsubscribe(token)
+                    .map_err(Error::Ring)?;
+            }
+            creation
+                .player_cities_subscriptions
+                .retain(|r| r.receiver != m.identity);
+            creation
+                .player_capital_subscriptions
+                .retain(|r| r.receiver != m.identity);
+            creation
+                .city_removed_subscriptions
+                .retain(|r| r.receiver != m.identity);
+            self.retire_effect(state, m.effect).map_err(Error::Query)?;
+        }
     }
     pub fn next_city_modifier_id(&self) -> Result<i32, Error> {
         self.next_modifier_instance_id().map_err(Error::Query)

@@ -13,6 +13,7 @@ use c6_core::{
 pub enum Collection {
     Owner,
     PlayerCities,
+    PlayerCapitalCity,
     AllCities,
     /// Imported lifetime for another collection; no new factory is inferred.
     Unsupported(u32),

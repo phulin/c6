@@ -8,6 +8,8 @@ pub enum Effect {
     Healing { amount: i32, territory: i32 },
     /// Stored initialized effect field +8, in whole extra moves.
     Movement { amount: i32 },
+    /// AdjustUnitBarbarianCombat2355650/2355670; ChangeVersusBarbarian2422530.
+    BarbarianCombat { amount: i32 },
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
@@ -27,7 +29,7 @@ impl Effect {
     pub const fn writes_unit(self) -> bool {
         match self {
             Self::Healing { territory, .. } => territory >= 0 && territory <= 3,
-            Self::Movement { .. } => true,
+            Self::Movement { .. } | Self::BarbarianCombat { .. } => true,
         }
     }
 }
@@ -60,6 +62,12 @@ pub fn update(unit: &mut Unit, effect: Effect, direction: Direction) -> bool {
             territory,
             direction.delta(amount),
         ),
+        Effect::BarbarianCombat { amount } => {
+            unit.k_combat_modifers.i_versus_barbarians = unit
+                .k_combat_modifers
+                .i_versus_barbarians
+                .wrapping_add(direction.delta(amount));
+        }
         Effect::Movement { amount } => {
             change_extra_moves(&mut unit.k_movement_modifiers, direction.delta(amount))
         }
@@ -70,6 +78,25 @@ pub fn update(unit: &mut Unit, effect: Effect, direction: Direction) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn barbarian_combat_wraps_and_remove_applies_wrapping_negative() {
+        let mut unit = crate::unit_turn_upkeep::tests::source_only_unit();
+        unit.k_combat_modifers.i_versus_barbarians = i32::MAX;
+        let before = unit.k_combat_modifers.i_combat_strength_modifier;
+        update(
+            &mut unit,
+            Effect::BarbarianCombat { amount: 5 },
+            Direction::Apply,
+        );
+        assert_eq!(unit.k_combat_modifers.i_versus_barbarians, i32::MIN + 4);
+        update(
+            &mut unit,
+            Effect::BarbarianCombat { amount: 5 },
+            Direction::Remove,
+        );
+        assert_eq!(unit.k_combat_modifers.i_versus_barbarians, i32::MAX);
+        assert_eq!(unit.k_combat_modifers.i_combat_strength_modifier, before);
+    }
     fn health() -> HealthModifiers {
         HealthModifiers {
             i_extra_enemy_heal: i32::MAX,

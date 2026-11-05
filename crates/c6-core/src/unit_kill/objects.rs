@@ -141,6 +141,15 @@ pub fn remove_effects<C: Context>(
     }
     c.modifier_mut(receiver).map_err(Error::Context)?.tracked[index].applied = 0;
     erase_applied(c, receiver, object)?;
+    remove_effect(c, receiver, object)
+}
+/// DynamicModifier.RemoveEffect2334060, also called by Deactivate after the
+/// tracked map and applied vector have already released their references.
+pub fn remove_effect<C: Context>(
+    c: &mut C,
+    receiver: u64,
+    object: u64,
+) -> Result<(), Error<C::Error>> {
     // RemoveEffect clears affected-instance membership BEFORE the stack count.
     let m = c.modifier(receiver).map_err(Error::Context)?;
     let instance = m.instance;
@@ -163,6 +172,52 @@ pub fn remove_effects<C: Context>(
     if !c.remove_effect(effect, object).map_err(Error::Context)? {
         c.log_failed_remove(receiver, object)
             .map_err(Error::Context)?;
+    }
+    Ok(())
+}
+/// DynamicModifier.Deactivate23332b0. The tracked map releases eligible
+/// entries before the applied vector is moved out and concrete Removes run.
+pub fn deactivate<C: Context>(c: &mut C, receiver: u64) -> Result<(), Error<C::Error>> {
+    let m = c.modifier(receiver).map_err(Error::Context)?;
+    if m.suppressed || !m.enabled {
+        return Ok(());
+    }
+    c.modifier_mut(receiver).map_err(Error::Context)?.enabled = false;
+    let permanent = c.modifier(receiver).map_err(Error::Context)?.permanent;
+    let mut at = 0;
+    while at < c.modifier(receiver).map_err(Error::Context)?.tracked.len() {
+        let row = &c.modifier(receiver).map_err(Error::Context)?.tracked[at];
+        if row.removed || (permanent && row.applied != 0) {
+            at += 1;
+            continue;
+        }
+        let (object, token, set) = (
+            row.object,
+            row.destruction_subscription,
+            row.requirement_set,
+        );
+        c.object_mut(object)
+            .map_err(Error::Context)?
+            .destroyed
+            .unsubscribe(token.ok_or(Error::MissingSubscription)?)
+            .map_err(Error::Ring)?;
+        if let Some(set) = set {
+            c.unsubscribe_requirement(receiver, object, set)
+                .map_err(Error::Context)?;
+            c.modifier_mut(receiver).map_err(Error::Context)?.tracked[at].requirement_set = None;
+            c.release_requirement(set).map_err(Error::Context)?;
+        }
+        c.modifier_mut(receiver)
+            .map_err(Error::Context)?
+            .tracked
+            .remove(at);
+    }
+    if !permanent {
+        let applied =
+            std::mem::take(&mut c.modifier_mut(receiver).map_err(Error::Context)?.applied);
+        for object in applied {
+            remove_effect(c, receiver, object)?;
+        }
     }
     Ok(())
 }
@@ -305,7 +360,9 @@ mod tests {
             Ok(())
         }
         fn remove_effect(&mut self, _: u64, _: u64) -> Result<bool, Self::Error> {
-            assert_eq!(self.modifier.tracked[0].applied, 0);
+            if let Some(row) = self.modifier.tracked.first() {
+                assert_eq!(row.applied, 0);
+            }
             assert!(self.modifier.applied.is_empty());
             assert_eq!(self.object.affected.count(b"experience"), 0);
             super::super::effects::remove(
@@ -370,6 +427,16 @@ mod tests {
             unit,
             calls: vec![],
         }
+    }
+    #[test]
+    fn deactivate_releases_tracking_before_moving_applied_and_removing_effect() {
+        let mut f = fixture();
+        deactivate(&mut f, 7).unwrap();
+        assert_eq!(f.calls, ["unsubscribe", "release", "log", "kernel"]);
+        assert!(!f.modifier.enabled);
+        assert!(f.modifier.tracked.is_empty());
+        assert!(f.modifier.applied.is_empty());
+        assert_eq!(f.unit.k_experience.x_general_experience_modifier, 255);
     }
     #[test]
     fn actual_field_kernel_runs_after_clear_before_requirement_release() {

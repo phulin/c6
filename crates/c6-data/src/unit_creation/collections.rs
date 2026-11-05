@@ -9,6 +9,7 @@ use c6_core::{
     unit_moved_signal::{collection_addition as addition, modifiers as common, Subscription},
 };
 pub mod ability;
+pub mod policy;
 pub mod see_hidden;
 pub use ability::{on_ability_earned, on_home_moved};
 #[derive(Debug)]
@@ -39,6 +40,7 @@ pub struct Runtime {
     abilities: Vec<ability::Ability>,
     homes: Vec<ability::Home>,
     requirement_flags: Vec<(Vec<u8>, bool)>,
+    policy_units: Vec<policy::Subscription>,
 }
 impl Runtime {
     pub fn from_initial(
@@ -58,6 +60,7 @@ impl Runtime {
             abilities: Vec::new(),
             homes: Vec::new(),
             requirement_flags: Vec::new(),
+            policy_units: Vec::new(),
         })
     }
     fn definition(&self, id: u64) -> Result<&Definition, Error> {
