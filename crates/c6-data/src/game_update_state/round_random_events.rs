@@ -65,9 +65,6 @@ pub struct Initial {
     pub scheduling: Scheduling,
     /// None means the host allowance fallback is unavailable, never zero.
     pub fire_allowance: Option<i32>,
-    /// The current Fallout reactor list's source size. Positive reactors need
-    /// their complete typed Fallout continuation before this turn may advance.
-    pub reactor_count: usize,
 }
 pub struct Runtime {
     binding: WireBinding,
@@ -78,7 +75,6 @@ pub struct Runtime {
     pub weights: Vec<Weight>,
     pub scheduling: Scheduling,
     pub fire_allowance: Option<i32>,
-    pub reactor_count: usize,
     pub pending: Option<PossibleEvent>,
 }
 #[derive(Debug)]
@@ -115,7 +111,6 @@ impl Runtime {
             weights: input.weights,
             scheduling: input.scheduling,
             fire_allowance: input.fire_allowance,
-            reactor_count: input.reactor_count,
             pending: None,
         })
     }
@@ -397,6 +392,7 @@ pub fn compile_possible_events(
     state: &LoadedState,
     defs: &Definitions,
     runtime: &mut Runtime,
+    fallout: &super::round_fallout::Runtime,
     temperature: f32,
     climate_level: i32,
     last_sea_level: i32,
@@ -508,7 +504,7 @@ pub fn compile_possible_events(
                 }
             }
             0x3965526f => {
-                if runtime.reactor_count != 0 {
+                if fallout.reactor_count() != 0 {
                     return Err(Error::Requires("nuclear reactor event population"));
                 }
             }
@@ -610,6 +606,7 @@ pub fn run<P, C: Climate<P>>(
     state: &mut LoadedState,
     definitions: &Definitions,
     runtime: &mut Runtime,
+    fallout: &super::round_fallout::Runtime,
     climate: &mut C,
     capabilities: &Membership,
     backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
@@ -650,6 +647,7 @@ pub fn run<P, C: Climate<P>>(
         state,
         definitions,
         runtime,
+        fallout,
         temperature,
         current,
         climate.last_sea_level_climate(),

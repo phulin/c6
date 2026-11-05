@@ -1,7 +1,8 @@
 //! XP2 world upkeep over the existing climate, trade and action owners.
 use super::Runtime;
 use crate::game_update_state::{
-    activation::cityless_managers, round_climate, round_random_events, round_trade,
+    activation::cityless_managers, round_climate, round_fallout, round_great_people, round_map,
+    round_quests, round_random_events, round_religion, round_trade,
 };
 use c6_core::{
     game_capabilities::Membership,
@@ -15,13 +16,6 @@ use c6_core::{
 /// Remaining map and world-manager callbacks stay at their native positions.
 /// Implementations must retain actual gameplay/RNG effects, or return an error.
 pub trait Effects<P> {
-    fn map_component_count(&mut self, state: &LoadedState) -> Result<u32, Error>;
-    fn map_component_turn(
-        &mut self,
-        state: &mut LoadedState,
-        backend: &mut Runtime<'_, P>,
-        index: u32,
-    ) -> Result<(), Error>;
     fn manager_turn(
         &mut self,
         state: &mut LoadedState,
@@ -32,6 +26,7 @@ pub trait Effects<P> {
 
 pub struct Current<'a, 'b, P, E> {
     pub backend: &'a mut Runtime<'b, P>,
+    pub map: &'a mut round_map::Runtime,
     pub climate: &'a mut round_climate::Runtime,
     pub cityless: &'a cityless_managers::Runtime,
     pub carbon: round_climate::CarbonRules<'a>,
@@ -39,6 +34,10 @@ pub struct Current<'a, 'b, P, E> {
     pub trade: &'a mut round_trade::Runtime,
     pub random_definitions: &'a round_random_events::Definitions,
     pub random: &'a mut round_random_events::Runtime,
+    pub fallout: &'a mut round_fallout::Runtime,
+    pub great_people_definitions: &'a round_great_people::Definitions,
+    pub great_people: &'a mut round_great_people::Runtime,
+    pub quests: &'a mut round_quests::Runtime,
     pub capabilities: &'a Membership,
     pub effects: &'a mut E,
 }
@@ -53,10 +52,17 @@ impl<P> round_trade::Effects for Runtime<'_, P> {
 
 impl<P, E: Effects<P>> round::WorldEffects for Current<'_, '_, P, E> {
     fn map_component_count(&mut self, state: &LoadedState) -> Result<u32, Error> {
-        self.effects.map_component_count(state)
+        self.map
+            .component_count(state)
+            .map_err(|_| Error::Unsupported("current Map turn components"))
     }
     fn map_component_turn(&mut self, state: &mut LoadedState, index: u32) -> Result<(), Error> {
-        self.effects.map_component_turn(state, self.backend, index)
+        self.map
+            .component_turn(state, index, self.backend)
+            .map_err(|detail| {
+                self.backend.last_error = Some(format!("Map.DoTurn: {detail:?}"));
+                Error::Unsupported("Map component turn continuation")
+            })
     }
     fn manager_turn(
         &mut self,
@@ -76,10 +82,29 @@ impl<P, E: Effects<P>> round::WorldEffects for Current<'_, '_, P, E> {
             WorldManager::Trade => {
                 round_trade::run(state, self.trade, self.backend).map_err(|e| format!("{e:?}"))
             }
+            WorldManager::GreatPeople => round_great_people::run(
+                state,
+                self.great_people_definitions,
+                self.great_people,
+                self.backend,
+            )
+            .map_err(|e| format!("{e:?}")),
+            WorldManager::Religion => {
+                let players = self
+                    .backend
+                    .player_services
+                    .as_ref()
+                    .ok_or(Error::Unsupported("round Religion current player services"))?;
+                round_religion::run(state, players).map_err(|e| format!("{e:?}"))
+            }
+            WorldManager::Quests => {
+                round_quests::run(state, self.quests).map_err(|e| format!("{e:?}"))
+            }
             WorldManager::RandomEvents => round_random_events::run(
                 state,
                 self.random_definitions,
                 self.random,
+                self.fallout,
                 &mut round_random_events::CurrentClimate {
                     runtime: self.climate,
                     cityless: self.cityless,
@@ -88,6 +113,18 @@ impl<P, E: Effects<P>> round::WorldEffects for Current<'_, '_, P, E> {
                 self.backend,
             )
             .map_err(|e| format!("{e:?}")),
+            WorldManager::Fallout => {
+                round_fallout::run(state, self.fallout, self.backend).map_err(|e| format!("{e:?}"))
+            }
+            // Economic.DoTurn26472b0 -> RecalculateValues26472c0 returns
+            // before both resource calculations when IsActive26471c0's
+            // actual monopolies capability is disabled.
+            WorldManager::Economic if !self.capabilities.has(0x10c40410) => Ok(()),
+            // HeroesManager.DoTurn2656140 constructs only stack-owned tracking
+            // vectors from const Hero/Stats queries and formats two file-log
+            // tables. It destroys both vectors at2656666; there are no manager
+            // writes, gameplay signals, commands or random calls in this leaf.
+            WorldManager::Heroes => Ok(()),
             _ => return self.effects.manager_turn(state, self.backend, manager),
         };
         result.map_err(|detail| {

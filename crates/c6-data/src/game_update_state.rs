@@ -7,8 +7,10 @@ pub mod round_units;
 pub mod round_cities;
 pub mod round_trade;
 pub mod round_religion;
+pub mod round_eras;
 pub mod round_climate;
 pub mod round_map;
+pub mod round_phase;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,
@@ -192,3 +194,5 @@ pub mod round_random_events;
 pub mod round_great_people;
 
 pub mod round_quests;
+
+pub mod round_fallout;

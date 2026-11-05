@@ -30,6 +30,7 @@ pub trait Effects<P>: round_world::Effects<P> {
         &mut self,
         state: &mut LoadedState,
         backend: &mut Runtime<'_, P>,
+        runtime: &mut loaded::Runtime,
         previous: i32,
     ) -> Result<(), Error>;
     fn report(
@@ -55,6 +56,7 @@ pub trait Effects<P>: round_world::Effects<P> {
         &mut self,
         state: &mut LoadedState,
         backend: &mut Runtime<'_, P>,
+        runtime: &mut loaded::Runtime,
     ) -> Result<(), Error>;
     fn autoplay_end(
         &mut self,
@@ -67,6 +69,7 @@ pub trait Effects<P>: round_world::Effects<P> {
 struct Phase<'a, 'b, P, E> {
     backend: &'a mut Runtime<'b, P>,
     effects: &'a mut E,
+    runtime: &'a mut loaded::Runtime,
 }
 impl<P, E: Effects<P>> crate::game_update_state::activation::round::Effects
     for Phase<'_, '_, P, E>
@@ -91,13 +94,15 @@ impl<P, E: Effects<P>> crate::game_update_state::activation::round::Effects
         self.effects.phase_time_limit(state, self.backend)
     }
     fn begin_phase(&mut self, state: &mut LoadedState, previous: i32) -> Result<(), Error> {
-        self.effects.begin_phase(state, self.backend, previous)
+        self.effects
+            .begin_phase(state, self.backend, self.runtime, previous)
     }
 }
 
 /// Persistent world owners and borrowed current player queries. Activation and
 /// world upkeep borrow the same cityless manager for their respective stages.
 pub struct State<'a, 'd, 'r, E> {
+    pub map: crate::game_update_state::round_map::Runtime,
     pub climate: crate::game_update_state::round_climate::Runtime,
     pub cityless:
         &'a std::cell::RefCell<crate::game_update_state::activation::cityless_managers::Runtime>,
@@ -107,6 +112,10 @@ pub struct State<'a, 'd, 'r, E> {
     pub trade: crate::game_update_state::round_trade::Runtime,
     pub random_definitions: crate::game_update_state::round_random_events::Definitions,
     pub random: crate::game_update_state::round_random_events::Runtime,
+    pub fallout: crate::game_update_state::round_fallout::Runtime,
+    pub great_people_definitions: crate::game_update_state::round_great_people::Definitions,
+    pub great_people: crate::game_update_state::round_great_people::Runtime,
+    pub quests: crate::game_update_state::round_quests::Runtime,
     pub capabilities: &'a c6_core::game_capabilities::Membership,
     pub effects: E,
     pub player_end: round_end::Inputs<'a, 'd, 'r>,
@@ -136,6 +145,7 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
                 &mut Phase {
                     backend,
                     effects: &mut self.effects,
+                    runtime,
                 },
             )?;
             if phase != round::PhaseAdvance::Exhausted {
@@ -153,6 +163,7 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
         let mut current = Current {
             world: round_world::Current {
                 backend,
+                map: &mut self.map,
                 climate: &mut self.climate,
                 cityless: &managers,
                 carbon: crate::game_update_state::round_climate::CarbonRules {
@@ -164,6 +175,10 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
                 trade: &mut self.trade,
                 random_definitions: &self.random_definitions,
                 random: &mut self.random,
+                fallout: &mut self.fallout,
+                great_people_definitions: &self.great_people_definitions,
+                great_people: &mut self.great_people,
+                quests: &mut self.quests,
                 capabilities: self.capabilities,
                 effects: &mut self.effects,
             },
@@ -241,10 +256,14 @@ impl<P, E: Effects<P>> round::TurnEffects for Current<'_, '_, '_, '_, P, E> {
             .effects
             .turn_signal(state, self.world.backend, begin, turn)
     }
-    fn activate_at_turn_start(&mut self, state: &mut LoadedState) -> Result<(), Error> {
+    fn activate_at_turn_start(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut loaded::Runtime,
+    ) -> Result<(), Error> {
         self.world
             .effects
-            .activate_at_turn_start(state, self.world.backend)
+            .activate_at_turn_start(state, self.world.backend, runtime)
     }
     fn autoplay_end(
         &mut self,

@@ -59,7 +59,7 @@ pub trait TurnEffects {
     /// Game signals +708 (begin) or +750 (end), with current turn reread.
     fn turn_signal(&mut self, state: &mut LoadedState, begin: bool, turn: i32)
         -> Result<(), Error>;
-    fn activate_at_turn_start(&mut self, state: &mut LoadedState) -> Result<(), Error>;
+    fn activate_at_turn_start(&mut self, state: &mut LoadedState, runtime: &mut Runtime) -> Result<(), Error>;
     fn autoplay_end(&mut self, state: &mut LoadedState, runtime: &mut Runtime)
         -> Result<(), Error>;
 }
@@ -129,7 +129,7 @@ pub fn begin_turn(
         effects.world_begin(state)?;
         effects.report(state, 0x21535587, state.retained.core.current_turn)?;
         effects.turn_signal(state, true, state.retained.core.current_turn)?;
-        effects.activate_at_turn_start(state)?;
+        effects.activate_at_turn_start(state, runtime)?;
         changed(state)?;
         state.retained.core.game_processor.turn_complete = false;
         state.retained.core.game_processor.advance_turn = false;
@@ -501,7 +501,7 @@ mod tests {
         fn turn_signal(&mut self, _: &mut LoadedState, _: bool, _: i32) -> Result<(), Error> {
             panic!("unreached")
         }
-        fn activate_at_turn_start(&mut self, _: &mut LoadedState) -> Result<(), Error> {
+        fn activate_at_turn_start(&mut self, _: &mut LoadedState, _: &mut Runtime) -> Result<(), Error> {
             panic!("unreached")
         }
         fn autoplay_end(&mut self, _: &mut LoadedState, _: &mut Runtime) -> Result<(), Error> {
