@@ -66,6 +66,7 @@ pub enum Error<E> {
     DeadAttacker,
     DefenderDeath,
     MissingFormation,
+    MissingNotificationFacts,
     Advance,
 }
 
@@ -266,4 +267,20 @@ pub fn accepts_combat_notification(
         .player_slot_status(owner)
         .map_err(super::super::Error::State)?
         == 3)
+}
+
+/// Source multiplayer gate followed by the real notification recipient guard.
+/// False performs no allocation. True requires notification creation and Send;
+/// it is not itself successful delivery. Facts are actual manager/runtime data.
+pub fn combat_notification_required(
+    state: &LoadedState,
+    configuration: &crate::loaded_actions::configuration::RawGameConfiguration,
+    manager_facts: Option<(bool, bool)>,
+    defender: UnitReference,
+) -> Result<bool, Error<std::convert::Infallible>> {
+    if !configuration.is_any_multiplayer() {
+        return Ok(false);
+    }
+    let (initialized, uninitializing) = manager_facts.ok_or(Error::MissingNotificationFacts)?;
+    accepts_combat_notification(state, initialized, uninitializing, defender).map_err(Error::Actor)
 }

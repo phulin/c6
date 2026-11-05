@@ -1,5 +1,7 @@
-//! Executable first TestAttackInto stage over canonical loaded actors/Formations.
-//! This is NOT complete attack legality, an applied attack, or combat resolution.
+//! Canonical melee queries and staged ordinary Unit/Unit execution.
+//! Query prefixes carry no action entitlement. `transition::Session` joins the
+//! supported resolution path; queued MoveTo and message aftermath own the outer
+//! request. District/religious combat and unsupported continuations return errors.
 use crate::{formation_path_state as path, formation_rules, movement_placement_state};
 pub mod transition;
 pub mod backend;
