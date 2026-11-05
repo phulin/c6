@@ -36,7 +36,7 @@ rejects later action requests; `into_parts` returns the owners for inspection.
 The qualified stock output scope replaces native status text, XP display caches
 and platform achievement output with typed records. Additional synchronous
 consumers require explicit support. Positive unimplemented branches return errors,
-including bombard or district combat, combat capture, joint-war XP consumers,
+including bombard or Unit/District combat in this adapter, combat capture, joint-war XP consumers,
 multiplayer combat notifications, positive rewards/yields/boosts and positive era
 score continuations. This adapter does not compose melee combat. Definition,
 observer, promotion, notification and callback inputs must describe the actual
@@ -49,3 +49,25 @@ compared gameplay state, visibility, callback effects, history, modifier lifetim
 and ordered GameSync draws. A controlled missing-report case also verifies that
 the failed prefix and Session freeze survive extraction and reassembly. These
 comparisons do not establish arbitrary ranged configurations or complete turns.
+
+## City ranged strikes
+
+`Session::can_city_range_attack` queries an explicit target without consuming a
+shot or RNG. `Session::city_range_attack` executes the corresponding ordinary
+City command using the actual District attacker and the same persistent combat,
+modifier, script, visibility and notification owners. The external policy
+supplies the City, optional District and target coordinates.
+
+Bind the stock runtime's city report scope with `Runtime::bind_city_strike_reports`
+and supply current `city_range_attack::Queries`, including actual combined group1
+visibility. That authority is revision-bound; saved group0 counts do not replace
+current shared visibility. The command includes both native end-turn-blocking
+updates and the final processed-message callback.
+
+The retained Linux representative case is a City with Ancient Walls striking a
+healthy enemy barbarian Warrior: 11 damage, one shot consumed and unchanged
+received XP. The complete public Session command matches the compared affected
+state, callbacks, history, modifier lifetimes and ordered gameplay RNG. This does
+not establish arbitrary City combat, capture, air combat or complete turns.
+Defender death, major-versus-major war weariness and other reached unsupported
+continuations return explicit errors and preserve the partial transition.
