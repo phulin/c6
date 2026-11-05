@@ -92,6 +92,7 @@ pub struct Services<'a> {
     pub zoned_owners: &'a [i32],
     pub boosts: &'a production::district_boosts::Definitions,
     pub quests: &'a std::cell::RefCell<crate::game_update_state::round_quests::Runtime>,
+    pub gossip_fallback: &'a c6_core::city_power_activation::gossip_delivery::TurnVisibility,
     pub gossip_history: &'a [c6_core::city_power_activation::gossip_delivery::TurnVisibility],
 }
 impl Services<'_> {
@@ -178,7 +179,9 @@ pub fn dispatch<P>(
                     .call_empty(state, "OnDistrictConstructed", &arguments)
                     .map_err(|e| error("DistrictConstructed script", e))?;
             }
-            Listener::Gossip if services.gossip_history.is_empty() => {}
+            Listener::Gossip
+                if services.gossip_history.is_empty()
+                    && services.gossip_fallback.visibility == 0 => {}
             Listener::Gossip => {
                 return Err(production::Error::Unsupported(
                     "district Gossip propagation",
@@ -363,6 +366,11 @@ pub fn aftermath<P>(
         .any(|v| v.district_hash == effects.inputs.definitions.campus_hash)
     {
         return Err(production::Error::Unsupported("district CultureBomb"));
+    }
+    if p.header.district_hash == effects.inputs.definitions.campus_hash {
+        return Err(production::Error::Unsupported(
+            "district capital relocation",
+        ));
     }
     let location = state
         .district(d.owner, d.id)

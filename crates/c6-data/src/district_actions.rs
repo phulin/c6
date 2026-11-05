@@ -133,6 +133,16 @@ impl Definitions {
                 ));
             }
         }
+        for row in table("Districts_XP2")?
+            .rows()
+            .filter(|r| r.text("DistrictType").ok() == Some("DISTRICT_CAMPUS"))
+        {
+            for column in ["Canal", "OnePerRiver", "PreventsFloods", "PreventsDrought"] {
+                if row.integer(column).map_err(production::Error::Rules)? != 0 {
+                    return Err(missing("special Campus completion behavior"));
+                }
+            }
+        }
         let mut terrains = Vec::new();
         for row in table("Terrains")?.rows() {
             terrains.push(Terrain {
@@ -190,14 +200,58 @@ impl Definitions {
             return Err(missing("ordinary district production type"));
         }
         let queue = &state.city(owner, city)?.build_queue;
-        if queue.river_district_production_multiplier != 256
-            || queue.adjacent_city_river_district_production_multiplier > 256
-            || queue
-                .district_adjacent_natural_wonder_production_modifier
-                .iter()
-                .any(|p| p.value > 0)
-        {
-            return Err(missing("district spatial production bonuses"));
+        if queue.adjacent_city_river_district_production_multiplier > 256 {
+            return Err(missing(
+                "positive adjacent-city river district production bonus",
+            ));
+        }
+        let zoning = queue
+            .zoning_plot
+            .iter()
+            .rfind(|v| v.definition_hash == hash)
+            .ok_or(missing("district production zoning cell"))?
+            .value;
+        let mut river = None;
+        if zoning != -1 {
+            let plot = state
+                .world()
+                .map()
+                .plots
+                .get(zoning as usize)
+                .ok_or(missing("district production zoning plot"))?;
+            // Plot.IsRiver reads the signed current crossing count, not the
+            // three edge flags or whether this plot owns a named river.
+            if plot.river_crossing_count > 0 {
+                river = Some(queue.river_district_production_multiplier);
+            }
+            let (x, y) = state
+                .world()
+                .map()
+                .coordinates(zoning as u32)
+                .ok_or(missing("district production plot coordinates"))?;
+            for direction in 0..6 {
+                let adjacent =
+                    crate::barbarian_camps::queries::adjacent(state, PlotCoord { x, y }, direction)
+                        .map_err(|_| missing("district production neighbor"))?;
+                let Some(adjacent) = adjacent else { continue };
+                let feature = state.world().map().plots[adjacent].feature_hash;
+                if feature == u32::MAX {
+                    continue;
+                }
+                let modifier = queue
+                    .district_adjacent_natural_wonder_production_modifier
+                    .iter()
+                    .rfind(|r| r.definition_hash == feature)
+                    .ok_or(missing("district adjacent-feature production multiplier"))?
+                    .value;
+                // The native callback is feature keyed, despite its name. It
+                // ignores <=1 entries and multiplies each reached >1 entry.
+                if modifier > 256 {
+                    return Err(missing(
+                        "positive neighboring-feature district production multiplier",
+                    ));
+                }
+            }
         }
         if queue.district_production_modifier != 256 {
             return Err(missing("district general production modifier"));
@@ -224,12 +278,16 @@ impl Definitions {
                 .ok_or(missing("district government production bonus"))
         };
         let amount = bonus(0xc1a005d2)?.wrapping_add(bonus(0x0112d393)?);
+        let mut factors = vec![
+            definition,
+            c6_core::city_production::execution::percent_multiplier(amount),
+        ];
+        if let Some(river) = river {
+            factors.push(river);
+        }
         Ok(production::CurrentBuild {
             cost: cost(state, owner, city, hash)?,
-            factors_q8: vec![
-                definition,
-                c6_core::city_production::execution::percent_multiplier(amount),
-            ],
+            factors_q8: factors,
         })
     }
 }
