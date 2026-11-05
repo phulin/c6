@@ -9,9 +9,17 @@ pub struct Inputs {
     pub current_era: Option<i32>,
     pub era_start_turn: Option<i32>,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CombatBonuses {
+    pub defeated_corps: i32,
+    pub defeated_army: i32,
+    pub defeated_naval: i32,
+    pub defeated_giant_death_robot: i32,
+}
 #[derive(Debug)]
 pub struct Runtime {
     inputs: Inputs,
+    combat_bonuses: Option<Vec<CombatBonuses>>,
 }
 impl Runtime {
     pub fn golden_ages_raw(&self) -> Option<&[u8]> {
@@ -82,8 +90,59 @@ impl LoadedState {
         }
         self.advance_admission_generation()
             .map_err(AccessError::State)?;
-        self.game_eras = Some(Runtime { inputs });
+        self.game_eras = Some(Runtime {
+            inputs,
+            combat_bonuses: None,
+        });
         Ok(())
+    }
+    pub fn initialize_game_eras_combat_bonuses(
+        &mut self,
+        binding: &WireBinding,
+        source: Option<&ObservedSnapshotWitness>,
+        values: Vec<CombatBonuses>,
+    ) -> Result<(), AccessError> {
+        if !self.is_pristine() {
+            return Err(AccessError::State(Error::NotPristine));
+        }
+        if binding != &self.binding
+            || source.is_some_and(|v| self.observed_snapshot.as_ref() != Some(v))
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        if values.len() > self.limits.max_runtime_array_items {
+            return Err(AccessError::State(Error::ResourceLimit));
+        }
+        let runtime = self
+            .game_eras
+            .as_ref()
+            .ok_or(AccessError::Unavailable("Game.Eras"))?;
+        if runtime.combat_bonuses.is_some() {
+            return Err(AccessError::State(Error::AlreadyBound));
+        }
+        self.advance_admission_generation()
+            .map_err(AccessError::State)?;
+        self.game_eras
+            .as_mut()
+            .expect("validated current Eras")
+            .combat_bonuses = Some(values);
+        Ok(())
+    }
+    /// Native owner==-1/out-of-range guards precede all score-cell reads.
+    pub fn game_eras_combat_bonuses(
+        &self,
+        owner: i32,
+    ) -> Result<Option<CombatBonuses>, AccessError> {
+        if owner == -1 {
+            return Ok(None);
+        }
+        let index = usize::try_from(owner).map_err(|_| AccessError::InvalidPlayer(owner))?;
+        let values = self
+            .game_eras()?
+            .combat_bonuses
+            .as_ref()
+            .ok_or(AccessError::Unavailable("Eras combat bonuses"))?;
+        Ok(values.get(index).copied())
     }
     pub fn game_eras(&self) -> Result<&Runtime, AccessError> {
         self.game_eras

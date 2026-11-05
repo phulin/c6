@@ -57,6 +57,38 @@ impl Synchronization {
     }
 }
 
+/// CallHook gameplay projection while the caller retains the source lock/
+/// Args lifetime. Empty groups update the SAME registry; nonempty VM callbacks
+/// remain explicit errors. This is also used by Runtime's synchronization owner.
+pub fn call_empty_hook(
+    script: &mut ScriptState,
+    state: &LoadedState,
+    event: &str,
+    arguments: &[i32],
+) -> Result<(), Error> {
+    if !script.matches(state) {
+        return Err(Error::Identity);
+    }
+    script.call_empty(event, arguments).map_err(Error::Registry)
+}
+/// Lua.GameSignals.OnCombatOccurred reads current owners/IDs before CallHook;
+/// absent native Unit pointers contribute two signed -1 values.
+pub fn combat_arguments(
+    state: &LoadedState,
+    attacker: Option<c6_core::map::UnitReference>,
+    defender: Option<c6_core::map::UnitReference>,
+) -> Result<[i32; 4], Error> {
+    let mut result = [-1; 4];
+    for (offset, reference) in [(0, attacker), (2, defender)] {
+        if let Some(reference) = reference {
+            let unit = crate::melee_attack::actor(state, reference).map_err(|_| Error::Identity)?;
+            result[offset] = unit.e_owner;
+            result[offset + 1] = unit.id as i32;
+        }
+    }
+    Ok(result)
+}
+
 /// Executes TestAll while the caller manages its source-ordered lock wrapper.
 /// A missing registry event retains the caller's initial value.
 pub fn test_all(
@@ -129,7 +161,10 @@ impl<P> Runtime<P> {
     /// Borrow this SAME registry/RNG/synchronization owner for another action
     /// parameter transport. No script state is cloned, reimported or reset.
     pub fn queries<Q>(&mut self) -> queries::View<'_, P, Q> {
-        queries::View { runtime: self, parameters: std::marker::PhantomData }
+        queries::View {
+            runtime: self,
+            parameters: std::marker::PhantomData,
+        }
     }
     pub fn last_error(&self) -> Option<&Error> {
         self.last_error.as_ref()
@@ -168,15 +203,21 @@ impl<P> Runtime<P> {
         if !self.script.matches(state) {
             return Err(Error::Identity);
         }
-        self.synchronization.call(|| {
-            self.script
-                .call_empty(event, arguments)
-                .map_err(Error::Registry)
-        })
+        self.synchronization
+            .call(|| call_empty_hook(&mut self.script, state, event, arguments))
     }
     /// First TurnManager activation signal's stock Lua consumer (2c9c7d0).
     /// Execute against this same persistent registry; subscribed unsupported
     /// callbacks remain errors, never an inferred empty hook.
+    pub fn on_combat_occurred(
+        &mut self,
+        state: &LoadedState,
+        attacker: Option<c6_core::map::UnitReference>,
+        defender: Option<c6_core::map::UnitReference>,
+    ) -> Result<(), Error> {
+        let arguments = combat_arguments(state, attacker, defender)?;
+        self.call_empty(state, "OnCombatOccurred", &arguments)
+    }
     pub fn on_player_turn_started(&mut self, state: &LoadedState, owner: i32) -> Result<(), Error> {
         self.call_empty(state, "PlayerTurnStarted", &[owner])
     }

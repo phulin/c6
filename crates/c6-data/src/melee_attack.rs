@@ -62,7 +62,7 @@ struct Current<'s, 'd, P> {
     combat: &'d formation_rules::Definitions,
     placement: P,
 }
-fn actor(state: &LoadedState, id: UnitReference) -> Result<&Unit, Error> {
+pub(crate) fn actor(state: &LoadedState, id: UnitReference) -> Result<&Unit, Error> {
     state
         .world()
         .unit(id)

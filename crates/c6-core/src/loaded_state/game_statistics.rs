@@ -159,6 +159,31 @@ impl LoadedState {
         self.revision = next;
         Ok(*value)
     }
+    /// Borrow the retained current Targets knowledge; an absent component is
+    /// unknown, never an empty planner state. Native combat callbacks edit it.
+    pub fn combat_ai_targets_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut crate::player_ai_targets::Targets, AccessError> {
+        let index = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
+            .ok_or(AccessError::Unavailable)?;
+        if self.retained.players[index].ai_targets.is_none() {
+            return Err(AccessError::Unavailable);
+        }
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(AccessError::State(Error::ResourceLimit))?;
+        self.revision = next;
+        Ok(self.retained.players[index]
+            .ai_targets
+            .as_mut()
+            .expect("validated current Targets"))
+    }
     pub fn game_statistics(&self) -> Result<&Statistics, AccessError> {
         self.game_statistics
             .as_ref()
