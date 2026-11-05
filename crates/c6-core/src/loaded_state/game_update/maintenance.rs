@@ -38,6 +38,13 @@ impl LoadedState {
         let i = self.maintenance_player(owner)?;
         Ok(&mut self.retained.players[i].ai_grand_strategic)
     }
+    pub fn player_ai_homeland_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut Option<crate::player_ai_homeland::Homeland>, Error> {
+        let i = self.maintenance_player(owner)?;
+        Ok(&mut self.retained.players[i].ai_homeland)
+    }
     pub fn player_ai_military_mut(
         &mut self,
         owner: i32,

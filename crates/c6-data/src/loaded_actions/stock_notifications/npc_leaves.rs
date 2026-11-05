@@ -612,7 +612,6 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Military => {
-                no_units(state, backend, owner, kind)?;
                 let m = p
                     .ai_military
                     .as_ref()
@@ -620,18 +619,70 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 if !m.active_operations.entries.is_empty() {
                     return Err(Error::Unsupported("NPC Military existing operations"));
                 }
-                // UpdateOps has no existing operation; UpgradeUnits and
-                // veteran name/RNG loops have no units. Emergency operation
-                // selection is a new native policy decision, externalized
-                // with the remaining player actions.
+                // UpdateOps has no existing operation. UpgradeUnits2149ac0
+                // selects an upgrade using efficiency and affordability, then
+                // issues TryUpgradeUnit; that RNG-free policy choice belongs
+                // to external actions, as does starting a new emergency op.
+                for slot in state
+                    .world()
+                    .player(owner)
+                    .map_err(|_| Error::Unsupported("Military current unit owner"))?
+                    .unit_records()
+                    .map_err(|_| Error::Unsupported("Military current unit roster"))?
+                {
+                    let unit = &slot.value;
+                    // 2149f8e..2149fd1 names only combat units at level >=3
+                    // with an empty veteran name. These two retained guards
+                    // can reject before the read-only strength queries.
+                    if unit.k_experience.i_level < 3 || !unit.k_experience.s_veteran_name.is_empty()
+                    {
+                        continue;
+                    }
+                    let combat = backend
+                        .movement()
+                        .map_err(|_| Error::Unsupported("Military current combat definitions"))?
+                        .definitions
+                        .formation;
+                    if combat
+                        .combat(state, unit)
+                        .map_err(|_| Error::Unsupported("Military current combat strength"))?
+                        > 0
+                        || combat
+                            .ranged(state, unit)
+                            .map_err(|_| Error::Unsupported("Military current ranged strength"))?
+                            > 0
+                        || combat
+                            .bombard(state, unit)
+                            .map_err(|_| Error::Unsupported("Military current bombard strength"))?
+                            > 0
+                    {
+                        return Err(Error::Unsupported(
+                            "Military veteran naming/RNG continuation",
+                        ));
+                    }
+                }
                 Ok(())
             }
             Kind::Homeland => {
-                no_units(state, backend, owner, kind)?;
-                // 2135230 prepares move priorities/EstablishPriorities;
-                // it does not inspect or execute control_instance_id. Preserve
-                // that owner for the separate control/deactivation path.
-                // External policies own actual new Homeland move selection.
+                let level = backend
+                    .player_services
+                    .as_ref()
+                    .and_then(|s| s.players.iter().find(|p| p.owner == owner))
+                    .and_then(|p| p.civilization_level)
+                    .ok_or(Error::Unsupported("Homeland current civilization level"))?;
+                if level != 0xd959_ec24 {
+                    return Err(Error::Unsupported("Homeland non-barbarian activation"));
+                }
+                // 213526c skips the move/city branch for barbarians and writes
+                // -1 through +e8 to m_additionalPriority(+f8), not the global
+                // Control manager priority. EstablishPriorities only prepares
+                // policy move scores; DoTurn's selection is externalized.
+                state
+                    .player_ai_homeland_mut(owner)
+                    .map_err(|_| Error::Unsupported("Homeland current write"))?
+                    .as_mut()
+                    .ok_or(Error::Unsupported("NPC Homeland owner"))?
+                    .additional_priority = -1;
                 Ok(())
             }
             Kind::Research => {
