@@ -1,5 +1,5 @@
 //! Stock improvement pillage on persistent reporting, sight and gameplay owners.
-use super::{plunder, stock, Definitions, Effects, Queries, Report};
+use super::{notification, plunder, stock, Definitions, Effects, Queries, Report};
 use crate::{
     loaded_actions::{self as actions, city_range_attack, move_to, stock_notifications::Runtime},
     unit_sight_state,
@@ -28,6 +28,7 @@ pub enum Output {
 pub struct Inputs<'a, 'd, 'r> {
     pub definitions: &'a Definitions,
     pub callbacks: &'a stock::Inputs,
+    pub notification: &'a notification::Inputs,
     pub plunder: &'a plunder::Definitions,
     pub capabilities: &'a Membership,
     pub civilization_levels: &'a [(i32, u32)],
@@ -207,31 +208,16 @@ impl<P> Effects for Current<'_, '_, '_, '_, '_, P> {
         &mut self,
         s: &mut LoadedState,
         p: usize,
-        _: i32,
+        actor_owner: i32,
     ) -> Result<(), Error> {
-        use actions::notifications::processing::Backend;
-        if !Backend::manager_initialized(self.backend, s)
-            .map_err(|e| error("notification initialized", e))?
-            || Backend::game_uninitializing(self.backend, s)
-                .map_err(|e| error("notification shutdown", e))?
-        {
-            return Ok(());
-        }
-        let owner = s.world().map().plots[p]
-            .city_attributes
-            .as_ref()
-            .ok_or_else(|| error("notification owner", "missing"))?
-            .player;
-        if s.player_slot_status(i32::from(owner))
-            .map_err(|e| error("notification human", e))?
-            != 3
-        {
-            return Ok(());
-        }
-        Err(error(
-            "Pillaged notification",
-            "human recipient allocation/send continuation",
-        ))
+        notification::publish(
+            s,
+            self.dispatcher.inputs.notification,
+            self.backend,
+            p,
+            actor_owner,
+        )
+        .map_err(|e| error("TilePillaged notice", e))
     }
     fn visibility_messages_disabled(&self) -> bool {
         self.sight.messages_disabled
