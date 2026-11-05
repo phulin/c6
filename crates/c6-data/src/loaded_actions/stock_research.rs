@@ -40,6 +40,32 @@ pub struct CultureInputs<'a> {
     pub current_era_start_turn: Option<i32>,
     pub ever_alive_major_count: Option<usize>,
 }
+/// Read-only current query views shared by every ordinary research callback.
+#[derive(Clone, Copy)]
+pub struct Queries<'a> {
+    pub graph: Option<&'a choose_tech::GameTechs>,
+    pub visibility: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
+}
+impl<'a, P> Runtime<'a, P> {
+    pub fn bind_research_queries(
+        &mut self,
+        state: &LoadedState,
+        inputs: Queries<'a>,
+    ) -> Result<(), processing::Error> {
+        self.check(state)?;
+        if self.research_queries.is_some()
+            || inputs
+                .graph
+                .is_some_and(|graph| graph.binding() != state.binding())
+        {
+            return Err(processing::Error::Unsupported(
+                "current research query binding",
+            ));
+        }
+        self.research_queries = Some(inputs);
+        Ok(())
+    }
+}
 /// Borrowed composition; no ScriptState, policy, World or research runtime is
 /// cloned. Definitions and optional current graphs are retained by the caller.
 /// Unknown positive acquisition/query effects fail only when actually reached.
@@ -50,6 +76,28 @@ pub struct Effects<'s, 'a, P> {
     pub choice_graph: Option<&'s choose_tech::GameTechs>,
     pub culture: Option<&'s CultureInputs<'s>>,
     pub sight: Option<&'s crate::unit_sight_state::Runtime>,
+}
+impl<'s, 'a, P> Effects<'s, 'a, P> {
+    pub fn new(
+        backend: &'s mut Runtime<'a, P>,
+        runtime: &'s mut research::Runtime,
+        choices: &'s choose_tech::Definitions,
+        culture: Option<&'s CultureInputs<'s>>,
+    ) -> Self {
+        let choice_graph = backend.research_queries.and_then(|queries| queries.graph);
+        Self {
+            backend,
+            runtime,
+            choices,
+            choice_graph,
+            culture,
+            sight: None,
+        }
+    }
+    pub fn with_sight(mut self, sight: Option<&'s crate::unit_sight_state::Runtime>) -> Self {
+        self.sight = sight;
+        self
+    }
 }
 fn current_age_flag(values: Option<&[u8]>, owner: i32) -> Option<i32> {
     if owner == -1 {
@@ -215,7 +263,12 @@ impl<P> research::Effects for Effects<'_, '_, P> {
             research::Effect::ChooseTechnology(owner) => {
                 let needed = self
                     .choices
-                    .player(state, owner, self.choice_graph)
+                    .player(
+                        state,
+                        owner,
+                        self.choice_graph
+                            .or(self.backend.research_queries.and_then(|q| q.graph)),
+                    )
                     .map_err(Error::Choice)?
                     .is_needed(true)
                     .map_err(Error::Choice)?;

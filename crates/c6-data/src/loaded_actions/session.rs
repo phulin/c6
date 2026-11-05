@@ -493,14 +493,7 @@ impl<P> Session<'_, '_, P> {
         culture: Option<&stock_notifications::research::CultureInputs<'_>>,
     ) -> Result<(), Error<ResearchError>> {
         self.ordinary_player_action(player)?;
-        let mut effects = stock_notifications::research::Effects {
-            backend: &mut self.context.notifications.backend,
-            runtime: &mut self.research,
-            choices,
-            choice_graph: None,
-            sight: None,
-            culture,
-        };
+        let mut effects = stock_notifications::research::Effects::new(&mut self.context.notifications.backend, &mut self.research, choices, culture);
         let mut research = crate::research::Context {
             state: self.context.notifications.state,
             definitions,

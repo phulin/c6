@@ -193,14 +193,9 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         owner: i32,
         kind: core::DecisionKind,
     ) -> Result<Option<i32>, Error> {
-        let mut effects = stock_research::Effects {
-            backend: self.backend,
-            runtime: self.research,
-            choices: self.choices,
-            choice_graph: None,
-            sight: self.leaves.research_sight(),
-            culture: self.culture,
-        };
+        let mut effects =
+            stock_research::Effects::new(self.backend, self.research, self.choices, self.culture)
+                .with_sight(self.leaves.research_sight());
         let context = research::Context {
             state,
             definitions: self.definitions,
@@ -235,14 +230,9 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
             }
         }
 
-        let mut effects = stock_research::Effects {
-            backend: self.backend,
-            runtime: self.research,
-            choices: self.choices,
-            choice_graph: None,
-            sight: self.leaves.research_sight(),
-            culture: self.culture,
-        };
+        let mut effects =
+            stock_research::Effects::new(self.backend, self.research, self.choices, self.culture)
+                .with_sight(self.leaves.research_sight());
         let context = research::Context {
             state,
             definitions: self.definitions,
@@ -290,14 +280,13 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         // QueueNextTech's caller publishes this after the policy site, also
         // when an already-populated queue bypassed selection.
         if kind == Kind::Research {
-            let mut effects = stock_research::Effects {
-                backend: self.backend,
-                runtime: self.research,
-                choices: self.choices,
-                choice_graph: None,
-                sight: self.leaves.research_sight(),
-                culture: self.culture,
-            };
+            let mut effects = stock_research::Effects::new(
+                self.backend,
+                self.research,
+                self.choices,
+                self.culture,
+            )
+            .with_sight(self.leaves.research_sight());
             effects
                 .effect(
                     state,
@@ -380,14 +369,13 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
         self.leaves
             .callback(state, self.backend, owner, kind, full)?;
         if kind == Kind::Barbarian && self.leaves.barbarian_reached(state, owner, full)? {
-            let mut effects = stock_research::Effects {
-                backend: self.backend,
-                runtime: self.research,
-                choices: self.choices,
-                choice_graph: None,
-                sight: self.leaves.research_sight(),
-                culture: self.culture,
-            };
+            let mut effects = stock_research::Effects::new(
+                self.backend,
+                self.research,
+                self.choices,
+                self.culture,
+            )
+            .with_sight(self.leaves.research_sight());
             research::Context {
                 state,
                 definitions: self.definitions,

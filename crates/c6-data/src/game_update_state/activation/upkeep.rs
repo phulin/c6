@@ -388,14 +388,12 @@ impl<P> Context<'_, '_, P> {
             .calculate(self.state, self.scoring_definitions, owner, false)
             .map_err(|e| failure("score", e))?;
         {
-            let mut effects = stock_notifications::research::Effects {
-                backend: self.backend,
-                runtime: self.research,
-                choices: self.choices,
-                choice_graph: None,
-                sight: None,
-                culture: Some(self.culture),
-            };
+            let mut effects = stock_notifications::research::Effects::new(
+                self.backend,
+                self.research,
+                self.choices,
+                Some(self.culture),
+            );
             research::Context {
                 state: self.state,
                 definitions: self.research_definitions,
@@ -417,14 +415,12 @@ impl<P> Context<'_, '_, P> {
             owner,
         )
         .map_err(|e| failure("treasury and deals", e))?;
-        let mut effects = stock_notifications::research::Effects {
-            backend: self.backend,
-            runtime: self.research,
-            choices: self.choices,
-            choice_graph: None,
-            sight: None,
-            culture: Some(self.culture),
-        };
+        let mut effects = stock_notifications::research::Effects::new(
+            self.backend,
+            self.research,
+            self.choices,
+            Some(self.culture),
+        );
         research::Context {
             state: self.state,
             definitions: self.research_definitions,

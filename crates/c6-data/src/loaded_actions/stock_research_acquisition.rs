@@ -203,7 +203,19 @@ impl<P> Effects<'_, '_, P> {
                 if plot.resource_hash != resource.hash {
                     continue;
                 }
-                let sight = self.sight.ok_or("current research shared visibility")?;
+                let shared = if self.sight.is_none() {
+                    self.backend
+                        .research_queries
+                        .map(|queries| queries.visibility.try_borrow())
+                        .transpose()
+                        .map_err(|_| "current research shared visibility already borrowed")?
+                } else {
+                    None
+                };
+                let sight = self
+                    .sight
+                    .or(shared.as_deref())
+                    .ok_or("current research shared visibility")?;
                 let normal = sight
                     .shared(player)?
                     .0

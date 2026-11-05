@@ -98,11 +98,22 @@ fn update<'b, P, E>(
         .map_err(Error::Completion)?;
     }
     loop {
-        if matches!(runtime.pending(), Some(c6_core::game_update::Continuation::BeginTurn)) {
-            match context.notifications.backend.continue_round(
-                context.notifications.state, runtime, inputs,
-                super::round_dispatch::Entry::BeginTurn, budget,
-            ).map_err(Error::Completion)? {
+        if matches!(
+            runtime.pending(),
+            Some(c6_core::game_update::Continuation::BeginTurn)
+        ) {
+            match context
+                .notifications
+                .backend
+                .continue_round(
+                    context.notifications.state,
+                    runtime,
+                    inputs,
+                    super::round_dispatch::Entry::BeginTurn,
+                    budget,
+                )
+                .map_err(Error::Completion)?
+            {
                 super::round_dispatch::Progress::PlayerUpdates => {}
                 super::round_dispatch::Progress::Returned => return Ok(None),
             }
@@ -173,10 +184,18 @@ fn update<'b, P, E>(
         .map_err(Error::Deactivation)?
         {
             deactivation::Outcome::AdvancePhase => {
-                match context.notifications.backend.continue_round(
-                    context.notifications.state, runtime, inputs,
-                    super::round_dispatch::Entry::AdvancePhase, budget,
-                ).map_err(Error::Completion)? {
+                match context
+                    .notifications
+                    .backend
+                    .continue_round(
+                        context.notifications.state,
+                        runtime,
+                        inputs,
+                        super::round_dispatch::Entry::AdvancePhase,
+                        budget,
+                    )
+                    .map_err(Error::Completion)?
+                {
                     super::round_dispatch::Progress::PlayerUpdates => continue,
                     super::round_dispatch::Progress::Returned => return Ok(None),
                 }
@@ -235,12 +254,21 @@ fn drive<'b, P, E>(
                     // Ordinary begins after the parent Complete.Execute has
                     // returned. Only now may ProcessMessages drain a command
                     // queued by its suspended active-control callback.
-                    while let Some(message) = context.notifications.backend.turn_messages.pop_front() {
+                    while let Some(message) =
+                        context.notifications.backend.turn_messages.pop_front()
+                    {
                         let (player, reason) = match message {
-                            super::round_dispatch::TurnMessage::PlayerComplete { player, reason } => (player, reason),
+                            super::round_dispatch::TurnMessage::PlayerComplete {
+                                player,
+                                reason,
+                            } => (player, reason),
                             super::round_dispatch::TurnMessage::GameComplete { player } => {
-                                if loaded::round::game_turn_complete_prefix(context.notifications.state, player)
-                                    .map_err(Error::Completion)? {
+                                if loaded::round::game_turn_complete_prefix(
+                                    context.notifications.state,
+                                    player,
+                                )
+                                .map_err(Error::Completion)?
+                                {
                                     progress.issuer = player;
                                     progress.phase = Phase::MandatoryFirst;
                                     continue 'drive;
@@ -462,7 +490,12 @@ pub fn resume_end_turn<'b, P, E>(
         .stamp
         .same_instance(context.notifications.state.action_stamp())
         || choice.kind != PolicyKind::PlayerActions
-        || context.notifications.backend.turn_messages.iter().any(|m|matches!(m,super::round_dispatch::TurnMessage::PlayerComplete { .. }))
+        || context
+            .notifications
+            .backend
+            .turn_messages
+            .iter()
+            .any(|m| matches!(m, super::round_dispatch::TurnMessage::PlayerComplete { .. }))
         || runtime.pending_player_effect()
             != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
         || !context
@@ -480,7 +513,12 @@ pub fn resume_end_turn<'b, P, E>(
         .take()
         .expect("checked");
     progress.choice = None;
-    context.notifications.backend.turn_messages.push_back(super::round_dispatch::TurnMessage::PlayerComplete { player: owner, reason: completion::NONE });
+    context.notifications.backend.turn_messages.push_back(
+        super::round_dispatch::TurnMessage::PlayerComplete {
+            player: owner,
+            reason: completion::NONE,
+        },
+    );
     let mut resumed_active = |state: &mut LoadedState,
                               backend: &mut Runtime<'b, P>,
                               runtime: &mut loaded::Runtime,
@@ -581,14 +619,12 @@ pub fn resume_research<'b, P, E>(
         }
     }
     {
-        let mut effects = super::research::Effects {
-            backend: &mut context.notifications.backend,
-            runtime: research_runtime,
+        let mut effects = super::research::Effects::new(
+            &mut context.notifications.backend,
+            research_runtime,
             choices,
-            choice_graph: None,
-            sight: None,
             culture,
-        };
+        );
         let mut research = crate::research::Context {
             state: context.notifications.state,
             definitions,
