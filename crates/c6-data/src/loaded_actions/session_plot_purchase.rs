@@ -33,24 +33,16 @@ impl<'a> Session<'_, 'a> {
     ) -> Result<Outcome, Error<String>> {
         self.ordinary_player_action(owner)?;
         let before = self.state().action_stamp();
-        let result = self
-            .context
-            .notifications
-            .backend
-            .with_modifier_owners(|stock, owners| {
-                let mut effects = domains.borrow(stock, owners);
-                city_plot_purchase::purchase(
-                    self.context.notifications.state,
-                    CityId { owner, id: city },
-                    location,
-                    inputs,
-                    current,
-                    &mut effects,
-                    reports,
-                )
-            })
-            .map_err(|e| format!("plot purchase canonical owners: {e:?}"))
-            .and_then(|r| r);
+        let result = city_plot_purchase::purchase_current(
+            self.context.notifications.state,
+            &mut self.context.notifications.backend,
+            CityId { owner, id: city },
+            location,
+            inputs,
+            current,
+            domains,
+            reports,
+        );
         let partial = self.state().action_stamp() != before || result.is_err();
         self.retain(result, partial)
     }

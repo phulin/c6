@@ -411,3 +411,32 @@ pub fn purchase<'a, E: Effects<'a>>(
         gold_cost: cost,
     })
 }
+
+/// Loan the initialized callback services with the stock runtime's canonical
+/// modifier/requirement owners. Rejoin the same mutated owners on every result.
+#[allow(clippy::too_many_arguments)]
+pub fn purchase_current<'a, D: Domains<'a>>(
+    state: &mut LoadedState,
+    backend: &mut stock_notifications::Runtime<'a>,
+    city: CityId,
+    location: PlotCoord,
+    inputs: &Inputs<'_>,
+    current: &mut Current<'_>,
+    domains: &mut D,
+    reports: &mut Vec<Report>,
+) -> Result<Outcome, String> {
+    backend
+        .with_modifier_owners(|stock, owners| {
+            let mut effects = domains.borrow(stock, owners);
+            purchase(
+                state,
+                city,
+                location,
+                inputs,
+                current,
+                &mut effects,
+                reports,
+            )
+        })
+        .map_err(|e| format!("plot purchase canonical owners: {e:?}"))?
+}
