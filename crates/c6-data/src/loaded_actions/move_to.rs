@@ -122,6 +122,11 @@ pub trait Movement<E: OperationReports> {
         Ok(None)
     }
     /// Optional ordinary Farm handler over the caller's retained rule/runtime owners.
+    fn pillage_can_start(&mut self, _state:&LoadedState, _unit:&Unit, _visible_only:bool, _effects:&E)
+        ->Result<Option<bool>,Self::Error> {Ok(None)}
+    fn start_pillage(&mut self,_state:&mut LoadedState,_visibility:&mut unit_sight_state::Runtime,
+        _actor:(i32,u32),_node:&OperationNode,_effects:&mut E)
+        ->Result<Option<skip_turn::StartData>,Self::Error> {Ok(None)}
     fn farm_can_start(&mut self, _state: &LoadedState, _unit: &Unit,
         _improvement: u32, _visible_only: bool, _effects: &E)
         -> Result<Option<bool>, Self::Error> { Ok(None) }
@@ -712,6 +717,14 @@ where
                 };
                 super::can_start_typed_with_trade(state, reference, inputs, effects, handlers,
                     &mut operation, None, None, None, None, Some(&mut trade_handler))
+            } else if node.operation_hash == c6_core::unit::PILLAGE_HASH {
+                let mut handler=|state:&LoadedState,unit:&Unit,_improvement:u32,visible_only:bool,effects:&mut E| {
+                    movement.pillage_can_start(state,unit,visible_only,effects)
+                        .map_err(|_|super::Error::Unsupported("Pillage CanStart dependency"))?
+                        .ok_or(super::Error::Unsupported("Pillage CanStart composition"))
+                };
+                super::can_start_typed_with_pillage(state,reference,inputs,effects,handlers,&mut operation,
+                    None,None,None,None,None,Some(&mut handler))
             } else if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
                 let mut farm_handler = |state: &LoadedState, unit: &Unit, improvement: u32,
                     visible_only: bool, effects: &mut E| {
@@ -787,9 +800,11 @@ where
                 // Start selects CURRENT front after activity subscribers.
                 let node = front(state, actor)?;
                 if matches!(node.operation_hash,
-                    c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
+                    c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH | c6_core::unit::PILLAGE_HASH) {
                     let hash = node.operation_hash;
-                    let data = if hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+                    let data = if hash == c6_core::unit::PILLAGE_HASH {
+                        movement.start_pillage(state,runtime.visibility,actor,&node,effects)
+                    } else if hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
                         movement.start_trade(state, actor, &node, effects)
                     } else if hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
                         movement.start_farm(state, runtime.visibility, actor, &node, effects)
@@ -1539,6 +1554,7 @@ pub enum OperationRequest {
     RangeAttack(Request),
     FoundCity,
     Fortify,
+    Pillage,
     BuildImprovement { improvement_hash: u32, modifiers: u32 },
     MakeTradeRoute { destination: PlotCoord },
 }
@@ -1634,6 +1650,8 @@ where
                 OperationParameters::MakeTradeRoute { modifiers: 0, location0: destination,
                     location1: origin, resource_hash: u32::MAX }, inputs, handlers, runtime, effects, movement)
         }
+        OperationRequest::Pillage => execute_queued_manager(state,actor,c6_core::unit::PILLAGE_HASH,
+            OperationParameters::Pillage{modifiers:0,improvement_hash:u32::MAX},inputs,handlers,runtime,effects,movement),
         OperationRequest::Fortify => execute_queued_manager(state, actor, c6_core::unit::FORTIFY_HASH,
             OperationParameters::None, inputs, handlers, runtime, effects, movement),
         OperationRequest::FoundCity => {

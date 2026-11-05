@@ -1,6 +1,6 @@
 //! Bounded Linux XP2 Unit/Formation wire records, not a Core Save loader or gameplay.
 //!
-//! Current operation queues support ten verified handlers and their exact
+//! Current operation queues support eleven verified handlers and their exact
 //! parameter formats. Wire operation hashes are distinct from live numeric IDs.
 //! Unit17/28 wire/default profiles retain independent nested-codec gates.
 //! Legacy omitted runtime effects and missing prior scalars remain explicit.
@@ -22,6 +22,7 @@ pub const FOUND_CITY_HASH: u32 = 0x5733ac6c;
 pub const MOVE_TO_HASH: u32 = 0x580f2f68;
 pub const RANGE_ATTACK_HASH: u32 = 0x09d0292a;
 pub const BUILD_IMPROVEMENT_HASH: u32 = 0x1d60e778;
+pub const PILLAGE_HASH: u32 = 0x4885d724;
 pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
 pub const ALERT_HASH: u32 = 0xe547bc17;
 pub const FORTIFY_HASH: u32 = 0xd3a6f7e8;
@@ -43,6 +44,8 @@ pub enum OperationParameters {
         modifiers: u32,
         improvement_hash: u32,
     },
+    /// Linux Pillage ClassParameters version one.
+    Pillage { modifiers: u32, improvement_hash: u32 },
     MakeTradeRoute {
         modifiers: u32,
         location0: PlotCoord,
@@ -63,6 +66,7 @@ fn parameter_kind(hash: u32) -> Result<u8, Error> {
         MOVE_TO_HASH | RANGE_ATTACK_HASH => Ok(1),
         MAKE_TRADE_ROUTE_HASH => Ok(2),
         BUILD_IMPROVEMENT_HASH => Ok(3),
+        PILLAGE_HASH => Ok(4),
         _ => Err(Error::UnsupportedHandler(hash)),
     }
 }
@@ -174,6 +178,10 @@ impl OperationQueue {
                         improvement_hash: r.u32()?,
                     }
                 }
+                4 => {
+                    r.version(1)?;
+                    OperationParameters::Pillage { modifiers:r.u32()?, improvement_hash:r.u32()? }
+                }
                 _ => unreachable!(),
             };
             nodes.push(OperationNode {
@@ -202,6 +210,7 @@ impl OperationQueue {
                 OperationParameters::MoveTo { .. } => (1, 44),
                 OperationParameters::MakeTradeRoute { .. } => (2, 56),
                 OperationParameters::BuildImprovement { .. } => (3, 40),
+                OperationParameters::Pillage { .. } => (4, 40),
             };
             if actual != kind {
                 return Err(Error::ParameterHandlerMismatch(node.operation_hash));
@@ -236,7 +245,8 @@ impl OperationQueue {
                         word(&mut bytes, v);
                     }
                 }
-                OperationParameters::BuildImprovement { modifiers, improvement_hash } => {
+                OperationParameters::BuildImprovement { modifiers, improvement_hash }
+                | OperationParameters::Pillage { modifiers, improvement_hash } => {
                     for v in [1, *modifiers, *improvement_hash] {
                         word(&mut bytes, v);
                     }
@@ -705,6 +715,18 @@ mod tests {
         queue.nodes[0].operation_hash = MOVE_TO_HASH;
         assert_eq!(queue.encode(Limits::default()),
             Err(Error::ParameterHandlerMismatch(MOVE_TO_HASH)));
+    }
+    #[test]
+    fn pillage_parameters_keep_their_distinct_handler_identity() {
+        let words=[1u32,1,PILLAGE_HASH,2,u32::MAX,0,7,0,0,1,0x80000000,u32::MAX];
+        let bytes:Vec<u8>=words.into_iter().flat_map(u32::to_le_bytes).collect();
+        let mut queue=OperationQueue::decode(&bytes,Limits::default()).unwrap();
+        assert_eq!(queue.nodes[0].parameters,OperationParameters::Pillage {
+            modifiers:0x80000000,improvement_hash:u32::MAX,
+        });
+        assert_eq!(queue.encode(Limits::default()).unwrap(),bytes);
+        queue.nodes[0].operation_hash=BUILD_IMPROVEMENT_HASH;
+        assert_eq!(queue.encode(Limits::default()),Err(Error::ParameterHandlerMismatch(BUILD_IMPROVEMENT_HASH)));
     }
     #[test]
     fn queue_parameter_wire_is_handler_specific_and_preserves_hashes() {

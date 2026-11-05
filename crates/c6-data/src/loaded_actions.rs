@@ -36,6 +36,7 @@ mod fortify;
 pub mod move_to;
 pub mod notifications;
 pub mod policy_actions;
+pub mod pillage;
 pub mod purchase_actions;
 pub mod upgrade_actions;
 pub mod promotion_actions;
@@ -243,6 +244,7 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
     trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
+    pillage_handler: Option<&'q mut FarmHandler<'q, Q>>,
 }
 pub(super) trait TypedParameters {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
@@ -265,7 +267,8 @@ impl TypedParameters for OperationParameters {
     }
     fn improvement(&self) -> Result<u32, Error> {
         match self {
-            Self::BuildImprovement { improvement_hash, .. } => Ok(*improvement_hash),
+            Self::BuildImprovement { improvement_hash, .. }
+            | Self::Pillage { improvement_hash, .. } => Ok(*improvement_hash),
             _ => Err(Error::Unsupported("BuildImprovement parameter type")),
         }
     }
@@ -494,6 +497,11 @@ where
         if h.identity().operation_hash == OperationHash(c6_core::unit::FORTIFY_HASH) {
             return self.fortify_handler.as_mut().ok_or(Error::Unsupported("Fortify handler composition"))?(self.state, s.unit, self.external);
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::PILLAGE_HASH) {
+            let improvement = s.operation.parameters.improvement()?;
+            return self.pillage_handler.as_mut().ok_or(Error::Unsupported("Pillage handler composition"))?(
+                self.state,s.unit,improvement,visible_only,self.external);
+        }
         if h.identity().operation_hash == OperationHash(c6_core::unit::BUILD_IMPROVEMENT_HASH) {
             let improvement = s.operation.parameters.improvement()?;
             return self.farm_handler.as_mut()
@@ -654,6 +662,7 @@ pub(super) fn can_start_for_actor<
             farm_handler: None,
             fortify_handler: None,
             trade_handler: None,
+            pillage_handler: None,
         },
     );
     if (actor.e_owner, actor.id) != identity {
@@ -765,6 +774,21 @@ pub(crate) fn can_start_typed_with_trade<'q,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
     trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
 ) -> Result<bool, Error> {
+    can_start_typed_with_pillage(state,reference,inputs,external,handlers,operation,found_city,range_handler,farm_handler,fortify_handler,trade_handler,None)
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn can_start_typed_with_pillage<'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>>(
+    state: &mut LoadedState, reference: UnitReference, inputs: &Inputs<'_, '_>,
+    external: &'q mut Q, handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+    found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
+    range_handler: Option<&'q mut RangeHandler<'q, Q>>,
+    farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
+    fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
+    trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
+    pillage_handler: Option<&'q mut FarmHandler<'q,Q>>,
+) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(Error::HandlerObservation)?;
@@ -791,6 +815,7 @@ pub(crate) fn can_start_typed_with_trade<'q,
             farm_handler,
             fortify_handler,
             trade_handler,
+            pillage_handler,
         },
     );
     if (actor.e_owner, actor.id) != identity {

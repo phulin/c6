@@ -34,6 +34,8 @@ pub mod plot_purchase;
 pub mod district;
 #[path = "session_upgrade.rs"]
 pub mod upgrade;
+#[path = "session_pillage.rs"]
+pub mod pillage;
 #[path = "session_promotion.rs"]
 pub mod promotion;
 #[path = "session_trade_route.rs"]
