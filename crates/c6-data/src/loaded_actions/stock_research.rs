@@ -2,6 +2,8 @@
 //! Canonical science/progress calculation stays in `research::Context`.
 #[path = "stock_research_acquisition.rs"]
 pub mod acquisition;
+#[path = "stock_research_units.rs"]
+pub mod units;
 use super::Runtime;
 use crate::loaded_actions::{choose_tech, culture_notifications, notifications::processing};
 use crate::research;
@@ -17,6 +19,7 @@ pub enum Error {
         reason: String,
     },
     Query(research::Query),
+    UnitUpdates(crate::research::units::Error<super::movement::Error>),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -155,11 +158,25 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                     && notice.source.is_none()
                     && notice.percent.is_none() =>
             {
-                // Manager::Add returns before factory lookup for nonhuman
-                // owners, an uninitialized manager or game teardown. Positive
-                // constructors and their synchronous consumers stay explicit.
+                // Stock TechDiscovered/CivicDiscovered OnAdd is empty; the
+                // downstream cache/host delivery is presentation-only. Keep the
+                // typed notice on the same backend instead of native UI pools.
                 if self.culture_can_notify(state, notice.player)? {
-                    return Err(Error::Effect(effect));
+                    self.backend
+                        .publish_notice(
+                            state,
+                            match notice.kind {
+                                research::Kind::Technology => super::Notice::TechnologyCompleted {
+                                    owner: notice.player,
+                                    technology: notice.index,
+                                },
+                                research::Kind::Civic => super::Notice::CivicCompleted {
+                                    owner: notice.player,
+                                    civic: notice.index,
+                                },
+                            },
+                        )
+                        .map_err(Error::Notification)?;
                 }
                 self.backend
                     .reached
@@ -180,35 +197,15 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                     definitions,
                     effects: self,
                 }
-                .recompute_empty_district_costs(player)
+                .recompute_ordinary_district_costs(player)
                 .map_err(|_| Error::Effect(research::Effect::DistrictCosts(player)))?;
                 self.backend
                     .reached
-                    .push("stock research empty-roster district costs");
+                    .push("stock research current non-specialty district costs");
                 Ok(())
             }
             research::Effect::UpdateUnitsForTech(player) => {
-                let effect = research::Effect::UpdateUnitsForTech(player);
-                let units = state
-                    .world()
-                    .player(player)
-                    .and_then(|p| p.unit_records())
-                    .map_err(|_| Error::Effect(effect.clone()))?;
-                for unit in units {
-                    if !unit.value.b_delayed_death
-                        && state
-                            .unit_runtime(player, unit.value.id)
-                            .map_err(|_| Error::Effect(effect.clone()))?
-                            .formation
-                            .is_some()
-                    {
-                        return Err(Error::Effect(effect));
-                    }
-                }
-                self.backend
-                    .reached
-                    .push("stock research unit update without live formations");
-                Ok(())
+                self.backend.update_research_units(state, player)
             }
             research::Effect::PlayerAcquired {
                 player,

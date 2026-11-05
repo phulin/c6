@@ -994,6 +994,14 @@ impl<E: Effects> Context<'_, E> {
             )
             .map_err(Error::DistrictCosts)
     }
+    /// Current CityCenter/ordinary district records use the existing exact
+    /// zero-specialty-average cost path. Positive specialty discounts stay
+    /// explicit in the shared district kernel.
+    pub fn recompute_ordinary_district_costs(&mut self, player:i32)->Result<(),Error<E::Error>> {
+        self.check()?;
+        let percent=self.percentage(player,Kind::Technology)?.max(self.percentage(player,Kind::Civic)?);
+        self.definitions.district_costs.recompute_no_specialty(self.state,player,percent,self.effects.runtime().start_era_hash).map_err(Error::DistrictCosts)
+    }
     fn check(&self) -> Result<(), Error<E::Error>> {
         if self.state.binding() != &self.definitions.binding
             || self.state.binding() != &self.effects.runtime().binding
