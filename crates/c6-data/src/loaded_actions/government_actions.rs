@@ -509,11 +509,11 @@ impl<E: Effects> c6_core::government_policy::government::Context for Context<'_,
             .1;
         if !c.modified_slots.entries.is_empty()
             || !c.modified_removed_slots.entries.is_empty()
-            || !c.replaced_slots.is_empty()
             || !c.government_type_modified_slots.is_empty()
         {
             return Err(Error::Unsupported("modified government slot rebuild"));
         }
+        let replacements = c.replaced_slots.clone();
         let slots = self
             .definitions
             .governments
@@ -528,6 +528,10 @@ impl<E: Effects> c6_core::government_policy::government::Context for Context<'_,
                 policy_hash: u32::MAX,
                 slot_ordinal,
             }));
+        c6_core::government_policy::government::replace_slots(
+            &mut self.culture_mut()?.active_policies.entries,
+            &replacements,
+        );
         let count = self
             .state
             .research_components(self.owner)

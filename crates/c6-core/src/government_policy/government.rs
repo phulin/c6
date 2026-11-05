@@ -2,6 +2,30 @@
 //! The ordinary legal-choice gate is separate from this source mutation body.
 use super::{Context as PolicyContext, Event as PolicyEvent};
 
+/// BuildSlots2a74b77 visits the original slots backwards, erases each match,
+/// then appends a fresh empty slot. `replaces_all=false` stops after the last
+/// matching original slot; appended slots are not reconsidered by that rule.
+pub fn replace_slots(
+    slots: &mut Vec<crate::player_culture::GovernmentSlot>,
+    replacements: &[crate::player_culture::GovernmentSlotReplacement],
+) {
+    for replacement in replacements {
+        for index in (0..slots.len()).rev() {
+            if slots[index].slot_ordinal != replacement.replaced_slot_ordinal {
+                continue;
+            }
+            slots.remove(index);
+            slots.push(crate::player_culture::GovernmentSlot {
+                slot_ordinal: replacement.added_slot_ordinal,
+                policy_hash: u32::MAX,
+            });
+            if !replacement.replaces_all {
+                break;
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Event {
     Retracted(i32),
@@ -85,6 +109,33 @@ pub fn set_current<C: Context>(c: &mut C, government: i32) -> Result<bool, C::Er
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn replacements_remove_last_match_and_append_before_the_next_rule() {
+        use crate::player_culture::{GovernmentSlot, GovernmentSlotReplacement};
+        let mut slots = [0, 2, 1, 2]
+            .map(|slot_ordinal| GovernmentSlot {
+                slot_ordinal,
+                policy_hash: u32::MAX,
+            })
+            .to_vec();
+        let mut replacement = GovernmentSlotReplacement {
+            wire_version: 45,
+            replaced_slot_ordinal: 2,
+            added_slot_ordinal: 4,
+            replaces_all: false,
+        };
+        replace_slots(&mut slots, &[replacement.clone()]);
+        assert_eq!(
+            slots.iter().map(|s| s.slot_ordinal).collect::<Vec<_>>(),
+            [0, 2, 1, 4]
+        );
+        replacement.replaces_all = true;
+        replace_slots(&mut slots, &[replacement]);
+        assert_eq!(
+            slots.iter().map(|s| s.slot_ordinal).collect::<Vec<_>>(),
+            [0, 1, 4, 4]
+        );
+    }
     struct Probe {
         government: i32,
         post: i32,
