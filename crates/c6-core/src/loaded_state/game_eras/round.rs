@@ -6,41 +6,6 @@ pub struct WorldTurn {
     pub starting_thresholds_calculated: bool,
     pub next_era_countdown: i32,
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn world_turn_uses_single_current_manager_and_retains_countdown_writes() {
-        let mut state = super::super::super::tests::state();
-        let binding = state.binding().clone();
-        state
-            .initialize_game_eras(
-                &binding,
-                None,
-                super::super::Inputs {
-                    golden_ages_raw: None,
-                    dark_ages_raw: None,
-                    current_era: Some(0),
-                    era_start_turn: Some(0),
-                },
-            )
-            .unwrap();
-        let input = WorldTurn {
-            starting_thresholds_calculated: true,
-            next_era_countdown: 3,
-        };
-        state
-            .initialize_game_eras_world_turn(&binding, None, input)
-            .unwrap();
-        assert!(matches!(
-            state.initialize_game_eras_world_turn(&binding, None, input),
-            Err(AccessError::State(Error::AlreadyBound))
-        ));
-        state.set_game_eras_countdown(2).unwrap();
-        assert_eq!(state.game_eras_world_turn().unwrap().next_era_countdown, 2);
-        assert_eq!(state.game_eras().unwrap().current_era(), Some(0));
-    }
-}
 impl LoadedState {
     pub fn initialize_game_eras_world_turn(
         &mut self,
@@ -83,5 +48,41 @@ impl LoadedState {
             .expect("validated fields")
             .next_era_countdown = countdown;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn world_turn_uses_single_current_manager_and_retains_countdown_writes() {
+        let mut state = super::super::super::tests::state();
+        let binding = state.binding().clone();
+        state
+            .initialize_game_eras(
+                &binding,
+                None,
+                super::super::Inputs {
+                    golden_ages_raw: None,
+                    dark_ages_raw: None,
+                    current_era: Some(0),
+                    era_start_turn: Some(0),
+                },
+            )
+            .unwrap();
+        let input = WorldTurn {
+            starting_thresholds_calculated: true,
+            next_era_countdown: 3,
+        };
+        state
+            .initialize_game_eras_world_turn(&binding, None, input)
+            .unwrap();
+        assert!(matches!(
+            state.initialize_game_eras_world_turn(&binding, None, input),
+            Err(AccessError::State(Error::AlreadyBound))
+        ));
+        state.set_game_eras_countdown(2).unwrap();
+        assert_eq!(state.game_eras_world_turn().unwrap().next_era_countdown, 2);
+        assert_eq!(state.game_eras().unwrap().current_era(), Some(0));
     }
 }

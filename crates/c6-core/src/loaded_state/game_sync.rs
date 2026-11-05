@@ -192,6 +192,54 @@ impl LoadedState {
     }
 }
 
+fn draw_fields(
+    record: &mut SerializedRandomRecord,
+    runtime: Option<&mut Runtime>,
+    revision: &mut u64,
+    bound: u16,
+) -> Result<u16, AccessError> {
+    let runtime = runtime.ok_or(AccessError::Missing)?;
+    if !matches!(
+        runtime.logging,
+        Some(LoggingScope::MissingChannel | LoggingScope::StockFileSink)
+    ) {
+        return Err(AccessError::UnsupportedLogging);
+    }
+    if runtime
+        .archive
+        .changed_keys
+        .windows(2)
+        .any(|p| p[0] >= p[1])
+    {
+        return Err(AccessError::InvalidArchive);
+    }
+    let next = revision
+        .checked_add(1)
+        .ok_or(AccessError::State(Error::ResourceLimit))?;
+    *revision = next;
+    if let Err(at) = runtime
+        .archive
+        .changed_keys
+        .binary_search(&runtime.archive.sync_variable_key)
+    {
+        runtime
+            .archive
+            .changed_keys
+            .insert(at, runtime.archive.sync_variable_key);
+    }
+    let mut logical = crate::rng::RandomState {
+        seed: record.seed,
+        calls: record.calls,
+        resets: record.resets,
+        lock_count: runtime.lock_count,
+        synchronous: record.synchronous_byte != 0,
+    };
+    let draw = logical.draw(bound);
+    record.seed = logical.seed;
+    record.calls = logical.calls;
+    Ok(draw)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,52 +346,4 @@ mod tests {
         assert_eq!(current.archive.changed_keys, [ArchiveOrderKey(1)]);
         assert_eq!(state.retained().random.record, *current.record);
     }
-}
-
-fn draw_fields(
-    record: &mut SerializedRandomRecord,
-    runtime: Option<&mut Runtime>,
-    revision: &mut u64,
-    bound: u16,
-) -> Result<u16, AccessError> {
-    let runtime = runtime.ok_or(AccessError::Missing)?;
-    if !matches!(
-        runtime.logging,
-        Some(LoggingScope::MissingChannel | LoggingScope::StockFileSink)
-    ) {
-        return Err(AccessError::UnsupportedLogging);
-    }
-    if runtime
-        .archive
-        .changed_keys
-        .windows(2)
-        .any(|p| p[0] >= p[1])
-    {
-        return Err(AccessError::InvalidArchive);
-    }
-    let next = revision
-        .checked_add(1)
-        .ok_or(AccessError::State(Error::ResourceLimit))?;
-    *revision = next;
-    if let Err(at) = runtime
-        .archive
-        .changed_keys
-        .binary_search(&runtime.archive.sync_variable_key)
-    {
-        runtime
-            .archive
-            .changed_keys
-            .insert(at, runtime.archive.sync_variable_key);
-    }
-    let mut logical = crate::rng::RandomState {
-        seed: record.seed,
-        calls: record.calls,
-        resets: record.resets,
-        lock_count: runtime.lock_count,
-        synchronous: record.synchronous_byte != 0,
-    };
-    let draw = logical.draw(bound);
-    record.seed = logical.seed;
-    record.calls = logical.calls;
-    Ok(draw)
 }
