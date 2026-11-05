@@ -11,6 +11,27 @@ use c6_core::{
 /// Synchronous processor signals and the queued completion message retain their
 /// native ordering. The completion broadcast must not execute reentrantly.
 pub trait Effects<P>: round_world::Effects<P> {
+    fn phase_automation(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+    ) -> Result<(), Error>;
+    fn end_phase(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+    ) -> Result<(), Error>;
+    fn phase_time_limit(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+    ) -> Result<u32, Error>;
+    fn begin_phase(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+        previous: i32,
+    ) -> Result<(), Error>;
     fn report(
         &mut self,
         state: &mut LoadedState,
@@ -41,6 +62,138 @@ pub trait Effects<P>: round_world::Effects<P> {
         backend: &mut Runtime<'_, P>,
         runtime: &mut loaded::Runtime,
     ) -> Result<(), Error>;
+}
+
+struct Phase<'a, 'b, P, E> {
+    backend: &'a mut Runtime<'b, P>,
+    effects: &'a mut E,
+}
+impl<P, E: Effects<P>> crate::game_update_state::activation::round::Effects
+    for Phase<'_, '_, P, E>
+{
+    fn automation(&mut self, state: &mut LoadedState) -> Result<(), Error> {
+        self.effects.phase_automation(state, self.backend)
+    }
+    fn end_phase(&mut self, state: &mut LoadedState) -> Result<(), Error> {
+        self.effects.end_phase(state, self.backend)
+    }
+    fn segment_disabled(&mut self, state: &LoadedState, hash: u32) -> Result<bool, Error> {
+        Ok(state
+            .retained()
+            .core
+            .phase_processor
+            .turn_segments
+            .iter()
+            .find(|s| s.hash == hash)
+            .is_none_or(|s| s.disabled))
+    }
+    fn time_limit(&mut self, state: &mut LoadedState) -> Result<u32, Error> {
+        self.effects.phase_time_limit(state, self.backend)
+    }
+    fn begin_phase(&mut self, state: &mut LoadedState, previous: i32) -> Result<(), Error> {
+        self.effects.begin_phase(state, self.backend, previous)
+    }
+}
+
+/// Persistent world owners and borrowed current player queries. Activation and
+/// world upkeep borrow the same cityless manager for their respective stages.
+pub struct State<'a, 'd, 'r, E> {
+    pub climate: crate::game_update_state::round_climate::Runtime,
+    pub cityless:
+        &'a std::cell::RefCell<crate::game_update_state::activation::cityless_managers::Runtime>,
+    pub carbon: crate::game_update_state::round_climate::CarbonRules<'a>,
+    pub alive_ids: &'a [i32],
+    pub alive_major_ids: &'a [i32],
+    pub trade: crate::game_update_state::round_trade::Runtime,
+    pub random_definitions: crate::game_update_state::round_random_events::Definitions,
+    pub random: crate::game_update_state::round_random_events::Runtime,
+    pub capabilities: &'a c6_core::game_capabilities::Membership,
+    pub effects: E,
+    pub player_end: round_end::Inputs<'a, 'd, 'r>,
+}
+impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, E> {
+    fn advance(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+        runtime: &mut loaded::Runtime,
+        inputs: &super::deactivation::Inputs<'_, '_, '_>,
+        entry: super::round_dispatch::Entry,
+        budget: &mut usize,
+    ) -> Result<super::round_dispatch::Progress, Error> {
+        use super::round_dispatch::{Entry, Progress};
+        let managers = self
+            .cityless
+            .try_borrow()
+            .map_err(|_| Error::Unsupported("round current manager borrow"))?;
+        if entry == Entry::AdvancePhase {
+            let mut changed = false;
+            let phase = crate::game_update_state::activation::round::advance_phase(
+                state,
+                inputs.phases,
+                inputs.phase_definitions,
+                &mut changed,
+                &mut Phase {
+                    backend,
+                    effects: &mut self.effects,
+                },
+            )?;
+            if phase != round::PhaseAdvance::Exhausted {
+                return Err(Error::Unsupported("round next-phase player selection"));
+            }
+            if state.retained().core.player_processor.active_count != 0
+                || self.alive_major_ids.is_empty()
+                || round::unprocessed_automation(state, self.alive_ids)? != 0
+            {
+                return Err(Error::Unsupported(
+                    "round end activation/automation continuation",
+                ));
+            }
+        }
+        let mut current = Current {
+            world: round_world::Current {
+                backend,
+                climate: &mut self.climate,
+                cityless: &managers,
+                carbon: crate::game_update_state::round_climate::CarbonRules {
+                    resources: self.carbon.resources,
+                    game_speed_cost_multiplier: self.carbon.game_speed_cost_multiplier,
+                    removable_feature_hashes: self.carbon.removable_feature_hashes,
+                },
+                alive_major_ids: self.alive_major_ids,
+                trade: &mut self.trade,
+                random_definitions: &self.random_definitions,
+                random: &mut self.random,
+                capabilities: self.capabilities,
+                effects: &mut self.effects,
+            },
+            player_end: &self.player_end,
+        };
+        if entry == Entry::AdvancePhase {
+            round::end_turn(state, runtime, &mut current)?;
+            let backend = &mut *current.world.backend;
+            let mut c =
+                crate::game_update_state::context(state, runtime, inputs.readiness, backend)?;
+            c.finish_round_update(|state, services| {
+                state
+                    .process_pending_diplomacy(&mut *services.effects, budget)
+                    .map_err(|_| Error::Unsupported("round end pending diplomacy"))
+            })?;
+            return Ok(Progress::Returned);
+        }
+        let begun = round::begin_turn(state, runtime, &mut current)?;
+        let backend = &mut *current.world.backend;
+        let mut c = crate::game_update_state::context(state, runtime, inputs.readiness, backend)?;
+        match round::after_begin_turn(&mut c, begun)? {
+            round::AfterBegin::PlayerUpdates => Ok(Progress::PlayerUpdates),
+            round::AfterBegin::HumanExit => {
+                c.state
+                    .process_pending_diplomacy(&mut *c.services.effects, budget)
+                    .map_err(|_| Error::Unsupported("round begin pending diplomacy"))?;
+                Ok(Progress::Returned)
+            }
+        }
+    }
 }
 
 pub struct Current<'a, 'b, 'd, 'r, P, E> {
