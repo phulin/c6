@@ -24,6 +24,7 @@ pub mod observed_controls;
 pub mod research;
 pub mod turn_completion;
 pub mod typed_components;
+pub mod barbarian_camp_placement;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -135,6 +136,7 @@ mod tests {
             game_techs_source: None,
             trade_graph: None,
             trade_graph_source: None,
+            barbarian_local_food: Vec::new(),
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -3522,6 +3524,7 @@ pub struct LoadedState {
     game_techs_source: Option<ComponentSnapshotWitness>,
     trade_graph: Option<crate::trade_graph_state::GraphState>,
     trade_graph_source: Option<ComponentSnapshotWitness>,
+    barbarian_local_food: Vec<(usize, i32)>,
 }
 /// Exclusive, validated replacement of one actor and its singleton Formation.
 /// Dropping this guard changes nothing. Commit moves only these two records and
@@ -3732,6 +3735,7 @@ impl LoadedState {
             game_techs_source: None,
             trade_graph: None,
             trade_graph_source: None,
+            barbarian_local_food: Vec::new(),
         })
     }
     pub fn world(&self) -> &world::World {

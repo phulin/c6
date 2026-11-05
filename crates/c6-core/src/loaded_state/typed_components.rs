@@ -104,6 +104,7 @@ impl LoadedState {
             game_techs_source: None,
             trade_graph: None,
             trade_graph_source: None,
+            barbarian_local_food: Vec::new(),
         })
     }
 }
