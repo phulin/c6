@@ -98,7 +98,7 @@ impl<'a, P> Runtime<'a, P> {
         self.movement = Some(movement);
         Ok(())
     }
-    fn movement(&self) -> Result<&State<'a>, Error> {
+    pub(super) fn movement(&self) -> Result<&State<'a>, Error> {
         self.movement
             .as_ref()
             .ok_or(Error::Missing("movement services"))

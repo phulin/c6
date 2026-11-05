@@ -247,7 +247,7 @@ impl<P> sight::Effects for Runtime<'_, P> {
         self.visibility_owner(state, runtime, event.player, Some(event.plot))
     }
     fn visibility_reporting_blocks(&mut self) -> Result<&mut Vec<u32>, Self::Error> {
-        Err(Error::Missing("sight visibility_reporting_blocks"))
+        self.sight_visibility_blocks()
     }
     fn unit_visibility_changed(
         &mut self,
@@ -255,7 +255,7 @@ impl<P> sight::Effects for Runtime<'_, P> {
         runtime: &mut sight::Runtime,
         event: visibility_propagation::UnitVisibilityChanged,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight unit_visibility_changed"))
+        self.sight_unit_visibility(event)
     }
     fn propagate(
         &mut self,
@@ -263,7 +263,7 @@ impl<P> sight::Effects for Runtime<'_, P> {
         runtime: &mut sight::Runtime,
         event: Propagation,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight propagate"))
+        self.propagate_sight(state, event)
     }
     fn contents<'a>(
         &'a mut self,
