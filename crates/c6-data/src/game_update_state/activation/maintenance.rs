@@ -32,6 +32,7 @@ pub struct Definitions {
     resources: LinuxDefinitionRegistry,
     fuel: Vec<Option<(usize, i32)>>,
     yields: LinuxDefinitionRegistry,
+    units: LinuxDefinitionRegistry,
     ai_membership: Vec<Vec<bool>>,
     naval_ai_type: usize,
     scout_uses: LinuxDefinitionRegistry,
@@ -139,6 +140,7 @@ impl Definitions {
         }
         Ok(Self {
             eras,
+            units,
             ai_membership,
             naval_ai_type,
             scout_uses: init::collection(rules, "AiScoutUses", "ScoutUseType")
@@ -254,7 +256,11 @@ pub fn units_turn_activate<E: Effects>(
         if u.b_ignore_resource_maintenance {
             continue;
         }
-        if let Some((index, amount)) = defs.fuel.get(u.e_type_index as usize).copied().flatten() {
+        let unit_index = defs
+            .units
+            .find_index(u.e_type_index)
+            .ok_or(Error::Missing("current fuel maintenance unit definition"))?;
+        if let Some((index, amount)) = defs.fuel.get(unit_index).copied().flatten() {
             let demands = &mut state
                 .player_unit_maintenance_mut(owner)
                 .map_err(Error::State)?
@@ -531,8 +537,33 @@ fn store_explorers<E>(
 }
 impl Definitions {
     fn has_ai<E>(&self, unit: &Unit, role: usize, initialized: bool) -> Result<bool, Error<E>> {
-        ai_bit(&self.ai_membership, unit.e_type_index, role, initialized).map_err(Error::Missing)
+        ai_bit_for_type(
+            &self.units,
+            &self.ai_membership,
+            unit.e_type_index,
+            role,
+            initialized,
+        )
+        .map_err(Error::Missing)
     }
+}
+fn ai_bit_for_type(
+    units: &LinuxDefinitionRegistry,
+    membership: &[Vec<bool>],
+    unit_type: u32,
+    role: usize,
+    initialized: bool,
+) -> Result<bool, &'static str> {
+    if unit_type == u32::MAX || role == usize::MAX || !initialized {
+        return Ok(false);
+    }
+    // Unit transport retains a type hash; live GetType supplies the native
+    // definition index. Use the same admitted native-order remapping as other
+    // current Unit queries, including native direct-index lookup priority.
+    let index = units
+        .find_index(unit_type)
+        .ok_or("current unit AI membership type definition")?;
+    ai_bit(membership, index as u32, role, initialized)
 }
 fn ai_bit(
     membership: &[Vec<bool>],
@@ -796,6 +827,63 @@ mod tests {
             1
         );
         assert_eq!(gold >> 8, 0);
+    }
+    #[test]
+    fn membership_resolves_saved_unit_hash_in_native_definition_order() {
+        use crate::{
+            registry::{linux_type_hash, DefinitionEntry},
+            RulesRowId,
+        };
+        let units = LinuxDefinitionRegistry::from_native_order(vec![
+            DefinitionEntry {
+                database_rowid: RulesRowId(90),
+                type_name: b"UNIT_SETTLER".to_vec(),
+            },
+            DefinitionEntry {
+                database_rowid: RulesRowId(2),
+                type_name: b"UNIT_WARRIOR".to_vec(),
+            },
+        ]);
+        let membership = vec![vec![false, false, false], vec![false, false, true]];
+        assert_eq!(
+            ai_bit_for_type(
+                &units,
+                &membership,
+                linux_type_hash(b"UNIT_WARRIOR"),
+                2,
+                true
+            ),
+            Ok(true)
+        );
+        assert_eq!(
+            ai_bit_for_type(
+                &units,
+                &membership,
+                linux_type_hash(b"UNIT_SETTLER"),
+                2,
+                true
+            ),
+            Ok(false)
+        );
+        assert_eq!(ai_bit_for_type(&units, &membership, 1, 2, true), Ok(true));
+        assert!(ai_bit_for_type(
+            &units,
+            &membership,
+            linux_type_hash(b"UNIT_MISSING"),
+            2,
+            true
+        )
+        .is_err());
+        assert_eq!(
+            ai_bit_for_type(
+                &units,
+                &membership,
+                linux_type_hash(b"UNIT_MISSING"),
+                2,
+                false
+            ),
+            Ok(false)
+        );
     }
     #[test]
     fn membership_guards_skip_uninitialized_arrays_but_unknown_initialized_is_error() {
