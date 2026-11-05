@@ -1,6 +1,7 @@
 //! Explicit policy requests on canonical Culture. No government or policy is
 //! selected by the library; synchronous consumers share the caller's owners.
 pub mod modifiers;
+pub mod stock;
 use super::{choose_tech, culture_notifications as culture};
 use crate::{
     registry::{linux_type_hash, LinuxDefinitionRegistry},
