@@ -165,7 +165,14 @@ impl Definitions {
         if city.culture.tourism_per_feature > 0 {
             return Err(Error::Missing("positive City feature tourism"));
         }
-        if !city.buildings.great_work_buildings.is_empty() {
+        // GetBuildingTourismFromGreatWorks skips each -1 slot before all
+        // current-work getters; empty Palace slots therefore remain exact zero.
+        if city
+            .buildings
+            .great_work_buildings
+            .iter()
+            .any(|b| b.slots.iter().any(|s| s.great_work_index != -1))
+        {
             return Err(Error::Missing("current GreatWork tourism contribution"));
         }
         if city
