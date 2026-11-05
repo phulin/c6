@@ -24,6 +24,7 @@ pub mod choose_tech;
 pub mod city_range_attack;
 pub mod command_units;
 pub mod configuration;
+pub mod declare_war;
 pub mod culture_notifications;
 #[path = "loaded_actions/aftermath.rs"]
 pub mod current_aftermath;

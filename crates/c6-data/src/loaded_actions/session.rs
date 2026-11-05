@@ -38,6 +38,8 @@ pub mod upgrade;
 pub mod promotion;
 #[path = "session_trade_route.rs"]
 pub mod trade_route;
+#[path = "session_declare_war.rs"]
+pub mod declare_war;
 
 #[derive(Debug)]
 pub enum Error<E> {

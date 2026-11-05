@@ -6,6 +6,7 @@
 use crate::unit::Limits;
 
 pub mod grievances;
+pub mod war;
 
 pub const VERSION: i32 = 16;
 
@@ -22,6 +23,8 @@ pub enum Error {
     MissingResearchAgreements,
     MissingHasMet,
     MissingChangedTurns,
+    MissingWarAggressors,
+    MissingDefensivePacts,
     DefinitionInputs,
     AlreadyInitialized,
     InvalidStorage,
@@ -89,6 +92,8 @@ pub struct GameDiplomaticRelations {
     current_friendships: Option<Vec<BoolRelationship>>,
     current_permanent_alliances: Option<Vec<BoolRelationship>>,
     current_grievances: Option<(Relationships, Relationships)>,
+    current_war_aggressors: Option<Relationships>,
+    current_defensive_pacts: Option<Vec<BoolRelationship>>,
 }
 
 pub struct DecodedPrefix<'a> {
@@ -139,6 +144,8 @@ impl GameDiplomaticRelations {
             current_friendships: None,
             current_permanent_alliances: None,
             current_grievances: None,
+            current_war_aggressors: None,
+            current_defensive_pacts: None,
         })
     }
     /// Complete current native enum values, with each companion changed turn.
@@ -170,6 +177,8 @@ impl GameDiplomaticRelations {
             current_friendships: None,
             current_permanent_alliances: None,
             current_grievances: None,
+            current_war_aggressors: None,
+            current_defensive_pacts: None,
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
@@ -280,6 +289,8 @@ impl GameDiplomaticRelations {
             current_friendships: None,
             current_permanent_alliances: None,
             current_grievances: None,
+            current_war_aggressors: None,
+            current_defensive_pacts: None,
         };
         value.initialize_current_contacts(player_count, values)?;
         Ok(value)
@@ -545,6 +556,8 @@ impl GameDiplomaticRelations {
                 current_friendships: None,
                 current_permanent_alliances: None,
                 current_grievances: None,
+            current_war_aggressors: None,
+            current_defensive_pacts: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,
