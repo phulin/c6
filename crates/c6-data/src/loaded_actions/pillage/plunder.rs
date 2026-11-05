@@ -54,26 +54,15 @@ impl Definitions {
             let row = table
                 .row_by_id(e.database_rowid)
                 .ok_or(Error::Missing("plunder improvement row"))?;
-            let text = row
+            let name_hash = match row
                 .get("PlunderType")
-                .map_err(|_| Error::Missing("PlunderType"))?;
-            let text = if matches!(text, crate::SqlValue::Null) {
-                None
-            } else {
-                Some(
-                    text.text()
-                        .map_err(|_| Error::Missing("PlunderType text"))?,
-                )
+                .map_err(|_| Error::Missing("PlunderType"))?
+            {
+                crate::SqlValue::Null => 0,
+                crate::SqlValue::Text(value) => crate::registry::linux_type_hash(value),
+                _ => return Err(Error::Missing("PlunderType text")),
             };
-            let kind = match text {
-                Some("PLUNDER_SCIENCE") => 0,
-                Some("PLUNDER_GOLD") => 1,
-                Some("PLUNDER_CULTURE") => 2,
-                Some("PLUNDER_FAITH") => 3,
-                Some("PLUNDER_HEAL") => 4,
-                Some("NO_PLUNDER") | None => -1,
-                _ => return Err(Error::Missing("improvement plunder type")),
-            };
+            let kind = name_to_plunder_type(name_hash);
             let amount = crate::game_parameters::sql_integer(
                 row.get("PlunderAmount")
                     .map_err(|_| Error::Missing("PlunderAmount"))?,
@@ -86,6 +75,18 @@ impl Definitions {
             improvements,
             plunder,
         })
+    }
+}
+/// Actual Linux Definition.Utility.NameToPlunderType21f1380. Every other
+/// name, including the stock PLUNDER_NONE rows, resolves to NO_PLUNDER (-1).
+fn name_to_plunder_type(hash: u32) -> i32 {
+    match hash {
+        0x0b90a0a5 => 0,
+        0x3df735fb => 1,
+        0xda2e0de6 => 2,
+        0xc3e39b3a => 3,
+        0xd3765604 => 4,
+        _ => -1,
     }
 }
 /// Current implementations must perform each reached call; these methods have
@@ -487,7 +488,24 @@ impl<E: Services> Current<'_, E> {
 }
 #[cfg(test)]
 mod tests {
-    use super::positive_sum;
+    use super::{name_to_plunder_type, positive_sum};
+    #[test]
+    fn stock_none_plunder_rows_use_the_native_fallback() {
+        for value in [
+            b"PLUNDER_NONE".as_slice(),
+            b"NO_PLUNDER".as_slice(),
+            b"".as_slice(),
+        ] {
+            assert_eq!(
+                name_to_plunder_type(crate::registry::linux_type_hash(value)),
+                -1
+            );
+        }
+        assert_eq!(
+            name_to_plunder_type(crate::registry::linux_type_hash(b"PLUNDER_HEAL")),
+            4
+        );
+    }
     #[test]
     fn award_add_flags_preserve_signed_overflow_condition() {
         assert!(positive_sum(i32::MAX, 1));
