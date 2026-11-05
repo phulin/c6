@@ -40,6 +40,8 @@ pub mod npc_leaves;
 pub mod research;
 pub mod round_ai;
 pub mod round_end;
+pub mod round_world;
+pub mod round_turn;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
 #[path = "stock_skip_turn.rs"]
