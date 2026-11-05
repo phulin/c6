@@ -40,6 +40,11 @@ impl RawGameConfiguration {
             0xe75806e8 | 0x0138409a | 0x07cd5e0a | 0x453f23e2
         )
     }
+    /// Original IsAnyMultiplayer 0x28e4cf0 compares the current mode against
+    /// the sole single-player enum, including unknown non-single-player modes.
+    pub fn is_any_multiplayer(self) -> bool {
+        self.game_mode != 0xe9685ee7
+    }
     /// Original IsPlayByCloud 0x28e4da0 compares this independent mode.
     pub fn is_play_by_cloud(self) -> bool {
         self.game_mode == 0x10ff95a6

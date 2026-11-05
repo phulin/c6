@@ -15,6 +15,7 @@ pub enum Stage {
     Damage,
     Experience,
     DeathReport,
+    SurvivingAttacker,
     Budget,
     KillAwards,
     PostKill,
@@ -157,6 +158,7 @@ impl<R: backend::Requirements> Session<R> {
         E: placement::Effects
             + loaded_upkeep::Effects<Error = ProviderError<E>>
             + resolve::DeathReports<Error = ProviderError<E>>
+            + resolve::surviving::Effects
             + experience::Reports<Error = ProviderError<E>>
             + resolve::kill_awards::Effects
             + resolve::post_kill::Effects
@@ -243,14 +245,35 @@ impl<R: backend::Requirements> Session<R> {
                 pending,
             )
             .map_err(|e| failure(Stage::Experience, e))?;
-            let pending = resolve::finish_dead_attacker(
-                state,
-                inputs.generation.maximum_damage,
-                reports.0,
-                pending,
-                inputs.death_report_status,
-            )
-            .map_err(|e| failure(Stage::DeathReport, e))?;
+            let current = super::actor(state, pending.members.damage.attacker)
+                .map_err(|e| failure(Stage::DeathReport, e))?;
+            let dead = current.i_damage
+                >= inputs
+                    .generation
+                    .maximum_damage
+                    .maximum_damage(current)
+                    .map_err(|e| failure(Stage::DeathReport, e))?;
+            let pending = if dead {
+                resolve::finish_dead_attacker(
+                    state,
+                    inputs.generation.maximum_damage,
+                    reports.0,
+                    pending,
+                    inputs.death_report_status,
+                )
+                .map_err(|e| failure(Stage::DeathReport, e))?
+            } else {
+                resolve::surviving::finish_both_alive(
+                    state,
+                    inputs.generation.maximum_damage,
+                    inputs.movement,
+                    sight,
+                    reports.0,
+                    pending,
+                    inputs.death_report_status,
+                )
+                .map_err(|e| failure(Stage::SurvivingAttacker, e))?
+            };
             let pending =
                 resolve::budget::consume_attack(state, inputs.movement, reports.0, pending)
                     .map_err(|e| failure(Stage::Budget, e))?;

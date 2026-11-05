@@ -66,6 +66,7 @@ pub struct GeneratedDamage {
     pub attacker_modifier_raw: i32,
     pub defender_modifier_raw: i32,
     pub base_strengths: kernel::BaseStrengths,
+    pub game_sync_draws: Vec<super::damage::RandomDraw>,
 }
 #[derive(Debug)]
 pub enum DamageError<E> {
@@ -104,15 +105,25 @@ pub fn begin<'s, 'e, E: loaded_upkeep::OperationReports>(
     else {
         return Ok(Outcome::NoTarget);
     };
-    begin_selected(state, inputs.districts, actor, destination, defender, effects)
+    begin_selected(
+        state,
+        inputs.districts,
+        actor,
+        destination,
+        defender,
+        effects,
+    )
 }
 /// Internal continuation after the immediately preceding current target query.
 /// Splitting the borrows does not permit an intervening action or stale target.
-pub(crate) fn begin_selected<'s,'e,E:loaded_upkeep::OperationReports>(
-    state:&'s mut LoadedState,
-    districts:Option<&crate::formation_movement_cost::Definitions<'_>>,
-    actor:UnitReference,destination:PlotCoord,defender:Defender,effects:&'e mut E,
-)->Result<Outcome<'s,'e,E>,Error<E::Error>>{
+pub(crate) fn begin_selected<'s, 'e, E: loaded_upkeep::OperationReports>(
+    state: &'s mut LoadedState,
+    districts: Option<&crate::formation_movement_cost::Definitions<'_>>,
+    actor: UnitReference,
+    destination: PlotCoord,
+    defender: Defender,
+    effects: &'e mut E,
+) -> Result<Outcome<'s, 'e, E>, Error<E::Error>> {
     let mut members = kernel::Members::new(c6_core::formation_path_cache::INVALID_CACHE_LOCATION);
     match defender {
         Defender::Unit(unit) => {
@@ -231,7 +242,7 @@ impl<E> Generation<'_, '_, E> {
             next.proposal_id,
         )
         .map_err(|e| DamageError::Defense(Box::new(e)))?;
-        let mut exchange = super::damage::exchange(
+        let (mut exchange, game_sync_draws) = super::damage::exchange_with_draws(
             self.state,
             rules.damage,
             defender,
@@ -359,6 +370,7 @@ impl<E> Generation<'_, '_, E> {
             attacker_modifier_raw,
             defender_modifier_raw,
             base_strengths: next.base_strengths,
+            game_sync_draws,
         })
     }
 }

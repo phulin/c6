@@ -177,10 +177,20 @@ pub fn prepare(
     }
     kernel::prepare(&mut Context(definitions), defender, attacker, average)
 }
+/// Actual canonical GameSync samples retained in source execution order.
+/// These are observations of the consumed stream, never replay inputs.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RandomDraw {
+    pub bound: u16,
+    pub value: u16,
+    pub before: c6_core::rng::native_serialization::SerializedRandomRecord,
+    pub after: c6_core::rng::native_serialization::SerializedRandomRecord,
+}
 struct ExchangeContext<'a> {
     state: &'a mut LoadedState,
     definitions: &'a Definitions,
     defender: c6_core::map::UnitReference,
+    draws: &'a mut Vec<RandomDraw>,
 }
 impl kernel::Context for ExchangeContext<'_> {
     type Error = Error;
@@ -213,11 +223,26 @@ impl kernel::ExchangeContext for ExchangeContext<'_> {
             return c6_core::combat::calculate_average_damage(p, self.definitions.max_extra_damage)
                 .map_err(Error::Math);
         }
-        match self
+        let before = *self.state.game_sync().map_err(Error::GameSync)?.record;
+        let outcome = self
             .state
             .calculate_game_sync_damage(p, self.definitions.max_extra_damage)
-            .map_err(Error::GameSync)?
-        {
+            .map_err(Error::GameSync)?;
+        let after = *self.state.game_sync().map_err(Error::GameSync)?.record;
+        let draw = match &outcome {
+            c6_core::combat_random::RandomDamageOutcome::Damage { draw, .. }
+            | c6_core::combat_random::RandomDamageOutcome::NativeArithmeticFaultAfterDraw {
+                draw,
+                ..
+            } => *draw,
+        };
+        self.draws.push(RandomDraw {
+            bound: self.definitions.max_extra_damage as u16,
+            value: draw,
+            before,
+            after,
+        });
+        match outcome {
             c6_core::combat_random::RandomDamageOutcome::Damage { amount, .. } => Ok(amount),
             c6_core::combat_random::RandomDamageOutcome::NativeArithmeticFaultAfterDraw {
                 draw,
@@ -255,17 +280,39 @@ pub fn exchange(
     defender_strength: kernel::Strength,
     average: bool,
 ) -> Result<kernel::Exchange, Error> {
-    if state.binding().inputs != definitions.identities {
-        return Err(Error::Binding);
-    }
-    kernel::exchange(
-        &mut ExchangeContext {
-            state,
-            definitions,
-            defender,
-        },
+    exchange_with_draws(
+        state,
+        definitions,
+        defender,
         attacker_strength,
         defender_strength,
         average,
     )
+    .map(|(exchange, _)| exchange)
+}
+/// Same exchange, retaining the actual consumed samples for comparison/output.
+pub fn exchange_with_draws(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    defender: c6_core::map::UnitReference,
+    attacker_strength: kernel::Strength,
+    defender_strength: kernel::Strength,
+    average: bool,
+) -> Result<(kernel::Exchange, Vec<RandomDraw>), Error> {
+    if state.binding().inputs != definitions.identities {
+        return Err(Error::Binding);
+    }
+    let mut draws = Vec::new();
+    let result = kernel::exchange(
+        &mut ExchangeContext {
+            state,
+            definitions,
+            defender,
+            draws: &mut draws,
+        },
+        attacker_strength,
+        defender_strength,
+        average,
+    )?;
+    Ok((result, draws))
 }

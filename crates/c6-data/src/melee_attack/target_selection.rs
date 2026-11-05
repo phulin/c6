@@ -492,6 +492,16 @@ fn enemy_defensible_district<'s>(
     owner: i32,
     at: PlotCoord,
 ) -> Result<Option<&'s c6_core::player_districts::District>, Error> {
+    enemy_defensible_district_with_definitions(state, inputs.districts, owner, at)
+}
+/// Source-current enemy/defensible District predicate shared by selection and
+/// the post-combat advance guard.
+pub fn enemy_defensible_district_with_definitions<'s>(
+    state: &'s LoadedState,
+    districts: Option<&crate::formation_movement_cost::Definitions<'_>>,
+    owner: i32,
+    at: PlotCoord,
+) -> Result<Option<&'s c6_core::player_districts::District>, Error> {
     if !plot_valid(at.x, at.y) {
         return Ok(None);
     }
@@ -511,9 +521,7 @@ fn enemy_defensible_district<'s>(
     {
         return Ok(None);
     }
-    let defs = inputs
-        .districts
-        .ok_or(Error::Missing("current district definitions"))?;
+    let defs = districts.ok_or(Error::Missing("current district definitions"))?;
     match defs
         .district_at(state, plot)
         .map_err(|e| Error::Cost(Box::new(e)))?
