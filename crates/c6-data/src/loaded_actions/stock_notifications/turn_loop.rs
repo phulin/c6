@@ -661,6 +661,7 @@ pub fn resume_research<'b, P, E>(
             return Err(Error::Policy("research request did not select the choice"));
         }
     }
+    context.notifications.backend.resolve_research_choice(choice.player,kind);
     let mut progress = context
         .notifications
         .backend

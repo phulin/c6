@@ -507,6 +507,9 @@ impl<P> Session<'_, '_, P> {
                 research.request_civic(player, index, crate::research::InsertMode::Replace)
             }
         };
+        if result.is_ok() {
+            effects.backend.resolve_research_choice(player, kind);
+        }
         let partial_failure = !matches!(
             result,
             Err(crate::research::Error::IllegalTechnology(_)

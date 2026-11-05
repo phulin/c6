@@ -138,6 +138,12 @@ impl<P> Effects<'_, '_, P> {
     }
 }
 impl<P> Runtime<'_, P> {
+    /// A successfully selected queue satisfies this semantic choice. Native
+    /// presentation-object expiration is independent of pending arena decisions.
+    pub(crate) fn resolve_research_choice(&mut self, owner: i32, kind: research::Kind) {
+        resolve_research_decision(&mut self.decisions, owner, kind);
+    }
+
     /// Bind an explicit external DEFER for technology selection requests made
     /// during automatic acquisition callbacks. Ordinary player choices remain
     /// separate and the canonical research queue is unchanged.
@@ -450,5 +456,43 @@ mod current_age_tests {
         assert_eq!(current_age_flag(Some(&[0, 2]), 1), Some(1));
         assert_eq!(current_age_flag(Some(&[1]), 8), Some(0));
         assert_eq!(current_age_flag(Some(&[]), -2), None);
+    }
+}
+
+fn resolve_research_decision(
+    decisions: &mut Vec<super::Decision>,
+    owner: i32,
+    kind: research::Kind,
+) {
+    let selected = match kind {
+        research::Kind::Technology => choose_tech::TYPE_HASH,
+        research::Kind::Civic => culture_notifications::Kind::ChooseCivic.type_hash(),
+    };
+    decisions.retain(|d| d.owner != owner || d.type_hash != selected);
+}
+#[cfg(test)]
+mod decision_tests {
+    use super::*;
+    #[test]
+    fn selected_research_preserves_other_players_civics_and_government_choices() {
+        let d = |owner, type_hash| super::super::Decision {
+            owner,
+            type_hash,
+            location: [-1, -1],
+            component: None,
+        };
+        let next_civic = d(0, culture_notifications::Kind::ChooseCivic.type_hash());
+        let other = d(1, choose_tech::TYPE_HASH);
+        let government = d(0, culture_notifications::Kind::FillCivicSlot.type_hash());
+        let mut pending = vec![
+            d(0, choose_tech::TYPE_HASH),
+            next_civic.clone(),
+            other.clone(),
+            government.clone(),
+        ];
+        resolve_research_decision(&mut pending, 0, research::Kind::Technology);
+        assert_eq!(pending, vec![next_civic, other.clone(), government.clone()]);
+        resolve_research_decision(&mut pending, 0, research::Kind::Civic);
+        assert_eq!(pending, vec![other, government]);
     }
 }
