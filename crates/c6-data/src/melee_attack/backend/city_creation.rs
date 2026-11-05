@@ -2,6 +2,7 @@
 //!
 //! Native pointer allocation is not logical identity. Modifier instances use the
 //! actual ModifierSystem counter; cached City objects keep their source IDs.
+pub mod collection;
 pub mod definitions;
 use super::{EffectRuntime, QueryError};
 use c6_core::{
@@ -39,6 +40,7 @@ pub enum Error {
     Ring(RegistryError),
     Missing(&'static str),
     DuplicateModifier(i32),
+    RequirementState(Box<super::requirements::Error>),
     Requirement(Box<c6_core::melee_attack::proposals::subject_sets::Error<Error>>),
     Effect(super::CityEffectError),
 }
@@ -108,6 +110,7 @@ struct RequirementInitializer<'a> {
     effects: &'a mut EffectRuntime,
     requirements: &'a mut super::requirements::Runtime,
     maximum_loyalty: Option<i32>,
+    factory: &'a mut dyn collection::RequirementFactory,
 }
 impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for RequirementInitializer<'_> {
     type Error = Error;
@@ -125,7 +128,7 @@ impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for Requirem
         &mut self,
         label: u64,
         definition: &c6_core::melee_attack::proposals::subject_sets::RequirementDefinition,
-        _: i32,
+        context: i32,
         subject: c6_core::melee_attack::proposals::subject_sets::Subject,
     ) -> Result<
         c6_core::melee_attack::proposals::subject_sets::InitializedRequirement,
@@ -137,9 +140,15 @@ impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for Requirem
                 b"REQUIREMENT_CITY_HAS_FULL_LOYALTY",
             ))
         {
-            return Err(E::Context(Error::Missing(
-                "unsupported City requirement factory",
-            )));
+            return self.factory.initialize(
+                self.state,
+                self.effects,
+                self.requirements,
+                label,
+                definition,
+                context,
+                subject,
+            );
         }
         let sets::Subject::ModifierObject(handle) = subject else {
             return Err(E::UnsupportedSubject);
@@ -203,13 +212,13 @@ struct Dynamic {
     instance: i32,
     owner: u64,
     effect: u64,
-    definition: Vec<u8>,
+    definition: definitions::Attachment,
     modifier: c6_core::unit_moved_signal::modifiers::Modifier,
-    tracked: Option<c6_core::unit_moved_signal::modifiers::TrackedSubject>,
-    owner_destruction: Subscription,
-    destruction: Option<Subscription>,
+    tracked: Vec<collection::Subject>,
+    owner_destruction: Option<Subscription>,
     applied_subjects: Vec<u64>,
     activated: bool,
+    hooks: collection::Hooks,
 }
 impl Creation {
     fn object_mut(&mut self, handle: u64) -> Result<&mut Object, Error> {
@@ -224,7 +233,9 @@ struct Apply<'a, E> {
     state: &'a mut LoadedState,
     runtime: &'a mut EffectRuntime,
     requirements: &'a mut super::requirements::Runtime,
-    definition: &'a definitions::Attachment,
+    subject: u64,
+    factory: &'a mut dyn collection::RequirementFactory,
+    features: &'a [u32],
     maximum_loyalty: Option<i32>,
     index: usize,
     effects: &'a mut E,
@@ -266,32 +277,43 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
     fn tracked(&self) -> Result<&c6_core::unit_moved_signal::modifiers::TrackedSubject, Error> {
         self.record()?
             .tracked
-            .as_ref()
+            .iter()
+            .find(|r| r.subject == self.subject)
+            .map(|r| &r.state)
             .ok_or(Error::Missing("tracked City"))
     }
     fn tracked_mut(
         &mut self,
     ) -> Result<&mut c6_core::unit_moved_signal::modifiers::TrackedSubject, Error> {
+        let subject = self.subject;
         self.record_mut()?
             .tracked
-            .as_mut()
+            .iter_mut()
+            .find(|r| r.subject == subject)
+            .map(|r| &mut r.state)
             .ok_or(Error::Missing("tracked City"))
     }
     fn requirement_set_state(&self, id: u64) -> Result<i32, Error> {
-        self.requirements
-            .sets()
-            .state(id)
-            .ok_or(Error::Missing("current City requirement set"))
+        super::Requirements::state(self.requirements, self.state, id)
+            .map_err(|e| Error::RequirementState(Box::new(e)))
     }
     fn ensure_applied_subject(&mut self) -> Result<(), Error> {
-        let owner = self.record()?.owner;
-        if !self.record()?.applied_subjects.contains(&owner) {
-            self.record_mut()?.applied_subjects.push(owner);
+        let subject = self.subject;
+        let key = collection::city_key(self.runtime, subject)?;
+        let at = self
+            .record()?
+            .applied_subjects
+            .iter()
+            .map(|r| collection::city_key(self.runtime, *r))
+            .collect::<Result<Vec<_>, _>>()?
+            .partition_point(|r| *r < key);
+        if self.record()?.applied_subjects.get(at).copied() != Some(subject) {
+            self.record_mut()?.applied_subjects.insert(at, subject);
         }
         Ok(())
     }
     fn is_repeatable(&self) -> Result<bool, Error> {
-        Ok(self.definition.repeatable)
+        Ok(self.record()?.definition.repeatable)
     }
     fn apply_effect(&mut self) -> Result<bool, Error> {
         c6_core::unit_moved_signal::modifiers::apply_effect(self).map_err(|error| match error {
@@ -303,13 +325,10 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         Ok(true)
     }
     fn unsubscribe_subject_requirement(&mut self) -> Result<(), Error> {
-        let record = self.record()?;
-        let set = record
-            .tracked
-            .as_ref()
-            .and_then(|v| v.requirement_set)
+        let set = c6_core::unit_moved_signal::modifiers::Context::tracked(self)?
+            .requirement_set
             .ok_or(Error::Missing("subject requirement subscription"))?;
-        let receiver = record.identity;
+        let receiver = self.record()?.identity;
         self.requirements
             .sets_mut()
             .unsubscribe(receiver, set)
@@ -321,6 +340,13 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         ))
     }
     fn remove_effects(&mut self) -> Result<(), Error> {
+        // For the explicitly qualified stock metadata scope, the native pure
+        // IsPermanent getter precedes the zero-applied guard without mutation.
+        if self.record()?.hooks == collection::Hooks::BaseNoops
+            && c6_core::unit_moved_signal::modifiers::Context::tracked(self)?.applied == 0
+        {
+            return Ok(());
+        }
         Err(Error::Missing("City modifier removal continuation"))
     }
 }
@@ -330,7 +356,7 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
     type Error = Error;
     fn mark_subject_affected(&mut self) -> Result<(), Error> {
         let record = self.record()?;
-        let (owner, id, definition) = (record.owner, record.instance, record.definition.clone());
+        let (owner, id, definition) = (self.subject, record.instance, record.definition.id.clone());
         self.creation_mut()?
             .object_mut(owner)?
             .affected
@@ -341,7 +367,7 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         Ok(self.record()?.modifier.suppressed)
     }
     fn subject_stack_limit(&self) -> Result<Option<u16>, Error> {
-        Ok(Some(self.definition.subject_stack_limit))
+        Ok(Some(self.record()?.definition.subject_stack_limit))
     }
     fn affected_count(&self) -> Result<i32, Error> {
         let record = self.record()?;
@@ -349,10 +375,10 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .creation()?
             .objects
             .iter()
-            .find(|v| v.handle == record.owner)
+            .find(|v| v.handle == self.subject)
             .ok_or(Error::Missing("current affected City"))?
             .affected
-            .count(&record.definition))
+            .count(&record.definition.id))
     }
     fn log_applying(&mut self) -> Result<(), Error> {
         Ok(())
@@ -362,17 +388,20 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
     }
     fn apply_concrete_effect(&mut self) -> Result<bool, Error> {
         let record = self.record()?;
-        let (context, effect) = self
+        let (_, effect) = self
             .runtime
             .city_effect(record.effect)
             .map_err(Error::Query)?;
-        let super::ContextObject::City(city) =
-            self.runtime.object(context).map_err(Error::Query)?.kind
+        let super::ContextObject::City(city) = self
+            .runtime
+            .object(self.subject)
+            .map_err(Error::Query)?
+            .kind
         else {
             return Err(Error::Missing("ICity effect context"));
         };
         effect
-            .apply(self.state, city, &[], false, self.effects)
+            .apply(self.state, city, self.features, false, self.effects)
             .map_err(Error::Effect)
     }
 }
@@ -383,15 +412,20 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
     fn instance_id(&self) -> Result<i32, Error> {
         Ok(self.record()?.instance)
     }
-    // Both concrete effect classes inherit the single-RET BaseEffect hooks.
     fn before_update(&mut self, _: i32) -> Result<(), Error> {
-        Ok(())
+        match self.record()?.hooks {
+            collection::Hooks::BaseNoops => Ok(()),
+            collection::Hooks::Unsupported => Err(Error::Missing("City effect BeforeUpdate hook")),
+        }
     }
     fn after_update(&mut self, _: i32) -> Result<(), Error> {
-        Ok(())
+        match self.record()?.hooks {
+            collection::Hooks::BaseNoops => Ok(()),
+            collection::Hooks::Unsupported => Err(Error::Missing("City effect AfterUpdate hook")),
+        }
     }
     fn subscribe_destroyed(&mut self) -> Result<Subscription, Error> {
-        let (owner, instance) = (self.record()?.owner, self.record()?.instance);
+        let (owner, instance) = (self.subject, self.record()?.instance);
         self.creation_mut()?
             .object_mut(owner)?
             .destroyed
@@ -399,20 +433,38 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .map_err(Error::Ring)
     }
     fn tracked_exists(&self) -> Result<bool, Error> {
-        Ok(self.record()?.tracked.is_some())
+        Ok(self
+            .record()?
+            .tracked
+            .iter()
+            .any(|r| r.subject == self.subject))
     }
     fn insert_tracked(
         &mut self,
         tracked: c6_core::unit_moved_signal::modifiers::TrackedSubject,
         token: Subscription,
     ) -> Result<(), Error> {
-        let record = self.record_mut()?;
-        record.tracked = Some(tracked);
-        record.destruction = Some(token);
+        let subject = self.subject;
+        let key = collection::city_key(self.runtime, subject)?;
+        let at = self
+            .record()?
+            .tracked
+            .iter()
+            .map(|r| collection::city_key(self.runtime, r.subject))
+            .collect::<Result<Vec<_>, _>>()?
+            .partition_point(|r| *r < key);
+        self.record_mut()?.tracked.insert(
+            at,
+            collection::Subject {
+                subject,
+                state: tracked,
+                destruction: token,
+            },
+        );
         Ok(())
     }
     fn unsubscribe_temporary(&mut self, token: Subscription) -> Result<(), Error> {
-        let owner = self.record()?.owner;
+        let owner = self.subject;
         self.creation_mut()?
             .object_mut(owner)?
             .destroyed
@@ -420,11 +472,17 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .map_err(Error::Ring)
     }
     fn has_subject_requirement_definition(&self) -> Result<bool, Error> {
-        Ok(self.definition.subject_requirements.is_some())
+        Ok(self.record()?.definition.subject_requirements.is_some())
     }
     fn create_subject_requirement_set(&mut self) -> Result<Option<u64>, Error> {
         let record = self.record()?;
         let (owner, receiver) = (record.owner, record.identity);
+        let subject = self.subject;
+        let definition = record
+            .definition
+            .subject_requirements
+            .clone()
+            .ok_or(Error::Missing("subject definition"))?;
         let context = self
             .runtime
             .object(owner)
@@ -436,14 +494,12 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
                 effects: self.runtime,
                 requirements: self.requirements,
                 maximum_loyalty: self.maximum_loyalty,
+                factory: self.factory,
             },
             receiver,
             context,
-            c6_core::melee_attack::proposals::subject_sets::Subject::ModifierObject(owner),
-            self.definition
-                .subject_requirements
-                .as_deref()
-                .ok_or(Error::Missing("subject definition"))?,
+            c6_core::melee_attack::proposals::subject_sets::Subject::ModifierObject(subject),
+            &definition,
         )
         .map_err(|e| Error::Requirement(Box::new(e)))
     }
@@ -570,25 +626,28 @@ impl EffectRuntime {
             instance,
             owner,
             effect: effect_handle,
-            definition: definition.id.clone(),
+            definition: definition.clone(),
             modifier: c6_core::unit_moved_signal::modifiers::Modifier {
                 enabled: true,
                 suppressed: false,
                 owner_requirement_set: None,
             },
-            tracked: None,
-            owner_destruction,
-            destruction: None,
+            tracked: Vec::new(),
+            owner_destruction: Some(owner_destruction),
             applied_subjects: Vec::new(),
             activated: false,
+            hooks: collection::Hooks::BaseNoops,
         });
         // Factory hooks for these classes are BaseEffect single-RET methods.
         // Owner.GetItems yields exactly the same registered owner object.
+        let mut factory = collection::MissingRequirements;
         c6_core::unit_moved_signal::collection_addition::add(&mut Apply {
             state,
             runtime: self,
             requirements,
-            definition,
+            subject: owner,
+            factory: &mut factory,
+            features: &[],
             maximum_loyalty: maximum,
             index,
             effects,
@@ -603,7 +662,7 @@ impl EffectRuntime {
             .modifiers
             .iter()
             .find(|v| v.instance == instance)
-            .map(|v| v.owner_destruction)
+            .and_then(|v| v.owner_destruction)
             .ok_or(Error::Missing("created City modifier"))
     }
     pub fn next_city_modifier_id(&self) -> Result<i32, Error> {

@@ -38,12 +38,15 @@ pub enum ContextObject {
 /// application counts/lifetime; these do not create another subject registry.
 #[derive(Clone, Debug)]
 pub enum CityEffect {
+    /// Retained class identity whose concrete gameplay leaf is unavailable.
+    Unsupported { native_type: u64 },
     FeatureProduction(c6_core::found_city::feature_production::Effect),
     IdentityPerTurn { amount: i32 },
     YieldChanges { yields: Vec<u32>, amounts: Vec<i32> },
 }
 #[derive(Debug)]
 pub enum CityEffectError {
+    Unsupported { native_type: u64 },
     Query(QueryError),
     FeatureProduction(c6_core::found_city::feature_production::Error),
     Production(crate::city_production_turn::Error),
@@ -66,6 +69,7 @@ impl CityEffect {
             )));
         }
         match self {
+            Self::Unsupported { native_type } => Err(CityEffectError::Unsupported { native_type: *native_type }),
             Self::FeatureProduction(effect) => c6_core::found_city::feature_production::apply(
                 state, city, features, *effect, remove,
             )
