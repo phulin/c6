@@ -805,21 +805,30 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 if !c.boost_manager.active_boosts.is_empty() {
                     return Err(Error::Unsupported("NPC Culture existing boost ownership"));
                 }
-                if !state
+                for slot in state
                     .world()
                     .player(owner)
                     .map_err(|_| Error::Unsupported("NPC Culture units owner"))?
                     .unit_records()
                     .map_err(|_| Error::Unsupported("NPC Culture unit roster"))?
-                    .is_empty()
                 {
-                    return Err(Error::Unsupported("NPC Culture unit policy suffix"));
+                    // 202ff1e tests the current controller before 202fc5b
+                    // checks the Archaeology home-city sentinel. Ordinary
+                    // camp units leave before city/plot queries or AiEvent.
+                    let unit = &slot.value;
+                    if unit.ai_controller == u32::MAX
+                        && unit.k_archaeology.k_home_city_id != u32::MAX
+                    {
+                        return Err(Error::Unsupported(
+                            "NPC archaeologist analysis continuation",
+                        ));
+                    }
                 }
                 // QueueNextCivic returns at203179b to202f673. Its suffix
-                // sorts analyses, manages new boost policies and walks units
-                // for naturalist/rock-band policy requests. Congress202f6d2
-                // is a separate predecessor branch, not reached from this
-                // QueueNextCivic continuation.
+                // sorts analyses and manages new boost policies. Congress
+                // 202f6d2 is a separate predecessor branch, not reached from
+                // this QueueNextCivic continuation. No source RNG or gameplay
+                // writes occur in the rejected ordinary-unit traversal.
                 Ok(())
             }
             _ => Err(Error::Unsupported("NPC research suffix kind")),
