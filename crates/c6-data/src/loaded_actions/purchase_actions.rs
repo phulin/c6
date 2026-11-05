@@ -20,6 +20,7 @@ pub enum Error<E> {
     Rules(crate::Error),
     Production(production::Error),
     Missing(&'static str),
+    Query(E),
     Effect(E),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -75,6 +76,12 @@ fn parameter(rules: &Rules, name: &'static str) -> Result<i32, Error<()>> {
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error<()>> {
+        if !matches!(
+            rules.profile(),
+            crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
+        ) {
+            return Err(Error::Missing("Linux purchase rules profile"));
+        }
         let registry = collection(rules, "Units", "UnitType")
             .map_err(|_| Error::Missing("purchase Units registry"))?;
         let yields = collection(rules, "Yields", "YieldType")
@@ -119,7 +126,7 @@ impl Definitions {
                 native_index: units.len(),
             });
         }
-        let bonuses = collection(rules, "GovernmentBonuses", "GovernmentBonusType")
+        let bonuses = collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
             .map_err(|_| Error::Missing("purchase GovernmentBonuses"))?;
         let divisor = parameter(rules, "PURCHASE_DIVISOR")?;
         if divisor == 0 {
@@ -390,7 +397,7 @@ pub fn purchase_unit<E: Effects>(
     }
     let move_after = effects
         .can_move_after_purchase(state, d.native_index)
-        .map_err(Error::Effect)?;
+        .map_err(Error::Query)?;
     let next = p
         .treasury
         .gold_balance_q8
