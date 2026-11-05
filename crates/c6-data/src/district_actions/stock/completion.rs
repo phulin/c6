@@ -443,9 +443,10 @@ impl changes::Context for RequirementContext<'_> {
             .ok_or(sets::Error::Context(production::Error::Unsupported(
                 "district requirement Player",
             )))?;
-        Ok(i32::from(player.districts.records.entries.iter().any(
+        // PlayerHasDistrict::Test returns raw2 for met and raw1 for unmet.
+        Ok(if player.districts.records.entries.iter().any(
             |r| r.value.district_hash == hash && r.value.is_complete && !r.value.pillaged,
-        )))
+        ) { 2 } else { 1 })
     }
     fn modifier_changed(
         &mut self,
