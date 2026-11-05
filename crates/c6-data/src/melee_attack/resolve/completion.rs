@@ -1,8 +1,10 @@
 //! Outer Resolve tail after kill awards, loyalty/religion and fresh proposal.
 //! Callback providers must execute real current subscribers before returning.
+pub mod boosts;
 pub mod eras;
 pub mod mayhem;
 pub mod targets;
+pub mod stock_guards;
 use super::{post_yields::RequiresCombatAftermath, GeneratedMembers};
 use c6_core::{loaded_state::LoadedState, map::UnitReference};
 #[derive(Debug)]
