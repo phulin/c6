@@ -48,6 +48,9 @@ impl<B: lifecycle::Backend + ?Sized> lifecycle::Backend for &mut B {
     }
 }
 impl<B: processing::Backend + ?Sized> processing::Backend for &mut B {
+    fn pantheon_needed(&self, s: &LoadedState, owner: i32) -> Result<bool, processing::Error> {
+        (**self).pantheon_needed(s, owner)
+    }
     fn manager_initialized(&mut self, s: &mut LoadedState) -> Result<bool, processing::Error> {
         (**self).manager_initialized(s)
     }

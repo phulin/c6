@@ -55,6 +55,10 @@ pub struct Allocation {
 /// There are no successful defaults. Unknown script consumers, text effects,
 /// allocator failure and pool history must be reported by the implementation.
 pub trait Backend: lifecycle::Backend {
+    /// ChoosePantheon::IsExpired2d29f70 repeats current human/religion queries.
+    fn pantheon_needed(&self, _state: &LoadedState, _owner: i32) -> Result<bool, Error> {
+        Err(Error::Unsupported("current pantheon eligibility binding"))
+    }
     fn manager_initialized(&mut self, state: &mut LoadedState) -> Result<bool, Error>;
     fn game_uninitializing(&mut self, state: &mut LoadedState) -> Result<bool, Error>;
     fn allocate(&mut self, state: &mut LoadedState, type_hash: u32) -> Result<Allocation, Error>;
@@ -239,6 +243,7 @@ impl<'a, B: Backend> Provider<'a, B> {
         let expected = match record.type_hash {
             choose_tech::TYPE_HASH => Some(choose_tech::VTABLE_ADDRESSPOINT),
             0x40fb81ed => Some(0x3af4b80),
+            0x9456ed4a => Some(0x3af4ec0),
             command_units::TYPE_HASH => Some(command_units::VTABLE_ADDRESSPOINT),
             city_range_attack::TYPE_HASH => Some(city_range_attack::VTABLE_ADDRESSPOINT),
             hash => culture::Kind::from_hash(hash).map(|k| k.vtable()),
@@ -265,6 +270,7 @@ impl<'a, B: Backend> Provider<'a, B> {
         }
         let owner = i32::from(record.id.owner);
         let survives = match record.type_hash {
+            0x9456ed4a => self.backend.pantheon_needed(self.state, owner)?,
             // ChooseCityProduction::IsExpired2d29800. This only queries the
             // current City; the external policy retains its production choice.
             0x40fb81ed => self
@@ -681,7 +687,9 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                     .map_err(|_| Error::Unsupported("actual tactical notification phase")),
                 // ChooseCityProduction::IsValidForPhase2d29870 forwards to
                 // the same strategic-command phase query.
-                0x3af4b80
+                // ChoosePantheon::IsValidForPhase2d29fc0 uses this query too.
+                0x3af4ec0
+                | 0x3af4b80
                 | choose_tech::VTABLE_ADDRESSPOINT
                 | city_range_attack::VTABLE_ADDRESSPOINT => {
                     Ok(s.inputs.culture.valid_for_phase(s.state)?)

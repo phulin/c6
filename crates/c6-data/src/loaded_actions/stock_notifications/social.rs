@@ -58,6 +58,49 @@ fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
         .find(|p| p.header.owner == owner)
         .ok_or(Error::Unsupported("social notification retained player"))
 }
+/// ChoosePantheon IsNeeded and IsExpired use the same live eligibility query.
+pub(super) fn pantheon_needed(
+    state: &LoadedState,
+    capabilities: &c6_core::game_capabilities::Membership,
+    owner: i32,
+) -> Result<bool, Error> {
+    if state
+        .player_slot_status(owner)
+        .map_err(|_| Error::Unsupported("social notification human"))?
+        != 3
+    {
+        return Ok(false);
+    }
+    if player(state, owner)?.religion.pantheon_hash != u32::MAX {
+        return Ok(false);
+    }
+    if !capabilities.has(0xb9fc347c) {
+        return Ok(false);
+    }
+    if player(state, owner)?.religion.pantheon_hash != u32::MAX {
+        return Ok(false);
+    }
+    if state
+        .retained()
+        .religion
+        .records
+        .iter()
+        .any(|r| r.founder == owner)
+    {
+        return Err(Error::Unsupported(
+            "pantheon notification founded religion type index",
+        ));
+    }
+    if state.retained().religion.next_pantheon_founder != owner {
+        return Ok(false);
+    }
+    Ok(player(state, owner)?.religion.faith_balance_q8
+        >= state
+            .retained()
+            .religion
+            .minimum_faith_for_next_pantheon
+            .wrapping_shl(8))
+}
 /// Query order is observable even for an expired candidate. In particular,
 /// religion lookup precedes the human check for Religion and Belief.
 fn needed(
@@ -73,40 +116,7 @@ fn needed(
             .map_err(|_| Error::Unsupported("social notification human"))
     };
     match kind {
-        Kind::Pantheon => {
-            if !human()? {
-                return Ok(false);
-            }
-            if player(state, owner)?.religion.pantheon_hash != u32::MAX {
-                return Ok(false);
-            }
-            if !queries.capabilities.has(0xb9fc347c) {
-                return Ok(false);
-            }
-            if player(state, owner)?.religion.pantheon_hash != u32::MAX {
-                return Ok(false);
-            }
-            if state
-                .retained()
-                .religion
-                .records
-                .iter()
-                .any(|r| r.founder == owner)
-            {
-                return Err(Error::Unsupported(
-                    "pantheon notification founded religion type index",
-                ));
-            }
-            if state.retained().religion.next_pantheon_founder != owner {
-                return Ok(false);
-            }
-            Ok(player(state, owner)?.religion.faith_balance_q8
-                >= state
-                    .retained()
-                    .religion
-                    .minimum_faith_for_next_pantheon
-                    .wrapping_shl(8))
-        }
+        Kind::Pantheon => pantheon_needed(state, queries.capabilities, owner),
         Kind::Religion | Kind::Belief => {
             // Native non-const lookup marks archive bookkeeping only; it does
             // not alter a religion payload, callbacks, policy or RNG.
@@ -193,6 +203,9 @@ impl<P> Effects<'_, '_, '_, P> {
         Error::Unsupported("stock social effects; inspect backend.last_error")
     }
     fn send(&mut self, state: &mut LoadedState, owner: i32, hash: u32) -> Result<(), Error> {
+        // Retain immutable rules membership for later notification Update.
+        self.backend
+            .bind_social_capabilities(self.queries.capabilities);
         let Some(_) = self.notifications.find(hash) else {
             return Ok(());
         };
@@ -327,6 +340,17 @@ pub fn run<P>(
         },
         owner,
     )
+}
+
+impl<P> Runtime<'_, P> {
+    /// Bind complete current capability membership for attached Pantheon
+    /// notification queries, including notifications imported before upkeep.
+    pub fn bind_social_capabilities(
+        &mut self,
+        capabilities: &c6_core::game_capabilities::Membership,
+    ) {
+        self.social_capabilities = Some(capabilities.clone());
+    }
 }
 
 #[cfg(test)]

@@ -92,6 +92,7 @@ pub enum Notice {
 pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
     growth: Option<growth::Inputs>,
+    social_capabilities: Option<c6_core::game_capabilities::Membership>,
     queued_operations: Option<Box<dyn queued_operations::Services<P> + 'a>>,
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
@@ -163,6 +164,7 @@ impl<'a, P> Runtime<'a, P> {
             unit_creation: None,
             modifier_owners: None,
             growth: None,
+            social_capabilities: None,
             unit_production_signals: None,
             movement: None,
             resource_revelation: None,
@@ -412,6 +414,17 @@ impl<P> lifecycle::Backend for Runtime<'_, P> {
 }
 
 impl<P> processing::Backend for Runtime<'_, P> {
+    fn pantheon_needed(&self, state: &LoadedState, owner: i32) -> Result<bool, processing::Error> {
+        self.check(state)?;
+        social::pantheon_needed(
+            state,
+            self.social_capabilities.as_ref().ok_or(
+                processing::Error::Unsupported("current social capability membership"),
+            )?,
+            owner,
+        )
+        .map_err(|_| processing::Error::Unsupported("current pantheon eligibility"))
+    }
     fn manager_initialized(&mut self, state: &mut LoadedState) -> Result<bool, processing::Error> {
         self.check(state)?;
         self.reached.push("notification manager initialized");
