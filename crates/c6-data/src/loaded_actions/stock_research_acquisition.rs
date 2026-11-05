@@ -10,6 +10,7 @@ pub struct Binding {
     pub players: Vec<Player>,
     pub game_technology: Option<Vec<GameSubscriber>>,
     pub game_civic: Option<Vec<GameSubscriber>>,
+    pub resource_unlocks: Option<ResourceUnlocks>,
 }
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -51,7 +52,82 @@ pub enum GameSubscriber {
     EmptyScriptRegistry,
     FewerThanEightEverMajors { count: usize },
 }
+#[derive(Clone, Debug)]
+pub struct ResourceUnlocks {
+    definitions: Vec<ResourceUnlockDefinition>,
+    subscribers: Vec<u64>,
+    pub dispatches: Vec<(i32, i32)>,
+}
+#[derive(Clone, Debug)]
+struct ResourceUnlockDefinition {
+    index: i32,
+    hash: u32,
+    technology: Option<i32>,
+    civic: Option<i32>,
+}
 impl<P> Runtime<'_, P> {
+    /// Current Resource definition order and complete Game.ResourceUnlocked
+    /// registration order; no scalar/reset values are synthesized.
+    pub fn bind_research_resource_unlocks(
+        &mut self,
+        state: &LoadedState,
+        rules: &crate::Rules,
+        subscribers: Vec<u64>,
+    ) -> Result<(), String> {
+        self.check(state).map_err(|e| e.to_string())?;
+        use crate::unit_initialization_definitions::collection;
+        let resources =
+            collection(rules, "Resources", "ResourceType").map_err(|e| format!("{e:?}"))?;
+        let techs =
+            collection(rules, "Technologies", "TechnologyType").map_err(|e| format!("{e:?}"))?;
+        let civics = collection(rules, "Civics", "CivicType").map_err(|e| format!("{e:?}"))?;
+        let table = rules
+            .gameplay()
+            .table("Resources")
+            .ok_or("research Resources table")?;
+        let mut definitions = Vec::new();
+        for (index, definition) in resources.entries().iter().enumerate() {
+            let row = table
+                .row_by_id(definition.database_rowid)
+                .ok_or("research Resource row")?;
+            let reference = |column,
+                             registry: &crate::registry::LinuxDefinitionRegistry|
+             -> Result<Option<i32>, String> {
+                match row.get(column).map_err(|e| e.to_string())? {
+                    crate::SqlValue::Null => Ok(None),
+                    crate::SqlValue::Text(name) => Ok(registry
+                        .find_index(crate::registry::linux_type_hash(name))
+                        .map(|i| i as i32)),
+                    _ => Err(format!("research resource {column}")),
+                }
+            };
+            definitions.push(ResourceUnlockDefinition {
+                index: index as i32,
+                hash: crate::registry::linux_type_hash(&definition.type_name),
+                technology: reference("PrereqTech", &techs)?,
+                civic: reference("PrereqCivic", &civics)?,
+            });
+        }
+        let binding = self
+            .research_acquisition
+            .as_mut()
+            .ok_or("research acquisition binding")?;
+        if binding.binding != *state.binding() || binding.resource_unlocks.is_some() {
+            return Err("research resource unlock binding differs or already installed".into());
+        }
+        binding.resource_unlocks = Some(ResourceUnlocks {
+            definitions,
+            subscribers,
+            dispatches: Vec::new(),
+        });
+        Ok(())
+    }
+    pub fn research_resource_unlock_dispatches(&self) -> &[(i32, i32)] {
+        self.research_acquisition
+            .as_ref()
+            .and_then(|binding| binding.resource_unlocks.as_ref())
+            .map_or(&[], |inputs| inputs.dispatches.as_slice())
+    }
     pub fn bind_research_acquisition(
         &mut self,
         state: &LoadedState,
@@ -78,6 +154,94 @@ impl<P> Runtime<'_, P> {
     }
 }
 impl<P> Effects<'_, '_, P> {
+    fn technology_resource_unlock(
+        &mut self,
+        state: &LoadedState,
+        player: i32,
+        index: i32,
+    ) -> Result<(), String> {
+        use c6_core::yields::{PrerequisiteKind, PrerequisiteState};
+        let binding = self
+            .backend
+            .research_acquisition
+            .as_mut()
+            .ok_or("research acquisition binding")?;
+        if binding.binding != *state.binding() {
+            return Err("research acquisition binding differs".into());
+        }
+        let inputs = binding
+            .resource_unlocks
+            .as_mut()
+            .ok_or("current resource unlock definitions and signal")?;
+        for resource in &inputs.definitions {
+            if resource.technology != Some(index) {
+                continue;
+            }
+            if let Some(civic) = resource.civic {
+                let mask = state
+                    .world()
+                    .acquired_mask(player, PrerequisiteKind::Civic)
+                    .map_err(|e| format!("{e:?}"))?;
+                if !mask.get(civic as usize).copied().unwrap_or(false)
+                    || !state
+                        .world()
+                        .globally_available(PrerequisiteKind::Civic, civic)
+                        .map_err(|e| format!("{e:?}"))?
+                {
+                    continue;
+                }
+            }
+            // OnPlayerTechResearched dispatches this before iterating plots.
+            inputs.dispatches.push((player, resource.index));
+            if let Some(listener) = inputs.subscribers.first() {
+                return Err(format!(
+                    "Game.ResourceUnlocked subscriber {listener} for resource {}",
+                    resource.index
+                ));
+            }
+            for (plot_index, plot) in state.world().map().plots.iter().enumerate() {
+                if plot.resource_hash != resource.hash {
+                    continue;
+                }
+                let sight = self.sight.ok_or("current research shared visibility")?;
+                let normal = sight
+                    .shared(player)?
+                    .0
+                    .iter()
+                    .find(|layer| layer.type_hash == c6_core::visibility_change::BASE_LAYER_HASH)
+                    .ok_or("current research normal shared layer")?;
+                let visible = *normal
+                    .values
+                    .get(plot_index)
+                    .ok_or("research shared visibility cell")?
+                    > 0;
+                let own = state
+                    .world()
+                    .visibility(player)
+                    .ok_or("research retained visibility")?;
+                let revealed = *own
+                    .revealed
+                    .get(plot_index)
+                    .ok_or("research revealed cell")?;
+                if revealed > 1 {
+                    return Err("noncanonical resource reveal byte".into());
+                }
+                // UpdateRevealedAt and its caller both return for state zero.
+                // No resource amounts, layers, caches, signals or RNG are
+                // changed by either source method on this branch.
+                if visible || revealed != 0 {
+                    return Err(format!(
+                        "positive resource reveal continuation resource {} plot {}",
+                        resource.index, plot_index
+                    ));
+                }
+            }
+        }
+        self.backend
+            .reached
+            .push("stock technology resource unlock signal and unrevealed plot guards");
+        Ok(())
+    }
     pub(super) fn game_acquired(
         &mut self,
         state: &mut LoadedState,
@@ -192,7 +356,9 @@ impl<P> Effects<'_, '_, P> {
                                 .civic_acquisition_filters(index)
                                 .map_err(|e| source_failure(format!("{e:?}")))?;
                             if filters.2 {
-                                return Err(failure());
+                                return Err(source_failure(
+                                    "positive civic random-agenda initialization".into(),
+                                ));
                             }
                             filters.1
                         } else {
@@ -201,7 +367,14 @@ impl<P> Effects<'_, '_, P> {
                                 .map_err(|e| source_failure(format!("{e:?}")))?
                         };
                         if unlock {
-                            return Err(failure());
+                            if kind == research::Kind::Technology {
+                                self.technology_resource_unlock(state, player, index)
+                                    .map_err(source_failure)?;
+                            } else {
+                                return Err(source_failure(
+                                    "positive civic resource unlock continuation".into(),
+                                ));
+                            }
                         }
                     }
                 }

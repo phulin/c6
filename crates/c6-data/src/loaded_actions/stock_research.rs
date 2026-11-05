@@ -46,6 +46,7 @@ pub struct Effects<'s, 'a, P> {
     pub choices: &'s choose_tech::Definitions,
     pub choice_graph: Option<&'s choose_tech::GameTechs>,
     pub culture: Option<&'s CultureInputs<'s>>,
+    pub sight: Option<&'s crate::unit_sight_state::Runtime>,
 }
 fn current_age_flag(values: Option<&[u8]>, owner: i32) -> Option<i32> {
     if owner == -1 {
