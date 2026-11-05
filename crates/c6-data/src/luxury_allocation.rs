@@ -217,7 +217,7 @@ pub fn allocate(
         let owned = amounts.value[0]
             .wrapping_sub(count(&resources.reserved_resources, resource.hash).max(0));
         let imported = amounts.value[1];
-        if (owned <= 0 && imported <= 0) || count(&resources.banned_resources, resource.hash) != 0 {
+        if (owned <= 0 && imported <= 0) || count(&resources.banned_resources, resource.hash) > 0 {
             continue;
         }
         let mut capacity = resource.happiness.max(0);
