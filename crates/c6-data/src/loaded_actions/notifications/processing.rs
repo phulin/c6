@@ -218,6 +218,7 @@ impl<'a, B: Backend> Provider<'a, B> {
         .ok_or(Error::Unsupported("notification expiry virtual binding"))?;
         let expected = match record.type_hash {
             choose_tech::TYPE_HASH => Some(choose_tech::VTABLE_ADDRESSPOINT),
+            0x40fb81ed => Some(0x3af4b80),
             command_units::TYPE_HASH => Some(command_units::VTABLE_ADDRESSPOINT),
             city_range_attack::TYPE_HASH => Some(city_range_attack::VTABLE_ADDRESSPOINT),
             hash => culture::Kind::from_hash(hash).map(|k| k.vtable()),
@@ -244,6 +245,12 @@ impl<'a, B: Backend> Provider<'a, B> {
         }
         let owner = i32::from(record.id.owner);
         let survives = match record.type_hash {
+            // ChooseCityProduction::IsExpired2d29800. This only queries the
+            // current City; the external policy retains its production choice.
+            0x40fb81ed => self.state.retained().players.iter()
+                .find(|p| p.header.owner == owner)
+                .and_then(|p| p.cities.records.entries.iter().find(|c|c.value.header.id==record.component.id))
+                .is_some_and(|c|!c.value.header.delayed_death && c.value.build_queue.entries.is_empty()),
             choose_tech::TYPE_HASH => self
                 .inputs
                 .tech
@@ -640,7 +647,9 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                         i32::from(record.id.owner),
                     )
                     .map_err(|_| Error::Unsupported("actual tactical notification phase")),
-                choose_tech::VTABLE_ADDRESSPOINT | city_range_attack::VTABLE_ADDRESSPOINT => {
+                // ChooseCityProduction::IsValidForPhase2d29870 forwards to
+                // the same strategic-command phase query.
+                0x3af4b80 | choose_tech::VTABLE_ADDRESSPOINT | city_range_attack::VTABLE_ADDRESSPOINT => {
                     Ok(s.inputs.culture.valid_for_phase(s.state)?)
                 }
                 value
