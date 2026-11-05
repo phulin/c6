@@ -1,11 +1,12 @@
 //! Natural ordinary-building progress on the persistent stock turn runtime.
 //!
 //! This adapter shares current city queries with upkeep. It supports progress,
-//! including ordinary construction-plot initialization, but does not complete
-//! buildings or choose the next production order. Errors retain any mutation
+//! including ordinary construction-plot initialization and externally chosen
+//! ordinary-building queue selection. Building completion remains separate.
+//! Errors retain any mutation
 //! prefix already performed by the production kernel.
-use super::Runtime;
-use crate::city_production_turn::{self as production, appeal, buildings};
+use super::{Decision, Runtime};
+use crate::city_production_turn::{self as production, appeal, buildings, selection};
 use c6_core::{
     city_production::{Order, QueueEntry},
     loaded_state::LoadedState,
@@ -28,17 +29,17 @@ pub struct Record {
     pub report: buildings::Report,
 }
 
-pub struct Effects<'runtime, 'inputs, P> {
+pub struct Effects<'runtime, 'inputs, 'definitions, P> {
     runtime: &'runtime mut Runtime<'inputs, P>,
-    definitions: &'inputs buildings::Definitions,
-    appeal: &'inputs appeal::Definitions,
+    definitions: &'definitions buildings::Definitions,
+    appeal: &'definitions appeal::Definitions,
     pub reports: Vec<Record>,
 }
-impl<'runtime, 'inputs, P> Effects<'runtime, 'inputs, P> {
+impl<'runtime, 'inputs, 'definitions, P> Effects<'runtime, 'inputs, 'definitions, P> {
     pub fn new(
         runtime: &'runtime mut Runtime<'inputs, P>,
-        definitions: &'inputs buildings::Definitions,
-        appeal: &'inputs appeal::Definitions,
+        definitions: &'definitions buildings::Definitions,
+        appeal: &'definitions appeal::Definitions,
         _: Scope,
     ) -> Self {
         Self {
@@ -47,6 +48,43 @@ impl<'runtime, 'inputs, P> Effects<'runtime, 'inputs, P> {
             appeal,
             reports: Vec::new(),
         }
+    }
+    /// Apply an external building decision to this SAME current City/runtime.
+    /// Legality is evaluated before queue writes; no production policy runs.
+    /// Reached stock queue reports use the already-bound current city queries.
+    #[allow(clippy::too_many_arguments)]
+    pub fn choose_building(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        building_hash: u32,
+        choices: &selection::Definitions,
+        current: &selection::Current<'_>,
+        queries: &impl selection::Queries,
+    ) -> Result<(), production::Error> {
+        self.check(state)?;
+        if self.runtime.city_query_inputs().is_none() {
+            return Err(production::Error::Unsupported(
+                "current selection report query services",
+            ));
+        }
+        let definitions = self.definitions;
+        selection::append_building(
+            state,
+            owner,
+            city,
+            building_hash,
+            choices,
+            definitions,
+            current,
+            queries,
+            self,
+        )?;
+        // A successful live queue choice resolves this City's semantic prompt.
+        // Other decisions and native notification storage are untouched.
+        resolve_city_production(&mut self.runtime.decisions, owner, city);
+        Ok(())
     }
     fn check(&self, state: &LoadedState) -> Result<(), production::Error> {
         self.runtime
@@ -63,7 +101,7 @@ fn building(entry: &QueueEntry) -> Result<u32, production::Error> {
         )),
     }
 }
-impl<P> production::Effects for Effects<'_, '_, P> {
+impl<P> production::Effects for Effects<'_, '_, '_, P> {
     fn calculate_yield_q8(
         &mut self,
         state: &mut LoadedState,
@@ -118,11 +156,18 @@ impl<P> production::Effects for Effects<'_, '_, P> {
     ) -> Result<bool, production::Error> {
         Err(production::Error::Unsupported("stock building completion"))
     }
-    fn new_front(&mut self, _: &mut LoadedState, _: i32, _: u32) -> Result<(), production::Error> {
-        Err(production::Error::Unsupported("stock new production front"))
+    fn new_front(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<(), production::Error> {
+        self.check(state)?;
+        let definitions = self.definitions;
+        selection::new_front(state, owner, city, definitions, self)
     }
 }
-impl<P> buildings::Effects for Effects<'_, '_, P> {
+impl<P> buildings::Effects for Effects<'_, '_, '_, P> {
     fn current_era(&mut self, state: &LoadedState) -> Result<i32, production::Error> {
         self.check(state)?;
         state
@@ -180,7 +225,17 @@ impl<P> buildings::Effects for Effects<'_, '_, P> {
         match report {
             buildings::Report::ConstructionStarted
             | buildings::Report::QueueChanged
+            | buildings::Report::ProductionChanged
+            | buildings::Report::QueueEntryChanged { .. }
             | buildings::Report::BuildingProgress { .. } => {
+                if matches!(
+                    report,
+                    buildings::Report::QueueChanged
+                        | buildings::Report::ProductionChanged
+                        | buildings::Report::QueueEntryChanged { .. }
+                ) {
+                    production::run_build_queue_report_queries(state, owner, city, self)?;
+                }
                 self.reports.push(Record {
                     owner,
                     city,
@@ -214,5 +269,91 @@ impl<P> buildings::Effects for Effects<'_, '_, P> {
         Err(production::Error::Unsupported(
             "stock building completion signals",
         ))
+    }
+}
+
+impl<P> production::QueueEffects for Effects<'_, '_, '_, P> {
+    fn queue_changed(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        index: usize,
+    ) -> Result<(), production::Error> {
+        self.check(state)?;
+        let value = state.city(owner, city)?;
+        let location = [value.header.location_x, value.header.location_y];
+        let entry = value
+            .build_queue
+            .entries
+            .get(index)
+            .ok_or(production::Error::Unsupported("current queue entry"))?;
+        let hash = building(entry)?;
+        buildings::Effects::report(
+            self,
+            state,
+            owner,
+            city,
+            hash,
+            location,
+            buildings::Report::QueueEntryChanged { index },
+        )
+    }
+}
+impl<P> production::QueueReportQueries for Effects<'_, '_, '_, P> {
+    fn get_yield_q8(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        yield_index: i32,
+        kind: Option<u32>,
+    ) -> Result<i32, production::Error> {
+        self.check(state)?;
+        self.runtime
+            .current_city_yield(state, owner, city, yield_index, kind.unwrap_or(u32::MAX))
+            .map_err(|_| production::Error::Unsupported("stock queue report current yield query"))
+    }
+}
+
+fn resolve_city_production(decisions: &mut Vec<Decision>, owner: i32, city: u32) {
+    decisions.retain(|decision| {
+        decision.type_hash != 0x40fb_81ed
+            || decision.owner != owner
+            || !decision.component.is_some_and(|id| {
+                id.component_type == 2 && id.owner == owner as i16 && id.id == city
+            })
+    });
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use c6_core::notifications::ComponentId;
+    fn decision(owner: i32, city: u32, type_hash: u32) -> Decision {
+        Decision {
+            owner,
+            type_hash,
+            location: [18, 11],
+            component: Some(ComponentId {
+                owner: owner as i16,
+                component_type: 2,
+                id: city,
+            }),
+        }
+    }
+    #[test]
+    fn selecting_one_city_keeps_other_players_cities_and_research_decisions() {
+        let selected = decision(0, 65536, 0x40fb81ed);
+        let other_city = decision(0, 131073, 0x40fb81ed);
+        let other_owner = decision(1, 65536, 0x40fb81ed);
+        let research = decision(0, 65536, 0x592df4c8);
+        let mut decisions = vec![
+            selected,
+            other_city.clone(),
+            other_owner.clone(),
+            research.clone(),
+        ];
+        resolve_city_production(&mut decisions, 0, 65536);
+        assert_eq!(decisions, vec![other_city, other_owner, research]);
     }
 }
