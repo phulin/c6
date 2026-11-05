@@ -166,6 +166,20 @@ impl Runtime {
             Ok(())
         }
     }
+    /// Exact SimpleRequirement.Invalidate against this SAME live store and
+    /// current backend: active guard, virtual Test, store, ordered listeners.
+    pub fn invalidate<S: Services>(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut S,
+        receiver: u64,
+    ) -> Result<(), Error<S::Error>> {
+        self.check(state)?;
+        changes::invalidate(
+            &mut Context { state, backend, runtime: self },
+            receiver,
+        ).map_err(Error::Kernel)
+    }
     /// Called by SimpleRequirement only AFTER its state store. The old/new pair
     /// is not a predicate answer and never replaces current child reads.
     pub fn changed<S: Services>(
