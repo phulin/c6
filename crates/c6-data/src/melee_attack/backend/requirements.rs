@@ -359,6 +359,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
             | ContextObject::Policy { owner: id, .. }
             | ContextObject::Government { owner: id, .. } => Ok(id),
             ContextObject::Unit(unit) => Ok(i32::from(unit.component_id().owner)),
+            ContextObject::Building { district, .. } => Ok(i32::from(district.owner)),
             ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
             ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 Err(Error::Missing("source-qualified new context IPlayer"))

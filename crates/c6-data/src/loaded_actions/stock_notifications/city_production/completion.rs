@@ -83,19 +83,37 @@ pub(super) fn dispatch<P>(
                 let owners = runtime
                     .modifier_owners_mut()
                     .map_err(|_| missing("current building modifier owners"))?;
+                let city_id = c6_core::unit::ComponentId {
+                    owner: owner as i16,
+                    component_type: 2,
+                    id: city,
+                };
+                let definition = defs.building(building)?;
+                let district_type = definition
+                    .prerequisite_district
+                    .ok_or(missing("building prerequisite District"))?;
+                let district = state
+                    .city(owner, city)?
+                    .districts
+                    .district_ids
+                    .iter()
+                    .find_map(|id| {
+                        state
+                            .district(owner, *id)
+                            .ok()
+                            .filter(|d| d.district_hash == district_type)
+                            .map(|_| *id)
+                    })
+                    .ok_or(missing("building owner District"))?;
+                let district_id = c6_core::unit::ComponentId {
+                    owner: owner as i16,
+                    component_type: 3,
+                    id: district,
+                };
                 let handle = owners
                     .effects
-                    .objects()
-                    .iter()
-                    .find_map(|(handle, object)| match object.kind {
-                        backend::ContextObject::City(cid)
-                            if i32::from(cid.owner) == owner && cid.id == city =>
-                        {
-                            Some(*handle)
-                        }
-                        _ => None,
-                    })
-                    .ok_or(missing("current building City object"))?;
+                    .make_building_object(state, city_id, district_id, building)
+                    .map_err(|_| missing("building modifier owner factory"))?;
                 for attachment in services
                     .attachments
                     .building(building)

@@ -68,8 +68,12 @@ impl RequirementFactory for MissingRequirements {
     }
 }
 pub(super) fn city_key(runtime: &EffectRuntime, subject: u64) -> Result<u64, Error> {
-    let ContextObject::City(city) = runtime.object(subject).map_err(Error::Query)?.kind else {
-        return Err(Error::Missing("current normal City subject"));
+    let city = match runtime.object(subject).map_err(Error::Query)?.kind {
+        ContextObject::City(city) => city,
+        ContextObject::Building { district, .. } => district,
+        _ => {
+            return Err(Error::Missing("current normal City subject"));
+        }
     };
     // ComponentID.GetBits unsigned comparison, then normal City subtype 0/0.
     Ok((u64::from(city.id) << 32)

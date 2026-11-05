@@ -37,12 +37,27 @@ pub enum ContextObject {
     Unit(UnitReference),
     /// A real City object, distinct from its owner/plot or a proposal handle.
     City(ComponentId),
+    /// Objects::District subtype1: this building owns its modifiers independently
+    /// of the City and exposes the containing City through ICity.
+    Building {
+        city: ComponentId,
+        district: ComponentId,
+        building: u32,
+    },
     /// A real plot object; interface roles remain source-qualified by services.
     Plot(u32),
     Alliance {
         first_player: i32,
         second_player: i32,
     },
+}
+impl ContextObject {
+    pub(crate) fn city_component(self) -> Option<ComponentId> {
+        match self {
+            Self::City(city) | Self::Building { city, .. } => Some(city),
+            _ => None,
+        }
+    }
 }
 /// Typed native City effect parameters. The common modifier runtime controls
 /// application counts/lifetime; these do not create another subject registry.
@@ -686,6 +701,7 @@ impl player_strength::Context for EffectContext<'_> {
             | ContextObject::Policy { owner, .. }
             | ContextObject::Government { owner, .. } => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
+            ContextObject::Building { district, .. } => i32::from(district.owner),
             ContextObject::Alliance { .. } => return Ok(None),
             ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 return Err(QueryError::Unsupported(

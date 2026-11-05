@@ -58,6 +58,13 @@ pub struct PlayerCitiesSubscription {
     pub receiver: u64,
     pub owner: i32,
 }
+/// Borrowed semantic state of an attached modifier on this same owner.
+pub struct ModifierView<'a> {
+    pub owner: u64,
+    pub control: &'a c6_core::unit_moved_signal::modifiers::Modifier,
+    pub tracked: &'a [collection::Subject],
+    pub applied: &'a [u64],
+}
 pub(super) struct Creation {
     player_cities_subscriptions: Vec<PlayerCitiesSubscription>,
     player_capital_subscriptions: Vec<PlayerCitiesSubscription>,
@@ -186,7 +193,7 @@ impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for Requirem
             .effects
             .object(handle)
             .map_err(|e| E::Context(Error::Query(e)))?;
-        let super::ContextObject::City(component) = object.kind else {
+        let Some(component) = object.kind.city_component() else {
             return Err(E::UnsupportedSubject);
         };
         // OnInitialize23b0970 appends to current GameSignals+348 BEFORE the
@@ -411,8 +418,12 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             return Ok(());
         }
         let (_, effect) = self.runtime.city_effect(effect).map_err(Error::Query)?;
-        let super::ContextObject::City(city) =
-            self.runtime.object(subject).map_err(Error::Query)?.kind
+        let Some(city) = self
+            .runtime
+            .object(subject)
+            .map_err(Error::Query)?
+            .kind
+            .city_component()
         else {
             return Err(Error::Missing("ICity removal subject"));
         };
@@ -464,11 +475,12 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .runtime
             .city_effect(record.effect)
             .map_err(Error::Query)?;
-        let super::ContextObject::City(city) = self
+        let Some(city) = self
             .runtime
             .object(self.subject)
             .map_err(Error::Query)?
             .kind
+            .city_component()
         else {
             return Err(Error::Missing("ICity effect context"));
         };
@@ -677,6 +689,59 @@ impl EffectRuntime {
         });
         Ok(handle)
     }
+    /// Source Objects::District subtype1 factory for a newly constructed
+    /// building. Its destruction/affected lists belong to the building wrapper,
+    /// while ICity delegates to the containing canonical City.
+    pub fn make_building_object(
+        &mut self,
+        state: &LoadedState,
+        city: c6_core::unit::ComponentId,
+        district: c6_core::unit::ComponentId,
+        building: u32,
+    ) -> Result<u64, Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        let d = state
+            .district(i32::from(district.owner), district.id)
+            .map_err(|_| Error::Missing("building District"))?;
+        let c = state
+            .city(i32::from(city.owner), city.id)
+            .map_err(|_| Error::Missing("building City"))?;
+        if city.component_type != 2
+            || district.component_type != 3
+            || !c.districts.district_ids.contains(&d.id)
+        {
+            return Err(Error::Missing("building District/City identity"));
+        }
+        let kind = super::ContextObject::Building {
+            city,
+            district,
+            building,
+        };
+        if let Some((handle, _)) = self.objects.iter().find(|(_, object)| object.kind == kind) {
+            return Ok(*handle);
+        }
+        self.city_creation
+            .as_ref()
+            .ok_or(Error::Missing("building lifecycle domain"))?;
+        let handle = self
+            .append_normal_object(
+                state,
+                super::Object {
+                    kind,
+                    instance_id: 0,
+                    unit_sort_suffix: None,
+                    unit_lifecycle: None,
+                },
+            )
+            .map_err(Error::Query)?;
+        self.city_creation.as_mut().unwrap().objects.push(Object {
+            handle,
+            affected: AffectedModifiers::from_sorted(Vec::new())
+                .expect("empty building affected list"),
+            destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
+        });
+        Ok(handle)
+    }
     /// Building DynamicModifier factory over a current City context. Owner
     /// selects that object; PlayerCities239eba0 snapshots the owner's ordered
     /// live cities and initializes its future change subscriptions239ece0.
@@ -694,7 +759,8 @@ impl EffectRuntime {
     ) -> Result<i32, Error> {
         self.current_owner(state).map_err(Error::Query)?;
         let player_owner = match self.object(owner).map_err(Error::Query)?.kind {
-            super::ContextObject::City(context) => {
+            super::ContextObject::City(context)
+            | super::ContextObject::Building { city: context, .. } => {
                 state
                     .city(i32::from(context.owner), context.id)
                     .map_err(|_| Error::Missing("current City collection owner"))?
@@ -1146,6 +1212,22 @@ impl EffectRuntime {
             self.retire_effect(state, m.effect).map_err(Error::Query)?;
         }
         Ok(())
+    }
+    pub fn city_modifier_state(&self, instance: i32) -> Result<ModifierView<'_>, Error> {
+        let record = self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("current City modifier domain"))?
+            .modifiers
+            .iter()
+            .find(|record| record.instance == instance)
+            .ok_or(Error::Missing("current City modifier instance"))?;
+        Ok(ModifierView {
+            owner: record.owner,
+            control: &record.modifier,
+            tracked: &record.tracked,
+            applied: &record.applied_subjects,
+        })
     }
     pub fn next_city_modifier_id(&self) -> Result<i32, Error> {
         self.next_modifier_instance_id().map_err(Error::Query)
