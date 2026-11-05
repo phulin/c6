@@ -416,7 +416,11 @@ impl<P> Services<P> for Current<'_> {
             .turn_report_records
             .push(stock::turn_reports::Record::Report {
                 event,
-                player: argument,
+                player: if event == 0xf391d7b3 {
+                    self.local_observer
+                } else {
+                    argument
+                },
             });
         Ok(())
     }
