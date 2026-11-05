@@ -20,6 +20,8 @@ pub(super) struct State {
     initial_districts: Vec<ComponentId>,
     pub(super) absent_primary_districts: Vec<ComponentId>,
     absent_unit_wrappers: Vec<(UnitReference, [i32; 2])>,
+    /// Imported strong owners outside the represented modifier graph.
+    unit_subtype_external_owners: Vec<(u64, usize)>,
 }
 impl State {
     pub(super) fn from_initial(state: &LoadedState) -> Self {
@@ -27,6 +29,7 @@ impl State {
             pool: None,
             constructed_policies: Vec::new(),
             absent_unit_wrappers: Vec::new(),
+            unit_subtype_external_owners: Vec::new(),
             modifier_next: None,
             modifier_ids: Vec::new(),
             initial_units: state
@@ -161,9 +164,7 @@ impl EffectRuntime {
     /// Current registered Unit modifiers, including newly attached instances.
     /// This borrows the live registry, not allocation collision history.
     /// Combat collection modifiers retain their existing proposal owner.
-    pub fn unit_modifiers(
-        &self,
-    ) -> Result<&[c6_core::unit_kill::objects::Modifier], QueryError> {
+    pub fn unit_modifiers(&self) -> Result<&[c6_core::unit_kill::objects::Modifier], QueryError> {
         self.unit_modifiers
             .as_deref()
             .ok_or(QueryError::Missing("current Unit modifier cleanup state"))
@@ -209,7 +210,15 @@ impl EffectRuntime {
         if let Some(life) = &mut object.unit_lifecycle {
             life.pool_ordinal = order
         }
+        let unit_subtype = matches!(object.kind, ContextObject::Unit(_))
+            && matches!(object.unit_sort_suffix, Some([1, _]));
         self.register_current_object(state, handle, object)?;
+        if unit_subtype {
+            // This constructor has no unrepresented caller/cache owner.
+            self.allocations
+                .unit_subtype_external_owners
+                .push((handle, 0));
+        }
         let pool = self.allocations.pool.as_mut().unwrap();
         // Append registers the object first, then increments the shared source
         // instance counter. Native addresses/weak_ptr capacity are not inputs.
@@ -297,6 +306,115 @@ impl EffectRuntime {
             },
         )
     }
+    /// Import the actual strong count for an existing ability/promotion wrapper.
+    /// The count includes each context, tracked-map key and applied-vector entry.
+    /// Any remaining strong owners stay explicit and prevent logical retirement;
+    /// the native ObjectPool and its type lookup hold weak pointers only.
+    pub fn initialize_unit_subtype_wrapper_reference_count(
+        &mut self,
+        state: &LoadedState,
+        handle: u64,
+        strong_count: usize,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        let object = self.object(handle)?;
+        ensure_unit_subtype_object(object)?;
+        let modifiers = self.unit_modifiers.as_ref().ok_or(QueryError::Missing(
+            "Unit subtype wrapper modifier reference graph",
+        ))?;
+        let represented = modifiers
+            .iter()
+            .map(|m| {
+                usize::from(m.context == handle)
+                    + m.tracked.iter().filter(|t| t.object == handle).count()
+                    + m.applied.iter().filter(|&&h| h == handle).count()
+            })
+            .sum::<usize>();
+        let external = strong_count
+            .checked_sub(represented)
+            .ok_or(QueryError::Unsupported(
+                "Unit subtype wrapper strong reference undercount",
+            ))?;
+        if let Some((_, old)) = self
+            .allocations
+            .unit_subtype_external_owners
+            .iter()
+            .find(|row| row.0 == handle)
+        {
+            return if *old == external {
+                Ok(())
+            } else {
+                Err(QueryError::Unsupported(
+                    "Unit subtype wrapper ownership already initialized",
+                ))
+            };
+        }
+        self.allocations
+            .unit_subtype_external_owners
+            .push((handle, external));
+        Ok(())
+    }
+    /// Release a subtype wrapper after the last represented strong owner has
+    /// been destroyed. Normal Unit wrappers have a separate Unit-owned cache.
+    /// Missing ownership input or surviving callbacks cannot imply expiry.
+    pub fn release_unit_subtype_wrapper(
+        &mut self,
+        state: &LoadedState,
+        handle: u64,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        let object = self.object(handle)?;
+        ensure_unit_subtype_object(object)?;
+        match self
+            .allocations
+            .unit_subtype_external_owners
+            .iter()
+            .find(|row| row.0 == handle)
+            .map(|row| row.1)
+        {
+            Some(0) => (),
+            Some(_) => {
+                return Err(QueryError::Unsupported(
+                    "Unit subtype wrapper surviving external strong references",
+                ))
+            }
+            None => return Err(QueryError::Missing("Unit subtype wrapper strong ownership")),
+        }
+        let modifiers = self.unit_modifiers.as_ref().ok_or(QueryError::Missing(
+            "Unit subtype wrapper modifier reference graph",
+        ))?;
+        ensure_releasable_unit_object(handle, object, modifiers)?;
+        if object
+            .unit_lifecycle
+            .as_ref()
+            .expect("checked")
+            .destroyed
+            .ordered_subscribers()
+            .next()
+            .is_some()
+        {
+            return Err(QueryError::Unsupported(
+                "Unit subtype wrapper surviving callbacks",
+            ));
+        }
+        let ContextObject::Unit(unit) = object.kind else {
+            unreachable!()
+        };
+        let suffix = object.unit_sort_suffix.expect("checked");
+        self.objects.retain(|row| row.0 != handle);
+        self.allocations
+            .unit_subtype_external_owners
+            .retain(|row| row.0 != handle);
+        if !self
+            .allocations
+            .absent_unit_wrappers
+            .contains(&(unit, suffix))
+        {
+            self.allocations.absent_unit_wrappers.push((unit, suffix));
+        }
+        // Expiry does not rewind instance IDs or compact logical pool ordinals.
+        Ok(())
+    }
     /// Unit.~Instance first assigns its normal modifier-object shared pointer
     /// empty. The supported stock path has already delivered UnitRemoved and
     /// cleared every logical owned/affected/tracked reference. Do not erase a
@@ -359,6 +477,17 @@ impl EffectRuntime {
         // Neither source instance counter rewinds when an object is released.
         Ok(())
     }
+}
+
+fn ensure_unit_subtype_object(object: &Object) -> Result<(), QueryError> {
+    if !matches!(object.kind, ContextObject::Unit(_))
+        || !matches!(object.unit_sort_suffix, Some([1, _]))
+    {
+        return Err(QueryError::Unsupported(
+            "Unit subtype wrapper ownership target",
+        ));
+    }
+    Ok(())
 }
 
 fn ensure_releasable_unit_object(
