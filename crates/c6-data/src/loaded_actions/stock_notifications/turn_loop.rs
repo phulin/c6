@@ -558,6 +558,7 @@ pub fn resume_research<'b, P, E>(
             runtime: research_runtime,
             choices,
             choice_graph: None,
+            sight: None,
             culture,
         };
         let mut research = crate::research::Context {

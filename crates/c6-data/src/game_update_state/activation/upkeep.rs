@@ -385,6 +385,7 @@ impl<P> Context<'_, '_, P> {
                 runtime: self.research,
                 choices: self.choices,
                 choice_graph: None,
+                sight: None,
                 culture: Some(self.culture),
             };
             research::Context {
@@ -413,6 +414,7 @@ impl<P> Context<'_, '_, P> {
             runtime: self.research,
             choices: self.choices,
             choice_graph: None,
+            sight: None,
             culture: Some(self.culture),
         };
         research::Context {

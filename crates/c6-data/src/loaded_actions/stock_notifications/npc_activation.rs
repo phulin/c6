@@ -80,6 +80,9 @@ pub fn finish_active_return<P>(
 /// Required source leaves; unknown subscribers have no successful default.
 pub trait Leaves<P> {
     fn callbacks(&self) -> &[Kind];
+    fn research_sight(&self) -> Option<&crate::unit_sight_state::Runtime> {
+        None
+    }
     fn barbarian_reached(
         &self,
         _state: &LoadedState,
@@ -195,6 +198,7 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
             runtime: self.research,
             choices: self.choices,
             choice_graph: None,
+            sight: self.leaves.research_sight(),
             culture: self.culture,
         };
         let context = research::Context {
@@ -236,6 +240,7 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
             runtime: self.research,
             choices: self.choices,
             choice_graph: None,
+            sight: self.leaves.research_sight(),
             culture: self.culture,
         };
         let context = research::Context {
@@ -290,6 +295,7 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
                 runtime: self.research,
                 choices: self.choices,
                 choice_graph: None,
+                sight: self.leaves.research_sight(),
                 culture: self.culture,
             };
             effects
@@ -379,6 +385,7 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
                 runtime: self.research,
                 choices: self.choices,
                 choice_graph: None,
+                sight: self.leaves.research_sight(),
                 culture: self.culture,
             };
             research::Context {

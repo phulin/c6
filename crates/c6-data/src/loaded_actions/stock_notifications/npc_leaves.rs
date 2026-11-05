@@ -284,6 +284,9 @@ impl<'i, P> Leaves<'i, P> {
     }
 }
 impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
+    fn research_sight(&self) -> Option<&crate::unit_sight_state::Runtime> {
+        Some(self.visibility())
+    }
     fn callbacks(&self) -> &[Kind] {
         &self.inputs.callbacks
     }

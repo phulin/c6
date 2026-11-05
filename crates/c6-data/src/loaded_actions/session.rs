@@ -429,6 +429,7 @@ impl<P> Session<'_, '_, P> {
             runtime: &mut self.research,
             choices,
             choice_graph: None,
+            sight: None,
             culture,
         };
         let mut research = crate::research::Context {
