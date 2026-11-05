@@ -30,6 +30,8 @@ pub struct Instance {
     pub recruit_priority: i32,
     /// Unsaved live ShouldDestroy bit; wire-only imports leave it unknown.
     pub should_destroy: Option<bool>,
+    /// Unsaved callbacks-pointer validity, queried by BeginTurn without invoking it.
+    pub is_valid: Option<bool>,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecycledInstances {
@@ -322,6 +324,7 @@ impl ControlManager {
                 priority: r.i32()?,
                 recruit_priority: r.i32()?,
                 should_destroy: None,
+                is_valid: None,
             });
         }
         let current_id_bits = r.u32()?;
@@ -490,6 +493,7 @@ mod tests {
                     priority: -1,
                     recruit_priority: 4,
                     should_destroy: None,
+                    is_valid: None,
                 }],
                 current_id_bits: 7,
                 first_free: 2,

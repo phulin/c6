@@ -406,6 +406,7 @@ mod tests {
                 priority: -1,
                 recruit_priority: 0,
                 should_destroy: None,
+                is_valid: None,
             })
             .collect();
         assert!(cleanup_controllers(&mut s, owner).is_err());
