@@ -1,7 +1,11 @@
 //! Explicit government transitions over the current Culture and modifier owners.
 //! Available choices and source-ordered mutations are supplied by this module;
 //! unknown positive effects and anarchy remain incomplete transitions.
+pub mod boosts;
+pub mod history;
 pub mod modifiers;
+pub mod requirements;
+pub mod stock;
 
 use super::{culture_notifications as culture, policy_actions};
 use crate::{
@@ -175,6 +179,9 @@ impl Definitions {
     }
     pub fn government_index(&self, hash: u32) -> Option<i32> {
         self.registry.find_index(hash).map(|i| i as i32)
+    }
+    pub fn government_tier(&self, index: i32) -> Option<u32> {
+        self.governments.get(index as usize).and_then(|g| g.tier)
     }
     pub fn policy_definitions(&self) -> &policy_actions::Definitions {
         &self.policies
