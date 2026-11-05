@@ -183,7 +183,50 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
         Err(Error::Missing("sight discovery view_unit_rules"))
     }
     fn signal(&mut self, event: Signal<Self::Unit>) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight discovery signal"))
+        use crate::loaded_actions::stock_notifications::resource_revelation::ContinentSubscriber as C;
+        match event {
+            Signal::PlayerContinent { player, .. } => {
+                let subscribers = self
+                    .definitions()?
+                    .continent_subscribers
+                    .as_ref()
+                    .ok_or(Error::Missing("continent discovery signal"))?
+                    .clone();
+                for subscriber in subscribers {
+                    match subscriber {
+                        C::EraScore => {
+                            let rate = self
+                                .state
+                                .game_era_discovery_rates(player)
+                                .map_err(|e| Error::Requirement(format!("{e:?}")))?
+                                .map_or(0, |v| v[0]);
+                            if rate != 0 {
+                                return Err(Error::Missing(
+                                    "positive continent ChangeEraScore and report continuation",
+                                ));
+                            }
+                        }
+                        C::History | C::Boost => {
+                            // HasFoundAnyNewContinent2b31d70 sums the current
+                            // continent flags, after SetHasFoundContinent.
+                            let mut found = 0u32;
+                            for i in 0..self.definitions()?.continents.entries().len() {
+                                found = found
+                                    .wrapping_add(u32::from(self.flag(player, i as i32, false)?));
+                            }
+                            if found > 1 {
+                                return Err(Error::Missing(
+                                    "new-continent History or TriggerBoost continuation",
+                                ));
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Signal::UnitContinent { .. } if self.definitions()?.unit_continent_empty => Ok(()),
+            _ => Err(Error::Missing("sight discovery signal")),
+        }
     }
     fn notify(
         &mut self,
@@ -191,7 +234,23 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
         plot: Self::Plot,
         kind: Notification,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight discovery notify"))
+        // Notification::AcceptsNotifications2d2f000 checks initialization,
+        // game shutdown and Configuration::Player::IsHuman before creation.
+        if !self
+            .backend
+            .facts
+            .manager_initialized
+            .ok_or(Error::Missing("notification initialized"))?
+            || self
+                .backend
+                .facts
+                .game_uninitializing
+                .ok_or(Error::Missing("game shutdown"))?
+            || !self.human(player)?
+        {
+            return Ok(());
+        }
+        Err(Error::Missing("positive sight discovery notification"))
     }
     fn natural_wonder_relic_count(&mut self, player: i32) -> Result<i32, Self::Error> {
         Err(Error::Missing("sight discovery natural_wonder_relic_count"))

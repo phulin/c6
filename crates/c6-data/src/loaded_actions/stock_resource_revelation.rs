@@ -25,6 +25,12 @@ pub enum UnitPlotSubscriber {
     Unavailable { receiver: u64 },
 }
 #[derive(Clone, Copy, Debug)]
+pub enum ContinentSubscriber {
+    EraScore,
+    History,
+    Boost,
+}
+#[derive(Clone, Copy, Debug)]
 struct ResourceBoostCheck {
     receiver: u64,
     resource_reference: bool,
@@ -37,6 +43,8 @@ pub struct State {
     layer: usize,
     subscribers: Vec<u64>,
     resource_boost_checks: Option<Vec<ResourceBoostCheck>>,
+    pub(super) continent_subscribers: Option<Vec<ContinentSubscriber>>,
+    pub(super) unit_continent_empty: bool,
     pub dispatches: Vec<(i32, i32)>,
     pub reports: Vec<Report>,
     pub(super) natural_wonders: Vec<u32>,
@@ -126,6 +134,8 @@ impl<P> Runtime<'_, P> {
             visibility_blocks: Vec::new(),
             unit_visibility: Vec::new(),
             resource_boost_checks: None,
+            continent_subscribers: None,
+            unit_continent_empty: false,
             unit_plot_subscribers: None,
             unit_plot_dispatches: Vec::new(),
         });
@@ -203,6 +213,26 @@ impl<P> Runtime<'_, P> {
             });
         }
         binding.resource_boost_checks = Some(checks);
+        Ok(())
+    }
+    /// Actual ordered GameSignals+660 and complete empty +690 registry.
+    pub fn bind_continent_discovery_signal(
+        &mut self,
+        state: &LoadedState,
+        subscribers: Vec<ContinentSubscriber>,
+        unit_continent_empty: bool,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("continent signal identity"))?;
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .ok_or(Error::Missing("resource revelation services"))?;
+        if binding.continent_subscribers.is_some() {
+            return Err(Error::Missing("continent signal already bound"));
+        }
+        binding.continent_subscribers = Some(subscribers);
+        binding.unit_continent_empty = unit_continent_empty;
         Ok(())
     }
     pub fn bind_unit_plot_visibility_signal(
