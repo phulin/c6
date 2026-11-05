@@ -2,6 +2,7 @@
 //! This connects raycasting, count mutation and discovery dispatch; it is not a
 //! complete MoveTo action. Runtime shared layers are never inferred from saves.
 pub mod revealed_feature;
+pub mod loss;
 
 use crate::loaded_actions::city_range_attack;
 use c6_core::{
