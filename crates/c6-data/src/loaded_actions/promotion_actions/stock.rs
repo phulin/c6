@@ -26,12 +26,17 @@ pub enum Report {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LevelConsumer {
     HistoricMoment,
+    EraScore,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompletionConsumer {
+    Lua,
 }
 /// Actual current subscriber qualifications, never inferred from Save equality.
 pub struct Inputs<'a, 'd> {
     pub transfer: &'a transfer::Inputs<'d>,
     pub level_consumers: Option<Vec<LevelConsumer>>,
-    pub completed_consumers_empty: bool,
+    pub completed_consumers: Option<Vec<CompletionConsumer>>,
     pub reports: Vec<Report>,
 }
 pub struct Current<'s, 'a, 'd, 'r, 't, 'q, P> {
@@ -80,10 +85,14 @@ impl<P> Effects for Current<'_, '_, '_, '_, '_, '_, P> {
     fn preflight(&self, state: &LoadedState, id: (i32, u32), promotion: u32) -> Result<(), String> {
         self.backend.check(state).map_err(fail)?;
         self.definitions.check::<()>(state).map_err(fail)?;
+        self.factory
+            .resources
+            .validate_rules(self.inputs.transfer.rules)
+            .map_err(fail)?;
         if !self.inputs.transfer.presentation_reports_qualified
             || self.inputs.transfer.promotion_consumers.is_none()
             || self.inputs.level_consumers.is_none()
-            || !self.inputs.completed_consumers_empty
+            || self.inputs.completed_consumers.is_none()
         {
             return Err("unqualified promotion signal/report consumers".into());
         }
@@ -238,16 +247,50 @@ impl<P> Effects for Current<'_, '_, '_, '_, '_, '_, P> {
                         return Err("positive unit promotion historic moment".into());
                     }
                 }
+                LevelConsumer::EraScore => {
+                    // 299d270 queries owner, then returns before score/state
+                    // lookups when the new level is below three.
+                    super::actor::<()>(state, (i32::from(unit.owner), unit.id)).map_err(fail)?;
+                    if level >= 3 {
+                        return Err("positive promotion EraScore continuation".into());
+                    }
+                }
             }
         }
         self.backend.check(state).map_err(fail)?;
         self.inputs.reports.push(Report::Level { unit, level });
         Ok(())
     }
-    fn completed(&mut self, state: &mut LoadedState, _: ComponentId, _: u32) -> Result<(), String> {
+    fn completed(
+        &mut self,
+        state: &mut LoadedState,
+        unit: ComponentId,
+        promotion: u32,
+    ) -> Result<(), String> {
         self.backend.check(state).map_err(fail)?;
-        if !self.inputs.completed_consumers_empty {
-            return Err("promotion completion consumers".into());
+        for consumer in self
+            .inputs
+            .completed_consumers
+            .as_ref()
+            .ok_or("promotion completion consumers")?
+        {
+            match consumer {
+                CompletionConsumer::Lua => {
+                    let current = super::actor::<()>(state, (i32::from(unit.owner), unit.id))
+                        .map_err(fail)?;
+                    let index = self
+                        .definitions
+                        .promotions
+                        .iter()
+                        .position(|p| p.hash == promotion)
+                        .ok_or("promotion definition")?;
+                    let arguments = [current.e_owner, current.id as i32, index as i32];
+                    self.backend
+                        .script
+                        .call_empty(state, "PostUnitPromotionEarned", &arguments)
+                        .map_err(fail)?;
+                }
+            }
         }
         Ok(())
     }

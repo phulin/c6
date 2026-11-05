@@ -59,7 +59,16 @@ fn reference(row: crate::Row<'_>, column: &'static str) -> Result<Option<u32>, E
     }
 }
 impl Definitions {
-    pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error<()>> {
+    pub fn from_rules(
+        state: &LoadedState,
+        rules: &Rules,
+        resources: &crate::resource_binding::ResourceAuthority<'_>,
+    ) -> Result<Self, Error<()>> {
+        if resources.destination_binding() != state.binding() {
+            return Err(Error::Binding);
+        }
+        crate::unit_initialization_definitions::Definitions::validate_resources(rules, resources)
+            .map_err(|_| Error::Missing("bound promotion rules resources"))?;
         if !matches!(
             rules.profile(),
             crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
