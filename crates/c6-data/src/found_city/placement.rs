@@ -100,6 +100,16 @@ impl<E: Effects> Context<'_, E> {
             .ok_or("current founding Unit missing".into())
     }
     pub fn place(&mut self, city: ComponentId, location: PlotCoord) -> Result<i32, String> {
+        self.place_with_initializing(city, location, false)
+    }
+    /// Transfer uses the same placement path with `initializing=true`, which
+    /// suppresses starting buildings while retaining construction and upkeep.
+    pub fn place_with_initializing(
+        &mut self,
+        city: ComponentId,
+        location: PlotCoord,
+        initializing: bool,
+    ) -> Result<i32, String> {
         let unit = self.unit()?;
         let mut legality = crate::found_city::legality::Context {
             state: self.state,
@@ -375,14 +385,16 @@ impl<E: Effects> Context<'_, E> {
             )
             .map_err(|e| format!("CityBuild.DoFoundCity {e:?}"))?;
 
-            self.effects.starting_buildings(
-                self.state,
-                city,
-                location,
-                kind,
-                self.territory.start_era,
-                self.levels,
-            )?;
+            if !initializing {
+                self.effects.starting_buildings(
+                    self.state,
+                    city,
+                    location,
+                    kind,
+                    self.territory.start_era,
+                    self.levels,
+                )?;
+            }
             // RulesCities+50 EnumerateCityMinimumDistancePlots2bd5680 preserves native
             // dx/dy order, wrapped deltas and the landmass/distance predicate.
             let range = {

@@ -102,6 +102,7 @@ mod placed_tests {
         reverse_capital: bool,
         placement: i32,
         rename_invalidates_location: bool,
+        expected_initializing: bool,
         collection_runtime: crate::melee_attack::proposals::collections::Runtime,
         object_city: Option<ComponentId>,
     }
@@ -160,7 +161,7 @@ mod placed_tests {
             p: PlotCoord,
             initializing: bool,
         ) -> Result<i32, Self::Error> {
-            assert!(!initializing);
+            assert_eq!(initializing, self.expected_initializing);
             self.log.push("place");
             let v = self.state.city_mut(i32::from(c.owner), c.id).unwrap();
             v.header.location_x = p.x;
@@ -286,6 +287,7 @@ mod placed_tests {
             reverse_capital: false,
             placement: 1,
             rename_invalidates_location: false,
+            expected_initializing: false,
             collection_runtime: crate::melee_attack::proposals::collections::Runtime::from_initial(
                 vec![(
                     100,
@@ -333,6 +335,64 @@ mod placed_tests {
             },
             false,
         )
+    }
+    #[test]
+    fn supplied_transfer_name_marks_canonical_manager_without_generating_name() {
+        let mut c = context();
+        c.expected_initializing = true;
+        let owner = c.state.retained.players[0].header.owner;
+        let definitions = base::Definitions {
+            yields: &[0, 1],
+            units: &[],
+            buildings: &[],
+            districts: &[],
+            projects: &[],
+            terrains: &[],
+            resources: &[],
+            features: &[0x1111, 0x2222],
+            production_yield: 1,
+            loyalty_start: 100,
+            building_support: &[],
+        };
+        let city = creation::create_with_name(
+            &mut c,
+            &definitions,
+            base::Parameters::default(),
+            Creation {
+                owner,
+                location: PlotCoord { x: 18, y: 11 },
+                transfer_type: 0xba0d34de,
+                first_city: false,
+                original_capital: false,
+            },
+            true,
+            Some(b"Captured Name\0ignored"),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            c.state.city(owner, city.id).unwrap().header.name,
+            b"Captured Name"
+        );
+        assert_eq!(
+            c.state.game_city_names().unwrap().used_names,
+            [b"Captured Name".to_vec()]
+        );
+        assert!(!c.log.contains(&"name"));
+        assert!(!c.log.contains(&"settled"));
+        assert!(!c.log.contains(&"capital"));
+        assert_eq!(
+            c.log,
+            [
+                "subscribe",
+                "citybuild",
+                "place",
+                "created",
+                "continent",
+                "culture",
+                "production"
+            ]
+        );
     }
     #[test]
     fn placed_creation_edits_canonical_identity_and_preserves_synchronous_order() {

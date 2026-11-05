@@ -399,7 +399,7 @@ impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_
         &mut self,
         city: ComponentId,
         location: PlotCoord,
-        _initializing: bool,
+        initializing: bool,
     ) -> Result<i32, String> {
         let d = self.definitions;
         found_city::placement::Context {
@@ -422,7 +422,7 @@ impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_
             civic_graph: d.civics,
             strategic_parameters: d.strategic,
         }
-        .place(city, location)
+        .place_with_initializing(city, location, initializing)
     }
     fn destroy_failed_placement(&mut self, city: ComponentId) -> Result<(), String> {
         self.effects.destroy_failed_placement(self.state, city)
@@ -513,6 +513,58 @@ impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_
             .publish_city_production(self.state, i32::from(city.owner), city.id)
             .map_err(text)
     }
+}
+/// Reconstruct a transferred city using the ongoing stock creation services.
+/// The old city must already have completed its real transfer destruction;
+/// this function allocates a fresh identity and runs every creation callback.
+#[allow(clippy::too_many_arguments)]
+pub fn create_transferred<'a, E: Effects<'a>>(
+    state: &mut LoadedState,
+    actor: (i32, u32),
+    effects: &mut E,
+    definitions: &Definitions<'a>,
+    current: &Current,
+    sight: &mut crate::unit_sight_state::Runtime,
+    territory: &mut crate::city_territory::Runtime,
+    snapshot: &c6_core::city_capture::Snapshot,
+    new_owner: i32,
+) -> Result<Option<ComponentId>, String> {
+    let core = definitions.cities.core(state).map_err(text)?;
+    let first_city = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == new_owner)
+        .ok_or("current transfer owner")?
+        .cities
+        .records
+        .entries
+        .is_empty();
+    let mut context = Start {
+        state,
+        actor,
+        effects,
+        definitions,
+        current,
+        core: &core,
+        sight,
+        territory,
+    };
+    c6_core::found_city::creation::create_with_name(
+        &mut context,
+        &core,
+        snapshot.initialization_parameters(),
+        c6_core::found_city::Creation {
+            owner: new_owner,
+            location: snapshot.location,
+            transfer_type: c6_core::city_capture::TRANSFER_COMBAT,
+            first_city,
+            original_capital: snapshot.original_capital,
+        },
+        true,
+        Some(&snapshot.name),
+    )
+    .map_err(text)
 }
 impl<'a, S: Domains<'a>, M> Movement<'_, 'a, S, M> {
     fn start_with_current_owners(

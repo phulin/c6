@@ -141,15 +141,48 @@ pub fn create<C: Context>(
     creation: super::Creation,
     initializing: bool,
 ) -> Result<Option<ComponentId>, Error<C::Error>> {
+    create_with_name(
+        context,
+        definitions,
+        parameters,
+        creation,
+        initializing,
+        None,
+    )
+}
+
+/// Create with a supplied native initialization name. Transfer supplies the
+/// existing city name; a nonempty name bypasses NameManager and its RNG draws.
+/// An empty C string retains the ordinary generated-name path.
+pub fn create_with_name<C: Context>(
+    context: &mut C,
+    definitions: &base::Definitions<'_>,
+    parameters: base::Parameters,
+    creation: super::Creation,
+    initializing: bool,
+    name: Option<&[u8]>,
+) -> Result<Option<ComponentId>, Error<C::Error>> {
     let Some(city) =
         base::create(context, definitions, creation.owner, parameters).map_err(Error::Base)?
     else {
         return Ok(None);
     };
-    let name = context
-        .generate_name(city, creation.first_city, creation.location)
-        .map_err(Error::Effect)?;
-    set_name(context, city, &name)?;
+    if let Some(name) = name.filter(|name| !cstr(name).is_empty()) {
+        super::names::mark_used(
+            context
+                .state_mut()
+                .game_city_names_mut()
+                .map_err(Error::State)?,
+            cstr(name),
+        )
+        .map_err(Error::Naming)?;
+        set_name(context, city, name)?;
+    } else {
+        let name = context
+            .generate_name(city, creation.first_city, creation.location)
+            .map_err(Error::Effect)?;
+        set_name(context, city, &name)?;
+    }
     if context
         .place(city, creation.location, initializing)
         .map_err(Error::Effect)?
