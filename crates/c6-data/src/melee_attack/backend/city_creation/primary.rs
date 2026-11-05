@@ -48,6 +48,60 @@ impl EffectRuntime {
         else {
             return Ok(owner);
         };
+        self.primary_for_district(state, city, district, retain)
+    }
+    /// Native MakeObject(District*, subtype0, subvalue0), reached unconditionally
+    /// by the DistrictDestroyed GameEffects subscriber even with logging off.
+    pub fn make_district_object(
+        &mut self,
+        state: &LoadedState,
+        district: ComponentId,
+    ) -> Result<u64, Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        if district.component_type != 3 {
+            return Err(Error::Missing("District wrapper component type"));
+        }
+        let record = state
+            .district(i32::from(district.owner), district.id)
+            .map_err(|_| Error::Missing("current District wrapper target"))?;
+        let city = ComponentId {
+            owner: district.owner,
+            component_type: 2,
+            id: record.city_id,
+        };
+        state
+            .city(i32::from(city.owner), city.id)
+            .map_err(|_| Error::Missing("current District containing City"))?;
+        self.primary_for_district(state, city, district, false)
+    }
+    fn primary_for_district(
+        &mut self,
+        state: &LoadedState,
+        city: ComponentId,
+        district: ComponentId,
+        retain: bool,
+    ) -> Result<u64, Error> {
+        if let Some(handle) = self
+            .objects
+            .iter()
+            .find(|(_, object)| object.kind == (ContextObject::District { city, district }))
+            .map(|row| row.0)
+        {
+            // Existing ownership remains in the canonical graph. A requirement
+            // retaining this source-created primary outlives the factory borrow.
+            if let Some(entry) = self
+                .city_creation
+                .as_mut()
+                .ok_or(Error::Missing("primary District lifecycle"))?
+                .primary
+                .entries
+                .iter_mut()
+                .find(|entry| entry.handle == Some(handle))
+            {
+                entry.retained |= retain;
+            }
+            return Ok(handle);
+        }
         let creation = self
             .city_creation
             .as_mut()
@@ -82,7 +136,6 @@ impl EffectRuntime {
             creation.primary.entries[at].retained |= retain;
             return Ok(handle);
         }
-        let ordinal = self.next_object_pool_ordinal().map_err(Error::Query)?;
         let handle = self
             .append_normal_object(
                 state,
@@ -98,7 +151,6 @@ impl EffectRuntime {
         creation.objects.push(Object {
             handle,
             destruction: Some(super::destruction::Metadata {
-                ordinal,
                 owned_modifiers: Vec::new(),
             }),
             affected: AffectedModifiers::from_sorted(Vec::new())
@@ -124,6 +176,32 @@ impl EffectRuntime {
         };
         if entry.retained {
             return Ok(());
+        }
+        if creation.modifiers.iter().any(|record| {
+            record.owner == handle
+                || record.applied_subjects.contains(&handle)
+                || record.tracked.iter().any(|row| row.subject == handle)
+        }) || self.unit_modifiers.as_ref().is_some_and(|records| {
+            records.iter().any(|record| {
+                record.context == handle
+                    || record.applied.contains(&handle)
+                    || record.tracked.iter().any(|row| row.object == handle)
+            })
+        }) {
+            // These are actual strong owners in the same canonical graph.
+            return Ok(());
+        }
+        let object = creation
+            .objects
+            .iter()
+            .find(|object| object.handle == handle)
+            .ok_or(Error::Missing("current primary District lifecycle"))?;
+        if !object.affected.entries().is_empty()
+            || object.destroyed.ordered_subscribers().next().is_some()
+        {
+            return Err(Error::Missing(
+                "primary District surviving effect/listener ownership",
+            ));
         }
         // These source-gated Initialize methods retain no primary context.
         // Release the borrowed wrapper; the shared monotonic counter stays live.

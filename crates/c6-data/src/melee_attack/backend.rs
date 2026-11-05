@@ -4,6 +4,7 @@
 use super::proposals;
 pub mod allocation;
 pub mod city_creation;
+pub mod emergency;
 pub mod improvement;
 pub mod requirements;
 use crate::{
@@ -22,6 +23,13 @@ use c6_core::{
 pub enum ContextObject {
     /// Global Game wrapper; never substituted for a Plot or Player interface.
     Game,
+    /// Native Team wrapper retained in the same normal ObjectPool.
+    Team(i32),
+    Emergency {
+        target: i32,
+        emergency_type: i32,
+        turn: i32,
+    },
     Player(i32),
     /// Objects::Player subtype3, subvalue Policy definition type hash.
     Policy {
@@ -346,6 +354,25 @@ impl EffectRuntime {
                     .map()
                     .plot_by_index(plot)
                     .ok_or(QueryError::Missing("current registered Plot"))?;
+            }
+            ContextObject::Team(team) => {
+                if !state
+                    .world()
+                    .players()
+                    .iter()
+                    .any(|player| player.team == Some(team))
+                {
+                    return Err(QueryError::Missing("current registered Team identity"));
+                }
+            }
+            ContextObject::Emergency { target, .. } => {
+                if target != -1 {
+                    state
+                        .world()
+                        .valid_player(target)
+                        .map_err(QueryError::World)?
+                        .ok_or(QueryError::Missing("current Emergency target Player"))?;
+                }
             }
             _ => return Err(QueryError::Unsupported("new object class factory")),
         }
@@ -779,6 +806,8 @@ impl player_strength::Context for EffectContext<'_> {
             }
             ContextObject::Alliance { .. } => return Ok(None),
             ContextObject::Game
+            | ContextObject::Team(_)
+            | ContextObject::Emergency { .. }
             | ContextObject::City(_)
             | ContextObject::Plot(_)
             | ContextObject::Improvement { .. } => {

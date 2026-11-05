@@ -15,7 +15,6 @@ pub struct PoolObject {
 }
 
 pub(super) struct Metadata {
-    pub ordinal: usize,
     pub owned_modifiers: Vec<i32>,
 }
 
@@ -55,13 +54,9 @@ impl EffectRuntime {
                     "unique initial City destruction pool/owned state",
                 ));
             }
-            if self
-                .object(row.handle)
-                .map_err(Error::Query)?
-                .kind
-                .city_component()
-                .is_none()
-                || !creation
+            let kind = self.object(row.handle).map_err(Error::Query)?.kind;
+            if kind.city_component().is_some()
+                && !creation
                     .objects
                     .iter()
                     .any(|object| object.handle == row.handle)
@@ -69,19 +64,28 @@ impl EffectRuntime {
                 return Err(Error::Missing("initial City destruction ICity lifecycle"));
             }
         }
-        for (handle, object) in self.objects() {
-            if object.kind.city_component().is_some()
-                && !objects.iter().any(|row| row.handle == *handle)
-            {
+        for (handle, _) in self.objects() {
+            if !objects.iter().any(|row| row.handle == *handle) {
                 return Err(Error::Missing("initial complete ICity destruction domain"));
             }
         }
+        let mut order = objects
+            .iter()
+            .map(|row| (row.ordinal, row.handle))
+            .collect::<Vec<_>>();
+        order.sort_by_key(|row| row.0);
+        self.allocations.pool_order = Some(order);
         let creation = self.city_creation.as_mut().unwrap();
         for row in objects {
-            creation.object_mut(row.handle)?.destruction = Some(Metadata {
-                ordinal: row.ordinal,
-                owned_modifiers: row.owned_modifiers.clone(),
-            });
+            if let Some(object) = creation
+                .objects
+                .iter_mut()
+                .find(|object| object.handle == row.handle)
+            {
+                object.destruction = Some(Metadata {
+                    owned_modifiers: row.owned_modifiers.clone(),
+                });
+            }
         }
         creation.destruction_initialized = true;
         Ok(())
@@ -122,27 +126,12 @@ pub fn detach_city(
             "CityDestroyed initial ICity pool projection",
         ));
     }
-    let mut objects = Vec::new();
-    for (handle, object) in runtime.objects() {
-        if object.kind.city_component() == Some(city) {
-            let row = creation
-                .objects
-                .iter()
-                .find(|row| row.handle == *handle)
-                .and_then(|row| row.destruction.as_ref())
-                .ok_or(Error::Missing(
-                    "CityDestroyed current pool/lifecycle metadata",
-                ))?;
-            objects.push((row.ordinal, *handle));
-        }
-        if matches!(object.kind, ContextObject::Improvement { city: id, .. } if id == city) {
-            return Err(Error::Missing("CityDestroyed Improvement ICity interface"));
-        }
-    }
-    objects.sort_by_key(|row| row.0);
-    if objects.windows(2).any(|rows| rows[0].0 == rows[1].0) {
-        return Err(Error::Missing("CityDestroyed unique native pool ordering"));
-    }
+    let objects = runtime
+        .allocations
+        .pool_order
+        .as_ref()
+        .ok_or(Error::Missing("CityDestroyed complete normal pool order"))?
+        .clone();
     for (_, handle) in objects {
         // The copied pool contains WEAK owners. Lock each surviving wrapper
         // only when reached; prior callbacks may have released its last owner.
@@ -151,110 +140,231 @@ pub fn detach_city(
         if !runtime.objects().iter().any(|row| row.0 == handle) {
             continue;
         }
-        let owned = runtime
-            .city_creation
-            .as_mut()
-            .unwrap()
-            .object_mut(handle)?
-            .destruction
-            .as_ref()
-            .ok_or(Error::Missing("CityDestroyed current ownership"))?
-            .owned_modifiers
-            .clone();
-        for instance in &owned {
-            let owner = runtime.city_modifier_state(*instance)?.owner;
-            if owner != handle {
-                return Err(Error::Missing("CityDestroyed owned modifier identity"));
-            }
-            runtime.remove_city_modifier_instance(
+        if current_city(state, runtime, handle)? != Some(city) {
+            continue;
+        }
+        detach_object(
+            state,
+            runtime,
+            requirements,
+            handle,
+            features,
+            factory,
+            effects,
+        )?;
+    }
+    // The native subscriber trims expired weak slots after visiting the copied
+    // pool. Lifetime retirement remains with the canonical real owner graph;
+    // ordinary City cache release belongs to the enclosing City destructor.
+    Ok(())
+}
+
+/// OnDistrictDestroyed_DetachGameEffects23e2330 always creates/shares the
+/// ordinary District object before its weak-pool snapshot. Every visited
+/// object's GetPrimaryObject runs, even when it does not match the target.
+#[allow(clippy::too_many_arguments)]
+pub fn detach_district(
+    state: &mut LoadedState,
+    runtime: &mut EffectRuntime,
+    requirements: &mut requirements::Runtime,
+    district: ComponentId,
+    logging_priority: i32,
+    features: &[u32],
+    factory: &mut dyn collection::RequirementFactory,
+    effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+) -> Result<(), Error> {
+    runtime.current_owner(state).map_err(Error::Query)?;
+    let primary = runtime.make_district_object(state, district)?;
+    if logging_priority > 1 {
+        return Err(Error::Missing(
+            "DistrictDestroyed enabled object formatting",
+        ));
+    }
+    let objects = runtime
+        .allocations
+        .pool_order
+        .as_ref()
+        .ok_or(Error::Missing(
+            "DistrictDestroyed complete normal pool order",
+        ))?
+        .clone();
+    for (_, handle) in objects {
+        if !runtime.objects().iter().any(|row| row.0 == handle) {
+            continue;
+        }
+        let current = primary_object(state, runtime, handle)?;
+        let matched = current == primary;
+        // Native releases the GetPrimaryObject temporary BEFORE dispatching.
+        // The target's outer MakeObject owner remains live until this handler
+        // returns, so sharing it here cannot expire it.
+        if current != primary {
+            runtime.release_factory_primary(current)?;
+        }
+        if matched {
+            detach_object(
                 state,
+                runtime,
                 requirements,
-                *instance,
+                handle,
                 features,
+                factory,
                 effects,
             )?;
         }
-        if runtime
-            .city_creation
-            .as_ref()
-            .unwrap()
-            .modifiers
-            .iter()
-            .any(|record| record.owner == handle)
-        {
-            return Err(Error::Missing(
-                "CityDestroyed omitted current owned modifier",
-            ));
+    }
+    runtime.release_factory_primary(primary)
+}
+fn primary_object(
+    state: &LoadedState,
+    runtime: &mut EffectRuntime,
+    handle: u64,
+) -> Result<u64, Error> {
+    let kind = runtime.object(handle).map_err(Error::Query)?.kind;
+    match kind {
+        ContextObject::City(city) => runtime.make_city_object(state, city),
+        ContextObject::District { district, .. } | ContextObject::Building { district, .. } => {
+            runtime.make_district_object(state, district)
         }
-        let mut cursor = runtime
+        ContextObject::Unit(unit) => runtime
+            .make_current_unit_object(state, unit, [0, 0])
+            .map_err(Error::Query),
+        ContextObject::Policy { owner, .. } | ContextObject::Government { owner, .. } => runtime
+            .objects()
+            .iter()
+            .find(|(_, object)| object.kind == ContextObject::Player(owner))
+            .map(|row| row.0)
+            .ok_or(Error::Missing("DistrictDestroyed normal Player factory")),
+        // Actual normal Player/Game factories share the already represented
+        // ordinary object; Team/Improvement vtable+20 routes to ModifierObject
+        // self-weak GetPrimaryObject2335920 on this target.
+        ContextObject::Player(_)
+        | ContextObject::Game
+        | ContextObject::Team(_)
+        | ContextObject::Improvement { .. } => Ok(handle),
+        ContextObject::Plot(_)
+        | ContextObject::Alliance { .. }
+        | ContextObject::Emergency { .. } => Err(Error::Missing(
+            "DistrictDestroyed source-qualified primary object class",
+        )),
+    }
+}
+
+fn current_city(
+    state: &LoadedState,
+    runtime: &EffectRuntime,
+    handle: u64,
+) -> Result<Option<ComponentId>, Error> {
+    Ok(match runtime.object(handle).map_err(Error::Query)?.kind {
+        ContextObject::City(city) => Some(city),
+        ContextObject::Building { district, .. } | ContextObject::District { district, .. } => {
+            match state.district(i32::from(district.owner), district.id) {
+                Ok(record) => Some(ComponentId { owner: district.owner, component_type: 2, id: record.city_id }),
+                Err(c6_core::loaded_state::district_initialization::DistrictError::MissingDistrict { .. }) => None,
+                Err(_) => return Err(Error::Missing("current ICity District state")),
+            }
+        }
+        ContextObject::Improvement { city, .. } => Some(city),
+        _ => None,
+    })
+}
+#[allow(clippy::too_many_arguments)]
+fn detach_object(
+    state: &mut LoadedState,
+    runtime: &mut EffectRuntime,
+    requirements: &mut requirements::Runtime,
+    handle: u64,
+    features: &[u32],
+    factory: &mut dyn collection::RequirementFactory,
+    effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+) -> Result<(), Error> {
+    let owned = runtime
+        .city_creation
+        .as_mut()
+        .unwrap()
+        .object_mut(handle)?
+        .destruction
+        .as_ref()
+        .ok_or(Error::Missing("CityDestroyed current ownership"))?
+        .owned_modifiers
+        .clone();
+    for instance in &owned {
+        let owner = runtime.city_modifier_state(*instance)?.owner;
+        if owner != handle {
+            return Err(Error::Missing("CityDestroyed owned modifier identity"));
+        }
+        runtime.remove_city_modifier_instance(state, requirements, *instance, features, effects)?;
+    }
+    if runtime
+        .city_creation
+        .as_ref()
+        .unwrap()
+        .modifiers
+        .iter()
+        .any(|record| record.owner == handle)
+    {
+        return Err(Error::Missing(
+            "CityDestroyed omitted current owned modifier",
+        ));
+    }
+    let mut cursor = runtime
+        .city_creation
+        .as_mut()
+        .unwrap()
+        .object_mut(handle)?
+        .destroyed
+        .cursor_start()
+        .map_err(Error::Ring)?;
+    loop {
+        let callback = runtime
             .city_creation
             .as_mut()
             .unwrap()
             .object_mut(handle)?
             .destroyed
-            .cursor_start()
+            .cursor_route(cursor)
             .map_err(Error::Ring)?;
-        loop {
-            let callback = runtime
+        let result = match callback {
+            Some(DestroyedListener::Existing(_)) => Err(Error::Missing(
+                "CityDestroyed imported ObjectDestroyed listener",
+            )),
+            Some(DestroyedListener::ModifierOwner(instance)) => runtime
+                .remove_city_modifier_instance(state, requirements, instance, features, effects),
+            Some(DestroyedListener::Modifier(instance)) => tracked_destroyed(
+                state,
+                runtime,
+                requirements,
+                handle,
+                instance,
+                features,
+                factory,
+                effects,
+            ),
+            None => Ok(()),
+        };
+        if let Err(error) = result {
+            runtime
                 .city_creation
                 .as_mut()
                 .unwrap()
                 .object_mut(handle)?
                 .destroyed
-                .cursor_route(cursor)
+                .cursor_release(cursor)
                 .map_err(Error::Ring)?;
-            let result = match callback {
-                Some(DestroyedListener::Existing(_)) => Err(Error::Missing(
-                    "CityDestroyed imported ObjectDestroyed listener",
-                )),
-                Some(DestroyedListener::ModifierOwner(instance)) => runtime
-                    .remove_city_modifier_instance(
-                        state,
-                        requirements,
-                        instance,
-                        features,
-                        effects,
-                    ),
-                Some(DestroyedListener::Modifier(instance)) => tracked_destroyed(
-                    state,
-                    runtime,
-                    requirements,
-                    handle,
-                    instance,
-                    features,
-                    factory,
-                    effects,
-                ),
-                None => Ok(()),
-            };
-            if let Err(error) = result {
-                runtime
-                    .city_creation
-                    .as_mut()
-                    .unwrap()
-                    .object_mut(handle)?
-                    .destroyed
-                    .cursor_release(cursor)
-                    .map_err(Error::Ring)?;
-                return Err(error);
-            }
-            match runtime
-                .city_creation
-                .as_mut()
-                .unwrap()
-                .object_mut(handle)?
-                .destroyed
-                .cursor_next(cursor)
-                .map_err(Error::Ring)?
-            {
-                Some(next) => cursor = next,
-                None => break,
-            }
+            return Err(error);
+        }
+        match runtime
+            .city_creation
+            .as_mut()
+            .unwrap()
+            .object_mut(handle)?
+            .destroyed
+            .cursor_next(cursor)
+            .map_err(Error::Ring)?
+        {
+            Some(next) => cursor = next,
+            None => break,
         }
     }
-    // The native subscriber trims expired weak slots after visiting the copied
-    // pool. Lifetime retirement remains with the canonical real owner graph;
-    // ordinary City cache release belongs to the enclosing City destructor.
     Ok(())
 }
 

@@ -6,9 +6,12 @@ use c6_core::{loaded_state::LoadedState, unit::ComponentId};
 #[derive(Debug)]
 pub enum Error {
     State(c6_core::loaded_state::Error),
+    Knowledge(c6_core::loaded_state::game_statistics::AccessError),
     Definitions(crate::city_production_turn::Error),
     District(c6_core::loaded_state::district_initialization::DistrictError),
     Missing(&'static str),
+    DistrictDefinitions(crate::loaded_actions::Error),
+    ResourceRemovalRequired { plot: u32, resource: u32 },
     BuildQueueClearRequired,
     BuildingRemovalRequired { index: usize, hash: u32, plot: i16 },
 }
@@ -84,5 +87,133 @@ pub fn mark_district_for_delete(
         .district_mut(i32::from(district.owner), district.id)
         .map_err(Error::District)?
         .marked_for_delete = Some(true);
+    Ok(())
+}
+
+/// Player.EventManager.OnDistrictDestroyed2b018b0 forwards to Resources2b70e10.
+/// The actual center removal with no resource has old/new extractable resource
+/// both NO_RESOURCE; HandleResourceChangeOnTile returns before gameplay/RNG.
+/// Other observers, internal-only, pillaged or incomplete Districts preserve
+/// their source guards. Reached resource deltas remain explicit.
+pub fn district_resources_removed(
+    state: &mut LoadedState,
+    definitions: &crate::loaded_actions::city_range_attack::Definitions,
+    observer: i32,
+    district: ComponentId,
+) -> Result<(), Error> {
+    if district.component_type != 3 {
+        return Err(Error::Missing("District resource removal component type"));
+    }
+    let record = state
+        .district(i32::from(district.owner), district.id)
+        .map_err(Error::District)?;
+    let location = c6_core::unit::PlotCoord {
+        x: record.location.0,
+        y: record.location.1,
+    };
+    let Some(plot) =
+        crate::unit_placement_services::plot_index_at::<std::convert::Infallible>(state, location)
+            .map_err(|_| Error::Missing("District resource removal map"))?
+    else {
+        return Ok(());
+    };
+    // This reads an actual complete initialized definition, not the CityCenter
+    // class name. CityCenter.InternalOnly is false in the combined fixture.
+    let internal = definitions
+        .district_is_internal_only(state, record.district_hash)
+        .map_err(Error::DistrictDefinitions)?;
+    let tile = state
+        .world()
+        .map()
+        .plot_by_index(plot)
+        .ok_or(Error::Missing("District resource removal plot"))?;
+    let owner = tile
+        .city_attributes
+        .as_ref()
+        .map_or(-1, |attributes| i32::from(attributes.player));
+    if owner != observer || internal || record.pillaged || !record.is_complete {
+        return Ok(());
+    }
+    if tile.resource_hash != u32::MAX {
+        return Err(Error::ResourceRemovalRequired {
+            plot,
+            resource: tile.resource_hash,
+        });
+    }
+    Ok(())
+}
+
+/// AI.Targets.CityDestroyed21aaf90 is gameplay knowledge upkeep, not policy.
+/// The first current District revealed to this observer removes the first
+/// matching full City identity from its existing CivKnowledge (2000fb0).
+pub fn targets_city_destroyed(
+    state: &mut LoadedState,
+    observer: i32,
+    city: ComponentId,
+) -> Result<(), Error> {
+    let current = canonical_city(state, city)?;
+    let ids = current.districts.district_ids.clone();
+    for id in ids {
+        let district = match state.district(i32::from(city.owner), id) {
+            Ok(district) => district,
+            Err(
+                c6_core::loaded_state::district_initialization::DistrictError::MissingDistrict {
+                    ..
+                },
+            ) => continue,
+            Err(error) => return Err(Error::District(error)),
+        };
+        let location = c6_core::unit::PlotCoord {
+            x: district.location.0,
+            y: district.location.1,
+        };
+        let Some(plot) = crate::unit_placement_services::plot_index_at::<std::convert::Infallible>(
+            state, location,
+        )
+        .map_err(|_| Error::Missing("CityDestroyed Targets map geometry"))?
+        else {
+            continue;
+        };
+        let world = state.world();
+        let visible = crate::unit_sight_state::mapped_visibility(
+            &world.map().visibility,
+            world.player_mapping.as_ref(),
+            observer,
+        )
+        .map_err(Error::Missing)?;
+        let revealed = *visible
+            .revealed
+            .get(plot as usize)
+            .ok_or(Error::Missing("CityDestroyed Targets revealed plot"))?;
+        if revealed == 0 {
+            continue;
+        }
+        let targets = state
+            .combat_ai_targets_mut(observer)
+            .map_err(Error::Knowledge)?;
+        if targets.player_id != observer || targets.knowledge_base.owner != observer {
+            return Err(Error::Missing(
+                "CityDestroyed Targets current observer identity",
+            ));
+        }
+        if let Some(at) = targets
+            .knowledge_base
+            .known_cities
+            .iter()
+            .position(|known| known.owner == i32::from(city.owner) && known.id == city.id)
+        {
+            targets.knowledge_base.known_cities.remove(at);
+        }
+        // The semantic identity domain carries current known-City eligibility
+        // when an imported native snapshot omitted policy-only scalar fields.
+        if let Some(at) = targets
+            .observed_city_identities
+            .iter()
+            .position(|known| *known == (i32::from(city.owner), city.id))
+        {
+            targets.observed_city_identities.remove(at);
+        }
+        break;
+    }
     Ok(())
 }

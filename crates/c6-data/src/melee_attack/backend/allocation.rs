@@ -13,6 +13,7 @@ pub(super) struct State {
     /// Constructor provenance only; objects remain in EffectRuntime.objects.
     pub(super) constructed_policies: Vec<u64>,
     pool: Option<Pool>,
+    pub(super) pool_order: Option<Vec<(usize, u64)>>,
     modifier_next: Option<i32>,
     modifier_ids: Vec<i32>,
     initial_units: Vec<(i32, Option<Vec<u32>>)>,
@@ -27,6 +28,7 @@ impl State {
     pub(super) fn from_initial(state: &LoadedState) -> Self {
         Self {
             pool: None,
+            pool_order: None,
             constructed_policies: Vec::new(),
             absent_unit_wrappers: Vec::new(),
             unit_subtype_external_owners: Vec::new(),
@@ -149,14 +151,6 @@ impl EffectRuntime {
         }
         Ok(())
     }
-    /// Current append ordinal, shared by source-created City/District wrappers.
-    pub(super) fn next_object_pool_ordinal(&self) -> Result<usize, QueryError> {
-        self.allocations
-            .pool
-            .as_ref()
-            .map(|pool| pool.next_order)
-            .ok_or(QueryError::Missing("current ObjectPool ordering"))
-    }
     pub fn next_object_instance_id(&self) -> Result<i32, QueryError> {
         self.allocations
             .pool
@@ -221,6 +215,9 @@ impl EffectRuntime {
         let unit_subtype = matches!(object.kind, ContextObject::Unit(_))
             && matches!(object.unit_sort_suffix, Some([1, _]));
         self.register_current_object(state, handle, object)?;
+        if let Some(entries) = &mut self.allocations.pool_order {
+            entries.push((order, handle));
+        }
         if unit_subtype {
             // This constructor has no unrepresented caller/cache owner.
             self.allocations

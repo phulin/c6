@@ -180,7 +180,7 @@ pub struct Context<'a, E> {
     pub sight_definitions: &'a city_range_attack::Definitions,
     pub actor: (i32, u32),
 }
-fn mapped_visibility<'a>(
+pub(crate) fn mapped_visibility<'a>(
     rows: &'a [c6_core::map::PlayerVisibility],
     mapping: Option<&[i32; 65]>,
     owner: i32,

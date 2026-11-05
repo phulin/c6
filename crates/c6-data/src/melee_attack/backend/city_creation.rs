@@ -682,7 +682,6 @@ impl EffectRuntime {
         let affected =
             AffectedModifiers::from_sorted(Vec::new()).expect("empty constructor affected list");
         let destroyed = ListenerRing::from_ordered(&[]).map_err(Error::Ring)?;
-        let ordinal = self.next_object_pool_ordinal().map_err(Error::Query)?;
         let handle = self
             .append_normal_object(
                 state,
@@ -697,7 +696,6 @@ impl EffectRuntime {
         self.city_creation.as_mut().unwrap().objects.push(Object {
             handle,
             destruction: Some(destruction::Metadata {
-                ordinal,
                 owned_modifiers: Vec::new(),
             }),
             affected,
@@ -739,7 +737,6 @@ impl EffectRuntime {
         self.city_creation
             .as_ref()
             .ok_or(Error::Missing("building lifecycle domain"))?;
-        let ordinal = self.next_object_pool_ordinal().map_err(Error::Query)?;
         let handle = self
             .append_normal_object(
                 state,
@@ -754,7 +751,6 @@ impl EffectRuntime {
         self.city_creation.as_mut().unwrap().objects.push(Object {
             handle,
             destruction: Some(destruction::Metadata {
-                ordinal,
                 owned_modifiers: Vec::new(),
             }),
             affected: AffectedModifiers::from_sorted(Vec::new())

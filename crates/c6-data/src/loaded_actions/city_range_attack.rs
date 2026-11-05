@@ -1653,3 +1653,26 @@ mod formation_modifier_tests {
         assert_eq!(super::modified_formation_strength(0, false, values), -89);
     }
 }
+
+impl Definitions {
+    /// Current native District.IsInternalOnly property, retaining the same
+    /// authenticated initialized definition index used by combat queries.
+    pub fn district_is_internal_only(
+        &self,
+        state: &LoadedState,
+        district_hash: u32,
+    ) -> Result<bool, Error> {
+        if state.binding() != &self.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        self.districts
+            .find_index(district_hash)
+            .and_then(|index| self.district_internal_only.get(index))
+            .copied()
+            .flatten()
+            .map(|value| value != 0)
+            .ok_or(Error::Unsupported(
+                "current District.InternalOnly definition",
+            ))
+    }
+}
