@@ -686,3 +686,36 @@ pub fn train_quests_created(
     }
     Ok(())
 }
+///2901a00 resolves both plots, then returns if either is null. Initial creation
+/// therefore exits before owner/diplomacy/distance or platform award queries.
+pub fn initial_moved_achievement(
+    state: &LoadedState,
+    old: c6_core::unit::PlotCoord,
+    new: c6_core::unit::PlotCoord,
+) -> Result<(), Error> {
+    let old = crate::unit_placement_services::plot_index_at::<std::convert::Infallible>(state, old)
+        .map_err(|_| Error::Missing("achievement old plot lookup"))?;
+    let new = crate::unit_placement_services::plot_index_at::<std::convert::Infallible>(state, new)
+        .map_err(|_| Error::Missing("achievement new plot lookup"))?;
+    let (Some(old), Some(new)) = (old, new) else {
+        return Ok(());
+    };
+    let map = state.world().map();
+    let a = crate::movement_placement_state::plot_owner(
+        map.plots
+            .get(old as usize)
+            .ok_or(Error::Missing("achievement old plot"))?,
+    )
+    .map_err(|_| Error::Missing("achievement old owner"))?;
+    let b = crate::movement_placement_state::plot_owner(
+        map.plots
+            .get(new as usize)
+            .ok_or(Error::Missing("achievement new plot"))?,
+    )
+    .map_err(|_| Error::Missing("achievement new owner"))?;
+    if a == b {
+        Ok(())
+    } else {
+        Err(Error::Missing("cross-owner movement achievement"))
+    }
+}
