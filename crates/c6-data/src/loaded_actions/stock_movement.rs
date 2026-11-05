@@ -233,6 +233,14 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
             return Ok(());
         }
         match report.event_hash {
+            0xb8515a41 => self.reporting.observe_initial_placement_report(
+                state, UnitReference::from_component_id(report.identity), report,
+            ).map_err(Error::Rules),
+            0x9deb82e7 => self.reporting.observe_teleported_report(
+                state, UnitReference::from_component_id(report.identity), report,
+            ).map_err(Error::Rules),
+            0xc1300ee7 => self.reporting.observe_visibility_report(state, report)
+                .map_err(Error::Rules),
             0xbe121408 => self
                 .reporting
                 .send_moved_report(
