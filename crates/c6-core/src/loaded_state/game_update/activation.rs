@@ -171,6 +171,35 @@ fn needs(state: &LoadedState, owner: i32) -> Result<bool, Error> {
     }
     Ok(state.retained.core.player_processor.activation_needed[index(owner)?])
 }
+/// Current NeedsSimultaneousActivate: the same needs guard, then the current
+/// human turn mode. NPCs remain sequential regardless of their saved flag.
+pub fn needs_simultaneous(
+    state: &LoadedState,
+    owner: i32,
+    mut mode: impl FnMut(&LoadedState) -> Result<u32, Error>,
+) -> Result<bool, Error> {
+    if !needs(state, owner)? || state.player_slot_status(owner).map_err(super::missing)? != 3 {
+        return Ok(false);
+    }
+    Ok(!sequential(state, owner, &mut mode)?)
+}
+
+/// SetSimultaneousTurns updates the canonical archived player flag; it does
+/// not activate the player or alter its control role.
+pub fn set_simultaneous(state: &mut LoadedState, owner: i32, value: bool) -> Result<(), Error> {
+    let i = state
+        .retained
+        .players
+        .iter()
+        .position(|p| p.header.owner == owner)
+        .ok_or(Error::Unsupported("simultaneous current player header"))?;
+    if state.retained.players[i].header.ordered_flags[3] != value {
+        revision(state)?;
+        state.retained.players[i].header.ordered_flags[3] = value;
+    }
+    Ok(())
+}
+
 fn sequential(
     state: &LoadedState,
     owner: i32,
@@ -276,6 +305,19 @@ mod tests {
         state.retained.core.game_processor.turn_order.fill(-1);
         state.retained.core.game_processor.turn_order[17] = owner;
         (state, owner)
+    }
+    #[test]
+    fn simultaneous_needs_uses_current_mode_and_lazy_needs_guard() {
+        let (mut state, owner) = current();
+        assert!(needs_simultaneous(&state, owner, |_| Ok(0xfd4af2d1)).unwrap());
+        assert!(!needs_simultaneous(&state, owner, |_| Ok(0x5681fb60)).unwrap());
+        set_simultaneous(&mut state, owner, true).unwrap();
+        assert!(needs_simultaneous(&state, owner, |_| Ok(0xbe9088c4)).unwrap());
+        state.retained.core.player_processor.activation_needed[owner as usize] = false;
+        assert!(!needs_simultaneous(&state, owner, |_| panic!(
+            "inactive need must not query mode"
+        ))
+        .unwrap());
     }
     #[test]
     fn upkeep_consumes_first_and_event_before_callback_without_counters() {

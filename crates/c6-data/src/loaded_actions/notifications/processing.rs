@@ -165,6 +165,25 @@ impl<'a, B: Backend> Provider<'a, B> {
         }
         result
     }
+    /// HasEndTurnBlocking scans the current owner list in order and executes
+    /// each existing effectful blocking getter, stopping at the first match.
+    pub fn has_end_turn_blocking(
+        &mut self,
+        owner: i32,
+        kind: u32,
+    ) -> Result<bool, aftermath::Error> {
+        if owner == -1 {
+            return Ok(false);
+        }
+        let mut current = self.step(|s| Ok(s.state.player_notifications()?.first(owner)?))?;
+        while let Some(object) = current {
+            if Notifications::blocking(self, Object::Attached(object))? as u32 == kind {
+                return Ok(true);
+            }
+            current = self.step(|s| Ok(s.state.player_notifications()?.next(object)?))?;
+        }
+        Ok(false)
+    }
     fn step<T>(
         &mut self,
         f: impl FnOnce(&mut Self) -> Result<T, Error>,
@@ -247,10 +266,22 @@ impl<'a, B: Backend> Provider<'a, B> {
         let survives = match record.type_hash {
             // ChooseCityProduction::IsExpired2d29800. This only queries the
             // current City; the external policy retains its production choice.
-            0x40fb81ed => self.state.retained().players.iter()
+            0x40fb81ed => self
+                .state
+                .retained()
+                .players
+                .iter()
                 .find(|p| p.header.owner == owner)
-                .and_then(|p| p.cities.records.entries.iter().find(|c|c.value.header.id==record.component.id))
-                .is_some_and(|c|!c.value.header.delayed_death && c.value.build_queue.entries.is_empty()),
+                .and_then(|p| {
+                    p.cities
+                        .records
+                        .entries
+                        .iter()
+                        .find(|c| c.value.header.id == record.component.id)
+                })
+                .is_some_and(|c| {
+                    !c.value.header.delayed_death && c.value.build_queue.entries.is_empty()
+                }),
             choose_tech::TYPE_HASH => self
                 .inputs
                 .tech
@@ -649,7 +680,9 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                     .map_err(|_| Error::Unsupported("actual tactical notification phase")),
                 // ChooseCityProduction::IsValidForPhase2d29870 forwards to
                 // the same strategic-command phase query.
-                0x3af4b80 | choose_tech::VTABLE_ADDRESSPOINT | city_range_attack::VTABLE_ADDRESSPOINT => {
+                0x3af4b80
+                | choose_tech::VTABLE_ADDRESSPOINT
+                | city_range_attack::VTABLE_ADDRESSPOINT => {
                     Ok(s.inputs.culture.valid_for_phase(s.state)?)
                 }
                 value
