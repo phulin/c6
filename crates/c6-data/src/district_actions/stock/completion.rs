@@ -242,6 +242,7 @@ pub fn dispatch<P>(
                         effects.inputs.choices,
                         effects.inputs.culture,
                     );
+                backend.choice_graph = Some(effects.inputs.tech_graph);
                 let mut context = crate::research::Context {
                     state,
                     definitions: effects.inputs.research,

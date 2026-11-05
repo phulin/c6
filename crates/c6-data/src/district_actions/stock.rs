@@ -26,6 +26,7 @@ pub struct Inputs<'a> {
     pub appeal_subscribers: Option<&'a [u64]>,
     pub research: &'a research::Definitions,
     pub choices: &'a choose_tech::Definitions,
+    pub tech_graph: &'a choose_tech::GameTechs,
     pub culture: Option<&'a stock_research::CultureInputs<'a>>,
     pub completion: &'a completion::Services<'a>,
 }
@@ -281,6 +282,7 @@ impl<P> construction::Effects for Effects<'_, '_, '_, P> {
             self.inputs.choices,
             self.inputs.culture,
         );
+        effects.choice_graph = Some(self.inputs.tech_graph);
         research::Context {
             state: s,
             definitions: self.inputs.research,
