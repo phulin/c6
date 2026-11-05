@@ -15,6 +15,8 @@ struct Resource {
     hash: u32,
     accumulates: bool,
     co2: Option<i32>,
+    strategic: bool,
+    luxury: bool,
 }
 struct Unit {
     hash: u32,
@@ -51,8 +53,18 @@ impl Definitions {
                 })
                 .transpose()
             };
+            let row = rules
+                .gameplay()
+                .table("Resources")
+                .and_then(|t| t.row_by_id(e.database_rowid))
+                .ok_or("upgrade Resource row")?;
+            let class = row
+                .text("ResourceClassType")
+                .map_err(|e| format!("{e:?}"))?;
             resources.push(Resource {
                 hash: hash(&e.type_name),
+                strategic: hash(class.as_bytes()) == hash(b"RESOURCECLASS_STRATEGIC"),
+                luxury: hash(class.as_bytes()) == hash(b"RESOURCECLASS_LUXURY"),
                 accumulates: integer("Accumulate")?.is_some_and(|v| v != 0),
                 co2: integer("CO2perkWh")?,
             });
@@ -102,12 +114,19 @@ impl Definitions {
         })
     }
 }
-/// Current GameSignals+1230 registration tokens. Unknown and nonempty lists
-/// cannot be silently treated as absence of gameplay callbacks.
+/// A source-qualified current ResourceChanged subscription. Native addresses
+/// are diagnostic identities; the receiver is the canonical Player owner.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Listener {
+    Unknown(u64),
+    PlayerEventManagerResourcesChanged { token: u64, receiver_owner: i32 },
+}
+/// Ordered current ResourceChanged subscriptions. Unknown consumers remain
+/// explicit errors even when qualified consumers use an effect-free branch.
 pub struct Signals {
     binding: WireBinding,
     instance: ActionStamp,
-    listeners: Vec<u64>,
+    listeners: Vec<Listener>,
 }
 impl Signals {
     pub fn from_initial(
@@ -121,9 +140,70 @@ impl Signals {
         Ok(Self {
             binding: binding.clone(),
             instance: state.action_stamp(),
+            listeners: listeners.into_iter().map(Listener::Unknown).collect(),
+        })
+    }
+    /// Bind source-qualified callable/member/receiver identities from the same
+    /// initial snapshot as the state. This does not certify unknown callables.
+    pub fn from_current(
+        state: &LoadedState,
+        binding: &WireBinding,
+        listeners: Vec<Listener>,
+    ) -> Result<Self, String> {
+        if state.binding() != binding {
+            return Err("upgrade resource signal binding".into());
+        }
+        for listener in &listeners {
+            if let Listener::PlayerEventManagerResourcesChanged { receiver_owner, .. } = listener {
+                receiver(state, *receiver_owner)?;
+            }
+        }
+        Ok(Self {
+            binding: binding.clone(),
+            instance: state.action_stamp(),
             listeners,
         })
     }
+}
+fn receiver(
+    state: &LoadedState,
+    owner: i32,
+) -> Result<&c6_core::loaded_components::RetainedPlayer, String> {
+    state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or_else(|| "upgrade ResourceChanged receiver Player".into())
+}
+// Influence's own-owner branch forwards resource changes to a suzerain and
+// copy recipients only under these guards. No hidden callback or RNG occurs
+// when this predicate is false; the source returns after these tests.
+fn forwards(
+    def: &Resource,
+    suzerain: i32,
+    strategics: &[i32],
+    luxuries: &[i32],
+    owner: i32,
+    delta: i32,
+) -> bool {
+    if delta == 0 {
+        return false;
+    }
+    if suzerain != -1 && (!def.accumulates || delta > 0) {
+        return true;
+    }
+    if def.strategic
+        && def.accumulates
+        && delta > 0
+        && strategics
+            .iter()
+            .enumerate()
+            .any(|(i, n)| *n > 0 && i as i32 != owner)
+    {
+        return true;
+    }
+    def.luxury && luxuries.iter().any(|n| *n > 0)
 }
 pub struct Inputs<'a> {
     pub definitions: &'a Definitions,
@@ -159,8 +239,30 @@ pub fn preflight_resource(
         .iter()
         .find(|r| r.hash == resource)
         .ok_or("upgrade resource definition")?;
-    if !signals.listeners.is_empty() {
-        return Err("upgrade positive ResourceChanged listeners".into());
+    for listener in &signals.listeners {
+        match listener {
+            Listener::Unknown(token) => {
+                return Err(format!(
+                    "upgrade unknown ResourceChanged listener {token:#x}"
+                ))
+            }
+            Listener::PlayerEventManagerResourcesChanged { receiver_owner, .. } => {
+                let p = receiver(state, *receiver_owner)?;
+                // Checking the own-owner branch is conservative here because
+                // this preflight has no actor parameter. Actual dispatch below
+                // reads the current changed and receiving owner separately.
+                if forwards(
+                    def,
+                    p.influence.suzerain,
+                    &p.influence.copy_strategics_count,
+                    &p.influence.copy_luxuries_count,
+                    *receiver_owner,
+                    amount.wrapping_neg(),
+                ) {
+                    return Err("upgrade ResourceChanged Influence forwarding".into());
+                }
+            }
+        }
     }
     if amount > 0 && def.co2.is_some_and(|v| v > 0) {
         return Err("upgrade positive climate emissions".into());
@@ -228,10 +330,32 @@ pub fn consume_resource<P>(
     {
         return Err("upgrade resource signals binding".into());
     }
-    if let Some(token) = signals.listeners.first() {
-        return Err(format!(
-            "upgrade unsupported ResourceChanged listener {token:#x}, resource {index}"
-        ));
+    for listener in &signals.listeners {
+        match *listener {
+            Listener::Unknown(token) => {
+                return Err(format!(
+                    "upgrade unsupported ResourceChanged listener {token:#x}, resource {index}"
+                ))
+            }
+            Listener::PlayerEventManagerResourcesChanged { receiver_owner, .. } => {
+                let p = receiver(state, receiver_owner)?;
+                if receiver_owner == owner
+                    && forwards(
+                        def,
+                        p.influence.suzerain,
+                        &p.influence.copy_strategics_count,
+                        &p.influence.copy_luxuries_count,
+                        owner,
+                        amount.wrapping_neg(),
+                    )
+                {
+                    return Err("upgrade ResourceChanged Influence forwarding".into());
+                }
+                backend
+                    .reached
+                    .push("ResourceChanged Player.EventManager Influence");
+            }
+        }
     }
     backend
         .turn_report_records
@@ -304,6 +428,32 @@ pub fn upgraded(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn influence_callbacks_preserve_ownership_and_forwarding_guards() {
+        let iron = Resource {
+            hash: 0,
+            accumulates: true,
+            co2: Some(0),
+            strategic: true,
+            luxury: false,
+        };
+        // Spending stockpiled Iron does not forward a loss even when both
+        // suzerainty and strategic-copy relationships are present.
+        assert!(!forwards(&iron, 1, &[0, 2], &[1], 0, -20));
+        assert!(!forwards(&iron, 1, &[0, 2], &[1], 0, 0));
+        assert!(forwards(&iron, 1, &[], &[], 0, 20));
+        assert!(forwards(&iron, -1, &[0, 1], &[], 0, 20));
+        assert!(!forwards(&iron, -1, &[1, 0], &[], 0, 20));
+        let luxury = Resource {
+            hash: 0,
+            accumulates: false,
+            co2: None,
+            strategic: false,
+            luxury: true,
+        };
+        assert!(forwards(&luxury, -1, &[], &[1], 0, -1));
+        assert!(forwards(&luxury, 1, &[], &[], 0, -1));
+    }
     #[test]
     fn strategic_payment_uses_wrapping_arithmetic_and_conditional_clamp() {
         assert_eq!(amount_after(25, -20, true), 5);
