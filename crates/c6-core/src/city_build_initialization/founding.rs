@@ -17,6 +17,9 @@ pub enum Error {
     MissingChokepoint(u32),
     ChokepointEndpoints(u32),
     Allocation,
+    UnsupportedPlanningOwner,
+    MissingCityBuild,
+    PlanningDataRequired,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Parameters {
@@ -157,6 +160,49 @@ pub fn on_found_city(
         }
     }
     Ok(())
+}
+
+/// Stock human DoFoundCity in the external-policy arena. The native job's
+/// CityPlotEvaluation/AI analyzer outputs and terrain/production preferences are
+/// planning data; they remain explicitly unavailable. Canonical strategic writes
+/// still execute above. The stock behavior-tree factory returns null for a human
+/// before allocating or executing policy. Its non-human branch is not covered.
+pub fn on_found_city_external_policy(
+    state: &mut LoadedState,
+    owner: i32,
+    city_id: u32,
+    parameters: &Parameters,
+) -> Result<(), Error> {
+    if state.player_slot_status(owner).map_err(Error::State)? != 3 {
+        return Err(Error::UnsupportedPlanningOwner);
+    }
+    let city_ai = state
+        .city(owner, city_id)
+        .map_err(Error::State)?
+        .header
+        .city_ai_id;
+    let manager = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .and_then(|p| p.ai_city_manager.as_ref())
+        .ok_or(Error::MissingCityBuild)?;
+    let entry = manager
+        .city_ais
+        .entries
+        .iter()
+        .find(|e| e.city_build.city_ai_id == city_ai)
+        .ok_or(Error::MissingCityBuild)?;
+    if entry.city_build.city_id != city_id || entry.city_build.player_owner != owner {
+        return Err(Error::Binding);
+    }
+    if entry.city_build.planning_data
+        != crate::player_ai_city_manager::PlanningData::ExternalPolicyOmitted
+    {
+        return Err(Error::PlanningDataRequired);
+    }
+    on_found_city(state, owner, city_id, parameters)
 }
 #[cfg(test)]
 mod tests {
