@@ -30,6 +30,7 @@ pub mod current_aftermath;
 pub mod current_city_domains;
 pub mod diplomacy_pending_deals;
 pub mod handlers;
+mod fortify;
 pub mod move_to;
 pub mod notifications;
 pub mod reporting;
@@ -222,6 +223,7 @@ pub(super) enum HandlerAuthority<'a, 'capture> {
 type RangeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, c6_core::unit::PlotCoord, bool, &mut Q) -> Result<bool, Error>
     + 'a;
 type FarmHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, u32, bool, &mut Q) -> Result<bool, Error> + 'a;
+type FortifyHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, &mut Q) -> Result<bool, Error> + 'a;
 struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
     expected_actor: &'a Unit,
@@ -231,6 +233,7 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     found_city: Option<(&'a crate::found_city::Definitions, &'a crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
+    fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
 }
 pub(super) trait TypedParameters {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
@@ -467,6 +470,9 @@ where
                 "script changed Unit before world-backed placement; effects retained",
             ));
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::FORTIFY_HASH) {
+            return self.fortify_handler.as_mut().ok_or(Error::Unsupported("Fortify handler composition"))?(self.state, s.unit, self.external);
+        }
         if h.identity().operation_hash == OperationHash(c6_core::unit::BUILD_IMPROVEMENT_HASH) {
             let improvement = s.operation.parameters.improvement()?;
             return self.farm_handler.as_mut()
@@ -625,6 +631,7 @@ pub(super) fn can_start_for_actor<
             found_city: None,
             range_handler: None,
             farm_handler: None,
+            fortify_handler: None,
         },
     );
     if (actor.e_owner, actor.id) != identity {
@@ -707,6 +714,20 @@ pub(crate) fn can_start_typed_with_handlers<
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
 ) -> Result<bool, Error> {
+    can_start_typed_with_fortify(state, reference, inputs, external, handlers, operation,
+        found_city, range_handler, farm_handler, None)
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn can_start_typed_with_fortify<'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>>(
+    state: &mut LoadedState, reference: UnitReference, inputs: &Inputs<'_, '_>,
+    external: &'q mut Q, handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+    found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
+    range_handler: Option<&'q mut RangeHandler<'q, Q>>,
+    farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
+    fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
+) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(Error::HandlerObservation)?;
@@ -731,6 +752,7 @@ pub(crate) fn can_start_typed_with_handlers<
             found_city,
             range_handler,
             farm_handler,
+            fortify_handler,
         },
     );
     if (actor.e_owner, actor.id) != identity {

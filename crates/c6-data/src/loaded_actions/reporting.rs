@@ -405,6 +405,7 @@ pub struct Provider<'a> {
     move_to_handler: Option<i32>,
     range_attack_handler: Option<i32>,
     farm_handler: Option<i32>,
+    fortify_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
     ability_publications: Vec<AbilityPublication>,
@@ -430,6 +431,7 @@ impl<'a> Provider<'a> {
             move_to_handler: None,
             range_attack_handler: None,
             farm_handler: None,
+            fortify_handler: None,
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
             ability_publications: Vec::new(),
@@ -556,6 +558,14 @@ impl<'a> Provider<'a> {
         operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
         self.farm_handler = Some(Self::checked_handler(state, authority, operations,
             c6_core::unit::BUILD_IMPROVEMENT_HASH)?);
+        Ok(())
+    }
+    /// Fortify inherits the empty BaseHandler parameter map writer.
+    pub fn bind_fortify_handler(&mut self, state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
+        self.fortify_handler = Some(Self::checked_handler(state, authority, operations,
+            c6_core::unit::FORTIFY_HASH)?);
         Ok(())
     }
     /// Charge-change's stock Unit cache callback observes the current actor;
@@ -1047,6 +1057,7 @@ impl<'a> Provider<'a> {
             }
             OPERATION_STARTED
                 if (report.subtype == c6_core::unit::SKIP_TURN_HASH
+                    || (report.subtype == c6_core::unit::FORTIFY_HASH && self.fortify_handler.is_some())
                     || (report.subtype == c6_core::unit::MOVE_TO_HASH
                         && self.move_to_handler.is_some())
                     || (report.subtype == c6_core::unit::RANGE_ATTACK_HASH
@@ -1151,6 +1162,11 @@ impl<'a> Provider<'a> {
                     // Original handler +10 returns the SkipTurn hash; concrete
                     // parameter writer +28 is RET and leaves the fresh map empty.
                     c6_core::unit::SKIP_TURN_HASH
+                }
+                Some(node) if node.operation_hash == c6_core::unit::FORTIFY_HASH
+                    && matches!(node.parameters, c6_core::unit::OperationParameters::None) => {
+                    self.fortify_handler.ok_or(Error::Provider("actual Fortify facade handler binding unavailable"))?;
+                    c6_core::unit::FORTIFY_HASH
                 }
                 Some(node)
                     if node.operation_hash == c6_core::unit::MOVE_TO_HASH

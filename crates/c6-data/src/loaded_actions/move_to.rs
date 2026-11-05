@@ -2,6 +2,7 @@
 //! This internal action pipeline preserves completed callback effects on errors;
 //! complete outer message, diplomacy/notification and RNG parity is separate.
 mod alert;
+mod fortify;
 pub mod combat;
 mod trade;
 
@@ -464,7 +465,7 @@ where
     if movement.found_city_rules().is_none() {
         return Err(Error::Unsupported("FoundCity composition unavailable"));
     }
-    execute_immediate_manager(state, actor, c6_core::unit::FOUND_CITY_HASH,
+    execute_queued_manager(state, actor, c6_core::unit::FOUND_CITY_HASH,
         OperationParameters::None, inputs, handlers, runtime, effects, movement)
 }
 /// Ordinary typed BuildImprovement Add/Activate on the same queue and runtime.
@@ -477,12 +478,12 @@ pub fn execute_farm_manager<E, M>(
 where E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
-    execute_immediate_manager(state, actor, c6_core::unit::BUILD_IMPROVEMENT_HASH,
+    execute_queued_manager(state, actor, c6_core::unit::BUILD_IMPROVEMENT_HASH,
         OperationParameters::BuildImprovement { modifiers, improvement_hash },
         inputs, handlers, runtime, effects, movement)
 }
 #[allow(clippy::too_many_arguments)]
-fn execute_immediate_manager<E, M>(
+fn execute_queued_manager<E, M>(
     state: &mut LoadedState, actor: (i32, u32), hash: u32,
     parameters: OperationParameters, inputs: &Inputs<'_, '_>, handlers: &BoundHandlers<'_>,
     runtime: &mut Runtime<'_>, effects: &mut E, movement: &mut M,
@@ -670,7 +671,7 @@ where
         } else {
             let node = front(state, actor)?;
             let target_before = if matches!(node.operation_hash,
-                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH) {
+                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH) {
                 None
             } else {
                 Some(target(&node)?)
@@ -687,7 +688,13 @@ where
             };
             let reference = UnitReference::from_component_id(identity(state, actor)?);
             let is_range = node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH;
-            let allowed = if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
+            let allowed = if node.operation_hash == c6_core::unit::FORTIFY_HASH {
+                let mut handler = |state: &LoadedState, unit: &Unit, _effects: &mut E| {
+                    fortify::can_start::<E, M>(state, unit, inputs, movement)
+                };
+                super::can_start_typed_with_fortify(state, reference, inputs, effects,
+                    handlers, &mut operation, None, None, None, Some(&mut handler))
+            } else if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
                 let mut farm_handler = |state: &LoadedState, unit: &Unit, improvement: u32,
                     visible_only: bool, effects: &mut E| {
                     movement.farm_can_start(state, unit, improvement, visible_only, effects)
@@ -789,6 +796,9 @@ where
                             .i_operation_timer = 1;
                     }
                     data.delete
+                } else if node.operation_hash == c6_core::unit::FORTIFY_HASH {
+                    fortify::start(state, actor, effects)?;
+                    false
                 } else if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
                     false
                 } else {
@@ -875,6 +885,9 @@ fn update<E: Effects, M: Movement<E>>(
             data.delete = true;
         }
         return Ok(());
+    }
+    if node.operation_hash == c6_core::unit::FORTIFY_HASH {
+        return fortify::update(state, actor, data, inputs);
     }
     if node.operation_hash == c6_core::unit::ALERT_HASH {
         return alert::update(state, actor, data, effects, movement);
@@ -1076,6 +1089,8 @@ fn continue_operation<E: Effects, M: Movement<E>>(
                 // These four source bodies only clear ProcessingData.delete,
                 // return true (ignored by Continue), and perform no queries.
                 data.delete = false;
+            } else if node.operation_hash == c6_core::unit::FORTIFY_HASH {
+                fortify::check_complete(state, actor, &mut data, effects, movement)?;
             } else if node.operation_hash == c6_core::unit::ALERT_HASH {
                 alert::check_complete(state, actor, &mut data, runtime, effects, movement)?;
             } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
@@ -1490,11 +1505,15 @@ where
         movement,
     )
 }
+/// Explicit supported unit orders on the existing request/manager pipeline.
+/// Parameterless Fortify retains its queue until a later activation reaches the
+/// fortification maximum; this request never selects a policy or advances turns.
 #[derive(Clone, Copy, Debug)]
-enum OperationRequest {
+pub enum OperationRequest {
     MoveTo(Request),
     RangeAttack(Request),
     FoundCity,
+    Fortify,
     BuildImprovement { improvement_hash: u32, modifiers: u32 },
 }
 #[allow(clippy::too_many_arguments)]
@@ -1583,6 +1602,8 @@ where
             effects,
             movement,
         ),
+        OperationRequest::Fortify => execute_queued_manager(state, actor, c6_core::unit::FORTIFY_HASH,
+            OperationParameters::None, inputs, handlers, runtime, effects, movement),
         OperationRequest::FoundCity => {
             execute_found_city_manager(state, actor, inputs, handlers, runtime, effects, movement)
         }
@@ -1715,7 +1736,7 @@ where
     )
 }
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-fn execute_operation_active_request<B, M>(
+pub fn execute_operation_active_request<B, M>(
     context: &mut super::current_aftermath::Context<'_, B>,
     issuer: i32,
     actor: (i32, u32),

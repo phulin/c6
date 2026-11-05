@@ -301,6 +301,30 @@ pub type MoveToError = super::move_to::ActionError<
 >;
 
 impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
+    /// Execute a supported typed unit operation on the current player decision.
+    /// Unsupported handlers return an error and retain any completed prefix.
+    #[allow(clippy::too_many_arguments)]
+    pub fn operation(
+        &mut self, issuer: i32, actor: (i32, u32),
+        request: super::move_to::OperationRequest, inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>, runtime: &mut super::move_to::Runtime<'_>,
+        movement: &mut super::move_to::ComputedMovement<'_, '_>, budget: &mut usize,
+    ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>> {
+        self.ordinary_player_action(issuer)?;
+        let result = super::move_to::execute_operation_active_request(
+            &mut self.context, issuer, actor, request, inputs, handlers, runtime, movement, budget);
+        self.retain(result, true)
+    }
+    /// Ordinary Fortify; later-turn progression is performed by queue activation.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fortify(
+        &mut self, issuer: i32, actor: (i32, u32), inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>, runtime: &mut super::move_to::Runtime<'_>,
+        movement: &mut super::move_to::ComputedMovement<'_, '_>, budget: &mut usize,
+    ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>> {
+        self.operation(issuer, actor, super::move_to::OperationRequest::Fortify,
+            inputs, handlers, runtime, movement, budget)
+    }
     /// Execute an explicit MoveTo using the existing computed path/placement
     /// implementation and this session's stock callbacks and aftermath.
     ///
