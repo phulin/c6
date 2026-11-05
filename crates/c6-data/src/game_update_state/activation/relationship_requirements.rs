@@ -54,13 +54,23 @@ fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
 /// Callback gates precede SimpleRequirement's active guard and virtual Test.
 /// In particular MetX does not query HasMet for another reported owner.
 pub fn should_invalidate(state: &LoadedState, r: Receiver, reported: i32) -> Result<bool, Error> {
-    event_gate(r, reported, || {
-        state
-            .game_relations()
-            .map_err(Error::State)?
-            .has_met(r.context, r.subject)
-            .map_err(Error::Relations)
-    })
+    event_gate(r, reported, || player_has_met(state, r.context, r.subject))
+}
+fn player_has_met(state: &LoadedState, context: i32, subject: i32) -> Result<bool, Error> {
+    // Player.Diplomacy.HasMet2aa65a0 rejects invalid/self before the matrix.
+    if !state
+        .world()
+        .player_is_valid(subject)
+        .map_err(Error::World)?
+        || context == subject
+    {
+        return Ok(false);
+    }
+    state
+        .game_relations()
+        .map_err(Error::State)?
+        .has_met(context, subject)
+        .map_err(Error::Relations)
 }
 fn event_gate(
     r: Receiver,
@@ -82,7 +92,8 @@ fn event_gate(
         Kind::OpenBorders { .. } => Ok(true),
     }
 }
-/// Actual native result convention: 0 satisfied, 1 unsatisfied, 3 invalid.
+/// Actual native result convention: 0 satisfied, 1 unsatisfied, 2 permanently
+/// satisfied (elapsed contact), 3 invalid.
 /// Nonempty border armies and positive occupation/promise changes remain
 /// explicit until their gameplay continuation is supplied.
 pub fn test(
@@ -210,8 +221,42 @@ pub fn test(
             }
             Ok(1)
         }
-        Kind::MetXTurns { .. } | Kind::AtPeace { .. } => {
-            Err(Error::Missing("current elapsed diplomacy predicate"))
+        Kind::MetXTurns { turns } => {
+            if !player_has_met(state, r.context, r.subject)? {
+                return Ok(1);
+            }
+            let met = state
+                .game_relations()
+                .map_err(Error::State)?
+                .met_turn(r.context, r.subject)
+                .map_err(Error::Relations)?;
+            // 2387da1 adds before the signed comparison, including overflow.
+            Ok(
+                if met.wrapping_add(turns) <= state.retained().core.current_turn {
+                    2
+                } else {
+                    1
+                },
+            )
+        }
+        Kind::AtPeace { turns } => {
+            let relations = state.game_relations().map_err(Error::State)?;
+            if relations
+                .is_at_war(r.context, r.subject)
+                .map_err(Error::Relations)?
+                || !player_has_met(state, r.context, r.subject)?
+            {
+                return Ok(1);
+            }
+            if turns < 0 {
+                return Ok(0);
+            }
+            let changed = relations
+                .war_changed_turn(r.context, r.subject)
+                .map_err(Error::Relations)?;
+            Ok(i32::from(
+                state.retained().core.current_turn.wrapping_sub(changed) < turns,
+            ))
         }
     }
 }

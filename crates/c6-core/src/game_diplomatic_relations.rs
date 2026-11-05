@@ -21,6 +21,7 @@ pub enum Error {
     MissingDeclaredFriendships,
     MissingResearchAgreements,
     MissingHasMet,
+    MissingChangedTurns,
     DefinitionInputs,
     AlreadyInitialized,
     InvalidStorage,
@@ -301,6 +302,39 @@ impl GameDiplomaticRelations {
             .get(self.index(a, b)?)
             .map(|cell| cell.value)
             .ok_or(Error::Index)
+    }
+    /// Native GetMetTurn2983e70 returns the contact cell's companion turn.
+    pub fn met_turn(&self, a: i32, b: i32) -> Result<i32, Error> {
+        if a == b {
+            return Ok(-1);
+        }
+        let values = self
+            .current_contacts
+            .as_ref()
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_c8))
+            .ok_or(Error::MissingHasMet)?;
+        if values.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        values
+            .get(self.index(a, b)?)
+            .map(|cell| cell.changed_turn)
+            .ok_or(Error::Index)
+    }
+    /// Native GetWarChangedTurn2984e80 reads the current normalized war cell.
+    pub fn war_changed_turn(&self, a: i32, b: i32) -> Result<i32, Error> {
+        if a == b {
+            return Ok(-1);
+        }
+        let values = self.war.as_ref().ok_or(Error::MissingWar)?;
+        let turns = values
+            .changed_turns
+            .as_ref()
+            .ok_or(Error::MissingChangedTurns)?;
+        if turns.len() != total(self.player_count)? {
+            return Err(Error::InvalidStorage);
+        }
+        turns.get(self.index(a, b)?).copied().ok_or(Error::Index)
     }
     /// The actual symmetric contact payload write, including repeated turn
     /// assignment for distinct players. Equal-player writes are unsupported.
@@ -634,6 +668,30 @@ mod current_contact_tests {
             Err(Error::AlreadyInitialized)
         );
         assert!(owner.has_met(-1, -1).unwrap());
+    }
+    #[test]
+    fn elapsed_relation_queries_preserve_current_turns_and_lazy_equal_gate() {
+        let mut owner = GameDiplomaticRelations::from_war_values(2, vec![-1]).unwrap();
+        assert_eq!(owner.war_changed_turn(-1, -1), Ok(-1));
+        assert_eq!(owner.met_turn(4, 4), Ok(-1));
+        assert_eq!(
+            owner.war_changed_turn(0, 1),
+            Err(Error::MissingChangedTurns)
+        );
+        owner.war.as_mut().unwrap().changed_turns = Some(vec![17]);
+        owner
+            .initialize_current_contacts(
+                2,
+                vec![BoolRelationship {
+                    value: true,
+                    changed_turn: 9,
+                }],
+            )
+            .unwrap();
+        assert_eq!(owner.war_changed_turn(1, 0), Ok(17));
+        assert_eq!(owner.met_turn(1, 0), Ok(9));
+        owner.set_has_met(0, 1, 23).unwrap();
+        assert_eq!(owner.met_turn(0, 1), Ok(23));
     }
     #[test]
     fn contact_refinement_preserves_other_current_relation_matrices() {
