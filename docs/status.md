@@ -10,7 +10,7 @@ not yet usable for complete-game AI evaluation.
 | Typed wire data | Map, Player, Unit/Formation, City/District and other supported component schemas; bounded Core prefixes | Unsupported versions/branches, complete import, runtime fixups and unsaved state |
 | Owned state | Ordered World records, lookups, retained owners and bounded initialization/query APIs | Complete coupled owner updates and live-world reconstruction |
 | Rules/registries | Immutable registered SQLite profiles, explicit row/hash/index identities and ordered definitions | Complete rules providers, arbitrary configuration/content combinations and gameplay integration |
-| Action components | Bounded legality, queue/setter/reporting and notification phases with explicit dependencies | Complete callbacks, aftermath, script effects, affected state/RNG and action acceptance |
+| Action components | Profile-qualified loaded-state actions, founding, callbacks and aftermath with explicit dependencies | Arbitrary states/content, unsupported effect branches and complete gameplay RNG ownership |
 | Public `Engine` / C ABI | Small snapshot envelope, RNG actions, coordinate helpers and transport | General Game actions, EndTurn and complete World API remain unsupported |
 | Turn progression | Reusable internal components | Complete upkeep, every-player decision boundaries and full turn execution |
 
@@ -27,6 +27,18 @@ state, rules and profile inputs do not require native per-step answers. One
 native loaded initial fixture comparison matches the affected actor/Formation,
 actual actor report prefix, serialized complement and captured runtime subset;
 complete gameplay state and RNG parity remain unproven.
+
+The qualified initialized-state FoundCity composition executes City/District
+allocation and placement, territory acquisition, population/religion, capital
+and Palace, center-road construction, settler cleanup and stock aftermath. Its
+representative Linux comparison matches the complete captured Map, City,
+Units/Formations, Player gameplay fields and core processors, plus the captured
+RNG endpoints and matched libc state. Native CityBuild planning data is
+source-qualified external-policy output. The District writer omits its appeal
+yield vector; comparison-only native memory confirms the constructed empty
+vector. Raw transport availability differences remain recorded. This is one
+qualified transition, not complete gameplay or RNG parity, and does not yet
+validate founding followed by a whole round on the same state.
 
 This finite headless projection excludes source-proven presentation work.
 Unknown callbacks or queries return `Unsupported` without mutation; modeled

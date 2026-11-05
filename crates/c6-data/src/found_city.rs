@@ -5,6 +5,7 @@ pub mod citizens;
 pub mod city_created_callbacks;
 pub mod legality;
 pub mod names;
+pub mod placement;
 pub mod route_callbacks;
 pub mod starting_era;
 pub mod routes;

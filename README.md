@@ -16,6 +16,15 @@ and `PreparedSkipTurn::commit`, reaching `HeadlessMessagesProcessed` for its
 qualified inputs. It takes typed current state, rules and profile inputs;
 complete gameplay state and RNG parity remain unproven.
 
+A qualified Linux initialized-state FoundCity composition also reaches
+`HeadlessMessagesProcessed`, including City and District creation, territory,
+population, capital and Palace, settler consumption, and an external production
+decision. Its representative native comparison matches the captured gameplay
+components and RNG endpoints. Source-qualified planning output is omitted;
+complete RNG ownership and arbitrary-state/configuration parity remain unproven.
+These lower-level Rust APIs require explicit current owners and providers; they
+do not enable general `Engine::apply` or C ABI gameplay requests.
+
 The active compatibility target is the supplied Linux XP2 profile. Historical
 Windows data does not establish Linux coverage. Supported operations retain
 explicit versions, input identities and missing-provider errors; unknown bytes
