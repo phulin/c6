@@ -307,7 +307,8 @@ impl EffectRuntime {
         )
     }
     /// Import the actual strong count for an existing ability/promotion wrapper.
-    /// The count includes each context, tracked-map key and applied-vector entry.
+    /// The count includes Unit graph context/tracked/applied references and
+    /// combat collection modifier contexts. Combat subjects are proposal objects.
     /// Any remaining strong owners stay explicit and prevent logical retirement;
     /// the native ObjectPool and its type lookup hold weak pointers only.
     pub fn initialize_unit_subtype_wrapper_reference_count(
@@ -329,7 +330,8 @@ impl EffectRuntime {
                     + m.tracked.iter().filter(|t| t.object == handle).count()
                     + m.applied.iter().filter(|&&h| h == handle).count()
             })
-            .sum::<usize>();
+            .sum::<usize>()
+            + combat_context_references(handle, combat_modifiers(state)?);
         let external = strong_count
             .checked_sub(represented)
             .ok_or(QueryError::Unsupported(
@@ -363,58 +365,19 @@ impl EffectRuntime {
         handle: u64,
     ) -> Result<(), QueryError> {
         self.current_owner(state)?;
-        let object = self.object(handle)?;
-        ensure_unit_subtype_object(object)?;
-        match self
-            .allocations
-            .unit_subtype_external_owners
-            .iter()
-            .find(|row| row.0 == handle)
-            .map(|row| row.1)
-        {
-            Some(0) => (),
-            Some(_) => {
-                return Err(QueryError::Unsupported(
-                    "Unit subtype wrapper surviving external strong references",
-                ))
-            }
-            None => return Err(QueryError::Missing("Unit subtype wrapper strong ownership")),
-        }
         let modifiers = self.unit_modifiers.as_ref().ok_or(QueryError::Missing(
             "Unit subtype wrapper modifier reference graph",
         ))?;
-        ensure_releasable_unit_object(handle, object, modifiers)?;
-        if object
-            .unit_lifecycle
-            .as_ref()
-            .expect("checked")
-            .destroyed
-            .ordered_subscribers()
-            .next()
-            .is_some()
-        {
-            return Err(QueryError::Unsupported(
-                "Unit subtype wrapper surviving callbacks",
-            ));
-        }
-        let ContextObject::Unit(unit) = object.kind else {
-            unreachable!()
-        };
-        let suffix = object.unit_sort_suffix.expect("checked");
-        self.objects.retain(|row| row.0 != handle);
-        self.allocations
-            .unit_subtype_external_owners
-            .retain(|row| row.0 != handle);
-        if !self
-            .allocations
-            .absent_unit_wrappers
-            .contains(&(unit, suffix))
-        {
-            self.allocations.absent_unit_wrappers.push((unit, suffix));
-        }
-        // Expiry does not rewind instance IDs or compact logical pool ordinals.
-        Ok(())
+        retire_unit_subtype_wrapper(
+            handle,
+            &mut self.objects,
+            &mut self.allocations.unit_subtype_external_owners,
+            &mut self.allocations.absent_unit_wrappers,
+            modifiers,
+            combat_modifiers(state)?,
+        )
     }
+
     /// Unit.~Instance first assigns its normal modifier-object shared pointer
     /// empty. The supported stock path has already delivered UnitRemoved and
     /// cleared every logical owned/affected/tracked reference. Do not erase a
@@ -479,6 +442,85 @@ impl EffectRuntime {
     }
 }
 
+fn retire_unit_subtype_wrapper(
+    handle: u64,
+    objects: &mut Vec<(u64, Object)>,
+    external_owners: &mut Vec<(u64, usize)>,
+    absent_wrappers: &mut Vec<(UnitReference, [i32; 2])>,
+    modifiers: &[c6_core::unit_kill::objects::Modifier],
+    combat: &[CombatModifier],
+) -> Result<(), QueryError> {
+    let object = &objects
+        .iter()
+        .find(|row| row.0 == handle)
+        .ok_or(QueryError::MissingObject(handle))?
+        .1;
+    ensure_unit_subtype_object(object)?;
+    match external_owners
+        .iter()
+        .find(|row| row.0 == handle)
+        .map(|row| row.1)
+    {
+        Some(0) => (),
+        Some(_) => {
+            return Err(QueryError::Unsupported(
+                "Unit subtype wrapper surviving external strong references",
+            ))
+        }
+        None => return Err(QueryError::Missing("Unit subtype wrapper strong ownership")),
+    }
+    ensure_releasable_unit_object(handle, object, modifiers)?;
+    ensure_no_combat_context_references(handle, combat)?;
+    if object
+        .unit_lifecycle
+        .as_ref()
+        .expect("checked")
+        .destroyed
+        .ordered_subscribers()
+        .next()
+        .is_some()
+    {
+        return Err(QueryError::Unsupported(
+            "Unit subtype wrapper surviving callbacks",
+        ));
+    }
+    let ContextObject::Unit(unit) = object.kind else {
+        unreachable!()
+    };
+    let suffix = object.unit_sort_suffix.expect("checked");
+    objects.retain(|row| row.0 != handle);
+    external_owners.retain(|row| row.0 != handle);
+    if !absent_wrappers.contains(&(unit, suffix)) {
+        absent_wrappers.push((unit, suffix));
+    }
+    // Expiry does not rewind instance IDs or compact logical pool ordinals.
+    Ok(())
+}
+
+type CombatModifier = c6_core::melee_attack::proposals::collection_modifiers::Modifier;
+fn combat_modifiers(state: &LoadedState) -> Result<&[CombatModifier], QueryError> {
+    Ok(state
+        .combat_proposals()
+        .map_err(QueryError::Access)?
+        .collection_modifiers()
+        .map_err(QueryError::Proposal)?
+        .modifiers())
+}
+fn combat_context_references(handle: u64, modifiers: &[CombatModifier]) -> usize {
+    modifiers.iter().filter(|m| m.context == handle).count()
+}
+fn ensure_no_combat_context_references(
+    handle: u64,
+    modifiers: &[CombatModifier],
+) -> Result<(), QueryError> {
+    if combat_context_references(handle, modifiers) != 0 {
+        return Err(QueryError::Unsupported(
+            "Unit subtype wrapper surviving combat modifier context",
+        ));
+    }
+    Ok(())
+}
+
 fn ensure_unit_subtype_object(object: &Object) -> Result<(), QueryError> {
     if !matches!(object.kind, ContextObject::Unit(_))
         || !matches!(object.unit_sort_suffix, Some([1, _]))
@@ -540,6 +582,84 @@ mod destruction_tests {
                 destroyed: ListenerRing::from_ordered(&[]).unwrap(),
             }),
         }
+    }
+    #[test]
+    fn final_owner_retirement_waits_for_graph_and_callbacks_without_changing_identity() {
+        use c6_core::unit_kill::objects::Callback;
+        let mut subtype = object();
+        subtype.unit_sort_suffix = Some([1, 123]);
+        let mut objects = vec![(1, subtype)];
+        let mut owners = vec![(1, 1)];
+        let mut absent = vec![];
+        assert!(
+            retire_unit_subtype_wrapper(1, &mut objects, &mut owners, &mut absent, &[], &[])
+                .is_err()
+        );
+        assert_eq!(objects[0].0, 1);
+        assert_eq!(objects[0].1.instance_id, 11);
+        owners[0].1 = 0;
+        objects[0]
+            .1
+            .unit_lifecycle
+            .as_mut()
+            .unwrap()
+            .owned_modifiers
+            .push(7);
+        assert!(
+            retire_unit_subtype_wrapper(1, &mut objects, &mut owners, &mut absent, &[], &[])
+                .is_err()
+        );
+        let life = objects[0].1.unit_lifecycle.as_mut().unwrap();
+        life.owned_modifiers.clear();
+        life.destroyed
+            .subscribe(Callback::OwnerDestroyed(7))
+            .unwrap();
+        assert!(
+            retire_unit_subtype_wrapper(1, &mut objects, &mut owners, &mut absent, &[], &[])
+                .is_err()
+        );
+        assert_eq!(objects[0].1.instance_id, 11);
+        objects[0]
+            .1
+            .unit_lifecycle
+            .as_mut()
+            .unwrap()
+            .destroyed
+            .clear_subscriptions()
+            .unwrap();
+        retire_unit_subtype_wrapper(1, &mut objects, &mut owners, &mut absent, &[], &[]).unwrap();
+        assert!(objects.is_empty());
+        assert!(owners.is_empty());
+        assert_eq!(absent.len(), 1);
+    }
+    #[test]
+    fn surviving_combat_context_blocks_subtype_retirement() {
+        use c6_core::melee_attack::proposals::collection_modifiers::EffectFamily;
+        let modifier = CombatModifier {
+            effect_family: EffectFamily::PlayerStrength,
+            receiver: 2,
+            context: 1,
+            control: m::Modifier {
+                enabled: true,
+                suppressed: false,
+                owner_requirement_set: None,
+            },
+            instance: 4,
+            definition: vec![],
+            repeatable: false,
+            stack_limit: 0,
+            subject_requirements: vec![],
+            effect: 5,
+            tracked: vec![],
+            applied: vec![],
+        };
+        assert_eq!(
+            combat_context_references(1, std::slice::from_ref(&modifier)),
+            1
+        );
+        assert!(ensure_no_combat_context_references(1, std::slice::from_ref(&modifier)).is_err());
+        assert!(ensure_no_combat_context_references(7, &[modifier]).is_ok());
+        assert!(ensure_no_combat_context_references(1, &[]).is_ok());
     }
     #[test]
     fn owned_modifiers_must_be_really_destroyed_before_cache_release() {
