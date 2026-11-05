@@ -66,6 +66,11 @@ pub enum Outcome {
 /// All methods are mandatory: production cannot silently omit legality,
 /// strategic-resource consumption, completion effects or synchronous reports.
 pub trait Effects {
+    /// Borrow the same persistent population/religion callback owner during
+    /// city activation. Missing services remain a partial-transition error.
+    fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {
+        None
+    }
     fn calculate_yield_q8(
         &mut self,
         state: &mut LoadedState,

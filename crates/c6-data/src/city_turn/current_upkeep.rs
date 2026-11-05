@@ -712,91 +712,134 @@ impl<E: production::Effects> growth::Effects for Context<'_, E> {
 impl<E: production::Effects> crate::city_turn::PopulationEffects for Context<'_, E> {
     fn assign_citizens(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: u32,
-        _: bool,
+        state: &mut c6_core::loaded_state::LoadedState,
+        owner: i32,
+        city: u32,
+        reallocate: bool,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth citizen assignment")
+        if reallocate {
+            upkeep::citizens::reallocate(state, owner, city, self)
+        } else {
+            upkeep::citizens::try_assign_all(state, owner, city, true, self)
+        }
     }
     fn population_changed_signal(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: u32,
-        _: i32,
+        state: &mut c6_core::loaded_state::LoadedState,
+        owner: i32,
+        city: u32,
+        delta: i32,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth population signal")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .population_changed_signal(state, owner, city, delta)
     }
     fn report_population(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: u32,
-        _: u32,
-        _: i32,
+        state: &mut c6_core::loaded_state::LoadedState,
+        owner: i32,
+        city: u32,
+        event: u32,
+        population: i32,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth population report")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .report_population(state, owner, city, event, population)
     }
 }
 impl<E: production::Effects> religion::Effects for Context<'_, E> {
     fn civilization_level(
         &mut self,
         _: &c6_core::loaded_state::LoadedState,
-        _: i32,
+        owner: i32,
     ) -> std::result::Result<u32, CityError> {
-        self.missing("current growth civilization level")
+        self.levels
+            .iter()
+            .find(|v| v.0 == owner)
+            .map(|v| v.1)
+            .ok_or(CityError::Unsupported("current growth civilization level"))
     }
     fn give_free_envoy(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: i32,
+        state: &mut c6_core::loaded_state::LoadedState,
+        player: i32,
+        minor: i32,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth envoy effects")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .give_free_envoy(state, player, minor)
     }
     fn city_religion_changed(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: u32,
-        _: religion::ReligionIdentity,
-        _: religion::ReligionIdentity,
+        state: &mut c6_core::loaded_state::LoadedState,
+        owner: i32,
+        city: u32,
+        old: religion::ReligionIdentity,
+        new: religion::ReligionIdentity,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth city religion change")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .city_religion_changed(state, owner, city, old, new)
     }
     fn report_city_religion(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: u32,
-        _: u32,
-        _: Option<religion::ReligionIdentity>,
+        state: &mut c6_core::loaded_state::LoadedState,
+        owner: i32,
+        city: u32,
+        event: u32,
+        identity: Option<religion::ReligionIdentity>,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth religion report")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .report_city_religion(state, owner, city, event, identity)
     }
     fn player_religion_changed(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: i32,
-        _: religion::ReligionIdentity,
+        state: &mut c6_core::loaded_state::LoadedState,
+        observer: i32,
+        owner: i32,
+        new: religion::ReligionIdentity,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth player religion change")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .player_religion_changed(state, observer, owner, new)
     }
     fn city_converted_by(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: i32,
-        _: u32,
+        state: &mut c6_core::loaded_state::LoadedState,
+        converter: i32,
+        owner: i32,
+        city: u32,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth city conversion")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current population callback services",
+            ))?
+            .city_converted_by(state, converter, owner, city)
     }
     fn alive_players(
         &mut self,
         _: &c6_core::loaded_state::LoadedState,
     ) -> std::result::Result<Vec<i32>, CityError> {
-        self.missing("current growth alive player order")
+        Ok(self.alive.clone())
     }
 }

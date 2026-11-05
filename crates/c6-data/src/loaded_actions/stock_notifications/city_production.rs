@@ -113,6 +113,9 @@ fn building(entry: &QueueEntry) -> Result<u32, production::Error> {
     }
 }
 impl<P> production::Effects for Effects<'_, '_, '_, P> {
+    fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {
+        Some(self.runtime)
+    }
     fn calculate_yield_q8(
         &mut self,
         state: &mut LoadedState,

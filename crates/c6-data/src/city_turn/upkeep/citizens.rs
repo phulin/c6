@@ -221,6 +221,21 @@ pub fn reallocate(
     let previous =
         workers::remove_all_without_forced(&mut state.city_mut(owner, city)?.citizens, population)
             .map_err(worker_error)?;
+    try_assign_all(state, owner, city, false, effects)?;
+    for (index, old) in previous.into_iter().enumerate() {
+        effects.workers_changed(state, owner, city, index as i32, old)?;
+    }
+    Ok(())
+}
+/// TryAssignAllWorkers286f050 retains existing and forced assignments. The
+/// report flag is forwarded to each selected AssignCitizenToWorkPlot call.
+pub fn try_assign_all(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    report: bool,
+    effects: &mut impl Effects,
+) -> Result<(), Error> {
     let food = effects.food_surplus_q8(state, owner, city)?;
     let c = state.city(owner, city)?;
     let center = PlotCoord {
@@ -263,18 +278,24 @@ pub fn reallocate(
         let index =
             workers::plot_index(state.world().map(), center, point).map_err(worker_error)?;
         let capacity = effects.capacity(state, owner, city, point)?;
-        workers::assign_to_index(
+        let changed = workers::assign_to_index(
             &mut state.city_mut(owner, city)?.citizens,
             index,
             workers::NUM_PLOTS as i32,
             true,
             Some(capacity),
-            false,
+            report,
         )
         .map_err(worker_error)?;
-    }
-    for (index, old) in previous.into_iter().enumerate() {
-        effects.workers_changed(state, owner, city, index as i32, old)?;
+        if let Some(change) = changed {
+            effects.workers_changed(
+                state,
+                owner,
+                city,
+                change.city_plot_index,
+                change.previous_workers,
+            )?;
+        }
     }
     Ok(())
 }

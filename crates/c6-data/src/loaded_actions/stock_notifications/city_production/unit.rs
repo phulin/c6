@@ -140,6 +140,9 @@ impl<P> selection::FrontEffects for Selection<'_, '_, P> {
     }
 }
 impl<P> production::Effects for Selection<'_, '_, P> {
+    fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {
+        Some(self.runtime)
+    }
     fn calculate_yield_q8(
         &mut self,
         state: &mut LoadedState,
@@ -240,6 +243,9 @@ pub struct Effects<'a, 'inputs, 'd, 'r, P = c6_core::unit::OperationParameters> 
     pub factory: Factory<'a, 'd, 'r>,
 }
 impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
+    fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {
+        Some(self.selection.runtime)
+    }
     fn calculate_yield_q8(
         &mut self,
         s: &mut LoadedState,
