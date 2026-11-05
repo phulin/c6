@@ -165,6 +165,7 @@ fn empty_congress_choices<P>(
     state: &LoadedState,
     backend: &Runtime<'_, P>,
     owner: i32,
+    managers: Option<&crate::game_update_state::activation::cityless_managers::Runtime>,
 ) -> Result<(), Error> {
     // 2c4b1c0 visits alive majors; a candidate reaches FindDiscussionOptions
     // only if it has met the owner, or is the owner itself.
@@ -184,9 +185,17 @@ fn empty_congress_choices<P>(
                 .has_met(other, owner)
                 .map_err(|_| Error::Unsupported("NPC Congress formal contact"))?
         {
-            return Err(Error::Unsupported(
-                "NPC Congress proposal decision continuation",
-            ));
+            let current = managers
+                .ok_or(Error::Unsupported("NPC current Congress/Emergency owner"))?
+                .congress(state)?;
+            // 2c4b2b8 FindDiscussionOptions walks Discussion definitions and
+            // resolves their Emergency instances. An observed empty current
+            // instance list produces no candidates, including for met majors.
+            if !current.emergencies.is_empty() {
+                return Err(Error::Unsupported(
+                    "NPC Congress proposal decision continuation",
+                ));
+            }
         }
     }
     Ok(())
@@ -212,6 +221,7 @@ pub struct Leaves<'i, P = c6_core::unit::OperationParameters> {
     definitions: &'i maintenance::Definitions,
     visibility: Visibility<'i, P>,
     off_turn: Option<&'i mut inactive_control::Inputs>,
+    managers: Option<&'i crate::game_update_state::activation::cityless_managers::Runtime>,
 }
 impl<'i, P> Leaves<'i, P> {
     pub fn new(
@@ -224,6 +234,7 @@ impl<'i, P> Leaves<'i, P> {
             definitions,
             visibility: Visibility::Borrowed(visibility),
             off_turn: None,
+            managers: None,
         }
     }
     pub fn new_with_camps(
@@ -236,6 +247,7 @@ impl<'i, P> Leaves<'i, P> {
             definitions,
             visibility: Visibility::Camps(camps),
             off_turn: None,
+            managers: None,
         }
     }
     fn visibility(&self) -> &crate::unit_sight_state::Runtime {
@@ -249,6 +261,13 @@ impl<'i, P> Leaves<'i, P> {
     /// replace it with a freshly decoded readiness snapshot on resume.
     pub fn with_off_turn(mut self, inputs: &'i mut inactive_control::Inputs) -> Self {
         self.off_turn = Some(inputs);
+        self
+    }
+    pub fn with_managers(
+        mut self,
+        managers: &'i crate::game_update_state::activation::cityless_managers::Runtime,
+    ) -> Self {
+        self.managers = Some(managers);
         self
     }
 }
@@ -570,7 +589,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                         "NPC government/policy external decisions",
                     ));
                 }
-                empty_congress_choices(state, backend, owner)?;
+                empty_congress_choices(state, backend, owner, self.managers)?;
                 if !state
                     .world()
                     .player(owner)

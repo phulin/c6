@@ -71,6 +71,7 @@ pub type Controller<'s, 'a, P> = dyn FnMut(
         &mut LoadedState,
         &mut stock_notifications::Runtime<'a, P>,
         &mut research::Runtime,
+        &super::cityless_managers::Runtime,
         i32,
     ) -> Result<ActivationOutcome, Error>
     + 's;
@@ -205,7 +206,13 @@ impl<P> Context<'_, '_, P> {
                 .controller
                 .as_mut()
                 .ok_or_else(|| failure("controller activation", "current nonhuman controller"))?;
-            match controller(self.state, self.backend, self.research, owner)? {
+            match controller(
+                self.state,
+                self.backend,
+                self.research,
+                self.managers,
+                owner,
+            )? {
                 ActivationOutcome::Choice(choice) => {
                     if choice.player != owner {
                         return Err(failure("controller decision", "different current player"));

@@ -254,6 +254,12 @@ pub struct Runtime {
     congress: Option<CongressInputs>,
 }
 impl Runtime {
+    pub fn congress(&self, state: &LoadedState) -> Result<&CongressInputs, Error> {
+        self.validate(state)?;
+        self.congress
+            .as_ref()
+            .ok_or(missing("current Congress/Emergency owner"))
+    }
     pub fn from_initial(
         state: &LoadedState,
         climate: Vec<ClimateConsumption>,
