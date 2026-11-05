@@ -238,6 +238,7 @@ pub enum HistoryError<E> {
 }
 #[derive(Debug)]
 pub enum Error<E> {
+    DistrictContinuation(&'static str),
     Binding,
     Bindings(BindingError),
     MissingPayload,
@@ -560,4 +561,159 @@ impl<E: Effects> super::Effects for Completion<'_, '_, '_, '_, E> {
             attacker,
         )
     }
+}
+
+/// District Results carry no attacking Unit. Keep this callback explicit rather
+/// than manufacturing a Unit participant for the Lua argument encoder.
+pub trait DistrictEffects: Effects {
+    fn lua_district_combat_occurred(
+        &mut self,
+        state: &mut LoadedState,
+        bindings: &mut Bindings,
+        members: &crate::city_strike::Generated,
+    ) -> Result<(), Self::Error>;
+}
+struct DistrictDispatch<'a, 'i, 'd, 'r, E> {
+    state: &'a mut LoadedState,
+    bindings: &'a mut Bindings,
+    inputs: &'a Inputs<'i, 'd, 'r>,
+    effects: &'a mut E,
+    members: &'a crate::city_strike::Generated,
+}
+impl<E: DistrictEffects> signals::Context for DistrictDispatch<'_, '_, '_, '_, E> {
+    type Error = Box<Error<E::Error>>;
+    fn listeners(&mut self, scope: Signal) -> Result<&mut ListenerRing<u64>, Self::Error> {
+        self.bindings
+            .listeners_mut(scope)
+            .map_err(|e| Box::new(Error::Bindings(e)))
+    }
+    fn invoke(&mut self, scope: Signal, id: u64) -> Result<(), Self::Error> {
+        self.call(scope, id).map_err(Box::new)
+    }
+}
+impl<E: DistrictEffects> DistrictDispatch<'_, '_, '_, '_, E> {
+    fn call(&mut self, scope: Signal, id: u64) -> Result<(), Error<E::Error>> {
+        if scope != Signal::GameCombatOccurred {
+            return Err(Error::WrongSignal(id));
+        }
+        let callback = self
+            .bindings
+            .callbacks
+            .iter()
+            .find(|r| r.0 == id)
+            .ok_or(Error::UnknownCallback(id))?
+            .1;
+        match callback {
+            Callback::Mayhem => mayhem::on_district_combat(
+                self.state,
+                self.inputs.mayhem,
+                self.inputs.placement,
+                self.inputs.barbarian_owner,
+                self.members,
+            )
+            .map_err(Error::Mayhem)?,
+            Callback::Summary => self.bindings.outputs.push(Output::CombatSummary),
+            Callback::GeneralSummary => self.bindings.outputs.push(Output::GeneralPlayerSummary),
+            Callback::Lua => self
+                .effects
+                .lua_district_combat_occurred(self.state, self.bindings, self.members)
+                .map_err(Error::Effect)?,
+            // Emergency attacked-city and FreeCities require a District DEFENDER.
+            // Barbarian manager requires BOTH Units before any owner/death query.
+            Callback::EmergencyCity | Callback::FreeCities | Callback::Barbarian => {}
+            Callback::EmergencyKill => {
+                if crate::melee_attack::actor(self.state, self.members.defender)
+                    .map_err(|e| Error::Guard(stock_guards::Error::Actor(e)))?
+                    .b_delayed_death
+                    && self.bindings.emergency_scoring.is_none()
+                {
+                    return Err(Error::Guard(stock_guards::Error::EmergencyKilledEnemy));
+                }
+            }
+            Callback::Eras => {
+                // Null attacking Unit skips the first half; live defender skips
+                // its second half before any era bonus lookup or mutation.
+                let defender = crate::melee_attack::actor(self.state, self.members.defender)
+                    .map_err(|e| Error::Eras(eras::Error::Actor(e)))?;
+                if defender.i_damage
+                    >= self
+                        .inputs
+                        .placement
+                        .movement
+                        .maximum_damage(defender)
+                        .map_err(|e| Error::Eras(eras::Error::Maximum(e)))?
+                {
+                    return Err(Error::DistrictContinuation("Eras defender death"));
+                }
+            }
+            Callback::History => {
+                history::on_district_combat(
+                    self.state,
+                    self.inputs.history,
+                    history::Inputs {
+                        capabilities: self.inputs.capabilities,
+                        civilization_levels: self.inputs.civilization_levels,
+                        start_era_hash: self.inputs.start_era_hash,
+                    },
+                    self.members,
+                    &mut History {
+                        bindings: self.bindings,
+                        effects: self.effects,
+                    },
+                )
+                .map_err(Error::History)?;
+            }
+            // KillSpecificUnit requires an attacking Unit. KillWith's defender
+            // half requires a killed attacking Unit; NumberBarbarianKills checks
+            // live defender death after skipping its null-attacker half.
+            Callback::Boost(boosts::Callback {
+                check: boosts::Check::KillSpecificUnit | boosts::Check::KillWith,
+                ..
+            }) => {}
+            Callback::Boost(_) | Callback::Targets(_) => {
+                let defender = crate::melee_attack::actor(self.state, self.members.defender)
+                    .map_err(|e| Error::Targets(targets::Error::Actor(e)))?;
+                if defender.i_damage
+                    >= self
+                        .inputs
+                        .placement
+                        .movement
+                        .maximum_damage(defender)
+                        .map_err(|e| Error::Targets(targets::Error::Maximum(e)))?
+                {
+                    return Err(Error::DistrictContinuation("combat kill subscriber"));
+                }
+            }
+            Callback::Achievement => self
+                .bindings
+                .outputs
+                .push(Output::CombatAchievementObservation),
+            Callback::Attacked(_) => return Err(Error::WrongSignal(id)),
+            Callback::Unsupported(value) => return Err(Error::UnsupportedCallback(value)),
+        }
+        Ok(())
+    }
+}
+/// Dispatch on the original persistent ring, preserving mutation/reentry rules.
+pub fn district_combat_occurred<E: DistrictEffects>(
+    state: &mut LoadedState,
+    bindings: &mut Bindings,
+    inputs: &Inputs<'_, '_, '_>,
+    effects: &mut E,
+    members: &crate::city_strike::Generated,
+) -> Result<(), Error<E::Error>> {
+    if !bindings.matches(state) {
+        return Err(Error::Binding);
+    }
+    signals::dispatch(
+        &mut DistrictDispatch {
+            state,
+            bindings,
+            inputs,
+            effects,
+            members,
+        },
+        Signal::GameCombatOccurred,
+    )
+    .map_err(Error::Signal)
 }

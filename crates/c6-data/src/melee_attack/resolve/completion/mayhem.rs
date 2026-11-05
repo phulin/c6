@@ -6,6 +6,8 @@ use crate::{resource_binding::ResourceAuthority, unit_placement_state, Rules, Sq
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
 #[derive(Debug)]
 pub enum Error {
+    District(c6_core::loaded_state::district_initialization::DistrictError),
+    DistrictDeathContinuation,
     Binding,
     Parameter(&'static str),
     Actor(crate::melee_attack::Error),
@@ -134,6 +136,46 @@ pub fn on_combat(
                 definitions.death
             })
             .map_err(Error::State)?;
+    }
+    Ok(())
+}
+
+/// Native Results overload uses the real District owner and checks Unit death
+/// before District.HasMaxDamage. Death continuations remain explicit.
+pub fn on_district_combat(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    placement: &unit_placement_state::Definitions<'_, '_>,
+    barbarian_owner: i32,
+    members: &crate::city_strike::Generated,
+) -> Result<(), Error> {
+    if definitions.binding != *state.binding() {
+        return Err(Error::Binding);
+    }
+    let defender = crate::melee_attack::actor(state, members.defender).map_err(Error::Actor)?;
+    let barbarian =
+        i32::from(members.attacker.owner) == barbarian_owner || defender.e_owner == barbarian_owner;
+    state
+        .add_global_mayhem(if barbarian {
+            definitions.combat_barbarians
+        } else {
+            definitions.combat
+        })
+        .map_err(Error::State)?;
+    let defender = crate::melee_attack::actor(state, members.defender).map_err(Error::Actor)?;
+    if defender.i_damage
+        >= placement
+            .movement
+            .maximum_damage(defender)
+            .map_err(Error::Maximum)?
+    {
+        return Err(Error::DistrictDeathContinuation);
+    }
+    let district = state
+        .district(i32::from(members.attacker.owner), members.attacker.id)
+        .map_err(Error::District)?;
+    if district.garrison_damage >= members.attacker_maximum_damage {
+        return Err(Error::DistrictDeathContinuation);
     }
     Ok(())
 }

@@ -413,6 +413,66 @@ pub fn on_combat<E: Effects>(
     if water && members.damage.attacker_final_damage >= 100 {
         return Err(Error::NavalCombatMoment);
     }
+    general_battle(
+        state,
+        defs,
+        inputs,
+        attacker,
+        defender,
+        members.location,
+        effects,
+    )
+}
+/// District attacks skip the Unit/Unit special-moment block. The native common
+/// tail still records a battle, including attacks against barbarians.
+pub fn on_district_combat<E: Effects>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    inputs: Inputs<'_>,
+    members: &crate::city_strike::Generated,
+    effects: &mut E,
+) -> Result<Option<i32>, Error<E::Error>> {
+    let attacker = i32::from(members.attacker.owner);
+    let defender = members.defender.player();
+    if !state
+        .world()
+        .player_is_valid(defender)
+        .map_err(Error::World)?
+    {
+        return Ok(None);
+    }
+    let plot = c6_core::movement_world::plot_at(state.world().map(), members.location)
+        .map_err(|_| Error::Missing("combat history location"))?
+        .1;
+    let water = defs
+        .water
+        .iter()
+        .rfind(|r| r.0 == plot.terrain_hash)
+        .ok_or(Error::Missing("combat history Terrain"))?
+        .1;
+    // District generation explicitly writes attacker final damage to zero.
+    if water && members.defender_final_damage >= 100 {
+        return Err(Error::NavalCombatMoment);
+    }
+    general_battle(
+        state,
+        defs,
+        inputs,
+        attacker,
+        defender,
+        members.location,
+        effects,
+    )
+}
+fn general_battle<E: Effects>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    inputs: Inputs<'_>,
+    attacker: i32,
+    defender: i32,
+    location: c6_core::unit::PlotCoord,
+    effects: &mut E,
+) -> Result<Option<i32>, Error<E::Error>> {
     let era = |owner| -> Result<i32, Error<E::Error>> {
         let p = state
             .retained()
@@ -426,7 +486,7 @@ pub fn on_combat<E: Effects>(
         wire_version: c6_core::game_history::MOMENT_VERSION,
         type_hash: BATTLE,
         turn: -1,
-        action_plot: members.location,
+        action_plot: location,
         acting_player_ordinal: attacker,
         id: -1,
         has_ever_been_commemorated_raw: 0,
