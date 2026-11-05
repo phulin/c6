@@ -5,6 +5,7 @@ pub mod citizens;
 pub mod city_created_callbacks;
 pub mod legality;
 pub mod names;
+pub mod starting_era;
 
 use crate::{
     registry::LinuxDefinitionRegistry,

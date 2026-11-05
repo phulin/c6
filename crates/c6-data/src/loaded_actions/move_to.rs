@@ -1285,6 +1285,39 @@ where
     E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
+    request_operation_active_player(
+        state,
+        issuer,
+        actor,
+        OperationRequest::MoveTo(request),
+        inputs,
+        handlers,
+        runtime,
+        effects,
+        movement,
+    )
+}
+#[derive(Clone, Copy, Debug)]
+enum OperationRequest {
+    MoveTo(Request),
+    FoundCity,
+}
+#[allow(clippy::too_many_arguments)]
+fn request_operation_active_player<E, M>(
+    state: &mut LoadedState,
+    issuer: i32,
+    actor: (i32, u32),
+    request: OperationRequest,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
+) -> Result<RequestOutcome, Error<EffectError<E>, M::Error>>
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
     if issuer != actor.0 {
         return Err(Error::Unsupported(
             "policy issuer does not own requested player",
@@ -1298,7 +1331,16 @@ where
     {
         return Ok(RequestOutcome::Ignored(IgnoredRequest::InvalidPlayer));
     }
-    if request.append || request.from_user {
+    if matches!(
+        request,
+        OperationRequest::MoveTo(
+            Request { append: true, .. }
+                | Request {
+                    from_user: true,
+                    ..
+                }
+        )
+    ) {
         return Err(Error::Unsupported(
             "full request nondefault transient append/fromUser metadata",
         ));
@@ -1331,10 +1373,44 @@ where
         ));
     }
 
-    execute_manager(
-        state, actor, request, inputs, handlers, runtime, effects, movement,
-    )
+    match request {
+        OperationRequest::MoveTo(request) => execute_manager(
+            state, actor, request, inputs, handlers, runtime, effects, movement,
+        ),
+        OperationRequest::FoundCity => {
+            execute_found_city_manager(state, actor, inputs, handlers, runtime, effects, movement)
+        }
+    }
     .map(RequestOutcome::Executed)
+}
+/// Parameterless FoundCity request through the same trusted ownership/turn and
+/// resolved-Unit checks as the ordinary UnitOperation entry.
+#[allow(clippy::too_many_arguments)]
+pub fn request_found_city_active_player<E, M>(
+    state: &mut LoadedState,
+    issuer: i32,
+    actor: (i32, u32),
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
+) -> Result<RequestOutcome, Error<EffectError<E>, M::Error>>
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
+    request_operation_active_player(
+        state,
+        issuer,
+        actor,
+        OperationRequest::FoundCity,
+        inputs,
+        handlers,
+        runtime,
+        effects,
+        movement,
+    )
 }
 
 #[derive(Debug)]
@@ -1384,6 +1460,40 @@ where
         + c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
     M: Movement<B>,
 {
+    execute_operation_active_request(
+        context,
+        issuer,
+        actor,
+        OperationRequest::MoveTo(request),
+        inputs,
+        handlers,
+        runtime,
+        movement,
+        budget,
+    )
+}
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn execute_operation_active_request<B, M>(
+    context: &mut super::current_aftermath::Context<'_, B>,
+    issuer: i32,
+    actor: (i32, u32),
+    request: OperationRequest,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    movement: &mut M,
+    budget: &mut usize,
+) -> Result<
+    ActionOutcome,
+    ActionError<EffectError<B>, M::Error, <B as super::current_aftermath::Backend>::ObserverError>,
+>
+where
+    B: Effects
+        + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>
+        + super::current_aftermath::Backend
+        + c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
+    M: Movement<B>,
+{
     if let Some(stage) = context.failed_at() {
         return Err(ActionError::Aftermath(
             super::current_aftermath::Error::FailedContinuation(stage),
@@ -1391,7 +1501,7 @@ where
     }
     let outcome = {
         let provider = &mut context.notifications;
-        request_active_player(
+        request_operation_active_player(
             provider.state,
             issuer,
             actor,
@@ -1423,4 +1533,40 @@ where
         manager,
         boundary: super::transition::ExecutionBoundary::HeadlessMessagesProcessed,
     }))
+}
+
+/// Execute parameterless FoundCity through the same diplomacy/notification and
+/// MessagesProcessed continuation as MoveTo, without a fabricated target plot.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn execute_found_city_active_request<B, M>(
+    context: &mut super::current_aftermath::Context<'_, B>,
+    issuer: i32,
+    actor: (i32, u32),
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    movement: &mut M,
+    budget: &mut usize,
+) -> Result<
+    ActionOutcome,
+    ActionError<EffectError<B>, M::Error, <B as super::current_aftermath::Backend>::ObserverError>,
+>
+where
+    B: Effects
+        + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>
+        + super::current_aftermath::Backend
+        + c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
+    M: Movement<B>,
+{
+    execute_operation_active_request(
+        context,
+        issuer,
+        actor,
+        OperationRequest::FoundCity,
+        inputs,
+        handlers,
+        runtime,
+        movement,
+        budget,
+    )
 }

@@ -10,9 +10,15 @@ pub enum Scope {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Record {
-    ProcessorActivation { player: i32, first: bool },
+    ProcessorActivation {
+        player: i32,
+        first: bool,
+    },
     /// Source-ordered report attempt, before its synchronous current queries.
-    Report { event: u32, player: i32 },
+    Report {
+        event: u32,
+        player: i32,
+    },
     RestoreVisibility {
         observer: i32,
         mask: u32,
@@ -42,6 +48,52 @@ const ACTIVATED_REMOTE: u32 = 0xd7b3572b;
 const LOCAL_CHANGED: u32 = 0xc0372152;
 
 impl<P> Runtime<'_, P> {
+    /// Source stock Unit.Placement.Remove publications. Treasury's route/deal
+    /// query precedes the Unit destroy snapshot; the other two publications
+    /// carry only the current old-plot City/District identity to the client.
+    pub fn deliver_removal_report(
+        &mut self,
+        state: &LoadedState,
+        report: c6_core::unit_placement_transition::PlacementReport,
+        _scope: Scope,
+    ) -> Result<(), Error> {
+        use c6_core::unit_placement_transition::PlacementPayload;
+        self.check(state).map_err(Error::Binding)?;
+        let payload_valid = match report.event_hash {
+            0xd8ad_fd71 => matches!(report.payload, PlacementPayload::Identity),
+            0x8ee3_1e6f | 0x4ce3_627a => {
+                matches!(report.payload, PlacementPayload::OtherIdentity(_))
+            }
+            _ => false,
+        };
+        if !payload_valid {
+            return Err(Error::UnsupportedEvent(report.event_hash));
+        }
+        self.turn_report_records.push(Record::Report {
+            event: report.event_hash,
+            player: i32::from(report.identity.owner),
+        });
+        if report.event_hash == 0xd8ad_fd71 {
+            reporting::yield_monitor::warm_route_domain(state).map_err(Error::Routes)?;
+            let player = state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == i32::from(report.identity.owner))
+                .ok_or(Error::Reporting(crate::loaded_actions::Error::Unsupported(
+                    "removal Treasury Player",
+                )))?;
+            if !player.treasury.gold_diplomatic_deals.is_empty() {
+                return Err(Error::Reporting(crate::loaded_actions::Error::Unsupported(
+                    "removal Treasury deal queries",
+                )));
+            }
+            self.reporting
+                .observe_unit_snapshot(state, UnitReference::from_component_id(report.identity))
+                .map_err(Error::Reporting)?;
+        }
+        Ok(())
+    }
     /// Fixed stock cache/host report families. This never updates Stats, runs
     /// Emergency selection or chooses a player policy. Unknown consumers are
     /// outside the explicit stock scope, rather than silently supported.

@@ -1,6 +1,7 @@
 //! Stock Unit death continuations over the same live object, requirement and
 //! collection owners. Callers supply typed initialized listener bindings.
 //! Unsupported positive consumers stop at their actual position in dispatch.
+pub mod default_defeat;
 use crate::unit_placement_state as normal;
 use crate::{
     melee_attack::backend::{EffectRuntime, QueryError},
