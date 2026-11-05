@@ -52,6 +52,15 @@ fn failure(stage: &'static str, cause: impl std::fmt::Debug) -> Error {
     }
 }
 impl<P> crate::unit_placement_state::round::Effects for Runtime<'_, P> {
+    fn set_unit_activity(
+        &mut self,
+        state: &mut LoadedState,
+        actor: (i32, u32),
+        activity: i32,
+    ) -> Result<(), movement::Error> {
+        crate::loaded_upkeep::set_unit_activity(state, actor.0, actor.1, self, activity)
+            .map_err(|error| movement::Error::Requirement(format!("round activity: {error:?}")))
+    }
     fn unit_healed(
         &mut self,
         state: &mut LoadedState,

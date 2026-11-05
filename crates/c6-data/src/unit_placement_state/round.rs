@@ -3,6 +3,12 @@ use super::*;
 use c6_core::unit_healing::{self, UnitHealingContext};
 
 pub trait Effects: super::Effects {
+    fn set_unit_activity(
+        &mut self,
+        state: &mut LoadedState,
+        actor: (i32, u32),
+        activity: i32,
+    ) -> Result<(), EffectsError<Self>>;
     /// Actual Game unit-healed signal and every reached gameplay/RNG consumer.
     fn unit_healed(
         &mut self,

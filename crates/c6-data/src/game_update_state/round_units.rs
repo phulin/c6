@@ -42,6 +42,7 @@ pub enum TransitionError<E> {
     Input(Error),
     Movement(c6_core::improvement_movement::Error<crate::unit_placement_state::Error<E>>),
     Healing(c6_core::unit_healing::UnitHealingError<crate::unit_placement_state::Error<E>>),
+    Activity(E),
 }
 impl<E> From<Error> for TransitionError<E> {
     fn from(value: Error) -> Self {
@@ -354,17 +355,17 @@ fn ordinary<E: shared::Effects>(
         .map_err(TransitionError::Healing)?;
     let unit = actor(state, a)?;
     let human = state.player_slot_status(a.0).map_err(Error::State)? == 3;
-    let end_operation = match unit.e_activity as u32 {
+    let wake = match unit.e_activity as u32 {
         0x047c048b => human || unit.i_fortify_turns == 0,
         0xb29e7722 => !human || unit.e_automation != -1 || unit.i_damage == 0,
         _ => false,
     };
-    if end_operation {
-        return Err(Error::Unsupported {
-            actor: a,
-            operation: "RequestEndOperation reason6b25012e",
-        }
-        .into());
+    if wake {
+        // DoEndTurn2ba8297/2ba82dd calls virtual+c8: the existing
+        // SetActivityType2da1840 setter, not an operation queue completion.
+        effects
+            .set_unit_activity(state, a, c6_core::unit_operations_clear::ACTIVITY_AWAKE)
+            .map_err(TransitionError::Activity)?;
     }
     Ok(())
 }
