@@ -8,6 +8,7 @@ pub mod social;
 pub mod treasury_deals;
 pub mod turn_started;
 pub mod upkeep;
+pub mod round;
 pub mod victory_requirements;
 use crate::{registry::linux_type_hash, resource_binding::ResourceAuthority, Rules};
 use c6_core::{game_update::Error, loaded_state::LoadedState};

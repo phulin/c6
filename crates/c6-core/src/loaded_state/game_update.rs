@@ -9,6 +9,8 @@ pub mod human_control;
 pub mod inactive_control;
 pub mod maintenance;
 pub mod resources;
+pub mod round;
+pub mod round_ai;
 use crate::{
     core_player::initialization::WireBinding,
     game_update::{self as core, Error},
@@ -45,6 +47,9 @@ pub struct Runtime {
     player_frame: Option<PlayerFrame>,
     deactivation_started: bool,
     local_observer: Option<i32>,
+    /// Unsaved GlobalAi+110 processing depth. None requires a live input.
+    global_ai_processing_depth: Option<i32>,
+    round_begin_ready: bool,
 }
 impl Runtime {
     /// Binding checks identity, not provenance of caller-supplied runtime facts.
@@ -60,6 +65,8 @@ impl Runtime {
             player_frame: None,
             deactivation_started: false,
             local_observer: None,
+            global_ai_processing_depth: None,
+            round_begin_ready: false,
         }
     }
     pub fn pending(&self) -> Option<&core::Continuation> {
