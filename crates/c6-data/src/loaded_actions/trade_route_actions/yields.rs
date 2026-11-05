@@ -4,13 +4,68 @@
 //! active route bonuses. This does not qualify the transitive effects of native
 //! reporting queries or admit omitting their callbacks/RNG. Unsupported nonzero
 //! coefficients remain explicit errors; this is not complete trade simulation.
-use super::{Definitions, Error};
+use super::Error;
 use crate::{registry::linux_type_hash, Rules, SqlValue};
 use c6_core::{
     loaded_state::LoadedState,
     trade::{ComponentId, YieldValue},
     unit::HashValue,
 };
+
+/// Immutable definition inputs; contains no captured route or yield answers.
+pub struct Definitions {
+    inputs: c6_core::core_player::initialization::InputIdentities,
+    yields: Vec<u32>,
+    district_yields: Vec<DistrictYield>,
+}
+struct DistrictYield {
+    yield_hash: u32,
+    district: u32,
+    origin: f32,
+    domestic_destination: f32,
+}
+impl Definitions {
+    pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
+        if !matches!(
+            rules.profile(),
+            crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
+        ) {
+            return Err(Error::Requires("Linux XP2 trade rules"));
+        }
+        let yields =
+            crate::unit_initialization_definitions::collection(rules, "Yields", "YieldType")
+                .map_err(|_| Error::Missing("Yield definitions"))?
+                .entries()
+                .iter()
+                .map(|entry| linux_type_hash(&entry.type_name))
+                .collect();
+        let table = rules
+            .gameplay()
+            .table("District_TradeRouteYields")
+            .ok_or(Error::Missing("District_TradeRouteYields"))?;
+        let mut district_yields = Vec::new();
+        for row in table.rows() {
+            district_yields.push(DistrictYield {
+                yield_hash: linux_type_hash(
+                    row.text("YieldType").map_err(Error::Rules)?.as_bytes(),
+                ),
+                district: linux_type_hash(
+                    row.text("DistrictType").map_err(Error::Rules)?.as_bytes(),
+                ),
+                origin: number(row.get("YieldChangeAsOrigin").map_err(Error::Rules)?)?,
+                domestic_destination: number(
+                    row.get("YieldChangeAsDomesticDestination")
+                        .map_err(Error::Rules)?,
+                )?,
+            });
+        }
+        Ok(Self {
+            inputs: state.binding().inputs.clone(),
+            yields,
+            district_yields,
+        })
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Amounts {
@@ -111,7 +166,30 @@ pub fn active_domestic(
     destination: ComponentId,
 ) -> Result<Amounts, Error> {
     let definitions = Definitions::from_rules(state, rules)?;
-    definitions.validate(state)?;
+    active_domestic_with_definitions(state, &definitions, origin, destination)
+}
+
+/// The same query using immutable rules prepared for this input identity.
+pub fn active_domestic_with_definitions(
+    state: &LoadedState,
+    definitions: &Definitions,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    let graph = state.trade_graph().map_err(Error::State)?;
+    active_domestic_on_graph(state, definitions, graph, origin, destination)
+}
+
+pub(crate) fn active_domestic_on_graph(
+    state: &LoadedState,
+    definitions: &Definitions,
+    graph: &c6_core::trade_graph_state::GraphState,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    if definitions.inputs != state.binding().inputs {
+        return Err(Error::Binding);
+    }
     if origin.owner != destination.owner
         || origin.component_type != 2
         || destination.component_type != 2
@@ -131,7 +209,6 @@ pub fn active_domestic(
         .find(|p| p.header.owner == i32::from(origin.owner))
         .ok_or(Error::Missing("Trade player"))?;
     let trade = &player.trade;
-    let graph = state.trade_graph().map_err(Error::State)?;
     let edge = graph
         .graph()
         .get_edge(
@@ -189,31 +266,21 @@ pub fn active_domestic(
     ] {
         nested_zero(table, reason)?;
     }
-    let table = rules
-        .gameplay()
-        .table("District_TradeRouteYields")
-        .ok_or(Error::Missing("District_TradeRouteYields"))?;
     let mut amounts = Amounts {
         origin: Vec::new(),
         destination: Vec::new(),
     };
-    for hash in definitions.yields {
+    for &hash in &definitions.yields {
         let mut potential = 0i32;
-        for row in table.rows() {
-            if linux_type_hash(row.text("YieldType").map_err(Error::Rules)?.as_bytes()) != hash {
+        for row in &definitions.district_yields {
+            if row.yield_hash != hash {
                 continue;
             }
-            let district =
-                linux_type_hash(row.text("DistrictType").map_err(Error::Rules)?.as_bytes());
-            let from = number(row.get("YieldChangeAsOrigin").map_err(Error::Rules)?)?;
-            let to = number(
-                row.get("YieldChangeAsDomesticDestination")
-                    .map_err(Error::Rules)?,
-            )?;
-            potential =
-                potential.wrapping_add(from_float(count(state, origin, district)? as f32 * from)?);
             potential = potential.wrapping_add(from_float(
-                count(state, destination, district)? as f32 * to,
+                count(state, origin, row.district)? as f32 * row.origin,
+            )?);
+            potential = potential.wrapping_add(from_float(
+                count(state, destination, row.district)? as f32 * row.domestic_destination,
             )?);
         }
         // 2c08d49 reaches transportation efficiency only for Gold. Its

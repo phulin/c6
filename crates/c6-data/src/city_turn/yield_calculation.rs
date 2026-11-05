@@ -5,6 +5,7 @@ use super::{
 };
 use crate::{
     city_production_turn::{building_yields, buildings},
+    loaded_actions::trade_route_actions::{self, yields as trade_yields},
     Rules,
 };
 use c6_core::{
@@ -20,6 +21,7 @@ pub struct Definitions {
     pub buildings: buildings::Definitions,
     pub districts: district_yields::Definitions,
     pub growth: GrowthRules,
+    pub trade: trade_yields::Definitions,
 }
 impl Definitions {
     pub fn from_rules(
@@ -39,6 +41,7 @@ impl Definitions {
             .map_err(Error::Production)?,
             districts: district_yields::Definitions::from_rules(rules)?,
             growth: GrowthRules::from_rules(rules, game_speed)?,
+            trade: trade_yields::Definitions::from_rules(state, rules).map_err(trade_error)?,
         })
     }
     pub fn yield_index(&self, name: &[u8]) -> Option<i32> {
@@ -95,6 +98,71 @@ fn production(city: &c6_core::city::City, kind: u32) -> (i32, i32) {
     };
     (flat.wrapping_shl(8), percentage)
 }
+fn trade_error(error: trade_route_actions::Error) -> Error {
+    match error {
+        trade_route_actions::Error::Rules(error) => Error::Rules(error),
+        trade_route_actions::Error::State(error) => Error::State(error),
+        trade_route_actions::Error::Requires(reason)
+        | trade_route_actions::Error::Missing(reason) => Error::Unsupported(reason),
+        _ => Error::Unsupported("current trade yield input binding"),
+    }
+}
+
+fn route_yields(
+    state: &LoadedState,
+    vertex: c6_core::trade::Vertex,
+    hash: u32,
+    definitions: &trade_yields::Definitions,
+    current: &Current<'_>,
+) -> Result<i32, Error> {
+    let mut total = 0i32;
+    // City.CalculateYield 28950a2/28950d7 adds outgoing, then incoming.
+    // Graph 2bfae90/2bfb010 filters has_active_route before calling the
+    // requested Route getter. All admitted query branches are read-only;
+    // their wrapping sums commute within each native hashed neighbor list.
+    for outgoing in [true, false] {
+        for origin in current.trade.graph().origins() {
+            for destination in &origin.destinations {
+                if !destination.edge.has_active_route
+                    || (if outgoing {
+                        origin.vertex
+                    } else {
+                        destination.vertex
+                    }) != vertex
+                {
+                    continue;
+                }
+                let route = &destination.edge.most_recent_route;
+                if c6_core::trade_graph_state::city_vertex(route.origin_city) != origin.vertex
+                    || c6_core::trade_graph_state::city_vertex(route.destination_city)
+                        != destination.vertex
+                {
+                    return Err(Error::Unsupported("current route keyed endpoint identity"));
+                }
+                let amounts = trade_yields::active_domestic_on_graph(
+                    state,
+                    definitions,
+                    current.trade,
+                    route.origin_city,
+                    route.destination_city,
+                )
+                .map_err(trade_error)?;
+                let values = if outgoing {
+                    &amounts.origin
+                } else {
+                    &amounts.destination
+                };
+                let value = values
+                    .iter()
+                    .find(|v| v.type_hash == hash)
+                    .ok_or(Error::Unsupported("current route yield definition"))?;
+                total = total.wrapping_add(value.raw);
+            }
+        }
+    }
+    Ok(total)
+}
+
 /// CalculateYield(kind,false), including the current production-kind modifier.
 /// Positive branches whose current gameplay owners are not implemented return
 /// an error; no cached original result is substituted.
@@ -154,21 +222,27 @@ pub fn calculate(
         false,
         &definitions.districts,
     )?);
-    // Only edges incident to this City enter its incoming/outgoing queries.
-    // Routes belonging to unrelated cities must not reject this query.
     let vertex = c6_core::trade::Vertex {
         kind: 0,
         data1: owner,
         data2: id as i32,
     };
-    if current.trade.graph().origins().iter().any(|origin| {
-        (origin.vertex == vertex && !origin.destinations.is_empty())
-            || origin
-                .destinations
-                .iter()
-                .any(|destination| destination.vertex == vertex)
-    }) {
-        return Err(Error::Unsupported("current trade route yield evaluation"));
+    base = base.wrapping_add(route_yields(
+        state,
+        vertex,
+        hash,
+        &definitions.trade,
+        current,
+    )?);
+    // 2896330 skips the major-partner count unless this coefficient is positive.
+    // Trade v10 explicitly zero-resets the omitted late Yield list.
+    if city
+        .trade
+        .yield_per_major_trade_partner
+        .iter()
+        .any(|v| v.definition_hash == hash && v.value > 0)
+    {
+        return Err(Error::Unsupported("current major trade partner yields"));
     }
     let passing = pair(&city.trade.yield_from_foreign_routes_passing_through, hash)?;
     base = base.wrapping_add(
