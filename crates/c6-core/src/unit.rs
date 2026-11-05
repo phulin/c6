@@ -1,6 +1,6 @@
 //! Bounded Linux XP2 Unit/Formation wire records, not a Core Save loader or gameplay.
 //!
-//! Current operation queues support eleven verified handlers and their exact
+//! Current operation queues support a finite set of verified handlers and their exact
 //! parameter formats. Wire operation hashes are distinct from live numeric IDs.
 //! Unit17/28 wire/default profiles retain independent nested-codec gates.
 //! Legacy omitted runtime effects and missing prior scalars remain explicit.
