@@ -1,5 +1,6 @@
 //! Canonical current global Game.Stats domains. This begins with the actual
-//! building-count array and lethal-combat counter; absent domains stay unknown.
+//! building/unit constructed arrays and lethal-combat counter; absent domains
+//! stay unknown.
 //! Saved Stats overlays are not substituted for a current dense snapshot.
 use super::{Error, LoadedState, ObservedSnapshotWitness, WireBinding};
 use crate::unit::HashValue;
@@ -7,12 +8,16 @@ use crate::unit::HashValue;
 #[derive(Debug)]
 pub struct Statistics {
     buildings: Option<Vec<HashValue<i32>>>,
+    units_constructed: Option<Vec<HashValue<i32>>>,
     units_killed: Option<i32>,
     source: Option<ObservedSnapshotWitness>,
 }
 impl Statistics {
     pub fn building_counts(&self) -> Option<&[HashValue<i32>]> {
         self.buildings.as_deref()
+    }
+    pub fn unit_constructed_counts(&self) -> Option<&[HashValue<i32>]> {
+        self.units_constructed.as_deref()
     }
     pub fn source(&self) -> Option<&ObservedSnapshotWitness> {
         self.source.as_ref()
@@ -24,6 +29,8 @@ pub enum AccessError {
     Unavailable,
     DuplicateBuilding(u32),
     UnknownBuilding(u32),
+    DuplicateUnit(u32),
+    UnknownUnit(u32),
 }
 impl std::fmt::Display for AccessError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -75,12 +82,74 @@ impl LoadedState {
         } else {
             self.game_statistics = Some(Statistics {
                 buildings: Some(buildings),
+                units_constructed: None,
                 units_killed: None,
                 source,
             });
         }
         self.revision = next;
         Ok(())
+    }
+    /// Complete current Game.Stats unit-definition domain, in native order.
+    /// This is independent of player counts, the live roster, and saved overlays.
+    pub fn install_game_unit_constructed_counts(
+        &mut self,
+        binding: &WireBinding,
+        units: Vec<HashValue<i32>>,
+        source: Option<ObservedSnapshotWitness>,
+    ) -> Result<(), AccessError> {
+        if binding != &self.binding
+            || source.as_ref().is_some_and(|s| {
+                s.capture_configuration_sha256 != binding.inputs.configuration_sha256
+            })
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        if self
+            .game_statistics
+            .as_ref()
+            .is_some_and(|s| s.units_constructed.is_some())
+        {
+            return Err(AccessError::State(Error::AlreadyBound));
+        }
+        if units.len() > self.limits.max_runtime_array_items {
+            return Err(AccessError::State(Error::ResourceLimit));
+        }
+        for (i, value) in units.iter().enumerate() {
+            if units[..i]
+                .iter()
+                .any(|p| p.definition_hash == value.definition_hash)
+            {
+                return Err(AccessError::DuplicateUnit(value.definition_hash));
+            }
+        }
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(AccessError::State(Error::ResourceLimit))?;
+        if let Some(stats) = &mut self.game_statistics {
+            stats.units_constructed = Some(units);
+        } else {
+            self.game_statistics = Some(Statistics {
+                buildings: None,
+                units_constructed: Some(units),
+                units_killed: None,
+                source,
+            });
+        }
+        self.revision = next;
+        Ok(())
+    }
+    /// Native GetNumUnitsConstructed29c7510 reads the current dense domain.
+    pub fn game_unit_constructed_count(&self, unit: u32) -> Result<i32, AccessError> {
+        self.game_statistics()?
+            .units_constructed
+            .as_ref()
+            .ok_or(AccessError::Unavailable)?
+            .iter()
+            .find(|v| v.definition_hash == unit)
+            .map(|v| v.value)
+            .ok_or(AccessError::UnknownUnit(unit))
     }
     /// Current native Game.Stats.GetNumUnitsKilled241f0f0 value at+1b0.
     /// Installing this scalar does not supply the independent building domain.
@@ -113,6 +182,7 @@ impl LoadedState {
         } else {
             self.game_statistics = Some(Statistics {
                 buildings: None,
+                units_constructed: None,
                 units_killed: Some(value),
                 source,
             });
@@ -236,6 +306,75 @@ impl LoadedState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn constructed_units_are_an_independent_current_domain() {
+        let mut state = super::super::tests::state();
+        let binding = state.binding().clone();
+        assert!(matches!(
+            state.game_unit_constructed_count(7),
+            Err(AccessError::Unavailable)
+        ));
+        state
+            .install_game_building_counts(
+                &binding,
+                vec![HashValue {
+                    definition_hash: 7,
+                    value: 99,
+                }],
+                None,
+            )
+            .unwrap();
+        state.install_game_units_killed(&binding, 12, None).unwrap();
+        assert!(matches!(
+            state.install_game_unit_constructed_counts(
+                &binding,
+                vec![
+                    HashValue {
+                        definition_hash: 7,
+                        value: 1
+                    },
+                    HashValue {
+                        definition_hash: 7,
+                        value: 2
+                    }
+                ],
+                None
+            ),
+            Err(AccessError::DuplicateUnit(7))
+        ));
+        assert!(matches!(
+            state.game_unit_constructed_count(7),
+            Err(AccessError::Unavailable)
+        ));
+        state
+            .install_game_unit_constructed_counts(
+                &binding,
+                vec![
+                    HashValue {
+                        definition_hash: 7,
+                        value: 0,
+                    },
+                    HashValue {
+                        definition_hash: 8,
+                        value: 1,
+                    },
+                ],
+                None,
+            )
+            .unwrap();
+        assert_eq!(state.game_unit_constructed_count(7).unwrap(), 0);
+        assert_eq!(state.game_unit_constructed_count(8).unwrap(), 1);
+        assert_eq!(state.game_building_count(7).unwrap(), 99);
+        assert_eq!(state.game_units_killed().unwrap(), 12);
+        assert!(matches!(
+            state.game_unit_constructed_count(9),
+            Err(AccessError::UnknownUnit(9))
+        ));
+        assert!(matches!(
+            state.install_game_unit_constructed_counts(&binding, vec![], None),
+            Err(AccessError::State(Error::AlreadyBound))
+        ));
+    }
     #[test]
     fn global_counter_is_explicit_and_source_guards_do_not_require_it() {
         let mut state = super::super::tests::state();
