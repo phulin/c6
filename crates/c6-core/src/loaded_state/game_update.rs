@@ -576,15 +576,51 @@ pub fn complete_activation(
     }
     let player = frame.player;
     if state.player_slot_status(player).map_err(missing)? != 3 {
-        return Err(Error::Unsupported(
-            "Game.Update activation requires current AI Control.DoTurn",
-        ));
+        let effect = core::PlayerEffect::ActiveControl { player };
+        runtime
+            .player_frame
+            .as_mut()
+            .expect("retained activation")
+            .effect = Some(effect);
+        return Ok(effect);
     }
     let effect = core::after_turn_manager(&mut PlayerState { state }, player)?;
     runtime
         .player_frame
         .as_mut()
         .expect("retained activation")
+        .effect = Some(effect);
+    Ok(effect)
+}
+
+/// Resume only after the actual active nonhuman Control.DoTurn returned.
+pub fn complete_active_control(
+    state: &mut LoadedState,
+    runtime: &mut Runtime,
+) -> Result<core::PlayerEffect<i32>, Error> {
+    if state.binding() != &runtime.binding || runtime.failed {
+        return Err(Error::Unsupported(
+            "Game.Update active control binding or failure",
+        ));
+    }
+    let frame = runtime.player_frame.as_ref().ok_or(Error::Unsupported(
+        "Game.Update no active control continuation",
+    ))?;
+    if frame.effect
+        != Some(core::PlayerEffect::ActiveControl {
+            player: frame.player,
+        })
+    {
+        return Err(Error::Unsupported(
+            "Game.Update active control continuation ordering",
+        ));
+    }
+    let player = frame.player;
+    let effect = core::after_turn_manager(&mut PlayerState { state }, player)?;
+    runtime
+        .player_frame
+        .as_mut()
+        .expect("retained active control")
         .effect = Some(effect);
     Ok(effect)
 }
@@ -650,12 +686,9 @@ pub fn complete_current_player(
             "Game.Update blocking callback has not been reached",
         ));
     }
-    // Fresh post-callback IsHuman at2b5c7bd; do not reuse its earlier value.
-    if state.player_slot_status(frame.player).map_err(missing)? != 3 {
-        return Err(Error::Unsupported(
-            "Game.Update changed-control Player.Update tail",
-        ));
-    }
+    // Fresh IsHuman2b5c7bd only selects stopwatch formatting/disabled state.
+    // It does not prevent the nonhuman return after blocking gameplay.
+    state.player_slot_status(frame.player).map_err(missing)?;
     runtime.player_cursor = runtime
         .player_cursor
         .checked_add(1)
@@ -739,6 +772,79 @@ pub fn install_current_game_contacts(
 #[cfg(test)]
 mod inactive_tests {
     use super::*;
+    #[test]
+    fn nonhuman_activation_waits_for_real_control_before_counters() {
+        let mut state = crate::loaded_state::tests::state();
+        let owner = state.world.players()[0].owner();
+        let mut mapping = [-1; 65];
+        mapping[owner as usize] = 0;
+        let mut slots = [false; 65];
+        slots[owner as usize] = true;
+        state
+            .bind_controls(crate::loaded_state::ControlInputs {
+                binding: state.binding().clone(),
+                player_mapping: mapping,
+                player_slots: slots,
+                players: vec![crate::loaded_state::PlayerControls {
+                    owner,
+                    slot_status: 2,
+                    team: 0,
+                    is_alive: true,
+                    turn_active: true,
+                }],
+                processing_automation: None,
+                pause_storage: None,
+            })
+            .unwrap();
+        let mut runtime = Runtime::new(
+            &state,
+            Inputs {
+                autoplay: AutoplayInputs {
+                    end_turn_signaled: None,
+                    has_pending_state_change: None,
+                    pending_state: None,
+                    active: None,
+                },
+                needs_update: None,
+                auto_player_game: None,
+                local_player: None,
+            },
+        );
+        runtime.pending = Some(core::Continuation::PlayerUpdates(vec![owner]));
+        runtime.player_frame = Some(PlayerFrame {
+            player: owner,
+            effect: Some(core::PlayerEffect::Activation {
+                player: owner,
+                first: true,
+            }),
+            next_has_human: false,
+            alive_nonhuman: true,
+        });
+        let before = state.retained.core.player_processor.clone();
+        assert_eq!(
+            complete_activation(&mut state, &mut runtime).unwrap(),
+            core::PlayerEffect::ActiveControl { player: owner }
+        );
+        assert_eq!(state.retained.core.player_processor, before);
+        assert_eq!(
+            complete_active_control(&mut state, &mut runtime).unwrap(),
+            core::PlayerEffect::Blocking { player: owner }
+        );
+        let i = owner as usize;
+        assert_eq!(
+            state.retained.core.player_processor.updates_this_turn[i],
+            before.updates_this_turn[i].wrapping_add(1)
+        );
+        assert_eq!(
+            state.retained.core.player_processor.ai_updates_this_turn[i],
+            before.ai_updates_this_turn[i].wrapping_add(1)
+        );
+        let after_control = state.retained.core.player_processor.clone();
+        assert!(complete_active_control(&mut state, &mut runtime).is_err());
+        complete_current_player(&mut state, &mut runtime).unwrap();
+        assert_eq!(state.retained.core.player_processor, after_control);
+        assert_eq!(runtime.player_progress().completed, 1);
+    }
     #[test]
     fn inactive_return_advances_pass_without_active_player_counter_or_blocking_writes() {
         let state = crate::loaded_state::tests::state();
