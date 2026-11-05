@@ -91,30 +91,47 @@ impl<P> Effects<'_, '_, P> {
             kind,
             index,
         };
-        let binding = self
-            .backend
-            .research_acquisition
-            .as_ref()
-            .ok_or_else(|| Error::Effect(effect.clone()))?;
+        let binding =
+            self.backend
+                .research_acquisition
+                .as_ref()
+                .ok_or_else(|| Error::Acquisition {
+                    effect: effect.clone(),
+                    reason: "missing current game acquisition binding or callback list".into(),
+                })?;
         if binding.binding != *state.binding() {
-            return Err(Error::Effect(effect));
+            return Err(Error::Acquisition {
+                effect,
+                reason: "game acquisition binding identity differs".into(),
+            });
         }
         let callbacks = match kind {
             research::Kind::Technology => &binding.game_technology,
             research::Kind::Civic => &binding.game_civic,
         }
         .as_ref()
-        .ok_or_else(|| Error::Effect(effect.clone()))?
+        .ok_or_else(|| Error::Acquisition {
+            effect: effect.clone(),
+            reason: "missing current game acquisition binding or callback list".into(),
+        })?
         .clone();
-        for callback in callbacks {
-            let failure = || Error::Effect(effect.clone());
+        for (position, callback) in callbacks.into_iter().enumerate() {
+            let callback_name = format!("callback {position} {callback:?}");
+            let failure = || Error::Acquisition {
+                effect: effect.clone(),
+                reason: callback_name.clone(),
+            };
+            let source_failure = |reason: String| Error::Acquisition {
+                effect: effect.clone(),
+                reason: format!("{callback_name}: {reason}"),
+            };
             match callback {
                 GameSubscriber::Diplomacy { owner } => {
                     if owner == player {
                         if kind == research::Kind::Civic {
                             if definitions
                                 .civic_acquisition_filters(index)
-                                .map_err(|_| failure())?
+                                .map_err(|e| source_failure(format!("{e:?}")))?
                                 .3
                             {
                                 return Err(failure());
@@ -136,7 +153,7 @@ impl<P> Effects<'_, '_, P> {
                                         other,
                                         |_, _, _| Err(()),
                                     )
-                                    .map_err(|_| failure())?;
+                                    .map_err(|e| source_failure(format!("{e:?}")))?;
                                 }
                             }
                         }
@@ -146,12 +163,12 @@ impl<P> Effects<'_, '_, P> {
                     let attached = if kind == research::Kind::Civic {
                         definitions
                             .civic_acquisition_filters(index)
-                            .map_err(|_| failure())?
+                            .map_err(|e| source_failure(format!("{e:?}")))?
                             .0
                     } else {
                         definitions
                             .technology_has_attached_modifiers(index)
-                            .map_err(|_| failure())?
+                            .map_err(|e| source_failure(format!("{e:?}")))?
                     };
                     if attached {
                         return Err(failure());
@@ -168,12 +185,12 @@ impl<P> Effects<'_, '_, P> {
                     } else {
                         context.stock_player_technology_catchup(owner, player, index)
                     }
-                    .map_err(|_| failure())?;
+                    .map_err(|e| source_failure(format!("{e:?}")))?;
                     if owner == player {
                         let unlock = if kind == research::Kind::Civic {
                             let filters = definitions
                                 .civic_acquisition_filters(index)
-                                .map_err(|_| failure())?;
+                                .map_err(|e| source_failure(format!("{e:?}")))?;
                             if filters.2 {
                                 return Err(failure());
                             }
@@ -181,7 +198,7 @@ impl<P> Effects<'_, '_, P> {
                         } else {
                             definitions
                                 .technology_has_resource_unlock(index)
-                                .map_err(|_| failure())?
+                                .map_err(|e| source_failure(format!("{e:?}")))?
                         };
                         if unlock {
                             return Err(failure());
@@ -205,7 +222,7 @@ impl<P> Effects<'_, '_, P> {
                     } else {
                         definitions.technology_era_hash(index)
                     }
-                    .map_err(|_| failure())?;
+                    .map_err(|e| source_failure(format!("{e:?}")))?;
                     if era != self.runtime.start_era_hash {
                         return Err(failure());
                     }
@@ -222,7 +239,7 @@ impl<P> Effects<'_, '_, P> {
                             },
                             [player, index],
                         )
-                        .map_err(|_| failure())?;
+                        .map_err(|e| source_failure(format!("{e:?}")))?;
                 }
                 GameSubscriber::FewerThanEightEverMajors { count } => {
                     if count >= 8 {
