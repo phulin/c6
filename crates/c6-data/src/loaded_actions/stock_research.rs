@@ -405,7 +405,10 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                     effects: self,
                 }
                 .stock_technology_publication_yields(report)
-                .map_err(|_| Error::Effect(effect))?;
+                .map_err(|e| Error::Acquisition {
+                    effect,
+                    reason: format!("{e:?}"),
+                })?;
                 self.backend
                     .reached
                     .push("stock technology publication current yield queries");
