@@ -36,6 +36,7 @@ pub struct Definitions {
     population_per_district: i32,
     specialty: Vec<u32>,
     terrains: Vec<Terrain>,
+    government_bonuses: crate::registry::LinuxDefinitionRegistry,
 }
 fn missing(s: &'static str) -> production::Error {
     production::Error::Unsupported(s)
@@ -168,6 +169,66 @@ impl Definitions {
             population_per_district: population,
             specialty,
             terrains,
+            government_bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
+                .map_err(production::Error::Definitions)?,
+        })
+    }
+    /// Current ordinary production factors from UpdateDistrictProgress, in
+    /// native order. Positive spatial bonuses remain explicit until evaluated.
+    pub fn production_parameters(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        city: u32,
+        hash: u32,
+    ) -> Result<production::CurrentBuild, production::Error> {
+        if state.binding() != &self.binding {
+            return Err(production::Error::Binding);
+        }
+        if hash != self.campus_hash {
+            return Err(missing("ordinary district production type"));
+        }
+        let queue = &state.city(owner, city)?.build_queue;
+        if queue.river_district_production_multiplier != 256
+            || queue.adjacent_city_river_district_production_multiplier > 256
+            || queue
+                .district_adjacent_natural_wonder_production_modifier
+                .iter()
+                .any(|p| p.value > 0)
+        {
+            return Err(missing("district spatial production bonuses"));
+        }
+        if queue.district_production_modifier != 256 {
+            return Err(missing("district general production modifier"));
+        }
+        let definition = queue
+            .district_production_multiplier
+            .iter()
+            .rfind(|p| p.definition_hash == hash)
+            .ok_or(missing("district production multiplier"))?
+            .value;
+        let player = player(state, owner)?;
+        let bonus = |hash| -> Result<i32, production::Error> {
+            if player.culture.anarchy_end_turn >= 0
+                || self.government_bonuses.find_index(hash).is_none()
+            {
+                return Ok(0);
+            }
+            player
+                .bonuses
+                .flat_bonuses
+                .iter()
+                .rfind(|p| p.definition_hash == hash)
+                .map(|p| p.value)
+                .ok_or(missing("district government production bonus"))
+        };
+        let amount = bonus(0xc1a005d2)?.wrapping_add(bonus(0x0112d393)?);
+        Ok(production::CurrentBuild {
+            cost: cost(state, owner, city, hash)?,
+            factors_q8: vec![
+                definition,
+                c6_core::city_production::execution::percent_multiplier(amount),
+            ],
         })
     }
 }
