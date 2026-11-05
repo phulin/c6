@@ -1,8 +1,9 @@
-//! Linux XP2 domestic Trade.Manager.StartRoute on the canonical warm graph.
+//! Linux XP2 domestic Trade.Manager.StartRoute on the canonical current graph.
 //!
 //! The queued operation owns admission, activity and subsequent trader movement.
 //! This module owns the manager's route allocation and ordered gameplay signals.
-//! A cold path or unimplemented subscriber returns an explicit incomplete result;
+//! Cold paths use the current search callbacks. An unimplemented subscriber returns
+//! an explicit incomplete result;
 //! neither a captured path nor a successful empty callback is supplied here.
 pub mod current;
 pub mod path;
