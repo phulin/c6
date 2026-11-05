@@ -58,6 +58,7 @@ pub struct Configuration<'a> {
     game: GameFields,
     last_starting_game: Option<GameFields>,
     levels: Vec<(i32, u32)>,
+    civilization_types: Vec<(i32, u32)>,
     binding: Option<WireBinding>,
     active_root: Range<usize>,
     last_starting_root: Range<usize>,
@@ -146,6 +147,7 @@ impl<'a> Configuration<'a> {
             game: inputs.game.into(),
             last_starting_game: Some(inputs.last_starting_game.into()),
             levels: inputs.civilization_levels,
+            civilization_types: vec![],
             binding: None,
             active_root: inputs.active_root,
             last_starting_root: inputs.last_starting_root,
@@ -170,6 +172,7 @@ impl<'a> Configuration<'a> {
             game: inputs.game,
             last_starting_game: inputs.last_starting_game,
             levels,
+            civilization_types: vec![],
             binding: Some(binding.clone()),
             active_root: 0..0,
             last_starting_root: 0..0,
@@ -221,6 +224,45 @@ impl<'a> Configuration<'a> {
             self.game.game_mode.ok_or(Error::Missing("game_mode"))?,
             0xe75806e8 | 0x0138409a | 0x07cd5e0a | 0x453f23e2
         ))
+    }
+    /// Fill only previously unknown current civilization type IDs. This refines
+    /// the same bound configuration owner; it does not change civilization.
+    pub fn with_current_civilization_types(
+        mut self,
+        binding: &WireBinding,
+        values: Vec<(i32, u32)>,
+    ) -> Result<Self, Error> {
+        if self.binding.as_ref() != Some(binding) {
+            return Err(Error::RuntimeConfigurationUnverified);
+        }
+        for (index, &(owner, kind)) in values.iter().enumerate() {
+            if !(0..64).contains(&owner) || !self.levels.iter().any(|v| v.0 == owner) {
+                return Err(Error::Player(owner));
+            }
+            if values[..index].iter().any(|v| v.0 == owner) {
+                return Err(Error::Framing("duplicate current civilization type"));
+            }
+            if self
+                .civilization_types
+                .iter()
+                .any(|v| v.0 == owner && v.1 != kind)
+            {
+                return Err(Error::Binding);
+            }
+        }
+        for value in values {
+            if !self.civilization_types.iter().any(|v| v.0 == value.0) {
+                self.civilization_types.push(value);
+            }
+        }
+        Ok(self)
+    }
+    pub fn civilization_type_id(&self, player: i32) -> Result<u32, Error> {
+        self.civilization_types
+            .iter()
+            .find(|v| v.0 == player)
+            .map(|v| v.1)
+            .ok_or(Error::Missing("current civilization type"))
     }
     pub fn civilization_level_type_id(&self, player: i32) -> Result<u32, Error> {
         self.levels

@@ -17,8 +17,8 @@ pub const SURPRISE_ACTION: u32 = 0x1b4d_9d8f;
 pub mod diplomacy;
 pub mod event_branches;
 pub mod plain;
-pub mod requirements;
 pub mod requirement_modifiers;
+pub mod requirements;
 
 #[derive(Debug)]
 pub enum Error<E> {
@@ -43,6 +43,7 @@ pub struct Definitions {
     earliest_major_turn: i32,
     action_index: Option<usize>,
     action_warmonger: i32,
+    civilization_hashes: Vec<u32>,
 }
 impl Definitions {
     pub fn from_rules(
@@ -99,6 +100,12 @@ impl Definitions {
             earliest_major_turn,
             action_index,
             action_warmonger,
+            civilization_hashes: collection(rules, "Civilizations", "CivilizationType")
+                .map_err(Error::Definitions)?
+                .entries()
+                .iter()
+                .map(|e| crate::registry::linux_type_hash(&e.type_name))
+                .collect(),
         })
     }
     pub fn warmonger_points(
@@ -240,10 +247,22 @@ pub fn can_declare_surprise_war(
         if banned > 0 {
             return Ok(Legality::Rejected);
         }
-        // Specific bans store native definition ordinals after Read fixups,
-        // which are not interchangeable with this transport's saved hashes.
-        if !diplomacy.banned_action_civilizations.is_empty() {
-            return Err(Error::Missing("current civilization-specific action bans"));
+        // Getter2aa7340 compares collection ordinals after Find(hash). The
+        // transport writer2a9c490 uses enum WriteIndexToHash for both fields,
+        // so matching known definition hashes is the same logical identity.
+        let civilization = inputs
+            .configuration
+            .civilization_type_id(target)
+            .map_err(Error::Configuration)?;
+        if inputs
+            .definitions
+            .civilization_hashes
+            .contains(&civilization)
+            && diplomacy.banned_action_civilizations.iter().any(|ban| {
+                ban.action_hash == SURPRISE_ACTION && ban.civilization_hash == civilization
+            })
+        {
+            return Ok(Legality::Rejected);
         }
     }
     let changed = relations
