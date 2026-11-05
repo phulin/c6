@@ -1,5 +1,6 @@
 //! Current global Game.Eras domains shared by gameplay queries. Player.Eras
 //! hashes are separate. Absent domains remain unknown rather than empty arrays.
+pub mod history;
 use super::{Error, LoadedState, ObservedSnapshotWitness, WireBinding};
 
 #[derive(Debug)]
@@ -20,6 +21,8 @@ pub struct CombatBonuses {
 pub struct Runtime {
     inputs: Inputs,
     combat_bonuses: Option<Vec<CombatBonuses>>,
+    current_scores: Option<Vec<Vec<i32>>>,
+    pride: Option<(Vec<i32>, Vec<i32>)>,
 }
 impl Runtime {
     pub fn golden_ages_raw(&self) -> Option<&[u8]> {
@@ -93,6 +96,8 @@ impl LoadedState {
         self.game_eras = Some(Runtime {
             inputs,
             combat_bonuses: None,
+            current_scores: None,
+            pride: None,
         });
         Ok(())
     }
