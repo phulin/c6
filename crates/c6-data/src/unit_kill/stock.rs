@@ -201,12 +201,26 @@ impl<R: RequirementOwner, P: normal::Effects> changes::Context for Release<'_, R
         Ok(())
     }
 }
+// Creation and combat registrations can coexist, but each collection identity
+// has one mutable owner. An override does not replace unrelated combat owners.
 fn collection_owner<'s>(
     state: &'s mut LoadedState,
     current: Option<&'s mut c6_core::melee_attack::proposals::collections::Runtime>,
+    collection: u64,
 ) -> Result<&'s mut c6_core::melee_attack::proposals::collections::Runtime, &'static str> {
-    if let Some(current) = current {
-        return Ok(current);
+    let current_has = current
+        .as_ref()
+        .is_some_and(|owner| owner.collection(collection).is_some());
+    let combat_has = state
+        .combat_proposals()
+        .ok()
+        .and_then(|owner| owner.collections().ok())
+        .is_some_and(|owner| owner.collection(collection).is_some());
+    match (current_has, combat_has) {
+        (true, true) => return Err("duplicate current collection owners"),
+        (true, false) => return Ok(current.expect("current collection found")),
+        (false, false) => return Err("missing current collection identity"),
+        (false, true) => {}
     }
     state
         .combat_proposals_mut()
@@ -430,8 +444,12 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> Continuations<P> for S
                         .map_err(kill::Error::CleanupQuery)?;
                     c6_core::melee_attack::proposals::collections::remove_typed_item(
                         &mut UnitItemRemoval {
-                            collections: collection_owner(state, self.collections.as_deref_mut())
-                                .map_err(kill::Error::Missing)?,
+                            collections: collection_owner(
+                                state,
+                                self.collections.as_deref_mut(),
+                                collection,
+                            )
+                            .map_err(kill::Error::Missing)?,
                             effects: self.effects,
                             input: self.input,
                         },
@@ -591,23 +609,21 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                 .map_err(|e| kill::Error::Effect(Error::Requirements(e)))?;
         }
         let collection = row.collection;
-        let collections = collection_owner(state, self.collections.as_deref_mut())
-            .map_err(kill::Error::Missing)?;
-        if row.collection_changed_subscription {
-            collections
-                .unsubscribe_changed_receiver(
-                    collection.ok_or(kill::Error::Missing("modifier collection handle"))?,
-                    receiver,
-                )
-                .map_err(|_| kill::Error::Missing("owned collection changed unsubscribe"))?;
-        }
-        if row.collection_added_subscription {
-            collections
-                .unsubscribe_added_receiver(
-                    collection.ok_or(kill::Error::Missing("modifier collection handle"))?,
-                    receiver,
-                )
-                .map_err(|_| kill::Error::Missing("owned collection item unsubscribe"))?;
+        if row.collection_changed_subscription || row.collection_added_subscription {
+            let collection =
+                collection.ok_or(kill::Error::Missing("modifier collection handle"))?;
+            let collections = collection_owner(state, self.collections.as_deref_mut(), collection)
+                .map_err(kill::Error::Missing)?;
+            if row.collection_changed_subscription {
+                collections
+                    .unsubscribe_changed_receiver(collection, receiver)
+                    .map_err(|_| kill::Error::Missing("owned collection changed unsubscribe"))?;
+            }
+            if row.collection_added_subscription {
+                collections
+                    .unsubscribe_added_receiver(collection, receiver)
+                    .map_err(|_| kill::Error::Missing("owned collection item unsubscribe"))?;
+            }
         }
         if self
             .input
@@ -645,12 +661,16 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             .map_err(|e| kill::Error::Effect(Error::Requirements(e)))?;
         }
         if let Some(collection) = collection {
-            let destroyed = collection_owner(state, self.collections.as_deref_mut())
+            let factory_owned = self
+                .collections
+                .as_ref()
+                .is_some_and(|owner| owner.collection(collection).is_some());
+            let destroyed = collection_owner(state, self.collections.as_deref_mut(), collection)
                 .map_err(kill::Error::Missing)?
                 .release_owner(collection)
                 .map_err(|_| kill::Error::Missing("current collection lifetime"))?;
             if destroyed {
-                if self.collections.is_some() {
+                if factory_owned {
                     return Err(kill::Error::Missing(
                         "generic Unit collection destruction continuation",
                     ));

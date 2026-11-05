@@ -158,6 +158,16 @@ impl EffectRuntime {
             .modifier_next
             .ok_or(QueryError::Missing("current ModifierSystem counter"))
     }
+    /// Current registered Unit modifiers, including newly attached instances.
+    /// This borrows the live registry, not allocation collision history.
+    /// Combat collection modifiers retain their existing proposal owner.
+    pub fn unit_modifiers(
+        &self,
+    ) -> Result<&[c6_core::unit_kill::objects::Modifier], QueryError> {
+        self.unit_modifiers
+            .as_deref()
+            .ok_or(QueryError::Missing("current Unit modifier cleanup state"))
+    }
     /// Post-increment immediately before modifier registration.
     /// City and Unit factories call this one owner, never separate counters.
     pub fn allocate_modifier_id(&mut self, state: &LoadedState) -> Result<i32, QueryError> {

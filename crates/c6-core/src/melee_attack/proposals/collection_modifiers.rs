@@ -59,6 +59,10 @@ impl Runtime {
     pub fn modifier(&self, receiver: u64) -> Option<&Modifier> {
         self.modifiers.iter().find(|m| m.receiver == receiver)
     }
+    /// Live registered modifiers in their current canonical owner.
+    pub fn modifiers(&self) -> &[Modifier] {
+        &self.modifiers
+    }
     pub fn modifier_mut(&mut self, receiver: u64) -> Option<&mut Modifier> {
         self.modifiers.iter_mut().find(|m| m.receiver == receiver)
     }
