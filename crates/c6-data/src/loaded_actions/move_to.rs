@@ -120,6 +120,14 @@ pub trait Movement<E: OperationReports> {
     ) -> Result<Option<bool>, Self::Error> {
         Ok(None)
     }
+    /// Optional ordinary Farm handler over the caller's retained rule/runtime owners.
+    fn farm_can_start(&mut self, _state: &LoadedState, _unit: &Unit,
+        _improvement: u32, _visible_only: bool, _effects: &E)
+        -> Result<Option<bool>, Self::Error> { Ok(None) }
+    fn start_farm(&mut self, _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime, _actor: (i32, u32),
+        _node: &OperationNode, _effects: &mut E)
+        -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
     fn range_can_start(
         &mut self,
         _state: &LoadedState,
@@ -456,24 +464,50 @@ where
     if movement.found_city_rules().is_none() {
         return Err(Error::Unsupported("FoundCity composition unavailable"));
     }
+    execute_immediate_manager(state, actor, c6_core::unit::FOUND_CITY_HASH,
+        OperationParameters::None, inputs, handlers, runtime, effects, movement)
+}
+/// Ordinary typed BuildImprovement Add/Activate on the same queue and runtime.
+#[allow(clippy::too_many_arguments)]
+pub fn execute_farm_manager<E, M>(
+    state: &mut LoadedState, actor: (i32, u32), improvement_hash: u32,
+    modifiers: u32, inputs: &Inputs<'_, '_>, handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>, effects: &mut E, movement: &mut M,
+) -> Result<Applied, Error<EffectError<E>, M::Error>>
+where E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
+    execute_immediate_manager(state, actor, c6_core::unit::BUILD_IMPROVEMENT_HASH,
+        OperationParameters::BuildImprovement { modifiers, improvement_hash },
+        inputs, handlers, runtime, effects, movement)
+}
+#[allow(clippy::too_many_arguments)]
+fn execute_immediate_manager<E, M>(
+    state: &mut LoadedState, actor: (i32, u32), hash: u32,
+    parameters: OperationParameters, inputs: &Inputs<'_, '_>, handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>, effects: &mut E, movement: &mut M,
+) -> Result<Applied, Error<EffectError<E>, M::Error>>
+where E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?;
     let id = handlers
-        .runtime_id(c6_core::unit::FOUND_CITY_HASH)
+        .runtime_id(hash)
         .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?
         .0;
     loaded_upkeep::clear_unit_operations(state, actor.0, actor.1, effects)
         .map_err(Error::Upkeep)?;
     let current = unit(state, actor)?;
     let node = OperationNode {
-        operation_hash: c6_core::unit::FOUND_CITY_HASH,
+        operation_hash: hash,
         directive: -1,
         flags: 0,
         push_turn: state.retained().core.current_turn,
         previous_activity: current.e_activity,
         previous_automation: current.e_automation,
-        parameters: OperationParameters::None,
+        parameters,
     };
     state
         .unit_mut(actor.0, actor.1)
@@ -635,7 +669,8 @@ where
             delete
         } else {
             let node = front(state, actor)?;
-            let target_before = if node.operation_hash == c6_core::unit::FOUND_CITY_HASH {
+            let target_before = if matches!(node.operation_hash,
+                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH) {
                 None
             } else {
                 Some(target(&node)?)
@@ -652,7 +687,16 @@ where
             };
             let reference = UnitReference::from_component_id(identity(state, actor)?);
             let is_range = node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH;
-            let allowed = if is_range {
+            let allowed = if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
+                let mut farm_handler = |state: &LoadedState, unit: &Unit, improvement: u32,
+                    visible_only: bool, effects: &mut E| {
+                    movement.farm_can_start(state, unit, improvement, visible_only, effects)
+                        .map_err(|_| super::Error::Unsupported("Farm CanStart dependency"))?
+                        .ok_or(super::Error::Unsupported("Farm CanStart composition"))
+                };
+                super::can_start_typed_with_handlers(state, reference, inputs, effects,
+                    handlers, &mut operation, None, None, Some(&mut farm_handler))
+            } else if is_range {
                 let mut range_handler = |state: &LoadedState,
                                          unit: &Unit,
                                          destination: PlotCoord,
@@ -714,13 +758,15 @@ where
                     .map_err(Error::Upkeep)?;
                 // Start selects CURRENT front after activity subscribers.
                 let node = front(state, actor)?;
-                if node.operation_hash == c6_core::unit::FOUND_CITY_HASH {
-                    let data = movement
-                        .start_found_city(state, runtime.visibility, actor, effects)
-                        .map_err(Error::Movement)?
-                        .ok_or(Error::Unsupported(
-                            "FoundCity Start composition unavailable",
-                        ))?;
+                if matches!(node.operation_hash,
+                    c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH) {
+                    let hash = node.operation_hash;
+                    let data = if hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
+                        movement.start_farm(state, runtime.visibility, actor, &node, effects)
+                    } else {
+                        movement.start_found_city(state, runtime.visibility, actor, effects)
+                    }.map_err(Error::Movement)?.ok_or(Error::Unsupported(
+                        "immediate operation Start composition unavailable"))?;
                     if !unit(state, actor)?.k_operations.nodes.is_empty()
                         && data.action
                         && state
@@ -730,9 +776,9 @@ where
                         && c6_core::geometry::plot_valid(start_location.x, start_location.y)
                         && any_human_visible(state, runtime, effects, start_location)?
                     {
-                        if front(state, actor)?.operation_hash != c6_core::unit::FOUND_CITY_HASH {
+                        if front(state, actor)?.operation_hash != hash {
                             return Err(Error::Unsupported(
-                                "FoundCity callback replaced timer handler",
+                                "immediate operation callback replaced timer handler",
                             ));
                         }
                         // FoundCity uses BaseHandler.CalculateTimer2d956b0,
@@ -1449,6 +1495,7 @@ enum OperationRequest {
     MoveTo(Request),
     RangeAttack(Request),
     FoundCity,
+    Farm { improvement_hash: u32, modifiers: u32 },
 }
 #[allow(clippy::too_many_arguments)]
 fn request_operation_active_player<E, M>(
@@ -1539,6 +1586,8 @@ where
         OperationRequest::FoundCity => {
             execute_found_city_manager(state, actor, inputs, handlers, runtime, effects, movement)
         }
+        OperationRequest::Farm { improvement_hash, modifiers } => execute_farm_manager(
+            state, actor, improvement_hash, modifiers, inputs, handlers, runtime, effects, movement),
     }
     .map(RequestOutcome::Executed)
 }
@@ -1756,6 +1805,43 @@ where
         issuer,
         actor,
         OperationRequest::FoundCity,
+        inputs,
+        handlers,
+        runtime,
+        movement,
+        budget,
+    )
+}
+
+/// Execute ordinary Farm through the same retained active-player message boundary.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn execute_farm_active_request<B, M>(
+    context: &mut super::current_aftermath::Context<'_, B>,
+    issuer: i32,
+    actor: (i32, u32),
+    improvement_hash: u32,
+    modifiers: u32,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    movement: &mut M,
+    budget: &mut usize,
+) -> Result<
+    ActionOutcome,
+    ActionError<EffectError<B>, M::Error, <B as super::current_aftermath::Backend>::ObserverError>,
+>
+where
+    B: Effects
+        + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>
+        + super::current_aftermath::Backend
+        + c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
+    M: Movement<B>,
+{
+    execute_operation_active_request(
+        context,
+        issuer,
+        actor,
+        OperationRequest::Farm { improvement_hash, modifiers },
         inputs,
         handlers,
         runtime,

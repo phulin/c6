@@ -221,6 +221,7 @@ pub(super) enum HandlerAuthority<'a, 'capture> {
 }
 type RangeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, c6_core::unit::PlotCoord, bool, &mut Q) -> Result<bool, Error>
     + 'a;
+type FarmHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, u32, bool, &mut Q) -> Result<bool, Error> + 'a;
 struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
     expected_actor: &'a Unit,
@@ -229,9 +230,13 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     authority: HandlerAuthority<'h, 'capture>,
     found_city: Option<(&'a crate::found_city::Definitions, &'a crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
+    farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
 }
 pub(super) trait TypedParameters {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
+    fn improvement(&self) -> Result<u32, Error> {
+        Err(Error::Unsupported("typed BuildImprovement parameters"))
+    }
 }
 impl TypedParameters for () {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error> {
@@ -239,6 +244,12 @@ impl TypedParameters for () {
     }
 }
 impl TypedParameters for OperationParameters {
+    fn improvement(&self) -> Result<u32, Error> {
+        match self {
+            Self::BuildImprovement { improvement_hash, .. } => Ok(*improvement_hash),
+            _ => Err(Error::Unsupported("BuildImprovement parameter type")),
+        }
+    }
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error> {
         match self {
             Self::None => Ok(None),
@@ -456,6 +467,12 @@ where
                 "script changed Unit before world-backed placement; effects retained",
             ));
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::BUILD_IMPROVEMENT_HASH) {
+            let improvement = s.operation.parameters.improvement()?;
+            return self.farm_handler.as_mut()
+                .ok_or(Error::Unsupported("BuildImprovement handler composition"))?(
+                    self.state, s.unit, improvement, visible_only, self.external);
+        }
         if h.identity().operation_hash == OperationHash(c6_core::unit::RANGE_ATTACK_HASH) {
             let destination = s
                 .operation
@@ -607,6 +624,7 @@ pub(super) fn can_start_for_actor<
             authority,
             found_city: None,
             range_handler: None,
+            farm_handler: None,
         },
     );
     if (actor.e_owner, actor.id) != identity {
@@ -671,6 +689,24 @@ pub(crate) fn can_start_typed_with_range<
     found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
 ) -> Result<bool, Error> {
+    can_start_typed_with_handlers(state, reference, inputs, external, handlers, operation,
+        found_city, range_handler, None)
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn can_start_typed_with_handlers<
+    'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &'q mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+    found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
+    range_handler: Option<&'q mut RangeHandler<'q, Q>>,
+    farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
+) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(Error::HandlerObservation)?;
@@ -694,6 +730,7 @@ pub(crate) fn can_start_typed_with_range<
             authority: HandlerAuthority::RuntimeBinding(handlers),
             found_city,
             range_handler,
+            farm_handler,
         },
     );
     if (actor.e_owner, actor.id) != identity {

@@ -404,6 +404,7 @@ pub struct Provider<'a> {
     skip_turn_handler: Option<i32>,
     move_to_handler: Option<i32>,
     range_attack_handler: Option<i32>,
+    farm_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
     ability_publications: Vec<AbilityPublication>,
@@ -428,6 +429,7 @@ impl<'a> Provider<'a> {
             skip_turn_handler: None,
             move_to_handler: None,
             range_attack_handler: None,
+            farm_handler: None,
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
             ability_publications: Vec::new(),
@@ -546,6 +548,22 @@ impl<'a> Provider<'a> {
             c6_core::unit::RANGE_ATTACK_HASH,
         )?);
         Ok(())
+    }
+    /// Bind the registered ordinary BuildImprovement handler. Farm activity's
+    /// native UI parameter map is omitted at the semantic headless boundary.
+    pub fn bind_farm_handler(&mut self, state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
+        self.farm_handler = Some(Self::checked_handler(state, authority, operations,
+            c6_core::unit::BUILD_IMPROVEMENT_HASH)?);
+        Ok(())
+    }
+    /// Charge-change's stock Unit cache callback observes the current actor;
+    /// semantic charge values are retained by the Farm service report owner.
+    pub fn observe_builder_charges(&mut self, state: &LoadedState,
+        actor: UnitReference) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding { return Err(Error::ConfigurationIdentity); }
+        self.observe_unit_snapshot(state, actor).map(|_| ())
     }
     fn checked_handler(
         state: &LoadedState,
@@ -1032,7 +1050,9 @@ impl<'a> Provider<'a> {
                     || (report.subtype == c6_core::unit::MOVE_TO_HASH
                         && self.move_to_handler.is_some())
                     || (report.subtype == c6_core::unit::RANGE_ATTACK_HASH
-                        && self.range_attack_handler.is_some()))
+                        && self.range_attack_handler.is_some())
+                    || (report.subtype == c6_core::unit::BUILD_IMPROVEMENT_HASH
+                        && self.farm_handler.is_some()))
                     && report.first.is_some()
                     && report.second.is_none() =>
             {
@@ -1160,6 +1180,11 @@ impl<'a> Provider<'a> {
                     ))?;
                     c6_core::unit::RANGE_ATTACK_HASH
                 }
+                Some(node) if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH
+                    && matches!(node.parameters, c6_core::unit::OperationParameters::BuildImprovement { .. }) => {
+                    self.farm_handler.ok_or(Error::Provider("actual Farm facade handler binding unavailable"))?;
+                    c6_core::unit::BUILD_IMPROVEMENT_HASH
+                }
                 Some(_) => {
                     return Err(Error::Provider(
                         "event35 current front facade type/parameter writer unavailable",
@@ -1181,7 +1206,9 @@ impl<'a> Provider<'a> {
             operation,
             value,
             activity_operation,
-            activity_parameters: (host_event == 35).then_some([-1; 4]),
+            activity_parameters: (host_event == 35
+                && activity_operation != Some(c6_core::unit::BUILD_IMPROVEMENT_HASH))
+                .then_some([-1; 4]),
         });
         Ok(())
     }
