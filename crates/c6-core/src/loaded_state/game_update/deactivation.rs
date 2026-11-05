@@ -243,10 +243,10 @@ impl<S: Services> core::World for Context<'_, S> {
     fn human(&mut self, p: i32) -> Result<bool, Error> {
         <Self as crate::game_update::World>::human(self, p)
     }
-    fn ai_done(&mut self, _: i32) -> Result<bool, Error> {
-        Err(Error::Unsupported(
-            "deactivation AI.Control.IsDoneTurn current gameplay callbacks",
-        ))
+    fn ai_done(&mut self, owner: i32) -> Result<bool, Error> {
+        // IsDoneTurn201f020 is the stored current-priority == -1 test;
+        // it does not run planner callbacks or complete an external action.
+        super::human_activation::is_done_turn(self.state, owner)
     }
     fn validate_pending(&mut self, _: i32) -> Result<(), Error> {
         Err(Error::Unsupported("deactivation Diplomacy.ValidatePending"))
@@ -395,8 +395,11 @@ mod tests {
         assert_eq!(runtime.inputs.auto_player_game, Some(true));
     }
     #[test]
-    fn incomplete_nonhuman_requires_actual_ai_done_callbacks_without_role_change() {
+    fn incomplete_nonhuman_reads_current_priority_without_role_change() {
         let (mut state, mut runtime, owner) = fixture();
+        let control = state.retained.players[0].ai_control.as_mut().unwrap();
+        control.player_id = owner;
+        control.priority = 4;
         state.retained.core.player_processor.player_complete[owner as usize] = false;
         state.retained.core.player_processor.game_complete[owner as usize] = false;
         state
@@ -408,13 +411,9 @@ mod tests {
             .find(|p| p.owner == owner)
             .unwrap()
             .slot_status = 4;
-        let result = begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap());
-        assert!(matches!(
-            result,
-            Err(Error::Unsupported(
-                "deactivation AI.Control.IsDoneTurn current gameplay callbacks"
-            ))
-        ));
+        let result =
+            begin(&mut Context::new(&mut state, &mut runtime, UpdateServices).unwrap()).unwrap();
+        assert!(result.requires_post_deactivation_pass());
         assert_eq!(state.player_slot_status(owner).unwrap(), 4);
         assert!(state.turn_active(owner).unwrap());
         assert_eq!(runtime.inputs.auto_player_game, Some(true));
