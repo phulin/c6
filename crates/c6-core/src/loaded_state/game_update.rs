@@ -7,6 +7,7 @@ pub mod deactivation;
 pub mod human_activation;
 pub mod human_control;
 pub mod inactive_control;
+pub mod npc_activation;
 pub mod maintenance;
 pub mod resources;
 pub mod round;
@@ -50,6 +51,7 @@ pub struct Runtime {
     /// Unsaved GlobalAi+110 processing depth. None requires a live input.
     global_ai_processing_depth: Option<i32>,
     round_begin_ready: bool,
+    npc_activation: Option<npc_activation::Frame>,
 }
 impl Runtime {
     /// Binding checks identity, not provenance of caller-supplied runtime facts.
@@ -67,6 +69,7 @@ impl Runtime {
             local_observer: None,
             global_ai_processing_depth: None,
             round_begin_ready: false,
+            npc_activation: None,
         }
     }
     pub fn pending(&self) -> Option<&core::Continuation> {
@@ -841,7 +844,7 @@ mod inactive_tests {
         );
         let after_control = state.retained.core.player_processor.clone();
         assert!(complete_active_control(&mut state, &mut runtime).is_err());
-        complete_current_player(&mut state, &mut runtime).unwrap();
+        complete_current_player(&state, &mut runtime).unwrap();
         assert_eq!(state.retained.core.player_processor, after_control);
         assert_eq!(runtime.player_progress().completed, 1);
     }
