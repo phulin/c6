@@ -720,21 +720,12 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     ));
                 }
                 empty_congress_choices(state, backend, owner, self.managers)?;
-                if !state
-                    .world()
-                    .player(owner)
-                    .map_err(|_| Error::Unsupported("NPC Culture units owner"))?
-                    .unit_records()
-                    .map_err(|_| Error::Unsupported("NPC Culture unit roster"))?
-                    .is_empty()
-                {
-                    return Err(Error::Unsupported("NPC Culture pre-choice unit policies"));
-                }
                 // Government policy selection2030100 returns for nonmajors;
                 // must_change_policies is a native policy-readiness cache.
-                // Empty Congress choices rejoin202f4c8 via202fa52. Park
-                // candidates and num_naturalists are policy analysis; no unit
-                // exists to generate or execute a naturalist policy request.
+                // Empty Congress choices rejoin202f4c8 via202fa52. The unit
+                // traversal202f5e0..202f645 only reads ParkCharges and counts
+                // AI num_naturalists; it writes no Unit, action or RNG. Omit
+                // that policy count together with the parkcandidate scores.
                 Ok(())
             }
             Kind::Religious => {
