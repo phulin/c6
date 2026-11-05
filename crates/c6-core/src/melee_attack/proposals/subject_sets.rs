@@ -152,6 +152,21 @@ impl Runtime {
             .find(|s| s.label == id && s.alive)
             .map(|s| s.state)
     }
+    /// Current logical reference count, including retained zero-reference rows
+    /// after release. Object pointers/allocator state are not reconstructed.
+    pub fn requirement_reference_count(&self, label: u64) -> Option<u32> {
+        self.requirements
+            .iter()
+            .find(|r| r.label == label)
+            .map(|r| r.references)
+    }
+    /// A retired set remains inspectable as a zero-reference logical record.
+    pub fn set_reference_count(&self, label: u64) -> Option<u32> {
+        self.sets
+            .iter()
+            .find(|s| s.label == label)
+            .map(|s| s.references)
+    }
     pub fn native_set_id(&self, id: u64) -> Option<u32> {
         self.sets
             .iter()
