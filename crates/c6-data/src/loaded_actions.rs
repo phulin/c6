@@ -33,6 +33,7 @@ pub mod handlers;
 mod fortify;
 pub mod move_to;
 pub mod notifications;
+pub mod policy_actions;
 pub mod reporting;
 pub mod scripting;
 pub mod session;

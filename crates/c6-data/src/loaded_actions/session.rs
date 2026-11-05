@@ -19,6 +19,8 @@ use c6_core::{
 
 pub mod advance;
 pub mod initialized;
+#[path = "session_policy.rs"]
+pub mod policy;
 
 #[derive(Debug)]
 pub enum Error<E> {

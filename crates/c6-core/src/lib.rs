@@ -22,6 +22,7 @@ pub mod formation_path_cache;
 pub mod formation_path_callbacks;
 pub mod formation_upkeep;
 pub mod geometry;
+pub mod government_policy;
 pub mod improvement_movement;
 pub mod improvement_yield;
 pub mod loaded_components;
