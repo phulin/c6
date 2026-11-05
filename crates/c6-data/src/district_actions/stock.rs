@@ -1,5 +1,6 @@
 //! Ordinary Campus selection and production on the persistent stock owners.
 pub mod completion;
+pub mod roads;
 use super::{construction, Current, Definitions};
 use crate::{
     city_production_turn::{self as production, appeal},
@@ -29,6 +30,7 @@ pub struct Inputs<'a> {
     pub tech_graph: &'a choose_tech::GameTechs,
     pub culture: Option<&'a stock_research::CultureInputs<'a>>,
     pub completion: &'a completion::Services<'a>,
+    pub roads: &'a roads::Inputs<'a>,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Report {
@@ -239,6 +241,13 @@ impl<P> districts::Effects for Effects<'_, '_, '_, P> {
     }
 }
 impl<P> construction::Effects for Effects<'_, '_, '_, P> {
+    fn complete_route(
+        &mut self,
+        state: &mut LoadedState,
+        d: districts::DistrictReference,
+    ) -> Result<(), production::Error> {
+        roads::complete(self, state, d)
+    }
     fn award_creation_yields(
         &mut self,
         s: &mut LoadedState,

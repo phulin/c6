@@ -5,6 +5,11 @@ use crate::{city_production_turn as production, district_initialization as distr
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
 
 pub trait Effects: districts::Effects<Error = production::Error> {
+    fn complete_route(
+        &mut self,
+        state: &mut LoadedState,
+        district: districts::DistrictReference,
+    ) -> Result<(), production::Error>;
     /// AwardDistrictCreateYield runs immediately after SetDistrictType.
     fn award_creation_yields(
         &mut self,
@@ -145,6 +150,7 @@ pub fn complete(
         true,
     )
     .map_err(|e| production::Error::DistrictInitialization(Box::new(e)))?;
+    effects.complete_route(state, reference)?;
     let progress = state
         .city(owner, city)?
         .build_queue

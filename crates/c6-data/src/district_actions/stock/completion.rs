@@ -444,9 +444,19 @@ impl changes::Context for RequirementContext<'_> {
                 "district requirement Player",
             )))?;
         // PlayerHasDistrict::Test returns raw2 for met and raw1 for unmet.
-        Ok(if player.districts.records.entries.iter().any(
-            |r| r.value.district_hash == hash && r.value.is_complete && !r.value.pillaged,
-        ) { 2 } else { 1 })
+        Ok(
+            if player
+                .districts
+                .records
+                .entries
+                .iter()
+                .any(|r| r.value.district_hash == hash && r.value.is_complete && !r.value.pillaged)
+            {
+                2
+            } else {
+                1
+            },
+        )
     }
     fn modifier_changed(
         &mut self,
