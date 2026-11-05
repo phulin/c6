@@ -21,6 +21,7 @@ pub const SKIP_TURN_HASH: u32 = 0x2c681908;
 pub const FOUND_CITY_HASH: u32 = 0x5733ac6c;
 pub const MOVE_TO_HASH: u32 = 0x580f2f68;
 pub const RANGE_ATTACK_HASH: u32 = 0x09d0292a;
+pub const BUILD_IMPROVEMENT_HASH: u32 = 0x1d60e778;
 pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
 pub const ALERT_HASH: u32 = 0xe547bc17;
 pub const FORTIFY_HASH: u32 = 0xd3a6f7e8;
@@ -36,6 +37,11 @@ pub enum OperationParameters {
     MoveTo {
         location: PlotCoord,
         modifiers: u32,
+    },
+    /// Linux base and XP2 BuildImprovement version-one parameters.
+    BuildImprovement {
+        modifiers: u32,
+        improvement_hash: u32,
     },
     MakeTradeRoute {
         modifiers: u32,
@@ -56,6 +62,7 @@ fn parameter_kind(hash: u32) -> Result<u8, Error> {
         | SPY_SABOTAGE_PRODUCTION_HASH => Ok(0),
         MOVE_TO_HASH | RANGE_ATTACK_HASH => Ok(1),
         MAKE_TRADE_ROUTE_HASH => Ok(2),
+        BUILD_IMPROVEMENT_HASH => Ok(3),
         _ => Err(Error::UnsupportedHandler(hash)),
     }
 }
@@ -160,6 +167,13 @@ impl OperationQueue {
                         resource_hash: r.u32()?,
                     }
                 }
+                3 => {
+                    r.version(1)?;
+                    OperationParameters::BuildImprovement {
+                        modifiers: r.u32()?,
+                        improvement_hash: r.u32()?,
+                    }
+                }
                 _ => unreachable!(),
             };
             nodes.push(OperationNode {
@@ -187,6 +201,7 @@ impl OperationQueue {
                 OperationParameters::None => (0, 32),
                 OperationParameters::MoveTo { .. } => (1, 44),
                 OperationParameters::MakeTradeRoute { .. } => (2, 56),
+                OperationParameters::BuildImprovement { .. } => (3, 40),
             };
             if actual != kind {
                 return Err(Error::ParameterHandlerMismatch(node.operation_hash));
@@ -218,6 +233,11 @@ impl OperationQueue {
                     modifiers,
                 } => {
                     for v in [1, location.x as u32, location.y as u32, *modifiers] {
+                        word(&mut bytes, v);
+                    }
+                }
+                OperationParameters::BuildImprovement { modifiers, improvement_hash } => {
+                    for v in [1, *modifiers, *improvement_hash] {
                         word(&mut bytes, v);
                     }
                 }
@@ -667,6 +687,24 @@ mod tests {
             }
         );
         assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
+    }
+    #[test]
+    fn build_improvement_queue_uses_modifiers_then_definition_hash() {
+        // Linux XP2 ClassParameters::Write writes v1, modifiers, Improvement hash.
+        let words = [1u32, 1, BUILD_IMPROVEMENT_HASH, 2, 0, 0, 7, 0, 0,
+            1, 0x80000000, 0xdeadbeef];
+        let bytes: Vec<u8> = words.into_iter().flat_map(u32::to_le_bytes).collect();
+        let mut queue = OperationQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(queue.nodes[0].parameters, OperationParameters::BuildImprovement {
+            modifiers: 0x80000000, improvement_hash: 0xdeadbeef,
+        });
+        assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
+        for end in 0..bytes.len() {
+            assert!(OperationQueue::decode(&bytes[..end], Limits::default()).is_err());
+        }
+        queue.nodes[0].operation_hash = MOVE_TO_HASH;
+        assert_eq!(queue.encode(Limits::default()),
+            Err(Error::ParameterHandlerMismatch(MOVE_TO_HASH)));
     }
     #[test]
     fn queue_parameter_wire_is_handler_specific_and_preserves_hashes() {
