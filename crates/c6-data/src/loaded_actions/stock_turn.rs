@@ -269,10 +269,9 @@ impl<P> Runtime<'_, P> {
         Ok(())
     }
     /// GameSignals+0x9d8 stock order: Lua PlayerTurnStartComplete, then the
-    /// achievement observer. The latter's empty-city branch reads current
-    /// counters/definitions and writes only achievement tracking/host output;
-    /// it has no gameplay callback or RNG draw. Positive city/path query
-    /// branches remain outside this bounded stock turn implementation.
+    /// achievement observer (Linux 28fc620). Its city, district and existing
+    /// path queries feed only achievement counters, tracking sets and platform
+    /// unlock output. They have no gameplay callback, mutation or RNG draw.
     pub fn player_initialization_complete(
         &mut self,
         state: &LoadedState,
@@ -288,17 +287,10 @@ impl<P> Runtime<'_, P> {
                 "PlayerTurnStartComplete script callback",
             ));
         }
-        if state.retained().players.iter().any(|p| {
-            !p.cities.records.entries.is_empty() || !p.districts.records.entries.is_empty()
-        }) {
-            return Err(Error::Unsupported(
-                "achievement observer current City query effects",
-            ));
-        }
         self.reached
             .push("PlayerTurnStartComplete same script registry");
         self.reached
-            .push("stock empty-city achievement output omitted");
+            .push("stock achievement observer output omitted");
         Ok(())
     }
     /// Processor.DoTurnActivate's final8953f126(owner,first). Stock consumers
