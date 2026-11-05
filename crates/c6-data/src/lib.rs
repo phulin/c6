@@ -873,4 +873,3 @@ pub mod barbarian_camp_placement;
 pub mod barbarian_camp_units;
 
 pub mod ranged_attack;
-
