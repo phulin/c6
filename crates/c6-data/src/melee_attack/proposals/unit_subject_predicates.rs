@@ -36,6 +36,7 @@ pub struct Definitions {
     identities: InputIdentities,
     units: LinuxDefinitionRegistry,
     promotion_classes: Vec<Option<Vec<u8>>>,
+    tags: Option<crate::loaded_actions::reporting::hold_cycling::commands::Tags>,
 }
 fn promotion_text(value: &SqlValue) -> Result<Option<Vec<u8>>, Error> {
     match value {
@@ -85,7 +86,44 @@ impl Definitions {
             identities: state.binding().inputs.clone(),
             units,
             promotion_classes,
+            tags: None,
         })
+    }
+    pub fn with_tags(
+        mut self,
+        tags: crate::loaded_actions::reporting::hold_cycling::commands::Tags,
+    ) -> Self {
+        self.tags = Some(tags);
+        self
+    }
+    pub fn unit_has_tag(
+        &self,
+        state: &LoadedState,
+        reference: UnitReference,
+        tag: &[u8],
+    ) -> Result<Option<bool>, Error> {
+        if self.identities != state.binding().inputs {
+            return Err(Error::Binding);
+        }
+        let unit = super::super::actor(state, reference).map_err(Error::Actor)?;
+        let runtime = state
+            .unit_runtime(unit.e_owner, unit.id)
+            .map_err(Error::State)?;
+        let Some(index) = usize::try_from(runtime.definition_index)
+            .ok()
+            .filter(|index| *index < self.promotion_classes.len())
+        else {
+            return Ok(None);
+        };
+        if self.units.find_index(unit.e_type_index) != Some(index) {
+            return Err(Error::CurrentDefinition);
+        }
+        Ok(Some(
+            self.tags
+                .as_ref()
+                .ok_or(Error::Missing("current Tag repository"))?
+                .has(unit.e_type_index, tag),
+        ))
     }
     /// Resolve the SAME current actor and initialized native definition index.
     /// At an absent index native Definitions.At returns NULL, so the source

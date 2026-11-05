@@ -44,6 +44,18 @@ impl Runtime {
         }
         Ok(Self { modifiers })
     }
+    /// Attach a source-created modifier to this same current proposal owner.
+    pub fn register_current(&mut self, modifier: Modifier) -> Result<(), u64> {
+        if self
+            .modifiers
+            .iter()
+            .any(|m| m.receiver == modifier.receiver || m.instance == modifier.instance)
+        {
+            return Err(modifier.receiver);
+        }
+        self.modifiers.push(modifier);
+        Ok(())
+    }
     pub fn modifier(&self, receiver: u64) -> Option<&Modifier> {
         self.modifiers.iter().find(|m| m.receiver == receiver)
     }

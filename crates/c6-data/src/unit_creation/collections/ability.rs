@@ -1,15 +1,23 @@
 //! UnitAbilityModifiers attachment and the concrete home-continent requirement.
 use super::*;
+mod unit_combat;
 use crate::{game_parameters::sql_integer, registry::linux_type_hash, Row, Rules, SqlValue};
 #[derive(Clone)]
 pub(super) struct Recipe {
     id: Vec<u8>,
+    effect: RecipeEffect,
     subject: Vec<u8>,
     amount: i32,
     kind: i32,
     permanent: bool,
     repeatable: bool,
     stack: u16,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RecipeEffect {
+    OwnerStrength,
+    UnitCombatStrength,
+    SeeHidden,
 }
 pub(super) struct Ability {
     index: usize,
@@ -64,9 +72,20 @@ fn compile(db: &crate::Database, name: &[u8]) -> Result<Vec<Recipe>, Error> {
             .rows()
             .find(|r| text(*r, "ModifierType").ok() == Some(dynamic_name))
             .ok_or(Error::Missing("ability DynamicModifier definition"))?;
-        if text(dynamic, "CollectionType")? != b"COLLECTION_OWNER"
-            || text(dynamic, "EffectType")? != b"EFFECT_ADJUST_UNIT_COMBAT_STRENGTH"
-            || !text(row, "OwnerRequirementSetId")?.is_empty()
+        let effect = match (
+            text(dynamic, "CollectionType")?,
+            text(dynamic, "EffectType")?,
+        ) {
+            (b"COLLECTION_OWNER", b"EFFECT_ADJUST_UNIT_COMBAT_STRENGTH") => {
+                RecipeEffect::OwnerStrength
+            }
+            (b"COLLECTION_OWNER", b"EFFECT_ADJUST_UNIT_SEE_HIDDEN") => RecipeEffect::SeeHidden,
+            (b"COLLECTION_UNIT_COMBAT", b"EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER") => {
+                RecipeEffect::UnitCombatStrength
+            }
+            _ => return Err(Error::Missing("unsupported ability modifier definition")),
+        };
+        if !text(row, "OwnerRequirementSetId")?.is_empty()
             || integer(row, "RunOnce")? != 0
             || integer(row, "NewOnly")? != 0
             || integer(row, "OwnerStackLimit")? != 0
@@ -92,7 +111,7 @@ fn compile(db: &crate::Database, name: &[u8]) -> Result<Vec<Recipe>, Error> {
                         return Err(Error::Missing("ability Amount Q8 range"));
                     }
                 }
-                b"Type" => {
+                b"Type" if effect == RecipeEffect::OwnerStrength => {
                     kind = match text(arg, "Value")? {
                         b"RANGED" => 2,
                         b"BOMBARD" => 3,
@@ -100,11 +119,17 @@ fn compile(db: &crate::Database, name: &[u8]) -> Result<Vec<Recipe>, Error> {
                         _ => 1,
                     }
                 }
+                _ if effect == RecipeEffect::UnitCombatStrength => {
+                    return Err(Error::Missing(
+                        "unsupported ability player strength argument",
+                    ));
+                }
                 _ => {}
             }
         }
         out.push(Recipe {
             id,
+            effect,
             subject: text(row, "SubjectRequirementSetId")?.to_vec(),
             amount,
             kind,
@@ -188,6 +213,10 @@ pub fn on_ability_earned<E: Effects>(
             .effects
             .allocate_modifier_id(owners.state)
             .map_err(Error::Query)?;
+        if recipe.effect == RecipeEffect::UnitCombatStrength {
+            unit_combat::attach(owners, context, unit, instance, &recipe)?;
+            continue;
+        }
         let receiver = (1u64 << 59) | u64::from(instance as u32);
         let effect = (1u64 << 58) | u64::from(instance as u32);
         owners
@@ -195,9 +224,15 @@ pub fn on_ability_earned<E: Effects>(
             .register_unit_effect(
                 owners.state,
                 effect,
-                crate::unit_kill::effects::Effect::CombatStrength {
-                    amount: recipe.amount,
-                    kind: recipe.kind,
+                match recipe.effect {
+                    RecipeEffect::OwnerStrength => {
+                        crate::unit_kill::effects::Effect::CombatStrength {
+                            amount: recipe.amount,
+                            kind: recipe.kind,
+                        }
+                    }
+                    RecipeEffect::SeeHidden => crate::unit_kill::effects::Effect::SeeHidden,
+                    RecipeEffect::UnitCombatStrength => unreachable!(),
                 },
             )
             .map_err(Error::Query)?;
@@ -548,6 +583,19 @@ mod tests {
             (5, 1, 1)
         );
         assert!(compile(&db, b"NO_REFERENCES").unwrap().is_empty());
+    }
+    #[test]
+    fn unit_combat_recipe_retains_deferred_opponent_requirements() {
+        let db = database("UPDATE DynamicModifiers SET CollectionType='COLLECTION_UNIT_COMBAT',EffectType='EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER'; UPDATE Modifiers SET SubjectRequirementSetId='ANTI_CAVALRY_OPPONENT_REQUIREMENTS'; UPDATE ModifierArguments SET Value='10';");
+        let recipes = compile(&db, b"A").unwrap();
+        assert_eq!(recipes[1].effect, RecipeEffect::UnitCombatStrength);
+        assert_eq!(recipes[1].amount, 10);
+        assert_eq!(recipes[1].subject, b"ANTI_CAVALRY_OPPONENT_REQUIREMENTS");
+    }
+    #[test]
+    fn new_player_strength_scaling_arguments_remain_explicitly_unsupported() {
+        let db = database("UPDATE DynamicModifiers SET CollectionType='COLLECTION_UNIT_COMBAT',EffectType='EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER'; INSERT INTO ModifierArguments VALUES('Z','StackScale','ARGTYPE_IDENTITY','50');");
+        assert!(compile(&db, b"A").is_err());
     }
     #[test]
     fn non_owner_collection_is_not_silently_replaced_by_owner() {

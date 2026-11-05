@@ -287,6 +287,10 @@ impl sets::Context for Context<'_> {
             sets::Predicate::AllianceReligion => {
                 predicates::alliance_not_combat_target_religion(self)
             }
+            sets::Predicate::OpponentTag { expected } => {
+                return c6_core::melee_attack::proposals::unit_subject_predicates::opponent_tag_matches(self, expected)
+                    .map_err(|e|Error::UnitPredicate(Box::new(e)))
+            }
             sets::Predicate::OpponentPromotionClass { expected } => {
                 return c6_core::melee_attack::proposals::unit_subject_predicates::opponent_promotion_class_matches(self, expected)
                     .map_err(|e|Error::UnitPredicate(Box::new(e)))
@@ -358,6 +362,14 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
                 Err(Error::Missing("source-qualified new context IPlayer"))
             }
         }
+    }
+    fn unit_has_tag(&mut self, unit: UnitReference, tag: &[u8]) -> Result<Option<bool>, Error> {
+        self.runtime
+            .units
+            .as_ref()
+            .ok_or(Error::Missing("current Unit tag definitions"))?
+            .unit_has_tag(self.state, unit, tag)
+            .map_err(Error::Promotion)
     }
     fn promotion_class(&mut self, unit: UnitReference) -> Result<Option<&[u8]>, Error> {
         self.runtime

@@ -15,6 +15,12 @@ pub trait Context: registry::Context {
     /// Nullable current Unit definition promotion text. Native strlen ends at
     /// its first NUL; SQL NULL/missing definition is distinct from empty text.
     fn promotion_class(&mut self, unit: UnitReference) -> Result<Option<&[u8]>, Self::Error>;
+    /// None means native Definitions.At returned a null Unit definition.
+    fn unit_has_tag(
+        &mut self,
+        unit: UnitReference,
+        tag: &[u8],
+    ) -> Result<Option<bool>, Self::Error>;
 }
 #[derive(Debug)]
 pub enum Error<E> {
@@ -73,6 +79,29 @@ pub fn opponent_promotion_class_matches<C: Context>(
     };
     let length = value.iter().position(|b| *b == 0).unwrap_or(value.len());
     Ok(3 - i32::from(&value[..length] == expected))
+}
+
+/// OpponentUnitTagMatches237bd70 uses the same participant selection as the
+/// promotion predicate, then current Definitions.At/GetTypeHash/Tags.HasTag.
+pub fn opponent_tag_matches<C: Context>(
+    c: &mut C,
+    expected: &[u8],
+) -> Result<i32, Error<C::Error>> {
+    let Some((player, proposal)) = interfaces(c)? else {
+        return Ok(3);
+    };
+    let player = c.context_player_id(player).map_err(Error::Context)?;
+    let (attacker, defender) = participants(c, proposal)?;
+    let attacking = c.owner(attacker).map_err(Error::Context)? == player;
+    let opponent = if attacking { defender } else { Some(attacker) };
+    let Some(Participant::Unit(unit)) = opponent else {
+        return Ok(3);
+    };
+    Ok(3 - i32::from(
+        c.unit_has_tag(unit, expected)
+            .map_err(Error::Context)?
+            .unwrap_or(false),
+    ))
 }
 
 #[cfg(test)]
@@ -148,6 +177,20 @@ mod tests {
             self.reads.push("player-id");
             Ok(p)
         }
+        fn unit_has_tag(
+            &mut self,
+            u: UnitReference,
+            tag: &[u8],
+        ) -> Result<Option<bool>, Self::Error> {
+            Ok(self
+                .classes
+                .iter()
+                .find(|row| row.0 == u)
+                .ok_or("unknown current Unit")?
+                .1
+                .as_ref()
+                .map(|value| value == tag))
+        }
         fn promotion_class(&mut self, u: UnitReference) -> Result<Option<&[u8]>, Self::Error> {
             self.reads.push("promotion");
             if self.fail_promotion {
@@ -192,6 +235,30 @@ mod tests {
             2
         );
         assert_eq!(player_is_attacking(&mut c).unwrap(), 3);
+    }
+    #[test]
+    fn anti_cavalry_opponent_tags_follow_both_combat_sides() {
+        let mut c = current();
+        let cavalry = [
+            b"CLASS_HEAVY_CAVALRY".as_slice(),
+            b"CLASS_LIGHT_CAVALRY",
+            b"CLASS_RANGED_CAVALRY",
+        ];
+        for player in [0, 1] {
+            c.player = Some(player);
+            let opponent = if player == 0 { 1 } else { 0 };
+            for tag in cavalry.into_iter().chain([b"CLASS_MELEE".as_slice()]) {
+                c.classes[opponent].1 = Some(tag.to_vec());
+                let states =
+                    cavalry.map(|expected| opponent_tag_matches(&mut c, expected).unwrap());
+                assert_eq!(states.contains(&2), tag != b"CLASS_MELEE");
+            }
+            c.classes[opponent].1 = None;
+            assert_eq!(
+                opponent_tag_matches(&mut c, b"CLASS_HEAVY_CAVALRY").unwrap(),
+                3
+            );
+        }
     }
     #[test]
     fn current_owner_is_read_instead_of_component_id_owner() {

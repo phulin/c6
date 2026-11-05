@@ -51,6 +51,7 @@ pub enum Predicate {
     CombatVersus { expected: u32 },
     AllianceReligion,
     OpponentPromotionClass { expected: Vec<u8> },
+    OpponentTag { expected: Vec<u8> },
     PlayerIsAttacking,
     Unsupported(u32),
 }

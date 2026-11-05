@@ -248,6 +248,25 @@ impl Runtime {
         self.active.push((self.counter, handle));
         Ok((self.counter, handle))
     }
+    /// UnitCombat.OnInitialize23434f0 calls WhenUnitCombatProposed, whose map
+    /// insertion creates a signal only inside the admitted current Unit map.
+    pub fn subscribe_unit_combat(&mut self, unit: ComponentId, receiver: u64) -> Result<(), Error> {
+        let units = self
+            .units
+            .as_mut()
+            .ok_or(Error::MissingSignal(Signal::Unit(unit)))?;
+        let index = if let Some(index) = units.iter().position(|row| row.0 == unit) {
+            index
+        } else {
+            units.push((unit, ListenerRing::from_ordered(&[]).map_err(Error::Ring)?));
+            units.len() - 1
+        };
+        units[index]
+            .1
+            .subscribe(Subscriber::Callback(receiver))
+            .map_err(Error::Ring)?;
+        Ok(())
+    }
     pub fn ring(&self, signal: Signal) -> Result<Option<&ListenerRing<Subscriber>>, Error> {
         Ok(match signal {
             Signal::Global => Some(self.global.as_ref().ok_or(Error::MissingSignal(signal))?),
@@ -493,6 +512,34 @@ mod tests {
             append: false,
         }
     }
+    #[test]
+    fn unit_combat_attachment_appends_to_admitted_current_signal() {
+        let unit = UnitReference { owner: 0, id: 3 }.component_id();
+        let mut runtime = Runtime::from_initial(5, vec![], None, None, Some(vec![])).unwrap();
+        runtime.subscribe_unit_combat(unit, 10).unwrap();
+        runtime.subscribe_unit_combat(unit, 11).unwrap();
+        let ring = runtime.ring_mut(Signal::Unit(unit)).unwrap().unwrap();
+        let head = ring.cursor_start().unwrap();
+        let first = ring.cursor_next(head).unwrap().unwrap();
+        assert_eq!(
+            ring.cursor_route(first).unwrap(),
+            Some(Subscriber::Callback(10))
+        );
+        let next = ring.cursor_next(first).unwrap().unwrap();
+        assert_eq!(
+            ring.cursor_route(next).unwrap(),
+            Some(Subscriber::Callback(11))
+        );
+        ring.cursor_release(next).unwrap();
+        assert_eq!(runtime.counter(), 5);
+        assert!(runtime.active().is_empty());
+        let mut unknown = Runtime::from_initial(5, vec![], None, None, None).unwrap();
+        assert!(matches!(
+            unknown.subscribe_unit_combat(unit, 10),
+            Err(Error::MissingSignal(Signal::Unit(_)))
+        ));
+    }
+
     #[test]
     fn counter_wrap_and_registered_payload_survive_callback_error() {
         let mut c = context(&[Subscriber::Callback(1)], u32::MAX);

@@ -273,6 +273,23 @@ impl EffectRuntime {
         self.effects.push((identity, EffectState::Unit(effect)));
         Ok(())
     }
+    /// AdjustPlayerStrengthModifier created by a Unit ability. Context remains
+    /// the ability wrapper; combat uses its IPlayer and IUnit interfaces.
+    pub fn register_player_strength_effect(
+        &mut self,
+        state: &LoadedState,
+        identity: u64,
+        context: u64,
+        effect: player_strength::Effect,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        self.object(context)?;
+        if identity == 0 || self.effects.iter().any(|row| row.0 == identity) {
+            return Err(QueryError::DuplicateEffect(identity));
+        }
+        self.effects.push((identity, EffectState::Player { context, effect }));
+        Ok(())
+    }
     pub fn register_unit_modifier(
         &mut self,
         state: &LoadedState,
