@@ -55,6 +55,7 @@ pub struct Definitions {
     valid_terrains: Vec<u32>,
     valid_features: Vec<u32>,
     difficulties: LinuxDefinitionRegistry,
+    ocean_minimum: i32,
     pub parameters: Parameters,
 }
 impl Definitions {
@@ -190,6 +191,7 @@ impl Definitions {
                 "DifficultyType",
             )
             .map_err(|_| Error::Missing("Difficulty collection"))?,
+            ocean_minimum: parameter("OCEAN_MIN_WATER_SIZE")?,
             parameters: Parameters {
                 first_turn_percent: parameter(
                     "BARBARIAN_CAMP_FIRST_TURN_PERCENT_OF_TARGET_TO_ADD",
@@ -214,6 +216,44 @@ impl Definitions {
             return Err(Error::Missing("camp Terrain binding"));
         }
         Ok(self.terrain(plot(state, index)?)?.water)
+    }
+    /// IsCoastalLand2bc9710 with the native default minimum. Missing adjacent
+    /// landmass is a null lookup, not an invented zero-sized water body.
+    pub fn coastal(
+        &self,
+        state: &LoadedState,
+        location: PlotCoord,
+    ) -> Result<bool, Error<std::convert::Infallible>> {
+        let (index, _) = c6_core::movement_world::plot_at(state.world().map(), location)
+            .map_err(|_| Error::Missing("camp coastal plot"))?;
+        if self.water(state, index)? {
+            return Ok(false);
+        }
+        for direction in 0..6 {
+            let Some(index) = adjacent(state, location, direction)? else {
+                continue;
+            };
+            let p = plot(state, index)?;
+            if !self.water(state, index)? || p.flags.get(PlotFlag::Impassable) {
+                continue;
+            }
+            if self.ocean_minimum <= 0 {
+                return Ok(true);
+            }
+            if p.landmass_id != -1
+                && state
+                    .world()
+                    .map()
+                    .landmasses
+                    .entries
+                    .iter()
+                    .find(|r| r.index == (p.landmass_id as u16) as i32)
+                    .is_some_and(|r| r.value.plot_count >= self.ocean_minimum)
+            {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
     fn terrain<E>(&self, plot: &Plot) -> Result<Terrain, Error<E>> {
         self.terrains

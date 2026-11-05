@@ -5,6 +5,7 @@
 //! those reached effects must be supplied over the same loaded state.
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
 pub mod queries;
+pub mod stock;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Parameters {
