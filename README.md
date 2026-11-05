@@ -25,6 +25,15 @@ complete RNG ownership and arbitrary-state/configuration parity remain unproven.
 These lower-level Rust APIs require explicit current owners and providers; they
 do not enable general `Engine::apply` or C ABI gameplay requests.
 
+For consecutive supported actions, use
+`c6_data::loaded_actions::session::Session::from_initialized` with caller-supplied
+initialized state, rules and stock services. The [typed early-game example](crates/c6-data/examples/early_game_session.rs)
+caches rule definitions, selects research and city production, and advances the
+same Session using required turn services. Pending decisions and partial errors
+remain visible. The example does not create an initialized game or supply missing
+gameplay services; run `cargo run -p c6-data --example early_game_session` for its
+input contract.
+
 The active compatibility target is the supplied Linux XP2 profile. Historical
 Windows data does not establish Linux coverage. Supported operations retain
 explicit versions, input identities and missing-provider errors; unknown bytes
