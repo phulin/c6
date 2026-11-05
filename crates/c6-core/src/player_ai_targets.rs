@@ -303,11 +303,30 @@ pub struct Targets {
     pub desired_targets: Vec<HashEntry<BoolByte>>,
     pub new_war_started: BoolByte,
     pub knowledge_base: CivKnowledge,
+    /// Live known-city eligibility when policy-only snapshot scalars are not
+    /// retained. Native wire records still supply their own city identities.
+    /// This runtime domain is distinct from the native snapshot wire cache.
+    pub observed_city_identities: Vec<(i32, u32)>,
     pub operation_start_points: Vec<PlotCoord>,
     pub release_turn: i32,
     pub map_area_visibility: Vec<MapEntry<ExplorationInfo>>,
     pub map_visibility: Vec<MapEntry<ExplorationInfo>>,
     pub targets: TargetList,
+}
+impl Targets {
+    pub fn knows_city(&self, owner: i32, id: u32) -> bool {
+        self.observed_city_identities.contains(&(owner, id))
+            || self
+                .knowledge_base
+                .known_cities
+                .iter()
+                .any(|city| city.owner == owner && city.id == id)
+    }
+    pub fn observe_city_identity(&mut self, owner: i32, id: u32) {
+        if !self.knows_city(owner, id) {
+            self.observed_city_identities.push((owner, id));
+        }
+    }
 }
 impl Wire for Targets {
     const MIN: usize = 4
@@ -337,6 +356,7 @@ impl Wire for Targets {
                 BoolByte(0)
             },
             knowledge_base: <CivKnowledge as Wire>::read(r)?,
+            observed_city_identities: Vec::new(),
             operation_start_points: <Vec<PlotCoord> as Wire>::read(r)?,
             release_turn: <i32 as Wire>::read(r)?,
             map_area_visibility: <Vec<MapEntry<ExplorationInfo>> as Wire>::read(r)?,
@@ -967,6 +987,7 @@ mod tests {
             }],
         });
         carrier(Targets {
+            observed_city_identities: Vec::new(),
             wire_version: 4,
             player_id: i32::MIN,
             desired_targets: vec![HashEntry {

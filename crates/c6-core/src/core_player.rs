@@ -3457,6 +3457,7 @@ pub(crate) mod tests {
             id: u32::MAX,
         };
         p.ai_targets = Some(t::Targets {
+            observed_city_identities: Vec::new(),
             wire_version: 4,
             player_id: -6,
             desired_targets: vec![],
