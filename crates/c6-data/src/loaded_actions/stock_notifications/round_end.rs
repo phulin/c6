@@ -155,7 +155,7 @@ impl<P> Runtime<'_, P> {
                 actor,
             );
             self.modifier_owners = Some(owners);
-            result.map_err(|e| failure("round delayed destruction", e))?;
+            result.map_err(|e| failure("round delayed destruction", (actor, e)))?;
         }
         drop(sight);
         let mut frame =
