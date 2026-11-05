@@ -1,11 +1,11 @@
 //! Ordinary fresh Unit initialization over the current canonical World.
 //! The native source orders MaxMoves, static charges, abilities and promotions;
 //! later unsupported leaves retain that prefix and never count as completion.
-pub mod signals;
-pub mod stock;
 pub mod collections;
 pub mod placement_effects;
 pub mod production_effects;
+pub mod signals;
+pub mod stock;
 
 use crate::{
     registry::LinuxDefinitionRegistry,
@@ -32,6 +32,7 @@ pub enum Error<E> {
     Movement(unit_movement_state::Error),
     Services(crate::unit_placement_services::Error<E>),
     Cost(crate::formation_movement_cost::Error),
+    Combat(crate::loaded_actions::Error),
     Constructor(kernel::Error),
     DefaultAi(kernel::default_ai::Error),
     Missing(&'static str),
@@ -61,14 +62,22 @@ pub struct Definitions {
     ability_inactive: Vec<bool>,
     hero_units: Vec<u32>,
     operations: Vec<(u32, bool)>,
-    district_military_domains: Vec<(u32,u32)>,
+    district_military_domains: Vec<(u32, u32)>,
     unit_domains: Vec<u32>,
 }
 impl Definitions {
-    pub fn continent_index(&self, hash:u32)->Option<usize>{self.continents.find_index(hash)}
+    pub fn continent_index(&self, hash: u32) -> Option<usize> {
+        self.continents.find_index(hash)
+    }
     ///2c291e0 uses static definition strength and the current named Tags owner.
-    pub fn can_have_ability<E>(&self,state:&LoadedState,unit:(i32,u32),tags:&crate::loaded_actions::reporting::hold_cycling::commands::Tags,index:usize)->Result<bool,Error<E>>{
-        let unit = actor(state,unit.0,unit.1)?;
+    pub fn can_have_ability<E>(
+        &self,
+        state: &LoadedState,
+        unit: (i32, u32),
+        tags: &crate::loaded_actions::reporting::hold_cycling::commands::Tags,
+        index: usize,
+    ) -> Result<bool, Error<E>> {
+        let unit = actor(state, unit.0, unit.1)?;
         let Some(unit_index) = self.units.find_index(unit.e_type_index) else {
             return Ok(false);
         };
@@ -89,11 +98,7 @@ impl Definitions {
                 return Ok(true);
             }
         }
-        tags
-            .shares_named_type_tags(
-                &self.units.entries()[unit_index].type_name,
-                hash,
-            )
+        tags.shares_named_type_tags(&self.units.entries()[unit_index].type_name, hash)
             .map_err(|_| Error::Missing("current Tags full-name lookup"))
     }
     pub fn from_rules(
@@ -235,14 +240,39 @@ impl Definitions {
                     .map_err(Error::Rules)
             })
             .collect::<Result<_, _>>()?;
-        let mut district_military_domains=Vec::new();
-        for row in rules.gameplay().table("Districts").ok_or(Error::Missing("Districts"))?.rows(){
-            district_military_domains.push((crate::registry::linux_type_hash(row.text("DistrictType").map_err(Error::Rules)?.as_bytes()),crate::registry::linux_type_hash(row.text("MilitaryDomain").map_err(Error::Rules)?.as_bytes())));
+        let mut district_military_domains = Vec::new();
+        for row in rules
+            .gameplay()
+            .table("Districts")
+            .ok_or(Error::Missing("Districts"))?
+            .rows()
+        {
+            district_military_domains.push((
+                crate::registry::linux_type_hash(
+                    row.text("DistrictType").map_err(Error::Rules)?.as_bytes(),
+                ),
+                crate::registry::linux_type_hash(
+                    row.text("MilitaryDomain").map_err(Error::Rules)?.as_bytes(),
+                ),
+            ));
         }
-        let unit_domains=units.entries().iter().map(|v|table.row_by_id(v.database_rowid).ok_or(Error::Missing("Unit row"))?.text("Domain").map(|v|crate::registry::linux_type_hash(v.as_bytes())).map_err(Error::Rules)).collect::<Result<Vec<_>,Error<std::convert::Infallible>>>()?;
+        let unit_domains = units
+            .entries()
+            .iter()
+            .map(|v| {
+                table
+                    .row_by_id(v.database_rowid)
+                    .ok_or(Error::Missing("Unit row"))?
+                    .text("Domain")
+                    .map(|v| crate::registry::linux_type_hash(v.as_bytes()))
+                    .map_err(Error::Rules)
+            })
+            .collect::<Result<Vec<_>, Error<std::convert::Infallible>>>()?;
         Ok(Self {
-            district_military_domains,unit_domains,
-            continents: collection(rules,"Continents","ContinentType").map_err(Error::Resources)?,
+            district_military_domains,
+            unit_domains,
+            continents: collection(rules, "Continents", "ContinentType")
+                .map_err(Error::Resources)?,
             hero_units,
             identities: state.binding().inputs.clone(),
             units,
@@ -548,7 +578,10 @@ impl<E: Effects> kernel::abilities::Context for Abilities<'_, E> {
         }
         Ok(index)
     }
-    fn can_have(&self,index:usize)->Result<bool,Self::Error>{self.definitions.can_have_ability(self.state,(self.owner,self.id),self.tags,index)}
+    fn can_have(&self, index: usize) -> Result<bool, Self::Error> {
+        self.definitions
+            .can_have_ability(self.state, (self.owner, self.id), self.tags, index)
+    }
 
     fn inactive(&self, index: usize) -> Result<bool, Self::Error> {
         self.definitions
@@ -770,7 +803,13 @@ impl<E: FactoryEffects> Context<'_, '_, '_, E> {
         let Some(index) = self.definitions.units.find_index(parameters.unit_hash) else {
             return Ok(None);
         };
-        if ![b"UNIT_BUILDER".as_slice(),b"UNIT_SCOUT".as_slice(),b"UNIT_WARRIOR".as_slice()].contains(&self.definitions.units.entries()[index].type_name.as_slice()) {
+        if ![
+            b"UNIT_BUILDER".as_slice(),
+            b"UNIT_SCOUT".as_slice(),
+            b"UNIT_WARRIOR".as_slice(),
+        ]
+        .contains(&self.definitions.units.entries()[index].type_name.as_slice())
+        {
             return Err(Error::Missing("ordinary city Unit creation profile"));
         }
         let properties = self.definitions.properties[index];
@@ -778,10 +817,31 @@ impl<E: FactoryEffects> Context<'_, '_, '_, E> {
             //28b9812 scans ordered complete districts; NO_DOMAIN districts never
             //replace the requested City location. Matching military districts
             //require occupancy/stacking/coastal spawn selection.
-            let player=self.state.retained().players.iter().find(|p|p.header.owner==owner).ok_or(Error::Missing("military spawn owner"))?;
+            let player = self
+                .state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner)
+                .ok_or(Error::Missing("military spawn owner"))?;
             for id in &city.districts.district_ids {
-                let district=player.districts.records.entries.iter().find(|e|e.index==(*id&0xffff)as i32 && e.value.id==*id).ok_or(Error::Missing("military spawn district"))?;
-                if district.value.is_complete && self.definitions.district_military_domains.iter().find(|v|v.0==district.value.district_hash).ok_or(Error::Missing("military spawn district definition"))?.1==self.definitions.unit_domains[index] {
+                let district = player
+                    .districts
+                    .records
+                    .entries
+                    .iter()
+                    .find(|e| e.index == (*id & 0xffff) as i32 && e.value.id == *id)
+                    .ok_or(Error::Missing("military spawn district"))?;
+                if district.value.is_complete
+                    && self
+                        .definitions
+                        .district_military_domains
+                        .iter()
+                        .find(|v| v.0 == district.value.district_hash)
+                        .ok_or(Error::Missing("military spawn district definition"))?
+                        .1
+                        == self.definitions.unit_domains[index]
+                {
                     return Err(Error::Missing("military district spawn selection"));
                 }
             }
@@ -879,7 +939,7 @@ impl<E: FactoryEffects> Context<'_, '_, '_, E> {
         owner: i32,
         id: u32,
     ) -> Result<(), Error<<E as Effects>::Error>> {
-        let current = actor(self.state, owner, id)?;
+        let hash = actor(self.state, owner, id)?.e_type_index;
         let index = self
             .state
             .unit_runtime(owner, id)
@@ -919,12 +979,66 @@ impl<E: FactoryEffects> Context<'_, '_, '_, E> {
                 ));
             }
             if properties.can_form_military != Some(false) {
-                return Err(Error::Missing(
-                    "combat Unit constructed max-strength effects",
-                ));
+                //2b81b0d..40 computes and updates each maximum in source order.
+                let melee = self
+                    .combat
+                    .combat(self.state, actor(self.state, owner, id)?)
+                    .map_err(Error::Combat)?;
+                let old = self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("trained-strength owner"))?
+                    .stats
+                    .max_melee_strength_trained;
+                if melee > old {
+                    self.state
+                        .player_stats_mut(owner)
+                        .map_err(Error::State)?
+                        .max_melee_strength_trained = melee;
+                }
+                let ranged = self
+                    .combat
+                    .ranged(self.state, actor(self.state, owner, id)?)
+                    .map_err(Error::Combat)?;
+                let old = self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("trained-strength owner"))?
+                    .stats
+                    .max_ranged_strength_trained;
+                if ranged > old {
+                    self.state
+                        .player_stats_mut(owner)
+                        .map_err(Error::State)?
+                        .max_ranged_strength_trained = ranged;
+                }
+                let bombard = self
+                    .combat
+                    .bombard(self.state, actor(self.state, owner, id)?)
+                    .map_err(Error::Combat)?;
+                let old = self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("trained-strength owner"))?
+                    .stats
+                    .max_bombard_strength_trained;
+                if bombard > old {
+                    self.state
+                        .player_stats_mut(owner)
+                        .map_err(Error::State)?
+                        .max_bombard_strength_trained = bombard;
+                }
             }
         }
-        let hash = current.e_type_index;
         self.state
             .increment_units_constructed(owner, hash)
             .map_err(Error::Storage)

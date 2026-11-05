@@ -21,6 +21,16 @@ pub struct Achievement {
     pub ruleset: String,
     pub civilizations: Vec<(i32, String)>,
 }
+pub struct PlacementInputs<'a> {
+    pub definitions: &'a crate::unit_creation::placement_effects::Definitions,
+    pub properties: &'a [(i32, Vec<(u32, i32)>)],
+}
+pub struct ControlInputs<'a> {
+    pub movement: &'a crate::unit_movement_state::Definitions,
+    /// Complete observed d70ba51f native order: either empty or the sole
+    /// OnUnitUpdate27ff430 receiver, using the existing snapshot provider.
+    pub processed_report_snapshot: bool,
+}
 pub struct State<'a> {
     pub definitions: &'a creation::Definitions,
     pub signals: &'a signals::Definitions,
@@ -37,6 +47,8 @@ pub struct State<'a> {
     /// subscribers must be represented explicitly before this flag is admitted.
     pub ability_attach_game_effects: bool,
     pub city_initialized_script: bool,
+    pub placement: Option<PlacementInputs<'a>>,
+    pub control: Option<ControlInputs<'a>>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn bind_modifier_owners(
@@ -301,7 +313,32 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
         let consumers = input.player_consumers.iter().find(|p| p.0 == owner).ok_or(
             creation::Error::Missing("current PlayerUnitCreated consumers"),
         )?;
-        stock::player_created(state, input.signals, &consumers.1, owner, unit).map_err(callback)
+        let signals = input.signals;
+        let consumers = consumers.1.clone();
+        for consumer in &consumers {
+            let result =
+                stock::player_created(state, signals, std::slice::from_ref(consumer), owner, unit);
+            match result {
+                Err(stock::Error::Signal(signals::Error::Control(c6_core::loaded_state::unit_creation_control::Error::RecruiterRequiresUnitContinuation))) => {
+                    let reference=UnitReference::from_component_id(unit.ok_or(creation::Error::Missing("UnitCreated control Unit"))?);
+                    let control=self.unit_creation.as_ref().and_then(|v|v.control.as_ref()).ok_or(creation::Error::Missing("current UnitCreated control effects"))?;
+                    let movement=control.movement;
+                    let snapshot=control.processed_report_snapshot;
+                    let actor=state.world().unit(reference).map_err(creation::Error::World)?.ok_or(creation::Error::Missing("current UnitCreated control actor"))?;
+                    if !actor.record.b_processed_turn {
+                        state.unit_mut(reference.player(),reference.id).map_err(creation::Error::State)?.b_processed_turn=true;
+                        if !self.movement().map_err(creation::Error::Effects)?.reporting_suspended && snapshot {
+                            self.reporting.observe_unit_snapshot(state,reference).map_err(|e|callback(format!("processed-turn report: {e:?}")))?;
+                        }
+                    }
+                    crate::loaded_upkeep::finish_unit_moves(state,reference.player(),reference.id,&crate::unit_movement_state::Inputs{definitions:movement},self)
+                        .map_err(|e|callback(format!("UnitCreated FinishMoves: {e:?}")))?;
+                    state.complete_created_unit_control(owner).map_err(callback)?;
+                }
+                other => other.map_err(callback)?,
+            }
+        }
+        Ok(())
     }
 }
 impl<P> creation::FactoryEffects for Runtime<'_, P> {
@@ -328,5 +365,143 @@ impl<P> creation::FactoryEffects for Runtime<'_, P> {
             Some(city),
         )
         .map_err(callback)
+    }
+}
+
+struct CityPlacement<'a, 'b, P> {
+    runtime: &'a Runtime<'b, P>,
+    properties: &'a [(i32, Vec<(u32, i32)>)],
+    alive: &'a [i32],
+}
+impl<P> crate::found_city::cultural_identity::Context for CityPlacement<'_, '_, P> {
+    fn alive_ids(&self) -> &[i32] {
+        self.alive
+    }
+    fn civilization_level(&self, owner: i32) -> Result<u32, crate::city_turn::Error> {
+        self.runtime
+            .movement()
+            .map_err(|_| crate::city_turn::Error::Unsupported("current placement levels"))?
+            .civilization_levels
+            .iter()
+            .find(|v| v.0 == owner)
+            .map(|v| v.1)
+            .ok_or(crate::city_turn::Error::Unsupported(
+                "current placement civilization level",
+            ))
+    }
+    fn player_property_int(
+        &mut self,
+        _: &LoadedState,
+        owner: i32,
+        key: u32,
+    ) -> Result<Option<i32>, crate::city_turn::Error> {
+        creation::placement_effects::current_player_property(self.properties, owner, key)
+    }
+    fn food_surplus_q8(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<i32, crate::city_turn::Error> {
+        let inputs =
+            self.runtime
+                .city_query_inputs()
+                .ok_or(crate::city_turn::Error::Unsupported(
+                    "current placement City queries",
+                ))?;
+        let current = crate::city_turn::yield_calculation::Current {
+            territory: inputs.current.territory,
+            drought_ids: inputs.current.drought_ids,
+            trade: state.trade_graph()?,
+            capabilities: inputs.current.capabilities,
+            current_era_index: state
+                .game_eras()
+                .map_err(|_| crate::city_turn::Error::Unsupported("current placement Era owner"))?
+                .current_era()
+                .ok_or(crate::city_turn::Error::Unsupported(
+                    "current placement Era",
+                ))?,
+        };
+        creation::placement_effects::food_surplus_q8(
+            state,
+            owner,
+            city,
+            inputs.definitions,
+            &current,
+        )
+    }
+    fn happiness(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<i32, crate::city_turn::Error> {
+        let inputs =
+            self.runtime
+                .city_query_inputs()
+                .ok_or(crate::city_turn::Error::Unsupported(
+                    "current placement City queries",
+                ))?;
+        creation::placement_effects::happiness(
+            state,
+            owner,
+            city,
+            inputs.definitions,
+            inputs.current.capabilities,
+        )
+    }
+    fn trend_changed(
+        &mut self,
+        _: &mut LoadedState,
+        _: i32,
+        _: u32,
+        _: i32,
+        changed: Option<bool>,
+    ) -> Result<(), crate::city_turn::Error> {
+        if changed == Some(false) {
+            Ok(())
+        } else {
+            Err(crate::city_turn::Error::Unsupported(
+                "placement conversion trend changed report",
+            ))
+        }
+    }
+}
+impl<P> Runtime<'_, P> {
+    pub(crate) fn current_city_unit_changed(
+        &self,
+        state: &mut LoadedState,
+        city: ComponentId,
+    ) -> Result<(), crate::unit_placement_state::Error<movement::Error>> {
+        let input = self
+            .unit_creation
+            .as_ref()
+            .and_then(|v| v.placement.as_ref())
+            .ok_or(crate::unit_placement_state::Error::Missing(
+                "current City placement loyalty metadata",
+            ))?;
+        let alive = self
+            .player_services
+            .as_ref()
+            .and_then(|v| v.alive_players.as_ref())
+            .ok_or(crate::unit_placement_state::Error::Missing(
+                "current placement alive order",
+            ))?
+            .values();
+        creation::placement_effects::city_unit_changed(
+            state,
+            city,
+            input.definitions,
+            &mut CityPlacement {
+                runtime: self,
+                properties: input.properties,
+                alive,
+            },
+        )
+        .map_err(|e| {
+            crate::unit_placement_state::Error::Effect(movement::Error::Requirement(format!(
+                "City placement loyalty: {e:?}"
+            )))
+        })
     }
 }

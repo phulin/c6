@@ -305,7 +305,7 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
             sight: f.sight,
             effects: self.selection.runtime,
         };
-        units::finish_current(
+        let result = units::finish_current(
             &mut factory,
             f.finish,
             e,
@@ -315,8 +315,11 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
                 component_type: 2,
                 id: c,
             },
-        )
-        .map_err(|_| production::Error::Unsupported("stock Train factory continuation"))
+        );
+        if let Err(error) = &result {
+            self.selection.runtime.last_error = Some(format!("Train completion: {error:?}"));
+        }
+        result.map_err(|error| production::Error::UnitProduction(Box::new(error)))
     }
     fn new_front(&mut self, s: &mut LoadedState, o: i32, c: u32) -> Result<(), production::Error> {
         production::Effects::new_front(&mut self.selection, s, o, c)

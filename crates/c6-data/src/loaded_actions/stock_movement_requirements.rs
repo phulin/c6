@@ -76,6 +76,14 @@ impl near::Context for Near<'_> {
     }
 }
 impl<P> normal::Effects for Runtime<'_, P> {
+    fn city_unit_changed(
+        &mut self,
+        state: &mut LoadedState,
+        city: ComponentId,
+    ) -> Result<(), normal::Error<Error>> {
+        self.current_city_unit_changed(state, city)
+    }
+
     fn preflight_normal(
         &self,
         state: &LoadedState,

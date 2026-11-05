@@ -30,6 +30,7 @@ pub enum Error {
     Statistics(c6_core::loaded_state::game_statistics::AccessError),
     MissingProgress(Order),
     IllegalSelection(Order),
+    UnitProduction(Box<units::Error<crate::loaded_actions::stock_notifications::movement::Error>>),
     Unsupported(&'static str),
 }
 impl From<c6_core::loaded_state::Error> for Error {
@@ -352,8 +353,8 @@ pub trait QueueReportQueries {
         kind: Option<u32>,
     ) -> Result<i32, Error>;
 }
-/// Effects of Cache.CityBuildQueue.Fill2709a90 for a current ordinary-building
-/// or empty queue. The dispatcher owns actual consumer qualification. Remaining
+/// Effects of Cache.CityBuildQueue.Fill2709a90 for a current ordinary-building,
+/// ordinary-Unit or empty queue. The dispatcher owns actual consumer qualification. Remaining
 /// fields are read-only progress/cost calculations and presentation copies;
 /// their UI preview tables are not constructed by the headless simulator.
 pub fn run_build_queue_report_queries(
@@ -373,6 +374,12 @@ pub fn run_build_queue_report_queries(
         Some(Order::Construct { .. }) => {
             // GetTurnsLeft.Building2854f50 -> GetProductionYield(kind).
             queries.get_yield_q8(state, owner, city, yield_index, Some(0xd8a30267))?;
+            Ok(())
+        }
+        Some(Order::Train { .. }) => {
+            // GetTurnsLeft.Unit2854e80 reads current cost/progress and reaches
+            // the same kind-specific production query; numeric DTO is omitted.
+            queries.get_yield_q8(state, owner, city, yield_index, Some(0x15d11e18))?;
             Ok(())
         }
         _ => Err(Error::Unsupported("queue report query branch")),

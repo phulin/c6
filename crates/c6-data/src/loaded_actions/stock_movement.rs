@@ -21,6 +21,7 @@ pub enum Error {
     Placement(placement::Error),
     Script(super::stock_script::Error),
     Requirement(String),
+    UnsupportedPlacementReport(u32),
     RequirementChanged { receiver: u64, old: i32, new: i32 },
 }
 impl std::fmt::Display for Error {
@@ -52,6 +53,33 @@ impl PlacementQueries for placement::Definitions<'_, '_> {
         levels: &[(i32, u32)],
     ) -> Result<bool, placement::Error> {
         placement::Context::from_definitions(state, self)?
+            .with_civilization_levels(placement::CurrentCivilizationLevels {
+                binding: state.binding(),
+                values: levels,
+            })?
+            .can_embark(unit)
+    }
+}
+/// Borrow current civic/city-domain queries for live unit factory movement.
+/// Bare static definitions deliberately retain their missing-input behavior.
+pub struct CurrentPlacementQueries<'a, 'd, 'r> {
+    pub definitions: &'a placement::Definitions<'d, 'r>,
+    pub current: &'a normal::Queries<'d>,
+}
+impl PlacementQueries for CurrentPlacementQueries<'_, '_, '_> {
+    fn water(&self, state: &LoadedState, plot: &Plot) -> Result<bool, placement::Error> {
+        self.current
+            .placement_context(state, self.definitions)?
+            .water(plot)
+    }
+    fn can_embark(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+        levels: &[(i32, u32)],
+    ) -> Result<bool, placement::Error> {
+        self.current
+            .placement_context(state, self.definitions)?
             .with_civilization_levels(placement::CurrentCivilizationLevels {
                 binding: state.binding(),
                 values: levels,
@@ -233,13 +261,29 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
             return Ok(());
         }
         match report.event_hash {
-            0xb8515a41 => self.reporting.observe_initial_placement_report(
-                state, UnitReference::from_component_id(report.identity), report,
-            ).map_err(Error::Rules),
-            0x9deb82e7 => self.reporting.observe_teleported_report(
-                state, UnitReference::from_component_id(report.identity), report,
-            ).map_err(Error::Rules),
-            0xc1300ee7 => self.reporting.observe_visibility_report(state, report)
+            // Stock UnitArrived89facdc3 has no gameplay consumer. Under this
+            // plain headless scope its empty Host publication is omitted;
+            // UnitMoved gameplay callbacks ran separately in source order.
+            0x89facdc3 => Ok(()),
+            0xb8515a41 => self
+                .reporting
+                .observe_initial_placement_report(
+                    state,
+                    UnitReference::from_component_id(report.identity),
+                    report,
+                )
+                .map_err(Error::Rules),
+            0x9deb82e7 => self
+                .reporting
+                .observe_teleported_report(
+                    state,
+                    UnitReference::from_component_id(report.identity),
+                    report,
+                )
+                .map_err(Error::Rules),
+            0xc1300ee7 => self
+                .reporting
+                .observe_visibility_report(state, report)
                 .map_err(Error::Rules),
             0xbe121408 => self
                 .reporting
@@ -268,7 +312,7 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
                     )
                     .map_err(Error::Rules)
             }
-            _ => Err(Error::Missing("placement report subscribers")),
+            _ => Err(Error::UnsupportedPlacementReport(report.event_hash)),
         }
     }
 }
