@@ -89,6 +89,19 @@ pub fn combat_arguments(
     Ok(result)
 }
 
+/// Source GameSignals wrapper: form the four arguments while holding the core
+/// service, then release/call/reacquire on the same persistent Script registry.
+pub fn on_combat_occurred(
+    script: &mut ScriptState,
+    synchronization: &mut Synchronization,
+    state: &LoadedState,
+    attacker: Option<c6_core::map::UnitReference>,
+    defender: Option<c6_core::map::UnitReference>,
+) -> Result<(), Error> {
+    let arguments = combat_arguments(state, attacker, defender)?;
+    synchronization.call(|| call_empty_hook(script, state, "OnCombatOccurred", &arguments))
+}
+
 /// Executes TestAll while the caller manages its source-ordered lock wrapper.
 /// A missing registry event retains the caller's initial value.
 pub fn test_all(

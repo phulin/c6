@@ -5,6 +5,7 @@ pub mod damage;
 pub mod experience;
 pub mod proposals;
 pub mod results;
+pub mod signals;
 pub mod strength;
 pub mod target;
 

@@ -896,6 +896,30 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::Effects for
     }
 }
 
+/// Positive post-combat credits use the same reporting/gameplay owner that
+/// executed damage and death. There is no second provider or default credit.
+pub trait PostCombatYields: loaded_upkeep::OperationReports {
+    fn credit_post_combat_yield(
+        &mut self,
+        state: &mut LoadedState,
+        winner: UnitReference,
+        yield_type: i32,
+        amount: i32,
+    ) -> Result<(), Self::Error>;
+}
+impl<O: PostCombatYields, R: Requirements> super::resolve::post_yields::Effects for Backend<O, R> {
+    fn credit_post_combat_yield(
+        &mut self,
+        state: &mut LoadedState,
+        winner: UnitReference,
+        yield_type: i32,
+        amount: i32,
+    ) -> Result<(), <Self as proposals::Effects>::Error> {
+        self.reporting.credit_post_combat_yield(state, winner, yield_type, amount)
+            .map_err(Error::Reporting)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::configured_end_turn;
