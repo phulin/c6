@@ -90,6 +90,24 @@ pub fn route_changed(
                 let Some(moment) = next_moment(&history.moments, owner) else {
                     continue;
                 };
+                // FindTwoCitiesConnectedByRoute2bce5f0 tests IsCity first.
+                // A root without a district cannot be a city and reaches
+                // GetRouteType2bce6eb; a mismatch returns before visiting
+                // any neighbor. Read the
+                // live plot, since earlier subscribers may have changed it.
+                let plot = state
+                    .world()
+                    .map()
+                    .plot_at(location.x, location.y)
+                    .ok_or(Error::Missing("current route root plot"))?;
+                if plot
+                    .city_attributes
+                    .as_ref()
+                    .is_none_or(|a| a.district == u32::MAX)
+                    && i32::from(plot.route_type) != route_type
+                {
+                    continue;
+                }
                 let player = state
                     .retained()
                     .players
