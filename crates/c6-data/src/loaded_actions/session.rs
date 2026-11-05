@@ -287,3 +287,52 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         self.retain(result, partial_failure)
     }
 }
+
+/// Failure from the built-in computed movement and stock callback path.
+pub type MoveToError = super::move_to::ActionError<
+    stock_notifications::movement::Error,
+    super::move_to::ComputedError<stock_notifications::movement::Error>,
+    super::notifications::processing::Error,
+>;
+
+impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
+    /// Execute an explicit MoveTo using the existing computed path/placement
+    /// implementation and this session's stock callbacks and aftermath.
+    ///
+    /// The caller retains search and visibility owners between requests. Stock
+    /// movement services must already be bound on the supplied backend. Missing
+    /// movement/combat branches return their actual partial error; this method
+    /// does not establish complete MoveTo parity beyond compared profiles.
+    #[allow(clippy::too_many_arguments)]
+    pub fn move_to(
+        &mut self,
+        issuer: i32,
+        actor: (i32, u32),
+        request: super::move_to::Request,
+        inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
+        runtime: &mut super::move_to::Runtime<'_>,
+        movement: &mut super::move_to::ComputedMovement<'_, '_>,
+        budget: &mut usize,
+    ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>> {
+        self.check()?;
+        if matches!(
+            self.pending_choice().map(|choice| choice.kind),
+            Some(PolicyKind::Research(_))
+        ) {
+            return Err(Error::PendingResearch);
+        }
+        let result = super::move_to::execute_active_request(
+            &mut self.context,
+            issuer,
+            actor,
+            request,
+            inputs,
+            handlers,
+            runtime,
+            movement,
+            budget,
+        );
+        self.retain(result, true)
+    }
+}
