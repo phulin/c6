@@ -70,8 +70,8 @@ impl Current {
             .collect::<Result<Vec<_>,_>>()?;
         let registry = crate::unit_initialization_definitions::collection(rules,"Improvements","ImprovementType")
             .map_err(|_| Error("Improvement definitions"))?;
-        let resort_hash = registry.find_index(linux_type_hash(b"IMPROVEMENT_SEASIDE_RESORT"))
-            .map(|_| linux_type_hash(b"IMPROVEMENT_SEASIDE_RESORT"));
+        let resort_hash = registry.find_index(linux_type_hash(b"IMPROVEMENT_BEACH_RESORT"))
+            .map(|_| linux_type_hash(b"IMPROVEMENT_BEACH_RESORT"));
         let yields = crate::unit_initialization_definitions::collection(rules,"Yields","YieldType")
             .map_err(|_| Error("Yield definitions"))?;
         if history_special.len()!=8 { return Err(Error("History improvement members")); }
@@ -105,8 +105,8 @@ impl Current {
             match self.order[index] {
                 Subscriber::AttachModifiers if !self.modifier_improvements.contains(&defs.improvement_hash) => {},
                 Subscriber::SeasideResort => {
-                    //29b82d0 deliberately falls through when the resort
-                    // definition is absent. Its local occurrence constructor
+                    //29b82d0 rejects a different existing BEACH_RESORT
+                    // definition, and falls through when absent. Its occurrence constructor
                     // has no gameplay/RNG effects; AddGossipItem29b25d0 returns
                     // before writes/reporting when the current history is empty.
                     if !self.resort_hash.is_some_and(|h| h != defs.improvement_hash)
