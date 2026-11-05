@@ -190,6 +190,12 @@ impl<P> research::Effects for Effects<'_, '_, P> {
         query: research::Query,
     ) -> Result<i32, Error> {
         self.backend.check(state).map_err(Error::Notification)?;
+        if let research::Query::CityYield { city, yield_index } = query {
+            return self
+                .backend
+                .current_city_yield(state, i32::from(city.owner), city.id, yield_index, 0)
+                .map_err(|_| Error::Query(query));
+        }
         if matches!(query, research::Query::PlayerAge { owner: -1, .. }) {
             return Ok(0);
         }

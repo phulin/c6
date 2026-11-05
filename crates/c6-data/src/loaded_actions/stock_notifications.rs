@@ -24,6 +24,7 @@ pub mod inactive_control;
 pub mod cityless_managers;
 pub mod deactivation;
 pub mod turn_loop;
+pub mod city_queries;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]
@@ -87,6 +88,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     positive_temporaries: Vec<c6_core::notification_lifecycle::ObjectId>,
     player_services: Option<crate::unit_placement_services::Runtime>,
     movement: Option<movement::State<'a>>,
+    city_queries: Option<city_queries::Inputs<'a>>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn new(
@@ -117,6 +119,7 @@ impl<'a, P> Runtime<'a, P> {
             positive_temporaries: Vec::new(),
             player_services: None,
             movement: None,
+            city_queries: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its

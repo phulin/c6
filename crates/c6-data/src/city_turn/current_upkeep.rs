@@ -12,10 +12,60 @@ use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
 pub enum Scope {
     StockPlainHeadlessExternalPolicies,
 }
+/// Borrowed current owners. With `trade: None`, each query reads the canonical
+/// graph from LoadedState rather than retaining a route snapshot across turns.
+pub struct Current<'a> {
+    pub territory: &'a crate::city_territory::Runtime,
+    pub drought_ids: Option<&'a [i32]>,
+    pub trade: Option<&'a c6_core::trade_graph_state::GraphState>,
+    pub capabilities: &'a c6_core::game_capabilities::Membership,
+    pub current_era_index: Option<i32>,
+}
+impl Current<'_> {
+    pub fn calculate(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        city: u32,
+        yield_index: i32,
+        kind: u32,
+        definitions: &yield_calculation::Definitions,
+    ) -> Result<i32, CityError> {
+        let trade = match self.trade {
+            Some(graph) => graph,
+            None => state
+                .trade_graph()
+                .map_err(|_| CityError::Unsupported("current canonical trade graph"))?,
+        };
+        let current_era_index = match self.current_era_index {
+            Some(era) => era,
+            None => state
+                .game_eras()
+                .map_err(|_| CityError::Unsupported("current canonical game era"))?
+                .current_era()
+                .ok_or(CityError::Unsupported("current canonical era index"))?,
+        };
+        yield_calculation::calculate(
+            state,
+            owner,
+            city,
+            yield_index,
+            kind,
+            definitions,
+            &yield_calculation::Current {
+                territory: self.territory,
+                drought_ids: self.drought_ids,
+                trade,
+                capabilities: self.capabilities,
+                current_era_index,
+            },
+        )
+    }
+}
 pub struct Context<'a, E> {
     pub production: &'a mut E,
     pub definitions: &'a yield_calculation::Definitions,
-    pub current: &'a yield_calculation::Current<'a>,
+    pub current: &'a Current<'a>,
     pub housing: &'a housing::Definitions,
     pub configuration: &'a Configuration<'a>,
     pub culture: &'a upkeep::culture::Definitions,
@@ -34,6 +84,16 @@ pub struct Context<'a, E> {
     pub scope: Scope,
 }
 impl<E: production::Effects> Context<'_, E> {
+    pub fn activate(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<production::Outcome, CityError> {
+        let definitions = self.definitions;
+        upkeep::do_turn_activate(state, owner, city, &definitions.growth, self)
+    }
+
     fn missing<T>(&mut self, name: &'static str) -> std::result::Result<T, CityError> {
         self.calls.push(name);
         Err(CityError::Unsupported(name))
@@ -164,7 +224,7 @@ impl<E: production::Effects> crate::found_city::cultural_identity::Context for C
             .definitions
             .yield_index(b"YIELD_FOOD")
             .ok_or(CityError::Unsupported("Food definition"))?;
-        let amount = yield_calculation::calculate(s, o, c, y, 0, self.definitions, self.current)?;
+        let amount = self.current.calculate(s, o, c, y, 0, self.definitions)?;
         Ok(amount.wrapping_sub(
             s.city(o, c)?
                 .header
@@ -263,7 +323,7 @@ impl<E: production::Effects> upkeep::culture::Effects for Context<'_, E> {
             .definitions
             .yield_index(b"YIELD_CULTURE")
             .ok_or(CityError::Unsupported("Culture definition"))?;
-        yield_calculation::calculate(s, o, c, y, 0, self.definitions, self.current)
+        self.current.calculate(s, o, c, y, 0, self.definitions)
     }
     fn next_buyable_plot(
         &mut self,
@@ -566,7 +626,8 @@ impl<E: production::Effects> growth::Effects for Context<'_, E> {
             .definitions
             .yield_index(b"YIELD_FOOD")
             .ok_or(CityError::Unsupported("Food definition"))?;
-        yield_calculation::calculate(state, owner, city, index, 0, self.definitions, self.current)
+        self.current
+            .calculate(state, owner, city, index, 0, self.definitions)
     }
     fn other_growth_modifier_q8(
         &mut self,

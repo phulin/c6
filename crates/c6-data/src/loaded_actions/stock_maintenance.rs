@@ -109,11 +109,12 @@ impl<P> data::Effects for Runtime<'_, P> {
         yield_index: i32,
     ) -> Result<i32, Self::Error> {
         self.check(state).map_err(Error::Backend)?;
-        Err(Error::CityYield {
-            owner,
-            city,
-            yield_index,
-        })
+        self.current_city_yield(state, owner, city, yield_index, 0)
+            .map_err(|_| Error::CityYield {
+                owner,
+                city,
+                yield_index,
+            })
     }
     fn science_victory_changed(
         &mut self,
