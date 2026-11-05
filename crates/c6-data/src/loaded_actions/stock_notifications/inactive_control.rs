@@ -1,5 +1,5 @@
 //! Current inactive controller off-turn work on the same stock runtime.
-//! This supports source-proven cityless/unitless analysis guards. It
+//! This supports source-proven cityless analysis and external policy jobs. It
 //! preserves the nonzero CollectorOne result and its status2 stop boundary.
 use super::{human_activation::Kind, Runtime};
 use c6_core::{
@@ -197,24 +197,17 @@ impl<P> Effects<'_, '_, P> {
                     return Ok(Status::Complete);
                 }
                 empty_cities(state, owner)?;
-                if !state
-                    .world()
-                    .player(owner)
-                    .map_err(|_| Error::Unsupported("inactive policy owner"))?
-                    .unit_records()
-                    .map_err(|_| Error::Unsupported("inactive policy units"))?
-                    .is_empty()
-                {
-                    return Err(Error::Unsupported(
-                        "inactive current GrandStrategic unit analysis",
-                    ));
-                }
                 // DoOffTurn2122f70 evaluates victory/settlement/unit scores,
                 // then invokes the supplied continuation (status2). These
                 // outputs belong to the external policy, not gameplay state.
                 // Stock UnitProduction's synchronous bool(UnitTypes) queries
                 // are Research's const vector lookup and Religious's const
                 // hero-claim lookup; neither changes state or draws RNG.
+                // Existing units add no gameplay continuation here: the
+                // roster loop21beb8d..21bec1d reads GetType and increments
+                // only temporary UnitEfficiencyInfo counts before sorting.
+                // This is the same policy-only off-turn work omitted by the
+                // stock human path, distinct from active great-person events.
                 // No scheduler or policy score mirrors are constructed.
                 Ok(Status::Yield)
             }
@@ -228,19 +221,11 @@ impl<P> Effects<'_, '_, P> {
                 // Native writes this readiness flag before AnalyzeIncome.
                 self.input.flags.economic_analyzed = Some(true);
                 empty_cities(state, owner)?;
-                if !state
-                    .world()
-                    .player(owner)
-                    .map_err(|_| Error::Unsupported("inactive budget owner"))?
-                    .unit_records()
-                    .map_err(|_| Error::Unsupported("inactive budget units"))?
-                    .is_empty()
-                {
-                    return Err(Error::Unsupported("inactive current unit budget queries"));
-                }
                 // AnalyzeIncome20a44b0 stores only AI budget estimates. Its
                 // no-city path reads retained maintenance, beliefs and envoy
                 // yields, not Treasury setters/commands/signals or game RNG.
+                // Existing units affect GetTotalMaintenance20a4564's const
+                // result, which feeds only these policy budget estimates.
                 // Policy budget totals and formatting are outside this scope.
                 // Manager.DoTurn's continuation201fa80 is literalstatus2.
                 Ok(Status::Yield)
