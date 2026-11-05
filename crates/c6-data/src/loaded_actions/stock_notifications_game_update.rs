@@ -36,9 +36,26 @@ impl<P> Effects for Runtime<'_, P> {
             .as_ref()
             .ok_or(Error::Unsupported("current stock turn player services"))
     }
-    fn notify_turn_request(&mut self, _: &mut LoadedState, _: u32) -> Result<(), Error> {
-        self.reached.push("Game.Update turn request");
-        Err(Error::Unsupported("stock Game.Update turn-request service"))
+    fn notify_turn_request(&mut self, state: &mut LoadedState, event: u32) -> Result<(), Error> {
+        if self.binding != *state.binding() {
+            return Err(Error::Unsupported("stock turn-request state binding"));
+        }
+        match event {
+            c6_core::game_update::AI_PROCESSED
+            | c6_core::game_update::INITIAL_AI_PROCESSED
+            | c6_core::game_update::LOCAL_COMPUTER_PROCESSING => {
+                // The pinned Linux stock utility address point 0x53a6c90 has
+                // slot +0x70 -> host 0x32b4cf0 SendMessage(unsigned int). Its entire
+                // body is XOR EAX,EAX; RET: no dispatch, host queue or RNG.
+                // The adjacent MemoryOStream overload 0x32b4d00 is a different
+                // slot and does broadcast; it is not reached by these calls.
+                // Core callers retain their original last-processed writes
+                // before/after this return, including their distinct ordering.
+                self.reached.push("stock turn-request integer sink returned");
+                Ok(())
+            }
+            _ => Err(Error::Unsupported("stock unknown turn-request event")),
+        }
     }
     fn autoplay_transition(
         &mut self,
