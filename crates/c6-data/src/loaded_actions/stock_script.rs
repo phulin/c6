@@ -139,6 +139,14 @@ pub fn on_unit_moved(
         return Err(Error::Identity);
     }
     synchronization.call(|| {
+        if script.execution_alternatives().is_none() {
+            return call_empty_hook(
+                script,
+                state,
+                "OnUnitMoved",
+                &[actor.0, actor.1 as i32, old.x, old.y, new.x, new.y],
+            );
+        }
         let plan = script
             .plan_call_six(
                 "OnUnitMoved",

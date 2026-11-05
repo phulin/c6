@@ -16,6 +16,8 @@ pub enum Stage {
     Experience,
     DeathReport,
     SurvivingAttacker,
+    DefenderDeath,
+    CaptureProposal,
     Budget,
     KillAwards,
     PostKill,
@@ -159,6 +161,7 @@ impl<R: backend::Requirements> Session<R> {
             + loaded_upkeep::Effects<Error = ProviderError<E>>
             + resolve::DeathReports<Error = ProviderError<E>>
             + resolve::surviving::Effects
+            + resolve::winning::Effects
             + experience::Reports<Error = ProviderError<E>>
             + resolve::kill_awards::Effects
             + resolve::post_kill::Effects
@@ -253,6 +256,18 @@ impl<R: backend::Requirements> Session<R> {
                     .maximum_damage
                     .maximum_damage(current)
                     .map_err(|e| failure(Stage::DeathReport, e))?;
+            let defender_dead = if dead {
+                false
+            } else {
+                let defender = super::actor(state, pending.members.damage.defender)
+                    .map_err(|e| failure(Stage::DefenderDeath, e))?;
+                defender.i_damage
+                    >= inputs
+                        .generation
+                        .maximum_damage
+                        .maximum_damage(defender)
+                        .map_err(|e| failure(Stage::DefenderDeath, e))?
+            };
             let pending = if dead {
                 resolve::finish_dead_attacker(
                     state,
@@ -262,6 +277,57 @@ impl<R: backend::Requirements> Session<R> {
                     inputs.death_report_status,
                 )
                 .map_err(|e| failure(Stage::DeathReport, e))?
+            } else if defender_dead {
+                resolve::winning::report(
+                    state,
+                    inputs.generation.maximum_damage,
+                    backend.reporting.0,
+                    &pending,
+                )
+                .map_err(|e| failure(Stage::DefenderDeath, e))?;
+                let (proposal_id, proposal) = super::proposals::Context::new(state, &mut backend)
+                    .propose_units(
+                        pending.members.damage.attacker,
+                        pending.members.damage.defender,
+                        pending.members.location,
+                    )
+                    .map_err(|e| failure(Stage::CaptureProposal, e))?;
+                let capture = state
+                    .combat_proposals()
+                    .map_err(|e| failure(Stage::CaptureProposal, e))?
+                    .proposal(proposal)
+                    .map_err(|e| failure(Stage::CaptureProposal, e))?
+                    .capture_combat_units;
+                if capture {
+                    return Err(failure(
+                        Stage::CaptureProposal,
+                        "positive combat-unit capture continuation",
+                    ));
+                }
+                resolve::winning::notify(
+                    state,
+                    backend.reporting.0,
+                    &pending,
+                    inputs.death_report_status,
+                )
+                .map_err(|e| failure(Stage::DefenderDeath, e))?;
+                super::proposals::collection_modifiers::forget_combat(
+                    state,
+                    &mut backend,
+                    proposal_id,
+                )
+                .map_err(|e| failure(Stage::CaptureProposal, e))?;
+                resolve::surviving::finish_winner(
+                    state,
+                    inputs.generation.maximum_damage,
+                    inputs.movement,
+                    inputs.placement,
+                    inputs.queries,
+                    sight,
+                    backend.reporting.0,
+                    pending,
+                )
+                .map_err(|e| failure(Stage::SurvivingAttacker, e))?
             } else {
                 resolve::surviving::finish_both_alive(
                     state,
@@ -274,6 +340,7 @@ impl<R: backend::Requirements> Session<R> {
                 )
                 .map_err(|e| failure(Stage::SurvivingAttacker, e))?
             };
+            let reports = &mut backend.reporting;
             let pending =
                 resolve::budget::consume_attack(state, inputs.movement, reports.0, pending)
                     .map_err(|e| failure(Stage::Budget, e))?;

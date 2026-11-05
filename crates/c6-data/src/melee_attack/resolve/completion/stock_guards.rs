@@ -16,14 +16,22 @@ pub enum Error {
 /// generator has two Unit members and cannot satisfy that interface test.
 pub fn emergency_attacked_city(_members: &GeneratedMembers) {}
 
+/// An explicit current empty Emergency manager, retained by the callback owner.
+/// Positive instance creation/scoring remains unsupported.
+pub struct EmptyEmergencyScoring;
+
 /// ScoreOnKilledEnemy uses the defender's delayed-death byte, not IsDead.
+/// ChangePlayerScore first iterates the current Emergency list. An explicitly
+/// empty manager returns before any score mutation, subscriber or RNG draw.
 pub fn emergency_killed_enemy(
     state: &LoadedState,
     members: &GeneratedMembers,
+    emergency_scoring: Option<&EmptyEmergencyScoring>,
 ) -> Result<(), Error> {
     if actor(state, members.damage.defender)
         .map_err(Error::Actor)?
         .b_delayed_death
+        && emergency_scoring.is_none()
     {
         return Err(Error::EmergencyKilledEnemy);
     }
@@ -84,7 +92,11 @@ pub fn barbarian(
         return Ok(());
     }
     let defender_dead = dead(state, definitions, d)?;
-    let attacker_dead = if defender_dead { false } else { dead(state, definitions, a)? };
+    let attacker_dead = if defender_dead {
+        false
+    } else {
+        dead(state, definitions, a)?
+    };
     let Some((attacker_tribe, attacker_victim)) =
         tribe_and_victim(ao, do_, barbarian_owner, defender_dead, || attacker_dead)
     else {
@@ -108,9 +120,18 @@ mod tests {
     use super::*;
     #[test]
     fn barbarian_death_prefers_defender_and_selects_barbarian_tribe() {
-        assert_eq!(tribe_and_victim(0, 63, 63, true, || panic!()), Some((false, false)));
-        assert_eq!(tribe_and_victim(0, 63, 63, false, || true), Some((false, true)));
-        assert_eq!(tribe_and_victim(63, 0, 63, false, || true), Some((true, true)));
+        assert_eq!(
+            tribe_and_victim(0, 63, 63, true, || panic!()),
+            Some((false, false))
+        );
+        assert_eq!(
+            tribe_and_victim(0, 63, 63, false, || true),
+            Some((false, true))
+        );
+        assert_eq!(
+            tribe_and_victim(63, 0, 63, false, || true),
+            Some((true, true))
+        );
         assert_eq!(tribe_and_victim(0, 1, 63, true, || panic!()), None);
     }
 }

@@ -6,6 +6,7 @@ pub mod kill_awards;
 pub mod post_kill;
 pub mod post_yields;
 pub mod surviving;
+pub mod winning;
 pub mod unit_era;
 
 use super::execution::{GeneratedMembers, RequiresResolve};

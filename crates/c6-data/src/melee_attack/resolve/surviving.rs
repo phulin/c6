@@ -58,6 +58,9 @@ pub trait Effects: upkeep::Effects + upkeep::OperationReports<Error = ProviderEr
 pub enum Error<E> {
     Actor(super::super::Error),
     State(c6_core::loaded_state::Error),
+    World(c6_core::world::MissingInput),
+    Layer(c6_core::skip_turn::placement::Error),
+    MovementFormation(c6_core::movement_execution::FormationMovementError<upkeep::Error<E>>),
     Maximum(cost::Error),
     Effect(E),
     Clear(Box<upkeep::Error<E>>),
@@ -68,15 +71,22 @@ pub enum Error<E> {
     MissingFormation,
     MissingNotificationFacts,
     Advance,
+    UnsupportedAdvanceUnit(UnitReference),
+    Placement(Box<crate::unit_placement_state::Error<E>>),
+    PlacementRejected(i32),
 }
 
 /// Native 28d6ccb -> 28d6808 -> 28d69de -> 28d6a24. A failed
 /// continuation retains preceding callbacks and mutations in the owned state.
-pub fn finish_both_alive<E: Effects>(
+pub fn finish_both_alive<
+    E: Effects
+        + crate::unit_placement_state::Effects
+        + upkeep::Effects<Error = <E as crate::unit_sight_state::Effects>::Error>,
+>(
     state: &mut LoadedState,
     maximum: &cost::Definitions<'_>,
     inputs: &crate::unit_movement_state::Inputs<'_>,
-    sight: &crate::unit_sight_state::Runtime,
+    sight: &mut crate::unit_sight_state::Runtime,
     effects: &mut E,
     pending: RequiresCombatAftermath,
     status_id: u32,
@@ -109,6 +119,62 @@ pub fn finish_both_alive<E: Effects>(
             },
         )
         .map_err(Error::Effect)?;
+    finish_attacker(state, maximum, inputs, sight, effects, members, None)
+}
+
+/// Continue the living attacker after the defender-death callbacks and proposal
+/// destruction. Headless combat generation retains the native false advanced
+/// visualization field, so advance uses the Formation flags3 Set path.
+#[allow(clippy::too_many_arguments)]
+pub fn finish_winner<
+    E: Effects
+        + crate::unit_placement_state::Effects
+        + upkeep::Effects<Error = <E as crate::unit_sight_state::Effects>::Error>,
+>(
+    state: &mut LoadedState,
+    maximum: &cost::Definitions<'_>,
+    inputs: &crate::unit_movement_state::Inputs<'_>,
+    definitions: &crate::unit_placement_state::Definitions<'_, '_>,
+    queries: &crate::unit_placement_state::Queries<'_>,
+    sight: &mut crate::unit_sight_state::Runtime,
+    effects: &mut E,
+    pending: RequiresCombatAftermath,
+) -> Result<RequiresOuterResolution, Error<ProviderError<E>>> {
+    finish_attacker(
+        state,
+        maximum,
+        inputs,
+        sight,
+        effects,
+        pending.members,
+        Some((definitions, queries)),
+    )
+}
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn finish_attacker<
+    E: Effects
+        + crate::unit_placement_state::Effects
+        + upkeep::Effects<Error = <E as crate::unit_sight_state::Effects>::Error>,
+>(
+    state: &mut LoadedState,
+    maximum: &cost::Definitions<'_>,
+    inputs: &crate::unit_movement_state::Inputs<'_>,
+    sight: &mut crate::unit_sight_state::Runtime,
+    effects: &mut E,
+    members: super::super::execution::GeneratedMembers,
+    advance: Option<(
+        &crate::unit_placement_state::Definitions<'_, '_>,
+        &crate::unit_placement_state::Queries<'_>,
+    )>,
+) -> Result<RequiresOuterResolution, Error<ProviderError<E>>> {
+    let attacker = members.damage.attacker;
+    let defender = members.damage.defender;
+    let dead = |state: &LoadedState, actor| {
+        let current = super::super::actor(state, actor).map_err(Error::Actor)?;
+        Ok::<_, Error<ProviderError<E>>>(
+            current.i_damage >= maximum.maximum_damage(current).map_err(Error::Maximum)?,
+        )
+    };
     upkeep::clear_unit_operations(state, attacker.player(), attacker.id, effects)
         .map_err(|e| Error::Clear(Box::new(e)))?;
     upkeep::clear_unit_operations(state, defender.player(), defender.id, effects)
@@ -138,7 +204,108 @@ pub fn finish_both_alive<E: Effects>(
                 .enemy_defensible_district(state, attacker, members.location)
                 .map_err(Error::Effect)?
         {
-            return Err(Error::Advance);
+            let Some((definitions, queries)) = advance else {
+                return Err(Error::Advance);
+            };
+            upkeep::change_formation_moves(
+                state,
+                formation.owner,
+                formation.requested_id,
+                inputs,
+                effects,
+                movement_cost.wrapping_neg(),
+            )
+            .map_err(Error::MovementFormation)?;
+            // Native scans the retained destination IDs backwards. The ordinary
+            // uncaptured combat branch skips delayed-death objects. Civilian
+            // capture and nonempty live stacks remain explicit continuations.
+            let map = state.world().map();
+            let index = (members.location.y as u32)
+                .wrapping_mul(map.units.width)
+                .wrapping_add(members.location.x as u32);
+            let layer = c6_core::skip_turn::placement::formation_layer(
+                state.world(),
+                state
+                    .world()
+                    .player(formation.owner)
+                    .map_err(Error::World)?
+                    .formation(formation.requested_id)
+                    .map_err(Error::World)?
+                    .ok_or(Error::MissingFormation)?
+                    .record,
+            )
+            .map_err(Error::Layer)?
+            .unwrap_or(u32::MAX);
+            let targets = map
+                .units
+                .layers
+                .iter()
+                .find(|v| v.layer_id == layer)
+                .ok_or(Error::MissingFormation)?
+                .cells
+                .iter()
+                .find(|v| v.plot_index == index)
+                .map(|v| v.units.clone())
+                .unwrap_or_default();
+            for target in targets.into_iter().rev() {
+                let Some(found) = state.world().unit(target).map_err(Error::World)? else {
+                    continue;
+                };
+                if !found.record.b_delayed_death {
+                    return Err(Error::UnsupportedAdvanceUnit(target));
+                }
+            }
+            let record = state
+                .world()
+                .player(formation.owner)
+                .map_err(Error::World)?
+                .formation(formation.requested_id)
+                .map_err(Error::World)?
+                .ok_or(Error::MissingFormation)?
+                .record;
+            let owner = record.owner;
+            let count = record.unit_ids.len();
+            for index in 0..count {
+                let record = state
+                    .world()
+                    .player(formation.owner)
+                    .map_err(Error::World)?
+                    .formation(formation.requested_id)
+                    .map_err(Error::World)?
+                    .ok_or(Error::MissingFormation)?
+                    .record;
+                let id = *record.unit_ids.get(index).ok_or(Error::MissingFormation)?;
+                if upkeep::UnitHandle::resolve(state, owner, id)
+                    .map_err(Error::World)?
+                    .is_none()
+                {
+                    continue;
+                }
+                let result = crate::unit_placement_state::set(
+                    state,
+                    definitions,
+                    queries,
+                    sight,
+                    effects,
+                    crate::unit_placement_state::Request {
+                        actor: (owner, id),
+                        destination: members.location,
+                        validation_flags: 1,
+                    },
+                )
+                .map_err(|e| Error::Placement(Box::new(e)))?;
+                if result != 1 {
+                    return Err(Error::PlacementRejected(result));
+                }
+            }
+            upkeep::complete_formation_movement(
+                state,
+                formation.owner,
+                formation.requested_id,
+                effects,
+            )
+            .map_err(|e| Error::Clear(Box::new(e)))?;
+            return eligible(state, attacker, members);
         }
     }
     upkeep::change_unit_moves(
@@ -159,6 +326,13 @@ pub fn finish_both_alive<E: Effects>(
         effects,
     )
     .map_err(Error::Sync)?;
+    eligible(state, attacker, members)
+}
+fn eligible<E>(
+    state: &mut LoadedState,
+    attacker: UnitReference,
+    members: super::super::execution::GeneratedMembers,
+) -> Result<RequiresOuterResolution, Error<E>> {
     let can_heal = super::super::actor(state, attacker)
         .map_err(Error::Actor)?
         .k_health_modifiers

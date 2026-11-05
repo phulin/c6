@@ -51,6 +51,7 @@ pub enum BindingError {
     MissingPlayerSignal(i32),
     Ring(RegistryError),
     Allocation,
+    DuplicateEmergencyScoring,
 }
 pub struct Bindings {
     origin: ActionStamp,
@@ -61,6 +62,9 @@ pub struct Bindings {
     callbacks: Vec<(u64, Callback)>,
     history: Vec<history::RecordedListener>,
     outputs: Vec<Output>,
+    // Current manager list, bound explicitly by the initialized input adapter.
+    // The supported owner has no instances; instance creation is unsupported.
+    emergency_scoring: Option<stock_guards::EmptyEmergencyScoring>,
 }
 impl Bindings {
     pub fn new(
@@ -102,7 +106,17 @@ impl Bindings {
             callbacks,
             history,
             outputs: Vec::new(),
+            emergency_scoring: None,
         })
+    }
+    /// Supply an actually empty current Emergency manager. This owner persists
+    /// with the callback runtime; callers must not use it for an unknown list.
+    pub fn initialize_empty_emergency_scoring(&mut self) -> Result<(), BindingError> {
+        if self.emergency_scoring.is_some() {
+            return Err(BindingError::DuplicateEmergencyScoring);
+        }
+        self.emergency_scoring = Some(stock_guards::EmptyEmergencyScoring);
+        Ok(())
     }
     pub fn outputs(&self) -> &[Output] {
         &self.outputs
@@ -367,9 +381,12 @@ impl<E: Effects> Dispatch<'_, '_, '_, '_, E> {
                 .lua_combat_occurred(self.state, self.bindings, members)
                 .map_err(Error::Effect)?,
             Callback::EmergencyCity => stock_guards::emergency_attacked_city(members),
-            Callback::EmergencyKill => {
-                stock_guards::emergency_killed_enemy(self.state, members).map_err(Error::Guard)?
-            }
+            Callback::EmergencyKill => stock_guards::emergency_killed_enemy(
+                self.state,
+                members,
+                self.bindings.emergency_scoring.as_ref(),
+            )
+            .map_err(Error::Guard)?,
             Callback::Eras => eras::on_combat(
                 self.state,
                 self.inputs.placement,
