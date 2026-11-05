@@ -862,6 +862,25 @@ pub fn expel_stationary(
     placement: &crate::movement_placement_state::Context<'_, '_, '_>,
     location: PlotCoord,
 ) -> Result<(), ExpelError> {
+    expel_stationary_layer(placement, location, 0)
+}
+/// FoundCity's final ExpelOptions selects every current unit layer (+64=-1).
+/// FailureAction1 (+60) is read only after failed placement; this bounded path
+/// rejects that continuation instead of silently retaining or killing a unit.
+pub fn expel_stationary_all_layers(
+    placement: &crate::movement_placement_state::Context<'_, '_, '_>,
+    location: PlotCoord,
+) -> Result<(), ExpelError> {
+    for layer in &placement.current_state().world().map().units.layers {
+        expel_stationary_layer(placement, location, layer.layer_id)?;
+    }
+    Ok(())
+}
+fn expel_stationary_layer(
+    placement: &crate::movement_placement_state::Context<'_, '_, '_>,
+    location: PlotCoord,
+    layer: u32,
+) -> Result<(), ExpelError> {
     let state = placement.current_state();
     let Some(plot) = crate::unit_placement_services::plot_index_at::<()>(state, location)
         .map_err(|_| ExpelError::Missing("Expel plot geometry"))?
@@ -871,7 +890,7 @@ pub fn expel_stationary(
     // Native copies the selected layer's current ID vector before callbacks.
     let units = state
         .world()
-        .plot_units(0, plot as usize)
+        .plot_units(layer, plot as usize)
         .map_err(ExpelError::World)?
         .to_vec();
     let mut deferred = Vec::new();
