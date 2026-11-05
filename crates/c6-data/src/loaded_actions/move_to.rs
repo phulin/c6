@@ -483,7 +483,7 @@ where E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error 
         inputs, handlers, runtime, effects, movement)
 }
 #[allow(clippy::too_many_arguments)]
-fn execute_queued_manager<E, M>(
+pub(crate) fn execute_queued_manager<E, M>(
     state: &mut LoadedState, actor: (i32, u32), hash: u32,
     parameters: OperationParameters, inputs: &Inputs<'_, '_>, handlers: &BoundHandlers<'_>,
     runtime: &mut Runtime<'_>, effects: &mut E, movement: &mut M,
@@ -671,7 +671,7 @@ where
         } else {
             let node = front(state, actor)?;
             let target_before = if matches!(node.operation_hash,
-                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH) {
+                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH | c6_core::unit::SKIP_TURN_HASH) {
                 None
             } else {
                 Some(target(&node)?)
@@ -746,6 +746,9 @@ where
             }
             .map_err(Error::Query)?;
             if allowed {
+                if node.operation_hash == c6_core::unit::SKIP_TURN_HASH {
+                    return Err(Error::Unsupported("direct Add active SkipTurn execution"));
+                }
                 if operation.runtime_id != id
                     || operation.parameters != node.parameters
                     || operation.flags != node.flags
