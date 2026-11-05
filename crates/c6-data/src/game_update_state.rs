@@ -196,3 +196,5 @@ pub mod round_great_people;
 pub mod round_quests;
 
 pub mod round_fallout;
+
+pub mod round_diplomatic_relations;
