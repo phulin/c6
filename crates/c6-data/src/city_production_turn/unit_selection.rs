@@ -527,6 +527,45 @@ pub fn append_unit(
     }
     super::append_selected(state, owner, city, QueueEntry::train_request(unit), effects)
 }
+/// Shared GetUnitProductionCost28553d0 query, without progress modifiers.
+pub fn production_cost(
+    state: &LoadedState,
+    owner: i32,
+    unit_hash: u32,
+    formation: i32,
+    definitions: &Definitions,
+) -> Result<i32, Error> {
+    if definitions.inputs != state.binding().inputs {
+        return Err(Error::Binding);
+    }
+    if !matches!(formation, -1 | 0) {
+        return Err(Error::Unsupported("corps/army Unit cost"));
+    }
+    let definition = definitions
+        .units
+        .iter()
+        .find(|d| d.hash == unit_hash)
+        .ok_or(Error::Unsupported("current Unit definition"))?;
+    if !definition.civilian && !definition.ordinary_land {
+        return Err(Error::Unsupported("nonordinary Unit production cost"));
+    }
+    let player = player(state, owner)?;
+    let cost = player
+        .units
+        .current_unit_cost
+        .iter()
+        .rev()
+        .find(|v| v.definition_hash == unit_hash)
+        .ok_or(Error::Unsupported("current Unit production array cell"))?
+        .value;
+    Ok(favored_cost(
+        cost,
+        definition.civilian,
+        player.units.favored_production_yield == definitions.production_yield,
+        player.units.favored_production_modifier_q8,
+    ))
+}
+
 /// Current required cost28553d0 and UpdateUnitProgress284f8c0 factors for
 /// ordinary civilian and land combat single formations. Cost is the player's canonical cached
 /// integer; no native threshold or static hardcoded Unit cost is accepted.
@@ -550,14 +589,6 @@ pub fn current_build(
     if !matches!(military_formation, -1 | 0) {
         return Err(Error::Unsupported("corps/army Unit cost"));
     }
-    let definition = definitions
-        .units
-        .iter()
-        .find(|d| d.hash == unit_hash)
-        .ok_or(Error::Unsupported("current Unit definition"))?;
-    if !definition.civilian && !definition.ordinary_land {
-        return Err(Error::Unsupported("nonordinary Unit production cost"));
-    }
     let player = player(state, owner)?;
     let queue = &state.city(owner, city)?.build_queue;
     let cell = |values: &[c6_core::unit::HashValue<i32>], hash: u32| -> Result<i32, Error> {
@@ -568,12 +599,7 @@ pub fn current_build(
             .map(|v| v.value)
             .ok_or(Error::Unsupported("current Unit production array cell"))
     };
-    let cost = favored_cost(
-        cell(&player.units.current_unit_cost, unit_hash)?,
-        definition.civilian,
-        player.units.favored_production_yield == definitions.production_yield,
-        player.units.favored_production_modifier_q8,
-    );
+    let cost = production_cost(state, owner, unit_hash, military_formation, definitions)?;
     let multiplier = cell(&player.units.unit_production_multiplier_q8, unit_hash)?
         .wrapping_add(cell(&queue.unit_production_multiplier, unit_hash)?);
     let bonus = |hash| -> Result<i32, Error> {

@@ -55,6 +55,11 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 impl<P> Runtime<'_, P> {
+    /// Current local player used only by source-local report routing.
+    pub fn local_player(&self) -> Option<i32> {
+        self.facts.local_player
+    }
+
     pub fn bind_gold_signals(
         &mut self,
         state: &LoadedState,
