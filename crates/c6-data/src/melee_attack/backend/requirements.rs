@@ -199,7 +199,7 @@ impl registry::Context for Context<'_> {
 impl predicates::Context for Context<'_> {
     fn alliance_pair(&mut self) -> Result<Option<(i32, i32)>, Error> {
         Ok(match self.object {
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
                 return Err(Error::Missing("source-qualified new context IAlliance"))
             }
             ContextObject::Alliance {
@@ -343,7 +343,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
     type PlayerInterface = ContextObject;
     fn context_player_interface(&mut self) -> Result<Option<ContextObject>, Error> {
         Ok(match self.object {
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
                 return Err(Error::Missing("source-qualified new context IPlayer"))
             }
             ContextObject::Alliance { .. } => None,
@@ -363,7 +363,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
                 Ok(i32::from(district.owner))
             }
             ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
                 Err(Error::Missing("source-qualified new context IPlayer"))
             }
         }

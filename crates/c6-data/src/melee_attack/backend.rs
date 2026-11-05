@@ -5,6 +5,7 @@ use super::proposals;
 pub mod allocation;
 pub mod city_creation;
 pub mod requirements;
+pub mod improvement;
 use crate::{
     loaded_actions::{configuration::RawGameConfiguration, culture_notifications as calendar},
     loaded_upkeep,
@@ -51,6 +52,8 @@ pub enum ContextObject {
     },
     /// A real plot object; interface roles remain source-qualified by services.
     Plot(u32),
+    /// Improvement wrapper identity compares plot, type and city component.
+    Improvement { plot: u32, improvement: u32, city: ComponentId, owner: i32 },
     Alliance {
         first_player: i32,
         second_player: i32,
@@ -331,7 +334,7 @@ impl EffectRuntime {
                     .map_err(QueryError::World)?
                     .ok_or(QueryError::Missing("current Policy wrapper Player"))?;
             }
-            ContextObject::Plot(plot) => {
+            ContextObject::Improvement { plot, .. } | ContextObject::Plot(plot) => {
                 state
                     .world()
                     .map()
@@ -768,7 +771,7 @@ impl player_strength::Context for EffectContext<'_> {
                 i32::from(district.owner)
             }
             ContextObject::Alliance { .. } => return Ok(None),
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. } => {
                 return Err(QueryError::Unsupported(
                     "new context IPlayer query requires source-qualified adapter",
                 ))
@@ -815,7 +818,7 @@ impl player_strength::Context for EffectContext<'_> {
     fn unit_property(&mut self, _: u32) -> Result<Option<i32>, QueryError> {
         if matches!(
             self.object,
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. }
         ) {
             return Err(QueryError::Unsupported(
                 "new context IUnit query requires source-qualified adapter",
@@ -835,7 +838,7 @@ impl player_strength::Context for EffectContext<'_> {
     fn has_game_interface(&mut self) -> Result<bool, QueryError> {
         if matches!(
             self.object,
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. }
         ) {
             return Err(QueryError::Unsupported(
                 "new context IGame query requires source-qualified adapter",
@@ -862,7 +865,7 @@ impl alliance_strength::Context for EffectContext<'_> {
     fn context_alliance_interface(&mut self) -> Result<bool, QueryError> {
         if matches!(
             self.object,
-            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_)
+            ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) | ContextObject::Improvement { .. }
         ) {
             return Err(QueryError::Unsupported(
                 "new context IAlliance query requires source-qualified adapter",
