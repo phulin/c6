@@ -53,6 +53,23 @@ pub struct State<'a> {
     pub history: Option<stock::History<'a>>,
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Bind current City placement callbacks independently of Unit creation.
+    /// Yield, amenity and alive-player services remain on this same runtime.
+    pub fn bind_city_placement(
+        &mut self,
+        state: &LoadedState,
+        input: PlacementInputs<'a>,
+    ) -> Result<(), movement::Error> {
+        self.check(state)
+            .map_err(|_| movement::Error::Missing("City placement binding"))?;
+        if self.city_placement.is_some() || input.definitions.binding() != state.binding() {
+            return Err(movement::Error::Missing(
+                "City placement inputs already bound or identity mismatch",
+            ));
+        }
+        self.city_placement = Some(input);
+        Ok(())
+    }
     pub fn bind_modifier_owners(
         &mut self,
         state: &LoadedState,
@@ -514,9 +531,13 @@ impl<P> Runtime<'_, P> {
         city: ComponentId,
     ) -> Result<(), crate::unit_placement_state::Error<movement::Error>> {
         let input = self
-            .unit_creation
+            .city_placement
             .as_ref()
-            .and_then(|v| v.placement.as_ref())
+            .or_else(|| {
+                self.unit_creation
+                    .as_ref()
+                    .and_then(|v| v.placement.as_ref())
+            })
             .ok_or(crate::unit_placement_state::Error::Missing(
                 "current City placement loyalty metadata",
             ))?;

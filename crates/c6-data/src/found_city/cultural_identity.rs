@@ -16,6 +16,10 @@ pub struct Definitions {
     happiness_loyalty: Vec<i32>,
 }
 impl Definitions {
+    /// Identity of the loaded state used to build these loyalty definitions.
+    pub fn binding(&self) -> &WireBinding {
+        &self.binding
+    }
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
         let mut parameters = BTreeMap::new();
         for row in rules
