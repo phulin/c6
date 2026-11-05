@@ -43,6 +43,24 @@ conversions! { Configuration:crate::loaded_actions::configuration::Error, State:
 Definitions:super::Error, Lifecycle:lifecycle::Error, Tech:choose_tech::Error,
 Culture:culture::Error, Gameplay:crate::loaded_actions::Error }
 
+// Pinned Linux vtable slots +28 (IsExpired), +30 (IsValidForPhase),
+// +38 (IsNeeded) and +40 (AutoExpires) are the same base leaves for these
+// retained informational subtypes. Their payload parameters are not read by
+// these leaves; preserve their records, duration, lock and blocking runtime.
+// BoostTech/BoostCivic/ReciprocalPlayer occur before ordinary Pillage, rather
+// than being new TilePillaged UI objects created by the headless action.
+fn base_expiry_and_phase(vtable: u64) -> bool {
+    matches!(
+        vtable,
+        super::initialization::BASE_VTABLE
+            | super::initialization::PRIDE_VTABLE
+            | 0x3af5200 // CivicDiscovered
+            | 0x3af4910 // BoostTech
+            | 0x3af4840 // BoostCivic
+            | 0x3af66d0 // ReciprocalPlayer
+    )
+}
+
 /// Allocation transfers logical ownership to this provider. Native addresses,
 /// vector capacities and allocator layout are not inputs. `prior` must be the
 /// actual reused object removed from the authoritative logical pool.
@@ -249,13 +267,7 @@ impl<'a, B: Backend> Provider<'a, B> {
             city_range_attack::TYPE_HASH => Some(city_range_attack::VTABLE_ADDRESSPOINT),
             hash => culture::Kind::from_hash(hash).map(|k| k.vtable()),
         };
-        let base = matches!(
-            vtable,
-            super::initialization::BASE_VTABLE | super::initialization::PRIDE_VTABLE
-                // CivicDiscovered inherits Instance.IsExpired2d2e250 and
-                // IsNeeded2d2e290; its current turn/duration remain authoritative.
-                | 0x3af5200
-        );
+        let base = base_expiry_and_phase(vtable);
         if !base && expected != Some(vtable) {
             return Err(Error::Unsupported(
                 "actual notification expiry virtual binding",
@@ -678,11 +690,7 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                 .vtable_addresspoint
                 .ok_or(Error::Unsupported("notification phase virtual binding"))?;
             match vtable {
-                super::initialization::BASE_VTABLE | super::initialization::PRIDE_VTABLE
-                // CivicDiscovered inherits Instance.IsValidForPhase2d29200 RET1.
-                | 0x3af5200 => {
-                    Ok(true)
-                }
+                value if base_expiry_and_phase(value) => Ok(true),
                 command_units::VTABLE_ADDRESSPOINT => s
                     .inputs
                     .cities
