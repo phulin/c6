@@ -1,6 +1,6 @@
 //! Founding CulturalIdentity.DoCityCreated2872f00 / conversion trends2872f10.
-//! Current single-city pressure is computed from its real population, ownership,
-//! age and modifier fields. Nearby multi-city pressure remains a separate branch.
+//! Domestic citizen pressure uses current cities, wrapped map distances and Q8
+//! population/ownership/age/modifier fields. Nearby foreign pressure is unsupported.
 use crate::{
     city_turn::Error, game_parameters::sql_integer, unit_initialization_definitions::collection,
     Rules,
@@ -243,16 +243,22 @@ pub(crate) fn identity_for(
             .wrapping_add(defs.q8("IDENTITY_PER_TURN_FROM_OWNER_BEFORE_OCCUPATION_ON_FREE_CITY")?);
     }
     if let Some(cap) = capital(state, source)? {
-        if cap.header.location_x != c.header.location_x
-            || cap.header.location_y != c.header.location_y
-        {
-            return Err(Error::Unsupported("nonlocal capital pressure radius"));
-        }
-        // Same location has distance0, so source takes the minimum-radius arm.
-        if defs.parameter("CAPITAL_IDENTITY_PRESSURE_TILE_RADIUS_MINIMUM")? < 0 {
-            return Err(Error::Unsupported("negative capital minimum radius"));
-        }
-        result = result.wrapping_add(defs.q8("CAPITAL_IDENTITY_PRESSURE_MAXIMUM")?);
+        let distance = distance(state, cap, c);
+        let radius = defs
+            .parameter("CAPITAL_IDENTITY_PRESSURE_TILE_RADIUS_MAXIUMUM_BASE")?
+            .wrapping_add(
+                player(state, source)?
+                    .cultural_identity
+                    .extra_capital_pressure_radius,
+            )
+            .max(0);
+        result = result.wrapping_add(capital_pressure(
+            distance,
+            radius,
+            defs.parameter("CAPITAL_IDENTITY_PRESSURE_TILE_RADIUS_MINIMUM")?,
+            defs.q8("CAPITAL_IDENTITY_PRESSURE_MAXIMUM")?,
+            defs.q8("CAPITAL_IDENTITY_PRESSURE_MINIMUM")?,
+        ));
     }
     no_nearby_effects(state, source)?;
     Ok(result)
@@ -264,88 +270,154 @@ pub(crate) fn pressure(
     owner: i32,
     id: u32,
 ) -> Result<i32, Error> {
-    let c = city(state, owner, id)?;
-    let ids = cx.alive_ids().to_vec();
-    // This exact branch has only the current city. No foreign pressure is
-    // manufactured from absent cities or a prior native pressure answer.
-    for source in ids {
-        if player(state, source)?
-            .cities
-            .records
-            .entries
-            .iter()
-            .any(|r| source != owner || r.value.header.id != id)
-        {
-            return Err(Error::Unsupported("multiple-city citizen pressure"));
-        }
-    }
-    if c.cultural_identity
-        .identities_present
-        .iter()
-        .any(|r| r.player == owner && r.rejected_city)
-        || c.header.liberator == owner
-    {
-        return Ok(0);
-    }
-    if defs.parameter("CITIZEN_IDENTITY_PRESSURE_RADIUS_CUTOFF")? <= 0 {
+    let target = city(state, owner, id)?;
+    let cutoff = defs.parameter("CITIZEN_IDENTITY_PRESSURE_RADIUS_CUTOFF")?;
+    if cutoff <= 0 {
         return Err(Error::Unsupported("nonpositive citizen pressure radius"));
     }
-    if c.culture.loyalty_from_great_works_citizen_modifier != 0 {
-        return Err(Error::Unsupported("great-work citizens pressure"));
+    let mut total = 0i32;
+    let ids = cx.alive_ids().to_vec();
+    let origin = c6_core::unit::PlotCoord {
+        x: target.header.location_x,
+        y: target.header.location_y,
+    };
+    // The native iterator visits center, then concentric rings. Wrapping can
+    // revisit the same plot, so a one-pass city list would lose contributions.
+    for radius in 0..=cutoff as u32 {
+        for (_, at) in
+            c6_core::influence_map_update::threats::ring(state.world().map(), origin, radius)
+        {
+            let mut found = None;
+            for &source in &ids {
+                let p = player(state, source)?;
+                if let Some(record) = p.cities.records.entries.iter().find(|r| {
+                    r.value.header.location_x == at.x && r.value.header.location_y == at.y
+                }) {
+                    found = Some((source, &record.value));
+                    break;
+                }
+            }
+            let Some((source, c)) = found else { continue };
+            let distance = distance(state, c, target);
+            if target
+                .cultural_identity
+                .identities_present
+                .iter()
+                .any(|r| r.player == source && r.rejected_city)
+                || target.header.liberator == source
+            {
+                continue;
+            }
+            if source != owner {
+                return Err(Error::Unsupported("nearby foreign citizen pressure"));
+            }
+            let population = if c.header.population > 0 {
+                if c.culture.loyalty_from_great_works_citizen_modifier > 0 {
+                    return Err(Error::Unsupported("great-work citizens pressure"));
+                }
+                if c.build_queue.entries.first().is_some_and(|entry| {
+                    matches!(entry.order, c6_core::city_production::Order::Advance { .. })
+                }) {
+                    return Err(Error::Unsupported("current project citizen pressure"));
+                }
+                if cx
+                    .player_property_int(state, source, 0xdee04aee)?
+                    .unwrap_or(0)
+                    != 0
+                {
+                    return Err(Error::Unsupported("excess score citizen pressure"));
+                }
+                // CivWide adds the capital's extra; the city query subtracts
+                // that same extra and adds its own. With no capital neither
+                // operation happens (28761fc..2876243).
+                let mut per_citizen = defs.q8("CITIZEN_IDENTITY_PRESSURE_BASE")?;
+                if capital(state, source)?.is_some() {
+                    per_citizen = per_citizen.wrapping_add(
+                        c.cultural_identity
+                            .extra_identity_per_turn_per_citizen_raw_q8,
+                    );
+                }
+                if c.header.capital {
+                    per_citizen =
+                        per_citizen.wrapping_add(defs.q8("CITIZEN_IDENTITY_PRESSURE_CAPITAL")?);
+                }
+                population_pressure(c.header.population, per_citizen, distance, cutoff)
+            } else {
+                0
+            };
+            let ownership = defs
+                .q8(if c.header.capital {
+                    "OWNERSHIP_IDENTITY_PRESSURE_FROM_CAPITAL_TO_DOMESTIC_CITY"
+                } else {
+                    "OWNERSHIP_IDENTITY_PRESSURE_FROM_CITY_TO_DOMESTIC_CITY"
+                })?
+                .max(0);
+            // CityIdentityPressure.GetIdentityPressureTotal27130a0 adds in
+            // this order; each add wraps the signed Q8 backing integer.
+            total = total.wrapping_add(
+                ownership
+                    .wrapping_add(population)
+                    .wrapping_add(
+                        c.cultural_identity
+                            .identity_pressure_from_ages_raw_q8
+                            .max(0),
+                    )
+                    .wrapping_add(c.cultural_identity.identity_pressure_from_modifiers_raw_q8),
+            );
+        }
     }
-    if c.build_queue
-        .entries
-        .first()
-        .is_some_and(|entry| matches!(entry.order, c6_core::city_production::Order::Advance { .. }))
-    {
-        return Err(Error::Unsupported("current project citizen pressure"));
-    }
-    let score = cx
-        .player_property_int(state, owner, 0xdee04aee)?
-        .unwrap_or(0);
-    if score != 0 {
-        return Err(Error::Unsupported("excess score citizen pressure"));
-    }
-    let per_citizen = defs
-        .q8("CITIZEN_IDENTITY_PRESSURE_BASE")?
-        .wrapping_add(
-            c.cultural_identity
-                .extra_identity_per_turn_per_citizen_raw_q8,
-        )
-        .wrapping_add(if c.header.capital {
-            defs.q8("CITIZEN_IDENTITY_PRESSURE_CAPITAL")?
-        } else {
-            0
-        });
-    // Target is this city's exact plot: source distance factor is 1Q8.
-    let population = c6_core::city_production::execution::multiply(
-        c.header.population.wrapping_shl(8),
-        per_citizen,
-    )
-    .max(0);
-    let ownership = defs
-        .q8(if c.header.capital {
-            "OWNERSHIP_IDENTITY_PRESSURE_FROM_CAPITAL_TO_DOMESTIC_CITY"
-        } else {
-            "OWNERSHIP_IDENTITY_PRESSURE_FROM_CITY_TO_DOMESTIC_CITY"
-        })?
-        .max(0);
-    let total = ownership
-        .wrapping_add(population)
-        .wrapping_add(
-            c.cultural_identity
-                .identity_pressure_from_ages_raw_q8
-                .max(0),
-        )
-        .wrapping_add(c.cultural_identity.identity_pressure_from_modifiers_raw_q8);
-    // 2873f7d: both zero returns0; otherwise 287406f sees foreign==0
-    // and chooses MAX_LOYALTY directly, before ratio interpolation.
+    // 2873f7d: both zero returns0; 287406f sees foreign==0 and
+    // chooses MAX_LOYALTY before ratio interpolation, even for negative total.
     if total == 0 {
         Ok(0)
     } else {
         defs.q8("LOYALTY_PER_TURN_FROM_NEARBY_CITIZEN_PRESSURE_MAX_LOYALTY")
     }
 }
+fn distance(state: &LoadedState, a: &City, b: &City) -> i32 {
+    let map = state.world().map();
+    c6_core::geometry::plot_distance(
+        map.header.width,
+        map.header.wrap_x,
+        a.header.location_x,
+        a.header.location_y,
+        b.header.location_x,
+        b.header.location_y,
+    )
+}
+fn population_pressure(population: i32, per_citizen: i32, distance: i32, cutoff: i32) -> i32 {
+    let raw =
+        c6_core::city_production::execution::multiply(per_citizen, population.wrapping_shl(8));
+    if raw <= 0 || distance > cutoff || cutoff == 0 {
+        return 0;
+    }
+    let factor = divide(
+        cutoff.wrapping_sub(distance).wrapping_shl(8),
+        cutoff.wrapping_shl(8),
+    );
+    c6_core::city_production::execution::multiply(raw, factor).max(0)
+}
+fn divide(numerator: i32, denominator: i32) -> i32 {
+    ((i64::from(numerator) << 8) / i64::from(denominator)) as i32
+}
+fn capital_pressure(
+    distance: i32,
+    radius: i32,
+    minimum_radius: i32,
+    maximum: i32,
+    minimum: i32,
+) -> i32 {
+    if distance <= minimum_radius {
+        maximum
+    } else if distance > radius || radius <= 0 {
+        0
+    } else {
+        let ratio = divide(distance.wrapping_shl(8), radius.wrapping_shl(8));
+        c6_core::city_production::execution::multiply(256i32.wrapping_sub(ratio), maximum)
+            .max(minimum)
+    }
+}
+
 /// Source Q8 divide, wrapping Abs and Ceil, including overflow to negative.
 fn turns(numerator: i32, denominator: i32) -> i32 {
     let quotient = ((i64::from(numerator) << 8) / i64::from(denominator)) as i32;
@@ -427,6 +499,24 @@ pub fn do_city_created(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn citizen_pressure_truncates_factor_before_population_multiply() {
+        assert_eq!(population_pressure(3, 256, 0, 9), 768);
+        // (9-5)/9 truncates to113 Q8 before multiplying by3.
+        assert_eq!(population_pressure(3, 256, 5, 9), 339);
+        assert_eq!(population_pressure(3, 256, 9, 9), 0);
+        assert_eq!(population_pressure(3, 256, 10, 9), 0);
+        assert_eq!(population_pressure(3, -256, 0, 9), 0);
+    }
+    #[test]
+    fn capital_pressure_inclusive_radii_and_minimum_floor() {
+        assert_eq!(capital_pressure(3, 10, 3, 2560, 768), 2560);
+        assert_eq!(capital_pressure(5, 10, 3, 2560, 768), 1280);
+        assert_eq!(capital_pressure(10, 10, 3, 2560, 768), 768);
+        assert_eq!(capital_pressure(11, 10, 3, 2560, 768), 0);
+        // The minimum-radius arm precedes the zero maximum-radius test.
+        assert_eq!(capital_pressure(0, 0, 0, 2560, 768), 2560);
+    }
     #[test]
     fn unknown_constructor_cache_does_not_invent_report_emission() {
         assert_eq!(emission((None, None), (2, 0)), None);
