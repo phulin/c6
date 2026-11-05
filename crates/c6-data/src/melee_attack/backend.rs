@@ -295,6 +295,27 @@ impl EffectRuntime {
                     .city(i32::from(city.owner), city.id)
                     .map_err(|_| QueryError::Missing("current registered City"))?;
             }
+            ContextObject::Building { city, district, .. } => {
+                if city.component_type != 2
+                    || district.component_type != 3
+                    || city.owner != district.owner
+                {
+                    return Err(QueryError::Unsupported(
+                        "Building object component identity",
+                    ));
+                }
+                let c = state
+                    .city(i32::from(city.owner), city.id)
+                    .map_err(|_| QueryError::Missing("current Building City"))?;
+                state
+                    .district(i32::from(district.owner), district.id)
+                    .map_err(|_| QueryError::Missing("current Building District"))?;
+                if !c.districts.district_ids.contains(&district.id) {
+                    return Err(QueryError::Missing(
+                        "current Building District/City ownership",
+                    ));
+                }
+            }
             ContextObject::Policy { owner, .. } | ContextObject::Government { owner, .. } => {
                 state
                     .world()
