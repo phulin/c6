@@ -1,0 +1,13 @@
+# Explicit Unit promotion choices
+
+The Rust `c6_data::loaded_actions::session::Session` supports a bounded Linux XP2 promotion command on its existing loaded state and persistent runtime owners. This does not provide complete gameplay state, arbitrary actions or turns.
+
+Construct `loaded_actions::promotion_actions::Definitions::from_rules(state, rules, resources)` from the same checked `ResourceAuthority` as the initialized state. `Session::unit_promotion_choices` returns legal promotion **type hashes** in native definition order. Supply one returned hash to `Session::promote_unit`; the library executes that explicit player choice and never selects a promotion through native AI. `unit_can_earn_promotion` exposes the narrower prerequisite/class query; it does not by itself establish current command availability.
+
+Availability applies the current player decision boundary, command phase/turn/pause and death guards, movement, the retained promotion-ready flag, pending operations, the Unit's promotion class and earned prerequisites. Multiple prerequisites are alternatives: any earned prerequisite suffices. The native command relies on the ready flag rather than independently recomputing eligibility from XP or level.
+
+The action writes the earned flag and executes promotion modifier subscribers over the canonical modifier, requirement and collection owners. It then applies the configured combat-unit healing, increments level, clears readiness and notification-needed, executes the reached level and completion subscribers, unlocks XP and finishes movement unless the current no-finish-moves counter is positive. XP remains unchanged on the ordinary zero-stored-promotions path. The stock Lua completion hook uses the same persistent Script registry and synchronization owner.
+
+Pass the existing stock Unit `Factory` and `promotion_actions::stock::Inputs` for the initialized world. Inputs qualify actual ordered promotion, level and completion subscribers and reached reporting routes. They must describe that runtime; they are not defaults or per-action native answers. Observed empty or absent Script event groups use the existing logical registry operations. Unknown membership and nonempty callback VM work return errors.
+
+Random proposed-promotion choices, stored-promotion XP continuation, positive gossip/achievement/era/historic-moment publication, existing PromoteUnit notification payload removal and unqualified callback branches remain unsupported. A reached failure preserves its executed prefix and freezes the Session. Inspect or extract that Session before issuing further requests; a partial transition is not a completed promotion.
