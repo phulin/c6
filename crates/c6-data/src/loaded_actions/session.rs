@@ -24,6 +24,8 @@ pub mod founding;
 pub mod policy;
 #[path = "session_purchase.rs"]
 pub mod purchase;
+#[path = "session_district.rs"]
+pub mod district;
 
 #[derive(Debug)]
 pub enum Error<E> {

@@ -2,6 +2,7 @@
 //! Campus is the initial supported type; unsupported placement branches fail
 //! explicitly before selection rather than being treated as legal no-ops.
 pub mod construction;
+pub mod stock;
 
 use crate::{
     city_production_turn::{self as production, selection},
