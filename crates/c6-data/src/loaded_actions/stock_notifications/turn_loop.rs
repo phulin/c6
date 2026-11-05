@@ -197,6 +197,9 @@ fn drive<'b, P, E>(
                     }
                 }
                 Phase::Ordinary => {
+                    // An entered completion remains in flight through all its
+                    // nested updates, until Execute returns at this boundary.
+                    context.notifications.backend.completion_inflight = None;
                     // Ordinary begins after the parent Complete.Execute has
                     // returned. Only now may ProcessMessages drain a command
                     // queued by its suspended active-control callback.
@@ -209,6 +212,7 @@ fn drive<'b, P, E>(
                         .map_err(Error::Completion)?;
                         match prefix {
                             completion::Prefix::RequiresGameUpdate(_) => {
+                                context.notifications.backend.completion_inflight = Some(player);
                                 progress.issuer = player;
                                 progress.phase = Phase::MandatoryFirst;
                                 continue;
@@ -337,6 +341,7 @@ pub fn execute<'b, P, E>(
         completion::Prefix::PausedHuman => Ok(Outcome::PausedHuman),
         completion::Prefix::AlreadyComplete => Ok(Outcome::AlreadyComplete),
         completion::Prefix::RequiresGameUpdate(_) => {
+            context.notifications.backend.completion_inflight = Some(player);
             let mut progress = Progress {
                 stamp: context.notifications.state.action_stamp(),
                 issuer: player,

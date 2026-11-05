@@ -24,8 +24,9 @@ pub fn player_actions(
     runtime: &loaded::Runtime,
     owner: i32,
 ) -> Result<ActivationOutcome, Error> {
-    if runtime.failed() || runtime.pending_player_effect()
-        != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
+    if runtime.failed()
+        || runtime.pending_player_effect()
+            != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
         || core::controller(runtime).is_none_or(|frame| frame.owner() != owner)
         || core::pending(runtime).is_some()
         || !state
@@ -43,6 +44,25 @@ pub fn player_actions(
         kind: PolicyKind::PlayerActions,
         options: Vec::new(),
     }))
+}
+
+/// Ordinary active-control entry using the current completion scope. The
+/// same leaf owner joins outstanding synchronous work before returning from
+/// a nested update, without replaying activation or starting another action.
+pub fn active<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    runtime: &mut loaded::Runtime,
+    owner: i32,
+    leaves: &mut impl Leaves<P>,
+) -> Result<ActivationOutcome, Error> {
+    if backend.completion_inflight == Some(owner) {
+        player_actions(state, runtime, owner)?;
+        leaves.wait(state, backend, owner)?;
+        Ok(ActivationOutcome::Complete)
+    } else {
+        player_actions(state, runtime, owner)
+    }
 }
 
 /// Required source leaves; unknown subscribers have no successful default.
@@ -101,6 +121,16 @@ pub struct Context<'s, 'a, P, L> {
     pub leaves: &'s mut L,
 }
 impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
+    /// Nested updates inside an already-entered completion return through the
+    /// ordinary wait suffix; they do not enqueue another EndTurn command.
+    pub fn active(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut loaded::Runtime,
+        owner: i32,
+    ) -> Result<ActivationOutcome, Error> {
+        active(state, self.backend, runtime, owner, self.leaves)
+    }
     /// Return from the already-reached active-control decision after enqueueing
     /// an external action. This does not execute that action or decrement the
     /// activation processing depth; ordinary deactivation owns that decrement.
@@ -110,8 +140,9 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         runtime: &mut loaded::Runtime,
         owner: i32,
     ) -> Result<ActivationOutcome, Error> {
-        if runtime.failed() || runtime.pending_player_effect()
-            != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
+        if runtime.failed()
+            || runtime.pending_player_effect()
+                != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
             || core::controller(runtime).is_none_or(|frame| frame.owner() != owner)
             || core::pending(runtime).is_some()
         {
