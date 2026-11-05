@@ -15,7 +15,7 @@ use c6_core::{
 /// IDs are the current ClimateData collection, not historical RandomEvents.
 /// None remains unavailable. Positive IDs require current drought objects.
 pub struct Current<'a> {
-    pub territory: &'a crate::city_territory::Runtime,
+    pub territory: &'a dyn super::current_upkeep::territory_view::Territory,
     pub drought_ids: Option<&'a [i32]>,
     pub resource_visibility: &'a resources::Definitions,
 }
@@ -93,8 +93,10 @@ impl kernel::Runtime for Runtime<'_> {
         if p.city_attributes.is_none() {
             return Ok(None);
         }
-        self.current
-            .territory
+        let territory = self.current.territory.read().map_err(|_| {
+            kernel::Error::Provider("current territory is mutably borrowed during a tile query")
+        })?;
+        territory
             .plot_yield_data(plot)
             .map(|object| object.map(|o| o.yield_value(kind)))
             .map_err(kernel::Error::Provider)

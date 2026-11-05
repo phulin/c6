@@ -337,7 +337,6 @@ impl<E: production::Effects> upkeep::culture::Effects for Context<'_, E> {
         o: i32,
         c: u32,
     ) -> std::result::Result<Option<u32>, CityError> {
-        let territory = self.current.territory.read()?;
         upkeep::buyable_plots::next_plot(
             s,
             o,
@@ -345,7 +344,7 @@ impl<E: production::Effects> upkeep::culture::Effects for Context<'_, E> {
             self.buyable,
             &self.definitions.tiles,
             &crate::city_turn::tiles::Current {
-                territory: &territory,
+                territory: self.current.territory,
                 drought_ids: self.current.drought_ids,
                 resource_visibility: &self.definitions.resources,
             },

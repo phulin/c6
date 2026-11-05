@@ -167,6 +167,9 @@ pub struct Movement<'s, 'a, S, M> {
     pub current: &'s Current,
     pub domains: &'s mut S,
     pub territory: &'s mut crate::city_territory::Runtime,
+    /// The ongoing turn's canonical requirement store, when this action is
+    /// composed with turn services. Its same mutations are restored on errors.
+    pub requirement_sets: Option<&'s mut c6_core::melee_attack::proposals::subject_sets::Runtime>,
     pub fallback: &'s mut M,
 }
 
@@ -511,16 +514,8 @@ impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_
             .map_err(text)
     }
 }
-impl<'a, S: Domains<'a>, M> move_to::Movement<Runtime<'a>> for Movement<'_, 'a, S, M>
-where
-    M: move_to::Movement<Runtime<'a>>,
-    M::Error: std::fmt::Debug,
-{
-    type Error = String;
-    fn found_city_rules(&self) -> Option<(&found_city::Definitions, &crate::Rules)> {
-        Some((self.definitions.founding, self.definitions.rules))
-    }
-    fn start_found_city(
+impl<'a, S: Domains<'a>, M> Movement<'_, 'a, S, M> {
+    fn start_with_current_owners(
         &mut self,
         state: &mut LoadedState,
         sight: &mut crate::unit_sight_state::Runtime,
@@ -550,6 +545,36 @@ where
                 Ok(Some(data))
             })
             .map_err(text)?
+    }
+}
+impl<'a, S: Domains<'a>, M> move_to::Movement<Runtime<'a>> for Movement<'_, 'a, S, M>
+where
+    M: move_to::Movement<Runtime<'a>>,
+    M::Error: std::fmt::Debug,
+{
+    type Error = String;
+    fn found_city_rules(&self) -> Option<(&found_city::Definitions, &crate::Rules)> {
+        Some((self.definitions.founding, self.definitions.rules))
+    }
+    fn start_found_city(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut crate::unit_sight_state::Runtime,
+        actor: (i32, u32),
+        stock: &mut Runtime<'a>,
+    ) -> Result<Option<StartData>, String> {
+        if let Some(shared) = self.requirement_sets.take() {
+            let result = stock
+                .with_modifier_requirement_sets(shared, |stock| {
+                    self.start_with_current_owners(state, sight, actor, stock)
+                })
+                .map_err(text)
+                .and_then(|result| result);
+            self.requirement_sets = Some(shared);
+            result
+        } else {
+            self.start_with_current_owners(state, sight, actor, stock)
+        }
     }
     fn fortify_turn_max(&self) -> i32 {
         self.fallback.fortify_turn_max()
