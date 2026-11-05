@@ -364,42 +364,6 @@ fn initialize(
         incite_targets: Some(Vec::new()),
     }
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn initialized_instance_has_live_clan_arrays_and_name_overrides() {
-        let name = Name {
-            hash: 3,
-            tribe: 0,
-            scouts: Some(2),
-            military: None,
-            turns_to_spawn: None,
-            percent_ranged: Some(33),
-        };
-        let instance = initialize(63, 4, PlotCoord { x: 22, y: 4 }, &name, 25, 17);
-        assert_eq!(
-            (
-                instance.tribe_index,
-                instance.max_num_scouts,
-                instance.max_standard_military_units,
-                instance.turns_between_warrior_spawn,
-                instance.percent_ranged_units
-            ),
-            (4, 2, 5, 17, 33)
-        );
-        assert_eq!(
-            instance.player_bribe_turns_remaining.as_ref().unwrap(),
-            &[0; 64]
-        );
-        let stats = instance.clan_player_stats.as_ref().unwrap();
-        assert_eq!(stats.len(), 64);
-        assert!(stats.iter().all(|s| s.last_turn_raided == -1
-            && s.raid_count == 0
-            && s.unit_hashes_hired.is_empty()));
-    }
-}
-
 /// The reached first-placement SetImprovementOwner services (0x2bc9260).
 /// Visibility means ChangeVisibilityCount(+1, NO_HIDDEN, true, false, -1, 1,
 /// default ComponentID), including the actual subscriber and RNG effects.
@@ -704,4 +668,40 @@ pub fn restore_visual_state<C: VisualContext>(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn initialized_instance_has_live_clan_arrays_and_name_overrides() {
+        let name = Name {
+            hash: 3,
+            tribe: 0,
+            scouts: Some(2),
+            military: None,
+            turns_to_spawn: None,
+            percent_ranged: Some(33),
+        };
+        let instance = initialize(63, 4, PlotCoord { x: 22, y: 4 }, &name, 25, 17);
+        assert_eq!(
+            (
+                instance.tribe_index,
+                instance.max_num_scouts,
+                instance.max_standard_military_units,
+                instance.turns_between_warrior_spawn,
+                instance.percent_ranged_units
+            ),
+            (4, 2, 5, 17, 33)
+        );
+        assert_eq!(
+            instance.player_bribe_turns_remaining.as_ref().unwrap(),
+            &[0; 64]
+        );
+        let stats = instance.clan_player_stats.as_ref().unwrap();
+        assert_eq!(stats.len(), 64);
+        assert!(stats.iter().all(|s| s.last_turn_raided == -1
+            && s.raid_count == 0
+            && s.unit_hashes_hired.is_empty()));
+    }
 }

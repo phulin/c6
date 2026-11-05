@@ -376,18 +376,6 @@ impl ImprovementAdjacency for Runtime<'_> {
         Ok(value)
     }
 }
-#[cfg(test)]
-mod adjacency_tests {
-    use super::*;
-    #[test]
-    fn farm_groups_and_negative_fraction_follow_fixed_point_order() {
-        assert_eq!(adjacency_amount(1, 2, 1), Some(0));
-        assert_eq!(adjacency_amount(1, 2, 3), Some(1));
-        assert_eq!(adjacency_amount(1, 1, 3), Some(3));
-        assert_eq!(adjacency_amount(-1, 2, 1), Some(-1));
-        assert_eq!(adjacency_amount(i32::MAX, 2, 2), Some(-1));
-    }
-}
 struct PlayerRecords {
     cities: Vec<CityRecord>,
     districts: Vec<DistrictRecord>,
@@ -607,4 +595,17 @@ pub fn get_yield_from_tiles_q8(
         }
         Ok(result)
     })
+}
+
+#[cfg(test)]
+mod adjacency_tests {
+    use super::*;
+    #[test]
+    fn farm_groups_and_negative_fraction_follow_fixed_point_order() {
+        assert_eq!(adjacency_amount(1, 2, 1), Some(0));
+        assert_eq!(adjacency_amount(1, 2, 3), Some(1));
+        assert_eq!(adjacency_amount(1, 1, 3), Some(3));
+        assert_eq!(adjacency_amount(-1, 2, 1), Some(-1));
+        assert_eq!(adjacency_amount(i32::MAX, 2, 2), Some(-1));
+    }
 }

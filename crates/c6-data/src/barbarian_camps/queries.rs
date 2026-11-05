@@ -545,32 +545,6 @@ fn dense_ocean_shore(water_count: i32, any_non_lake: bool) -> bool {
     water_count > 3 && any_non_lake
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{dense_ocean_shore, final_static_legality};
-
-    #[test]
-    fn naval_tribe_requires_dense_ocean_shore_on_large_areas() {
-        assert!(!dense_ocean_shore(1, true));
-        assert!(!dense_ocean_shore(3, true));
-        assert!(dense_ocean_shore(4, true));
-        assert!(!dense_ocean_shore(6, false));
-    }
-
-    #[test]
-    fn camp_resource_rejection_precedes_valid_feature() {
-        assert!(!final_static_legality(true, Some(true), true));
-        assert!(!final_static_legality(true, None, true));
-    }
-
-    #[test]
-    fn feature_result_precedes_terrain_for_nonbuildable_camp() {
-        assert!(final_static_legality(false, Some(true), false));
-        assert!(!final_static_legality(false, Some(false), true));
-        assert!(final_static_legality(false, None, true));
-        assert!(!final_static_legality(false, None, false));
-    }
-}
 impl<P: Placement> Context for Queries<'_, P> {
     type Error = Error<P::Error>;
     fn is_water(&self, state: &LoadedState, index: usize) -> Result<bool, Self::Error> {
@@ -665,5 +639,32 @@ impl<P: Placement> Context for Queries<'_, P> {
         self.placement
             .set_camp(state, at, kind, owner)
             .map_err(Error::Placement)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{dense_ocean_shore, final_static_legality};
+
+    #[test]
+    fn naval_tribe_requires_dense_ocean_shore_on_large_areas() {
+        assert!(!dense_ocean_shore(1, true));
+        assert!(!dense_ocean_shore(3, true));
+        assert!(dense_ocean_shore(4, true));
+        assert!(!dense_ocean_shore(6, false));
+    }
+
+    #[test]
+    fn camp_resource_rejection_precedes_valid_feature() {
+        assert!(!final_static_legality(true, Some(true), true));
+        assert!(!final_static_legality(true, None, true));
+    }
+
+    #[test]
+    fn feature_result_precedes_terrain_for_nonbuildable_camp() {
+        assert!(final_static_legality(false, Some(true), false));
+        assert!(!final_static_legality(false, Some(false), true));
+        assert!(final_static_legality(false, None, true));
+        assert!(!final_static_legality(false, None, false));
     }
 }
