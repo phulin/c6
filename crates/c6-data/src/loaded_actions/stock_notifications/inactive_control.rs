@@ -27,6 +27,7 @@ pub struct Inputs {
     pub skip_off_turn: bool,
     pub off_turn: Vec<Kind>,
     pub flags: Flags,
+    readiness_only: Vec<(Kind, bool)>,
     failed: bool,
 }
 impl Inputs {
@@ -48,8 +49,28 @@ impl Inputs {
             skip_off_turn,
             off_turn,
             flags,
+            readiness_only: Vec::new(),
             failed: false,
         })
+    }
+    /// Bind a captured stock nonmember lambda that only sets readiness and
+    /// invokes its continuation; it does not run the full analysis member.
+    pub fn with_readiness_only(mut self, kind: Kind, ready: bool) -> Result<Self, Error> {
+        if !matches!(kind, Kind::Culture | Kind::Research)
+            || self.readiness_only.iter().any(|v| v.0 == kind)
+        {
+            return Err(Error::Unsupported("off-turn readiness lambda kind"));
+        }
+        self.readiness_only.push((kind, ready));
+        Ok(self)
+    }
+}
+fn readiness_status(ready: &mut bool) -> core::Status {
+    if *ready {
+        core::Status::Complete
+    } else {
+        *ready = true;
+        core::Status::Yield
     }
 }
 fn flag(value: Option<bool>, name: &'static str) -> Result<bool, Error> {
@@ -98,6 +119,9 @@ impl<P> Effects<'_, '_, P> {
         kind: Kind,
     ) -> Result<core::Status, Error> {
         use core::Status;
+        if let Some((_, ready)) = self.input.readiness_only.iter_mut().find(|v| v.0 == kind) {
+            return Ok(readiness_status(ready));
+        }
         match kind {
             Kind::City => {
                 empty_cities(state, owner)?;
@@ -299,6 +323,20 @@ mod tests {
             military_analyzed: None,
             economic_analyzed: None,
         }
+    }
+    #[test]
+    fn readiness_lambda_sets_before_yield_and_stops_later_callbacks() {
+        let mut ready = false;
+        let later = std::cell::Cell::new(false);
+        let first = std::iter::once(Ok::<_, ()>(readiness_status(&mut ready)));
+        let rest = std::iter::once_with(|| {
+            later.set(true);
+            Ok(core::Status::Pending)
+        });
+        assert!(core::collect(first.chain(rest)).unwrap());
+        assert!(ready);
+        assert!(!later.get());
+        assert_eq!(readiness_status(&mut ready), core::Status::Complete);
     }
     #[test]
     fn production_readiness_queries_count_only_after_calculated() {

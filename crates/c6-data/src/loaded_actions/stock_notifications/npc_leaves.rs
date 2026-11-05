@@ -222,6 +222,43 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_> {
     fn callbacks(&self) -> &[Kind] {
         &self.inputs.callbacks
     }
+    fn barbarian_reached(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        full: bool,
+    ) -> Result<bool, Error> {
+        self.inputs.reached(state, owner, Kind::Barbarian, full)
+    }
+    fn barbarian_after_research(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+        _: &mut c6_core::loaded_state::game_update::Runtime,
+        owner: i32,
+    ) -> Result<(), Error> {
+        let manager = &state.retained().barbarian;
+        if manager.player_ordinal != owner {
+            return Err(Error::Unsupported("NPC Barbarian current owner"));
+        }
+        if manager.improvement_hash != u32::MAX && manager.value_e0 < manager.value_c8 {
+            return Err(Error::Unsupported("NPC Barbarian CreateCamps"));
+        }
+        if !manager.instances.is_empty() {
+            return Err(Error::Unsupported("NPC Barbarian tribe OnTurnActivate"));
+        }
+        let inputs = backend
+            .city_query_inputs()
+            .ok_or(Error::Unsupported("NPC current capability membership"))?;
+        if inputs
+            .current
+            .capabilities
+            .has(c6_core::game_capabilities::BARBARIAN_CLANS)
+        {
+            return Err(Error::Unsupported("NPC Barbarian Clans activation"));
+        }
+        Ok(())
+    }
     fn research_reached(
         &self,
         state: &LoadedState,
@@ -286,6 +323,13 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_> {
         match kind {
             Kind::City => no_cities(state, owner),
             Kind::FreeCities => empty_free_cities(state),
+            Kind::Barbarian => {
+                if state.retained().barbarian.player_ordinal != owner {
+                    return Err(Error::Unsupported("NPC Barbarian current player binding"));
+                }
+                // The wrapper executes acquisition then the actual camp suffix.
+                Ok(())
+            }
             Kind::BehaviorTree => {
                 let b = p
                     .ai_behavior_tree
@@ -612,6 +656,7 @@ mod tests {
             Kind::Research,
             Kind::Culture,
             Kind::FreeCities,
+            Kind::Barbarian,
             Kind::Targets,
         ] {
             assert!(callback_enabled(kind, 3, 3, true));

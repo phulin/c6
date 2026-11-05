@@ -10,6 +10,7 @@ pub enum Kind {
     City,
     BehaviorTree,
     FreeCities,
+    Barbarian,
     Planning,
     Diplomatic,
     Religious,

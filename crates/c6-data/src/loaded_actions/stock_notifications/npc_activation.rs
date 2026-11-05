@@ -57,17 +57,46 @@ pub fn active<P>(
     leaves: &mut impl Leaves<P>,
 ) -> Result<ActivationOutcome, Error> {
     if backend.completion_inflight == Some(owner) {
-        player_actions(state, runtime, owner)?;
-        leaves.wait(state, backend, owner)?;
-        Ok(ActivationOutcome::Complete)
+        finish_active_return(state, backend, runtime, owner, leaves)
     } else {
         player_actions(state, runtime, owner)
     }
 }
 
+/// Finish only the current control return after an external message was queued.
+/// The queued completion itself is drained by the outer message continuation.
+pub fn finish_active_return<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    runtime: &mut loaded::Runtime,
+    owner: i32,
+    leaves: &mut impl Leaves<P>,
+) -> Result<ActivationOutcome, Error> {
+    player_actions(state, runtime, owner)?;
+    leaves.wait(state, backend, owner)?;
+    Ok(ActivationOutcome::Complete)
+}
+
 /// Required source leaves; unknown subscribers have no successful default.
 pub trait Leaves<P> {
     fn callbacks(&self) -> &[Kind];
+    fn barbarian_reached(
+        &self,
+        _state: &LoadedState,
+        _owner: i32,
+        _full: bool,
+    ) -> Result<bool, Error> {
+        Err(Error::Unsupported("NPC current Barbarian callback binding"))
+    }
+    fn barbarian_after_research(
+        &mut self,
+        _state: &mut LoadedState,
+        _backend: &mut Runtime<'_, P>,
+        _runtime: &mut loaded::Runtime,
+        _owner: i32,
+    ) -> Result<(), Error> {
+        Err(Error::Unsupported("NPC Barbarian camp activation"))
+    }
     fn research_reached(
         &self,
         state: &LoadedState,
@@ -188,6 +217,20 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         owner: i32,
         kind: Kind,
     ) -> Result<core::CallbackProgress, Error> {
+        if kind == Kind::Culture {
+            let level = self
+                .research
+                .civilization_levels
+                .iter()
+                .find(|v| v.0 == owner)
+                .ok_or(Error::Unsupported("NPC civic current civilization level"))?
+                .1;
+            if level == 0xd959_ec24 {
+                self.suffix(state, owner, kind)?;
+                return Ok(core::CallbackProgress::Continue);
+            }
+        }
+
         let mut effects = stock_research::Effects {
             backend: self.backend,
             runtime: self.research,
@@ -219,11 +262,23 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
             research::policy::ResearchPolicy::ChoicePending {
                 player,
                 legal_indices,
-            } => Ok(core::CallbackProgress::ChoicePending(core::Decision {
-                player,
-                kind: decision_kind,
-                legal_indices,
-            })),
+            } => {
+                if decision_kind == core::DecisionKind::Technology
+                    && self
+                        .backend
+                        .deferred_research_response(state, player, &legal_indices)
+                        .map_err(|e| self.fail(e))?
+                        == research::policy::AcquisitionResponse::Defer
+                {
+                    self.suffix(state, owner, kind)?;
+                    return Ok(core::CallbackProgress::Continue);
+                }
+                Ok(core::CallbackProgress::ChoicePending(core::Decision {
+                    player,
+                    kind: decision_kind,
+                    legal_indices,
+                }))
+            }
         }
     }
     fn suffix(&mut self, state: &mut LoadedState, owner: i32, kind: Kind) -> Result<(), Error> {
@@ -311,13 +366,32 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
     fn callback(
         &mut self,
         state: &mut LoadedState,
-        _: &mut loaded::Runtime,
+        runtime: &mut loaded::Runtime,
         owner: i32,
         kind: Kind,
         full: bool,
     ) -> Result<core::CallbackProgress, Error> {
         self.leaves
             .callback(state, self.backend, owner, kind, full)?;
+        if kind == Kind::Barbarian && self.leaves.barbarian_reached(state, owner, full)? {
+            let mut effects = stock_research::Effects {
+                backend: self.backend,
+                runtime: self.research,
+                choices: self.choices,
+                choice_graph: None,
+                culture: self.culture,
+            };
+            research::Context {
+                state,
+                definitions: self.definitions,
+                effects: &mut effects,
+            }
+            .acquire_barbarian_research(owner)
+            .map_err(|error| self.fail(error))?;
+            self.leaves
+                .barbarian_after_research(state, self.backend, runtime, owner)?;
+            return Ok(core::CallbackProgress::Continue);
+        }
         if matches!(kind, Kind::Research | Kind::Culture)
             && self.leaves.research_reached(state, owner, kind, full)?
         {
