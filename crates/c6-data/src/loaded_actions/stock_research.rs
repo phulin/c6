@@ -459,7 +459,7 @@ mod current_age_tests {
     }
 }
 
-// A semantic global research choice has no physical target. Native invalid
+// A semantic global research or civic policy choice has no physical target. Native invalid
 // location sentinels are presentation hints, not separate policy requests.
 pub(super) fn insert_pending_decision(
     decisions: &mut Vec<super::Decision>,
@@ -467,18 +467,21 @@ pub(super) fn insert_pending_decision(
 ) {
     if decisions
         .iter()
-        .any(|old| old == &decision || same_global_research_choice(old, &decision))
+        .any(|old| old == &decision || same_global_progression_choice(old, &decision))
     {
         return;
     }
     decisions.push(decision);
 }
-pub(super) fn same_global_research_choice(a: &super::Decision, b: &super::Decision) -> bool {
+pub(super) fn same_global_progression_choice(a: &super::Decision, b: &super::Decision) -> bool {
     a.component.is_none()
         && b.component.is_none()
         && a.owner == b.owner
         && a.type_hash == b.type_hash
-        && matches!(a.type_hash, choose_tech::TYPE_HASH | 0xe1d3_d3ac)
+        && matches!(
+            a.type_hash,
+            choose_tech::TYPE_HASH | 0xe1d3_d3ac | 0xb6bf_b191 | 0x6331_a2b6
+        )
 }
 fn resolve_research_decision(
     decisions: &mut Vec<super::Decision>,
@@ -495,7 +498,7 @@ fn resolve_research_decision(
 mod decision_tests {
     use super::*;
     #[test]
-    fn global_research_sentinels_do_not_duplicate_a_policy_choice() {
+    fn global_progression_sentinels_do_not_duplicate_a_policy_choice() {
         let d = |owner, type_hash, location, component| super::super::Decision {
             owner,
             type_hash,
@@ -504,7 +507,7 @@ mod decision_tests {
         };
         let mut pending = vec![];
         let tech = d(0, choose_tech::TYPE_HASH, [-1, -1], None);
-        assert!(same_global_research_choice(
+        assert!(same_global_progression_choice(
             &tech,
             &d(0, choose_tech::TYPE_HASH, [-9999, -9999], None)
         ));
@@ -533,7 +536,23 @@ mod decision_tests {
             }),
         );
         insert_pending_decision(&mut pending, targeted.clone());
-        assert_eq!(pending, vec![tech, other, civic, targeted]);
+        let policy = d(
+            0,
+            culture_notifications::Kind::FillCivicSlot.type_hash(),
+            [-1, -1],
+            None,
+        );
+        insert_pending_decision(&mut pending, policy.clone());
+        insert_pending_decision(
+            &mut pending,
+            d(
+                0,
+                culture_notifications::Kind::FillCivicSlot.type_hash(),
+                [-9999, -9999],
+                None,
+            ),
+        );
+        assert_eq!(pending, vec![tech, other, civic, targeted, policy]);
     }
     #[test]
     fn selected_research_preserves_other_players_civics_and_government_choices() {

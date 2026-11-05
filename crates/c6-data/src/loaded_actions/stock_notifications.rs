@@ -357,7 +357,7 @@ impl<P> lifecycle::Backend for Runtime<'_, P> {
                     component:(!(record.component.owner == -1 && record.component.id == u32::MAX)).then_some(record.component),
                 };
                 self.decisions.retain(|d| {
-                    !research::same_global_research_choice(d,&expired) && (
+                    !research::same_global_progression_choice(d,&expired) && (
                     d.owner != i32::from(record.id.owner)
                         || d.type_hash != record.type_hash
                         || d.location != record.location)
