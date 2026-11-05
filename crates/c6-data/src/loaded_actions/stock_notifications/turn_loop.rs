@@ -127,14 +127,14 @@ fn update<'b, P, E>(
             let Some(next) = next else { break };
             match next {
                 c6_core::game_update::PlayerEffect::Activation { player, first } => {
-                    match activation(
+                    match context.notifications.backend.with_era_gossip_history(&visibility.history, |backend| activation(
                         context.notifications.state,
-                        &mut context.notifications.backend,
+                        backend,
                         runtime,
                         research_runtime,
                         player,
                         first,
-                    )
+                    ))
                     .map_err(Error::Activation)?
                     {
                         ActivationOutcome::Choice(choice) => return Ok(Some(choice)),

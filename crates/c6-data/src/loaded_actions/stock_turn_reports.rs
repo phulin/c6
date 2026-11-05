@@ -55,7 +55,7 @@ impl<P> Runtime<'_, P> {
     /// no native notification pool or client cache object is constructed here.
     pub fn deliver_round_report(&mut self, state: &LoadedState, event: u32, player: i32, value: i32, reason: i32, _: Scope) -> Result<(), Error> {
         self.check(state).map_err(Error::Binding)?;
-        if !matches!(event,0x1e39e493|0x21535587|0x66ade3b3|0x93dd170f|0xd3f37746|0x68e7d3da) {
+        if !matches!(event,0x008152ea|0x1e39e493|0x21535587|0x66ade3b3|0x93dd170f|0xd3f37746|0x68e7d3da) {
             return Err(Error::UnsupportedEvent(event));
         }
         self.turn_report_records.push(Record::Round { event, player, value, reason });
