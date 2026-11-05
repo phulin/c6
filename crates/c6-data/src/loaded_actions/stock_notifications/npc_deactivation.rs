@@ -292,7 +292,9 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                 Ok(())
             }
             Kind::Tactical => tactical_end(state, owner),
-            Kind::Targets => super::human_activation::knowledge::observe_visible_units(
+            // +228 invokes Targets::UpdateKnowledgeBase21aa9b0, which
+            // refreshes visible Unit/camp records without IncrementTurn.
+            Kind::Targets => super::human_activation::knowledge::refresh_visible_units(
                 state,
                 owner,
                 self.units,
