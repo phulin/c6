@@ -98,7 +98,11 @@ fn fail<P, E: std::fmt::Debug>(
     message: &'static str,
     error: E,
 ) -> Error {
-    backend.last_error = Some(format!("{message}: {error:?}"));
+    let outer = format!("{message}: {error:?}");
+    backend.last_error = Some(match backend.last_error.take() {
+        Some(inner) => format!("{outer}; caused by: {inner}"),
+        None => outer,
+    });
     Error::Unsupported(message)
 }
 fn location(state: &LoadedState, index: usize) -> Result<PlotCoord, Error> {
