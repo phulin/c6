@@ -1,7 +1,9 @@
 //! Current-state Linux District/Unit ranged combat stages.
 //!
-//! District participants, rules and RNG remain canonical. Generation stages are
-//! explicit continuations; their outputs do not claim a completed City command.
+//! District participants, rules and RNG remain canonical. The persistent
+//! `loaded_actions::session::Session::city_range_attack` is the ordinary command
+//! boundary. Numeric generation alone remains an unfinished continuation.
+//! Death and major-major weariness paths are explicit unsupported transitions.
 pub mod completion;
 pub mod reports;
 pub mod strength;

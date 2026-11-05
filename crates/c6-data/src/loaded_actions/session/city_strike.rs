@@ -11,6 +11,21 @@ use c6_core::{
 };
 
 impl<'s, 'a> Session<'s, 'a> {
+    /// Query the current ordinary City command gates and explicit target without
+    /// consuming a shot, drawing RNG, or publishing a processed-message event.
+    pub fn can_city_range_attack(
+        &self,
+        issuer: i32,
+        city_id: u32,
+        district_id: Option<u32>,
+        target: PlotCoord,
+        queries: &city::Queries<'_>,
+    ) -> Result<bool, Error<strike::Error>> {
+        self.ordinary_player_action(issuer)?;
+        let attacker =
+            current_district(self.state(), issuer, city_id, district_id).map_err(Error::Action)?;
+        can_start(self.state(), issuer, city_id, attacker, target, queries).map_err(Error::Action)
+    }
     /// Execute one explicit city/district strike against a current target. The
     /// actual District spends its shot; Unit damage, RNG and stock callbacks
     /// use the same owners retained by other actions. Unsupported continuations
