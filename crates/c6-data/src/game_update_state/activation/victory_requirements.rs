@@ -135,7 +135,9 @@ pub fn test(
                     None => scoring
                         .get_score(state, score_definitions, owner)
                         .map_err(Error::Scoring),
-                    Some(raw) => scoring.raw_score(state, owner, raw).map_err(Error::Scoring),
+                    Some(raw) => scoring
+                        .raw_score_with_definitions(state, score_definitions, owner, raw)
+                        .map_err(Error::Scoring),
                 },
             )
         }
