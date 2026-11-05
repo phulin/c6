@@ -498,6 +498,10 @@ where
         if h.identity().operation_hash == OperationHash(c6_core::unit::FORTIFY_HASH) {
             return self.fortify_handler.as_mut().ok_or(Error::Unsupported("Fortify handler composition"))?(self.state, s.unit, self.external);
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::REMOVE_FEATURE_HASH) {
+            return self.pillage_handler.as_mut().ok_or(Error::Unsupported("RemoveFeature handler composition"))?(
+                self.state,s.unit,u32::MAX,visible_only,self.external);
+        }
         if matches!(h.identity().operation_hash.0, c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH) {
             let improvement = s.operation.parameters.improvement()?;
             return self.pillage_handler.as_mut().ok_or(Error::Unsupported("Pillage handler composition"))?(

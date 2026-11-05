@@ -22,6 +22,7 @@ pub const FOUND_CITY_HASH: u32 = 0x5733ac6c;
 pub const MOVE_TO_HASH: u32 = 0x580f2f68;
 pub const RANGE_ATTACK_HASH: u32 = 0x09d0292a;
 pub const BUILD_IMPROVEMENT_HASH: u32 = 0x1d60e778;
+pub const REMOVE_FEATURE_HASH: u32 = 0xd1fde2e6;
 pub const REPAIR_HASH: u32 = 0x08ca367f;
 pub const PILLAGE_HASH: u32 = 0x4885d724;
 pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
@@ -59,6 +60,7 @@ pub enum OperationParameters {
 fn parameter_kind(hash: u32) -> Result<u8, Error> {
     match hash {
         SKIP_TURN_HASH
+        | REMOVE_FEATURE_HASH
         | FOUND_CITY_HASH
         | ALERT_HASH
         | FORTIFY_HASH
@@ -707,6 +709,14 @@ mod tests {
             }
         );
         assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
+    }
+    #[test]
+    fn remove_feature_has_no_shared_parameters() {
+        let words=[1u32,1,REMOVE_FEATURE_HASH,2,u32::MAX,0,7,0,0,0];
+        let bytes=words.into_iter().flat_map(u32::to_le_bytes).collect::<Vec<_>>();
+        let queue=OperationQueue::decode(&bytes,Limits::default()).unwrap();
+        assert_eq!(queue.nodes[0].parameters,OperationParameters::None);
+        assert_eq!(queue.encode(Limits::default()).unwrap(),bytes);
     }
     #[test]
     fn build_improvement_queue_uses_modifiers_then_definition_hash() {

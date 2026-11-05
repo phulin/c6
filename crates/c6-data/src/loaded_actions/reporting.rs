@@ -431,6 +431,7 @@ pub struct Provider<'a> {
     farm_handler: Option<i32>,
     pillage_handler: Option<i32>,
     repair_handler: Option<i32>,
+    chop_handler: Option<i32>,
     fortify_handler: Option<i32>,
     trade_route_handler: Option<i32>,
     damage_changed_bound: bool,
@@ -462,6 +463,7 @@ impl<'a> Provider<'a> {
             farm_handler: None,
             pillage_handler: None,
             repair_handler: None,
+            chop_handler: None,
             fortify_handler: None,
             trade_route_handler: None,
             damage_changed_bound: false,
@@ -596,6 +598,13 @@ impl<'a> Provider<'a> {
     }
     /// Pillage's exact ClassParameters vtable+0x28 is the inherited empty
     /// SharedParameters.Write(map)28199e0. The wire fields remain canonical.
+    /// RemoveFeature inherits the parameterless BaseHandler map writer.
+    pub fn bind_chop_handler(&mut self,state:&LoadedState,
+        authority:&super::handlers::BoundHandlers<'_>,operations:&crate::unit_operation_manager::OperationDefinitions)
+        ->Result<(),Error>{
+        self.chop_handler=Some(Self::checked_handler(state,authority,operations,c6_core::unit::REMOVE_FEATURE_HASH)?);
+        Ok(())
+    }
     pub fn bind_repair_handler(&mut self,state:&LoadedState,
         authority:&super::handlers::BoundHandlers<'_>,operations:&crate::unit_operation_manager::OperationDefinitions)
         ->Result<(),Error>{
@@ -1117,6 +1126,7 @@ impl<'a> Provider<'a> {
                         && self.move_to_handler.is_some())
                     || (report.subtype == c6_core::unit::RANGE_ATTACK_HASH
                         && self.range_attack_handler.is_some())
+                    || (report.subtype == c6_core::unit::REMOVE_FEATURE_HASH && self.chop_handler.is_some())
                     || (report.subtype == c6_core::unit::REPAIR_HASH && self.repair_handler.is_some())
                     || (report.subtype == c6_core::unit::PILLAGE_HASH && self.pillage_handler.is_some())
                     || (report.subtype == c6_core::unit::BUILD_IMPROVEMENT_HASH
@@ -1263,6 +1273,11 @@ impl<'a> Provider<'a> {
                     && matches!(node.parameters, c6_core::unit::OperationParameters::MakeTradeRoute { .. }) => {
                     self.trade_route_handler.ok_or(Error::Provider("actual MakeTradeRoute facade handler binding unavailable"))?;
                     c6_core::unit::MAKE_TRADE_ROUTE_HASH
+                }
+                Some(node) if node.operation_hash == c6_core::unit::REMOVE_FEATURE_HASH
+                    && node.parameters == c6_core::unit::OperationParameters::None=>{
+                    self.chop_handler.ok_or(Error::Provider("actual RemoveFeature facade handler binding unavailable"))?;
+                    c6_core::unit::REMOVE_FEATURE_HASH
                 }
                 Some(node) if node.operation_hash == c6_core::unit::REPAIR_HASH
                     && matches!(node.parameters,c6_core::unit::OperationParameters::Repair{..})=>{

@@ -35,6 +35,8 @@ pub mod plot_purchase;
 pub mod district;
 #[path = "session_upgrade.rs"]
 pub mod upgrade;
+#[path = "session_chop.rs"]
+pub mod chop;
 #[path = "session_repair.rs"]
 pub mod repair;
 #[path = "session_pillage.rs"]

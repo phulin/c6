@@ -450,6 +450,8 @@ impl GameCulture {
         &self.binding
     }
     /// Original node order, retaining duplicates and exact stored active bytes.
+    /// Current original graph traversal, preserving order and duplicates.
+    pub fn iteration(&self) -> &[i32] { &self.ordered_types }
     pub fn nodes(&self) -> &[CivicNode] {
         &self.nodes
     }
