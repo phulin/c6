@@ -453,13 +453,15 @@ pub fn resume_end_turn<'b, P, E>(
         .expect("checked");
     progress.choice = None;
     progress.queued_completion = Some((owner, completion::NONE));
-    let mut returned = false;
     let mut resumed_active = |state: &mut LoadedState,
                               backend: &mut Runtime<'b, P>,
                               runtime: &mut loaded::Runtime,
                               player: i32| {
-        if !returned && player == owner {
-            returned = true;
+        // The queued command cannot enter Execute until the suspended parent
+        // Update returns. Its internal NPC pass loop can select this actor
+        // again meanwhile: retain the submitted decision and execute the
+        // ordinary control return suffix, rather than requesting it twice.
+        if player == owner {
             return_active(state, backend, runtime, player)
         } else {
             active(state, backend, runtime, player)
