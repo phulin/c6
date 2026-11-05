@@ -245,6 +245,22 @@ impl<P> core::Effects for Effects<'_, '_, P> {
         Ok(())
     }
 }
+/// The same current off-turn ring is also used during active activation.
+/// This performs no inactive-player orchestration or job join.
+pub(super) fn dispatch_off_turn<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    input: &mut Inputs,
+) -> Result<bool, Error> {
+    if input.failed || state.binding() != &input.binding {
+        return Err(Error::Unsupported("inactive off-turn runtime binding"));
+    }
+    backend
+        .check(state)
+        .map_err(|_| Error::Unsupported("inactive stock state binding"))?;
+    let owner = input.owner;
+    core::Effects::off_turn(&mut Effects { backend, input }, state, owner)
+}
 pub fn run<P>(
     state: &mut LoadedState,
     backend: &mut Runtime<'_, P>,
