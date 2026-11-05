@@ -73,6 +73,19 @@ fn empty_cities(state: &LoadedState, owner: i32) -> Result<(), Error> {
     }
     Ok(())
 }
+// UnitProduction::IsReady21bee80 checks the calculated flag before its
+// efficiencies vector; an unknown vector is irrelevant on the cold branch.
+fn unit_production_ready(flags: Flags) -> Result<bool, Error> {
+    if !flag(
+        flags.unit_production_calculated,
+        "inactive UnitProduction calculated",
+    )? {
+        return Ok(false);
+    }
+    Ok(flags.unit_efficiencies_count.ok_or(Error::Unsupported(
+        "inactive UnitProduction efficiencies count",
+    ))? != 0)
+}
 struct Effects<'s, 'a, P> {
     backend: &'s mut Runtime<'a, P>,
     input: &'s mut Inputs,
@@ -136,6 +149,31 @@ impl<P> Effects<'_, '_, P> {
                 }
                 Err(Error::Unsupported(
                     "inactive Diplomatic analysis continuation",
+                ))
+            }
+            Kind::Governors => {
+                // DoOffTurn2118080 returns status0 unless UnitProduction,
+                // Culture and Diplomacy are all ready; no job is submitted.
+                if !unit_production_ready(self.input.flags)?
+                    || !flag(
+                        self.input.flags.culture_analyzed,
+                        "inactive current Culture readiness",
+                    )?
+                    || !flag(
+                        self.input.flags.diplomatic_done,
+                        "inactive current Diplomatic done",
+                    )?
+                {
+                    return Ok(Status::Complete);
+                }
+                Err(Error::Unsupported("inactive Governor assignment analysis"))
+            }
+            Kind::GrandStrategic => {
+                if unit_production_ready(self.input.flags)? {
+                    return Ok(Status::Complete);
+                }
+                Err(Error::Unsupported(
+                    "inactive GrandStrategic policy analysis consumers",
                 ))
             }
             Kind::Economic => {
@@ -213,4 +251,26 @@ pub fn run<P>(
         backend.last_error = Some(format!("inactive control: {error:?}"));
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn flags(calculated: Option<bool>, count: Option<usize>) -> Flags {
+        Flags {
+            unit_production_calculated: calculated,
+            unit_efficiencies_count: count,
+            culture_analyzed: None,
+            diplomatic_done: None,
+            military_analyzed: None,
+            economic_analyzed: None,
+        }
+    }
+    #[test]
+    fn production_readiness_queries_count_only_after_calculated() {
+        assert!(!unit_production_ready(flags(Some(false), None)).unwrap());
+        assert!(unit_production_ready(flags(Some(true), None)).is_err());
+        assert!(!unit_production_ready(flags(Some(true), Some(0))).unwrap());
+        assert!(unit_production_ready(flags(Some(true), Some(1))).unwrap());
+    }
 }
