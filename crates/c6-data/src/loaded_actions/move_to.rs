@@ -1092,9 +1092,11 @@ fn continue_operation<E: Effects, M: Movement<E>>(
             evaluating(state, retained, false)?;
             return Ok(data.delete);
         }
-        if (legality::can_move(unit(state, actor)?)
-            || formation(state, retained)?.moves_remaining_raw > 0)
-            && !legality::is_busy(unit(state, actor)?)
+        // Continue calls Manager.IsDoingPartialMove (vtable+e0), whose stock
+        // Linux2da2ae0 body is fixed false. It does not test Unit.IsBusy:
+        // Start may have set an animation timer before this same-frame Update.
+        if legality::can_move(unit(state, actor)?)
+            || formation(state, retained)?.moves_remaining_raw > 0
         {
             update(
                 state, actor, retained, iteration, &mut data, inputs, runtime, effects, movement,
@@ -1166,7 +1168,6 @@ fn continue_operation<E: Effects, M: Movement<E>>(
         }
         if !data.stop
             && formation(state, retained)?.moves_remaining_raw > 0
-            && !legality::is_busy(unit(state, actor)?)
         {
             iteration = iteration.wrapping_add(1);
             continue;
