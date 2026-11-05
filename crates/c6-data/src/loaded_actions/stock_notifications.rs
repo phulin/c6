@@ -117,6 +117,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub(super) research_acquisition: Option<research::acquisition::Binding>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
     pub(crate) completion_inflight: Option<i32>,
+    round_unit_healed: Option<round_end::UnitHealedSignals>,
     round_services: Option<Box<dyn round_dispatch::Services<P> + 'a>>,
     turn_messages: std::collections::VecDeque<round_dispatch::TurnMessage>,
     pub(crate) activation_progress:
@@ -164,6 +165,7 @@ impl<'a, P> Runtime<'a, P> {
             activation_progress: None,
             turn_progress: None,
             completion_inflight: None,
+            round_unit_healed: None,
             round_services: None,
             turn_messages: std::collections::VecDeque::new(),
         })

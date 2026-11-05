@@ -6,6 +6,28 @@ use crate::{
 };
 use c6_core::loaded_state::LoadedState;
 
+/// Current Game.Signals+1518 registration admitted from the actual initial
+/// owner. A nonempty ring requires its ordered concrete handlers.
+pub struct UnitHealedSignals {
+    binding: c6_core::core_player::initialization::WireBinding,
+}
+impl UnitHealedSignals {
+    pub fn from_initial(
+        state: &LoadedState,
+        binding: &c6_core::core_player::initialization::WireBinding,
+        subscription_count: usize,
+    ) -> Result<Self, movement::Error> {
+        if state.binding() != binding || !state.is_pristine() {
+            return Err(movement::Error::Missing("UnitHealed initial binding"));
+        }
+        if subscription_count != 0 {
+            return Err(movement::Error::Missing("UnitHealed ordered handlers"));
+        }
+        Ok(Self {
+            binding: binding.clone(),
+        })
+    }
+}
 pub struct Inputs<'a, 'd, 'r> {
     pub units: round_units::Inputs<'a, 'd, 'r>,
     pub cities: round_cities::Inputs<'a>,
@@ -32,13 +54,22 @@ fn failure(stage: &'static str, cause: impl std::fmt::Debug) -> Error {
 impl<P> crate::unit_placement_state::round::Effects for Runtime<'_, P> {
     fn unit_healed(
         &mut self,
-        _: &mut LoadedState,
+        state: &mut LoadedState,
         _: (i32, u32),
         _: c6_core::unit_healing::UnitHealedSignal,
     ) -> Result<(), movement::Error> {
-        Err(movement::Error::Missing(
-            "round positive UnitHealed consumers",
-        ))
+        let signals = self
+            .round_unit_healed
+            .as_ref()
+            .ok_or(movement::Error::Missing(
+                "round current UnitHealed registrations",
+            ))?;
+        if state.binding() != &signals.binding {
+            return Err(movement::Error::Missing("round UnitHealed binding"));
+        }
+        // HealUnit2bf5090 dispatches even when requested healing clamps to
+        // actual zero. The admitted current empty ring has no callbacks/RNG.
+        Ok(())
     }
 }
 impl<P> round_cities::Effects for Runtime<'_, P> {
@@ -76,6 +107,9 @@ impl<P> unit_kill::objects::Services<Runtime<'_, P>> for Cleanup<'_> {
     }
 }
 impl<P> Runtime<'_, P> {
+    pub fn bind_round_unit_healed(&mut self, signals: UnitHealedSignals) {
+        self.round_unit_healed = Some(signals);
+    }
     /// Units (including their gathered immediate Destroy list), then Cities,
     /// then Culture. A failure retains the executed prefix and actual owners.
     pub fn end_player_round(
