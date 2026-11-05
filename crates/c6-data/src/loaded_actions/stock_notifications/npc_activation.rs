@@ -16,6 +16,35 @@ use c6_core::{
 };
 pub use core::Kind;
 
+/// Highest ordinary action boundary after nonhuman activation. Research
+/// indices belong only to research choices; ordinary actions use their own
+/// public legality APIs, including turn_completion for EndTurn.
+pub fn player_actions(
+    state: &LoadedState,
+    runtime: &loaded::Runtime,
+    owner: i32,
+) -> Result<ActivationOutcome, Error> {
+    if runtime.failed() || runtime.pending_player_effect()
+        != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
+        || core::controller(runtime).is_none_or(|frame| frame.owner() != owner)
+        || core::pending(runtime).is_some()
+        || !state
+            .turn_active(owner)
+            .map_err(|_| Error::Unsupported("NPC current activity"))?
+        || state
+            .player_slot_status(owner)
+            .map_err(|_| Error::Unsupported("NPC current role"))?
+            == 3
+    {
+        return Err(Error::Unsupported("NPC player-action continuation differs"));
+    }
+    Ok(ActivationOutcome::Choice(PolicyChoice {
+        player: owner,
+        kind: PolicyKind::PlayerActions,
+        options: Vec::new(),
+    }))
+}
+
 /// Required source leaves; unknown subscribers have no successful default.
 pub trait Leaves<P> {
     fn callbacks(&self) -> &[Kind];
@@ -81,7 +110,7 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         runtime: &mut loaded::Runtime,
         owner: i32,
     ) -> Result<ActivationOutcome, Error> {
-        if runtime.pending_player_effect()
+        if runtime.failed() || runtime.pending_player_effect()
             != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
             || core::controller(runtime).is_none_or(|frame| frame.owner() != owner)
             || core::pending(runtime).is_some()
