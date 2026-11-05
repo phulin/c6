@@ -266,24 +266,29 @@ impl<P> Context<'_, '_, P> {
         formations: &[u32],
     ) -> Result<(), Error> {
         self.through_social(owner)?;
-        super::cityless_managers::before_units(
-            self.state,
-            self.managers_definitions,
-            self.managers_queries,
-            self.managers,
-            self.backend,
-            owner,
-        )
-        .map_err(|e| failure("diplomacy and player managers", e))?;
-        stock_notifications::maintenance::Context {
-            state: self.state,
-            backend: self.backend,
-            definitions: self.maintenance_definitions,
+        // DoTurnActivate2ba0baa branches over Research through Stats for
+        // the actual BARBARIAN civilization level, then rejoins at Eras.
+        let barbarian = self.is_barbarian(owner)?;
+        if !barbarian {
+            super::cityless_managers::before_units(
+                self.state,
+                self.managers_definitions,
+                self.managers_queries,
+                self.managers,
+                self.backend,
+                owner,
+            )
+            .map_err(|e| failure("diplomacy and player managers", e))?;
+            stock_notifications::maintenance::Context {
+                state: self.state,
+                backend: self.backend,
+                definitions: self.maintenance_definitions,
+            }
+            .units(owner, units, major)
+            .map_err(|e| failure("unit resource activation", e))?;
+            super::cityless_managers::after_units(self.state, self.managers_definitions, owner)
+                .map_err(|e| failure("governors and trade", e))?;
         }
-        .units(owner, units, major)
-        .map_err(|e| failure("unit resource activation", e))?;
-        super::cityless_managers::after_units(self.state, self.managers_definitions, owner)
-            .map_err(|e| failure("governors and trade", e))?;
         let player = self
             .state
             .retained()
@@ -320,9 +325,11 @@ impl<P> Context<'_, '_, P> {
                 backend: self.backend,
                 definitions: self.maintenance_definitions,
             };
-            maintenance
-                .stats(owner, units, Some(&city_order))
-                .map_err(|e| failure("statistics", e))?;
+            if !barbarian {
+                maintenance
+                    .stats(owner, units, Some(&city_order))
+                    .map_err(|e| failure("statistics", e))?;
+            }
             maintenance.eras(owner).map_err(|e| failure("eras", e))?;
         }
         placement_prelude(self.state, self.forced_rebase, owner)?;
@@ -367,9 +374,26 @@ impl<P> Context<'_, '_, P> {
         )
         .map_err(|e| failure("turn activation Congress signal", e))
     }
+    fn is_barbarian(&self, owner: i32) -> Result<bool, Error> {
+        // Player.IsBarbarian2b31590 compares GetLevel with this hash.
+        self.social_queries
+            .levels
+            .iter()
+            .find(|r| r.0 == owner)
+            .map(|r| r.1 == 0xd959ec24)
+            .ok_or_else(|| {
+                failure(
+                    "activation civilization level",
+                    "current configuration owner",
+                )
+            })
+    }
     /// The next ordered group is Religion, Great People, Influence and Quests.
     pub fn through_social(&mut self, owner: i32) -> Result<(), Error> {
         self.through_culture(owner)?;
+        if self.is_barbarian(owner)? {
+            return Ok(());
+        }
         stock_notifications::social::run(
             self.state,
             self.backend,
@@ -387,6 +411,9 @@ impl<P> Context<'_, '_, P> {
         self.scoring
             .calculate(self.state, self.scoring_definitions, owner, false)
             .map_err(|e| failure("score", e))?;
+        if self.is_barbarian(owner)? {
+            return Ok(());
+        }
         {
             let mut effects = stock_notifications::research::Effects::new(
                 self.backend,
