@@ -5,6 +5,7 @@ pub mod deactivation;
 pub mod activation;
 pub mod round_units;
 pub mod round_cities;
+pub mod round_trade;
 pub mod round_climate;
 use crate::{
     loaded_actions::{command_units, reporting},
