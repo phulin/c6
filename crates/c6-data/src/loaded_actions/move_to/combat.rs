@@ -6,6 +6,37 @@ use c6_core::loaded_state::LoadedState;
 
 pub trait Combat<E: OperationReports> {
     type Error;
+    fn range_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _sight: &unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _visible_only: bool,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn range_test(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn range_attack(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _effects: &mut E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
     fn test(
         &mut self,
         state: &mut LoadedState,
@@ -34,6 +65,43 @@ pub enum Error<M, C> {
 }
 impl<E: OperationReports, M: Movement<E>, C: Combat<E>> Movement<E> for WithCombat<M, C> {
     type Error = Error<M::Error, C::Error>;
+    fn range_can_start(
+        &mut self,
+        state: &LoadedState,
+        sight: &unit_sight_state::Runtime,
+        actor: (i32, u32),
+        destination: PlotCoord,
+        visible_only: bool,
+        effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        self.combat
+            .range_can_start(state, sight, actor, destination, visible_only, effects)
+            .map_err(Error::Combat)
+    }
+    fn range_test(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &unit_sight_state::Runtime,
+        actor: (i32, u32),
+        destination: PlotCoord,
+        effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        self.combat
+            .range_test(state, sight, actor, destination, effects)
+            .map_err(Error::Combat)
+    }
+    fn range_attack(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut unit_sight_state::Runtime,
+        actor: (i32, u32),
+        destination: PlotCoord,
+        effects: &mut E,
+    ) -> Result<Option<bool>, Self::Error> {
+        self.combat
+            .range_attack(state, sight, actor, destination, effects)
+            .map_err(Error::Combat)
+    }
     fn found_city_rules(&self) -> Option<(&crate::found_city::Definitions, &crate::Rules)> {
         self.movement.found_city_rules()
     }

@@ -98,7 +98,7 @@ pub struct Inputs<'a, 'd, 'r> {
     pub callbacks: &'a resolve::completion::stock::Inputs<'a, 'd, 'r>,
     pub death_report_status: u32,
 }
-struct Reports<'a, E>(&'a mut E);
+pub(crate) struct Reports<'a, E>(pub(crate) &'a mut E);
 impl<E: loaded_upkeep::OperationReports> loaded_upkeep::OperationReports for Reports<'_, E> {
     type Error = E::Error;
     fn preflight_operation_report(

@@ -219,6 +219,8 @@ pub(super) enum HandlerAuthority<'a, 'capture> {
     DecoderBinding,
     RuntimeBinding(&'a handlers::BoundHandlers<'capture>),
 }
+type RangeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, c6_core::unit::PlotCoord, bool, &mut Q) -> Result<bool, Error>
+    + 'a;
 struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
     expected_actor: &'a Unit,
@@ -226,6 +228,7 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     external: &'q mut Q,
     authority: HandlerAuthority<'h, 'capture>,
     found_city: Option<(&'a crate::found_city::Definitions, &'a crate::Rules)>,
+    range_handler: Option<&'q mut RangeHandler<'q, Q>>,
 }
 pub(super) trait TypedParameters {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
@@ -453,6 +456,23 @@ where
                 "script changed Unit before world-backed placement; effects retained",
             ));
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::RANGE_ATTACK_HASH) {
+            let destination = s
+                .operation
+                .parameters
+                .location()?
+                .ok_or(Error::Unsupported("RangeAttack target parameters"))?;
+            return self
+                .range_handler
+                .as_mut()
+                .ok_or(Error::Unsupported("RangeAttack handler composition"))?(
+                self.state,
+                s.unit,
+                destination,
+                visible_only,
+                self.external,
+            );
+        }
         if h.identity().operation_hash == OperationHash(c6_core::unit::FOUND_CITY_HASH) {
             let (definitions, rules) = self
                 .found_city
@@ -586,6 +606,7 @@ pub(super) fn can_start_for_actor<
             external,
             authority,
             found_city: None,
+            range_handler: None,
         },
     );
     if (actor.e_owner, actor.id) != identity {
@@ -632,6 +653,24 @@ pub fn can_start_typed_with_found_city<
     operation: &mut ManagerOperation<OperationParameters>,
     found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
 ) -> Result<bool, Error> {
+    can_start_typed_with_range(
+        state, reference, inputs, external, handlers, operation, found_city, None,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn can_start_typed_with_range<
+    'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &'q mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+    found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
+    range_handler: Option<&'q mut RangeHandler<'q, Q>>,
+) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(Error::HandlerObservation)?;
@@ -654,6 +693,7 @@ pub fn can_start_typed_with_found_city<
             external,
             authority: HandlerAuthority::RuntimeBinding(handlers),
             found_city,
+            range_handler,
         },
     );
     if (actor.e_owner, actor.id) != identity {

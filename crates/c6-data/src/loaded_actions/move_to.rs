@@ -120,6 +120,37 @@ pub trait Movement<E: OperationReports> {
     ) -> Result<Option<bool>, Self::Error> {
         Ok(None)
     }
+    fn range_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _sight: &unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _visible_only: bool,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn range_test(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn range_attack(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+        _effects: &mut E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
     fn fortify_turn_max(&self) -> i32;
     fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error>;
     fn alert_enemy_visible(
@@ -257,7 +288,10 @@ fn emit<E: OperationReports, M>(
     Ok(())
 }
 fn target<E, M>(node: &OperationNode) -> Result<(PlotCoord, u32), Error<E, M>> {
-    if node.operation_hash != MOVE_TO_HASH {
+    if !matches!(
+        node.operation_hash,
+        MOVE_TO_HASH | c6_core::unit::RANGE_ATTACK_HASH
+    ) {
         return Err(Error::Unsupported("callback selected another handler"));
     }
     match node.parameters {
@@ -375,7 +409,7 @@ fn enemy_at<E, M>(state: &LoadedState, location: PlotCoord) -> Result<bool, Erro
     }
     Ok(false)
 }
-fn friendly_count<E, M>(
+pub(crate) fn friendly_count<E, M>(
     state: &LoadedState,
     actor: (i32, u32),
     inputs: &Inputs<'_, '_>,
@@ -476,6 +510,39 @@ where
     E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
+    execute_location_manager(
+        state,
+        actor,
+        request,
+        MOVE_TO_HASH,
+        inputs,
+        handlers,
+        runtime,
+        effects,
+        movement,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+fn execute_location_manager<E, M>(
+    state: &mut LoadedState,
+    actor: (i32, u32),
+    request: Request,
+    hash: u32,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
+) -> Result<Applied, Error<EffectError<E>, M::Error>>
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
+    if hash == c6_core::unit::RANGE_ATTACK_HASH && (request.modifiers != 0 || request.append) {
+        return Err(Error::Unsupported(
+            "RangeAttack modifiers/append continuation",
+        ));
+    }
     if request.from_user || request.modifiers & !0x10 != 0 {
         return Err(Error::Unsupported("MoveTo fromUser/modifier continuation"));
     }
@@ -483,7 +550,7 @@ where
         .preflight(state, actor, request)
         .map_err(Error::Movement)?;
     let runtime_id = handlers
-        .runtime_id(MOVE_TO_HASH)
+        .runtime_id(hash)
         .map_err(|e| Error::Query(super::Error::HandlerObservation(e)))?
         .0;
     handlers
@@ -495,7 +562,7 @@ where
     }
     let u = unit(state, actor)?;
     let node = OperationNode {
-        operation_hash: MOVE_TO_HASH,
+        operation_hash: hash,
         directive: request.directive,
         flags: request.flags,
         push_turn: state.retained().core.current_turn,
@@ -584,17 +651,50 @@ where
                 parameters: node.parameters.clone(),
             };
             let reference = UnitReference::from_component_id(identity(state, actor)?);
-            if super::can_start_typed_with_found_city(
-                state,
-                reference,
-                inputs,
-                effects,
-                handlers,
-                &mut operation,
-                movement.found_city_rules(),
-            )
-            .map_err(Error::Query)?
-            {
+            let is_range = node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH;
+            let allowed = if is_range {
+                let mut range_handler = |state: &LoadedState,
+                                         unit: &Unit,
+                                         destination: PlotCoord,
+                                         visible_only: bool,
+                                         effects: &mut E| {
+                    movement
+                        .range_can_start(
+                            state,
+                            runtime.visibility,
+                            (unit.e_owner, unit.id),
+                            destination,
+                            visible_only,
+                            effects,
+                        )
+                        .map_err(|_| super::Error::Unsupported("RangeAttack CanStart dependency"))?
+                        .ok_or(super::Error::Unsupported(
+                            "RangeAttack CanStart composition",
+                        ))
+                };
+                super::can_start_typed_with_range(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    Some(&mut range_handler),
+                )
+            } else {
+                super::can_start_typed_with_found_city(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    movement.found_city_rules(),
+                )
+            }
+            .map_err(Error::Query)?;
+            if allowed {
                 if operation.runtime_id != id
                     || operation.parameters != node.parameters
                     || operation.flags != node.flags
@@ -643,6 +743,8 @@ where
                             .i_operation_timer = 1;
                     }
                     data.delete
+                } else if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
+                    false
                 } else {
                     let (destination, modifiers) = target(&node)?;
                     if c6_core::movement_world::plot_at(state.world().map(), destination).is_ok()
@@ -713,6 +815,21 @@ fn update<E: Effects, M: Movement<E>>(
     movement: &mut M,
 ) -> Result<(), Error<EffectError<E>, M::Error>> {
     let node = front(state, actor)?;
+    if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
+        let (destination, _) = target(&node)?;
+        if movement
+            .range_test(state, runtime.visibility, actor, destination, effects)
+            .map_err(Error::Movement)?
+            .ok_or(Error::Unsupported("RangeAttack Test composition"))?
+        {
+            let _ = movement
+                .range_attack(state, runtime.visibility, actor, destination, effects)
+                .map_err(Error::Movement)?
+                .ok_or(Error::Unsupported("RangeAttack execution composition"))?;
+            data.delete = true;
+        }
+        return Ok(());
+    }
     if node.operation_hash == c6_core::unit::ALERT_HASH {
         return alert::update(state, actor, data, effects, movement);
     }
@@ -917,6 +1034,8 @@ fn continue_operation<E: Effects, M: Movement<E>>(
                 alert::check_complete(state, actor, &mut data, runtime, effects, movement)?;
             } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
                 trade::check_complete(state, actor, &node, &mut data, movement)?;
+            } else if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
+                data.delete = true;
             } else {
                 let (destination, _) = target(&node)?;
                 if unit(state, actor)?.k_location == destination {
@@ -1297,9 +1416,38 @@ where
         movement,
     )
 }
+#[allow(clippy::too_many_arguments)]
+pub fn request_range_active_player<E, M>(
+    state: &mut LoadedState,
+    issuer: i32,
+    actor: (i32, u32),
+    request: Request,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
+) -> Result<RequestOutcome, Error<EffectError<E>, M::Error>>
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+    M: Movement<E>,
+{
+    request_operation_active_player(
+        state,
+        issuer,
+        actor,
+        OperationRequest::RangeAttack(request),
+        inputs,
+        handlers,
+        runtime,
+        effects,
+        movement,
+    )
+}
 #[derive(Clone, Copy, Debug)]
 enum OperationRequest {
     MoveTo(Request),
+    RangeAttack(Request),
     FoundCity,
 }
 #[allow(clippy::too_many_arguments)]
@@ -1376,6 +1524,17 @@ where
     match request {
         OperationRequest::MoveTo(request) => execute_manager(
             state, actor, request, inputs, handlers, runtime, effects, movement,
+        ),
+        OperationRequest::RangeAttack(request) => execute_location_manager(
+            state,
+            actor,
+            request,
+            c6_core::unit::RANGE_ATTACK_HASH,
+            inputs,
+            handlers,
+            runtime,
+            effects,
+            movement,
         ),
         OperationRequest::FoundCity => {
             execute_found_city_manager(state, actor, inputs, handlers, runtime, effects, movement)
@@ -1465,6 +1624,40 @@ where
         issuer,
         actor,
         OperationRequest::MoveTo(request),
+        inputs,
+        handlers,
+        runtime,
+        movement,
+        budget,
+    )
+}
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn execute_range_active_request<B, M>(
+    context: &mut super::current_aftermath::Context<'_, B>,
+    issuer: i32,
+    actor: (i32, u32),
+    request: Request,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    movement: &mut M,
+    budget: &mut usize,
+) -> Result<
+    ActionOutcome,
+    ActionError<EffectError<B>, M::Error, <B as super::current_aftermath::Backend>::ObserverError>,
+>
+where
+    B: Effects
+        + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>
+        + super::current_aftermath::Backend
+        + c6_core::diplomacy_manager::ProcessStatement<LoadedState>,
+    M: Movement<B>,
+{
+    execute_operation_active_request(
+        context,
+        issuer,
+        actor,
+        OperationRequest::RangeAttack(request),
         inputs,
         handlers,
         runtime,

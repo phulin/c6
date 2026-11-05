@@ -116,6 +116,42 @@ pub fn select_melee<C: MeleeContext>(
     Ok(best)
 }
 
+/// Nonnull attacker flags1/17: additionally require IsCombat before visibility.
+pub fn select_ranged<C: MeleeContext>(
+    c: &mut C,
+    actor_owner: i32,
+    exclude_air: bool,
+) -> Result<Option<C::Unit>, C::Error> {
+    let mut best = None;
+    let mut index = 0;
+    while index < c.candidate_count()? {
+        if let Some(unit) = c.resolve(index)? {
+            let mut eligible = false;
+            if !c.delayed_death(unit)? && c.owner(unit)? != actor_owner {
+                let owner = c.owner(unit)?;
+                eligible = c.is_enemy(owner, actor_owner)?
+                    && is_combat(c, unit)?
+                    && c.visible(unit)?
+                    && (!exclude_air || c.domain(unit)? != 1);
+            }
+            if eligible {
+                if c.attacker_religious_strength()? > 0 && c.religious_strength(unit)? > 0 {
+                    return Ok(Some(unit));
+                }
+                let replace = match best {
+                    None => true,
+                    Some(old) => c.combat_false(unit)? > c.combat_false(old)?,
+                };
+                if replace {
+                    best = Some(unit)
+                }
+            }
+        }
+        index += 1;
+    }
+    Ok(best)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,6 +304,21 @@ mod tests {
         assert_eq!(select_melee(&mut c, 0, false), Ok(Some(1)));
         assert!(!c.calls.iter().any(|(_, q)| *q == "combat"));
         assert!(!c.calls.contains(&(2, "resolve")));
+    }
+    #[test]
+    fn ranged_requires_combat_before_visibility_and_filters_air() {
+        let mut c = C::new(&[[0, 0, 0], [12, 0, 0], [12, 0, 0]]);
+        for unit in c.units.iter_mut().flatten() {
+            unit.owner = 1;
+        }
+        c.fail = Some((0, "visible"));
+        c.domain[1] = 1;
+        assert_eq!(select_ranged(&mut c, 0, true), Ok(Some(2)));
+        assert!(!c.calls.contains(&(0, "visible")));
+        assert!(c.calls.contains(&(0, "ranged")));
+        assert!(c.calls.contains(&(0, "bombard")));
+        c.calls.clear();
+        assert_eq!(select_ranged(&mut c, 0, false), Ok(Some(1)));
     }
     impl Context for C {
         type Error = &'static str;

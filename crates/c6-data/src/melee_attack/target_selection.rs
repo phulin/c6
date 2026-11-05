@@ -287,7 +287,7 @@ impl MeleeContext for Selector<'_, '_> {
     }
 }
 
-fn attack_after_moving(
+pub(crate) fn ranged_attack_after_moving(
     state: &LoadedState,
     defs: &Definitions,
     inputs: &Inputs<'_>,
@@ -332,7 +332,7 @@ struct Target<'s, 'a> {
 impl kernel::Context for Target<'_, '_> {
     type Error = Error;
     fn attack_after_moving(&mut self) -> Result<bool, Error> {
-        attack_after_moving(self.state, self.defs, self.inputs, self.actor)
+        ranged_attack_after_moving(self.state, self.defs, self.inputs, self.actor)
     }
 
     fn has_moved(&mut self) -> Result<bool, Error> {
@@ -448,7 +448,7 @@ impl kernel::DistrictContext for DistrictTarget<'_, '_> {
             .domain)
     }
     fn attack_after_moving(&mut self) -> Result<bool, Error> {
-        attack_after_moving(self.state, self.defs, self.inputs, self.actor)
+        ranged_attack_after_moving(self.state, self.defs, self.inputs, self.actor)
     }
     fn has_moved(&mut self) -> Result<bool, Error> {
         moves::unit_has_moved(
@@ -621,6 +621,28 @@ fn ordinary_defender(
     c6_core::combat_defender::select_melee(&mut selector, u.e_owner, exclude_air)
 }
 
+pub(crate) fn ranged_defender(
+    state: &LoadedState,
+    inputs: &Inputs<'_>,
+    actor_id: UnitReference,
+    at: PlotCoord,
+) -> Result<Option<UnitReference>, Error> {
+    let exclude_air = !super::can_attack_domain(state, inputs.combat, actor_id, 1, 0)
+        .map_err(|e| Error::Stage(Box::new(e)))?;
+    let u = lookup(state, actor_id)?;
+    // GetBestDefender captures bypass/layer before scanning; these profiles do
+    // not use bypass, but the current actual location layer remains mandatory.
+    let _bypass = u.k_combat_modifers.b_bypass_combat_units;
+    let layer = placement::unit_layer(state.world(), u).map_err(Error::Placement)?;
+    let mut selector = Selector {
+        state,
+        base: combat_defender::Current::new(state, inputs.combat, at, layer),
+        inputs,
+        actor: actor_id,
+    };
+    c6_core::combat_defender::select_ranged(&mut selector, u.e_owner, exclude_air)
+}
+
 /// AttackInto's own selection, 28c97b7/28c9baa..28c9c9e. Ordinary execution
 /// uses flags9/19 too; it does NOT repeat TestAttackInto readiness/CanAttackTarget.
 /// The returned Unit must be retained through Clear and generation callbacks.
@@ -668,4 +690,22 @@ pub fn test_attack_into_with_placement(
             finish(placement.current_state(), defs, inputs, next)
         }
     }
+}
+
+/// Ordinary RANGED CanAttackTarget branch, after fresh GetBestDefender flags1/17.
+pub(crate) fn can_attack_ranged(state:&LoadedState, defs:&Definitions, inputs:&Inputs<'_>, actor:UnitReference, defender:UnitReference)->Result<bool,Error>{
+    use kernel::Context as _;
+    let mut c=Target {state,defs,inputs,actor,defender};
+    if !c.attack_after_moving()? && c.has_moved()? {return Ok(false);}
+    let _=c.attacker_religious_strength()?;
+    if !c.is_combat()? || (!c.can_target_air()? && c.defender_domain()?==1) {return Ok(false);}
+    if c.ranged()?<=0 && c.bombard()?<=0 {return Ok(false);}
+    let target=lookup(state,defender)?;
+    let class=inputs.combat.formation_class(state,target)?;
+    // Ordinary combat-class units take the true gate. Civilian/support and
+    // embarked bypass/stack queries are separate reached continuations.
+    if class==1 || class==2 || moves::unit_is_embarked(target) {
+        return Err(Error::Unsupported("ranged civilian/support/embarked target"));
+    }
+    c.can_attack_player()
 }

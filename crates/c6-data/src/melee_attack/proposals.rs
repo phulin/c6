@@ -52,6 +52,20 @@ impl<'a, E: Effects> Context<'a, E> {
         defender: UnitReference,
         location: c6_core::unit::PlotCoord,
     ) -> Result<(u32, kernel::Handle), kernel::DispatchError<Error<E::Error>>> {
+        self.propose_units_with_type(
+            attacker,
+            defender,
+            location,
+            c6_core::melee_attack::results::MELEE,
+        )
+    }
+    pub(crate) fn propose_units_with_type(
+        &mut self,
+        attacker: UnitReference,
+        defender: UnitReference,
+        location: c6_core::unit::PlotCoord,
+        combat_type: u32,
+    ) -> Result<(u32, kernel::Handle), kernel::DispatchError<Error<E::Error>>> {
         // Native caller already holds these objects. Resolve the real current
         // Rust counterparts before the first registry mutation; no query result
         // or imported native strength/legality answer is substituted.
@@ -59,7 +73,8 @@ impl<'a, E: Effects> Context<'a, E> {
             .map_err(|e| kernel::DispatchError::Context(Error::Actor(e)))?;
         super::actor(self.state, defender)
             .map_err(|e| kernel::DispatchError::Context(Error::Actor(e)))?;
-        let proposal = kernel::Proposal::melee_units(attacker, defender, Some(location));
+        let mut proposal = kernel::Proposal::melee_units(attacker, defender, Some(location));
+        proposal.combat_type = combat_type;
         kernel::propose(self, proposal)
     }
 }

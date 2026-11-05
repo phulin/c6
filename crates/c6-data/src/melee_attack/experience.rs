@@ -31,6 +31,7 @@ pub struct Definitions {
     next_level_multiplier: i32,
     bonuses: LinuxDefinitionRegistry,
     rules: kernel::Rules,
+    ranged_base: i32,
 }
 impl Definitions {
     pub fn from_rules(
@@ -95,6 +96,7 @@ impl Definitions {
             next_level_multiplier: p("EXPERIENCE_NEEDED_FOR_NEXT_LEVEL_MULTIPLIER")?,
             bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
                 .map_err(Error::Definitions)?,
+            ranged_base: p("EXPERIENCE_COMBAT_RANGED")?,
             rules: kernel::Rules {
                 maximum_barbarian_level: p("EXPERIENCE_MAX_BARB_LEVEL")?,
                 barbarian_soft_cap: p("EXPERIENCE_BARB_SOFT_CAP")?,
@@ -113,6 +115,7 @@ struct Context<'a> {
     levels: &'a [(i32, u32)],
     attacker: UnitReference,
     defender: UnitReference,
+    ranged: bool,
 }
 impl Context<'_> {
     fn unit(&self, side: kernel::Side) -> Result<&c6_core::unit::Unit, Error> {
@@ -222,9 +225,15 @@ impl kernel::Context for Context<'_> {
             .wrapping_add(attack))
     }
     fn combat(&mut self, side: kernel::Side) -> Result<i32, Error> {
-        self.formation
-            .combat(self.state, self.unit(side)?)
-            .map_err(Error::Combat)
+        if self.ranged && side == kernel::Side::Attacker {
+            self.formation
+                .ranged(self.state, self.unit(side)?)
+                .map_err(Error::Combat)
+        } else {
+            self.formation
+                .combat(self.state, self.unit(side)?)
+                .map_err(Error::Combat)
+        }
     }
 }
 /// Defender's award is evaluated before the attacker's, matching generation.
@@ -237,6 +246,29 @@ pub fn melee(
     defender: UnitReference,
     defender_killed: bool,
 ) -> Result<(i32, i32), Error> {
+    awards(
+        state,
+        defs,
+        formation,
+        levels,
+        attacker,
+        defender,
+        defender_killed,
+        false,
+    )
+}
+/// Source ranged XP uses RangedCombat in the ratio and EXPERIENCE_COMBAT_RANGED.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn awards(
+    state: &LoadedState,
+    defs: &Definitions,
+    formation: &formation_rules::Definitions,
+    levels: &[(i32, u32)],
+    attacker: UnitReference,
+    defender: UnitReference,
+    defender_killed: bool,
+    ranged: bool,
+) -> Result<(i32, i32), Error> {
     if state.binding().inputs != defs.identities {
         return Err(Error::Binding);
     }
@@ -247,9 +279,19 @@ pub fn melee(
         levels,
         attacker,
         defender,
+        ranged,
     };
-    let defense = kernel::melee(&mut c, defs.rules, kernel::Side::Defender, defender_killed)?;
-    let attack = kernel::melee(&mut c, defs.rules, kernel::Side::Attacker, defender_killed)?;
+    let mut rules = defs.rules;
+    if ranged {
+        rules.base = defs.ranged_base;
+    }
+    let defense = kernel::melee(
+        &mut c,
+        rules,
+        kernel::Side::Defender,
+        !ranged && defender_killed,
+    )?;
+    let attack = kernel::melee(&mut c, rules, kernel::Side::Attacker, defender_killed)?;
     Ok((attack, defense))
 }
 

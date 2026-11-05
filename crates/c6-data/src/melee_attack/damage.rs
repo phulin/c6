@@ -316,3 +316,37 @@ pub fn exchange_with_draws(
     )?;
     Ok((result, draws))
 }
+
+/// One original CalculateUnitVsUnitDamage call. Ranged combat never executes
+/// the melee exchange's retaliation call or embarked-defender override.
+pub(crate) fn single_with_draws(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    defender: c6_core::map::UnitReference,
+    attacker_strength: kernel::Strength,
+    defender_strength: kernel::Strength,
+) -> Result<(i32, Vec<RandomDraw>), Error> {
+    use kernel::ExchangeContext as _;
+    let pending = prepare(
+        state,
+        definitions,
+        defender_strength,
+        attacker_strength,
+        false,
+    )?;
+    let mut draws = Vec::new();
+    let mut context = ExchangeContext {
+        state,
+        definitions,
+        defender,
+        draws: &mut draws,
+    };
+    let amount = match pending {
+        kernel::Next::FixedDamage(amount) => amount,
+        kernel::Next::RequiresCalculateDamage {
+            parameters,
+            average,
+        } => context.calculate_damage(&parameters, average)?,
+    };
+    Ok((amount, draws))
+}

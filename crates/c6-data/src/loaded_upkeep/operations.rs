@@ -351,7 +351,7 @@ pub fn pop_front_operation<E: OperationReports>(
                 set_activity(state, actor, effects, unit_operations_clear::ACTIVITY_AWAKE)?;
             }
         }
-        SKIP_TURN_HASH | FORTIFY_HASH => {}
+        SKIP_TURN_HASH | FORTIFY_HASH | c6_core::unit::RANGE_ATTACK_HASH => {}
         MOVE_TO_HASH => {
             complete_unit_movement(state, owner, id, effects)?;
         }

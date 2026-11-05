@@ -20,6 +20,7 @@ pub use state::*;
 pub const SKIP_TURN_HASH: u32 = 0x2c681908;
 pub const FOUND_CITY_HASH: u32 = 0x5733ac6c;
 pub const MOVE_TO_HASH: u32 = 0x580f2f68;
+pub const RANGE_ATTACK_HASH: u32 = 0x09d0292a;
 pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
 pub const ALERT_HASH: u32 = 0xe547bc17;
 pub const FORTIFY_HASH: u32 = 0xd3a6f7e8;
@@ -31,6 +32,7 @@ pub const SPY_SABOTAGE_PRODUCTION_HASH: u32 = 0x09c1ecc1;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OperationParameters {
     None,
+    /// Native SharedParameters::SingleLocation, also used by RangeAttack.
     MoveTo {
         location: PlotCoord,
         modifiers: u32,
@@ -52,7 +54,7 @@ fn parameter_kind(hash: u32) -> Result<u8, Error> {
         | SPY_DISRUPT_ROCKETRY_HASH
         | SPY_GAIN_SOURCES_HASH
         | SPY_SABOTAGE_PRODUCTION_HASH => Ok(0),
-        MOVE_TO_HASH => Ok(1),
+        MOVE_TO_HASH | RANGE_ATTACK_HASH => Ok(1),
         MAKE_TRADE_ROUTE_HASH => Ok(2),
         _ => Err(Error::UnsupportedHandler(hash)),
     }
@@ -634,6 +636,37 @@ mod tests {
         let bytes = empty.encode(limits).unwrap();
         assert_eq!(bytes.len(), 52);
         assert_eq!(Formation::decode(&bytes, limits).unwrap(), empty);
+    }
+    #[test]
+    fn ranged_queue_preserves_single_location_and_operation_hash() {
+        let bytes: Vec<u8> = [
+            1u32,
+            1,
+            RANGE_ATTACK_HASH,
+            2,
+            u32::MAX,
+            0,
+            1,
+            0x6b25012e,
+            u32::MAX,
+            1,
+            18,
+            13,
+            0,
+        ]
+        .into_iter()
+        .flat_map(u32::to_le_bytes)
+        .collect();
+        let queue = OperationQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(queue.nodes[0].operation_hash, RANGE_ATTACK_HASH);
+        assert_eq!(
+            queue.nodes[0].parameters,
+            OperationParameters::MoveTo {
+                location: PlotCoord { x: 18, y: 13 },
+                modifiers: 0
+            }
+        );
+        assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
     }
     #[test]
     fn queue_parameter_wire_is_handler_specific_and_preserves_hashes() {

@@ -111,9 +111,18 @@ struct BonusDefinitions {
 }
 impl Definitions {
     /// Shared District garrison query uses this same quantized combat rule.
-    pub fn reduction_for_damage(&self, state: &LoadedState, percent: i32, modifier: i32) -> Result<i32, Error> {
+    pub fn reduction_for_damage(
+        &self,
+        state: &LoadedState,
+        percent: i32,
+        modifier: i32,
+    ) -> Result<i32, Error> {
         self.check(state)?;
-        Ok(kernel::reduction_for_damage(percent, modifier, self.wounded_multiplier))
+        Ok(kernel::reduction_for_damage(
+            percent,
+            modifier,
+            self.wounded_multiplier,
+        ))
     }
     /// Admit the static religion/policy collections needed by later bonus stages.
     /// Their exact target builder SQL orders GovernmentSlots and Policies by rowid.
@@ -555,6 +564,7 @@ struct CurrentAttack<'a> {
     attacker: UnitReference,
     defender: UnitReference,
     proposal_id: u32,
+    ranged: bool,
 }
 impl CurrentAttack<'_> {
     fn unit(&self, id: UnitReference) -> Result<&Unit, Error> {
@@ -620,6 +630,16 @@ impl kernel::AttackContext for CurrentAttack<'_> {
     }
     fn bonus(&mut self, stage: kernel::AttackBonus) -> Result<i32, Error> {
         use kernel::AttackBonus as B;
+        if self.ranged && matches!(stage, B::Amphibious | B::Flanking) {
+            // These helpers reject every non-melee kind before any bonus.
+            // GetFlankingBonus still reads current owner HasCombatAdjacency.
+            if stage == B::Flanking {
+                let _ = self
+                    .players
+                    .has_adjacency(self.state, self.unit(self.attacker)?.e_owner)?;
+            }
+            return Ok(0);
+        }
         match stage {
             B::Amphibious => {
                 amphibious_penalty(self.state, self.attacker, Some(self.defender_plot()?))
@@ -716,7 +736,49 @@ pub fn ordinary_attack_modifier<'a>(
         attacker,
         defender,
         proposal_id,
+        ranged: false,
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn ranged_attack_modifier<'a>(
+    state: &'a LoadedState,
+    definitions: &'a Definitions,
+    combat: &'a crate::formation_rules::Definitions,
+    levels: &'a [(i32, u32)],
+    players: &'a CurrentPlayerCombat<'a>,
+    attacker: UnitReference,
+    defender: UnitReference,
+    proposal_id: u32,
+) -> Result<i32, kernel::AttackError<Error>> {
+    definitions
+        .check(state)
+        .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(e)))?;
+    let total = kernel::ordinary_attack_modifier(&mut CurrentAttack {
+        state,
+        definitions,
+        combat,
+        levels,
+        players,
+        attacker,
+        defender,
+        proposal_id,
+        ranged: true,
+    })?;
+    let attacker_domain = state
+        .unit_runtime(attacker.player(), attacker.id)
+        .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(Error::State(e))))?
+        .domain;
+    let defender_domain = state
+        .unit_runtime(defender.player(), defender.id)
+        .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(Error::State(e))))?
+        .domain;
+    if attacker_domain == 2 && defender_domain == 0 {
+        return Err(kernel::AttackError::Opening(kernel::Error::Query(
+            Error::Missing("ranged land versus sea penalty"),
+        )));
+    }
+    Ok(total)
 }
 
 fn defense_definitions(definitions: &Definitions) -> Result<&DefenseDefinitions, Error> {
@@ -834,6 +896,23 @@ pub fn terrain_bonus(
     attacker_plot: c6_core::unit::PlotCoord,
     attacker: UnitReference,
 ) -> Result<i32, Error> {
+    terrain_bonus_with_kind(
+        state,
+        definitions,
+        defender_plot,
+        attacker_plot,
+        attacker,
+        false,
+    )
+}
+fn terrain_bonus_with_kind(
+    state: &LoadedState,
+    definitions: &Definitions,
+    defender_plot: c6_core::unit::PlotCoord,
+    attacker_plot: c6_core::unit::PlotCoord,
+    attacker: UnitReference,
+    ranged: bool,
+) -> Result<i32, Error> {
     definitions.check(state)?;
     let d = defense_definitions(definitions)?;
     let (_, plot) = c6_core::movement_world::plot_at(state.world().map(), defender_plot)
@@ -875,6 +954,11 @@ pub fn terrain_bonus(
                 }
             }
         }
+    }
+    // GetTerrainBonus only reaches river crossing and attacker movement
+    // modifiers for MELEE; ranged terrain/improvement defense is retained.
+    if ranged {
+        return Ok(value.wrapping_shl(8));
     }
     if let Some(direction) =
         c6_core::movement_world::direction_to(state.world().map(), defender_plot, attacker_plot)
@@ -1004,25 +1088,33 @@ impl kernel::DefenseContext for CurrentDefense<'_> {
                 )
             }
             D::Terrain => {
-                return terrain_bonus(
+                return terrain_bonus_with_kind(
                     self.0.state,
                     self.0.definitions,
                     self.0.unit(self.0.attacker)?.k_location,
                     self.0.unit(self.0.defender)?.k_location,
                     self.0.defender,
+                    self.0.ranged,
                 )
             }
             D::Fortification => {
                 return fortification_bonus(self.0.state, self.0.definitions, self.0.attacker)
             }
             D::Support => {
+                if self.0.ranged {
+                    let _ = self
+                        .0
+                        .players
+                        .has_adjacency(self.0.state, self.0.unit(self.0.attacker)?.e_owner)?;
+                    return Ok(0);
+                }
                 return support_bonus(
                     self.0.state,
                     self.0.definitions,
                     self.0.combat,
                     self.0.players,
                     self.0.attacker,
-                )
+                );
             }
             D::AirSupport | D::AntiAirSupport | D::AntiAirDefense => {
                 return Err(Error::Missing("current air defense support branch"))
@@ -1076,6 +1168,34 @@ pub fn ordinary_defense_modifier<'a>(
         attacker: defender,
         defender: attacker,
         proposal_id,
+        ranged: false,
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn ranged_defense_modifier<'a>(
+    state: &'a LoadedState,
+    definitions: &'a Definitions,
+    combat: &'a crate::formation_rules::Definitions,
+    levels: &'a [(i32, u32)],
+    players: &'a CurrentPlayerCombat<'a>,
+    attacker: UnitReference,
+    defender: UnitReference,
+    proposal_id: u32,
+) -> Result<i32, kernel::DefenseError<Error>> {
+    definitions
+        .check(state)
+        .map_err(kernel::DefenseError::Query)?;
+    kernel::ordinary_defense_modifier(&mut CurrentDefense(CurrentAttack {
+        state,
+        definitions,
+        combat,
+        levels,
+        players,
+        attacker: defender,
+        defender: attacker,
+        proposal_id,
+        ranged: true,
     }))
 }
 

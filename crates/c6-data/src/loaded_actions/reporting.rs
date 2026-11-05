@@ -403,9 +403,10 @@ pub struct Provider<'a> {
     publication_order: Vec<PublicationIndex>,
     skip_turn_handler: Option<i32>,
     move_to_handler: Option<i32>,
+    range_attack_handler: Option<i32>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
-    ability_publications:Vec<AbilityPublication>,
+    ability_publications: Vec<AbilityPublication>,
     movement_publications: Vec<MovementPublication>,
     notification_activated_publications: Vec<NotificationActivatedPublication>,
     move_complete_publications: Vec<MoveCompletePublication>,
@@ -426,9 +427,10 @@ impl<'a> Provider<'a> {
             publication_order: Vec::new(),
             skip_turn_handler: None,
             move_to_handler: None,
+            range_attack_handler: None,
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
-            ability_publications:Vec::new(),
+            ability_publications: Vec::new(),
             movement_publications: Vec::new(),
             notification_activated_publications: Vec::new(),
             move_complete_publications: Vec::new(),
@@ -527,6 +529,21 @@ impl<'a> Provider<'a> {
             authority,
             operations,
             c6_core::unit::MOVE_TO_HASH,
+        )?);
+        Ok(())
+    }
+    /// RangeAttack uses the same inherited SingleLocation map writer.
+    pub fn bind_range_attack_handler(
+        &mut self,
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.range_attack_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::RANGE_ATTACK_HASH,
         )?);
         Ok(())
     }
@@ -761,26 +778,65 @@ impl<'a> Provider<'a> {
     /// the Unit snapshot still executes readiness/property-copy queries here.
     /// Caller must qualify both native consumers, all nested275 and host28
     /// synchronous callbacks before omitting their pure DTO publication.
-    pub fn observe_initial_placement_report(&mut self,state:&LoadedState,reference:UnitReference,report:PlacementReport)->Result<(),Error>{
-        if report.event_hash!=0xb8515a41 || report.identity!=reference.component_id() || !matches!(report.payload,PlacementPayload::Initial{..}){return Err(Error::Provider("initial placement report shape"));}
-        let player=state.retained().players.iter().find(|p|p.header.owner==reference.player()).ok_or(Error::Provider("initial cache Treasury Player"))?;
-        if !player.treasury.gold_diplomatic_deals.is_empty(){return Err(Error::Provider("initial cache Treasury deal-item queries"));}
-        yield_monitor::warm_route_domain(state).map_err(|_|Error::Provider("initial cache Treasury cold route effects"))?;
-        self.observe_unit_snapshot(state,reference).map(|_|())
+    pub fn observe_initial_placement_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        report: PlacementReport,
+    ) -> Result<(), Error> {
+        if report.event_hash != 0xb8515a41
+            || report.identity != reference.component_id()
+            || !matches!(report.payload, PlacementPayload::Initial { .. })
+        {
+            return Err(Error::Provider("initial placement report shape"));
+        }
+        let player = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == reference.player())
+            .ok_or(Error::Provider("initial cache Treasury Player"))?;
+        if !player.treasury.gold_diplomatic_deals.is_empty() {
+            return Err(Error::Provider("initial cache Treasury deal-item queries"));
+        }
+        yield_monitor::warm_route_domain(state)
+            .map_err(|_| Error::Provider("initial cache Treasury cold route effects"))?;
+        self.observe_unit_snapshot(state, reference).map(|_| ())
     }
     ///9deb82e7 routes through the ordinary Unit update queries; the host22
     /// translator copies identity/coordinate. Current callback qualification is
     /// the caller's responsibility, as for the other report entry points.
-    pub fn observe_teleported_report(&mut self,state:&LoadedState,reference:UnitReference,report:PlacementReport)->Result<(),Error>{
-        if report.event_hash!=0x9deb82e7 || report.identity!=reference.component_id() || !matches!(report.payload,PlacementPayload::Coordinate(_)){return Err(Error::Provider("teleported report shape"));}
-        self.observe_unit_snapshot(state,reference).map(|_|())
+    pub fn observe_teleported_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        report: PlacementReport,
+    ) -> Result<(), Error> {
+        if report.event_hash != 0x9deb82e7
+            || report.identity != reference.component_id()
+            || !matches!(report.payload, PlacementPayload::Coordinate(_))
+        {
+            return Err(Error::Provider("teleported report shape"));
+        }
+        self.observe_unit_snapshot(state, reference).map(|_| ())
     }
     /// Stock host36 copies the visible state, initial-placement flag and Unit
     /// identity. In the caller-qualified absent-native-consumer domain it has
     /// no gameplay query or RNG effect; queued presentation DTOs are omitted.
-    pub fn observe_visibility_report(&mut self,state:&LoadedState,report:PlacementReport)->Result<(),Error>{
-        if state.binding()!=&self.definitions.binding{return Err(Error::ConfigurationIdentity);}
-        if report.event_hash!=0xc1300ee7 || report.identity.component_type!=1 || !matches!(report.payload,PlacementPayload::Visibility{..}){return Err(Error::Provider("visibility report shape"));}
+    pub fn observe_visibility_report(
+        &mut self,
+        state: &LoadedState,
+        report: PlacementReport,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        if report.event_hash != 0xc1300ee7
+            || report.identity.component_type != 1
+            || !matches!(report.payload, PlacementPayload::Visibility { .. })
+        {
+            return Err(Error::Provider("visibility report shape"));
+        }
         Ok(())
     }
     pub fn pending_ability_publications(&self)->&[AbilityPublication]{&self.ability_publications}
@@ -789,14 +845,36 @@ impl<'a> Provider<'a> {
     /// then reads positive native counts. Host320ca30 copies identity/index into event65.
     /// Caller qualifies the actual ordered consumers, nested275 and host65
     /// synchronous/prepublish bindings before invoking this method.
-    pub fn send_ability_gained_report(&mut self,state:&LoadedState,reference:UnitReference,index:i32)->Result<(),Error>{
-        self.observe_unit_snapshot(state,reference)?;
-        let runtime=state.unit_runtime(reference.player(),reference.id).map_err(Error::State)?;
-        let index_usize=usize::try_from(index).map_err(|_|Error::Provider("ability report native index"))?;
-        if index_usize>=runtime.abilities.len(){return Err(Error::Provider("ability report definition extent"));}
-        let active_abilities=runtime.abilities.iter().enumerate().filter(|(_,count)|**count>0).map(|(i,_)|i as i32).collect();
-        self.publication_order.push(PublicationIndex::Ability(self.ability_publications.len()));
-        self.ability_publications.push(AbilityPublication{host_event:65,identity:reference.component_id(),ability_index:index,active_abilities});
+    pub fn send_ability_gained_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        index: i32,
+    ) -> Result<(), Error> {
+        self.observe_unit_snapshot(state, reference)?;
+        let runtime = state
+            .unit_runtime(reference.player(), reference.id)
+            .map_err(Error::State)?;
+        let index_usize =
+            usize::try_from(index).map_err(|_| Error::Provider("ability report native index"))?;
+        if index_usize >= runtime.abilities.len() {
+            return Err(Error::Provider("ability report definition extent"));
+        }
+        let active_abilities = runtime
+            .abilities
+            .iter()
+            .enumerate()
+            .filter(|(_, count)| **count > 0)
+            .map(|(i, _)| i as i32)
+            .collect();
+        self.publication_order
+            .push(PublicationIndex::Ability(self.ability_publications.len()));
+        self.ability_publications.push(AbilityPublication {
+            host_event: 65,
+            identity: reference.component_id(),
+            ability_index: index,
+            active_abilities,
+        });
         Ok(())
     }
     /// Stock OnFormationUpdateEvent27ff480: validate the current Formation CID,
@@ -952,7 +1030,9 @@ impl<'a> Provider<'a> {
             OPERATION_STARTED
                 if (report.subtype == c6_core::unit::SKIP_TURN_HASH
                     || (report.subtype == c6_core::unit::MOVE_TO_HASH
-                        && self.move_to_handler.is_some()))
+                        && self.move_to_handler.is_some())
+                    || (report.subtype == c6_core::unit::RANGE_ATTACK_HASH
+                        && self.range_attack_handler.is_some()))
                     && report.first.is_some()
                     && report.second.is_none() =>
             {
@@ -1067,6 +1147,18 @@ impl<'a> Provider<'a> {
                     // GetOperationParams calls SingleLocation +28, inherited
                     // Instance::Write(map) RET; constructor parameters stay -1.
                     c6_core::unit::MOVE_TO_HASH
+                }
+                Some(node)
+                    if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH
+                        && matches!(
+                            node.parameters,
+                            c6_core::unit::OperationParameters::MoveTo { .. }
+                        ) =>
+                {
+                    self.range_attack_handler.ok_or(Error::Provider(
+                        "actual RangeAttack facade handler binding unavailable",
+                    ))?;
+                    c6_core::unit::RANGE_ATTACK_HASH
                 }
                 Some(_) => {
                     return Err(Error::Provider(
