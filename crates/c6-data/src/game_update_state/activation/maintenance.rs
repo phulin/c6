@@ -450,9 +450,9 @@ impl Definitions {
             .ok_or(Error::Missing("current scout-use index/default"))
     }
 }
-/// AnalyzeForces214a3d1..214a7e4 updates desired counts before the actual
-/// AnalyzeExplorers role loop. Nonempty regions/capital require current reveal
-/// queries; they never receive a guessed percent or planning score.
+/// AnalyzeForces updates explorer demand from current cached exploration,
+/// current capital and shared Era rates, before the existing role loop.
+/// It performs no recruitment, production choice, search or RNG draw.
 pub fn prepare_explorer_demand<E>(
     state: &mut LoadedState,
     defs: &Definitions,
@@ -473,21 +473,74 @@ pub fn prepare_explorer_demand<E>(
         .as_mut()
         .ok_or(Error::Missing("current AI.Military"))?
         .desired_explorers = land;
-    if !inputs.primary_regions.is_empty() {
-        return Err(Error::Missing("current primary region reveal queries"));
-    }
-    // Empty primary still performs the IndexList read and Fixed multiply.
-    let _ = q8_mul(
+    let (primary_count, primary_area) = if inputs.primary_regions.is_empty() {
+        (0, false)
+    } else {
+        let targets = player::<E>(state, owner)?
+            .ai_targets
+            .as_ref()
+            .ok_or(Error::Missing("current explorer Targets"))?;
+        let mut count = 0i32;
+        let mut area_unexplored = false;
+        for &region in &inputs.primary_regions {
+            if percent_revealed(&targets.map_visibility, region) <= 0.5 {
+                count = count.wrapping_add(1);
+            }
+            if !area_unexplored {
+                if let Some(region) = state
+                    .world()
+                    .map()
+                    .regions
+                    .entries
+                    .iter()
+                    .find(|r| r.value.id == region)
+                {
+                    area_unexplored =
+                        percent_revealed(&targets.map_area_visibility, region.value.area_id)
+                            <= 0.25;
+                }
+            }
+        }
+        (count, area_unexplored)
+    };
+    let primary = (q8_mul(
         defs.scout_value::<E>(inputs, b"LAND_SCOUTS_PER_PRIMARY_REGION")?,
-        0,
-    );
-    if !inputs.secondary_regions.is_empty() {
-        return Err(Error::Missing("current secondary region reveal queries"));
+        primary_count.wrapping_shl(8),
+    ) >> 8)
+        .wrapping_add(i32::from(primary_area));
+    {
+        let m = state
+            .player_ai_military_mut(owner)
+            .map_err(Error::State)?
+            .as_mut()
+            .ok_or(Error::Missing("current AI.Military"))?;
+        m.desired_explorers = m.desired_explorers.wrapping_add(primary);
     }
-    let _ = q8_mul(
+    let secondary_count = if inputs.secondary_regions.is_empty() {
+        0
+    } else {
+        let targets = player::<E>(state, owner)?
+            .ai_targets
+            .as_ref()
+            .ok_or(Error::Missing("current explorer Targets"))?;
+        inputs.secondary_regions.iter().fold(0i32, |count, &id| {
+            count.wrapping_add(i32::from(
+                percent_revealed(&targets.map_visibility, id) <= 0.5,
+            ))
+        })
+    };
+    let secondary = q8_mul(
         defs.scout_value::<E>(inputs, b"LAND_SCOUTS_PER_SECONDARY_REGION")?,
-        0,
-    );
+        secondary_count.wrapping_shl(8),
+    ) >> 8;
+    {
+        let m = state
+            .player_ai_military_mut(owner)
+            .map_err(Error::State)?
+            .as_mut()
+            .ok_or(Error::Missing("current AI.Military"))?;
+        m.desired_explorers = m.desired_explorers.wrapping_add(secondary);
+    }
     let naval = defs.scout_value::<E>(inputs, b"DEFAULT_NAVAL_SCOUTS")? >> 8;
     state
         .player_ai_military_mut(owner)
@@ -495,12 +548,69 @@ pub fn prepare_explorer_demand<E>(
         .as_mut()
         .ok_or(Error::Missing("current AI.Military"))?
         .desired_naval_explorers = naval;
-    if !player::<E>(state, owner)?.cities.records.entries.is_empty() {
-        return Err(Error::Missing("current capital exploration query"));
+    let explore_world = {
+        let current = player::<E>(state, owner)?;
+        if let Some(capital) = current
+            .cities
+            .records
+            .entries
+            .iter()
+            .find(|c| c.value.header.capital)
+        {
+            let h = &capital.value.header;
+            let map = state.world().map();
+            let index = usize::try_from(h.location_y)
+                .ok()
+                .and_then(|y| {
+                    usize::try_from(map.header.width)
+                        .ok()
+                        .and_then(|width| y.checked_mul(width))
+                })
+                .and_then(|i| {
+                    usize::try_from(h.location_x)
+                        .ok()
+                        .and_then(|x| i.checked_add(x))
+                })
+                .ok_or(Error::Missing("current capital plot"))?;
+            let area = map
+                .plots
+                .get(index)
+                .ok_or(Error::Missing("current capital plot"))?
+                .area_id;
+            area != -1
+                && percent_revealed(
+                    &current
+                        .ai_targets
+                        .as_ref()
+                        .ok_or(Error::Missing("current explorer Targets"))?
+                        .map_area_visibility,
+                    area as u32,
+                ) > 0.5
+        } else {
+            false
+        }
+    };
+    if explore_world {
+        let additional = defs.scout_value::<E>(inputs, b"NAVAL_SCOUTS_FOR_WORLD_EXPLORATION")? >> 8;
+        let m = state
+            .player_ai_military_mut(owner)
+            .map_err(Error::State)?
+            .as_mut()
+            .ok_or(Error::Missing("current AI.Military"))?;
+        m.desired_naval_explorers = m.desired_naval_explorers.wrapping_add(additional);
     }
-    let bonus = inputs
-        .continent_discovery_bonus
-        .wrapping_add(inputs.natural_wonder_discovery_bonus);
+    // Initialized callers without the live Era domain supply these current
+    // fields; once installed, the shared Era owner is authoritative after edits.
+    let bonuses = state
+        .game_era_discovery_rates(owner)
+        .ok()
+        .flatten()
+        .copied()
+        .unwrap_or([
+            inputs.continent_discovery_bonus,
+            inputs.natural_wonder_discovery_bonus,
+        ]);
+    let bonus = bonuses[0].wrapping_add(bonuses[1]);
     let m = state
         .player_ai_military_mut(owner)
         .map_err(Error::State)?
@@ -509,6 +619,18 @@ pub fn prepare_explorer_demand<E>(
     m.desired_explorers = m.desired_explorers.wrapping_add(bonus);
     m.desired_naval_explorers = m.desired_naval_explorers.wrapping_add(bonus >> 1);
     Ok(())
+}
+
+// Native map miss is exact zero; present zero/zero remains NaN. Wire
+// ExplorationInfo writes raw members +0,+8,+4, so cells_revealed maps to
+// the +4 numerator used by Targets.Get{Region,Area}PercentRevealed.
+fn percent_revealed(
+    rows: &[c6_core::player_ai_targets::MapEntry<c6_core::player_ai_targets::ExplorationInfo>],
+    id: u32,
+) -> f32 {
+    rows.iter().find(|r| r.key == id).map_or(0.0, |r| {
+        r.value.cells_revealed as f32 / r.value.num_cells as f32
+    })
 }
 
 fn military<E>(
@@ -583,7 +705,7 @@ fn ai_bit(
         .copied()
         .ok_or("current unit AI membership definition")
 }
-/// AI.Military.AnalyzeExplorers214bcd0's current no-city branch. This retains
+/// AI.Military.AnalyzeExplorers current units and queued Train fronts. This retains
 /// the actual role/count writes; desired counts are current Military state,
 /// not a native order/settlement/production policy choice. Membership bits are
 /// the UnitAiInfos mapping populated at CalculateEfficiencies21bd1cf.
@@ -610,9 +732,51 @@ pub fn analyze_explorers<E>(
             store_explorers(state, owner, naval, value.wrapping_add(1))?;
         }
     }
-    if !player::<E>(state, owner)?.cities.records.entries.is_empty() {
-        return Err(Error::Missing("current City build-front explorer count"));
-    }
+    let (land_in_production, naval_in_production) = {
+        let mut land = 0i32;
+        let mut naval = 0i32;
+        for city in &player::<E>(state, owner)?.cities.records.entries {
+            let Some(front) = city.value.build_queue.entries.first() else {
+                continue;
+            };
+            let c6_core::city_production::Order::Train { unit_hash, .. } = front.order else {
+                continue;
+            };
+            if !ai_bit_for_type(
+                &defs.units,
+                &defs.ai_membership,
+                unit_hash,
+                2,
+                global_ai_initialized,
+            )
+            .map_err(Error::Missing)?
+            {
+                continue;
+            }
+            if ai_bit_for_type(
+                &defs.units,
+                &defs.ai_membership,
+                unit_hash,
+                defs.naval_ai_type,
+                global_ai_initialized,
+            )
+            .map_err(Error::Missing)?
+            {
+                naval = naval.wrapping_add(1);
+            } else {
+                land = land.wrapping_add(1);
+            }
+        }
+        (land, naval)
+    };
+    let land = military::<E>(state, owner)?
+        .current_explorers
+        .wrapping_add(land_in_production);
+    store_explorers(state, owner, false, land)?;
+    let naval = military::<E>(state, owner)?
+        .current_naval_explorers
+        .wrapping_add(naval_in_production);
+    store_explorers(state, owner, true, naval)?;
     // Land growth has two passes: preserve assigned defenders in the first,
     // then admit combat-capable defenders only if demand is still unmet.
     for pass in 0..2 {
@@ -795,6 +959,37 @@ pub fn eras_turn_activate<E: Effects>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn exploration_percentage_uses_serialized_revealed_member_and_native_miss() {
+        use c6_core::player_ai_targets::{ExplorationInfo, MapEntry};
+        let rows = [MapEntry {
+            key: 17,
+            value: ExplorationInfo {
+                num_cells: 100,
+                cells_visible: 90,
+                cells_revealed: 25,
+            },
+        }];
+        assert_eq!(percent_revealed(&rows, 17), 0.25);
+        assert_eq!(percent_revealed(&rows, 18), 0.0);
+        assert!(percent_revealed(&rows, 17) <= 0.25);
+        assert!(percent_revealed(&rows, 17) <= 0.5);
+    }
+    #[test]
+    fn exploration_zero_extent_preserves_ieee_threshold_behavior() {
+        use c6_core::player_ai_targets::{ExplorationInfo, MapEntry};
+        let rows = [MapEntry {
+            key: 17,
+            value: ExplorationInfo {
+                num_cells: 0,
+                cells_visible: 0,
+                cells_revealed: 0,
+            },
+        }];
+        let percent = percent_revealed(&rows, 17);
+        assert!(percent.is_nan());
+        assert_eq!((percent <= 0.5, percent > 0.5), (false, false));
+    }
     #[test]
     fn health_q8_rounding_and_aggregate_boundary() {
         assert_eq!(contribution::<()>(20, 0, 100).unwrap(), 20 << 8);
