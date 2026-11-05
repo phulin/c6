@@ -19,6 +19,7 @@ pub enum Effect {
     GrantAbility(u32),
     ExtractSeaArtifacts(bool),
     CombatStrength { amount: i32, kind: i32 },
+    SeeHidden,
 }
 /// The definitions must be the existing cached maps built for this state's
 /// admitted resources. No table is rebuilt during a modifier callback.
@@ -44,6 +45,11 @@ pub fn remove_fields<C, P>(
     actor: (i32, u32),
     effect: Effect,
 ) -> Result<FieldRemoval, Error<C, P>> {
+    if let Effect::SeeHidden = effect {
+        return crate::unit_creation::collections::see_hidden::apply(state, actor, true)
+            .map(|success| FieldRemoval { success, ability_lost: None })
+            .map_err(|_| Error::Missing("SeeHidden removal Sight.UpdateMap continuation"));
+    }
     if let Effect::CombatStrength { amount, kind } = effect {
         adjust_combat_strength(
             state.unit_mut(actor.0, actor.1).map_err(Error::State)?,
@@ -72,6 +78,7 @@ pub fn remove_fields<C, P>(
         }
         Effect::Common(_) => unreachable!("common UnitEffect returned above"),
         Effect::CombatStrength { .. } => unreachable!("strength effect returned above"),
+        Effect::SeeHidden => unreachable!("SeeHidden effect returned above"),
         Effect::ExperienceModifier(n) => kernel::Effect::ExperienceModifier(n),
         Effect::DiploVisibilityCombat { amount, higher } => {
             kernel::Effect::DiploVisibilityCombat { amount, higher }

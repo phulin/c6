@@ -9,6 +9,7 @@ use c6_core::{
     unit_moved_signal::{collection_addition as addition, modifiers as common, Subscription},
 };
 pub mod ability;
+pub mod see_hidden;
 pub use ability::{on_ability_earned, on_home_moved};
 #[derive(Debug)]
 pub enum Error {
@@ -304,6 +305,7 @@ impl<E: Effects> common::EffectContext for Apply<'_, '_, E> {
         let actor = (unit.e_owner, unit.id);
         use crate::unit_kill::effects::Effect;
         match effect {
+            Effect::SeeHidden => see_hidden::apply(self.owners.state, actor, false),
             Effect::CombatStrength { amount, kind } => {
                 crate::unit_kill::effects::adjust_combat_strength(
                     self.owners

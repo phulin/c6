@@ -57,6 +57,29 @@ impl<'a, P> Runtime<'a, P> {
             .as_mut()
             .ok_or(movement::Error::Missing("canonical modifier owners"))
     }
+    /// Execute a synchronous factory scope against the ongoing turn's actual
+    /// requirement store. Only immutable factory metadata is joined. All
+    /// returned errors preserve mutations and restore the canonical store.
+    pub fn with_modifier_requirement_sets<R>(
+        &mut self,
+        shared: &mut c6_core::melee_attack::proposals::subject_sets::Runtime,
+        apply: impl FnOnce(&mut Self) -> R,
+    ) -> Result<R, movement::Error> {
+        let owners = self.modifier_owners_mut()?;
+        shared
+            .install_factory_definitions(owners.requirements.sets())
+            .map_err(movement::Error::Missing)?;
+        std::mem::swap(shared, owners.requirements.sets_mut());
+        let result = apply(self);
+        // No fallible operation lies between the callback and restoration.
+        // Public accessors cannot remove the bound owner during this scope.
+        let owners = self
+            .modifier_owners
+            .as_mut()
+            .expect("bound modifier owner retained through synchronous factory");
+        std::mem::swap(shared, owners.requirements.sets_mut());
+        Ok(result)
+    }
     pub fn bind_unit_creation(
         &mut self,
         state: &LoadedState,
