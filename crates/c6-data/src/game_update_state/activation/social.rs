@@ -1,5 +1,5 @@
 //! Consecutive first-activation Religion/GreatPeople/Influence/Quests rules.
-//! This bounded adapter supports the source no-city branches, preserving the
+//! City contributions use current canonical districts, buildings and yields, preserving the
 //! actual contributor fields, setter reports and semantic notifications.
 use crate::{
     registry::{linux_type_hash, LinuxDefinitionRegistry},
@@ -11,11 +11,18 @@ use c6_core::{
     loaded_components::RetainedPlayer, loaded_state::LoadedState,
 };
 
+type PointDefinition = (u32, u32, i32);
 pub struct Definitions {
     binding: WireBinding,
     classes: LinuxDefinitionRegistry,
     levels: LinuxDefinitionRegistry,
     eligibility: Vec<(bool, bool)>,
+    district_points: Vec<PointDefinition>,
+    citizen_points: Vec<PointDefinition>,
+    building_points: Vec<PointDefinition>,
+    alliances: LinuxDefinitionRegistry,
+    government_bonuses: LinuxDefinitionRegistry,
+    religious_purchase_heroes: bool,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -41,7 +48,66 @@ impl Definitions {
             };
             eligibility.push((value("CanEarnGreatPeople")?, value("CanGiveInfluence")?));
         }
+        let points = |table: &str, key: &str| -> Result<Vec<PointDefinition>, Error> {
+            let rows = rules
+                .gameplay()
+                .table(table)
+                .ok_or(Error::Unsupported("GreatPerson point definitions"))?;
+            rows.rows()
+                .map(|row| {
+                    let hash = |name| {
+                        row.text(name)
+                            .map(|s| linux_type_hash(s.as_bytes()))
+                            .map_err(|_| Error::Unsupported("GreatPerson point reference"))
+                    };
+                    Ok((
+                        hash(key)?,
+                        hash("GreatPersonClassType")?,
+                        row.integer("PointsPerTurn")
+                            .map_err(|_| Error::Unsupported("GreatPerson point amount"))?
+                            as i32,
+                    ))
+                })
+                .collect()
+        };
+        let units = rules
+            .gameplay()
+            .table("Units")
+            .ok_or(Error::Unsupported("religious purchase Unit definitions"))?;
+        let heroes = rules
+            .gameplay()
+            .table("HeroClasses")
+            .ok_or(Error::Unsupported("religious purchase Hero definitions"))?;
+        let mut religious_purchase_heroes = false;
+        for unit in units.rows() {
+            let strength = unit
+                .integer("ReligiousStrength")
+                .map_err(|_| Error::Unsupported("religious Unit strength"))?;
+            let enabled = unit
+                .integer("EnabledByReligion")
+                .map_err(|_| Error::Unsupported("religious Unit enablement"))?;
+            if strength <= 0 && enabled == 0 {
+                continue;
+            }
+            let name = unit
+                .text("UnitType")
+                .map_err(|_| Error::Unsupported("religious Unit name"))?;
+            for hero in heroes.rows() {
+                if matches!(hero.get("UnitType"),Ok(crate::SqlValue::Text(bytes)) if bytes.as_slice()==name.as_bytes())
+                {
+                    religious_purchase_heroes = true;
+                }
+            }
+        }
         Ok(Self {
+            religious_purchase_heroes,
+            district_points: points("District_GreatPersonPoints", "DistrictType")?,
+            citizen_points: points("District_CitizenGreatPersonPoints", "DistrictType")?,
+            building_points: points("Building_GreatPersonPoints", "BuildingType")?,
+            alliances: collection(rules, "Alliances", "AllianceType")
+                .map_err(|_| Error::Unsupported("social alliance definitions"))?,
+            government_bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
+                .map_err(|_| Error::Unsupported("social government bonus definitions"))?,
             binding: state.binding().clone(),
             classes,
             levels,
@@ -81,11 +147,13 @@ impl Definitions {
             .unwrap_or((false, false)))
     }
 }
+#[derive(Clone, Copy)]
 pub struct Queries<'a> {
     pub levels: &'a [(i32, u32)],
     /// Current native alive order, not saved-player or sorted-ID substitution.
     pub alive_order: &'a [i32],
     pub capabilities: &'a Membership,
+    pub cities: Option<crate::loaded_actions::stock_notifications::city_queries::Inputs<'a>>,
 }
 /// Forward these into the SAME stock reporting/notification runtime. No default
 /// succeeds without executing the actual current semantic consumer path.
@@ -123,13 +191,227 @@ fn pair(rows: &[(u32, i32)], hash: u32) -> Result<i32, Error> {
         .map(|r| r.1)
         .ok_or(Error::Unsupported("social current definition array cell"))
 }
+#[cfg(test)]
 fn no_city_points(bonus_q8: i32, percent: i32) -> i32 {
-    let base = (bonus_q8 >> 8).wrapping_shl(8); // native AsInt is SAR, not /256.
+    bonus_percent((bonus_q8 >> 8).wrapping_shl(8), percent)
+}
+fn bonus_percent(base: i32, percent: i32) -> i32 {
     if percent <= 0 {
         return base;
     }
     let ratio = ((i64::from(percent.wrapping_shl(8)) << 8) / 25600) as i32;
     base.wrapping_add(c6_core::city_production::execution::multiply(base, ratio))
+}
+fn district_points(points: i32, percent: i32) -> i32 {
+    points
+        .wrapping_mul(percent.wrapping_add(100))
+        .wrapping_div(100)
+        .wrapping_shl(8)
+}
+fn city_percent(points: i32, percent: i32) -> i32 {
+    if points == 0 || percent == 0 {
+        return points;
+    }
+    let product = c6_core::city_production::execution::multiply(
+        points,
+        percent.wrapping_add(100).wrapping_shl(8),
+    );
+    ((i64::from(product) << 8) / 25600) as i32
+}
+fn city_great_people(
+    state: &LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    owner: i32,
+    class: u32,
+) -> Result<i32, Error> {
+    let mut total = 0i32;
+    let p = player(state, owner)?;
+    for record in &p.cities.records.entries {
+        let city = &record.value;
+        let mut subtotal = 0i32;
+        for &id in &city.districts.district_ids {
+            let district = state
+                .district(owner, id)
+                .map_err(|_| Error::Unsupported("great-person current District"))?;
+            if !district.is_complete || district.pillaged {
+                continue;
+            }
+            for &(kind, person, points) in &defs.district_points {
+                if kind == district.district_hash && person == class {
+                    subtotal =
+                        subtotal.wrapping_add(district.great_person_point_adder.wrapping_shl(8));
+                    subtotal = subtotal.wrapping_add(district_points(
+                        points,
+                        district.great_person_point_multiplier,
+                    ));
+                }
+            }
+            let change = district
+                .great_person_point_changes_q8
+                .iter()
+                .rev()
+                .find(|r| r.definition_hash == class)
+                .ok_or(Error::Unsupported("great-person District change cell"))?
+                .value;
+            subtotal = subtotal.wrapping_add(change);
+            for &(kind, person, points) in &defs.citizen_points {
+                if kind != district.district_hash || person != class {
+                    continue;
+                }
+                if state
+                    .world()
+                    .map()
+                    .plot_at(district.location.0, district.location.1)
+                    .is_none()
+                {
+                    continue;
+                }
+                let center = c6_core::unit::PlotCoord {
+                    x: city.header.location_x,
+                    y: city.header.location_y,
+                };
+                let at = c6_core::unit::PlotCoord {
+                    x: district.location.0,
+                    y: district.location.1,
+                };
+                let ordinary_and_forced = c6_core::city_citizen_assignment::plot_workers(
+                    &city.citizens,
+                    state.world().map(),
+                    center,
+                    at,
+                )
+                .map_err(Error::Unsupported)?;
+                let index =
+                    c6_core::city_citizen_assignment::plot_index(state.world().map(), center, at)
+                        .map_err(|_| Error::Unsupported("great-person specialist City index"))?;
+                // Native CalculatePointsPerTurn explicitly adds the separate
+                // forced getter after GetPlotWorkers (which includes forced).
+                let forced = city
+                    .citizens
+                    .forced_working_plot
+                    .get(index as u32 as usize)
+                    .copied()
+                    .unwrap_or(0);
+                let workers = ordinary_and_forced.wrapping_add(forced);
+                if workers > 0 {
+                    subtotal = subtotal.wrapping_add(workers.wrapping_mul(points).wrapping_shl(8));
+                }
+            }
+        }
+        for &(building, person, points) in &defs.building_points {
+            if person != class {
+                continue;
+            }
+            let present = city
+                .buildings
+                .building_locations
+                .iter()
+                .rev()
+                .find(|r| r.definition_hash == building)
+                .ok_or(Error::Unsupported("great-person current Building"))?
+                .value
+                >= 0;
+            if !present {
+                continue;
+            }
+            let pillaged = city
+                .buildings
+                .pillaged
+                .iter()
+                .rev()
+                .find(|r| r.definition_hash == building)
+                .ok_or(Error::Unsupported("great-person current Building pillage"))?
+                .value;
+            if !pillaged {
+                subtotal = subtotal.wrapping_add(points.wrapping_shl(8));
+            }
+        }
+        subtotal = city_percent(subtotal, city.header.great_person_point_bonus_percent);
+        total = total.wrapping_add(subtotal);
+        // CacheCityPseudoYield writes excluded planner scratch only. It does
+        // not alter this earned amount, gameplay state, callbacks or RNG.
+    }
+    // The second source City pass adds happiness/class rows after all city
+    // subtotals and before the player's flat and percentage bonuses.
+    for record in &p.cities.records.entries {
+        let city = &record.value;
+        let inputs = queries.cities.ok_or(Error::Unsupported(
+            "great-person current happiness services",
+        ))?;
+        let happiness = crate::unit_creation::placement_effects::happiness(
+            state,
+            owner,
+            city.header.id,
+            inputs.definitions,
+            queries.capabilities,
+        )
+        .map_err(|_| Error::Unsupported("great-person current happiness"))?;
+        for row in &city.header.happiness_modifiers {
+            if row.happiness_type_index == happiness && row.great_person_class_hash == class {
+                total = total.wrapping_add(row.great_person_amount.wrapping_shl(8));
+            }
+        }
+    }
+    Ok(total)
+}
+fn has_alliance_type(
+    state: &LoadedState,
+    defs: &Definitions,
+    owner: i32,
+    hash: u32,
+) -> Result<bool, Error> {
+    let Some(index) = defs.alliances.find_index(hash) else {
+        return Ok(false);
+    };
+    let relations = state
+        .game_relations()
+        .map_err(|_| Error::Unsupported("social current alliances"))?;
+    // Check the complete current relation row: no dead/invalid saved-player
+    // omission may silently turn a positive alliance into a zero contribution.
+    for other in 0..relations.player_count() {
+        if other != owner
+            && relations
+                .alliance_type(owner, other)
+                .map_err(|_| Error::Unsupported("social current alliance pair"))?
+                == index as i32
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+pub fn influence_per_turn(
+    state: &LoadedState,
+    defs: &Definitions,
+    _queries: &Queries<'_>,
+    owner: i32,
+) -> Result<i32, Error> {
+    defs.validate(state)?;
+    let p = player(state, owner)?;
+    if no_cities(p) || p.influence.not_earning_points {
+        return Ok(0);
+    }
+    let mut result = p.influence.base_points_per_turn;
+    if has_alliance_type(state, defs, owner, 0x5ede01e0)? {
+        return Err(Error::Unsupported("current cultural alliance envoy bonus"));
+    }
+    let bonus = if defs.government_bonuses.find_index(0xe96ca959).is_none()
+        || p.culture.anarchy_end_turn >= 0
+    {
+        0
+    } else {
+        p.bonuses
+            .flat_bonuses
+            .iter()
+            .rev()
+            .find(|r| r.definition_hash == 0xe96ca959)
+            .ok_or(Error::Unsupported("influence current government bonus"))?
+            .value
+    };
+    let ratio = c6_core::city_production::execution::from_float(bonus as f32 * 0.01f32);
+    result = result.wrapping_add(c6_core::city_production::execution::multiply(result, ratio));
+    Ok(result)
 }
 /// 2b11b20: source eligibility before class iteration. Source assigns each
 /// earned-this-turn cell BEFORE changing that class total.
@@ -153,11 +435,12 @@ pub fn great_people(
         {
             0
         } else {
-            if !no_cities(p) {
-                return Err(Error::Unsupported("great-person City contributions"));
-            }
-            no_city_points(
-                pair(&p.great_people_points.bonus_points_per_turn, hash)?,
+            let city_points = city_great_people(state, defs, queries, owner, hash)?;
+            let base = city_points.wrapping_add(
+                (pair(&p.great_people_points.bonus_points_per_turn, hash)? >> 8).wrapping_shl(8),
+            );
+            bonus_percent(
+                base,
                 pair(&p.great_people_points.bonus_points_per_turn_percent, hash)?,
             )
         };
@@ -178,16 +461,43 @@ pub fn great_people(
     }
     Ok(())
 }
-/// Faith from source CalculateFaithYield2b5fe00 in the current no-city case.
+/// Faith from source CalculateFaithYield2b5fe00, including live City yields.
 /// Each other contribution is admitted independently; no-city alone is not a
 /// substitute for belief, envoy, delegation, embassy or prior GP earnings.
-pub fn faith_yield(state: &LoadedState, owner: i32) -> Result<i32, Error> {
+pub fn faith_yield(
+    state: &LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    owner: i32,
+) -> Result<i32, Error> {
     let p = player(state, owner)?;
     if p.culture.anarchy_end_turn >= 0 {
         return Ok(0);
     }
+    let mut city_faith = 0i32;
     if !no_cities(p) {
-        return Err(Error::Unsupported("current City faith contributions"));
+        let inputs = queries
+            .cities
+            .ok_or(Error::Unsupported("current social city query services"))?;
+        let faith = inputs
+            .definitions
+            .yield_index(b"YIELD_FAITH")
+            .ok_or(Error::Unsupported("current Faith definition"))?;
+        for entry in &p.cities.records.entries {
+            city_faith = city_faith.wrapping_add(
+                inputs
+                    .current
+                    .calculate(
+                        state,
+                        owner,
+                        entry.value.header.id,
+                        faith,
+                        0,
+                        inputs.definitions,
+                    )
+                    .map_err(|_| Error::Unsupported("current City faith yield"))?,
+            );
+        }
     }
     if p.religion.belief_yields.iter().any(|r| r.amount != 0) {
         return Err(Error::Unsupported("current belief faith"));
@@ -211,7 +521,9 @@ pub fn faith_yield(state: &LoadedState, owner: i32) -> Result<i32, Error> {
     if p.religion.faith_per_peaceful_religion_founder != 0 {
         return Err(Error::Unsupported("peaceful founder faith"));
     }
-    // Alliance faith is a sum over this player's City followers: no cities=0.
+    if !no_cities(p) && has_alliance_type(state, defs, owner, 0xd71225de)? {
+        return Err(Error::Unsupported("current religious alliance faith"));
+    }
     if p.great_people_points
         .points_earned_this_turn
         .iter()
@@ -227,7 +539,7 @@ pub fn faith_yield(state: &LoadedState, owner: i32) -> Result<i32, Error> {
     {
         return Err(Error::Unsupported("current faith yield modifiers"));
     }
-    Ok(p.religion.faith_rate_change_q8)
+    Ok(city_faith.wrapping_add(p.religion.faith_rate_change_q8))
 }
 /// 2b5f430, including setter's synchronous effects and the actual capability
 /// controlled notification requests. External policy never chooses a pantheon.
@@ -239,13 +551,25 @@ pub fn religion(
     owner: i32,
 ) -> Result<(), Error> {
     defs.validate(state)?;
-    let yield_q8 = faith_yield(state, owner)?;
-    // CheckNewPurchases2b5f550 scans religious Units/Buildings over current
-    // Cities. Both inner loops are actually empty in this supported branch.
-    if !no_cities(player(state, owner)?) {
-        return Err(Error::Unsupported("faith purchase availability"));
-    }
+    let yield_q8 = faith_yield(state, defs, queries, owner)?;
+    // CheckNewPurchases2b5f550 only publishes newly affordable purchases.
+    // The unchanged-balance case cannot enter its notification construction.
     let old = player(state, owner)?.religion.faith_balance_q8;
+    // CheckNewPurchases2b5f550 calls CanTrain2851040(type,true,null,0,
+    // false,false), and CanConstruct with a null output map. The ordinary
+    // bodies and costs only read current rules/state; their indirect calls
+    // are Plot getters and optional output-map writes. CanEverTrain21c10a0
+    // only compares the current replacement vector. Conditional Hero CanTrain
+    // is kept separate below. Identical clamped balances cannot cross a cost,
+    // so the notification constructors/Send (and their effects) are unreachable.
+    if !no_cities(player(state, owner)?) {
+        if defs.religious_purchase_heroes {
+            return Err(Error::Unsupported("religious Hero purchase queries"));
+        }
+        if old.saturating_add(yield_q8) != old {
+            return Err(Error::Unsupported("changed faith purchase availability"));
+        }
+    }
     let new = old.saturating_add(yield_q8);
     if old != new {
         state
@@ -291,8 +615,33 @@ pub fn religion(
     }
     // UpdateNextReligionForCities traverses current alive order at this point.
     for &other in queries.alive_order {
-        if !no_cities(player(state, other)?) {
-            return Err(Error::Unsupported("City next religion recomputation"));
+        let ids: Vec<u32> = player(state, other)?
+            .cities
+            .records
+            .entries
+            .iter()
+            .map(|r| r.value.header.id)
+            .collect();
+        for city in ids {
+            let religion = &state
+                .city(other, city)
+                .map_err(|_| Error::Unsupported("next religion City"))?
+                .religion;
+            if religion.next_religion_hash == u32::MAX && religion.turns_to_next_religion == -1 {
+                // RecomputeNextReligion28c4e70 first writes {INVALID,0}; an
+                // empty actual Game.Religions vector then exits immediately.
+                let has_religions = !state.retained().religion.records.is_empty();
+                let religion = &mut state
+                    .city_mut(other, city)
+                    .map_err(|_| Error::Unsupported("next religion City mutation"))?
+                    .religion;
+                religion.turns_to_next_religion = 0;
+                if has_religions {
+                    return Err(Error::Unsupported(
+                        "positive next religion pressure recomputation",
+                    ));
+                }
+            }
         }
     }
     if queries.capabilities.has(0xb9fc347c) {
@@ -304,8 +653,8 @@ pub fn religion(
     }
     Ok(())
 }
-/// 2b207a0. The no-city points getter returns zero BEFORE base points, bonuses
-/// or alliance reads, yet SetPointsEarned still reports d35e571d for zero delta.
+/// 2b207a0. The no-city/not-earning getter exits before base/bonus queries;
+/// SetPointsEarned still reports d35e571d for zero delta.
 pub fn influence(
     state: &mut LoadedState,
     defs: &Definitions,
@@ -319,10 +668,12 @@ pub fn influence(
         return Err(Error::Unsupported("suzerain visibility refresh"));
     }
     if defs.eligible(state, queries, owner)?.1 {
-        if !no_cities(player(state, owner)?) {
-            return Err(Error::Unsupported("influence City points per turn"));
-        }
-        let value = player(state, owner)?.influence.points_earned.max(0);
+        let earned = influence_per_turn(state, defs, queries, owner)?;
+        let value = player(state, owner)?
+            .influence
+            .points_earned
+            .wrapping_add(earned)
+            .max(0);
         state
             .social_components_mut(owner)
             .map_err(|_| Error::Unsupported("canonical influence points"))?
@@ -394,6 +745,14 @@ mod tests {
         assert_eq!(no_city_points(512, 33), 680); // ratio truncates to84Q8.
         assert_eq!(no_city_points(256, -50), 256); // source ignores <=0.
         assert_eq!(no_city_points(i32::MAX, 100), -512);
+    }
+    #[test]
+    fn district_and_city_percentages_have_distinct_rounding_stages() {
+        assert_eq!(district_points(1, 50), 256); // integer district award first
+        assert_eq!(city_percent(256, 50), 384); // city modifier retains Q8 fraction
+        assert_eq!(city_percent(-1, 50), -1); // SAR multiply, signed division toward zero
+        assert_eq!(bonus_percent(384, 50), 576); // player bonus applies after City sum
+        assert_eq!(c6_core::city_production::execution::from_float(-0.01), -3);
     }
     #[test]
     fn current_array_lookup_preserves_last_overlay_and_missing_is_unknown() {

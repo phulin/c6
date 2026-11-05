@@ -162,6 +162,7 @@ fn influence_needed(
 pub struct Effects<'s, 'a, 'q, P> {
     pub backend: &'s mut Runtime<'a, P>,
     pub queries: &'q upkeep::Queries<'q>,
+    pub definitions: &'q upkeep::Definitions,
     pub notifications: &'q notifications::Definitions,
     pub limits: OccurrenceLimits,
 }
@@ -292,17 +293,10 @@ impl<P> upkeep::Effects for Effects<'_, '_, '_, P> {
         if event != 0xd35e571d {
             return Err(Error::Unsupported("social report event"));
         }
-        if !player(state, owner)?.cities.records.entries.is_empty() {
-            return Err(Error::Unsupported(
-                "influence cache current city yield queries",
-            ));
-        }
-        // Stock Influence cache Fill has only reads/DTO stores. The sole
-        // current yield getter exits on the empty city roster; all other
-        // getters read capability/level/contact/token fields without effects.
+        upkeep::influence_per_turn(state, self.definitions, self.queries, owner)?;
         self.backend
             .reached
-            .push("stock influence report current no-city cache consumers");
+            .push("stock influence report current cache consumers");
         Ok(())
     }
 }
@@ -316,13 +310,18 @@ pub fn run<P>(
     limits: OccurrenceLimits,
     owner: i32,
 ) -> Result<(), Error> {
+    let queries = upkeep::Queries {
+        cities: backend.city_query_inputs().or(queries.cities),
+        ..*queries
+    };
     upkeep::run(
         state,
         definitions,
-        queries,
+        &queries,
         &mut Effects {
             backend,
-            queries,
+            queries: &queries,
+            definitions,
             notifications,
             limits,
         },
