@@ -559,10 +559,11 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     .and_then(|services| services.players.iter().find(|p| p.owner == owner))
                     .and_then(|p| p.civilization_level)
                     .ok_or(Error::Unsupported("NPC Economic civilization level"))?;
-                // 20a5ace checks IsFreeCities before Treasury/budget/purchases.
-                if current_level != 0x04e6_b0a0 {
+                // 20a5aba/20a5ace return for barbarians and FreeCities
+                // before Treasury, contracts, purchases or RNG.
+                if !matches!(current_level, 0xd959_ec24 | 0x04e6_b0a0) {
                     return Err(Error::Unsupported(
-                        "NPC non-FreeCities Economic continuation",
+                        "NPC Economic non-exempt civilization continuation",
                     ));
                 }
                 Ok(())
