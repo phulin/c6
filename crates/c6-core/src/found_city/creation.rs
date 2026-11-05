@@ -120,6 +120,18 @@ pub fn set_as_capital<C: Context>(
     context.capital_changed(city).map_err(Error::Effect)?;
     context.report(0x7bbb_e6e0, city).map_err(Error::Effect)
 }
+/// Player.OnCityFoundedNewContinent2b30220 reads GetHomeContinent before
+/// checking the new City's owner. Only this positive branch may award route
+/// capacity or units; equal-continent and other-owner events have no effects.
+pub fn foreign_continent_bonus_applies(
+    home_continent: u32,
+    receiver_owner: i32,
+    city: ComponentId,
+    continent: u32,
+) -> bool {
+    home_continent != continent && receiver_owner == i32::from(city.owner)
+}
+
 /// FoundCity's empty-name creation call. `first_city` controls name/capital;
 /// `parameters.original_capital` is a distinct initialization field.
 pub fn create<C: Context>(
