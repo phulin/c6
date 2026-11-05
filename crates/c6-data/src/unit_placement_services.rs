@@ -1025,7 +1025,14 @@ impl<E: Services> tails::BarbarianApproachContext for Context<'_, E> {
         &mut self,
         player: Self::Player,
     ) -> Result<(Self::Cities, Self::Cursor), Self::Error> {
-        Err(Error::Missing("BarbarianApproachContext.cities_begin"))
+        self.state.world().player(player).map_err(Error::World)?;
+        self.state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == player)
+            .ok_or(Error::Missing("barbarian approach player cities"))?;
+        Ok((player, 0))
     }
     #[allow(unused_variables)]
     fn city_at(
@@ -1033,7 +1040,19 @@ impl<E: Services> tails::BarbarianApproachContext for Context<'_, E> {
         cities: Self::Cities,
         cursor: Self::Cursor,
     ) -> Result<Option<Self::City>, Self::Error> {
-        Err(Error::Missing("BarbarianApproachContext.city_at"))
+        let player = self
+            .state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == cities)
+            .ok_or(Error::Missing("barbarian approach current cities"))?;
+        Ok(player
+            .cities
+            .records
+            .entries
+            .get(cursor)
+            .map(|entry| (cities, entry.value.header.id)))
     }
     #[allow(unused_variables)]
     fn advance_city(
@@ -1041,11 +1060,19 @@ impl<E: Services> tails::BarbarianApproachContext for Context<'_, E> {
         cities: Self::Cities,
         cursor: &mut Self::Cursor,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("BarbarianApproachContext.advance_city"))
+        let _ = cities;
+        *cursor = cursor
+            .checked_add(1)
+            .ok_or(Error::Missing("barbarian approach city cursor capacity"))?;
+        Ok(())
     }
     #[allow(unused_variables)]
     fn city_location(&mut self, city: Self::City) -> Result<PlotCoord, Self::Error> {
-        Err(Error::Missing("BarbarianApproachContext.city_location"))
+        let city = self.state.city(city.0, city.1).map_err(Error::State)?;
+        Ok(PlotCoord {
+            x: city.header.location_x,
+            y: city.header.location_y,
+        })
     }
     #[allow(unused_variables)]
     fn distance(&mut self, map: Self::Map, a: PlotCoord, b: PlotCoord) -> Result<i32, Self::Error> {
@@ -1057,11 +1084,21 @@ impl<E: Services> tails::BarbarianApproachContext for Context<'_, E> {
     }
     #[allow(unused_variables)]
     fn last_invasion(&mut self, city: Self::City) -> Result<i32, Self::Error> {
-        Err(Error::Missing("BarbarianApproachContext.last_invasion"))
+        Ok(self
+            .state
+            .city(city.0, city.1)
+            .map_err(Error::State)?
+            .header
+            .last_barbarian_invasion_turn)
     }
     #[allow(unused_variables)]
     fn set_last_invasion(&mut self, city: Self::City, turn: i32) -> Result<(), Self::Error> {
-        Err(Error::Missing("BarbarianApproachContext.set_last_invasion"))
+        self.state
+            .city_mut(city.0, city.1)
+            .map_err(Error::State)?
+            .header
+            .last_barbarian_invasion_turn = turn;
+        Ok(())
     }
     #[allow(unused_variables)]
     fn notify_approach(
@@ -1296,4 +1333,3 @@ mod tests {
         ));
     }
 }
-
