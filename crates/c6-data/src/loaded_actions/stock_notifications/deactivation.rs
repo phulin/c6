@@ -1,4 +1,4 @@
-//! Source-ordered completion of the selected human's current processor pass.
+//! Source-ordered completion/continuation of the selected processor pass.
 //! Next-player activation is performed here; its first-activation upkeep and
 //! the next Game.Update remain mandatory caller continuations.
 use super::{turn_reports, Runtime};
@@ -42,11 +42,15 @@ pub struct Completed {
     pub resources_changed: usize,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[must_use = "Continue variants remain inside the current Game.Update"]
 pub enum Outcome {
     Deactivated(Completed),
     /// An active human remains. The current processor pass, final Autoplay
     /// update and pending diplomacy have completed without selecting anyone.
     NoDeactivation,
+    /// Another PlayerUpdates pass inside this same original Game.Update.
+    Continue(Completed),
+    ContinueWithoutDeactivation,
 }
 #[derive(Debug)]
 pub enum Error {
@@ -69,7 +73,7 @@ pub enum Error {
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "stock completed-human pass: {self:?}")
+        write!(f, "stock processor pass: {self:?}")
     }
 }
 impl std::error::Error for Error {}
@@ -122,6 +126,35 @@ impl loaded::automation::diplomacy::Services for Diplomacy<'_, '_> {
         Err(DiplomacyError::SetActive(owner))
     }
 }
+fn finish_update<P>(
+    c: &mut loaded::Context<'_, data::Services<'_, '_, Runtime<'_, P>>>,
+    inputs: &Inputs<'_, '_, '_>,
+    budget: &mut usize,
+) -> Result<loaded::ProcessorPass, Error> {
+    c.finish_exclusive_processor_pass(
+        |state, _| {
+            inputs
+                .configuration
+                .is_any_multiplayer(state.binding())
+                .map_err(|_| {
+                    game_update::Error::Unsupported("Game.Update footer current multiplayer mode")
+                })
+        },
+        |_, _, _| {
+            Err(game_update::Error::Unsupported(
+                "Game.Update single-player active diplomacy footer",
+            ))
+        },
+        |state, services| {
+            state
+                .process_pending_diplomacy(&mut *services.effects, budget)
+                .map_err(|_| {
+                    game_update::Error::Unsupported("Game.Instance.Update pending diplomacy")
+                })
+        },
+    )
+    .map_err(Error::Prefix)
+}
 /// Continue after all selected Player.Update calls have completed. Every
 /// callback uses the existing action backend and canonical state. On failure,
 /// the native prefix remains visible and this update runtime cannot be replayed.
@@ -145,15 +178,12 @@ pub fn finish_completed_human_pass<P>(
             if c.state.retained().core.player_processor.active_count == 0 {
                 return Err(Error::RequiresPhaseAdvance);
             }
-            c.finish_exclusive_human_update(|state, services| {
-                state
-                    .process_pending_diplomacy(&mut *services.effects, budget)
-                    .map_err(|_| {
-                        game_update::Error::Unsupported("Game.Instance.Update pending diplomacy")
-                    })
-            })
-            .map_err(Error::Prefix)?;
-            return Ok(Outcome::NoDeactivation);
+            return Ok(match finish_update(&mut c, inputs, budget)? {
+                loaded::ProcessorPass::ContinuePlayerUpdates => {
+                    Outcome::ContinueWithoutDeactivation
+                }
+                loaded::ProcessorPass::Returned => Outcome::NoDeactivation,
+            });
         }
         let [owner] = pending.selected() else {
             return Err(Error::UnsupportedSelection(pending.selected().to_vec()));
@@ -238,12 +268,32 @@ pub fn finish_completed_human_pass<P>(
             let services = inputs.npc_services.as_ref().ok_or(Error::Prefix(
                 game_update::Error::Unsupported("current NPC deactivation services"),
             ))?;
-            match c.services.effects.deactivate_npc_control(c.state, c.runtime, owner,
-                services.visibility, services.maintenance.maintenance.unit_registry())
-                .map_err(Error::NpcControl)? {
-                super::npc_deactivation::Progress::Complete => {}
-                super::npc_deactivation::Progress::Pending =>
-                    return Err(Error::IncompleteNpcControl(owner)),
+            match c
+                .services
+                .effects
+                .deactivate_npc_control(
+                    c.state,
+                    c.runtime,
+                    owner,
+                    services.visibility,
+                    services.maintenance.maintenance.unit_registry(),
+                )
+                .map_err(Error::NpcControl)?
+            {
+                super::npc_deactivation::Progress::Complete => {
+                    if let Some(frame) = loaded::npc_activation::controller(c.runtime) {
+                        if frame.owner() != owner {
+                            return Err(Error::Prefix(game_update::Error::Unsupported(
+                                "NPC deactivation activation-owner differs",
+                            )));
+                        }
+                        loaded::npc_activation::retire_after_deactivation(c.state, c.runtime)
+                            .map_err(Error::Prefix)?;
+                    }
+                }
+                super::npc_deactivation::Progress::Pending => {
+                    return Err(Error::IncompleteNpcControl(owner))
+                }
             }
         }
         let resources_changed = c
@@ -277,21 +327,18 @@ pub fn finish_completed_human_pass<P>(
                 turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
             )
             .map_err(Error::Prefix)?;
-        c.finish_exclusive_human_update(|state, services| {
-            state
-                .process_pending_diplomacy(&mut *services.effects, budget)
-                .map_err(|_| {
-                    game_update::Error::Unsupported("Game.Instance.Update pending diplomacy")
-                })
-        })
-        .map_err(Error::Prefix)?;
-        Ok(Outcome::Deactivated(Completed {
+        let footer = finish_update(&mut c, inputs, budget)?;
+        let completed = Completed {
             deactivated_owner: owner,
             selection,
             units_advanced,
             visibility_records,
             resources_changed,
-        }))
+        };
+        Ok(match footer {
+            loaded::ProcessorPass::ContinuePlayerUpdates => Outcome::Continue(completed),
+            loaded::ProcessorPass::Returned => Outcome::Deactivated(completed),
+        })
     })();
     if result.is_err() {
         runtime.fail_player_callback();

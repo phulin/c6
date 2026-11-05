@@ -9,6 +9,8 @@ pub mod human_control;
 pub mod inactive_control;
 pub mod npc_activation;
 pub mod npc_deactivation;
+pub mod processor_footer;
+pub use processor_footer::ProcessorPass;
 pub mod maintenance;
 pub mod resources;
 pub mod round;
@@ -46,6 +48,7 @@ pub struct Runtime {
     player_cursor: usize,
     pass_has_human: bool,
     pass_processed_ai: bool,
+    processor_pass_iterations: u32,
     player_frame: Option<PlayerFrame>,
     deactivation_started: bool,
     local_observer: Option<i32>,
@@ -65,6 +68,7 @@ impl Runtime {
             player_cursor: 0,
             pass_has_human: false,
             pass_processed_ai: false,
+            processor_pass_iterations: 0,
             player_frame: None,
             deactivation_started: false,
             local_observer: None,
@@ -180,6 +184,7 @@ impl<'a, S: Services> Context<'a, S> {
                 "Game.Update prefix already pending or failed",
             ));
         }
+        self.runtime.processor_pass_iterations = 0;
         match core::prepare(self) {
             Ok(next) => {
                 self.runtime.pending = Some(next);
@@ -243,6 +248,7 @@ impl<'a, S: Services> Context<'a, S> {
         self.runtime.pass_has_human = false;
         self.runtime.pass_processed_ai = false;
         self.runtime.deactivation_started = false;
+        self.runtime.processor_pass_iterations = 0;
         Ok(())
     }
     fn revision(&mut self) -> Result<(), Error> {
