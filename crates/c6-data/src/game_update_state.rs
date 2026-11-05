@@ -7,6 +7,7 @@ pub mod round_units;
 pub mod round_cities;
 pub mod round_trade;
 pub mod round_climate;
+pub mod round_map;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,
