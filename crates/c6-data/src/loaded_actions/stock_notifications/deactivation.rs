@@ -63,6 +63,7 @@ pub enum Error {
     Unit(data::automation::PlayerError<Infallible, Infallible>),
     Diplomacy(loaded::automation::diplomacy::Error<DiplomacyError>),
     Visibility(data::deactivation::Error),
+    Configuration(crate::loaded_actions::configuration::Error),
     NpcControl(game_update::Error),
     IncompleteNpcControl(i32),
     UnsupportedSelection(Vec<i32>),
@@ -264,9 +265,17 @@ pub fn finish_completed_human_pass<P>(
         if c.state.turn_active(owner).map_err(Error::State)? {
             return Err(Error::SelectedOwnerStillActive(owner));
         }
-        let visibility_records = visibility
-            .record(c.state, owner)
-            .map_err(Error::Visibility)?;
+        // TurnManager.DoTurnDeactivate2ba16f7 records visibility only for
+        // IsMajor (the configured civilization level), before AI control.
+        let visibility_records = if inputs
+            .configuration
+            .civilization_level_type_id(owner)
+            .map_err(Error::Configuration)? == 0x253718b0
+        {
+            visibility.record(c.state, owner).map_err(Error::Visibility)?
+        } else {
+            0
+        };
         if c.state.player_slot_status(owner).map_err(Error::State)? == 3 {
             loaded::human_control::deactivate_with_priority_signal(
                 c.state,
