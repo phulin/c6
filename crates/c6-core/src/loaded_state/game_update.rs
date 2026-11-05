@@ -3,6 +3,7 @@
 use super::LoadedState;
 pub mod activation;
 pub mod automation;
+pub mod command_update;
 pub mod deactivation;
 pub mod human_activation;
 pub mod human_control;

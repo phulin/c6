@@ -17,21 +17,14 @@ pub trait Services<'a, P> {
         owner: i32,
         event: Event,
         definitions: &Definitions,
-    ) -> Result<(), Self::Error>;
-    fn processor_update(
-        &mut self,
-        state: &mut LoadedState,
-        backend: &mut stock_notifications::Runtime<'a, P>,
-        update: &mut game_update::Runtime,
-        research: &mut crate::research::Runtime,
-        owner: i32,
+        history: &crate::game_update_state::deactivation::VisibilityHistory,
     ) -> Result<(), Self::Error>;
 }
 struct Effects<'s, 'a, P, S> {
     backend: &'s mut stock_notifications::Runtime<'a, P>,
-    update: &'s mut game_update::Runtime,
-    research: &'s mut crate::research::Runtime,
     services: &'s mut S,
+    refresh_human: bool,
+    history: &'s crate::game_update_state::deactivation::VisibilityHistory,
 }
 impl<'a, P, S: Services<'a, P>> policy_actions::Effects for Effects<'_, 'a, P, S> {
     type Error = S::Error;
@@ -43,15 +36,11 @@ impl<'a, P, S: Services<'a, P>> policy_actions::Effects for Effects<'_, 'a, P, S
         defs: &Definitions,
     ) -> Result<(), Self::Error> {
         self.services
-            .policy_event(state, self.backend, owner, event, defs)
+            .policy_event(state, self.backend, owner, event, defs, self.history)
     }
-    fn update_human_processor(
-        &mut self,
-        state: &mut LoadedState,
-        owner: i32,
-    ) -> Result<(), Self::Error> {
-        self.services
-            .processor_update(state, self.backend, self.update, self.research, owner)
+    fn update_human_processor(&mut self, _: &mut LoadedState, _: i32) -> Result<(), Self::Error> {
+        self.refresh_human = true;
+        Ok(())
     }
 }
 impl<'a, P> Session<'_, 'a, P> {
@@ -66,13 +55,14 @@ impl<'a, P> Session<'_, 'a, P> {
         definitions: &Definitions,
         current: &Current<'_>,
         services: &mut S,
+        budget: &mut usize,
     ) -> Result<(), Error<policy_actions::Error<S::Error>>> {
         self.ordinary_player_action(owner)?;
         let mut effects = Effects {
             backend: &mut self.context.notifications.backend,
-            update: &mut self.update,
-            research: &mut self.research,
             services,
+            refresh_human: false,
+            history: &self.visibility,
         };
         let result = kernel::execute(
             &mut policy_actions::Context {
@@ -84,6 +74,25 @@ impl<'a, P> Session<'_, 'a, P> {
             },
             command,
         );
+        let refresh = effects.refresh_human;
+        self.retain(result, true)?;
+        if refresh {
+            let result =
+                game_update::command_update::prepare_human(self.context.notifications.state, owner)
+                    .map_err(policy_actions::Error::Processor);
+            self.retain(result, true)?;
+            let result = self
+                .context
+                .notifications
+                .update(owner, budget)
+                .map_err(policy_actions::Error::Notifications);
+            self.retain(result, true)?;
+        }
+        let result = self
+            .context
+            .messages_processed()
+            .map(|_| ())
+            .map_err(policy_actions::Error::Aftermath);
         self.retain(result, true)
     }
 }

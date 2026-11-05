@@ -1,5 +1,6 @@
 //! Explicit policy requests on canonical Culture. No government or policy is
 //! selected by the library; synchronous consumers share the caller's owners.
+pub mod modifiers;
 use super::{choose_tech, culture_notifications as culture};
 use crate::{
     registry::{linux_type_hash, LinuxDefinitionRegistry},
@@ -17,6 +18,9 @@ pub enum Error<E> {
     Culture(culture::Error),
     Rules(crate::Error),
     Effects(E),
+    Processor(c6_core::game_update::Error),
+    Notifications(c6_core::unit_operation_aftermath::Error),
+    Aftermath(super::current_aftermath::Error<super::notifications::processing::Error>),
     Unsupported(&'static str),
 }
 impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
@@ -137,7 +141,10 @@ impl Definitions {
 #[derive(Default)]
 pub struct Current<'a> {
     pub graph: Option<&'a culture::GameCulture>,
-    pub techs: Option<&'a choose_tech::Research<'a>>,
+    pub technology: Option<(
+        &'a choose_tech::Definitions,
+        Option<&'a choose_tech::GameTechs>,
+    )>,
     pub starting: Option<&'a culture::StartingContext>,
 }
 fn boolean<E>(array: &IndexedBools, hash: u32) -> Result<bool, Error<E>> {
@@ -148,10 +155,14 @@ fn boolean<E>(array: &IndexedBools, hash: u32) -> Result<bool, Error<E>> {
         .map(|p| p.value)
         .ok_or(Error::Unsupported("current policy indexed flag"))
 }
-fn store(array: &mut IndexedBools, hash: u32, value: bool) {
-    if let Some(p) = array.pairs.iter_mut().rfind(|p| p.definition_hash == hash) {
-        p.value = value;
-    }
+fn store<E>(array: &mut IndexedBools, hash: u32, value: bool) -> Result<(), Error<E>> {
+    let p = array
+        .pairs
+        .iter_mut()
+        .rfind(|p| p.definition_hash == hash)
+        .ok_or(Error::Unsupported("current policy flag storage"))?;
+    p.value = value;
+    Ok(())
 }
 /// Actual CanSlotPolicy gates, including already-active cards and wildcard
 /// slots. Unsupported age restrictions fail when reached, never become legal.
@@ -173,9 +184,20 @@ pub fn can_slot<E>(
     if boolean(&c.policy_banned, hash)? || boolean(&c.policy_is_in_place, hash)? {
         return Ok(false);
     }
+    let technology = current
+        .technology
+        .map(|(defs, graph)| defs.player(state, owner, graph))
+        .transpose()
+        .map_err(|error| Error::Culture(culture::Error::Tech(error)))?;
     if !defs
         .unlocks
-        .player(state, owner, current.graph, current.techs, current.starting)
+        .player(
+            state,
+            owner,
+            current.graph,
+            technology.as_ref(),
+            current.starting,
+        )
         .map_err(Error::Culture)?
         .policy_unlocked(policy)
         .map_err(Error::Culture)?
@@ -261,16 +283,14 @@ impl<E: Effects> kernel::Context for Context<'_, '_, E> {
             .definitions
             .policy_hash(p)
             .ok_or(Error::Unsupported("enacted policy"))?;
-        store(&mut self.culture_mut()?.policy_has_been_enacted, hash, true);
-        Ok(())
+        store(&mut self.culture_mut()?.policy_has_been_enacted, hash, true)
     }
     fn set_active(&mut self, p: i32, b: bool) -> Result<(), Self::Error> {
         let hash = self
             .definitions
             .policy_hash(p)
             .ok_or(Error::Unsupported("active policy"))?;
-        store(&mut self.culture_mut()?.policy_is_in_place, hash, b);
-        Ok(())
+        store(&mut self.culture_mut()?.policy_is_in_place, hash, b)
     }
     fn set_slot(&mut self, s: i32, p: i32) -> Result<(), Self::Error> {
         let hash = self.definitions.policy_hash(p).unwrap_or(u32::MAX);
