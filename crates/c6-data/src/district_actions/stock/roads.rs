@@ -104,9 +104,9 @@ pub(super) fn complete<P>(
         .district(d.owner, d.id)
         .map_err(production::Error::District)?
         .location;
-    let index = (location.y as u32)
+    let index = (location.1 as u32)
         .wrapping_mul(state.world().map().header.width as u32)
-        .wrapping_add(location.x as u32);
+        .wrapping_add(location.0 as u32);
     let inputs = effects.inputs.roads;
     routes::complete(
         state,
