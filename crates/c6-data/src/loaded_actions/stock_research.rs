@@ -79,6 +79,28 @@ impl<P> Effects<'_, '_, P> {
             == 3)
     }
 }
+impl<P> Runtime<'_, P> {
+    /// Bind an explicit external DEFER for technology selection requests made
+    /// during automatic acquisition callbacks. Ordinary player choices remain
+    /// separate and the canonical research queue is unchanged.
+    pub fn defer_technology_acquisition_choices(
+        &mut self,
+        state: &LoadedState,
+        player: i32,
+    ) -> Result<(), processing::Error> {
+        self.check(state)?;
+        state
+            .research_components(player)
+            .map_err(|_| processing::Error::Unsupported("automatic research policy player"))?;
+        if !self.acquisition_policies.defer_players.contains(&player) {
+            self.acquisition_policies.defer_players.push(player);
+        }
+        Ok(())
+    }
+    pub fn deferred_acquisition_decisions(&self) -> &[research::policy::DeferredAcquisition] {
+        &self.acquisition_policies.decisions
+    }
+}
 impl<P> research::Effects for Effects<'_, '_, P> {
     type Error = Error;
     fn runtime(&self) -> &research::Runtime {
@@ -86,6 +108,18 @@ impl<P> research::Effects for Effects<'_, '_, P> {
     }
     fn runtime_mut(&mut self) -> &mut research::Runtime {
         self.runtime
+    }
+    fn acquisition_research_response(
+        &mut self,
+        state: &LoadedState,
+        player: i32,
+        legal_indices: &[i32],
+    ) -> Result<research::policy::AcquisitionResponse, Self::Error> {
+        self.backend.check(state).map_err(Error::Notification)?;
+        Ok(self
+            .backend
+            .acquisition_policies
+            .respond(player, legal_indices))
     }
     fn effect(
         &mut self,

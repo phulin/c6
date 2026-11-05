@@ -155,6 +155,16 @@ pub trait Effects {
         definitions: &Definitions,
         effect: Effect,
     ) -> Result<(), Self::Error>;
+    /// External policy response, not a native gameplay handler. Unbound leaves
+    /// a positive choice explicit; DEFER preserves the current research queue.
+    fn acquisition_research_response(
+        &mut self,
+        _state: &LoadedState,
+        _player: i32,
+        _legal_indices: &[i32],
+    ) -> Result<policy::AcquisitionResponse, Self::Error> {
+        Ok(policy::AcquisitionResponse::Unbound)
+    }
     fn query(
         &mut self,
         state: &mut LoadedState,
@@ -948,6 +958,15 @@ impl<E: Effects> Context<'_, E> {
             != 3
         {
             let legal_indices = self.technology_choices(player)?;
+            if self
+                .effects
+                .acquisition_research_response(self.state, player, &legal_indices)
+                .map_err(Error::Effect)?
+                == policy::AcquisitionResponse::Defer
+            {
+                return Ok(());
+            }
+
             if !legal_indices.is_empty() {
                 return Err(Error::TechnologyChoiceDuringAcquisition {
                     player,

@@ -14,6 +14,35 @@ pub enum ResearchPolicy {
 pub type TechnologyPolicy = ResearchPolicy;
 pub type CivicPolicy = ResearchPolicy;
 
+/// Explicit external response to a selection request nested in an automatic
+/// acquisition. DEFER does not assert that no legal technology exists.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AcquisitionResponse {
+    Unbound,
+    Defer,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeferredAcquisition {
+    pub player: i32,
+    pub legal_indices: Vec<i32>,
+}
+#[derive(Default)]
+pub(crate) struct AcquisitionPolicies {
+    pub(crate) defer_players: Vec<i32>,
+    pub(crate) decisions: Vec<DeferredAcquisition>,
+}
+impl AcquisitionPolicies {
+    pub(crate) fn respond(&mut self, player: i32, legal_indices: &[i32]) -> AcquisitionResponse {
+        if !self.defer_players.contains(&player) {
+            return AcquisitionResponse::Unbound;
+        }
+        self.decisions.push(DeferredAcquisition {
+            player,
+            legal_indices: legal_indices.to_vec(),
+        });
+        AcquisitionResponse::Defer
+    }
+}
 fn boundary<E>(
     player: i32,
     queued: bool,
@@ -82,6 +111,29 @@ impl<E: Effects> Context<'_, E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn acquisition_defer_is_explicit_owner_scoped_and_retains_legal_choices() {
+        let mut policies = AcquisitionPolicies::default();
+        assert_eq!(policies.respond(63, &[4, 1]), AcquisitionResponse::Unbound);
+        assert!(policies.decisions.is_empty());
+        policies.defer_players.push(63);
+        assert_eq!(policies.respond(62, &[2]), AcquisitionResponse::Unbound);
+        assert_eq!(policies.respond(63, &[4, 1]), AcquisitionResponse::Defer);
+        assert_eq!(policies.respond(63, &[5]), AcquisitionResponse::Defer);
+        assert_eq!(
+            policies.decisions,
+            vec![
+                DeferredAcquisition {
+                    player: 63,
+                    legal_indices: vec![4, 1]
+                },
+                DeferredAcquisition {
+                    player: 63,
+                    legal_indices: vec![5]
+                },
+            ]
+        );
+    }
     #[test]
     fn supplied_queue_skips_unneeded_legality_inputs() {
         assert_eq!(

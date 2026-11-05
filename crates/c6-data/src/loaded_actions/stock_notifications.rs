@@ -12,6 +12,7 @@ use super::{
 };
 #[path = "stock_activation.rs"]
 mod activation;
+pub mod city_production;
 pub mod city_queries;
 pub mod cityless_managers;
 pub mod deactivation;
@@ -80,6 +81,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
     pub notices: Vec<Notice>,
+    acquisition_policies: crate::research::policy::AcquisitionPolicies,
     /// Ordered emitted notification publications; client UI playback is omitted.
     pub publications: Vec<lifecycle::Report>,
     /// Source-ordered changes after the canonical Player blocking store.
@@ -119,6 +121,7 @@ impl<'a, P> Runtime<'a, P> {
             reporting,
             decisions: Vec::new(),
             notices: Vec::new(),
+            acquisition_policies: Default::default(),
             publications: Vec::new(),
             blocking_changes: Vec::new(),
             turn_report_records: Vec::new(),
