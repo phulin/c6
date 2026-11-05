@@ -270,6 +270,28 @@ pub struct SnapshotObservation {
     pub path: ReadinessPath,
 }
 
+// Cache.Unit.EventStream.Add27ff327 copies current dynamic properties into
+// presentation storage. Host TypedVariantMap.Copy3961358..3961438 copies a
+// nonarray integer's type/value into the destination without callbacks/RNG.
+// Keep semantic values in the canonical Unit; omit the reflected allocation.
+fn snapshot_properties(properties: &c6_core::unit::variants::TypedVariantMap) -> Result<(), Error> {
+    use c6_core::unit::variants::VariantPayload;
+    for entry in &properties.entries {
+        let value = &entry.value;
+        if value.type_bits != 2
+            || value.modifier_bits != 0
+            || value.value.count_flags != 0
+            || value.value.element_size != 0
+            || !matches!(value.value.payload, VariantPayload::Inline32(_))
+        {
+            return Err(Error::Provider(
+                "Unit snapshot custom property copy effects",
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Scope must be admitted by the caller for its active configuration. Stock Lua
 /// source hashes alone do not establish absence of an added gameplay consumer.
 #[derive(Clone, Copy)]
@@ -977,11 +999,7 @@ impl<'a> Provider<'a> {
         if runtime.archive.identity() != reference.component_id() {
             return Err(Error::Provider("snapshot actual Unit identity"));
         }
-        if !unit.k_properties.entries.is_empty() {
-            return Err(Error::Provider(
-                "Unit snapshot nonempty/custom property copy effects",
-            ));
-        }
+        snapshot_properties(&unit.k_properties)?;
         let observation = SnapshotObservation {
             identity: reference.component_id(),
             current_activity: unit.e_activity,
@@ -1132,11 +1150,7 @@ impl<'a> Provider<'a> {
             return Err(Error::Provider("activity reporting actual Unit identity"));
         }
         if snapshot {
-            if !unit.k_properties.entries.is_empty() {
-                return Err(Error::Provider(
-                    "Unit snapshot nonempty/custom property copy effects",
-                ));
-            }
+            snapshot_properties(&unit.k_properties)?;
             let path = self.check_snapshot_query_effects(state, unit, overlay.map(|(_, f)| f))?;
             self.snapshots.push(SnapshotObservation {
                 identity: report.identity,
@@ -1805,5 +1819,38 @@ mod segment_complete_tests {
         ] {
             assert!(segment_complete_payload(bad).is_err());
         }
+    }
+}
+
+#[cfg(test)]
+mod snapshot_property_tests {
+    use super::*;
+    use c6_core::unit::variants::{
+        ArrayVariant, TypedEntry, TypedVariant, TypedVariantMap, VariantPayload,
+    };
+    #[test]
+    fn scalar_round_marker_is_read_only_and_custom_storage_remains_explicit() {
+        let mut properties = TypedVariantMap::default();
+        properties.entries.push(TypedEntry {
+            key: 0xa281ca07,
+            name: None,
+            value: TypedVariant {
+                type_bits: 2,
+                modifier_bits: 0,
+                value: ArrayVariant {
+                    count_flags: 0,
+                    element_size: 0,
+                    payload: VariantPayload::Inline32(u32::MAX),
+                },
+            },
+        });
+        let current = properties.clone();
+        snapshot_properties(&properties).unwrap();
+        assert_eq!(properties, current);
+        properties.entries[0].value.value.count_flags = 0x04000000;
+        assert!(snapshot_properties(&properties).is_err());
+        properties.entries[0].value.value.count_flags = 0;
+        properties.entries[0].value.type_bits = 9;
+        assert!(snapshot_properties(&properties).is_err());
     }
 }
