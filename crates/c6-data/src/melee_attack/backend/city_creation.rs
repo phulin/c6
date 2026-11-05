@@ -891,6 +891,14 @@ impl EffectRuntime {
         if !matches!(object.kind, super::ContextObject::Policy { .. }) {
             return Err(Error::Missing("Policy object retirement"));
         }
+        if object.unit_lifecycle.as_ref().is_some_and(|r| {
+            !matches!(
+                r.destroyed.subscription_for(|_| true),
+                Err(RegistryError::InvalidSubscription)
+            )
+        }) {
+            return Err(Error::Missing("Policy remaining ObjectDestroyed listener"));
+        }
         if object
             .unit_lifecycle
             .as_ref()
@@ -917,6 +925,15 @@ impl EffectRuntime {
                 || m.tracked.iter().any(|t| t.subject == owner)
         }) {
             return Err(Error::Missing("Policy surviving City modifier references"));
+        }
+        let life = creation.object_mut(owner)?;
+        if !matches!(
+            life.destroyed.subscription_for(|_| true),
+            Err(RegistryError::InvalidSubscription)
+        ) {
+            return Err(Error::Missing(
+                "Policy remaining City ObjectDestroyed listener",
+            ));
         }
         creation.objects.retain(|o| o.handle != owner);
         self.objects.retain(|r| r.0 != owner);
