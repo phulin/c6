@@ -106,6 +106,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     resource_revelation: Option<resource_revelation::State>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
+    pub(super) research_acquisition: Option<research::acquisition::Binding>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
     pub(crate) completion_inflight: Option<i32>,
     pub(crate) activation_progress:
@@ -147,6 +148,7 @@ impl<'a, P> Runtime<'a, P> {
             resource_revelation: None,
             city_queries: None,
             gold_signals: None,
+            research_acquisition: None,
             activation_progress: None,
             turn_progress: None,
             completion_inflight: None,
