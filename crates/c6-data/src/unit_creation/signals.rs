@@ -11,6 +11,7 @@ pub enum Error {
     Script(stock_script::Error),
     Rules(crate::Error),
     Missing(&'static str),
+    Control(c6_core::loaded_state::unit_creation_control::Error),
 }
 pub struct Definitions {
     binding: WireBinding,
@@ -191,7 +192,7 @@ impl Definitions {
     }
     ///201dc60: active-player control may only schedule a new unit for AI
     /// players. Human/inactive branches return before controller iteration.
-    pub fn player_control_created(&self, state: &LoadedState, owner: i32) -> Result<(), Error> {
+    pub fn player_control_created(&self, state: &mut LoadedState, owner: i32) -> Result<(), Error> {
         if state.binding() != &self.binding {
             return Err(Error::Missing("creation control binding"));
         }
@@ -206,9 +207,9 @@ impl Definitions {
         {
             return Ok(());
         }
-        Err(Error::Missing(
-            "AI unit-controller scheduling after creation",
-        ))
+        state
+            .schedule_created_unit_control(owner)
+            .map_err(Error::Control)
     }
     ///20a8520→21b5120: archive edit has no gameplay side effect; non-Trader
     /// returns before changing the new unit's controller or querying movement.

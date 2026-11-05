@@ -26,6 +26,7 @@ pub mod research;
 pub mod turn_completion;
 pub mod typed_components;
 pub mod barbarian_camp_placement;
+pub mod unit_creation_control;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
