@@ -8,6 +8,16 @@ use c6_core::{
     loaded_state::{game_update as loaded, LoadedState},
 };
 
+/// Borrowed current movement/visibility services for the mandatory eager
+/// InfluenceMap rebuild. Missing positive path jobs remain explicit.
+pub struct InfluenceInputs<'a, 'r> {
+    pub definitions: &'a crate::influence_map_update::Definitions,
+    pub capabilities: &'a c6_core::game_capabilities::Membership,
+    pub visibility: &'a crate::unit_sight_state::Runtime,
+    pub movement: &'a crate::formation_movement_cost::Definitions<'r>,
+    pub formation: &'a crate::formation_rules::Definitions,
+    pub cities: &'a crate::loaded_actions::city_range_attack::Queries<'a>,
+}
 struct ResourceEffects {
     speed: u32,
     uninitializing: bool,
@@ -43,6 +53,84 @@ impl data::deactivation::resources::Effects for ResourceEffects {
         Err("current resource report consumers")
     }
 }
+struct FormationContinuation<'b, 'a, P> {
+    backend: &'b mut Runtime<'a, P>,
+    placement: &'b dyn super::movement::PlacementQueries,
+}
+impl<P> crate::loaded_upkeep::Continuations for FormationContinuation<'_, '_, P> {
+    type Error = super::movement::Error;
+    fn preflight_movement(
+        &self,
+        state: &LoadedState,
+        actor: crate::loaded_upkeep::UnitHandle,
+        branch: bool,
+    ) -> Result<(), Self::Error> {
+        crate::loaded_upkeep::Effects::preflight_movement(self.backend, state, actor, branch)
+    }
+    fn preflight_formation(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        id: u32,
+    ) -> Result<(), Self::Error> {
+        crate::loaded_upkeep::Effects::preflight_formation(self.backend, state, owner, id)
+    }
+    fn can_embark(
+        &mut self,
+        state: &mut LoadedState,
+        actor: crate::loaded_upkeep::UnitHandle,
+    ) -> Result<bool, Self::Error> {
+        let levels = self
+            .backend
+            .player_services
+            .as_ref()
+            .ok_or(Self::Error::Missing("current player levels"))?
+            .players
+            .iter()
+            .map(|p| {
+                Ok((
+                    p.owner,
+                    p.civilization_level
+                        .ok_or(Self::Error::Missing("current player level"))?,
+                ))
+            })
+            .collect::<Result<Vec<_>, Self::Error>>()?;
+        self.placement
+            .can_embark(
+                state,
+                actor.get(state).map_err(Self::Error::World)?,
+                &levels,
+            )
+            .map_err(Self::Error::Placement)
+    }
+    fn report(
+        &mut self,
+        state: &mut LoadedState,
+        report: c6_core::unit_turn_upkeep::MovementReport,
+    ) -> Result<(), Self::Error> {
+        crate::loaded_upkeep::Effects::report(self.backend, state, report)
+    }
+    fn owner_is_barbarian(&self, state: &LoadedState, owner: i32) -> Result<bool, Self::Error> {
+        crate::loaded_upkeep::Effects::owner_is_barbarian(self.backend, state, owner)
+    }
+}
+impl<P> crate::loaded_upkeep::FormationRestoreContinuations for FormationContinuation<'_, '_, P> {
+    fn formation_restored(
+        &mut self,
+        state: &mut LoadedState,
+        report: c6_core::unit_turn_start::FormationRestoredReport,
+    ) -> Result<(), Self::Error> {
+        if report.event_hash != 0xc52231ab {
+            return Err(Self::Error::Missing("stock FormationRestored event"));
+        }
+        // The stock consumer publishes each CURRENT member snapshot. Its DTO
+        // and presentation suspension do not mutate gameplay or RNG here.
+        self.backend
+            .reporting
+            .observe_formation_snapshot(state, report.identity)
+            .map_err(Self::Error::Rules)
+    }
+}
 impl<P> Runtime<'_, P> {
     pub fn select_next_player(
         &self,
@@ -61,6 +149,36 @@ impl<P> Runtime<'_, P> {
         loaded::activation::select(state, network, alive.values(), |state| phases.mode(state))
     }
 
+    pub fn update_turn_influence(
+        &self,
+        state: &mut LoadedState,
+        owner: i32,
+        input: &InfluenceInputs<'_, '_>,
+    ) -> Result<(), c6_core::influence_map_update::Error<crate::influence_map_update::Error>> {
+        let alive = self
+            .player_services
+            .as_ref()
+            .and_then(|s| s.alive_players.as_ref())
+            .ok_or(c6_core::influence_map_update::Error::Backend(
+                crate::influence_map_update::Error::Missing("current Influence alive order"),
+            ))?;
+        crate::influence_map_update::update(
+            state,
+            input.definitions,
+            &crate::influence_map_update::Queries {
+                alive_players: alive,
+                capabilities: Some(input.capabilities),
+                visibility: input.visibility,
+                movement: input.movement,
+                formation: input.formation,
+                city_range: input.cities,
+                path: None,
+                path_runtime: None,
+                strength: None,
+            },
+            owner,
+        )
+    }
     /// After automation, diplomacy, visibility recording and controller cleanup.
     pub fn finish_deactivation_resources(
         &mut self,
@@ -105,6 +223,7 @@ impl<P> Runtime<'_, P> {
     }
     /// Source unit suffix followed by Formation.RestoreMovement, after the
     /// earlier activation subsystems and resource notifications have returned.
+    #[allow(clippy::too_many_arguments)]
     pub fn restore_player_movement(
         &mut self,
         state: &mut LoadedState,
@@ -113,6 +232,7 @@ impl<P> Runtime<'_, P> {
         formations: &[u32],
         movement: &crate::unit_movement_state::Inputs<'_>,
         formation_definitions: &crate::formation_rules::Definitions,
+        placement: &dyn super::movement::PlacementQueries,
     ) -> Result<(), Error> {
         for &id in units {
             crate::loaded_upkeep::activate_unit(
@@ -125,10 +245,93 @@ impl<P> Runtime<'_, P> {
             )
             .map_err(|_| Error::Unsupported("activation current Unit restore suffix"))?;
         }
+        let mut effects = crate::loaded_upkeep::RulesEffects {
+            definitions: formation_definitions,
+            continuations: FormationContinuation {
+                backend: self,
+                placement,
+            },
+        };
         for &id in formations {
-            crate::loaded_upkeep::restore_formation_movement(state, owner, id, movement, self)
-                .map_err(|_| Error::Unsupported("activation current Formation restore suffix"))?;
+            if let Err(error) = crate::loaded_upkeep::restore_formation_movement(
+                state,
+                owner,
+                id,
+                movement,
+                &mut effects,
+            ) {
+                effects.continuations.backend.last_error = Some(format!("{error:?}"));
+                return Err(Error::Unsupported(
+                    "activation current Formation restore suffix",
+                ));
+            }
         }
+        Ok(())
+    }
+    /// GameSignals+0x9d8 stock order: Lua PlayerTurnStartComplete, then the
+    /// achievement observer. The latter's empty-city branch reads current
+    /// counters/definitions and writes only achievement tracking/host output;
+    /// it has no gameplay callback or RNG draw. Positive city/path query
+    /// branches remain outside this bounded stock turn implementation.
+    pub fn player_initialization_complete(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        _scope: Scope,
+    ) -> Result<(), Error> {
+        if let Err(error) = self
+            .script
+            .call_empty(state, "PlayerTurnStartComplete", &[owner])
+        {
+            self.last_error = Some(format!("{error:?}"));
+            return Err(Error::Unsupported(
+                "PlayerTurnStartComplete script callback",
+            ));
+        }
+        if state.retained().players.iter().any(|p| {
+            !p.cities.records.entries.is_empty() || !p.districts.records.entries.is_empty()
+        }) {
+            return Err(Error::Unsupported(
+                "achievement observer current City query effects",
+            ));
+        }
+        self.reached
+            .push("PlayerTurnStartComplete same script registry");
+        self.reached
+            .push("stock empty-city achievement output omitted");
+        Ok(())
+    }
+    /// Processor.DoTurnActivate's final8953f126(owner,first). Stock consumers
+    /// are cache producers/host translation; current route-domain queries run
+    /// before their presentation publications are omitted.
+    pub fn processor_activation_complete(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        first: bool,
+        _scope: Scope,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Unsupported("processor activation report binding"))?;
+        if state
+            .retained()
+            .players
+            .iter()
+            .any(|p| !p.cities.records.entries.is_empty())
+        {
+            return Err(Error::Unsupported(
+                "processor activation current City cache queries",
+            ));
+        }
+        self.turn_report_records
+            .push(super::turn_reports::Record::ProcessorActivation {
+                player: owner,
+                first,
+            });
+        crate::loaded_actions::reporting::yield_monitor::warm_route_domain(state)
+            .map_err(|_| Error::Unsupported("processor activation current route queries"))?;
+        self.reached
+            .push("stock processor activation cache publication");
         Ok(())
     }
     /// Set active, apply the source hotseat local-player/observer change, then

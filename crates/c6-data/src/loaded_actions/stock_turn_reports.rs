@@ -10,6 +10,7 @@ pub enum Scope {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Record {
+    ProcessorActivation { player: i32, first: bool },
     /// Source-ordered report attempt, before its synchronous current queries.
     Report { event: u32, player: i32 },
     RestoreVisibility {
