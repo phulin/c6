@@ -25,7 +25,9 @@ pub struct State {
     subscribers: Vec<u64>,
     pub dispatches: Vec<(i32, i32)>,
     pub reports: Vec<Report>,
-    natural_wonders: Vec<u32>,
+    pub(super) natural_wonders: Vec<u32>,
+    pub(super) continents: LinuxDefinitionRegistry,
+    pub(super) goody_notify: Vec<u32>,
     pub propagation: Vec<c6_core::visibility_change::Propagation>,
     pub visibility_blocks: Vec<u32>,
     pub unit_visibility: Vec<c6_core::visibility_propagation::UnitVisibilityChanged>,
@@ -66,6 +68,29 @@ impl<P> Runtime<'_, P> {
                 ));
             }
         }
+        let mut goody_notify = Vec::new();
+        for row in rules
+            .gameplay()
+            .table("Improvements")
+            .ok_or(Error::Missing("Improvements"))?
+            .rows()
+        {
+            let flag = |key| -> Result<bool, Error> {
+                Ok(crate::game_parameters::sql_integer(
+                    row.get(key)
+                        .map_err(|e| Error::Requirement(format!("{e:?}")))?,
+                )
+                .ok_or(Error::Missing("goody discovery definition flag"))?
+                    != 0)
+            };
+            if flag("Goody")? && flag("GoodyNotify")? {
+                goody_notify.push(crate::registry::linux_type_hash(
+                    row.text("ImprovementType")
+                        .map_err(|e| Error::Requirement(format!("{e:?}")))?
+                        .as_bytes(),
+                ));
+            }
+        }
         self.resource_revelation = Some(State {
             definitions: resources::Definitions::from_rules(rules)
                 .map_err(|e| Error::Requirement(format!("{e:?}")))?,
@@ -76,6 +101,9 @@ impl<P> Runtime<'_, P> {
             dispatches: Vec::new(),
             reports: Vec::new(),
             natural_wonders,
+            continents: collection(rules, "Continents", "ContinentType")
+                .map_err(|e| Error::Requirement(format!("{e:?}")))?,
+            goody_notify,
             propagation: Vec::new(),
             visibility_blocks: Vec::new(),
             unit_visibility: Vec::new(),

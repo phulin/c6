@@ -45,4 +45,33 @@ impl LoadedState {
         let i = self.maintenance_player(owner)?;
         Ok(&mut self.retained.players[i].ai_military)
     }
+    pub fn player_discovery_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut crate::core_player::PostHeroesArrays, Error> {
+        let i = self.maintenance_player(owner)?;
+        self.retained.players[i]
+            .post_heroes_arrays
+            .as_mut()
+            .ok_or(Error::Binding)
+    }
+    /// Player47 fifth bool writes wrapper+2b0; getter242d2b0 reads+2c0.
+    pub fn set_player_circumnavigated(&mut self, owner: i32) -> Result<(), Error> {
+        let i = self.maintenance_player(owner)?;
+        self.retained.players[i].header.ordered_flags[4] = true;
+        Ok(())
+    }
+
+    pub fn player_initialized(&self, owner: i32) -> Result<bool, Error> {
+        let slots = &self
+            .controls
+            .as_ref()
+            .ok_or(Error::Missing(MissingInput::ManagerSlots))?
+            .player_slots;
+        Ok(usize::try_from(owner)
+            .ok()
+            .and_then(|i| slots.get(i))
+            .copied()
+            .unwrap_or(false))
+    }
 }

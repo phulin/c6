@@ -74,6 +74,46 @@ pub trait Context {
     fn is_revealed(&mut self, player: i32, plot: u32) -> Result<bool, Self::Error>;
     fn discovery(&self, player: i32) -> Result<&Discovery, Self::Error>;
     fn discovery_mut(&mut self, player: i32) -> Result<&mut Discovery, Self::Error>;
+    fn found_continent(&self, player: i32, index: i32) -> Result<bool, Self::Error> {
+        Ok(self
+            .discovery(player)?
+            .continents
+            .get(index as usize)
+            .copied()
+            .unwrap_or(false))
+    }
+    fn set_found_continent(&mut self, player: i32, index: i32) -> Result<(), Self::Error> {
+        if let Some(flag) = self
+            .discovery_mut(player)?
+            .continents
+            .get_mut(index as usize)
+        {
+            *flag = true;
+        }
+        Ok(())
+    }
+    fn found_feature(&self, player: i32, index: i32) -> Result<bool, Self::Error> {
+        Ok(self
+            .discovery(player)?
+            .features
+            .get(index as usize)
+            .copied()
+            .unwrap_or(false))
+    }
+    fn set_found_feature(&mut self, player: i32, index: i32) -> Result<(), Self::Error> {
+        if let Some(flag) = self.discovery_mut(player)?.features.get_mut(index as usize) {
+            *flag = true;
+        }
+        Ok(())
+    }
+    fn circumnavigated(&self, player: i32) -> Result<bool, Self::Error> {
+        Ok(self.discovery(player)?.circumnavigated)
+    }
+    fn set_circumnavigated(&mut self, player: i32) -> Result<(), Self::Error> {
+        self.discovery_mut(player)?.circumnavigated = true;
+        Ok(())
+    }
+
     fn find_unit(&mut self, reference: ComponentId) -> Result<Option<Self::Unit>, Self::Error>;
     fn unit_owner(&mut self, unit: Self::Unit) -> Result<i32, Self::Error>;
     fn player_id(&mut self, owner: i32) -> Result<i32, Self::Error>;
@@ -231,21 +271,11 @@ pub fn view_plot_contents<C: Context>(
             // Native getters return false outside the captured complete array;
             // setters ignore those indices. That does not suppress signals.
             let found = c
-                .discovery(event.player)
-                .map_err(Context)?
-                .continents
-                .get(continent as usize)
-                .copied()
-                .unwrap_or(false);
+                .found_continent(event.player, continent)
+                .map_err(Context)?;
             if !found {
-                if let Some(flag) = c
-                    .discovery_mut(event.player)
-                    .map_err(Context)?
-                    .continents
-                    .get_mut(continent as usize)
-                {
-                    *flag = true;
-                }
+                c.set_found_continent(event.player, continent)
+                    .map_err(Context)?;
                 c.signal(Signal::PlayerContinent {
                     player: event.player,
                     continent,
@@ -272,23 +302,11 @@ pub fn view_plot_contents<C: Context>(
     let wonder = c.natural_wonder(plot).map_err(Context)?;
     if first_nonhidden && wonder {
         let feature = c.feature(plot).map_err(Context)?;
-        let known = c
-            .discovery(event.player)
-            .map_err(Context)?
-            .features
-            .get(feature as usize)
-            .copied()
-            .unwrap_or(false);
+        let known = c.found_feature(event.player, feature).map_err(Context)?;
         if !known {
             let feature = c.feature(plot).map_err(Context)?;
-            if let Some(flag) = c
-                .discovery_mut(event.player)
-                .map_err(Context)?
-                .features
-                .get_mut(feature as usize)
-            {
-                *flag = true;
-            }
+            c.set_found_feature(event.player, feature)
+                .map_err(Context)?;
             let feature = c.feature(plot).map_err(Context)?;
             let location = c.location(plot).map_err(Context)?;
             c.signal(Signal::PlayerWonder {
@@ -329,7 +347,7 @@ pub fn view_plot_contents<C: Context>(
             }
         }
     }
-    let circumnavigated = c.discovery(event.player).map_err(Context)?.circumnavigated;
+    let circumnavigated = c.circumnavigated(event.player).map_err(Context)?;
     if event.revealed_state == 2 && event.first_reveal && !circumnavigated {
         let mut x = 0;
         while x < c.grid_width().map_err(Context)? {
@@ -345,9 +363,7 @@ pub fn view_plot_contents<C: Context>(
             }
             x += 1;
         }
-        c.discovery_mut(event.player)
-            .map_err(Context)?
-            .circumnavigated = true;
+        c.set_circumnavigated(event.player).map_err(Context)?;
         let location = c.location(plot).map_err(Context)?;
         c.signal(Signal::Circumnavigated {
             player: event.player,
