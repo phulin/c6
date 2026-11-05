@@ -174,7 +174,7 @@ impl<'a> Current<'a> {
             camp_has_trait,
             beach_index: registry
                 .find_index(crate::registry::linux_type_hash(
-                    b"IMPROVEMENT_SEASIDE_RESORT",
+                    b"IMPROVEMENT_BEACH_RESORT",
                 ))
                 .map(|i| i as i32),
             alive_major_ids,
