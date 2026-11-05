@@ -444,7 +444,7 @@ impl changes::Context for RequirementContext<'_> {
                 "district requirement Player",
             )))?;
         Ok(i32::from(player.districts.records.entries.iter().any(
-            |r| r.value.district_hash == hash && r.value.is_complete,
+            |r| r.value.district_hash == hash && r.value.is_complete && !r.value.pillaged,
         )))
     }
     fn modifier_changed(
