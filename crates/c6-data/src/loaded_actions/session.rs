@@ -363,9 +363,25 @@ impl Session<'_, '_, c6_core::unit::OperationParameters> {
         if matches!(self.pending_choice().map(|c|c.kind),Some(PolicyKind::Research(_))) {
             return Err(Error::PendingResearch);
         }
+        // The session's current visibility history is the canonical Gossip
+        // owner. Reborrow all other services instead of copying/replacing them.
+        let mut current = crate::builder_improvement::stock::Dispatcher {
+            definitions: dispatcher.definitions, cached: dispatcher.cached,
+            services: &mut *dispatcher.services,
+            legality: crate::builder_improvement::legality::Inputs {
+                fallout_turns: dispatcher.legality.fallout_turns,
+                drought_ids: dispatcher.legality.drought_ids,
+                national_parks: dispatcher.legality.national_parks,
+            },
+            sight_definitions: dispatcher.sight_definitions, upkeep: dispatcher.upkeep,
+            gossip_history: &self.visibility.history,
+            alive_major_ids: dispatcher.alive_major_ids,
+            reports: &mut *dispatcher.reports,
+            worker_reports: &mut *dispatcher.worker_reports,
+        };
         let result = super::move_to::execute_build_improvement_active_request(
             &mut self.context, issuer, actor, improvement_hash, modifiers,
-            inputs, handlers, runtime, dispatcher, budget);
+            inputs, handlers, runtime, &mut current, budget);
         self.retain(result, true)
     }
 }
