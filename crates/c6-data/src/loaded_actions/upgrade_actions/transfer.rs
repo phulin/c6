@@ -17,6 +17,13 @@ pub enum Report {
 }
 /// Subscriber qualifications describe the actual initialized fixture. They are
 /// not defaults: unqualified report/game signal consumers reject before Kill.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PromotionConsumer {
+    AttachGameEffects,
+    NavalGossip,
+    LandGossip,
+    Achievements,
+}
 pub struct Inputs<'d> {
     pub rules: &'d Rules,
     pub experience: &'d experience::Definitions,
@@ -25,7 +32,8 @@ pub struct Inputs<'d> {
     pub creation: &'d unit_creation::Definitions,
     pub tags: &'d crate::loaded_actions::reporting::hold_cycling::commands::Tags,
     pub presentation_reports_qualified: bool,
-    pub promotion_attach_only: bool,
+    /// Actual ordered +1638 subscriptions, including nested std::function targets.
+    pub promotion_consumers: Option<Vec<PromotionConsumer>>,
     pub levied_consumers_empty: bool,
     pub reports: Vec<Report>,
     /// Captured at the native pre-destruction read point, consumed once.
@@ -43,12 +51,13 @@ pub fn preflight<P>(
 ) -> Result<(), String> {
     backend.check(state).map_err(fail)?;
     if !input.presentation_reports_qualified
-        || !input.promotion_attach_only
+        || input.promotion_consumers.is_none()
         || !input.levied_consumers_empty
     {
         return Err("unqualified upgrade setter report/promotion consumers".into());
     }
     let old = super::actor::<()>(state, actor).map_err(fail)?;
+
     // SetMilitaryFormation reaches additional recalculation; retain an explicit
     // unsupported branch until that setter is implemented over the same owners.
     if !matches!(old.e_military_formation, -1 | 0) {
@@ -87,8 +96,62 @@ pub fn preflight<P>(
     }
     Ok(())
 }
-struct Reports<'a>(&'a mut Vec<Report>, i32);
-impl experience::Reports for Reports<'_> {
+/// Exact early-return predicates of the reached stock gossip/achievement
+/// consumers. Positive publication remains explicit unsupported gameplay work.
+fn promotion_leaf(
+    input: &Inputs<'_>,
+    consumer: PromotionConsumer,
+    unit_type: u32,
+    domain: i32,
+    level: i32,
+) -> Result<(), String> {
+    use PromotionConsumer::*;
+    let units =
+        crate::unit_initialization_definitions::collection(input.rules, "Units", "UnitType")
+            .map_err(fail)?;
+    if consumer == Achievements {
+        let monk = crate::registry::linux_type_hash(b"UNIT_WARRIOR_MONK");
+        if units.find_index(monk).is_none() || unit_type != monk || level < 4 {
+            return Ok(());
+        }
+        return Err("promotion WarriorMonk achievement publication".into());
+    }
+    let name = match consumer {
+        NavalGossip => b"GOSSIP_NAVAL_UNIT_LEVEL".as_slice(),
+        LandGossip => b"GOSSIP_LAND_UNIT_LEVEL".as_slice(),
+        AttachGameEffects => return Ok(()),
+        Achievements => unreachable!(),
+    };
+    let matches = match consumer {
+        NavalGossip => domain == 0,
+        LandGossip => domain == 2,
+        _ => false,
+    };
+    if !matches {
+        return Ok(());
+    }
+    let table = input
+        .rules
+        .gameplay()
+        .table("Gossips")
+        .ok_or("promotion Gossips")?;
+    if let Some(row) = table
+        .rows()
+        .find(|r| r.text("GossipType").ok().map(str::as_bytes) == Some(name))
+    {
+        let required = i32::try_from(row.integer("LevelRequired").map_err(fail)?).map_err(fail)?;
+        if level < required {
+            return Ok(());
+        }
+    }
+    Err("promotion gossip occurrence creation/reporting".into())
+}
+struct Reports<'a, 'd>(
+    &'a mut Vec<Report>,
+    i32,
+    &'a crate::formation_movement_cost::Definitions<'d>,
+);
+impl experience::Reports for Reports<'_, '_> {
     type Error = String;
     fn observer_can_see_player(&mut self, _: &LoadedState, owner: i32) -> Result<bool, String> {
         Ok(experience::reporting::observer_can_see_player(
@@ -110,11 +173,18 @@ impl experience::Reports for Reports<'_> {
             }));
         Ok(())
     }
-    fn changed(&mut self, _: &mut LoadedState, unit: UnitReference) -> Result<(), String> {
+    fn changed(&mut self, state: &mut LoadedState, unit: UnitReference) -> Result<(), String> {
         self.0
             .push(Report::Experience(experience::reporting::Event::Changed {
                 unit,
             }));
+        // Translator 320cee0 queries real Promote availability after the cache
+        // update. Preserve that query even when the host display DTO is omitted.
+        if experience::reporting::promotion_available_after_change(state, self.2, unit)
+            .map_err(fail)?
+        {
+            return Err("upgrade XPChanged positive Promote publication".into());
+        }
         Ok(())
     }
 }
@@ -228,7 +298,7 @@ pub fn transfer<P>(
             input.levels,
             UnitReference::from_component_id(new),
             old.k_experience.i_experience,
-            &mut Reports(&mut input.reports, observer),
+            &mut Reports(&mut input.reports, observer, input.maximum),
         )
         .map_err(fail)?;
     }
@@ -287,7 +357,24 @@ pub fn transfer<P>(
                 value: true,
             });
         }
-        backend.upgrade_promotion_earned(state, input.rules, new, &entry.type_name)?;
+        let consumers = input
+            .promotion_consumers
+            .clone()
+            .ok_or("current promotion consumers")?;
+        for consumer in consumers {
+            if consumer == PromotionConsumer::AttachGameEffects {
+                backend.upgrade_promotion_earned(state, input.rules, new, &entry.type_name)?;
+            } else {
+                let current = super::actor::<()>(state, (owner, new.id)).map_err(fail)?;
+                promotion_leaf(
+                    input,
+                    consumer,
+                    current.e_type_index,
+                    state.unit_runtime(owner, new.id).map_err(fail)?.domain,
+                    current.k_experience.i_level,
+                )?;
+            }
+        }
         input.reports.push(Report::Promotion(new, index));
     }
     let abilities = crate::unit_initialization_definitions::collection(
