@@ -202,8 +202,10 @@ mod tests {
         assert_eq!(calls.calls.len(), 52);
         assert!(calls
             .calls
-            .chunks_exact(2)
-            .all(|pair| pair == ["dispatch", "wait"]));
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .all(|pair| *pair == ["dispatch", "wait"]));
     }
     #[test]
     fn failed_job_join_skips_later_dispatches() {

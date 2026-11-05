@@ -402,7 +402,7 @@ mod tests {
                 &[1, 2],
                 1,
                 &[],
-                |p| Ok::<_, Error>(p),
+                Ok::<_, Error>,
                 |p, _| Ok(if p == 1 { 0x00800000 } else { 0 })
             )
             .unwrap(),
