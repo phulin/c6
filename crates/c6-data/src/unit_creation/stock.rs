@@ -8,6 +8,52 @@ use crate::{
 };
 use c6_core::{loaded_state::LoadedState, map::UnitReference, unit::ComponentId};
 
+/// Immutable registrations for the canonical History.HandleMoment continuation.
+/// History records and era scores remain in LoadedState; these are not copies.
+pub struct History<'a> {
+    pub definitions: &'a crate::melee_attack::resolve::completion::history::Definitions,
+    pub inputs: crate::melee_attack::resolve::completion::history::Inputs<'a>,
+    pub recorded: &'a [crate::melee_attack::resolve::completion::history::RecordedListener],
+    /// Source-qualified moment/era-score/PrideMoment presentation routes, with
+    /// no additional gameplay consumers. Unqualified routes remain unavailable.
+    pub presentation_qualified: bool,
+}
+struct HistoryEffects<'a>(Option<&'a History<'a>>);
+impl signals::history::Effects for HistoryEffects<'_> {
+    fn handle_moment(
+        &mut self,
+        state: &mut LoadedState,
+        moment: c6_core::game_history::Moment,
+    ) -> Result<(), signals::Error> {
+        let services = self
+            .0
+            .ok_or(signals::Error::Missing("current Unit history services"))?;
+        if !services.presentation_qualified {
+            return Err(signals::Error::Missing(
+                "current Unit moment report consumers",
+            ));
+        }
+        // Reuse the source-qualified general callbacks. The only mutable
+        // gameplay records are the canonical History/Eras fields in state.
+        let mut effects = crate::loaded_actions::government_actions::history::StockEffects {
+            recorded: services.recorded,
+            reports: Vec::new(),
+        };
+        let result = crate::melee_attack::resolve::completion::history::handle_moment(
+            state,
+            services.definitions,
+            services.inputs,
+            moment,
+            &mut effects,
+        );
+        // Native cache/Host/PrideMoment output is omitted at this qualified
+        // headless boundary; synchronous gameplay callbacks above are retained.
+        result
+            .map(|_| ())
+            .map_err(|e| signals::Error::Moment(format!("{e:?}")))
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Consumer {
     /// GeneralPlayerDataProvider2644890 only updates summary-local historical
@@ -45,6 +91,7 @@ pub struct Inputs<'a> {
     pub scratch: &'a [(i32, bool)],
     pub quests: &'a [crate::city_turn::religion_callbacks::CurrentQuest],
     pub achievements: signals::AchievementInputs<'a>,
+    pub history: Option<&'a History<'a>>,
 }
 /// Includes both the factory's pre-placement dispatch and the camp's additional
 /// post-placement dispatch. Null originating cities remain actual None values.
@@ -80,7 +127,13 @@ pub fn game_created<P, E: collections::Effects>(
                 .map_err(Error::Signal)?,
             Consumer::History => inputs
                 .signals
-                .history_created(owners.state, &inputs.levels, inputs.scratch, reference)
+                .history_created(
+                    owners.state,
+                    inputs.build_maps,
+                    inputs.scratch,
+                    reference,
+                    &mut HistoryEffects(inputs.history),
+                )
                 .map_err(Error::Signal)?,
             Consumer::TrainQuests => {
                 signals::train_quests_created(owners.state, inputs.levels.binding, inputs.quests)

@@ -1,4 +1,5 @@
 //! Current UnitCreated rule and Script leaves shared by production callers.
+pub mod history;
 pub mod trained_gossip;
 use super::*;
 use crate::{
@@ -9,6 +10,7 @@ use c6_core::{core_player::initialization::WireBinding, map::UnitReference};
 pub enum Error {
     State(c6_core::loaded_state::Error),
     Statistics(c6_core::loaded_state::game_statistics::AccessError),
+    Moment(String),
     World(c6_core::world::MissingInput),
     Script(stock_script::Error),
     Rules(crate::Error),
@@ -23,7 +25,7 @@ pub struct Definitions {
     makes_trade_route: Vec<bool>,
     prerequisite_era: Vec<i32>,
     obsolete: i32,
-    history_special: Vec<bool>,
+    history: history::Definitions,
     boosts: Vec<Boost>,
     replacements: Vec<(i32, i32)>,
 }
@@ -113,7 +115,6 @@ impl Definitions {
         };
         let mut found_city = Vec::new();
         let mut makes_trade_route = Vec::new();
-        let mut history_special = Vec::new();
         let mut prerequisite_era = Vec::new();
         for entry in units.entries() {
             let row = table("Units")?
@@ -121,13 +122,6 @@ impl Definitions {
                 .ok_or(Error::Missing("Unit row"))?;
             found_city.push(row.integer("FoundCity").map_err(Error::Rules)? != 0);
             makes_trade_route.push(row.integer("MakeTradeRoute").map_err(Error::Rules)? != 0);
-            history_special.push(
-                !matches!(row.get("TraitType").map_err(Error::Rules)?, SqlValue::Null)
-                    || !matches!(
-                        row.get("StrategicResource").map_err(Error::Rules)?,
-                        SqlValue::Null
-                    ),
-            );
             //26adee0: technology first, civic only on strictly greater chronology.
             let mut best = (i32::MIN, -1);
             for candidate in [
@@ -187,7 +181,7 @@ impl Definitions {
             makes_trade_route,
             prerequisite_era,
             obsolete,
-            history_special,
+            history: history::Definitions::from_rules(state, rules, bound)?,
             boosts,
             replacements,
         })
@@ -317,45 +311,16 @@ impl Definitions {
         }
         Ok(())
     }
-    ///29e7ad0: current major/scratch/levied/hero guards, then unique/resource
-    /// moments and finally naval/air moments. Ordinary land Builder has neither.
+    ///29e7ad0: live dispatcher predicates and synchronous moment handling.
     pub fn history_created(
         &self,
-        state: &LoadedState,
-        levels: &CurrentCivilizationLevels<'_>,
+        state: &mut LoadedState,
+        maps: &BuildMaps,
         scratch: &[(i32, bool)],
         unit: UnitReference,
+        effects: &mut impl history::Effects,
     ) -> Result<(), Error> {
-        let actor = self.actor(state, unit)?;
-        if !self.major(state, levels, actor.e_owner)? {
-            return Ok(());
-        }
-        if scratch
-            .iter()
-            .find(|p| p.0 == actor.e_owner)
-            .ok_or(Error::Missing("current scratch flag"))?
-            .1
-            || actor.b_is_levied
-            || actor.k_hero.e_class != u32::MAX
-        {
-            return Ok(());
-        }
-        let current = state
-            .unit_runtime(unit.player(), unit.id)
-            .map_err(Error::State)?;
-        let index = usize::try_from(current.definition_index)
-            .map_err(|_| Error::Missing("history Unit definition"))?;
-        if *self
-            .history_special
-            .get(index)
-            .ok_or(Error::Missing("history Unit references"))?
-        {
-            return Err(Error::Missing("unique or strategic-resource Unit moment"));
-        }
-        if matches!(current.domain, 0 | 1) {
-            return Err(Error::Missing("first naval/air Unit moment"));
-        }
-        Ok(())
+        history::on_created(state, &self.history, maps, scratch, unit, effects)
     }
     /// Source Boost UnitCreated/count callback batch. Queries read the current
     /// roster on every callback; a reached TriggerBoost remains required.

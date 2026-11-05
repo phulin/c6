@@ -49,6 +49,8 @@ pub struct State<'a> {
     pub city_initialized_script: bool,
     pub placement: Option<PlacementInputs<'a>>,
     pub control: Option<ControlInputs<'a>>,
+    /// Current moment callbacks; absent remains unsupported when a request is reached.
+    pub history: Option<stock::History<'a>>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn bind_modifier_owners(
@@ -307,6 +309,7 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
                 ruleset: &input.achievement.ruleset,
                 civilization,
             },
+            history: input.history.as_ref(),
         };
         stock::game_created(
             &mut owners,
