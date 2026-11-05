@@ -94,11 +94,33 @@ impl<P> Effects<'_, '_, '_, P> {
         self.backend.last_error = Some(format!("human activation: {error:?}"));
         Error::Unsupported("stock human activation; inspect backend.last_error")
     }
-    fn no_city_callbacks(state: &LoadedState, owner: i32) -> Result<(), Error> {
+    fn city_callbacks(state: &LoadedState, owner: i32) -> Result<(), Error> {
         let p = player(state, owner)?;
-        if !p.cities.records.entries.is_empty() {
-            return Err(Error::Unsupported("human CityBuild activation callbacks"));
+        if p.cities.records.entries.is_empty() {
+            return Ok(());
         }
+        let manager = p
+            .ai_city_manager
+            .as_ref()
+            .ok_or(Error::Unsupported("current human CityBuild manager"))?;
+        for entry in &manager.city_ais.entries {
+            let city = &entry.city_build;
+            // UpdateWorkingContract1fda930 may cancel a contract and pop the
+            // actual production queue. An absent handle returns immediately.
+            if city.managed_working_contract.player_id >= 0
+                && city.managed_working_contract.id != u32::MAX
+            {
+                return Err(Error::Unsupported("human CityBuild working contract"));
+            }
+            if !city.event_trees.is_empty() {
+                return Err(Error::Unsupported("human CityBuild event-tree cleanup"));
+            }
+        }
+        // 1fdd181..1fdd2c8 refreshes plot/district/food/defender policy
+        // evaluations, using current getters and arithmetic without RNG.
+        // The actual human guard at1fdd2d0 returns before CheckGrowth,
+        // contract requests and QueueNextBuild. Those are external decisions.
+        // Off-turn analyzer jobs and these derived scores are not gameplay.
         Ok(())
     }
     fn controller_callbacks(state: &LoadedState, owner: i32, kind: Kind) -> Result<(), Error> {
@@ -157,7 +179,7 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
     fn off_turn(&mut self, state: &mut LoadedState, owner: i32) -> Result<bool, Error> {
         for &kind in &self.inputs.off_turn {
             match kind {
-                Kind::City => Self::no_city_callbacks(state, owner)?,
+                Kind::City => Self::city_callbacks(state, owner)?,
                 Kind::Military => {
                     // UpdateOffTurn214a198: AnalyzeForces precedes defenses
                     // and new-operation score evaluation. Preserve its roles.
@@ -201,7 +223,7 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
             if matches!(kind, Kind::City | Kind::BehaviorTree) {
                 if full_turn {
                     if kind == Kind::City {
-                        Self::no_city_callbacks(state, owner)?;
+                        Self::city_callbacks(state, owner)?;
                     } else {
                         Self::controller_callbacks(state, owner, kind)?;
                     }
@@ -255,7 +277,10 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
                         owner,
                         self.definitions.maintenance.unit_registry(),
                         self.visibility,
-                        self.backend.movement().ok().map(|m|m.definitions.formation),
+                        self.backend
+                            .movement()
+                            .ok()
+                            .map(|m| m.definitions.formation),
                     )?;
                     let t = player(state, owner)?
                         .ai_targets
@@ -280,10 +305,9 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
         }
         let _ = player(state, owner)?;
         // a235ddf7 registers City.OnAiAdvisorUpdated27171f0, which
-        // traverses this player's Cities via2717700. The actual empty roster
-        // reaches no Fill/query callback. Host3210ae0 queues Player event176;
-        // its derived advisor/presentation output is omitted in stock scope.
-        Self::no_city_callbacks(state, owner)?;
+        // traverses Cities via2717700 to fill advisor presentation output.
+        // Host3210ae0 queues Player event176. These derived DTOs are omitted;
+        // city gameplay/contract work is handled at its priority boundary.
         self.backend
             .reached
             .push("stock human control activation report");

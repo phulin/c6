@@ -1,6 +1,6 @@
 //! District portion of stock Placement.ExecuteForcedUnitRebase.
 //! Completion and current air capacity precede city, occupation and pairing
-//! queries. Positive-capacity hangars require the aircraft continuation.
+//! queries. Only pillaged or enemy-occupied hangars enter forced rebasing.
 use crate::{resource_binding::ResourceAuthority, unit_initialization_definitions, Rules};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
 #[derive(Debug)]
@@ -93,6 +93,41 @@ pub fn check_districts(
                 .ok_or(Error::Missing("current district definition"))
         })?;
         if let Some(capacity) = positive {
+            if !player
+                .cities
+                .records
+                .entries
+                .iter()
+                .any(|c| c.value.header.id == district.city_id)
+            {
+                continue;
+            }
+            if !district.pillaged {
+                // 2befa78..2befabf: an intact district only rebases when
+                // IsOccupiedByEnemy is true. An exclusively own-unit plot
+                // returns false before any aircraft/pairing traversal.
+                let mut foreign = false;
+                for p in &state.retained().players {
+                    if p.header.owner == owner {
+                        continue;
+                    }
+                    for slot in state
+                        .world()
+                        .player(p.header.owner)
+                        .map_err(|_| Error::Missing("current rebase player"))?
+                        .unit_records()
+                        .map_err(|_| Error::Missing("current rebase units"))?
+                    {
+                        if (slot.value.k_location.x, slot.value.k_location.y) == district.location {
+                            foreign = true;
+                        }
+                    }
+                }
+                if !foreign {
+                    continue;
+                }
+                return Err(Error::Missing("current district enemy occupation"));
+            }
             return Err(Error::AircraftContinuation {
                 district: district.id,
                 capacity,

@@ -36,6 +36,7 @@ pub struct Definitions {
     traders: Vec<bool>,
     resources: Vec<(u32, bool)>,
     city_resources: resource_cities::Definitions,
+    luxuries: crate::luxury_allocation::Definitions,
     denounce: i32,
     earliest_major_dow_turn: i32,
     casus_prerequisites: Vec<(u32, Option<u32>, bool)>,
@@ -210,6 +211,8 @@ impl Definitions {
         let city_resources = resource_cities::Definitions::from_rules(state, rules, &resources)?;
         Ok(Self {
             city_resources,
+            luxuries: crate::luxury_allocation::Definitions::from_rules(state, rules)
+                .map_err(|_| missing("luxury allocation definitions"))?,
             congress_initial_era: parameter("WORLD_CONGRESS_INITIAL_ERA")?,
             special_session_min_turns: parameter(
                 "WORLD_CONGRESS_MIN_TIME_BETWEEN_SPECIAL_SESSIONS",
@@ -348,6 +351,12 @@ pub struct Queries<'a> {
     pub game_speed_type: u32,
 }
 pub trait Effects {
+    fn allocate_luxuries(
+        &mut self,
+        state: &mut LoadedState,
+        definitions: &crate::luxury_allocation::Definitions,
+        owner: i32,
+    ) -> Result<(), Error>;
     fn congress_event(
         &mut self,
         state: &mut LoadedState,
@@ -640,19 +649,7 @@ pub fn before_units(
     }
     resource_cities::accumulate(state, &defs.city_resources, owner)?;
     e.report_block(state, 0x1153df52, false)?;
-    state
-        .player_resources_mut(owner)
-        .map_err(state_error)?
-        .luxury_allocations
-        .clear();
-    let r = &player(state, owner)?.resources;
-    if r.full_access_one_strategic
-        || r.resource_ownership
-            .iter()
-            .any(|r| r.value.iter().any(|&v| v != 0))
-    {
-        return Err(missing("owned-resource luxury allocation"));
-    }
+    e.allocate_luxuries(state, &defs.luxuries, owner)?;
     if !runtime.parks.is_empty() {
         return Err(missing("national park amenities"));
     }
