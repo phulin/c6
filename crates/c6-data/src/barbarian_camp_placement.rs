@@ -82,6 +82,12 @@ pub trait Context {
     /// Native radius-one unowned plots only, including exact live plot yields.
     fn local_food(&self, state: &LoadedState, location: PlotCoord) -> Result<i32, Self::Error>;
     fn camp_created(&mut self, state: &mut LoadedState, index: usize) -> Result<(), Self::Error>;
+    fn restore_visual_state(
+        &mut self,
+        state: &mut LoadedState,
+        plot: usize,
+        improvement_hash: u32,
+    ) -> Result<(), Self::Error>;
     fn resource_monopolies(&mut self, state: &mut LoadedState) -> Result<(), Self::Error>;
     fn revealed_major_notifications(
         &mut self,
@@ -153,8 +159,10 @@ pub fn set_camp<C: Context>(
     context
         .constructed(state, rules, plot)
         .map_err(Error::Effect)?;
-    // RestoreVisualState is presentation; its implementation must not be used
-    // to replace construction callbacks or their gameplay/RNG effects.
+    // RestoreVisualState also updates gameplay-consumed revealed improvements.
+    context
+        .restore_visual_state(state, plot, improvement_hash)
+        .map_err(Error::Effect)?;
     context.resource_monopolies(state).map_err(Error::Effect)?;
     context
         .revealed_major_notifications(state, loc)
@@ -580,4 +588,122 @@ impl Rules {
             world_builder,
         })
     }
+}
+
+/// RestoreVisualState's reporting service; revealed layer updates are performed
+/// directly on canonical visibility records, as in the existing route setter.
+pub trait VisualContext {
+    type Error;
+    fn alive_ids(&self) -> Result<Vec<i32>, Self::Error>;
+    fn messages_disabled(&self) -> bool;
+    fn local_observer(&self) -> Option<i32>;
+    fn is_revealed(
+        &self,
+        state: &LoadedState,
+        player: i32,
+        plot: usize,
+    ) -> Result<bool, Self::Error>;
+    fn revealed_state(
+        &self,
+        state: &LoadedState,
+        player: i32,
+        plot: usize,
+    ) -> Result<i32, Self::Error>;
+    fn report(
+        &mut self,
+        state: &mut LoadedState,
+        plot: usize,
+        event: u32,
+        argument: i32,
+    ) -> Result<(), Self::Error>;
+}
+/// Source 0x2a39380. Improvement knowledge uses native ordinals, never hashes.
+/// 0x2bc1356 binds manager+0x18 to layer hash f7a356cf; 0x2bc1910
+/// edits that own-group i16 cell without callbacks or RNG.
+pub fn restore_visual_state<C: VisualContext>(
+    state: &mut LoadedState,
+    context: &mut C,
+    plot: usize,
+    improvement: i32,
+) -> Result<(), Error<C::Error>> {
+    const LAYER: u32 = 0xf7a356cf;
+    if improvement == -1 {
+        return Ok(());
+    }
+    let owner = i32::from(
+        state
+            .world()
+            .map()
+            .plots
+            .get(plot)
+            .ok_or(Error::Missing("restored improvement plot"))?
+            .improvement_owner,
+    );
+    if !context.messages_disabled() {
+        context
+            .report(state, plot, 0xe5b20b82, owner)
+            .map_err(Error::Effect)?;
+    }
+    for player in context.alive_ids().map_err(Error::Effect)? {
+        if !context
+            .is_revealed(state, player, plot)
+            .map_err(Error::Effect)?
+        {
+            continue;
+        }
+        let visibility = state
+            .world_mut()
+            .map_err(Error::State)?
+            .visibility_mut(player)
+            .ok_or(Error::Missing("restored improvement visibility"))?;
+        // Native EditLayerIndexEntry may return null for an absent layer/cell.
+        if let Some(cell) = visibility
+            .layers
+            .iter_mut()
+            .find(|l| l.type_hash == LAYER)
+            .and_then(|l| l.values.get_mut(plot))
+        {
+            *cell = improvement as i16;
+        }
+    }
+    // Player1000 is the separate omniscient display instance. Its setter only
+    // writes the same layer cell, with no callbacks or RNG (0x2bc1910).
+    if let Some(observer) = state
+        .world_mut()
+        .map_err(Error::State)?
+        .visibility_mut(1000)
+    {
+        if let Some(cell) = observer
+            .layers
+            .iter_mut()
+            .find(|l| l.type_hash == LAYER)
+            .and_then(|l| l.values.get_mut(plot))
+        {
+            *cell = improvement as i16;
+        }
+    }
+    if !context.messages_disabled() {
+        let observer = context
+            .local_observer()
+            .ok_or(Error::Missing("restored improvement local observer"))?;
+        let visibility = state
+            .world()
+            .visibility(observer)
+            .ok_or(Error::Missing("restored improvement observer"))?;
+        let known = visibility
+            .layers
+            .iter()
+            .find(|l| l.type_hash == LAYER)
+            .and_then(|l| l.values.get(plot))
+            .copied();
+        if known == Some(improvement as i16) {
+            let revealed_state = context
+                .revealed_state(state, observer, plot)
+                .map_err(Error::Effect)?;
+            context
+                .report(state, plot, 0xf391d7b3, revealed_state)
+                .map_err(Error::Effect)?;
+        }
+    }
+    Ok(())
 }
