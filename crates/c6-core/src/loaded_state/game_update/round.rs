@@ -11,6 +11,21 @@ fn changed(state: &mut LoadedState) -> Result<(), Error> {
     Ok(())
 }
 
+/// Final Player.TurnManager.DoEndTurn leaf, after Units and Cities complete.
+/// Culture.DoEndTurn2a736c0 clears only the civic-completed boolean (FAV+458,
+/// value+468; getter27cb5b0). The recorded civic hash and government flag stay.
+pub fn end_player_culture(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
+    let index = state
+        .retained
+        .players
+        .iter()
+        .position(|p| p.requested_owner == owner)
+        .ok_or(Error::Unsupported("current end-turn Culture owner"))?;
+    changed(state)?;
+    state.retained.players[index].culture.civic_completed_this_turn = false;
+    Ok(())
+}
+
 /// Mandatory effects outside the processor scalar bodies. Implementations must
 /// execute the reached gameplay/RNG consumers or return Unsupported. No native
 /// policy selection is authorized by a successful processor transition.
@@ -388,6 +403,20 @@ pub fn xp2_begin_world(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn culture_end_turn_clears_completion_without_rewriting_hash_or_government() {
+        let mut state = crate::loaded_state::tests::state();
+        let owner = state.retained.players[0].requested_owner;
+        let culture = &mut state.retained.players[0].culture;
+        culture.civic_completed_this_turn = true;
+        culture.civic_completed_this_turn_hash = 0x12345678;
+        culture.government_change_considered = true;
+        super::end_player_culture(&mut state, owner).unwrap();
+        let culture = &state.retained.players[0].culture;
+        assert!(!culture.civic_completed_this_turn);
+        assert_eq!(culture.civic_completed_this_turn_hash, 0x12345678);
+        assert!(culture.government_change_considered);
+    }
     use super::*;
     #[test]
     fn slot_reset_does_not_touch_other_slots_or_phase_counts() {
