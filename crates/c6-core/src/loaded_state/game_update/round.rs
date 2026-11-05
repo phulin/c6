@@ -11,6 +11,17 @@ fn changed(state: &mut LoadedState) -> Result<(), Error> {
     Ok(())
 }
 
+/// Game.GetGameEndTurn2661d60 over the current initializer/configuration.
+/// A missing configuration uses StartTurn+MaxGameTurns; explicit NONE/INVALID
+/// limit types return zero and the score limit uses MaxGameTurns+1.
+pub fn configured_game_end_turn(start: i32, max_turns: i32, limit_type: Option<u32>) -> i32 {
+    match limit_type {
+        Some(u32::MAX | 0x809925de) => 0,
+        Some(0xdef9f0af) => max_turns.wrapping_add(1),
+        _ => start.wrapping_add(max_turns),
+    }
+}
+
 /// Final Player.TurnManager.DoEndTurn leaf, after Units and Cities complete.
 /// Culture.DoEndTurn2a736c0 clears only the civic-completed boolean (FAV+458,
 /// value+468; getter27cb5b0). The recorded civic hash and government flag stay.
