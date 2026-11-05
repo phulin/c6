@@ -2,6 +2,7 @@
 //! The native source orders MaxMoves, static charges, abilities and promotions;
 //! later unsupported leaves retain that prefix and never count as completion.
 pub mod signals;
+pub mod stock;
 pub mod collections;
 pub mod placement_effects;
 pub mod production_effects;
@@ -590,7 +591,7 @@ pub trait PlayerCreationEffects:
         &mut self,
         state: &mut LoadedState,
         unit: Option<ComponentId>,
-        city: ComponentId,
+        city: Option<ComponentId>,
     ) -> Result<(), Error<<Self as Effects>::Error>>;
     fn player_unit_created(
         &mut self,
@@ -629,6 +630,23 @@ impl<E: PlayerCreationEffects> PlayerContext<'_, '_, '_, E> {
         owner: i32,
         unit_hash: u32,
         city: ComponentId,
+    ) -> Result<Option<ComponentId>, Error<<E as Effects>::Error>> {
+        self.create_with_city(owner, unit_hash, Some(city))
+    }
+    /// Native manager creation without an originating City. The synchronous
+    /// callback argument stays null, including Script and requirement leaves.
+    pub fn create_without_city(
+        &mut self,
+        owner: i32,
+        unit_hash: u32,
+    ) -> Result<Option<ComponentId>, Error<<E as Effects>::Error>> {
+        self.create_with_city(owner, unit_hash, None)
+    }
+    fn create_with_city(
+        &mut self,
+        owner: i32,
+        unit_hash: u32,
+        city: Option<ComponentId>,
     ) -> Result<Option<ComponentId>, Error<<E as Effects>::Error>> {
         // Native Find-definition failure precedes allocation and both signals.
         if self.definitions.units.find_index(unit_hash).is_none() {

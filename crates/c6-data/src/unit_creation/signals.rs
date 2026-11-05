@@ -601,26 +601,26 @@ impl Definitions {
 }
 ///2c9d3a0: re-read both object identities, append city arguments only when
 /// present, and invoke the SAME persistent Script owner. Nonempty hooks refuse.
-pub fn script_created(
+pub fn script_created<P>(
     state: &LoadedState,
-    script: &mut stock_script::Runtime,
+    script: &mut stock_script::Runtime<P>,
     unit: UnitReference,
     city: Option<ComponentId>,
 ) -> Result<(), Error> {
     script_unit_event(state, script, unit, city, "UnitCreated")
 }
 ///2c9d510 uses the same four identity arguments for UnitInitialized.
-pub fn script_initialized(
+pub fn script_initialized<P>(
     state: &LoadedState,
-    script: &mut stock_script::Runtime,
+    script: &mut stock_script::Runtime<P>,
     unit: UnitReference,
     city: Option<ComponentId>,
 ) -> Result<(), Error> {
     script_unit_event(state, script, unit, city, "UnitInitialized")
 }
-fn script_unit_event(
+fn script_unit_event<P>(
     state: &LoadedState,
-    script: &mut stock_script::Runtime,
+    script: &mut stock_script::Runtime<P>,
     unit: UnitReference,
     city: Option<ComponentId>,
     event: &str,

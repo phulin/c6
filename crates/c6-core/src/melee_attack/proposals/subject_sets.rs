@@ -6,6 +6,7 @@ use crate::unit_moved_signal::requirement_sets as all;
 use crate::unit_moved_signal::{ListenerRing, RegistryError, Subscription};
 
 pub mod changes;
+mod definitions;
 pub mod player_has_district;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -13,6 +13,7 @@ use super::{
 #[path = "stock_activation.rs"]
 mod activation;
 pub mod city_production;
+pub mod unit_creation;
 pub mod city_queries;
 pub mod cityless_managers;
 pub mod deactivation;
@@ -22,15 +23,15 @@ pub mod game_update;
 pub mod gold;
 pub mod human_activation;
 pub mod inactive_control;
-pub mod npc_activation;
-pub mod npc_deactivation;
-pub mod npc_leaves;
 #[path = "stock_maintenance.rs"]
 pub mod maintenance;
 #[path = "stock_manager_queries.rs"]
 mod manager_queries;
 #[path = "stock_movement.rs"]
 pub mod movement;
+pub mod npc_activation;
+pub mod npc_deactivation;
+pub mod npc_leaves;
 #[path = "stock_research.rs"]
 pub mod research;
 #[path = "stock_scoring.rs"]
@@ -95,6 +96,8 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     temporary_serial: u64,
     positive_temporaries: Vec<c6_core::notification_lifecycle::ObjectId>,
     player_services: Option<crate::unit_placement_services::Runtime>,
+    unit_creation: Option<unit_creation::State<'a>>,
+    modifier_owners: Option<unit_creation::ModifierOwners>,
     movement: Option<movement::State<'a>>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
@@ -133,6 +136,8 @@ impl<'a, P> Runtime<'a, P> {
             temporary_serial: 0,
             positive_temporaries: Vec::new(),
             player_services: None,
+            unit_creation: None,
+            modifier_owners: None,
             movement: None,
             city_queries: None,
             gold_signals: None,
