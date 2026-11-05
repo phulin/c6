@@ -386,12 +386,23 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     return Err(Error::Unsupported("NPC Targets pending new war"));
                 }
                 for war in &targets.knowledge_base.war_knowledge {
+                    // CivKnowledge::IncrementTurn 20009f0..20009fb skips the
+                    // unassigned record before consulting current relations.
+                    if war.opponent == -1 {
+                        continue;
+                    }
                     if war.is_active.0 != 0
                         || state
                             .game_relations()
                             .map_err(|_| Error::Unsupported("NPC Targets current relations"))?
                             .is_at_war(owner, war.opponent)
-                            .map_err(|_| Error::Unsupported("NPC Targets current war"))?
+                            .map_err(|error| {
+                                backend.last_error = Some(format!(
+                                    "NPC Targets current war {owner}/{}: {error:?}",
+                                    war.opponent
+                                ));
+                                Error::Unsupported("NPC Targets current war")
+                            })?
                     {
                         return Err(Error::Unsupported("NPC Targets war knowledge decay"));
                     }
