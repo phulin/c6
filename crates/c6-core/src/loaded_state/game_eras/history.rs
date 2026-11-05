@@ -209,6 +209,118 @@ impl LoadedState {
             .ok_or(AccessError::Unavailable("current Era discovery rates"))
             .map(|rows| rows.get(owner))
     }
+    /// Current PlayerScores tech/civic boost rates at native +20/+24.
+    pub fn initialize_game_era_boost_rates(
+        &mut self,
+        binding: &WireBinding,
+        source: Option<&ObservedSnapshotWitness>,
+        values: Vec<[i32; 2]>,
+    ) -> Result<(), AccessError> {
+        if !self.is_pristine() {
+            return Err(AccessError::State(Error::NotPristine));
+        }
+        if binding != &self.binding
+            || source.is_some_and(|v| self.observed_snapshot.as_ref() != Some(v))
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        let runtime = self
+            .game_eras
+            .as_ref()
+            .ok_or(AccessError::Unavailable("Game.Eras"))?;
+        if runtime.boost_rates.is_some() {
+            return Err(AccessError::State(Error::AlreadyBound));
+        }
+        if runtime
+            .current_scores
+            .as_ref()
+            .is_some_and(|rows| rows.len() != values.len())
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        if values
+            .len()
+            .checked_mul(2)
+            .is_none_or(|n| n > self.limits.max_runtime_array_items)
+        {
+            return Err(AccessError::State(Error::ResourceLimit));
+        }
+        self.advance_admission_generation()
+            .map_err(AccessError::State)?;
+        self.game_eras.as_mut().expect("validated").boost_rates = Some(values);
+        Ok(())
+    }
+    pub fn game_era_boost_rates(&self, owner: i32) -> Result<Option<&[i32; 2]>, AccessError> {
+        if owner == -1 {
+            return Ok(None);
+        }
+        let owner = usize::try_from(owner).map_err(|_| AccessError::InvalidPlayer(owner))?;
+        self.game_eras()?
+            .boost_rates
+            .as_ref()
+            .ok_or(AccessError::Unavailable("current Era boost rates"))
+            .map(|rows| rows.get(owner))
+    }
+    /// Current PlayerScores district completion rate at native +34.
+    pub fn initialize_game_era_district_construction_rates(
+        &mut self,
+        binding: &WireBinding,
+        source: Option<&ObservedSnapshotWitness>,
+        values: Vec<i32>,
+    ) -> Result<(), AccessError> {
+        if !self.is_pristine() {
+            return Err(AccessError::State(Error::NotPristine));
+        }
+        if binding != &self.binding
+            || source.is_some_and(|v| self.observed_snapshot.as_ref() != Some(v))
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        let runtime = self
+            .game_eras
+            .as_ref()
+            .ok_or(AccessError::Unavailable("Game.Eras"))?;
+        if runtime.district_construction_rates.is_some() {
+            return Err(AccessError::State(Error::AlreadyBound));
+        }
+        if runtime
+            .current_scores
+            .as_ref()
+            .is_some_and(|rows| rows.len() != values.len())
+        {
+            return Err(AccessError::State(Error::Binding));
+        }
+        if values
+            .len()
+            .checked_mul(1)
+            .is_none_or(|n| n > self.limits.max_runtime_array_items)
+        {
+            return Err(AccessError::State(Error::ResourceLimit));
+        }
+        self.advance_admission_generation()
+            .map_err(AccessError::State)?;
+        self.game_eras
+            .as_mut()
+            .expect("validated")
+            .district_construction_rates = Some(values);
+        Ok(())
+    }
+    pub fn game_era_district_construction_rate(
+        &self,
+        owner: i32,
+    ) -> Result<Option<i32>, AccessError> {
+        if owner == -1 {
+            return Ok(None);
+        }
+        let owner = usize::try_from(owner).map_err(|_| AccessError::InvalidPlayer(owner))?;
+        self.game_eras()?
+            .district_construction_rates
+            .as_ref()
+            .ok_or(AccessError::Unavailable(
+                "current Era district construction rates",
+            ))
+            .map(|rows| rows.get(owner).copied())
+    }
     pub fn game_era_scores(&self) -> Result<&[Vec<i32>], AccessError> {
         self.game_eras
             .as_ref()

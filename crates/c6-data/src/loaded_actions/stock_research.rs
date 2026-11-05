@@ -2,6 +2,8 @@
 //! Canonical science/progress calculation stays in `research::Context`.
 #[path = "stock_research_acquisition.rs"]
 pub mod acquisition;
+#[path = "stock_research_boosts.rs"]
+pub mod boosts;
 #[path = "stock_research_units.rs"]
 pub mod units;
 use super::Runtime;
@@ -203,6 +205,38 @@ impl<P> research::Effects for Effects<'_, '_, P> {
     ) -> Result<(), Error> {
         self.backend.check(state).map_err(Error::Notification)?;
         match effect {
+            research::Effect::BoostSignal {
+                player,
+                kind,
+                index,
+            } => self.boost_signal(state, player, kind, index),
+            research::Effect::Report(ref report)
+                if report.event == 0x3feaad02
+                    && report.specialization.is_some()
+                    && report.index.is_none()
+                    && report.old_progress.is_some()
+                    && report.source == Some(0) =>
+            {
+                self.boost_report(state, definitions, report)
+            }
+            research::Effect::Notification(ref notice)
+                if notice.kind == research::Kind::Civic
+                    && notice.notification_type == 0xf94c970d
+                    && notice.old_progress.is_some()
+                    && notice.source == Some(0)
+                    && notice.percent.is_some() =>
+            {
+                self.boost_notice(state, notice)
+            }
+            research::Effect::BoostLog { .. } | research::Effect::BoostTelemetry { .. } => {
+                if self.backend.research_boosts.is_none() {
+                    return Err(Error::Effect(effect));
+                }
+                self.backend
+                    .reached
+                    .push("stock boost logging and telemetry presentation boundary");
+                Ok(())
+            }
             research::Effect::Notification(ref notice)
                 if ((notice.kind == research::Kind::Technology
                     && notice.notification_type == 0x715a6581)

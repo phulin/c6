@@ -13,21 +13,16 @@ use super::{
 #[path = "stock_activation.rs"]
 mod activation;
 pub mod city_production;
-pub mod growth;
-pub mod founding;
-pub mod unit_creation;
-pub mod policy_modifiers;
 pub mod city_queries;
-#[path = "stock_resource_revelation.rs"]
-pub mod resource_revelation;
-#[path = "stock_sight_discovery.rs"]
-pub mod sight_discovery;
 pub mod cityless_managers;
 pub mod deactivation;
+pub mod era_changes;
+pub mod founding;
 #[path = "stock_notifications_game_update.rs"]
 pub mod game_update;
 #[path = "stock_gold.rs"]
 pub mod gold;
+pub mod growth;
 pub mod human_activation;
 pub mod inactive_control;
 #[path = "stock_maintenance.rs"]
@@ -39,28 +34,33 @@ pub mod movement;
 pub mod npc_activation;
 pub mod npc_deactivation;
 pub mod npc_leaves;
-pub mod queued_operations;
-pub mod npc_unit_operations;
 pub mod npc_unit_decisions;
+pub mod npc_unit_operations;
+pub mod policy_modifiers;
+pub mod queued_operations;
 #[path = "stock_research.rs"]
 pub mod research;
+#[path = "stock_resource_revelation.rs"]
+pub mod resource_revelation;
 pub mod round_ai;
-pub mod round_end;
-pub mod round_world;
-pub mod round_turn;
-pub mod round_dispatch;
 pub mod round_backend;
+pub mod round_dispatch;
+pub mod round_end;
+pub mod round_turn;
+pub mod round_world;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
+#[path = "stock_sight_discovery.rs"]
+pub mod sight_discovery;
 #[path = "stock_skip_turn.rs"]
 pub mod skip_turn;
 pub mod social;
-pub mod era_changes;
 #[path = "stock_turn.rs"]
 pub mod turn;
 pub mod turn_loop;
 #[path = "stock_turn_reports.rs"]
 pub mod turn_reports;
+pub mod unit_creation;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -91,8 +91,21 @@ pub struct Decision {
 /// Informational gameplay output; it never requests a policy choice.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Notice {
-    TechnologyCompleted { owner: i32, technology: i32 },
-    CivicCompleted { owner: i32, civic: i32 },
+    TechnologyCompleted {
+        owner: i32,
+        technology: i32,
+    },
+    CivicCompleted {
+        owner: i32,
+        civic: i32,
+    },
+    CivicBoosted {
+        owner: i32,
+        civic: i32,
+        old_progress: i32,
+        source: i32,
+        percent: i32,
+    },
 }
 pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
@@ -129,6 +142,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub(super) research_acquisition: Option<research::acquisition::Binding>,
     pub(super) research_unit_updates: Option<&'a crate::unit_movement_state::Definitions>,
     pub(super) research_queries: Option<research::Queries<'a>>,
+    pub(super) research_boosts: Option<research::boosts::Inputs<'a>>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
     pub(crate) completion_inflight: Option<i32>,
     round_unit_healed: Option<round_end::UnitHealedSignals>,
@@ -181,6 +195,7 @@ impl<'a, P> Runtime<'a, P> {
             research_acquisition: None,
             research_unit_updates: None,
             research_queries: None,
+            research_boosts: None,
             activation_progress: None,
             turn_progress: None,
             completion_inflight: None,
@@ -201,9 +216,9 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         let owner = match &notice {
-            Notice::TechnologyCompleted { owner, .. } | Notice::CivicCompleted { owner, .. } => {
-                *owner
-            }
+            Notice::TechnologyCompleted { owner, .. }
+            | Notice::CivicCompleted { owner, .. }
+            | Notice::CivicBoosted { owner, .. } => *owner,
         };
         if !self
             .facts
@@ -359,14 +374,17 @@ impl<P> lifecycle::Backend for Runtime<'_, P> {
                     .record_by_object(object)
                     .map_err(lifecycle::Error::Owner)?;
                 let expired = Decision {
-                    owner:i32::from(record.id.owner),type_hash:record.type_hash,location:record.location,
-                    component:(!(record.component.owner == -1 && record.component.id == u32::MAX)).then_some(record.component),
+                    owner: i32::from(record.id.owner),
+                    type_hash: record.type_hash,
+                    location: record.location,
+                    component: (!(record.component.owner == -1 && record.component.id == u32::MAX))
+                        .then_some(record.component),
                 };
                 self.decisions.retain(|d| {
-                    !research::same_global_progression_choice(d,&expired) && (
-                    d.owner != i32::from(record.id.owner)
-                        || d.type_hash != record.type_hash
-                        || d.location != record.location)
+                    !research::same_global_progression_choice(d, &expired)
+                        && (d.owner != i32::from(record.id.owner)
+                            || d.type_hash != record.type_hash
+                            || d.location != record.location)
                 });
                 return Ok(());
             }
@@ -424,9 +442,11 @@ impl<P> processing::Backend for Runtime<'_, P> {
         self.check(state)?;
         social::pantheon_needed(
             state,
-            self.social_capabilities.as_ref().ok_or(
-                processing::Error::Unsupported("current social capability membership"),
-            )?,
+            self.social_capabilities
+                .as_ref()
+                .ok_or(processing::Error::Unsupported(
+                    "current social capability membership",
+                ))?,
             owner,
         )
         .map_err(|_| processing::Error::Unsupported("current pantheon eligibility"))

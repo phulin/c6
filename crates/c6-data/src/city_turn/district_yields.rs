@@ -187,15 +187,27 @@ impl Current<'_> {
         Ok(total)
     }
     fn adjacency(&self, district: &District, index: i32) -> Result<i32, Error> {
+        self.adjacency_current(district, index, true)
+    }
+    fn adjacency_current(
+        &self,
+        district: &District,
+        index: i32,
+        apply_modifier: bool,
+    ) -> Result<i32, Error> {
+        if district.pillaged {
+            return Ok(0);
+        }
         let hash = self.definitions.yield_hash(index)?;
         let amount = self
             .map_adjacency(district, index)?
             .wrapping_add(value(&district.base_yield_changes, hash))
             .wrapping_add(self.appeal(district, index)?);
-        Ok(scaled(
-            amount,
-            value(&district.yield_adjacency_modifiers, hash),
-        ))
+        Ok(if apply_modifier {
+            scaled(amount, value(&district.yield_adjacency_modifiers, hash))
+        } else {
+            amount
+        })
     }
     fn yield_from(&self, district: &District, index: i32) -> Result<i32, Error> {
         if district.pillaged {
@@ -246,6 +258,22 @@ fn combine(
         }
     }
     Ok(base.wrapping_add(adjacency(hash)?))
+}
+/// Current District.GetAdjacencyYield in whole yield units. Native `false`
+/// skips percentage modifiers but retains static/base/appeal terms; pillage is
+/// checked before those current queries. No City yield, mirrors or Q8 scaling.
+pub fn adjacency(
+    state: &LoadedState,
+    owner: i32,
+    district: u32,
+    yield_index: i32,
+    apply_modifier: bool,
+    definitions: &Definitions,
+) -> Result<i32, Error> {
+    let district = state
+        .district(owner, district)
+        .map_err(|_| Error::Unsupported("district adjacency identity"))?;
+    Current { state, definitions }.adjacency_current(district, yield_index, apply_modifier)
 }
 /// Returns the effective TrackedValue raw Q8 scalar, not its localized labels.
 pub fn calculate(

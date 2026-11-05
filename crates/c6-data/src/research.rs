@@ -683,13 +683,18 @@ impl<E: Effects> Context<'_, E> {
         report: &boost::Report,
     ) -> Result<Vec<i32>, Error<E::Error>> {
         self.check()?;
-        if !matches!(
+        let completed = matches!(
             report.event,
             0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d
-        ) || report.specialization.is_some()
-            || report.old_progress.is_some()
-            || report.source.is_some()
-        {
+        ) && report.specialization.is_none()
+            && report.old_progress.is_none()
+            && report.source.is_none();
+        let boosted = report.event == 0x3feaad02
+            && report.specialization.is_some()
+            && report.index.is_none()
+            && report.old_progress.is_some()
+            && report.source == Some(0);
+        if !completed && !boosted {
             return Err(Error::Missing("unsupported stock civic publication"));
         }
         let mut values = Vec::with_capacity(2);
@@ -1001,10 +1006,23 @@ impl<E: Effects> Context<'_, E> {
     /// Current CityCenter/ordinary district records use the existing exact
     /// zero-specialty-average cost path. Positive specialty discounts stay
     /// explicit in the shared district kernel.
-    pub fn recompute_ordinary_district_costs(&mut self, player:i32)->Result<(),Error<E::Error>> {
+    pub fn recompute_ordinary_district_costs(
+        &mut self,
+        player: i32,
+    ) -> Result<(), Error<E::Error>> {
         self.check()?;
-        let percent=self.percentage(player,Kind::Technology)?.max(self.percentage(player,Kind::Civic)?);
-        self.definitions.district_costs.recompute_no_specialty(self.state,player,percent,self.effects.runtime().start_era_hash).map_err(Error::DistrictCosts)
+        let percent = self
+            .percentage(player, Kind::Technology)?
+            .max(self.percentage(player, Kind::Civic)?);
+        self.definitions
+            .district_costs
+            .recompute_no_specialty(
+                self.state,
+                player,
+                percent,
+                self.effects.runtime().start_era_hash,
+            )
+            .map_err(Error::DistrictCosts)
     }
     /// Placement locks its cost first, then recomputes this current type using
     /// actual prerequisite flags and the canonical replacement map.
@@ -1015,11 +1033,20 @@ impl<E: Effects> Context<'_, E> {
         map: &crate::city_production_turn::selection::DistrictMap,
     ) -> Result<(), Error<E::Error>> {
         self.check()?;
-        let percent = self.percentage(player, Kind::Technology)?
+        let percent = self
+            .percentage(player, Kind::Technology)?
             .max(self.percentage(player, Kind::Civic)?);
-        self.definitions.district_costs.recompute_only_constructible_type(
-            self.state, player, hash, percent, self.effects.runtime().start_era_hash, map,
-        ).map_err(Error::DistrictCosts)
+        self.definitions
+            .district_costs
+            .recompute_only_constructible_type(
+                self.state,
+                player,
+                hash,
+                percent,
+                self.effects.runtime().start_era_hash,
+                map,
+            )
+            .map_err(Error::DistrictCosts)
     }
     fn check(&self) -> Result<(), Error<E::Error>> {
         if self.state.binding() != &self.definitions.binding
