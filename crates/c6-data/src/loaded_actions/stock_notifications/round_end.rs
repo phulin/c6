@@ -55,7 +55,7 @@ impl<P> crate::unit_placement_state::round::Effects for Runtime<'_, P> {
     fn preflight_unit_healing(&self,state:&LoadedState,actor:(i32,u32)) -> Result<(),movement::Error> {
         let signals=self.round_unit_healed.as_ref().ok_or(movement::Error::Missing("round current UnitHealed registrations"))?;
         if state.binding()!=&signals.binding {return Err(movement::Error::Missing("round UnitHealed binding"));}
-        let unit=state.world().unit(c6_core::map::UnitReference{owner:actor.0,id:actor.1})
+        let unit=state.world().unit(c6_core::map::UnitReference::from_component_id(c6_core::unit::ComponentId{owner:actor.0 as i16,component_type:1,id:actor.1}))
             .map_err(movement::Error::World)?.ok_or(movement::Error::Missing("round healing actor"))?.record;
         if unit.i_damage>0 && !self.movement()?.reporting_suspended {
             self.reporting.preflight_damage_changed(state).map_err(movement::Error::Rules)?;
