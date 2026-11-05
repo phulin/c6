@@ -275,17 +275,117 @@ impl kernel::Runtime for Runtime<'_> {
         }
     }
 }
+fn adjacency_amount(change: i32, tiles: i32, count: i32) -> Option<i32> {
+    let raw = change.wrapping_shl(8).wrapping_mul(count);
+    let raw = if tiles > 1 {
+        let divisor = tiles.wrapping_shl(8);
+        if divisor == 0 {
+            return None;
+        }
+        (((raw as i64) << 8) / i64::from(divisor)) as i32
+    } else {
+        raw
+    };
+    // Native AsInt is arithmetic >>8, including negative fractional yields.
+    Some(raw >> 8)
+}
 impl ImprovementAdjacency for Runtime<'_> {
     fn player_adjacency_yield(
         &self,
-        _player: i32,
+        player: i32,
         definition: NativeDefinitionIndex,
-        _yield: i32,
-        _plot: Option<u32>,
+        requested_yield: i32,
+        plot: Option<u32>,
     ) -> Result<i32, ImprovementYieldError> {
-        Err(ImprovementYieldError::AdjacencyState {
+        use c6_core::yields::{PrerequisiteKind, PrerequisiteState};
+        let Some(plot) = plot else {
+            return Ok(0);
+        };
+        let missing = || ImprovementYieldError::AdjacencyState {
             definition: definition.get(),
-        })
+        };
+        let rule = self
+            .definitions
+            .adjacency
+            .get(definition.get() as usize)
+            .ok_or_else(missing)?;
+        let world = self.state.world();
+        if !rule.valid(|technology, index| {
+            let kind = if technology {
+                PrerequisiteKind::Technology
+            } else {
+                PrerequisiteKind::Civic
+            };
+            let acquired = world.acquired_mask(player, kind)?;
+            if index as u32 as usize >= acquired.len() {
+                return Ok::<_, c6_core::yields::MissingInput>(false);
+            }
+            Ok(world.globally_available(kind, index)? && acquired[index as usize])
+        })? {
+            return Ok(0);
+        }
+        if rule.excluded {
+            return Err(missing());
+        }
+        if requested_yield != -1 && requested_yield != rule.yield_index {
+            return Ok(0);
+        }
+        if !rule.supported {
+            return Err(missing());
+        }
+        let map = world.map();
+        if map.plot_by_index(plot).is_none() {
+            return Err(missing());
+        }
+        let mut count = i32::from(rule.self_yield);
+        if let Some(improvement) = rule.improvement {
+            let location = (
+                plot as i32 % map.header.width,
+                plot as i32 / map.header.width,
+            );
+            for direction in 0..6 {
+                let Some((x, y)) = crate::loaded_actions::city_range_attack::adjacent_location(
+                    self.state, location, direction,
+                ) else {
+                    continue;
+                };
+                let neighbor = map
+                    .plot_by_index((y * map.header.width + x) as u32)
+                    .ok_or_else(missing)?;
+                if self
+                    .definitions
+                    .improvements
+                    .find_index(neighbor.improvement_hash)
+                    .map(|v| v as i32)
+                    == Some(improvement)
+                    && !neighbor
+                        .flags
+                        .get(c6_core::map::PlotFlag::ImprovementPillaged)
+                {
+                    count = count.wrapping_add(1);
+                }
+            }
+        }
+        let value =
+            adjacency_amount(rule.change, rule.tiles_required, count).ok_or_else(missing)?;
+        if requested_yield == -1 {
+            return Err(ImprovementYieldError::Normalization {
+                yield_index: rule.yield_index,
+            });
+        }
+        Ok(value)
+    }
+}
+#[cfg(test)]
+mod adjacency_tests {
+    use super::*;
+    #[test]
+    fn farm_groups_and_negative_fraction_follow_fixed_point_order() {
+        assert_eq!(adjacency_amount(1, 2, 1), Some(0));
+        assert_eq!(adjacency_amount(1, 2, 3), Some(1));
+        assert_eq!(adjacency_amount(1, 1, 3), Some(3));
+        assert_eq!(adjacency_amount(-1, 2, 1), Some(-1));
+        assert_eq!(adjacency_amount(i32::MAX, 2, 2), Some(-1));
     }
 }
 struct PlayerRecords {

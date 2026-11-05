@@ -26,6 +26,36 @@ struct Improvement {
     adjacency: Vec<NativeDefinitionIndex>,
     bonuses: Vec<Option<BonusYieldChange>>,
 }
+/// Native ordered adjacency row; spatial shapes beyond improvement/self remain
+/// explicit until implemented, but their prerequisite gates are still lazy.
+pub(super) struct Adjacency {
+    pub yield_index: i32,
+    pub change: i32,
+    pub tiles_required: i32,
+    pub improvement: Option<i32>,
+    pub self_yield: bool,
+    pub supported: bool,
+    pub excluded: bool,
+    pub prerequisites: [Option<i32>; 4],
+}
+impl Adjacency {
+    pub fn valid<E>(&self, mut has: impl FnMut(bool, i32) -> Result<bool, E>) -> Result<bool, E> {
+        if self.change == 0 {
+            return Ok(false);
+        }
+        // Native IsBonusValid: required civic, obsolete civic, required tech,
+        // obsolete tech. Later fields must not be read after a rejecting gate.
+        for (i, reference) in self.prerequisites.iter().enumerate() {
+            if let Some(index) = reference {
+                let acquired = has(i >= 2, *index)?;
+                if acquired == (i % 2 == 1) {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(true)
+    }
+}
 pub struct Definitions {
     pub(super) yields: LinuxDefinitionRegistry,
     pub(super) terrains: LinuxDefinitionRegistry,
@@ -35,6 +65,7 @@ pub struct Definitions {
     pub(super) districts: LinuxDefinitionRegistry,
     pub(super) buildings: LinuxDefinitionRegistry,
     pub(super) outside_improvements: Vec<u32>,
+    pub(super) adjacency: Vec<Adjacency>,
     feature: Vec<Feature>,
     improvement: Vec<Improvement>,
     resource: Vec<Vec<Option<py::YieldChange>>>,
@@ -92,6 +123,58 @@ impl Definitions {
         let techs = registry("Technologies", "TechnologyType")?;
         let civics = registry("Civics", "CivicType")?;
         let adjacency = registry("Adjacency_YieldChanges", "ID")?;
+        let mut adjacency_rows = Vec::new();
+        for entry in adjacency.entries() {
+            let row = table("Adjacency_YieldChanges")?
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Unsupported("Adjacency row"))?;
+            let native_index =
+                |lookup: &LinuxDefinitionRegistry, column| -> Result<Option<i32>, Error> {
+                    Ok(index(lookup, hash(row, column)?).map(NativeDefinitionIndex::get))
+                };
+            let supported = [
+                "OtherDistrictAdjacent",
+                "AdjacentSeaResource",
+                "AdjacentRiver",
+                "AdjacentWonder",
+                "AdjacentNaturalWonder",
+                "AdjacentResource",
+            ]
+            .into_iter()
+            .try_fold(true, |ok, col| {
+                Ok::<_, Error>(ok && integer(row, col)? == 0)
+            })? && ["AdjacentTerrain", "AdjacentFeature", "AdjacentDistrict"]
+                .into_iter()
+                .try_fold(true, |ok, col| {
+                    Ok::<_, Error>(ok && hash(row, col)? == u32::MAX)
+                })?
+                && match row.get("AdjacentResourceClass").map_err(Error::Rules)? {
+                    SqlValue::Null => true,
+                    SqlValue::Text(value) => value.as_slice() == b"NO_RESOURCECLASS",
+                    _ => false,
+                };
+            let source = linux_type_hash(&entry.type_name);
+            let excluded = table("ExcludedAdjacencies")?
+                .rows()
+                .try_fold(false, |found, r| {
+                    Ok::<_, Error>(found || hash(r, "YieldChangeId")? == source)
+                })?;
+            adjacency_rows.push(Adjacency {
+                yield_index: native_index(&yields, "YieldType")?.unwrap_or(-1),
+                change: integer(row, "YieldChange")?,
+                tiles_required: integer(row, "TilesRequired")?,
+                improvement: native_index(&improvements, "AdjacentImprovement")?,
+                self_yield: integer(row, "Self")? != 0,
+                supported,
+                excluded,
+                prerequisites: [
+                    native_index(&civics, "PrereqCivic")?,
+                    native_index(&civics, "ObsoleteCivic")?,
+                    native_index(&techs, "PrereqTech")?,
+                    native_index(&techs, "ObsoleteTech")?,
+                ],
+            });
+        }
         let named = |table_name,
                      source_column,
                      source_hash|
@@ -269,6 +352,7 @@ impl Definitions {
                 .rows()
                 .map(|row| hash(row, "ImprovementType"))
                 .collect::<Result<Vec<_>, _>>()?,
+            adjacency: adjacency_rows,
             feature,
             improvement,
             resource,
@@ -360,5 +444,39 @@ impl Definitions {
             drought_food_loss: Some(self.drought_loss),
         };
         query(&rules)
+    }
+}
+
+#[cfg(test)]
+mod adjacency_tests {
+    use super::*;
+    #[test]
+    fn prerequisites_are_lazy_and_obsolescence_precedes_technology() {
+        let rule = Adjacency {
+            yield_index: 0,
+            change: 1,
+            tiles_required: 2,
+            improvement: Some(0),
+            self_yield: false,
+            supported: true,
+            excluded: false,
+            prerequisites: [Some(3), Some(4), Some(5), Some(6)],
+        };
+        let mut calls = vec![];
+        assert!(!rule
+            .valid::<()>(|tech, index| {
+                calls.push((tech, index));
+                Ok(false)
+            })
+            .unwrap());
+        assert_eq!(calls, [(false, 3)]);
+        calls.clear();
+        assert!(!rule
+            .valid::<()>(|tech, index| {
+                calls.push((tech, index));
+                Ok(true)
+            })
+            .unwrap());
+        assert_eq!(calls, [(false, 3), (false, 4)]);
     }
 }
