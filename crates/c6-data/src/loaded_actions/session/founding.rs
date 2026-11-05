@@ -40,6 +40,44 @@ impl<'s, 'a> Session<'s, 'a> {
             founding,
             budget,
         );
+        if result.is_ok() {
+            // Creation appends a City to the live Player roster. Research owns
+            // its traversal order across requests, so propagate this successful
+            // change before the next research choice or ordinary turn upkeep.
+            // Reusing the initialized pre-founding empty list would fail the
+            // research yield extent check when the first city activates.
+            if let Some(player) = self
+                .context
+                .notifications
+                .state
+                .retained()
+                .players
+                .iter()
+                .find(|player| player.header.owner == actor.0)
+            {
+                let order = player
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .map(|entry| c6_core::unit::ComponentId {
+                        owner: entry.value.header.owner as i16,
+                        component_type: 2,
+                        id: entry.value.header.id,
+                    })
+                    .collect();
+                if let Some((_, current)) = self
+                    .research
+                    .city_order
+                    .iter_mut()
+                    .find(|(owner, _)| *owner == actor.0)
+                {
+                    *current = order;
+                } else {
+                    self.research.city_order.push((actor.0, order));
+                }
+            }
+        }
         // Reports/script/RNG can advance before a retained-state stamp changes.
         // Keep the same failed-prefix rule as the ordinary operation entry.
         self.retain(result, true)
