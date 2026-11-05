@@ -104,7 +104,10 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         partial_failure: bool,
     ) -> Result<T, Error<E>> {
         result.map_err(|error| {
-            if partial_failure {
+            if partial_failure || self.update.failed() {
+                // Keep the failure on an existing owner too: extracting and
+                // rewrapping the same parts must not erase an incomplete prefix.
+                self.update.fail_player_callback();
                 self.failed = Some(format!("{error:?}"));
             }
             Error::Action(error)
