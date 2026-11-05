@@ -200,8 +200,21 @@ impl<P> Runtime<'_, P> {
             .iter()
             .find(|p| p.header.owner == owner)
             .ok_or(Error::Unsupported("current deactivation player"))?;
-        if !player.cities.records.entries.is_empty() {
-            return Err(Error::Unsupported("current city deactivation choices"));
+        // Player.Cities.DoTurnDeactivate2a5b280 tailcalls
+        // CheckUnhandledCityDecisions2a5b290. Its first pass only collects
+        // cities whose current conquest/rebellion decision is outstanding.
+        // Ordinary cities do not run production or citizen work here. Positive
+        // decisions must reach an external policy, never an automatic default
+        // destruction/flag clear in this headless adapter.
+        for entry in &player.cities.records.entries {
+            let city = &entry.value.header;
+            if city.just_conquered_from != -1 || city.just_rebelled_from != -1 {
+                self.last_error = Some(format!(
+                    "unhandled City decision: owner {owner}, city {}, conquered from {}, rebelled from {}",
+                    city.id, city.just_conquered_from, city.just_rebelled_from
+                ));
+                return Err(Error::Unsupported("pending city conquest/rebellion decision"));
+            }
         }
         let order = player
             .resources
@@ -221,7 +234,10 @@ impl<P> Runtime<'_, P> {
                 uninitializing,
             },
         )
-        .map_err(|_| Error::Unsupported("current resource deactivation effect"))?;
+        .map_err(|error| {
+            self.last_error = Some(format!("resource deactivation: {error:?}"));
+            Error::Unsupported("current resource deactivation effect")
+        })?;
         self.deliver_deactivated_turn_report(state, owner, scope)
             .map_err(|_| Error::Unsupported("current deactivated turn report"))?;
         Ok(changed)
