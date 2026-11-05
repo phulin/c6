@@ -4,6 +4,7 @@ use crate::barbarian_camp_placement::{self as shared, OwnerContext, VisualContex
 use c6_core::{
     loaded_state::LoadedState,
     map::{DefinitionValue, PlotFlag},
+    unit::variants::{ArrayVariant, TypedEntry, TypedVariant, TypedVariantMap, VariantPayload},
 };
 
 /// Neutral owner/revelation primitives are shared with camp placement. The
@@ -64,9 +65,25 @@ pub fn first<C: Effects>(
         let p = world.plot_mut(plot).ok_or(Error::Missing("Farm plot"))?;
         p.improvement_hash = definitions.farm_hash;
         p.flags.set(PlotFlag::ImprovementPillaged, false);
-        if let Some(properties) = &mut p.properties {
-            properties.entries.retain(|e| e.key != 0xf9fa9bc3);
+        // SetDirection(NO_DIRECTION,true) calls EditProperties even when the
+        // direction key is absent (Linux2a3e85f). That creates the nested
+        // Improvement typed map before erasing its direction property.
+        let properties = p.properties.get_or_insert_with(TypedVariantMap::default);
+        if !properties.entries.iter().any(|e| e.key == 0xd9a34c75) {
+            properties.entries.push(TypedEntry { key: 0xd9a34c75, name: None,
+                value: TypedVariant { type_bits: 10, modifier_bits: 0,
+                    value: ArrayVariant { count_flags: 0x05000000, element_size: 0,
+                        payload: VariantPayload::TypedVariantMap(Box::default()) } } });
         }
+        let entry = properties.entries.iter_mut().find(|e|e.key==0xd9a34c75)
+            .ok_or(Error::Missing("Farm improvement property map"))?;
+        if entry.value.type_bits != 10 || entry.value.modifier_bits != 0 {
+            return Err(Error::Unsupported("Farm non-map improvement properties"));
+        }
+        let VariantPayload::TypedVariantMap(improvement) = &mut entry.value.value.payload else {
+            return Err(Error::Unsupported("Farm improvement property payload"));
+        };
+        improvement.entries.retain(|e|e.key!=0xf9fa9bc3);
         if let Some(area) = world.area_mut(area) {
             if let Some(count) = area
                 .improvement_counts
