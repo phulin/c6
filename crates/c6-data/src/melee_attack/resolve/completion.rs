@@ -1,5 +1,6 @@
 //! Outer Resolve tail after kill awards, loyalty/religion and fresh proposal.
 //! Callback providers must execute real current subscribers before returning.
+pub mod army_knowledge;
 pub mod boosts;
 pub mod eras;
 pub mod history;

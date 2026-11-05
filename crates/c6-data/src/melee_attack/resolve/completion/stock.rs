@@ -335,12 +335,14 @@ impl<E: Effects> Dispatch<'_, '_, '_, '_, E> {
         if let Callback::Unsupported(value) = callback {
             return Err(Error::UnsupportedCallback(value));
         }
-        if let Callback::Attacked(_owner) = callback {
+        if let Callback::Attacked(owner) = callback {
             if !matches!(scope, Signal::PlayerAttacked(_)) {
                 return Err(Error::WrongSignal(id));
             }
             return targets::observer_attacked(
                 self.state,
+                self.inputs.targets,
+                owner,
                 self.attacker.ok_or(Error::MissingPayload)?,
             )
             .map_err(Error::Targets);
